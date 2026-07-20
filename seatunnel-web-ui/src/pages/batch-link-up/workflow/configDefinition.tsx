@@ -33,7 +33,7 @@ export const getTabDefinitions = (
   },
   // {
   //   key: "mapping",
-  //   label: "映射",
+  //   label: "逻辑关系配置",
   //   content: <MappingConfigContent />,
   // },
   {

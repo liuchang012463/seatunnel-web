@@ -16,10 +16,10 @@ const PageHeader: React.FC<Props> = ({ onBack }) => {
 
           <div className="min-w-0">
             <div className="text-[22px] font-semibold leading-8 text-[#101828]">
-              创建实时同步任务
+              创建实时引接链路 · 物理路由配置
             </div>
             <div className="mt-1 text-[14px] leading-6 text-[#667085]">
-              先补充基础信息，再选择合适的配置方式，几步就能开始创建任务。
+              配置引接链路的物理路由：数据源、目标端与执行客户端等接入路径。
             </div>
           </div>
         </div>
