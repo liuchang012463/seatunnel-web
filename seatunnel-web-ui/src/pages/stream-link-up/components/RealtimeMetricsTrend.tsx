@@ -165,7 +165,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
     if (!onView) return null;
 
     return (
-      <Tooltip title="打开实时指标看板">
+      <Tooltip title="打开实时负载看板">
         <button
           type="button"
           className={dashboardIconClass}
@@ -180,7 +180,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
   if (!points.length) {
     return (
       <div className="group relative min-h-[54px] w-[350px]">
-        <span className="text-xs text-slate-400">暂无趋势数据</span>
+        <span className="text-xs text-slate-400">暂无负载数据</span>
         {renderDashboardIcon()}
       </div>
     );

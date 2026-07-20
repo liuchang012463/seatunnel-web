@@ -1,5 +1,6 @@
 import { Empty, message, Table, Tooltip } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
+import { useIntl } from "@umijs/max";
 import React from "react";
 
 import { CopyOutlined } from "@ant-design/icons";
@@ -61,6 +62,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
   onLog,
   onCheckpoint,
 }) => {
+  const intl = useIntl();
   const copyToClipboard = async (text: string | number) => {
     const value = String(text);
 
@@ -87,13 +89,21 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
 
   const columns: ColumnsType<StreamingJobDefinitionVO> = [
     {
-      title: "名称/ID",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.name",
+        defaultMessage: "链路名称/ID",
+      }),
       dataIndex: "jobName",
       width: 220,
       render: (_, record) => (
         <div>
           <div className="flex items-center gap-1 text-xs leading-6">
-            <em className="font-medium not-italic text-slate-700">任务名称</em>
+            <em className="font-medium not-italic text-slate-700">
+              {intl.formatMessage({
+                id: "pages.job.table.label.jobName",
+                defaultMessage: "任务名",
+              })}
+            </em>
             <span className="text-slate-400">:</span>
 
             <Tooltip title={record.jobName || record.id}>
@@ -103,7 +113,12 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
             </Tooltip>
           </div>
           <div className="flex items-center gap-1 text-xs leading-6">
-            <em className="font-medium not-italic text-slate-700">任务定义ID</em>
+            <em className="font-medium not-italic text-slate-700">
+              {intl.formatMessage({
+                id: "pages.job.table.label.jobId",
+                defaultMessage: "任务定义ID",
+              })}
+            </em>
             <span className="text-slate-400">:</span>
             <span className="text-slate-400">{record.id}</span>
 
@@ -134,13 +149,19 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       ),
     },
     {
-      title: "数据同步方案",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.syncPlan",
+        defaultMessage: "数据源同步方案",
+      }),
       dataIndex: "syncPlan",
       width: 300,
       render: (_, record) => <RealtimeSyncPlan record={record} />,
     },
     {
-      title: "状态",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.status",
+        defaultMessage: "健康状态",
+      }),
       dataIndex: "taskParams",
       width: 106,
       render: (_content: any, record: any) => (
@@ -153,7 +174,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       ),
     },
     {
-      title: "趋势",
+      title: "负载情况",
       dataIndex: "metricsTrend",
       width: 360,
       render: (_content: any, record: StreamingJobDefinitionVO) => (
@@ -161,7 +182,10 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       ),
     },
     {
-      title: "执行概况",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.execution",
+        defaultMessage: "执行概况",
+      }),
       dataIndex: "执行概况",
       render: (_content: any, record: any) => (
         <ExecutionStatus record={record} />
@@ -176,7 +200,10 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       ),
     },
     {
-      title: "操作",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.operate",
+        defaultMessage: "操作",
+      }),
       dataIndex: "operate",
       width: 220,
       fixed: "right",
