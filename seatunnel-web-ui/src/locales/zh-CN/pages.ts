@@ -93,8 +93,8 @@ export default {
   'pages.datasource.filter.all': '全部',
   'pages.datasource.filter.inputPlaceholder': '请输入...',
 
-  'pages.datasync.header.title': '离线同步任务',
-  'pages.datasync.header.subtitle': '完全向导式白屏配置，帮助您更轻松地创建数据同步任务 🪄',
+  'pages.datasync.header.title': '链路管理（离线）',
+  'pages.datasync.header.subtitle': '统一管理采集引接链路：配置、调度与健康状态监测',
 
   'pages.datasync.header.source.placeholder': '源端',
   'pages.datasync.header.source.prefix': '来源：',
@@ -110,11 +110,11 @@ export default {
   'pages.job.menu.delete': '删除',
 
   // table columns
-  'pages.job.table.col.name': '名称/ID',
+  'pages.job.table.col.name': '链路名称/ID',
   'pages.job.table.col.syncPlan': '数据源同步方案',
-  'pages.job.table.col.status': '状态',
+  'pages.job.table.col.status': '健康状态',
   'pages.job.table.col.execution': '执行概况',
-  'pages.job.table.col.schedule': '调度',
+  'pages.job.table.col.schedule': '链路动态调度',
   'pages.job.table.col.createTime': '创建时间',
   'pages.job.table.col.operate': '操作',
 
