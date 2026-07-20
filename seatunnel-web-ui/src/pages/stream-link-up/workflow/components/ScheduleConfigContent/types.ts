@@ -15,16 +15,27 @@ export interface BasicConfig {
     targetDataSourceId: string | number;
 }
 
+export type LinkPriority = "HIGH" | "MEDIUM" | "LOW";
+
 export interface EnvConfig {
   jobMode: "BATCH" | "STREAMING";
   parallelism: number;
   checkpointInterval: number;
+  /** 每线程最大读取字节/秒；空=不限速 */
+  readLimitBytesPerSecond?: number | null;
+  /** 每线程最大读取行/秒；空=不限速 */
+  readLimitRowsPerSecond?: number | null;
+  /** 仅存储，不参与调度/执行 */
+  priority?: LinkPriority;
 }
 
 export const defaultEnvConfig: EnvConfig = {
   jobMode: "STREAMING",
   parallelism: 1,
   checkpointInterval: 30000,
+  readLimitBytesPerSecond: null,
+  readLimitRowsPerSecond: null,
+  priority: "MEDIUM",
 };
 
 export interface ScheduleConfig {
