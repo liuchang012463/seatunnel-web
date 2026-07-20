@@ -31,12 +31,12 @@ export const getTabDefinitions = (
       />
     ),
   },
-  // 映射区文案已合同化；mapping tab 暂未启用，启用后渲染此组件
-  // {
-  //   key: "mapping",
-  //   label: "逻辑关系配置",
-  //   content: <MappingConfigContent />,
-  // },
+  // 已启用 — 合同化「逻辑关系配置」tab
+  {
+    key: "mapping",
+    label: "逻辑关系配置",
+    content: <MappingConfigContent />,
+  },
   {
     key: "env",
     label: "环境",

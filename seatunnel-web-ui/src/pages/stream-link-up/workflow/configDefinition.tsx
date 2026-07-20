@@ -19,6 +19,12 @@ export const getTabDefinitions = (
       <BasicConfigContent value={basicConfig} onChange={setBasicConfig} />
     ),
   },
+  // 已启用 — 合同化「逻辑关系配置」tab
+  {
+    key: "mapping",
+    label: "逻辑关系配置",
+    content: <MappingConfigContent />,
+  },
   // {
   //   key: "schedule",
   //   label: "调度",
@@ -28,12 +34,6 @@ export const getTabDefinitions = (
   //       onChange={setScheduleConfig}
   //     />
   //   ),
-  // },
-  // 映射区文案已合同化；mapping tab 暂未启用，启用后渲染此组件
-  // {
-  //   key: "mapping",
-  //   label: "逻辑关系配置",
-  //   content: <MappingConfigContent />,
   // },
   {
     key: "env",
