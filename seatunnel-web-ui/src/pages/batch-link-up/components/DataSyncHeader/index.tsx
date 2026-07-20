@@ -61,13 +61,13 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
             <div className="sync-page-header__title">
               {intl.formatMessage({
                 id: "pages.datasync.header.title",
-                defaultMessage: "离线同步任务",
+                defaultMessage: "链路管理（离线）",
               })}
             </div>
             <div className="sync-page-header__subtitle">
               {intl.formatMessage({
                 id: "pages.datasync.header.subtitle",
-                defaultMessage: "选择同步方向，快速创建新的离线同步任务",
+                defaultMessage: "统一管理采集引接链路：配置、调度与健康状态监测",
               })}
             </div>
           </div>
