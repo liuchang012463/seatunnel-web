@@ -4,6 +4,7 @@ import { formItemStyle, labelNodeStyle } from "./constants";
 import HourScheduleFields from "./components/HourScheduleFields";
 import DayScheduleFields from "./components/DayScheduleFields";
 import WeekScheduleFields from "./components/WeekScheduleFields";
+import MinuteScheduleFields from "./components/MinuteScheduleFields";
 import CronPreview from "./components/CronPreview";
 import type { ScheduleTimeSectionProps } from "./types";
 import {
@@ -11,6 +12,7 @@ import {
   defaultDailyValue,
   defaultHourlyAppointValue,
   defaultHourlyRangeValue,
+  defaultMinuteValue,
   defaultWeeklyValue,
 } from "./utils";
 
@@ -23,6 +25,7 @@ const ScheduleTimeSection: React.FC<ScheduleTimeSectionProps> = ({
   const hourlyRangeValue = value?.hourlyRangeValue ?? defaultHourlyRangeValue;
   const hourlyAppointValue =
     value?.hourlyAppointValue ?? defaultHourlyAppointValue;
+  const minuteValue = value?.minuteValue ?? defaultMinuteValue;
   const dailyValue = value?.dailyValue ?? defaultDailyValue;
   const weeklyValue = value?.weeklyValue ?? defaultWeeklyValue;
   const effectType = value?.effectType ?? "forever";
@@ -34,7 +37,8 @@ const ScheduleTimeSection: React.FC<ScheduleTimeSectionProps> = ({
       hourlyRangeValue,
       hourlyAppointValue,
       dailyValue,
-      weeklyValue
+      weeklyValue,
+      minuteValue
     );
   }, [
     scheduleType,
@@ -43,6 +47,7 @@ const ScheduleTimeSection: React.FC<ScheduleTimeSectionProps> = ({
     hourlyAppointValue,
     dailyValue,
     weeklyValue,
+    minuteValue,
   ]);
 
   useEffect(() => {
@@ -85,6 +90,7 @@ const ScheduleTimeSection: React.FC<ScheduleTimeSectionProps> = ({
                 })
               }
               options={[
+                { label: "分钟", value: "minute" },
                 { label: "小时", value: "hour" },
                 { label: "日", value: "day" },
                 { label: "周", value: "week" },
@@ -97,6 +103,13 @@ const ScheduleTimeSection: React.FC<ScheduleTimeSectionProps> = ({
               hourMode={hourMode}
               hourlyRangeValue={hourlyRangeValue}
               hourlyAppointValue={hourlyAppointValue}
+              onChange={onChange ?? (() => {})}
+            />
+          )}
+
+          {scheduleType === "minute" && (
+            <MinuteScheduleFields
+              minuteValue={minuteValue}
               onChange={onChange ?? (() => {})}
             />
           )}

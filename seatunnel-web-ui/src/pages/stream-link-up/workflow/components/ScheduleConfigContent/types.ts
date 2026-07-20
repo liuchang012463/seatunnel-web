@@ -58,7 +58,7 @@ export interface ScheduleConfig {
     retryInterval?: number;
 
     // 调度时间
-    scheduleType: "hour" | "day" | "week";
+    scheduleType: "minute" | "hour" | "day" | "week";
     hourMode?: "range" | "appoint";
     hourlyRangeValue?: {
         startTime: string;
@@ -68,6 +68,9 @@ export interface ScheduleConfig {
     hourlyAppointValue?: {
         hours: number[];
         minute: string;
+    };
+    minuteValue?: {
+        intervalMinute: number;
     };
     dailyValue?: {
         time: string;
