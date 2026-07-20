@@ -6,6 +6,9 @@ interface EnvConfigContentProps {
     jobMode?: "BATCH" | "STREAMING";
     parallelism?: number;
     checkpointInterval?: number;
+    readLimitBytesPerSecond?: number | null;
+    readLimitRowsPerSecond?: number | null;
+    priority?: "HIGH" | "MEDIUM" | "LOW";
   };
   onChange?: React.Dispatch<React.SetStateAction<any>>;
 }
@@ -15,6 +18,12 @@ const JOB_MODE_OPTIONS = [
     label: "STREAMING",
     value: "STREAMING",
   },
+];
+
+const PRIORITY_OPTIONS = [
+  { label: "高", value: "HIGH" },
+  { label: "中", value: "MEDIUM" },
+  { label: "低", value: "LOW" },
 ];
 
 export default function EnvConfigContent({
@@ -143,6 +152,43 @@ export default function EnvConfigContent({
               <span>
                 Checkpoint 间隔用于控制流式任务状态快照频率，默认 30000ms，建议根据数据量与资源情况调整。
               </span>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-1 text-[12px] text-slate-400">带宽限额（字节/秒·每线程）</div>
+            <InputNumber
+              min={0}
+              precision={0}
+              placeholder="空表示不限速"
+              value={value?.readLimitBytesPerSecond ?? null}
+              onChange={(v) => handleFieldChange("readLimitBytesPerSecond", v)}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <div className="mb-1 text-[12px] text-slate-400">带宽限额（行/秒·每线程）</div>
+            <InputNumber
+              min={0}
+              precision={0}
+              placeholder="空表示不限速"
+              value={value?.readLimitRowsPerSecond ?? null}
+              onChange={(v) => handleFieldChange("readLimitRowsPerSecond", v)}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <div className="mb-1 text-[12px] text-slate-400">传输优先级</div>
+            <Select
+              value={value?.priority ?? "MEDIUM"}
+              options={PRIORITY_OPTIONS}
+              onChange={(v) => handleFieldChange("priority", v)}
+              className="w-full"
+            />
+            <div className="mt-1.5 text-[11px] text-slate-400">
+              当前版本仅存储，不参与调度与执行。
             </div>
           </div>
         </div>

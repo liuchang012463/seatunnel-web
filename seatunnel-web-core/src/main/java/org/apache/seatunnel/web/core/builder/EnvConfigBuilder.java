@@ -47,6 +47,16 @@ public class EnvConfigBuilder {
         if (envConfig.getParallelism() != null && envConfig.getParallelism() > 0) {
             envMap.put("parallelism", envConfig.getParallelism());
         }
+
+        if (envConfig.getReadLimitBytesPerSecond() != null
+                && envConfig.getReadLimitBytesPerSecond() > 0) {
+            envMap.put("read_limit.bytes_per_second", envConfig.getReadLimitBytesPerSecond());
+        }
+        if (envConfig.getReadLimitRowsPerSecond() != null
+                && envConfig.getReadLimitRowsPerSecond() > 0) {
+            envMap.put("read_limit.rows_per_second", envConfig.getReadLimitRowsPerSecond());
+        }
+        // do NOT put priority into engine envMap
     }
 
     private void fillExtConfig(Map<String, Object> envMap, JobEnvConfig envConfig) {

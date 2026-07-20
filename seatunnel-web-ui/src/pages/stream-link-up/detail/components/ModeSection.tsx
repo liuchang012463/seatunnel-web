@@ -13,7 +13,7 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
       <div className="mb-5">
         <div className="text-[18px] font-semibold text-[#101828]">配置模式</div>
         <div className="mt-1 text-[13px] leading-6 text-[#667085]">
-          支持向导式快速创建，也支持脚本方式进行更灵活的任务编排。
+          选择配置方式后，进入逻辑关系配置（表/字段映射）与环境参数设置。
         </div>
       </div>
 

@@ -55,6 +55,6 @@ public class MySQLCDCSourceOptionRule implements SourceOptionRule {
 
     @Override
     public String pluginName() {
-        return "MySQL-CDC";
+        return "MYSQL-CDC";
     }
 }

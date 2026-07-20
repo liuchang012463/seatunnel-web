@@ -1,4 +1,4 @@
-export type ScheduleType = "hour" | "day" | "week";
+export type ScheduleType = "minute" | "hour" | "day" | "week";
 export type HourMode = "range" | "appoint";
 export type EffectType = "forever" | "assign";
 
@@ -11,6 +11,10 @@ export interface HourlyRangeModeValue {
 export interface HourlyAppointModeValue {
   hours: number[];
   minute: string;
+}
+
+export interface MinuteModeValue {
+  intervalMinute: number;
 }
 
 export interface DailyModeValue {
@@ -27,6 +31,7 @@ export interface ScheduleTimeValue {
   hourMode?: HourMode;
   hourlyRangeValue?: HourlyRangeModeValue;
   hourlyAppointValue?: HourlyAppointModeValue;
+  minuteValue?: MinuteModeValue;
   dailyValue?: DailyModeValue;
   weeklyValue?: WeeklyModeValue;
   effectType?: EffectType;

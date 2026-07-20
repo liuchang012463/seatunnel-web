@@ -17,4 +17,15 @@ public class JobEnvConfig {
     private JobMode jobMode;
 
     private Integer parallelism;
+
+    /** SeaTunnel env: read_limit.bytes_per_second */
+    private Long readLimitBytesPerSecond;
+
+    /** SeaTunnel env: read_limit.rows_per_second */
+    private Long readLimitRowsPerSecond;
+
+    /**
+     * HIGH / MEDIUM / LOW — stored on job env JSON only; not applied by engine.
+     */
+    private String priority;
 }

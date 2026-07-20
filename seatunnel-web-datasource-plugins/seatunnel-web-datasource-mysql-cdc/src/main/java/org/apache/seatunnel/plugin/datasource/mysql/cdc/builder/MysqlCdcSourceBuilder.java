@@ -9,7 +9,7 @@ public class MysqlCdcSourceBuilder extends AbstractCdcSourceBuilder {
 
     @Override
     public String pluginName() {
-        return "MySQL-CDC";
+        return "MYSQL-CDC";
     }
 
     @Override

@@ -226,7 +226,7 @@ const App: React.FC = () => {
                       {
                         label: (
                           <div className="task-type-option">
-                            <Layers3 size={14} /> 离线同步
+                            <Layers3 size={14} /> 引接链路（离线）
                           </div>
                         ),
                         value: "BATCH",
@@ -235,7 +235,7 @@ const App: React.FC = () => {
                         label: (
                           <div className="task-type-option">
                             <Activity size={14} />
-                            实时同步
+                            引接链路（实时）
                           </div>
                         ),
                         disabled: true,

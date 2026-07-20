@@ -31,11 +31,12 @@ export const getTabDefinitions = (
       />
     ),
   },
-  // {
-  //   key: "mapping",
-  //   label: "映射",
-  //   content: <MappingConfigContent />,
-  // },
+  // 已启用 — 合同化「逻辑关系配置」tab
+  {
+    key: "mapping",
+    label: "逻辑关系配置",
+    content: <MappingConfigContent />,
+  },
   {
     key: "env",
     label: "环境",

@@ -3,6 +3,7 @@ import type {
   HourlyAppointModeValue,
   HourlyRangeModeValue,
   HourMode,
+  MinuteModeValue,
   ScheduleType,
   WeeklyModeValue,
 } from "./types";
@@ -52,14 +53,47 @@ export const weekdayToCron = (days: string[]) => {
   return days.map((day) => mapping[day]).join(",");
 };
 
+export const defaultHourlyRangeValue = {
+  startTime: "00:00",
+  intervalHour: 1,
+  endTime: "23:59",
+};
+
+export const defaultHourlyAppointValue = {
+  hours: [0],
+  minute: "00",
+};
+
+export const defaultMinuteValue = {
+  intervalMinute: 5,
+};
+
+export const defaultDailyValue = {
+  time: "00:17",
+};
+
+export const defaultWeeklyValue = {
+  weekdays: ["MON"],
+  time: "00:17",
+};
+
 export const buildCron = (
   scheduleType: ScheduleType,
   hourMode: HourMode,
   hourlyRange: HourlyRangeModeValue,
   hourlyAppoint: HourlyAppointModeValue,
   daily: DailyModeValue,
-  weekly: WeeklyModeValue
+  weekly: WeeklyModeValue,
+  minuteValue: MinuteModeValue = defaultMinuteValue
 ) => {
+  if (scheduleType === "minute") {
+    const n = Math.min(
+      59,
+      Math.max(1, Number(minuteValue?.intervalMinute) || 5)
+    );
+    return `0 0/${n} * * * ?`;
+  }
+
   if (scheduleType === "hour") {
     if (hourMode === "range") {
       const { minute } = parseTime(hourlyRange.startTime);
@@ -87,24 +121,4 @@ export const buildCron = (
   const dayOfWeek = weekdayToCron(weekly.weekdays);
 
   return `0 ${minute} ${hour} ? * ${dayOfWeek}`;
-};
-
-export const defaultHourlyRangeValue = {
-  startTime: "00:00",
-  intervalHour: 1,
-  endTime: "23:59",
-};
-
-export const defaultHourlyAppointValue = {
-  hours: [0],
-  minute: "00",
-};
-
-export const defaultDailyValue = {
-  time: "00:17",
-};
-
-export const defaultWeeklyValue = {
-  weekdays: ["MON"],
-  time: "00:17",
 };

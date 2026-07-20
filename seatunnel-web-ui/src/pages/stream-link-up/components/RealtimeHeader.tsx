@@ -63,7 +63,7 @@ const RealtimeHeader: React.FC<RealtimeHeaderProps> = ({
             className="m-0 font-bold tracking-tight text-slate-950"
             style={{ fontSize: 18, lineHeight: "26px" }}
           >
-            实时同步任务
+            链路管理（实时）
           </h1>
           <p className="mt-1 text-slate-500" style={{ fontSize: 13 }}>
             持续采集与实时处理数据流，帮助你更快构建端到端流式同步链路
@@ -113,7 +113,7 @@ const RealtimeHeader: React.FC<RealtimeHeaderProps> = ({
             onClick={onCreate}
             className="h-10 rounded-full border-none bg-gradient-to-r font-semibold"
           >
-            创建实时任务
+            创建实时引接链路
           </Button>
         </div>
 

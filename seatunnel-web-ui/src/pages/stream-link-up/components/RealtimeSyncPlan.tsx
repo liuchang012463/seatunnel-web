@@ -43,7 +43,7 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
     if (record?.mode === "GUIDE_SINGLE") return "单表同步";
     if (record?.mode === "GUIDE_MULTI") return "多表同步";
     if (record?.mode === "SCRIPT") return "脚本模式";
-    return "实时同步";
+    return "引接链路（实时）";
   };
 
   const formatTables = (tableValue: any, fallback = "-") => {
