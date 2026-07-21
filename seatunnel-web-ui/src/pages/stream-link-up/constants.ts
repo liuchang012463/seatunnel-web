@@ -1,6 +1,7 @@
 import type { RealtimeTask, StreamStatus } from "./types";
 
 export const sourceOptions = [
+  { label: "JDBC", value: "JDBC", connectorType: "Jdbc" },
   { label: "MySQL", value: "MYSQL", connectorType: "Jdbc" },
   { label: "PostgreSQL", value: "POSTGRE_SQL", connectorType: "Jdbc" },
   { label: "Kingbase", value: "KINGBASE", connectorType: "Jdbc" },
@@ -10,6 +11,7 @@ export const sourceOptions = [
 ];
 
 export const sinkOptions = [
+  { label: "JDBC", value: "JDBC", connectorType: "Jdbc" },
   { label: "Kafka", value: "KAFKA", connectorType: "Kafka" },
   { label: "StarRocks", value: "STARROCKS", connectorType: "StarRocks" },
   {

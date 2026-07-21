@@ -8,6 +8,7 @@ public class ConnectivitySourceBuilderResolver {
 
     public String resolveBuilderKey(DbType dbType) {
         return switch (dbType) {
+            case JDBC -> "JDBC-JDBC";
             case MYSQL -> "JDBC-MYSQL";
             case POSTGRE_SQL -> "JDBC-POSTGRESQL";
             case KINGBASE -> "JDBC-KINGBASE";

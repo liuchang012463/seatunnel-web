@@ -7,6 +7,7 @@ import PostgreSQL from "../data-source/icon/PsSqlIcon";
 import DorisIcon from "../data-source/icon/DorisIcon";
 import KingBaseIcon from "../data-source/icon/KingBaseIcon";
 import DaMengIcon from "../data-source/icon/DamengIcon";
+import DatabaseIcons from "../data-source/icon/DatabaseIcons";
 import "./index.less";
 // 类型定义
 interface DataSourceType {
@@ -18,6 +19,17 @@ interface DataSourceType {
 }
 // 生成数据源选项配置
 export const generateDataSourceOptions = (): DataSourceType[] => [
+  {
+    value: "JDBC",
+    connectorType: "Jdbc",
+    pluginName: "JDBC-JDBC",
+    label: (
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <DatabaseIcons dbType="JDBC" width="24px" height="24px" />
+        <span style={{ marginLeft: 8 }}>JDBC</span>
+      </div>
+    ),
+  },
   {
     value: "MYSQL",
     connectorType: "Jdbc",

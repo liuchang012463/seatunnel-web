@@ -94,6 +94,11 @@
             </dependency>
             <dependency>
                 <groupId>org.apache.seatunnel.web</groupId>
+                <artifactId>seatunnel-web-datasource-jdbc</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.seatunnel.web</groupId>
                 <artifactId>seatunnel-web-datasource-mysql</artifactId>
                 <version>${project.version}</version>
             </dependency>

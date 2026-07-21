@@ -18,6 +18,7 @@
     <modules>
         <module>seatunnel-web-datasource-all</module>
         <module>seatunnel-web-datasource-api</module>
+        <module>seatunnel-web-datasource-jdbc</module>
         <module>seatunnel-web-datasource-mysql</module>
         <module>seatunnel-web-datasource-mysql-cdc</module>
         <module>seatunnel-web-datasource-oracle</module>

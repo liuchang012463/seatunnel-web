@@ -12,6 +12,7 @@ import static java.util.stream.Collectors.toMap;
 @Getter
 public enum DbType {
 
+    JDBC("JDBC", "JDBC", "JDBC"),
     MYSQL("MYSQL", "MYSQL", "MYSQL"),
     ORACLE("ORACLE", "ORACLE", "ORACLE"),
     POSTGRE_SQL("POSTGRE_SQL", "POSTGRE_SQL", "POSTGRE_SQL"),

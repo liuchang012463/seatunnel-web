@@ -19,6 +19,7 @@ import java.util.*;
 public class JdbcConnectivityTestJobDefinitionBuilder implements ConnectivityTestJobDefinitionBuilder {
 
     private static final Set<DbType> SUPPORTED = new HashSet<>(Arrays.asList(
+            DbType.JDBC,
             DbType.MYSQL,
             DbType.POSTGRE_SQL,
             DbType.KINGBASE,

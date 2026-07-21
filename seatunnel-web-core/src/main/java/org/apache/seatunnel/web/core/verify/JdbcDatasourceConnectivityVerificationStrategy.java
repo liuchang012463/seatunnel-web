@@ -22,6 +22,7 @@ public class JdbcDatasourceConnectivityVerificationStrategy
         implements DatasourceConnectivityVerificationStrategy {
 
     private static final Set<DbType> SUPPORTED = new HashSet<>(Arrays.asList(
+            DbType.JDBC,
             DbType.MYSQL,
             DbType.POSTGRE_SQL,
             DbType.ORACLE,

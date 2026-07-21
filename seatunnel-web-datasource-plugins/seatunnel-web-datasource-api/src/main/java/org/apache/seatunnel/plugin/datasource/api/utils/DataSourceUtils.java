@@ -68,7 +68,13 @@ public class DataSourceUtils {
         Map<String, DataSourceProcessor> processorMap =
                 DataSourceProcessorProvider.getDataSourceProcessorMap();
 
+        DataSourceProcessor genericJdbcProcessor = null;
+
         for (DataSourceProcessor processor : processorMap.values()) {
+            if (processor.getDbType() == DbType.JDBC) {
+                genericJdbcProcessor = processor;
+                continue;
+            }
             try {
                 if (processor.acceptsURL(jdbcUrl)) {
                     return processor.getDbType();
@@ -77,6 +83,10 @@ public class DataSourceUtils {
                 log.debug("Match jdbc url failed, dbType={}, url={}",
                         processor.getDbType(), jdbcUrl, e);
             }
+        }
+
+        if (genericJdbcProcessor != null && genericJdbcProcessor.acceptsURL(jdbcUrl)) {
+            return DbType.JDBC;
         }
 
         log.warn("Can not resolve dbType by jdbc url: {}", jdbcUrl);

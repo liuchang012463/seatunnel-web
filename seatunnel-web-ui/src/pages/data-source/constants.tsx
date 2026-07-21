@@ -9,6 +9,7 @@ export const PAGE_DEFAULT_PAGINATION = {
 };
 
 export const COMMON_DB_OPTIONS: DataSourceOptionItem[] = [
+  { label: "JDBC", value: "JDBC" },
   { label: "MYSQL", value: "MYSQL" },
   { label: "ORACLE", value: "ORACLE" },
   { label: "POSTGRE_SQL", value: "POSTGRE_SQL" },
@@ -27,6 +28,12 @@ export const dataSourceGroupList: DataSourceGroup[] = [
   {
     groupName: "关系型数据库",
     datasourceList: [
+      {
+        onlyDiScript: false,
+        dbType: "JDBC",
+        type: "JDBC",
+        connectorType: "Jdbc",
+      },
       {
         onlyDiScript: false,
         dbType: "MYSQL",
