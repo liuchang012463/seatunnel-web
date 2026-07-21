@@ -46,7 +46,7 @@ export interface MultiWorkflowProps {
   setScheduleConfig: (value: any) => void;
 }
 
-export type RightPanelTab = "basic" | "schedule" | "mapping" | "advanced" | null;
+export type RightPanelTab = "basic" | "schedule" | "advanced" | null;
 
 
 export interface TableItem {

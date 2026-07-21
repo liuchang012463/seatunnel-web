@@ -149,7 +149,7 @@ export default function Workflow({
 
   const [rightWidth, setRightWidth] = useState(540);
   const [activeTab, setActiveTab] = useState<
-    "basic" | "mapping" | "env" | null
+    "basic" | "env" | null
   >(null);
 
   const draggingRef = useRef(false);
@@ -471,7 +471,7 @@ export default function Workflow({
 
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
-                单表实时任务
+                逻辑关系配置（单表实时任务）
               </div>
               <div className="text-[14px] leading-6 text-slate-500">
                 配置同步链路、字段映射与运行参数，在一个页面完成创建与调试。

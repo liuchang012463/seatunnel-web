@@ -153,9 +153,6 @@ export default function EnvConfigContent({
               onChange={(v) => handleFieldChange("priority", v)}
               className="w-full"
             />
-            <div className="mt-1.5 text-[11px] text-slate-400">
-              当前版本仅存储，不参与调度与执行。
-            </div>
           </div>
         </div>
       </div>

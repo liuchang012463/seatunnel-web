@@ -202,7 +202,7 @@ export default function MultiWorkflow({
 
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
-                多表实时任务
+                逻辑关系配置（多表实时任务）
               </div>
               <div className="text-[14px] leading-6 text-slate-500">
                 配置多表同步链路、表匹配规则与运行参数，在一个页面完成创建与调试。

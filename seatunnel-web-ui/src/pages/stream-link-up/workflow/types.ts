@@ -1,4 +1,4 @@
-export type TabKey = "basic" | "schedule" | "mapping" | "env";
+export type TabKey = "basic" | "schedule" | "env";
 
 export interface TabDefinition {
   key: TabKey;
