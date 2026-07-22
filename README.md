@@ -341,6 +341,151 @@ The same distribution package is used to produce both runtime images:
 
 For a manual Linux deployment, extract the package, review `conf/application.yml`, start the back end with the scripts under `bin/`, and configure Nginx with `conf/nginx/default.conf`.
 
+### Option D: Offline / Bind-Mount Deployment (Docker Compose v3.6)
+
+Use this mode when the deployment environment has limited or no access to a Docker registry
+and you want to avoid rebuilding the front-end and back-end images on every release.
+This mode reuses the official `eclipse-temurin:21-jre-jammy` and `nginx:latest` base images
+and bind-mounts the distribution package produced in Option C directly into the containers.
+
+> Both base images only need to be pulled or `docker load`-ed once per environment.
+> Subsequent upgrades only require replacing the contents of `./dist`.
+
+#### Build and extract the distribution package
+
+```bash
+./mvnw clean package -DskipTests
+
+mkdir -p dist
+tar -xzf seatunnel-web-dist/target/seatunnel-web-*.tar.gz -C dist/
+```
+
+After extraction, the package layout is:
+
+```text
+dist/
+└── seatunnel-web-1.0.0/
+    ├── bin/
+    ├── conf/
+    ├── jdbc-drivers/
+    ├── libs/seatunnel-web-api.jar
+    ├── sql/
+    └── web/
+```
+
+If the `bin/*.sh` scripts lose their executable bit during transfer (for example,
+extracting on Windows and then copying to Linux), run:
+
+```bash
+chmod +x dist/seatunnel-web-1.0.0/bin/*.sh
+```
+
+#### Variant D-1: With a bundled MySQL container
+
+Create the environment file:
+
+```bash
+cp .env.bind.example .env.bind
+```
+
+Start the services:
+
+```bash
+docker compose --env-file .env.bind -f compose.bind.yaml up -d
+```
+
+Open SeaTunnel Web:
+
+```text
+http://localhost:9527
+```
+
+View logs:
+
+```bash
+docker compose --env-file .env.bind -f compose.bind.yaml logs -f seatunnel-web-api
+```
+
+#### Variant D-2: With an existing external MySQL
+
+Create the external database and execute the MySQL initialization SQL from
+`seatunnel-web-api/src/main/resources/sql/` (also bundled under `dist/seatunnel-web-1.0.0/sql/`)
+before starting SeaTunnel Web.
+
+Create the environment file:
+
+```bash
+cp .env.without-mysql.bind.example .env.without-mysql.bind
+```
+
+Configure the existing database in `.env.without-mysql.bind`:
+
+```env
+MYSQL_HOST=host.docker.internal
+MYSQL_PORT=3306
+MYSQL_DATABASE=seatunnel_web
+MYSQL_USER=seatunnel
+MYSQL_PASSWORD=change_me
+```
+
+On Docker Desktop for Windows or macOS, use:
+
+```env
+MYSQL_HOST=host.docker.internal
+```
+
+For a remote MySQL server, set `MYSQL_HOST` to its hostname or IP address.
+The MySQL account must allow connections from the Docker host.
+
+Start the services:
+
+```bash
+docker compose \
+  --env-file .env.without-mysql.bind \
+  -f compose.bind.without-mysql.yaml \
+  up -d
+```
+
+Open SeaTunnel Web:
+
+```text
+http://localhost:9001
+```
+
+#### Upgrade flow (Variant D-1 or D-2)
+
+Bind-mount deployment upgrades only require replacing the contents of `./dist`:
+
+```bash
+./mvnw clean package -DskipTests
+rm -rf dist/*
+tar -xzf seatunnel-web-dist/target/seatunnel-web-*.tar.gz -C dist/
+
+docker compose --env-file .env.bind -f compose.bind.yaml up -d
+```
+
+No image rebuild is required. Re-running `up -d` recreates the affected
+containers while preserving the named volumes (`seatunnel-web-logs`,
+`seatunnel-web-jdbc-drivers`, and `seatunnel-web-mysql-data` when bundled).
+
+#### Notes on the bind-mount variant
+
+* The compose files declare `version: '3.6'` and use the official
+  `eclipse-temurin:21-jre-jammy` and `nginx:latest` images directly; no
+  `build:` section is involved.
+* The back-end container overrides its entrypoint to
+  `/opt/seatunnel-web/bin/run-seatunnel-web.sh` from the bind-mounted
+  distribution package.
+* The front-end container mounts `dist/seatunnel-web-1.0.0/web` to
+  `/usr/share/nginx/html` (read-only) and the project's
+  `conf/nginx/default.conf` to `/etc/nginx/conf.d/default.conf` (read-only).
+* Logs and JDBC drivers use named volumes so container writes do not pollute
+  the bind-mounted host directory.
+* `dist/seatunnel-web-1.0.0/conf/application.yml` is intentionally not
+  read-only-mounted. This allows on-site tuning during development and
+  iteration. Production releases should treat the YAML as part of the
+  release artifact.
+
 ### Connect to Apache SeaTunnel
 
 After SeaTunnel Web starts:

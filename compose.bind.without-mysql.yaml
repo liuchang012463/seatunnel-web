@@ -1,0 +1,93 @@
+version: '3.6'
+
+services:
+  seatunnel-web-api:
+    image: eclipse-temurin:21-jre-jammy
+    container_name: seatunnel-web-api
+    restart: unless-stopped
+
+    entrypoint: ["/opt/seatunnel-web/bin/run-seatunnel-web.sh"]
+
+    environment:
+      TZ: Asia/Shanghai
+
+      SEATUNNEL_WEB_HOME: /opt/seatunnel-web
+
+      JAVA_OPTS: ${JAVA_OPTS:--Xms512m -Xmx1024m}
+      APP_OPTS: ${APP_OPTS:-}
+
+      SERVER_PORT: 9527
+      SPRING_PROFILES_ACTIVE: mysql
+
+      SEATUNNEL_WEB_DATABASE_TYPE: mysql
+      SEATUNNEL_WEB_DATABASE_HOST: ${MYSQL_HOST:-host.docker.internal}
+      SEATUNNEL_WEB_DATABASE_PORT: ${MYSQL_PORT:-3306}
+      SEATUNNEL_WEB_DATABASE_NAME: ${MYSQL_DATABASE:-seatunnel_web}
+
+      SPRING_DATASOURCE_URL: "jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:-seatunnel_web}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:?set MYSQL_USER in .env.without-mysql.bind}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env.without-mysql.bind}
+
+      SPRING_FLYWAY_ENABLED: "true"
+
+      SEATUNNEL_WEB_DATASOURCE_MASTER_KEY: ${SEATUNNEL_WEB_DATASOURCE_MASTER_KEY:?set SEATUNNEL_WEB_DATASOURCE_MASTER_KEY in .env.without-mysql.bind}
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    expose:
+      - "9527"
+
+    volumes:
+      - ./dist/seatunnel-web-1.0.0:/opt/seatunnel-web
+      - seatunnel-web-logs:/opt/seatunnel-web/logs
+      - seatunnel-web-jdbc-drivers:/opt/seatunnel-web/jdbc-drivers
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "bash -c '</dev/tcp/127.0.0.1/9527'"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+    networks:
+      - seatunnel-web-network
+
+
+  seatunnel-web:
+    image: nginx:latest
+    container_name: seatunnel-web
+    restart: unless-stopped
+
+    healthcheck:
+      disable: true
+
+    depends_on:
+      seatunnel-web-api:
+        condition: service_healthy
+
+    ports:
+      - "${SEATUNNEL_WEB_PORT:-9001}:80"
+
+    volumes:
+      - ./dist/seatunnel-web-1.0.0/web:/usr/share/nginx/html:ro
+      - ./dist/seatunnel-web-1.0.0/conf/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+    networks:
+      - seatunnel-web-network
+
+
+volumes:
+  seatunnel-web-logs:
+    name: seatunnel-web-logs
+
+  seatunnel-web-jdbc-drivers:
+    name: seatunnel-web-jdbc-drivers
+
+
+networks:
+  seatunnel-web-network:
+    name: seatunnel-web-network
+    driver: bridge
