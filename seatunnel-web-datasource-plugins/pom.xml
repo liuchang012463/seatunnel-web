@@ -25,6 +25,7 @@
         <module>seatunnel-web-datasource-postgresql</module>
         <module>seatunnel-web-datasource-postgresql-cdc</module>
         <module>seatunnel-web-datasource-doris</module>
+        <module>seatunnel-web-datasource-kafka</module>
         <module>seatunnel-web-datasource-kingbase</module>
         <module>seatunnel-web-datasource-dameng</module>
     </modules>

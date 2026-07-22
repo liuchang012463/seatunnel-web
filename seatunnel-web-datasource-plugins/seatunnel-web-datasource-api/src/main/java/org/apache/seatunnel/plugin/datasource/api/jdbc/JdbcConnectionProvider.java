@@ -1,5 +1,6 @@
 package org.apache.seatunnel.plugin.datasource.api.jdbc;
 
+import org.apache.seatunnel.plugin.datasource.api.datasource.ConnectivityVerifier;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 
 import java.sql.Connection;
@@ -7,7 +8,7 @@ import java.sql.Connection;
 /**
  * JDBC connection provider interface.
  */
-public interface JdbcConnectionProvider {
+public interface JdbcConnectionProvider extends ConnectivityVerifier {
 
     /**
      * Get a database connection based on the given parameters.

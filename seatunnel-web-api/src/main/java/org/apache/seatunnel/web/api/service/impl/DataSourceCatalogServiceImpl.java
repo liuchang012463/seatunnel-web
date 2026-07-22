@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
+import org.apache.seatunnel.plugin.datasource.api.datasource.DataSourceCatalog;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
@@ -19,6 +20,7 @@ import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.apache.seatunnel.web.spi.bean.vo.ColumnOptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
+import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
 
@@ -54,10 +56,10 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
     @Override
     public List<OptionVO> listTable(Long datasourceId) {
         DataSource dataSource = getDataSourceOrThrow(datasourceId);
-        BaseConnectionParam connectionParam = buildConnectionParam(dataSource);
+        ConnectionParam connectionParam = buildConnectionParam(dataSource);
 
         try {
-            return getJdbcCatalog(dataSource, connectionParam).listTableOptions();
+            return getCatalog(dataSource, connectionParam).listOptions();
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -96,7 +98,7 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         validateRequestBody(requestBody, "requestBody");
 
         DataSource dataSource = getDataSourceOrThrow(datasourceId);
-        BaseConnectionParam connectionParam = buildConnectionParam(dataSource);
+        ConnectionParam connectionParam = buildConnectionParam(dataSource);
 
         try {
             Map<String, Object> columnRequestBody =
@@ -131,7 +133,7 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         validateRequestBody(requestBody, "requestBody");
 
         DataSource dataSource = getDataSourceOrThrow(datasourceId);
-        BaseConnectionParam connectionParam = buildConnectionParam(dataSource);
+        ConnectionParam connectionParam = buildConnectionParam(dataSource);
 
         try {
             Map<String, Object> previewRequestBody =
@@ -162,7 +164,7 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         validateRequestBody(requestBody, "requestBody");
 
         DataSource dataSource = getDataSourceOrThrow(datasourceId);
-        BaseConnectionParam connectionParam = buildConnectionParam(dataSource);
+        ConnectionParam connectionParam = buildConnectionParam(dataSource);
 
         try {
             Map<String, Object> previewRequestBody =
@@ -186,7 +188,7 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         getRequiredText(requestBody, KEY_READ_MODE);
 
         DataSource dataSource = getDataSourceOrThrow(datasourceId);
-        BaseConnectionParam connectionParam = buildConnectionParam(dataSource);
+        ConnectionParam connectionParam = buildConnectionParam(dataSource);
         JdbcCatalog jdbcCatalog = getJdbcCatalog(dataSource, connectionParam);
 
         Map<String, Object> columnRequest = Map.of(
@@ -215,7 +217,7 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         validateRequestBody(requestBody, "requestBody");
 
         DataSource dataSource = getDataSourceOrThrow(datasourceId);
-        BaseConnectionParam connectionParam = buildConnectionParam(dataSource);
+        ConnectionParam connectionParam = buildConnectionParam(dataSource);
 
         try {
             Map<String, Object> resolvedRequestBody =
@@ -371,7 +373,7 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         return dataSource;
     }
 
-    private BaseConnectionParam buildConnectionParam(DataSource dataSource) {
+    private ConnectionParam buildConnectionParam(DataSource dataSource) {
         try {
             return DataSourceUtils.buildConnectionParams(
                     dataSource.getDbType(),
@@ -383,15 +385,26 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         }
     }
 
-    private JdbcCatalog getJdbcCatalog(DataSource dataSource, BaseConnectionParam connectionParam) {
+    private DataSourceCatalog getCatalog(DataSource dataSource, ConnectionParam connectionParam) {
         try {
-            return DataSourceUtils
-                    .getDatasourceProcessor(dataSource.getDbType())
-                    .getMetadataService(connectionParam);
+            return DataSourceUtils.getDatasourceProcessor(dataSource.getDbType())
+                    .getCatalog(connectionParam)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            dataSource.getDbType() + " does not support catalog operations"));
         } catch (Exception e) {
-            log.error("Failed to get jdbc catalog, datasourceId={}", dataSource.getId(), e);
+            log.error("Failed to get datasource catalog, datasourceId={}", dataSource.getId(), e);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
         }
+    }
+
+    private JdbcCatalog getJdbcCatalog(DataSource dataSource, ConnectionParam connectionParam) {
+        DataSourceCatalog catalog = getCatalog(dataSource, connectionParam);
+        if (!(catalog instanceof JdbcCatalog)) {
+            throw new ServiceException(
+                    Status.DATASOURCE_METADATA_ERROR,
+                    dataSource.getDbType() + " does not support column, SQL, count, or preview operations");
+        }
+        return (JdbcCatalog) catalog;
     }
 
     private void validateDatasourceId(Long datasourceId) {

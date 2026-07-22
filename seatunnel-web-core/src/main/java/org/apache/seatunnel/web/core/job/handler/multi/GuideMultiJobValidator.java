@@ -15,7 +15,10 @@ public class GuideMultiJobValidator {
 
         validateSource(content.getSource());
         validateTarget(content.getTarget());
-        validateTableMatch(content.getTableMatch());
+        if (!isKafka(content.getSource().getDbType())
+                && !isKafka(content.getTarget().getDbType())) {
+            validateTableMatch(content.getTableMatch());
+        }
     }
 
     private void validateSource(GuideMultiJobContent.WorkflowSourceConfig source) {
@@ -80,5 +83,9 @@ public class GuideMultiJobValidator {
                 throw new IllegalArgumentException("tableMatch.keyword can not be blank");
             }
         }
+    }
+
+    private boolean isKafka(String dbType) {
+        return "KAFKA".equalsIgnoreCase(StringUtils.trimToEmpty(dbType));
     }
 }

@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.plugin.DataSourceProcessorProvider;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
+import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
 import java.util.Map;
@@ -30,14 +31,23 @@ public class DataSourceUtils {
      * @param connectionJson the JSON string containing connection configuration
      * @return a BaseConnectionParam object with parsed connection parameters
      */
-    public static BaseConnectionParam buildConnectionParams(DbType dbType, String connectionJson) {
+    public static ConnectionParam buildConnectionParams(DbType dbType, String connectionJson) {
         return getDatasourceProcessor(dbType)
                 .getParamConverter()
                 .createConnectionParams(connectionJson);
     }
 
-    public static void checkDatasourceParam(BaseConnectionParam baseConnectionParam) {
-        getDatasourceProcessor(baseConnectionParam.getDbType()).getParamConverter().checkDatasourceParam(baseConnectionParam);
+    public static BaseConnectionParam buildJdbcConnectionParams(
+            DbType dbType, String connectionJson) {
+        ConnectionParam connectionParam = buildConnectionParams(dbType, connectionJson);
+        if (!(connectionParam instanceof BaseConnectionParam)) {
+            throw new IllegalArgumentException(dbType + " is not a JDBC datasource");
+        }
+        return (BaseConnectionParam) connectionParam;
+    }
+
+    public static void checkDatasourceParam(ConnectionParam connectionParam) {
+        getDatasourceProcessor(connectionParam.getDbType()).getParamConverter().checkDatasourceParam(connectionParam);
     }
 
     /**

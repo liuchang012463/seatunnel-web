@@ -18,4 +18,8 @@ public interface ConnectivityTestJobDefinitionBuilder {
      * Build a connectivity test job for the given client and datasource.
      */
     ConnectivityTestJob build(SeaTunnelClient client, DataSource datasource);
+
+    default ConnectivityTestJob build(SeaTunnelClient client, DataSource datasource, String topic) {
+        return build(client, datasource);
+    }
 }

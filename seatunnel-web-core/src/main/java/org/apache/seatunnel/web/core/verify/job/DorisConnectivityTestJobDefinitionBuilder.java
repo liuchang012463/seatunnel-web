@@ -55,7 +55,8 @@ public class DorisConnectivityTestJobDefinitionBuilder implements ConnectivityTe
 
         // 通过 SPI 获取 Doris 处理器
         DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
-        BaseConnectionParam param = processor.getParamConverter().createConnectionParams(connectionJson);
+        BaseConnectionParam param =
+                DataSourceUtils.buildJdbcConnectionParams(dbType, connectionJson);
 
         // 通过 DorisCatalog（JDBC queryPort）获取表和过滤字段
         JdbcCatalog catalog = processor.getMetadataService(param);

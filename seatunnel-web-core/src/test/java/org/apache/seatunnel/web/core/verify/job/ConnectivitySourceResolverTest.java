@@ -16,4 +16,14 @@ class ConnectivitySourceResolverTest {
                 "Jdbc",
                 new ConnectivitySourcePluginNameResolver().resolvePluginName(DbType.JDBC));
     }
+
+    @Test
+    void shouldResolveKafkaSourceConfiguration() {
+        assertEquals(
+                "KAFKA",
+                new ConnectivitySourceBuilderResolver().resolveBuilderKey(DbType.KAFKA));
+        assertEquals(
+                "Kafka",
+                new ConnectivitySourcePluginNameResolver().resolvePluginName(DbType.KAFKA));
+    }
 }

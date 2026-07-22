@@ -76,7 +76,8 @@ public class GuideMultiHoconBuildService {
 
         GuideMultiJobContent.TableMatchConfig tableMatch = content.getTableMatch();
         String matchMode = resolveMatchMode(tableMatch);
-        boolean patternMode = supportsPatternMatch(content.getSource()) && isPatternMode(matchMode);
+        boolean kafkaFlow = isKafka(content.getSource().getDbType()) || isKafka(content.getTarget().getDbType());
+        boolean patternMode = !kafkaFlow && supportsPatternMatch(content.getSource()) && isPatternMode(matchMode);
 
         if (isPostgreSqlCdc(content.getSource()) && MATCH_MODE_REGEX.equals(matchMode)) {
             throw new IllegalArgumentException(
@@ -95,15 +96,17 @@ public class GuideMultiHoconBuildService {
          * 自定义 / 精准匹配，以及 PostgreSQL CDC 整库模式，
          * 均走 tableMatchResolver 生成 table-names。
          */
-        List<String> sourceTables = patternMode
+        List<String> sourceTables = kafkaFlow || patternMode
                 ? Collections.emptyList()
                 : tableMatchResolver.resolveSourceTables(content);
 
-        List<String> sinkTables = patternMode
+        List<String> sinkTables = kafkaFlow || patternMode
                 ? Collections.emptyList()
                 : tableMatchResolver.resolveSinkTables(content);
 
-        validateTables(content.getSource(), tableMatch, sourceTables, sinkTables, patternMode);
+        if (!kafkaFlow) {
+            validateTables(content.getSource(), tableMatch, sourceTables, sinkTables, patternMode);
+        }
 
         Map<String, Object> sourceNode = buildSourceNode(
                 content.getSource(),
@@ -151,18 +154,23 @@ public class GuideMultiHoconBuildService {
         putIfNotBlank(config, "connectorType", source.getConnectorType());
         putIfNotBlank(config, "pluginName", source.getPluginName());
 
-        config.put("readMode", "table");
+        boolean kafka = isKafka(source.getDbType());
+        if (!kafka) {
+            config.put("readMode", "table");
+        }
 
         /*
          * MySQL CDC 的正则匹配 / 整库同步不需要 table / table_path。
          * 否则后面的 CDC resolver 容易误判成单表或多表列表模式。
          */
-        if (!patternMode) {
+        if (!kafka && !patternMode) {
             putIfNotBlank(config, "table", firstSourceTable);
             putIfNotBlank(config, "table_path", firstSourceTable);
         }
 
-        config.put(KEY_MULTI_TABLE, multiTable);
+        if (!kafka) {
+            config.put(KEY_MULTI_TABLE, multiTable);
+        }
 
         putIfNotBlank(config, KEY_MATCH_MODE, sourceMatchMode);
         putIfNotBlank(config, KEY_MATCH_MODE_UNDERLINE, sourceMatchMode);
@@ -183,7 +191,7 @@ public class GuideMultiHoconBuildService {
          * 除 MySQL CDC 的正则 / 整库同步外，均需要 table list。
          * PostgreSQL CDC 整库模式通过该列表生成 table-names。
          */
-        if (!patternMode) {
+        if (!kafka && !patternMode) {
             putListIfNotEmpty(config, KEY_TABLE_LIST, sourceTables);
             putListIfNotEmpty(config, KEY_SOURCE_TABLE_LIST, sourceTables);
         }
@@ -207,6 +215,22 @@ public class GuideMultiHoconBuildService {
             putIfNotBlank(config, "slot.name", source.getSlotName());
             putIfNotBlank(config, "publicationName", source.getPublicationName());
             putIfNotBlank(config, "startup.mode", source.getStartupMode());
+        }
+
+        if (kafka) {
+            putIfNotBlank(config, "topic", source.getTopic());
+            putIfNotBlank(config, "pattern", source.getPattern());
+            putIfNotBlank(config, "consumerGroup", source.getConsumerGroup());
+            putIfNotBlank(config, "startMode", source.getStartMode());
+            putIfNotNull(config, "startModeOffsets", source.getStartModeOffsets());
+            putIfNotNull(config, "startModeTimestamp", source.getStartModeTimestamp());
+            putIfNotNull(config, "startModeEndTimestamp", source.getStartModeEndTimestamp());
+            putIfNotNull(config, "commitOnCheckpoint", source.getCommitOnCheckpoint());
+            putIfNotNull(config, "pollTimeout", source.getPollTimeout());
+            putIfNotBlank(config, "format", source.getFormat());
+            putIfNotNull(config, "schema", source.getSchema());
+            putIfNotBlank(config, "fieldDelimiter", source.getFieldDelimiter());
+            putIfNotNull(config, "kafkaConfig", source.getKafkaConfig());
         }
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -241,6 +265,7 @@ public class GuideMultiHoconBuildService {
         String matchMode = resolveMatchMode(tableMatch);
         boolean multiTable = patternMode || sinkTables.size() > 1;
         String firstSinkTable = firstTable(sinkTables);
+        boolean kafka = isKafka(target.getDbType());
 
         Map<String, Object> config = new LinkedHashMap<>();
 
@@ -249,12 +274,14 @@ public class GuideMultiHoconBuildService {
         putIfNotBlank(config, "connectorType", target.getConnectorType());
         putIfNotBlank(config, "pluginName", target.getPluginName());
 
-        config.put(KEY_MULTI_TABLE, multiTable);
+        if (!kafka) {
+            config.put(KEY_MULTI_TABLE, multiTable);
+        }
 
         putIfNotBlank(config, KEY_MATCH_MODE, matchMode);
         putIfNotBlank(config, KEY_MATCH_MODE_UNDERLINE, matchMode);
 
-        if (!patternMode) {
+        if (!kafka && !patternMode) {
             putListIfNotEmpty(config, KEY_TABLE_LIST, sinkTables);
             putListIfNotEmpty(config, KEY_SINK_TABLE_LIST, sinkTables);
         }
@@ -264,7 +291,7 @@ public class GuideMultiHoconBuildService {
          * 不能在这里强制写入 ${table_name}，否则会覆盖 PostgreSQL 等方言
          * 根据目标数据源 schemaName 生成的 schema.${table_name}。
          */
-        if (!multiTable) {
+        if (!kafka && !multiTable) {
             putIfNotBlank(config, "table", firstSinkTable);
             putIfNotBlank(config, "table_path", firstSinkTable);
             putIfNotBlank(config, "targetTableName", firstSinkTable);
@@ -288,6 +315,16 @@ public class GuideMultiHoconBuildService {
         if (target.getEnableUpsert() != null) {
             config.put("enableUpsert", target.getEnableUpsert());
             config.put("enable_upsert", target.getEnableUpsert());
+        }
+
+        if (kafka) {
+            putIfNotBlank(config, "topic", target.getTopic());
+            putIfNotBlank(config, "format", target.getFormat());
+            putIfNotBlank(config, "semantics", target.getSemantics());
+            putIfNotBlank(config, "transactionPrefix", target.getTransactionPrefix());
+            putIfNotNull(config, "partition", target.getPartition());
+            putIfNotNull(config, "partitionKeyFields", target.getPartitionKeyFields());
+            putIfNotNull(config, "kafkaConfig", target.getKafkaConfig());
         }
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -345,7 +382,9 @@ public class GuideMultiHoconBuildService {
             throw new IllegalArgumentException("content.target can not be null");
         }
 
-        if (content.getTableMatch() == null) {
+        if (content.getTableMatch() == null
+                && !isKafka(content.getSource().getDbType())
+                && !isKafka(content.getTarget().getDbType())) {
             throw new IllegalArgumentException("content.tableMatch can not be null");
         }
 
@@ -395,6 +434,10 @@ public class GuideMultiHoconBuildService {
             List<String> sourceTables,
             List<String> sinkTables,
             boolean patternMode) {
+
+        if (isKafka(source.getDbType())) {
+            return;
+        }
 
         String matchMode = resolveMatchMode(tableMatch);
 
@@ -492,6 +535,10 @@ public class GuideMultiHoconBuildService {
         return source != null && "POSTGRESQL-CDC".equalsIgnoreCase(source.getPluginName());
     }
 
+    private boolean isKafka(String dbType) {
+        return "KAFKA".equalsIgnoreCase(StringUtils.trimToEmpty(dbType));
+    }
+
     /**
      * SeaTunnel 2.3.13 PostgreSQL CDC only supports explicit table-names.
      * Whole-database mode is therefore expanded by the guide into the current
@@ -522,6 +569,12 @@ public class GuideMultiHoconBuildService {
     private void putIfNotBlank(Map<String, Object> map, String key, String value) {
         if (StringUtils.isNotBlank(value)) {
             map.put(key, value.trim());
+        }
+    }
+
+    private void putIfNotNull(Map<String, Object> map, String key, Object value) {
+        if (value != null) {
+            map.put(key, value);
         }
     }
 

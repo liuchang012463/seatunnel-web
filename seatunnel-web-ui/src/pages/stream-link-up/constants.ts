@@ -6,13 +6,13 @@ export const sourceOptions = [
   { label: "PostgreSQL", value: "POSTGRE_SQL", connectorType: "Jdbc" },
   { label: "Kingbase", value: "KINGBASE", connectorType: "Jdbc" },
   { label: "Dameng", value: "DAMENG", connectorType: "Jdbc" },
-  { label: "Kafka", value: "KAFKA", connectorType: "Kafka" },
+  { label: "Kafka", value: "KAFKA", connectorType: "Kafka", pluginName: "KAFKA" },
   { label: "Oracle", value: "ORACLE", connectorType: "Jdbc" },
 ];
 
 export const sinkOptions = [
   { label: "JDBC", value: "JDBC", connectorType: "Jdbc" },
-  { label: "Kafka", value: "KAFKA", connectorType: "Kafka" },
+  { label: "Kafka", value: "KAFKA", connectorType: "Kafka", pluginName: "KAFKA" },
   { label: "StarRocks", value: "STARROCKS", connectorType: "StarRocks" },
   {
     label: "Elasticsearch",

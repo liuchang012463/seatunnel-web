@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class GuideMultiJobContent {
@@ -39,6 +40,19 @@ public class GuideMultiJobContent {
         private String publicationName;
         @JsonProperty("startup.mode")
         private String startupMode;
+        private String topic;
+        private String pattern;
+        private String consumerGroup;
+        private String startMode;
+        private Object startModeOffsets;
+        private Long startModeTimestamp;
+        private Long startModeEndTimestamp;
+        private Boolean commitOnCheckpoint;
+        private Long pollTimeout;
+        private String format;
+        private Object schema;
+        private String fieldDelimiter;
+        private Map<String, Object> kafkaConfig;
     }
 
     @Data
@@ -52,6 +66,13 @@ public class GuideMultiJobContent {
         private String schemaSaveMode;
         private Boolean enableUpsert;
         private String fieldIde;
+        private String topic;
+        private String format;
+        private String semantics;
+        private String transactionPrefix;
+        private Integer partition;
+        private List<String> partitionKeyFields;
+        private Map<String, Object> kafkaConfig;
     }
 
     @Data

@@ -44,6 +44,10 @@
         </dependency>
         <dependency>
             <groupId>org.apache.seatunnel.web</groupId>
+            <artifactId>seatunnel-web-datasource-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.seatunnel.web</groupId>
             <artifactId>seatunnel-web-datasource-kingbase</artifactId>
         </dependency>
         <dependency>

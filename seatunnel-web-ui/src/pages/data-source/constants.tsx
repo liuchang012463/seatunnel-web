@@ -16,6 +16,7 @@ export const COMMON_DB_OPTIONS: DataSourceOptionItem[] = [
   { label: "DORIS", value: "DORIS" },
   { label: "KINGBASE", value: "KINGBASE" },
   { label: "DAMENG", value: "DAMENG" },
+  { label: "KAFKA", value: "KAFKA" },
 ];
 
 export const ENVIRONMENT_OPTIONS: DataSourceOptionItem[] = [
@@ -63,6 +64,17 @@ export const dataSourceGroupList: DataSourceGroup[] = [
         dbType: "DAMENG",
         type: "DAMENG",
         connectorType: "Jdbc",
+      },
+    ],
+  },
+  {
+    groupName: "消息队列",
+    datasourceList: [
+      {
+        onlyDiScript: false,
+        dbType: "KAFKA",
+        type: "KAFKA",
+        connectorType: "Kafka",
       },
     ],
   },

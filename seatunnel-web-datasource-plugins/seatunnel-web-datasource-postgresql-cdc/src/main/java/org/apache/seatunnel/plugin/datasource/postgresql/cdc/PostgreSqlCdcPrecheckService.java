@@ -21,7 +21,7 @@ public class PostgreSqlCdcPrecheckService {
         CdcDatasourcePrecheckResult result = new CdcDatasourcePrecheckResult();
         try {
             BaseConnectionParam param =
-                    DataSourceUtils.buildConnectionParams(DbType.POSTGRE_SQL, connectionParams);
+                    DataSourceUtils.buildJdbcConnectionParams(DbType.POSTGRE_SQL, connectionParams);
             DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(DbType.POSTGRE_SQL);
             JdbcConnectionProvider provider = processor.getConnectionManager();
 

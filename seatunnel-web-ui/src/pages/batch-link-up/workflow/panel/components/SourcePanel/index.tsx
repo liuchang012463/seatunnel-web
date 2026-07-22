@@ -8,6 +8,7 @@ import QualityDetail from '@/pages/batch-link-up/DataViewSQL';
 import { useSourcePanelLogic } from './hooks/useSourcePanelLogic';
 import './index.less';
 import SqlEditorSection from './SqlEditorSection';
+import KafkaNodeConfig from '@/pages/common/workflow/KafkaNodeConfig';
 
 interface Props {
   selectedNode: any;
@@ -18,6 +19,7 @@ interface Props {
 
 function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig }: Props) {
   const qualityDetailRef = useRef<any>(null);
+  const isKafka = String(selectedNode?.data?.dbType || '').toUpperCase() === 'KAFKA';
 
   const {
     title,
@@ -57,6 +59,49 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig }
     qualityDetailRef,
     scheduleConfig,
   });
+
+  if (isKafka) {
+    return (
+      <PanelShell
+        eyebrow="Source Config"
+        title="来源配置"
+        badge="输入节点"
+        desc="Kafka 节点不支持 SQL、列解析或消息预览"
+        heroTitle={title}
+        heroDesc={description}
+        heroTag="SOURCE"
+        dbType={dbType}
+        onClose={onClose}
+        footer={<button type="button" className="workflow-panel__btn workflow-panel__btn--ghost" onClick={onClose}>关闭</button>}
+      >
+        <section className="workflow-panel__section">
+          <div className="workflow-panel__group">
+            <div className="workflow-panel__group-kicker">数据源</div>
+            <Select
+              value={dataSourceId}
+              onChange={handleDataSourceChange}
+              options={dataSourceOptions}
+              placeholder="请选择 Kafka 数据源"
+              showSearch
+              optionFilterProp="label"
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div className="workflow-panel__divider" />
+          <div className="workflow-panel__group">
+            <div className="workflow-panel__group-kicker">Kafka 消费设置</div>
+            <KafkaNodeConfig
+              role="source"
+              config={selectedNode?.data?.config || {}}
+              topicOptions={tableOptions}
+              topicLoading={tableLoading}
+              onChange={(patch) => updateNode(patch)}
+            />
+          </div>
+        </section>
+      </PanelShell>
+    );
+  }
 
   return (
     <>

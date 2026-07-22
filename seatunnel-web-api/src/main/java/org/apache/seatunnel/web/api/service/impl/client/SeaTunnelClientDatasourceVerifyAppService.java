@@ -178,6 +178,7 @@ public class SeaTunnelClientDatasourceVerifyAppService {
                 .pluginName(dto.getPluginName())
                 .connectorType(dto.getConnectorType())
                 .role(dto.getRole())
+                .topic(dto.getTopic())
                 .timeoutMs(timeoutMs)
                 .pollIntervalMs(pollIntervalMs)
                 .build();

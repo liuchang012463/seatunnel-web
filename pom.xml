@@ -35,6 +35,7 @@
         <auto-service.version>1.0.1</auto-service.version>
         <lombok.version>1.18.42</lombok.version>
         <typesafe.version>1.4.3</typesafe.version>
+        <kafka-clients.version>3.4.0</kafka-clients.version>
         <jsqlparser.version>4.9</jsqlparser.version>
 
         <!-- Spring AI -->
@@ -126,6 +127,16 @@
                 <groupId>org.apache.seatunnel.web</groupId>
                 <artifactId>seatunnel-web-datasource-doris</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.seatunnel.web</groupId>
+                <artifactId>seatunnel-web-datasource-kafka</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka-clients</artifactId>
+                <version>${kafka-clients.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.seatunnel.web</groupId>

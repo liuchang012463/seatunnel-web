@@ -10,6 +10,7 @@ public class ConnectivitySourcePluginNameResolver {
         return switch (dbType) {
             case JDBC, MYSQL, POSTGRE_SQL, KINGBASE, DAMENG, ORACLE -> "Jdbc";
             case DORIS -> "Doris";
+            case KAFKA -> "Kafka";
             default -> throw new IllegalArgumentException("暂不支持该数据源类型的 Source 插件名解析: " + dbType);
         };
     }

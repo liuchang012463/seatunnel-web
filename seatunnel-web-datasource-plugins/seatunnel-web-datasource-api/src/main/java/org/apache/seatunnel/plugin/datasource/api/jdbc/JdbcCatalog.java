@@ -1,5 +1,6 @@
 package org.apache.seatunnel.plugin.datasource.api.jdbc;
 
+import org.apache.seatunnel.plugin.datasource.api.datasource.DataSourceCatalog;
 import org.apache.seatunnel.web.common.QueryResult;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
@@ -10,7 +11,12 @@ import java.util.Map;
 /**
  * Service for reading database metadata.
  */
-public interface JdbcCatalog {
+public interface JdbcCatalog extends DataSourceCatalog {
+
+    @Override
+    default List<OptionVO> listOptions() {
+        return listTableOptions();
+    }
 
     /**
      * List all accessible tables.

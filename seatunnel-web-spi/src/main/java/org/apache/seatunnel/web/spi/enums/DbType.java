@@ -19,7 +19,8 @@ public enum DbType {
     DORIS("DORIS", "DORIS", "DORIS"),
     KINGBASE("KINGBASE", "KINGBASE", "KINGBASE"),
     DAMENG("DAMENG", "DAMENG", "DAMENG"),
-    H2("H2", "H2", "H2")
+    H2("H2", "H2", "H2"),
+    KAFKA("KAFKA", "KAFKA", "KAFKA")
     ;
 
     private static final Map<String, DbType> DB_TYPE_MAP =

@@ -15,11 +15,16 @@ public class DefaultConnectivityTestJobFactory implements ConnectivityTestJobFac
 
     @Override
     public ConnectivityTestJob build(SeaTunnelClient client, DataSource datasource) {
+        return build(client, datasource, null);
+    }
+
+    @Override
+    public ConnectivityTestJob build(SeaTunnelClient client, DataSource datasource, String topic) {
         return builders.stream()
                 .filter(builder -> builder.supports(datasource.getDbType()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "暂不支持该数据源类型的测试任务构建: " + datasource.getDbType()))
-                .build(client, datasource);
+                .build(client, datasource, topic);
     }
 }

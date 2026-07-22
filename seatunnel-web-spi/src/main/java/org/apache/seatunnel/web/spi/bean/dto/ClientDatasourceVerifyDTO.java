@@ -39,6 +39,9 @@ public class ClientDatasourceVerifyDTO {
      */
     private String role;
 
+    @Schema(description = "Kafka 验证 Topic；为空时使用首个可见 Topic")
+    private String topic;
+
     @Schema(description = "超时时间，单位毫秒", example = "15000")
     private Long timeoutMs;
 

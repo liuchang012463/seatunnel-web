@@ -25,6 +25,7 @@ type DataSourceType =
   | 'DORIS'
   | 'KINGBASE'
   | 'DAMENG'
+  | 'KAFKA';
 
 type DataSourceSelectorProps = {
   type: 'source' | 'target';
@@ -44,7 +45,8 @@ const DATA_SOURCE_CONFIG: Record<
   POSTGRE_SQL: { icon: PostgreSQL, displayName: 'PostgreSQL' },
   DORIS: { icon: DorisIcon, displayName: 'Doris' },
   KINGBASE: { icon: KingBaseIcon, displayName: 'Kingbase' },
-  DAMENG: { icon: DaMengIcon, displayName: 'Dameng' }
+  DAMENG: { icon: DaMengIcon, displayName: 'Dameng' },
+  KAFKA: { icon: CacheIcon, displayName: 'Kafka' },
 };
 
 // 默认支持的数据源
@@ -54,7 +56,8 @@ const DEFAULT_DATA_SOURCES: DataSourceType[] = [
   'POSTGRE_SQL',
   'DORIS',
   'KINGBASE',
-  'DAMENG'
+  'DAMENG',
+  'KAFKA',
 ];
 
 const DataSourceSelector = ({

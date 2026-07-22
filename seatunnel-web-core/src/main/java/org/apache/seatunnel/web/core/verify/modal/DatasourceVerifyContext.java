@@ -22,6 +22,8 @@ public class DatasourceVerifyContext {
 
     private String role;
 
+    private String topic;
+
     private long timeoutMs;
 
     private long pollIntervalMs;

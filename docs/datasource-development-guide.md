@@ -404,6 +404,39 @@ Jdbc {
 - Web 只校验 Connector 配置，不自动下载闭源或受许可证限制的 Driver；
 - 生产环境应固定并校验 Driver 版本和文件摘要，不允许随意覆盖。
 
+### 5.8 Kafka Source/Sink（SeaTunnel 2.3.13）
+
+Kafka 使用通用能力接口，不实现 JDBC 列、SQL、计数或消息预览能力。不支持的接口必须返回明确错误。固定标识为：
+
+| 标识 | 值 |
+| --- | --- |
+| `dbType` | `KAFKA` |
+| `connectorType` | `Kafka` |
+| `pluginName` | `KAFKA` |
+
+能力矩阵：
+
+| 能力 | Source | Sink | 说明 |
+| --- | --- | --- | --- |
+| 数据源连接测试 | 是 | 是 | Web 使用 Kafka AdminClient；Engine 使用 Kafka Source 到 Console 的批任务 |
+| Catalog | Topic 列表 | Topic 列表与自由输入 | 过滤内部 Topic 并按名称排序，不创建或删除 Topic |
+| Script / Guide Single / Guide Multi | 是 | 是 | Guide Multi 不套用关系型表匹配 |
+| SQL、列解析、计数、数据预览 | 否 | 否 | Kafka 首版不做消息抽样和 Schema 推断 |
+| Topic 正则 | 是 | 不适用 | `topic` 与 `pattern` 互斥 |
+| 动态 Topic | 不适用 | 是 | Sink `topic` 可包含 `${field}` |
+
+连接配置合并顺序为“数据源结构化字段 → 数据源 `kafkaConfig` → 节点 `kafkaConfig` → 节点结构化字段”。`extraParams` 仅补充非保留字段，不能覆盖连接信息、Topic、消费位点、投递语义或 Web 内部字段。SASL 用户名和密码生成 JAAS 时必须转义反斜杠和双引号，且参数对象、日志和异常不能输出敏感值。
+
+Web 打包固定使用 `org.apache.kafka:kafka-clients:3.4.0`。SeaTunnel 2.3.13 的每个 Engine 节点还必须单独安装对应版本的 `connector-kafka`，并把 SSL、Kerberos、AWS MSK IAM 等认证所需扩展 Jar 放到该节点可加载的插件目录。只在 Web 中加入 Kafka Client 不能替代 Engine Connector。
+
+真实环境的最小验收包含：
+
+1. Kafka → Console：使用 `start_mode = latest`、唯一 `consumer.group` 验证 Engine 到 Kafka 的网络和认证；
+2. FakeSource → Kafka：验证固定 Topic、格式和所选投递语义；
+3. Kafka → Kafka：验证 Source 位点、Schema/format 和 Sink Topic 的组合。
+
+若开发环境没有可访问的 SeaTunnel 2.3.13 Engine 与 Kafka，以上三项只能标记为“未执行”。可复现配置需使用实际 `bootstrap.servers`、已有 Topic，并在每个 Engine 节点部署 Kafka Connector 后提交任务；不得把单元测试或 AdminClient 成功描述为真实运行时验收通过。
+
 ## 6. 后续数据源建议顺序
 
 1. **PG-CDC Source**：复用 PostgreSQL 连接和元数据，新增 CDC Builder、启动位点、Slot、Publication、权限与 WAL 预检；明确 Source-only。

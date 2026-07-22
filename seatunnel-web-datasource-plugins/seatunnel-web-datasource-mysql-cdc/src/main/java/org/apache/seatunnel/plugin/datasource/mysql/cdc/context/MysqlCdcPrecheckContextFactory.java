@@ -10,7 +10,7 @@ public class MysqlCdcPrecheckContextFactory {
 
     public MysqlCdcPrecheckContext create(String connectionParams) {
         BaseConnectionParam param =
-                DataSourceUtils.buildConnectionParams(DbType.MYSQL, connectionParams);
+                DataSourceUtils.buildJdbcConnectionParams(DbType.MYSQL, connectionParams);
 
         DataSourceProcessor processor =
                 DataSourceUtils.getDatasourceProcessor(DbType.MYSQL);

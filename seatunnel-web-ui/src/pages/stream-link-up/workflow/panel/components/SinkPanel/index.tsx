@@ -6,6 +6,7 @@ import ExtraParamsConfig from './ExtraParamsConfig';
 import SinkSqlEditorSection from './SinkSqlEditorSection';
 import { useSinkPanelLogic } from './hooks/useSinkPanelLogic';
 import './index.less';
+import KafkaNodeConfig from '@/pages/common/workflow/KafkaNodeConfig';
 
 interface Props {
   selectedNode: any;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
+  const isKafka = String(selectedNode?.data?.dbType || '').toUpperCase() === 'KAFKA';
   const {
     title,
     dbType,
@@ -49,6 +51,49 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
     selectedNode,
     onNodeDataChange,
   });
+
+  if (isKafka) {
+    return (
+      <PanelShell
+        eyebrow="Sink Config"
+        title="目标配置"
+        badge="输出节点"
+        desc="Kafka 节点不使用关系型表、SQL 或自动建表配置"
+        heroTitle={title}
+        heroDesc={description}
+        heroTag="SINK"
+        dbType={dbType}
+        onClose={onClose}
+        footer={<button type="button" className="workflow-panel__btn workflow-panel__btn--ghost" onClick={onClose}>关闭</button>}
+      >
+        <section className="workflow-panel__section">
+          <div className="workflow-panel__group">
+            <div className="workflow-panel__group-kicker">目标数据源</div>
+            <Select
+              value={dataSourceId}
+              onChange={handleDataSourceChange}
+              options={dataSourceOptions}
+              placeholder="请选择 Kafka 数据源"
+              showSearch
+              optionFilterProp="label"
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div className="workflow-panel__divider" />
+          <div className="workflow-panel__group">
+            <div className="workflow-panel__group-kicker">Kafka 写入设置</div>
+            <KafkaNodeConfig
+              role="sink"
+              config={selectedNode?.data?.config || {}}
+              topicOptions={tableOptions}
+              topicLoading={tableLoading}
+              onChange={(patch) => updateNode(patch)}
+            />
+          </div>
+        </section>
+      </PanelShell>
+    );
+  }
 
   return (
     <PanelShell

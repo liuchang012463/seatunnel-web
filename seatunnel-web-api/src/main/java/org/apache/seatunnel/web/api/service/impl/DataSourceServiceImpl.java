@@ -59,7 +59,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         validateCreateRequest(dto);
 
         try {
-            BaseConnectionParam connectionParam =
+            ConnectionParam connectionParam =
                     DataSourceUtils.buildConnectionParams(dto.getDbType(), dto.getConnectionParams());
 
             DataSourceUtils.checkDatasourceParam(connectionParam);
@@ -97,7 +97,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         validateUpdateRequest(id, dto);
 
         try {
-            BaseConnectionParam connectionParam =
+            ConnectionParam connectionParam =
                     DataSourceUtils.buildConnectionParams(dto.getDbType(), dto.getConnectionParams());
             DataSourceUtils.checkDatasourceParam(connectionParam);
 
@@ -342,7 +342,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     public Boolean checkConnection(DbType dbType, ConnectionParam param) {
         try {
             DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
-            boolean connected = processor.getConnectionManager().checkDataSourceConnectivity(param);
+            boolean connected = processor.getConnectivityVerifier().checkDataSourceConnectivity(param);
             if (!connected) {
                 throw new ServiceException(Status.DATASOURCE_CONNECT_FAILED);
             }

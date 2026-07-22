@@ -189,7 +189,7 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
                                     String pluginName,
                                     Config sinkConfig) {
         ConfigValidator.of(ReadonlyConfig.fromConfig(sinkConfig))
-                .validate(processor.sinkOptionRule());
+                .validate(processor.sinkOptionRule(pluginName));
     }
 
     private String getTrimmedString(Config config, String path) {
