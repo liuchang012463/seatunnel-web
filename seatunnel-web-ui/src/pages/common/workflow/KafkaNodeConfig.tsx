@@ -29,7 +29,13 @@ function JsonField({
       value={text}
       rows={4}
       placeholder={placeholder}
-      onChange={(event) => setText(event.target.value)}
+      onChange={(event) => {
+        const next = event.target.value;
+        setText(next);
+        if (!next.trim()) {
+          onChange({});
+        }
+      }}
       onBlur={() => {
         if (!text.trim()) {
           onChange({});

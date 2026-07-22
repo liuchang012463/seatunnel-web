@@ -6,13 +6,19 @@ import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
+import java.util.LinkedHashMap;
+
 public class KafkaConnectionParamConverter implements ConnectionParamConverter {
 
     @Override
     public KafkaConnectionParam createConnectionParams(String connectionJson) {
-        KafkaConnectionParam param = JSONUtils.parseObject(connectionJson, KafkaConnectionParam.class);
+        String sanitized = sanitizeEmptyMapFields(connectionJson);
+        KafkaConnectionParam param = JSONUtils.parseObject(sanitized, KafkaConnectionParam.class);
         if (param == null) {
             throw new IllegalArgumentException("Kafka connection param must not be null");
+        }
+        if (param.getKafkaConfig() == null) {
+            param.setKafkaConfig(new LinkedHashMap<>());
         }
         param.setDbType(DbType.KAFKA);
         return param;
@@ -36,5 +42,14 @@ public class KafkaConnectionParamConverter implements ConnectionParamConverter {
                 && (StringUtils.isBlank(param.getUsername()) || StringUtils.isBlank(param.getPassword()))) {
             throw new IllegalArgumentException("Kafka SASL username and password cannot be empty");
         }
+    }
+
+    private static String sanitizeEmptyMapFields(String json) {
+        if (json == null || json.isEmpty()) {
+            return json;
+        }
+        return json.replaceAll(
+                "\"kafkaConfig\"\\s*:\\s*\"\"",
+                "\"kafkaConfig\":{}");
     }
 }
