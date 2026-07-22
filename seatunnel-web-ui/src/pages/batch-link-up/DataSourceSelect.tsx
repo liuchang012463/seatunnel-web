@@ -133,6 +133,20 @@ export const generateCDCDataSourceOptions = (): DataSourceType[] => [
   },
 ];
 
+/**
+ * 实时任务既支持数据库 CDC，也支持 Kafka 这类原生流式 Source。
+ * 保留 CDC 选项生成器供纯 CDC 场景使用，避免调用方把“实时来源”等同于“CDC 来源”。
+ */
+export const generateRealtimeSourceOptions = (): DataSourceType[] => {
+  const kafkaOption = generateDataSourceOptions().find(
+    (option) => option.value === "KAFKA",
+  );
+
+  return kafkaOption
+    ? [...generateCDCDataSourceOptions(), kafkaOption]
+    : generateCDCDataSourceOptions();
+};
+
 // 数据源选择器组件
 interface DataSourceSelectProps {
   value: any;

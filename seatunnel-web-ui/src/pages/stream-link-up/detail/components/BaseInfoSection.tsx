@@ -2,7 +2,10 @@ import { Form, Input, Radio } from "antd";
 
 import ModeCard from "./ModeCard";
 import type { SyncMode } from "../types";
-import DataSourceSelect, { generateCDCDataSourceOptions, generateDataSourceOptions } from "@/pages/batch-link-up/DataSourceSelect";
+import DataSourceSelect, {
+  generateDataSourceOptions,
+  generateRealtimeSourceOptions,
+} from "@/pages/batch-link-up/DataSourceSelect";
 import IconRightArrow from "@/pages/batch-link-up/IconRightArrow";
 
 const { TextArea } = Input;
@@ -39,7 +42,7 @@ const BaseConfigSection: React.FC<Props> = ({
             <DataSourceSelect
               value={sourceType}
               onChange={handleSourceChange}
-              dataSourceOptions={generateCDCDataSourceOptions()}
+              dataSourceOptions={generateRealtimeSourceOptions()}
               placeholder="请选择来源"
               prefix="来源"
               width="48%"

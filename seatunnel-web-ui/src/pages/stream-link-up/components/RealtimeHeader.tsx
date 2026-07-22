@@ -1,6 +1,6 @@
 import {
-  generateCDCDataSourceOptions,
   generateDataSourceOptions,
+  generateRealtimeSourceOptions,
 } from "@/pages/batch-link-up/DataSourceSelect";
 import { ThunderboltOutlined } from "@ant-design/icons";
 import { Button, Select } from "antd";
@@ -85,7 +85,7 @@ const RealtimeHeader: React.FC<RealtimeHeaderProps> = ({
               prefix="来源："
               value={sourceType?.dbType}
               onChange={handleSourceChange}
-              options={generateCDCDataSourceOptions()}
+              options={generateRealtimeSourceOptions()}
               bordered={false}
               showSearch
               className="flex-1"
