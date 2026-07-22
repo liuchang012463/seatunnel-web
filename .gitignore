@@ -64,3 +64,6 @@ spark-warehouse
 
 # Local CodeGraph index and configuration
 .codegraph/
+
+profile/
+jdbc-drivers/
