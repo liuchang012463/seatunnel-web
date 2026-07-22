@@ -40,7 +40,7 @@ public class PgSQLCatalog extends AbstractJdbcCatalog {
 
     @Override
     protected String getListTableSql(String databaseName) {
-        return "SELECT table_name AS table_path " +
+        return "SELECT table_schema || '.' || table_name AS table_path " +
                 "FROM information_schema.tables " +
                 "WHERE table_catalog = '" + databaseName + "' " +
                 "AND table_schema NOT IN ('pg_catalog', 'information_schema') " +

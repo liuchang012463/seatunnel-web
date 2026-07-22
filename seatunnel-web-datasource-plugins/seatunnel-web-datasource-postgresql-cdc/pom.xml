@@ -10,23 +10,18 @@
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>seatunnel-web-datasource-postgresql</artifactId>
+    <artifactId>seatunnel-web-datasource-postgresql-cdc</artifactId>
     <version>1.0.0</version>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.seatunnel.web</groupId>
-            <artifactId>seatunnel-web-datasource-api</artifactId>
-            <version>${project.version}</version>
+            <artifactId>seatunnel-web-datasource-postgresql</artifactId>
         </dependency>
-
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.5.1</version>
-            <scope>provided</scope>
+            <groupId>org.apache.seatunnel.web</groupId>
+            <artifactId>seatunnel-web-spi</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -34,6 +29,4 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-
 </project>

@@ -34,8 +34,6 @@ public class GuideMultiHoconBuildService {
     private static final String KEY_TABLE_LIST = "table_list";
     private static final String KEY_SOURCE_TABLE_LIST = "source_table_list";
     private static final String KEY_SINK_TABLE_LIST = "sink_table_list";
-    private static final String KEY_TABLE_PATTERN = "tablePattern";
-
     private static final String KEY_MATCH_MODE = "matchMode";
     private static final String KEY_MATCH_MODE_UNDERLINE = "match_mode";
     private static final String KEY_SOURCE_TABLE = "sourceTable";
@@ -78,15 +76,24 @@ public class GuideMultiHoconBuildService {
 
         GuideMultiJobContent.TableMatchConfig tableMatch = content.getTableMatch();
         String matchMode = resolveMatchMode(tableMatch);
-        boolean patternMode = isPatternMode(matchMode);
+        boolean patternMode = supportsPatternMatch(content.getSource()) && isPatternMode(matchMode);
+
+        if (isPostgreSqlCdc(content.getSource()) && MATCH_MODE_REGEX.equals(matchMode)) {
+            throw new IllegalArgumentException(
+                    "PostgreSQL CDC does not support regex table matching; "
+                            + "please use custom, exact, or whole database matching");
+        }
 
         /*
-         * 正则匹配 / 整库同步不再提前解析所有表。
+         * 仅 MySQL-CDC 的正则匹配 / 整库同步使用原生 table-pattern，
+         * 不再提前解析所有表。PostgreSQL CDC 的整库模式会在前端加载
+         * catalog 后以精确 table-names 提交。
          *
          * mode = 2: MySQL-CDC source 使用 table-pattern
          * mode = 4: MySQL-CDC source 使用 table-pattern = db\..*
          *
-         * 自定义 / 精准匹配仍然走 tableMatchResolver，生成 table-names。
+         * 自定义 / 精准匹配，以及 PostgreSQL CDC 整库模式，
+         * 均走 tableMatchResolver 生成 table-names。
          */
         List<String> sourceTables = patternMode
                 ? Collections.emptyList()
@@ -96,18 +103,20 @@ public class GuideMultiHoconBuildService {
                 ? Collections.emptyList()
                 : tableMatchResolver.resolveSinkTables(content);
 
-        validateTables(tableMatch, sourceTables, sinkTables);
+        validateTables(content.getSource(), tableMatch, sourceTables, sinkTables, patternMode);
 
         Map<String, Object> sourceNode = buildSourceNode(
                 content.getSource(),
                 tableMatch,
                 sourceTables,
+                patternMode,
                 runtimeContext);
 
         Map<String, Object> sinkNode = buildSinkNode(
                 content.getTarget(),
                 tableMatch,
                 sinkTables,
+                patternMode,
                 runtimeContext);
 
         Map<String, Object> edge = new LinkedHashMap<>();
@@ -126,12 +135,12 @@ public class GuideMultiHoconBuildService {
             GuideMultiJobContent.WorkflowSourceConfig source,
             GuideMultiJobContent.TableMatchConfig tableMatch,
             List<String> sourceTables,
+            boolean patternMode,
             JobRuntimeContext runtimeContext) {
 
         String matchMode = resolveMatchMode(tableMatch);
+        String sourceMatchMode = normalizeSourceMatchMode(source, matchMode);
         String keyword = resolveKeyword(tableMatch);
-        boolean patternMode = isPatternMode(matchMode);
-
         boolean multiTable = patternMode || sourceTables.size() > 1;
         String firstSourceTable = firstTable(sourceTables);
 
@@ -145,7 +154,7 @@ public class GuideMultiHoconBuildService {
         config.put("readMode", "table");
 
         /*
-         * 正则匹配 / 整库同步不需要 table / table_path。
+         * MySQL CDC 的正则匹配 / 整库同步不需要 table / table_path。
          * 否则后面的 CDC resolver 容易误判成单表或多表列表模式。
          */
         if (!patternMode) {
@@ -155,8 +164,8 @@ public class GuideMultiHoconBuildService {
 
         config.put(KEY_MULTI_TABLE, multiTable);
 
-        putIfNotBlank(config, KEY_MATCH_MODE, matchMode);
-        putIfNotBlank(config, KEY_MATCH_MODE_UNDERLINE, matchMode);
+        putIfNotBlank(config, KEY_MATCH_MODE, sourceMatchMode);
+        putIfNotBlank(config, KEY_MATCH_MODE_UNDERLINE, sourceMatchMode);
 
         /*
          * mode = 2 正则匹配：
@@ -171,8 +180,8 @@ public class GuideMultiHoconBuildService {
         }
 
         /*
-         * 自定义 / 精准匹配才需要 table list。
-         * 正则 / 整库同步不要塞 source_table_list，避免后续又生成 table-names。
+         * 除 MySQL CDC 的正则 / 整库同步外，均需要 table list。
+         * PostgreSQL CDC 整库模式通过该列表生成 table-names。
          */
         if (!patternMode) {
             putListIfNotEmpty(config, KEY_TABLE_LIST, sourceTables);
@@ -189,8 +198,16 @@ public class GuideMultiHoconBuildService {
             config.put("splitSize", source.getSplitSize());
         }
 
-        putIfNotBlank(config, "server-id", source.getServerId());
-        putIfNotBlank(config, "serverIdMode", source.getServerIdMode());
+        if (isMySqlCdc(source)) {
+            putIfNotBlank(config, "server-id", source.getServerId());
+            putIfNotBlank(config, "serverIdMode", source.getServerIdMode());
+        }
+
+        if (isPostgreSqlCdc(source)) {
+            putIfNotBlank(config, "slot.name", source.getSlotName());
+            putIfNotBlank(config, "publicationName", source.getPublicationName());
+            putIfNotBlank(config, "startup.mode", source.getStartupMode());
+        }
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("nodeType", NODE_TYPE_SOURCE);
@@ -218,11 +235,10 @@ public class GuideMultiHoconBuildService {
             GuideMultiJobContent.WorkflowTargetConfig target,
             GuideMultiJobContent.TableMatchConfig tableMatch,
             List<String> sinkTables,
+            boolean patternMode,
             JobRuntimeContext runtimeContext) {
 
         String matchMode = resolveMatchMode(tableMatch);
-        boolean patternMode = isPatternMode(matchMode);
-
         boolean multiTable = patternMode || sinkTables.size() > 1;
         String firstSinkTable = firstTable(sinkTables);
 
@@ -244,12 +260,11 @@ public class GuideMultiHoconBuildService {
         }
 
         /*
-         * 多表 / 正则 / 整库同步统一走动态表名。
-         * Source CDC 会带出 table_name，Sink 使用 ${table_name} 自动写入对应表。
+         * 多表任务由 JDBC Sink builder 生成动态表名模式。
+         * 不能在这里强制写入 ${table_name}，否则会覆盖 PostgreSQL 等方言
+         * 根据目标数据源 schemaName 生成的 schema.${table_name}。
          */
-        if (multiTable) {
-            config.put(KEY_TABLE_PATTERN, "${table_name}");
-        } else {
+        if (!multiTable) {
             putIfNotBlank(config, "table", firstSinkTable);
             putIfNotBlank(config, "table_path", firstSinkTable);
             putIfNotBlank(config, "targetTableName", firstSinkTable);
@@ -375,17 +390,27 @@ public class GuideMultiHoconBuildService {
     }
 
     private void validateTables(
+            GuideMultiJobContent.WorkflowSourceConfig source,
             GuideMultiJobContent.TableMatchConfig tableMatch,
             List<String> sourceTables,
-            List<String> sinkTables) {
+            List<String> sinkTables,
+            boolean patternMode) {
 
         String matchMode = resolveMatchMode(tableMatch);
+
+        if (isPostgreSqlCdc(source)
+                && MATCH_MODE_WHOLE_DATABASE.equals(matchMode)
+                && CollectionUtils.isEmpty(sourceTables)) {
+            throw new IllegalArgumentException(
+                    "PostgreSQL CDC whole database table list is empty; "
+                            + "please reload datasource table metadata");
+        }
 
         /*
          * 正则匹配：只校验 keyword。
          * 不要求提前解析出所有表。
          */
-        if (MATCH_MODE_REGEX.equals(matchMode)) {
+        if (patternMode && MATCH_MODE_REGEX.equals(matchMode)) {
             if (StringUtils.isBlank(resolveKeyword(tableMatch))) {
                 throw new IllegalArgumentException("table match keyword can not be blank when match mode is regex");
             }
@@ -393,10 +418,10 @@ public class GuideMultiHoconBuildService {
         }
 
         /*
-         * 整库同步：直接交给 CDC table-pattern = db\..*
+         * MySQL CDC 整库同步：直接交给 CDC table-pattern = db\..*
          * 不要求 sourceTables / sinkTables。
          */
-        if (MATCH_MODE_WHOLE_DATABASE.equals(matchMode)) {
+        if (patternMode && MATCH_MODE_WHOLE_DATABASE.equals(matchMode)) {
             return;
         }
 
@@ -453,6 +478,31 @@ public class GuideMultiHoconBuildService {
     private boolean isPatternMode(String matchMode) {
         return MATCH_MODE_REGEX.equals(matchMode)
                 || MATCH_MODE_WHOLE_DATABASE.equals(matchMode);
+    }
+
+    private boolean supportsPatternMatch(GuideMultiJobContent.WorkflowSourceConfig source) {
+        return isMySqlCdc(source);
+    }
+
+    private boolean isMySqlCdc(GuideMultiJobContent.WorkflowSourceConfig source) {
+        return source != null && "MYSQL-CDC".equalsIgnoreCase(source.getPluginName());
+    }
+
+    private boolean isPostgreSqlCdc(GuideMultiJobContent.WorkflowSourceConfig source) {
+        return source != null && "POSTGRESQL-CDC".equalsIgnoreCase(source.getPluginName());
+    }
+
+    /**
+     * SeaTunnel 2.3.13 PostgreSQL CDC only supports explicit table-names.
+     * Whole-database mode is therefore expanded by the guide into the current
+     * catalog table list and emitted as an exact source selection.
+     */
+    private String normalizeSourceMatchMode(
+            GuideMultiJobContent.WorkflowSourceConfig source, String matchMode) {
+        if (isPostgreSqlCdc(source) && MATCH_MODE_WHOLE_DATABASE.equals(matchMode)) {
+            return MATCH_MODE_CUSTOM;
+        }
+        return matchMode;
     }
 
     private String firstTable(List<String> tables) {

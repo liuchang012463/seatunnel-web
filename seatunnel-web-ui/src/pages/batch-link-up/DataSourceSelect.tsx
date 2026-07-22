@@ -1,6 +1,5 @@
 import { SendOutlined } from "@ant-design/icons";
 import { Select } from "antd";
-import { useMemo } from "react";
 import MysqlIcon from "../data-source/icon/MysqlIcon";
 import OracleIcon from "../data-source/icon/OracleIcon";
 import PostgreSQL from "../data-source/icon/PsSqlIcon";
@@ -107,6 +106,17 @@ export const generateCDCDataSourceOptions = (): DataSourceType[] => [
       <div style={{ display: "flex", alignItems: "center" }}>
         <MysqlIcon height="24px" width="24px" />
         <span style={{ marginLeft: 8 }}>MySQL-CDC</span>
+      </div>
+    ),
+  },
+  {
+    value: "POSTGRE_SQL",
+    connectorType: "Postgres-CDC",
+    pluginName: "PostgreSQL-CDC",
+    label: (
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <PostgreSQL />
+        <span style={{ marginLeft: 8 }}>PostgreSQL-CDC</span>
       </div>
     ),
   },

@@ -34,6 +34,11 @@ public class GuideMultiJobContent {
         private String serverIdMode;
         @JsonProperty("server-id")
         private String serverId;
+        @JsonProperty("slot.name")
+        private String slotName;
+        private String publicationName;
+        @JsonProperty("startup.mode")
+        private String startupMode;
     }
 
     @Data

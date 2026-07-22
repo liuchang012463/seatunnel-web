@@ -74,6 +74,12 @@ const stableStringify = (value: any) => {
   }
 };
 
+const isMySqlCdc = (sourceType?: DbTypeValue) =>
+  sourceType?.pluginName?.toUpperCase() === 'MYSQL-CDC';
+
+const isPostgreSqlCdc = (sourceType?: DbTypeValue) =>
+  sourceType?.pluginName?.toUpperCase() === 'POSTGRESQL-CDC';
+
 type SaveResponseData = {
   id?: number | string;
   state?: JobDefinitionState;
@@ -237,6 +243,8 @@ export function useMultiWorkflowState({
 
   const buildWorkflowData = useCallback(() => {
     const formValues = form.getFieldsValue();
+    const mysqlCdc = isMySqlCdc(sourceType);
+    const postgreSqlCdc = isPostgreSqlCdc(sourceType);
 
     return {
       type: 'GUIDE_MULTI',
@@ -247,9 +255,18 @@ export function useMultiWorkflowState({
         pluginName: sourceType?.pluginName,
         fetchSize: formValues.fetchSize,
         splitSize: formValues.splitSize,
-        serverIdMode: formValues.serverIdMode,
-        ...(formValues.serverId
+        ...(mysqlCdc ? { serverIdMode: formValues.serverIdMode } : {}),
+        ...(mysqlCdc && formValues.serverId
           ? { 'server-id': String(formValues.serverId).trim() }
+          : {}),
+        ...(postgreSqlCdc && formValues.slotName
+          ? { 'slot.name': String(formValues.slotName).trim() }
+          : {}),
+        ...(postgreSqlCdc && formValues.publicationName
+          ? { publicationName: String(formValues.publicationName).trim() }
+          : {}),
+        ...(postgreSqlCdc && formValues.startupMode
+          ? { 'startup.mode': formValues.startupMode }
           : {}),
       },
       target: {
@@ -379,6 +396,13 @@ export function useMultiWorkflowState({
             workflow?.source?.['server-id'] ??
             workflow?.source?.serverId ??
             DEFAULT_FORM_VALUES.serverId,
+
+          slotName: workflow?.source?.['slot.name'] ?? workflow?.source?.slotName,
+          publicationName: workflow?.source?.publicationName,
+          startupMode:
+            workflow?.source?.['startup.mode'] ??
+            workflow?.source?.startupMode ??
+            'initial',
 
           splitSize:
             workflow?.source?.splitSize ?? DEFAULT_FORM_VALUES.splitSize,
@@ -528,7 +552,7 @@ export function useMultiWorkflowState({
     const serverIdMode = form.getFieldValue('serverIdMode');
     const serverId = form.getFieldValue('serverId');
 
-    if (serverIdMode === 'MANUAL') {
+    if (isMySqlCdc(sourceType) && serverIdMode === 'MANUAL') {
       const result = validateServerIdRange(serverId);
       if (!result.valid) {
         message.warning(result.message);
@@ -689,6 +713,7 @@ export function useMultiWorkflowState({
 
     sourceOption,
     targetOption,
+    sourceType,
 
     tableData,
     readOnlyTables,

@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "antd";
 import { BarChart3, Database, Eye, Info } from "lucide-react";
-import { memo, useMemo, useRef } from "react";
+import { memo, useRef } from "react";
 import PanelShell from "../PanelShell";
 import ExtraParamsConfig from "./ExtraParamsConfig";
 import { useSourcePanelLogic } from "./hooks/useSourcePanelLogic";
@@ -23,7 +23,7 @@ interface Props {
   scheduleConfig: any;
 }
 
-const STARTUP_MODE_OPTIONS = [
+const MYSQL_STARTUP_MODE_OPTIONS = [
   {
     label: "initial",
     value: "initial",
@@ -48,6 +48,12 @@ const STARTUP_MODE_OPTIONS = [
     shortDesc: "指定时间戳",
     desc: "从指定时间戳开始同步",
   },
+];
+
+const POSTGRES_STARTUP_MODE_OPTIONS = [
+  { label: "initial", value: "initial", shortDesc: "全量 + 增量", desc: "先读取快照，再读取 WAL 增量" },
+  { label: "earliest", value: "earliest", shortDesc: "最早位点", desc: "从可用的最早逻辑复制位点读取" },
+  { label: "latest", value: "latest", shortDesc: "仅新增变更", desc: "从最新逻辑复制位点开始读取" },
 ];
 
 function SourcePanel({
@@ -81,6 +87,12 @@ function SourcePanel({
   });
 
   const sourceConfig = selectedNode?.data?.config || {};
+  const isPostgresCdc =
+    sourceConfig.pluginName === "PostgreSQL-CDC" ||
+    selectedNode?.data?.dbType === "POSTGRE_SQL";
+  const startupModeOptions = isPostgresCdc
+    ? POSTGRES_STARTUP_MODE_OPTIONS
+    : MYSQL_STARTUP_MODE_OPTIONS;
 
   const startupMode = sourceConfig.startupMode || "initial";
   const startupSpecificOffsetFile =
@@ -89,13 +101,8 @@ function SourcePanel({
   const startupTimestamp = sourceConfig.startupTimestamp;
   const serverIdMode = sourceConfig.serverIdMode || "MANUAL";
   const serverId = sourceConfig.serverId || sourceConfig["server-id"] || "";
-
-  const startupModeDesc = useMemo(() => {
-    return (
-      STARTUP_MODE_OPTIONS.find((item) => item.value === startupMode)?.desc ||
-      "配置 CDC 启动读取位点"
-    );
-  }, [startupMode]);
+  const slotName = sourceConfig.slotName || sourceConfig["slot.name"] || "";
+  const publicationName = sourceConfig.publicationName || "";
 
   const resetSchemaMeta = {
     outputSchema: [],
@@ -256,7 +263,7 @@ function SourcePanel({
                 block
                 value={startupMode}
                 onChange={(v) => handleStartupModeChange(String(v))}
-                options={STARTUP_MODE_OPTIONS.map((item) => ({
+                options={startupModeOptions.map((item) => ({
                   value: item.value,
                   label: (
                     <div className="flex h-[54px] flex-col items-center justify-center">
@@ -273,7 +280,7 @@ function SourcePanel({
               />
             </div>
 
-            {startupMode === "specific" && (
+            {!isPostgresCdc && startupMode === "specific" && (
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   value={startupSpecificOffsetFile}
@@ -291,7 +298,7 @@ function SourcePanel({
               </div>
             )}
 
-            {startupMode === "timestamp" && (
+            {!isPostgresCdc && startupMode === "timestamp" && (
               <InputNumber
                 value={startupTimestamp}
                 style={{ width: "100%" }}
@@ -303,6 +310,29 @@ function SourcePanel({
 
           <div className="h-px bg-slate-100" />
 
+          {isPostgresCdc ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <div className="text-[13px] font-semibold text-slate-400 tracking-wide">Replication slot</div>
+                <Input
+                  value={slotName}
+                  placeholder="seatunnel_orders"
+                  onChange={(e) => updateNode({ slotName: e.target.value, "slot.name": e.target.value.trim() || undefined })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="text-[13px] font-semibold text-slate-400 tracking-wide">Publication</div>
+                <Input
+                  value={publicationName}
+                  placeholder="seatunnel_orders_pub"
+                  onChange={(e) => updateNode({ publicationName: e.target.value })}
+                />
+              </div>
+              <div className="col-span-2 text-xs text-slate-400">
+                使用预先创建的 pgoutput slot 与 publication；任务不会自动创建或删除它们。
+              </div>
+            </div>
+          ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-1.5">
               <div className="text-[13px] font-semibold text-slate-400 tracking-wide">
@@ -343,6 +373,7 @@ function SourcePanel({
               allowClear
             />
           </div>
+          )}
 
           <div className="h-px bg-slate-100" />
 

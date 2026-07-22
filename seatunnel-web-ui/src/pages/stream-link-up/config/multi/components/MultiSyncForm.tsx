@@ -1,5 +1,6 @@
 import React from "react";
 import { Col, Form, Input, Radio, Row, Select } from "antd";
+import type { DbTypeValue } from "../types";
 
 const { TextArea } = Input;
 
@@ -9,6 +10,7 @@ interface Props {
   targetOption: any[];
   matchMode: string;
   tableKeyword: string;
+  sourceType?: DbTypeValue;
   onSourceIdChange: (value: string) => void;
   onMatchModeChange: (value: string) => void;
   onKeywordChange: (value: string) => void;
@@ -22,10 +24,13 @@ const MultiSyncForm: React.FC<Props> = ({
   targetOption,
   matchMode,
   tableKeyword,
+  sourceType,
   onSourceIdChange,
   onMatchModeChange,
   onKeywordChange,
 }) => {
+  const isPostgreSqlCdc = sourceType?.pluginName?.toUpperCase() === "POSTGRESQL-CDC";
+
   return (
     <div className="rounded-2xl ">
       <Form
@@ -81,9 +86,11 @@ const MultiSyncForm: React.FC<Props> = ({
             className="st-match-radio"
           >
             <Radio value="1">自定义</Radio>
-            <Radio value="2">正则匹配</Radio>
+            {!isPostgreSqlCdc && <Radio value="2">正则匹配</Radio>}
             <Radio value="3">精准匹配</Radio>
-            <Radio value="4">整库同步</Radio>
+            <Radio value="4">
+              {isPostgreSqlCdc ? "整库同步（发布时扫描）" : "整库同步"}
+            </Radio>
           </Radio.Group>
         </Form.Item>
 

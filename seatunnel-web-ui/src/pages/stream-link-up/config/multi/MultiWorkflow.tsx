@@ -56,6 +56,7 @@ export default function MultiWorkflow({
     loading,
     sourceOption,
     targetOption,
+    sourceType,
     tableData,
     readOnlyTables,
     multiTableList,
@@ -312,6 +313,7 @@ export default function MultiWorkflow({
                           targetOption={targetOption}
                           matchMode={matchMode}
                           tableKeyword={tableKeyword}
+                          sourceType={sourceType}
                           onSourceIdChange={handleSourceIdChangeWithDirty}
                           onMatchModeChange={handleMatchModeChangeWithDirty}
                           onKeywordChange={handleKeywordChangeWithDirty}
@@ -335,7 +337,7 @@ export default function MultiWorkflow({
                         )}
                       </div>
 
-                      <MultiWorkflowParamConfig />
+                      <MultiWorkflowParamConfig sourceType={sourceType} />
                     </Form>
                   </div>
                 </div>

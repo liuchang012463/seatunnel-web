@@ -63,7 +63,11 @@ final class JdbcSinkSchemaResolver {
                 JdbcConfigReaders.getString(conn, SCHEMA, ""),
                 JdbcConfigReaders.getString(conn, SCHEMA_NAME, "")
         );
-        return StringUtils.trimToEmpty(schema);
+        // PostgreSQL-compatible databases use public when a legacy datasource
+        // connection does not contain schema/schemaName. This mirrors the
+        // PostgreSQL datasource default and ensures multi-table sinks retain a
+        // schema-qualified target name.
+        return StringUtils.defaultIfBlank(StringUtils.trimToEmpty(schema), "public");
     }
 
     private static boolean isPostgreSql(Config config, Config conn) {

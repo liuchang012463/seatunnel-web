@@ -124,7 +124,7 @@ class JdbcSinkSchemaResolverTest {
     }
 
     @Test
-    void sinkKeepsOriginalTableWithoutSchemaName() {
+    void postgresSinkDefaultsToPublicSchemaWithoutSchemaName() {
         Map<String, Object> singleMap = new HashMap<>();
         singleBuilder.build(
                 config("targetTableName = user_info"),
@@ -137,8 +137,21 @@ class JdbcSinkSchemaResolverTest {
                 pgConnection("database = test_db"),
                 multiMap);
 
-        assertEquals("user_info", singleMap.get(TABLE));
-        assertEquals("${table_name}", multiMap.get(TABLE));
+        assertEquals("public.user_info", singleMap.get(TABLE));
+        assertEquals("public.${table_name}", multiMap.get(TABLE));
+    }
+
+    @Test
+    void multiPgSinkUsesCustomSchemaNameInDefaultTablePattern() {
+        Map<String, Object> map = new HashMap<>();
+
+        multiBuilder.build(
+                config("multiTable = true"),
+                pgConnection("database = test_db\nschemaName = warehouse"),
+                map);
+
+        assertEquals("test_db", map.get(DATABASE));
+        assertEquals("warehouse.${table_name}", map.get(TABLE));
     }
 
     @Test
