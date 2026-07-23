@@ -485,10 +485,18 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         }
 
         try {
-            String jdbcUrl = JSONUtils.getNodeString(vo.getConnectionParams(), "url");
-            vo.setJdbcUrl(jdbcUrl);
+            if (vo.getDbType() == DbType.SFTP) {
+                String host = JSONUtils.getNodeString(vo.getConnectionParams(), "host");
+                String port = JSONUtils.getNodeString(vo.getConnectionParams(), "port");
+                if (StringUtils.isNotBlank(host)) {
+                    vo.setJdbcUrl("sftp://" + host + ":" + StringUtils.defaultIfBlank(port, "22"));
+                }
+            } else {
+                String jdbcUrl = JSONUtils.getNodeString(vo.getConnectionParams(), "url");
+                vo.setJdbcUrl(jdbcUrl);
+            }
         } catch (Exception e) {
-            log.warn("Parse jdbc url from connection params failed");
+            log.warn("Parse datasource endpoint from connection params failed, dbType={}", vo.getDbType());
         }
 
         if (vo.getEnvironment() != null) {

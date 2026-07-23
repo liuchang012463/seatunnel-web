@@ -32,6 +32,15 @@ const getNodeMeta = (node: any) => ({
 
 const getConfig = (node: any) => node?.data?.config || {};
 
+const isSftpNode = (node: any) =>
+  String(node?.data?.dbType || node?.data?.config?.dbType || "")
+    .toUpperCase() === "SFTP";
+
+const getFilePath = (config: any) =>
+  String(
+    config?.filePath || config?.path || config?.table || config?.targetTableName || ""
+  ).trim();
+
 const buildWarning = (node: any, field: string, message: string): CheckItem => ({
   ...getNodeMeta(node),
   level: "warning",
@@ -71,6 +80,12 @@ const sourceRules: NodeCheckRule[] = [
     return null;
   },
   (node) => {
+    if (isSftpNode(node)) {
+      if (!getFilePath(getConfig(node))) {
+        return buildWarning(node, "filePath", "SFTP 源端必须填写文件路径");
+      }
+      return null;
+    }
     const config = getConfig(node);
     if (!config.readMode) {
       return buildWarning(node, "readMode", "请选择读取方式");
@@ -78,6 +93,9 @@ const sourceRules: NodeCheckRule[] = [
     return null;
   },
   (node) => {
+    if (isSftpNode(node)) {
+      return null;
+    }
     const config = getConfig(node);
     if (config.readMode === "table" && !config.table) {
       return buildWarning(node, "table", "按表读取时必须选择源表");
@@ -85,6 +103,9 @@ const sourceRules: NodeCheckRule[] = [
     return null;
   },
   (node) => {
+    if (isSftpNode(node)) {
+      return null;
+    }
     const config = getConfig(node);
     if (config.readMode === "sql" && !String(config.sql || "").trim()) {
       return buildWarning(node, "sql", "自定义 SQL 不能为空");
@@ -159,6 +180,9 @@ const sinkRules: NodeCheckRule[] = [
     return null;
   },
   (node) => {
+    if (isSftpNode(node)) {
+      return null;
+    }
     const config = getConfig(node);
     if (!config.writeMode) {
       return buildWarning(node, "writeMode", "请选择写入模式");
@@ -167,6 +191,12 @@ const sinkRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
+    if (isSftpNode(node)) {
+      if (!getFilePath(config)) {
+        return buildWarning(node, "filePath", "SFTP 目标端必须填写输出路径");
+      }
+      return null;
+    }
     if (config.autoCreateTable) {
       if (!String(config.targetTableName || "").trim()) {
         return buildWarning(node, "targetTableName", "自动建表时必须填写目标表名");
@@ -189,6 +219,9 @@ const sinkRules: NodeCheckRule[] = [
     return null;
   },
   (node) => {
+    if (isSftpNode(node)) {
+      return null;
+    }
     const config = getConfig(node);
     if (config.writeMode === "upsert" && !String(config.primaryKey || "").trim()) {
       return buildWarning(node, "primaryKey", "Upsert 模式下必须填写主键字段");

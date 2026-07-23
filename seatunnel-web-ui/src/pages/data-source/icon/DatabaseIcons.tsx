@@ -1,4 +1,5 @@
 import { DatabaseOutlined } from '@ant-design/icons';
+import { FolderSync } from 'lucide-react';
 import type { CSSProperties } from 'react';
 
 import CacheIcon from './CacheIcon';
@@ -77,6 +78,8 @@ const DatabaseIcons = ({
       return <ClickhouseIcon width={width} height={height} />;
     case 'tidb':
       return <TiDBIcon width={width} height={height} />;
+    case 'sftp':
+      return <FolderSync width={width} height={height} color="#1677ff" />;
     default:
       return <DatabaseOutlined style={fallbackStyle} />;
   }

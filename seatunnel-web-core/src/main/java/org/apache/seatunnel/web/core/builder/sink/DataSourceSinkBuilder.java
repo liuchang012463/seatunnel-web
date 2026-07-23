@@ -55,13 +55,14 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
     @Override
     public Config build(Config data, DagBuildContext context) {
         Config config = resolveNodeConfig(data);
+        config = mergeIdentityFields(data, config);
         config = appendPluginInputIfNecessary(data, config, context);
 
         Long dataSourceId = parseDataSourceId(config);
         DataSource dataSource = getRequiredDataSource(dataSourceId);
 
-        DbType dbType = parseDbType(data);
-        String pluginName = getRequiredPluginName(data);
+        DbType dbType = parseDbType(config);
+        String pluginName = getRequiredPluginName(config);
 
         DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
         DataSourceHoconBuilder hoconBuilder = processor.getQueryBuilder(pluginName);
@@ -124,18 +125,67 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
 
     @Override
     public String connectorName(Config data) {
-        String dbTypeValue = getTrimmedString(data, KEY_DB_TYPE);
+        Config nodeConfig = resolveNodeConfig(data);
+
+        String dbTypeValue = firstNonBlank(
+                getTrimmedString(data, KEY_DB_TYPE),
+                getTrimmedString(nodeConfig, KEY_DB_TYPE)
+        );
         if ("DORIS".equalsIgnoreCase(dbTypeValue)) {
             return "Doris";
         }
+        if ("SFTP".equalsIgnoreCase(dbTypeValue)) {
+            return "SftpFile";
+        }
 
-        String connectorType = getTrimmedString(data, KEY_CONNECTOR_TYPE);
+        String connectorType = firstNonBlank(
+                getTrimmedString(data, KEY_CONNECTOR_TYPE),
+                getTrimmedString(nodeConfig, KEY_CONNECTOR_TYPE)
+        );
         if (StringUtils.isNotBlank(connectorType)) {
             return connectorType;
         }
 
         throw new IllegalArgumentException(
                 "Missing connector name, field '" + KEY_CONNECTOR_TYPE + "' is not provided");
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (StringUtils.isNotBlank(value)) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private Config mergeIdentityFields(Config data, Config nodeConfig) {
+        Map<String, Object> identity = new HashMap<>();
+        putIfAbsent(identity, nodeConfig, data, KEY_DB_TYPE);
+        putIfAbsent(identity, nodeConfig, data, KEY_PLUGIN_NAME);
+        putIfAbsent(identity, nodeConfig, data, KEY_CONNECTOR_TYPE);
+        putIfAbsent(identity, nodeConfig, data, KEY_DATA_SOURCE_ID);
+
+        if (identity.isEmpty()) {
+            return nodeConfig;
+        }
+        return ConfigFactory.parseMap(identity).withFallback(nodeConfig).resolve();
+    }
+
+    private void putIfAbsent(Map<String, Object> target,
+                             Config nodeConfig,
+                             Config data,
+                             String key) {
+        if (StringUtils.isNotBlank(getTrimmedString(nodeConfig, key))) {
+            return;
+        }
+        String value = getTrimmedString(data, key);
+        if (StringUtils.isNotBlank(value)) {
+            target.put(key, value);
+        }
     }
 
     private Long parseDataSourceId(Config config) {

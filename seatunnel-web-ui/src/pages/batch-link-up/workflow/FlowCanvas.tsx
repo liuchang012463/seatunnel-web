@@ -87,6 +87,8 @@ function buildInitialGraph(
 
   const sourceDbType = sourceType?.dbType || 'MYSQL';
   const targetDbType = targetType?.dbType || 'MYSQL';
+  const sourceIsSftp = String(sourceDbType).toUpperCase() === 'SFTP';
+  const targetIsSftp = String(targetDbType).toUpperCase() === 'SFTP';
 
   const sourceTitle =
     sourceType?.dbType ||
@@ -108,7 +110,7 @@ function buildInitialGraph(
       data: {
         nodeType: 'source',
         title: sourceTitle,
-        description: '读取源端数据',
+        description: sourceIsSftp ? '读取 SFTP 文件' : '读取源端数据',
         dbType: sourceDbType,
         connectorType: sourceType?.connectorType,
         pluginName: sourceType?.pluginName,
@@ -118,9 +120,17 @@ function buildInitialGraph(
           connectorType: sourceType?.connectorType,
           pluginName: sourceType?.pluginName,
           pluginOutput: sourceId,
-          readMode: 'table',
+          readMode: sourceIsSftp ? 'file' : 'table',
           table: undefined,
           sql: '',
+          ...(sourceIsSftp
+            ? {
+                filePath: '',
+                format: 'csv',
+                delimiter: ',',
+                hasHeader: false,
+              }
+            : {}),
           extraParams: [],
         },
         meta: {
@@ -137,14 +147,17 @@ function buildInitialGraph(
       data: {
         nodeType: 'sink',
         title: sinkTitle,
-        description: '写入目标端数据',
+        description: targetIsSftp ? '写入 SFTP 文件' : '写入目标端数据',
         dbType: targetDbType,
         connectorType: targetType?.connectorType,
         pluginName: targetType?.pluginName,
         config: {
           dataSourceId: params?.targetDataSourceId || '',
+          dbType: targetType?.dbType,
+          connectorType: targetType?.connectorType,
+          pluginName: targetType?.pluginName,
           autoCreateTable: false,
-          targetMode: 'table',
+          targetMode: targetIsSftp ? 'file' : 'table',
           table: undefined,
           targetTableName: '',
           sql: '',
@@ -152,6 +165,15 @@ function buildInitialGraph(
           primaryKey: '',
           batchSize: '',
           pluginInput: sinkId,
+          ...(targetIsSftp
+            ? {
+                filePath: '',
+                format: 'csv',
+                delimiter: ',',
+                fileNameExpression: '${transactionId}_${now}',
+                behavior: 'DEFAULT',
+              }
+            : {}),
           extraParams: [],
         },
       },

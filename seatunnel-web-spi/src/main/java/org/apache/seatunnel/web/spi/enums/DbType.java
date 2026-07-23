@@ -19,8 +19,8 @@ public enum DbType {
     DORIS("DORIS", "DORIS", "DORIS"),
     KINGBASE("KINGBASE", "KINGBASE", "KINGBASE"),
     DAMENG("DAMENG", "DAMENG", "DAMENG"),
-    H2("H2", "H2", "H2")
-    ;
+    SFTP("SFTP", "SFTP", "SFTP"),
+    H2("H2", "H2", "H2");
 
     private static final Map<String, DbType> DB_TYPE_MAP =
             Arrays.stream(DbType.values()).collect(toMap(DbType::getCode, Function.identity()));

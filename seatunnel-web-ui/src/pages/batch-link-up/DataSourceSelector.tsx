@@ -15,6 +15,7 @@ import SQLServer from '../data-source/icon/SQLServer';
 import StarRocksIcon from '../data-source/icon/StarRocksIcon';
 import KingBaseIcon from '../data-source/icon/KingBaseIcon';
 import TiDBIcon from '../data-source/icon/TiDBIcon';
+import DatabaseIcons from '../data-source/icon/DatabaseIcons';
 
 const { Option } = Select;
 
@@ -25,6 +26,7 @@ type DataSourceType =
   | 'DORIS'
   | 'KINGBASE'
   | 'DAMENG'
+  | 'SFTP'
 
 type DataSourceSelectorProps = {
   type: 'source' | 'target';
@@ -44,7 +46,11 @@ const DATA_SOURCE_CONFIG: Record<
   POSTGRE_SQL: { icon: PostgreSQL, displayName: 'PostgreSQL' },
   DORIS: { icon: DorisIcon, displayName: 'Doris' },
   KINGBASE: { icon: KingBaseIcon, displayName: 'Kingbase' },
-  DAMENG: { icon: DaMengIcon, displayName: 'Dameng' }
+  DAMENG: { icon: DaMengIcon, displayName: 'Dameng' },
+  SFTP: {
+    icon: (props: any) => <DatabaseIcons dbType="SFTP" {...props} />,
+    displayName: 'SFTP',
+  },
 };
 
 // 默认支持的数据源
@@ -54,7 +60,8 @@ const DEFAULT_DATA_SOURCES: DataSourceType[] = [
   'POSTGRE_SQL',
   'DORIS',
   'KINGBASE',
-  'DAMENG'
+  'DAMENG',
+  'SFTP',
 ];
 
 const DataSourceSelector = ({

@@ -95,6 +95,17 @@ export const generateDataSourceOptions = (): DataSourceType[] => [
       </div>
     ),
   },
+  {
+    value: "SFTP",
+    connectorType: "SftpFile",
+    pluginName: "SFTP",
+    label: (
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <DatabaseIcons dbType="SFTP" width="24px" height="24px" />
+        <span style={{ marginLeft: 8 }}>SFTP</span>
+      </div>
+    ),
+  },
 ];
 
 export const generateCDCDataSourceOptions = (): DataSourceType[] => [

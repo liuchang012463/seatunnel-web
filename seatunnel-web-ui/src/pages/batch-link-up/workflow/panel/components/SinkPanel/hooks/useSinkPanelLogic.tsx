@@ -22,6 +22,7 @@ export function useSinkPanelLogic({
   const title = nodeData?.title || "MYSQL";
   const dbType = nodeData?.dbType || "MYSQL";
   const description = nodeData?.description || "写入目标端数据";
+  const isSftp = String(dbType).toUpperCase() === "SFTP";
 
   const dataSourceId = config?.dataSourceId
     ? String(config.dataSourceId)
@@ -33,6 +34,12 @@ export function useSinkPanelLogic({
 
   const table = config?.table;
   const targetTableName = config?.targetTableName || "";
+  const filePath = config?.filePath || config?.path || table || targetTableName || "";
+  const format = config?.format || "csv";
+  const delimiter = config?.delimiter || ",";
+  const fileNameExpression =
+    config?.fileNameExpression || "${transactionId}_${now}";
+  const behavior = config?.behavior || "DEFAULT";
   const sql = config?.sql || "";
   const primaryKey = config?.primaryKey || "";
   const batchSize = config?.batchSize || "";
@@ -114,7 +121,7 @@ export function useSinkPanelLogic({
 
   useEffect(() => {
     const loadTableOptions = async () => {
-      if (!dataSourceId || autoCreateTable) {
+      if (!dataSourceId || autoCreateTable || isSftp) {
         setTableOptions([]);
         return;
       }
@@ -171,12 +178,15 @@ export function useSinkPanelLogic({
     };
 
     loadTableOptions();
-  }, [dataSourceId, autoCreateTable, table, updateNode]);
+  }, [dataSourceId, autoCreateTable, isSftp, table, updateNode]);
 
   const handleDataSourceChange = useCallback(
     (value: string, option: any) => {
       setSelectedSqlTable(undefined);
       setSqlPopoverOpen(false);
+
+      const nextDbType = option?.dbType || nodeData?.dbType || "MYSQL";
+      const nextIsSftp = String(nextDbType).toUpperCase() === "SFTP";
 
       updateNode(
         {
@@ -185,10 +195,25 @@ export function useSinkPanelLogic({
           targetTableName: "",
           sql: "",
           primaryKey: "",
+          ...(nextIsSftp
+            ? {
+                targetMode: "file",
+                autoCreateTable: false,
+                writeMode: "append",
+                filePath: "",
+                format: "csv",
+                delimiter: ",",
+                fileNameExpression: "${transactionId}_${now}",
+                behavior: "DEFAULT",
+              }
+            : {
+                targetMode: "table",
+                filePath: undefined,
+              }),
         },
         {
           title: option?.label || nodeData?.title,
-          dbType: option?.dbType || nodeData?.dbType || "MYSQL",
+          dbType: nextDbType,
         }
       );
     },
@@ -275,6 +300,7 @@ export function useSinkPanelLogic({
   return {
     title,
     dbType,
+    isSftp,
     description,
 
     dataSourceId,
@@ -283,6 +309,11 @@ export function useSinkPanelLogic({
     targetMode,
     table,
     targetTableName,
+    filePath,
+    format,
+    delimiter,
+    fileNameExpression,
+    behavior,
     sql,
     primaryKey,
     batchSize,

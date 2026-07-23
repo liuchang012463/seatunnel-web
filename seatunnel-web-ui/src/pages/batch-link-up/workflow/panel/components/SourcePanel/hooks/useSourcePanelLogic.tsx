@@ -27,10 +27,15 @@ export function useSourcePanelLogic({
   const title = nodeData?.title || "来源节点";
   const dbType = nodeData?.dbType || "MYSQL";
   const description = nodeData?.description || "读取源端数据";
+  const isSftp = String(dbType).toUpperCase() === "SFTP";
 
   const dataSourceId = config?.dataSourceId ? String(config.dataSourceId) : "";
   const readMode = config?.readMode || "table";
   const table = config?.table || undefined;
+  const filePath = config?.filePath || config?.path || table || "";
+  const format = config?.format || "csv";
+  const delimiter = config?.delimiter || ",";
+  const hasHeader = Boolean(config?.hasHeader);
   const sql = config?.sql || "";
   const extraParams = config?.extraParams || [];
 
@@ -131,7 +136,7 @@ export function useSourcePanelLogic({
 
   useEffect(() => {
     const loadTableOptions = async () => {
-      if (!dataSourceId) {
+      if (!dataSourceId || isSftp) {
         setTableOptions([]);
         return;
       }
@@ -188,7 +193,7 @@ export function useSourcePanelLogic({
     };
 
     loadTableOptions();
-  }, [dataSourceId, table, updateNode]);
+  }, [dataSourceId, isSftp, table, updateNode]);
 
   const handleDataSourceChange = useCallback(
     (value: string, option: any) => {
@@ -197,15 +202,29 @@ export function useSourcePanelLogic({
       setSqlPopoverOpen(false);
       setResolvePopoverOpen(false);
 
+      const nextDbType = option?.dbType || nodeData?.dbType || "MYSQL";
+      const nextIsSftp = String(nextDbType).toUpperCase() === "SFTP";
       updateNode(
         {
           dataSourceId: value,
           table: undefined,
           sql: "",
+          ...(nextIsSftp
+            ? {
+                readMode: "file",
+                filePath: "",
+                format: "csv",
+                delimiter: ",",
+                hasHeader: false,
+              }
+            : {
+                readMode: "table",
+                filePath: undefined,
+              }),
         },
         {
           title: option?.label || nodeData?.title,
-          dbType: option?.dbType || nodeData?.dbType || "MYSQL",
+          dbType: nextDbType,
         },
         resetSchemaMeta
       );
@@ -236,6 +255,11 @@ export function useSourcePanelLogic({
 
     if (!currentDataSourceId) {
       message.warning("请先选择来源数据源");
+      return [];
+    }
+
+    if (isSftp) {
+      message.info("SFTP 文件数据源暂不支持自动字段解析，请在目标端或映射中手动配置字段");
       return [];
     }
 
@@ -309,11 +333,16 @@ export function useSourcePanelLogic({
     } finally {
       setTableLoading(false);
     }
-  }, [dataSourceId, readMode, table, sql, updateNode, scheduleParamsList]);
+  }, [dataSourceId, isSftp, readMode, table, sql, updateNode, scheduleParamsList]);
 
   const handlePreview = useCallback(async () => {
     if (!dataSourceId) {
       message.warning("请选择数据源");
+      return;
+    }
+
+    if (isSftp) {
+      message.info("SFTP 文件数据源暂不支持数据预览");
       return;
     }
 
@@ -354,6 +383,7 @@ export function useSourcePanelLogic({
     }
   }, [
     dataSourceId,
+    isSftp,
     readMode,
     table,
     sql,
@@ -466,10 +496,15 @@ export function useSourcePanelLogic({
     meta,
     title,
     dbType,
+    isSftp,
     description,
     dataSourceId,
     readMode,
     table,
+    filePath,
+    format,
+    delimiter,
+    hasHeader,
     sql,
     extraParams,
     currentDataSource,

@@ -16,6 +16,7 @@ export const COMMON_DB_OPTIONS: DataSourceOptionItem[] = [
   { label: "DORIS", value: "DORIS" },
   { label: "KINGBASE", value: "KINGBASE" },
   { label: "DAMENG", value: "DAMENG" },
+  { label: "SFTP", value: "SFTP" },
 ];
 
 export const ENVIRONMENT_OPTIONS: DataSourceOptionItem[] = [
@@ -74,6 +75,17 @@ export const dataSourceGroupList: DataSourceGroup[] = [
         dbType: "DORIS",
         type: "DORIS",
         connectorType: "Doris",
+      },
+    ],
+  },
+  {
+    groupName: "文件存储",
+    datasourceList: [
+      {
+        onlyDiScript: false,
+        dbType: "SFTP",
+        type: "SFTP",
+        connectorType: "SftpFile",
       },
     ],
   },
