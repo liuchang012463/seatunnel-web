@@ -7,11 +7,20 @@ import { history } from '@umijs/max';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
 import { GlobalSearch, Knowledge } from './components/RightContent';
+import { isPrototypeMode } from './prototype/mode';
+import { prototypeMenuData } from './prototype/menuData';
+import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
 import { errorConfig } from './requestErrorConfig';
 import HttpUtils from './utils/HttpUtils';
 
 const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/login';
+const prototypeUser = {
+  name: '原型演示用户',
+  avatar: '',
+  userid: 'prototype-sso-user',
+  access: 'admin',
+} as API.CurrentUser;
 
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
@@ -23,6 +32,9 @@ export async function getInitialState(): Promise<{
   fetchUserInfo?: () => Promise<API.CurrentUser | undefined>;
 }> {
   const fetchUserInfo = async () => {
+    if (isPrototypeMode) {
+      return prototypeUser;
+    }
     try {
       const msg = await HttpUtils.get<API.CurrentUser | undefined>(
         '/api/v1/users/currentUser',
@@ -36,6 +48,16 @@ export async function getInitialState(): Promise<{
   };
   // 如果不是登录页面，执行
   const { location } = history;
+  if (isPrototypeMode) {
+    return {
+      fetchUserInfo,
+      currentUser: prototypeUser,
+      settings: {
+        ...defaultSettings,
+        title: '数据采集引接软件',
+      } as Partial<LayoutSettings>,
+    };
+  }
   if (![loginPath, '/login'].includes(location.pathname)) {
     const currentUser = await fetchUserInfo();
     return {
@@ -56,17 +78,26 @@ export const layout: RunTimeLayoutConfig = ({
   setInitialState,
 }) => {
   return {
+    menuDataRender: () => prototypeMenuData,
     menuProps: {
-      defaultOpenKeys: ['/sync'],
+      defaultOpenKeys: isPrototypeMode
+        ? [
+            '/menu/reporting',
+            '/menu/resources',
+            '/menu/ingestion',
+            '/menu/operations',
+            '/menu/lake',
+            '/menu/system',
+          ]
+        : ['/menu/ingestion'],
     },
-    actionsRender: () => [
-      <GlobalSearch key="globalsearch" />,
-      // <OpenAPI key="open-api" />,
-      <Knowledge key="knowledge" />,
-      // <BI key="bi" />,
-      // <ThemeSwitch key="theme-switch" />,
-      // <SelectLang key="SelectLang" />,
-    ],
+    actionsRender: () =>
+      isPrototypeMode
+        ? []
+        : [
+            <GlobalSearch key="globalsearch" />,
+            <Knowledge key="knowledge" />,
+          ],
     avatarProps: {
       src: initialState?.currentUser?.avatar,
       title: <AvatarName />,
@@ -82,11 +113,15 @@ export const layout: RunTimeLayoutConfig = ({
       const { location } = history;
       console.log(initialState?.currentUser);
       // 如果没有登录，重定向到 login
-      if (!initialState?.currentUser && location.pathname !== loginPath) {
+      if (
+        !isPrototypeMode &&
+        !initialState?.currentUser &&
+        location.pathname !== loginPath
+      ) {
         history.push(loginPath);
       }
     },
-    bgLayoutImgList: [
+    bgLayoutImgList: isPrototypeMode ? [] : [
       {
         src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/D2LWSqNny4sAAAAAAAAAAAAAFl94AQBr',
         left: 85,
@@ -113,10 +148,15 @@ export const layout: RunTimeLayoutConfig = ({
     // 增加一个 loading 的状态
     childrenRender: (children) => {
       // if (initialState?.loading) return <PageLoading />;
+      const content = isPrototypeMode ? (
+        <PrototypeAnnotationBar>{children}</PrototypeAnnotationBar>
+      ) : (
+        children
+      );
       return (
         <>
-          {children}
-          {isDev && (
+          {content}
+          {isDev && !isPrototypeMode && (
             <SettingDrawer
               disableUrlParams
               enableDarkTheme

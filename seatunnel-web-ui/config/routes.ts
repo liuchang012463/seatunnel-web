@@ -1,118 +1,65 @@
-﻿/**
- * @name umi 的路由配置
- * @description 只支持 path,component,routes,redirect,wrappers,name,icon 的配置
- * @doc https://umijs.org/docs/guides/routes
- */
+const prototypeMode =
+  process.env.REACT_APP_PROTOTYPE === '1' ||
+  process.env.UMI_APP_PROTOTYPE === '1';
+const prototypePage = './prototype/CapabilityPage';
+const component = (existing: string) =>
+  prototypeMode ? prototypePage : existing;
+
+const businessRoutes = [
+  ['/reporting/forms', prototypePage],
+  ['/reporting/reports', prototypePage],
+  ['/data-source', component('./data-source')],
+  ['/client', component('./client')],
+  ['/resources/data-discovery', prototypePage],
+  ['/sync/batch-link-up', component('./batch-link-up')],
+  ['/sync/stream-link-up', component('./stream-link-up')],
+  ['/sync/cloud-edge-tasks', prototypePage],
+  ['/sync/edge-access-tasks', prototypePage],
+  ['/sync/links', prototypePage],
+  ['/sync/topology', prototypePage],
+  ['/bi', component('./bi')],
+  ['/metrics', component('./metrics')],
+  ['/alarm', component('./alarm')],
+  ['/operations/diagnostics', prototypePage],
+  ['/lake/resources', prototypePage],
+  ['/lake/lifecycle', prototypePage],
+  ['/lake/logical-access', prototypePage],
+  ['/knowledge-management', component('./knowledge-management')],
+  ['/open-api', component('./open-api')],
+].map(([path, routeComponent]) => ({
+  path,
+  component: routeComponent,
+  hideInMenu: true,
+}));
+
+const hiddenRoutes = [
+  ['/sync/batch-link-up/:id/detail', './batch-link-up/detail', '/sync/batch-link-up'],
+  ['/sync/batch-link-up/:id/config/single', './batch-link-up/config/single', '/sync/batch-link-up'],
+  ['/sync/batch-link-up/:id/config/multi', './batch-link-up/config/multi', '/sync/batch-link-up'],
+  ['/sync/batch-link-up/:id/config/script', './batch-link-up/config/script', '/sync/batch-link-up'],
+  ['/sync/stream-link-up/:id/detail', './stream-link-up/detail', '/sync/stream-link-up'],
+  ['/sync/stream-link-up/:id/config/single', './stream-link-up/config/single', '/sync/stream-link-up'],
+  ['/sync/stream-link-up/:id/config/multi', './stream-link-up/config/multi', '/sync/stream-link-up'],
+  ['/sync/stream-link-up/:id/config/script', './stream-link-up/config/script', '/sync/stream-link-up'],
+].map(([path, existing, parentPath]) => ({
+  path,
+  component: component(existing),
+  hideInMenu: true,
+  parentKeys: [parentPath],
+}));
+
 export default [
   {
     path: '/',
-    redirect: '/data-source',
-  },
-
-
-  {
-    icon: 'database',
-    name: 'datasource',
-    path: '/data-source',
-    component: './data-source',
-  },
-
-
-  {
-    path: '/sync/batch-link-up',
-    component: './batch-link-up',
-    name: 'data-sync.batch',
-    icon: 'sun',
-
+    redirect: prototypeMode ? '/prototype/traceability' : '/data-source',
   },
   {
-    path: '/sync/batch-link-up/:id/detail',
-    component: './batch-link-up/detail',
+    path: '/prototype/traceability',
+    component: './prototype/TraceabilityPage',
     hideInMenu: true,
   },
-  {
-    path: '/sync/batch-link-up/:id/config/single',
-    component: './batch-link-up/config/single',
-    hideInMenu: true,
-  },
-  {
-    path: '/sync/batch-link-up/:id/config/multi',
-    component: './batch-link-up/config/multi',
-    hideInMenu: true,
-  },
-  {
-    path: '/sync/batch-link-up/:id/config/script',
-    component: './batch-link-up/config/script',
-    hideInMenu: true,
-  },
-  {
-    icon: 'wifi',
-    name: 'data-sync.stream',
-    path: '/sync/stream-link-up',
-    component: './stream-link-up',
-  },
-  {
-    path: '/sync/stream-link-up/:id/detail',
-    component: './stream-link-up/detail',
-    hideInMenu: true,
-  },
-  {
-    path: '/sync/stream-link-up/:id/config/single',
-    component: './stream-link-up/config/single',
-    hideInMenu: true,
-  },
-  {
-    path: '/sync/stream-link-up/:id/config/multi',
-    component: './stream-link-up/config/multi',
-    hideInMenu: true,
-  },
-  {
-    path: '/sync/stream-link-up/:id/config/script',
-    component: './stream-link-up/config/script',
-    hideInMenu: true,
-  },
-  {
-    icon: 'bulb',
-    name: 'client',
-    path: '/client',
-    component: './client',
-  },
-  {
-    icon: 'monitor',
-    name: 'metrics',
-    path: '/metrics',
-    component: './metrics',
-  },
-  {
-    icon: 'bell',
-    name: 'alarm',
-    path: '/alarm',
-    component: './alarm',
-  },
-  {
-    icon: 'read',
-    name: 'knowledge-management',
-    path: '/knowledge-management',
-    component: './knowledge-management',
-    hideInMenu: true,
-  },
-  {
-    icon: 'read',
-    name: 'open-api',
-    path: '/open-api',
-    component: './open-api',
-    hideInMenu: true,
-  },
-
-  {
-    icon: 'pieChart',
-    name: '数据洞察',
-    path: '/bi',
-    component: './bi',
-    hideInMenu: true,
-  },
-
-
+  ...businessRoutes,
+  ...hiddenRoutes,
   {
     name: 'Login',
     path: '/login',
@@ -120,7 +67,6 @@ export default [
     layout: false,
     hideInMenu: true,
   },
-
   {
     path: '*',
     layout: false,
