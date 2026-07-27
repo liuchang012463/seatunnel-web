@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.common.QueryResult;
 import org.apache.seatunnel.web.spi.bean.vo.ColumnOptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
+import org.apache.seatunnel.web.spi.bean.vo.FileEntryVO;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,6 +41,14 @@ public class DataSourceCatalogController {
     @ApiException(DATASOURCE_CATALOG_TABLE_LIST_ERROR)
     public Result<List<OptionVO>> listTable(@PathVariable("id") Long id) {
         return Result.buildSuc(dataSourceCatalogService.listTable(id));
+    }
+
+    @GetMapping("/files/{id}")
+    @Operation(summary = "listRemoteFiles", description = "List one level of a remote FTP/SFTP directory")
+    public Result<List<FileEntryVO>> listRemoteFiles(
+            @PathVariable("id") Long id,
+            @RequestParam(value = "path", required = false) String path) {
+        return Result.buildSuc(dataSourceCatalogService.listFiles(id, path));
     }
 
     /**

@@ -20,7 +20,9 @@ public enum DbType {
     KINGBASE("KINGBASE", "KINGBASE", "KINGBASE"),
     DAMENG("DAMENG", "DAMENG", "DAMENG"),
     H2("H2", "H2", "H2"),
-    KAFKA("KAFKA", "KAFKA", "KAFKA")
+    KAFKA("KAFKA", "KAFKA", "KAFKA"),
+    FTP("FTP", "FTP", "FTP"),
+    SFTP("SFTP", "SFTP", "SFTP")
     ;
 
     private static final Map<String, DbType> DB_TYPE_MAP =

@@ -1,6 +1,6 @@
-import HttpUtils from '@/utils/HttpUtils';
 import { FormInstance, TablePaginationConfig } from 'antd';
 import { Key } from 'antd/es/table/interface';
+import HttpUtils from '@/utils/HttpUtils';
 
 export enum Operate {
   Add,
@@ -36,6 +36,10 @@ export const seatunnelJobDefinitionApi = {
     return HttpUtils.post(`${apiPrefix}/guide-single/saveOrUpdate`, data);
   },
 
+  saveOrUpdateFileSync: (data: any) => {
+    return HttpUtils.post(`${apiPrefix}/file-sync/saveOrUpdate`, data);
+  },
+
   /**
    * GUIDE_MULTI 模式保存/更新
    */
@@ -43,18 +47,14 @@ export const seatunnelJobDefinitionApi = {
     return HttpUtils.post(`${apiPrefix}/guide-multi/saveOrUpdate`, data);
   },
 
-  selectById: (
-    id: any,
-  ): Promise<{ code: number; data: SeatunnelJobDefinition; message?: string }> => {
+  selectById: (id: any): Promise<{ code: number; data: SeatunnelJobDefinition; message?: string }> => {
     return HttpUtils.get(`${apiPrefix}/${id}`);
   },
 
   /**
-  * 编辑页详情查询
-  */
-  selectEditDetail: (
-    id: any,
-  ): Promise<{ code: number; data: any; message?: string; msg?: string }> => {
+   * 编辑页详情查询
+   */
+  selectEditDetail: (id: any): Promise<{ code: number; data: any; message?: string; msg?: string }> => {
     return HttpUtils.get(`${apiPrefix}/${id}/edit-detail`);
   },
 
@@ -67,8 +67,8 @@ export const seatunnelJobDefinitionApi = {
   },
 
   /**
- * 任务上线
- */
+   * 任务上线
+   */
   online: (id: string | number): Promise<{ code: number; data: boolean; message?: string; msg?: string }> => {
     return HttpUtils.put(`${apiPrefix}/${id}/online`);
   },
@@ -87,28 +87,25 @@ export const seatunnelJobDefinitionApi = {
   /**
    * GUIDE_SINGLE 模式预览 HOCON
    */
-  buildGuideSingleConfig: (
-    data: any,
-  ): Promise<{ code: number; data: string; message?: string }> => {
+  buildGuideSingleConfig: (data: any): Promise<{ code: number; data: string; message?: string }> => {
     return HttpUtils.post(`${apiPrefix}/guide-single/build-config`, data);
+  },
+
+  buildFileSyncConfig: (data: any): Promise<{ code: number; data: string; message?: string }> => {
+    return HttpUtils.post(`${apiPrefix}/file-sync/build-config`, data);
   },
 
   /**
    * GUIDE_MULTI 模式预览 HOCON
    */
-  buildGuideMultiConfig: (
-    data: any,
-  ): Promise<{ code: number; data: string; message?: string }> => {
+  buildGuideMultiConfig: (data: any): Promise<{ code: number; data: string; message?: string }> => {
     return HttpUtils.post(`${apiPrefix}/guide-multi/build-config`, data);
   },
-
 
   /**
    * SCRIPT 模式预览 HOCON
    */
-  buildScriptConfig: (
-    data: any,
-  ): Promise<{ code: number; data: string; message?: string }> => {
+  buildScriptConfig: (data: any): Promise<{ code: number; data: string; message?: string }> => {
     return HttpUtils.post(`${apiPrefix}/script/build-config`, data);
   },
 
@@ -165,21 +162,15 @@ const seatunnelJobScheduleApiPrefix = '/api/v1/job/schedule';
 
 export const seatunnelJobScheduleApi = {
   getLast5ExecutionTimes: (cron: string) => {
-    return HttpUtils.get<any[]>(
-      `${seatunnelJobScheduleApiPrefix}/last5-execution-times?cron=` + cron,
-    );
+    return HttpUtils.get<any[]>(`${seatunnelJobScheduleApiPrefix}/last5-execution-times?cron=` + cron);
   },
 
   stopSchedule: (jobScheduleId: string) => {
-    return HttpUtils.get<any[]>(
-      `${seatunnelJobScheduleApiPrefix}/stop-schedule?scheduleId=` + jobScheduleId,
-    );
+    return HttpUtils.get<any[]>(`${seatunnelJobScheduleApiPrefix}/stop-schedule?scheduleId=` + jobScheduleId);
   },
 
   startSchedule: (jobScheduleId: string) => {
-    return HttpUtils.get<any[]>(
-      `${seatunnelJobScheduleApiPrefix}/start-schedule?scheduleId=` + jobScheduleId,
-    );
+    return HttpUtils.get<any[]>(`${seatunnelJobScheduleApiPrefix}/start-schedule?scheduleId=` + jobScheduleId);
   },
 };
 
@@ -191,10 +182,9 @@ export const seatunnelCopilotApi = {
   },
 };
 
-
 export const batchJobInstanceApi = {
   page: (data: any) => {
-    return HttpUtils.post("/api/v1/job/batch-instance/page", data);
+    return HttpUtils.post('/api/v1/job/batch-instance/page', data);
   },
 
   detail: (id: string | number) => {
@@ -202,9 +192,7 @@ export const batchJobInstanceApi = {
   },
 
   tableMetrics: (instanceId: string | number) => {
-    return HttpUtils.get(
-      `/api/v1/job/batch-instance/${instanceId}/table-metrics`
-    );
+    return HttpUtils.get(`/api/v1/job/batch-instance/${instanceId}/table-metrics`);
   },
 
   log: (instanceId: string | number) => {

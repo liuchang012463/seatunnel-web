@@ -12,7 +12,8 @@ public enum JobDefinitionMode {
 
     SCRIPT("SCRIPT", "脚本模式"),
     GUIDE_SINGLE("GUIDE_SINGLE", "单表模式"),
-    GUIDE_MULTI("GUIDE_MULTI", "多表模式");
+    GUIDE_MULTI("GUIDE_MULTI", "多表模式"),
+    FILE_SYNC("FILE_SYNC", "文件同步模式");
 
     @EnumValue
     private final String code;

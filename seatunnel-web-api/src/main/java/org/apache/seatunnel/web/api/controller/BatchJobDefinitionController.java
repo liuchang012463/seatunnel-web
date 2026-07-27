@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.spi.bean.dto.BatchJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideMultiJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.batch.BatchFileSyncJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
@@ -65,6 +66,20 @@ public class BatchJobDefinitionController {
     @ApiException(SAVE_OR_UPDATE_BATCH_JOB_DEFINITION_ERROR)
     public Result<JobDefinitionSaveResultVO> saveGuideSingle(@RequestBody BatchGuideSingleJobSaveCommand command) {
         return Result.buildSuc(batchJobDefinitionService.saveOrUpdate(command));
+    }
+
+    @PostMapping("/file-sync/saveOrUpdate")
+    @Operation(summary = "saveOrUpdateFileSyncJobDefinition", description = "保存或更新 FTP/SFTP 文件同步任务")
+    @ApiException(SAVE_OR_UPDATE_BATCH_JOB_DEFINITION_ERROR)
+    public Result<JobDefinitionSaveResultVO> saveFileSync(@RequestBody BatchFileSyncJobSaveCommand command) {
+        return Result.buildSuc(batchJobDefinitionService.saveOrUpdate(command));
+    }
+
+    @PostMapping("/file-sync/build-config")
+    @Operation(summary = "buildFileSyncJobHoconConfig", description = "预览 FTP/SFTP 文件同步 HOCON")
+    @ApiException(QUERY_BATCH_JOB_DEFINITION_ERROR)
+    public Result<String> buildFileSyncConfig(@RequestBody BatchFileSyncJobSaveCommand command) {
+        return Result.buildSuc(batchJobDefinitionService.buildHoconConfig(command));
     }
 
     /**

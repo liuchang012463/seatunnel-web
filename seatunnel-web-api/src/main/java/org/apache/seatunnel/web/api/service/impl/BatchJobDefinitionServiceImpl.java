@@ -25,6 +25,7 @@ import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.BatchJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideMultiJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.batch.BatchFileSyncJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.BatchJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
@@ -146,6 +147,11 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     }
 
     @Override
+    public JobDefinitionSaveResultVO saveOrUpdate(BatchFileSyncJobSaveCommand command) {
+        return doSaveOrUpdate(command);
+    }
+
+    @Override
     public JobDefinitionSaveResultVO saveOrUpdate(BatchGuideMultiJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
@@ -173,6 +179,11 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
     @Override
     public String buildHoconConfig(BatchGuideSingleJobSaveCommand command) {
+        return doBuildHoconConfig(command);
+    }
+
+    @Override
+    public String buildHoconConfig(BatchFileSyncJobSaveCommand command) {
         return doBuildHoconConfig(command);
     }
 

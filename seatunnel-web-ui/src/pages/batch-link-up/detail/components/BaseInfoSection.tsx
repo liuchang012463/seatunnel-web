@@ -1,8 +1,8 @@
-import { Form, Input, Radio } from "antd";
-import DataSourceSelect, { generateDataSourceOptions } from "../../DataSourceSelect";
-import IconRightArrow from "../../IconRightArrow";
-import ModeCard from "./ModeCard";
-import type { SyncMode } from "../types";
+import { Form, Input, Radio } from 'antd';
+import DataSourceSelect, { generateDataSourceOptions } from '../../DataSourceSelect';
+import IconRightArrow from '../../IconRightArrow';
+import type { SyncMode } from '../types';
+import ModeCard from './ModeCard';
 
 const { TextArea } = Input;
 
@@ -27,12 +27,9 @@ const BaseConfigSection: React.FC<Props> = ({
     <div className="p-6">
       {/* 整体卡片 */}
       <div className="rounded-[24px] bg-white shadow-sm space-y-6">
-
         {/* ① 数据同步方式（主视觉块） */}
         <div className="rounded-2xl border border-[#E4E7EC] bg-[#FAFBFC] p-5">
-          <div className="mb-3 text-[14px] font-medium text-[#344054]">
-            数据同步方式
-          </div>
+          <div className="mb-3 text-[14px] font-medium text-[#344054]">数据同步方式</div>
 
           <div className="flex items-center gap-3">
             <DataSourceSelect
@@ -61,42 +58,39 @@ const BaseConfigSection: React.FC<Props> = ({
 
         {/* ② 任务信息 */}
         <div className="space-y-4">
-          <div className="text-[14px] font-medium text-[#344054]">
-            任务信息
-          </div>
+          <div className="text-[14px] font-medium text-[#344054]">任务信息</div>
 
           <div className="grid grid-cols-1 gap-4">
             <Form.Item
               label="任务名称"
               name="jobName"
-              rules={[{ required: true, message: "请输入任务名称" }]}
+              rules={[{ required: true, message: '请输入任务名称' }]}
               className="mb-0"
             >
-              <Input
-                placeholder="例如：MySQL → Oracle 用户表同步"
-                className="!h-[36px] !rounded-[12px]"
-              />
+              <Input placeholder="例如：MySQL → Oracle 用户表同步" className="!h-[36px] !rounded-[12px]" />
             </Form.Item>
 
             <Form.Item label="任务描述" name="jobDesc" className="mb-0">
-              <TextArea
-                placeholder="描述同步范围、用途、注意事项等"
-                rows={3}
-                className="!rounded-xl"
-              />
+              <TextArea placeholder="描述同步范围、用途、注意事项等" rows={3} className="!rounded-xl" />
             </Form.Item>
           </div>
         </div>
 
         {/* ③ 配置模式 */}
         <div>
-          <div className="mb-3 text-[14px] font-medium text-[#344054]">
-            配置模式
-          </div>
+          <div className="mb-3 text-[14px] font-medium text-[#344054]">配置模式</div>
 
           <Form.Item name="mode" initialValue="GUIDE_SINGLE" className="mb-0">
             <Radio.Group className="w-full">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+                <ModeCard
+                  value="FILE_SYNC"
+                  current={mode}
+                  title="文件夹同步"
+                  desc="FTP/SFTP 二进制目录同步，按路径与文件规则配置。"
+                  tag="文件"
+                  onSelect={setMode}
+                />
                 <ModeCard
                   value="GUIDE_SINGLE"
                   current={mode}

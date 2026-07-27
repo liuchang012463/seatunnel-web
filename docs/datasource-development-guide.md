@@ -448,6 +448,8 @@ PG-CDC、sFTP、S3 均需重新完成阶段 0 的能力矩阵，不能仅复制 
 
 ## 7. Pull Request 检查清单
 
+FTP/SFTP 文件型数据源的补充设计、生命周期与验收项见 [ftp-sftp-file-sync-design.md](./ftp-sftp-file-sync-design.md)。文件型数据源必须使用独立任务模式与页面，不得套用单表/多表的表元数据交互。
+
 复制以下清单到新数据源 PR：
 
 ```text

@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.service;
 import org.apache.seatunnel.web.common.QueryResult;
 import org.apache.seatunnel.web.spi.bean.vo.ColumnOptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
+import org.apache.seatunnel.web.spi.bean.vo.FileEntryVO;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,8 @@ public interface DataSourceCatalogService {
      * @throws RuntimeException if the data source is unreachable or the query fails
      */
     List<OptionVO> listTable(Long id);
+
+    List<FileEntryVO> listFiles(Long id, String path);
 
     /**
      * Retrieves a list of table references from a datasource, with optional filtering based on match mode.

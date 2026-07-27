@@ -4,6 +4,7 @@ import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.spi.bean.dto.BatchJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideMultiJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.batch.BatchFileSyncJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
@@ -18,11 +19,15 @@ public interface BatchJobDefinitionService {
 
     JobDefinitionSaveResultVO saveOrUpdate(BatchGuideSingleJobSaveCommand command);
 
+    JobDefinitionSaveResultVO saveOrUpdate(BatchFileSyncJobSaveCommand command);
+
     JobDefinitionSaveResultVO saveOrUpdate(BatchGuideMultiJobSaveCommand command);
 
     String buildHoconConfig(BatchScriptJobSaveCommand command);
 
     String buildHoconConfig(BatchGuideSingleJobSaveCommand command);
+
+    String buildHoconConfig(BatchFileSyncJobSaveCommand command);
 
     String buildHoconConfig(BatchGuideMultiJobSaveCommand command);
 

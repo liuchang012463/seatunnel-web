@@ -8,6 +8,9 @@ import org.apache.seatunnel.web.spi.bean.dto.command.GuideSingleJobContentComman
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Map;
+
 @Component
 public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler {
 
@@ -26,13 +29,16 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
 
     @Override
     public boolean supports(JobDefinitionMode mode) {
-        return JobDefinitionMode.GUIDE_SINGLE == mode;
+        return JobDefinitionMode.GUIDE_SINGLE == mode || JobDefinitionMode.FILE_SYNC == mode;
     }
 
     @Override
     public void validate(JobDefinitionSaveCommand command) {
         GuideSingleJobContentCommand cmd = cast(command);
         workflowValidator.validate(cmd.getWorkflow());
+        if (command.getMode() == JobDefinitionMode.FILE_SYNC) {
+            validateFileSync(cmd.getWorkflow());
+        }
     }
 
     @Override
@@ -58,5 +64,41 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
             throw new IllegalArgumentException("command must implement GuideSingleJobContentCommand");
         }
         return (GuideSingleJobContentCommand) command;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void validateFileSync(Map<String, Object> workflow) {
+        Object rawNodes = workflow.get("nodes");
+        if (!(rawNodes instanceof List)) {
+            throw new IllegalArgumentException("FILE_SYNC workflow nodes are required");
+        }
+        Map<String, Object> source = null;
+        Map<String, Object> sink = null;
+        for (Object rawNode : (List<?>) rawNodes) {
+            if (!(rawNode instanceof Map)) { continue; }
+            Object rawData = ((Map<?, ?>) rawNode).get("data");
+            if (!(rawData instanceof Map)) { continue; }
+            Map<String, Object> data = (Map<String, Object>) rawData;
+            Object rawConfig = data.get("config");
+            Map<String, Object> config = rawConfig instanceof Map ? (Map<String, Object>) rawConfig : data;
+            if ("source".equals(String.valueOf(data.get("nodeType")))) { source = config; }
+            if ("sink".equals(String.valueOf(data.get("nodeType")))) { sink = config; }
+        }
+        if (source == null || sink == null) {
+            throw new IllegalArgumentException("FILE_SYNC requires exactly one source and one sink");
+        }
+        requireFileDbType(source, "source");
+        requireFileDbType(sink, "sink");
+        if ("INCREMENTAL".equalsIgnoreCase(String.valueOf(source.get("syncType")))
+                && !String.valueOf(source.get("dataSourceId")).equals(String.valueOf(sink.get("dataSourceId")))) {
+            throw new IllegalArgumentException("FILE_SYNC incremental mode requires the same source and target datasource");
+        }
+    }
+
+    private void requireFileDbType(Map<String, Object> config, String role) {
+        String dbType = String.valueOf(config.get("dbType"));
+        if (!"FTP".equalsIgnoreCase(dbType) && !"SFTP".equalsIgnoreCase(dbType)) {
+            throw new IllegalArgumentException("FILE_SYNC " + role + " dbType must be FTP or SFTP");
+        }
     }
 }

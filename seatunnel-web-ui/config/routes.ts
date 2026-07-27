@@ -9,7 +9,6 @@ export default [
     redirect: '/data-source',
   },
 
-
   {
     icon: 'database',
     name: 'datasource',
@@ -17,13 +16,11 @@ export default [
     component: './data-source',
   },
 
-
   {
     path: '/sync/batch-link-up',
     component: './batch-link-up',
     name: 'data-sync.batch',
     icon: 'sun',
-
   },
   {
     path: '/sync/batch-link-up/:id/detail',
@@ -33,6 +30,11 @@ export default [
   {
     path: '/sync/batch-link-up/:id/config/single',
     component: './batch-link-up/config/single',
+    hideInMenu: true,
+  },
+  {
+    path: '/sync/batch-link-up/:id/config/file-sync',
+    component: './batch-link-up/config/file-sync',
     hideInMenu: true,
   },
   {
@@ -111,7 +113,6 @@ export default [
     component: './bi',
     hideInMenu: true,
   },
-
 
   {
     name: 'Login',
