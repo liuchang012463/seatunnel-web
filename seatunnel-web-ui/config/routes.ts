@@ -1,29 +1,35 @@
-const prototypeMode =
+﻿const prototypeMode =
   process.env.REACT_APP_PROTOTYPE === '1' ||
   process.env.UMI_APP_PROTOTYPE === '1';
 const prototypePage = './prototype/CapabilityPage';
 const component = (existing: string) =>
   prototypeMode ? prototypePage : existing;
 
+/**
+ * 真实实现的二级菜单页面（在原型模式下被 CapabilityPage 覆盖，方便菜单评审）。
+ *
+ * 集成类（INTEGRATE）页面：reporting/forms、data-discovery、sync/topology
+ * 暂保留 prototypePage 占位，待 OpenMetadata / TDuck 集成就绪后接入。
+ */
 const businessRoutes = [
   ['/reporting/forms', prototypePage],
-  ['/reporting/reports', prototypePage],
+  ['/reporting/reports', component('./reporting-reports')],
   ['/data-source', component('./data-source')],
   ['/client', component('./client')],
   ['/resources/data-discovery', prototypePage],
   ['/sync/batch-link-up', component('./batch-link-up')],
   ['/sync/stream-link-up', component('./stream-link-up')],
-  ['/sync/cloud-edge-tasks', prototypePage],
-  ['/sync/edge-access-tasks', prototypePage],
-  ['/sync/links', prototypePage],
+  ['/sync/cloud-edge-tasks', component('./sync-cloud-edge')],
+  ['/sync/edge-access-tasks', component('./sync-edge-access')],
+  ['/sync/links', component('./sync-links')],
   ['/sync/topology', prototypePage],
   ['/bi', component('./bi')],
   ['/metrics', component('./metrics')],
   ['/alarm', component('./alarm')],
-  ['/operations/diagnostics', prototypePage],
-  ['/lake/resources', prototypePage],
-  ['/lake/lifecycle', prototypePage],
-  ['/lake/logical-access', prototypePage],
+  ['/operations/diagnostics', component('./operations-diagnostics')],
+  ['/lake/resources', component('./lake-resources')],
+  ['/lake/lifecycle', component('./lake-lifecycle')],
+  ['/lake/logical-access', component('./lake-logical-access')],
   ['/knowledge-management', component('./knowledge-management')],
   ['/open-api', component('./open-api')],
 ].map(([path, routeComponent]) => ({
