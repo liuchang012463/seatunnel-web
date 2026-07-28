@@ -52,6 +52,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ value, onChange }) => {
             className="flex w-full bg-background px-4 py-1.5 pl-9 pr-9 text-sm h-9 rounded-full focus-visible:outline-none"
             placeholder="Search by datasource name"
             type="text"
+            value={value}
             onFocus={() => setOpen(true)}
             onChange={(e) => {
               onChange(e.target.value);

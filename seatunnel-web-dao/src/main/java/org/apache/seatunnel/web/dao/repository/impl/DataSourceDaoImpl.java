@@ -43,14 +43,23 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
 
     @Override
     public IPage<DataSource> queryPage(DataSourceDTO dto) {
-        LambdaQueryWrapper<DataSource> wrapper = new LambdaQueryWrapper<DataSource>()
-                .eq(StringUtils.isNotBlank(dto.getName()), DataSource::getName, dto.getName())
-                .eq(dto.getDbType() != null, DataSource::getDbType, dto.getDbType())
-                .eq(dto.getEnvironment() != null, DataSource::getEnvironment, dto.getEnvironment())
-                .orderByDesc(DataSource::getCreateTime);
+        LambdaQueryWrapper<DataSource> wrapper = buildQueryWrapper(dto);
 
         IPage<DataSource> page = new Page<>(dto.getPageNo(), dto.getPageSize());
         return dataSourceMapper.selectPage(page, wrapper);
+    }
+
+    static LambdaQueryWrapper<DataSource> buildQueryWrapper(DataSourceDTO dto) {
+        return new LambdaQueryWrapper<DataSource>()
+                .like(StringUtils.isNotBlank(dto.getName()), DataSource::getName,
+                        StringUtils.trimToEmpty(dto.getName()))
+                .in(dto.getDbTypes() != null && !dto.getDbTypes().isEmpty(),
+                        DataSource::getDbType, dto.getDbTypes())
+                .eq((dto.getDbTypes() == null || dto.getDbTypes().isEmpty())
+                                && dto.getDbType() != null,
+                        DataSource::getDbType, dto.getDbType())
+                .eq(dto.getEnvironment() != null, DataSource::getEnvironment, dto.getEnvironment())
+                .orderByDesc(DataSource::getCreateTime);
     }
 
     @Override

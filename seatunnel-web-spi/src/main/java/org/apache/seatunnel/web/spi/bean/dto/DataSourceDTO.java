@@ -8,6 +8,8 @@ import org.apache.seatunnel.web.common.enums.EnvironmentEnum;
 import org.apache.seatunnel.web.spi.bean.dto.pagination.PaginationBaseDTO;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
+import java.util.List;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "Data source DTO for creating and updating data sources")
@@ -18,6 +20,9 @@ public class DataSourceDTO extends PaginationBaseDTO {
     private String name;
 
     private DbType dbType;
+
+    /** Compatible multi-type filter used by category-based datasource management. */
+    private List<DbType> dbTypes;
 
     private EnvironmentEnum environment;
 

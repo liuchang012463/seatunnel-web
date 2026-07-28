@@ -1,6 +1,10 @@
 import { Code2, FlaskConical, ShieldCheck } from "lucide-react";
 import React from "react";
 import type { DataSourceGroup, DataSourceOptionItem } from "./types";
+import {
+  DATA_SOURCE_CATEGORIES,
+  DATA_SOURCE_REGISTRY,
+} from "./dataSourceRegistry";
 
 export const PAGE_DEFAULT_PAGINATION = {
   pageNo: 1,
@@ -9,18 +13,10 @@ export const PAGE_DEFAULT_PAGINATION = {
 };
 
 export const COMMON_DB_OPTIONS: DataSourceOptionItem[] = [
-  { label: "JDBC", value: "JDBC" },
-  { label: "MYSQL", value: "MYSQL" },
-  { label: "ORACLE", value: "ORACLE" },
-  { label: "POSTGRE_SQL", value: "POSTGRE_SQL" },
-  { label: "DORIS", value: "DORIS" },
-  { label: "KINGBASE", value: "KINGBASE" },
-  { label: "DAMENG", value: "DAMENG" },
-  { label: "KAFKA", value: "KAFKA" },
-  { label: "FTP", value: "FTP" },
-  { label: "SFTP", value: "SFTP" },
-  { label: "Amazon S3", value: "S3" },
-  { label: "MinIO", value: "MINIO" },
+  ...DATA_SOURCE_REGISTRY.filter((item) => item.creatable !== false).map((item) => ({
+    label: item.label,
+    value: item.dbType,
+  })),
 ];
 
 export const ENVIRONMENT_OPTIONS: DataSourceOptionItem[] = [
@@ -29,100 +25,19 @@ export const ENVIRONMENT_OPTIONS: DataSourceOptionItem[] = [
   { label: "PROD", value: "PROD" },
 ];
 
-export const dataSourceGroupList: DataSourceGroup[] = [
-  {
-    groupName: "关系型数据库",
-    datasourceList: [
-      {
+export const dataSourceGroupList: DataSourceGroup[] = DATA_SOURCE_CATEGORIES
+  .filter((category) => category.key !== "OTHER")
+  .map((category) => ({
+    groupName: category.label,
+    datasourceList: DATA_SOURCE_REGISTRY
+      .filter((item) => item.category === category.key && item.creatable !== false)
+      .map((item) => ({
         onlyDiScript: false,
-        dbType: "JDBC",
-        type: "JDBC",
-        connectorType: "Jdbc",
-      },
-      {
-        onlyDiScript: false,
-        dbType: "MYSQL",
-        type: "MYSQL",
-        connectorType: "Jdbc",
-      },
-      {
-        onlyDiScript: false,
-        dbType: "ORACLE",
-        type: "ORACLE",
-        connectorType: "Jdbc",
-      },
-      {
-        onlyDiScript: false,
-        dbType: "POSTGRE_SQL",
-        type: "POSTGRE_SQL",
-        connectorType: "Jdbc",
-      },
-      {
-        onlyDiScript: false,
-        dbType: "KINGBASE",
-        type: "KINGBASE",
-        connectorType: "Jdbc",
-      },
-      {
-        onlyDiScript: false,
-        dbType: "DAMENG",
-        type: "DAMENG",
-        connectorType: "Jdbc",
-      },
-    ],
-  },
-  {
-    groupName: "消息队列",
-    datasourceList: [
-      {
-        onlyDiScript: false,
-        dbType: "KAFKA",
-        type: "KAFKA",
-        connectorType: "Kafka",
-      },
-    ],
-  },
-  {
-    groupName: "文件与对象存储",
-    datasourceList: [
-      {
-        onlyDiScript: false,
-        dbType: "FTP",
-        type: "FTP",
-        connectorType: "FtpFile",
-      },
-      {
-        onlyDiScript: false,
-        dbType: "SFTP",
-        type: "SFTP",
-        connectorType: "SftpFile",
-      },
-      {
-        onlyDiScript: false,
-        dbType: "S3",
-        type: "S3",
-        connectorType: "S3File",
-      },
-      {
-        onlyDiScript: false,
-        dbType: "MINIO",
-        type: "MINIO",
-        connectorType: "S3File",
-      },
-    ],
-  },
-  {
-    groupName: "OLAP 数据库",
-    datasourceList: [
-      {
-        onlyDiScript: false,
-        dbType: "DORIS",
-        type: "DORIS",
-        connectorType: "Doris",
-      },
-    ],
-  },
-];
+        dbType: item.dbType,
+        type: item.dbType,
+        connectorType: item.connectorType,
+      })),
+  }));
 
 export const environmentTagConfigMap: Record<
   string,

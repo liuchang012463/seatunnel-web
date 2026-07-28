@@ -40,6 +40,7 @@ export interface DataSourcePageParams {
   pageNo: number;
   pageSize: number;
   dbType?: string;
+  dbTypes?: string[];
   name?: string;
   environment?: string;
 }

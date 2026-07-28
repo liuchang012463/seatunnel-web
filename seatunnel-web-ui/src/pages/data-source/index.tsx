@@ -1,6 +1,6 @@
 import ClickSpark from "@/components/ClickSpark";
 import { useIntl } from "@umijs/max";
-import { message, Modal, Spin } from "antd";
+import { Button, message, Modal, Pagination, Spin } from "antd";
 import { motion } from "framer-motion";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import AddOrEditDataSourceModal from "./components/AddOrEditDataSourceModal";
@@ -9,6 +9,10 @@ import EmptyState from "./components/EmptyState";
 import PageHeader from "./components/PageHeader";
 import SearchBar from "./components/SearchBar";
 import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from "./constants";
+import {
+  DATA_SOURCE_CATEGORIES,
+  groupDataSourcesByCategory,
+} from "./dataSourceRegistry";
 import "./index.less";
 import {
   deleteDataSource,
@@ -22,7 +26,6 @@ import type {
   DataSourceRecord,
   PaginationInfo,
 } from "./types";
-import { filterDataSourceList } from "./utils";
 
 const { confirm } = Modal;
 
@@ -36,6 +39,7 @@ const DataSourcePage: React.FC = () => {
     PAGE_DEFAULT_PAGINATION
   );
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
 
   const fetchList = async (params?: Partial<DataSourcePageParams>) => {
     try {
@@ -63,17 +67,47 @@ const DataSourcePage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchList();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const selectedCategoryConfig = DATA_SOURCE_CATEGORIES.find(
+    (category) => category.key === selectedCategory,
+  );
 
-  const filteredDataSourceList = useMemo(() => {
-    return filterDataSourceList(dataSourceList, searchKeyword);
-  }, [dataSourceList, searchKeyword]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      fetchList({
+        pageNo: pagination.pageNo,
+        pageSize: pagination.pageSize,
+        name: searchKeyword.trim() || undefined,
+        dbTypes:
+          selectedCategory === "ALL"
+            ? undefined
+            : selectedCategoryConfig?.dbTypes || [],
+      });
+    }, searchKeyword ? 300 : 0);
+    return () => window.clearTimeout(timer);
+    // Scalar pagination fields avoid a request loop when the server returns pagination metadata.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    pagination.pageNo,
+    pagination.pageSize,
+    searchKeyword,
+    selectedCategory,
+  ]);
+
+  const groupedDataSourceList = useMemo(
+    () => groupDataSourcesByCategory(dataSourceList),
+    [dataSourceList],
+  );
 
   const handleRefresh = () => {
-    fetchList();
+    fetchList({
+      pageNo: pagination.pageNo,
+      pageSize: pagination.pageSize,
+      name: searchKeyword.trim() || undefined,
+      dbTypes:
+        selectedCategory === "ALL"
+          ? undefined
+          : selectedCategoryConfig?.dbTypes || [],
+    });
   };
 
   const handleCreate = () => {
@@ -206,14 +240,49 @@ const DataSourcePage: React.FC = () => {
               </motion.div>
 
               <motion.div variants={PAGE_ANIMATION.fadeUp}>
-                <SearchBar value={searchKeyword} onChange={setSearchKeyword} />
+                <SearchBar
+                  value={searchKeyword}
+                  onChange={(value) => {
+                    setSearchKeyword(value);
+                    setPagination((current) => ({ ...current, pageNo: 1 }));
+                  }}
+                />
+              </motion.div>
+
+              <motion.div
+                variants={PAGE_ANIMATION.fadeUp}
+                className="mt-4 flex flex-wrap gap-2"
+              >
+                <Button
+                  type={selectedCategory === "ALL" ? "primary" : "default"}
+                  shape="round"
+                  onClick={() => {
+                    setSelectedCategory("ALL");
+                    setPagination((current) => ({ ...current, pageNo: 1 }));
+                  }}
+                >
+                  全部
+                </Button>
+                {DATA_SOURCE_CATEGORIES.map((category) => (
+                  <Button
+                    key={category.key}
+                    type={selectedCategory === category.key ? "primary" : "default"}
+                    shape="round"
+                    onClick={() => {
+                      setSelectedCategory(category.key);
+                      setPagination((current) => ({ ...current, pageNo: 1 }));
+                    }}
+                  >
+                    {category.label}
+                  </Button>
+                ))}
               </motion.div>
 
               <motion.p
                 variants={PAGE_ANIMATION.fadeUp}
                 className="datasource-page-count"
               >
-                发现 {filteredDataSourceList.length} 个数据源
+                发现 {pagination.total} 个数据源
               </motion.p>
 
               <Spin spinning={loading}>
@@ -222,24 +291,64 @@ const DataSourcePage: React.FC = () => {
                   initial="hidden"
                   animate="visible"
                 >
-                  <div className="grid grid-cols-[repeat(auto-fill,440px)] justify-start gap-5">
-                    {filteredDataSourceList.map((record) => (
-                      <motion.div
-                        key={record.id}
-                        variants={PAGE_ANIMATION.fadeUp}
-                      >
-                        <DataSourceCard
-                          record={record}
-                          onEdit={handleEdit}
-                          onDelete={handleDelete}
-                          onTestConnection={handleTestConnection}
-                        />
-                      </motion.div>
-                    ))}
-                  </div>
+                  {groupedDataSourceList.map(({ category, records }) => (
+                    <section key={category.key} className="mb-8">
+                      <div className="mb-3 flex items-center gap-3">
+                        <h2 className="m-0 text-base font-semibold text-slate-800">
+                          {category.label}
+                        </h2>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                          {records.length}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-[repeat(auto-fill,440px)] justify-start gap-5">
+                        {records.map((record) => (
+                          <motion.div
+                            key={record.id}
+                            variants={PAGE_ANIMATION.fadeUp}
+                          >
+                            <DataSourceCard
+                              record={record}
+                              onEdit={handleEdit}
+                              onDelete={handleDelete}
+                              onTestConnection={handleTestConnection}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
 
-                  {!loading && filteredDataSourceList.length === 0 && (
+                  {!loading && dataSourceList.length === 0 && (
                     <EmptyState onCreate={handleCreate} />
+                  )}
+
+                  {pagination.total > 0 && (
+                    <div className="mt-8 flex justify-end">
+                      <Pagination
+                        current={pagination.pageNo}
+                        pageSize={pagination.pageSize}
+                        total={pagination.total}
+                        showSizeChanger
+                        showQuickJumper
+                        pageSizeOptions={[10, 20, 50, 100]}
+                        showTotal={(total) => `共 ${total} 条`}
+                        onChange={(pageNo, pageSize) =>
+                          setPagination((current) => ({
+                            ...current,
+                            pageNo,
+                            pageSize,
+                          }))
+                        }
+                        onShowSizeChange={(_, pageSize) =>
+                          setPagination((current) => ({
+                            ...current,
+                            pageNo: 1,
+                            pageSize,
+                          }))
+                        }
+                      />
+                    </div>
                   )}
                 </motion.div>
               </Spin>

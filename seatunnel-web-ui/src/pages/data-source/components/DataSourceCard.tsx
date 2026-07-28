@@ -3,9 +3,10 @@ import {
   DeleteOutlined,
   DisconnectOutlined,
 } from "@ant-design/icons";
-import { Button, Card } from "antd";
+import { Button, Card, Tag } from "antd";
 import React from "react";
 import { environmentTagConfigMap } from "../constants";
+import { getDataSourceCategory } from "../dataSourceRegistry";
 import DatabaseIcons from "../icon/DatabaseIcons";
 import type { DataSourceRecord } from "../types";
 import DataSourceStatus from "./DataSourceStatus";
@@ -31,6 +32,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
     backgroundColor: "#fafafa",
     icon: null,
   };
+  const category = getDataSourceCategory(record.dbType);
 
   return (
     <Card
@@ -130,8 +132,11 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           {record.jdbcUrl || "-"}
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 flex items-center gap-2">
           <DataSourceStatus status={record.connStatus} />
+          <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
+            {category.label}
+          </Tag>
         </div>
 
         <div className="mb-4 mt-3 text-xs text-[#8C8C8C]">
