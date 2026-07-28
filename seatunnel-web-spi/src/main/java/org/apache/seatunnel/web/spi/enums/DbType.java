@@ -21,6 +21,7 @@ public enum DbType {
     DAMENG("DAMENG", "DAMENG", "DAMENG"),
     H2("H2", "H2", "H2"),
     KAFKA("KAFKA", "KAFKA", "KAFKA"),
+    HTTP("HTTP", "HTTP", "HTTP"),
     FTP("FTP", "FTP", "FTP"),
     SFTP("SFTP", "SFTP", "SFTP"),
     S3("S3", "S3", "S3"),

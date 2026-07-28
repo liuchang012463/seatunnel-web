@@ -131,7 +131,7 @@ export function useSourcePanelLogic({
 
   useEffect(() => {
     const loadTableOptions = async () => {
-      if (!dataSourceId) {
+      if (!dataSourceId || String(dbType).toUpperCase() === "HTTP") {
         setTableOptions([]);
         return;
       }
@@ -188,7 +188,7 @@ export function useSourcePanelLogic({
     };
 
     loadTableOptions();
-  }, [dataSourceId, table, updateNode]);
+  }, [dataSourceId, dbType, table, updateNode]);
 
   const handleDataSourceChange = useCallback(
     (value: string, option: any) => {

@@ -486,6 +486,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
         try {
             String jdbcUrl = JSONUtils.getNodeString(vo.getConnectionParams(), "url");
+            if (StringUtils.isBlank(jdbcUrl)) {
+                jdbcUrl = JSONUtils.getNodeString(vo.getConnectionParams(), "baseUrl");
+            }
             vo.setJdbcUrl(jdbcUrl);
         } catch (Exception e) {
             log.warn("Parse jdbc url from connection params failed");

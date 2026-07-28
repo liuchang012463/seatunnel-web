@@ -9,15 +9,14 @@ import DaMengIcon from "../data-source/icon/DamengIcon";
 import DatabaseIcons from "../data-source/icon/DatabaseIcons";
 import "./index.less";
 // 类型定义
-interface DataSourceType {
+export interface DataSourceType {
   value: string;
   label: React.ReactNode;
   icon?: React.ReactNode;
   connectorType?: string;
   pluginName?: string;
 }
-// 生成数据源选项配置
-export const generateDataSourceOptions = (): DataSourceType[] => [
+const generateBidirectionalDataSourceOptions = (): DataSourceType[] => [
   {
     value: "JDBC",
     connectorType: "Jdbc",
@@ -108,6 +107,27 @@ export const generateDataSourceOptions = (): DataSourceType[] => [
   },
 ];
 
+const generateHttpSourceOption = (): DataSourceType => ({
+  value: "HTTP",
+  connectorType: "Http",
+  pluginName: "HTTP",
+  label: (
+    <div style={{ display: "flex", alignItems: "center" }}>
+      <DatabaseIcons dbType="HTTP" width="24px" height="24px" />
+      <span style={{ marginLeft: 8 }}>HTTP / API</span>
+    </div>
+  ),
+});
+
+export const generateSourceDataSourceOptions = (): DataSourceType[] => [
+  ...generateBidirectionalDataSourceOptions(),
+  generateHttpSourceOption(),
+];
+
+/** Sink 与整库同步只展示支持写入的数据源。 */
+export const generateDataSourceOptions = (): DataSourceType[] =>
+  generateBidirectionalDataSourceOptions();
+
 export const generateCDCDataSourceOptions = (): DataSourceType[] => [
   {
     value: "MYSQL",
@@ -138,13 +158,15 @@ export const generateCDCDataSourceOptions = (): DataSourceType[] => [
  * 保留 CDC 选项生成器供纯 CDC 场景使用，避免调用方把“实时来源”等同于“CDC 来源”。
  */
 export const generateRealtimeSourceOptions = (): DataSourceType[] => {
-  const kafkaOption = generateDataSourceOptions().find(
+  const kafkaOption = generateBidirectionalDataSourceOptions().find(
     (option) => option.value === "KAFKA",
   );
 
-  return kafkaOption
-    ? [...generateCDCDataSourceOptions(), kafkaOption]
-    : generateCDCDataSourceOptions();
+  return [
+    ...generateCDCDataSourceOptions(),
+    ...(kafkaOption ? [kafkaOption] : []),
+    generateHttpSourceOption(),
+  ];
 };
 
 // 数据源选择器组件

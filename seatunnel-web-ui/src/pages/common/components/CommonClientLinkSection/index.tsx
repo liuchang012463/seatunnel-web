@@ -6,7 +6,10 @@ import {
   DataSourceModalRef,
   DataSourceOperateType,
 } from "@/pages/data-source/types";
-import { generateDataSourceOptions } from "@/pages/batch-link-up/DataSourceSelect";
+import {
+  generateDataSourceOptions,
+  generateSourceDataSourceOptions,
+} from "@/pages/batch-link-up/DataSourceSelect";
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -469,7 +472,14 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
     target?: string;
   }>({});
 
-  const dataSourceTypeOptions = useMemo(() => generateDataSourceOptions(), []);
+  const sourceDataSourceTypeOptions = useMemo(
+    () => generateSourceDataSourceOptions(),
+    [],
+  );
+  const targetDataSourceTypeOptions = useMemo(
+    () => generateDataSourceOptions(),
+    [],
+  );
 
   const [sourceDataSources, setSourceDataSources] = useState<any[]>([]);
   const [targetDataSources, setTargetDataSources] = useState<any[]>([]);
@@ -1172,7 +1182,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                       className="w-full"
                       showSearch
                       placeholder="请选择来源类型"
-                      options={dataSourceTypeOptions}
+                      options={sourceDataSourceTypeOptions}
                     />
                   </Form.Item>
 
@@ -1261,7 +1271,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                       className="w-full"
                       showSearch
                       placeholder="请选择去向类型"
-                      options={dataSourceTypeOptions}
+                      options={targetDataSourceTypeOptions}
                     />
                   </Form.Item>
 

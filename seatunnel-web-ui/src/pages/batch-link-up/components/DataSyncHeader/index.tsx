@@ -2,7 +2,10 @@ import { ArrowRightOutlined, SunOutlined } from "@ant-design/icons";
 import { useIntl } from "@umijs/max";
 import { Button, Select } from "antd";
 import React from "react";
-import { generateDataSourceOptions } from "../../DataSourceSelect";
+import {
+  generateDataSourceOptions,
+  generateSourceDataSourceOptions,
+} from "../../DataSourceSelect";
 import "./index.less";
 
 interface DataSyncHeaderProps {
@@ -88,7 +91,7 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
               prefix="来源："
               value={sourceType?.dbType}
               onChange={handleSourceChange}
-              options={generateDataSourceOptions()}
+              options={generateSourceDataSourceOptions()}
               bordered={false}
               showSearch
               className="flex-1"

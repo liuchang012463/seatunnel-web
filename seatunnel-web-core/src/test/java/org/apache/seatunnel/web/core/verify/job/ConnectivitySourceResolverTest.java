@@ -26,4 +26,14 @@ class ConnectivitySourceResolverTest {
                 "Kafka",
                 new ConnectivitySourcePluginNameResolver().resolvePluginName(DbType.KAFKA));
     }
+
+    @Test
+    void shouldResolveHttpSourceConfiguration() {
+        assertEquals(
+                "HTTP",
+                new ConnectivitySourceBuilderResolver().resolveBuilderKey(DbType.HTTP));
+        assertEquals(
+                "Http",
+                new ConnectivitySourcePluginNameResolver().resolvePluginName(DbType.HTTP));
+    }
 }

@@ -156,7 +156,7 @@ export function useSourcePanelLogic({
    */
   useEffect(() => {
     const loadTableOptions = async () => {
-      if (!dataSourceId) {
+      if (!dataSourceId || String(dbType).toUpperCase() === "HTTP") {
         setTableOptions([]);
         return;
       }
@@ -207,7 +207,7 @@ export function useSourcePanelLogic({
     };
 
     loadTableOptions();
-  }, [dataSourceId]);
+  }, [dataSourceId, dbType]);
 
   /**
    * 单独校验当前已选 table 是否还存在。

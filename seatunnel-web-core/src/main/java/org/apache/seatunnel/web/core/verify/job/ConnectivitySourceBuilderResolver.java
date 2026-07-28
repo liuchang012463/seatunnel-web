@@ -16,6 +16,7 @@ public class ConnectivitySourceBuilderResolver {
             case ORACLE -> "JDBC-ORACLE";
             case DORIS -> "DORIS";
             case KAFKA -> "KAFKA";
+            case HTTP -> "HTTP";
             default -> throw new IllegalArgumentException("暂不支持该数据源类型的 Source Builder 解析: " + dbType);
         };
     }

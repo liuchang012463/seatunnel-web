@@ -437,6 +437,21 @@ Web 打包固定使用 `org.apache.kafka:kafka-clients:3.4.0`。SeaTunnel 2.3.13
 
 若开发环境没有可访问的 SeaTunnel 2.3.13 Engine 与 Kafka，以上三项只能标记为“未执行”。可复现配置需使用实际 `bootstrap.servers`、已有 Topic，并在每个 Engine 节点部署 Kafka Connector 后提交任务；不得把单元测试或 AdminClient 成功描述为真实运行时验收通过。
 
+### 5.9 HTTP Source（SeaTunnel 2.3.13）
+
+HTTP 的注册名称固定为 `dbType=HTTP`、`connectorType=Http`、`pluginName=HTTP`，Engine HOCON 外层 Connector 名称为 `Http`。该数据源只支持批/流 Source，不支持 Sink、Catalog、表/字段枚举、SQL、数据预览和整库同步。Web 节点面板必须使用 HTTP 专用交互，不得回退到 JDBC 单表或多表语义。
+
+数据源级配置保存 `baseUrl`、可选健康检查路径、连接/读取超时、默认非敏感 Headers，以及 `NONE/BASIC/BEARER/API_KEY` 结构化认证。密码、Bearer Token、API Key Value 和完整认证头不得写入日志或异常；默认 Headers 不允许保存 `Authorization` 或 `Proxy-Authorization`。节点只能保存相对路径，最终 URL 由 Web 使用 `baseUrl + path` 拼接；绝对 URL 与 `//host/path` 必须拒绝，以防任务绕过数据源边界。认证头由数据源配置生成，节点 Headers 不得覆盖。
+
+HOCON Builder 必须保留 2.3.13 的原生字段和拼写，包括 `pageing`、`json_filed_missed_return_null`、`content_field`、`json_field`、`poll_interval_millis`、重试退避、连接/读取超时、多行与兼容开关。支持 GET/POST、json/text、PageNumber/Cursor；json 格式必须配置 SeaTunnel Schema。Web 连接测试使用 JDK `HttpClient`，只接受 HTTP/HTTPS，并分别报告认证失败、非成功状态和超时。
+
+部署分为两侧：
+
+1. Web 侧发行包必须包含 `seatunnel-web-datasource-http`，用于动态表单、连接测试、参数转换和 HOCON 构建。
+2. SeaTunnel 2.3.13 的每个 Engine 节点必须安装 `org.apache.seatunnel:connector-http:2.3.13`。仅在 Web 中加入 HTTP 模块不能替代 Engine Connector。
+
+真实环境至少验收批量 GET、POST、PageNumber/Cursor 分页和流式轮询。没有可访问的 SeaTunnel 2.3.13 Engine 时，应明确标记 Engine E2E 未执行，不得用本地 `HttpServer` 单元测试代替。
+
 ## 6. 后续数据源建议顺序
 
 1. **PG-CDC Source**：复用 PostgreSQL 连接和元数据，新增 CDC Builder、启动位点、Slot、Publication、权限与 WAL 预检；明确 Source-only。

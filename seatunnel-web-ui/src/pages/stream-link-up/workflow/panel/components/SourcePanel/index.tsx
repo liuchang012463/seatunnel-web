@@ -16,6 +16,7 @@ import PanelShell from "../PanelShell";
 import ExtraParamsConfig from "./ExtraParamsConfig";
 import { useSourcePanelLogic } from "./hooks/useSourcePanelLogic";
 import KafkaNodeConfig from "@/pages/common/workflow/KafkaNodeConfig";
+import HttpNodeConfig from "@/pages/common/workflow/HttpNodeConfig";
 
 interface Props {
   selectedNode: any;
@@ -65,6 +66,7 @@ function SourcePanel({
 }: Props) {
   const qualityDetailRef = useRef<any>(null);
   const isKafka = String(selectedNode?.data?.dbType || "").toUpperCase() === "KAFKA";
+  const isHttp = String(selectedNode?.data?.dbType || "").toUpperCase() === "HTTP";
 
   const {
     title,
@@ -127,13 +129,13 @@ function SourcePanel({
     );
   };
 
-  if (isKafka) {
+  if (isKafka || isHttp) {
     return (
       <PanelShell
         eyebrow="Source Config"
         title="来源配置"
         badge="输入节点"
-        desc="Kafka 节点不支持 SQL、列解析或消息预览"
+        desc={`${isHttp ? "HTTP" : "Kafka"} 节点不支持表、SQL、列解析或数据预览`}
         heroTitle={title}
         heroDesc={description}
         heroTag="SOURCE"
@@ -148,7 +150,7 @@ function SourcePanel({
               value={dataSourceId}
               onChange={handleDataSourceChange}
               options={dataSourceOptions}
-              placeholder="请选择 Kafka 数据源"
+              placeholder={`请选择 ${isHttp ? "HTTP" : "Kafka"} 数据源`}
               showSearch
               optionFilterProp="label"
               style={{ width: "100%" }}
@@ -156,14 +158,24 @@ function SourcePanel({
           </div>
           <div className="workflow-panel__divider" />
           <div className="workflow-panel__group">
-            <div className="workflow-panel__group-kicker">Kafka 消费设置</div>
-            <KafkaNodeConfig
-              role="source"
-              config={sourceConfig}
-              topicOptions={tableOptions}
-              topicLoading={tableLoading}
-              onChange={(patch) => updateNode(patch)}
-            />
+            <div className="workflow-panel__group-kicker">
+              {isHttp ? "HTTP 请求、分页与轮询设置" : "Kafka 消费设置"}
+            </div>
+            {isHttp ? (
+              <HttpNodeConfig
+                streaming
+                config={sourceConfig}
+                onChange={(patch) => updateNode(patch)}
+              />
+            ) : (
+              <KafkaNodeConfig
+                role="source"
+                config={sourceConfig}
+                topicOptions={tableOptions}
+                topicLoading={tableLoading}
+                onChange={(patch) => updateNode(patch)}
+              />
+            )}
           </div>
         </section>
       </PanelShell>

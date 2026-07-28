@@ -1,5 +1,8 @@
 import { Form, Input, Radio } from 'antd';
-import DataSourceSelect, { generateDataSourceOptions } from '../../DataSourceSelect';
+import DataSourceSelect, {
+  generateDataSourceOptions,
+  generateSourceDataSourceOptions,
+} from '../../DataSourceSelect';
 import IconRightArrow from '../../IconRightArrow';
 import type { SyncMode } from '../types';
 import ModeCard from './ModeCard';
@@ -35,7 +38,7 @@ const BaseConfigSection: React.FC<Props> = ({
             <DataSourceSelect
               value={sourceType}
               onChange={handleSourceChange}
-              dataSourceOptions={generateDataSourceOptions()}
+              dataSourceOptions={generateSourceDataSourceOptions()}
               placeholder="请选择来源"
               prefix="来源"
               width="48%"
