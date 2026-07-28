@@ -1,6 +1,6 @@
-import { Form, Radio } from "antd";
-import ModeCard from "./ModeCard";
-import type { SyncMode } from "../types";
+import { Form, Radio } from 'antd';
+import type { SyncMode } from '../types';
+import ModeCard from './ModeCard';
 
 interface Props {
   mode?: any;
@@ -19,7 +19,15 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
 
       <Form.Item name="mode" initialValue="GUIDE_SINGLE" className="mb-0">
         <Radio.Group className="w-full">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+            <ModeCard
+              value="FILE_SYNC"
+              current={mode}
+              title="文件夹同步"
+              desc="面向 FTP/SFTP 的二进制文件夹同步，不使用表映射。"
+              tag="文件"
+              onSelect={setMode}
+            />
             <ModeCard
               value="GUIDE_SINGLE"
               current={mode}

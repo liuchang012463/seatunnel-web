@@ -1,22 +1,23 @@
-import { message } from "antd";
-import { useState } from "react";
-import { history } from "umi";
-import { seatunnelJobDefinitionApi } from "./api";
-import DataSyncHeader from "./components/DataSyncHeader";
-import SyncTaskList from "./components/SyncTaskList";
+import { message } from 'antd';
+import { useState } from 'react';
+import { history } from 'umi';
+import { seatunnelJobDefinitionApi } from './api';
+import DataSyncHeader from './components/DataSyncHeader';
+import SyncTaskList from './components/SyncTaskList';
+
 // import SyncTaskList from "./SyncTaskList";
 
 const App = () => {
   const [sourceType, setSourceType] = useState<any>({
-    dbType: "MYSQL",
-    connectorType: "Jdbc",
-    pluginName: "JDBC-MYSQL",
+    dbType: 'MYSQL',
+    connectorType: 'Jdbc',
+    pluginName: 'JDBC-MYSQL',
   });
 
   const [targetType, setTargetType] = useState<any>({
-    dbType: "MYSQL",
-    connectorType: "Jdbc",
-    pluginName: "JDBC-MYSQL",
+    dbType: 'MYSQL',
+    connectorType: 'Jdbc',
+    pluginName: 'JDBC-MYSQL',
   });
 
   /**
@@ -34,12 +35,11 @@ const App = () => {
             sourceType,
             targetType,
             id: returnId,
-          })
+          }),
         );
 
         history.push(`/sync/batch-link-up/${returnId}/detail`);
       } else {
-        
       }
     });
   };
@@ -50,7 +50,7 @@ const App = () => {
    */
   const goEdit = async (id: string, item: any) => {
     if (!id) {
-      message.warning("任务定义ID不能为空");
+      message.warning('任务定义ID不能为空');
       return;
     }
 
@@ -59,25 +59,26 @@ const App = () => {
     try {
       const mode = item?.mode;
 
-      if (mode === "GUIDE_SINGLE") {
+      if (mode === 'GUIDE_SINGLE') {
         history.push(`/sync/batch-link-up/${id}/config/single?scene=edit`);
         return;
       }
 
-      if (mode === "GUIDE_MULTI") {
+      if (mode === 'FILE_SYNC') {
+        history.push(`/sync/batch-link-up/${id}/config/file-sync?scene=edit`);
+        return;
+      }
+
+      if (mode === 'GUIDE_MULTI') {
         history.push(`/sync/batch-link-up/${id}/config/multi?scene=edit`);
         return;
       }
 
-      if (mode === "SCRIPT") {
+      if (mode === 'SCRIPT') {
         history.push(`/sync/batch-link-up/${id}/config/script?scene=edit`);
         return;
       }
-
-      
-    } catch (error) {
-      
-    }
+    } catch (error) {}
   };
 
   return (

@@ -1,13 +1,13 @@
-import type { FormInstance } from "antd";
+import type { FormInstance } from 'antd';
 
-export type SyncMode = "GUIDE_SINGLE" | "GUIDE_MULTI" | "SCRIPT";
-export type StepKey = "base" | "client";
+export type SyncMode = 'GUIDE_SINGLE' | 'GUIDE_MULTI' | 'SCRIPT' | 'FILE_SYNC';
+export type StepKey = 'base' | 'client';
 
 export type ClientItem = {
   id: string;
   name: string;
   type: string;
-  status?: "online" | "offline" | "untested";
+  status?: 'online' | 'offline' | 'untested';
 };
 
 export type SourceTargetType = {

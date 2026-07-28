@@ -6,6 +6,7 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.datasource.DataSourceCatalog;
+import org.apache.seatunnel.plugin.datasource.api.datasource.FileDataSourceCatalog;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
@@ -19,6 +20,7 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.apache.seatunnel.web.spi.bean.vo.ColumnOptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
+import org.apache.seatunnel.web.spi.bean.vo.FileEntryVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 import org.apache.seatunnel.web.spi.enums.Status;
@@ -64,6 +66,25 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
             throw e;
         } catch (Exception e) {
             log.error("Failed to list tables, datasourceId={}", datasourceId, e);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
+        }
+    }
+
+    @Override
+    public List<FileEntryVO> listFiles(Long datasourceId, String path) {
+        validateDatasourceId(datasourceId);
+        DataSource dataSource = getDataSourceOrThrow(datasourceId);
+        DataSourceCatalog catalog = getCatalog(dataSource, buildConnectionParam(dataSource));
+        if (!(catalog instanceof FileDataSourceCatalog)) {
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
+                    dataSource.getDbType() + " does not support file catalog operations");
+        }
+        try {
+            return ((FileDataSourceCatalog) catalog).listEntries(path);
+        } catch (ServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to list remote files, datasourceId={}, path={}", datasourceId, path, e);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
         }
     }

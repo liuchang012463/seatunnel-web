@@ -41,6 +41,7 @@ const businessRoutes = [
 const hiddenRoutes = [
   ['/sync/batch-link-up/:id/detail', './batch-link-up/detail', '/sync/batch-link-up'],
   ['/sync/batch-link-up/:id/config/single', './batch-link-up/config/single', '/sync/batch-link-up'],
+  ['/sync/batch-link-up/:id/config/file-sync', './batch-link-up/config/file-sync', '/sync/batch-link-up'],
   ['/sync/batch-link-up/:id/config/multi', './batch-link-up/config/multi', '/sync/batch-link-up'],
   ['/sync/batch-link-up/:id/config/script', './batch-link-up/config/script', '/sync/batch-link-up'],
   ['/sync/stream-link-up/:id/detail', './stream-link-up/detail', '/sync/stream-link-up'],
