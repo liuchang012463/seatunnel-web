@@ -44,7 +44,8 @@ public class DataSourceCatalogController {
     }
 
     @GetMapping("/files/{id}")
-    @Operation(summary = "listRemoteFiles", description = "List one level of a remote FTP/SFTP directory")
+    @Operation(summary = "listRemoteFiles",
+            description = "List one level of a remote file directory or object-storage prefix")
     public Result<List<FileEntryVO>> listRemoteFiles(
             @PathVariable("id") Long id,
             @RequestParam(value = "path", required = false) String path) {

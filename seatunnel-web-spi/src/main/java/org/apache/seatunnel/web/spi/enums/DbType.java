@@ -22,7 +22,9 @@ public enum DbType {
     H2("H2", "H2", "H2"),
     KAFKA("KAFKA", "KAFKA", "KAFKA"),
     FTP("FTP", "FTP", "FTP"),
-    SFTP("SFTP", "SFTP", "SFTP")
+    SFTP("SFTP", "SFTP", "SFTP"),
+    S3("S3", "S3", "S3"),
+    MINIO("MINIO", "MINIO", "MINIO")
     ;
 
     private static final Map<String, DbType> DB_TYPE_MAP =

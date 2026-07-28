@@ -24,7 +24,7 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
               value="FILE_SYNC"
               current={mode}
               title="文件夹同步"
-              desc="面向 FTP/SFTP 的二进制文件夹同步，不使用表映射。"
+              desc="面向 FTP/SFTP/S3/MinIO 的二进制文件同步，不使用表映射。"
               tag="文件"
               onSelect={setMode}
             />

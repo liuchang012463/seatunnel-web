@@ -89,16 +89,34 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         }
         requireFileDbType(source, "source");
         requireFileDbType(sink, "sink");
-        if ("INCREMENTAL".equalsIgnoreCase(String.valueOf(source.get("syncType")))
-                && !String.valueOf(source.get("dataSourceId")).equals(String.valueOf(sink.get("dataSourceId")))) {
-            throw new IllegalArgumentException("FILE_SYNC incremental mode requires the same source and target datasource");
+        if ("INCREMENTAL".equalsIgnoreCase(String.valueOf(source.get("syncType")))) {
+            requireIncrementalDbType(source, "source");
+            requireIncrementalDbType(sink, "sink");
+            if (!String.valueOf(source.get("dataSourceId"))
+                    .equals(String.valueOf(sink.get("dataSourceId")))) {
+                throw new IllegalArgumentException(
+                        "FILE_SYNC incremental mode requires the same source and target datasource");
+            }
         }
     }
 
     private void requireFileDbType(Map<String, Object> config, String role) {
         String dbType = String.valueOf(config.get("dbType"));
+        if (!"FTP".equalsIgnoreCase(dbType)
+                && !"SFTP".equalsIgnoreCase(dbType)
+                && !"S3".equalsIgnoreCase(dbType)
+                && !"MINIO".equalsIgnoreCase(dbType)) {
+            throw new IllegalArgumentException(
+                    "FILE_SYNC " + role + " dbType must be FTP, SFTP, S3, or MINIO");
+        }
+    }
+
+    private void requireIncrementalDbType(Map<String, Object> config, String role) {
+        String dbType = String.valueOf(config.get("dbType"));
         if (!"FTP".equalsIgnoreCase(dbType) && !"SFTP".equalsIgnoreCase(dbType)) {
-            throw new IllegalArgumentException("FILE_SYNC " + role + " dbType must be FTP or SFTP");
+            throw new IllegalArgumentException(
+                    "SeaTunnel 2.3.13 FILE_SYNC incremental mode supports FTP/SFTP only; "
+                            + role + " dbType=" + dbType);
         }
     }
 }

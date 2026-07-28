@@ -87,7 +87,7 @@ const BaseConfigSection: React.FC<Props> = ({
                   value="FILE_SYNC"
                   current={mode}
                   title="文件夹同步"
-                  desc="FTP/SFTP 二进制目录同步，按路径与文件规则配置。"
+                  desc="FTP/SFTP/S3/MinIO 二进制文件同步，按目录或 Prefix 配置。"
                   tag="文件"
                   onSelect={setMode}
                 />

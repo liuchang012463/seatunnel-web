@@ -69,14 +69,16 @@ public class BatchJobDefinitionController {
     }
 
     @PostMapping("/file-sync/saveOrUpdate")
-    @Operation(summary = "saveOrUpdateFileSyncJobDefinition", description = "保存或更新 FTP/SFTP 文件同步任务")
+    @Operation(summary = "saveOrUpdateFileSyncJobDefinition",
+            description = "保存或更新文件/对象存储同步任务")
     @ApiException(SAVE_OR_UPDATE_BATCH_JOB_DEFINITION_ERROR)
     public Result<JobDefinitionSaveResultVO> saveFileSync(@RequestBody BatchFileSyncJobSaveCommand command) {
         return Result.buildSuc(batchJobDefinitionService.saveOrUpdate(command));
     }
 
     @PostMapping("/file-sync/build-config")
-    @Operation(summary = "buildFileSyncJobHoconConfig", description = "预览 FTP/SFTP 文件同步 HOCON")
+    @Operation(summary = "buildFileSyncJobHoconConfig",
+            description = "预览文件/对象存储同步 HOCON")
     @ApiException(QUERY_BATCH_JOB_DEFINITION_ERROR)
     public Result<String> buildFileSyncConfig(@RequestBody BatchFileSyncJobSaveCommand command) {
         return Result.buildSuc(batchJobDefinitionService.buildHoconConfig(command));

@@ -27,6 +27,7 @@
         <module>seatunnel-web-datasource-doris</module>
         <module>seatunnel-web-datasource-kafka</module>
         <module>seatunnel-web-datasource-ftp</module>
+        <module>seatunnel-web-datasource-s3</module>
         <module>seatunnel-web-datasource-kingbase</module>
         <module>seatunnel-web-datasource-dameng</module>
     </modules>

@@ -38,6 +38,7 @@
         <kafka-clients.version>3.4.0</kafka-clients.version>
         <commons-net.version>3.12.0</commons-net.version>
         <jsch.version>0.2.20</jsch.version>
+        <aws-java-sdk-s3.version>1.12.692</aws-java-sdk-s3.version>
         <jsqlparser.version>4.9</jsqlparser.version>
 
         <!-- Spring AI -->
@@ -138,6 +139,11 @@
             <dependency>
                 <groupId>org.apache.seatunnel.web</groupId>
                 <artifactId>seatunnel-web-datasource-ftp</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.seatunnel.web</groupId>
+                <artifactId>seatunnel-web-datasource-s3</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

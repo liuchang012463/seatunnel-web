@@ -6,7 +6,7 @@
 
 - 关系型数据库：JDBC、MySQL、PostgreSQL、Oracle 等；
 - CDC Source：MySQL-CDC、PG-CDC 等；
-- 文件与对象存储：sFTP、S3 等。
+- 文件与对象存储：FTP、SFTP、Amazon S3、MinIO 等。
 
 本规范以本仓库已落地的通用 JDBC Source/Sink 为首个样例。后续新增数据源必须先完成本文的设计清单，再进入编码。
 
@@ -449,6 +449,8 @@ PG-CDC、sFTP、S3 均需重新完成阶段 0 的能力矩阵，不能仅复制 
 ## 7. Pull Request 检查清单
 
 FTP/SFTP 文件型数据源的补充设计、生命周期与验收项见 [ftp-sftp-file-sync-design.md](./ftp-sftp-file-sync-design.md)。文件型数据源必须使用独立任务模式与页面，不得套用单表/多表的表元数据交互。
+
+Amazon S3/MinIO 对象存储接入的认证、根 Prefix 边界、S3File HOCON、Engine 依赖与验收项见 [s3-minio-file-sync-design.md](./s3-minio-file-sync-design.md)。对象存储与 FTP/SFTP 复用 `FILE_SYNC` 页面和保存链路，但 SeaTunnel 2.3.13 的 S3File 不支持增量 update；任一端为 S3/MinIO 时前后端都必须拒绝增量模式。
 
 复制以下清单到新数据源 PR：
 

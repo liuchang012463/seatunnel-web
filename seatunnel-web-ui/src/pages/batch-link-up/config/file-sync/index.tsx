@@ -19,9 +19,15 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { dataSourceCatalogApi, fetchDataSourceAll } from '@/pages/data-source/service';
 import { seatunnelJobDefinitionApi } from '../../api';
+import {
+  canUseIncrementalFileSync,
+  connectorForFileType,
+  FILE_DATASOURCE_TYPES,
+} from './support';
+import type { FileDataSourceType } from './support';
 
 type RemoteEntry = { name: string; path: string; type: 'DIRECTORY' | 'FILE' | 'LINK'; size?: number };
-type DataSourceOption = { id: string; name: string; dbType: 'FTP' | 'SFTP' };
+type DataSourceOption = { id: string; name: string; dbType: FileDataSourceType };
 
 const FileSyncPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -47,7 +53,11 @@ const FileSyncPage: React.FC = () => {
   useEffect(() => {
     fetchDataSourceAll().then((res: any) => {
       const raw = res?.data?.bizData || res?.data || [];
-      setSources((Array.isArray(raw) ? raw : []).filter((item: any) => ['FTP', 'SFTP'].includes(item.dbType)));
+      setSources(
+        (Array.isArray(raw) ? raw : []).filter((item: any) =>
+          FILE_DATASOURCE_TYPES.includes(item.dbType),
+        ),
+      );
     });
     const scene = new URLSearchParams(location.search).get('scene');
     if (scene === 'edit' && id) {
@@ -75,6 +85,15 @@ const FileSyncPage: React.FC = () => {
     }
   }, [id, form]);
 
+  const incrementalSupported = canUseIncrementalFileSync(source?.dbType, target?.dbType);
+
+  useEffect(() => {
+    if (!incrementalSupported && syncType === 'INCREMENTAL') {
+      form.setFieldValue('syncType', 'FULL');
+      message.info('SeaTunnel 2.3.13 的 S3File 不支持增量 update，已切换为全量复制');
+    }
+  }, [form, incrementalSupported, syncType]);
+
   const browse = async (next: typeof picker) => {
     if (!next?.datasourceId) {
       message.warning('请先选择数据源');
@@ -92,17 +111,20 @@ const FileSyncPage: React.FC = () => {
 
   const payload = async () => {
     const values = await form.validateFields();
+    const sourceMeta = sources.find((item) => String(item.id) === String(values.sourceDatasourceId))!;
+    const targetMeta = sources.find((item) => String(item.id) === String(values.targetDatasourceId))!;
+    if (!canUseIncrementalFileSync(sourceMeta.dbType, targetMeta.dbType)
+      && values.syncType === 'INCREMENTAL') {
+      throw new Error('SeaTunnel 2.3.13 的 S3File 不支持增量 update');
+    }
     if (values.syncType === 'INCREMENTAL' && String(values.sourceDatasourceId) !== String(values.targetDatasourceId)) {
       throw new Error('增量 update 模式只支持同一数据源内的目录同步');
     }
-    const sourceMeta = sources.find((item) => String(item.id) === String(values.sourceDatasourceId))!;
-    const targetMeta = sources.find((item) => String(item.id) === String(values.targetDatasourceId))!;
-    const connector = (type: string) => (type === 'FTP' ? 'FtpFile' : 'SftpFile');
     const sourceConfig = {
       dataSourceId: values.sourceDatasourceId,
       dbType: sourceMeta.dbType,
-      pluginName: connector(sourceMeta.dbType),
-      connectorType: connector(sourceMeta.dbType),
+      pluginName: connectorForFileType(sourceMeta.dbType),
+      connectorType: connectorForFileType(sourceMeta.dbType),
       path: values.sourcePath,
       targetPath: values.targetPath,
       syncType: values.syncType,
@@ -116,8 +138,8 @@ const FileSyncPage: React.FC = () => {
     const sinkConfig = {
       dataSourceId: values.targetDatasourceId,
       dbType: targetMeta.dbType,
-      pluginName: connector(targetMeta.dbType),
-      connectorType: connector(targetMeta.dbType),
+      pluginName: connectorForFileType(targetMeta.dbType),
+      connectorType: connectorForFileType(targetMeta.dbType),
       targetPath: values.targetPath,
     };
     return {
@@ -182,7 +204,7 @@ const FileSyncPage: React.FC = () => {
         <Form.Item name={`${role}DatasourceId`} label="数据源" rules={[{ required: true }]}>
           <Select
             options={sources.map((item) => ({ label: `${item.name} · ${item.dbType}`, value: item.id }))}
-            placeholder="选择 FTP/SFTP 数据源"
+            placeholder="选择 FTP/SFTP/S3/MinIO 数据源"
           />
         </Form.Item>
         <Form.Item name={field} label={isSource ? '同步目录' : '目标目录'} rules={[{ required: true }]}>
@@ -192,7 +214,7 @@ const FileSyncPage: React.FC = () => {
                 浏览
               </Button>
             }
-            placeholder="/incoming/files"
+            placeholder="/incoming/files 或 /bucket-prefix"
           />
         </Form.Item>
         <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
@@ -207,8 +229,8 @@ const FileSyncPage: React.FC = () => {
       <div className="mx-auto max-w-6xl">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h1 className="m-0 text-2xl font-bold text-slate-900">FTP / SFTP 文件夹同步</h1>
-            <p className="mt-1 text-slate-500">按远程路径传输二进制流，不涉及表、字段或 SQL 映射。</p>
+            <h1 className="m-0 text-2xl font-bold text-slate-900">文件与对象存储同步</h1>
+            <p className="mt-1 text-slate-500">按目录或 Prefix 传输二进制流，不涉及表、字段或 SQL 映射。</p>
           </div>
           <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/sync/batch-link-up')}>
             返回任务列表
@@ -261,7 +283,7 @@ const FileSyncPage: React.FC = () => {
                   optionType="button"
                   options={[
                     { label: '全量复制', value: 'FULL' },
-                    { label: '增量 update', value: 'INCREMENTAL' },
+                    { label: '增量 update', value: 'INCREMENTAL', disabled: !incrementalSupported },
                   ]}
                 />
               </Form.Item>

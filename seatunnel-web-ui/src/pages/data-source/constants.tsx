@@ -17,6 +17,10 @@ export const COMMON_DB_OPTIONS: DataSourceOptionItem[] = [
   { label: "KINGBASE", value: "KINGBASE" },
   { label: "DAMENG", value: "DAMENG" },
   { label: "KAFKA", value: "KAFKA" },
+  { label: "FTP", value: "FTP" },
+  { label: "SFTP", value: "SFTP" },
+  { label: "Amazon S3", value: "S3" },
+  { label: "MinIO", value: "MINIO" },
 ];
 
 export const ENVIRONMENT_OPTIONS: DataSourceOptionItem[] = [
@@ -75,6 +79,35 @@ export const dataSourceGroupList: DataSourceGroup[] = [
         dbType: "KAFKA",
         type: "KAFKA",
         connectorType: "Kafka",
+      },
+    ],
+  },
+  {
+    groupName: "文件与对象存储",
+    datasourceList: [
+      {
+        onlyDiScript: false,
+        dbType: "FTP",
+        type: "FTP",
+        connectorType: "FtpFile",
+      },
+      {
+        onlyDiScript: false,
+        dbType: "SFTP",
+        type: "SFTP",
+        connectorType: "SftpFile",
+      },
+      {
+        onlyDiScript: false,
+        dbType: "S3",
+        type: "S3",
+        connectorType: "S3File",
+      },
+      {
+        onlyDiScript: false,
+        dbType: "MINIO",
+        type: "MINIO",
+        connectorType: "S3File",
       },
     ],
   },
