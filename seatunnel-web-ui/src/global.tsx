@@ -4,6 +4,7 @@ import defaultSettings from '../config/defaultSettings';
 import '../tailwind.css';
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
+import './design-system.less';
 
 const { pwa } = defaultSettings;
 const isHttps = document.location.protocol === 'https:';

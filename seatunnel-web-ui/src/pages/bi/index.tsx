@@ -293,8 +293,8 @@ const Dashboard = () => {
 
   return (
     <>
-      <div className="flex h-screen overflow-hidden bg-[#f7f7f8]">
-        <aside className="flex w-[224px] shrink-0 flex-col border-r border-slate-200 bg-white">
+      <div className="bi-page flex h-screen overflow-hidden">
+        <aside className="bi-sidebar flex w-[224px] shrink-0 flex-col border-r">
           <div className="flex h-14 items-center gap-2 border-b border-slate-100 px-4">
             <div
               className={[
@@ -372,7 +372,7 @@ const Dashboard = () => {
         </aside>
 
         <main className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4">
+          <header className="bi-header flex h-14 shrink-0 items-center justify-between border-b px-4">
             <div className="flex min-w-0 items-center gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -465,10 +465,10 @@ const Dashboard = () => {
             </div>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-auto bg-[#f7f7f8] p-2">
+          <div className="bi-canvas min-h-0 flex-1 overflow-auto p-2">
             <div
               ref={canvasInnerRef}
-              className="relative box-border w-full overflow-visible bg-[#f7f7f8]"
+              className="relative box-border w-full overflow-visible"
               style={{
                 minHeight: canvasMinHeight,
               }}

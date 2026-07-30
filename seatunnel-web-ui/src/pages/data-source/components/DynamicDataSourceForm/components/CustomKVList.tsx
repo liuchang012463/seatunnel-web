@@ -75,7 +75,7 @@ export default function CustomKVList(props: { intl: any; field: any }) {
                       display: "flex",
                       justifyContent: "center",
                       alignItems: "center",
-                      color: "#98A2B3",
+                      color: "var(--st-color-text-muted)",
                       cursor: "pointer",
                       fontSize: 16,
                     }}
@@ -93,8 +93,7 @@ export default function CustomKVList(props: { intl: any; field: any }) {
                 onClick={() => add({ key: "", value: "" })}
                 block
                 icon={<PlusOutlined />}
-                style={{borderRadius: 16}}
-                className="h-8 rounded-[10px] border-[#D0D5DD] bg-[#FCFCFD] text-[#475467] transition-all duration-200 hover:border-[hsl(231 48% 48%)] hover:bg-[hsl(231 48% 48%)] hover:text-[hsl(231 48% 48%)] active:border-[#98A2B3] active:bg-[#F2F4F7]"
+                className="datasource-form-add-setting"
               >
                 {intl.formatMessage({
                   id: "pages.datasource.form.other.addConnSetting",

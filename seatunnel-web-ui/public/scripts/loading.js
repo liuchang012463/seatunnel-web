@@ -18,7 +18,7 @@
         }
 
         body {
-          background: #ffffff;
+          background: #001922;
         }
 
         .stw-initial-loading {
@@ -29,9 +29,10 @@
           align-items: center;
           justify-content: center;
           overflow: hidden;
-          background: #ffffff;
+          background: #001922;
           font-family:
-            Inter,
+            "Microsoft YaHei",
+            "微软雅黑",
             -apple-system,
             BlinkMacSystemFont,
             "Segoe UI",
@@ -48,7 +49,7 @@
           width: 320px;
           height: 320px;
           border-radius: 9999px;
-          background: #f6f7f8;
+          background: rgba(33, 135, 168, 0.2);
           opacity: 0;
           pointer-events: none;
           transform: translate(-50%, -50%) scale(0.42);
@@ -63,7 +64,7 @@
         .stw-soft-wave-2 {
           width: 440px;
           height: 440px;
-          background: #fafafa;
+          background: rgba(77, 210, 255, 0.12);
           animation-delay: 1.82s;
         }
 
@@ -128,7 +129,7 @@
           margin-top: 24px;
           overflow: hidden;
           border-radius: 999px;
-          background: #f1f3f4;
+          background: #002e41;
           opacity: 0;
           transform: translateY(5px);
           animation: stwProgressEnter 0.42s ease-out 1.82s forwards;
@@ -141,7 +142,7 @@
           height: 100%;
           width: 0%;
           border-radius: inherit;
-          background: #ea4335;
+          background: #4dd2ff;
           animation: stwProgressMoveSmooth 3.2s cubic-bezier(0.22, 1, 0.36, 1) 2.02s forwards;
           will-change: width;
         }
@@ -152,7 +153,7 @@
           line-height: 1;
           font-weight: 400;
           letter-spacing: -0.035em;
-          color: #5f6368;
+          color: #d5d5d5;
           opacity: 0;
           transform: translateY(8px) scale(0.96);
           transform-origin: center;
@@ -162,12 +163,12 @@
 
         .stw-title-main {
           font-weight: 600;
-          color: #4f5358;
+          color: #ffffff;
         }
 
         .stw-title-sub {
           font-weight: 400;
-          color: #5f6368;
+          color: #d5d5d5;
         }
 
         @keyframes stwLogoEnter {

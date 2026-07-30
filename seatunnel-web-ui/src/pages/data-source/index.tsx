@@ -220,7 +220,7 @@ const DataSourcePage: React.FC = () => {
   return (
     <>
       <ClickSpark
-        sparkColor="hsl(231 48% 48%)"
+        sparkColor="#4DD2FF"
         sparkSize={10}
         sparkRadius={15}
         sparkCount={8}
@@ -294,10 +294,10 @@ const DataSourcePage: React.FC = () => {
                   {groupedDataSourceList.map(({ category, records }) => (
                     <section key={category.key} className="mb-8">
                       <div className="mb-3 flex items-center gap-3">
-                        <h2 className="m-0 text-base font-semibold text-slate-800">
+                        <h2 className="datasource-category-title">
                           {category.label}
                         </h2>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                        <span className="datasource-category-count">
                           {records.length}
                         </span>
                       </div>

@@ -28,8 +28,8 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
     record.environment || ""
   ] || {
     text: record.environmentName || "-",
-    color: "#8c8c8c",
-    backgroundColor: "#fafafa",
+    color: "var(--st-color-text-muted)",
+    backgroundColor: "rgba(102, 111, 117, 0.14)",
     icon: null,
   };
   const category = getDataSourceCategory(record.dbType);
@@ -38,31 +38,21 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
     <Card
       bodyStyle={{ padding: 0 }}
       className={[
-        "group relative overflow-hidden rounded-3xl border border-[#F0F0F0]",
-        "bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]",
-        "!transition-shadow !duration-200 !ease-out",
+        "datasource-card group relative",
+        "transition-colors duration-200 ease-out",
         "hover:!translate-y-0 hover:!transform-none",
-        "hover:shadow-[0_10px_20px_rgba(15,23,42,0.06)]",
       ].join(" ")}
     >
-      <div className="relative h-[88px] bg-[hsl(210_40%_96.1%)]">
+      <div className="datasource-card-cover">
         <div
-          className={[
-            "absolute left-6 bottom-[-24px] z-[2]",
-            "flex h-16 w-16 items-center justify-center rounded-full",
-            "border-4 border-white bg-white",
-            "shadow-[0_4px_12px_rgba(0,0,0,0.12)]",
-          ].join(" ")}
+          className="datasource-card-logo"
         >
           <DatabaseIcons dbType={record.dbType} width="28" height="28" />
         </div>
 
-        <div className="absolute right-5 top-4">
+        <div className="datasource-card-env-tag">
           <span
-            className={[
-              "inline-flex items-center gap-1.5 rounded-full",
-              "px-2.5 py-1 text-xs font-medium leading-none",
-            ].join(" ")}
+            className="datasource-card-env-tag-inner"
             style={{
               background: environmentConfig.backgroundColor,
               color: environmentConfig.color,
@@ -75,7 +65,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
 
         <div
           className={[
-            "absolute left-3 top-3 z-[3] flex gap-2",
+            "datasource-card-hover-actions",
             "opacity-0 translate-y-[-6px] pointer-events-none",
             "transition-all duration-200 ease-out",
             "group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto",
@@ -83,13 +73,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
         >
           <button
             type="button"
-            className={[
-              "flex h-[30px] w-[30px] items-center justify-center rounded-full",
-              "border border-[#E8E8E8] bg-white text-xs text-[#262626]",
-              "shadow-[0_6px_18px_rgba(0,0,0,0.08)]",
-              "transition-all duration-200 ease-out",
-              "hover:scale-[1.06] hover:border-[#FFCCC7] hover:bg-[#FFF2F0] hover:text-[#FF4D4F]",
-            ].join(" ")}
+            className="datasource-card-hover-action datasource-card-hover-action--danger"
             onClick={(event) => {
               event.stopPropagation();
               onDelete(record);
@@ -100,13 +84,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
 
           <button
             type="button"
-            className={[
-              "flex h-[30px] w-[30px] items-center justify-center rounded-full",
-              "border border-[#E8E8E8] bg-white text-xs text-[#262626]",
-              "shadow-[0_6px_18px_rgba(0,0,0,0.08)]",
-              "transition-all duration-200 ease-out",
-              "hover:scale-[1.06] hover:bg-[#F5F5F5] hover:text-[#1677FF]",
-            ].join(" ")}
+            className="datasource-card-hover-action"
             onClick={(event) => {
               event.stopPropagation();
               onTestConnection(record);
@@ -117,30 +95,30 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
         </div>
       </div>
 
-      <div className="px-6 pb-5 pt-9">
+      <div className="datasource-card-content">
         <div
-          className="mb-2 truncate text-lg font-bold text-[#1F1F1F]"
+          className="datasource-card-title truncate"
           title={record.name}
         >
           {record.name || "-"}
         </div>
 
         <div
-          className="mb-3 truncate text-[13px] text-[#262626]"
+          className="datasource-card-jdbc-url"
           title={record.jdbcUrl}
         >
           {record.jdbcUrl || "-"}
         </div>
 
-        <div className="mb-4 flex items-center gap-2">
+        <div className="datasource-card-status flex items-center gap-2">
           <DataSourceStatus status={record.connStatus} />
           <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
             {category.label}
           </Tag>
         </div>
 
-        <div className="mb-4 mt-3 text-xs text-[#8C8C8C]">
-          <span className="font-medium text-[#595959]">
+        <div className="datasource-card-update-time">
+          <span className="datasource-card-update-time-value">
             {record.updateTime || "-"}
           </span>
         </div>
@@ -149,16 +127,14 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           block
           type="default"
           className={[
-            "group/detail relative h-[42px] overflow-hidden rounded-full p-0",
-            "border border-[#D9D9D9] bg-white font-bold",
+            "datasource-card-detail-button group/detail relative overflow-hidden p-0",
             "transition-all duration-300 ease-out",
-            "hover:!border-[hsl(231_48%_48%)]",
           ].join(" ")}
           onClick={() => onEdit(record)}
         >
           <span
             className={[
-              "absolute inset-0 z-[1] flex items-center justify-center rounded-full bg-white",
+              "datasource-card-detail-default absolute inset-0 z-[1] flex items-center justify-center",
               "transition-all duration-300 ease-out",
               "group-hover/detail:translate-y-1.5 group-hover/detail:opacity-0",
             ].join(" ")}
@@ -168,8 +144,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
 
           <span
             className={[
-              "absolute inset-0 z-[2] flex items-center justify-center gap-2 rounded-full",
-              "bg-[hsl(231_48%_48%)] text-white opacity-0",
+              "datasource-card-detail-hover absolute inset-0 z-[2] flex items-center justify-center gap-2 opacity-0",
               "transition-all duration-300 ease-out",
               "group-hover/detail:opacity-100",
             ].join(" ")}

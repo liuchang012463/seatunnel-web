@@ -12,7 +12,7 @@ import {
   Tooltip,
 } from "antd";
 import TextArea from "antd/es/input/TextArea";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DatabaseIcons from "../../icon/DatabaseIcons";
 import { DataSourceOperateType, DynamicDataSourceFormProps } from "../../types";
 import CustomKVList from "./components/CustomKVList";
@@ -405,7 +405,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
 
   if (loading) {
     return (
-      <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-[#E8EDF3] bg-[#FCFDFE] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="datasource-form-panel flex min-h-[220px] items-center justify-center p-5">
         <div className="flex items-center gap-2.5 text-sm text-slate-500">
           <LoadingOutlined />
           <span>正在加载数据源配置...</span>
@@ -415,7 +415,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   }
 
   return (
-    <div className="rounded-2xl border border-[#E8EDF3] bg-[#FCFDFE] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+    <div className="datasource-form-panel p-5">
       <div className="mb-5">
         <h3 className={sectionTitleClass}>数据源信息</h3>
         <p className={sectionDescClass}>
@@ -504,7 +504,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         </Form.Item>
 
         {needInstall && (
-          <div className="mb-5 rounded-xl border border-dashed border-[#D6E4FF] bg-[#F7FAFF] px-4 py-3.5">
+          <div className="datasource-form-notice mb-5 px-4 py-3.5">
             <div className="mb-2.5 text-[13px] leading-[22px] text-slate-600">
               当前插件配置暂不可用，可能尚未安装。请先安装对应插件后，再继续填写连接参数。
             </div>
@@ -538,7 +538,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
           </div>
         )}
 
-        <div className="mt-2 border-t border-[#EEF2F6] pt-[18px]">
+        <div className="mt-2 border-t border-[var(--st-color-divider)] pt-[18px]">
           <div className="mb-4">
             <h3 className={sectionTitleClass}>连接参数</h3>
             <p className={sectionDescClass}>

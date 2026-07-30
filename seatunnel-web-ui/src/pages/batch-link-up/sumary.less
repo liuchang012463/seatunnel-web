@@ -92,10 +92,10 @@
 
     // 卡片样式
     &-card {
-        background-color: white;
+        background-color: var(--st-color-bg-panel);
         border-radius: 12px;
         padding: 0.75rem;
-        border: 1px solid #e9ebf0;
+        border: 1px solid var(--st-color-border);
         margin-right: 8px;
         cursor: pointer;
         box-shadow: 0 0 #0000, 0 0 #0000, 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
@@ -230,8 +230,9 @@
   box-sizing: border-box;
   width: 100%;
   padding: 16px 24px;
-  background-color: white;
-  box-shadow: 0 2px 8px #0000000d;
+  background-color: var(--st-color-bg-panel);
+  border-bottom: 1px solid var(--st-color-divider);
+  box-shadow: none;
 }
 
 .dc-bcm-detail {

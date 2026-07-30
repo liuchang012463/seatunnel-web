@@ -1,7 +1,7 @@
 .task-type-segmented {
     padding: 4px;
-    background: #f6f8fb;
-    border: 0px solid #e8edf5;
+    background: var(--st-color-bg-control);
+    border: 1px solid var(--st-color-border);
     border-radius: 14px;
 
     .ant-segmented-group {
@@ -19,17 +19,17 @@
 
     .ant-segmented-thumb {
         border-radius: 10px;
-        background: #ffffff;
-        box-shadow: 0 6px 18px rgba(31, 35, 41, 0.08);
+        background: var(--st-color-bg-elevated);
+        box-shadow: none;
     }
 
     .ant-segmented-item-selected {
         .task-type-option__title {
-            color: #1677ff;
+            color: var(--st-color-accent);
         }
 
         .task-type-option__desc {
-            color: #5b6b82;
+            color: var(--st-color-text-secondary);
         }
     }
 }
@@ -48,7 +48,7 @@
     &__title {
         font-size: 14px;
         font-weight: 600;
-        color: #1f2329;
+        color: var(--st-color-text-primary);
         line-height: 22px;
         transition: color 0.2s ease;
     }
@@ -56,7 +56,7 @@
     &__desc {
         margin-top: 2px;
         font-size: 12px;
-        color: #8a94a6;
+        color: var(--st-color-text-muted);
         line-height: 16px;
         transition: color 0.2s ease;
     }

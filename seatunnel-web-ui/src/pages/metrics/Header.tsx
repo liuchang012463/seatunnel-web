@@ -32,8 +32,8 @@ const Header: React.FC<HeaderProps> = ({
     <div
       style={{
         padding: '12px 24px 6px',
-        background: 'white',
-        boxShadow: '0 2px 8px #0000000d, inset 0 -1px 0 0 rgba(227,228,230,1)',
+        background: 'var(--st-color-bg-panel)',
+        borderBottom: '1px solid var(--st-color-divider)',
       }}
     >
       {/* Title */}
@@ -42,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({
           fontSize: 16,
           height: 24,
           lineHeight: '24px',
-          color: '#1E202D',
+          color: 'var(--st-color-text-primary)',
           display: 'flex',
           alignItems: 'center',
           marginRight: 120,

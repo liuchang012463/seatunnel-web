@@ -62,8 +62,8 @@ const ApiManagementPage: React.FC = () => {
   }, [apis, activeController, method, keyword]);
 
   return (
-    <div className="min-h-screen bg-[#FFFFFF]">
-      <div className="border-b border-[#F2F4F7] bg-white">
+    <div className="open-api-page min-h-screen">
+      <div className="open-api-header border-b">
         <div className="mx-auto flex max-w-[1540px] items-center justify-between gap-4 px-6 py-5">
           <div className="flex min-w-0 items-center gap-4">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EFF8FF] text-[20px] text-[#1570EF]">
@@ -112,8 +112,8 @@ const ApiManagementPage: React.FC = () => {
         ) : null}
 
         <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-6">
-          <div className="rounded-[28px] border border-[#EAECF0] bg-white p-5 shadow-[0_10px_30px_rgba(16,24,40,0.05)]">
-            <div className="mb-4 flex items-center justify-between" style={{borderBottom : "1px solid rgb(242 244 247)"}}>
+          <div className="open-api-panel rounded-[28px] border p-5">
+            <div className="mb-4 flex items-center justify-between" style={{borderBottom : "1px solid var(--st-color-divider)"}}>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-[#1570EF]" />
@@ -156,8 +156,8 @@ const ApiManagementPage: React.FC = () => {
                       className={[
                         "group relative cursor-pointer overflow-hidden rounded-[20px] border px-4 py-3.5 transition-all duration-200",
                         active
-                          ? "border-[#B2DDFF] bg-[linear-gradient(180deg,#F8FBFF_0%,#EEF6FF_100%)] shadow-[0_6px_18px_rgba(21,112,239,0.10)]"
-                          : "border-[#F2F4F7] bg-white hover:border-[#D0D5DD] hover:bg-[#FCFCFD] hover:shadow-[0_4px_12px_rgba(16,24,40,0.06)]",
+                          ? "open-api-controller-item is-active"
+                          : "open-api-controller-item",
                       ].join(" ")}
                     >
                       {/* 左侧强调条 */}
@@ -206,7 +206,7 @@ const ApiManagementPage: React.FC = () => {
             )}
           </div>
 
-          <div className="rounded-[24px] border border-[#EAECF0] bg-white p-5 shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
+          <div className="open-api-panel rounded-[24px] border p-5">
             <div
               className="flex flex-wrap items-center gap-3"
               style={{ justifyContent: "space-between" }}
@@ -239,7 +239,7 @@ const ApiManagementPage: React.FC = () => {
                 filteredApis.map((item) => (
                   <div
                     key={item.id}
-                    className="group rounded-[20px] border border-[#EAECF0] bg-white p-4 transition-all hover:border-[#B2DDFF] hover:bg-[#FCFEFF] hover:shadow-[0_8px_24px_rgba(21,112,239,0.06)]"
+                    className="open-api-card group rounded-[20px] border p-4 transition-all"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
@@ -288,7 +288,7 @@ const ApiManagementPage: React.FC = () => {
                   </div>
                 ))
               ) : (
-                <div className="flex h-[240px] flex-col items-center justify-center rounded-[20px] border border-dashed border-[#D0D5DD] bg-[#FCFCFD] text-center">
+                <div className="open-api-empty flex h-[240px] flex-col items-center justify-center rounded-[20px] border border-dashed text-center">
                   <div className="text-[16px] font-semibold text-[#101828]">
                     暂无匹配接口
                   </div>

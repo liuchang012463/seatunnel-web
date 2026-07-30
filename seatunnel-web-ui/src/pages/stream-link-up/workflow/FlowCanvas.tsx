@@ -494,7 +494,7 @@ export default function FlowCanvas({
           className="workflow-minimap"
           position="bottom-left"
           style={{ width: 102, height: 72 }}
-          maskColor="#E9EBF0"
+          maskColor="rgba(0, 25, 34, 0.72)"
         />
       </ReactFlow>
 
@@ -510,10 +510,10 @@ export default function FlowCanvas({
             width: EDGE_INSERT_MENU_WIDTH,
             maxHeight: 520,
             padding: 8,
-            background: '#fff',
-            border: '1px solid #e4e7ec',
+            background: 'var(--st-color-bg-panel)',
+            border: '1px solid var(--st-color-border)',
             borderRadius: 8,
-            boxShadow: '0 10px 30px rgba(16, 24, 40, 0.16)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.32)',
             transform: 'translateY(-50%)',
             zIndex: 1000,
           }}

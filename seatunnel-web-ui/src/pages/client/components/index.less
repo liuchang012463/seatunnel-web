@@ -1,7 +1,8 @@
 .deploy-mode-segmented {
   width: 100%;
   padding: 4px;
-  background: #f6f8fb;
+  background: var(--st-color-bg-control);
+  border: 1px solid var(--st-color-border);
   border-radius: 14px;
 
   .ant-segmented-group {
@@ -19,13 +20,13 @@
 
   .ant-segmented-thumb {
     border-radius: 10px;
-    background: #ffffff;
-    box-shadow: 0 6px 18px rgba(31, 35, 41, 0.08);
+    background: var(--st-color-bg-elevated);
+    box-shadow: none;
   }
 
   .ant-segmented-item-selected {
     .deploy-mode-option {
-      color: #000000;
+      color: var(--st-color-accent);
     }
   }
 }
@@ -39,7 +40,7 @@
   padding: 2px 4px;
   font-size: 13px;
   font-weight: 600;
-  color: #344054;
+  color: var(--st-color-text-secondary);
   line-height: 22px;
   transition: color 0.2s ease;
 }

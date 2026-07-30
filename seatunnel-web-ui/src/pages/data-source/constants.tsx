@@ -50,8 +50,8 @@ export const environmentTagConfigMap: Record<
 > = {
   PROD: {
     text: "生产",
-    color: "#ff4d4f",
-    backgroundColor: "#fff2f0",
+    color: "#ff7875",
+    backgroundColor: "rgba(194, 59, 59, 0.18)",
     icon: (
       <div>
         {" "}
@@ -65,8 +65,8 @@ export const environmentTagConfigMap: Record<
   },
   TEST: {
     text: "测试",
-    color: "#52c41a",
-    backgroundColor: "#f6ffed",
+    color: "#73d13d",
+    backgroundColor: "rgba(56, 178, 74, 0.18)",
     icon: (
       <div>
         {" "}
@@ -80,8 +80,8 @@ export const environmentTagConfigMap: Record<
   },
   DEVELOP: {
     text: "开发",
-    color: "#1677ff",
-    backgroundColor: "#e6f4ff",
+    color: "#4dd2ff",
+    backgroundColor: "rgba(33, 135, 168, 0.2)",
     icon: (
       <div>
         {" "}

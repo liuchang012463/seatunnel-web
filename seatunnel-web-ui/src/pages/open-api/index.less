@@ -1,7 +1,44 @@
+.open-api-page {
+  color: var(--st-color-text-secondary);
+  background: var(--st-color-bg-page);
+}
+
+.open-api-header,
+.open-api-panel,
+.open-api-card,
+.open-api-empty {
+  background: var(--st-color-bg-panel);
+  border-color: var(--st-color-border);
+  box-shadow: none;
+}
+
+.open-api-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.open-api-controller-item {
+  background: var(--st-color-bg-control);
+  border-color: var(--st-color-divider);
+
+  &:hover,
+  &.is-active {
+    background: var(--st-color-bg-elevated);
+    border-color: var(--st-color-accent);
+    box-shadow: 0 0 0 1px var(--st-color-focus);
+  }
+}
+
+.open-api-card:hover {
+  background: var(--st-color-bg-elevated);
+  border-color: var(--st-color-accent);
+}
+
 .method-segmented {
   padding: 4px;
-  background: #f6f8fb;
-  border: 0 solid #e8edf5;
+  background: var(--st-color-bg-control);
+  border: 1px solid var(--st-color-border);
   border-radius: 14px;
 
   .ant-segmented-group {
@@ -19,17 +56,17 @@
 
   .ant-segmented-thumb {
     border-radius: 10px;
-    background: #ffffff;
-    box-shadow: 0 6px 18px rgba(31, 35, 41, 0.08);
+    background: var(--st-color-bg-elevated);
+    box-shadow: none;
   }
 
   .ant-segmented-item-selected {
     .method-option {
-      color: #1570ef;
+      color: var(--st-color-accent);
     }
 
     .method-option__title {
-      color: #1570ef;
+      color: var(--st-color-accent);
     }
   }
 }
@@ -43,14 +80,14 @@
   padding: 6px 12px;
   font-size: 13px;
   font-weight: 600;
-  color: #475467;
+  color: var(--st-color-text-secondary);
   text-align: center;
   transition: all 0.2s ease;
 
   &__title {
     font-size: 13px;
     font-weight: 600;
-    color: #1f2329;
+    color: var(--st-color-text-primary);
     line-height: 20px;
     transition: color 0.2s ease;
   }

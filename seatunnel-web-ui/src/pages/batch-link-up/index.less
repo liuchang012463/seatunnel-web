@@ -46,7 +46,7 @@
         border-color: #ff7066;
 
         .CodeMirror-scroll {
-          background: #fffafa;
+          background: rgba(255, 112, 102, 0.08);
         }
       }
     }
@@ -150,14 +150,15 @@
   display: flex;
   width: 100%;
   padding: 16px 24px;
-  background: #ffffff;
-  box-shadow: 0 0 11px rgba(0, 0, 0, 0.11);
+  background: var(--st-color-bg-panel);
+  border-bottom: 1px solid var(--st-color-divider);
+  box-shadow: none;
 }
 
 .jy-dc-ui-pro-header {
-  box-shadow: 0 2px 8px #0000000d, inset 0 -1px 0 0 rgba(227, 228, 230, 1);
-  background: #FFFFFF;
-  border-bottom: rgba(227, 228, 230, 1);
+  box-shadow: none;
+  background: var(--st-color-bg-panel);
+  border-bottom: 1px solid var(--st-color-divider);
 
 }
 
@@ -361,7 +362,7 @@
 }
 
 .echart-container {
-    background: white;
+    background: var(--st-color-bg-panel);
     position: relative;
     overflow: hidden;
 }
@@ -389,7 +390,7 @@
 }
 
 .task-detail-content {
-  background-color: #f6f6f6;
+  background-color: var(--st-color-bg-page);
   height: calc(100vh - 46px);
   overflow-y: auto;
 }
@@ -397,7 +398,7 @@
 .task-detail-tabs {
   margin: 16px;
   padding: 16px;
-  background-color: white;
+  background-color: var(--st-color-bg-panel);
   border-radius: 6px;
 }
 
@@ -425,7 +426,7 @@
 
 // Metrics Container
 .metrics-container {
-  background: white;
+  background: var(--st-color-bg-panel);
   overflow-x: auto;
 }
 
@@ -472,7 +473,7 @@
   cursor: pointer;
   
   &:hover {
-    background-color: #f5f5f5;
+    background-color: var(--st-color-bg-elevated);
   }
 }
 
@@ -520,13 +521,17 @@
 
 .quality-detail-drawer {
   .ant-drawer-content {
-    background: linear-gradient(180deg, #fcfdff 0%, #f8fafc 100%);
+    background: linear-gradient(
+      180deg,
+      var(--st-color-bg-panel),
+      var(--st-color-bg-page)
+    );
   }
 
   .ant-drawer-header {
     padding: 18px 24px 14px;
     border-bottom: 1px solid #eef2f6;
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(0, 46, 65, 0.92);
     backdrop-filter: blur(10px);
   }
 
@@ -674,8 +679,8 @@
   }
 
   .ant-table-thead > tr > th {
-    background: #f8fafc !important;
-    color: #344054;
+    background: var(--st-color-bg-elevated) !important;
+    color: var(--st-color-text-primary);
     font-weight: 600;
     border-bottom: 1px solid #eaeef3;
     padding: 12px 16px;
@@ -683,13 +688,13 @@
 
   .ant-table-tbody > tr > td {
     padding: 12px 16px;
-    color: #475467;
-    border-bottom: 1px solid #f2f4f7;
-    background: #ffffff;
+    color: var(--st-color-text-secondary);
+    border-bottom: 1px solid var(--st-color-divider);
+    background: var(--st-color-bg-panel);
   }
 
   .ant-table-tbody > tr:hover > td {
-    background: #f8fbff !important;
+    background: var(--st-color-bg-elevated) !important;
   }
 
   .ant-table-placeholder .ant-table-cell {

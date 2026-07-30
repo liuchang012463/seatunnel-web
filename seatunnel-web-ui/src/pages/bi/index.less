@@ -1,15 +1,30 @@
 :root {
-  --dashboard-primary: #3f51b5;
-  --dashboard-primary-hover: #3546a1;
+  --dashboard-primary: var(--st-color-accent);
+  --dashboard-primary-hover: var(--st-color-text-primary);
 
-  --dashboard-primary-soft: rgb(63 81 181 / 0.08);
-  --dashboard-primary-soft-strong: rgb(63 81 181 / 0.14);
+  --dashboard-primary-soft: var(--st-color-hover);
+  --dashboard-primary-soft-strong: var(--st-color-selected);
 
-  --dashboard-primary-border: rgb(63 81 181 / 0.42);
-  --dashboard-primary-border-soft: rgb(63 81 181 / 0.24);
+  --dashboard-primary-border: var(--st-color-border);
+  --dashboard-primary-border-soft: var(--st-color-divider);
 
-  --dashboard-primary-shadow: rgb(63 81 181 / 0.14);
-  --dashboard-primary-shadow-strong: rgb(63 81 181 / 0.26);
+  --dashboard-primary-shadow: var(--st-color-focus);
+  --dashboard-primary-shadow-strong: var(--st-color-hover);
+}
+
+.bi-page,
+.bi-canvas {
+  color: var(--st-color-text-secondary);
+  background: var(--st-color-bg-page);
+}
+
+.bi-sidebar,
+.bi-header,
+.dashboard-card,
+.create-chart-modal .ant-modal-content {
+  color: var(--st-color-text-secondary);
+  background: var(--st-color-bg-panel);
+  border-color: var(--st-color-border);
 }
 
 .react-grid-item {
@@ -74,7 +89,7 @@
 
   cursor: se-resize !important;
   border-radius: 999px !important;
-  border: 2px solid #fff !important;
+  border: 2px solid var(--st-color-bg-panel) !important;
   background: var(--dashboard-primary) !important;
 
   box-shadow:
@@ -144,7 +159,7 @@
   .ant-modal-close {
     top: 16px;
     right: 16px;
-    color: #64748b;
+    color: var(--st-color-text-secondary);
   }
 
   .ant-select-selector,
@@ -155,7 +170,7 @@
   .ant-checkbox-wrapper,
   .ant-radio-wrapper {
     font-size: 13px;
-    color: #475569;
+    color: var(--st-color-text-secondary);
   }
 }
 
@@ -163,8 +178,8 @@
   .ant-select-selector {
     height: 34px !important;
     border-radius: 8px !important;
-    border-color: hsl(231 48% 64%) !important;
-    box-shadow: 0 0 0 1px hsl(231 48% 82% / 0.5) !important;
+    border-color: var(--st-color-accent) !important;
+    box-shadow: 0 0 0 1px var(--st-color-focus) !important;
   }
 
   .ant-select-selection-item {

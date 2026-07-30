@@ -2,7 +2,7 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--st-color-bg-page);
 }
 
 .sidePanelContentWrap {
@@ -25,7 +25,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--st-color-bg-panel);
 }
 
 /* 顶部只保留图标，不做强视觉 */
@@ -35,8 +35,8 @@
   display: flex;
   align-items: center;
   padding: 0 16px;
-  border-bottom: 1px solid #eef2f7;
-  background: #ffffff;
+  border-bottom: 1px solid var(--st-color-divider);
+  background: var(--st-color-bg-panel);
 }
 
 .sidePanelIconTitle {
@@ -52,9 +52,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  color: #475569;
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
+  color: var(--st-color-text-secondary);
+  background: var(--st-color-bg-elevated);
+  border: 1px solid var(--st-color-border);
 }
 
 .sidePanelBody {
@@ -62,7 +62,7 @@
   min-height: 0;
   overflow: auto;
   padding: 16px;
-  background: #ffffff;
+  background: var(--st-color-bg-panel);
 
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.32) transparent;
@@ -87,8 +87,8 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  border-left: 1px solid #eef2f7;
-  background: #ffffff;
+  border-left: 1px solid var(--st-color-divider);
+  background: var(--st-color-bg-panel);
 }
 
 .sidePanelTabsTop {
@@ -107,9 +107,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  color: #64748b;
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
+  color: var(--st-color-text-secondary);
+  background: var(--st-color-bg-elevated);
+  border: 1px solid var(--st-color-border);
 }
 
 .sidePanelTabList {
@@ -138,9 +138,9 @@
     border-color 0.16s ease;
 
   &:hover {
-    color: #475467;
-    background: #f8fafc;
-    border-color: #eef2f7;
+    color: var(--st-color-text-primary);
+    background: var(--st-color-bg-elevated);
+    border-color: var(--st-color-accent);
   }
 }
 
@@ -206,9 +206,9 @@
 
   .edge-insert-info-card {
     padding: 12px;
-    border: 1px solid #eef2f7;
+    border: 1px solid var(--st-color-border);
     border-radius: 10px;
-    background: #ffffff;
+    background: var(--st-color-bg-panel);
     box-shadow: 0 12px 32px rgba(16, 24, 40, 0.14);
     pointer-events: none;
   }

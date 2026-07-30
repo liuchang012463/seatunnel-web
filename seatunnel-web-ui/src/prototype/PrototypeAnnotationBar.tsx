@@ -31,11 +31,11 @@ const PrototypeAnnotationBar: React.FC<React.PropsWithChildren> = ({
         style={{
           margin: '12px 24px 0',
           padding: '12px 16px',
-          borderRadius: 12,
-          border: '1px solid #dbeafe',
-          background:
-            'linear-gradient(90deg, rgba(239,246,255,.96), rgba(248,250,252,.96))',
-          boxShadow: '0 8px 24px rgba(15,23,42,.05)',
+          color: 'var(--st-color-text-primary, #fff)',
+          borderRadius: 'var(--st-radius-md, 4px)',
+          border: '1px solid var(--st-color-border, #2187a8)',
+          background: 'var(--st-color-bg-secondary, #002e41)',
+          boxShadow: 'none',
         }}
       >
         <Space wrap size={[8, 8]}>
@@ -53,7 +53,9 @@ const PrototypeAnnotationBar: React.FC<React.PropsWithChildren> = ({
               <Tooltip title={meta.requirementIds.join('、')}>
                 <Tag>{meta.requirementIds.length} 项指标</Tag>
               </Tooltip>
-              <span style={{ color: '#64748b' }}>{meta.source}</span>
+              <span style={{ color: 'var(--st-color-text-secondary, #d5d5d5)' }}>
+                {meta.source}
+              </span>
             </>
           ) : (
             <strong>数据采集引接软件：合同指标—前端页面对应关系</strong>

@@ -174,7 +174,7 @@ const App: React.FC = () => {
     <div
       style={{
         height: "calc(100vh - 56px)",
-        backgroundColor: "white",
+        backgroundColor: "var(--st-color-bg-page)",
         overflow: "hidden",
       }}
     >

@@ -238,24 +238,25 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
       styles={{
         header: {
           padding: "20px 24px 16px",
-          borderBottom: "1px solid #EEF2F6",
+          borderBottom: "1px solid var(--st-color-divider)",
+          background: "var(--st-color-bg-panel)",
           marginBottom: 0,
         },
         body: {
           padding: "20px 24px 16px",
-          background: "#F8FAFC",
+          background: "var(--st-color-bg-app)",
           maxHeight: "69vh",
           overflowY: "auto",
           minHeight: "65vh",
         },
         footer: {
           padding: "14px 24px 18px",
-          borderTop: "1px solid #EEF2F6",
-          background: "#FFFFFF",
+          borderTop: "1px solid var(--st-color-divider)",
+          background: "var(--st-color-bg-panel)",
           marginTop: 0,
         },
         content: {
-          borderRadius: 20,
+          borderRadius: 4,
           overflow: "hidden",
         },
       }}
@@ -282,8 +283,9 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 10,
-                  background: "#EEF4FF",
+                  borderRadius: 4,
+                  background: "var(--st-color-hover)",
+                  border: "1px solid var(--st-color-border)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -297,9 +299,9 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
                 <div
                   style={{
                     fontSize: 18,
-                    fontWeight: 600,
-                    color: "#101828",
-                    lineHeight: "28px",
+                    fontWeight: 400,
+                    color: "var(--st-color-text-primary)",
+                    lineHeight: "24px",
                   }}
                 >
                   {modalActionText}
@@ -313,7 +315,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
                   style={{
                     marginTop: 2,
                     fontSize: 13,
-                    color: "#667085",
+                    color: "var(--st-color-text-secondary)",
                     lineHeight: "20px",
                   }}
                 >
