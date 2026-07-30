@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
+import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.common.enums.SyncModeEnum;
 import org.apache.seatunnel.web.spi.bean.dto.pagination.PaginationBaseDTO;
@@ -28,6 +29,16 @@ public class BatchJobDefinitionQueryDTO extends PaginationBaseDTO {
     private String sinkType;
 
     private JobMode jobType;
+
+    /**
+     * Only return definitions created with this configuration mode.
+     */
+    private JobDefinitionMode mode;
+
+    /**
+     * Exclude definitions created with this configuration mode.
+     */
+    private JobDefinitionMode excludeMode;
 
     private SyncModeEnum syncMode;
 

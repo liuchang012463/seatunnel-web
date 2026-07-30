@@ -8,6 +8,7 @@ export default {
   'menu.resources.discovery': '数据探查',
   'menu.ingestion': '数据引接',
   'menu.ingestion.batch': '离线引接任务管理',
+  'menu.ingestion.file': '文件引接任务管理',
   'menu.ingestion.stream': '实时引接任务管理',
   'menu.ingestion.cloud-edge': '云边协同任务管理',
   'menu.ingestion.edge-access': '边缘接入任务管理',

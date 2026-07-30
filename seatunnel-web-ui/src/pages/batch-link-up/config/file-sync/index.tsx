@@ -31,6 +31,7 @@ type DataSourceOption = { id: string; name: string; dbType: FileDataSourceType }
 
 const FileSyncPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const taskListPath = '/sync/file-link-up';
   const [form] = Form.useForm();
   const [sources, setSources] = useState<DataSourceOption[]>([]);
   const [preview, setPreview] = useState('');
@@ -232,7 +233,7 @@ const FileSyncPage: React.FC = () => {
             <h1 className="m-0 text-2xl font-bold text-slate-900">文件与对象存储同步</h1>
             <p className="mt-1 text-slate-500">按目录或 Prefix 传输二进制流，不涉及表、字段或 SQL 映射。</p>
           </div>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/sync/batch-link-up')}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => history.push(taskListPath)}>
             返回任务列表
           </Button>
         </div>

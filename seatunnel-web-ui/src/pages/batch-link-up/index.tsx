@@ -92,7 +92,7 @@ const App = () => {
       />
 
       <div>
-        <SyncTaskList goDetail={goEdit} />
+        <SyncTaskList goDetail={goEdit} excludeMode="FILE_SYNC" />
       </div>
     </div>
   );

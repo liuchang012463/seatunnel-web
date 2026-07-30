@@ -35,6 +35,7 @@ export const prototypeMenuData: MenuDataItem[] = [
     icon: <SwapOutlined />,
     children: [
       { path: '/sync/batch-link-up', name: '离线引接任务管理' },
+      { path: '/sync/file-link-up', name: '文件引接任务管理' },
       { path: '/sync/stream-link-up', name: '实时引接任务管理' },
       { path: '/sync/cloud-edge-tasks', name: '云边协同任务管理' },
       { path: '/sync/edge-access-tasks', name: '边缘接入任务管理' },

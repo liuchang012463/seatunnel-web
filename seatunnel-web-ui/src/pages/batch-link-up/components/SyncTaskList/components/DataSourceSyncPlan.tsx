@@ -10,6 +10,7 @@ interface DataSourceSyncPlanProps {
 
 const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   console.log(record);
+  const isFileSync = record?.mode === "FILE_SYNC";
   const animatedIconStyle: CSSProperties = {
     fontSize: 10,
     animation: "float 2s ease-in-out infinite",
@@ -168,6 +169,7 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   };
 
   const getPlanTitle = () => {
+    if (isFileSync) return "文件引接";
     if (record?.jobType === "BATCH") {
       if (record?.mode === "GUIDE_SINGLE") return "单表同步";
       if (record?.mode === "GUIDE_MULTI") return "多表同步";
@@ -427,47 +429,54 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
             <span>-</span>
           )}
 
-          <span style={{ margin: "0 6px", color: "green" }}>·</span>
-
-          {record?.mode === "GUIDE_MULTI" ? (
-            <Popover
-              placement="rightTop"
-              trigger="hover"
-              title="来源表清单"
-              content={renderTablePopoverContent(sourceTableList)}
-            >
+          {!isFileSync && (
+            <>
               <span
-                style={{
-                  maxWidth: 180,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  display: "inline-block",
-                  cursor: "pointer",
-                  color:
-                    sourceTableCount > 0
-                      ? "hsl(231 48% 48%)"
-                      : "rgba(0,0,0,0.45)",
-                }}
+                style={{ margin: "0 6px", color: "green" }}
               >
-                {sourceTableCount > 0
-                  ? `共 ${sourceTableCount} 张表`
-                  : "暂未选择表"}
+                ·
               </span>
-            </Popover>
-          ) : (
-            <span
-              style={{
-                maxWidth: 180,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                display: "inline-block",
-              }}
-              title={String(sourceTableText)}
-            >
-              {sourceTableText}
-            </span>
+              {record?.mode === "GUIDE_MULTI" ? (
+                <Popover
+                  placement="rightTop"
+                  trigger="hover"
+                  title="来源表清单"
+                  content={renderTablePopoverContent(sourceTableList)}
+                >
+                  <span
+                    style={{
+                      maxWidth: 180,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      display: "inline-block",
+                      cursor: "pointer",
+                      color:
+                        sourceTableCount > 0
+                          ? "hsl(231 48% 48%)"
+                          : "rgba(0,0,0,0.45)",
+                    }}
+                  >
+                    {sourceTableCount > 0
+                      ? `共 ${sourceTableCount} 张表`
+                      : "暂未选择表"}
+                  </span>
+                </Popover>
+              ) : (
+                <span
+                  style={{
+                    maxWidth: 180,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    display: "inline-block",
+                  }}
+                  title={String(sourceTableText)}
+                >
+                  {sourceTableText}
+                </span>
+              )}
+            </>
           )}
         </div>
 
@@ -518,47 +527,50 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
             <span>-</span>
           )}
 
-          <span style={{ margin: "0 6px" }}>·</span>
-
-          {record?.mode === "GUIDE_MULTI" ? (
-            <Popover
-              placement="rightTop"
-              trigger="hover"
-              title="目标表清单"
-              content={renderTablePopoverContent(sinkTableList)}
-            >
-              <span
-                style={{
-                  maxWidth: 180,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  display: "inline-block",
-                  cursor: "pointer",
-                  color:
-                    sinkTableCount > 0
-                      ? "hsl(231 48% 48%)"
-                      : "rgba(0,0,0,0.45)",
-                }}
-              >
-                {sinkTableCount > 0
-                  ? `共 ${sinkTableCount} 张表`
-                  : "暂未选择表"}
-              </span>
-            </Popover>
-          ) : (
-            <span
-              style={{
-                maxWidth: 180,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                display: "inline-block",
-              }}
-              title={String(sinkTableText)}
-            >
-              {sinkTableText}
-            </span>
+          {!isFileSync && (
+            <>
+              <span style={{ margin: "0 6px" }}>·</span>
+              {record?.mode === "GUIDE_MULTI" ? (
+                <Popover
+                  placement="rightTop"
+                  trigger="hover"
+                  title="目标表清单"
+                  content={renderTablePopoverContent(sinkTableList)}
+                >
+                  <span
+                    style={{
+                      maxWidth: 180,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      display: "inline-block",
+                      cursor: "pointer",
+                      color:
+                        sinkTableCount > 0
+                          ? "hsl(231 48% 48%)"
+                          : "rgba(0,0,0,0.45)",
+                    }}
+                  >
+                    {sinkTableCount > 0
+                      ? `共 ${sinkTableCount} 张表`
+                      : "暂未选择表"}
+                  </span>
+                </Popover>
+              ) : (
+                <span
+                  style={{
+                    maxWidth: 180,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    display: "inline-block",
+                  }}
+                  title={String(sinkTableText)}
+                >
+                  {sinkTableText}
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>

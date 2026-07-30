@@ -15,6 +15,7 @@ interface AdvancedSearchFormProps {
   onSearch: (values: any) => void;
   onReset: () => void;
   initialValues?: any;
+  fileMode?: boolean;
 }
 
 const { RangePicker } = DatePicker;
@@ -23,6 +24,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   onSearch,
   onReset,
   initialValues,
+  fileMode = false,
 }) => {
   const intl = useIntl();
   const [form] = Form.useForm();
@@ -90,13 +92,20 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
     value,
   });
 
-  const dataSourceOption = [
-    createDataSourceOption("MySql", "MYSQL"),
-    createDataSourceOption("Oracle", "ORACLE"),
-    createDataSourceOption("PostgreSQL", "POSTGRE_SQL"),
-    createDataSourceOption("Kingbase", "KINGBASE"),
-    createDataSourceOption("Dameng", "DAMENG"),
-  ];
+  const dataSourceOption = fileMode
+    ? [
+        createDataSourceOption("FTP", "FTP"),
+        createDataSourceOption("SFTP", "SFTP"),
+        createDataSourceOption("S3", "S3"),
+        createDataSourceOption("MINIO", "MINIO"),
+      ]
+    : [
+        createDataSourceOption("MySql", "MYSQL"),
+        createDataSourceOption("Oracle", "ORACLE"),
+        createDataSourceOption("PostgreSQL", "POSTGRE_SQL"),
+        createDataSourceOption("Kingbase", "KINGBASE"),
+        createDataSourceOption("Dameng", "DAMENG"),
+      ];
 
   const statusOptions = [
     {
@@ -348,51 +357,55 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
 
             <Col xs={24} md={12} xl={4} />
 
-            <Col xs={24} md={12} xl={7}>
-              <Form.Item
-                {...commonFormItemProps}
-                name="sourceTable"
-                label={fieldLabel(
-                  intl.formatMessage({
-                    id: "pages.job.search.sourceTable",
-                    defaultMessage: "Source Table",
-                  }),
-                )}
-              >
-                <Input
-                  allowClear
-                  placeholder={intl.formatMessage({
-                    id: "pages.job.search.fuzzyPlaceholder",
-                    defaultMessage: "Fuzzy match...",
-                  })}
-                  className="h-8"
-                  style={{ borderRadius: 16 }}
-                />
-              </Form.Item>
-            </Col>
+            {!fileMode && (
+              <>
+                <Col xs={24} md={12} xl={7}>
+                  <Form.Item
+                    {...commonFormItemProps}
+                    name="sourceTable"
+                    label={fieldLabel(
+                      intl.formatMessage({
+                        id: "pages.job.search.sourceTable",
+                        defaultMessage: "Source Table",
+                      }),
+                    )}
+                  >
+                    <Input
+                      allowClear
+                      placeholder={intl.formatMessage({
+                        id: "pages.job.search.fuzzyPlaceholder",
+                        defaultMessage: "Fuzzy match...",
+                      })}
+                      className="h-8"
+                      style={{ borderRadius: 16 }}
+                    />
+                  </Form.Item>
+                </Col>
 
-            <Col xs={24} md={12} xl={7}>
-              <Form.Item
-                {...commonFormItemProps}
-                name="sinkTable"
-                label={fieldLabel(
-                  intl.formatMessage({
-                    id: "pages.job.search.sinkTable",
-                    defaultMessage: "Sink Table",
-                  }),
-                )}
-              >
-                <Input
-                  allowClear
-                  placeholder={intl.formatMessage({
-                    id: "pages.job.search.fuzzyPlaceholder",
-                    defaultMessage: "Fuzzy match...",
-                  })}
-                  className="h-8"
-                  style={{ borderRadius: 16 }}
-                />
-              </Form.Item>
-            </Col>
+                <Col xs={24} md={12} xl={7}>
+                  <Form.Item
+                    {...commonFormItemProps}
+                    name="sinkTable"
+                    label={fieldLabel(
+                      intl.formatMessage({
+                        id: "pages.job.search.sinkTable",
+                        defaultMessage: "Sink Table",
+                      }),
+                    )}
+                  >
+                    <Input
+                      allowClear
+                      placeholder={intl.formatMessage({
+                        id: "pages.job.search.fuzzyPlaceholder",
+                        defaultMessage: "Fuzzy match...",
+                      })}
+                      className="h-8"
+                      style={{ borderRadius: 16 }}
+                    />
+                  </Form.Item>
+                </Col>
+              </>
+            )}
           </Row>
         )}
       </Form>

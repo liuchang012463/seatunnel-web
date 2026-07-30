@@ -19,15 +19,7 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
 
       <Form.Item name="mode" initialValue="GUIDE_SINGLE" className="mb-0">
         <Radio.Group className="w-full">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-            <ModeCard
-              value="FILE_SYNC"
-              current={mode}
-              title="文件夹同步"
-              desc="面向 FTP/SFTP/S3/MinIO 的二进制文件同步，不使用表映射。"
-              tag="文件"
-              onSelect={setMode}
-            />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <ModeCard
               value="GUIDE_SINGLE"
               current={mode}

@@ -85,15 +85,7 @@ const BaseConfigSection: React.FC<Props> = ({
 
           <Form.Item name="mode" initialValue="GUIDE_SINGLE" className="mb-0">
             <Radio.Group className="w-full">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-                <ModeCard
-                  value="FILE_SYNC"
-                  current={mode}
-                  title="文件夹同步"
-                  desc="FTP/SFTP/S3/MinIO 二进制文件同步，按目录或 Prefix 配置。"
-                  tag="文件"
-                  onSelect={setMode}
-                />
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <ModeCard
                   value="GUIDE_SINGLE"
                   current={mode}

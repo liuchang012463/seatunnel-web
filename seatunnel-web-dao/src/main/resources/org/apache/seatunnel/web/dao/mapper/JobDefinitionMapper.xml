@@ -78,6 +78,12 @@
             <if test="dto.sinkType != null and dto.sinkType != ''">
                 AND sink_type = #{dto.sinkType}
             </if>
+            <if test="dto.mode != null">
+                AND mode = #{dto.mode}
+            </if>
+            <if test="dto.excludeMode != null">
+                AND (mode IS NULL OR mode != #{dto.excludeMode})
+            </if>
             <if test="dto.sourceTable != null and dto.sourceTable != ''">
                 AND source_table LIKE CONCAT('%', #{dto.sourceTable}, '%')
             </if>
@@ -178,6 +184,14 @@
 
             <if test="dto.sinkType != null and dto.sinkType != ''">
                 AND d.sink_type = #{dto.sinkType}
+            </if>
+
+            <if test="dto.mode != null">
+                AND d.mode = #{dto.mode}
+            </if>
+
+            <if test="dto.excludeMode != null">
+                AND (d.mode IS NULL OR d.mode != #{dto.excludeMode})
             </if>
 
             <if test="dto.sourceTable != null and dto.sourceTable != ''">

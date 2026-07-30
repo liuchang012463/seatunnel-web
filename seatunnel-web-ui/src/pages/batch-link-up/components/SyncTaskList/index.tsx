@@ -17,6 +17,9 @@ import TaskStatus from "./components/TaskStatus";
 
 interface Props {
   goDetail: (value: any, item?: any) => void;
+  mode?: string;
+  excludeMode?: string;
+  emptyDescription?: string;
 }
 
 const DEFAULT_TIME_RANGE = [
@@ -69,7 +72,12 @@ const parsePaginationFromUrl = () => {
   };
 };
 
-const App: React.FC<Props> = ({ goDetail }) => {
+const App: React.FC<Props> = ({
+  goDetail,
+  mode,
+  excludeMode,
+  emptyDescription = "暂无引接链路（离线）",
+}) => {
   const intl = useIntl();
 
   const [taskList, setTaskList] = useState<any[]>([]);
@@ -155,6 +163,8 @@ const App: React.FC<Props> = ({ goDetail }) => {
     try {
       const data = await seatunnelJobDefinitionApi.page({
         ...transformedParams,
+        mode,
+        excludeMode,
         current: pagination.current,
         pageSize: pagination.pageSize,
       });
@@ -547,6 +557,7 @@ const App: React.FC<Props> = ({ goDetail }) => {
                   onSearch={handleSearch}
                   onReset={handleReset}
                   initialValues={searchParams}
+                  fileMode={mode === "FILE_SYNC"}
                 />
               </div>
             </div>
@@ -575,7 +586,7 @@ const App: React.FC<Props> = ({ goDetail }) => {
                 emptyText: (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="暂无引接链路（离线）"
+                    description={emptyDescription}
                   />
                 ),
               }}
