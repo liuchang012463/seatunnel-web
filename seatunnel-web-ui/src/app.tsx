@@ -12,9 +12,15 @@ import { prototypeMenuData } from './prototype/menuData';
 import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
 import { errorConfig } from './requestErrorConfig';
 import HttpUtils from './utils/HttpUtils';
+import {
+  applySidebarVisibility,
+  shouldHideSidebar,
+} from './utils/iframeLayout';
 
 const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/login';
+const hideSidebar = shouldHideSidebar();
+applySidebarVisibility(hideSidebar);
 const prototypeUser = {
   name: '原型演示用户',
   avatar: '',
@@ -142,7 +148,6 @@ export const layout: RunTimeLayoutConfig = ({
       },
     ],
     links: [],
-    menuHeaderRender: undefined,
     // 自定义 403 页面
     // unAccessible: <div>unAccessible</div>,
     // 增加一个 loading 的状态
@@ -173,6 +178,8 @@ export const layout: RunTimeLayoutConfig = ({
       );
     },
     ...initialState?.settings,
+    menuRender: hideSidebar ? false : initialState?.settings?.menuRender,
+    menuHeaderRender: hideSidebar ? false : undefined,
   };
 };
 

@@ -728,6 +728,14 @@ ol {
   --bottom-action-bar-height: 64px;
 }
 
+html[data-hide-sidebar='true'],
+html[data-hide-sidebar='true'] body,
+html[data-hide-sidebar='true'] .ant-pro-layout {
+  --pro-sider-collapsed-width: 0px !important;
+  --pro-sider-expanded-width: 0px !important;
+  --pro-sider-current-width: 0px !important;
+}
+
 @pro-sider-collapsed-width: 64px;
 @pro-sider-expanded-width: 256px;
 @pro-sider-transition-duration: 0.32s;
