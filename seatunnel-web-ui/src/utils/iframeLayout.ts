@@ -6,6 +6,18 @@ export interface IframeLayoutEnvironment {
   REACT_APP_HIDE_SIDEBAR?: string;
 }
 
+export interface IframeWindowContext {
+  self: unknown;
+  top: {
+    location?: {
+      origin?: string;
+    };
+  } | null;
+  location: {
+    origin: string;
+  };
+}
+
 const parseSwitch = (value?: string | null): boolean | undefined => {
   if (value == null || value.trim() === '') {
     return undefined;
@@ -50,4 +62,24 @@ export const applySidebarVisibility = (hidden: boolean): void => {
     return;
   }
   document.documentElement.dataset.hideSidebar = String(hidden);
+};
+
+/**
+ * Cross-origin iframe logins need a SameSite=None session cookie. Reading the
+ * parent origin throws for a cross-origin frame, which is also a positive
+ * signal here.
+ */
+export const isCrossOriginIframe = (
+  context: IframeWindowContext | undefined =
+    typeof window === 'undefined' ? undefined : window,
+): boolean => {
+  if (!context || context.self === context.top) {
+    return false;
+  }
+
+  try {
+    return context.top?.location?.origin !== context.location.origin;
+  } catch (_error) {
+    return true;
+  }
 };

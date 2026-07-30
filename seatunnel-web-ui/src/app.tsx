@@ -1,16 +1,17 @@
-import { AvatarDropdown, AvatarName, Footer } from '@/components';
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import { SettingDrawer } from '@ant-design/pro-components';
+import { AvatarDropdown, AvatarName, Footer } from '@/components';
 import '@ant-design/v5-patch-for-react-19';
 import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
 import { history } from '@umijs/max';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
 import { GlobalSearch, Knowledge } from './components/RightContent';
-import { isPrototypeMode } from './prototype/mode';
 import { prototypeMenuData } from './prototype/menuData';
+import { isPrototypeMode } from './prototype/mode';
 import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
 import { errorConfig } from './requestErrorConfig';
+import { buildLoginPath } from './utils/authRedirect';
 import HttpUtils from './utils/HttpUtils';
 import {
   applySidebarVisibility,
@@ -48,7 +49,9 @@ export async function getInitialState(): Promise<{
 
       return msg.data;
     } catch (_error) {
-      history.push(loginPath);
+      if (history.location.pathname !== loginPath) {
+        history.push(buildLoginPath(history.location));
+      }
     }
     return undefined;
   };
@@ -124,7 +127,7 @@ export const layout: RunTimeLayoutConfig = ({
         !initialState?.currentUser &&
         location.pathname !== loginPath
       ) {
-        history.push(loginPath);
+        history.push(buildLoginPath(location));
       }
     },
     bgLayoutImgList: isPrototypeMode ? [] : [

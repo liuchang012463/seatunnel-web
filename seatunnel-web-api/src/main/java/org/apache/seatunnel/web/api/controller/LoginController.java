@@ -46,6 +46,7 @@ public class LoginController extends BaseController {
     @PostMapping(value = "/login")
     @AccessLogAnnotation(ignoreRequestArgs = {"userDTO", "request", "response"})
     public Result<Boolean> login(@RequestBody UserDTO userDTO,
+                                 @RequestParam(value = "embedded", defaultValue = "false") boolean embedded,
                                  HttpServletRequest request,
                                  HttpServletResponse response) {
         // user name check
@@ -61,9 +62,9 @@ public class LoginController extends BaseController {
         for (Map.Entry<String, String> cookieEntry : cookieMap.entrySet()) {
             Cookie cookie = new Cookie(cookieEntry.getKey(), cookieEntry.getValue());
             cookie.setHttpOnly(true);
-            cookie.setSecure(request.isSecure());
+            cookie.setSecure(embedded || request.isSecure());
             cookie.setPath("/");
-            cookie.setAttribute("SameSite", "Lax");
+            cookie.setAttribute("SameSite", embedded ? "None" : "Lax");
             response.addCookie(cookie);
         }
 

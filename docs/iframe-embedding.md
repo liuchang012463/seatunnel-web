@@ -29,3 +29,12 @@ add_header Content-Security-Policy "frame-ancestors 'self' https://portal.exampl
 
 不要使用不受限制的 `frame-ancestors *`。同时应确认登录 Cookie 的
 `SameSite`/`Secure` 策略满足目标浏览器的第三方 Cookie 规则。
+
+跨站 iframe 中提交账号密码时，前端会自动请求嵌入模式登录，后端将会话
+Cookie 设置为 `SameSite=None; Secure`，并在登录后返回原页面（包括
+`hideMenu` 等查询参数）。因此跨站嵌入必须使用 HTTPS；普通窗口和同源
+iframe 登录仍使用 `SameSite=Lax`。
+
+如果浏览器或企业策略完全禁用了第三方 Cookie，即使使用
+`SameSite=None; Secure` 也无法维持 iframe 会话。此时应由父系统与
+SeaTunnel Web 对接可信 SSO，而不是在 URL 中传递会话令牌。

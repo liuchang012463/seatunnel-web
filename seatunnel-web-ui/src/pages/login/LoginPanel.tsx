@@ -4,6 +4,8 @@ import { App, Button, Checkbox, Form, Input } from "antd";
 import { useForm } from "antd/es/form/Form";
 import React, { useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { resolvePostLoginRedirect } from "@/utils/authRedirect";
+import { isCrossOriginIframe } from "@/utils/iframeLayout";
 import GoogleLoginButton from "./components/GoogleLoginButton";
 import "./index.less";
 import { loginApi } from "./type";
@@ -62,8 +64,7 @@ export default function LoginPanel({
   };
 
   const redirectToHome = () => {
-    const urlParams = new URL(window.location.href).searchParams;
-    window.location.href = urlParams.get("redirect") || "/";
+    window.location.href = resolvePostLoginRedirect();
   };
 
   const handleAccountLogin = async (values: API.LoginParams) => {
@@ -71,10 +72,13 @@ export default function LoginPanel({
       await form.validateFields();
       setLoading(true);
 
-      const data = await loginApi.login({
-        ...values,
-        type: "account",
-      });
+      const data = await loginApi.login(
+        {
+          ...values,
+          type: "account",
+        },
+        isCrossOriginIframe()
+      );
 
       if (data?.code === 0) {
         message.success(
@@ -94,7 +98,7 @@ export default function LoginPanel({
       }
 
       onFire("TILT");
-    } catch (error) {
+    } catch (_error) {
       onFire("SHAKE");
     } finally {
       setLoading(false);

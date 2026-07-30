@@ -1,5 +1,6 @@
 import {
   applySidebarVisibility,
+  isCrossOriginIframe,
   shouldHideSidebar,
 } from '../iframeLayout';
 
@@ -33,5 +34,31 @@ describe('iframe layout sidebar switch', () => {
   it('marks the document so fixed page actions also use zero sider width', () => {
     applySidebarVisibility(true);
     expect(document.documentElement.dataset.hideSidebar).toBe('true');
+  });
+
+  it('detects a cross-origin iframe when the parent origin is inaccessible', () => {
+    const context = {
+      self: {},
+      top: {
+        get location(): { origin: string } {
+          throw new DOMException('Blocked by same-origin policy');
+        },
+      },
+      location: { origin: 'https://seatunnel.example.com' },
+    };
+
+    expect(isCrossOriginIframe(context)).toBe(true);
+  });
+
+  it('keeps a same-origin iframe on the regular cookie policy', () => {
+    const context = {
+      self: {},
+      top: {
+        location: { origin: 'http://localhost:8000' },
+      },
+      location: { origin: 'http://localhost:8000' },
+    };
+
+    expect(isCrossOriginIframe(context)).toBe(false);
   });
 });
