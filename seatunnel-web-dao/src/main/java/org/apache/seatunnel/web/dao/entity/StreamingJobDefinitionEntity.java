@@ -18,6 +18,10 @@ import org.apache.seatunnel.web.common.enums.ReleaseState;
 @TableName("t_seatunnel_web_streaming_job_definition")
 public class StreamingJobDefinitionEntity extends BaseEntity {
 
+    private Integer createUserId;
+
+    private Integer updateUserId;
+
     private String jobName;
 
     private String jobDesc;

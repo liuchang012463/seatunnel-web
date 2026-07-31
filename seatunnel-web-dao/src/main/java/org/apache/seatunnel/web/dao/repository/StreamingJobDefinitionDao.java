@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.dao.entity.TimeVariable;
 import org.apache.seatunnel.web.spi.bean.dto.StreamingJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.vo.StreamingJobDefinitionVO;
 
+import java.util.Date;
 import java.util.List;
 
 public interface StreamingJobDefinitionDao extends IDao<StreamingJobDefinitionEntity> {
@@ -16,7 +17,12 @@ public interface StreamingJobDefinitionDao extends IDao<StreamingJobDefinitionEn
 
     boolean deleteById(Long id);
 
-    boolean updateReleaseState(Long id, ReleaseState releaseState);
+    boolean updateReleaseState(
+            Long id,
+            ReleaseState releaseState,
+            Integer updateUserId,
+            Date updateTime
+    );
 
     List<StreamingJobDefinitionVO> selectPage(
             StreamingJobDefinitionQueryDTO dto,

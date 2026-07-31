@@ -14,6 +14,7 @@ import org.apache.seatunnel.web.spi.bean.vo.StreamingJobDefinitionVO;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -63,14 +64,22 @@ public class StreamingJobDefinitionDaoImpl
     }
 
     @Override
-    public boolean updateReleaseState(Long id, ReleaseState releaseState) {
-        if (id == null || releaseState == null) {
+    public boolean updateReleaseState(
+            Long id,
+            ReleaseState releaseState,
+            Integer updateUserId,
+            Date updateTime
+    ) {
+        if (id == null || releaseState == null || updateUserId == null) {
             return false;
         }
 
         LambdaUpdateWrapper<StreamingJobDefinitionEntity> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(StreamingJobDefinitionEntity::getId, id)
-                .set(StreamingJobDefinitionEntity::getReleaseState, releaseState);
+                .set(StreamingJobDefinitionEntity::getReleaseState, releaseState)
+                .set(StreamingJobDefinitionEntity::getUpdateUserId, updateUserId)
+                .set(StreamingJobDefinitionEntity::getUpdateTime,
+                        updateTime == null ? new Date() : updateTime);
 
         return streamingJobDefinitionMapper.update(null, wrapper) > 0;
     }

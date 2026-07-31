@@ -3,6 +3,12 @@ server:
   tomcat:
     accept-count: 1000
     max-connections: 10000
+
+security:
+  authentication:
+    mode: ${SEATUNNEL_WEB_AUTH_MODE:DEV_BYPASS}
+  dev-user-id: ${SEATUNNEL_WEB_DEV_USER_ID:1}
+
 springdoc:
   api-docs:
     enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}

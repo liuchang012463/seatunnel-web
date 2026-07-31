@@ -6,12 +6,22 @@ import lombok.Data;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobBasicConfig;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 
+import java.util.Date;
+
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class JobDefinitionEditDetailVO {
 
     private Long id;
+
+    private Integer createUserId;
+
+    private Integer updateUserId;
+
+    private Date createTime;
+
+    private Date updateTime;
 
     private JobBasicConfig basic;
 

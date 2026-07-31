@@ -14,6 +14,10 @@ public class DataSourceVO {
 
     private Long id;
 
+    private Integer createUserId;
+
+    private Integer updateUserId;
+
     private String name;
 
     private DbType dbType;

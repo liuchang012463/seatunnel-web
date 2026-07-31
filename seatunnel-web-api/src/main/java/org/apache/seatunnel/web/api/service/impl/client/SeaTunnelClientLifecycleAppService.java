@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.common.enums.SeaTunnelClientDeployMode;
 import org.apache.seatunnel.web.common.enums.SeaTunnelClientHealthStatusEnum;
 import org.apache.seatunnel.web.common.enums.SeaTunnelClientNodeRole;
+import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.core.client.model.SeaTunnelClientActivationResult;
 import org.apache.seatunnel.web.core.client.model.SeaTunnelClientEndpoint;
 import org.apache.seatunnel.web.core.client.model.SeaTunnelClientProbeResult;
@@ -72,6 +73,9 @@ public class SeaTunnelClientLifecycleAppService {
 
     @Resource
     private StreamingJobDefinitionDao streamingJobDefinitionDao;
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
 
 
 
@@ -183,6 +187,9 @@ public class SeaTunnelClientLifecycleAppService {
 
         entity.setCreateTime(now);
         entity.setUpdateTime(now);
+        Integer currentUserId = currentUserProvider.getCurrentUserId();
+        entity.setCreateUserId(currentUserId);
+        entity.setUpdateUserId(currentUserId);
 
         applyBaseConfig(dto, entity);
         applyActivationToClient(entity, activationResult, now);
@@ -212,6 +219,8 @@ public class SeaTunnelClientLifecycleAppService {
         SeaTunnelClient entity = getEntity(dto.getId());
 
         BeanUtils.copyProperties(dto, entity);
+        entity.setUpdateUserId(currentUserProvider.getCurrentUserId());
+        entity.setUpdateTime(now);
 
         applyBaseConfig(dto, entity);
         applyActivationToClient(entity, activationResult, now);
@@ -222,8 +231,6 @@ public class SeaTunnelClientLifecycleAppService {
                 rebuildClientNodes(entity.getId(), activationResult, now);
 
         entity.setActiveMasterNodeId(activeMasterNodeId);
-        entity.setUpdateTime(now);
-
         seaTunnelClientDao.updateById(entity);
     }
 
@@ -256,7 +263,6 @@ public class SeaTunnelClientLifecycleAppService {
             client.setActiveMasterNodeId(null);
             client.setLastError(activationResult.getErrorMessage());
             client.setHeartbeatTime(now);
-            client.setUpdateTime(now);
             return;
         }
 
@@ -267,7 +273,6 @@ public class SeaTunnelClientLifecycleAppService {
         client.setHealthStatus(SeaTunnelClientHealthStatusEnum.LIVE.getCode());
         client.setHeartbeatTime(now);
         client.setLastError(null);
-        client.setUpdateTime(now);
     }
 
     /**
@@ -367,7 +372,6 @@ public class SeaTunnelClientLifecycleAppService {
                 .ifPresent(node -> {
                     SeaTunnelClient client = getEntity(clientId);
                     client.setActiveMasterNodeId(node.getId());
-                    client.setUpdateTime(now);
                     seaTunnelClientDao.updateById(client);
                 });
     }
@@ -527,7 +531,6 @@ public class SeaTunnelClientLifecycleAppService {
         client.setActiveMasterNodeId(null);
         client.setLastError(errorMessage);
         client.setHeartbeatTime(now);
-        client.setUpdateTime(now);
 
         seaTunnelClientDao.updateById(client);
     }

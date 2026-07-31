@@ -70,13 +70,6 @@ export default [
   ...businessRoutes,
   ...hiddenRoutes,
   {
-    name: 'Login',
-    path: '/login',
-    component: './login',
-    layout: false,
-    hideInMenu: true,
-  },
-  {
     path: '*',
     layout: false,
     component: './404',

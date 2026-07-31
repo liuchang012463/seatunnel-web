@@ -16,6 +16,7 @@
     <properties>
         <seatunnel-web.version>1.0.0</seatunnel-web.version>
         <knife4j.version>4.4.0</knife4j.version>
+        <skipTests>true</skipTests>
     </properties>
 
     <dependencyManagement>
@@ -147,7 +148,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <skipTests>true</skipTests>
+                    <skipTests>${skipTests}</skipTests>
                 </configuration>
             </plugin>
         </plugins>

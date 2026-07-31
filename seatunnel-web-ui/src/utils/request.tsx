@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/dot-notation */
 import { openPrettyNotification } from "@/utils/prettyNotification";
-import { history } from "umi";
 import { extend } from "umi-request";
 
 const codeMessage: Record<number, string> = {
@@ -47,12 +46,6 @@ export class BizError extends Error {
   }
 }
 
-export const goLogin = () => {
-  if (!window.location.pathname.toLowerCase().startsWith("/login")) {
-    history.push("/login");
-  }
-};
-
 /** 唯一错误出口 */
 /** 唯一错误出口 */
 const errorHandler = (error: any): Response | undefined => {
@@ -69,10 +62,6 @@ const errorHandler = (error: any): Response | undefined => {
       });
     }
 
-    if (error.code === 401) {
-      goLogin();
-    }
-
     throw error;
   }
 
@@ -83,11 +72,10 @@ const errorHandler = (error: any): Response | undefined => {
     if (status === 401) {
       openPrettyNotification({
         type: "warning",
-        title: "登录状态失效",
-        description: "当前登录信息已过期，请重新登录后继续操作。",
-        meta: "即将跳转登录页",
+        title: "请求未授权",
+        description: "当前请求未被服务端认证上下文接受，请检查认证配置。",
+        meta: "不会跳转本地登录页",
       });
-      goLogin();
       return response;
     }
 
@@ -133,7 +121,7 @@ const errorHandler = (error: any): Response | undefined => {
 function createClient() {
   return extend({
     errorHandler,
-    credentials: "include",
+    credentials: "omit",
   });
 }
 
@@ -146,6 +134,7 @@ request.interceptors.request.use((url: string, options: any) => {
     url,
     options: {
       ...options,
+      credentials: "omit",
       headers,
     },
   };
@@ -162,7 +151,6 @@ request.interceptors.response.use(async (response: Response, options: any) => {
   const clonedResponse = response.clone();
   const res: any = await clonedResponse.json();
   if (res?.message === "NOT_LOGIN" || res?.code === 1) {
-    goLogin();
     return response || {};
   }
 

@@ -52,6 +52,10 @@ public class SeaTunnelClient {
 
     private String lastError;
 
+    private Integer createUserId;
+
+    private Integer updateUserId;
+
     private Date createTime;
 
     private Date updateTime;

@@ -14,6 +14,10 @@ import org.apache.seatunnel.web.common.enums.ReleaseState;
 @TableName("t_seatunnel_web_job_definition")
 public class JobDefinitionEntity extends BaseEntity {
 
+    private Integer createUserId;
+
+    private Integer updateUserId;
+
     private String jobName;
     private String jobDesc;
 

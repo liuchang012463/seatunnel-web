@@ -243,7 +243,7 @@ export const upload = (options: any, isPublicAPI?: boolean, url?: string, search
     for (const key in options.headers)
       xhr.setRequestHeader(key, options.headers[key])
 
-    xhr.withCredentials = true
+    xhr.withCredentials = false
     xhr.responseType = 'json'
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {

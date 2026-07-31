@@ -5,6 +5,7 @@ import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
 import org.apache.seatunnel.web.spi.bean.dto.BatchJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
 
+import java.util.Date;
 import java.util.List;
 
 public interface JobDefinitionDao extends IDao<JobDefinitionEntity> {
@@ -19,7 +20,12 @@ public interface JobDefinitionDao extends IDao<JobDefinitionEntity> {
 
     Long count(BatchJobDefinitionQueryDTO dto);
 
-    boolean updateReleaseState(Long id, ReleaseState releaseState);
+    boolean updateReleaseState(
+            Long id,
+            ReleaseState releaseState,
+            Integer updateUserId,
+            Date updateTime
+    );
 
     List<JobDefinitionEntity> listByIds(List<Long> ids);
 

@@ -13,6 +13,10 @@ public class StreamingJobDefinitionVO {
 
     private Long id;
 
+    private Integer createUserId;
+
+    private Integer updateUserId;
+
     private String jobName;
 
     private String jobDesc;

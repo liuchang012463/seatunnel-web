@@ -15,6 +15,10 @@ public class BatchJobDefinitionVO {
 
     private Long id;
 
+    private Integer createUserId;
+
+    private Integer updateUserId;
+
     private Long instanceId;
 
     private String jobName;

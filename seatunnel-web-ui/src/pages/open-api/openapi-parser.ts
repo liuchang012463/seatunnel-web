@@ -162,7 +162,7 @@ export function useOpenApiData(url: string) {
         setLoading(true);
         setError("");
 
-        const response = await fetch(url);
+        const response = await fetch(url, { credentials: 'omit' });
         if (!response.ok) {
           throw new Error(`请求失败：${response.status}`);
         }

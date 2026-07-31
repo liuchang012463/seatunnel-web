@@ -10,6 +10,12 @@ public class UserDTO {
 
     private Integer id;
 
+    private String name;
+
+    private String userid;
+
+    private String access;
+
     private String userName;
 
     private String userPassword;

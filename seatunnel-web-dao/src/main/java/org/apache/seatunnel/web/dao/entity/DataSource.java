@@ -15,6 +15,16 @@ import org.apache.seatunnel.web.spi.enums.DbType;
 public class DataSource extends BaseEntity {
 
     /**
+     * 创建人用户 ID。
+     */
+    private Integer createUserId;
+
+    /**
+     * 最近一次业务修改人用户 ID。
+     */
+    private Integer updateUserId;
+
+    /**
      * 数据源名称
      */
     private String name;

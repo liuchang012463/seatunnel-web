@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.api.service.StreamingJobDefinitionService;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
 import org.apache.seatunnel.web.api.service.StreamingJobMetricsService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
+import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
@@ -73,6 +74,9 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
 
     @Resource
     private ObjectMapper objectMapper;
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
 
     @Override
     public JobDefinitionSaveResultVO saveOrUpdate(StreamingScriptJobSaveCommand command) {
@@ -284,7 +288,12 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
                 validateBeforeOffline(id);
             }
 
-            boolean updated = streamingJobDefinitionDao.updateReleaseState(id, releaseState);
+            boolean updated = streamingJobDefinitionDao.updateReleaseState(
+                    id,
+                    releaseState,
+                    currentUserProvider.getCurrentUserId(),
+                    new Date()
+            );
             if (!updated) {
                 throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR);
             }
@@ -336,6 +345,9 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
 
         if (ObjectUtils.isEmpty(context.getExisting())) {
             entity = streamingJobDefinitionAssembler.create(command, context.getAnalysis());
+            Integer currentUserId = currentUserProvider.getCurrentUserId();
+            entity.setCreateUserId(currentUserId);
+            entity.setUpdateUserId(currentUserId);
         } else {
             entity = context.getExisting();
             streamingJobDefinitionAssembler.update(
@@ -345,6 +357,7 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
                     context.getNow(),
                     context.getNextVersion()
             );
+            entity.setUpdateUserId(currentUserProvider.getCurrentUserId());
         }
 
         normalizePersistState(entity, context.getNextVersion());
@@ -407,6 +420,10 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
                 definition.getJobVersion(),
                 latestContent.getVersion()
         ));
+        detail.setCreateUserId(definition.getCreateUserId());
+        detail.setUpdateUserId(definition.getUpdateUserId());
+        detail.setCreateTime(definition.getCreateTime());
+        detail.setUpdateTime(definition.getUpdateTime());
 
         return detail;
     }

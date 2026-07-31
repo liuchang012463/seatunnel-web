@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
 import org.apache.seatunnel.web.api.service.DataSourceService;
+import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
 import org.apache.seatunnel.web.common.utils.ConvertUtil;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
@@ -53,6 +54,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     @Resource
     private StreamingJobDefinitionDao streamingJobDefinitionDao;
 
+    @Resource
+    private CurrentUserProvider currentUserProvider;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DataSource createDataSource(DataSourceDTO dto) {
@@ -72,6 +76,10 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             entity.setOriginalJson(dto.getConnectionParams());
 
             entity.setConnStatus(ConnStatus.CONNECTED_SUCCESS);
+
+            Integer currentUserId = currentUserProvider.getCurrentUserId();
+            entity.setCreateUserId(currentUserId);
+            entity.setUpdateUserId(currentUserId);
 
             entity.initInsert();
 
@@ -111,6 +119,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             entity.setOriginalJson(dto.getConnectionParams());
             entity.setConnStatus(existing.getConnStatus());
             entity.initUpdate();
+            entity.setCreateUserId(existing.getCreateUserId());
+            entity.setUpdateUserId(currentUserProvider.getCurrentUserId());
+            entity.setCreateTime(existing.getCreateTime());
 
             dataSourceDao.updateById(entity);
             return entity;

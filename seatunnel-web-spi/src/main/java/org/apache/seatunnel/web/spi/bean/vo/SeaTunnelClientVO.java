@@ -11,6 +11,8 @@ import java.util.Date;
 @NoArgsConstructor
 public class SeaTunnelClientVO {
     private Long id;
+    private Integer createUserId;
+    private Integer updateUserId;
     private String clientName;
     private String engineType;
     private String baseUrl;

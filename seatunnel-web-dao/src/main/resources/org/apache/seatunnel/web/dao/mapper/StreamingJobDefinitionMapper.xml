@@ -27,6 +27,8 @@
 
         <result property="createTime" column="create_time"/>
         <result property="updateTime" column="update_time"/>
+        <result property="createUserId" column="create_user_id"/>
+        <result property="updateUserId" column="update_user_id"/>
 
         <result property="instanceId" column="instance_id"/>
         <result property="lastJobStatus" column="last_job_status"/>
@@ -85,6 +87,8 @@
         d.sink_table,
         d.source_datasource_id,
         d.sink_datasource_id,
+        d.create_user_id,
+        d.update_user_id,
         d.create_time,
         d.update_time,
 

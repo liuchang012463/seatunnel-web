@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.api.service.application.JobScheduleApplicationService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
+import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
@@ -76,6 +77,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     @Resource
     private ObjectMapper objectMapper;
 
+    @Resource
+    private CurrentUserProvider currentUserProvider;
+
     /**
      * Save or update batch job definition.
      */
@@ -85,6 +89,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
         try {
             Date now = new Date();
+            Integer currentUserId = currentUserProvider.getCurrentUserId();
 
             JobDefinitionModeHandler handler = getAndValidateHandler(command);
             JobDefinitionAnalysisResult analysis = handler.analyze(command);
@@ -98,11 +103,14 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
             if (ObjectUtils.isEmpty(existing)) {
                 entity = jobDefinitionAssembler.create(command, analysis);
+                entity.setCreateUserId(currentUserId);
+                entity.setUpdateUserId(currentUserId);
                 nextVersion = 1;
             } else {
                 nextVersion = existing.getJobVersion() == null ? 1 : existing.getJobVersion() + 1;
                 entity = existing;
                 jobDefinitionAssembler.update(entity, command, analysis, now, nextVersion);
+                entity.setUpdateUserId(currentUserId);
             }
 
             normalizePersistState(entity, nextVersion);
@@ -358,6 +366,8 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
                         vo.setSinkDatasourceId(item.getSinkDatasourceId());
                         vo.setSourceTable(item.getSourceTable());
                         vo.setSinkTable(item.getSinkTable());
+                        vo.setCreateUserId(item.getCreateUserId());
+                        vo.setUpdateUserId(item.getUpdateUserId());
                         vo.setCreateTime(item.getCreateTime());
                         vo.setUpdateTime(item.getUpdateTime());
                         return vo;
@@ -419,6 +429,10 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
                 definition.getJobVersion(),
                 latestContent.getVersion()
         ));
+        detail.setCreateUserId(definition.getCreateUserId());
+        detail.setUpdateUserId(definition.getUpdateUserId());
+        detail.setCreateTime(definition.getCreateTime());
+        detail.setUpdateTime(definition.getUpdateTime());
 
         return detail;
     }
@@ -445,7 +459,12 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     }
 
     private void updateJobReleaseState(Long jobDefinitionId, ReleaseState releaseState) {
-        boolean updated = jobDefinitionDao.updateReleaseState(jobDefinitionId, releaseState);
+        boolean updated = jobDefinitionDao.updateReleaseState(
+                jobDefinitionId,
+                releaseState,
+                currentUserProvider.getCurrentUserId(),
+                new Date()
+        );
 
         if (!updated) {
             throw new RuntimeException("Failed to update batch job definition release state");

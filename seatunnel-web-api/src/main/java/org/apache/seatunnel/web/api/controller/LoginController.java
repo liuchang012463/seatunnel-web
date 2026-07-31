@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.common.constants.Constants;
 import org.apache.seatunnel.web.dao.entity.User;
 import org.apache.seatunnel.web.spi.bean.dto.UserDTO;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -24,6 +25,9 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1")
 public class LoginController extends BaseController {
+
+    @Value("${security.authentication.mode:DEV_BYPASS}")
+    private String authenticationMode = "DEV_BYPASS";
 
     @Resource
     private SessionService sessionService;
@@ -49,6 +53,10 @@ public class LoginController extends BaseController {
                                  @RequestParam(value = "embedded", defaultValue = "false") boolean embedded,
                                  HttpServletRequest request,
                                  HttpServletResponse response) {
+        if (isDevBypass()) {
+            return Result.buildSuc();
+        }
+
         // user name check
         if (StringUtils.isEmpty(userDTO.getUserName())) {
             throw new RuntimeException("user name is null");
@@ -82,11 +90,20 @@ public class LoginController extends BaseController {
     @AccessLogAnnotation(ignoreRequestArgs = {"loginUser", "request"})
     public Result<Boolean> signOut(User loginUserPO,
                                    HttpServletRequest request) {
+        if (isDevBypass()) {
+            request.removeAttribute(Constants.SESSION_USER);
+            return Result.buildSuc();
+        }
+
         String ip = getClientIpAddress(request);
         sessionService.signOut(ip, loginUserPO);
         // clear session
         request.removeAttribute(Constants.SESSION_USER);
         return Result.buildSuc();
+    }
+
+    private boolean isDevBypass() {
+        return "DEV_BYPASS".equalsIgnoreCase(authenticationMode);
     }
 
 }

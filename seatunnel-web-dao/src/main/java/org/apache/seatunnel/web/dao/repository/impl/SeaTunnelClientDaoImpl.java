@@ -51,8 +51,7 @@ public class SeaTunnelClientDaoImpl
 
         LambdaUpdateWrapper<SeaTunnelClient> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(SeaTunnelClient::getId, clientId)
-                .set(SeaTunnelClient::getHealthStatus, healthStatus)
-                .set(SeaTunnelClient::getUpdateTime, new Date());
+                .set(SeaTunnelClient::getHealthStatus, healthStatus);
 
         if (heartbeatTime != null) {
             wrapper.set(SeaTunnelClient::getHeartbeatTime, heartbeatTime);

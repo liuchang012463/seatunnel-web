@@ -3,7 +3,6 @@ import { SettingDrawer } from '@ant-design/pro-components';
 import { AvatarDropdown, AvatarName, Footer } from '@/components';
 import '@ant-design/v5-patch-for-react-19';
 import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
-import { history } from '@umijs/max';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
 import { GlobalSearch, Knowledge } from './components/RightContent';
@@ -11,7 +10,6 @@ import { prototypeMenuData } from './prototype/menuData';
 import { isPrototypeMode } from './prototype/mode';
 import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
 import { errorConfig } from './requestErrorConfig';
-import { buildLoginPath } from './utils/authRedirect';
 import HttpUtils from './utils/HttpUtils';
 import {
   applySidebarVisibility,
@@ -19,7 +17,6 @@ import {
 } from './utils/iframeLayout';
 
 const isDev = process.env.NODE_ENV === 'development';
-const loginPath = '/login';
 const hideSidebar = shouldHideSidebar();
 applySidebarVisibility(hideSidebar);
 const prototypeUser = {
@@ -49,14 +46,11 @@ export async function getInitialState(): Promise<{
 
       return msg.data;
     } catch (_error) {
-      if (history.location.pathname !== loginPath) {
-        history.push(buildLoginPath(history.location));
-      }
+      // The backend owns the current-user context; do not redirect to a local
+      // login page when the current-user request is unavailable.
     }
     return undefined;
   };
-  // 如果不是登录页面，执行
-  const { location } = history;
   if (isPrototypeMode) {
     return {
       fetchUserInfo,
@@ -67,16 +61,10 @@ export async function getInitialState(): Promise<{
       } as Partial<LayoutSettings>,
     };
   }
-  if (![loginPath, '/login'].includes(location.pathname)) {
-    const currentUser = await fetchUserInfo();
-    return {
-      fetchUserInfo,
-      currentUser,
-      settings: defaultSettings as Partial<LayoutSettings>,
-    };
-  }
+  const currentUser = await fetchUserInfo();
   return {
     fetchUserInfo,
+    currentUser,
     settings: defaultSettings as Partial<LayoutSettings>,
   };
 }
@@ -118,18 +106,6 @@ export const layout: RunTimeLayoutConfig = ({
       content: initialState?.currentUser?.name,
     },
     footerRender: () => <Footer />,
-    onPageChange: () => {
-      const { location } = history;
-      console.log(initialState?.currentUser);
-      // 如果没有登录，重定向到 login
-      if (
-        !isPrototypeMode &&
-        !initialState?.currentUser &&
-        location.pathname !== loginPath
-      ) {
-        history.push(buildLoginPath(location));
-      }
-    },
     bgLayoutImgList: isPrototypeMode ? [] : [
       {
         src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/D2LWSqNny4sAAAAAAAAAAAAAFl94AQBr',

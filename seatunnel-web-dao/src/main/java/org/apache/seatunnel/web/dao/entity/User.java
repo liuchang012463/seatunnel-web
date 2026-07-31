@@ -23,6 +23,11 @@ public class User {
 
     private String phone;
 
+    /**
+     * External SSO subject reserved for future identity mapping.
+     */
+    private String ssoSubject;
+
     private UserType userType;
 
     private int state;

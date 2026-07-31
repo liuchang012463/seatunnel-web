@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -47,15 +48,22 @@ public class JobDefinitionDaoImpl
         return jobDefinitionMapper.selectDefinitionCount(dto);
     }
 
-    public boolean updateReleaseState(Long id, ReleaseState releaseState) {
-        if (id == null || releaseState == null) {
+    @Override
+    public boolean updateReleaseState(
+            Long id,
+            ReleaseState releaseState,
+            Integer updateUserId,
+            Date updateTime
+    ) {
+        if (id == null || releaseState == null || updateUserId == null) {
             return false;
         }
 
         JobDefinitionEntity entity = new JobDefinitionEntity();
         entity.setId(id);
         entity.setReleaseState(releaseState);
-        entity.initUpdate();
+        entity.setUpdateUserId(updateUserId);
+        entity.setUpdateTime(updateTime == null ? new Date() : updateTime);
 
         return this.updateById(entity);
     }

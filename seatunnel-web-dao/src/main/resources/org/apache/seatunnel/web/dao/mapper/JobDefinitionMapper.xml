@@ -22,6 +22,8 @@
         d.sink_type AS sinkType,
         d.sink_table AS sinkTable,
         d.release_state AS releaseState,
+        d.create_user_id AS createUserId,
+        d.update_user_id AS updateUserId,
         d.create_time AS createTime,
         d.update_time AS updateTime,
 
