@@ -311,17 +311,17 @@ const CodeBlockWithCopy: React.FC<CodeBlockWithCopyProps> = ({
 
   return (
     <div
-      className="overflow-hidden rounded-[18px] border border-slate-200 bg-[#FCFDFE] shadow-sm"
+      className="code-block-with-copy overflow-hidden rounded-[18px] border border-slate-200 bg-[#FCFDFE] shadow-sm"
       style={{ height }}
     >
-      <div className="flex h-[58px] items-center justify-between border-b border-slate-200 bg-[#FCFDFE] px-4">
+      <div className="code-block-with-copy__header flex h-[58px] items-center justify-between border-b border-slate-200 bg-[#FCFDFE] px-4">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="code-block-with-copy__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
             <span> H</span>
           </div>
 
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold tracking-[-0.01em] text-slate-800">
+            <div className="code-block-with-copy__title truncate text-sm font-semibold tracking-[-0.01em] text-slate-800">
               {title}
             </div>
             {/* <div className="mt-0.5 text-[11px] text-slate-400">
@@ -335,7 +335,7 @@ const CodeBlockWithCopy: React.FC<CodeBlockWithCopyProps> = ({
             type="button"
             onClick={handleCopy}
             className={[
-              "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all",
+              "code-block-with-copy__copy-button inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all",
               copied
                 ? "border-emerald-200 bg-emerald-50 text-emerald-600"
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800",
@@ -349,7 +349,7 @@ const CodeBlockWithCopy: React.FC<CodeBlockWithCopyProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              className="code-block-with-copy__close-button inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               title="关闭"
             >
               <CloseOutlined />

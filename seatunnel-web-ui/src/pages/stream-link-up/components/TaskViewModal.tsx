@@ -47,9 +47,9 @@ const TaskViewModal = forwardRef(({}: CreateModalProps, ref) => {
       title={<></>}
       open={visible}
       onCancel={onClose}
-      maskStyle={{ background: "#f2f4f7f2" }}
+      maskStyle={{ background: "var(--st-color-modal-mask)" }}
       destroyOnClose
-      className="custom-modal"
+      className="custom-modal task-history-modal"
       maskClosable={false}
       style={{ top: 10 }}
       width="99vw"

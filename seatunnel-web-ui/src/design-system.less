@@ -47,6 +47,7 @@
   --st-color-hover: rgba(33, 135, 168, 0.24);
   --st-color-selected: rgba(33, 135, 168, 0.42);
   --st-color-focus: rgba(77, 210, 255, 0.2);
+  --st-color-modal-mask: rgba(0, 25, 34, 0.88);
   --st-panel-shadow: 0 10px 30px rgba(0, 25, 34, 0.12);
 
   --st-control-height: 34px;
@@ -867,6 +868,7 @@ html[data-st-theme="light"] {
   --st-color-hover: rgba(64, 81, 181, 0.08);
   --st-color-selected: rgba(64, 81, 181, 0.12);
   --st-color-focus: rgba(64, 81, 181, 0.18);
+  --st-color-modal-mask: rgba(242, 244, 247, 0.95);
   --st-panel-shadow: 0 10px 30px rgba(31, 35, 41, 0.04);
 
   --st-radius-sm: 8px;
@@ -1726,5 +1728,102 @@ html[data-st-theme="dark"] {
     color: var(--st-color-text-secondary) !important;
     background: var(--st-color-bg-panel) !important;
     border-color: var(--st-color-divider) !important;
+  }
+}
+
+/* Reused preview/log surfaces still carry literal light colors in their
+ * component classes. Keep the light baseline intact and rebind only the
+ * dark-mode instances to the shared semantic palette. */
+html[data-st-theme="dark"] {
+  .hocon-tab,
+  .hocon-tab__surface,
+  .code-block-with-copy {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: none !important;
+  }
+
+  .code-block-with-copy__header {
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-bg-elevated) !important;
+    border-color: var(--st-color-divider) !important;
+  }
+
+  .code-block-with-copy__icon {
+    color: var(--st-color-accent) !important;
+    background: var(--st-color-bg-control) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: none !important;
+  }
+
+  .code-block-with-copy__title {
+    color: var(--st-color-text-primary) !important;
+  }
+
+  .code-block-with-copy__copy-button,
+  .code-block-with-copy__close-button {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-control) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .code-block-with-copy__copy-button:hover,
+  .code-block-with-copy__close-button:hover {
+    color: var(--st-color-accent) !important;
+    background: var(--st-color-hover) !important;
+    border-color: var(--st-color-accent) !important;
+  }
+
+  .run-log-drawer__panel {
+    color: var(--st-color-text-secondary);
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: 0 10px 30px rgba(0, 25, 34, 0.32) !important;
+  }
+
+  .run-log-drawer__header,
+  .run-log-drawer__footer {
+    background: var(--st-color-bg-elevated) !important;
+    border-color: var(--st-color-divider) !important;
+  }
+
+  .run-log-drawer__body {
+    background: var(--st-color-bg-app) !important;
+  }
+
+  .run-log-drawer__icon {
+    color: var(--st-color-accent) !important;
+    background: var(--st-color-selected) !important;
+  }
+
+  .run-log-drawer__title {
+    color: var(--st-color-text-primary) !important;
+  }
+
+  .run-log-drawer__subtitle,
+  .run-log-drawer__refresh-button,
+  .run-log-drawer__close-button {
+    color: var(--st-color-text-muted) !important;
+  }
+
+  .run-log-drawer__refresh-button:hover,
+  .run-log-drawer__close-button:hover {
+    color: var(--st-color-accent) !important;
+    background: var(--st-color-hover) !important;
+  }
+
+  .run-log-drawer__state-card {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .run-log-drawer [class~="bg-slate-300"] {
+    background: var(--st-color-border) !important;
+  }
+
+  .run-log-drawer [class~="hover:bg-slate-400"]:hover {
+    background: var(--st-color-accent) !important;
   }
 }

@@ -328,7 +328,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
 
   return createPortal(
     <div
-      className="fixed bottom-0 right-0 top-0 z-[9999] pointer-events-none"
+      className="run-log-drawer fixed bottom-0 right-0 top-0 z-[9999] pointer-events-none"
       style={wrapperStyle}
     >
       <div className="absolute bottom-3 left-5 right-5 flex flex-col pointer-events-none">
@@ -349,24 +349,24 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
         <section
           style={panelStyle}
           className={[
-            "pointer-events-auto flex flex-col overflow-hidden rounded-[18px]",
+            "run-log-drawer__panel pointer-events-auto flex flex-col overflow-hidden rounded-[18px]",
             "border border-slate-200/90 bg-white",
             "shadow-[0_10px_30px_rgba(15,23,42,0.10)]",
           ].join(" ")}
         >
-          <header className="flex h-[54px] items-center justify-between border-b border-slate-100 bg-white px-5">
+          <header className="run-log-drawer__header flex h-[54px] items-center justify-between border-b border-slate-100 bg-white px-5">
             <div className="flex min-w-0 items-center gap-3">
               <Tooltip title="需要在log4j2.properties中开启rootLogger.appenderRef.file.ref = routingAppender">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#eef3ff] text-[#315efb]">
+                <div className="run-log-drawer__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#eef3ff] text-[#315efb]">
                     <FileSearchOutlined className="text-[15px]" />
                 </div>
               </Tooltip>
 
               <div className="min-w-0">
-                <div className="truncate text-[15px] font-semibold text-slate-900">
+                <div className="run-log-drawer__title truncate text-[15px] font-semibold text-slate-900">
                   {title}
                 </div>
-                <div className="truncate text-xs text-slate-400">
+                <div className="run-log-drawer__subtitle truncate text-xs text-slate-400">
                   {subtitle}
                 </div>
               </div>
@@ -378,7 +378,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 onClick={() => void loadLogs()}
                 disabled={loading}
                 className={[
-                  "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs",
+                  "run-log-drawer__refresh-button flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs",
                   "text-slate-500 transition-all duration-200",
                   "hover:bg-slate-100 hover:text-slate-700",
                   loading ? "cursor-not-allowed opacity-60" : "",
@@ -392,7 +392,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 type="button"
                 onClick={onClose}
                 className={[
-                  "flex h-8 w-8 items-center justify-center rounded-lg",
+                  "run-log-drawer__close-button flex h-8 w-8 items-center justify-center rounded-lg",
                   "text-slate-400 transition-all duration-200",
                   "hover:bg-slate-100 hover:text-slate-700",
                 ].join(" ")}
@@ -403,18 +403,18 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
             </div>
           </header>
 
-          <main className="min-h-0 flex-1 bg-[#fafbfc] p-4">
+          <main className="run-log-drawer__body min-h-0 flex-1 bg-[#fafbfc] p-4">
             {children ? (
               children
             ) : loading ? (
-              <div className="flex h-full min-h-[180px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center">
+              <div className="run-log-drawer__state-card flex h-full min-h-[180px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center">
                 <Spin size="small" />
                 <span className="ml-2 text-xs text-slate-400">
                   正在加载日志...
                 </span>
               </div>
             ) : errorText ? (
-              <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-2xl border border-dashed border-red-100 bg-white text-center">
+              <div className="run-log-drawer__state-card flex h-full min-h-[180px] flex-col items-center justify-center rounded-2xl border border-dashed border-red-100 bg-white text-center">
                 <div className="text-sm font-medium text-red-500">
                   获取日志失败
                 </div>
@@ -433,7 +433,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 {logContent}
               </pre>
             ) : (
-              <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center">
+              <div className="run-log-drawer__state-card flex h-full min-h-[180px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center">
                 <div className="text-sm font-medium text-slate-600">
                   暂无日志
                 </div>
@@ -445,7 +445,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
           </main>
 
           {footer ? (
-            <footer className="flex items-center justify-end gap-2 border-t border-slate-100 bg-white px-5 py-3">
+            <footer className="run-log-drawer__footer flex items-center justify-end gap-2 border-t border-slate-100 bg-white px-5 py-3">
               {footer}
             </footer>
           ) : null}
