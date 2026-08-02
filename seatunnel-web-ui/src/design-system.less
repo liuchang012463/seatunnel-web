@@ -1357,3 +1357,76 @@ html[data-st-theme="dark"] {
     background: var(--st-color-selected) !important;
   }
 }
+
+/* CodeMirror 5 and the SQL editor wrapper use their own light-only theme
+ * declarations. Keep those legacy surfaces in the active dark palette too;
+ * these rules are dark-only so the baseline light editor stays unchanged. */
+html[data-st-theme="dark"] {
+  .sql-code-editor,
+  .sql-code-editor-modal .ant-modal-content,
+  .sql-code-editor-modal .ant-modal-header,
+  .sql-code-editor-modal .ant-modal-body,
+  .sql-code-editor-modal__footer {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .sql-code-editor__expand-btn {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-control) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: none !important;
+  }
+
+  .sql-code-editor__placeholder {
+    color: var(--st-color-text-muted) !important;
+  }
+
+  .sql-code-editor .cm-editor,
+  .CodeMirror,
+  .CodeMirror-scroll,
+  .config-manage-edit-drawer .codemirror-form-item > .cm-s-default,
+  .config-manage-value-modal .react-codemirror2 > .cm-s-default {
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .CodeMirror-gutters,
+  .config-manage-edit-drawer .CodeMirror-gutters,
+  .config-manage-value-modal .CodeMirror-gutters {
+    color: var(--st-color-text-muted) !important;
+    background: var(--st-color-bg-elevated) !important;
+    border-right-color: var(--st-color-border) !important;
+  }
+
+  .CodeMirror-linenumber,
+  .CodeMirror-cursor {
+    color: var(--st-color-text-muted) !important;
+    border-left-color: var(--st-color-text-primary) !important;
+  }
+
+  .CodeMirror-selected,
+  .CodeMirror-focused .CodeMirror-selected,
+  .config-manage-edit-drawer .CodeMirror-scroll,
+  .config-manage-value-modal .CodeMirror-scroll {
+    background: var(--st-color-hover) !important;
+  }
+
+  .sql-code-editor__completion-tooltip,
+  .sql-code-editor__completion-tooltip > ul {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-elevated) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .sql-code-editor__completion-tooltip > ul > li {
+    color: var(--st-color-text-secondary) !important;
+  }
+
+  .sql-code-editor__completion-tooltip > ul > li[aria-selected] {
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-selected) !important;
+  }
+}
