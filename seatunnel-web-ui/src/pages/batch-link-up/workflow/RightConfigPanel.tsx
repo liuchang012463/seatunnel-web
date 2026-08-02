@@ -56,7 +56,7 @@ export default function RightConfigPanel({
 
   return (
     <div
-      className={`${styles.sidePanel} ${
+      className={`workflow-config-side-panel ${styles.sidePanel} ${
         opened ? styles.sidePanelOpened : styles.sidePanelCollapsed
       }`}
     >

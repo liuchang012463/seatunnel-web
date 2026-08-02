@@ -532,7 +532,7 @@ export default function Workflow({
     "inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[13px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0";
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-white">
+    <div className="workflow-editor-page flex h-screen flex-col overflow-hidden bg-white">
       <div className="shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3.5">

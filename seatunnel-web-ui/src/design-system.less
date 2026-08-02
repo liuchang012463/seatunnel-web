@@ -1430,3 +1430,301 @@ html[data-st-theme="dark"] {
     background: var(--st-color-selected) !important;
   }
 }
+
+/* Dark-theme completion for the newer link-up wizards and workflow editor.
+ * These areas intentionally keep their light-mode visual language, but some
+ * of their surfaces are arbitrary Tailwind colors or React inline styles that
+ * cannot be covered by the shared neutral compatibility layer above. */
+html[data-st-theme="dark"] {
+  body [class~="bg-[#FAFBFC]"],
+  body [class~="bg-[#f5f9ff]"],
+  body [class~="bg-[#F9FAFB]"],
+  body [class~="bg-[#F5F8FF]"],
+  body [class~="bg-[#FCFCFD]"] {
+    background-color: var(--st-color-bg-panel) !important;
+  }
+
+  body [class~="bg-[#EEF4FF]"],
+  body [class~="bg-[#EFF8FF]"],
+  body [class~="bg-[#F3F6FF]"] {
+    background-color: var(--st-color-selected) !important;
+  }
+
+  body [class~="text-[#175CD3]"],
+  body [class~="text-[#245BDB]"],
+  body [class~="text-[#296dff]"],
+  body [class~="text-[#315efb]"] {
+    color: var(--st-color-accent) !important;
+  }
+
+  body [class~="from-slate-50"] {
+    --tw-gradient-from: var(--st-color-bg-elevated) !important;
+    --tw-gradient-to: rgb(7 57 74 / 0) !important;
+  }
+
+  body [class~="to-white"] {
+    --tw-gradient-to: var(--st-color-bg-panel) !important;
+  }
+
+  .common-client-link-section {
+    color: var(--st-color-text-secondary);
+    background: var(--st-color-bg-panel) !important;
+  }
+
+  .common-client-link-section__route {
+    background: linear-gradient(
+      180deg,
+      var(--st-color-bg-elevated),
+      var(--st-color-bg-panel)
+    ) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: none !important;
+  }
+
+  .common-client-link-section__card,
+  .common-client-link-section__status-action {
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: none !important;
+  }
+
+  .common-client-link-section__client-meta {
+    background: var(--st-color-bg-elevated) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .workflow-editor-page {
+    color: var(--st-color-text-secondary);
+    background: var(--st-color-bg-app) !important;
+  }
+
+  .workflow-editor-page .workflow-node-card {
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: 0 8px 20px rgba(0, 25, 34, 0.28) !important;
+  }
+
+  .workflow-editor-page .workflow-node-icon {
+    background: var(--st-color-bg-elevated) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .workflow-editor-page .workflow-node-kind {
+    color: var(--st-color-accent) !important;
+  }
+
+  .workflow-editor-page .workflow-node-title {
+    color: var(--st-color-text-primary) !important;
+  }
+
+  .workflow-editor-page .workflow-node-description {
+    color: var(--st-color-text-muted) !important;
+  }
+
+  .workflow-editor-page .workflow-node-handle {
+    background: var(--st-color-accent) !important;
+    border-color: var(--st-color-bg-page) !important;
+  }
+
+  .workflow-canvas-toolbar {
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: 0 8px 20px rgba(0, 25, 34, 0.24) !important;
+  }
+
+  .workflow-canvas-toolbar .ant-btn {
+    color: var(--st-color-text-secondary) !important;
+  }
+
+  .workflow-canvas-toolbar .ant-btn:hover,
+  .workflow-canvas-toolbar .ant-btn.bg-\[\#eaf1ff\] {
+    color: var(--st-color-accent) !important;
+    background: var(--st-color-selected) !important;
+  }
+
+  .workflow-canvas-toolbar .ant-divider {
+    border-color: var(--st-color-divider) !important;
+  }
+
+  .workflow-panel__drawer {
+    color: var(--st-color-text-secondary);
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: 0 24px 60px rgba(0, 25, 34, 0.42) !important;
+  }
+
+  .workflow-panel__header {
+    border-color: var(--st-color-divider) !important;
+    background:
+      radial-gradient(circle at top left, rgba(77, 210, 255, 0.1), transparent 42%),
+      linear-gradient(180deg, var(--st-color-bg-elevated) 0%, var(--st-color-bg-panel) 100%) !important;
+  }
+
+  .workflow-panel__title,
+  .workflow-panel__mini-meta-title,
+  .workflow-panel__section-title,
+  .workflow-panel__meta-title,
+  .workflow-panel__params-title {
+    color: var(--st-color-text-primary) !important;
+  }
+
+  .workflow-panel__desc,
+  .workflow-panel__mini-meta-desc,
+  .workflow-panel__meta-desc,
+  .workflow-panel__label,
+  .workflow-panel__param-popover,
+  .workflow-panel__param-popover span {
+    color: var(--st-color-text-secondary) !important;
+  }
+
+  .workflow-panel__mini-meta-icon,
+  .workflow-panel__meta-card,
+  .workflow-panel__section,
+  .workflow-panel__section--subtle,
+  .workflow-panel__empty,
+  .workflow-panel .ant-segmented {
+    background: var(--st-color-bg-elevated) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .workflow-panel__body {
+    background: linear-gradient(
+      180deg,
+      var(--st-color-bg-page) 0%,
+      var(--st-color-bg-app) 100%
+    ) !important;
+  }
+
+  .workflow-panel__footer {
+    border-color: var(--st-color-divider) !important;
+    background: var(--st-color-bg-panel) !important;
+  }
+
+  .workflow-panel__btn--ghost {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-control) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .workflow-panel__btn--ghost:hover,
+  .workflow-panel__action-btn:hover,
+  .workflow-panel__icon-btn:hover {
+    color: var(--st-color-accent) !important;
+    background: var(--st-color-hover) !important;
+    border-color: var(--st-color-accent) !important;
+  }
+
+  .workflow-config-side-panel {
+    color: var(--st-color-text-secondary);
+    background: var(--st-color-bg-panel) !important;
+  }
+
+  .workflow-config-side-panel .ant-collapse-header,
+  .workflow-config-side-panel .ant-collapse-item-active > .ant-collapse-header {
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-bg-elevated) !important;
+  }
+
+  .workflow-config-side-panel .ant-collapse-content,
+  .workflow-config-side-panel .ant-collapse-content-box,
+  .workflow-config-side-panel .schedule-config-content,
+  .workflow-config-side-panel .schedule-config-content__scroll {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-panel) !important;
+  }
+
+  .workflow-config-side-panel .schedule-section-label__text,
+  .workflow-config-side-panel .schedule-config-collapse .ant-radio-wrapper,
+  .workflow-config-side-panel .schedule-config-collapse .ant-checkbox-wrapper,
+  .workflow-config-side-panel .schedule-config-collapse .ant-form-item-label > label {
+    color: var(--st-color-text-secondary) !important;
+  }
+
+  .workflow-config-side-panel .schedule-inner-panel,
+  .workflow-config-side-panel .schedule-table-card,
+  .workflow-config-side-panel .schedule-config-collapse .ant-alert {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-elevated) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .workflow-config-side-panel .schedule-config-collapse .ant-table-thead > tr > th {
+    color: var(--st-color-text-primary) !important;
+    background: linear-gradient(180deg, #2187a8 0%, #0a526a 100%) !important;
+    border-color: var(--st-color-divider) !important;
+  }
+
+  .workflow-config-side-panel .ant-segmented-item {
+    color: var(--st-color-text-secondary) !important;
+  }
+
+  .workflow-config-side-panel .ant-segmented-item-selected {
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-primary) !important;
+  }
+
+  .quality-detail-drawer .ant-drawer-content {
+    color: var(--st-color-text-secondary);
+    background: linear-gradient(
+      180deg,
+      var(--st-color-bg-panel),
+      var(--st-color-bg-page)
+    ) !important;
+  }
+
+  .quality-detail-drawer .ant-drawer-header {
+    border-color: var(--st-color-divider) !important;
+    background: rgba(0, 46, 65, 0.96) !important;
+  }
+
+  .quality-detail-drawer__heading {
+    color: var(--st-color-text-primary) !important;
+  }
+
+  .quality-detail-drawer__subtext {
+    color: var(--st-color-text-secondary) !important;
+  }
+
+  .quality-detail-drawer__tag {
+    color: var(--st-color-accent) !important;
+    background: var(--st-color-selected) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .quality-detail-drawer__tip {
+    background: linear-gradient(
+      135deg,
+      rgba(33, 135, 168, 0.24) 0%,
+      var(--st-color-bg-elevated) 100%
+    ) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: none !important;
+  }
+
+  .quality-detail-drawer__tip-icon,
+  .quality-detail-drawer__tip-text {
+    color: var(--st-color-accent) !important;
+  }
+
+  .quality-detail-drawer__table-wrap {
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow: none !important;
+  }
+
+  .quality-detail-drawer__table-wrap .ant-table-container {
+    border-color: var(--st-color-border) !important;
+  }
+
+  .quality-detail-drawer__table-wrap .ant-table-thead > tr > th {
+    color: var(--st-color-text-primary) !important;
+    background: linear-gradient(180deg, #2187a8 0%, #0a526a 100%) !important;
+    border-color: var(--st-color-divider) !important;
+  }
+
+  .quality-detail-drawer__table-wrap .ant-table-tbody > tr > td {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-divider) !important;
+  }
+}

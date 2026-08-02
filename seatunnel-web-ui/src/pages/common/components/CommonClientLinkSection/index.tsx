@@ -333,7 +333,7 @@ const LinkStatusAction: React.FC<{
   return (
     <div
       className={[
-        "flex h-9 shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1 shadow-sm",
+        "common-client-link-section__status-action flex h-9 shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1 shadow-sm",
         reverse ? "flex-row-reverse" : "",
       ].join(" ")}
     >
@@ -376,7 +376,7 @@ const SectionCard: React.FC<{
   footer?: React.ReactNode;
 }> = ({ title, status, verifyItems, children, footer }) => {
   return (
-    <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+    <section className="common-client-link-section__card min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className="shrink-0 text-sm font-semibold text-slate-800">
@@ -1096,9 +1096,12 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
 
   return (
     <>
-      <div ref={sectionRef} className="bg-white px-4 py-6 md:px-6 lg:px-8">
+      <div
+        ref={sectionRef}
+        className="common-client-link-section bg-white px-4 py-6 md:px-6 lg:px-8"
+      >
         <div className="mx-auto w-full max-w-[1480px] space-y-6">
-          <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-b from-slate-50 to-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] md:px-6 md:py-5">
+          <div className="common-client-link-section__route overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-b from-slate-50 to-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] md:px-6 md:py-5">
             <div className="overflow-x-auto">
               <div className="flex min-w-[760px] items-center justify-center gap-4 text-sm text-slate-700">
                 <span className="shrink-0 font-medium text-slate-900">
@@ -1224,7 +1227,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                   />
                 </div>
 
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="common-client-link-section__client-meta rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4">
                   <div className="text-sm font-medium text-slate-800">
                     当前已选择 {clientId ? "1" : "0"} 个节点
                   </div>

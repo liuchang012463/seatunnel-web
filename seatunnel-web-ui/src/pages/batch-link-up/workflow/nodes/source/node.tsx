@@ -50,6 +50,7 @@ const SourceNode: FC<NodeProps<SourceNodeData>> = ({ data, selected }) => {
       onMouseLeave={() => setHovered(false)}
     >
       <div
+        className="workflow-node-kind"
         style={{
           marginBottom: 6,
           paddingLeft: 4,
@@ -64,6 +65,7 @@ const SourceNode: FC<NodeProps<SourceNodeData>> = ({ data, selected }) => {
       </div>
 
       <div
+        className="workflow-node-card"
         style={{
           background: "#FFFFFF",
           borderRadius: 18,
@@ -83,6 +85,7 @@ const SourceNode: FC<NodeProps<SourceNodeData>> = ({ data, selected }) => {
           }}
         >
           <div
+            className="workflow-node-icon"
             style={{
               width: 40,
               height: 40,
@@ -100,6 +103,7 @@ const SourceNode: FC<NodeProps<SourceNodeData>> = ({ data, selected }) => {
 
           <div style={{ minWidth: 0, flex: 1 }}>
             <div
+              className="workflow-node-title"
               style={{
                 fontSize: 16,
                 fontWeight: 700,
@@ -112,6 +116,7 @@ const SourceNode: FC<NodeProps<SourceNodeData>> = ({ data, selected }) => {
             </div>
 
             <div
+              className="workflow-node-description"
               style={{
                 fontSize: 13,
                 lineHeight: "18px",
@@ -130,6 +135,7 @@ const SourceNode: FC<NodeProps<SourceNodeData>> = ({ data, selected }) => {
       <Handle
         type="source"
         position={Position.Right}
+        className="workflow-node-handle"
         style={handleStyle("right")}
       />
     </div>

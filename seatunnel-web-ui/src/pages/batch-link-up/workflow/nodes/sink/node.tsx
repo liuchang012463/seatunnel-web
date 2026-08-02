@@ -49,6 +49,7 @@ const SinkNode: FC<NodeProps<SinkNodeData>> = ({ data, selected }) => {
       onMouseLeave={() => setHovered(false)}
     >
       <div
+        className="workflow-node-kind"
         style={{
           marginBottom: 6,
           paddingLeft: 4,
@@ -66,10 +67,12 @@ const SinkNode: FC<NodeProps<SinkNodeData>> = ({ data, selected }) => {
       <Handle
         type="target"
         position={Position.Left}
+        className="workflow-node-handle"
         style={handleStyle("left")}
       />
 
       <div
+        className="workflow-node-card"
         style={{
           background: "#FFFFFF",
           borderRadius: 18,
@@ -89,6 +92,7 @@ const SinkNode: FC<NodeProps<SinkNodeData>> = ({ data, selected }) => {
           }}
         >
           <div
+            className="workflow-node-icon"
             style={{
               width: 40,
               height: 40,
@@ -110,6 +114,7 @@ const SinkNode: FC<NodeProps<SinkNodeData>> = ({ data, selected }) => {
 
           <div style={{ minWidth: 0, flex: 1 }}>
             <div
+              className="workflow-node-title"
               style={{
                 fontSize: 16,
                 fontWeight: 700,
@@ -122,6 +127,7 @@ const SinkNode: FC<NodeProps<SinkNodeData>> = ({ data, selected }) => {
             </div>
 
             <div
+              className="workflow-node-description"
               style={{
                 fontSize: 13,
                 lineHeight: "18px",

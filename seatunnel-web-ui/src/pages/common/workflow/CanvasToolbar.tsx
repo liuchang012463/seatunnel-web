@@ -146,7 +146,7 @@ export default function CanvasToolbar({
   }, [canDeleteEdge, canRedo, canUndo, onDeleteEdge, onRedo, onUndo]);
 
   return (
-    <div className="absolute left-0.5 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-lg border border-solid border-[#eef2f7] bg-white px-1 py-2 shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
+    <div className="workflow-canvas-toolbar absolute left-0.5 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-lg border border-solid border-[#eef2f7] bg-white px-1 py-2 shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
       <ToolbarTooltip title="指针模式">
         <Button
           aria-label="指针模式"
