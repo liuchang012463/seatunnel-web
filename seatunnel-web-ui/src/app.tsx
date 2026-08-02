@@ -6,10 +6,12 @@ import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
 import { GlobalSearch, Knowledge } from './components/RightContent';
+import ThemeSwitch from './components/RightContent/ThemeSwitch';
 import { prototypeMenuData } from './prototype/menuData';
 import { isPrototypeMode } from './prototype/mode';
 import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
 import { errorConfig } from './requestErrorConfig';
+import { applyNavTheme, getStoredNavTheme } from './theme';
 import HttpUtils from './utils/HttpUtils';
 import {
   applySidebarVisibility,
@@ -52,20 +54,32 @@ export async function getInitialState(): Promise<{
     return undefined;
   };
   if (isPrototypeMode) {
+    const navTheme = getStoredNavTheme(
+      defaultSettings.navTheme === 'light' ? 'light' : 'realDark',
+    );
+    applyNavTheme(navTheme);
     return {
       fetchUserInfo,
       currentUser: prototypeUser,
       settings: {
         ...defaultSettings,
+        navTheme,
         title: '数据采集引接软件',
       } as Partial<LayoutSettings>,
     };
   }
   const currentUser = await fetchUserInfo();
+  const navTheme = getStoredNavTheme(
+    defaultSettings.navTheme === 'light' ? 'light' : 'realDark',
+  );
+  applyNavTheme(navTheme);
   return {
     fetchUserInfo,
     currentUser,
-    settings: defaultSettings as Partial<LayoutSettings>,
+    settings: {
+      ...defaultSettings,
+      navTheme,
+    } as Partial<LayoutSettings>,
   };
 }
 
@@ -94,6 +108,7 @@ export const layout: RunTimeLayoutConfig = ({
         : [
             <GlobalSearch key="globalsearch" />,
             <Knowledge key="knowledge" />,
+            <ThemeSwitch key="theme-switch" />,
           ],
     avatarProps: {
       src: initialState?.currentUser?.avatar,

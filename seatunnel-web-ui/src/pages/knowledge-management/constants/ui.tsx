@@ -1,12 +1,12 @@
 import { AppstoreAddOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import type { MenuItemConfig, MenuKey } from "../types";
 
-export const PAGE_BG = "#ffffff";
-export const CARD_BG = "#ffffff";
-export const BORDER_COLOR = "#e7eaf3";
-export const TEXT_SECONDARY = "#667085";
-export const BLUE = "#4b5fd1";
-export const BLUE_LIGHT = "#eef2ff";
+export const PAGE_BG = "var(--st-color-bg-page)";
+export const CARD_BG = "var(--st-color-bg-panel)";
+export const BORDER_COLOR = "var(--st-color-border)";
+export const TEXT_SECONDARY = "var(--st-color-text-secondary)";
+export const BLUE = "var(--st-color-accent)";
+export const BLUE_LIGHT = "var(--st-color-selected)";
 
 export const menuList: MenuItemConfig[] = [
   {

@@ -143,3 +143,38 @@
     background: rgba(15, 23, 42, 0.08);
   }
 }
+
+html[data-st-theme="dark"] {
+  .pretty-notification-card {
+    background: linear-gradient(
+      180deg,
+      var(--st-color-bg-elevated),
+      var(--st-color-bg-secondary)
+    ) !important;
+    border-color: var(--st-color-border) !important;
+    box-shadow:
+      0 14px 34px rgba(0, 0, 0, 0.28),
+      0 2px 8px rgba(0, 0, 0, 0.18);
+  }
+
+  .pretty-notification-title {
+    color: var(--st-color-text-primary) !important;
+  }
+
+  .pretty-notification-description {
+    color: var(--st-color-text-secondary) !important;
+  }
+
+  .pretty-notification-meta,
+  .pretty-notification-close {
+    color: var(--st-color-text-muted) !important;
+  }
+
+  .pretty-notification-close {
+    background: var(--st-color-hover) !important;
+  }
+
+  .pretty-notification-action:hover {
+    background: var(--st-color-hover) !important;
+  }
+}

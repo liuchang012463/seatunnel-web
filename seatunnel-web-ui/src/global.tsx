@@ -1,6 +1,7 @@
 import { useIntl } from '@umijs/max';
 import { Button, message, notification } from 'antd';
 import defaultSettings from '../config/defaultSettings';
+import { applyNavTheme, getStoredNavTheme } from './theme';
 import '../tailwind.css';
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -8,6 +9,8 @@ import './design-system.less';
 
 const { pwa } = defaultSettings;
 const isHttps = document.location.protocol === 'https:';
+
+applyNavTheme(getStoredNavTheme(defaultSettings.navTheme === 'light' ? 'light' : 'realDark'));
 
 const clearCache = () => {
   // remove all caches

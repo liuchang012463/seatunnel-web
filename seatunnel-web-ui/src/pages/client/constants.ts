@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 export const panelStyle: React.CSSProperties = {
   borderRadius: 20,
   padding: 0,
-  border: "1px solid #eef2f6",
-  boxShadow: "0 10px 30px rgba(31, 35, 41, 0.04)",
+  border: "1px solid var(--st-color-divider)",
+  boxShadow: "0 10px 30px rgba(0, 25, 34, 0.12)",
 };
 
 export const iconWrapStyle: React.CSSProperties = {
@@ -15,8 +15,8 @@ export const iconWrapStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "rgba(64,81,181,0.10)",
-  color: "#4051b5",
+  background: "var(--st-color-selected)",
+  color: "var(--st-color-accent)",
   flexShrink: 0,
 };
 
@@ -24,12 +24,12 @@ export const iconWrapStyle: React.CSSProperties = {
 
 export const MotionDiv = motion.div;
 
-export const BLUE = "hsl(231 48% 48%)";
-export const TEXT_SECONDARY = "#667085";
-export const BORDER_COLOR = "#EAECF0";
-export const PAGE_BG = "#FFFFFF";
-export const CARD_BG = "#FFFFFF";
-export const BLUE_LIGHT = "#EEF4FF";
+export const BLUE = "var(--st-color-accent)";
+export const TEXT_SECONDARY = "var(--st-color-text-secondary)";
+export const BORDER_COLOR = "var(--st-color-border)";
+export const PAGE_BG = "var(--st-color-bg-page)";
+export const CARD_BG = "var(--st-color-bg-panel)";
+export const BLUE_LIGHT = "var(--st-color-selected)";
 
 export const contentSwapVariants = {
   hidden: { opacity: 0, y: 10 },

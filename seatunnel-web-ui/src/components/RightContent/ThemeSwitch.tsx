@@ -1,15 +1,28 @@
 import { MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { useModel } from "@umijs/max";
 import { Tooltip } from "antd";
-import React from "react";
+import React, { useEffect } from "react";
+import {
+  applyNavTheme,
+  isDarkNavTheme,
+  persistNavTheme,
+  type NavTheme,
+} from "@/theme";
 
 const ThemeSwitch: React.FC = () => {
   const { initialState, setInitialState } = useModel("@@initialState");
 
-  const isDark = initialState?.settings?.navTheme === "realDark";
+  const isDark = isDarkNavTheme(initialState?.settings?.navTheme);
+
+  useEffect(() => {
+    applyNavTheme(isDark ? "realDark" : "light");
+  }, [isDark]);
 
   const toggleTheme = async () => {
-    const nextTheme = isDark ? "light" : "realDark";
+    const nextTheme: NavTheme = isDark ? "light" : "realDark";
+
+    applyNavTheme(nextTheme);
+    persistNavTheme(nextTheme);
 
     await setInitialState((prev) => ({
       ...prev,
@@ -18,28 +31,18 @@ const ThemeSwitch: React.FC = () => {
         navTheme: nextTheme,
       },
     }));
-
-    localStorage.setItem("seatunnel-web-theme", nextTheme);
   };
 
   return (
     <Tooltip title={isDark ? "切换浅色模式" : "切换暗黑模式"}>
-      <div
+      <button
+        type="button"
+        aria-label={isDark ? "切换浅色模式" : "切换暗黑模式"}
         onClick={toggleTheme}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 32,
-          height: 32,
-          borderRadius: 999,
-          cursor: "pointer",
-          fontSize: 16,
-          color: "inherit",
-        }}
+        className="theme-switch"
       >
         {isDark ? <SunOutlined /> : <MoonOutlined />}
-      </div>
+      </button>
     </Tooltip>
   );
 };
