@@ -61,7 +61,9 @@ public class KafkaDataSourceProcessor implements DataSourceProcessor {
                 .required(KafkaOptions.BOOTSTRAP_SERVERS, KafkaOptions.TOPIC)
                 .optional(KafkaOptions.FORMAT, KafkaOptions.SEMANTICS, KafkaOptions.TRANSACTION_PREFIX,
                         KafkaOptions.PARTITION, KafkaOptions.PARTITION_KEY_FIELDS, KafkaOptions.KAFKA_CONFIG)
-                .exclusive(KafkaOptions.PARTITION, KafkaOptions.PARTITION_KEY_FIELDS)
+                // The Kafka HOCON builder enforces mutual exclusion when either option is present.
+                // OptionRule.exclusive requires exactly one option and cannot represent the valid
+                // case where neither partition option is configured.
                 .build();
     }
 

@@ -16,7 +16,9 @@ public class KafkaSourceOptionRule implements SourceOptionRule {
                 .optional(TOPIC, PATTERN, CONSUMER_GROUP, START_MODE, START_OFFSETS,
                         START_TIMESTAMP, END_TIMESTAMP, COMMIT_ON_CHECKPOINT, POLL_TIMEOUT,
                         FORMAT, KAFKA_CONFIG, SCHEMA, FIELD_DELIMITER)
-                .exclusive(TOPIC, PATTERN)
+                // OptionRule.exclusive requires exactly one option and rejects a valid
+                // rule declaration when both alternatives are optional. KafkaHoconBuilder
+                // validates that exactly one of topic or pattern is configured.
                 .build();
     }
 

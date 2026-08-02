@@ -15,6 +15,7 @@ import org.apache.seatunnel.web.dao.repository.JobScheduleDao;
 import org.apache.seatunnel.web.spi.bean.dto.*;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideMultiJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.batch.BatchFileSyncJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.config.*;
@@ -85,6 +86,8 @@ public class DefaultJobDefinitionCommandResolver implements JobDefinitionCommand
                 return buildScriptCommand(definition, definitionContent);
             case GUIDE_SINGLE:
                 return buildGuideSingleCommand(definition, definitionContent);
+            case FILE_SYNC:
+                return buildFileSyncCommand(definition, definitionContent);
             case GUIDE_MULTI:
                 return buildGuideMultiCommand(definition, definitionContent);
             default:
@@ -103,6 +106,21 @@ public class DefaultJobDefinitionCommandResolver implements JobDefinitionCommand
 
     private BatchGuideSingleJobSaveCommand buildGuideSingleCommand(JobDefinitionEntity definition, JobDefinitionContentEntity jobDefinitionContentEntity) {
         BatchGuideSingleJobSaveCommand command = new BatchGuideSingleJobSaveCommand();
+        command.setBasic(buildBasic(definition));
+        command.setWorkflow(JSONUtils.parseObject(
+                jobDefinitionContentEntity.getDefinitionContent(),
+                new TypeReference<Map<String, Object>>() {
+                }
+        ));
+        command.setSchedule(buildScheduleConfig(definition.getId()));
+        command.setId(definition.getId());
+        command.setEnv(JSONUtils.parseObject(jobDefinitionContentEntity.getEnvConfig(), BatchJobEnvConfig.class));
+        return command;
+    }
+
+    private BatchFileSyncJobSaveCommand buildFileSyncCommand(JobDefinitionEntity definition,
+                                                               JobDefinitionContentEntity jobDefinitionContentEntity) {
+        BatchFileSyncJobSaveCommand command = new BatchFileSyncJobSaveCommand();
         command.setBasic(buildBasic(definition));
         command.setWorkflow(JSONUtils.parseObject(
                 jobDefinitionContentEntity.getDefinitionContent(),
@@ -143,7 +161,9 @@ public class DefaultJobDefinitionCommandResolver implements JobDefinitionCommand
     private JobScheduleConfig buildScheduleConfig(Long definitionId) {
         JobSchedule schedule = jobScheduleDao.queryByJobDefinitionId(definitionId);
         if (schedule == null) {
-            throw new RuntimeException("schedule is null");
+            // Manual-only jobs use scheduleRunType=pause and intentionally have no
+            // Quartz row. HOCON building only needs a non-null config container.
+            return new JobScheduleConfig();
         }
 
         JobScheduleConfig config = null;
