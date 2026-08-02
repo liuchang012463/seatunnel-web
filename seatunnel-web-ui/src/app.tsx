@@ -28,6 +28,12 @@ const prototypeUser = {
   access: 'admin',
 } as API.CurrentUser;
 
+const getThemeSettings = (navTheme: 'light' | 'realDark') => ({
+  ...defaultSettings,
+  navTheme,
+  colorPrimary: navTheme === 'light' ? 'hsl(231 48% 48%)' : '#2187A8',
+});
+
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
  * */
@@ -62,8 +68,7 @@ export async function getInitialState(): Promise<{
       fetchUserInfo,
       currentUser: prototypeUser,
       settings: {
-        ...defaultSettings,
-        navTheme,
+        ...getThemeSettings(navTheme),
         title: '数据采集引接软件',
       } as Partial<LayoutSettings>,
     };
@@ -77,8 +82,7 @@ export async function getInitialState(): Promise<{
     fetchUserInfo,
     currentUser,
     settings: {
-      ...defaultSettings,
-      navTheme,
+      ...getThemeSettings(navTheme),
     } as Partial<LayoutSettings>,
   };
 }

@@ -47,6 +47,7 @@
   --st-color-hover: rgba(33, 135, 168, 0.24);
   --st-color-selected: rgba(33, 135, 168, 0.42);
   --st-color-focus: rgba(77, 210, 255, 0.2);
+  --st-panel-shadow: 0 10px 30px rgba(0, 25, 34, 0.12);
 
   --st-control-height: 34px;
   --st-control-height-lg: 38px;
@@ -846,26 +847,30 @@ html[data-st-theme="dark"] [class~="to-slate-50"] {
 html[data-st-theme="light"] {
   color-scheme: light;
 
-  --st-color-bg-app: #f3f8fa;
-  --st-color-bg-page: #f3f8fa;
+  --st-color-bg-app: #f7f9fc;
+  --st-color-bg-page: #ffffff;
   --st-color-bg-panel: #ffffff;
-  --st-color-bg-elevated: #f8fcfd;
+  --st-color-bg-elevated: #f6f8fb;
   --st-color-bg-control: #ffffff;
   --st-color-bg-primary: var(--st-color-bg-app);
   --st-color-bg-secondary: var(--st-color-bg-panel);
-  --st-color-bg-interactive: #e1f2f6;
-  --st-color-text-primary: #17313b;
-  --st-color-text-secondary: #45616c;
-  --st-color-text-muted: #78909a;
-  --st-color-accent: #0b88b1;
-  --st-color-primary: #2187a8;
-  --st-color-primary-active: #126d8b;
-  --st-color-border: #9bcbd8;
-  --st-color-divider: rgba(33, 135, 168, 0.2);
-  --st-color-divider-subtle: rgba(33, 135, 168, 0.12);
-  --st-color-hover: rgba(33, 135, 168, 0.1);
-  --st-color-selected: rgba(33, 135, 168, 0.16);
-  --st-color-focus: rgba(33, 135, 168, 0.18);
+  --st-color-bg-interactive: #eef2ff;
+  --st-color-text-primary: #1f2329;
+  --st-color-text-secondary: #5b6b82;
+  --st-color-text-muted: #8a94a6;
+  --st-color-accent: #4051b5;
+  --st-color-primary: #4051b5;
+  --st-color-primary-active: #3040a0;
+  --st-color-border: #e8edf5;
+  --st-color-divider: rgba(64, 81, 181, 0.12);
+  --st-color-divider-subtle: rgba(64, 81, 181, 0.06);
+  --st-color-hover: rgba(64, 81, 181, 0.08);
+  --st-color-selected: rgba(64, 81, 181, 0.12);
+  --st-color-focus: rgba(64, 81, 181, 0.18);
+  --st-panel-shadow: 0 10px 30px rgba(31, 35, 41, 0.04);
+
+  --st-radius-sm: 8px;
+  --st-radius-md: 16px;
 }
 
 /* Umi's static ConfigProvider emits CSS variables for the dark baseline.
@@ -873,49 +878,49 @@ html[data-st-theme="light"] {
  * the same switch as the application shell. */
 html[data-st-theme="light"] .ant-app,
 html[data-st-theme="light"] .ant-app * {
-  --ant-color-bg-base: #f3f8fa !important;
-  --ant-color-bg-layout: #f3f8fa !important;
+  --ant-color-bg-base: #f7f9fc !important;
+  --ant-color-bg-layout: #f7f9fc !important;
   --ant-color-bg-container: #ffffff !important;
   --ant-color-bg-elevated: #ffffff !important;
-  --ant-color-bg-spotlight: #e1f2f6 !important;
-  --ant-color-bg-container-disabled: #edf4f6 !important;
-  --ant-color-text: #17313b !important;
-  --ant-color-text-secondary: #45616c !important;
-  --ant-color-text-tertiary: #78909a !important;
-  --ant-color-text-quaternary: #9aabb2 !important;
-  --ant-color-text-disabled: #9aabb2 !important;
-  --ant-color-text-placeholder: #78909a !important;
-  --ant-color-text-description: #78909a !important;
-  --ant-color-text-label: #45616c !important;
-  --ant-color-border: #9bcbd8 !important;
-  --ant-color-border-secondary: #d6e8ed !important;
-  --ant-color-split: rgba(33, 135, 168, 0.16) !important;
-  --ant-color-fill: rgba(33, 135, 168, 0.1) !important;
-  --ant-color-fill-secondary: rgba(33, 135, 168, 0.07) !important;
-  --ant-color-fill-tertiary: rgba(33, 135, 168, 0.045) !important;
-  --ant-color-fill-quaternary: rgba(33, 135, 168, 0.025) !important;
-  --ant-color-fill-content: rgba(33, 135, 168, 0.07) !important;
-  --ant-color-primary: #2187a8 !important;
-  --ant-color-primary-hover: #0b88b1 !important;
-  --ant-color-primary-active: #126d8b !important;
-  --ant-color-link: #0b88b1 !important;
-  --ant-color-link-hover: #126d8b !important;
-  --ant-color-info: #0b88b1 !important;
+  --ant-color-bg-spotlight: #f5f7fa !important;
+  --ant-color-bg-container-disabled: #f5f6f8 !important;
+  --ant-color-text: #1f2329 !important;
+  --ant-color-text-secondary: #5b6b82 !important;
+  --ant-color-text-tertiary: #8a94a6 !important;
+  --ant-color-text-quaternary: #aab2bf !important;
+  --ant-color-text-disabled: #aab2bf !important;
+  --ant-color-text-placeholder: #8a94a6 !important;
+  --ant-color-text-description: #8a94a6 !important;
+  --ant-color-text-label: #5b6b82 !important;
+  --ant-color-border: #e8edf5 !important;
+  --ant-color-border-secondary: #eef2f6 !important;
+  --ant-color-split: rgba(31, 35, 41, 0.08) !important;
+  --ant-color-fill: rgba(64, 81, 181, 0.08) !important;
+  --ant-color-fill-secondary: rgba(64, 81, 181, 0.05) !important;
+  --ant-color-fill-tertiary: rgba(64, 81, 181, 0.03) !important;
+  --ant-color-fill-quaternary: rgba(64, 81, 181, 0.02) !important;
+  --ant-color-fill-content: rgba(64, 81, 181, 0.05) !important;
+  --ant-color-primary: #4051b5 !important;
+  --ant-color-primary-hover: #5162c4 !important;
+  --ant-color-primary-active: #3040a0 !important;
+  --ant-color-link: #4051b5 !important;
+  --ant-color-link-hover: #3040a0 !important;
+  --ant-color-info: #4051b5 !important;
   --ant-color-success: #2f9e44 !important;
   --ant-color-warning: #b88700 !important;
   --ant-color-error: #c23b3b !important;
-  --ant-control-item-bg-active: #d8eef3 !important;
-  --ant-control-item-bg-hover: rgba(33, 135, 168, 0.1) !important;
-  --ant-control-outline: rgba(33, 135, 168, 0.18) !important;
-  --ant-color-info-bg: #e8f7fb !important;
+  --ant-control-item-bg-active: #eef2ff !important;
+  --ant-control-item-bg-hover: rgba(64, 81, 181, 0.08) !important;
+  --ant-control-outline: rgba(64, 81, 181, 0.18) !important;
+  --ant-color-info-bg: #f0f2ff !important;
   --ant-color-success-bg: #edf9ef !important;
   --ant-color-warning-bg: #fff8df !important;
   --ant-color-error-bg: #fff1f0 !important;
-  --ant-layout-color-bg-body: #f3f8fa !important;
+  --ant-layout-color-bg-body: #f7f9fc !important;
   --ant-layout-color-bg-header: #ffffff !important;
   --ant-layout-color-bg-trigger: #ffffff !important;
   --ant-layout-light-trigger-bg: #ffffff !important;
-  --ant-layout-trigger-color: #45616c !important;
+  --ant-layout-trigger-color: #5b6b82 !important;
 }
 
 html[data-st-theme="light"] .ant-btn-primary,
@@ -925,7 +930,9 @@ html[data-st-theme="light"] .ant-table-wrapper .ant-table-thead > tr > th {
 }
 
 html[data-st-theme="light"] .ant-table-wrapper .ant-table-thead > tr > th {
-  background: linear-gradient(180deg, #2187a8 0%, #0a526a 100%) !important;
+  color: #344054 !important;
+  background: #f8fafc !important;
+  border-bottom-color: #eaeef3 !important;
 }
 
 html[data-st-theme="light"] .theme-switch,
@@ -1018,4 +1025,335 @@ html[data-st-theme="dark"] .react-flow__controls-button {
   background: var(--st-color-bg-panel) !important;
   border-color: var(--st-color-border) !important;
   color: var(--st-color-text-primary) !important;
+}
+
+/* Restore the original light product language: white content surfaces,
+ * indigo primary actions, soft gray borders, rounded controls and subtle
+ * elevation. These rules intentionally stay scoped to light mode so the
+ * reference dark UI remains unchanged. */
+html[data-st-theme="light"] {
+  .ant-pro-layout .ant-pro-layout-bg-list {
+    background:
+      radial-gradient(circle at 30% 80%, rgba(59, 130, 246, 0.05), transparent 28%),
+      #f7f9fc !important;
+  }
+
+  .ant-pro-layout .ant-layout-header.ant-pro-layout-header {
+    background-color: transparent !important;
+    border-bottom: 0 !important;
+  }
+
+  .ant-pro-layout .ant-pro-layout-content,
+  .ant-pro-page-container,
+  .ant-pro-page-container-children-container,
+  .ant-pro-page-container-children-content {
+    background: #ffffff !important;
+  }
+
+  .ant-pro-layout .ant-pro-layout-content {
+    border-top-left-radius: 24px;
+  }
+
+  .ant-pro-sider.ant-layout-sider,
+  .ant-pro-sider .ant-menu,
+  .ant-pro-sider-logo {
+    background: #f7f9fc !important;
+  }
+
+  .ant-menu-light.ant-menu-horizontal > .ant-menu-item-selected {
+    color: hsl(231 48% 48%);
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow:
+      0 2px 4px -2px rgba(16, 24, 40, 0.06),
+      0 4px 8px -2px rgba(16, 24, 40, 0.1);
+  }
+
+  .ant-menu-light .ant-menu-item-selected {
+    color: hsl(231 48% 48%);
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow:
+      0 2px 4px -2px rgba(16, 24, 40, 0.06),
+      0 2px 4px -2px rgba(16, 24, 40, 0.1);
+  }
+
+  body h1,
+  .ant-typography h1,
+  h1.ant-typography,
+  body h2,
+  .ant-typography h2,
+  h2.ant-typography,
+  h3,
+  .ant-typography h3,
+  h3.ant-typography {
+    font-weight: 600 !important;
+  }
+
+  .ant-card {
+    border-color: #eaecf0 !important;
+    border-radius: 24px !important;
+    box-shadow:
+      0 1px 2px rgba(16, 24, 40, 0.06),
+      0 1px 3px rgba(16, 24, 40, 0.1) !important;
+  }
+
+  .ant-modal-content {
+    border-radius: 16px !important;
+  }
+
+  .ant-modal .ant-modal-close {
+    background: rgb(243 244 246);
+    border-radius: 10px;
+  }
+
+  .ant-modal .ant-modal-close-x {
+    color: #354052;
+  }
+
+  .ant-btn {
+    border-radius: 16px !important;
+  }
+
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-number,
+  .ant-input-number-affix-wrapper,
+  .ant-picker,
+  .ant-select-selector,
+  .ant-cascader-picker {
+    border-radius: 24px !important;
+  }
+
+  .ant-splitter {
+    background-color: #ffffff;
+    border-color: rgba(5, 5, 5, 0.06);
+  }
+
+  .ant-table-wrapper .ant-table,
+  .ant-table-wrapper .ant-table-container,
+  .ant-table-wrapper .ant-table-content,
+  .ant-table-wrapper .ant-table-tbody > tr > td {
+    color: #475467;
+    background: #ffffff;
+    border-color: #f2f4f7 !important;
+  }
+
+  .ant-table-wrapper .ant-table-thead > tr > th {
+    color: #344054 !important;
+    font-weight: 600;
+    background: #f8fafc !important;
+    border-bottom: 1px solid #eaeef3 !important;
+  }
+
+  .ant-table-wrapper .ant-table-tbody > tr:nth-child(even) > td {
+    background: #ffffff;
+  }
+
+  .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td {
+    background: #f8fbff !important;
+  }
+
+  .ant-table-wrapper .ant-table-placeholder > td {
+    background: transparent !important;
+  }
+
+  .datasource-page-container {
+    color: #5b6b82;
+    background: #ffffff;
+    border-bottom-left-radius: 24px;
+  }
+
+  .datasource-page-icon-wrapper {
+    width: auto;
+    height: auto;
+    padding: 8px;
+    color: hsl(231 48% 48%);
+    background: hsl(231 48% 48% / 0.1);
+    border: 0;
+    border-radius: 12px;
+  }
+
+  .datasource-page-icon {
+    color: hsl(231 48% 48%);
+  }
+
+  .datasource-page-title {
+    color: #1f2329 !important;
+    font-size: 30px !important;
+    font-weight: 700 !important;
+    line-height: 36px !important;
+  }
+
+  .datasource-page-description {
+    color: hsl(215.4 16.3% 46.9%);
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .datasource-create-button {
+    color: #ffffff;
+    background: hsl(231 48% 48%);
+    border-color: hsl(231 48% 48%);
+    border-radius: 999px !important;
+    font-weight: 600;
+  }
+
+  .datasource-create-button:hover {
+    color: #ffffff;
+    background: #3040a0;
+    border-color: #3040a0;
+  }
+
+  .datasource-search-control,
+  .datasource-type-search {
+    background: #ffffff;
+    border-color: #cfd3e6;
+    border-radius: 999px;
+  }
+
+  .datasource-category-title {
+    color: #1f2329;
+    font-weight: 700;
+  }
+
+  .datasource-card {
+    color: #475467;
+    background: #ffffff;
+    border-color: #f0f0f0;
+    border-radius: 24px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+  }
+
+  .datasource-card:hover {
+    border-color: #f0f0f0;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  }
+
+  .datasource-card-cover {
+    background: hsl(210 40% 96.1%);
+    border-bottom: 0;
+  }
+
+  .datasource-card-logo {
+    background: #ffffff;
+    border: 4px solid #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  .datasource-card-env-tag-inner {
+    border: 0;
+  }
+
+  .datasource-card-action-btn {
+    color: #595959;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  }
+
+  .datasource-card-content {
+    background: #ffffff;
+  }
+
+  .datasource-card-title {
+    color: #1f1f1f;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 24px;
+  }
+
+  .datasource-card-jdbc-url {
+    color: #262626;
+    font-size: 13px;
+    line-height: 20px;
+  }
+
+  .datasource-card-update-time {
+    color: #8c8c8c;
+  }
+
+  .datasource-card-update-time-value {
+    color: #595959;
+    font-weight: 500;
+  }
+
+  .datasource-card-detail-button {
+    color: #262626;
+    background: #ffffff;
+    border-color: #d9d9d9;
+    border-radius: 999px !important;
+  }
+
+  .datasource-card-detail-button:hover {
+    color: hsl(231 48% 48%);
+    border-color: hsl(231 48% 48%);
+  }
+
+  .datasource-card-detail-default {
+    color: #262626;
+    background: #ffffff;
+  }
+
+  .datasource-card-detail-hover {
+    color: #ffffff;
+    background: hsl(231 48% 48%);
+  }
+}
+
+/* CodeMirror themes are declared in React components with fixed light
+ * colors. Re-bind their structural surfaces to the dark semantic palette so
+ * workflow editors switch with the rest of the application. */
+html[data-st-theme="dark"] {
+  .cm-editor {
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-bg-panel) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .cm-editor .cm-scroller,
+  .cm-editor .cm-content,
+  .cm-editor .cm-line {
+    color: var(--st-color-text-primary) !important;
+    background: transparent !important;
+  }
+
+  .cm-editor .cm-content {
+    caret-color: var(--st-color-text-primary) !important;
+  }
+
+  .cm-editor .cm-gutters {
+    color: var(--st-color-text-muted) !important;
+    background: var(--st-color-bg-elevated) !important;
+    border-right-color: var(--st-color-border) !important;
+  }
+
+  .cm-editor .cm-activeLine {
+    background: var(--st-color-hover) !important;
+  }
+
+  .cm-editor .cm-activeLineGutter {
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-selected) !important;
+  }
+
+  .cm-editor .cm-selectionBackground,
+  .cm-editor.cm-focused .cm-selectionBackground {
+    background: rgba(77, 210, 255, 0.22) !important;
+  }
+
+  .cm-editor .cm-cursor {
+    border-left-color: var(--st-color-text-primary) !important;
+  }
+
+  .cm-tooltip,
+  .cm-tooltip-autocomplete {
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-bg-elevated) !important;
+    border-color: var(--st-color-border) !important;
+  }
+
+  .cm-tooltip-autocomplete ul li[aria-selected] {
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-selected) !important;
+  }
 }

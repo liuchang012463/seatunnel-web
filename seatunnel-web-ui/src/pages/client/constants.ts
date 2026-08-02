@@ -5,7 +5,7 @@ export const panelStyle: React.CSSProperties = {
   borderRadius: 20,
   padding: 0,
   border: "1px solid var(--st-color-divider)",
-  boxShadow: "0 10px 30px rgba(0, 25, 34, 0.12)",
+  boxShadow: "var(--st-panel-shadow)",
 };
 
 export const iconWrapStyle: React.CSSProperties = {

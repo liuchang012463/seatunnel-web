@@ -7,8 +7,9 @@ const Settings: ProLayoutProps & {
   pwa?: boolean;
   logo?: string;
 } = {
-  navTheme: 'realDark',
-  colorPrimary: '#2187A8',
+  navTheme: 'light',
+  // 拂晓蓝
+  colorPrimary: 'hsl(231 48% 48%)',
   layout: 'mix',
   contentWidth: 'Fluid',
   fixedHeader: false,
