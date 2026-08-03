@@ -1,4 +1,4 @@
-/* 此文件由 scripts/generate-prototype-traceability.mjs 生成，请勿手工编辑。 */
+/* 原合同指标原型追踪静态快照；规划源已退休，运行时仅将其作为原型展示数据使用。 */
 export const generatedTraceability = [
   {
     "id": "F-01.01",
