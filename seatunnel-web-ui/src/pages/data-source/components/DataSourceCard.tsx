@@ -3,7 +3,7 @@ import {
   DeleteOutlined,
   DisconnectOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Tag } from "antd";
+import { Button, Card, Tag, Tooltip } from "antd";
 import React from "react";
 import { environmentTagConfigMap } from "../constants";
 import { getDataSourceCategory } from "../dataSourceRegistry";
@@ -71,27 +71,31 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
             "group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto",
           ].join(" ")}
         >
-          <button
-            type="button"
-            className="datasource-card-hover-action datasource-card-hover-action--danger"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete(record);
-            }}
-          >
-            <DeleteOutlined />
-          </button>
+          <Tooltip title="删除" placement="top">
+            <button
+              type="button"
+              className="datasource-card-hover-action datasource-card-hover-action--danger"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete(record);
+              }}
+            >
+              <DeleteOutlined />
+            </button>
+          </Tooltip>
 
-          <button
-            type="button"
-            className="datasource-card-hover-action"
-            onClick={(event) => {
-              event.stopPropagation();
-              onTestConnection(record);
-            }}
-          >
-            <DisconnectOutlined />
-          </button>
+          <Tooltip title="测试连接" placement="top">
+            <button
+              type="button"
+              className="datasource-card-hover-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onTestConnection(record);
+              }}
+            >
+              <DisconnectOutlined />
+            </button>
+          </Tooltip>
         </div>
       </div>
 

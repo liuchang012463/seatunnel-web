@@ -43,7 +43,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ value, onChange }) => {
         <div className="relative rounded-full">
           <input
             className="datasource-search-control-input"
-            placeholder="Search by datasource name"
+            placeholder="根据数据源名称搜索"
             type="text"
             value={value}
             onFocus={() => setOpen(true)}

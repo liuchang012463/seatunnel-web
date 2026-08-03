@@ -127,8 +127,8 @@ export default defineConfig({
         cssVar: true,
         token: {
           colorPrimary: "#2187A8",
-          colorPrimaryHover: "#4DD2FF",
-          colorPrimaryActive: "#117DA0",
+          colorPrimaryHover: "#14627B",
+          colorPrimaryActive: "#14627B",
           colorLink: "#4DD2FF",
           colorLinkHover: "#FFFFFF",
           colorInfo: "#4DD2FF",
@@ -201,6 +201,8 @@ export default defineConfig({
             defaultColor: "#FFFFFF",
             primaryShadow: "none",
             dangerShadow: "none",
+            defaultHoverBg: "#2187a8",
+            defaultHoverColor: 'white',
           },
           Card: {
             colorBgContainer: "#002E41",

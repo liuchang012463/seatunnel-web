@@ -19,15 +19,11 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onCreate }) => {
         <span className="bubble bubble-3" />
       </div>
 
-      <div className="datasource-empty-state__emoji-wrap">
-        <div className="datasource-empty-state__emoji">🥹</div>
-        <div className="datasource-empty-state__shadow" />
-      </div>
 
       <div className="datasource-empty-state__title">
         {intl.formatMessage({
           id: "pages.datasource.empty",
-          defaultMessage: "我翻了一圈，这里还是空空的 🫥",
+          defaultMessage: "我翻了一圈，这里还是空空的",
         })}
       </div>
 
@@ -42,7 +38,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onCreate }) => {
       <div className="datasource-empty-state__tip">
         {intl.formatMessage({
           id: "pages.datasource.empty.tip",
-          defaultMessage: "点一下“创建数据源”，马上就能热闹起来 ✨",
+          defaultMessage: "点一下“创建数据源”，马上就能使用了",
         })}
       </div>
 
