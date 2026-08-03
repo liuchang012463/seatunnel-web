@@ -317,7 +317,7 @@ export const GlobalSearch: React.FC = () => {
                 setKeyword(e.target.value);
                 if (!open) setOpen(true);
               }}
-              placeholder="Search batch jobs、stream jobs..."
+              placeholder="搜索批处理作业、流处理作业…"
               className="flex w-full bg-transparent px-4  pl-9 pr-9 text-sm h-9 rounded-full focus:outline-none"
             />
 
