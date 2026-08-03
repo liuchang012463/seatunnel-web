@@ -2,11 +2,11 @@ import { ArrowRightOutlined, SunOutlined } from "@ant-design/icons";
 import { useIntl } from "@umijs/max";
 import { Button, Select } from "antd";
 import React from "react";
+import TaskListPageHeader from "@/components/TaskListPageHeader";
 import {
   generateDataSourceOptions,
   generateSourceDataSourceOptions,
 } from "../../DataSourceSelect";
-import "./index.less";
 
 interface DataSyncHeaderProps {
   goDetail: (value: any) => void;
@@ -53,30 +53,17 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
   const isButtonDisabled = !sourceType || !targetType;
 
   return (
-    <div className="sync-page-header">
-      <div className="sync-page-header__top" style={{ marginBottom: 16 }}>
-        <div className="sync-page-header__meta">
-          <div className="sync-page-header__icon">
-            <SunOutlined />
-          </div>
-
-          <div className="sync-page-header__text">
-            <div className="sync-page-header__title">
-              {intl.formatMessage({
-                id: "pages.datasync.header.title",
-                defaultMessage: "链路管理（离线）",
-              })}
-            </div>
-            <div className="sync-page-header__subtitle">
-              {intl.formatMessage({
-                id: "pages.datasync.header.subtitle",
-                defaultMessage: "统一管理采集引接链路：配置、调度与健康状态监测",
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <TaskListPageHeader
+      icon={<SunOutlined />}
+      title={intl.formatMessage({
+        id: "pages.datasync.header.title",
+        defaultMessage: "链路管理（离线）",
+      })}
+      subtitle={intl.formatMessage({
+        id: "pages.datasync.header.subtitle",
+        defaultMessage: "统一管理采集引接链路：配置、调度与健康状态监测",
+      })}
+    >
       <div className="mb-5 rounded-[20px] border border-indigo-100 bg-white/90 p-4 ">
         <div className="mb-2 flex items-center gap-3 font-semibold text-slate-900 st-web-font">
           同步方向
@@ -140,7 +127,7 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
           </span>
         </div> */}
       </div>
-    </div>
+    </TaskListPageHeader>
   );
 };
 

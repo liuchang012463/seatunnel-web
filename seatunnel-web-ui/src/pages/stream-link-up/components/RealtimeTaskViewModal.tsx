@@ -258,7 +258,7 @@ const RealtimeGrafanaLightModal = forwardRef<
 
   const viewData = useMemo(() => {
     return {
-      jobName: instance.jobName || "Streaming Job",
+      jobName: instance.jobName || "实时任务 (Streaming Job)",
       jobInstanceId: instance.id || current.jobInstanceId || "-",
       engineJobId: instance.engineJobId || current.engineJobId || "-",
       clientId: instance.clientId || current.clientId || "-",
@@ -293,16 +293,16 @@ const RealtimeGrafanaLightModal = forwardRef<
     );
 
     return buildLightLineOption({
-      unit: "rows/s",
+      unit: "行/秒 (rows/s)",
       xAxis,
       series: [
         {
-          name: "Read QPS",
+          name: "读取 QPS (Read QPS)",
           color: "#2563eb",
           data: trends.map((item) => toNumber(item.readQps)),
         },
         {
-          name: "Write QPS",
+          name: "写入 QPS (Write QPS)",
           color: "#7c3aed",
           data: trends.map((item) => toNumber(item.writeQps)),
         },
@@ -317,16 +317,16 @@ const RealtimeGrafanaLightModal = forwardRef<
     );
 
     return buildLightLineOption({
-      unit: "rows",
+      unit: "行 (rows)",
       xAxis,
       series: [
         {
-          name: "Read Rows",
+          name: "读取行数 (Read Rows)",
           color: "#16a34a",
           data: trends.map((item) => toNumber(item.readRowCount)),
         },
         {
-          name: "Write Rows",
+          name: "写入行数 (Write Rows)",
           color: "#2563eb",
           data: trends.map((item) => toNumber(item.writeRowCount)),
         },
@@ -396,10 +396,10 @@ const RealtimeGrafanaLightModal = forwardRef<
                 </div>
 
                 <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                  <span>Instance: {viewData.jobInstanceId}</span>
-                  <span>Engine: {viewData.engineJobId}</span>
-                  <span>Mode: {viewData.syncMode}</span>
-                  <span>Start: {viewData.startTime}</span>
+                  <span>实例 (Instance)：{viewData.jobInstanceId}</span>
+                  <span>引擎 (Engine)：{viewData.engineJobId}</span>
+                  <span>模式 (Mode)：{viewData.syncMode}</span>
+                  <span>开始时间 (Start)：{viewData.startTime}</span>
                 </div>
               </div>
             </div>
@@ -414,10 +414,10 @@ const RealtimeGrafanaLightModal = forwardRef<
                 onChange={setRange}
                 className="w-[132px]"
                 options={[
-                  { label: "Last 15 min", value: "15m" },
-                  { label: "Last 1 hour", value: "1h" },
-                  { label: "Last 6 hours", value: "6h" },
-                  { label: "Last 24 hours", value: "24h" },
+                  { label: "最近 15 分钟 (Last 15 min)", value: "15m" },
+                  { label: "最近 1 小时 (Last 1 hour)", value: "1h" },
+                  { label: "最近 6 小时 (Last 6 hours)", value: "6h" },
+                  { label: "最近 24 小时 (Last 24 hours)", value: "24h" },
                 ]}
               />
 
@@ -432,7 +432,7 @@ const RealtimeGrafanaLightModal = forwardRef<
                     " "
                   )}
                 />
-                <span>5s refresh</span>
+                <span>5 秒刷新 (5s refresh)</span>
               </button>
 
               <button
@@ -476,44 +476,44 @@ const RealtimeGrafanaLightModal = forwardRef<
                 <div className="grid grid-cols-12 gap-4">
                   <LightStatPanel
                     className="col-span-12 md:col-span-6 xl:col-span-3"
-                    title="Read Rows"
+                    title="读取行数 (Read Rows)"
                     value={viewData.readRows}
-                    unit="rows"
+                    unit="行 (rows)"
                     icon={<Activity className="h-4 w-4" />}
                     accent="blue"
                   />
 
                   <LightStatPanel
                     className="col-span-12 md:col-span-6 xl:col-span-3"
-                    title="Write Rows"
+                    title="写入行数 (Write Rows)"
                     value={viewData.writeRows}
-                    unit="rows"
+                    unit="行 (rows)"
                     icon={<Zap className="h-4 w-4" />}
                     accent="purple"
                   />
 
                   <LightStatPanel
                     className="col-span-12 md:col-span-6 xl:col-span-3"
-                    title="Read QPS"
+                    title="读取 QPS (Read QPS)"
                     value={viewData.readQps}
-                    unit="rows/s"
+                    unit="行/秒 (rows/s)"
                     icon={<Gauge className="h-4 w-4" />}
                     accent="orange"
                   />
 
                   <LightStatPanel
                     className="col-span-12 md:col-span-6 xl:col-span-3"
-                    title="Write QPS"
+                    title="写入 QPS (Write QPS)"
                     value={viewData.writeQps}
-                    unit="rows/s"
+                    unit="行/秒 (rows/s)"
                     icon={<Clock3 className="h-4 w-4" />}
                     accent="green"
                   />
 
                   <LightPanel
                     className="col-span-12 xl:col-span-8"
-                    title="Throughput"
-                    description="Read QPS / Write QPS"
+                    title="吞吐量 (Throughput)"
+                    description="读取 QPS / 写入 QPS (Read QPS / Write QPS)"
                   >
                     <ChartOrEmpty hasData={trends.length > 0}>
                       <ReactECharts
@@ -527,26 +527,32 @@ const RealtimeGrafanaLightModal = forwardRef<
 
                   <LightPanel
                     className="col-span-12 xl:col-span-4"
-                    title="Job Summary"
-                    description="Current runtime status"
+                    title="任务概览 (Job Summary)"
+                    description="当前运行状态 (Current runtime status)"
                   >
                     <div className="grid h-[330px] grid-cols-2 gap-3">
-                      <MiniInfo label="Tables" value={viewData.tableCount} />
                       <MiniInfo
-                        label="Pipelines"
+                        label="表数量 (Tables)"
+                        value={viewData.tableCount}
+                      />
+                      <MiniInfo
+                        label="Pipeline 数 (Pipelines)"
                         value={viewData.pipelineCount}
                       />
                       <MiniInfo
-                        label="Queue Size"
+                        label="队列大小 (Queue Size)"
                         value={formatNumber(viewData.queueSize)}
                       />
                       <MiniInfo
-                        label="Duration"
+                        label="运行时长 (Duration)"
                         value={viewData.runningDuration}
                       />
-                      <MiniInfo label="Client ID" value={viewData.clientId} />
                       <MiniInfo
-                        label="Last Collect"
+                        label="客户端 ID (Client ID)"
+                        value={viewData.clientId}
+                      />
+                      <MiniInfo
+                        label="最近采集时间 (Last Collect)"
                         value={viewData.lastCollectTime}
                       />
                     </div>
@@ -554,8 +560,8 @@ const RealtimeGrafanaLightModal = forwardRef<
 
                   <LightPanel
                     className="col-span-12 xl:col-span-8"
-                    title="Rows"
-                    description="Read Rows / Write Rows"
+                    title="行数 (Rows)"
+                    description="读取行数 / 写入行数 (Read Rows / Write Rows)"
                   >
                     <ChartOrEmpty hasData={trends.length > 0}>
                       <ReactECharts
@@ -569,8 +575,8 @@ const RealtimeGrafanaLightModal = forwardRef<
 
                   <LightPanel
                     className="col-span-12 xl:col-span-4"
-                    title="Top Row Diff"
-                    description="Read rows - Write rows by table"
+                    title="最大行差 (Top Row Diff)"
+                    description="按表统计读取行数 - 写入行数 (Read rows - Write rows by table)"
                   >
                     <ChartOrEmpty hasData={tableMetrics.length > 0}>
                       <ReactECharts
@@ -584,25 +590,34 @@ const RealtimeGrafanaLightModal = forwardRef<
 
                   {/* <LightPanel
                     className="col-span-12 xl:col-span-5"
-                    title="Basic Info"
-                    description="Source / Sink"
+                    title="基本信息 (Basic Info)"
+                    description="来源 / 去向 (Source / Sink)"
                   >
                     <div className="grid gap-3 text-sm">
-                      <BasicRow label="Source" value={viewData.source} />
-                      <BasicRow label="Sink" value={viewData.sink} />
-                      <BasicRow label="Sync Mode" value={viewData.syncMode} />
                       <BasicRow
-                        label="Engine Job ID"
+                        label="来源 (Source)"
+                        value={viewData.source}
+                      />
+                      <BasicRow label="去向 (Sink)" value={viewData.sink} />
+                      <BasicRow
+                        label="同步模式 (Sync Mode)"
+                        value={viewData.syncMode}
+                      />
+                      <BasicRow
+                        label="引擎任务 ID (Engine Job ID)"
                         value={viewData.engineJobId}
                       />
-                      <BasicRow label="Job Status" value={viewData.status} />
+                      <BasicRow
+                        label="任务状态 (Job Status)"
+                        value={viewData.status}
+                      />
                     </div>
                   </LightPanel> */}
 
                   <LightPanel
                     className="col-span-12 xl:col-span-12"
-                    title="Table Metrics"
-                    description="Table level read/write progress"
+                    title="表级指标 (Table Metrics)"
+                    description="表级读写进度 (Table level read/write progress)"
                   >
                     <TableMetricsView rows={tableMetrics} />
                   </LightPanel>
@@ -765,7 +780,7 @@ const TableMetricsView: React.FC<{
       <div className="flex h-[220px] items-center justify-center">
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="暂无表级指标"
+            description="暂无表级指标 (Table Metrics)"
         />
       </div>
     );
@@ -776,13 +791,25 @@ const TableMetricsView: React.FC<{
       <table className="w-full text-left text-sm">
         <thead className="bg-slate-50 text-xs text-slate-500">
           <tr>
-            <th className="px-4 py-3 font-semibold">Table</th>
-            <th className="px-4 py-3 text-right font-semibold">Read Rows</th>
-            <th className="px-4 py-3 text-right font-semibold">Write Rows</th>
-            <th className="px-4 py-3 text-right font-semibold">Row Diff</th>
-            <th className="px-4 py-3 text-right font-semibold">Read QPS</th>
-            <th className="px-4 py-3 text-right font-semibold">Write QPS</th>
-            <th className="px-4 py-3 text-right font-semibold">Status</th>
+            <th className="px-4 py-3 font-semibold">表 (Table)</th>
+            <th className="px-4 py-3 text-right font-semibold">
+              读取行数 (Read Rows)
+            </th>
+            <th className="px-4 py-3 text-right font-semibold">
+              写入行数 (Write Rows)
+            </th>
+            <th className="px-4 py-3 text-right font-semibold">
+              行差 (Row Diff)
+            </th>
+            <th className="px-4 py-3 text-right font-semibold">
+              读取 QPS (Read QPS)
+            </th>
+            <th className="px-4 py-3 text-right font-semibold">
+              写入 QPS (Write QPS)
+            </th>
+            <th className="px-4 py-3 text-right font-semibold">
+              状态 (Status)
+            </th>
           </tr>
         </thead>
 
@@ -856,7 +883,7 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
           return "";
         }
 
-        return `${item.name}<br/>Row Diff: ${formatNumber(item.value)}`;
+        return `${item.name}<br/>行差 (Row Diff)：${formatNumber(item.value)}`;
       },
     },
     xAxis: {
@@ -894,7 +921,7 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
     },
     series: [
       {
-        name: "Row Diff",
+        name: "行差 (Row Diff)",
         type: "bar",
         data: values,
         barWidth: 12,

@@ -5,6 +5,7 @@ import {
 import { ThunderboltOutlined } from "@ant-design/icons";
 import { Button, Select } from "antd";
 import React from "react";
+import TaskListPageHeader from "@/components/TaskListPageHeader";
 import RealtimeFlowBridge from "./RealtimeFlowBridge";
 
 interface RealtimeHeaderProps {
@@ -43,34 +44,11 @@ const RealtimeHeader: React.FC<RealtimeHeaderProps> = ({
   const isButtonDisabled = !sourceType?.dbType || !sinkType?.dbType;
 
   return (
-    <>
-      <div className="mb-4 flex items-center gap-4">
-        <div
-          className="flex items-center justify-center text-indigo-600"
-          style={{
-            backgroundColor: "#eef2ff",
-            height: 44,
-            width: 44,
-            fontSize: 20,
-            borderRadius: 14,
-          }}
-        >
-          <ThunderboltOutlined />
-        </div>
-
-        <div>
-          <h1
-            className="m-0 font-bold tracking-tight text-slate-950"
-            style={{ fontSize: 18, lineHeight: "26px" }}
-          >
-            链路管理（实时）
-          </h1>
-          <p className="mt-1 text-slate-500" style={{ fontSize: 13 }}>
-            持续采集与实时处理数据流，帮助你更快构建端到端流式同步链路
-          </p>
-        </div>
-      </div>
-
+    <TaskListPageHeader
+      icon={<ThunderboltOutlined />}
+      title="链路管理（实时）"
+      subtitle="持续采集与实时处理数据流，帮助你更快构建端到端流式同步链路"
+    >
       <div className="mb-5 rounded-[20px] border border-indigo-100 bg-white/90 p-4">
         <div className="mb-1 flex items-center gap-3 font-semibold text-slate-900 st-font">
           同步方向
@@ -133,7 +111,7 @@ const RealtimeHeader: React.FC<RealtimeHeaderProps> = ({
           </span>
         </div> */}
       </div>
-    </>
+    </TaskListPageHeader>
   );
 };
 

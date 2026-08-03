@@ -18,6 +18,7 @@
     <modules>
         <module>seatunnel-web-alarm-api</module>
         <module>seatunnel-web-alarm-webhook</module>
+        <module>seatunnel-web-alarm-email</module>
         <module>seatunnel-web-alarm-all</module>
     </modules>
 

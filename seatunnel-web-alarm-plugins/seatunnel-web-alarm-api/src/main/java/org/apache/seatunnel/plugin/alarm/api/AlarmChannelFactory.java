@@ -27,9 +27,19 @@ public interface AlarmChannelFactory extends PrioritySPI {
 
     /**
      * Unique, stable channel name, e.g. "WEBHOOK", "DINGTALK".
-     * Used as the SPI registry key and the UI label.
+     * Used as the SPI registry key and the persisted channel type.
      */
     String name();
+
+    /**
+     * Human-readable name shown by the alarm management UI.
+     *
+     * <p>The SPI key remains {@link #name()} so stored channel records stay
+     * stable while a plugin can expose a localized display name.</p>
+     */
+    default String displayName() {
+        return name();
+    }
 
     /**
      * Create a (stateless) alarm channel worker.

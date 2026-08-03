@@ -1,6 +1,7 @@
 import { FileSyncOutlined, PlusOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
 import { Button, message } from 'antd';
+import TaskListPageHeader from '@/components/TaskListPageHeader';
 import { seatunnelJobDefinitionApi } from '../batch-link-up/api';
 import SyncTaskList from '../batch-link-up/components/SyncTaskList';
 
@@ -29,22 +30,16 @@ const FileLinkUpPage: React.FC = () => {
 
   return (
     <div>
-      <div className="mx-4 mb-5 rounded-[20px] border border-indigo-100 bg-white/90 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-xl text-indigo-600">
-              <FileSyncOutlined />
-            </div>
-            <div>
-              <h1 className="m-0 text-xl font-semibold text-slate-900">
-                文件引接任务管理
-              </h1>
-              <p className="mb-0 mt-1 text-sm text-slate-500">
-                独立管理 FTP、SFTP、S3 和 MinIO
-                的目录或对象前缀同步，不使用表、字段或 SQL 映射。
-              </p>
-            </div>
-          </div>
+      <TaskListPageHeader
+        className="mx-4 mb-5"
+        icon={<FileSyncOutlined />}
+        title="文件引接任务管理"
+        subtitle={
+          <>
+            独立管理 FTP、SFTP、S3 和 MinIO 的目录或对象前缀同步，不使用表、字段或 SQL 映射。
+          </>
+        }
+        actions={
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -53,8 +48,8 @@ const FileLinkUpPage: React.FC = () => {
           >
             新建文件引接任务
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <SyncTaskList
         goDetail={editFileTask}

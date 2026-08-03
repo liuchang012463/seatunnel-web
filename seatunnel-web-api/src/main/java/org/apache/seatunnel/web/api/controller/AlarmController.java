@@ -56,7 +56,7 @@ public class AlarmController {
                     AlarmChannelFactory factory = e.getValue();
                     ChannelTypeVO vo = new ChannelTypeVO();
                     vo.setChannelType(factory.name());
-                    vo.setDisplayName(factory.name());
+                    vo.setDisplayName(factory.displayName());
                     vo.setConfigFields(factory.params());
                     return vo;
                 })
