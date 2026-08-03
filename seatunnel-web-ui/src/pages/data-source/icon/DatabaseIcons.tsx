@@ -18,6 +18,7 @@ import SQLite from './SQLite';
 import SQLServer from './SQLServer';
 import StarRocksIcon from './StarRocksIcon';
 import TiDBIcon from './TiDBIcon';
+import ConnectorIcon from './ConnectorIcon';
 
 interface DatabaseIconsProps {
   dbType?: string;
@@ -31,7 +32,6 @@ const DatabaseIcons = ({
   height = '20px',
 }: DatabaseIconsProps) => {
   const normalizedType = dbType?.toLowerCase?.();
-  console.log(normalizedType);
   const fallbackStyle: CSSProperties = {
     fontSize: width,
     width,
@@ -77,6 +77,14 @@ const DatabaseIcons = ({
       return <ClickhouseIcon width={width} height={height} />;
     case 'tidb':
       return <TiDBIcon width={width} height={height} />;
+    case 'kafka':
+    case 'ftp':
+    case 'sftp':
+    case 's3':
+    case 'minio':
+    case 'http':
+    case 'h2':
+      return <ConnectorIcon dbType={normalizedType} width={width} height={height} />;
     default:
       return <DatabaseOutlined style={fallbackStyle} />;
   }
