@@ -34,6 +34,7 @@ export const dataSourceGroupList: DataSourceGroup[] = DATA_SOURCE_CATEGORIES
       .map((item) => ({
         onlyDiScript: false,
         dbType: item.dbType,
+        label: item.label,
         type: item.dbType,
         connectorType: item.connectorType,
       })),

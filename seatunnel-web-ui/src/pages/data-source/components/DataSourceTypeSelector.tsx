@@ -32,7 +32,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
       group.datasourceList.map((item) => ({
         ...item,
         groupName: group.groupName,
-        searchText: `${item.dbType} ${item.connectorType || ''} ${item.type || ''} ${group.groupName}`.toLowerCase(),
+        searchText: `${item.label} ${item.dbType} ${item.connectorType || ''} ${item.type || ''} ${group.groupName}`.toLowerCase(),
       })),
     );
   }, [dataSourceGroups]);
@@ -130,7 +130,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
         <section className="datasource-type-suggested p-3">
           <div className="mb-3 flex items-center justify-between">
             <div className="datasource-type-section-title">
-              推荐数据源
+              常用数据源
             </div>
             <div className="datasource-type-section-meta">
               常用连接器，点击即可创建
@@ -201,9 +201,9 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
                   <div className="min-w-0 flex-1">
                     <div
                       className="datasource-type-option-title truncate"
-                      title={item.dbType}
+                      title={item.label}
                     >
-                      {item.dbType}
+                      {item.label?.toUpperCase()}
                     </div>
 
                     <div className="datasource-type-option-meta mt-1 truncate">

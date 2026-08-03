@@ -114,6 +114,7 @@ export interface DataSourceOptionItem {
 export interface DataSourceCatalogItem {
   onlyDiScript: boolean;
   dbType: string;
+  label: string;
   type: string;
   connectorType?: string;
   disabled?: boolean;

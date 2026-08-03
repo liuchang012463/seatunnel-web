@@ -129,48 +129,14 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
 
         <Button
           block
-          type="default"
+          type="primary"
           className={[
             "datasource-card-detail-button group/detail relative overflow-hidden p-0",
             "transition-all duration-300 ease-out",
           ].join(" ")}
           onClick={() => onEdit(record)}
         >
-          <span
-            className={[
-              "datasource-card-detail-default absolute inset-0 z-[1] flex items-center justify-center",
-              "transition-all duration-300 ease-out",
-              "group-hover/detail:translate-y-1.5 group-hover/detail:opacity-0",
-            ].join(" ")}
-          >
-            查看详情
-          </span>
-
-          <span
-            className={[
-              "datasource-card-detail-hover absolute inset-0 z-[2] flex items-center justify-center gap-2 opacity-0",
-              "transition-all duration-300 ease-out",
-              "group-hover/detail:opacity-100",
-            ].join(" ")}
-          >
-            <span
-              className={[
-                "translate-x-[-4px] transition-transform duration-300 ease-out",
-                "group-hover/detail:translate-x-0",
-              ].join(" ")}
-            >
-              查看详情
-            </span>
-
-            <span
-              className={[
-                "translate-x-[-8px] opacity-0 transition-all duration-300 ease-out",
-                "group-hover/detail:translate-x-0 group-hover/detail:opacity-100",
-              ].join(" ")}
-            >
-              <ArrowRightOutlined />
-            </span>
-          </span>
+          查看详情
         </Button>
       </div>
     </Card>
