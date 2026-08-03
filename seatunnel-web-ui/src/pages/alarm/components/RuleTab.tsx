@@ -458,15 +458,15 @@ const RuleTab: React.FC<RuleTabProps> = ({
   };
 
   return (
-    <div>
+    <div className="alarm-page__tab-content">
       {/* 工具栏 */}
-      <div className="mb-5 flex items-center justify-between gap-4">
+      <div className="alarm-page__tab-toolbar">
         <div>
-          <p className="m-0 text-sm font-medium text-slate-700">
+          <p className="alarm-page__tab-count">
             共 {filteredList.length} 个告警规则
           </p>
 
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="alarm-page__tab-description">
             配置任务状态变化时的告警触发条件
           </p>
         </div>
@@ -474,7 +474,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
         <Button
           type="primary"
           onClick={handleCreate}
-          className="rounded-full"
+          className="alarm-page__primary-action"
         >
           {intl.formatMessage({
             id: 'pages.alarm.button.addRule',
@@ -485,7 +485,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
 
       <Spin spinning={loading}>
         {filteredList.length > 0 ? (
-          <div className="grid gap-x-5 sm:grid-cols-2">
+          <div className="alarm-page__card-grid">
             {filteredList.map(
               (rule, index) => {
                 const enabled =
@@ -548,49 +548,32 @@ const RuleTab: React.FC<RuleTabProps> = ({
                       rule.id ??
                       `${rule.name}-${index}`
                     }
-                    className={[
-                      'group relative flex items-start gap-3.5 rounded-xl',
-                      'border border-transparent px-3 py-4',
-                      'transition-all duration-200',
-                      'hover:border-slate-200 hover:bg-slate-50',
-                    ].join(' ')}
+                    className="alarm-card alarm-card--rule group"
                   >
                     {/* 图标 */}
                     <div
-                      className={[
-                        'mt-0.5 flex h-10 w-10 shrink-0',
-                        'items-center justify-center rounded-xl',
-                        'transition-colors duration-200',
-                        enabled
-                          ? 'bg-slate-100 text-slate-700 group-hover:bg-white'
-                          : 'bg-slate-50 text-slate-300',
-                      ].join(' ')}
+                      className={`alarm-card__icon ${enabled ? '' : 'alarm-card__icon--disabled'}`}
                     >
                       <ShieldAlert className="h-5 w-5" />
                     </div>
 
                     {/* 主体 */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
+                    <div className="alarm-card__body">
+                      <div className="alarm-card__header">
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="m-0 truncate text-sm font-semibold text-slate-950">
+                          <div className="alarm-card__title-row">
+                            <h3 className="alarm-card__title">
                               {rule.name ||
                                 '未命名规则'}
                             </h3>
 
                             <span
-                              className={[
-                                'h-1.5 w-1.5 shrink-0 rounded-full',
-                                enabled
-                                  ? 'bg-emerald-500'
-                                  : 'bg-slate-300',
-                              ].join(' ')}
+                              className={`alarm-card__indicator ${enabled ? '' : 'alarm-card__indicator--disabled'}`}
                             />
 
                             {severityConfig && (
                               <span
-                                className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                className="alarm-card__severity shrink-0 rounded-full"
                                 style={{
                                   color:
                                     severityConfig.color,
@@ -605,7 +588,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
                             )}
                           </div>
 
-                          <p className="mt-1.5 line-clamp-2 min-h-12 text-sm leading-6 text-slate-500">
+                          <p className="alarm-card__description">
                             {rule.description ||
                               '暂无规则说明'}
                           </p>
@@ -614,6 +597,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
                         <Switch
                           size="small"
                           checked={enabled}
+                          className="alarm-card__switch"
                           loading={
                             togglingId ===
                             rule.id
@@ -628,24 +612,20 @@ const RuleTab: React.FC<RuleTabProps> = ({
                       </div>
 
                       {/* 触发状态 */}
-                      <div className="mt-3 flex min-h-6 flex-wrap items-center gap-1.5">
+                      <div className="alarm-card__status-list">
                         {statuses
                           .slice(0, 3)
                           .map((status) => (
                             <span
                               key={status}
-                              className={[
-                                'rounded-md bg-slate-100',
-                                'px-2 py-1 text-[11px]',
-                                'font-medium text-slate-500',
-                              ].join(' ')}
+                              className="alarm-card__status"
                             >
                               {status}
                             </span>
                           ))}
 
                         {statuses.length > 3 && (
-                          <span className="text-xs text-slate-400">
+                          <span className="alarm-card__meta-value text-xs">
                             +
                             {statuses.length -
                               3}
@@ -654,22 +634,22 @@ const RuleTab: React.FC<RuleTabProps> = ({
 
                         {statuses.length ===
                           0 && (
-                          <span className="text-xs text-slate-400">
+                          <span className="alarm-card__meta-value text-xs">
                             暂无触发状态
                           </span>
                         )}
                       </div>
 
                       {/* 元信息 */}
-                      <div className="mt-3 space-y-2 text-xs text-slate-400">
-                        <div className="flex min-w-0 items-center gap-2">
+                      <div className="alarm-card__meta alarm-card__meta--stacked">
+                        <div className="alarm-card__meta-item">
                           <Target className="h-3.5 w-3.5 shrink-0" />
 
-                          <span className="shrink-0">
+                          <span className="alarm-card__meta-label">
                             目标任务
                           </span>
 
-                          <span className="truncate text-slate-500">
+                          <span className="alarm-card__meta-value">
                             {targetSummary}
                           </span>
 
@@ -683,14 +663,14 @@ const RuleTab: React.FC<RuleTabProps> = ({
                           )}
                         </div>
 
-                        <div className="flex min-w-0 items-center gap-2">
+                        <div className="alarm-card__meta-item">
                           <BellRing className="h-3.5 w-3.5 shrink-0" />
 
-                          <span className="shrink-0">
+                          <span className="alarm-card__meta-label">
                             告警通道
                           </span>
 
-                          <span className="truncate text-slate-500">
+                          <span className="alarm-card__meta-value">
                             {channelSummary}
                           </span>
 
@@ -706,9 +686,9 @@ const RuleTab: React.FC<RuleTabProps> = ({
                       </div>
 
                       {/* 操作 */}
-                      <div className="mt-3 flex items-center gap-1 border-t border-slate-100 pt-3">
+                      <div className="alarm-card__actions">
                         {rule.createTime && (
-                          <span className="mr-auto inline-flex min-w-0 items-center gap-1.5 truncate text-xs text-slate-400">
+                          <span className="alarm-card__timestamp">
                             <Clock3 className="h-3.5 w-3.5 shrink-0" />
 
                             {formatTime(
@@ -726,7 +706,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
                           onClick={() =>
                             handleEdit(rule)
                           }
-                          className="text-slate-500"
+                          className="alarm-card__action"
                         >
                           {intl.formatMessage({
                             id: 'pages.alarm.button.edit',
@@ -745,6 +725,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
                           onClick={() =>
                             handleDelete(rule)
                           }
+                          className="alarm-card__action alarm-card__action--danger"
                         >
                           {intl.formatMessage({
                             id: 'pages.alarm.button.delete',
@@ -759,11 +740,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
                             onClick={() =>
                               handleEdit(rule)
                             }
-                            className={[
-                              'ml-1 inline-flex h-7 w-7 items-center justify-center',
-                              'rounded-lg text-slate-300 transition-all duration-200',
-                              'hover:bg-white hover:text-slate-700',
-                            ].join(' ')}
+                            className="alarm-card__detail ml-1"
                           >
                             <ArrowRight className="h-4 w-4" />
                           </button>
@@ -776,7 +753,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
             )}
           </div>
         ) : (
-          <div className="py-16">
+          <div className="alarm-page__empty">
             <Empty
               image={
                 Empty.PRESENTED_IMAGE_SIMPLE
@@ -790,6 +767,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
               {!keyword && (
                 <Button
                   type="primary"
+                  className="alarm-page__primary-action"
                   onClick={handleCreate}
                 >
                   新建规则

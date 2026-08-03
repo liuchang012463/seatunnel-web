@@ -64,13 +64,10 @@ const ScrollableFilter = <T extends string>({
   };
 
   return (
-    <div className={`group relative min-w-0 ${className}`}>
+    <div className={`alarm-page__filter group relative min-w-0 ${className}`}>
       <div
         className={[
-          "pointer-events-none absolute inset-y-0 left-0 z-10",
-          "flex w-16 items-center",
-          "bg-gradient-to-r from-white via-white/90 to-transparent",
-          "transition-opacity duration-200",
+          "alarm-page__filter-fade alarm-page__filter-fade--left",
           canScrollLeft ? "opacity-100" : "opacity-0",
         ].join(" ")}
       >
@@ -78,14 +75,7 @@ const ScrollableFilter = <T extends string>({
           type="button"
           aria-label="向左查看更多筛选项"
           onClick={() => handleScroll("left")}
-          className={[
-            "pointer-events-auto ml-1 inline-flex h-8 w-8",
-            "items-center justify-center rounded-full",
-            "border border-slate-200 bg-white text-slate-500",
-            "shadow-sm transition-all duration-200",
-            "hover:border-slate-300 hover:text-slate-900",
-            "active:scale-95",
-          ].join(" ")}
+          className="alarm-page__filter-arrow ml-1"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -93,10 +83,7 @@ const ScrollableFilter = <T extends string>({
 
       <div
         className={[
-          "pointer-events-none absolute inset-y-0 right-0 z-10",
-          "flex w-16 items-center justify-end",
-          "bg-gradient-to-l from-white via-white/90 to-transparent",
-          "transition-opacity duration-200",
+          "alarm-page__filter-fade alarm-page__filter-fade--right",
           canScrollRight ? "opacity-100" : "opacity-0",
         ].join(" ")}
       >
@@ -104,14 +91,7 @@ const ScrollableFilter = <T extends string>({
           type="button"
           aria-label="向右查看更多筛选项"
           onClick={() => handleScroll("right")}
-          className={[
-            "pointer-events-auto mr-1 inline-flex h-8 w-8",
-            "items-center justify-center rounded-full",
-            "border border-slate-200 bg-white text-slate-500",
-            "shadow-sm transition-all duration-200",
-            "hover:border-slate-300 hover:text-slate-900",
-            "active:scale-95",
-          ].join(" ")}
+          className="alarm-page__filter-arrow mr-1"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -119,9 +99,9 @@ const ScrollableFilter = <T extends string>({
 
       <div
         ref={scrollRef}
-        className="no-scrollbar overflow-x-auto scroll-smooth py-1"
+        className="alarm-page__filter-scroll no-scrollbar py-1"
       >
-        <div className="flex min-w-max items-center justify-center gap-2 px-1">
+        <div className="alarm-page__filter-options">
           {options.map((option) => {
             const active = option.value === value;
 
@@ -130,16 +110,7 @@ const ScrollableFilter = <T extends string>({
                 key={option.value}
                 type="button"
                 onClick={() => onChange(option.value)}
-                className={[
-                  "inline-flex h-9 shrink-0 items-center justify-center",
-                  "rounded-full px-4 text-sm font-medium",
-                  "transition-all duration-200",
-                  "focus-visible:outline-none focus-visible:ring-2",
-                  "focus-visible:ring-slate-300 focus-visible:ring-offset-2",
-                  active
-                    ? "bg-slate-950 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-950",
-                ].join(" ")}
+                className={`alarm-page__filter-button ${active ? "alarm-page__filter-button--active" : ""}`}
               >
                 {option.label}
               </button>

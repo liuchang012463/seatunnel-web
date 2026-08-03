@@ -10,6 +10,7 @@ import ScrollableFilter, {
   type FilterOption,
 } from './components/ScrollableFilter';
 import { PAGE_ANIMATION } from './constants';
+import './alarm.less';
 
 type AlarmViewKey = 'channels' | 'rules' | 'records';
 
@@ -84,7 +85,7 @@ const AlarmPage: React.FC = () => {
       easing="ease-out"
       extraScale={1}
     >
-      <div className="mx-auto w-full max-w-7xl pb-12">
+      <div className="alarm-page mx-auto w-full max-w-7xl pb-12">
         <motion.div
           initial="hidden"
           animate="visible"
@@ -95,7 +96,7 @@ const AlarmPage: React.FC = () => {
           </motion.div>
 
           <motion.div variants={PAGE_ANIMATION.fadeUp}>
-            <div className="sticky top-12 z-20 bg-white/95 py-3 backdrop-blur-sm">
+            <div className="alarm-page__sticky">
               <ScrollableFilter
                 value={activeKey}
                 options={navigationOptions}

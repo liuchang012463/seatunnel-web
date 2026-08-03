@@ -6,14 +6,14 @@ const AlarmPageHeader: React.FC = () => {
   const intl = useIntl();
 
   return (
-    <div className="mb-8 flex flex-col gap-5 rounded-3xl lg:flex-row lg:items-end lg:justify-between" style={{marginTop: 30}}>
+    <div className="alarm-page__header flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0">
         <div className="mb-2 flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[hsl(231_48%_48%/0.10)] text-[hsl(231_48%_48%)]">
+          <div className="alarm-page__header-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
             <BellOutlined style={{ fontSize: 22 }} />
           </div>
 
-          <h1 className="m-0 truncate text-[26px] font-bold leading-8 tracking-[-0.02em] text-[#101828]">
+          <h1 className="alarm-page__header-title m-0 truncate text-[26px] font-bold leading-8 tracking-[-0.02em]">
             {intl.formatMessage({
               id: 'pages.alarm.header.title',
               defaultMessage: '告警管理',
@@ -21,7 +21,7 @@ const AlarmPageHeader: React.FC = () => {
           </h1>
         </div>
 
-        <p className="m-0 max-w-[780px] text-sm leading-6 text-[#667085]">
+        <p className="alarm-page__header-description m-0 max-w-[780px] text-sm leading-6">
           {intl.formatMessage({
             id: 'pages.alarm.header.desc',
             defaultMessage:
