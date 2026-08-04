@@ -1,6 +1,3 @@
-import HandIcon from "@/pages/batch-link-up/icon/HandIcon";
-import { ClockCircleOutlined } from "@ant-design/icons";
-
 import { useIntl } from "@umijs/max";
 
 interface ExecutionStatusProps {
@@ -9,6 +6,7 @@ interface ExecutionStatusProps {
 
 const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
   const intl = useIntl();
+  const isManual = record?.runMode === "MANUAL";
 
   return (
     <>
@@ -32,30 +30,26 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
           })}{" "}
         </span>
 
-        {record?.runMode === "MANUAL" ? (
-          <div
-            style={{
-              display: "inline-block",
-              transition: "transform 0.3s",
-              animation: "bounce 1.2s infinite",
-              cursor: "pointer",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.3)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-          >
-            <HandIcon width={20} height={20} fill="#fa8c16" />
-          </div>
-        ) : (
-          <ClockCircleOutlined
-            style={{
-              fontSize: 20,
-              color: "#52c41a",
-              transition: "transform 0.3s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.2)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-          />
-        )}
+        <div
+          style={{
+            minWidth: 42,
+            padding: "2px 8px",
+            color: isManual ? "#ffd591" : "#b7eb8f",
+            fontSize: 12,
+            fontWeight: 700,
+            lineHeight: "18px",
+            textAlign: "center",
+            background: isManual
+              ? "rgba(250, 140, 22, 0.16)"
+              : "rgba(82, 196, 26, 0.14)",
+            border: `1px solid ${
+              isManual ? "rgba(250, 140, 22, 0.34)" : "rgba(82, 196, 26, 0.32)"
+            }`,
+            borderRadius: 999,
+          }}
+        >
+          {isManual ? "手动" : "自动"}
+        </div>
       </div>
 
       {/* Time */}
