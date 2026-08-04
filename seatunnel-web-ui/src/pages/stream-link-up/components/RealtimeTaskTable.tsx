@@ -94,10 +94,10 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "链路名称/ID",
       }),
       dataIndex: "jobName",
-      width: 220,
+      width: 240,
       render: (_, record) => (
-        <div>
-          <div className="flex items-center gap-1 text-xs leading-6">
+        <div className="stream-link-task-name-cell">
+          <div className="stream-link-task-name-cell__line">
             <em className="font-medium not-italic text-slate-700">
               {intl.formatMessage({
                 id: "pages.job.table.label.jobName",
@@ -112,7 +112,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
               </span>
             </Tooltip>
           </div>
-          <div className="flex items-center gap-1 text-xs leading-6">
+          <div className="stream-link-task-name-cell__line">
             <em className="font-medium not-italic text-slate-700">
               {intl.formatMessage({
                 id: "pages.job.table.label.jobId",
@@ -135,7 +135,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
               </button>
             </Tooltip>
           </div>
-          <div className="flex items-center gap-1 text-xs leading-6">
+          <div className="stream-link-task-name-cell__line">
             <em className="font-medium not-italic text-slate-700">zetaId</em>
             <span className="text-slate-400">:</span>
 
@@ -154,7 +154,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "数据源同步方案",
       }),
       dataIndex: "syncPlan",
-      width: 300,
+      width: 310,
       render: (_, record) => <RealtimeSyncPlan record={record} />,
     },
     {
@@ -163,9 +163,9 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "健康状态",
       }),
       dataIndex: "taskParams",
-      width: 106,
+      width: 110,
       render: (_content: any, record: any) => (
-        <div className="flex w-full justify-center">
+        <div className="stream-link-status-cell">
           <TaskStatus
             status={record?.lastJobStatus}
             errorMessage={record?.lastErrorMessage}
@@ -176,7 +176,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
     {
       title: "负载情况",
       dataIndex: "metricsTrend",
-      width: 360,
+      width: 330,
       render: (_content: any, record: StreamingJobDefinitionVO) => (
         <RealtimeMetricsTrend record={record} onView={onView} />
       ),
@@ -194,9 +194,9 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
     {
       title: "最近更新时间",
       dataIndex: "updateTime",
-      width: 180,
+      width: 160,
       render: (value) => (
-        <span className="text-sm text-slate-600">{formatDateTime(value)}</span>
+        <span className="stream-link-time-cell">{formatDateTime(value)}</span>
       ),
     },
     {
@@ -205,7 +205,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "操作",
       }),
       dataIndex: "operate",
-      width: 220,
+      width: 250,
       fixed: "right",
       render: (_, record) => (
         <RealtimeTaskActionColumn
@@ -241,9 +241,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       }}
       size="middle"
       scroll={{ x: "max-content", y: "calc(100vh - 480px)" }}
-      className={[
-        "stream-link-task-table",
-      ].join(" ")}
+      className="stream-link-task-table"
       locale={{
         emptyText: (
           <Empty

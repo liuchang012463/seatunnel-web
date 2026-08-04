@@ -60,18 +60,18 @@ interface RealtimeTaskActionColumnProps {
 }
 
 const actionBaseClass =
-  "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-all duration-150";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-all duration-150";
 
-const primaryActionClass = `${actionBaseClass} bg-[#eef3ff] text-[#3157d5] hover:bg-[#e1e9ff] hover:text-[#2448c2]`;
+const primaryActionClass = `${actionBaseClass} border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8] hover:border-[#93c5fd] hover:bg-[#dbeafe] hover:text-[#1e40af]`;
 
-const dangerActionClass = `${actionBaseClass} bg-[#fff1f0] text-[#cf1322] hover:bg-[#ffe1de] hover:text-[#a8071a]`;
+const dangerActionClass = `${actionBaseClass} border-[#fecdd3] bg-[#fff1f2] text-[#be123c] hover:border-[#fda4af] hover:bg-[#ffe4e6] hover:text-[#9f1239]`;
 
-const secondaryActionClass = `${actionBaseClass} bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900`;
+const secondaryActionClass = `${actionBaseClass} border-slate-200 bg-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900`;
 
-const disabledActionClass = `${actionBaseClass} cursor-not-allowed bg-slate-100 text-slate-400`;
+const disabledActionClass = `${actionBaseClass} cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400`;
 
 const moreActionClass =
-  "inline-flex h-7 items-center gap-1 rounded-full px-2 text-xs font-medium text-slate-500 transition-all duration-150 hover:bg-slate-100 hover:text-slate-800";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900";
 
 const isReleaseOnline = (releaseState?: string | number) => {
   return releaseState === "ONLINE" || releaseState === 1;

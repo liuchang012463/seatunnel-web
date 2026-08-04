@@ -10,10 +10,16 @@ interface RealtimeSyncPlanProps {
   record: any;
 }
 
+const dataSourcePopoverInnerStyle: CSSProperties = {
+  borderRadius: 10,
+  boxShadow: "0 14px 36px rgba(15, 23, 42, 0.16)",
+};
+
 const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
   const [sourcePopoverVisible, setSourcePopoverVisible] = useState(false);
   const [sinkPopoverVisible, setSinkPopoverVisible] = useState(false);
-  const [jsonData, setJsonData] = useState<any>(null);
+  const [sourceJsonData, setSourceJsonData] = useState<any>(null);
+  const [sinkJsonData, setSinkJsonData] = useState<any>(null);
 
   const animatedIconStyle: CSSProperties = {
     fontSize: 10,
@@ -210,16 +216,18 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
     );
   };
 
-  const renderJsonPopoverContent = () => {
-    if (!jsonData) {
+  const renderJsonPopoverContent = (data: any) => {
+    if (!data) {
       return (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
+        <div className="stream-link-empty-popover">
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
+        </div>
       );
     }
 
     return (
-      <div className="max-h-[320px] w-[340px] overflow-auto rounded-xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white p-3 font-mono text-xs shadow-sm">
-        {renderObject(jsonData)}
+      <div className="stream-link-json-popover">
+        {renderObject(data)}
       </div>
     );
   };
@@ -232,14 +240,14 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
     }
 
     return (
-      <div className="max-h-[280px] w-[300px] overflow-y-auto">
-        <div className="mb-2 text-xs text-black/45">共 {tables.length} 张表</div>
+      <div className="stream-link-table-popover">
+        <div className="stream-link-table-popover__count">共 {tables.length} 张表</div>
 
         <div className="flex flex-col gap-1.5">
           {tables.map((tableName, index) => (
             <div
               key={`${tableName}-${index}`}
-              className="flex items-center gap-2 rounded-lg bg-slate-50 px-2 py-1.5 text-xs leading-5 text-slate-700"
+              className="stream-link-table-popover__item"
             >
               <span className="h-1 w-1 shrink-0 rounded-full bg-slate-700" />
               <span className="truncate" title={tableName}>
@@ -261,7 +269,13 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
     const data = await selectDataSourceById(datasourceId);
 
     if (data?.code === 0) {
-      setJsonData(safeParse(data?.data?.connectionParams || {}));
+      const jsonData = safeParse(data?.data?.connectionParams || {});
+
+      if (type === "source") {
+        setSourceJsonData(jsonData);
+      } else {
+        setSinkJsonData(jsonData);
+      }
 
       if (type === "source") {
         setSourcePopoverVisible(true);
@@ -288,9 +302,12 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
           }
         }}
         title="数据源信息"
-        content={renderJsonPopoverContent()}
+        content={renderJsonPopoverContent(
+          type === "source" ? sourceJsonData : sinkJsonData
+        )}
         trigger="click"
         placement="right"
+        overlayInnerStyle={dataSourcePopoverInnerStyle}
       >
         <a
           href="#"
@@ -298,7 +315,7 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
             event.preventDefault();
             handleOpenDatasource(datasourceId, type);
           }}
-          className="ml-2 max-w-[150px] truncate text-[13px] font-medium"
+          className="ml-2 inline-block max-w-[150px] truncate text-[13px] font-medium"
           style={{ color: "hsl(231 48% 48%)" }}
           title={datasourceName || fallback}
         >
@@ -345,7 +362,7 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
   };
 
   return (
-    <div className="min-w-[280px] text-slate-700" style={{padding: "12px 0"}}>
+    <div className="stream-link-sync-plan min-w-[280px] text-slate-700">
       <style>
         {`
           @keyframes realtime-plan-flow {

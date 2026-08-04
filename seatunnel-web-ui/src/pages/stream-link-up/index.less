@@ -1,5 +1,4 @@
 .stream-link-page {
-  padding-inline: 16px;
   color: var(--st-color-text-primary);
 }
 
@@ -14,13 +13,17 @@
 .stream-link-page__content { border-radius: var(--st-radius-md); }
 
 .stream-link-search {
-  border: 0;
-  border-bottom: 1px solid var(--st-color-divider);
+  margin-top: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--st-color-border);
   background: var(--st-color-bg-elevated);
 }
 
 .stream-link-task-table .ant-table,
-.stream-link-task-table .ant-table-container { background: var(--st-color-bg-panel); }
+.stream-link-task-table .ant-table-container { 
+  background: var(--st-color-bg-panel);
+  border-radius: 12px;
+}
 
 .stream-link-task-table .ant-table-thead > tr > th {
   color: var(--st-color-text-primary);
@@ -44,6 +47,142 @@
 .stream-link-task-table .text-slate-600 { color: var(--st-color-text-primary) !important; }
 
 .stream-link-task-table .text-slate-400 { color: var(--st-color-text-muted) !important; }
+
+.stream-link-task-name-cell { min-width: 0; }
+
+.stream-link-task-name-cell__line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 24px;
+}
+
+.stream-link-task-name-cell__line > span { min-width: 0; }
+
+.stream-link-status-cell {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.stream-link-status-text {
+  display: inline-flex;
+  min-width: 56px;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+.stream-link-time-cell {
+  color: var(--st-color-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.stream-link-sync-plan { padding: 8px 0; }
+
+.stream-link-json-popover {
+  width: 420px;
+  max-width: calc(100vw - 96px);
+  max-height: 360px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 20px;
+  word-break: break-word;
+}
+
+.stream-link-table-popover {
+  width: 300px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.stream-link-table-popover__count {
+  margin-bottom: 8px;
+  color: var(--st-color-text-muted);
+  font-size: 12px;
+}
+
+.stream-link-table-popover__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f5f7ff;
+  color: #334155;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.stream-link-table-popover__item + .stream-link-table-popover__item { margin-top: 6px; }
+
+.stream-link-table-popover__item > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-link-error-popover { width: 520px; max-width: calc(100vw - 48px); }
+
+.stream-link-error-popover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stream-link-error-popover__header button {
+  padding: 3px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.stream-link-error-popover__body {
+  max-height: 240px;
+  overflow: auto;
+  padding: 10px 12px;
+  background: #0f172a;
+  color: #00ff88;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.stream-link-error-popover__line { display: flex; align-items: flex-start; }
+
+.stream-link-error-popover__line > span {
+  width: 28px;
+  flex: 0 0 auto;
+  padding-right: 8px;
+  color: #64748b;
+  text-align: right;
+  user-select: none;
+}
+
+.stream-link-error-popover__line code {
+  flex: 1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 .stream-link-search .text-slate-600 { color: var(--st-color-text-secondary) !important; }
 
