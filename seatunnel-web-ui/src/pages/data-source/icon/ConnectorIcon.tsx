@@ -1,13 +1,6 @@
-import {
-  Box,
-  Cloud,
-  Database,
-  File,
-  FileKey,
-  Globe2,
-  Radio,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { Database } from "lucide-react";
+
+import SimpleIcon, { type SimpleIconSlug } from "./SimpleIcon";
 
 interface ConnectorIconProps {
   dbType: string;
@@ -15,18 +8,23 @@ interface ConnectorIconProps {
   height: string;
 }
 
-const iconMap: Record<string, { icon: LucideIcon; color: string }> = {
-  kafka: { icon: Radio, color: '#cc3258' },
-  kafka_source: { icon: Radio, color: '#cc3258' },
-  ftp: { icon: File, color: '#f59e0b' },
-  ftpfile: { icon: File, color: '#f59e0b' },
-  sftp: { icon: FileKey, color: '#2563eb' },
-  sftpfile: { icon: FileKey, color: '#2563eb' },
-  s3: { icon: Cloud, color: '#f97316' },
-  s3file: { icon: Cloud, color: '#f97316' },
-  minio: { icon: Box, color: '#c72c48' },
-  http: { icon: Globe2, color: '#0ea5e9' },
-  h2: { icon: Database, color: '#2563eb' },
+const iconMap: Record<
+  string,
+  { slug?: SimpleIconSlug; icon?: typeof Database; color: string }
+> = {
+  // Kafka's official monochrome mark is nearly black; use a light contrast
+  // color here so the downloaded path remains visible on the dark card.
+  kafka: { slug: "apachekafka", color: "#e8edf2" },
+  kafka_source: { slug: "apachekafka", color: "#e8edf2" },
+  ftp: { slug: "filezilla", color: "#bf0000" },
+  ftpfile: { slug: "filezilla", color: "#bf0000" },
+  sftp: { slug: "filezilla", color: "#bf0000" },
+  sftpfile: { slug: "filezilla", color: "#bf0000" },
+  s3: { slug: "amazonaws", color: "#ff9900" },
+  s3file: { slug: "amazonaws", color: "#ff9900" },
+  minio: { slug: "minio", color: "#c72e49" },
+  http: { slug: "httpie", color: "#73dc8c" },
+  h2: { icon: Database, color: "#2563eb" },
 };
 
 const ConnectorIcon = ({ dbType, width, height }: ConnectorIconProps) => {
@@ -34,7 +32,18 @@ const ConnectorIcon = ({ dbType, width, height }: ConnectorIconProps) => {
 
   if (!config) return null;
 
-  const Icon = config.icon;
+  if (config.slug) {
+    return (
+      <SimpleIcon
+        slug={config.slug}
+        width={width}
+        height={height}
+        color={config.color}
+      />
+    );
+  }
+
+  const Icon = config.icon || Database;
   return <Icon width={width} height={height} color={config.color} strokeWidth={1.8} />;
 };
 

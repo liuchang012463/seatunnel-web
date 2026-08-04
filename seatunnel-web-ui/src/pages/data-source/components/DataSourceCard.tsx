@@ -1,11 +1,11 @@
 import {
   ApiOutlined,
-  CheckCircleOutlined,
+  CloseCircleOutlined,
   DeleteOutlined,
-  MoreOutlined,
-  StopOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Dropdown, Tag, Tooltip } from "antd";
+import { Button, Card, Tag, Tooltip } from "antd";
 import React from "react";
 import { environmentTagConfigMap } from "../constants";
 import { getDataSourceCategory } from "../dataSourceRegistry";
@@ -42,39 +42,9 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   };
   const category = getDataSourceCategory(record.dbType);
   const currentStatus = record.status || "ENABLED";
-  const lifecycleItems = [
-    currentStatus !== "ENABLED" && currentStatus !== "REVOKED"
-      ? {
-          key: "ENABLED",
-          label: "启用",
-          icon: <CheckCircleOutlined />,
-        }
-      : null,
-    currentStatus !== "DISABLED" && currentStatus !== "REVOKED"
-      ? {
-          key: "DISABLED",
-          label: "停用",
-          icon: <StopOutlined />,
-        }
-      : null,
-    currentStatus !== "REVOKED"
-      ? {
-          key: "REVOKED",
-          label: "注销",
-          danger: true,
-        }
-      : {
-          key: "REVOKED",
-          label: "已注销",
-          disabled: true,
-        },
-  ].filter(Boolean) as Array<{
-    key: string;
-    label: string;
-    icon?: React.ReactNode;
-    danger?: boolean;
-    disabled?: boolean;
-  }>;
+  const isRevoked = currentStatus === "REVOKED";
+  const nextStatus = currentStatus === "DISABLED" ? "ENABLED" : "DISABLED";
+  const statusActionLabel = currentStatus === "DISABLED" ? "启用" : "停用";
 
   return (
     <Card
@@ -113,19 +83,6 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
             "group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto",
           ].join(" ")}
         >
-          <Tooltip title="删除" placement="top">
-            <button
-              type="button"
-              className="datasource-card-hover-action datasource-card-hover-action--danger"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDelete(record);
-              }}
-            >
-              <DeleteOutlined />
-            </button>
-          </Tooltip>
-
           <Tooltip title="测试连接" placement="top">
             <button
               type="button"
@@ -139,24 +96,49 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
             </button>
           </Tooltip>
 
-          <Tooltip title="生命周期操作" placement="top">
-            <Dropdown
-              trigger={["click"]}
-              menu={{
-                items: lifecycleItems,
-                onClick: ({ key }) => {
-                  onStatusChange(record, key as DataSourceLifecycleStatus);
-                },
+          <Tooltip title={statusActionLabel} placement="top">
+            <button
+              type="button"
+              disabled={isRevoked}
+              className="datasource-card-hover-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onStatusChange(record, nextStatus);
               }}
             >
-              <button
-                type="button"
-                className="datasource-card-hover-action"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <MoreOutlined />
-              </button>
-            </Dropdown>
+              {currentStatus === "DISABLED" ? (
+                <PlayCircleOutlined />
+              ) : (
+                <PauseCircleOutlined />
+              )}
+            </button>
+          </Tooltip>
+
+          <Tooltip title={isRevoked ? "已注销" : "注销"} placement="top">
+            <button
+              type="button"
+              disabled={isRevoked}
+              className="datasource-card-hover-action datasource-card-hover-action--danger"
+              onClick={(event) => {
+                event.stopPropagation();
+                onStatusChange(record, "REVOKED");
+              }}
+            >
+              <CloseCircleOutlined />
+            </button>
+          </Tooltip>
+
+          <Tooltip title="删除" placement="top">
+            <button
+              type="button"
+              className="datasource-card-hover-action datasource-card-hover-action--danger"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete(record);
+              }}
+            >
+              <DeleteOutlined />
+            </button>
           </Tooltip>
         </div>
       </div>

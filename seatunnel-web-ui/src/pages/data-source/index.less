@@ -577,6 +577,13 @@
     transform: scale(1.06);
   }
 
+  &:disabled {
+    color: var(--st-color-text-muted);
+    cursor: not-allowed;
+    opacity: 0.45;
+    transform: none;
+  }
+
   &--danger:hover {
     color: #ff7875;
     background: rgba(194, 59, 59, 0.18);
