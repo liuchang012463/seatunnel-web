@@ -31,7 +31,6 @@ const FileLinkUpPage: React.FC = () => {
   return (
     <div>
       <TaskListPageHeader
-        className="mx-4 mb-5"
         icon={<FileSyncOutlined />}
         title="文件引接任务管理"
         subtitle={

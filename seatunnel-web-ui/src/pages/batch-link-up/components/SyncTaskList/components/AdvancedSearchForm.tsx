@@ -147,7 +147,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   ];
 
   const fieldLabel = (text: React.ReactNode) => (
-    <span className="text-xs font-medium text-slate-600">{text}</span>
+    <span className="task-search-label">{text}</span>
   );
 
   const commonFormItemProps = {
@@ -166,7 +166,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   });
 
   return (
-    <div className="bg-white px-5 py-4">
+    <div className="task-search-panel">
       <Form
         form={form}
         name="advanced_search"

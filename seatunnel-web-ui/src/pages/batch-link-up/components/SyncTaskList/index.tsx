@@ -542,16 +542,9 @@ const App: React.FC<Props> = ({
 
   return (
     <>
-      <div
-        style={{
-          margin: "0px 16px",
-          background: "white",
-          padding: "0 16px 0 16px",
-        }}
-      >
-        <div>
+      <div className="batch-link-up-page">
           <div className="config-manage-page">
-            <div className="operate-bar">
+            <div className="operate-bar task-search-wrap">
               <div className="left">
                 <AdvancedSearchForm
                   onSearch={handleSearch}
@@ -564,24 +557,16 @@ const App: React.FC<Props> = ({
 
             <Divider style={{ margin: "16px 0" }} />
 
+            <div className="task-table-shell">
             <Table
               columns={baseColumns as any}
               dataSource={taskList}
               rowKey="id"
-              bordered
               pagination={false}
               loading={loading}
               rowSelection={{ type: "checkbox", ...rowSelection }}
               scroll={{ x: "max-content", y: "calc(100vh - 470px)" }}
-              className={[
-                "[&_.ant-table]:!rounded-xl",
-                "[&_.ant-table-thead>tr>th]:!bg-slate-50",
-                "[&_.ant-table-thead>tr>th]:!font-bold",
-                "[&_.ant-table-thead>tr>th]:!text-slate-700",
-                "[&_.ant-table-tbody>tr>td]:!border-slate-100",
-                "[&_.ant-table-tbody>tr:hover>td]:!bg-slate-50/70",
-                "[&_.ant-pagination]:!px-1",
-              ].join(" ")}
+              className="task-table"
               locale={{
                 emptyText: (
                   <Empty
@@ -591,8 +576,8 @@ const App: React.FC<Props> = ({
                 ),
               }}
             />
+            </div>
           </div>
-        </div>
 
         {taskList && taskList.length > 1 ? "" : <Footer />}
       </div>

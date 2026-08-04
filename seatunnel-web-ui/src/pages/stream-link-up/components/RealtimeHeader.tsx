@@ -48,69 +48,20 @@ const RealtimeHeader: React.FC<RealtimeHeaderProps> = ({
       icon={<ThunderboltOutlined />}
       title="链路管理（实时）"
       subtitle="持续采集与实时处理数据流，帮助你更快构建端到端流式同步链路"
+      actions={
+        <Button
+          type="primary"
+          disabled={isButtonDisabled}
+          loading={creating}
+          onClick={onCreate}
+          className="h-10 rounded-full border-none bg-gradient-to-r font-semibold"
+        >
+          创建实时引接链路
+        </Button>
+      }
     >
-      <div className="mb-5 rounded-[20px] border border-indigo-100 bg-white/90 p-4">
-        <div className="mb-1 flex items-center gap-3 font-semibold text-slate-900 st-font">
-          同步方向
-        </div>
 
-        <div className="grid grid-cols-[minmax(240px,1fr)_120px_minmax(240px,1fr)_180px] items-center gap-4 max-xl:grid-cols-1">
-          <div
-            className="flex h-10 items-center overflow-hidden rounded-full border border-slate-200 bg-white transition
-            hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(79,70,229,0.08)]"
-          >
-            <Select
-              prefix="来源："
-              value={sourceType?.dbType}
-              onChange={handleSourceChange}
-              options={generateRealtimeSourceOptions()}
-              bordered={false}
-              showSearch
-              className="flex-1"
-            />
-          </div>
-
-          <RealtimeFlowBridge />
-
-          <div className="flex h-10 items-center overflow-hidden rounded-full border border-slate-200 bg-white transition hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(79,70,229,0.08)]">
-            <Select
-              prefix="去向："
-              value={sinkType?.dbType}
-              onChange={handleSinkChange}
-              options={generateDataSourceOptions()}
-              bordered={false}
-              showSearch
-              className="flex-1"
-            />
-          </div>
-
-          <Button
-            type="primary"
-            disabled={isButtonDisabled}
-            loading={creating}
-            onClick={onCreate}
-            className="h-10 rounded-full border-none bg-gradient-to-r font-semibold"
-          >
-            创建实时引接链路
-          </Button>
-        </div>
-
-        {/* <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          常用组合：
-          <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-slate-600 transition hover:border-indigo-200 hover:bg-white hover:text-indigo-600">
-            🐬 MySQL → Kafka
-          </span>
-          <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-slate-600 transition hover:border-indigo-200 hover:bg-white hover:text-indigo-600">
-            🐘 PostgreSQL → Kafka
-          </span>
-          <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-slate-600 transition hover:border-indigo-200 hover:bg-white hover:text-indigo-600">
-            🐬 MySQL CDC → Elasticsearch
-          </span>
-          <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-slate-600 transition hover:border-indigo-200 hover:bg-white hover:text-indigo-600">
-            ✣ Kafka → StarRocks
-          </span>
-        </div> */}
-      </div>
+          
     </TaskListPageHeader>
   );
 };

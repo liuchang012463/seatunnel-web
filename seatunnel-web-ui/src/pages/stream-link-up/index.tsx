@@ -799,7 +799,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   return (
     <>
-      <div className="min-h-screen px-6 pb-24 pt-7 text-slate-950">
+      <div className="min-h-screen pb-24 pt-7 text-slate-950">
         <RealtimeHeader
           sourceType={sourceType}
           sinkType={sinkType}

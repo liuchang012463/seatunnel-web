@@ -61,19 +61,7 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
     selectedCount <= 0 ? "请先选择任务" : undefined;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        left: "var(--pro-sider-current-width)",
-        right: 0,
-        bottom: 0,
-        padding: "12px 20px",
-        background: "#fff",
-        borderTop: "1px solid rgba(227,228,230,1)",
-        zIndex: 99,
-        transition: "left var(--pro-sider-transition-duration) ease",
-      }}
-    >
+    <div className="task-bottom-action-bar">
       <div
         style={{
           display: "flex",

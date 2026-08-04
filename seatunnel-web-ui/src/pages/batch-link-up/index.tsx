@@ -4,6 +4,7 @@ import { history } from 'umi';
 import { seatunnelJobDefinitionApi } from './api';
 import DataSyncHeader from './components/DataSyncHeader';
 import SyncTaskList from './components/SyncTaskList';
+import './index.less';
 
 // import SyncTaskList from "./SyncTaskList";
 
