@@ -14,6 +14,7 @@ import ExecutionStatus from "./components/ExecutionStatus";
 import Footer from "./components/Footer";
 import ScheduleInfo from "./components/ScheduleInfo";
 import TaskStatus from "./components/TaskStatus";
+import './index.less';
 
 interface Props {
   goDetail: (value: any, item?: any) => void;
@@ -199,9 +200,9 @@ const App: React.FC<Props> = ({
       width: "12%",
       ellipsis: true,
       render: (_content: any, record: any) => (
-        <div>
-          <div>
-            <em style={{ fontWeight: 500 }}>
+        <div className="sync-task-name-cell">
+          <div className="sync-task-name-cell__title">
+            <em>
               {intl.formatMessage({
                 id: "pages.job.table.label.jobName",
                 defaultMessage: "JobName",
@@ -209,29 +210,19 @@ const App: React.FC<Props> = ({
             </em>
             : {record?.jobName}
           </div>
-          <div>
-            <em style={{ fontWeight: 500 }}>
+          <div className="sync-task-name-cell__id">
+            <em>
               {intl.formatMessage({
                 id: "pages.job.table.label.jobId",
                 defaultMessage: "Job Definition ID",
               })}
             </em>
             :{" "}
-            <span style={{ fontSize: "12px", color: "gray" }}>
-              {record?.id}
-            </span>{" "}
+            <span>{record?.id}</span>{" "}
             <Tooltip title="复制任务定义ID">
               <button
                 type="button"
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  padding: 0,
-                  marginLeft: 4,
-                  cursor: "pointer",
-                  color: "#94a3b8",
-                  lineHeight: 1,
-                }}
+                className="sync-task-copy-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   copyToClipboard(record?.id);
@@ -252,7 +243,9 @@ const App: React.FC<Props> = ({
       dataIndex: "",
       width: "21%",
       render: (_content: any, record: any) => (
-        <DataSourceSyncPlan record={record} />
+        <div className="sync-task-plan-cell">
+          <DataSourceSyncPlan record={record} />
+        </div>
       ),
     },
 
@@ -264,7 +257,7 @@ const App: React.FC<Props> = ({
       dataIndex: "taskParams",
       width: "7%",
       render: (_content: any, record: any) => (
-        <div className="flex w-full justify-center">
+        <div className="sync-task-status-cell flex w-full justify-center">
           <TaskStatus
             status={record?.lastJobStatus}
             errorMessage={record?.lastErrorMessage}
@@ -280,7 +273,9 @@ const App: React.FC<Props> = ({
       dataIndex: "执行概况",
       width: "15%",
       render: (_content: any, record: any) => (
-        <ExecutionStatus record={record} />
+        <div className="sync-task-info-list">
+          <ExecutionStatus record={record} />
+        </div>
       ),
     },
     {
@@ -290,7 +285,11 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "taskName",
       width: "20%",
-      render: (_content: any, record: any) => <ScheduleInfo record={record} />,
+      render: (_content: any, record: any) => (
+        <div className="sync-task-info-list sync-task-schedule-list">
+          <ScheduleInfo record={record} />
+        </div>
+      ),
     },
     {
       title: intl.formatMessage({
@@ -299,6 +298,9 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "createTime",
       width: "10%",
+      render: (createTime: string) => (
+        <span className="sync-task-time">{createTime || "-"}</span>
+      ),
     },
     {
       title: intl.formatMessage({
@@ -542,44 +544,42 @@ const App: React.FC<Props> = ({
 
   return (
     <>
-      <div className="batch-link-up-page">
-          <div className="config-manage-page">
-            <div className="operate-bar task-search-wrap">
-              <div className="left">
-                <AdvancedSearchForm
-                  onSearch={handleSearch}
-                  onReset={handleReset}
-                  initialValues={searchParams}
-                  fileMode={mode === "FILE_SYNC"}
-                />
-              </div>
-            </div>
-
-            <Divider style={{ margin: "16px 0" }} />
-
-            <div className="task-table-shell">
-            <Table
-              columns={baseColumns as any}
-              dataSource={taskList}
-              rowKey="id"
-              pagination={false}
-              loading={loading}
-              rowSelection={{ type: "checkbox", ...rowSelection }}
-              scroll={{ x: "max-content", y: "calc(100vh - 470px)" }}
-              className="task-table"
-              locale={{
-                emptyText: (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={emptyDescription}
-                  />
-                ),
-              }}
-            />
+      <div className="batch-link-up-page sync-task-list">
+        <div className="config-manage-page">
+          <div className="operate-bar task-search-wrap">
+            <div className="left">
+              <AdvancedSearchForm
+                onSearch={handleSearch}
+                onReset={handleReset}
+                initialValues={searchParams}
+                fileMode={mode === "FILE_SYNC"}
+              />
             </div>
           </div>
 
-        {taskList && taskList.length > 1 ? "" : <Footer />}
+          <Divider style={{ margin: "16px 0" }} />
+
+          <div className="task-table-shell">
+          <Table
+            columns={baseColumns as any}
+            dataSource={taskList}
+            rowKey="id"
+            pagination={false}
+            loading={loading}
+            rowSelection={{ type: "checkbox", ...rowSelection }}
+            scroll={{ x: "max-content", y: "calc(100vh - 470px)" }}
+            className="task-table"
+            locale={{
+              emptyText: (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={emptyDescription}
+                />
+              ),
+            }}
+          />
+          </div>
+        </div>
       </div>
 
       <BottomActionBar

@@ -1,0 +1,225 @@
+.sync-task-list {
+
+  .config-manage-page {
+    min-width: 0;
+  }
+
+  .task-search-wrap {
+    margin-top: 16px;
+  }
+
+  .task-table-shell {
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, rgba(0, 59, 79, 0.96), rgba(0, 39, 54, 0.98));
+    border: 1px solid rgba(77, 210, 255, 0.16);
+    border-radius: 12px;
+    box-shadow: 0 14px 32px rgba(0, 18, 26, 0.18);
+  }
+
+  .task-table {
+    .ant-table {
+      color: var(--st-color-text-primary, #fff);
+      background: transparent;
+    }
+
+    .ant-table-container {
+      border: 0;
+    }
+
+    .ant-table-thead > tr > th {
+      padding: 14px 16px;
+      color: #ecfbff;
+      font-size: 12px;
+      font-weight: 700;
+      background: linear-gradient(180deg, #2c90af, #217c9a) !important;
+      border-bottom: 1px solid rgba(77, 210, 255, 0.18) !important;
+      border-inline-end: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .ant-table-thead > tr > th::before {
+      display: none;
+    }
+
+    .ant-table-tbody > tr > td {
+      padding: 18px 16px;
+      color: rgba(238, 251, 255, 0.92);
+      background: rgba(0, 52, 70, 0.86) !important;
+      border-bottom: 1px solid rgba(77, 210, 255, 0.08);
+      vertical-align: middle;
+    }
+
+    .ant-table-tbody > tr:nth-child(even) > td {
+      background: rgba(0, 47, 63, 0.92) !important;
+    }
+
+    .ant-table-tbody > tr:hover > td {
+      background: rgba(22, 119, 150, 0.24) !important;
+    }
+
+    .ant-table-tbody > tr:last-child > td {
+      border-bottom: 0;
+    }
+
+    .ant-table-placeholder .ant-table-cell {
+      background: rgba(0, 47, 63, 0.92) !important;
+    }
+
+    .ant-table-cell-fix-right {
+      background: rgba(0, 58, 76, 0.96) !important;
+      box-shadow: -12px 0 22px rgba(0, 20, 28, 0.22);
+    }
+
+    .ant-table-selection-column {
+      padding-inline: 18px 10px;
+    }
+
+    .ant-checkbox-inner {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(77, 210, 255, 0.44);
+    }
+
+    .ant-checkbox-checked .ant-checkbox-inner {
+      background: var(--st-color-accent, #4dd2ff);
+      border-color: var(--st-color-accent, #4dd2ff);
+    }
+  }
+
+  .sync-task-name-cell {
+    min-width: 220px;
+    line-height: 1.6;
+  }
+
+  .sync-task-name-cell__title,
+  .sync-task-name-cell__id {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .sync-task-name-cell__title {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .sync-task-name-cell__id {
+    margin-top: 2px;
+    color: rgba(220, 238, 245, 0.7);
+    font-size: 12px;
+
+    em {
+      color: rgba(238, 251, 255, 0.94);
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    span {
+      color: rgba(220, 238, 245, 0.78);
+    }
+  }
+
+  .sync-task-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 2px;
+    padding: 0;
+    color: rgba(170, 218, 235, 0.82);
+    line-height: 1;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: color 0.18s ease;
+
+    &:hover {
+      color: var(--st-color-accent, #4dd2ff);
+    }
+  }
+
+  .sync-task-plan-cell {
+    color: rgba(238, 251, 255, 0.88);
+
+    > div {
+      color: rgba(238, 251, 255, 0.88) !important;
+    }
+
+    a {
+      color: #6ea8ff !important;
+      font-weight: 600;
+    }
+  }
+
+  .sync-task-info-list {
+    min-width: 180px;
+
+    > div {
+      display: flex !important;
+      align-items: center;
+      min-height: 22px;
+      line-height: 22px;
+    }
+
+    > div + div {
+      margin-top: 4px;
+    }
+
+    > div > span:first-child {
+      width: 10px;
+      margin-right: 6px !important;
+      color: var(--st-color-accent, #4dd2ff) !important;
+      font-size: 15px !important;
+      line-height: 1;
+    }
+
+    > div > span:nth-child(2) {
+      flex: 0 0 66px;
+      margin-right: 8px !important;
+      color: rgba(238, 251, 255, 0.96) !important;
+      font-size: 12px;
+      font-weight: 600 !important;
+    }
+
+    > div > span:last-child {
+      color: rgba(220, 238, 245, 0.72) !important;
+      font-size: 12px;
+    }
+
+    a {
+      display: inline-block;
+      max-width: 200px;
+      overflow: hidden;
+      color: #6ea8ff !important;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: bottom;
+    }
+  }
+
+  .sync-task-schedule-list {
+    min-width: 260px;
+
+    > div > span:nth-child(2) {
+      flex-basis: 92px;
+    }
+  }
+
+  .sync-task-status-cell {
+    min-width: 72px;
+  }
+
+  .sync-task-time {
+    display: inline-block;
+    min-width: 132px;
+    color: rgba(238, 251, 255, 0.86);
+    font-size: 12px;
+    line-height: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sync-task-list {
+    padding: 0 8px 88px;
+  }
+}
