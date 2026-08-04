@@ -96,6 +96,15 @@ const BaseConfigSection: React.FC<Props> = ({
                 />
 
                 <ModeCard
+                  value="GUIDE_SINGLE_INCREMENTAL"
+                  current={mode}
+                  title="单表增量微批"
+                  desc="按时间水位周期接入新增或变更数据。"
+                  tag="增量"
+                  onSelect={setMode}
+                />
+
+                <ModeCard
                   value="GUIDE_MULTI"
                   current={mode}
                   title="多表向导"

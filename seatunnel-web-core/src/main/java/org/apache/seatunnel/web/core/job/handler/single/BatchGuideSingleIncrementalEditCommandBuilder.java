@@ -6,7 +6,7 @@ import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.job.handler.BatchJobEditCommandBuilder;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionContentEntity;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
-import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleIncrementalJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.config.BatchJobEnvConfig;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobBasicConfig;
@@ -16,43 +16,32 @@ import org.springframework.stereotype.Component;
 import java.util.Collections;
 import java.util.Map;
 
+/** Builds the independent edit command for an incremental single-table job. */
 @Component
-public class BatchGuideSingleEditCommandBuilder implements BatchJobEditCommandBuilder {
+public class BatchGuideSingleIncrementalEditCommandBuilder implements BatchJobEditCommandBuilder {
 
     @Override
     public JobDefinitionMode mode() {
-        return JobDefinitionMode.GUIDE_SINGLE;
+        return JobDefinitionMode.GUIDE_SINGLE_INCREMENTAL;
     }
 
     @Override
-    public JobDefinitionSaveCommand build(
-            JobDefinitionEntity definition,
-            JobDefinitionContentEntity contentEntity,
-            JobScheduleConfig scheduleConfig) {
-
-        BatchGuideSingleJobSaveCommand cmd = new BatchGuideSingleJobSaveCommand();
-        cmd.setId(definition.getId());
-        cmd.setBasic(buildBasicConfig(definition));
-        cmd.setSchedule(scheduleConfig);
-        cmd.setEnv(JSONUtils.parseObject(contentEntity.getEnvConfig(), BatchJobEnvConfig.class));
-
-        Map<String, Object> workflow = JSONUtils.parseObject(
-                contentEntity.getDefinitionContent(),
-                new TypeReference<Map<String, Object>>() {
-                }
-        );
-
-        cmd.setWorkflow(workflow == null ? Collections.emptyMap() : workflow);
-        return cmd;
-    }
-
-    private JobBasicConfig buildBasicConfig(JobDefinitionEntity definition) {
+    public JobDefinitionSaveCommand build(JobDefinitionEntity definition,
+                                          JobDefinitionContentEntity contentEntity,
+                                          JobScheduleConfig scheduleConfig) {
+        BatchGuideSingleIncrementalJobSaveCommand command = new BatchGuideSingleIncrementalJobSaveCommand();
+        command.setId(definition.getId());
         JobBasicConfig basic = new JobBasicConfig();
         basic.setMode(definition.getMode());
         basic.setJobName(definition.getJobName());
         basic.setJobDesc(definition.getJobDesc());
         basic.setClientId(definition.getClientId());
-        return basic;
+        command.setBasic(basic);
+        command.setSchedule(scheduleConfig);
+        command.setEnv(JSONUtils.parseObject(contentEntity.getEnvConfig(), BatchJobEnvConfig.class));
+        Map<String, Object> workflow = JSONUtils.parseObject(
+                contentEntity.getDefinitionContent(), new TypeReference<Map<String, Object>>() {});
+        command.setWorkflow(workflow == null ? Collections.emptyMap() : workflow);
+        return command;
     }
-
 }

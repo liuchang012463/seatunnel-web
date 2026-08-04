@@ -6,6 +6,8 @@ import org.apache.seatunnel.web.api.metrics.BatchJobSubmitter;
 import org.apache.seatunnel.web.api.service.BatchJobDefinitionService;
 import org.apache.seatunnel.web.api.service.BatchJobExecutorService;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
+import org.apache.seatunnel.web.api.service.IncrementalBatchExecution;
+import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.RunMode;
@@ -34,13 +36,16 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
     private final BatchJobInstanceService instanceService;
     private final BatchJobDefinitionService definitionService;
     private final BatchJobSubmitter jobSubmitter;
+    private final IncrementalBatchService incrementalBatchService;
 
     public BatchJobExecutorServiceImpl(BatchJobInstanceService instanceService,
                                        BatchJobDefinitionService definitionService,
-                                       BatchJobSubmitter jobSubmitter) {
+                                       BatchJobSubmitter jobSubmitter,
+                                       IncrementalBatchService incrementalBatchService) {
         this.instanceService = instanceService;
         this.definitionService = definitionService;
         this.jobSubmitter = jobSubmitter;
+        this.incrementalBatchService = incrementalBatchService;
     }
 
     @Override
@@ -48,12 +53,37 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         validateJobDefinitionId(jobDefineId);
         validateRunMode(runMode);
 
-        JobInstanceVO instance = instanceService.create(jobDefineId, runMode);
+        IncrementalBatchExecution incrementalExecution = incrementalBatchService.prepare(jobDefineId);
+        if (incrementalExecution != null && incrementalExecution.isSkipped()) {
+            log.info("Incremental job execution skipped: jobDefineId={}", jobDefineId);
+            return null;
+        }
+
+        JobInstanceVO instance;
+        try {
+            instance = instanceService.create(jobDefineId, runMode,
+                    incrementalExecution == null ? null : incrementalExecution.getRuntimeParams());
+            if (incrementalExecution != null) {
+                incrementalBatchService.bindInstance(incrementalExecution.getBatchId(), instance.getId());
+            }
+        } catch (Exception e) {
+            if (incrementalExecution != null) {
+                incrementalBatchService.markBatchFailure(incrementalExecution.getBatchId(), e);
+            }
+            throw e;
+        }
 
         log.info("Job execute requested: jobDefineId={}, runMode={}, instanceId={}",
                 jobDefineId, runMode, instance.getId());
 
-        jobSubmitter.submit(instance);
+        try {
+            jobSubmitter.submit(instance);
+        } catch (Exception e) {
+            if (incrementalExecution != null) {
+                incrementalBatchService.markSubmitFailure(instance.getId(), e);
+            }
+            throw e;
+        }
 
         return instance.getId();
     }

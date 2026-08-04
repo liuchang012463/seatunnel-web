@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.common.config.ReadonlyConfig;
 import org.apache.seatunnel.web.common.enums.HoconBuildStage;
 import org.apache.seatunnel.web.core.builder.context.DagBuildContext;
 import org.apache.seatunnel.web.core.time.TimeVariableJdbcSqlRenderService;
+import org.apache.seatunnel.web.core.time.IncrementalSqlRenderer;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
@@ -69,6 +70,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
             throw new IllegalArgumentException(pluginName + " does not support source side");
         }
 
+        nodeConfig = IncrementalSqlRenderer.render(nodeConfig, dagContext.getScheduleConfig());
         nodeConfig = renderTimeVariablesIfNecessary(
                 nodeConfig,
                 hoconBuilder,

@@ -54,6 +54,15 @@ const defaultScheduleConfig: ScheduleConfig = {
   cronExpression: "0 17 0 * * ?",
 };
 
+const defaultIncrementalConfig = {
+  enabled: true,
+  watermarkColumn: "update_time",
+  initialWatermark: "1970-01-01 00:00:00",
+  safetyDelaySeconds: 120,
+  overlapSeconds: 60,
+  maxWindowSeconds: 1800,
+};
+
 const defaultBasicConfig: BasicConfig = {
   jobName: "",
   jobDesc: "",
@@ -83,8 +92,11 @@ const buildSyncedState = (rawState?: any): JobDefinitionState => {
   };
 };
 
-const buildInitialScheduleConfigForCreate = (rawData?: any): ScheduleConfig => {
-  return {
+const buildInitialScheduleConfigForCreate = (
+  rawData?: any,
+  modeOverride?: string,
+): ScheduleConfig => {
+  const result = {
     ...defaultScheduleConfig,
     ...(rawData?.scheduleConfig || {}),
     hourlyRangeValue: {
@@ -103,16 +115,20 @@ const buildInitialScheduleConfigForCreate = (rawData?: any): ScheduleConfig => {
       ...defaultScheduleConfig.weeklyValue,
       ...(rawData?.scheduleConfig?.weeklyValue || {}),
     },
-  };
+  } as ScheduleConfig;
+  if (modeOverride === "GUIDE_SINGLE_INCREMENTAL" && !result.incremental) {
+    result.incremental = defaultIncrementalConfig;
+  }
+  return result;
 };
 
-const buildInitialBasicConfigForCreate = (rawData?: any): BasicConfig => {
+const buildInitialBasicConfigForCreate = (rawData?: any, modeOverride?: string): BasicConfig => {
   return {
     ...defaultBasicConfig,
     jobName: rawData?.jobName || "",
     jobDesc: rawData?.jobDesc || "",
     clientId: rawData?.clientId || "",
-    mode: rawData?.mode || "GUIDE_SINGLE",
+    mode: modeOverride || rawData?.mode || "GUIDE_SINGLE",
     sourceType: rawData?.sourceType?.dbType || "SOURCE",
     targetType: rawData?.targetType?.dbType || "SINK",
     sourceDataSourceId: rawData?.sourceDataSourceId || rawData?.sourceId || "",
@@ -120,10 +136,10 @@ const buildInitialBasicConfigForCreate = (rawData?: any): BasicConfig => {
   };
 };
 
-const buildInitialScheduleConfigForEdit = (editData?: any): ScheduleConfig => {
+const buildInitialScheduleConfigForEdit = (editData?: any, modeOverride?: string): ScheduleConfig => {
   const schedule = editData?.schedule || {};
 
-  return {
+  const result = {
     ...defaultScheduleConfig,
     ...schedule,
     hourlyRangeValue: {
@@ -142,10 +158,14 @@ const buildInitialScheduleConfigForEdit = (editData?: any): ScheduleConfig => {
       ...defaultScheduleConfig.weeklyValue,
       ...(schedule?.weeklyValue || {}),
     },
-  };
+  } as ScheduleConfig;
+  if (modeOverride === "GUIDE_SINGLE_INCREMENTAL" && !result.incremental) {
+    result.incremental = defaultIncrementalConfig;
+  }
+  return result;
 };
 
-const buildInitialBasicConfigForEdit = (editData?: any): BasicConfig => {
+const buildInitialBasicConfigForEdit = (editData?: any, modeOverride?: string): BasicConfig => {
   const basic = editData?.basic || {};
   const workflow = editData?.workflow || {};
 
@@ -154,7 +174,7 @@ const buildInitialBasicConfigForEdit = (editData?: any): BasicConfig => {
     jobName: basic?.jobName || "",
     jobDesc: basic?.jobDesc || "",
     clientId: basic?.clientId ? String(basic.clientId) : "",
-    mode: basic?.mode || editData?.mode || "GUIDE_SINGLE",
+    mode: modeOverride || basic?.mode || editData?.mode || "GUIDE_SINGLE",
     sourceType: workflow?.sourceType?.dbType || "SOURCE",
     targetType: workflow?.targetType?.dbType || "SINK",
     sourceDataSourceId:
@@ -212,7 +232,7 @@ const buildPageParamsForEdit = (editData?: any) => {
   };
 };
 
-export default function SingleConfigPage() {
+export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {}) {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
 
@@ -265,8 +285,8 @@ export default function SingleConfigPage() {
         setParams(pageParams);
         setSourceType(data?.sourceType || null);
         setTargetType(data?.targetType || null);
-        setBasicConfig(buildInitialBasicConfigForCreate(data));
-        setScheduleConfig(buildInitialScheduleConfigForCreate(data));
+        setBasicConfig(buildInitialBasicConfigForCreate(data, modeOverride));
+        setScheduleConfig(buildInitialScheduleConfigForCreate(data, modeOverride));
         setEnvConfig(buildInitialEnvConfigForCreate(data));
       } catch (error) {
         message.error("读取配置缓存失败，请返回重新选择数据源");
@@ -292,8 +312,8 @@ export default function SingleConfigPage() {
         setParams(pageParams);
         setSourceType(data?.workflow?.sourceType || null);
         setTargetType(data?.workflow?.targetType || null);
-        setBasicConfig(buildInitialBasicConfigForEdit(data));
-        setScheduleConfig(buildInitialScheduleConfigForEdit(data));
+        setBasicConfig(buildInitialBasicConfigForEdit(data, modeOverride));
+        setScheduleConfig(buildInitialScheduleConfigForEdit(data, modeOverride));
         setEnvConfig(buildInitialEnvConfigForEdit(data));
       } catch (error) {
         message.error("获取编辑详情失败");
@@ -381,3 +401,5 @@ export default function SingleConfigPage() {
     </div>
   );
 }
+
+export default SingleConfigPage;

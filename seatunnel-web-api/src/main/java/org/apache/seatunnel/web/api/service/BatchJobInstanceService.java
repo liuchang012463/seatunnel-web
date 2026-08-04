@@ -9,10 +9,13 @@ import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobTableMetricsVO;
 
 import java.util.List;
+import java.util.Map;
 
 public interface BatchJobInstanceService {
 
     JobInstanceVO create(Long jobDefineId, RunMode runMode);
+
+    JobInstanceVO create(Long jobDefineId, RunMode runMode, Map<String, String> runtimeParams);
 
     PaginationResult<JobInstanceVO> paging(SeaTunnelJobInstanceDTO dto);
 

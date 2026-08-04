@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.common.exception.JobSubmitException;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.quartz.DisallowConcurrentExecution;
 import org.springframework.stereotype.Component;
 
 import java.net.ConnectException;
@@ -17,6 +18,7 @@ import java.util.Date;
 
 @Slf4j
 @Component
+@DisallowConcurrentExecution
 public class QuartzJob implements Job {
 
     private static final String KEY_JOB_DEFINITION_ID = "jobDefinitionId";

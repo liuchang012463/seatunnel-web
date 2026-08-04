@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.spi.bean.dto.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
 
@@ -51,8 +52,34 @@ public class JobScheduleConfig {
 
     private String cronExpression;
 
+    /**
+     * Configuration for a bounded incremental micro-batch.  This field is
+     * persisted with the schedule, while runtimeParams is populated only for
+     * one execution and must never be written back to the database.
+     */
+    private IncrementalConfig incremental;
+
+    @JsonIgnore
+    private Map<String, String> runtimeParams;
+
     public ScheduleStatusEnum resolveScheduleStatus() {
         return ScheduleStatusEnum.fromCode(this.scheduleRunType);
+    }
+
+    @Data
+    public static class IncrementalConfig {
+
+        private Boolean enabled;
+
+        private String watermarkColumn;
+
+        private String initialWatermark;
+
+        private Integer safetyDelaySeconds = 120;
+
+        private Integer overlapSeconds = 60;
+
+        private Integer maxWindowSeconds = 1800;
     }
 
     @Data

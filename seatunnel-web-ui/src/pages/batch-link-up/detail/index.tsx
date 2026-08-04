@@ -76,6 +76,7 @@ const DetailPage = () => {
     if (isBaseStep) return "下一步：客户端链接配置";
     if (mode === "GUIDE_MULTI") return "进入多表配置";
     if (mode === "SCRIPT") return "进入脚本配置";
+    if (mode === "GUIDE_SINGLE_INCREMENTAL") return "进入单表增量配置";
     return "进入单表配置";
   })();
 
@@ -86,6 +87,9 @@ const DetailPage = () => {
     }
     if (mode === "SCRIPT") {
       return "确认客户端链接关系后，将进入脚本配置";
+    }
+    if (mode === "GUIDE_SINGLE_INCREMENTAL") {
+      return "确认客户端链接关系后，将进入单表增量微批配置";
     }
     return "确认客户端链接关系后，将进入单表向导配置";
   })();

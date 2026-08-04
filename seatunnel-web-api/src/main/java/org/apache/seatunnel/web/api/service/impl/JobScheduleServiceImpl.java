@@ -355,6 +355,8 @@ public class JobScheduleServiceImpl implements JobScheduleService {
 
         persisted.setEffectType(source.getEffectType());
 
+        persisted.setIncremental(source.getIncremental());
+
         persisted.setCronExpression(null);
         persisted.setScheduleRunType(null);
 

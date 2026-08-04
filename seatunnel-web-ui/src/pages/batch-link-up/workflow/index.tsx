@@ -398,9 +398,10 @@ export default function Workflow({
       setPreviewLoading(true);
 
       const finalPayload = buildFinalPayload();
-      const res = await seatunnelJobDefinitionApi.buildGuideSingleConfig(
-        finalPayload
-      );
+      const buildConfig = basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL"
+        ? seatunnelJobDefinitionApi.buildGuideSingleIncrementalConfig
+        : seatunnelJobDefinitionApi.buildGuideSingleConfig;
+      const res = await buildConfig(finalPayload);
 
       setPreviewContent(res?.data || "");
       setPreviewOpen(true);
@@ -432,9 +433,10 @@ export default function Workflow({
         env: nextEnv,
       };
 
-      const res = await seatunnelJobDefinitionApi.saveOrUpdateGuideSingle(
-        finalPayload
-      );
+      const saveDefinition = basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL"
+        ? seatunnelJobDefinitionApi.saveOrUpdateGuideSingleIncremental
+        : seatunnelJobDefinitionApi.saveOrUpdateGuideSingle;
+      const res = await saveDefinition(finalPayload);
 
       const saveData = getSaveResponseData(res);
       const nextJobDefinitionId = saveData.id ?? finalPayload.id;
@@ -542,7 +544,9 @@ export default function Workflow({
 
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
-                逻辑关系配置（单表离线任务）
+                {basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL"
+                  ? "逻辑关系配置（单表增量微批任务）"
+                  : "逻辑关系配置（单表全量任务）"}
               </div>
               <div className="text-[14px] leading-6 text-slate-500">
                 配置同步链路、字段映射与运行参数，在一个页面完成创建与调试。

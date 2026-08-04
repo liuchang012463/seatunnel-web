@@ -164,6 +164,11 @@ export default function useDetailPage() {
           return;
         }
 
+        if (currentMode === 'GUIDE_SINGLE_INCREMENTAL') {
+          history.push(`/sync/batch-link-up/${id}/config/single-incremental?scene=create`);
+          return;
+        }
+
         if (currentMode === 'FILE_SYNC') {
           history.push(`/sync/batch-link-up/${id}/config/file-sync?scene=create`);
           return;
