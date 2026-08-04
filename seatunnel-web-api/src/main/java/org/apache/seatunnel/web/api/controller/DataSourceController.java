@@ -89,6 +89,20 @@ public class DataSourceController {
     }
 
     /**
+     * Updates the business lifecycle status of a data source.
+     */
+    @PutMapping("/{id}/status")
+    @Operation(summary = "updateDataSourceStatus", description = "UPDATE_DATA_SOURCE_STATUS_NOTES")
+    @ApiException(UPDATE_DATASOURCE_ERROR)
+    public Result<Boolean> updateStatus(
+            @PathVariable("id") Long id,
+            @RequestBody DataSourceDTO dto) {
+        return Result.buildSuc(dataSourceService.updateStatus(
+                id,
+                dto == null ? null : dto.getStatus()));
+    }
+
+    /**
      * Performs pagination query for data sources.
      */
     @PostMapping("/page")
@@ -166,6 +180,16 @@ public class DataSourceController {
     @ApiException(QUERY_DATASOURCE_ERROR)
     public Result<List<DataSourceVO>> all() {
         return Result.buildSuc(dataSourceService.listAll());
+    }
+
+    /**
+     * Lists distinct data source units used by existing data sources.
+     */
+    @GetMapping("/units")
+    @Operation(summary = "queryDataSourceUnits", description = "QUERY_DATA_SOURCE_UNITS_NOTES")
+    @ApiException(QUERY_DATASOURCE_ERROR)
+    public Result<List<String>> units() {
+        return Result.buildSuc(dataSourceService.listDataSourceUnits());
     }
 
     /**

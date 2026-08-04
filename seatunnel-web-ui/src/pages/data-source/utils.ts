@@ -18,12 +18,16 @@ export function filterDataSourceList(
     const name = item.name?.toLowerCase() || '';
     const jdbcUrl = item.jdbcUrl?.toLowerCase() || '';
     const environmentName = item.environmentName?.toLowerCase() || '';
+    const dataSourceUnit = item.dataSourceUnit?.toLowerCase() || '';
     const dbType = String(item.dbType || '').toLowerCase();
+    const status = String(item.status || '').toLowerCase();
 
     return (
       name.includes(searchKeyword) ||
       jdbcUrl.includes(searchKeyword) ||
       environmentName.includes(searchKeyword) ||
+      dataSourceUnit.includes(searchKeyword) ||
+      status.includes(searchKeyword) ||
       dbType.includes(searchKeyword)
     );
   });

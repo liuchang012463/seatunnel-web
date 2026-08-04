@@ -61,6 +61,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
   const initializeEditForm = (record: DataSourceRecord) => {
     basicForm.setFieldsValue({
       name: record.name || "",
+      dataSourceUnit: record.dataSourceUnit || "",
       environment: record.environment || "",
       remark: record.remark || "",
     });

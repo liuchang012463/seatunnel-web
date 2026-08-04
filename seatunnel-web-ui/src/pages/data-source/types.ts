@@ -5,6 +5,8 @@ export enum DataSourceOperateType {
   Edit = 'EDIT',
 }
 
+export type DataSourceLifecycleStatus = 'ENABLED' | 'DISABLED' | 'REVOKED';
+
 export interface CommonApiResponse<T> {
   code: number;
   data: T;
@@ -20,11 +22,13 @@ export interface PaginationInfo {
 export interface DataSourceRecord {
   id?: string;
   name?: string;
+  dataSourceUnit?: string;
   dbType?: string;
   jdbcUrl?: string;
   environment?: string;
   environmentName?: string;
   connStatus?: string;
+  status?: DataSourceLifecycleStatus;
   remark?: string;
   originalJson?: string;
   createTime?: string;
@@ -42,11 +46,14 @@ export interface DataSourcePageParams {
   dbType?: string;
   dbTypes?: string[];
   name?: string;
+  dataSourceUnit?: string;
+  status?: DataSourceLifecycleStatus;
   environment?: string;
 }
 
 export interface DataSourceFormValues {
   name: string;
+  dataSourceUnit: string;
   environment: string;
   remark?: string;
 }

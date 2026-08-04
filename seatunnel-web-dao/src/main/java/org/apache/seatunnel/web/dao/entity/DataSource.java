@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
+import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.EnvironmentEnum;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
@@ -30,6 +31,11 @@ public class DataSource extends BaseEntity {
     private String name;
 
     /**
+     * 数据源所属单位
+     */
+    private String dataSourceUnit;
+
+    /**
      * 数据源类型
      */
     private DbType dbType;
@@ -53,6 +59,11 @@ public class DataSource extends BaseEntity {
      * 连接状态
      */
     private ConnStatus connStatus;
+
+    /**
+     * 数据源业务生命周期状态
+     */
+    private DataSourceLifecycleStatus status;
 
     /**
      * 环境

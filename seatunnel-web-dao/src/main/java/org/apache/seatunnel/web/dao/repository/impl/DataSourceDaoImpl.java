@@ -58,6 +58,9 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
                 .eq((dto.getDbTypes() == null || dto.getDbTypes().isEmpty())
                                 && dto.getDbType() != null,
                         DataSource::getDbType, dto.getDbType())
+                .eq(StringUtils.isNotBlank(dto.getDataSourceUnit()),
+                        DataSource::getDataSourceUnit, StringUtils.trimToEmpty(dto.getDataSourceUnit()))
+                .eq(dto.getStatus() != null, DataSource::getStatus, dto.getStatus())
                 .eq(dto.getEnvironment() != null, DataSource::getEnvironment, dto.getEnvironment())
                 .orderByDesc(DataSource::getCreateTime);
     }
@@ -67,6 +70,11 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
         LambdaQueryWrapper<DataSource> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(StringUtils.isNotBlank(dbType), DataSource::getDbType, dbType);
         return dataSourceMapper.selectList(wrapper);
+    }
+
+    @Override
+    public List<String> queryDataSourceUnits() {
+        return dataSourceMapper.selectDataSourceUnits();
     }
 
     @Override

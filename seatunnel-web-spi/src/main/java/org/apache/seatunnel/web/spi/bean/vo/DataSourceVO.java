@@ -4,6 +4,7 @@ package org.apache.seatunnel.web.spi.bean.vo;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
+import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.EnvironmentEnum;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
@@ -20,6 +21,8 @@ public class DataSourceVO {
 
     private String name;
 
+    private String dataSourceUnit;
+
     private DbType dbType;
 
     private String jdbcUrl;
@@ -31,6 +34,8 @@ public class DataSourceVO {
     private String originalJson;
 
     private ConnStatus connStatus;
+
+    private DataSourceLifecycleStatus status;
 
     private EnvironmentEnum environment;
 

@@ -12,9 +12,10 @@ import {
   Tooltip,
 } from "antd";
 import TextArea from "antd/es/input/TextArea";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import DatabaseIcons from "../../icon/DatabaseIcons";
 import { DataSourceOperateType, DynamicDataSourceFormProps } from "../../types";
+import DataSourceUnitSelect from "../DataSourceUnitSelect";
 import CustomKVList from "./components/CustomKVList";
 import DriverLocationField from "./components/DriverLocationField";
 import { getConfigInitialValues, transformRules } from "./utils/formUtils";
@@ -22,72 +23,6 @@ import { getConfigInitialValues, transformRules } from "./utils/formUtils";
 import { Code2, FlaskConical, ShieldCheck } from "lucide-react";
 
 const DEFAULT_ENVIRONMENT = "DEVELOP";
-
-const DATASOURCE_NAME_PRESETS = [
-  "认真搬砖的数据源",
-  "数据搬运小分队一号",
-  "今天也在同步的数据源",
-  "稳稳接住数据的同学",
-  "不爱出错的数据入口",
-  "数据高速路收费站",
-  "勤勤恳恳的连接器",
-  "准点上班的数据源",
-  "低调但靠谱的数据源",
-  "正在发光的数据源",
-  "表格森林入口站",
-  "数据宇宙传送门",
-  "一只努力工作的数据源",
-  "每天都很忙的数据源",
-  "沉默但能干的数据源",
-  "靠谱同步搭子",
-  "数据流动观察员",
-  "连接世界的小桥",
-  "准时抵达的数据列车",
-  "数据搬运界劳模",
-  "不掉链子的数据源",
-  "安静运行的小引擎",
-  "专注搬运三十年",
-  "数据同步小能手",
-  "连接参数守门员",
-  "数据湖边的小码头",
-  "今日份数据入口",
-  "稳定发挥的数据源",
-  "打工人专属数据源",
-  "平平无奇但很可靠",
-];
-
-const DATASOURCE_REMARK_PRESETS = [
-  "负责把数据稳稳接住，偶尔也想早点下班。",
-  "它看起来很安静，其实每天都在认真搬运数据。",
-  "使命是把数据从这里送到那里，尽量不掉队。",
-  "一个朴素但可靠的数据入口，主打稳定发挥。",
-  "别看名字随意，干起活来一点都不含糊。",
-  "连接建立后，它会默默开始自己的表演。",
-  "今天的数据，也要整整齐齐地同步过去。",
-  "专注连接与同步，顺便守护一点点秩序感。",
-  "希望每一次连接测试，都能优雅地通过。",
-  "数据从这里出发，去往更需要它的地方。",
-  "一个认真工作的数据源，不声张，但靠谱。",
-  "用来连接数据世界的一扇小门。",
-  "别催，它已经在努力和数据库打招呼了。",
-  "平时很低调，关键时候负责把数据送到位。",
-  "如果数据也有旅程，这里就是出发站。",
-  "主打一个稳定、清晰、少出幺蛾子。",
-  "连接成功的那一刻，世界都顺滑了一点。",
-  "负责让数据流动起来，也负责让人安心一点。",
-  "一个不抢戏的数据源，但每一步都很重要。",
-  "它的目标很简单：连得上、跑得稳、别迷路。",
-  "用于承载当前业务数据连接配置，请温柔对待。",
-  "当你看到它的时候，说明数据同步又近了一步。",
-  "这是一条通往数据表的小路，建议保持畅通。",
-  "负责和数据库保持友好沟通，尽量不吵架。",
-  "配置不复杂，但意义很重大。",
-  "它会记住连接信息，也会努力不辜负期待。",
-  "一个为同步任务提供能量的数据入口。",
-  "数据不会自己跑路，所以它来了。",
-  "连接参数准备好后，就可以开始认真干活了。",
-  "今日任务：把数据安全、稳定、漂亮地送达。",
-];
 
 const ENV_OPTIONS = [
   {
@@ -128,10 +63,6 @@ const ENV_OPTIONS = [
 const sectionTitleClass = "m-0 text-[15px] font-semibold text-slate-800";
 const sectionDescClass = "mt-1 mb-0 text-[13px] leading-[22px] text-slate-500";
 
-const pickRandomPreset = (list: string[]) => {
-  return list[Math.floor(Math.random() * list.length)];
-};
-
 const isEmptyValue = (value: any) => {
   return value === undefined || value === null || value === "";
 };
@@ -166,14 +97,6 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
    */
   const requestSeqRef = useRef(0);
 
-  const defaultBaseInfo = useMemo(() => {
-    return {
-      name: pickRandomPreset(DATASOURCE_NAME_PRESETS),
-      environment: DEFAULT_ENVIRONMENT,
-      remark: pickRandomPreset(DATASOURCE_REMARK_PRESETS),
-    };
-  }, []);
-
   const fillCreateDefaultBaseInfo = useCallback(() => {
     if (!isCreateOperateType(operateType)) {
       return;
@@ -182,22 +105,14 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
     const current = form.getFieldsValue(true);
     const patch: Record<string, any> = {};
 
-    if (isEmptyValue(current?.name)) {
-      patch.name = defaultBaseInfo.name;
-    }
-
     if (isEmptyValue(current?.environment)) {
-      patch.environment = defaultBaseInfo.environment;
-    }
-
-    if (isEmptyValue(current?.remark)) {
-      patch.remark = defaultBaseInfo.remark;
+      patch.environment = DEFAULT_ENVIRONMENT;
     }
 
     if (Object.keys(patch).length) {
       form.setFieldsValue(patch);
     }
-  }, [operateType, form, defaultBaseInfo]);
+  }, [operateType, form]);
 
   const loadFormConfig = useCallback(
     async (currentDbType: string): Promise<void> => {
@@ -482,6 +397,14 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
             />
           </Form.Item>
         </div>
+
+        <Form.Item
+          label="数据源单位"
+          name="dataSourceUnit"
+          rules={[{ required: true, message: "请选择或创建数据源单位" }]}
+        >
+          <DataSourceUnitSelect />
+        </Form.Item>
 
         <Form.Item
           label={intl.formatMessage({

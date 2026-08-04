@@ -9,6 +9,7 @@ import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
 import org.apache.seatunnel.web.api.service.DataSourceService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
+import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.utils.ConvertUtil;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -72,10 +73,12 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
             DataSource entity = ConvertUtil.sourceToTarget(dto, DataSource.class);
             entity.setName(dto.getName().trim());
+            entity.setDataSourceUnit(dto.getDataSourceUnit().trim());
             entity.setConnectionParams(JSONUtils.toJsonString(connectionParam));
             entity.setOriginalJson(dto.getConnectionParams());
 
             entity.setConnStatus(ConnStatus.CONNECTED_SUCCESS);
+            entity.setStatus(DataSourceLifecycleStatus.ENABLED);
 
             Integer currentUserId = currentUserProvider.getCurrentUserId();
             entity.setCreateUserId(currentUserId);
@@ -115,9 +118,13 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             DataSource entity = ConvertUtil.sourceToTarget(dto, DataSource.class);
             entity.setId(id);
             entity.setName(dto.getName().trim());
+            entity.setDataSourceUnit(dto.getDataSourceUnit().trim());
             entity.setConnectionParams(JSONUtils.toJsonString(connectionParam));
             entity.setOriginalJson(dto.getConnectionParams());
             entity.setConnStatus(existing.getConnStatus());
+            entity.setStatus(existing.getStatus() == null
+                    ? DataSourceLifecycleStatus.ENABLED
+                    : existing.getStatus());
             entity.initUpdate();
             entity.setCreateUserId(existing.getCreateUserId());
             entity.setUpdateUserId(currentUserProvider.getCurrentUserId());
@@ -173,6 +180,50 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             throw e;
         } catch (Exception e) {
             log.error("Delete data source failed, id={}", datasourceId, e);
+            throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateStatus(Long id, DataSourceLifecycleStatus status) {
+        validateId(id);
+        if (status == null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "status");
+        }
+
+        DataSource existing = getDataSourceOrThrow(id);
+        DataSourceLifecycleStatus currentStatus = existing.getStatus() == null
+                ? DataSourceLifecycleStatus.ENABLED
+                : existing.getStatus();
+
+        if (currentStatus == DataSourceLifecycleStatus.REVOKED
+                && status != DataSourceLifecycleStatus.REVOKED) {
+            throw new ServiceException(
+                    Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "A revoked data source cannot be enabled or disabled.");
+        }
+
+        if (currentStatus == status) {
+            return true;
+        }
+
+        try {
+            if (status != DataSourceLifecycleStatus.ENABLED) {
+                checkDataSourceNotUsed(id, status == DataSourceLifecycleStatus.REVOKED
+                        ? "revoked"
+                        : "disabled");
+            }
+
+            DataSource entity = new DataSource();
+            entity.setId(id);
+            entity.setStatus(status);
+            entity.initUpdate();
+            return dataSourceDao.updateById(entity);
+        } catch (ServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Update data source status failed, id={}, status={}", id, status, e);
             throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, e.getMessage());
         }
     }
@@ -257,6 +308,16 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     }
 
     @Override
+    public List<String> listDataSourceUnits() {
+        try {
+            return dataSourceDao.queryDataSourceUnits();
+        } catch (Exception e) {
+            log.error("List data source units failed", e);
+            throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, e.getMessage());
+        }
+    }
+
+    @Override
     public Map<String, Object> uploadJdbcDriver(MultipartFile file, String pluginType, boolean overwrite) {
         validateJdbcDriverFile(file);
 
@@ -314,6 +375,8 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         try {
             List<DataSource> entities = dataSourceDao.queryByDbType(dbType);
             return entities.stream()
+                    .filter(entity -> entity.getStatus() == null
+                            || entity.getStatus() == DataSourceLifecycleStatus.ENABLED)
                     .map(this::toOptionVO)
                     .collect(Collectors.toList());
         } catch (Exception e) {
@@ -324,11 +387,16 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
 
     private void checkDataSourceNotUsed(Long datasourceId) {
+        checkDataSourceNotUsed(datasourceId, "deleted");
+    }
+
+    private void checkDataSourceNotUsed(Long datasourceId, String operation) {
         boolean usedByBatchJob = jobDefinitionDao.existsByDatasourceId(datasourceId);
         boolean usedByStreamingJob = streamingJobDefinitionDao.existsByDatasourceId(datasourceId);
 
         if (usedByBatchJob || usedByStreamingJob) {
-            throw new ServiceException("The data source is currently used by a job and cannot be deleted."
+            throw new ServiceException("The data source is currently used by a job and cannot be "
+                    + operation + "."
             );
         }
     }
@@ -398,6 +466,12 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         }
         if (StringUtils.isBlank(dto.getName())) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "name");
+        }
+        if (StringUtils.isBlank(dto.getDataSourceUnit())) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "dataSourceUnit");
+        }
+        if (dto.getDataSourceUnit().trim().length() > 128) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "dataSourceUnit");
         }
         if (dto.getDbType() == null) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "dbType");

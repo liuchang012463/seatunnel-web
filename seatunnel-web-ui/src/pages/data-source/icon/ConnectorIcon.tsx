@@ -17,16 +17,20 @@ interface ConnectorIconProps {
 
 const iconMap: Record<string, { icon: LucideIcon; color: string }> = {
   kafka: { icon: Radio, color: '#cc3258' },
+  kafka_source: { icon: Radio, color: '#cc3258' },
   ftp: { icon: File, color: '#f59e0b' },
+  ftpfile: { icon: File, color: '#f59e0b' },
   sftp: { icon: FileKey, color: '#2563eb' },
+  sftpfile: { icon: FileKey, color: '#2563eb' },
   s3: { icon: Cloud, color: '#f97316' },
+  s3file: { icon: Cloud, color: '#f97316' },
   minio: { icon: Box, color: '#c72c48' },
   http: { icon: Globe2, color: '#0ea5e9' },
   h2: { icon: Database, color: '#2563eb' },
 };
 
 const ConnectorIcon = ({ dbType, width, height }: ConnectorIconProps) => {
-  const config = iconMap[dbType.toLowerCase()];
+  const config = iconMap[dbType.trim().toLowerCase()];
 
   if (!config) return null;
 
