@@ -1,5 +1,11 @@
 import HttpUtils from '@/utils/HttpUtils';
-import type { CommonApiResponse, DataSourcePageParams, DataSourcePageResult, DataSourceRecord } from './types';
+import type {
+  CommonApiResponse,
+  DataSourceLifecycleStatus,
+  DataSourcePageParams,
+  DataSourcePageResult,
+  DataSourceRecord,
+} from './types';
 
 const DATA_SOURCE_API_PREFIX = '/api/v1/data-source';
 
@@ -36,6 +42,13 @@ export async function deleteDataSource(id: string): Promise<CommonApiResponse<bo
   return HttpUtils.delete(`${DATA_SOURCE_API_PREFIX}/${id}`);
 }
 
+export async function updateDataSourceStatus(
+  id: string,
+  status: DataSourceLifecycleStatus,
+): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}/status`, { status });
+}
+
 export async function testDataSourceConnection(id: string): Promise<CommonApiResponse<boolean>> {
   return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/connect-test`);
 }
@@ -44,6 +57,10 @@ export async function testDataSourceConnectionWithParams(
   payload: Record<string, unknown>,
 ): Promise<CommonApiResponse<boolean>> {
   return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/connect-test-with-param`, payload);
+}
+
+export async function fetchDataSourceUnits(): Promise<CommonApiResponse<string[]>> {
+  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/units`);
 }
 
 export async function fetchDataSourceOptions(dbType: string): Promise<CommonApiResponse<unknown[]>> {

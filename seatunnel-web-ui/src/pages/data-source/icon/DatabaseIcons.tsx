@@ -31,7 +31,7 @@ const DatabaseIcons = ({
   width = '20px',
   height = '20px',
 }: DatabaseIconsProps) => {
-  const normalizedType = dbType?.toLowerCase?.();
+  const normalizedType = String(dbType || '').trim().toLowerCase().replace(/-/g, '_');
   const fallbackStyle: CSSProperties = {
     fontSize: width,
     width,
@@ -78,9 +78,13 @@ const DatabaseIcons = ({
     case 'tidb':
       return <TiDBIcon width={width} height={height} />;
     case 'kafka':
+    case 'kafka_source':
     case 'ftp':
+    case 'ftpfile':
     case 'sftp':
+    case 'sftpfile':
     case 's3':
+    case 's3file':
     case 'minio':
     case 'http':
     case 'h2':

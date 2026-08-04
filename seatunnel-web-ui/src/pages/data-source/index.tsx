@@ -16,14 +16,17 @@ import {
 import "./index.less";
 import {
   deleteDataSource,
+  fetchDataSourceUnits,
   fetchDataSourcePage,
   testDataSourceConnection,
+  updateDataSourceStatus,
 } from "./service";
 import type {
   DataSourceModalRef,
   DataSourceOperateType,
   DataSourcePageParams,
   DataSourceRecord,
+  DataSourceLifecycleStatus,
   PaginationInfo,
 } from "./types";
 
@@ -40,6 +43,20 @@ const DataSourcePage: React.FC = () => {
   );
   const [searchKeyword, setSearchKeyword] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [unitOptions, setUnitOptions] = useState<string[]>([]);
+  const [selectedUnit, setSelectedUnit] = useState<string>();
+  const [selectedStatus, setSelectedStatus] = useState<DataSourceLifecycleStatus>();
+
+  const refreshUnitOptions = async () => {
+    try {
+      const response = await fetchDataSourceUnits();
+      if (response.code === 0) {
+        setUnitOptions(response.data || []);
+      }
+    } catch (_) {
+      setUnitOptions([]);
+    }
+  };
 
   const fetchList = async (params?: Partial<DataSourcePageParams>) => {
     try {
@@ -48,6 +65,13 @@ const DataSourcePage: React.FC = () => {
       const requestParams: DataSourcePageParams = {
         pageNo: pagination.pageNo,
         pageSize: pagination.pageSize,
+        name: searchKeyword.trim() || undefined,
+        dbTypes:
+          selectedCategory === "ALL"
+            ? undefined
+            : selectedCategoryConfig?.dbTypes || [],
+        dataSourceUnit: selectedUnit || undefined,
+        status: selectedStatus,
         ...params,
       };
 
@@ -72,6 +96,10 @@ const DataSourcePage: React.FC = () => {
   );
 
   useEffect(() => {
+    refreshUnitOptions();
+  }, []);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => {
       fetchList({
         pageNo: pagination.pageNo,
@@ -91,6 +119,8 @@ const DataSourcePage: React.FC = () => {
     pagination.pageSize,
     searchKeyword,
     selectedCategory,
+    selectedUnit,
+    selectedStatus,
   ]);
 
   const groupedDataSourceList = useMemo(
@@ -99,15 +129,8 @@ const DataSourcePage: React.FC = () => {
   );
 
   const handleRefresh = () => {
-    fetchList({
-      pageNo: pagination.pageNo,
-      pageSize: pagination.pageSize,
-      name: searchKeyword.trim() || undefined,
-      dbTypes:
-        selectedCategory === "ALL"
-          ? undefined
-          : selectedCategoryConfig?.dbTypes || [],
-    });
+    fetchList();
+    refreshUnitOptions();
   };
 
   const handleCreate = () => {
@@ -217,6 +240,48 @@ const DataSourcePage: React.FC = () => {
     } catch (_) {}
   };
 
+  const handleStatusChange = (
+    record: DataSourceRecord,
+    nextStatus: DataSourceLifecycleStatus,
+  ) => {
+    const statusLabel = {
+      ENABLED: "启用",
+      DISABLED: "停用",
+      REVOKED: "注销",
+    }[nextStatus];
+
+    confirm({
+      title: `确认${statusLabel}数据源？`,
+      centered: true,
+      content:
+        nextStatus === "REVOKED"
+          ? `数据源“${record.name || "-"}”注销后不可恢复启用，但记录仍会保留。`
+          : `数据源“${record.name || "-"}”将变更为“${statusLabel}”状态。`,
+      okText: "确认",
+      cancelText: "取消",
+      okButtonProps: { danger: nextStatus === "REVOKED" },
+      async onOk() {
+        if (!record.id) {
+          message.error("数据源 ID 不存在");
+          return;
+        }
+
+        try {
+          const response = await updateDataSourceStatus(record.id, nextStatus);
+          if (response.code !== 0) {
+            message.error(response.message || "状态更新失败");
+            return;
+          }
+
+          message.success(`数据源已${statusLabel}`);
+          handleRefresh();
+        } catch (error: any) {
+          message.error(error?.message || "状态更新失败");
+        }
+      },
+    });
+  };
+
   return (
     <>
       <ClickSpark
@@ -244,6 +309,17 @@ const DataSourcePage: React.FC = () => {
                   value={searchKeyword}
                   onChange={(value) => {
                     setSearchKeyword(value);
+                    setPagination((current) => ({ ...current, pageNo: 1 }));
+                  }}
+                  unitOptions={unitOptions}
+                  selectedUnit={selectedUnit}
+                  onUnitChange={(value) => {
+                    setSelectedUnit(value);
+                    setPagination((current) => ({ ...current, pageNo: 1 }));
+                  }}
+                  selectedStatus={selectedStatus}
+                  onStatusChange={(value) => {
+                    setSelectedStatus(value as DataSourceLifecycleStatus | undefined);
                     setPagination((current) => ({ ...current, pageNo: 1 }));
                   }}
                 />
@@ -312,6 +388,7 @@ const DataSourcePage: React.FC = () => {
                               onEdit={handleEdit}
                               onDelete={handleDelete}
                               onTestConnection={handleTestConnection}
+                              onStatusChange={handleStatusChange}
                             />
                           </motion.div>
                         ))}

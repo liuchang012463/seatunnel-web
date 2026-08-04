@@ -54,4 +54,5 @@ public class BatchGuideSingleEditCommandBuilder implements BatchJobEditCommandBu
         basic.setClientId(definition.getClientId());
         return basic;
     }
+
 }

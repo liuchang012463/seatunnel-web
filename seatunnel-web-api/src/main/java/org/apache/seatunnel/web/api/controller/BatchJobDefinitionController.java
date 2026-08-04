@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.spi.bean.dto.BatchJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideMultiJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleIncrementalJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchFileSyncJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
@@ -68,6 +69,19 @@ public class BatchJobDefinitionController {
         return Result.buildSuc(batchJobDefinitionService.saveOrUpdate(command));
     }
 
+    /**
+     * 保存或更新单表增量微批任务。该入口使用独立模式，避免把全量任务
+     * 的手工/普通调度语义误当成增量水位任务。
+     */
+    @PostMapping("/guide-single-incremental/saveOrUpdate")
+    @Operation(summary = "saveOrUpdateGuideSingleIncrementalJobDefinition",
+            description = "保存或更新单表增量微批任务")
+    @ApiException(SAVE_OR_UPDATE_BATCH_JOB_DEFINITION_ERROR)
+    public Result<JobDefinitionSaveResultVO> saveGuideSingleIncremental(
+            @RequestBody BatchGuideSingleIncrementalJobSaveCommand command) {
+        return Result.buildSuc(batchJobDefinitionService.saveOrUpdate(command));
+    }
+
     @PostMapping("/file-sync/saveOrUpdate")
     @Operation(summary = "saveOrUpdateFileSyncJobDefinition",
             description = "保存或更新文件/对象存储同步任务")
@@ -91,6 +105,15 @@ public class BatchJobDefinitionController {
     @Operation(summary = "buildGuideSingleJobHoconConfig", description = "BUILD_GUIDE_SINGLE_JOB_HOCON_CONFIG_NOTES")
     @ApiException(QUERY_BATCH_JOB_DEFINITION_ERROR)
     public Result<String> buildGuideSingleConfig(@RequestBody BatchGuideSingleJobSaveCommand command) {
+        return Result.buildSuc(batchJobDefinitionService.buildHoconConfig(command));
+    }
+
+    @PostMapping("/guide-single-incremental/build-config")
+    @Operation(summary = "buildGuideSingleIncrementalJobHoconConfig",
+            description = "预览单表增量微批 HOCON")
+    @ApiException(QUERY_BATCH_JOB_DEFINITION_ERROR)
+    public Result<String> buildGuideSingleIncrementalConfig(
+            @RequestBody BatchGuideSingleIncrementalJobSaveCommand command) {
         return Result.buildSuc(batchJobDefinitionService.buildHoconConfig(command));
     }
 

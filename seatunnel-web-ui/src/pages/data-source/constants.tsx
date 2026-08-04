@@ -25,6 +25,12 @@ export const ENVIRONMENT_OPTIONS: DataSourceOptionItem[] = [
   { label: "PROD", value: "PROD" },
 ];
 
+export const DATA_SOURCE_STATUS_OPTIONS: DataSourceOptionItem[] = [
+  { label: "启用", value: "ENABLED" },
+  { label: "停用", value: "DISABLED" },
+  { label: "注销", value: "REVOKED" },
+];
+
 export const dataSourceGroupList: DataSourceGroup[] = DATA_SOURCE_CATEGORIES
   .filter((category) => category.key !== "OTHER")
   .map((category) => ({

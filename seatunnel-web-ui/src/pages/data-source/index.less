@@ -399,11 +399,20 @@
 }
 
 .datasource-search-bar {
-  max-width: 420px;
+  max-width: 100%;
   margin-bottom: 12px;
 }
 
+.datasource-search-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .datasource-search-control {
+  min-width: 300px;
+  flex: 1 1 300px;
   overflow: hidden;
   background: var(--st-color-bg-control);
   border: 1px solid var(--st-color-border);
@@ -420,6 +429,11 @@
   &.is-open {
     box-shadow: 0 0 0 2px var(--st-color-focus);
   }
+}
+
+.datasource-filter-select {
+  min-width: 190px;
+  flex: 0 1 220px;
 }
 
 .datasource-search-control-input {
@@ -563,6 +577,13 @@
     transform: scale(1.06);
   }
 
+  &:disabled {
+    color: var(--st-color-text-muted);
+    cursor: not-allowed;
+    opacity: 0.45;
+    transform: none;
+  }
+
   &--danger:hover {
     color: #ff7875;
     background: rgba(194, 59, 59, 0.18);
@@ -627,6 +648,17 @@
   margin-bottom: 16px;
 }
 
+.datasource-card-unit {
+  max-width: 100%;
+  margin: -4px 0 12px;
+  overflow: hidden;
+  color: var(--st-color-text-muted);
+  font-size: var(--st-type-caption-size);
+  line-height: var(--st-type-caption-line);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .datasource-card-update-time {
   margin-top: 12px;
   margin-bottom: 16px;
@@ -650,6 +682,15 @@
 
   &:hover {
     border-color: var(--st-color-accent);
+  }
+}
+
+@media (max-width: 768px) {
+  .datasource-search-control,
+  .datasource-filter-select {
+    width: 100%;
+    min-width: 100%;
+    flex-basis: 100%;
   }
 }
 

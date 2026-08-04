@@ -66,7 +66,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
     );
   }
 
-  const showTableTab = ["GUIDE_SINGLE", "GUIDE_MULTI"].includes(
+  const showTableTab = ["GUIDE_SINGLE", "GUIDE_SINGLE_INCREMENTAL", "GUIDE_MULTI"].includes(
     instanceItem?.definitionMode
   );
 

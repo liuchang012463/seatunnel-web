@@ -36,6 +36,10 @@ export const seatunnelJobDefinitionApi = {
     return HttpUtils.post(`${apiPrefix}/guide-single/saveOrUpdate`, data);
   },
 
+  saveOrUpdateGuideSingleIncremental: (data: any) => {
+    return HttpUtils.post(`${apiPrefix}/guide-single-incremental/saveOrUpdate`, data);
+  },
+
   saveOrUpdateFileSync: (data: any) => {
     return HttpUtils.post(`${apiPrefix}/file-sync/saveOrUpdate`, data);
   },
@@ -89,6 +93,10 @@ export const seatunnelJobDefinitionApi = {
    */
   buildGuideSingleConfig: (data: any): Promise<{ code: number; data: string; message?: string }> => {
     return HttpUtils.post(`${apiPrefix}/guide-single/build-config`, data);
+  },
+
+  buildGuideSingleIncrementalConfig: (data: any): Promise<{ code: number; data: string; message?: string }> => {
+    return HttpUtils.post(`${apiPrefix}/guide-single-incremental/build-config`, data);
   },
 
   buildFileSyncConfig: (data: any): Promise<{ code: number; data: string; message?: string }> => {

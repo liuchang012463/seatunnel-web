@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.alarm.event.JobStatusChangedEvent;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
+import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.utils.JobUtils;
 import org.apache.seatunnel.web.common.enums.JobResult;
 import org.apache.seatunnel.web.common.enums.JobStatus;
@@ -34,12 +35,16 @@ public class JobResultHandler {
 
     private final ApplicationEventPublisher eventPublisher;
 
+    private final IncrementalBatchService incrementalBatchService;
+
     public JobResultHandler(BatchJobInstanceService instanceService,
                             JobMetricsMonitor jobMetricsMonitor,
-                            ApplicationEventPublisher eventPublisher) {
+                            ApplicationEventPublisher eventPublisher,
+                            IncrementalBatchService incrementalBatchService) {
         this.instanceService = instanceService;
         this.jobMetricsMonitor = jobMetricsMonitor;
         this.eventPublisher = eventPublisher;
+        this.incrementalBatchService = incrementalBatchService;
     }
 
     /**
@@ -113,6 +118,12 @@ public class JobResultHandler {
         updateStatus(jobInstanceId, localStatus, errorMessage);
 
         try {
+            incrementalBatchService.handleJobResult(jobInstanceId, localStatus, errorMessage);
+        } catch (Exception e) {
+            log.error("Finalize incremental batch state failed, instanceId={}", jobInstanceId, e);
+        }
+
+        try {
             jobMetricsMonitor.finalizeAndPersist(jobInstanceId, metricsStatus);
         } catch (Exception e) {
             log.warn(
@@ -152,6 +163,12 @@ public class JobResultHandler {
         String metricsStatus = resolveMetricsStatus(engineStatus, localStatus);
 
         updateStatus(jobInstanceId, localStatus, errorMessage);
+
+        try {
+            incrementalBatchService.handleJobResult(jobInstanceId, localStatus, errorMessage);
+        } catch (Exception e) {
+            log.error("Finalize incremental batch state in recovery failed, instanceId={}", jobInstanceId, e);
+        }
 
         try {
             jobMetricsMonitor.finalizeAndPersist(context, metricsStatus);

@@ -172,6 +172,7 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
     if (isFileSync) return "文件引接";
     if (record?.jobType === "BATCH") {
       if (record?.mode === "GUIDE_SINGLE") return "单表同步";
+      if (record?.mode === "GUIDE_SINGLE_INCREMENTAL") return "单表增量微批";
       if (record?.mode === "GUIDE_MULTI") return "多表同步";
       if (record?.mode === "SCRIPT") return "脚本模式";
       return "Batch Sync";
@@ -182,12 +183,16 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
 
   const sourceTableText = formatTables(
     record?.sourceTable,
-    record?.mode === "GUIDE_SINGLE" ? "Single Table" : "Not Configured"
+    ["GUIDE_SINGLE", "GUIDE_SINGLE_INCREMENTAL"].includes(record?.mode)
+      ? "Single Table"
+      : "Not Configured"
   );
 
   const sinkTableText = formatTables(
     record?.sinkTable,
-    record?.mode === "GUIDE_SINGLE" ? "Single Table" : "Not Configured"
+    ["GUIDE_SINGLE", "GUIDE_SINGLE_INCREMENTAL"].includes(record?.mode)
+      ? "Single Table"
+      : "Not Configured"
   );
 
   const getTableCount = (tableValue: any) => {

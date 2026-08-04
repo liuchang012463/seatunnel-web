@@ -1,6 +1,6 @@
 import type { FormInstance } from 'antd';
 
-export type SyncMode = 'GUIDE_SINGLE' | 'GUIDE_MULTI' | 'SCRIPT' | 'FILE_SYNC';
+export type SyncMode = 'GUIDE_SINGLE' | 'GUIDE_SINGLE_INCREMENTAL' | 'GUIDE_MULTI' | 'SCRIPT' | 'FILE_SYNC';
 export type StepKey = 'base' | 'client';
 
 export type ClientItem = {

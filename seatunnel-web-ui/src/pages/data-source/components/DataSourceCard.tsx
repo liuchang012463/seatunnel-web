@@ -1,14 +1,17 @@
 import {
-  ArrowRightOutlined,
+  ApiOutlined,
+  CloseCircleOutlined,
   DeleteOutlined,
-  DisconnectOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
 } from "@ant-design/icons";
 import { Button, Card, Tag, Tooltip } from "antd";
 import React from "react";
 import { environmentTagConfigMap } from "../constants";
 import { getDataSourceCategory } from "../dataSourceRegistry";
 import DatabaseIcons from "../icon/DatabaseIcons";
-import type { DataSourceRecord } from "../types";
+import type { DataSourceLifecycleStatus, DataSourceRecord } from "../types";
+import DataSourceLifecycleStatusTag from "./DataSourceLifecycleStatus";
 import DataSourceStatus from "./DataSourceStatus";
 
 interface DataSourceCardProps {
@@ -16,6 +19,10 @@ interface DataSourceCardProps {
   onEdit: (record: DataSourceRecord) => void;
   onDelete: (record: DataSourceRecord) => void;
   onTestConnection: (record: DataSourceRecord) => void;
+  onStatusChange: (
+    record: DataSourceRecord,
+    status: DataSourceLifecycleStatus,
+  ) => void;
 }
 
 const DataSourceCard: React.FC<DataSourceCardProps> = ({
@@ -23,6 +30,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   onEdit,
   onDelete,
   onTestConnection,
+  onStatusChange,
 }) => {
   const environmentConfig = environmentTagConfigMap[
     record.environment || ""
@@ -33,6 +41,10 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
     icon: null,
   };
   const category = getDataSourceCategory(record.dbType);
+  const currentStatus = record.status || "ENABLED";
+  const isRevoked = currentStatus === "REVOKED";
+  const nextStatus = currentStatus === "DISABLED" ? "ENABLED" : "DISABLED";
+  const statusActionLabel = currentStatus === "DISABLED" ? "启用" : "停用";
 
   return (
     <Card
@@ -71,6 +83,51 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
             "group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto",
           ].join(" ")}
         >
+          <Tooltip title="测试连接" placement="top">
+            <button
+              type="button"
+              className="datasource-card-hover-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onTestConnection(record);
+              }}
+            >
+              <ApiOutlined />
+            </button>
+          </Tooltip>
+
+          <Tooltip title={statusActionLabel} placement="top">
+            <button
+              type="button"
+              disabled={isRevoked}
+              className="datasource-card-hover-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onStatusChange(record, nextStatus);
+              }}
+            >
+              {currentStatus === "DISABLED" ? (
+                <PlayCircleOutlined />
+              ) : (
+                <PauseCircleOutlined />
+              )}
+            </button>
+          </Tooltip>
+
+          <Tooltip title={isRevoked ? "已注销" : "注销"} placement="top">
+            <button
+              type="button"
+              disabled={isRevoked}
+              className="datasource-card-hover-action datasource-card-hover-action--danger"
+              onClick={(event) => {
+                event.stopPropagation();
+                onStatusChange(record, "REVOKED");
+              }}
+            >
+              <CloseCircleOutlined />
+            </button>
+          </Tooltip>
+
           <Tooltip title="删除" placement="top">
             <button
               type="button"
@@ -81,19 +138,6 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
               }}
             >
               <DeleteOutlined />
-            </button>
-          </Tooltip>
-
-          <Tooltip title="测试连接" placement="top">
-            <button
-              type="button"
-              className="datasource-card-hover-action"
-              onClick={(event) => {
-                event.stopPropagation();
-                onTestConnection(record);
-              }}
-            >
-              <DisconnectOutlined />
             </button>
           </Tooltip>
         </div>
@@ -116,9 +160,14 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
 
         <div className="datasource-card-status flex items-center gap-2">
           <DataSourceStatus status={record.connStatus} />
+          <DataSourceLifecycleStatusTag status={record.status} />
           <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
             {category.label}
           </Tag>
+        </div>
+
+        <div className="datasource-card-unit" title={record.dataSourceUnit}>
+          单位：{record.dataSourceUnit || "未分配"}
         </div>
 
         <div className="datasource-card-update-time">

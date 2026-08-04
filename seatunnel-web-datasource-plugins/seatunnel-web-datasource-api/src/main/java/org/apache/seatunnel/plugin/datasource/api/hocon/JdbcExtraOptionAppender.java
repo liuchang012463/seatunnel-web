@@ -17,6 +17,7 @@ public class JdbcExtraOptionAppender {
         JdbcConfigReaders.appendConfigObject(config, CONFIG, map);
         JdbcConfigReaders.parseParamsArray(config, map);
         appendExtraParams(config, map);
+        appendDirectWhereCondition(config, map);
     }
 
     /**
@@ -60,6 +61,21 @@ public class JdbcExtraOptionAppender {
 
             Object value = item.hasPath(VALUE) ? item.getValue(VALUE).unwrapped() : "";
             map.put(key.trim(), value);
+        }
+    }
+
+    /**
+     * The web-side incremental builder injects the generated predicate as a
+     * direct option. Keep it after the legacy extraParams list so the bounded
+     * predicate cannot be accidentally replaced by a stale UI row.
+     */
+    private void appendDirectWhereCondition(Config config, Map<String, Object> map) {
+        if (config == null || !config.hasPath("where_condition")) {
+            return;
+        }
+        String value = JdbcConfigReaders.getString(config, "where_condition", "");
+        if (StringUtils.isNotBlank(value)) {
+            map.put("where_condition", value.trim());
         }
     }
 }

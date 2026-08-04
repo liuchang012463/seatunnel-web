@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.service;
 
 import org.apache.seatunnel.web.dao.entity.DataSource;
+import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.DBOptionVO;
@@ -66,6 +67,11 @@ public interface DataSourceService {
     void delete(Long id);
 
     /**
+     * Updates the business lifecycle status of a data source.
+     */
+    boolean updateStatus(Long id, DataSourceLifecycleStatus status);
+
+    /**
      * Tests connectivity of an existing datasource.
      *
      * @param id primary key
@@ -119,6 +125,11 @@ public interface DataSourceService {
      * @return list of all datasources
      */
     List<DataSourceVO> listAll();
+
+    /**
+     * Returns distinct data source unit names for selectors and filters.
+     */
+    List<String> listDataSourceUnits();
 
     /**
      * Uploads a JDBC driver file for a specific plugin.

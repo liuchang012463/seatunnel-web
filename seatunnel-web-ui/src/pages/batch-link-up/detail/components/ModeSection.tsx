@@ -30,6 +30,15 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
             />
 
             <ModeCard
+              value="GUIDE_SINGLE_INCREMENTAL"
+              current={mode}
+              title="单表增量微批"
+              desc="按水位和固定时间窗口定时接入新增或变更数据。"
+              tag="增量"
+              onSelect={setMode}
+            />
+
+            <ModeCard
               value="GUIDE_MULTI"
               current={mode}
               title="多表向导模式"

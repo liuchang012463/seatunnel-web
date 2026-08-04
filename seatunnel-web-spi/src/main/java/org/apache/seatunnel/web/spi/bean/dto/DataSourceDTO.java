@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
+import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.EnvironmentEnum;
 import org.apache.seatunnel.web.spi.bean.dto.pagination.PaginationBaseDTO;
 import org.apache.seatunnel.web.spi.enums.DbType;
@@ -19,6 +20,8 @@ public class DataSourceDTO extends PaginationBaseDTO {
 
     private String name;
 
+    private String dataSourceUnit;
+
     private DbType dbType;
 
     /** Compatible multi-type filter used by category-based datasource management. */
@@ -33,4 +36,6 @@ public class DataSourceDTO extends PaginationBaseDTO {
     private String remark;
 
     private ConnStatus connStatus;
+
+    private DataSourceLifecycleStatus status;
 }

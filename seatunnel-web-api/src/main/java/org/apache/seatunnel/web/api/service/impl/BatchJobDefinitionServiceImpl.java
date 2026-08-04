@@ -7,6 +7,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.service.BatchJobDefinitionService;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
+import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.api.service.application.JobScheduleApplicationService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
@@ -26,6 +27,7 @@ import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.BatchJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideMultiJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleIncrementalJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchFileSyncJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.BatchJobSaveCommand;
@@ -79,6 +81,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
     @Resource
     private CurrentUserProvider currentUserProvider;
+
+    @Resource
+    private IncrementalBatchService incrementalBatchService;
 
     /**
      * Save or update batch job definition.
@@ -155,6 +160,11 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     }
 
     @Override
+    public JobDefinitionSaveResultVO saveOrUpdate(BatchGuideSingleIncrementalJobSaveCommand command) {
+        return doSaveOrUpdate(command);
+    }
+
+    @Override
     public JobDefinitionSaveResultVO saveOrUpdate(BatchFileSyncJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
@@ -187,6 +197,11 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
     @Override
     public String buildHoconConfig(BatchGuideSingleJobSaveCommand command) {
+        return doBuildHoconConfig(command);
+    }
+
+    @Override
+    public String buildHoconConfig(BatchGuideSingleIncrementalJobSaveCommand command) {
         return doBuildHoconConfig(command);
     }
 
@@ -241,6 +256,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         try {
             cdcServerIdAllocationService.release(jobDefinitionId);
             scheduleApplicationService.removeSchedule(jobDefinitionId);
+            incrementalBatchService.removeByDefinitionId(jobDefinitionId);
             jobInstanceService.removeAllByDefinitionId(jobDefinitionId);
             jobDefinitionContentDao.deleteByJobDefinitionId(jobDefinitionId);
             return jobDefinitionDao.deleteById(jobDefinitionId);

@@ -15,6 +15,7 @@ import org.apache.seatunnel.web.dao.repository.JobScheduleDao;
 import org.apache.seatunnel.web.spi.bean.dto.*;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideMultiJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleIncrementalJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchFileSyncJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
@@ -86,6 +87,8 @@ public class DefaultJobDefinitionCommandResolver implements JobDefinitionCommand
                 return buildScriptCommand(definition, definitionContent);
             case GUIDE_SINGLE:
                 return buildGuideSingleCommand(definition, definitionContent);
+            case GUIDE_SINGLE_INCREMENTAL:
+                return buildGuideSingleIncrementalCommand(definition, definitionContent);
             case FILE_SYNC:
                 return buildFileSyncCommand(definition, definitionContent);
             case GUIDE_MULTI:
@@ -106,6 +109,22 @@ public class DefaultJobDefinitionCommandResolver implements JobDefinitionCommand
 
     private BatchGuideSingleJobSaveCommand buildGuideSingleCommand(JobDefinitionEntity definition, JobDefinitionContentEntity jobDefinitionContentEntity) {
         BatchGuideSingleJobSaveCommand command = new BatchGuideSingleJobSaveCommand();
+        command.setBasic(buildBasic(definition));
+        command.setWorkflow(JSONUtils.parseObject(
+                jobDefinitionContentEntity.getDefinitionContent(),
+                new TypeReference<Map<String, Object>>() {
+                }
+        ));
+        command.setSchedule(buildScheduleConfig(definition.getId()));
+        command.setId(definition.getId());
+        command.setEnv(JSONUtils.parseObject(jobDefinitionContentEntity.getEnvConfig(), BatchJobEnvConfig.class));
+        return command;
+    }
+
+    private BatchGuideSingleIncrementalJobSaveCommand buildGuideSingleIncrementalCommand(
+            JobDefinitionEntity definition,
+            JobDefinitionContentEntity jobDefinitionContentEntity) {
+        BatchGuideSingleIncrementalJobSaveCommand command = new BatchGuideSingleIncrementalJobSaveCommand();
         command.setBasic(buildBasic(definition));
         command.setWorkflow(JSONUtils.parseObject(
                 jobDefinitionContentEntity.getDefinitionContent(),

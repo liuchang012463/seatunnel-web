@@ -25,7 +25,7 @@ const App = () => {
    * 新增场景：
    * 先申请唯一ID，继续沿用缓存方式进入详情页
    */
-  const goDetail = () => {
+  const goDetail = (mode: string = 'GUIDE_SINGLE') => {
     seatunnelJobDefinitionApi.getUniqueId().then((data) => {
       if (data?.code === 0) {
         const returnId = data?.data;
@@ -36,6 +36,7 @@ const App = () => {
             sourceType,
             targetType,
             id: returnId,
+            mode,
           }),
         );
 
@@ -62,6 +63,11 @@ const App = () => {
 
       if (mode === 'GUIDE_SINGLE') {
         history.push(`/sync/batch-link-up/${id}/config/single?scene=edit`);
+        return;
+      }
+
+      if (mode === 'GUIDE_SINGLE_INCREMENTAL') {
+        history.push(`/sync/batch-link-up/${id}/config/single-incremental?scene=edit`);
         return;
       }
 

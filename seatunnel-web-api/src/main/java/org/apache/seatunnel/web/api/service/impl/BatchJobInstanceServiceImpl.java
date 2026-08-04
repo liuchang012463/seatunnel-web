@@ -36,6 +36,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -72,6 +73,11 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
 
     @Override
     public JobInstanceVO create(Long jobDefineId, RunMode runMode) {
+        return create(jobDefineId, runMode, null);
+    }
+
+    @Override
+    public JobInstanceVO create(Long jobDefineId, RunMode runMode, Map<String, String> runtimeParams) {
         validateDefinitionId(jobDefineId);
         validateRunMode(runMode);
 
@@ -79,7 +85,7 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
             log.info("Creating batch job instance, jobDefineId={}, runMode={}", jobDefineId, runMode);
 
             JobDefinitionSaveCommand command = loadDefinitionCommand(jobDefineId);
-            JobInstance instance = buildJobInstance(command, runMode);
+            JobInstance instance = buildJobInstance(command, runMode, runtimeParams);
 
             jobInstanceDao.insert(instance);
 
@@ -280,8 +286,16 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
     /**
      * Build job instance entity.
      */
-    private JobInstance buildJobInstance(JobDefinitionSaveCommand command, RunMode runMode) {
+    private JobInstance buildJobInstance(JobDefinitionSaveCommand command,
+                                         RunMode runMode,
+                                         Map<String, String> runtimeParams) {
         Long id = generateInstanceId();
+        if (runtimeParams != null
+                && command instanceof org.apache.seatunnel.web.spi.bean.dto.command.BatchJobSaveCommand
+                && ((org.apache.seatunnel.web.spi.bean.dto.command.BatchJobSaveCommand) command).getSchedule() != null) {
+            ((org.apache.seatunnel.web.spi.bean.dto.command.BatchJobSaveCommand) command)
+                    .getSchedule().setRuntimeParams(runtimeParams);
+        }
         String runtimeConfig = buildJobConfig(command);
 
         return jobInstanceFactory.create(
