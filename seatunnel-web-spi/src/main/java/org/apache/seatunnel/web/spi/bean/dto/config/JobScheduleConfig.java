@@ -40,6 +40,8 @@ public class JobScheduleConfig {
 
     private String hourMode;
 
+    private Map<String, Object> minuteValue;
+
     private Map<String, Object> hourlyRangeValue;
 
     private Map<String, Object> hourlyAppointValue;
@@ -75,9 +77,9 @@ public class JobScheduleConfig {
 
         private String initialWatermark;
 
-        private Integer safetyDelaySeconds = 120;
+        private Integer safetyDelaySeconds = 0;
 
-        private Integer overlapSeconds = 60;
+        private Integer overlapSeconds = 0;
 
         private Integer maxWindowSeconds = 1800;
     }

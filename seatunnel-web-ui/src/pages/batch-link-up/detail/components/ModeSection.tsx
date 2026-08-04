@@ -33,7 +33,7 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
               value="GUIDE_SINGLE_INCREMENTAL"
               current={mode}
               title="单表增量微批"
-              desc="按水位和固定时间窗口定时接入新增或变更数据。"
+              desc="按调度周期接入新增或变更数据。"
               tag="增量"
               onSelect={setMode}
             />

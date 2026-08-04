@@ -64,12 +64,14 @@ interface FlowCanvasProps {
   targetType?: any;
   onWorkflowChange?: (value: { nodes: any[]; edges: any[] }) => void;
   scheduleConfig?: any;
+  isIncremental?: boolean;
 }
 
 function buildInitialGraph(
   params?: any,
   sourceType?: any,
   targetType?: any,
+  isIncremental = false,
 ): {
   nodes: Node[];
   edges: Edge[];
@@ -122,6 +124,13 @@ function buildInitialGraph(
           table: undefined,
           sql: '',
           extraParams: [],
+          incrementalConfig: isIncremental
+            ? {
+                enabled: true,
+                fieldName: '',
+                startValue: '1970-01-01 00:00:00',
+              }
+            : undefined,
         },
         meta: {
           outputSchema: [],
@@ -179,6 +188,7 @@ export default function FlowCanvas({
   targetType,
   onWorkflowChange,
   scheduleConfig,
+  isIncremental = false,
 }: FlowCanvasProps) {
   const store = useStoreApi();
   const flow = useFlowBuilder({ form, params });
@@ -325,7 +335,12 @@ export default function FlowCanvas({
       return;
     }
 
-    const { nodes, edges } = buildInitialGraph(params, sourceType, targetType);
+    const { nodes, edges } = buildInitialGraph(
+      params,
+      sourceType,
+      targetType,
+      isIncremental,
+    );
 
     flow.setNodes(nodes);
     flow.setEdges(edges);
@@ -334,6 +349,7 @@ export default function FlowCanvas({
     params,
     sourceType,
     targetType,
+    isIncremental,
     flow.nodes,
     flow.setNodes,
     flow.setEdges,
@@ -626,6 +642,7 @@ export default function FlowCanvas({
           refreshDownstreamSchemas={flow.refreshDownstreamSchemas}
           syncTransformPluginConfig={flow.syncTransformPluginConfig}
           scheduleConfig={scheduleConfig}
+          isIncremental={isIncremental}
         />
       )}
     </div>

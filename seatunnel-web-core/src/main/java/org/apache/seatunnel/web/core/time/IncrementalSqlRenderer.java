@@ -74,7 +74,7 @@ public final class IncrementalSqlRenderer {
         int maxWindow = incremental.getMaxWindowSeconds() == null
                 ? 1800 : incremental.getMaxWindowSeconds();
         int overlap = incremental.getOverlapSeconds() == null
-                ? 60 : incremental.getOverlapSeconds();
+                ? 0 : incremental.getOverlapSeconds();
         LocalDateTime end = start.plusSeconds(maxWindow);
         values.putIfAbsent("window_start", format(start));
         values.putIfAbsent("window_end", format(end));

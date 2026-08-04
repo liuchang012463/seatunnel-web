@@ -25,7 +25,7 @@ const App = () => {
    * 新增场景：
    * 先申请唯一ID，继续沿用缓存方式进入详情页
    */
-  const goDetail = (mode: string = 'GUIDE_SINGLE') => {
+  const goDetail = () => {
     seatunnelJobDefinitionApi.getUniqueId().then((data) => {
       if (data?.code === 0) {
         const returnId = data?.data;
@@ -36,7 +36,6 @@ const App = () => {
             sourceType,
             targetType,
             id: returnId,
-            mode,
           }),
         );
 

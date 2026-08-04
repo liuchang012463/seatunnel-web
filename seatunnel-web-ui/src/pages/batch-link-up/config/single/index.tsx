@@ -34,6 +34,9 @@ const defaultScheduleConfig: ScheduleConfig = {
   retryInterval: 1,
   scheduleType: "day",
   hourMode: "range",
+  minuteValue: {
+    intervalMinute: 5,
+  },
   hourlyRangeValue: {
     startTime: "00:00",
     intervalHour: 1,
@@ -52,15 +55,6 @@ const defaultScheduleConfig: ScheduleConfig = {
   },
   effectType: "forever",
   cronExpression: "0 17 0 * * ?",
-};
-
-const defaultIncrementalConfig = {
-  enabled: true,
-  watermarkColumn: "update_time",
-  initialWatermark: "1970-01-01 00:00:00",
-  safetyDelaySeconds: 120,
-  overlapSeconds: 60,
-  maxWindowSeconds: 1800,
 };
 
 const defaultBasicConfig: BasicConfig = {
@@ -116,9 +110,6 @@ const buildInitialScheduleConfigForCreate = (
       ...(rawData?.scheduleConfig?.weeklyValue || {}),
     },
   } as ScheduleConfig;
-  if (modeOverride === "GUIDE_SINGLE_INCREMENTAL" && !result.incremental) {
-    result.incremental = defaultIncrementalConfig;
-  }
   return result;
 };
 
@@ -159,9 +150,6 @@ const buildInitialScheduleConfigForEdit = (editData?: any, modeOverride?: string
       ...(schedule?.weeklyValue || {}),
     },
   } as ScheduleConfig;
-  if (modeOverride === "GUIDE_SINGLE_INCREMENTAL" && !result.incremental) {
-    result.incremental = defaultIncrementalConfig;
-  }
   return result;
 };
 

@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -10,6 +11,7 @@ import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
+import org.apache.seatunnel.web.core.time.IncrementalConfigResolver;
 import org.apache.seatunnel.web.core.time.IncrementalSqlRenderer;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.IncrementalBatchControl;
@@ -19,6 +21,7 @@ import org.apache.seatunnel.web.dao.entity.JobSchedule;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.IncrementalBatchControlDao;
 import org.apache.seatunnel.web.dao.repository.IncrementalBatchRecordDao;
+import org.apache.seatunnel.web.dao.repository.JobDefinitionContentDao;
 import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
 import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.JobScheduleDao;
@@ -59,6 +62,9 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
     private JobDefinitionDao jobDefinitionDao;
 
     @Resource
+    private JobDefinitionContentDao jobDefinitionContentDao;
+
+    @Resource
     private JobScheduleDao jobScheduleDao;
 
     @Resource
@@ -87,47 +93,50 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
 
         IncrementalBatchControl control = controlDao.queryByDefinitionIdForUpdate(jobDefinitionId);
         JobScheduleConfig config = loadScheduleConfig(jobDefinitionId);
+        IncrementalConfigResolver.resolve(loadWorkflow(jobDefinitionId), config);
         JobScheduleConfig.IncrementalConfig incremental = config.getIncremental();
         validateRuntimeConfig(incremental);
-
-        if (control == null) {
-            control = createControl(jobDefinitionId, parseDateTime(incremental.getInitialWatermark()));
-        }
+        boolean bootstrap = control == null;
 
         IncrementalBatchRecord running = recordDao.queryRunningByDefinitionId(jobDefinitionId);
         if (running != null) {
             return skipped("incremental batch is already running");
         }
 
-        IncrementalBatchRecord retry = recordDao.queryLatestFailedByDefinitionId(jobDefinitionId);
-        if (retry != null
+        IncrementalBatchRecord retry = control == null
+                ? null : recordDao.queryLatestFailedByDefinitionId(jobDefinitionId);
+        if (control != null && retry != null
                 && toLocalDateTime(retry.getWindowStart())
-                .equals(toLocalDateTime(control.getCommittedWatermark()))) {
+                        .equals(toLocalDateTime(control.getCommittedWatermark()))) {
             return reopenFailedBatch(control, retry);
         }
 
-        LocalDateTime start = toLocalDateTime(control.getCommittedWatermark());
+        LocalDateTime start = bootstrap
+                ? parseDateTime(incremental.getInitialWatermark())
+                : toLocalDateTime(control.getCommittedWatermark());
         LocalDateTime sourceNow = querySourceNow(definition);
-        int safetyDelay = valueOrDefault(incremental.getSafetyDelaySeconds(), 120);
+        int safetyDelay = valueOrDefault(incremental.getSafetyDelaySeconds(), 0);
         int maxWindow = valueOrDefault(incremental.getMaxWindowSeconds(), 1800);
-        LocalDateTime safeEnd = sourceNow.minusSeconds(safetyDelay);
-        LocalDateTime end = safeEnd.isAfter(start.plusSeconds(maxWindow))
-                ? start.plusSeconds(maxWindow) : safeEnd;
-
-        if (!end.isAfter(start)) {
+        int overlap = valueOrDefault(incremental.getOverlapSeconds(), 0);
+        IncrementalBatchWindowResolver.Window window = IncrementalBatchWindowResolver.resolve(
+                bootstrap, start, sourceNow, safetyDelay, overlap, maxWindow);
+        if (window == null) {
             return skipped("no safely committed source data is available");
         }
 
-        LocalDateTime queryStart = start.minusSeconds(valueOrDefault(incremental.getOverlapSeconds(), 60));
-        String batchId = buildBatchId(jobDefinitionId, start, end);
+        if (bootstrap) {
+            control = createControl(jobDefinitionId, start);
+        }
+
+        String batchId = buildBatchId(jobDefinitionId, window.start(), window.end());
         Date now = new Date();
 
         IncrementalBatchRecord record = new IncrementalBatchRecord();
         record.setBatchId(batchId);
         record.setJobDefinitionId(jobDefinitionId);
-        record.setWindowStart(toDate(start));
-        record.setWindowEnd(toDate(end));
-        record.setQueryStart(toDate(queryStart));
+        record.setWindowStart(toDate(window.start()));
+        record.setWindowEnd(toDate(window.end()));
+        record.setQueryStart(toDate(window.queryStart()));
         record.setBatchStatus(RUNNING);
         record.setRetryCount(0);
         record.setStartedAt(now);
@@ -295,6 +304,26 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
             return config;
         } catch (Exception e) {
             throw new IllegalArgumentException("解析增量调度配置失败", e);
+        }
+    }
+
+    private Map<String, Object> loadWorkflow(Long definitionId) {
+        org.apache.seatunnel.web.dao.entity.JobDefinitionContentEntity content =
+                jobDefinitionContentDao.queryLatestByJobDefinitionId(definitionId);
+        if (content == null || StringUtils.isBlank(content.getDefinitionContent())) {
+            throw new IllegalArgumentException("增量任务定义内容为空");
+        }
+        try {
+            Map<String, Object> workflow = JSONUtils.parseObject(
+                    content.getDefinitionContent(),
+                    new TypeReference<Map<String, Object>>() {}
+            );
+            if (workflow == null) {
+                throw new IllegalArgumentException("增量任务工作流为空");
+            }
+            return workflow;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("解析增量任务工作流失败", e);
         }
     }
 

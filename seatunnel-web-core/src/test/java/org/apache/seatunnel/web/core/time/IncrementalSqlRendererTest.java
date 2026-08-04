@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,6 +44,60 @@ class IncrementalSqlRendererTest {
                 "select * from orders where update_time >= '2024-02-01 09:59:00.000000' "
                         + "and update_time < '2024-02-01 10:30:00.000000' /* batch-1 */",
                 rendered.getString("query"));
+    }
+
+    @Test
+    void derivesPreviewWindowFromFiveMinuteSchedule() {
+        JobScheduleConfig schedule = incrementalSchedule();
+        schedule.setScheduleType("minute");
+        schedule.setMinuteValue(Map.of("intervalMinute", 5));
+
+        Map<String, Object> sourceConfig = Map.of(
+                "incrementalConfig", Map.of(
+                        "enabled", true,
+                        "fieldName", "update_time",
+                        "startValue", "2024-01-01 00:00:00"
+                )
+        );
+        Map<String, Object> sourceData = Map.of("nodeType", "source", "config", sourceConfig);
+        IncrementalConfigResolver.resolve(
+                Map.of("nodes", List.of(Map.of("data", sourceData))),
+                schedule
+        );
+
+        Config rendered = IncrementalSqlRenderer.render(
+                ConfigFactory.parseMap(Map.of("table_path", "orders")), schedule);
+
+        assertEquals(
+                "where update_time >= '2023-12-31 23:59:00.000000' and update_time < '2024-01-01 00:05:00.000000'",
+                rendered.getString("where_condition"));
+    }
+
+    @Test
+    void usesZeroOverlapWhenNewSourceConfigHasNoHiddenRuntimeValues() {
+        JobScheduleConfig schedule = new JobScheduleConfig();
+        schedule.setScheduleType("minute");
+        schedule.setMinuteValue(Map.of("intervalMinute", 5));
+
+        Map<String, Object> sourceConfig = Map.of(
+                "incrementalConfig", Map.of(
+                        "enabled", true,
+                        "fieldName", "update_time",
+                        "startValue", "2024-01-01 00:00:00"
+                )
+        );
+        Map<String, Object> sourceData = Map.of("nodeType", "source", "config", sourceConfig);
+        IncrementalConfigResolver.resolve(
+                Map.of("nodes", List.of(Map.of("data", sourceData))),
+                schedule
+        );
+
+        Config rendered = IncrementalSqlRenderer.render(
+                ConfigFactory.parseMap(Map.of("table_path", "orders")), schedule);
+
+        assertEquals(
+                "where update_time >= '2024-01-01 00:00:00.000000' and update_time < '2024-01-01 00:05:00.000000'",
+                rendered.getString("where_condition"));
     }
 
     private JobScheduleConfig incrementalSchedule() {

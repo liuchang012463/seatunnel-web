@@ -60,6 +60,7 @@ public class BatchJobDefinitionSaveRequest {
         private String scheduleType;
         private String hourMode;
 
+        private Map<String, Object> minuteValue;
         private Map<String, Object> hourlyRangeValue;
         private Map<String, Object> hourlyAppointValue;
         private Map<String, Object> dailyValue;

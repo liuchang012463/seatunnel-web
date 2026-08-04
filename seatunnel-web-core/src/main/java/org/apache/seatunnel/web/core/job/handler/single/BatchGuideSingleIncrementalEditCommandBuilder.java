@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.job.handler.BatchJobEditCommandBuilder;
+import org.apache.seatunnel.web.core.time.IncrementalConfigResolver;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionContentEntity;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleIncrementalJobSaveCommand;
@@ -41,7 +42,12 @@ public class BatchGuideSingleIncrementalEditCommandBuilder implements BatchJobEd
         command.setEnv(JSONUtils.parseObject(contentEntity.getEnvConfig(), BatchJobEnvConfig.class));
         Map<String, Object> workflow = JSONUtils.parseObject(
                 contentEntity.getDefinitionContent(), new TypeReference<Map<String, Object>>() {});
-        command.setWorkflow(workflow == null ? Collections.emptyMap() : workflow);
+        if (workflow == null) {
+            workflow = Collections.emptyMap();
+        } else {
+            IncrementalConfigResolver.normalizeLegacySourceConfig(workflow, scheduleConfig);
+        }
+        command.setWorkflow(workflow);
         return command;
     }
 }

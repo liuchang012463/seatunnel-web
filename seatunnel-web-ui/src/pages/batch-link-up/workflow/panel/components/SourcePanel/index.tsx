@@ -1,5 +1,7 @@
-import { Button, Divider, Segmented, Select, Tooltip } from 'antd';
+import { Button, DatePicker, Divider, Segmented, Select, Tooltip } from 'antd';
 import { BarChart3, Database, Eye, FileCode2, Table2 } from 'lucide-react';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { memo, useRef } from 'react';
 import PanelShell from '../PanelShell';
 import ExtraParamsConfig from './ExtraParamsConfig';
@@ -11,14 +13,17 @@ import SqlEditorSection from './SqlEditorSection';
 import KafkaNodeConfig from '@/pages/common/workflow/KafkaNodeConfig';
 import HttpNodeConfig from '@/pages/common/workflow/HttpNodeConfig';
 
+dayjs.extend(customParseFormat);
+
 interface Props {
   selectedNode: any;
   onClose: () => void;
   onNodeDataChange: (nodeId: string, newData: any) => void;
   scheduleConfig: any;
+  isIncremental?: boolean;
 }
 
-function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig }: Props) {
+function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, isIncremental = false }: Props) {
   const qualityDetailRef = useRef<any>(null);
   const isKafka = String(selectedNode?.data?.dbType || '').toUpperCase() === 'KAFKA';
   const isHttp = String(selectedNode?.data?.dbType || '').toUpperCase() === 'HTTP';
@@ -32,6 +37,8 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig }
     table,
     sql,
     extraParams,
+    incrementalConfig,
+    meta,
 
     dataSourceOptions,
     tableOptions,
@@ -216,7 +223,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig }
                 <Select
                   value={table}
                   onChange={(value) =>
-                    updateNode({ table: value }, undefined, {
+                    updateNode({ table: value, incrementalConfig: undefined }, undefined, {
                       outputSchema: [],
                       schemaStatus: 'idle',
                       schemaError: '',
@@ -247,7 +254,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig }
                 resolveSqlLoading={resolveSqlLoading}
                 resolvedSqlPreview={resolvedSqlPreview}
                 onSqlChange={(value: any) =>
-                  updateNode({ sql: value }, undefined, {
+                  updateNode({ sql: value, incrementalConfig: undefined }, undefined, {
                     outputSchema: [],
                     schemaStatus: 'idle',
                     schemaError: '',
@@ -259,6 +266,81 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig }
               />
             )}
           </div>
+
+          {isIncremental && !isKafka && !isHttp && (
+            <>
+              <div className="workflow-panel__divider" />
+              <div className="workflow-panel__group">
+                <div className="workflow-panel__group-head">
+                  <div className="workflow-panel__group-kicker">增量配置</div>
+                </div>
+                <div className="mb-3 text-xs leading-5 text-slate-500">
+                  先完成表或 SQL 的字段解析，再选择时间类型字段作为增量识别字段。
+                </div>
+                <div className="workflow-panel__field workflow-panel__field--full">
+                  <div className="mb-1 text-xs text-slate-500">增量识别字段</div>
+                  <Select
+                    value={incrementalConfig?.fieldName || undefined}
+                    onChange={(value) =>
+                      updateNode({
+                        incrementalConfig: {
+                          enabled: true,
+                          fieldName: value,
+                          startValue: incrementalConfig?.startValue || '1970-01-01 00:00:00',
+                        },
+                      })
+                    }
+                    options={(meta?.outputSchema || [])
+                      .filter((column: any) =>
+                        /date|time|timestamp/i.test(
+                          String(column?.type || column?.fieldType || column?.dataType || ''),
+                        ),
+                      )
+                      .map((column: any) => {
+                        const fieldName = column?.originFieldName || column?.fieldName || column?.name;
+                        return {
+                          label: fieldName,
+                          value: fieldName,
+                        };
+                      })}
+                    disabled={!Array.isArray(meta?.outputSchema) || meta.outputSchema.length === 0}
+                    placeholder="请选择时间类型字段"
+                    className="workflow-panel__antd-select"
+                    style={{ width: '100%' }}
+                    popupClassName="workflow-panel__dropdown"
+                    showSearch
+                    optionFilterProp="label"
+                  />
+                  {(!Array.isArray(meta?.outputSchema) || meta.outputSchema.length === 0) && (
+                    <div className="mt-1 text-xs text-slate-400">请先点击“字段解析”获取可选字段。</div>
+                  )}
+                </div>
+                <div className="workflow-panel__field workflow-panel__field--full mt-3">
+                  <div className="mb-1 text-xs text-slate-500">增量起始值</div>
+                  <DatePicker
+                    value={
+                      incrementalConfig?.startValue
+                        ? dayjs(incrementalConfig.startValue, 'YYYY-MM-DD HH:mm:ss')
+                        : null
+                    }
+                    showTime
+                    format="YYYY-MM-DD HH:mm:ss"
+                    placeholder="请选择增量起始时间"
+                    style={{ width: '100%' }}
+                    onChange={(value) =>
+                      updateNode({
+                        incrementalConfig: {
+                          enabled: true,
+                          fieldName: incrementalConfig?.fieldName || '',
+                          startValue: value ? value.format('YYYY-MM-DD HH:mm:ss') : '',
+                        },
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="workflow-panel__divider" />
 
