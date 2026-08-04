@@ -233,7 +233,6 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       columns={columns as any}
       dataSource={dataSource}
       pagination={false}
-      bordered
       rowSelection={{
         selectedRowKeys,
         onChange: onSelectedRowKeysChange,

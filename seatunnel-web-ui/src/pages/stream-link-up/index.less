@@ -32,6 +32,15 @@
   font-weight: 600;
 }
 
+.stream-link-task-table .ant-table-thead > tr > th::before {
+  display: none;
+}
+
+.stream-link-task-table .ant-table-thead > tr > th,
+.stream-link-task-table .ant-table-tbody > tr > td {
+  border-inline-end: 0;
+}
+
 .stream-link-task-table .ant-table-tbody > tr > td {
   color: var(--st-color-text-secondary);
   border-color: var(--st-color-divider);
@@ -40,7 +49,14 @@
 .stream-link-task-table .ant-table-tbody > tr:hover > td,
 .stream-link-task-table .ant-table-tbody > tr.ant-table-row-selected > td { background: var(--st-color-hover); }
 
-.stream-link-task-table .ant-table-cell-fix-right { background: var(--st-color-bg-panel); }
+.stream-link-task-table .ant-table-cell-fix-right {
+  background: var(--st-color-bg-panel);
+  box-shadow: none;
+}
+
+.stream-link-task-table .ant-table-cell-fix-right-first::after {
+  box-shadow: none;
+}
 
 .stream-link-task-table .text-slate-950,
 .stream-link-task-table .text-slate-700,
