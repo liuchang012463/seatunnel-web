@@ -234,19 +234,15 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       dataSource={dataSource}
       pagination={false}
       bordered
-      // rowSelection={{
-      //   selectedRowKeys,
-      //   onChange: onSelectedRowKeysChange,
-      // }}
+      rowSelection={{
+        selectedRowKeys,
+        onChange: onSelectedRowKeysChange,
+        columnWidth: 42,
+      }}
+      size="middle"
       scroll={{ x: "max-content", y: "calc(100vh - 480px)" }}
       className={[
-        "[&_.ant-table]:!rounded-xl",
-        "[&_.ant-table-thead>tr>th]:!bg-slate-50",
-        "[&_.ant-table-thead>tr>th]:!font-bold",
-        "[&_.ant-table-thead>tr>th]:!text-slate-700",
-        "[&_.ant-table-tbody>tr>td]:!border-slate-100",
-        "[&_.ant-table-tbody>tr:hover>td]:!bg-slate-50/70",
-        "[&_.ant-pagination]:!px-1",
+        "stream-link-task-table",
       ].join(" ")}
       locale={{
         emptyText: (

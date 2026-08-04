@@ -1,4 +1,4 @@
-import { Divider, message, Modal } from "antd";
+import { message, Modal } from "antd";
 import moment from "moment";
 import React, {
   useCallback,
@@ -23,6 +23,7 @@ import RealtimeTaskViewModal from "./components/RealtimeTaskViewModal";
 import SearchToolbar from "./components/SearchToolbar";
 import StreamingHelperSection from "./components/StreamingHelperSection";
 import TaskViewModal from "./components/TaskViewModal";
+import "./index.less";
 
 const REALTIME_DETAIL_CACHE_PREFIX = "stream-link-up-detail";
 
@@ -799,7 +800,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   return (
     <>
-      <div className="min-h-screen pb-24 pt-7 text-slate-950">
+      <div className="stream-link-page min-h-screen pb-24 pt-5">
         <RealtimeHeader
           sourceType={sourceType}
           sinkType={sinkType}
@@ -809,14 +810,12 @@ const RealtimeSyncPage: React.FC = () => {
           creating={creating}
         />
 
-        <div className="mb-5 overflow-hidden">
+        <div className="stream-link-page__content mb-5 overflow-hidden">
           <SearchToolbar
             initialValues={searchValues}
             onSearch={handleSearch}
             onReset={handleReset}
           />
-
-          <Divider style={{ padding: 0, margin: "16px 0" }} />
 
           <RealtimeTaskTable
             loading={loading}
@@ -840,10 +839,9 @@ const RealtimeSyncPage: React.FC = () => {
         </div>
 
         {dataSource.length <= 1 ? (
-          <>
-            <Divider style={{ padding: 0, margin: "12px 0" }} />
+          <div className="stream-link-page__helper">
             <StreamingHelperSection />
-          </>
+          </div>
         ) : null}
 
         <BottomActionBar

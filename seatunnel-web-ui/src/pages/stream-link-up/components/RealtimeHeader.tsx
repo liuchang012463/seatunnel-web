@@ -1,12 +1,7 @@
-import {
-  generateDataSourceOptions,
-  generateRealtimeSourceOptions,
-} from "@/pages/batch-link-up/DataSourceSelect";
 import { ThunderboltOutlined } from "@ant-design/icons";
-import { Button, Select } from "antd";
+import { Button } from "antd";
 import React from "react";
 import TaskListPageHeader from "@/components/TaskListPageHeader";
-import RealtimeFlowBridge from "./RealtimeFlowBridge";
 
 interface RealtimeHeaderProps {
   sourceType: any;

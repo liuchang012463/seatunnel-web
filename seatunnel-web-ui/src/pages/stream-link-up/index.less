@@ -1,0 +1,66 @@
+.stream-link-page {
+  padding-inline: 16px;
+  color: var(--st-color-text-primary);
+}
+
+.stream-link-page__content,
+.stream-link-page__helper,
+.stream-link-search {
+  border: 1px solid var(--st-color-border);
+  background: var(--st-color-bg-panel);
+  box-shadow: var(--st-panel-shadow);
+}
+
+.stream-link-page__content { border-radius: var(--st-radius-md); }
+
+.stream-link-search {
+  border: 0;
+  border-bottom: 1px solid var(--st-color-divider);
+  background: var(--st-color-bg-elevated);
+}
+
+.stream-link-task-table .ant-table,
+.stream-link-task-table .ant-table-container { background: var(--st-color-bg-panel); }
+
+.stream-link-task-table .ant-table-thead > tr > th {
+  color: var(--st-color-text-primary);
+  background: var(--st-color-bg-interactive);
+  border-color: var(--st-color-border);
+  font-weight: 600;
+}
+
+.stream-link-task-table .ant-table-tbody > tr > td {
+  color: var(--st-color-text-secondary);
+  border-color: var(--st-color-divider);
+}
+
+.stream-link-task-table .ant-table-tbody > tr:hover > td,
+.stream-link-task-table .ant-table-tbody > tr.ant-table-row-selected > td { background: var(--st-color-hover); }
+
+.stream-link-task-table .ant-table-cell-fix-right { background: var(--st-color-bg-panel); }
+
+.stream-link-task-table .text-slate-950,
+.stream-link-task-table .text-slate-700,
+.stream-link-task-table .text-slate-600 { color: var(--st-color-text-primary) !important; }
+
+.stream-link-task-table .text-slate-400 { color: var(--st-color-text-muted) !important; }
+
+.stream-link-search .text-slate-600 { color: var(--st-color-text-secondary) !important; }
+
+.stream-link-search .ant-input,
+.stream-link-search .ant-picker,
+.stream-link-search .ant-select-selector {
+  color: var(--st-color-text-primary) !important;
+  background: var(--st-color-bg-control) !important;
+  border-color: var(--st-color-border) !important;
+}
+
+.stream-link-bottom-bar {
+  border-top: 1px solid var(--st-color-border);
+  background: color-mix(in srgb, var(--st-color-bg-panel) 94%, transparent);
+}
+
+@media (max-width: 768px) {
+  .stream-link-page { padding-inline: 8px; }
+  .stream-link-bottom-bar { left: 0; padding-inline: 12px; }
+}

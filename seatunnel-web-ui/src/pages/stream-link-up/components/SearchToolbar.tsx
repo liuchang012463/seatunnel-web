@@ -144,7 +144,7 @@ const SearchToolbar: React.FC<SearchToolbarProps> = ({
   const selectPlaceholder = "请选择";
 
   return (
-    <div className="bg-white px-5 py-4">
+    <div className="stream-link-search px-5 py-4">
       <Form
         form={form}
         name="advanced_search"
