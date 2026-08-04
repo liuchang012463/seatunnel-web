@@ -123,6 +123,12 @@ ol {
   padding-top: 16px;
 }
 
+/* 侧栏一级菜单统一左基线：叶子项与可展开分组使用相同的内边距。 */
+.ant-pro-layout .ant-pro-sider-menu > .ant-menu-item,
+.ant-pro-layout .ant-pro-sider-menu > .ant-menu-submenu > .ant-menu-submenu-title {
+  padding-inline-start: 8px !important;
+}
+
 .ant-pro-base-menu-horizontal .ant-pro-base-menu-horizontal-menu-item {
   margin-right: 12px !important;
   display: flex;
@@ -849,6 +855,24 @@ html[data-hide-sidebar='true'] .ant-pro-layout {
       .ant-menu-title-content,
       .ant-pro-base-menu-inline-item-title {
         overflow: visible;
+      }
+    }
+  }
+
+  /* 折叠时隐藏箭头仍占用右侧空间，会把分组标题内容压成 0，连同一级图标一起裁掉。 */
+  &:not(:has(> aside.ant-layout-sider.ant-pro-sider:hover)) {
+    >aside.ant-layout-sider.ant-pro-sider {
+      .ant-menu-submenu-title {
+        padding-inline-end: 8px !important;
+
+        >.ant-menu-title-content {
+          min-width: 17px;
+        }
+
+        .ant-pro-base-menu-inline-item-title {
+          width: 17px;
+          min-width: 17px;
+        }
       }
     }
   }
