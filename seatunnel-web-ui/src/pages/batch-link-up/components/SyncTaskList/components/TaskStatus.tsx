@@ -16,55 +16,59 @@ const statusConfig: Record<
 > = {
   FINISHED: {
     color: "#16a34a",
-    label: "COMPLETED",
+    label: "已完成",
+  },
+  SUCCESS: {
+    color: "#16a34a",
+    label: "已完成",
   },
   RUNNING: {
     color: "#1677ff",
-    label: "RUNNING",
+    label: "运行中",
   },
   FAILED: {
     color: "#ef4444",
-    label: "FAILED",
+    label: "失败",
   },
   CANCELED: {
     color: "#64748b",
-    label: "CANCELED",
+    label: "已取消",
   },
   CANCELLED: {
     color: "#64748b",
-    label: "CANCELED",
+    label: "已取消",
   },
   PAUSED: {
     color: "#f59e0b",
-    label: "PAUSED",
+    label: "已暂停",
   },
   INITIALIZING: {
     color: "#64748b",
-    label: "INITIALIZING",
+    label: "初始化中",
   },
   CREATED: {
     color: "#64748b",
-    label: "CREATED",
+    label: "已创建",
   },
   PENDING: {
     color: "#64748b",
-    label: "PENDING",
+    label: "等待中",
   },
   SCHEDULED: {
     color: "#64748b",
-    label: "SCHEDULED",
+    label: "已调度",
   },
   FAILING: {
     color: "#ef4444",
-    label: "FAILING",
+    label: "失败中",
   },
   DOING_SAVEPOINT: {
     color: "#f59e0b",
-    label: "SAVEPOINT",
+    label: "保存点中",
   },
   CANCELING: {
     color: "#64748b",
-    label: "CANCELING",
+    label: "取消中",
   },
 };
 
@@ -74,7 +78,7 @@ const getStatusConfig = (status?: string) => {
   return (
     statusConfig[normalizedStatus] || {
       color: "#64748b",
-      label: normalizedStatus || "NOT STARTED",
+      label: status ? "未识别" : "未开始",
     }
   );
 };
