@@ -9,7 +9,7 @@ import {
 } from "../../DataSourceSelect";
 
 interface DataSyncHeaderProps {
-  goDetail: (value: any) => void;
+  goDetail: (value?: any) => void;
   sourceType: any;
   targetType: any;
   setSourceType: (value: any) => void;
@@ -47,11 +47,7 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
   };
 
   const handleCreateClick = () => {
-    goDetail('GUIDE_SINGLE');
-  };
-
-  const handleCreateIncrementalClick = () => {
-    goDetail('GUIDE_SINGLE_INCREMENTAL');
+    goDetail();
   };
 
   const isButtonDisabled = !sourceType || !targetType;
@@ -105,23 +101,14 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
             />
           </div>
 
-          <div className="flex gap-2 max-xl:flex-col">
-            <Button
-              type="primary"
-              disabled={isButtonDisabled}
-              onClick={handleCreateClick}
-              className="h-10 rounded-full border-none bg-gradient-to-r font-semibold"
-            >
-              创建单表全量任务
-            </Button>
-            <Button
-              disabled={isButtonDisabled}
-              onClick={handleCreateIncrementalClick}
-              className="h-10 rounded-full border-indigo-200 font-semibold text-indigo-600"
-            >
-              创建单表增量任务
-            </Button>
-          </div>
+          <Button
+            type="primary"
+            disabled={isButtonDisabled}
+            onClick={handleCreateClick}
+            className="h-10 rounded-full border-none bg-gradient-to-r font-semibold"
+          >
+            创建离线任务
+          </Button>
         </div>
 
         {/* <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">

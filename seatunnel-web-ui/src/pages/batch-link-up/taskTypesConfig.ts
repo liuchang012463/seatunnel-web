@@ -12,7 +12,7 @@ export const TASK_TYPE_OPTIONS = [
   {
     label: '单表增量同步',
     value: 'SINGLE_TABLE_INCREMENTAL',
-    description: '按时间水位和定时微批接入新增或变更数据',
+    description: '按调度周期接入新增或变更数据',
   },
    {
     label: '多表同步',
