@@ -28,18 +28,18 @@ interface ActionColumnProps {
 const { confirm } = Modal;
 
 const actionBaseClass =
-  "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-all duration-150";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-all duration-150";
 
-const primaryActionClass = `${actionBaseClass} bg-[#eef3ff] text-[#3157d5] hover:bg-[#e1e9ff] hover:text-[#2448c2]`;
+const primaryActionClass = `${actionBaseClass} border-[#4dd2ff]/35 bg-[#0a4d66] text-[#b7f0ff] hover:border-[#73ddff]/55 hover:bg-[#0d5c78] hover:text-white`;
 
-const dangerActionClass = `${actionBaseClass} bg-[#fff1f0] text-[#cf1322] hover:bg-[#ffe1de] hover:text-[#a8071a]`;
+const dangerActionClass = `${actionBaseClass} border-[#ff7875]/35 bg-[#5a252b]/70 text-[#ffd8d6] hover:border-[#ffa39e]/55 hover:bg-[#743038] hover:text-white`;
 
-const secondaryActionClass = `${actionBaseClass} bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900`;
+const secondaryActionClass = `${actionBaseClass} border-white/10 bg-white/[0.03] text-[#dceef5] hover:border-[#4dd2ff]/35 hover:bg-white/[0.07] hover:text-white`;
 
-const disabledActionClass = `${actionBaseClass} cursor-not-allowed bg-slate-100 text-slate-400`;
+const disabledActionClass = `${actionBaseClass} cursor-not-allowed border-white/5 bg-white/[0.025] text-[#7da0ab] opacity-60`;
 
 const moreActionClass =
-  "inline-flex h-7 items-center gap-1 rounded-full px-2 text-xs font-medium text-slate-500 transition-all duration-150 hover:bg-slate-100 hover:text-slate-800";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-2 text-xs font-medium text-[#dceef5] transition-all duration-150 hover:border-[#4dd2ff]/35 hover:bg-white/[0.07] hover:text-white";
 
 const isReleaseOnline = (releaseState?: string | number) => {
   return releaseState === "ONLINE" || releaseState === 1;
