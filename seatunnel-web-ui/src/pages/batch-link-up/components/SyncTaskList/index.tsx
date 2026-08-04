@@ -248,7 +248,6 @@ const App: React.FC<Props> = ({
         </div>
       ),
     },
-
     {
       title: intl.formatMessage({
         id: "pages.job.table.col.status",
