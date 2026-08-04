@@ -83,10 +83,10 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
 
     seatunnelJobExecuteApi.pause(instanceId).then((data) => {
       if (data?.code === 0) {
-        message.success("停止成功");
+        message.success("终止成功");
         cbk();
       } else {
-        message.error(data?.msg || "停止失败");
+        message.error(data?.msg || "终止失败");
         cbk();
       }
     });
@@ -111,7 +111,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
 
   const handleOffline = async () => {
     if (isRunning) {
-      message.warning("任务正在运行中，请先停止任务后再下线");
+      message.warning("任务正在运行中，请先终止任务后再下线");
       return;
     }
 
@@ -132,7 +132,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
   };
 
   const doDeleteTask = async (id: string | number) => {
-    const response = await seatunnelJobDefinitionApi.delete(id);
+    const response: any = await seatunnelJobDefinitionApi.delete(String(id));
 
     if (response?.code === 0) {
       message.success(response?.msg || "删除成功");
@@ -150,7 +150,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       }
 
       if (isRunning) {
-        message.warning("任务正在运行中，请先停止后再删除");
+        message.warning("任务正在运行中，请先终止后再删除");
         return;
       }
     }
@@ -212,7 +212,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       }
 
       if (isRunning) {
-        message.warning("任务正在运行中，请先停止后再编辑");
+        message.warning("任务正在运行中，请先终止后再编辑");
         return;
       }
     }
@@ -304,13 +304,13 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
           <Popconfirm
             title={intl.formatMessage({
               id: "pages.job.action.stop.title",
-              defaultMessage: "Stop Task",
+              defaultMessage: "Terminate Task",
             })}
             description={
               <div style={{ marginRight: 12 }}>
                 {intl.formatMessage({
                   id: "pages.job.action.stop.desc",
-                  defaultMessage: "Are you sure stop this job?",
+                  defaultMessage: "Are you sure to terminate this job?",
                 })}
               </div>
             }
@@ -324,7 +324,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
               onClick={stopPropagation}
             >
               <PauseCircleOutlined />
-              停止
+              终止
             </button>
           </Popconfirm>
         ) : (
@@ -336,7 +336,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
             open={canRun ? runOpen : false}
             onOpenChange={(open) => {
               if (!canRun) {
-                message.warning("请先上线任务，再执行运行操作");
+                message.warning("请先上线任务，再执行启动操作");
                 return;
               }
 
@@ -349,7 +349,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
               <div style={{ marginRight: 12 }}>
                 {intl.formatMessage({
                   id: "pages.job.action.run.desc",
-                  defaultMessage: "Are you sure to run this job?",
+                  defaultMessage: "Are you sure to start this job?",
                 })}
               </div>
             }
@@ -357,7 +357,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
             cancelText={noText}
             onConfirm={async () => {
               if (!canRun) {
-                message.warning("请先上线任务，再执行运行操作");
+                message.warning("请先上线任务，再执行启动操作");
                 return;
               }
 
@@ -376,7 +376,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
                   cbk();
                   setRunOpen(false);
                 } else {
-                  message.error(data?.msg || "运行失败");
+                  message.error(data?.msg || "启动失败");
                 }
               } finally {
                 setRunLoading(false);
@@ -391,12 +391,12 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
                 event.stopPropagation();
 
                 if (!canRun) {
-                  message.warning("请先上线任务，再执行运行操作");
+                  message.warning("请先上线任务，再执行启动操作");
                 }
               }}
             >
               <PlayCircleOutlined />
-              运行
+              启动
             </button>
           </Popconfirm>
         )}

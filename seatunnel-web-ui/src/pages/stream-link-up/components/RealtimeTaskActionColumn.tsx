@@ -123,7 +123,7 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
   const handleRun = async () => {
     if (!canRun) {
       if (!isOnline) {
-        message.warning("请先上线任务，再执行运行操作");
+        message.warning("请先上线任务，再执行启动操作");
       }
 
       if (isRunning) {
@@ -163,7 +163,7 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
   const handleOffline = async () => {
     if (!canOffline) {
       if (isRunning) {
-        message.warning("任务正在运行中，请先停止任务后再下线");
+        message.warning("任务正在运行中，请先终止任务后再下线");
       }
 
       return;
@@ -182,12 +182,12 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
     <Space size={6} className="whitespace-nowrap">
       {isRunning ? (
         <Popconfirm
-          title="停止实时任务"
+          title="终止实时任务"
           description={
             <div className="mr-3">
-              停止后当前运行实例会被暂停，
+              终止后当前运行实例会被停止，
               <br />
-              确认停止该任务吗？
+              确认终止该任务吗？
             </div>
           }
           okText="确认"
@@ -206,17 +206,17 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
             onClick={stopPropagation}
           >
             <PauseCircleOutlined />
-            停止
+            终止
           </button>
         </Popconfirm>
       ) : (
         <Popconfirm
-          title="运行实时任务"
+          title="启动实时任务"
           open={canRun ? runOpen : false}
           onOpenChange={(open) => {
             if (!canRun) {
               if (!isOnline) {
-                message.warning("请先上线任务，再执行运行操作");
+                message.warning("请先上线任务，再执行启动操作");
               }
 
               if (isRunning) {
@@ -260,7 +260,7 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
 
               if (!canRun) {
                 if (!isOnline) {
-                  message.warning("请先上线任务，再执行运行操作");
+                  message.warning("请先上线任务，再执行启动操作");
                 }
 
                 if (isRunning) {
@@ -270,7 +270,7 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
             }}
           >
             <PlayCircleOutlined />
-            运行
+            启动
           </button>
         </Popconfirm>
       )}
@@ -282,7 +282,7 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
           onOpenChange={(open) => {
             if (!canOffline) {
               if (isRunning) {
-                message.warning("任务正在运行中，请先停止任务后再下线");
+                message.warning("任务正在运行中，请先终止任务后再下线");
               }
 
               return;
@@ -315,7 +315,7 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
               event.stopPropagation();
 
               if (!canOffline && isRunning) {
-                message.warning("任务正在运行中，请先停止任务后再下线");
+                message.warning("任务正在运行中，请先终止任务后再下线");
               }
             }}
           >

@@ -111,7 +111,7 @@ export const batchJobExecutorApi = {
         });
     },
 
-    batchPause: (jobDefinitionIds: React.Key[]): any => {
+    batchTerminate: (jobDefinitionIds: React.Key[]): any => {
         return HttpUtils.post(`${apiPrefixExecutor}/batch-pause`, {
             jobDefinitionIds: jobDefinitionIds.map(Number),
         });

@@ -5,6 +5,9 @@ import { TableRowSelection } from "antd/es/table/interface";
 import moment from "moment";
 import { useEffect, useState } from "react";
 import { seatunnelJobDefinitionApi } from "../../api";
+import BatchCreateJobModal, {
+  BatchCreateValues,
+} from "@/pages/common/components/BatchCreateJobModal";
 import { batchJobExecutorApi } from "../../type";
 import ActionColumn from "./components/ActionColumn";
 import AdvancedSearchForm from "./components/AdvancedSearchForm";
@@ -88,6 +91,8 @@ const App: React.FC<Props> = ({
   const [pagination, setPagination] = useState(() => parsePaginationFromUrl());
   const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [batchCreateOpen, setBatchCreateOpen] = useState(false);
+  const [batchCreateLoading, setBatchCreateLoading] = useState(false);
 
   const copyToClipboard = async (text: string | number) => {
     const value = String(text);
@@ -383,20 +388,29 @@ const App: React.FC<Props> = ({
       return {
         startDisabled: true,
         stopDisabled: true,
+        onlineDisabled: true,
+        offlineDisabled: true,
         startTooltip: "请先选择任务",
-        stopTooltip: "请先选择任务",
+        stopTooltip: "请先选择要终止的任务",
+        onlineTooltip: "请先选择任务",
+        offlineTooltip: "请先选择任务",
       };
     }
 
     const offlineRows = selectedRows.filter((item) => !isOnline(item));
+    const onlineRows = selectedRows.filter(isOnline);
     const runningRows = selectedRows.filter(isRunning);
     const notRunningRows = selectedRows.filter((item) => !isRunning(item));
 
     const startDisabled = offlineRows.length > 0 || runningRows.length > 0;
     const stopDisabled = notRunningRows.length > 0;
+    const onlineDisabled = offlineRows.length === 0;
+    const offlineDisabled = onlineRows.length === 0 || runningRows.length > 0;
 
     let startTooltip: string | undefined;
     let stopTooltip: string | undefined;
+    let onlineTooltip: string | undefined;
+    let offlineTooltip: string | undefined;
 
     if (offlineRows.length > 0) {
       startTooltip = `存在未上线任务，请先上线后再启动：${buildLimitedJobLabels(
@@ -409,16 +423,34 @@ const App: React.FC<Props> = ({
     }
 
     if (notRunningRows.length > 0) {
-      stopTooltip = `存在未运行任务，请只选择运行中的任务进行停止：${buildLimitedJobLabels(
+      stopTooltip = `存在未运行任务，请只选择运行中的任务进行终止：${buildLimitedJobLabels(
         notRunningRows
       )}`;
+    }
+
+    if (onlineDisabled) {
+      onlineTooltip = "所选任务已经全部上线";
+    }
+
+    if (runningRows.length > 0) {
+      offlineTooltip = `存在运行中的任务，请先终止后再下线：${buildLimitedJobLabels(
+        runningRows
+      )}`;
+    } else if (!offlineDisabled) {
+      offlineTooltip = undefined;
+    } else {
+      offlineTooltip = "所选任务已经全部下线";
     }
 
     return {
       startDisabled,
       stopDisabled,
+      onlineDisabled,
+      offlineDisabled,
       startTooltip,
       stopTooltip,
+      onlineTooltip,
+      offlineTooltip,
     };
   };
 
@@ -459,14 +491,14 @@ const App: React.FC<Props> = ({
     const selectedRows = getSelectedRows();
 
     if (selectedRows.length === 0) {
-      message.warning("请先选择要停止的任务");
+      message.warning("请先选择要终止的任务");
       return false;
     }
 
     const notRunningRows = selectedRows.filter((item) => !isRunning(item));
     if (notRunningRows.length > 0) {
       message.warning(
-        `存在未运行的任务，请只选择运行中的任务进行批量停止：${buildLimitedJobLabels(
+        `存在未运行的任务，请只选择运行中的任务进行批量终止：${buildLimitedJobLabels(
           notRunningRows
         )}`
       );
@@ -507,26 +539,26 @@ const App: React.FC<Props> = ({
         setSelectedRowKeys([]);
         fetchTaskList();
       } else {
-        
+        message.error(data?.message || data?.msg || "批量启动失败");
       }
     } catch (error: any) {
-      message.error(getErrorMessage(error, "Start all failed"));
+      message.error(getErrorMessage(error, "批量启动失败"));
     }
   };
 
-  const onStopAll = async () => {
+  const onTerminateAll = async () => {
     if (!validateBatchStop()) {
       return;
     }
 
     try {
-      const data = await batchJobExecutorApi.batchPause(selectedRowKeys);
+      const data = await batchJobExecutorApi.batchTerminate(selectedRowKeys);
 
       if (data?.code === 0) {
         const result = data?.data;
 
         message.success(
-          `批量停止完成：成功 ${result?.successCount || 0} 个，失败 ${
+          `批量终止完成：成功 ${result?.successCount || 0} 个，失败 ${
             result?.failedCount || 0
           } 个`
         );
@@ -534,10 +566,111 @@ const App: React.FC<Props> = ({
         setSelectedRowKeys([]);
         fetchTaskList();
       } else {
-        message.error(data?.message || data?.msg || "Stop all failed");
+        message.error(data?.message || data?.msg || "批量终止失败");
       }
     } catch (error: any) {
-      message.error(getErrorMessage(error, "Stop all failed"));
+      message.error(getErrorMessage(error, "批量终止失败"));
+    }
+  };
+
+  const onOnlineAll = async () => {
+    const selectedRows = getSelectedRows();
+    const records = selectedRows.filter((item) => !isOnline(item));
+
+    if (records.length === 0) {
+      message.warning("所选任务已经全部上线");
+      return;
+    }
+
+    const responses = await Promise.allSettled(
+      records.map((record) => seatunnelJobDefinitionApi.online(record.id))
+    );
+    const successCount = responses.filter(
+      (item) => item.status === "fulfilled" && item.value?.code === 0
+    ).length;
+    const failedCount = responses.length - successCount;
+
+    if (successCount > 0) {
+      message.success(`批量上线完成：成功 ${successCount} 个`);
+      fetchTaskList();
+    }
+    if (failedCount > 0) {
+      message.error(`批量上线失败：${failedCount} 个`);
+    }
+    setSelectedRowKeys([]);
+  };
+
+  const onOfflineAll = async () => {
+    const selectedRows = getSelectedRows();
+    const runningRows = selectedRows.filter(isRunning);
+    if (runningRows.length > 0) {
+      message.warning(
+        `存在运行中的任务，请先终止后再下线：${buildLimitedJobLabels(runningRows)}`
+      );
+      return;
+    }
+
+    const records = selectedRows.filter(isOnline);
+    if (records.length === 0) {
+      message.warning("所选任务已经全部下线");
+      return;
+    }
+
+    const responses = await Promise.allSettled(
+      records.map((record) => seatunnelJobDefinitionApi.offline(record.id))
+    );
+    const successCount = responses.filter(
+      (item) => item.status === "fulfilled" && item.value?.code === 0
+    ).length;
+    const failedCount = responses.length - successCount;
+
+    if (successCount > 0) {
+      message.success(`批量下线完成：成功 ${successCount} 个`);
+      fetchTaskList();
+    }
+    if (failedCount > 0) {
+      message.error(`批量下线失败：${failedCount} 个`);
+    }
+    setSelectedRowKeys([]);
+  };
+
+  const openBatchCreate = () => {
+    if (getSelectedRows().length === 0) {
+      message.warning("请先选择一个或多个模板任务");
+      return;
+    }
+    setBatchCreateOpen(true);
+  };
+
+  const handleBatchCreate = async (values: BatchCreateValues) => {
+    const templates = getSelectedRows();
+    if (templates.length === 0) {
+      message.warning("请先选择一个或多个模板任务");
+      return;
+    }
+
+    try {
+      setBatchCreateLoading(true);
+      const response: any = await seatunnelJobDefinitionApi.batchCreate({
+        templateJobDefinitionIds: templates.map((item) => item.id),
+        copiesPerTemplate: values.copiesPerTemplate,
+        jobNamePrefix: values.jobNamePrefix,
+      });
+
+      if (response?.code !== 0) {
+        message.error(response?.message || response?.msg || "批量创建失败");
+        return;
+      }
+
+      const createdCount = response?.data?.createdCount || 0;
+      message.success(`批量创建完成：成功创建 ${createdCount} 个任务`);
+      setBatchCreateOpen(false);
+      setSelectedRowKeys([]);
+      fetchTaskList();
+    } catch (error: any) {
+      message.error(getErrorMessage(error, "批量创建失败"));
+    } finally {
+      setBatchCreateLoading(false);
     }
   };
 
@@ -583,7 +716,10 @@ const App: React.FC<Props> = ({
 
       <BottomActionBar
         onStart={onStartAll}
-        onStop={onStopAll}
+        onStop={onTerminateAll}
+        onOnline={onOnlineAll}
+        onOffline={onOfflineAll}
+        onCreate={openBatchCreate}
         pagination={{
           ...pagination,
           onChange: handlePaginationChange,
@@ -594,6 +730,18 @@ const App: React.FC<Props> = ({
         stopDisabled={batchActionState.stopDisabled}
         startTooltip={batchActionState.startTooltip}
         stopTooltip={batchActionState.stopTooltip}
+        onlineDisabled={batchActionState.onlineDisabled}
+        offlineDisabled={batchActionState.offlineDisabled}
+        onlineTooltip={batchActionState.onlineTooltip}
+        offlineTooltip={batchActionState.offlineTooltip}
+      />
+
+      <BatchCreateJobModal
+        open={batchCreateOpen}
+        loading={batchCreateLoading}
+        templates={getSelectedRows()}
+        onCancel={() => setBatchCreateOpen(false)}
+        onSubmit={handleBatchCreate}
       />
     </>
   );

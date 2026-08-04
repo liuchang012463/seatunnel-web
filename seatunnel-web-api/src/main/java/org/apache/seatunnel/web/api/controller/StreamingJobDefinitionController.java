@@ -14,8 +14,10 @@ import org.apache.seatunnel.web.spi.bean.dto.StreamingJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingGuideMultiJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingGuideSingleJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingScriptJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionBatchCreateCommand;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
+import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionBatchCreateResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionEditDetailVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionSaveResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.StreamingJobDefinitionVO;
@@ -85,6 +87,17 @@ public class StreamingJobDefinitionController {
     @ApiException(SAVE_OR_UPDATE_BATCH_JOB_DEFINITION_ERROR)
     public Result<JobDefinitionSaveResultVO> saveGuideMulti(@RequestBody StreamingGuideMultiJobSaveCommand command) {
         return Result.buildSuc(streamingJobDefinitionService.saveOrUpdate(command));
+    }
+
+    /**
+     * Create offline copies of selected streaming job definitions.
+     */
+    @PostMapping("/batch-create")
+    @Operation(summary = "batchCreateStreamingJobDefinitions", description = "批量复制创建实时任务定义")
+    @ApiException(SAVE_OR_UPDATE_BATCH_JOB_DEFINITION_ERROR)
+    public Result<JobDefinitionBatchCreateResultVO> batchCreate(
+            @RequestBody @Validated JobDefinitionBatchCreateCommand command) {
+        return Result.buildSuc(streamingJobDefinitionService.batchCreate(command));
     }
 
     /**

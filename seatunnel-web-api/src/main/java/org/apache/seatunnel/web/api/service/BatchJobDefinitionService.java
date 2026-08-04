@@ -7,8 +7,10 @@ import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveComman
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleIncrementalJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchFileSyncJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionBatchCreateCommand;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
+import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionBatchCreateResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionEditDetailVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionSaveResultVO;
 
@@ -47,4 +49,6 @@ public interface BatchJobDefinitionService {
     Boolean updateReleaseState(Long id, ReleaseState releaseState);
 
     List<BatchJobDefinitionVO> listByIds(List<Long> ids);
+
+    JobDefinitionBatchCreateResultVO batchCreate(JobDefinitionBatchCreateCommand command);
 }

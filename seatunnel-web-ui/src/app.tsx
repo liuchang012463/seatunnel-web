@@ -1,11 +1,11 @@
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import { SettingDrawer } from '@ant-design/pro-components';
-import { AvatarDropdown, AvatarName, Footer } from '@/components';
+import { Footer } from '@/components';
 import '@ant-design/v5-patch-for-react-19';
 import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
-import { GlobalSearch, Knowledge } from './components/RightContent';
+import { Knowledge } from './components/RightContent';
 import ThemeSwitch from './components/RightContent/ThemeSwitch';
 import { prototypeMenuData } from './prototype/menuData';
 import { isPrototypeMode } from './prototype/mode';
@@ -90,14 +90,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     actionsRender: () =>
       isPrototypeMode
         ? []
-        : [<GlobalSearch key="globalsearch" />, <Knowledge key="knowledge" />, <ThemeSwitch key="theme-switch" />],
-    avatarProps: {
-      src: initialState?.currentUser?.avatar,
-      title: <AvatarName />,
-      render: (_, avatarChildren) => {
-        return <AvatarDropdown>{avatarChildren}</AvatarDropdown>;
-      },
-    },
+        : [<Knowledge key="knowledge" />, <ThemeSwitch key="theme-switch" />],
     waterMarkProps: {
       content: initialState?.currentUser?.name,
     },
