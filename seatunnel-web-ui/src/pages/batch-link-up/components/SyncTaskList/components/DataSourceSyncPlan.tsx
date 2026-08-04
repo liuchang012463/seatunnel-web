@@ -8,6 +8,28 @@ interface DataSourceSyncPlanProps {
   record: any;
 }
 
+const dataSourcePopoverInnerStyle: CSSProperties = {
+  borderRadius: 12,
+  boxShadow: "0 14px 36px rgba(15, 23, 42, 0.16)",
+};
+
+const jsonPopoverContentStyle: CSSProperties = {
+  width: 420,
+  maxWidth: "calc(100vw - 96px)",
+  maxHeight: 360,
+  overflow: "auto",
+  padding: 12,
+  border: "1px solid #2187a8",
+  borderRadius: 10,
+  background: "#f8fafc",
+  color: "#334155",
+  fontFamily:
+    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+  fontSize: 12,
+  lineHeight: "20px",
+  wordBreak: "break-word",
+};
+
 const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   console.log(record);
   const isFileSync = record?.mode === "FILE_SYNC";
@@ -39,89 +61,84 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   };
 
   const renderJsonPopoverContent = () => {
-  if (!jsonData) {
-    return (
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
-    );
-  }
-
-  const renderValue = (value: any): React.ReactNode => {
-    if (value === null) {
-      return <span className="text-gray-400">null</span>;
-    }
-
-    if (typeof value === "string") {
-      return <span className="text-emerald-600">"{value}"</span>;
-    }
-
-    if (typeof value === "number") {
-      return <span className="text-amber-500">{value}</span>;
-    }
-
-    if (typeof value === "boolean") {
+    if (!jsonData) {
       return (
-        <span className={value ? "text-blue-600" : "text-red-500"}>
-          {String(value)}
-        </span>
+        <div style={{ width: 320, padding: "12px 0" }}>
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
+        </div>
       );
     }
 
-    return <span className="text-gray-700">{String(value)}</span>;
-  };
+    const renderValue = (value: any): React.ReactNode => {
+      if (value === null) {
+        return <span className="text-gray-400">null</span>;
+      }
 
-  const renderObject = (obj: any, level = 0): React.ReactNode => {
-    if (typeof obj !== "object" || obj === null) {
-      return renderValue(obj);
-    }
+      if (typeof value === "string") {
+        return <span className="text-emerald-600">"{value}"</span>;
+      }
 
-    const isArray = Array.isArray(obj);
-    const indent = level * 14;
+      if (typeof value === "number") {
+        return <span className="text-amber-500">{value}</span>;
+      }
 
-    return (
-      <div>
-        {/* 开括号 */}
-        <div style={{ paddingLeft: indent }} className="text-gray-400">
-          {isArray ? "[" : "{"}
-        </div>
+      if (typeof value === "boolean") {
+        return (
+          <span className={value ? "text-blue-600" : "text-red-500"}>
+            {String(value)}
+          </span>
+        );
+      }
 
-        {/* 内容 */}
+      return <span className="text-gray-700">{String(value)}</span>;
+    };
+
+    const renderObject = (obj: any, level = 0): React.ReactNode => {
+      if (typeof obj !== "object" || obj === null) {
+        return renderValue(obj);
+      }
+
+      const isArray = Array.isArray(obj);
+      const indent = level * 14;
+
+      return (
         <div>
-          {Object.entries(obj).map(([key, value]) => (
-            <div
-              key={key}
-              style={{ paddingLeft: indent + 14 }}
-              className="leading-5"
-            >
-              {!isArray && (
-                <>
-                  <span className="text-purple-600">"{key}"</span>
-                  <span className="text-gray-400">: </span>
-                </>
-              )}
+          <div style={{ paddingLeft: indent }} className="text-gray-400">
+            {isArray ? "[" : "{"}
+          </div>
 
-              {typeof value === "object" && value !== null ? (
-                renderObject(value, level + 1)
-              ) : (
-                renderValue(value)
-              )}
-            </div>
-          ))}
-        </div>
+          <div>
+            {Object.entries(obj).map(([key, value]) => (
+              <div
+                key={key}
+                style={{ paddingLeft: indent + 14 }}
+                className="leading-5"
+              >
+                {!isArray && (
+                  <>
+                    <span className="text-purple-600">"{key}"</span>
+                    <span className="text-gray-400">: </span>
+                  </>
+                )}
 
-        {/* 闭括号 */}
-        <div style={{ paddingLeft: indent }} className="text-gray-400">
-          {isArray ? "]" : "}"}
+                {typeof value === "object" && value !== null ? (
+                  renderObject(value, level + 1)
+                ) : (
+                  renderValue(value)
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ paddingLeft: indent }} className="text-gray-400">
+            {isArray ? "]" : "}"}
+          </div>
         </div>
-      </div>
-    );
+      );
+    };
+
+    return <div style={jsonPopoverContentStyle}>{renderObject(jsonData)}</div>;
   };
-
-  return (
-    <div className="w-[340px] max-h-[320px] overflow-auto text-xs font-mono bg-gradient-to-br from-gray-50 to-white p-3 rounded-xl border border-gray-200 shadow-sm">
-      {renderObject(jsonData)}
-    </div>
-  );
-};
 
   const formatTables = (tableValue: any, fallback?: string) => {
     if (!tableValue) return fallback || "-";
@@ -403,7 +420,9 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
                 title="数据源信息"
                 content={renderJsonPopoverContent()}
                 trigger="click"
-                placement="right"
+                placement="rightTop"
+                autoAdjustOverflow
+                overlayInnerStyle={dataSourcePopoverInnerStyle}
               >
                 <a
                   href="#"
@@ -501,7 +520,9 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
                 title="数据源信息"
                 content={renderJsonPopoverContent()}
                 trigger="click"
-                placement="right"
+                placement="rightTop"
+                autoAdjustOverflow
+                overlayInnerStyle={dataSourcePopoverInnerStyle}
               >
                 <a
                   href="#"
