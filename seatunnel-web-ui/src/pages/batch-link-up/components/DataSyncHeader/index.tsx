@@ -1,12 +1,8 @@
-import { ArrowRightOutlined, SunOutlined } from "@ant-design/icons";
+import { SunOutlined } from "@ant-design/icons";
 import { useIntl } from "@umijs/max";
-import { Button, Select } from "antd";
+import { Button } from "antd";
 import React from "react";
 import TaskListPageHeader from "@/components/TaskListPageHeader";
-import {
-  generateDataSourceOptions,
-  generateSourceDataSourceOptions,
-} from "../../DataSourceSelect";
 
 interface DataSyncHeaderProps {
   goDetail: (value?: any) => void;
@@ -24,27 +20,9 @@ export interface SyncParams {
 const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
   goDetail,
   sourceType,
-  setSourceType,
   targetType,
-  setTargetType,
 }) => {
   const intl = useIntl();
-
-  const handleSourceChange = (value: string, option: any) => {
-    setSourceType({
-      dbType: value,
-      connectorType: option?.connectorType,
-      pluginName: option?.pluginName,
-    });
-  };
-
-  const handleTargetChange = (value: string, option: any) => {
-    setTargetType({
-      dbType: value,
-      connectorType: option?.connectorType,
-      pluginName: option?.pluginName,
-    });
-  };
 
   const handleCreateClick = () => {
     goDetail();
@@ -72,13 +50,8 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
         >
           创建离线任务
         </Button>
-    }
-    >
-      
-
-          
-
-    </TaskListPageHeader>
+      }
+    />
   );
 };
 
