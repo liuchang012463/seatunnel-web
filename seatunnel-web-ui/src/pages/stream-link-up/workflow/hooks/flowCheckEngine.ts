@@ -32,6 +32,28 @@ const getNodeMeta = (node: any) => ({
 
 const getConfig = (node: any) => node?.data?.config || {};
 
+const isElasticsearchSink = (node: any) =>
+  String(node?.data?.dbType || "").toUpperCase() === "ELASTICSEARCH";
+
+const hasElasticsearchTarget = (config: any) => {
+  const directTarget = [
+    config.index,
+    config.targetIndex,
+    config.targetTableName,
+    config.table,
+  ].some((value) => String(value || "").trim());
+
+  if (directTarget) return true;
+
+  return (
+    Array.isArray(config.index_list) &&
+    config.index_list.some((item: any) => {
+      const index = item && typeof item === "object" ? item.index : item;
+      return String(index || "").trim();
+    })
+  );
+};
+
 const buildWarning = (node: any, field: string, message: string): CheckItem => ({
   ...getNodeMeta(node),
   level: "warning",
@@ -135,6 +157,14 @@ const sinkRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
+
+    if (isElasticsearchSink(node)) {
+      if (!hasElasticsearchTarget(config)) {
+        return buildWarning(node, "index", "请选择目标索引");
+      }
+      return null;
+    }
+
     if (config.autoCreateTable) {
       if (!String(config.targetTableName || "").trim()) {
         return buildWarning(node, "targetTableName", "自动建表时必须填写目标表名");
