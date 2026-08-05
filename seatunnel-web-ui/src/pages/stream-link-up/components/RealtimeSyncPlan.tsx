@@ -24,7 +24,7 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
   const animatedIconStyle: CSSProperties = {
     fontSize: 10,
     animation: "realtime-plan-flow 2s ease-in-out infinite",
-    color: "hsl(231 48% 48%)",
+    color: "white",
   };
 
   const safeParse = (value: any) => {
@@ -316,7 +316,7 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
             handleOpenDatasource(datasourceId, type);
           }}
           className="ml-2 inline-block max-w-[150px] truncate text-[13px] font-medium"
-          style={{ color: "hsl(231 48% 48%)" }}
+          style={{ color: "#6ea8ff", fontWeight: 600 }}
           title={datasourceName || fallback}
         >
           {datasourceName || fallback || "-"}
@@ -372,14 +372,19 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
         `}
       </style>
 
-      <div className="mb-3">
+      <div style={{ marginBottom: 12 }}>
         <span
-          className="inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-violet-50/70 px-3 py-1 text-[11px] font-medium shadow-sm shadow-violet-100/40"
-          style={{ color: "hsl(231 48% 48%)" }}
+          className="
+            inline-flex items-center gap-1.5 rounded-full
+            border border-white/10 bg-[rgba(255,255,255,0.05)]
+            px-3 py-1 text-[11px] font-medium
+            shadow-none backdrop-blur-sm
+          "
+          style={{ color: "rgba(176, 196, 255, 0.92)" }}
         >
           <span
-            className="h-1 w-1 rounded-full"
-            style={{ backgroundColor: "hsl(231 48% 48%)" }}
+            className="h-1 w-1 rounded-full "
+            style={{ backgroundColor: "rgba(176, 196, 255, 0.92)" }}
           />
           {getPlanTitle()}
         </span>
