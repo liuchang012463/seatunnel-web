@@ -279,7 +279,7 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
               key={`${tableName}-${index}`}
               className="stream-link-table-popover__item"
             >
-              <span className="h-1 w-1 shrink-0 rounded-full bg-slate-700" />
+              <span className="stream-link-table-popover__bullet" />
               <span className="truncate" title={tableName}>
                 {tableName}
               </span>
