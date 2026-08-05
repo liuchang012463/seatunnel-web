@@ -25,6 +25,7 @@ import {
   FILE_DATASOURCE_TYPES,
 } from './support';
 import type { FileDataSourceType } from './support';
+import './index.less';
 
 type RemoteEntry = { name: string; path: string; type: 'DIRECTORY' | 'FILE' | 'LINK'; size?: number };
 type DataSourceOption = { id: string; name: string; dbType: FileDataSourceType };
@@ -281,6 +282,7 @@ const FileSyncPage: React.FC = () => {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <Form.Item name="syncType" label="同步方式">
                 <Radio.Group
+                  className="file-sync-type-radio"
                   optionType="button"
                   options={[
                     { label: '全量复制', value: 'FULL' },

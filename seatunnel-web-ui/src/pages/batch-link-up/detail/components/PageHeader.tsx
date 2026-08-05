@@ -28,7 +28,7 @@ const PageHeader: React.FC<Props> = ({ onBack }) => {
           type="text"
           icon={<ArrowLeftOutlined />}
           onClick={onBack}
-          className="!h-10 !rounded-full !border !border-[#E4E7EC] !bg-white !px-4 !text-[#344054] shadow-sm"
+          className="!h-11 !rounded-xl !border !border-[#2187A8] !bg-[rgba(33,135,168,0.16)] !px-5 !font-medium !text-[#D5D5D5] shadow-[0_6px_16px_rgba(0,25,34,0.2)] transition-all duration-200 hover:!border-[#4DD2FF] hover:!bg-[rgba(33,135,168,0.32)] hover:!text-white"
         >
           返回上一页
         </Button>

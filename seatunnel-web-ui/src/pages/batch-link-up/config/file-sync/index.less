@@ -1,0 +1,54 @@
+.file-sync-type-radio {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--st-color-bg-control);
+  border: 1px solid var(--st-color-border);
+  border-radius: 10px;
+}
+
+.file-sync-type-radio .ant-radio-button-wrapper {
+  display: inline-flex;
+  height: 34px;
+  align-items: center;
+  padding: 0 16px;
+  color: var(--st-color-text-secondary) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  box-shadow: none !important;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.file-sync-type-radio .ant-radio-button-wrapper::before {
+  display: none !important;
+}
+
+.file-sync-type-radio .ant-radio-button-wrapper:not(
+    .ant-radio-button-wrapper-disabled
+  ):hover {
+  color: var(--st-color-text-primary) !important;
+  background: var(--st-color-hover) !important;
+}
+
+.file-sync-type-radio
+  .ant-radio-button-wrapper-checked:not(
+    .ant-radio-button-wrapper-disabled
+  ) {
+  color: var(--st-color-text-primary) !important;
+  background: var(--st-color-primary) !important;
+  box-shadow: 0 4px 12px rgba(0, 25, 34, 0.2) !important;
+}
+
+.file-sync-type-radio
+  .ant-radio-button-wrapper-checked:not(
+    .ant-radio-button-wrapper-disabled
+  ):hover {
+  background: var(--st-color-primary-active) !important;
+}
+
+.file-sync-type-radio .ant-radio-button-wrapper-disabled {
+  color: var(--st-color-text-muted) !important;
+  background: transparent !important;
+  cursor: not-allowed;
+}
