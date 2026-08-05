@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.metrics;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.alarm.event.JobStatusChangedEvent;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
@@ -37,14 +38,18 @@ public class JobResultHandler {
 
     private final IncrementalBatchService incrementalBatchService;
 
+    private final JobLogService jobLogService;
+
     public JobResultHandler(BatchJobInstanceService instanceService,
                             JobMetricsMonitor jobMetricsMonitor,
                             ApplicationEventPublisher eventPublisher,
-                            IncrementalBatchService incrementalBatchService) {
+                            IncrementalBatchService incrementalBatchService,
+                            JobLogService jobLogService) {
         this.instanceService = instanceService;
         this.jobMetricsMonitor = jobMetricsMonitor;
         this.eventPublisher = eventPublisher;
         this.incrementalBatchService = incrementalBatchService;
+        this.jobLogService = jobLogService;
     }
 
     /**
@@ -124,6 +129,12 @@ public class JobResultHandler {
         }
 
         try {
+            jobLogService.persistEngineLog(jobInstanceId, org.apache.seatunnel.web.common.enums.JobMode.BATCH);
+        } catch (Exception e) {
+            log.warn("Persist complete batch Engine log failed, instanceId={}", jobInstanceId, e);
+        }
+
+        try {
             jobMetricsMonitor.finalizeAndPersist(jobInstanceId, metricsStatus);
         } catch (Exception e) {
             log.warn(
@@ -168,6 +179,12 @@ public class JobResultHandler {
             incrementalBatchService.handleJobResult(jobInstanceId, localStatus, errorMessage);
         } catch (Exception e) {
             log.error("Finalize incremental batch state in recovery failed, instanceId={}", jobInstanceId, e);
+        }
+
+        try {
+            jobLogService.persistEngineLog(jobInstanceId, org.apache.seatunnel.web.common.enums.JobMode.BATCH);
+        } catch (Exception e) {
+            log.warn("Persist complete batch Engine log in recovery failed, instanceId={}", jobInstanceId, e);
         }
 
         try {

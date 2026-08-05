@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.metrics.streaming;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
 import org.apache.seatunnel.web.api.utils.JobUtils;
 import org.apache.seatunnel.web.common.enums.JobResult;
@@ -17,11 +18,14 @@ public class StreamingJobResultHandler {
 
     private final StreamingJobInstanceService streamingJobInstanceService;
     private final StreamingJobMetricsMonitor streamingJobMetricsMonitor;
+    private final JobLogService jobLogService;
 
     public StreamingJobResultHandler(StreamingJobInstanceService streamingJobInstanceService,
-                                     StreamingJobMetricsMonitor streamingJobMetricsMonitor) {
+                                     StreamingJobMetricsMonitor streamingJobMetricsMonitor,
+                                     JobLogService jobLogService) {
         this.streamingJobInstanceService = streamingJobInstanceService;
         this.streamingJobMetricsMonitor = streamingJobMetricsMonitor;
+        this.jobLogService = jobLogService;
     }
 
     public void handleSuccess(Long jobInstanceId) {
@@ -104,6 +108,12 @@ public class StreamingJobResultHandler {
         po.setErrorMessage(errorMessage);
 
         streamingJobInstanceService.updateById(po);
+
+        try {
+            jobLogService.persistEngineLog(jobInstanceId, org.apache.seatunnel.web.common.enums.JobMode.STREAMING);
+        } catch (Exception e) {
+            log.warn("Persist complete streaming Engine log failed, instanceId={}", jobInstanceId, e);
+        }
 
         streamingJobMetricsMonitor.finalizeAndPersist(jobInstanceId, status.name());
     }

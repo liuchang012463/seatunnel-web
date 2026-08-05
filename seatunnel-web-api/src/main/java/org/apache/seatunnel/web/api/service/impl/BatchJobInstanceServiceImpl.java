@@ -5,6 +5,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.support.JobInstanceFactory;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
@@ -60,8 +61,8 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
     @Value("${seatunnel.job.log-dir:logs}")
     private String baseLogDir;
 
-    @Value("${seatunnel.job.max-log-query-bytes:52428800}")
-    private long maxLogQueryBytes;
+    @Resource
+    private JobLogService jobLogService;
 
     @Resource
     private JobTableMetricsDao jobTableMetricsDao;
@@ -158,47 +159,7 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
     @Override
     public String getLogContent(Long instanceId) {
         validateInstanceId(instanceId);
-
-        try {
-            JobInstanceVO instance = selectById(instanceId);
-            String logPath = instance.getLogPath();
-
-            if (StringUtils.isBlank(logPath)) {
-                throw new ServiceException(Status.BATCH_JOB_INSTANCE_LOG_NOT_EXIST);
-            }
-
-            Path path = Paths.get(logPath);
-            if (!Files.exists(path)) {
-                throw new ServiceException(Status.BATCH_JOB_INSTANCE_LOG_NOT_EXIST);
-            }
-
-            long fileSize = Files.size(path);
-            if (fileSize > maxLogQueryBytes) {
-                log.warn(
-                        "Batch job log file is too large, instanceId={}, path={}, fileSize={}, maxLogQueryBytes={}",
-                        instanceId,
-                        path,
-                        fileSize,
-                        maxLogQueryBytes
-                );
-
-                throw new ServiceException(
-                        Status.QUERY_BATCH_JOB_INSTANCE_LOG_ERROR.getCode(),
-                        "当前日志文件过大（>50MB)，请在服务器上查看"
-                );
-            }
-
-            byte[] bytes = Files.readAllBytes(path);
-            return new String(bytes, StandardCharsets.UTF_8);
-        } catch (ServiceException e) {
-            throw e;
-        } catch (IOException e) {
-            log.error("Read batch job instance log failed, instanceId={}", instanceId, e);
-            throw new ServiceException(Status.QUERY_BATCH_JOB_INSTANCE_LOG_ERROR);
-        } catch (Exception e) {
-            log.error("Query batch job instance log failed, instanceId={}", instanceId, e);
-            throw new ServiceException(Status.QUERY_BATCH_JOB_INSTANCE_LOG_ERROR);
-        }
+        return jobLogService.getFullContent(instanceId, JobMode.BATCH);
     }
 
     @Override

@@ -1,0 +1,77 @@
+package org.apache.seatunnel.web.api.log;
+
+import org.apache.seatunnel.web.common.enums.JobMode;
+import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.dao.entity.JobInstance;
+import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
+import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
+import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class JobLogServiceTest {
+
+    @Mock
+    private JobInstanceDao jobInstanceDao;
+
+    @Mock
+    private StreamingJobInstanceDao streamingJobInstanceDao;
+
+    @Mock
+    private SeaTunnelRestClient seaTunnelRestClient;
+
+    @InjectMocks
+    private JobLogService jobLogService;
+
+    @TempDir
+    Path tempDir;
+
+    @Test
+    void persistsEngineSnapshotOnceByContentHashAndReturnsCompleteDocument() throws Exception {
+        Path logPath = tempDir.resolve("job-1.log");
+        Files.writeString(logPath, "[2026-08-05 10:00:00] [INFO] submit\n", StandardCharsets.UTF_8);
+
+        JobInstance instance = JobInstance.builder()
+                .id(1L)
+                .jobDefinitionId(10L)
+                .clientId(2L)
+                .engineJobId("engine-1")
+                .jobStatus(JobStatus.FINISHED)
+                .runtimeConfig("source { plugin = Jdbc }")
+                .logPath(logPath.toString())
+                .build();
+        when(jobInstanceDao.queryById(1L)).thenReturn(instance);
+        when(seaTunnelRestClient.jobLogs(2L, "engine-1", "json"))
+                .thenReturn("engine failure: connection refused");
+
+        jobLogService.persistEngineLog(1L, JobMode.BATCH);
+        jobLogService.persistEngineLog(1L, JobMode.BATCH);
+
+        String stored = Files.readString(logPath, StandardCharsets.UTF_8);
+        assertTrue(stored.contains("submit"));
+        assertTrue(stored.contains("engine failure: connection refused"));
+        assertEquals(1, count(stored, "=== SEA TUNNEL ENGINE LOG SNAPSHOT"));
+        assertTrue(jobLogService.getFullContent(1L, JobMode.BATCH).contains("engine failure"));
+        verify(seaTunnelRestClient, times(3)).jobLogs(eq(2L), eq("engine-1"), eq("json"));
+    }
+
+    private long count(String value, String target) {
+        return value.lines().filter(line -> line.contains(target)).count();
+    }
+}
