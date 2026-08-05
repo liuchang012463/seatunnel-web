@@ -99,6 +99,63 @@
   white-space: nowrap;
 }
 
+.stream-link-task-action {
+  border-color: var(--st-color-border, rgba(17, 125, 160, 0.24));
+  background: transparent;
+  color: var(--st-color-text-secondary, #d5d5d5);
+}
+
+.stream-link-task-action:focus-visible {
+  outline: 2px solid var(--st-color-focus, rgba(77, 210, 255, 0.2));
+  outline-offset: 2px;
+}
+
+.stream-link-task-action--primary {
+  border-color: var(--st-color-primary, #2187a8);
+  background: var(--st-color-primary, #2187a8);
+  color: var(--st-color-text-primary, #fff);
+}
+
+.stream-link-task-action--primary:hover {
+  border-color: var(--st-color-accent, #4dd2ff);
+  background: var(--st-color-accent, #4dd2ff);
+  color: var(--st-color-bg-primary, #001922);
+}
+
+.stream-link-task-action--danger {
+  border-color: rgba(255, 130, 146, 0.58);
+  background: rgba(255, 84, 104, 0.12);
+  color: #ff8292;
+}
+
+.stream-link-task-action--danger:hover {
+  border-color: #ff8292;
+  background: rgba(255, 84, 104, 0.22);
+  color: #ffb2bd;
+}
+
+.stream-link-task-action--secondary,
+.stream-link-task-action--more {
+  border-color: var(--st-color-border, rgba(17, 125, 160, 0.24));
+  background: transparent;
+  color: var(--st-color-text-primary, #fff);
+}
+
+.stream-link-task-action--secondary:hover,
+.stream-link-task-action--more:hover {
+  border-color: var(--st-color-accent, #4dd2ff);
+  background: var(--st-color-hover, rgba(33, 135, 168, 0.24));
+  color: var(--st-color-accent, #4dd2ff);
+}
+
+.stream-link-task-action--disabled {
+  cursor: not-allowed;
+  border-color: rgba(102, 111, 117, 0.5);
+  background: rgba(102, 111, 117, 0.12);
+  color: var(--st-color-text-muted, #666f75);
+  opacity: 0.82;
+}
+
 .stream-link-sync-plan { padding: 8px 0; }
 
 .stream-link-json-popover {

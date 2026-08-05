@@ -61,18 +61,17 @@ interface RealtimeTaskActionColumnProps {
 }
 
 const actionBaseClass =
-  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-all duration-150";
+  "stream-link-task-action inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-all duration-150";
 
-const primaryActionClass = `${actionBaseClass} border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8] hover:border-[#93c5fd] hover:bg-[#dbeafe] hover:text-[#1e40af]`;
+const primaryActionClass = `${actionBaseClass} stream-link-task-action--primary`;
 
-const dangerActionClass = `${actionBaseClass} border-[#fecdd3] bg-[#fff1f2] text-[#be123c] hover:border-[#fda4af] hover:bg-[#ffe4e6] hover:text-[#9f1239]`;
+const dangerActionClass = `${actionBaseClass} stream-link-task-action--danger`;
 
-const secondaryActionClass = `${actionBaseClass} border-slate-200 bg-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900`;
+const secondaryActionClass = `${actionBaseClass} stream-link-task-action--secondary`;
 
-const disabledActionClass = `${actionBaseClass} cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400`;
+const disabledActionClass = `${actionBaseClass} stream-link-task-action--disabled`;
 
-const moreActionClass =
-  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900";
+const moreActionClass = `${actionBaseClass} gap-1 px-2 stream-link-task-action--more`;
 
 const isReleaseOnline = (releaseState?: string | number) => {
   return releaseState === "ONLINE" || releaseState === 1;
