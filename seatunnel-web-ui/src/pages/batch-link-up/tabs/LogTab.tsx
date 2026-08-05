@@ -22,7 +22,7 @@ const LogTab: React.FC<LogTabProps> = ({ content, loading }) => {
 
         <div>
           <div className="text-sm font-semibold text-slate-900">运行日志</div>
-          <div className="mt-0.5 text-xs text-slate-400">
+          <div className="mt-0.5 text-xs text-slate-600">
             查看当前运行实例的执行日志
           </div>
         </div>

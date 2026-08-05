@@ -47,7 +47,7 @@ const BasicInfoSection: React.FC<TaskDetailPanelProps> = ({ item }) => {
       <div className="flex items-center justify-between">
         <Header
           title={
-            <span className="text-sm">
+            <span className="text-sm text-white">
               {intl.formatMessage({
                 id: "pages.job.detail.basicInfo",
                 defaultMessage: "Basic Info",
