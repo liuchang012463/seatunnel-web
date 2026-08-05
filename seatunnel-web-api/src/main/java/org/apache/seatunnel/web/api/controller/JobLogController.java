@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.apache.seatunnel.web.api.log.JobLogSearchResult;
+import org.apache.seatunnel.web.api.log.JobLogAnalysisResult;
 import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -56,6 +57,14 @@ public class JobLogController {
                 page,
                 pageSize
         ));
+    }
+
+    @GetMapping("/{jobMode}/{instanceId}/analysis")
+    @Operation(summary = "analyzeJobInstanceLog", description = "按规则提取任务日志中的操作、数据、流程和时序记录")
+    public Result<JobLogAnalysisResult> analysis(
+            @PathVariable String jobMode,
+            @PathVariable Long instanceId) {
+        return Result.buildSuc(jobLogService.analyze(instanceId, parseMode(jobMode)));
     }
 
     private JobMode parseMode(String value) {

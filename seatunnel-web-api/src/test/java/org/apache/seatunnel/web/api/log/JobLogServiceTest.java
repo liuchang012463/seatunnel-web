@@ -108,6 +108,33 @@ class JobLogServiceTest {
         assertTrue(result.entries().get(0).message().contains("timeout"));
     }
 
+    @Test
+    void analyzesTheSameCompleteDocument() throws Exception {
+        Path logPath = tempDir.resolve("job-3.log");
+        Files.writeString(logPath, """
+                [2026-08-05 10:00:00] [INFO] submit started
+                [2026-08-05 10:00:01] [INFO] rows=10 bytes=2048
+                [2026-08-05 10:00:02] [INFO] running source task
+                [2026-08-05 10:00:03] [ERROR] connection refused
+                """, StandardCharsets.UTF_8);
+
+        JobInstance instance = JobInstance.builder()
+                .id(3L)
+                .clientId(2L)
+                .jobStatus(JobStatus.FINISHED)
+                .logPath(logPath.toString())
+                .build();
+        when(jobInstanceDao.queryById(3L)).thenReturn(instance);
+
+        JobLogAnalysisResult analysis = jobLogService.analyze(3L, JobMode.BATCH);
+
+        assertEquals(4, analysis.totalLines());
+        assertEquals(1, analysis.operationRecords().size());
+        assertEquals(1, analysis.dataSnapshots().size());
+        assertEquals(1, analysis.executionFlow().size());
+        assertEquals(1, analysis.errors().size());
+    }
+
     private long count(String value, String target) {
         return value.lines().filter(line -> line.contains(target)).count();
     }

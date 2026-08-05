@@ -25,7 +25,7 @@ class JobLogParserTest {
 
         assertEquals(3, entries.size());
         assertEquals("OPERATION", entries.get(0).category());
-        assertEquals("EXECUTION_FLOW", entries.get(1).category());
+        assertEquals("ERROR", entries.get(1).category());
         assertEquals("ENGINE", entries.get(2).source());
         assertEquals("ERROR", entries.get(2).eventType());
         assertTrue(entries.get(2).message().contains("connection refused"));

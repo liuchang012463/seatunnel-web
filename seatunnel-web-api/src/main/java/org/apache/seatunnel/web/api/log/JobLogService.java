@@ -101,7 +101,7 @@ public class JobLogService {
                                      String category,
                                      Integer page,
                                      Integer pageSize) {
-        List<JobLogEntry> entries = jobLogParser.parse(getFullContent(instanceId, requestedMode));
+        List<JobLogEntry> entries = parseEntries(instanceId, requestedMode);
         String normalizedKeyword = StringUtils.defaultString(keyword).trim().toLowerCase(Locale.ROOT);
         String normalizedLevel = StringUtils.defaultString(level).trim().toUpperCase(Locale.ROOT);
         String normalizedSource = StringUtils.defaultString(source).trim().toUpperCase(Locale.ROOT);
@@ -133,6 +133,34 @@ public class JobLogService {
                 toIndex < matches.size(),
                 pageEntries
         );
+    }
+
+    public JobLogAnalysisResult analyze(Long instanceId, JobMode requestedMode) {
+        List<JobLogEntry> entries = parseEntries(instanceId, requestedMode);
+        return new JobLogAnalysisResult(
+                instanceId,
+                requestedMode.name(),
+                entries.size(),
+                countByLevel(entries, "ERROR"),
+                countByLevel(entries, "WARN"),
+                entriesByCategory(entries, JobLogParser.CATEGORY_OPERATION),
+                entriesByCategory(entries, JobLogParser.CATEGORY_DATA_SNAPSHOT),
+                entriesByCategory(entries, JobLogParser.CATEGORY_EXECUTION_FLOW),
+                entriesByCategory(entries, JobLogParser.CATEGORY_ERROR),
+                entriesByCategory(entries, JobLogParser.CATEGORY_TIMELINE)
+        );
+    }
+
+    private List<JobLogEntry> parseEntries(Long instanceId, JobMode requestedMode) {
+        return jobLogParser.parse(getFullContent(instanceId, requestedMode));
+    }
+
+    private int countByLevel(List<JobLogEntry> entries, String level) {
+        return (int) entries.stream().filter(entry -> level.equals(entry.level())).count();
+    }
+
+    private List<JobLogEntry> entriesByCategory(List<JobLogEntry> entries, String category) {
+        return entries.stream().filter(entry -> category.equals(entry.category())).toList();
     }
 
     public JobLogContext resolve(Long instanceId, JobMode requestedMode) {

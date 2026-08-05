@@ -11,6 +11,32 @@ export interface JobLogSearchParams {
   pageSize?: number;
 }
 
+export interface JobLogEntry {
+  sequence: number;
+  lineNumber: number;
+  timestamp?: string;
+  level: string;
+  source: string;
+  category: string;
+  eventType: string;
+  message: string;
+  raw: string;
+  elapsedMs?: number;
+}
+
+export interface JobLogAnalysisResult {
+  instanceId: number;
+  jobMode: JobLogMode;
+  totalLines: number;
+  errorCount: number;
+  warningCount: number;
+  operationRecords: JobLogEntry[];
+  dataSnapshots: JobLogEntry[];
+  executionFlow: JobLogEntry[];
+  errors: JobLogEntry[];
+  timeline: JobLogEntry[];
+}
+
 export const jobLogApi = {
   content: (instanceId: string | number, jobMode: JobLogMode) => {
     const segment = jobMode === "STREAMING" ? "streaming" : "batch";
@@ -32,4 +58,8 @@ export const jobLogApi = {
       `/api/v1/job-log/${jobMode}/${instanceId}/search?${query.toString()}`,
     );
   },
+
+  analysis: (instanceId: string | number, jobMode: JobLogMode) =>
+    HttpUtils.get<any>(`/api/v1/job-log/${jobMode}/${instanceId}/analysis`),
+
 };

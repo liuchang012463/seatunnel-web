@@ -204,7 +204,11 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<any>(null);
-  const [activeView, setActiveView] = useState<"raw" | "search">("raw");
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [activeView, setActiveView] = useState<
+    "raw" | "search" | "analysis"
+  >("raw");
 
   const panelStyle = useMemo(
     () =>
@@ -284,6 +288,30 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
       setSearchLoading(false);
     }
   }, [instanceId, jobMode, searchKeyword]);
+
+  const analyzeLogs = useCallback(async () => {
+    if (!instanceId) {
+      return;
+    }
+
+    try {
+      setAnalysisLoading(true);
+      const response = await jobLogApi.analysis(
+        instanceId,
+        jobMode as JobLogMode,
+      );
+      if (response?.code !== 0) {
+        setErrorText(response?.msg || response?.message || "解析日志失败");
+        return;
+      }
+      setAnalysisResult(getResponseData(response));
+      setActiveView("analysis");
+    } catch (error: any) {
+      setErrorText(error?.message || "解析日志失败");
+    } finally {
+      setAnalysisLoading(false);
+    }
+  }, [instanceId, jobMode]);
 
   useEffect(() => {
     if (!open) {
@@ -418,6 +446,14 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
               >
                 检索
               </Button>
+              <Button
+                type="text"
+                loading={analysisLoading}
+                onClick={() => void analyzeLogs()}
+                className={activeView === "analysis" ? "!text-[#315efb]" : "!text-slate-500"}
+              >
+                分析
+              </Button>
               <button
                 type="button"
                 onClick={() => void loadLogs()}
@@ -495,6 +531,52 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 ) : (
                   <div className="flex flex-1 items-center justify-center">
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="输入关键字检索完整日志" />
+                  </div>
+                )}
+              </div>
+            ) : activeView === "analysis" ? (
+              <div className="flex h-full min-h-0 flex-col gap-3 overflow-auto rounded-2xl border border-slate-200 bg-white p-4">
+                {analysisResult ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3 text-xs text-slate-500">
+                      <Tag color="blue">总行数 {analysisResult.totalLines ?? 0}</Tag>
+                      <Tag color="red">错误 {analysisResult.errorCount ?? 0}</Tag>
+                      <Tag color="orange">警告 {analysisResult.warningCount ?? 0}</Tag>
+                      <span>规则版本 v1：按来源、级别和关键词提取结构化记录</span>
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {[
+                        ["操作行为记录", analysisResult.operationRecords],
+                        ["数据读取快照", analysisResult.dataSnapshots],
+                        ["执行流程日志", analysisResult.executionFlow],
+                        ["错误记录", analysisResult.errors],
+                        ["操作时序记录", analysisResult.timeline],
+                      ].map(([label, entries]: [string, any[]]) => (
+                        <section key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                          <div className="mb-2 flex items-center justify-between text-sm font-medium text-slate-700">
+                            <span>{label}</span>
+                            <Tag>{entries?.length ?? 0}</Tag>
+                          </div>
+                          {entries?.length ? (
+                            <div className="max-h-40 overflow-auto space-y-1 text-xs leading-5 text-slate-600">
+                              {entries.map((entry) => (
+                                <div key={`${label}-${entry.sequence}`} className="border-b border-slate-200/70 pb-1 last:border-0">
+                                  <span className="mr-2 text-slate-400">L{entry.lineNumber}</span>
+                                  <span className="mr-2 text-violet-500">{entry.source}</span>
+                                  {entry.message}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-slate-400">暂无记录</div>
+                          )}
+                        </section>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center">
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击分析提取结构化日志记录" />
                   </div>
                 )}
               </div>

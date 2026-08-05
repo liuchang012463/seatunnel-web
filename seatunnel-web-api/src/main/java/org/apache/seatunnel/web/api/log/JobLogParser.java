@@ -19,6 +19,12 @@ import java.util.regex.Pattern;
 @Component
 public class JobLogParser {
 
+    public static final String CATEGORY_OPERATION = "OPERATION";
+    public static final String CATEGORY_DATA_SNAPSHOT = "DATA_SNAPSHOT";
+    public static final String CATEGORY_EXECUTION_FLOW = "EXECUTION_FLOW";
+    public static final String CATEGORY_ERROR = "ERROR";
+    public static final String CATEGORY_TIMELINE = "TIMELINE";
+
     private static final String ENGINE_MARKER = "=== SEA TUNNEL ENGINE LOG SNAPSHOT";
     private static final String ENGINE_END_MARKER = "=== END SEA TUNNEL ENGINE LOG SNAPSHOT ===";
     private static final Pattern WEB_LINE = Pattern.compile(
@@ -144,7 +150,7 @@ public class JobLogParser {
                 || lower.contains("failed")
                 || lower.contains("failure")
                 || lower.contains("error")) {
-            return new Classification("EXECUTION_FLOW", "ERROR");
+            return new Classification(CATEGORY_ERROR, "ERROR");
         }
 
         if (lower.contains("metric")
