@@ -67,4 +67,5 @@ spark-warehouse
 
 profile/
 jdbc-drivers/
+docs
 AGENTS.md
