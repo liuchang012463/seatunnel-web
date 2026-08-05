@@ -46,6 +46,12 @@ Web 节点实例日志文件是任务日志的持久化文档。写入采用同�
 - `GET /api/v1/job-log/{jobMode}/{instanceId}/replay` 返回按 `sequence` 排序的步骤，以及来源、分类、状态、相对耗时和原始详情。
 - 前端回放按步骤播放，支持播放/暂停、上一步、下一步和进度拖动。回放不重新执行任务，只重构已记录事实，因此不会产生副作用。
 
-## 6. 后续扩展边界
+## 6. Spring AI 故障定位 v1
+
+`GET /api/v1/job-log/{jobMode}/{instanceId}/diagnosis` 读取完整日志后，将错误记录、执行流程、数据快照和脱敏后的运行配置交给 Spring AI。模型输出固定为四类之一：`COLLECTOR`（采集端）、`TRANSPORT`（传输链路）、`DATA_SOURCE`（数据源）、`SYSTEM_COMPONENT`（系统组件），并返回置信度、错误原因、影响阶段、证据、建议动作和不确定性。
+
+客户端使用 IDEA 启动配置中的 `SPRING_AI_API_KEY`、`SPRING_AI_BASE_URL` 和 `SPRING_AI_LLM_MODEL` 构造 OpenAI-compatible ChatClient。三项变量不完整时不创建 AI Bean，接口自动使用规则兜底，保证离线/文件/实时任务日志仍可查看和定位。密码、token、secret、access key 等配置在进入提示词前统一脱敏，且提示词和证据有长度上限。
+
+## 7. 后续扩展边界
 
 解析规则只负责从记录中提取事实；故障原因判断由独立的 Spring AI 诊断服务完成。AI 输入必须经过敏感信息脱敏，并同时携带错误记录、结构化流程和数据快照，输出采集端、传输链路、数据源、系统组件四类故障及证据。

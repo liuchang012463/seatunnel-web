@@ -208,12 +208,14 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
   const [searchResult, setSearchResult] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [diagnosisLoading, setDiagnosisLoading] = useState(false);
+  const [diagnosisResult, setDiagnosisResult] = useState<any>(null);
   const [replayLoading, setReplayLoading] = useState(false);
   const [replayResult, setReplayResult] = useState<any>(null);
   const [replayIndex, setReplayIndex] = useState(0);
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [activeView, setActiveView] = useState<
-    "raw" | "search" | "analysis" | "replay"
+    "raw" | "search" | "analysis" | "replay" | "diagnosis"
   >("raw");
 
   const panelStyle = useMemo(
@@ -342,6 +344,30 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
       setErrorText(error?.message || "加载日志回放失败");
     } finally {
       setReplayLoading(false);
+    }
+  }, [instanceId, jobMode]);
+
+  const diagnoseLogs = useCallback(async () => {
+    if (!instanceId) {
+      return;
+    }
+
+    try {
+      setDiagnosisLoading(true);
+      const response = await jobLogApi.diagnosis(
+        instanceId,
+        jobMode as JobLogMode,
+      );
+      if (response?.code !== 0) {
+        setErrorText(response?.msg || response?.message || "故障定位失败");
+        return;
+      }
+      setDiagnosisResult(getResponseData(response));
+      setActiveView("diagnosis");
+    } catch (error: any) {
+      setErrorText(error?.message || "故障定位失败");
+    } finally {
+      setDiagnosisLoading(false);
     }
   }, [instanceId, jobMode]);
 
@@ -511,6 +537,14 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
               </Button>
               <Button
                 type="text"
+                loading={diagnosisLoading}
+                onClick={() => void diagnoseLogs()}
+                className={activeView === "diagnosis" ? "!text-[#315efb]" : "!text-slate-500"}
+              >
+                定位
+              </Button>
+              <Button
+                type="text"
                 loading={replayLoading}
                 onClick={() => void loadReplay()}
                 className={activeView === "replay" ? "!text-[#315efb]" : "!text-slate-500"}
@@ -640,6 +674,58 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 ) : (
                   <div className="flex flex-1 items-center justify-center">
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击分析提取结构化日志记录" />
+                  </div>
+                )}
+              </div>
+            ) : activeView === "diagnosis" ? (
+              <div className="flex h-full min-h-0 flex-col gap-3 overflow-auto rounded-2xl border border-slate-200 bg-white p-4">
+                {diagnosisResult ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
+                      <Tag color={diagnosisResult.faultType === "SYSTEM_COMPONENT" ? "purple" : "red"}>
+                        {diagnosisResult.faultTypeLabel || "未明确"}
+                      </Tag>
+                      <Tag color="blue">
+                        置信度 {Math.round((diagnosisResult.confidence ?? 0) * 100)}%
+                      </Tag>
+                      <Tag>{diagnosisResult.aiUsed ? "Spring AI" : "规则兜底"}</Tag>
+                    </div>
+                    <section className="rounded-xl border border-red-100 bg-red-50/50 p-4">
+                      <div className="text-sm font-medium text-slate-800">错误原因</div>
+                      <div className="mt-2 text-sm leading-6 text-slate-600">
+                        {diagnosisResult.rootCause || "暂无明确原因"}
+                      </div>
+                      <div className="mt-2 text-xs text-slate-400">
+                        影响阶段：{diagnosisResult.affectedStage || "未明确"}
+                      </div>
+                    </section>
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <section className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="mb-2 text-sm font-medium text-slate-700">证据</div>
+                        <div className="max-h-48 overflow-auto space-y-1 text-xs leading-5 text-slate-600">
+                          {(diagnosisResult.evidence ?? []).map((item: string, index: number) => (
+                            <div key={`evidence-${index}`}>{item}</div>
+                          ))}
+                        </div>
+                      </section>
+                      <section className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="mb-2 text-sm font-medium text-slate-700">建议动作</div>
+                        <div className="space-y-1 text-xs leading-5 text-slate-600">
+                          {(diagnosisResult.recommendedActions ?? []).map((item: string, index: number) => (
+                            <div key={`action-${index}`}>{index + 1}. {item}</div>
+                          ))}
+                        </div>
+                      </section>
+                    </div>
+                    {diagnosisResult.uncertainties?.length ? (
+                      <div className="rounded-xl border border-orange-100 bg-orange-50 p-3 text-xs leading-5 text-orange-700">
+                        不确定性：{diagnosisResult.uncertainties.join("；")}
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center">
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击定位分析错误日志" />
                   </div>
                 )}
               </div>

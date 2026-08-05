@@ -118,6 +118,19 @@
             <artifactId>spring-messaging</artifactId>
         </dependency>
 
+        <!-- Spring AI is used by the task-log fault diagnosis service. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-client-chat</artifactId>
+            <version>${spring-ai.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-openai</artifactId>
+            <version>${spring-ai.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>

@@ -51,6 +51,22 @@ export interface JobLogReplayResult {
   steps: JobLogReplayStep[];
 }
 
+export interface JobLogFaultDiagnosisResult {
+  instanceId: number;
+  jobMode: JobLogMode;
+  aiUsed: boolean;
+  provider: string;
+  faultType: string;
+  faultTypeLabel: string;
+  confidence: number;
+  rootCause: string;
+  affectedStage: string;
+  evidence: string[];
+  recommendedActions: string[];
+  uncertainties: string[];
+  generatedAt?: string;
+}
+
 export const jobLogApi = {
   content: (instanceId: string | number, jobMode: JobLogMode) => {
     const segment = jobMode === "STREAMING" ? "streaming" : "batch";
@@ -78,5 +94,8 @@ export const jobLogApi = {
 
   replay: (instanceId: string | number, jobMode: JobLogMode) =>
     HttpUtils.get<any>(`/api/v1/job-log/${jobMode}/${instanceId}/replay`),
+
+  diagnosis: (instanceId: string | number, jobMode: JobLogMode) =>
+    HttpUtils.get<any>(`/api/v1/job-log/${jobMode}/${instanceId}/diagnosis`),
 
 };

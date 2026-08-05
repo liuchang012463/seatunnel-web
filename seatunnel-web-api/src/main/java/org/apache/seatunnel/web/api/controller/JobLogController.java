@@ -8,6 +8,8 @@ import jakarta.annotation.Resource;
 import org.apache.seatunnel.web.api.log.JobLogSearchResult;
 import org.apache.seatunnel.web.api.log.JobLogAnalysisResult;
 import org.apache.seatunnel.web.api.log.JobLogReplayResult;
+import org.apache.seatunnel.web.api.log.JobLogFaultDiagnosisResult;
+import org.apache.seatunnel.web.api.log.JobLogFaultDiagnosisService;
 import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -26,6 +28,9 @@ public class JobLogController {
 
     @Resource
     private JobLogService jobLogService;
+
+    @Resource
+    private JobLogFaultDiagnosisService jobLogFaultDiagnosisService;
 
     @GetMapping("/{jobMode}/{instanceId}/search")
     @Operation(summary = "searchJobInstanceLog", description = "按条件检索任务完整日志")
@@ -74,6 +79,14 @@ public class JobLogController {
             @PathVariable String jobMode,
             @PathVariable Long instanceId) {
         return Result.buildSuc(jobLogService.replay(instanceId, parseMode(jobMode)));
+    }
+
+    @GetMapping("/{jobMode}/{instanceId}/diagnosis")
+    @Operation(summary = "diagnoseJobInstanceLog", description = "分析日志、数据快照和执行流程，定位任务故障类型及原因")
+    public Result<JobLogFaultDiagnosisResult> diagnosis(
+            @PathVariable String jobMode,
+            @PathVariable Long instanceId) {
+        return Result.buildSuc(jobLogFaultDiagnosisService.diagnose(instanceId, parseMode(jobMode)));
     }
 
     private JobMode parseMode(String value) {
