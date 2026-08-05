@@ -238,6 +238,8 @@ export function useSourcePanelLogic({
       updateNode(
         {
           dataSourceId: value,
+          index: undefined,
+          index_list: undefined,
           table: undefined,
           tableNames: [],
           sql: "",

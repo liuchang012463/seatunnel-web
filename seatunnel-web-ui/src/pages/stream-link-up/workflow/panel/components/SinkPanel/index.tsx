@@ -7,6 +7,7 @@ import SinkSqlEditorSection from './SinkSqlEditorSection';
 import { useSinkPanelLogic } from './hooks/useSinkPanelLogic';
 import './index.less';
 import KafkaNodeConfig from '@/pages/common/workflow/KafkaNodeConfig';
+import ElasticsearchNodeConfig from '@/pages/common/workflow/ElasticsearchNodeConfig';
 
 interface Props {
   selectedNode: any;
@@ -16,6 +17,7 @@ interface Props {
 
 function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
   const isKafka = String(selectedNode?.data?.dbType || '').toUpperCase() === 'KAFKA';
+  const isElasticsearch = String(selectedNode?.data?.dbType || '').toUpperCase() === 'ELASTICSEARCH';
   const {
     title,
     dbType,
@@ -52,13 +54,13 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
     onNodeDataChange,
   });
 
-  if (isKafka) {
+  if (isKafka || isElasticsearch) {
     return (
       <PanelShell
         eyebrow="Sink Config"
         title="目标配置"
         badge="输出节点"
-        desc="Kafka 节点不使用关系型表、SQL 或自动建表配置"
+        desc={`${isElasticsearch ? 'Elasticsearch' : 'Kafka'} 节点不使用关系型表、SQL 或自动建表配置`}
         heroTitle={title}
         heroDesc={description}
         heroTag="SINK"
@@ -73,7 +75,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
               value={dataSourceId}
               onChange={handleDataSourceChange}
               options={dataSourceOptions}
-              placeholder="请选择 Kafka 数据源"
+              placeholder={`请选择 ${isElasticsearch ? 'Elasticsearch' : 'Kafka'} 数据源`}
               showSearch
               optionFilterProp="label"
               style={{ width: '100%' }}
@@ -81,15 +83,38 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
           </div>
           <div className="workflow-panel__divider" />
           <div className="workflow-panel__group">
-            <div className="workflow-panel__group-kicker">Kafka 写入设置</div>
-            <KafkaNodeConfig
-              role="sink"
-              config={selectedNode?.data?.config || {}}
-              topicOptions={tableOptions}
-              topicLoading={tableLoading}
-              onChange={(patch) => updateNode(patch)}
-            />
+            <div className="workflow-panel__group-kicker">{isElasticsearch ? 'Elasticsearch 写入设置' : 'Kafka 写入设置'}</div>
+            {isElasticsearch ? (
+              <ElasticsearchNodeConfig
+                role="sink"
+                config={selectedNode?.data?.config || {}}
+                indexOptions={tableOptions}
+                indexLoading={tableLoading}
+                onChange={(patch) => updateNode(patch)}
+              />
+            ) : (
+              <KafkaNodeConfig
+                role="sink"
+                config={selectedNode?.data?.config || {}}
+                topicOptions={tableOptions}
+                topicLoading={tableLoading}
+                onChange={(patch) => updateNode(patch)}
+              />
+            )}
           </div>
+          {isElasticsearch && (
+            <>
+              <div className="workflow-panel__divider" />
+              <div className="workflow-panel__group">
+                <ExtraParamsConfig
+                  params={extraParams}
+                  onParamsChange={(params) => updateNode({ extraParams: params })}
+                  selectedNode={selectedNode}
+                  hideHeader
+                />
+              </div>
+            </>
+          )}
         </section>
       </PanelShell>
     );

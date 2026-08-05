@@ -181,6 +181,7 @@ export function useSinkPanelLogic({
       updateNode(
         {
           dataSourceId: value,
+          index: undefined,
           table: undefined,
           targetTableName: "",
           sql: "",

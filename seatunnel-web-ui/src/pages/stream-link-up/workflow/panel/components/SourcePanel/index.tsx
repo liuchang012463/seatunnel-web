@@ -17,6 +17,7 @@ import ExtraParamsConfig from "./ExtraParamsConfig";
 import { useSourcePanelLogic } from "./hooks/useSourcePanelLogic";
 import KafkaNodeConfig from "@/pages/common/workflow/KafkaNodeConfig";
 import HttpNodeConfig from "@/pages/common/workflow/HttpNodeConfig";
+import ElasticsearchNodeConfig from "@/pages/common/workflow/ElasticsearchNodeConfig";
 
 interface Props {
   selectedNode: any;
@@ -67,6 +68,7 @@ function SourcePanel({
   const qualityDetailRef = useRef<any>(null);
   const isKafka = String(selectedNode?.data?.dbType || "").toUpperCase() === "KAFKA";
   const isHttp = String(selectedNode?.data?.dbType || "").toUpperCase() === "HTTP";
+  const isElasticsearch = String(selectedNode?.data?.dbType || "").toUpperCase() === "ELASTICSEARCH";
 
   const {
     title,
@@ -129,13 +131,13 @@ function SourcePanel({
     );
   };
 
-  if (isKafka || isHttp) {
+  if (isKafka || isHttp || isElasticsearch) {
     return (
       <PanelShell
         eyebrow="Source Config"
         title="来源配置"
         badge="输入节点"
-        desc={`${isHttp ? "HTTP" : "Kafka"} 节点不支持表、SQL、列解析或数据预览`}
+        desc={`${isHttp ? "HTTP" : isElasticsearch ? "Elasticsearch" : "Kafka"} 节点不支持关系型表、SQL、列解析或数据预览`}
         heroTitle={title}
         heroDesc={description}
         heroTag="SOURCE"
@@ -150,7 +152,7 @@ function SourcePanel({
               value={dataSourceId}
               onChange={handleDataSourceChange}
               options={dataSourceOptions}
-              placeholder={`请选择 ${isHttp ? "HTTP" : "Kafka"} 数据源`}
+              placeholder={`请选择 ${isHttp ? "HTTP" : isElasticsearch ? "Elasticsearch" : "Kafka"} 数据源`}
               showSearch
               optionFilterProp="label"
               style={{ width: "100%" }}
@@ -159,7 +161,7 @@ function SourcePanel({
           <div className="workflow-panel__divider" />
           <div className="workflow-panel__group">
             <div className="workflow-panel__group-kicker">
-              {isHttp ? "HTTP 请求、分页与轮询设置" : "Kafka 消费设置"}
+              {isHttp ? "HTTP 请求、分页与轮询设置" : isElasticsearch ? "Elasticsearch 查询设置" : "Kafka 消费设置"}
             </div>
             {isHttp ? (
               <HttpNodeConfig
@@ -167,7 +169,7 @@ function SourcePanel({
                 config={sourceConfig}
                 onChange={(patch) => updateNode(patch)}
               />
-            ) : (
+            ) : isKafka ? (
               <KafkaNodeConfig
                 role="source"
                 config={sourceConfig}
@@ -175,8 +177,29 @@ function SourcePanel({
                 topicLoading={tableLoading}
                 onChange={(patch) => updateNode(patch)}
               />
+            ) : (
+              <ElasticsearchNodeConfig
+                role="source"
+                config={sourceConfig}
+                indexOptions={tableOptions}
+                indexLoading={tableLoading}
+                onChange={(patch) => updateNode(patch)}
+              />
             )}
           </div>
+          {isElasticsearch && (
+            <>
+              <div className="workflow-panel__divider" />
+              <div className="workflow-panel__group">
+                <ExtraParamsConfig
+                  params={extraParams}
+                  onParamsChange={(params) => updateNode({ extraParams: params })}
+                  selectedNode={selectedNode}
+                  hideHeader
+                />
+              </div>
+            </>
+          )}
         </section>
       </PanelShell>
     );

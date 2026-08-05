@@ -33,6 +33,7 @@ export const DATA_SOURCE_REGISTRY: DataSourceRegistryItem[] = [
   { dbType: 'KINGBASE', label: '人大金仓（Kingbase）', category: 'RELATIONAL', connectorType: 'Jdbc', pluginName: 'JDBC-KINGBASE', source: true, sink: true, taskSelector: true },
   { dbType: 'DAMENG', label: '达梦（Dameng）', category: 'RELATIONAL', connectorType: 'Jdbc', pluginName: 'JDBC-DAMENG', source: true, sink: true, taskSelector: true },
   { dbType: 'DORIS', label: 'Doris', category: 'OLAP', connectorType: 'Doris', pluginName: 'DORIS', source: true, sink: true, taskSelector: true },
+  { dbType: 'ELASTICSEARCH', label: 'Elasticsearch', category: 'OLAP', connectorType: 'Elasticsearch', pluginName: 'ELASTICSEARCH', source: true, sink: true, realtime: true, taskSelector: true },
   { dbType: 'KAFKA', label: 'Kafka', category: 'MESSAGE_QUEUE', connectorType: 'Kafka', pluginName: 'KAFKA', source: true, sink: true, realtime: true, taskSelector: true },
   { dbType: 'FTP', label: 'FTP', category: 'FILE_TRANSFER', connectorType: 'FtpFile' },
   { dbType: 'SFTP', label: 'SFTP', category: 'FILE_TRANSFER', connectorType: 'SftpFile' },

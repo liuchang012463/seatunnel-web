@@ -7,6 +7,7 @@ export const sourceOptions = [
   { label: "Kingbase", value: "KINGBASE", connectorType: "Jdbc" },
   { label: "Dameng", value: "DAMENG", connectorType: "Jdbc" },
   { label: "Kafka", value: "KAFKA", connectorType: "Kafka", pluginName: "KAFKA" },
+  { label: "Elasticsearch", value: "ELASTICSEARCH", connectorType: "Elasticsearch", pluginName: "ELASTICSEARCH" },
   { label: "Oracle", value: "ORACLE", connectorType: "Jdbc" },
 ];
 

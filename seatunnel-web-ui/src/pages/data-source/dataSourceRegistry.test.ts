@@ -8,6 +8,7 @@ describe('dataSourceRegistry', () => {
   it('maps HTTP and known datasource types to their categories', () => {
     expect(getDataSourceCategory('HTTP').label).toBe('API 服务');
     expect(getDataSourceCategory('KAFKA').label).toBe('消息队列');
+    expect(getDataSourceCategory('ELASTICSEARCH').label).toBe('OLAP 数据库');
     expect(getDataSourceCategory('MYSQL').label).toBe('关系型数据库');
   });
 

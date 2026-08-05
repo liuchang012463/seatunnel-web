@@ -36,4 +36,14 @@ class ConnectivitySourceResolverTest {
                 "Http",
                 new ConnectivitySourcePluginNameResolver().resolvePluginName(DbType.HTTP));
     }
+
+    @Test
+    void shouldResolveElasticsearchSourceConfiguration() {
+        assertEquals(
+                "ELASTICSEARCH",
+                new ConnectivitySourceBuilderResolver().resolveBuilderKey(DbType.ELASTICSEARCH));
+        assertEquals(
+                "Elasticsearch",
+                new ConnectivitySourcePluginNameResolver().resolvePluginName(DbType.ELASTICSEARCH));
+    }
 }
