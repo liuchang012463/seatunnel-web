@@ -50,10 +50,9 @@ export const prototypeMenuData: MenuDataItem[] = [
       { path: '/sync/cloud-edge-tasks', name: '云边协同任务', icon: <CloudServerOutlined /> },
       {
         path: '/sync/edge-access-tasks',
-        name: '边缘接入任务管理',
+        name: '边缘接入任务',
         icon: <ApiOutlined />,
       },
-      { path: '/sync/links', name: '数据协同任务', icon: <LinkOutlined /> },
       { path: '/sync/topology', name: '数据拓扑', icon: <ApartmentOutlined /> },
     ],
   },
