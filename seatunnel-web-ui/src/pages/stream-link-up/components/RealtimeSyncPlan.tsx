@@ -155,25 +155,49 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
   const sinkTableText = formatTables(record?.sinkTable, "暂未配置目标表");
 
   const renderValue = (value: any): React.ReactNode => {
-    if (value === null) return <span className="text-gray-400">null</span>;
+    if (value === null) {
+      return (
+        <span className="stream-link-json-value stream-link-json-value--null">
+          null
+        </span>
+      );
+    }
 
     if (typeof value === "string") {
-      return <span className="text-emerald-600">"{value}"</span>;
+      return (
+        <span className="stream-link-json-value stream-link-json-value--string">
+          "{value}"
+        </span>
+      );
     }
 
     if (typeof value === "number") {
-      return <span className="text-amber-500">{value}</span>;
+      return (
+        <span className="stream-link-json-value stream-link-json-value--number">
+          {value}
+        </span>
+      );
     }
 
     if (typeof value === "boolean") {
       return (
-        <span className={value ? "text-blue-600" : "text-red-500"}>
+        <span
+          className={`stream-link-json-value ${
+            value
+              ? "stream-link-json-value--boolean-true"
+              : "stream-link-json-value--boolean-false"
+          }`}
+        >
           {String(value)}
         </span>
       );
     }
 
-    return <span className="text-gray-700">{String(value)}</span>;
+    return (
+      <span className="stream-link-json-value stream-link-json-value--default">
+        {String(value)}
+      </span>
+    );
   };
 
   const renderObject = (obj: any, level = 0): React.ReactNode => {
@@ -186,7 +210,10 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
 
     return (
       <div>
-        <div style={{ paddingLeft: indent }} className="text-gray-400">
+        <div
+          style={{ paddingLeft: indent }}
+          className="stream-link-json-token"
+        >
           {isArray ? "[" : "{"}
         </div>
 
@@ -194,12 +221,12 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
           <div
             key={key}
             style={{ paddingLeft: indent + 14 }}
-            className="leading-5"
+            className="stream-link-json-line"
           >
             {!isArray && (
               <>
-                <span className="text-purple-600">"{key}"</span>
-                <span className="text-gray-400">: </span>
+                <span className="stream-link-json-key">"{key}"</span>
+                <span className="stream-link-json-separator">: </span>
               </>
             )}
 
@@ -209,7 +236,10 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
           </div>
         ))}
 
-        <div style={{ paddingLeft: indent }} className="text-gray-400">
+        <div
+          style={{ paddingLeft: indent }}
+          className="stream-link-json-token"
+        >
           {isArray ? "]" : "}"}
         </div>
       </div>
