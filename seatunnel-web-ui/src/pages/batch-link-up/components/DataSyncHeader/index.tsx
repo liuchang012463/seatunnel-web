@@ -63,70 +63,21 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
         id: "pages.datasync.header.subtitle",
         defaultMessage: "统一管理采集引接链路：配置、调度与健康状态监测",
       })}
+      actions={
+        <Button
+          type="primary"
+          disabled={isButtonDisabled}
+          onClick={handleCreateClick}
+          className="h-10 rounded-full border-none bg-gradient-to-r font-semibold"
+        >
+          创建离线任务
+        </Button>
+    }
     >
-      <div className="mb-5 rounded-[20px] border border-indigo-100 bg-white/90 p-4 ">
-        <div className="mb-2 flex items-center gap-3 font-semibold text-slate-900 st-web-font">
-          同步方向
-        </div>
+      
 
-        <div className="grid grid-cols-[minmax(240px,1fr)_120px_minmax(240px,1fr)_180px] items-center gap-4 max-xl:grid-cols-1">
-          <div
-            className="flex h-10 items-center overflow-hidden rounded-full border border-slate-200 bg-white transition
-           hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(79,70,229,0.08)]"
-          >
-            <Select
-              prefix="来源："
-              value={sourceType?.dbType}
-              onChange={handleSourceChange}
-              options={generateSourceDataSourceOptions()}
-              bordered={false}
-              showSearch
-              className="flex-1"
-            />
-          </div>
+          
 
-          <div className="flex items-center justify-center gap-4 text-slate-900 max-xl:justify-start">
-            <ArrowRightOutlined />
-          </div>
-
-          <div className="flex h-10 items-center overflow-hidden rounded-full border border-slate-200 bg-white transition hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(79,70,229,0.08)]">
-            <Select
-              prefix="去向："
-              value={targetType?.dbType}
-              onChange={handleTargetChange}
-              options={generateDataSourceOptions()}
-              bordered={false}
-              showSearch
-              className="flex-1"
-            />
-          </div>
-
-          <Button
-            type="primary"
-            disabled={isButtonDisabled}
-            onClick={handleCreateClick}
-            className="h-10 rounded-full border-none bg-gradient-to-r font-semibold"
-          >
-            创建离线任务
-          </Button>
-        </div>
-
-        {/* <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          常用组合：
-          <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-slate-600 transition hover:border-indigo-200 hover:bg-white hover:text-indigo-600">
-            🐬 MySQL → Oracle
-          </span>
-          <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-slate-600 transition hover:border-indigo-200 hover:bg-white hover:text-indigo-600">
-            🐘 PostgreSQL → MySQL
-          </span>
-          <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-slate-600 transition hover:border-indigo-200 hover:bg-white hover:text-indigo-600">
-            🔶 Oracle → MySQL
-          </span>
-          <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-slate-600 transition hover:border-indigo-200 hover:bg-white hover:text-indigo-600">
-            ⭐ MySQL → PostgreSQL
-          </span>
-        </div> */}
-      </div>
     </TaskListPageHeader>
   );
 };
