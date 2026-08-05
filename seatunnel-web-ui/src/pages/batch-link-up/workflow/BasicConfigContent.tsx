@@ -51,7 +51,7 @@ export default function BasicConfigContent({
           style={{ alignItems: "center" }}
         >
           <div className="min-w-0">
-            <div className="text-[13px] font-medium text-slate-400">
+            <div className="text-[13px] font-medium text-slate-600">
               任务概览
             </div>
           </div>
@@ -64,7 +64,7 @@ export default function BasicConfigContent({
         <div className="rounded-2xl bg-slate-50 px-4 py-3">
           <div className="flex items-center justify-between text-center">
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] text-slate-400">Source</div>
+              <div className="text-[11px] text-slate-600">Source</div>
               <div className="mt-1 text-[15px] font-semibold text-slate-900">
                 {sourceType}
               </div>
@@ -89,7 +89,7 @@ export default function BasicConfigContent({
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] text-slate-400">Sink</div>
+              <div className="text-[11px] text-slate-600">Sink</div>
               <div className="mt-1 text-[15px] font-semibold text-slate-900">
                 {targetType}
               </div>
@@ -99,7 +99,7 @@ export default function BasicConfigContent({
 
         <div className="space-y-4">
           <div>
-            <div className="text-[12px] text-slate-400">名称</div>
+            <div className="text-[12px] text-slate-600">名称</div>
             <Input
               value={jobName}
               placeholder="请输入任务名称"
@@ -109,7 +109,7 @@ export default function BasicConfigContent({
           </div>
 
           <div>
-            <div className="text-[12px] text-slate-400">说明</div>
+            <div className="text-[12px] text-slate-600">说明</div>
             <TextArea
               value={jobDesc}
               placeholder="请输入任务说明"
@@ -122,7 +122,7 @@ export default function BasicConfigContent({
           </div>
 
           <div>
-            <div className="text-[12px] text-slate-400">Zeta</div>
+            <div className="text-[12px] text-slate-600">Zeta</div>
             <div className="mt-1 flex items-center gap-2">
               <span className="text-[15px] font-semibold leading-none text-slate-700">
                 #{clientId}

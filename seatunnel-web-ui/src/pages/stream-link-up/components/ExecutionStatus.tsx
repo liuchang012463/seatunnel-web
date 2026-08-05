@@ -75,7 +75,7 @@ const MetricRow: React.FC<{
 }> = ({ label, value }) => {
   return (
     <div className="flex items-center text-xs leading-6">
-      <span className="mr-2 text-lg font-bold leading-none text-slate-400">·</span>
+      <span className="execution-status-separator mr-2 text-lg font-bold leading-none">·</span>
       <span className="w-[64px] shrink-0 font-bold text-slate-700">{label}</span>
       <span className="min-w-0 flex-1 truncate text-slate-500">{value}</span>
     </div>
