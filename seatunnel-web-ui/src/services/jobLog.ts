@@ -37,6 +37,20 @@ export interface JobLogAnalysisResult {
   timeline: JobLogEntry[];
 }
 
+export interface JobLogReplayStep extends JobLogEntry {
+  title: string;
+  status: string;
+  detail: string;
+}
+
+export interface JobLogReplayResult {
+  instanceId: number;
+  jobMode: JobLogMode;
+  totalSteps: number;
+  durationMs?: number;
+  steps: JobLogReplayStep[];
+}
+
 export const jobLogApi = {
   content: (instanceId: string | number, jobMode: JobLogMode) => {
     const segment = jobMode === "STREAMING" ? "streaming" : "batch";
@@ -61,5 +75,8 @@ export const jobLogApi = {
 
   analysis: (instanceId: string | number, jobMode: JobLogMode) =>
     HttpUtils.get<any>(`/api/v1/job-log/${jobMode}/${instanceId}/analysis`),
+
+  replay: (instanceId: string | number, jobMode: JobLogMode) =>
+    HttpUtils.get<any>(`/api/v1/job-log/${jobMode}/${instanceId}/replay`),
 
 };

@@ -2,6 +2,8 @@ import { jobLogApi, type JobLogMode } from "@/services/jobLog";
 import {
   CloseOutlined, EditOutlined,
   FileSearchOutlined,
+  PauseOutlined,
+  PlayCircleOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
 import { Button, Empty, Input, Spin, Tag, Tooltip } from "antd";
@@ -206,8 +208,12 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
   const [searchResult, setSearchResult] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [replayLoading, setReplayLoading] = useState(false);
+  const [replayResult, setReplayResult] = useState<any>(null);
+  const [replayIndex, setReplayIndex] = useState(0);
+  const [replayPlaying, setReplayPlaying] = useState(false);
   const [activeView, setActiveView] = useState<
-    "raw" | "search" | "analysis"
+    "raw" | "search" | "analysis" | "replay"
   >("raw");
 
   const panelStyle = useMemo(
@@ -313,6 +319,32 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
     }
   }, [instanceId, jobMode]);
 
+  const loadReplay = useCallback(async () => {
+    if (!instanceId) {
+      return;
+    }
+
+    try {
+      setReplayLoading(true);
+      const response = await jobLogApi.replay(
+        instanceId,
+        jobMode as JobLogMode,
+      );
+      if (response?.code !== 0) {
+        setErrorText(response?.msg || response?.message || "加载日志回放失败");
+        return;
+      }
+      setReplayResult(getResponseData(response));
+      setReplayIndex(0);
+      setReplayPlaying(false);
+      setActiveView("replay");
+    } catch (error: any) {
+      setErrorText(error?.message || "加载日志回放失败");
+    } finally {
+      setReplayLoading(false);
+    }
+  }, [instanceId, jobMode]);
+
   useEffect(() => {
     if (!open) {
       return;
@@ -328,6 +360,26 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
 
     void loadLogs();
   }, [open, loadLogs]);
+
+  useEffect(() => {
+    const steps = replayResult?.steps;
+    if (!replayPlaying || !steps?.length || typeof window === "undefined") {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setReplayIndex((current) => Math.min(current + 1, steps.length - 1));
+    }, 800);
+
+    return () => window.clearInterval(timer);
+  }, [replayPlaying, replayResult]);
+
+  useEffect(() => {
+    const steps = replayResult?.steps;
+    if (replayPlaying && steps?.length && replayIndex >= steps.length - 1) {
+      setReplayPlaying(false);
+    }
+  }, [replayIndex, replayPlaying, replayResult]);
 
   useEffect(() => {
     if (!open || typeof window === "undefined") {
@@ -382,6 +434,9 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
   if (!open || typeof document === "undefined") {
     return null;
   }
+
+  const replaySteps = replayResult?.steps ?? [];
+  const currentReplayStep = replaySteps[replayIndex];
 
   return createPortal(
     <div
@@ -453,6 +508,14 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 className={activeView === "analysis" ? "!text-[#315efb]" : "!text-slate-500"}
               >
                 分析
+              </Button>
+              <Button
+                type="text"
+                loading={replayLoading}
+                onClick={() => void loadReplay()}
+                className={activeView === "replay" ? "!text-[#315efb]" : "!text-slate-500"}
+              >
+                回放
               </Button>
               <button
                 type="button"
@@ -577,6 +640,61 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 ) : (
                   <div className="flex flex-1 items-center justify-center">
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击分析提取结构化日志记录" />
+                  </div>
+                )}
+              </div>
+            ) : activeView === "replay" ? (
+              <div className="flex h-full min-h-0 flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+                {currentReplayStep ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
+                      <Button
+                        size="small"
+                        type="primary"
+                        icon={replayPlaying ? <PauseOutlined /> : <PlayCircleOutlined />}
+                        onClick={() => setReplayPlaying((playing) => !playing)}
+                      >
+                        {replayPlaying ? "暂停" : "播放"}
+                      </Button>
+                      <Button size="small" onClick={() => setReplayIndex((index) => Math.max(0, index - 1))}>
+                        上一步
+                      </Button>
+                      <Button size="small" onClick={() => setReplayIndex((index) => Math.min(replaySteps.length - 1, index + 1))}>
+                        下一步
+                      </Button>
+                      <span className="text-xs text-slate-400">
+                        第 {replayIndex + 1} / {replaySteps.length} 步
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={Math.max(0, replaySteps.length - 1)}
+                      value={replayIndex}
+                      onChange={(event) => {
+                        setReplayPlaying(false);
+                        setReplayIndex(Number(event.target.value));
+                      }}
+                      className="w-full accent-[#315efb]"
+                      aria-label="操作回放进度"
+                    />
+                    <div className="min-h-0 flex-1 overflow-auto rounded-xl bg-slate-950 p-4 text-slate-100">
+                      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                        <Tag color="blue">{currentReplayStep.title}</Tag>
+                        <Tag color={currentReplayStep.status === "ERROR" ? "red" : "green"}>
+                          {currentReplayStep.status}
+                        </Tag>
+                        <span>{currentReplayStep.source}</span>
+                        <span>{currentReplayStep.timestamp || `L${currentReplayStep.lineNumber}`}</span>
+                      </div>
+                      <div className="whitespace-pre-wrap font-mono text-sm leading-6">
+                        {currentReplayStep.detail || currentReplayStep.raw}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center">
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击回放加载完整操作时序" />
                   </div>
                 )}
               </div>

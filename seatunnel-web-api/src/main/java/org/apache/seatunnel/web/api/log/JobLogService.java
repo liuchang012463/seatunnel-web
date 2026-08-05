@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.HexFormat;
+import java.util.Objects;
 
 /**
  * Owns the complete task-log document.  The document is kept on the Web node
@@ -151,6 +152,19 @@ public class JobLogService {
         );
     }
 
+    public JobLogReplayResult replay(Long instanceId, JobMode requestedMode) {
+        List<JobLogEntry> entries = parseEntries(instanceId, requestedMode);
+        List<JobLogReplayStep> steps = entries.stream()
+                .map(this::toReplayStep)
+                .toList();
+        Long durationMs = entries.stream()
+                .map(JobLogEntry::elapsedMs)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(null);
+        return new JobLogReplayResult(instanceId, requestedMode.name(), steps.size(), durationMs, steps);
+    }
+
     private List<JobLogEntry> parseEntries(Long instanceId, JobMode requestedMode) {
         return jobLogParser.parse(getFullContent(instanceId, requestedMode));
     }
@@ -161,6 +175,29 @@ public class JobLogService {
 
     private List<JobLogEntry> entriesByCategory(List<JobLogEntry> entries, String category) {
         return entries.stream().filter(entry -> category.equals(entry.category())).toList();
+    }
+
+    private JobLogReplayStep toReplayStep(JobLogEntry entry) {
+        String title = switch (entry.category()) {
+            case JobLogParser.CATEGORY_OPERATION -> "操作行为";
+            case JobLogParser.CATEGORY_DATA_SNAPSHOT -> "数据读取快照";
+            case JobLogParser.CATEGORY_EXECUTION_FLOW -> "执行流程";
+            case JobLogParser.CATEGORY_ERROR -> "错误事件";
+            default -> "时序记录";
+        };
+        return new JobLogReplayStep(
+                entry.sequence(),
+                entry.lineNumber(),
+                entry.timestamp(),
+                entry.elapsedMs(),
+                entry.source(),
+                entry.category(),
+                entry.eventType(),
+                title,
+                entry.level(),
+                entry.message(),
+                entry.raw()
+        );
     }
 
     public JobLogContext resolve(Long instanceId, JobMode requestedMode) {

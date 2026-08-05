@@ -135,6 +135,32 @@ class JobLogServiceTest {
         assertEquals(1, analysis.errors().size());
     }
 
+    @Test
+    void replaysAllParsedLinesInSequenceOrder() throws Exception {
+        Path logPath = tempDir.resolve("job-4.log");
+        Files.writeString(logPath, """
+                [2026-08-05 10:00:00] [INFO] submit started
+                [2026-08-05 10:00:01] [INFO] running source task
+                [2026-08-05 10:00:03] [ERROR] connection refused
+                """, StandardCharsets.UTF_8);
+
+        JobInstance instance = JobInstance.builder()
+                .id(4L)
+                .clientId(2L)
+                .jobStatus(JobStatus.FINISHED)
+                .logPath(logPath.toString())
+                .build();
+        when(jobInstanceDao.queryById(4L)).thenReturn(instance);
+
+        JobLogReplayResult replay = jobLogService.replay(4L, JobMode.BATCH);
+
+        assertEquals(3, replay.totalSteps());
+        assertEquals(3000L, replay.durationMs());
+        assertEquals(1L, replay.steps().get(0).sequence());
+        assertEquals("错误事件", replay.steps().get(2).title());
+        assertTrue(replay.steps().get(2).detail().contains("connection refused"));
+    }
+
     private long count(String value, String target) {
         return value.lines().filter(line -> line.contains(target)).count();
     }

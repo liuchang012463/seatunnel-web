@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.apache.seatunnel.web.api.log.JobLogSearchResult;
 import org.apache.seatunnel.web.api.log.JobLogAnalysisResult;
+import org.apache.seatunnel.web.api.log.JobLogReplayResult;
 import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -65,6 +66,14 @@ public class JobLogController {
             @PathVariable String jobMode,
             @PathVariable Long instanceId) {
         return Result.buildSuc(jobLogService.analyze(instanceId, parseMode(jobMode)));
+    }
+
+    @GetMapping("/{jobMode}/{instanceId}/replay")
+    @Operation(summary = "replayJobInstanceLog", description = "返回可视化操作回放所需的有序日志步骤")
+    public Result<JobLogReplayResult> replay(
+            @PathVariable String jobMode,
+            @PathVariable Long instanceId) {
+        return Result.buildSuc(jobLogService.replay(instanceId, parseMode(jobMode)));
     }
 
     private JobMode parseMode(String value) {
