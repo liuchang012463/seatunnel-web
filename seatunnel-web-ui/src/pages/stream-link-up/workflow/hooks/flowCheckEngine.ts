@@ -32,7 +32,7 @@ const getNodeMeta = (node: any) => ({
 
 const getConfig = (node: any) => node?.data?.config || {};
 
-const isElasticsearchSink = (node: any) =>
+const isElasticsearchNode = (node: any) =>
   String(node?.data?.dbType || "").toUpperCase() === "ELASTICSEARCH";
 
 const hasElasticsearchTarget = (config: any) => {
@@ -44,6 +44,18 @@ const hasElasticsearchTarget = (config: any) => {
   ].some((value) => String(value || "").trim());
 
   if (directTarget) return true;
+
+  return (
+    Array.isArray(config.index_list) &&
+    config.index_list.some((item: any) => {
+      const index = item && typeof item === "object" ? item.index : item;
+      return String(index || "").trim();
+    })
+  );
+};
+
+const hasElasticsearchSourceIndex = (config: any) => {
+  if (String(config.index || "").trim()) return true;
 
   return (
     Array.isArray(config.index_list) &&
@@ -94,6 +106,9 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
+    if (isElasticsearchNode(node)) {
+      return null;
+    }
     if (!config.readMode) {
       return buildWarning(node, "readMode", "请选择读取方式");
     }
@@ -101,6 +116,12 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
+    if (isElasticsearchNode(node)) {
+      if (!hasElasticsearchSourceIndex(config)) {
+        return buildWarning(node, "index", "请选择来源索引");
+      }
+      return null;
+    }
     if (config.readMode === "table" && !config.table) {
       return buildWarning(node, "table", "按表读取时必须选择源表");
     }
@@ -108,6 +129,9 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
+    if (isElasticsearchNode(node)) {
+      return null;
+    }
     if (config.readMode === "sql" && !String(config.sql || "").trim()) {
       return buildWarning(node, "sql", "自定义 SQL 不能为空");
     }
@@ -158,7 +182,7 @@ const sinkRules: NodeCheckRule[] = [
   (node) => {
     const config = getConfig(node);
 
-    if (isElasticsearchSink(node)) {
+    if (isElasticsearchNode(node)) {
       if (!hasElasticsearchTarget(config)) {
         return buildWarning(node, "index", "请选择目标索引");
       }
