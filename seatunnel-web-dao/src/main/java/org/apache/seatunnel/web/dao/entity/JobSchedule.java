@@ -1,9 +1,12 @@
 package org.apache.seatunnel.web.dao.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 
 import java.util.Date;
 
@@ -18,11 +21,18 @@ public class JobSchedule extends BaseEntity {
      * 任务定义ID
      */
     private Long jobDefinitionId;
+
+    /**
+     * MANUAL or AUTO. Legacy rows are inferred from cronExpression when read.
+     */
+    private TaskExecutionMode executionMode;
+
     /**
      * Cron表达式
      * 定义任务调度时间规则的Cron表达式
      * 例如：0 0/5 * * * ? 表示每5分钟执行一次
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String cronExpression;
 
     /**

@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.api.metrics.BatchJobSubmitter;
 import org.apache.seatunnel.web.api.service.BatchJobDefinitionService;
 import org.apache.seatunnel.web.api.service.BatchJobExecutorService;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
+import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.api.service.IncrementalBatchExecution;
 import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.common.enums.JobStatus;
@@ -13,6 +14,7 @@ import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.RunMode;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.JobInstance;
+import org.apache.seatunnel.web.dao.entity.JobSchedule;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobOperateResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
@@ -37,21 +39,25 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
     private final BatchJobDefinitionService definitionService;
     private final BatchJobSubmitter jobSubmitter;
     private final IncrementalBatchService incrementalBatchService;
+    private final JobScheduleService jobScheduleService;
 
     public BatchJobExecutorServiceImpl(BatchJobInstanceService instanceService,
                                        BatchJobDefinitionService definitionService,
                                        BatchJobSubmitter jobSubmitter,
-                                       IncrementalBatchService incrementalBatchService) {
+                                       IncrementalBatchService incrementalBatchService,
+                                       JobScheduleService jobScheduleService) {
         this.instanceService = instanceService;
         this.definitionService = definitionService;
         this.jobSubmitter = jobSubmitter;
         this.incrementalBatchService = incrementalBatchService;
+        this.jobScheduleService = jobScheduleService;
     }
 
     @Override
     public Long jobExecute(Long jobDefineId, RunMode runMode) {
         validateJobDefinitionId(jobDefineId);
         validateRunMode(runMode);
+        validateJobDefinitionOnline(jobDefineId);
 
         IncrementalBatchExecution incrementalExecution = incrementalBatchService.prepare(jobDefineId);
         if (incrementalExecution != null && incrementalExecution.isSkipped()) {
@@ -85,7 +91,32 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             throw e;
         }
 
+        if (runMode == RunMode.MANUAL) {
+            updateManualLastScheduleTime(jobDefineId);
+        }
+
         return instance.getId();
+    }
+
+    /**
+     * Manual execution does not pass through QuartzJob, so record its trigger
+     * time explicitly for the task list and detail views.
+     */
+    private void updateManualLastScheduleTime(Long jobDefinitionId) {
+        try {
+            JobSchedule schedule = jobScheduleService.getByTaskDefinitionId(jobDefinitionId);
+            if (schedule == null || schedule.getId() == null) {
+                log.debug("No schedule row found while recording manual run, jobDefinitionId={}", jobDefinitionId);
+                return;
+            }
+
+            if (!jobScheduleService.updateLastScheduleTime(schedule.getId())) {
+                log.warn("Record manual last run time failed, jobDefinitionId={}, scheduleId={}",
+                        jobDefinitionId, schedule.getId());
+            }
+        } catch (Exception e) {
+            log.warn("Record manual last run time failed, jobDefinitionId={}", jobDefinitionId, e);
+        }
     }
 
     @Override
@@ -284,6 +315,27 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             throw new ServiceException(
                     Status.JOB_DEFINITION_EXECUTE_ERROR,
                     "存在未上线任务，请先上线后再启动。任务ID：" + offlineIds
+            );
+        }
+    }
+
+    /**
+     * Manual execution and Quartz execution both require the definition to be online.
+     * The batch endpoint validates this for the whole request; this guard also protects
+     * the single-definition execute endpoint.
+     */
+    private void validateJobDefinitionOnline(Long jobDefinitionId) {
+        BatchJobDefinitionVO definition = definitionService.selectById(jobDefinitionId);
+        if (definition == null) {
+            throw new ServiceException(
+                    Status.JOB_DEFINITION_EXECUTE_ERROR,
+                    "Job definition not found: " + jobDefinitionId
+            );
+        }
+        if (!isOnline(definition.getReleaseState())) {
+            throw new ServiceException(
+                    Status.JOB_DEFINITION_EXECUTE_ERROR,
+                    "任务尚未上线，请先上线后再启动。任务ID：" + jobDefinitionId
             );
         }
     }

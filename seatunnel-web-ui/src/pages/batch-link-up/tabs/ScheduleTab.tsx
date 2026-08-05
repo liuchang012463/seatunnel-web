@@ -46,6 +46,10 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ instanceItem }) => {
 
   const t = (id: string, defaultMessage: string) =>
     intl.formatMessage({ id, defaultMessage });
+  const executionMode =
+    instanceItem?.executionMode ||
+    (instanceItem?.cronExpression ? "AUTO" : "MANUAL");
+  const isManual = executionMode === "MANUAL";
 
   return (
     <div className="mt-2 space-y-4">
@@ -68,17 +72,23 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ instanceItem }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-4">
+          <ScheduleInfoItem
+            icon={<RadioTower size={16} strokeWidth={1.9} />}
+            label="执行方式"
+            value={isManual ? "手动触发" : "自动调度"}
+          />
+
           <ScheduleInfoItem
             icon={<RadioTower size={16} strokeWidth={1.9} />}
             label={t("pages.job.detail.schedule.status", "调度状态")}
-            value={instanceItem?.scheduleStatus}
+            value={isManual ? "-" : instanceItem?.scheduleStatus}
           />
 
           <ScheduleInfoItem
             icon={<Clock3 size={16} strokeWidth={1.9} />}
             label={t("pages.job.detail.schedule.nextTime", "下次调度时间")}
-            value={instanceItem?.nextScheduleTime}
+            value={isManual ? "-" : instanceItem?.nextScheduleTime}
           />
 
           <ScheduleInfoItem
@@ -109,7 +119,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ instanceItem }) => {
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 text-slate-100">
-          {instanceItem?.cronExpression || "-"}
+          {isManual ? "-" : instanceItem?.cronExpression || "-"}
         </div>
       </div>
     </div>

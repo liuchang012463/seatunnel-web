@@ -9,6 +9,10 @@ import {
 
 import { seatunnelJobDefinitionApi } from "@/pages/batch-link-up/api";
 import {
+  buildSchedulePayload,
+  getScheduleValidationMessage,
+} from "@/pages/batch-link-up/workflow/components/ScheduleConfigContent/types";
+import {
   buildTableItems,
   DEFAULT_DB_TYPE,
   DEFAULT_FORM_VALUES,
@@ -295,9 +299,7 @@ export function useMultiWorkflowState({
         mode: "GUIDE_MULTI",
       },
       content: buildWorkflowData(),
-      schedule: {
-        ...scheduleConfig,
-      },
+      schedule: buildSchedulePayload(scheduleConfig),
       env: {
         ...envConfig,
       },
@@ -318,7 +320,7 @@ export function useMultiWorkflowState({
         mode: "GUIDE_MULTI",
       },
       content: buildWorkflowData(),
-      schedule: scheduleConfig,
+      schedule: buildSchedulePayload(scheduleConfig),
       env: envConfig,
     });
   }, [basicConfig, scheduleConfig, envConfig, buildWorkflowData]);
@@ -466,7 +468,7 @@ export function useMultiWorkflowState({
         mode: "GUIDE_MULTI",
       },
       content: buildWorkflowData(),
-      schedule: scheduleConfig,
+      schedule: buildSchedulePayload(scheduleConfig),
       env: envConfig,
     });
   }, [basicConfig, scheduleConfig, envConfig, buildWorkflowData]);
@@ -527,6 +529,12 @@ export function useMultiWorkflowState({
 
     if (matchMode === "1" && (!multiTableList || multiTableList.length === 0)) {
       message.warning("请选择至少一个表");
+      return false;
+    }
+
+    const scheduleWarning = getScheduleValidationMessage(scheduleConfig);
+    if (scheduleWarning) {
+      message.warning(scheduleWarning);
       return false;
     }
 

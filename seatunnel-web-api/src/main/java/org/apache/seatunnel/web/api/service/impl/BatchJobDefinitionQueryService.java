@@ -4,6 +4,8 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.service.application.JobScheduleApplicationService;
+import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.utils.ConvertUtil;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.job.registry.BatchJobEditCommandBuilderRegistry;
@@ -88,12 +90,21 @@ public class BatchJobDefinitionQueryService {
         try {
             JobSchedule schedule = scheduleApplicationService.getByTaskDefinitionId(definitionId);
             if (schedule == null) {
+                vo.setExecutionMode(TaskExecutionMode.MANUAL);
                 return;
             }
 
-            vo.setCronExpression(schedule.getCronExpression());
+            TaskExecutionMode executionMode = TaskExecutionMode.resolve(
+                    schedule.getExecutionMode(), schedule.getCronExpression());
+            vo.setExecutionMode(executionMode);
+            vo.setCronExpression(executionMode == TaskExecutionMode.AUTO
+                    ? schedule.getCronExpression()
+                    : null);
 
-            if (schedule.getScheduleStatus() != null) {
+            if (executionMode == TaskExecutionMode.MANUAL) {
+                vo.setScheduleStatus(ScheduleStatusEnum.PAUSE);
+                vo.setNextScheduleTime(null);
+            } else if (schedule.getScheduleStatus() != null) {
                 vo.setScheduleStatus(schedule.getScheduleStatus());
             }
 

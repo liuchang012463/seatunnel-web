@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.core.job.handler.single;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.job.handler.JobDefinitionModeHandler;
@@ -149,6 +150,10 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
                 ((org.apache.seatunnel.web.spi.bean.dto.command.BatchJobSaveCommand) command).getSchedule();
         if (schedule == null) {
             throw new IllegalArgumentException("单表增量任务必须配置定时调度");
+        }
+        if (schedule.resolveExecutionMode() != TaskExecutionMode.AUTO
+                || StringUtils.isBlank(schedule.getCronExpression())) {
+            throw new IllegalArgumentException("单表增量任务必须使用自动调度并配置有效 Cron");
         }
 
         Map<String, Object> source = findConfig(workflow, "source");

@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.spi.bean.vo;
 
 import lombok.Data;
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -96,6 +97,8 @@ public class JobInstanceVO {
     private Long recordDelay;
 
     private String cronExpression;
+
+    private TaskExecutionMode executionMode;
 
     private String scheduleStatus;
 

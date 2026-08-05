@@ -52,6 +52,7 @@
         <result property="recordDelay" column="recordDelay"/>
 
         <result property="cronExpression" column="cronExpression"/>
+        <result property="executionMode" column="executionMode"/>
         <result property="scheduleStatus" column="scheduleStatus"/>
         <result property="scheduleConfig" column="scheduleConfig"/>
         <result property="lastScheduleTime" column="lastScheduleTime"/>
@@ -104,6 +105,11 @@
         IFNULL(m.avg_row_size, 0) AS avgRowSize,
         IFNULL(m.record_delay, 0) AS recordDelay,
 
+        CASE
+        WHEN s.execution_mode IS NULL THEN
+            CASE WHEN s.cron_expression IS NULL OR TRIM(s.cron_expression) = '' THEN 'MANUAL' ELSE 'AUTO' END
+        ELSE s.execution_mode
+        END AS executionMode,
         s.cron_expression AS cronExpression,
         s.schedule_status AS scheduleStatus,
         s.schedule_config AS scheduleConfig,

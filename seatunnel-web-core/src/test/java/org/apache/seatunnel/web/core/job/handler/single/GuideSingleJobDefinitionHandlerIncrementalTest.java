@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.core.job.handler.single;
 
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleIncrementalJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -95,6 +96,19 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
         assertTrue(error.getMessage().contains("格式必须是"));
     }
 
+    @Test
+    void rejectsManualExecutionMode() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validCommand("TIMESTAMP");
+        command.getSchedule().setExecutionMode(TaskExecutionMode.MANUAL);
+        command.getSchedule().setCronExpression(null);
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> handler.validate(command)
+        );
+        assertTrue(error.getMessage().contains("自动调度"));
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> sourceConfig(BatchGuideSingleIncrementalJobSaveCommand command) {
         List<Map<String, Object>> nodes =
@@ -143,6 +157,8 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
                 "edges", List.of(Map.of("source", "source", "target", "sink"))
         )));
         JobScheduleConfig schedule = new JobScheduleConfig();
+        schedule.setExecutionMode(TaskExecutionMode.AUTO);
+        schedule.setCronExpression("0 0/5 * * * ?");
         schedule.setScheduleType("minute");
         schedule.setMinuteValue(Map.of("intervalMinute", 5));
         command.setSchedule(schedule);

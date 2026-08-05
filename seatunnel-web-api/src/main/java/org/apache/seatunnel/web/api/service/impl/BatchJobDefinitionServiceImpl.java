@@ -14,6 +14,8 @@ import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
+import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
@@ -642,6 +644,18 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             return;
         }
 
+        TaskExecutionMode executionMode = TaskExecutionMode.resolve(
+                schedule.getExecutionMode(), schedule.getCronExpression());
+        if (executionMode == TaskExecutionMode.MANUAL) {
+            jobScheduleService.stopSchedule(schedule.getId());
+            log.info(
+                    "Manual task remains without Quartz trigger, jobDefinitionId={}, scheduleId={}",
+                    jobDefinitionId,
+                    schedule.getId()
+            );
+            return;
+        }
+
         if (releaseState.isOnline()) {
             jobScheduleService.startSchedule(schedule.getId());
             log.info(
@@ -697,7 +711,10 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     private JobScheduleConfig buildScheduleConfig(Long definitionId) {
         JobSchedule schedule = scheduleApplicationService.getByTaskDefinitionId(definitionId);
         if (schedule == null) {
-            return null;
+            JobScheduleConfig config = new JobScheduleConfig();
+            config.setExecutionMode(TaskExecutionMode.MANUAL);
+            config.setScheduleRunType(ScheduleStatusEnum.PAUSE.getDesc());
+            return config;
         }
 
         JobScheduleConfig config = null;
@@ -718,11 +735,19 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             config = new JobScheduleConfig();
         }
 
-        if (StringUtils.isBlank(config.getCronExpression())) {
-            config.setCronExpression(schedule.getCronExpression());
-        }
+        TaskExecutionMode executionMode = TaskExecutionMode.resolve(
+                schedule.getExecutionMode(), schedule.getCronExpression());
+        config.setExecutionMode(executionMode);
 
-        if (StringUtils.isBlank(config.getScheduleRunType()) && schedule.getScheduleStatus() != null) {
+        if (executionMode == TaskExecutionMode.MANUAL) {
+            config.setCronExpression(null);
+            config.setScheduleRunType(ScheduleStatusEnum.PAUSE.getDesc());
+        } else if (StringUtils.isBlank(config.getCronExpression())) {
+            config.setCronExpression(schedule.getCronExpression());
+            if (StringUtils.isBlank(config.getScheduleRunType()) && schedule.getScheduleStatus() != null) {
+                config.setScheduleRunType(schedule.getScheduleStatus().getDesc());
+            }
+        } else if (StringUtils.isBlank(config.getScheduleRunType()) && schedule.getScheduleStatus() != null) {
             config.setScheduleRunType(schedule.getScheduleStatus().getDesc());
         }
 
@@ -740,12 +765,21 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         try {
             JobSchedule schedule = scheduleApplicationService.getByTaskDefinitionId(definitionId);
             if (schedule == null) {
+                vo.setExecutionMode(TaskExecutionMode.MANUAL);
                 return;
             }
 
-            vo.setCronExpression(schedule.getCronExpression());
+            TaskExecutionMode executionMode = TaskExecutionMode.resolve(
+                    schedule.getExecutionMode(), schedule.getCronExpression());
+            vo.setExecutionMode(executionMode);
+            vo.setCronExpression(executionMode == TaskExecutionMode.AUTO
+                    ? schedule.getCronExpression()
+                    : null);
 
-            if (schedule.getScheduleStatus() != null) {
+            if (executionMode == TaskExecutionMode.MANUAL) {
+                vo.setScheduleStatus(ScheduleStatusEnum.PAUSE);
+                vo.setNextScheduleTime(null);
+            } else if (schedule.getScheduleStatus() != null) {
                 vo.setScheduleStatus(schedule.getScheduleStatus());
             }
 

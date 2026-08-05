@@ -6,12 +6,14 @@ import {
   BasicConfig,
   defaultEnvConfig,
   EnvConfig,
+  resolveExecutionMode,
   ScheduleConfig,
 } from "../../workflow/components/ScheduleConfigContent/types";
 import MultiWorkflow from "./MultiWorkflow";
 import { buildUnpublishedJobDefinitionState, normalizeJobDefinitionState } from "./jobDefinitionState";
 
 const defaultScheduleConfig: ScheduleConfig = {
+  executionMode: "MANUAL",
   paramsList: [],
   instanceGenerateMode: "nextDay",
   scheduleRunType: "pause",
@@ -41,7 +43,7 @@ const defaultScheduleConfig: ScheduleConfig = {
     time: "00:17",
   },
   effectType: "forever",
-  cronExpression: "0 17 0 * * ?",
+  cronExpression: undefined,
 };
 
 const defaultBasicConfig: BasicConfig = {
@@ -56,7 +58,7 @@ const defaultBasicConfig: BasicConfig = {
 };
 
 const mergeScheduleConfig = (schedule?: any): ScheduleConfig => {
-  return {
+  const result = {
     ...defaultScheduleConfig,
     ...(schedule || {}),
     hourlyRangeValue: {
@@ -75,6 +77,12 @@ const mergeScheduleConfig = (schedule?: any): ScheduleConfig => {
       ...defaultScheduleConfig.weeklyValue,
       ...(schedule?.weeklyValue || {}),
     },
+  } as ScheduleConfig;
+  const executionMode = resolveExecutionMode(schedule || result);
+  return {
+    ...result,
+    executionMode,
+    cronExpression: executionMode === "MANUAL" ? undefined : result.cronExpression,
   };
 };
 

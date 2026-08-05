@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
+import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionContentEntity;
@@ -180,9 +182,12 @@ public class DefaultJobDefinitionCommandResolver implements JobDefinitionCommand
     private JobScheduleConfig buildScheduleConfig(Long definitionId) {
         JobSchedule schedule = jobScheduleDao.queryByJobDefinitionId(definitionId);
         if (schedule == null) {
-            // Manual-only jobs use scheduleRunType=pause and intentionally have no
-            // Quartz row. HOCON building only needs a non-null config container.
-            return new JobScheduleConfig();
+            // Legacy jobs without a schedule row are treated as manual. HOCON
+            // building only needs a non-null config container in that case.
+            JobScheduleConfig config = new JobScheduleConfig();
+            config.setExecutionMode(TaskExecutionMode.MANUAL);
+            config.setScheduleRunType(ScheduleStatusEnum.PAUSE.getDesc());
+            return config;
         }
 
         JobScheduleConfig config = null;
@@ -199,11 +204,19 @@ public class DefaultJobDefinitionCommandResolver implements JobDefinitionCommand
             config = new JobScheduleConfig();
         }
 
-        if (StringUtils.isBlank(config.getCronExpression())) {
-            config.setCronExpression(schedule.getCronExpression());
-        }
-        if (StringUtils.isBlank(config.getScheduleRunType()) && schedule.getScheduleStatus() != null) {
-            config.setScheduleRunType(schedule.getScheduleStatus().getDesc());
+        TaskExecutionMode executionMode = TaskExecutionMode.resolve(
+                schedule.getExecutionMode(), schedule.getCronExpression());
+        config.setExecutionMode(executionMode);
+        if (executionMode == TaskExecutionMode.MANUAL) {
+            config.setCronExpression(null);
+            config.setScheduleRunType(ScheduleStatusEnum.PAUSE.getDesc());
+        } else {
+            if (StringUtils.isBlank(config.getCronExpression())) {
+                config.setCronExpression(schedule.getCronExpression());
+            }
+            if (StringUtils.isBlank(config.getScheduleRunType()) && schedule.getScheduleStatus() != null) {
+                config.setScheduleRunType(schedule.getScheduleStatus().getDesc());
+            }
         }
 
         return config;

@@ -23,7 +23,9 @@ import RightConfigPanel from "./RightConfigPanel";
 import { CheckListPopover } from "./components/CheckListPopover";
 import {
   BasicConfig,
+  buildSchedulePayload,
   EnvConfig,
+  getScheduleValidationMessage,
   ScheduleConfig,
 } from "./components/ScheduleConfigContent/types";
 import { useFlowChecks } from "./hooks/useFlowChecks";
@@ -72,7 +74,7 @@ const getInitialWorkflowGraph = (params?: any) => {
 
 const buildDirtySignature = (data: {
   basicConfig: BasicConfig;
-  scheduleConfig: ScheduleConfig;
+  scheduleConfig: Partial<ScheduleConfig>;
   envConfig: EnvConfig;
   workflowGraph: {
     nodes: any[];
@@ -81,7 +83,10 @@ const buildDirtySignature = (data: {
 }) => {
   return JSON.stringify({
     basic: data.basicConfig,
-    schedule: data.scheduleConfig,
+    schedule: buildSchedulePayload(
+      data.scheduleConfig,
+      data.basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL",
+    ),
     env: data.envConfig,
     workflow: {
       nodes: data.workflowGraph?.nodes || [],
@@ -367,9 +372,22 @@ export default function Workflow({
   };
 
   const buildScheduleData = () => {
-    return {
-      ...scheduleConfig,
-    };
+    return buildSchedulePayload(
+      scheduleConfig,
+      basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL",
+    );
+  };
+
+  const validateScheduleBeforeAction = () => {
+    const warning = getScheduleValidationMessage(
+      scheduleConfig,
+      basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL",
+    );
+    if (warning) {
+      message.warning(warning);
+      return false;
+    }
+    return true;
   };
 
   const buildFinalPayload = () => {
@@ -394,6 +412,7 @@ export default function Workflow({
       if (!validateChecklistBeforeAction()) {
         return;
       }
+      if (!validateScheduleBeforeAction()) return;
 
       setPreviewLoading(true);
 
@@ -417,6 +436,7 @@ export default function Workflow({
       if (!validateChecklistBeforeAction()) {
         return;
       }
+      if (!validateScheduleBeforeAction()) return;
 
       setPublishLoading(true);
 

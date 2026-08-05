@@ -28,6 +28,11 @@
         d.update_time AS updateTime,
 
         s.id AS scheduleId,
+        CASE
+        WHEN s.execution_mode IS NULL THEN
+            CASE WHEN s.cron_expression IS NULL OR TRIM(s.cron_expression) = '' THEN 'MANUAL' ELSE 'AUTO' END
+        ELSE s.execution_mode
+        END AS executionMode,
         s.cron_expression AS cronExpression,
         s.schedule_status AS scheduleStatus,
         s.last_schedule_time AS lastScheduleTime,

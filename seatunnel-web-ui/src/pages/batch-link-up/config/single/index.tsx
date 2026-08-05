@@ -7,6 +7,7 @@ import {
   BasicConfig,
   defaultEnvConfig,
   EnvConfig,
+  resolveExecutionMode,
   ScheduleConfig,
 } from "../../workflow/components/ScheduleConfigContent/types";
 
@@ -22,6 +23,7 @@ type JobDefinitionState = {
 };
 
 const defaultScheduleConfig: ScheduleConfig = {
+  executionMode: "MANUAL",
   paramsList: [],
   instanceGenerateMode: "nextDay",
   scheduleRunType: "pause",
@@ -54,7 +56,26 @@ const defaultScheduleConfig: ScheduleConfig = {
     time: "00:17",
   },
   effectType: "forever",
-  cronExpression: "0 17 0 * * ?",
+  cronExpression: undefined,
+};
+
+const DEFAULT_AUTO_CRON = "0 17 0 * * ?";
+
+const normalizeInitialScheduleConfig = (
+  result: ScheduleConfig,
+  modeOverride?: string,
+  rawSchedule?: any,
+): ScheduleConfig => {
+  const forceAuto = modeOverride === "GUIDE_SINGLE_INCREMENTAL";
+  const executionMode = resolveExecutionMode(rawSchedule || result, forceAuto);
+  return {
+    ...result,
+    executionMode,
+    cronExpression:
+      executionMode === "MANUAL"
+        ? undefined
+        : result.cronExpression || DEFAULT_AUTO_CRON,
+  };
 };
 
 const defaultBasicConfig: BasicConfig = {
@@ -110,7 +131,11 @@ const buildInitialScheduleConfigForCreate = (
       ...(rawData?.scheduleConfig?.weeklyValue || {}),
     },
   } as ScheduleConfig;
-  return result;
+  return normalizeInitialScheduleConfig(
+    result,
+    modeOverride,
+    rawData?.scheduleConfig,
+  );
 };
 
 const buildInitialBasicConfigForCreate = (rawData?: any, modeOverride?: string): BasicConfig => {
@@ -150,7 +175,7 @@ const buildInitialScheduleConfigForEdit = (editData?: any, modeOverride?: string
       ...(schedule?.weeklyValue || {}),
     },
   } as ScheduleConfig;
-  return result;
+  return normalizeInitialScheduleConfig(result, modeOverride, schedule);
 };
 
 const buildInitialBasicConfigForEdit = (editData?: any, modeOverride?: string): BasicConfig => {

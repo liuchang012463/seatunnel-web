@@ -27,6 +27,7 @@ export const getTabDefinitions = (
       <ScheduleConfigContent
         value={scheduleConfig}
         onChange={setScheduleConfig}
+        forceAuto={basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL"}
       />
     ),
   },

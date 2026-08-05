@@ -2,6 +2,10 @@ import { message } from "antd";
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 import { seatunnelJobDefinitionApi } from "@/pages/batch-link-up/api";
+import {
+  buildSchedulePayload,
+  getScheduleValidationMessage,
+} from "@/pages/batch-link-up/workflow/components/ScheduleConfigContent/types";
 import { hoconTemplateApi } from "../hoconTemplateApi";
 import {
   markJobDefinitionDirty,
@@ -194,9 +198,7 @@ export function useCustomWorkflowState({
         hoconContent,
       },
 
-      schedule: {
-        ...scheduleConfig,
-      },
+      schedule: buildSchedulePayload(scheduleConfig),
 
       env: {
         jobMode: "BATCH",
@@ -209,6 +211,12 @@ export function useCustomWorkflowState({
   const validateBeforeSubmit = async () => {
     if (!hoconContent?.trim()) {
       message.warning("请先填写 HOCON 配置");
+      return false;
+    }
+
+    const scheduleWarning = getScheduleValidationMessage(scheduleConfig);
+    if (scheduleWarning) {
+      message.warning(scheduleWarning);
       return false;
     }
 

@@ -40,6 +40,7 @@ const FileSyncPage: React.FC = () => {
   const [entries, setEntries] = useState<RemoteEntry[]>([]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const syncType = Form.useWatch('syncType', form) || 'FULL';
+  const executionMode = Form.useWatch('executionMode', form) || 'MANUAL';
   const sourceDatasourceId = Form.useWatch('sourceDatasourceId', form);
   const targetDatasourceId = Form.useWatch('targetDatasourceId', form);
   const source = useMemo(
@@ -80,7 +81,13 @@ const FileSyncPage: React.FC = () => {
           binaryChunkSize: sourceNode.binaryChunkSize || 1048576,
           binaryCompleteFileMode: sourceNode.binaryCompleteFileMode !== false,
           syncType: sourceNode.syncType || 'FULL',
-          cronExpression: data?.schedule?.cronExpression,
+          executionMode:
+            data?.schedule?.executionMode ||
+            (data?.schedule?.cronExpression ? 'AUTO' : 'MANUAL'),
+          cronExpression:
+            data?.schedule?.executionMode === 'MANUAL'
+              ? undefined
+              : data?.schedule?.cronExpression,
         });
       });
     }
@@ -120,6 +127,10 @@ const FileSyncPage: React.FC = () => {
     }
     if (values.syncType === 'INCREMENTAL' && String(values.sourceDatasourceId) !== String(values.targetDatasourceId)) {
       throw new Error('增量 update 模式只支持同一数据源内的目录同步');
+    }
+    const mode = values.executionMode === 'AUTO' ? 'AUTO' : 'MANUAL';
+    if (mode === 'AUTO' && !String(values.cronExpression || '').trim()) {
+      throw new Error('自动调度必须配置调度周期和时间');
     }
     const sourceConfig = {
       dataSourceId: values.sourceDatasourceId,
@@ -161,9 +172,10 @@ const FileSyncPage: React.FC = () => {
       },
       schedule: {
         paramsList: [],
-        scheduleRunType: values.cronExpression ? 'normal' : 'pause',
+        executionMode: mode,
+        scheduleRunType: 'pause',
         scheduleType: 'day',
-        cronExpression: values.cronExpression,
+        cronExpression: mode === 'MANUAL' ? null : values.cronExpression,
       },
       env: { jobMode: 'BATCH', parallelism: values.parallelism || 1, priority: 'MEDIUM' },
     };
@@ -243,7 +255,7 @@ const FileSyncPage: React.FC = () => {
           type="info"
           message="复制策略：仅复制新增或内容变化的文件，不删除目标端已有文件。"
         />
-        <Form
+          <Form
           form={form}
           layout="vertical"
           initialValues={{
@@ -252,6 +264,7 @@ const FileSyncPage: React.FC = () => {
             binaryChunkSize: 1048576,
             binaryCompleteFileMode: true,
             parallelism: 1,
+            executionMode: 'MANUAL',
           }}
         >
           <Card className="mb-5 rounded-2xl" title="任务信息">
@@ -300,8 +313,34 @@ const FileSyncPage: React.FC = () => {
               <Form.Item name="binaryCompleteFileMode" label="完整文件模式" valuePropName="checked">
                 <Switch />
               </Form.Item>
-              <Form.Item name="cronExpression" label="Cron（留空为手动）">
-                <Input placeholder="0 0 2 * * ?" />
+              <Form.Item name="executionMode" label="执行方式">
+                <Radio.Group
+                  options={[
+                    { label: '手动触发', value: 'MANUAL' },
+                    { label: '自动调度', value: 'AUTO' },
+                  ]}
+                  optionType="button"
+                  onChange={(event) => {
+                    if (event.target.value === 'MANUAL') {
+                      form.setFieldValue('cronExpression', undefined);
+                    }
+                  }}
+                />
+              </Form.Item>
+              <Form.Item
+                name="cronExpression"
+                label="Cron"
+                rules={[
+                  {
+                    required: executionMode === 'AUTO',
+                    message: '自动调度必须配置调度周期和时间',
+                  },
+                ]}
+              >
+                <Input
+                  disabled={executionMode !== 'AUTO'}
+                  placeholder="0 0 2 * * ?"
+                />
               </Form.Item>
             </div>
             {syncType === 'INCREMENTAL' && (

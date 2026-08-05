@@ -17,6 +17,8 @@ export interface BasicConfig {
 
 export type LinkPriority = "HIGH" | "MEDIUM" | "LOW";
 
+export type ExecutionMode = "MANUAL" | "AUTO";
+
 export interface EnvConfig {
   jobMode: "BATCH" | "STREAMING";
   parallelism: number;
@@ -37,6 +39,8 @@ export const defaultEnvConfig: EnvConfig = {
 };
 
 export interface ScheduleConfig {
+    executionMode: ExecutionMode;
+
     // 调度参数
     paramsList: Array<{
         key: string;
@@ -81,5 +85,40 @@ export interface ScheduleConfig {
     effectType: "forever" | "assign";
     effectStartTime?: string;
     effectEndTime?: string;
-    cronExpression?: string;
+    cronExpression?: string | null;
 }
+
+export const resolveExecutionMode = (
+  schedule?: Partial<ScheduleConfig> | null,
+  forceAuto = false,
+): ExecutionMode => {
+  if (forceAuto) return "AUTO";
+  if (schedule?.executionMode === "MANUAL" || schedule?.executionMode === "AUTO") {
+    return schedule.executionMode;
+  }
+  return schedule?.cronExpression?.trim() ? "AUTO" : "MANUAL";
+};
+
+export const buildSchedulePayload = (
+  schedule?: Partial<ScheduleConfig> | null,
+  forceAuto = false,
+) => {
+  const executionMode = resolveExecutionMode(schedule, forceAuto);
+  return {
+    ...(schedule || {}),
+    executionMode,
+    cronExpression:
+      executionMode === "MANUAL" ? null : schedule?.cronExpression,
+  };
+};
+
+export const getScheduleValidationMessage = (
+  schedule?: Partial<ScheduleConfig> | null,
+  forceAuto = false,
+) => {
+  const executionMode = resolveExecutionMode(schedule, forceAuto);
+  if (executionMode === "AUTO" && !schedule?.cronExpression?.trim()) {
+    return "自动调度必须配置调度周期和时间";
+  }
+  return undefined;
+};

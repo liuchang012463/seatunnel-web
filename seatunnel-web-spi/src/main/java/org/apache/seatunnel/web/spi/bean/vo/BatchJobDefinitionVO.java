@@ -76,6 +76,7 @@ public class BatchJobDefinitionVO {
     private Date updateTime;
 
     private String scheduleId;
+    private TaskExecutionMode executionMode;
     private String cronExpression;
     private ScheduleStatusEnum scheduleStatus;
 

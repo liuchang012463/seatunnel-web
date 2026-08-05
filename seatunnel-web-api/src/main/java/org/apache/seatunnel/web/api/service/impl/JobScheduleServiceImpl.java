@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.quartz.QuartzJob;
 import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.utils.ConvertUtil;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.common.utils.Utils;
@@ -46,16 +47,17 @@ public class JobScheduleServiceImpl implements JobScheduleService {
             throw new RuntimeException("Job definition id cannot be null");
         }
 
-        if (StringUtils.isBlank(dto.getCronExpression())) {
-            throw new RuntimeException("Cron expression cannot be empty");
-        }
+        TaskExecutionMode executionMode = resolveExecutionMode(dto);
+        validateCronIfAuto(executionMode, dto.getCronExpression());
 
         if (jobScheduleDao.existsByJobDefinitionId(dto.getJobDefinitionId())) {
             throw new RuntimeException("Schedule configuration already exists for this job definition");
         }
 
         JobSchedule po = ConvertUtil.sourceToTarget(dto, JobSchedule.class);
-        po.setCronExpression(dto.getCronExpression().trim());
+        po.setExecutionMode(executionMode);
+        po.setCronExpression(normalizeCron(executionMode, dto.getCronExpression()));
+        po.setScheduleStatus(normalizeScheduleStatus(executionMode, dto.getScheduleStatus()));
         po.setScheduleConfig(buildPersistedScheduleConfigJson(dto.getScheduleConfig()));
         po.initInsert();
 
@@ -77,9 +79,8 @@ public class JobScheduleServiceImpl implements JobScheduleService {
             throw new RuntimeException("Schedule id cannot be null");
         }
 
-        if (StringUtils.isBlank(dto.getCronExpression())) {
-            throw new RuntimeException("Cron expression cannot be empty");
-        }
+        TaskExecutionMode executionMode = resolveExecutionMode(dto);
+        validateCronIfAuto(executionMode, dto.getCronExpression());
 
         JobSchedule existingSchedule = jobScheduleDao.queryById(dto.getId());
         if (existingSchedule == null) {
@@ -88,7 +89,9 @@ public class JobScheduleServiceImpl implements JobScheduleService {
 
         JobSchedule schedule = new JobSchedule();
         BeanUtils.copyProperties(dto, schedule);
-        schedule.setCronExpression(dto.getCronExpression().trim());
+        schedule.setExecutionMode(executionMode);
+        schedule.setCronExpression(normalizeCron(executionMode, dto.getCronExpression()));
+        schedule.setScheduleStatus(normalizeScheduleStatus(executionMode, dto.getScheduleStatus()));
         schedule.setScheduleConfig(buildPersistedScheduleConfigJson(dto.getScheduleConfig()));
 
         boolean updateResult = jobScheduleDao.updateById(schedule);
@@ -135,6 +138,29 @@ public class JobScheduleServiceImpl implements JobScheduleService {
         JobSchedule jobSchedule = jobScheduleDao.queryById(taskScheduleId);
         if (jobSchedule == null) {
             throw new RuntimeException("Task schedule configuration does not exist");
+        }
+
+        TaskExecutionMode executionMode = resolveExecutionMode(jobSchedule);
+        if (executionMode == TaskExecutionMode.MANUAL) {
+            // Defensive guard for callers that try to start a manual task as a
+            // periodic Quartz task. Manual tasks never own a Quartz trigger.
+            stopSchedule(taskScheduleId);
+            if (StringUtils.isNotBlank(jobSchedule.getCronExpression())) {
+                JobSchedule normalized = new JobSchedule();
+                normalized.setId(taskScheduleId);
+                normalized.setExecutionMode(TaskExecutionMode.MANUAL);
+                normalized.setCronExpression(null);
+                normalized.setScheduleStatus(ScheduleStatusEnum.PAUSE);
+                normalized.setNextScheduleTime(null);
+                if (!jobScheduleDao.updateById(normalized)) {
+                    throw new RuntimeException("Failed to clear Cron for manual task schedule");
+                }
+            }
+            log.info("Skip starting manual task schedule: {}", taskScheduleId);
+            return true;
+        }
+        if (StringUtils.isBlank(jobSchedule.getCronExpression())) {
+            throw new RuntimeException("自动调度必须配置有效 Cron");
         }
 
         try {
@@ -200,6 +226,10 @@ public class JobScheduleServiceImpl implements JobScheduleService {
             throw new RuntimeException("Task schedule configuration does not exist");
         }
 
+        if (resolveExecutionMode(taskSchedule) == TaskExecutionMode.MANUAL) {
+            throw new RuntimeException("手动执行任务没有 Quartz 调度器");
+        }
+
         JobKey jobKey = buildJobKey(taskScheduleId);
         if (!scheduler.checkExists(jobKey)) {
             throw new RuntimeException("Schedule has not been started yet");
@@ -225,7 +255,12 @@ public class JobScheduleServiceImpl implements JobScheduleService {
             throw new RuntimeException("Task schedule configuration does not exist");
         }
 
+        if (resolveExecutionMode(taskSchedule) == TaskExecutionMode.MANUAL) {
+            throw new RuntimeException("手动执行任务不支持修改 Quartz 调度时间");
+        }
+
         ScheduleStatusEnum originalStatus = taskSchedule.getScheduleStatus();
+        taskSchedule.setExecutionMode(TaskExecutionMode.AUTO);
         taskSchedule.setCronExpression(cronExpression.trim());
 
         boolean updateResult = jobScheduleDao.updateById(taskSchedule);
@@ -333,6 +368,7 @@ public class JobScheduleServiceImpl implements JobScheduleService {
         }
 
         JobScheduleConfig persisted = new JobScheduleConfig();
+        persisted.setExecutionMode(source.resolveExecutionMode());
         persisted.setParamsList(source.getParamsList());
         persisted.setInstanceGenerateMode(source.getInstanceGenerateMode());
 
@@ -362,6 +398,41 @@ public class JobScheduleServiceImpl implements JobScheduleService {
         persisted.setScheduleRunType(null);
 
         return JSONUtils.toJsonString(persisted);
+    }
+
+    private TaskExecutionMode resolveExecutionMode(SeaTunnelJobScheduleDTO dto) {
+        if (dto == null) {
+            return TaskExecutionMode.MANUAL;
+        }
+        return TaskExecutionMode.resolve(dto.getExecutionMode(), dto.getCronExpression());
+    }
+
+    private TaskExecutionMode resolveExecutionMode(JobSchedule schedule) {
+        if (schedule == null) {
+            return TaskExecutionMode.MANUAL;
+        }
+        return TaskExecutionMode.resolve(schedule.getExecutionMode(), schedule.getCronExpression());
+    }
+
+    private void validateCronIfAuto(TaskExecutionMode executionMode, String cronExpression) {
+        if (executionMode == TaskExecutionMode.AUTO && StringUtils.isBlank(cronExpression)) {
+            throw new RuntimeException("自动调度必须配置有效 Cron");
+        }
+    }
+
+    private String normalizeCron(TaskExecutionMode executionMode, String cronExpression) {
+        if (executionMode == TaskExecutionMode.MANUAL || StringUtils.isBlank(cronExpression)) {
+            return null;
+        }
+        return cronExpression.trim();
+    }
+
+    private ScheduleStatusEnum normalizeScheduleStatus(TaskExecutionMode executionMode,
+                                                        ScheduleStatusEnum scheduleStatus) {
+        if (executionMode == TaskExecutionMode.MANUAL) {
+            return ScheduleStatusEnum.PAUSE;
+        }
+        return scheduleStatus == null ? ScheduleStatusEnum.PAUSE : scheduleStatus;
     }
 
     private boolean isValidCronExpression(String cronExpression) {

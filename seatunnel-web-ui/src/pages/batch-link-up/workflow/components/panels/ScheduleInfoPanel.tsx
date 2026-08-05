@@ -15,7 +15,7 @@ export default function ScheduleInfoPanel({ form }: { params: any; form: any }) 
           <Select
             placeholder="请选择调度周期"
             options={[
-              { label: "手动执行", value: "MANUAL" },
+              { label: "手动触发", value: "MANUAL" },
               { label: "按天", value: "DAILY" },
               { label: "按小时", value: "HOURLY" },
               { label: "Cron 表达式", value: "CRON" },

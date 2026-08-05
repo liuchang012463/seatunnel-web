@@ -7,17 +7,26 @@ import {
   timeoutUnitOptions,
 } from "../constants";
 import StepNumberInput from "./StepNumberInput";
+import { resolveExecutionMode } from "../types";
 
 interface Props {
   value?: any;
   onChange?: (patch: Record<string, any>) => void;
+  forceAuto?: boolean;
 }
 
-const ScheduleStrategySection: React.FC<Props> = ({ value, onChange }) => {
+const ScheduleStrategySection: React.FC<Props> = ({
+  value,
+  onChange,
+  forceAuto = false,
+}) => {
   const [form] = Form.useForm();
+  const executionMode = resolveExecutionMode(value, forceAuto);
+  const isAuto = executionMode === "AUTO";
 
   useEffect(() => {
     form.setFieldsValue({
+      executionMode,
       instanceGenerateMode: value?.instanceGenerateMode,
       scheduleRunType: value?.scheduleRunType,
       timeoutMode: value?.timeoutMode,
@@ -28,7 +37,7 @@ const ScheduleStrategySection: React.FC<Props> = ({ value, onChange }) => {
       retryTimes: value?.retryTimes,
       retryInterval: value?.retryInterval,
     });
-  }, [value, form]);
+  }, [executionMode, form, value]);
 
   return (
     <div className="schedule-section-body">
@@ -42,6 +51,7 @@ const ScheduleStrategySection: React.FC<Props> = ({ value, onChange }) => {
           labelAlign="left"
           onValuesChange={(_, allValues) => {
             onChange?.({
+              executionMode: forceAuto ? "AUTO" : allValues.executionMode,
               instanceGenerateMode: allValues.instanceGenerateMode,
               scheduleRunType: allValues.scheduleRunType,
               timeoutMode: allValues.timeoutMode,
@@ -56,6 +66,26 @@ const ScheduleStrategySection: React.FC<Props> = ({ value, onChange }) => {
         >
           <Form.Item
             style={formItemStyle}
+            label={<span style={labelNodeStyle}>执行方式</span>}
+            required
+            name="executionMode"
+          >
+            <Radio.Group disabled={forceAuto}>
+              <Space size={16} wrap>
+                <Radio value="MANUAL">手动触发</Radio>
+                <Radio value="AUTO">自动调度</Radio>
+              </Space>
+            </Radio.Group>
+          </Form.Item>
+
+          {forceAuto ? (
+            <div style={{ margin: "-4px 0 16px 118px", color: "#64748b", fontSize: 12 }}>
+              单表增量微批依赖调度窗口和水位推进，必须使用自动调度。
+            </div>
+          ) : null}
+
+          <Form.Item
+            style={formItemStyle}
             label={<span style={labelNodeStyle}>实例生成方式</span>}
             required
             name="instanceGenerateMode"
@@ -68,20 +98,22 @@ const ScheduleStrategySection: React.FC<Props> = ({ value, onChange }) => {
             </Radio.Group>
           </Form.Item>
 
-          <Form.Item
-            style={formItemStyle}
-            label={<span style={labelNodeStyle}>调度类型</span>}
-            required
-            name="scheduleRunType"
-          >
-            <Radio.Group>
-              <Space size={16} wrap>
-                <Radio value="normal">正常调度</Radio>
-                <Radio value="pause">暂停调度</Radio>
-                <Radio value="empty">空跑调度</Radio>
-              </Space>
-            </Radio.Group>
-          </Form.Item>
+          {isAuto ? (
+            <Form.Item
+              style={formItemStyle}
+              label={<span style={labelNodeStyle}>调度类型</span>}
+              required
+              name="scheduleRunType"
+            >
+              <Radio.Group>
+                <Space size={16} wrap>
+                  <Radio value="normal">正常调度</Radio>
+                  <Radio value="pause">暂停调度</Radio>
+                  <Radio value="empty">空跑调度</Radio>
+                </Space>
+              </Radio.Group>
+            </Form.Item>
+          ) : null}
 
           <Form.Item
             style={formItemStyle}

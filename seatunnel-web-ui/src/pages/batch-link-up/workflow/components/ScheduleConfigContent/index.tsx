@@ -3,27 +3,36 @@ import type { CollapseProps } from "antd";
 import { Collapse } from "antd";
 import "./index.less";
 
-import { fetchTimeVariableList } from "@/pages/knowledge-management/api";
-import { useEffect, useState } from "react";
 import ScheduleParamsSection from "./components/ScheduleParamsSection";
 import ScheduleStrategySection from "./components/ScheduleStrategySection";
 import ScheduleTimeSection from "./components/ScheduleTimeSection";
 import SectionLabel from "./components/SectionLabel";
+import { resolveExecutionMode } from "./types";
 
 interface Props {
   value?: any;
   onChange?: (value: any) => void;
+  forceAuto?: boolean;
 }
 
-export default function ScheduleConfigContent({ value, onChange }: Props) {
+export default function ScheduleConfigContent({
+  value,
+  onChange,
+  forceAuto = false,
+}: Props) {
+  const executionMode = resolveExecutionMode(value, forceAuto);
+  const isAuto = executionMode === "AUTO";
+
   const updateSchedule = (patch: Record<string, any>) => {
     onChange?.((prev: any) => ({
       ...prev,
       ...patch,
+      executionMode: forceAuto ? "AUTO" : patch.executionMode || prev?.executionMode,
+      ...(patch.executionMode === "MANUAL"
+        ? { scheduleRunType: "pause", cronExpression: undefined }
+        : {}),
     }));
   };
-
-
 
   const items: CollapseProps["items"] = [
     {
@@ -47,16 +56,26 @@ export default function ScheduleConfigContent({ value, onChange }: Props) {
         />
       ),
       children: (
-        <ScheduleStrategySection value={value} onChange={updateSchedule} />
+        <ScheduleStrategySection
+          value={value}
+          onChange={updateSchedule}
+          forceAuto={forceAuto}
+        />
       ),
     },
-    {
-      key: "scheduleTime",
-      label: (
-        <SectionLabel title="调度时间" tooltip="配置周期、时间和生效规则" />
-      ),
-      children: <ScheduleTimeSection value={value} onChange={updateSchedule} />,
-    },
+    ...(isAuto
+      ? [
+          {
+            key: "scheduleTime",
+            label: (
+              <SectionLabel title="调度时间" tooltip="配置周期、时间和生效规则" />
+            ),
+            children: (
+              <ScheduleTimeSection value={value} onChange={updateSchedule} />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (

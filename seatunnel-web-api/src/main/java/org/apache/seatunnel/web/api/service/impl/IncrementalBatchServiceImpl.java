@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.api.service.IncrementalBatchExecution;
 import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.time.IncrementalConfigResolver;
 import org.apache.seatunnel.web.core.time.IncrementalSqlRenderer;
@@ -296,10 +297,19 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         if (schedule == null || StringUtils.isBlank(schedule.getScheduleConfig())) {
             throw new IllegalArgumentException("增量任务必须配置定时调度");
         }
+        TaskExecutionMode executionMode = TaskExecutionMode.resolve(
+                schedule.getExecutionMode(), schedule.getCronExpression());
+        if (executionMode != TaskExecutionMode.AUTO || StringUtils.isBlank(schedule.getCronExpression())) {
+            throw new IllegalArgumentException("增量任务必须使用自动调度并配置有效 Cron");
+        }
         try {
             JobScheduleConfig config = JSONUtils.parseObject(schedule.getScheduleConfig(), JobScheduleConfig.class);
             if (config == null) {
                 throw new IllegalArgumentException("增量调度配置为空");
+            }
+            config.setExecutionMode(executionMode);
+            if (StringUtils.isBlank(config.getCronExpression())) {
+                config.setCronExpression(schedule.getCronExpression());
             }
             return config;
         } catch (Exception e) {

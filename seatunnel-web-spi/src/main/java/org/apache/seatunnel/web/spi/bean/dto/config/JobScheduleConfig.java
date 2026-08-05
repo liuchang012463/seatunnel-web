@@ -3,12 +3,18 @@ package org.apache.seatunnel.web.spi.bean.dto.config;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 
 import java.util.List;
 import java.util.Map;
 
 @Data
 public class JobScheduleConfig {
+
+    /**
+     * MANUAL or AUTO. When omitted by an old client it is inferred from Cron.
+     */
+    private TaskExecutionMode executionMode;
 
     private List<ScheduleParamItem> paramsList;
 
@@ -66,6 +72,10 @@ public class JobScheduleConfig {
 
     public ScheduleStatusEnum resolveScheduleStatus() {
         return ScheduleStatusEnum.fromCode(this.scheduleRunType);
+    }
+
+    public TaskExecutionMode resolveExecutionMode() {
+        return TaskExecutionMode.resolve(this.executionMode, this.cronExpression);
     }
 
     @Data
