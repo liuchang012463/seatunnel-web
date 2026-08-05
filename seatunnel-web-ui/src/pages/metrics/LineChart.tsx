@@ -30,16 +30,71 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
       // },
       tooltip: {
         trigger: 'axis',
+        backgroundColor: '#002e41',
+        borderColor: '#2187a8',
+        borderWidth: 1,
+        padding: [8, 10],
+        textStyle: {
+          color: '#d5d5d5',
+          fontSize: 12,
+        },
+        axisPointer: {
+          type: 'line',
+          lineStyle: {
+            color: 'rgba(77, 210, 255, 0.55)',
+            width: 1,
+          },
+        },
+        formatter: (params: any) => {
+          const items = Array.isArray(params) ? params : [params];
+          const firstItem = items[0];
+
+          return [
+            firstItem?.name || '',
+            ...items.map(
+              (item: any) => `${item.marker}${item.seriesName}: ${item.value} ${unit}`
+            ),
+          ].join('<br/>');
+        },
       },
       xAxis: {
         type: 'category',
         data: xAxisData,
+        axisLabel: {
+          color: '#d5d5d5',
+        },
+        axisLine: {
+          lineStyle: {
+            color: '#2187a8',
+          },
+        },
+        axisTick: {
+          lineStyle: {
+            color: 'rgba(213, 213, 213, 0.45)',
+          },
+        },
       },
       yAxis: {
         type: 'value',
         name: '',
         axisLabel: {
+          color: '#d5d5d5',
           formatter: '{value} ' + unit,
+        },
+        axisLine: {
+          lineStyle: {
+            color: '#2187a8',
+          },
+        },
+        axisTick: {
+          lineStyle: {
+            color: 'rgba(213, 213, 213, 0.45)',
+          },
+        },
+        splitLine: {
+          lineStyle: {
+            color: 'rgba(213, 213, 213, 0.24)',
+          },
         },
       },
       series: [
@@ -76,7 +131,8 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
     <div
       ref={chartRef}
       style={{
-        width: '75vh',
+        width: '100%',
+        maxWidth: '100%',
         height: '330px',
       }}
     />

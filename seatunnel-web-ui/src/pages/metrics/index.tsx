@@ -272,19 +272,21 @@ const App: React.FC = () => {
                         key={item.title}
                         variants={fadeUp}
                         whileHover={{ y: -4, transition: { duration: 0.18 } }}
-                        className="rounded-3xl border border-border/50 bg-white shadow-sm"
+                        className="metrics-stat-card"
                       >
-                        <div className="p-4 pt-6 md:p-6 md:pt-6">
+                        <div className="metrics-stat-card__content p-4 pt-6 md:p-6 md:pt-6">
                           <div className="mb-3 flex items-center justify-between">
                             <div className={`rounded-xl p-2 ${item.iconBg}`}>
                               <div className={item.iconColor}>{item.icon}</div>
                             </div>
                           </div>
-                          <p className="text-2xl font-bold">{item.value}</p>
-                          <p className="mt-1 text-xs text-gray-500">
+                          <p className="metrics-stat-card__value text-2xl font-bold">
+                            {item.value}
+                          </p>
+                          <p className="metrics-stat-card__title mt-1 text-xs">
                             {item.title}
                           </p>
-                          <p className="mt-1 text-xs text-gray-400">
+                          <p className="metrics-stat-card__title mt-1 text-xs">
                             {item.subText}
                           </p>
                         </div>
@@ -300,7 +302,7 @@ const App: React.FC = () => {
                     </h2>
                   </div>
                   <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                    <motion.div variants={fadeUp}>
+                    <motion.div variants={fadeUp} className="min-w-0">
                       <ChartCard title="同步记录量趋势">
                         <BarChart
                           data={chartData.recordsTrend.data}
@@ -312,7 +314,7 @@ const App: React.FC = () => {
                       </ChartCard>
                     </motion.div>
 
-                    <motion.div variants={fadeUp}>
+                    <motion.div variants={fadeUp} className="min-w-0">
                       <ChartCard title="同步数据量趋势">
                         <BarChart
                           data={chartData.bytesTrend.data}
@@ -370,19 +372,20 @@ const App: React.FC = () => {
                     variants={cardStagger}
                     initial="hidden"
                     animate={pageReady ? "visible" : "hidden"}
-                    className="grid grid-cols-1 gap-6 xl:grid-cols-3"
+                    className="grid grid-cols-1 gap-4 xl:grid-cols-3"
                   >
                     {summaryList.map((item) => (
                       <motion.div
                         key={item.title}
                         variants={fadeUp}
-                        className="rounded-3xl border border-border/50 bg-white shadow-sm"
+                        whileHover={{ y: -4, transition: { duration: 0.18 } }}
+                        className="metrics-summary-card"
                       >
-                        <div className="p-6">
-                          <h3 className="text-base font-semibold text-slate-900">
+                        <div className="metrics-summary-card__content p-4 md:p-6">
+                          <h3 className="metrics-summary-card__title text-base font-semibold">
                             {item.title}
                           </h3>
-                          <p className="mt-3 text-sm leading-6 text-slate-500">
+                          <p className="metrics-summary-card__description mt-3 text-sm leading-6">
                             {item.content}
                           </p>
                         </div>
@@ -406,14 +409,16 @@ const ChartCard: React.FC<{
   return (
     <motion.div
       whileHover={{ y: -2, transition: { duration: 0.18 } }}
-      className="rounded-3xl border border-border/50 bg-white shadow-sm"
+      className="metrics-chart-card"
     >
-      <div className="flex flex-col space-y-1.5 p-4 md:p-6">
-        <h3 className="text-base font-semibold tracking-tight md:text-xl">
+      <div className="metrics-chart-card__header flex flex-col space-y-1.5 p-4 md:p-6">
+        <h3 className="metrics-chart-card__title text-base font-semibold tracking-tight md:text-xl">
           {title}
         </h3>
       </div>
-      <div className="p-4 pt-0 md:p-6 md:pt-0">{children}</div>
+      <div className="metrics-chart-card__body p-4 pt-0 md:p-6 md:pt-0">
+        {children}
+      </div>
     </motion.div>
   );
 };

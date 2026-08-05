@@ -42,7 +42,7 @@
     font-size: 13px;
     font-weight: 600;
     justify-content: center;
-    padding: 2px 2px;
+    padding: 6px 12px;
     text-align: left;
 
     &__title {
@@ -60,4 +60,101 @@
         line-height: 16px;
         transition: color 0.2s ease;
     }
+}
+
+.metrics-stat-card {
+    border: 1px solid #2187a8;
+    border-radius: 12px;
+    background: var(--st-color-bg-panel);
+    box-shadow: var(--st-panel-shadow);
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.metrics-stat-card:hover {
+    border-color: var(--st-color-primary);
+    background: var(--st-color-bg-elevated);
+    box-shadow: 0 12px 28px rgba(0, 25, 34, 0.2);
+}
+
+.metrics-stat-card__content {
+    min-height: 168px;
+}
+
+.metrics-stat-card__value {
+    color: var(--st-color-text-primary);
+    line-height: 1.2;
+}
+
+.metrics-stat-card__title {
+    color: var(--st-color-text-secondary);
+}
+
+.metrics-stat-card__subtext {
+    color: var(--st-color-text-muted);
+}
+
+.metrics-summary-card {
+    height: 100%;
+    min-width: 0;
+    border: 1px solid #2187a8;
+    border-radius: 12px;
+    background: var(--st-color-bg-panel);
+    box-shadow: var(--st-panel-shadow);
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.metrics-summary-card:hover {
+    border-color: var(--st-color-primary);
+    background: var(--st-color-bg-elevated);
+    box-shadow: 0 12px 28px rgba(0, 25, 34, 0.2);
+}
+
+.metrics-summary-card__content {
+    height: 100%;
+}
+
+.metrics-summary-card__title {
+    color: var(--st-color-text-primary);
+}
+
+.metrics-summary-card__description {
+    color: var(--st-color-text-secondary);
+}
+
+.metrics-chart-card {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid #2187a8;
+    border-radius: 12px;
+    background: var(--st-color-bg-panel);
+    box-shadow: var(--st-panel-shadow);
+    transition:
+        background 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.metrics-chart-card:hover {
+    background: var(--st-color-bg-elevated);
+    box-shadow: 0 12px 28px rgba(0, 25, 34, 0.2);
+}
+
+.metrics-chart-card__header,
+.metrics-chart-card__body {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.metrics-chart-card__title {
+    color: var(--st-color-text-primary);
+}
+
+.metrics-chart-card__body {
+    overflow: hidden;
 }
