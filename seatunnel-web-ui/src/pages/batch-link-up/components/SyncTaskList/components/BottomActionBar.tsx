@@ -1,5 +1,10 @@
-import { PlayCircleOutlined, StopOutlined } from "@ant-design/icons";
-import { useIntl } from "@umijs/max";
+import {
+  CloudDownloadOutlined,
+  CloudUploadOutlined,
+  CopyOutlined,
+  PlayCircleOutlined,
+  StopOutlined,
+} from "@ant-design/icons";
 import { Button, Divider, Tooltip } from "antd";
 import React from "react";
 import CustomPagination from "../../../CustomPagination";
@@ -7,6 +12,9 @@ import CustomPagination from "../../../CustomPagination";
 interface BottomActionBarProps {
   onStart: () => void;
   onStop: () => void;
+  onOnline: () => void;
+  onOffline: () => void;
+  onCreate: () => void;
   pagination: {
     total: number;
     current?: number;
@@ -39,11 +47,18 @@ interface BottomActionBarProps {
    * 停止按钮提示。
    */
   stopTooltip?: string;
+  onlineDisabled?: boolean;
+  offlineDisabled?: boolean;
+  onlineTooltip?: string;
+  offlineTooltip?: string;
 }
 
 const BottomActionBar: React.FC<BottomActionBarProps> = ({
   onStart,
   onStop,
+  onOnline,
+  onOffline,
+  onCreate,
   pagination,
   selectedCount = 0,
   disabled = false,
@@ -51,11 +66,15 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   stopDisabled = false,
   startTooltip,
   stopTooltip,
+  onlineDisabled = false,
+  offlineDisabled = false,
+  onlineTooltip,
+  offlineTooltip,
 }) => {
-  const intl = useIntl();
-
   const finalStartDisabled = disabled || startDisabled;
   const finalStopDisabled = disabled || stopDisabled;
+  const finalOnlineDisabled = disabled || onlineDisabled;
+  const finalOfflineDisabled = disabled || offlineDisabled;
 
   const defaultDisabledTooltip =
     selectedCount <= 0 ? "请先选择任务" : undefined;
@@ -71,6 +90,54 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
         }}
       >
         <div style={{ display: "flex", alignItems: "center" }}>
+          <Tooltip title={defaultDisabledTooltip}>
+            <span style={{ display: "inline-flex" }}>
+              <Button
+                size="small"
+                onClick={onCreate}
+                disabled={disabled}
+                className="h-8 min-w-[104px] rounded-full border-slate-200 font-bold"
+                icon={<CopyOutlined />}
+              >
+                批量创建
+              </Button>
+            </span>
+          </Tooltip>
+
+          <Divider type="vertical" />
+
+          <Tooltip title={onlineTooltip || defaultDisabledTooltip}>
+            <span style={{ display: "inline-flex" }}>
+              <Button
+                size="small"
+                onClick={onOnline}
+                disabled={finalOnlineDisabled}
+                className="h-8 min-w-[82px] rounded-full border-slate-200 font-bold"
+                icon={<CloudUploadOutlined />}
+              >
+                上线
+              </Button>
+            </span>
+          </Tooltip>
+
+          <Divider type="vertical" />
+
+          <Tooltip title={offlineTooltip || defaultDisabledTooltip}>
+            <span style={{ display: "inline-flex" }}>
+              <Button
+                size="small"
+                onClick={onOffline}
+                disabled={finalOfflineDisabled}
+                className="h-8 min-w-[82px] rounded-full border-slate-200 font-bold"
+                icon={<CloudDownloadOutlined />}
+              >
+                下线
+              </Button>
+            </span>
+          </Tooltip>
+
+          <Divider type="vertical" />
+
           <Tooltip title={startTooltip || defaultDisabledTooltip}>
             <span style={{ display: "inline-flex" }}>
               <Button
@@ -81,10 +148,7 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
                 className="h-8 min-w-[88px] rounded-full border-none font-bold shadow-[0_12px_26px_rgba(53,84,209,0.23)]"
                 icon={<PlayCircleOutlined />}
               >
-                {intl.formatMessage({
-                  id: "pages.common.action.run",
-                  defaultMessage: "Run",
-                })}
+                启动
               </Button>
             </span>
           </Tooltip>
@@ -102,10 +166,7 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
                 className="h-8 min-w-[88px] rounded-full border-none font-bold shadow-[0_12px_26px_rgba(244,63,94,0.18)]"
                 icon={<StopOutlined />}
               >
-                {intl.formatMessage({
-                  id: "pages.common.action.stop",
-                  defaultMessage: "Stop",
-                })}
+                终止
               </Button>
             </span>
           </Tooltip>

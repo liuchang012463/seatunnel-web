@@ -8,7 +8,9 @@ import org.apache.seatunnel.web.core.builder.HoconConfigBuilder;
 import org.apache.seatunnel.web.core.dag.DagGraph;
 import org.apache.seatunnel.web.core.job.handler.JobRuntimeContext;
 import org.apache.seatunnel.web.core.job.handler.JobRuntimeContextFactory;
+import org.apache.seatunnel.web.core.time.IncrementalConfigResolver;
 import org.apache.seatunnel.web.core.utils.DagUtil;
+import org.apache.seatunnel.web.spi.bean.dto.command.BatchJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +36,13 @@ public class GuideSingleHoconBuildService {
         String dagJson = JSONUtils.toJsonString(workflow);
         if (StringUtils.isBlank(dagJson)) {
             throw new IllegalArgumentException("workflow can not be blank");
+        }
+
+        if (command instanceof BatchJobSaveCommand) {
+            IncrementalConfigResolver.resolve(
+                    workflow,
+                    ((BatchJobSaveCommand) command).getSchedule()
+            );
         }
 
         DagGraph dagGraph = DagUtil.parseAndCheck(dagJson);

@@ -82,14 +82,4 @@ export interface ScheduleConfig {
     effectStartTime?: string;
     effectEndTime?: string;
     cronExpression?: string;
-    incremental?: IncrementalConfig;
-}
-
-export interface IncrementalConfig {
-    enabled: boolean;
-    watermarkColumn: string;
-    initialWatermark: string;
-    safetyDelaySeconds: number;
-    overlapSeconds: number;
-    maxWindowSeconds: number;
 }

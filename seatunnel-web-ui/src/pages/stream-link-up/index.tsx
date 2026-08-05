@@ -16,6 +16,9 @@ import RealtimeTaskTable from './components/RealtimeTaskTable';
 import RealtimeTaskViewModal from './components/RealtimeTaskViewModal';
 import SearchToolbar from './components/SearchToolbar';
 import TaskViewModal from './components/TaskViewModal';
+import BatchCreateJobModal, {
+  BatchCreateValues,
+} from '@/pages/common/components/BatchCreateJobModal';
 import './index.less';
 
 const REALTIME_DETAIL_CACHE_PREFIX = 'stream-link-up-detail';
@@ -180,6 +183,8 @@ const getPageRecords = (res: any) => {
 
 const isReleaseOnline = (releaseState?: string | number) => releaseState === 'ONLINE' || releaseState === 1;
 
+const isRunningStatus = (status?: string) => String(status || '').toUpperCase() === 'RUNNING';
+
 const RealtimeSyncPage: React.FC = () => {
   const [sourceType, setSourceType] = useState<any>({
     dbType: 'MYSQL',
@@ -205,6 +210,8 @@ const RealtimeSyncPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [batchCreateOpen, setBatchCreateOpen] = useState(false);
+  const [batchCreateLoading, setBatchCreateLoading] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
 
   const [checkpointOpen, setCheckpointOpen] = useState(false);
@@ -214,6 +221,11 @@ const RealtimeSyncPage: React.FC = () => {
   const [checkpointLoading, setCheckpointLoading] = useState(false);
 
   const hasSelected = selectedRowKeys.length > 0;
+
+  const getSelectedRecords = useCallback(() => {
+    const selectedKeySet = new Set(selectedRowKeys.map(String));
+    return dataSource.filter((record) => selectedKeySet.has(String(record.id)));
+  }, [dataSource, selectedRowKeys]);
 
   const queryParams = useMemo(
     () => buildQueryParams(searchValues, pagination),
@@ -390,13 +402,13 @@ const RealtimeSyncPage: React.FC = () => {
     }
 
     if (!isReleaseOnline(record.releaseState)) {
-      message.warning('请先上线任务，再执行运行操作');
+      message.warning('请先上线任务，再执行启动操作');
       return;
     }
 
     await runJobAction(() => seatunnelStreamingJobExecuteApi.execute(record.id), {
       success: '实时任务已启动',
-      error: '运行实时任务失败',
+      error: '启动实时任务失败',
     });
   };
 
@@ -407,8 +419,8 @@ const RealtimeSyncPage: React.FC = () => {
     }
 
     await runJobAction(() => seatunnelStreamingJobExecuteApi.pause(record.instanceId), {
-      success: '实时任务已停止',
-      error: '停止实时任务失败',
+      success: '实时任务已终止',
+      error: '终止实时任务失败',
     });
   };
 
@@ -561,35 +573,257 @@ const RealtimeSyncPage: React.FC = () => {
     await loadCheckpointData(record);
   };
 
-  const handleBatchStart = async () => {
-    if (!hasSelected) return;
+  const getSelectedJobLabels = (records: StreamingJobDefinitionVO[]) =>
+    records
+      .slice(0, 3)
+      .map((record) => `${record.jobName || '-'}(${record.id})`)
+      .join('、') + (records.length > 3 ? ` 等 ${records.length} 个任务` : '');
 
-    const success = await runJobAction(
-      () => Promise.all(selectedRowKeys.map((id) => seatunnelStremJobDefinitionApi.online(id))),
-      {
-        success: `已提交 ${selectedRowKeys.length} 个实时任务上线请求`,
-        error: '批量上线失败',
-      },
-    );
+  const runBatchOperations = async (
+    records: StreamingJobDefinitionVO[],
+    operation: (record: StreamingJobDefinitionVO) => Promise<any>,
+    successLabel: string,
+    errorLabel: string,
+  ) => {
+    const responses = await Promise.allSettled(records.map(operation));
+    const successCount = responses.filter(
+      (item) => item.status === 'fulfilled' && isSuccessResponse(item.value),
+    ).length;
+    const failedCount = responses.length - successCount;
 
-    if (success) {
-      setSelectedRowKeys([]);
+    if (successCount > 0) {
+      message.success(`${successLabel}：成功 ${successCount} 个`);
+      await loadData();
     }
+    if (failedCount > 0) {
+      message.error(`${errorLabel}：失败 ${failedCount} 个`);
+    }
+
+    setSelectedRowKeys([]);
+    return successCount > 0 && failedCount === 0;
   };
 
-  const handleBatchStop = async () => {
-    if (!hasSelected) return;
+  const getBatchActionState = () => {
+    const selectedRecords = getSelectedRecords();
+    if (selectedRecords.length === 0) {
+      return {
+        onlineDisabled: true,
+        offlineDisabled: true,
+        startDisabled: true,
+        terminateDisabled: true,
+        pauseDisabled: true,
+        resumeDisabled: true,
+        onlineTooltip: '请先选择任务',
+        offlineTooltip: '请先选择任务',
+        startTooltip: '请先选择任务',
+        terminateTooltip: '请先选择任务',
+        pauseTooltip: '请先选择任务',
+        resumeTooltip: '请先选择任务',
+      };
+    }
 
-    const success = await runJobAction(
-      () => Promise.all(selectedRowKeys.map((id) => seatunnelStremJobDefinitionApi.offline(id))),
-      {
-        success: `已提交 ${selectedRowKeys.length} 个实时任务下线请求`,
-        error: '批量下线失败',
-      },
+    const onlineRecords = selectedRecords.filter((record) => isReleaseOnline(record.releaseState));
+    const offlineRecords = selectedRecords.filter((record) => !isReleaseOnline(record.releaseState));
+    const runningRecords = selectedRecords.filter((record) => isRunningStatus(record.lastJobStatus));
+    const notRunningRecords = selectedRecords.filter((record) => !isRunningStatus(record.lastJobStatus));
+    const recordsWithoutInstance = selectedRecords.filter((record) => !record.instanceId);
+    const recordsWithoutSavepoint = selectedRecords.filter((record) => !record.savepointPath);
+
+    return {
+      onlineDisabled: offlineRecords.length === 0,
+      offlineDisabled: onlineRecords.length === 0 || runningRecords.length > 0,
+      startDisabled: offlineRecords.length > 0 || runningRecords.length > 0,
+      terminateDisabled: notRunningRecords.length > 0 || recordsWithoutInstance.length > 0,
+      pauseDisabled: notRunningRecords.length > 0 || recordsWithoutInstance.length > 0,
+      resumeDisabled:
+        offlineRecords.length > 0 || runningRecords.length > 0 || recordsWithoutInstance.length > 0 || recordsWithoutSavepoint.length > 0,
+      onlineTooltip: offlineRecords.length === 0 ? '所选任务已经全部上线' : undefined,
+      offlineTooltip:
+        runningRecords.length > 0
+          ? `存在运行中的任务，请先终止后再下线：${getSelectedJobLabels(runningRecords)}`
+          : onlineRecords.length === 0
+            ? '所选任务已经全部下线'
+            : undefined,
+      startTooltip:
+        offlineRecords.length > 0
+          ? `存在未上线任务，请先上线后再启动：${getSelectedJobLabels(offlineRecords)}`
+          : runningRecords.length > 0
+            ? `存在运行中的任务：${getSelectedJobLabels(runningRecords)}`
+            : undefined,
+      terminateTooltip:
+        notRunningRecords.length > 0 || recordsWithoutInstance.length > 0
+          ? '批量终止仅支持全部为运行中且存在运行实例的任务'
+          : undefined,
+      pauseTooltip:
+        notRunningRecords.length > 0 || recordsWithoutInstance.length > 0
+          ? '批量暂停仅支持全部为运行中且存在运行实例的任务'
+          : undefined,
+      resumeTooltip:
+        offlineRecords.length > 0 || runningRecords.length > 0 || recordsWithoutInstance.length > 0 || recordsWithoutSavepoint.length > 0
+          ? '批量恢复要求任务已上线、未运行且都有可用检查点'
+          : undefined,
+    };
+  };
+
+  const batchActionState = getBatchActionState();
+
+  const handleBatchOnline = async () => {
+    const records = getSelectedRecords().filter((record) => !isReleaseOnline(record.releaseState));
+    if (records.length === 0) {
+      message.warning('所选任务已经全部上线');
+      return;
+    }
+    await runBatchOperations(
+      records,
+      (record) => seatunnelStremJobDefinitionApi.online(record.id),
+      '批量上线完成',
+      '批量上线失败',
     );
+  };
 
-    if (success) {
+  const handleBatchOffline = async () => {
+    const selectedRecords = getSelectedRecords();
+    const runningRecords = selectedRecords.filter((record) => isRunningStatus(record.lastJobStatus));
+    if (runningRecords.length > 0) {
+      message.warning(`存在运行中的任务，请先终止后再下线：${getSelectedJobLabels(runningRecords)}`);
+      return;
+    }
+
+    const records = selectedRecords.filter((record) => isReleaseOnline(record.releaseState));
+    if (records.length === 0) {
+      message.warning('所选任务已经全部下线');
+      return;
+    }
+    await runBatchOperations(
+      records,
+      (record) => seatunnelStremJobDefinitionApi.offline(record.id),
+      '批量下线完成',
+      '批量下线失败',
+    );
+  };
+
+  const handleBatchStart = async () => {
+    const selectedRecords = getSelectedRecords();
+    const offlineRecords = selectedRecords.filter((record) => !isReleaseOnline(record.releaseState));
+    const runningRecords = selectedRecords.filter((record) => isRunningStatus(record.lastJobStatus));
+    if (selectedRecords.length === 0) {
+      message.warning('请先选择要启动的任务');
+      return;
+    }
+    if (offlineRecords.length > 0 || runningRecords.length > 0) {
+      message.warning('批量启动要求任务全部已上线且未运行');
+      return;
+    }
+    await runBatchOperations(
+      selectedRecords,
+      (record) => seatunnelStreamingJobExecuteApi.execute(record.id),
+      '批量启动完成',
+      '批量启动失败',
+    );
+  };
+
+  const handleBatchTerminate = async () => {
+    const selectedRecords = getSelectedRecords();
+    const invalidRecords = selectedRecords.filter(
+      (record) => !isRunningStatus(record.lastJobStatus) || !record.instanceId,
+    );
+    if (selectedRecords.length === 0) {
+      message.warning('请先选择要终止的任务');
+      return;
+    }
+    if (invalidRecords.length > 0) {
+      message.warning('批量终止要求任务全部处于运行中且存在运行实例');
+      return;
+    }
+    await runBatchOperations(
+      selectedRecords,
+      (record) => seatunnelStreamingJobExecuteApi.pause(record.instanceId),
+      '批量终止完成',
+      '批量终止失败',
+    );
+  };
+
+  const handleBatchPause = async () => {
+    const selectedRecords = getSelectedRecords();
+    const invalidRecords = selectedRecords.filter(
+      (record) => !isRunningStatus(record.lastJobStatus) || !record.instanceId,
+    );
+    if (selectedRecords.length === 0) {
+      message.warning('请先选择要暂停的任务');
+      return;
+    }
+    if (invalidRecords.length > 0) {
+      message.warning('批量暂停要求任务全部处于运行中且存在运行实例');
+      return;
+    }
+    await runBatchOperations(
+      selectedRecords,
+      (record) => seatunnelStreamingJobExecuteApi.stopWithSavepoint(record.instanceId),
+      '批量暂停并保存检查点完成',
+      '批量暂停失败',
+    );
+  };
+
+  const handleBatchResume = async () => {
+    const selectedRecords = getSelectedRecords();
+    const invalidRecords = selectedRecords.filter(
+      (record) =>
+        !isReleaseOnline(record.releaseState) ||
+        isRunningStatus(record.lastJobStatus) ||
+        !record.instanceId ||
+        !record.savepointPath,
+    );
+    if (selectedRecords.length === 0) {
+      message.warning('请先选择要恢复的任务');
+      return;
+    }
+    if (invalidRecords.length > 0) {
+      message.warning('批量恢复要求任务已上线、未运行且都有可用检查点');
+      return;
+    }
+    await runBatchOperations(
+      selectedRecords,
+      (record) => seatunnelStreamingJobExecuteApi.resumeFromSavepoint(record.instanceId),
+      '批量恢复完成',
+      '批量恢复失败',
+    );
+  };
+
+  const openBatchCreate = () => {
+    if (!hasSelected) {
+      message.warning('请先选择一个或多个模板任务');
+      return;
+    }
+    setBatchCreateOpen(true);
+  };
+
+  const handleBatchCreate = async (values: BatchCreateValues) => {
+    const templates = getSelectedRecords();
+    if (templates.length === 0) {
+      message.warning('请先选择一个或多个模板任务');
+      return;
+    }
+
+    try {
+      setBatchCreateLoading(true);
+      const response: any = await seatunnelStremJobDefinitionApi.batchCreate({
+        templateJobDefinitionIds: templates.map((record) => record.id),
+        copiesPerTemplate: values.copiesPerTemplate,
+        jobNamePrefix: values.jobNamePrefix,
+      });
+      if (!isSuccessResponse(response)) {
+        message.error(getErrorMessage(response, '批量创建失败'));
+        return;
+      }
+
+      message.success(`批量创建完成：成功创建 ${response?.data?.createdCount || 0} 个任务`);
+      setBatchCreateOpen(false);
       setSelectedRowKeys([]);
+      loadData();
+    } catch (error) {
+      message.error(getErrorMessage(error, '批量创建失败'));
+    } finally {
+      setBatchCreateLoading(false);
     }
   };
 
@@ -714,13 +948,38 @@ const RealtimeSyncPage: React.FC = () => {
           total={pagination.total}
           selectedCount={selectedRowKeys.length}
           disabled={!hasSelected}
+          onCreate={openBatchCreate}
+          onOnline={handleBatchOnline}
+          onOffline={handleBatchOffline}
           onStart={handleBatchStart}
-          onStop={handleBatchStop}
+          onTerminate={handleBatchTerminate}
+          onPause={handleBatchPause}
+          onResume={handleBatchResume}
+          onlineDisabled={batchActionState.onlineDisabled}
+          offlineDisabled={batchActionState.offlineDisabled}
+          startDisabled={batchActionState.startDisabled}
+          terminateDisabled={batchActionState.terminateDisabled}
+          pauseDisabled={batchActionState.pauseDisabled}
+          resumeDisabled={batchActionState.resumeDisabled}
+          onlineTooltip={batchActionState.onlineTooltip}
+          offlineTooltip={batchActionState.offlineTooltip}
+          startTooltip={batchActionState.startTooltip}
+          terminateTooltip={batchActionState.terminateTooltip}
+          pauseTooltip={batchActionState.pauseTooltip}
+          resumeTooltip={batchActionState.resumeTooltip}
           current={pagination.current}
           pageSize={pagination.pageSize}
           onPageChange={handlePaginationChange}
         />
       </div>
+
+      <BatchCreateJobModal
+        open={batchCreateOpen}
+        loading={batchCreateLoading}
+        templates={getSelectedRecords()}
+        onCancel={() => setBatchCreateOpen(false)}
+        onSubmit={handleBatchCreate}
+      />
 
       <RealtimeTaskViewModal ref={ref} />
       <TaskViewModal ref={refDetail} />

@@ -1,19 +1,12 @@
-import { ApiOutlined, BarChartOutlined, ReadOutlined } from "@ant-design/icons";
-import { SelectLang as UmiSelectLang } from "@umijs/max";
-import {
-  Boxes,
-  BriefcaseBusiness,
-  ChevronsLeftRight,
-  Database,
-  MonitorX,
-  Palette,
-} from "lucide-react";
-import moment from "moment";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { history } from "umi";
-import "./index.less";
+import { ApiOutlined, ReadOutlined } from '@ant-design/icons';
+import { SelectLang as UmiSelectLang } from '@umijs/max';
+import { Boxes, BriefcaseBusiness, ChevronsLeftRight, Database, MonitorX, Palette } from 'lucide-react';
+import moment from 'moment';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { history } from 'umi';
+import './index.less';
 
-export type SiderTheme = "light" | "dark";
+export type SiderTheme = 'light' | 'dark';
 
 export const SelectLang: React.FC = () => {
   return (
@@ -25,37 +18,18 @@ export const SelectLang: React.FC = () => {
   );
 };
 
-export const BI: React.FC = () => {
-  return (
-    <div
-      style={{
-        display: "inline-flex",
-        padding: "4px",
-        fontSize: "18px",
-        color: "inherit",
-        cursor: "pointer",
-      }}
-      onClick={() => {
-        history.push("/bi");
-      }}
-    >
-      <BarChartOutlined />
-    </div>
-  );
-};
-
 export const Knowledge: React.FC = () => {
   return (
     <div
       style={{
-        display: "inline-flex",
-        padding: "4px",
-        fontSize: "18px",
-        color: "inherit",
-        cursor: "pointer",
+        display: 'inline-flex',
+        padding: '4px',
+        fontSize: '18px',
+        color: 'inherit',
+        cursor: 'pointer',
       }}
       onClick={() => {
-        history.push("/knowledge-management");
+        history.push('/knowledge-management');
       }}
     >
       <ReadOutlined />
@@ -67,14 +41,14 @@ export const OpenAPI: React.FC = () => {
   return (
     <div
       style={{
-        display: "inline-flex",
-        padding: "4px",
-        fontSize: "18px",
-        color: "inherit",
-        cursor: "pointer",
+        display: 'inline-flex',
+        padding: '4px',
+        fontSize: '18px',
+        color: 'inherit',
+        cursor: 'pointer',
       }}
       onClick={() => {
-        history.push("/open-api");
+        history.push('/open-api');
       }}
     >
       <ApiOutlined />
@@ -97,51 +71,50 @@ type SearchItem = {
 };
 
 const buildQueryString = (query?: Record<string, string>) => {
-  if (!query) return "";
+  if (!query) return '';
   const params = new URLSearchParams();
 
   Object.entries(query).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
+    if (value !== undefined && value !== null && value !== '') {
       params.set(key, value);
     }
   });
 
   const queryString = params.toString();
-  return queryString ? `?${queryString}` : "";
+  return queryString ? `?${queryString}` : '';
 };
 
-const formatDateTime = (value: moment.Moment) =>
-  value.format("YYYY-MM-DD HH:mm:ss");
+const formatDateTime = (value: moment.Moment) => value.format('YYYY-MM-DD HH:mm:ss');
 
 const getTodayRange = () => ({
-  createTimeStart: formatDateTime(moment().startOf("day")),
-  createTimeEnd: formatDateTime(moment().endOf("day")),
-  current: "1",
-  pageSize: "10",
+  createTimeStart: formatDateTime(moment().startOf('day')),
+  createTimeEnd: formatDateTime(moment().endOf('day')),
+  current: '1',
+  pageSize: '10',
 });
 
 const getRecentOneDayRange = () => ({
-  createTimeStart: formatDateTime(moment().subtract(1, "day")),
+  createTimeStart: formatDateTime(moment().subtract(1, 'day')),
   createTimeEnd: formatDateTime(moment()),
-  current: "1",
-  pageSize: "10",
+  current: '1',
+  pageSize: '10',
 });
 
 const getRecentWeekRange = () => ({
-  createTimeStart: formatDateTime(moment().subtract(7, "days")),
+  createTimeStart: formatDateTime(moment().subtract(7, 'days')),
   createTimeEnd: formatDateTime(moment()),
-  current: "1",
-  pageSize: "10",
+  current: '1',
+  pageSize: '10',
 });
 
 const searchList: SearchItem[] = [
   {
-    id: "1",
-    title: "查一下最近一天的任务",
-    desc: "查看最近 24 小时内创建或执行的任务",
-    tag: "Batch",
+    id: '1',
+    title: '查一下最近一天的任务',
+    desc: '查看最近 24 小时内创建或执行的任务',
+    tag: 'Batch',
     target: {
-      pathname: "/sync/batch-link-up",
+      pathname: '/sync/batch-link-up',
       query: {
         ...getRecentOneDayRange(),
       },
@@ -149,56 +122,56 @@ const searchList: SearchItem[] = [
     icon: <Boxes className="h-4 w-4 text-blue-500" />,
   },
   {
-    id: "2",
-    title: "看看运行中的任务",
-    desc: "快速筛选当前正在执行中的 Batch 任务",
-    tag: "Batch",
+    id: '2',
+    title: '看看运行中的任务',
+    desc: '快速筛选当前正在执行中的 Batch 任务',
+    tag: 'Batch',
     target: {
-      pathname: "/sync/batch-link-up",
+      pathname: '/sync/batch-link-up',
       query: {
-        status: "RUNNING",
-        current: "1",
-        pageSize: "10",
+        status: 'RUNNING',
+        current: '1',
+        pageSize: '10',
       },
     },
     icon: <BriefcaseBusiness className="h-4 w-4 text-green-500" />,
   },
   {
-    id: "3",
-    title: "看看失败的任务",
-    desc: "查看执行失败的离线任务，便于排查问题",
-    tag: "Batch",
+    id: '3',
+    title: '看看失败的任务',
+    desc: '查看执行失败的离线任务，便于排查问题',
+    tag: 'Batch',
     target: {
-      pathname: "/sync/batch-link-up",
+      pathname: '/sync/batch-link-up',
       query: {
-        status: "FAILED",
-        current: "1",
-        pageSize: "10",
+        status: 'FAILED',
+        current: '1',
+        pageSize: '10',
       },
     },
     icon: <MonitorX className="h-4 w-4 text-indigo-500" />,
   },
   {
-    id: "4",
-    title: "看看最近执行过的任务",
-    desc: "按最近执行时间排序查看离线任务",
-    tag: "Batch",
+    id: '4',
+    title: '看看最近执行过的任务',
+    desc: '按最近执行时间排序查看离线任务',
+    tag: 'Batch',
     target: {
-      pathname: "/sync/batch-link-up",
+      pathname: '/sync/batch-link-up',
       query: {
-        current: "1",
-        pageSize: "10",
+        current: '1',
+        pageSize: '10',
       },
     },
     icon: <Palette className="h-4 w-4 text-pink-500" />,
   },
   {
-    id: "5",
-    title: "看看今天创建的任务",
-    desc: "快速查看今天新建的离线任务",
-    tag: "Batch",
+    id: '5',
+    title: '看看今天创建的任务',
+    desc: '快速查看今天新建的离线任务',
+    tag: 'Batch',
     target: {
-      pathname: "/sync/batch-link-up",
+      pathname: '/sync/batch-link-up',
       query: {
         ...getTodayRange(),
       },
@@ -206,12 +179,12 @@ const searchList: SearchItem[] = [
     icon: <Database className="h-4 w-4 text-orange-500" />,
   },
   {
-    id: "6",
-    title: "查一下最近一周的任务",
-    desc: "快速查看最近 7 天内的任务",
-    tag: "Batch",
+    id: '6',
+    title: '查一下最近一周的任务',
+    desc: '快速查看最近 7 天内的任务',
+    tag: 'Batch',
     target: {
-      pathname: "/sync/batch-link-up",
+      pathname: '/sync/batch-link-up',
       query: {
         ...getRecentWeekRange(),
       },
@@ -222,7 +195,7 @@ const searchList: SearchItem[] = [
 
 export const GlobalSearch: React.FC = () => {
   const [open, setOpen] = useState(false);
-  const [keyword, setKeyword] = useState("");
+  const [keyword, setKeyword] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -234,9 +207,9 @@ export const GlobalSearch: React.FC = () => {
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -245,7 +218,7 @@ export const GlobalSearch: React.FC = () => {
       (item) =>
         item.title.toLowerCase().includes(keyword.toLowerCase()) ||
         item.desc.toLowerCase().includes(keyword.toLowerCase()) ||
-        item.tag.toLowerCase().includes(keyword.toLowerCase())
+        item.tag.toLowerCase().includes(keyword.toLowerCase()),
     );
   }, [keyword]);
 
@@ -264,47 +237,43 @@ export const GlobalSearch: React.FC = () => {
     });
 
     setOpen(false);
-    setKeyword("");
+    setKeyword('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
+    if (!open && (e.key === 'ArrowDown' || e.key === 'Enter')) {
       setOpen(true);
       return;
     }
 
     if (!filteredList.length) return;
 
-    if (e.key === "ArrowDown") {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActiveIndex((prev) => (prev + 1) % filteredList.length);
     }
 
-    if (e.key === "ArrowUp") {
+    if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActiveIndex(
-        (prev) => (prev - 1 + filteredList.length) % filteredList.length
-      );
+      setActiveIndex((prev) => (prev - 1 + filteredList.length) % filteredList.length);
     }
 
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault();
       handleSelect(filteredList[activeIndex]);
     }
 
-    if (e.key === "Escape") {
+    if (e.key === 'Escape') {
       setOpen(false);
     }
   };
 
   return (
-    <div className="fixed top-1 left-1/2 z-50 w-[clamp(280px,32vw,460px)] -translate-x-1/2" >
+    <div className="fixed top-1 left-1/2 z-50 w-[clamp(280px,32vw,460px)] -translate-x-1/2">
       <div ref={wrapperRef} className="relative w-full">
         <div
           className={`rounded-full border transition-all duration-300 bg-white ${
-            open
-              ? "border-blue-600 shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
-              : "border-gray-300 shadow-sm"
+            open ? 'border-blue-600 shadow-[0_0_0_3px_rgba(59,130,246,0.1)]' : 'border-gray-300 shadow-sm'
           }`}
         >
           <div className="relative rounded-full">
@@ -325,6 +294,7 @@ export const GlobalSearch: React.FC = () => {
               xmlns="http://www.w3.org/2000/svg"
               width={24}
               height={24}
+              aria-hidden="true"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -341,11 +311,9 @@ export const GlobalSearch: React.FC = () => {
               <button
                 type="button"
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 hover:bg-slate-100"
-                onClick={() => setKeyword("")}
+                onClick={() => setKeyword('')}
               >
-                <div className="flex h-4 w-4 items-center justify-center text-slate-400">
-                  ×
-                </div>
+                <div className="flex h-4 w-4 items-center justify-center text-slate-400">×</div>
               </button>
             )}
           </div>
@@ -357,11 +325,9 @@ export const GlobalSearch: React.FC = () => {
           style={{
             opacity: open ? 1 : 0,
             maxHeight: open ? 420 : 0,
-            transform: open
-              ? "translateY(0px) scale(1)"
-              : "translateY(-6px) scale(0.98)",
-            transformOrigin: "top center",
-            pointerEvents: open ? "auto" : "none",
+            transform: open ? 'translateY(0px) scale(1)' : 'translateY(-6px) scale(0.98)',
+            transformOrigin: 'top center',
+            pointerEvents: open ? 'auto' : 'none',
           }}
         >
           <ul className="py-1">
@@ -374,9 +340,9 @@ export const GlobalSearch: React.FC = () => {
                     className="cursor-pointer px-3 py-2 flex items-center justify-between transition-all duration-200 custom-hover"
                     style={{
                       opacity: open ? 1 : 0,
-                      transform: open ? "translateY(0)" : "translateY(-6px)",
+                      transform: open ? 'translateY(0)' : 'translateY(-6px)',
                       transitionDelay: `${index * 35}ms`,
-                      background: isActive ? "#F8FAFC" : "transparent",
+                      background: isActive ? '#F8FAFC' : 'transparent',
                     }}
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => handleSelect(item)}
@@ -384,24 +350,16 @@ export const GlobalSearch: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <span className="text-muted-foreground">{item.icon}</span>
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-black font-inter">
-                          {item.title}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {item.desc}
-                        </span>
+                        <span className="text-sm font-medium text-black font-inter">{item.title}</span>
+                        <span className="text-xs text-muted-foreground">{item.desc}</span>
                       </div>
                     </div>
-                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                      {item.tag}
-                    </span>
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{item.tag}</span>
                   </li>
                 );
               })
             ) : (
-              <li className="px-3 py-8 text-center text-sm text-muted-foreground">
-                No results found
-              </li>
+              <li className="px-3 py-8 text-center text-sm text-muted-foreground">No results found</li>
             )}
           </ul>
 

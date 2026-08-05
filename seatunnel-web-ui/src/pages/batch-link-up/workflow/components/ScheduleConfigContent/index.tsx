@@ -9,15 +9,13 @@ import ScheduleParamsSection from "./components/ScheduleParamsSection";
 import ScheduleStrategySection from "./components/ScheduleStrategySection";
 import ScheduleTimeSection from "./components/ScheduleTimeSection";
 import SectionLabel from "./components/SectionLabel";
-import IncrementalConfigSection from "./components/IncrementalConfigSection";
 
 interface Props {
   value?: any;
   onChange?: (value: any) => void;
-  isIncremental?: boolean;
 }
 
-export default function ScheduleConfigContent({ value, onChange, isIncremental = false }: Props) {
+export default function ScheduleConfigContent({ value, onChange }: Props) {
   const updateSchedule = (patch: Record<string, any>) => {
     onChange?.((prev: any) => ({
       ...prev,
@@ -59,13 +57,6 @@ export default function ScheduleConfigContent({ value, onChange, isIncremental =
       ),
       children: <ScheduleTimeSection value={value} onChange={updateSchedule} />,
     },
-    ...(isIncremental
-      ? [{
-          key: "incremental",
-          label: <SectionLabel title="增量微批" tooltip="配置水位、窗口和失败重试语义" />,
-          children: <IncrementalConfigSection value={value} onChange={updateSchedule} />,
-        }]
-      : []),
   ];
 
   return (
@@ -77,7 +68,6 @@ export default function ScheduleConfigContent({ value, onChange, isIncremental =
             "scheduleParams",
             "scheduleStrategy",
             "scheduleTime",
-            ...(isIncremental ? ["incremental"] : []),
           ]}
           expandIconPosition="start"
           className="schedule-config-collapse"

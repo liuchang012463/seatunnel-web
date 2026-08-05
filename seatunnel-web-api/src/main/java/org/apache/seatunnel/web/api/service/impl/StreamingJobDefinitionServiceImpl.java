@@ -12,7 +12,9 @@ import org.apache.seatunnel.web.api.service.StreamingJobMetricsService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
+import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
+import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.job.assembler.StreamingJobDefinitionAssembler;
@@ -24,12 +26,14 @@ import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionContentDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.StreamingJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionBatchCreateCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.StreamingJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingGuideMultiJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingGuideSingleJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingScriptJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionEditDetailVO;
+import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionBatchCreateResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionSaveResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionStateVO;
 import org.apache.seatunnel.web.spi.bean.vo.StreamingJobDefinitionVO;
@@ -41,8 +45,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -266,6 +273,38 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public JobDefinitionBatchCreateResultVO batchCreate(JobDefinitionBatchCreateCommand command) {
+        List<Long> templateIds = normalizeBatchCreateTemplateIds(command);
+        int copiesPerTemplate = command.getCopiesPerTemplate();
+
+        JobDefinitionBatchCreateResultVO result = new JobDefinitionBatchCreateResultVO();
+        result.setTemplateCount(templateIds.size());
+        result.setCopiesPerTemplate(copiesPerTemplate);
+
+        for (Long templateId : templateIds) {
+            StreamingJobDefinitionEntity definition = definitionQueryService.getDefinitionOrThrow(templateId);
+            StreamingJobDefinitionContentEntity latestContent = getLatestContentOrThrow(templateId);
+            JobDefinitionSaveCommand template = definitionQueryService.buildEditCommand(
+                    definition,
+                    latestContent
+            );
+
+            for (int copyIndex = 1; copyIndex <= copiesPerTemplate; copyIndex++) {
+                Long newId = CodeGenerateUtils.getInstance().genCode();
+                StreamingJobSaveCommand copy = copyStreamingCommand(
+                        template,
+                        newId,
+                        buildCopyName(definition.getJobName(), command.getJobNamePrefix(), copyIndex)
+                );
+                result.addCreatedJob(doSaveOrUpdate(copy));
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean updateReleaseState(Long id, ReleaseState releaseState) {
         validateId(id);
         validateReleaseState(releaseState);
@@ -442,6 +481,89 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
 
     private ReleaseState resolveReleaseState(ReleaseState releaseState) {
         return releaseState == null ? ReleaseState.OFFLINE : releaseState;
+    }
+
+    private List<Long> normalizeBatchCreateTemplateIds(JobDefinitionBatchCreateCommand command) {
+        if (command == null
+                || command.getTemplateJobDefinitionIds() == null
+                || command.getTemplateJobDefinitionIds().isEmpty()) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "templateJobDefinitionIds");
+        }
+
+        if (command.getCopiesPerTemplate() == null
+                || command.getCopiesPerTemplate() < 1
+                || command.getCopiesPerTemplate() > 20) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "copiesPerTemplate");
+        }
+
+        Set<Long> distinctIds = new LinkedHashSet<>();
+        for (Long id : command.getTemplateJobDefinitionIds()) {
+            if (id != null && id > 0) {
+                distinctIds.add(id);
+            }
+        }
+
+        if (distinctIds.isEmpty()) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "templateJobDefinitionIds");
+        }
+
+        return new ArrayList<>(distinctIds);
+    }
+
+    private StreamingJobSaveCommand copyStreamingCommand(
+            JobDefinitionSaveCommand template,
+            Long id,
+            String jobName) {
+        if (template == null || template.getMode() == null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "templateJobDefinition");
+        }
+
+        StreamingJobSaveCommand copy;
+        JobDefinitionMode mode = template.getMode();
+        switch (mode) {
+            case SCRIPT:
+                StreamingScriptJobSaveCommand script = objectMapper.convertValue(
+                        template,
+                        StreamingScriptJobSaveCommand.class
+                );
+                script.setId(id);
+                copy = script;
+                break;
+            case GUIDE_SINGLE:
+                StreamingGuideSingleJobSaveCommand single = objectMapper.convertValue(
+                        template,
+                        StreamingGuideSingleJobSaveCommand.class
+                );
+                single.setId(id);
+                copy = single;
+                break;
+            case GUIDE_MULTI:
+                StreamingGuideMultiJobSaveCommand multi = objectMapper.convertValue(
+                        template,
+                        StreamingGuideMultiJobSaveCommand.class
+                );
+                multi.setId(id);
+                copy = multi;
+                break;
+            default:
+                throw new ServiceException(
+                        Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                        "unsupported template mode: " + mode
+                );
+        }
+
+        copy.getBasic().setJobName(jobName);
+        return copy;
+    }
+
+    private String buildCopyName(String sourceName, String requestedPrefix, int copyIndex) {
+        String baseName = StringUtils.isBlank(requestedPrefix)
+                ? sourceName
+                : requestedPrefix.trim();
+        if (StringUtils.isBlank(baseName)) {
+            baseName = "实时任务";
+        }
+        return baseName + " - 副本 " + copyIndex;
     }
 
     private int resolveNextVersion(StreamingJobDefinitionEntity existing) {

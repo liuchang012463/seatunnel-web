@@ -16,9 +16,11 @@ import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveComman
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleIncrementalJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchFileSyncJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionBatchCreateCommand;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
+import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionBatchCreateResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionEditDetailVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionSaveResultVO;
 import org.springframework.validation.annotation.Validated;
@@ -88,6 +90,17 @@ public class BatchJobDefinitionController {
     @ApiException(SAVE_OR_UPDATE_BATCH_JOB_DEFINITION_ERROR)
     public Result<JobDefinitionSaveResultVO> saveFileSync(@RequestBody BatchFileSyncJobSaveCommand command) {
         return Result.buildSuc(batchJobDefinitionService.saveOrUpdate(command));
+    }
+
+    /**
+     * Create offline copies of selected batch job definitions.
+     */
+    @PostMapping("/batch-create")
+    @Operation(summary = "batchCreateJobDefinitions", description = "批量复制创建批任务定义")
+    @ApiException(SAVE_OR_UPDATE_BATCH_JOB_DEFINITION_ERROR)
+    public Result<JobDefinitionBatchCreateResultVO> batchCreate(
+            @RequestBody @Validated JobDefinitionBatchCreateCommand command) {
+        return Result.buildSuc(batchJobDefinitionService.batchCreate(command));
     }
 
     @PostMapping("/file-sync/build-config")

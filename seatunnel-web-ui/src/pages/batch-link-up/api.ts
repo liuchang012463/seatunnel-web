@@ -84,6 +84,14 @@ export const seatunnelJobDefinitionApi = {
     return HttpUtils.put(`${apiPrefix}/${id}/offline`);
   },
 
+  batchCreate: (data: {
+    templateJobDefinitionIds: Array<string | number>;
+    copiesPerTemplate: number;
+    jobNamePrefix?: string;
+  }) => {
+    return HttpUtils.post(`${apiPrefix}/batch-create`, data);
+  },
+
   page: (data: any): Promise<{ code: number; data: any; message?: string }> => {
     return HttpUtils.post(`${apiPrefix}/page`, data);
   },

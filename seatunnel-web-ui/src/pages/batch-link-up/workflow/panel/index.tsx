@@ -24,6 +24,7 @@ interface WorkflowPanelProps {
     pluginOutput?: string;
   };
   scheduleConfig: any;
+  isIncremental?: boolean;
 }
 
 const WorkflowPanel: FC<WorkflowPanelProps> = ({
@@ -35,7 +36,8 @@ const WorkflowPanel: FC<WorkflowPanelProps> = ({
   refreshNodeSchema,
   refreshDownstreamSchemas,
   syncTransformPluginConfig,
-  scheduleConfig
+  scheduleConfig,
+  isIncremental = false,
 }) => {
   const nodeType = selectedNode?.data?.nodeType;
 
@@ -48,6 +50,7 @@ const WorkflowPanel: FC<WorkflowPanelProps> = ({
         onClose={onClose}
         onNodeDataChange={onNodeDataChange}
         scheduleConfig={scheduleConfig}
+        isIncremental={isIncremental}
       />
     );
   }

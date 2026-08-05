@@ -33,6 +33,7 @@ export function useSourcePanelLogic({
   const table = config?.table || undefined;
   const sql = config?.sql || "";
   const extraParams = config?.extraParams || [];
+  const incrementalConfig = config?.incrementalConfig || {};
 
   const [dataSourceOptions, setDataSourceOptions] = useState<any[]>([]);
   const [tableOptions, setTableOptions] = useState<any[]>([]);
@@ -177,7 +178,7 @@ export function useSourcePanelLogic({
           table &&
           !options.some((item: any) => String(item.value) === String(table))
         ) {
-          updateNode({ table: undefined });
+          updateNode({ table: undefined, incrementalConfig: undefined });
         }
       } catch (error) {
         console.error("load table options error", error);
@@ -202,6 +203,7 @@ export function useSourcePanelLogic({
           dataSourceId: value,
           table: undefined,
           sql: "",
+          incrementalConfig: undefined,
         },
         {
           title: option?.label || nodeData?.title,
@@ -219,6 +221,7 @@ export function useSourcePanelLogic({
         {
           readMode: value,
           ...(value === "table" ? { sql: "" } : { table: undefined }),
+          incrementalConfig: undefined,
         },
         undefined,
         resetSchemaMeta
@@ -402,7 +405,7 @@ export function useSourcePanelLogic({
         return;
       }
 
-      updateNode({ sql: nextSql }, undefined, resetSchemaMeta);
+      updateNode({ sql: nextSql, incrementalConfig: undefined }, undefined, resetSchemaMeta);
       setSqlPopoverOpen(false);
       message.success("SQL 生成成功");
     } catch (error) {
@@ -472,6 +475,7 @@ export function useSourcePanelLogic({
     table,
     sql,
     extraParams,
+    incrementalConfig,
     currentDataSource,
 
     dataSourceOptions,

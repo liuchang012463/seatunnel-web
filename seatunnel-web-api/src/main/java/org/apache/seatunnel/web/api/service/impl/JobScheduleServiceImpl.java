@@ -348,6 +348,7 @@ public class JobScheduleServiceImpl implements JobScheduleService {
         persisted.setScheduleType(source.getScheduleType());
         persisted.setHourMode(source.getHourMode());
 
+        persisted.setMinuteValue(source.getMinuteValue());
         persisted.setHourlyRangeValue(source.getHourlyRangeValue());
         persisted.setHourlyAppointValue(source.getHourlyAppointValue());
         persisted.setDailyValue(source.getDailyValue());

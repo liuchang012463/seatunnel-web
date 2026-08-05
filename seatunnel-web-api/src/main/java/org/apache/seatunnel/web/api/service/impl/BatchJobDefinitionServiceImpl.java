@@ -13,8 +13,10 @@ import org.apache.seatunnel.web.api.service.application.JobScheduleApplicationSe
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
+import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
+import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.job.assembler.BatchJobDefinitionAssembler;
 import org.apache.seatunnel.web.core.job.handler.JobDefinitionModeHandler;
@@ -31,10 +33,12 @@ import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleIncrementalJo
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchFileSyncJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.BatchJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionBatchCreateCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
+import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionBatchCreateResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionEditDetailVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionSaveResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionStateVO;
@@ -43,7 +47,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -304,6 +311,48 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public JobDefinitionBatchCreateResultVO batchCreate(JobDefinitionBatchCreateCommand command) {
+        List<Long> templateIds = normalizeBatchCreateTemplateIds(command);
+        int copiesPerTemplate = command.getCopiesPerTemplate();
+
+        JobDefinitionBatchCreateResultVO result = new JobDefinitionBatchCreateResultVO();
+        result.setTemplateCount(templateIds.size());
+        result.setCopiesPerTemplate(copiesPerTemplate);
+
+        for (Long templateId : templateIds) {
+            JobDefinitionEntity definition = definitionQueryService.getDefinitionOrThrow(templateId);
+            JobDefinitionContentEntity latestContent =
+                    jobDefinitionContentDao.queryLatestByJobDefinitionId(templateId);
+
+            if (latestContent == null) {
+                throw new ServiceException(
+                        Status.BATCH_JOB_DEFINITION_NOT_EXIST,
+                        "definition content not found"
+                );
+            }
+
+            JobDefinitionSaveCommand template = definitionQueryService.buildEditCommand(
+                    definition,
+                    latestContent,
+                    buildScheduleConfig(templateId)
+            );
+
+            for (int copyIndex = 1; copyIndex <= copiesPerTemplate; copyIndex++) {
+                Long newId = CodeGenerateUtils.getInstance().genCode();
+                BatchJobSaveCommand copy = copyBatchCommand(
+                        template,
+                        newId,
+                        buildCopyName(definition.getJobName(), command.getJobNamePrefix(), copyIndex)
+                );
+                result.addCreatedJob(doSaveOrUpdate(copy));
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean updateReleaseState(Long id, ReleaseState releaseState) {
         validateId(id);
 
@@ -455,6 +504,105 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
     private ReleaseState resolveReleaseState(ReleaseState releaseState) {
         return releaseState == null ? ReleaseState.OFFLINE : releaseState;
+    }
+
+    private List<Long> normalizeBatchCreateTemplateIds(JobDefinitionBatchCreateCommand command) {
+        if (command == null
+                || command.getTemplateJobDefinitionIds() == null
+                || command.getTemplateJobDefinitionIds().isEmpty()) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "templateJobDefinitionIds");
+        }
+
+        if (command.getCopiesPerTemplate() == null
+                || command.getCopiesPerTemplate() < 1
+                || command.getCopiesPerTemplate() > 20) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "copiesPerTemplate");
+        }
+
+        Set<Long> distinctIds = new LinkedHashSet<>();
+        for (Long id : command.getTemplateJobDefinitionIds()) {
+            if (id != null && id > 0) {
+                distinctIds.add(id);
+            }
+        }
+
+        if (distinctIds.isEmpty()) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "templateJobDefinitionIds");
+        }
+
+        return new ArrayList<>(distinctIds);
+    }
+
+    private BatchJobSaveCommand copyBatchCommand(
+            JobDefinitionSaveCommand template,
+            Long id,
+            String jobName) {
+        if (template == null || template.getMode() == null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "templateJobDefinition");
+        }
+
+        BatchJobSaveCommand copy;
+        JobDefinitionMode mode = template.getMode();
+        switch (mode) {
+            case SCRIPT:
+                BatchScriptJobSaveCommand script = objectMapper.convertValue(
+                        template,
+                        BatchScriptJobSaveCommand.class
+                );
+                script.setId(id);
+                copy = script;
+                break;
+            case GUIDE_SINGLE:
+                BatchGuideSingleJobSaveCommand single = objectMapper.convertValue(
+                        template,
+                        BatchGuideSingleJobSaveCommand.class
+                );
+                single.setId(id);
+                copy = single;
+                break;
+            case GUIDE_SINGLE_INCREMENTAL:
+                BatchGuideSingleIncrementalJobSaveCommand incremental = objectMapper.convertValue(
+                        template,
+                        BatchGuideSingleIncrementalJobSaveCommand.class
+                );
+                incremental.setId(id);
+                copy = incremental;
+                break;
+            case GUIDE_MULTI:
+                BatchGuideMultiJobSaveCommand multi = objectMapper.convertValue(
+                        template,
+                        BatchGuideMultiJobSaveCommand.class
+                );
+                multi.setId(id);
+                copy = multi;
+                break;
+            case FILE_SYNC:
+                BatchFileSyncJobSaveCommand fileSync = objectMapper.convertValue(
+                        template,
+                        BatchFileSyncJobSaveCommand.class
+                );
+                fileSync.setId(id);
+                copy = fileSync;
+                break;
+            default:
+                throw new ServiceException(
+                        Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                        "unsupported template mode: " + mode
+                );
+        }
+
+        copy.getBasic().setJobName(jobName);
+        return copy;
+    }
+
+    private String buildCopyName(String sourceName, String requestedPrefix, int copyIndex) {
+        String baseName = StringUtils.isBlank(requestedPrefix)
+                ? sourceName
+                : requestedPrefix.trim();
+        if (StringUtils.isBlank(baseName)) {
+            baseName = "批量任务";
+        }
+        return baseName + " - 副本 " + copyIndex;
     }
 
     /**

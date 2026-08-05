@@ -5,7 +5,9 @@ import org.apache.seatunnel.web.spi.bean.dto.StreamingJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingGuideMultiJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingGuideSingleJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingScriptJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionBatchCreateCommand;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
+import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionBatchCreateResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionEditDetailVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobDefinitionSaveResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.StreamingJobDefinitionVO;
@@ -33,4 +35,6 @@ public interface StreamingJobDefinitionService {
     JobDefinitionEditDetailVO selectEditDetail(Long id);
 
     Boolean updateReleaseState(Long id, ReleaseState releaseState);
+
+    JobDefinitionBatchCreateResultVO batchCreate(JobDefinitionBatchCreateCommand command);
 }
