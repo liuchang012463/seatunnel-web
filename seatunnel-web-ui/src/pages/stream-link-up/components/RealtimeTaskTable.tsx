@@ -89,43 +89,50 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
 
   const columns: ColumnsType<StreamingJobDefinitionVO> = [
     {
+      key: "jobName",
       title: intl.formatMessage({
         id: "pages.job.table.col.name",
         defaultMessage: "链路名称/ID",
       }),
       dataIndex: "jobName",
-      width: 240,
-      render: (_, record) => (
+      width: 260,
+      ellipsis: true,
+      render: (_content, record) => (
         <div className="stream-link-task-name-cell">
-          <div className="stream-link-task-name-cell__line">
-            <em className="font-medium not-italic text-slate-700">
+          <div className="sync-task-name-cell__title">
+            <em>
               {intl.formatMessage({
                 id: "pages.job.table.label.jobName",
                 defaultMessage: "任务名",
               })}
             </em>
-            <span className="text-slate-400">:</span>
+            <span>&nbsp;:&nbsp;</span>
 
             <Tooltip title={record.jobName || record.id}>
-              <span className="max-w-[150px] truncate text-slate-950">
+              <span className="min-w-0 max-w-[150px] truncate text-slate-950">
                 {record.jobName || "未命名实时任务"}
               </span>
             </Tooltip>
           </div>
           <div className="stream-link-task-name-cell__line">
-            <em className="font-medium not-italic text-slate-700">
+            <em className="shrink-0 font-medium not-italic text-slate-700">
               {intl.formatMessage({
                 id: "pages.job.table.label.jobId",
                 defaultMessage: "任务定义ID",
               })}
             </em>
             <span className="text-slate-400">:</span>
-            <span className="text-slate-400">{record.id}</span>
+            <Tooltip title={record.id}>
+              <span className="">
+                {record.id}
+              </span>
+            </Tooltip>
 
-            <Tooltip title="复制 ID">
+            <Tooltip title="复制任务定义 ID">
               <button
                 type="button"
                 className="ml-1 inline-flex h-[18px] w-[18px] items-center justify-center rounded border-none bg-transparent text-slate-400 transition hover:bg-slate-100 hover:text-blue-600"
+                aria-label="复制任务定义 ID"
                 onClick={(e) => {
                   e.stopPropagation();
                   copyToClipboard(record.id);
@@ -136,11 +143,13 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
             </Tooltip>
           </div>
           <div className="stream-link-task-name-cell__line">
-            <em className="font-medium not-italic text-slate-700">zetaId</em>
+            <em className="shrink-0 font-medium not-italic text-slate-700">
+              zetaId
+            </em>
             <span className="text-slate-400">:</span>
 
-            <Tooltip title={record.engineJobId}>
-              <span className="max-w-[150px] truncate text-slate-950">
+            <Tooltip title={record.engineJobId || "未启动"}>
+              <span className="min-w-0 max-w-[150px] truncate text-slate-950">
                 {record.engineJobId || "未启动"}
               </span>
             </Tooltip>
@@ -149,22 +158,29 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       ),
     },
     {
+      key: "syncPlan",
       title: intl.formatMessage({
         id: "pages.job.table.col.syncPlan",
         defaultMessage: "数据源同步方案",
       }),
-      dataIndex: "syncPlan",
-      width: 310,
-      render: (_, record) => <RealtimeSyncPlan record={record} />,
+      dataIndex: "",
+      width: 320,
+      ellipsis: true,
+      render: (_content, record) => (
+        <div className="min-w-[280px]">
+          <RealtimeSyncPlan record={record} />
+        </div>
+      ),
     },
     {
+      key: "status",
       title: intl.formatMessage({
         id: "pages.job.table.col.status",
         defaultMessage: "健康状态",
       }),
       dataIndex: "taskParams",
       width: 110,
-      render: (_content: any, record: any) => (
+      render: (_content, record) => (
         <div className="stream-link-status-cell">
           <TaskStatus
             status={record?.lastJobStatus}
@@ -174,40 +190,56 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       ),
     },
     {
-      title: "负载情况",
-      dataIndex: "metricsTrend",
-      width: 330,
-      render: (_content: any, record: StreamingJobDefinitionVO) => (
-        <RealtimeMetricsTrend record={record} onView={onView} />
+      key: "metrics",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.metrics",
+        defaultMessage: "负载情况",
+      }),
+      dataIndex: "",
+      width: 370,
+      render: (_content, record) => (
+        <div className="min-w-[350px]">
+          <RealtimeMetricsTrend record={record} onView={onView} />
+        </div>
       ),
     },
     {
+      key: "execution",
       title: intl.formatMessage({
         id: "pages.job.table.col.execution",
         defaultMessage: "执行概况",
       }),
-      dataIndex: "执行概况",
-      render: (_content: any, record: any) => (
-        <ExecutionStatus record={record} />
+      dataIndex: "",
+      width: 280,
+      render: (_content, record) => (
+        <div className="min-w-[240px]">
+          <ExecutionStatus record={record} />
+        </div>
       ),
     },
     {
-      title: "最近更新时间",
+      key: "updateTime",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.updateTime",
+        defaultMessage: "最近更新时间",
+      }),
       dataIndex: "updateTime",
       width: 160,
-      render: (value) => (
+      ellipsis: true,
+      render: (value: string | undefined) => (
         <span className="stream-link-time-cell">{formatDateTime(value)}</span>
       ),
     },
     {
+      key: "operate",
       title: intl.formatMessage({
         id: "pages.job.table.col.operate",
         defaultMessage: "操作",
       }),
-      dataIndex: "operate",
+      dataIndex: "",
       width: 250,
-      fixed: "right",
-      render: (_, record) => (
+      fixed: "right" as const,
+      render: (_content, record) => (
         <RealtimeTaskActionColumn
           record={record}
           onDetail={onDetail}
@@ -227,10 +259,10 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
   ];
 
   return (
-    <Table
+    <Table<StreamingJobDefinitionVO>
       rowKey="id"
       loading={loading}
-      columns={columns as any}
+      columns={columns}
       dataSource={dataSource}
       pagination={false}
       rowSelection={{

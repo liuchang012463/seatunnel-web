@@ -115,9 +115,11 @@ export default {
   'pages.job.table.col.name': 'Name',
   'pages.job.table.col.syncPlan': 'Sync Plan',
   'pages.job.table.col.status': 'Status',
+  'pages.job.table.col.metrics': 'Load',
   'pages.job.table.col.execution': 'Execution',
   'pages.job.table.col.schedule': 'Schedule',
   'pages.job.table.col.createTime': 'Create Time',
+  'pages.job.table.col.updateTime': 'Last Updated',
   'pages.job.table.col.operate': 'Operate',
 
   // labels inside Name column

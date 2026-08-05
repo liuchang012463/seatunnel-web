@@ -113,9 +113,11 @@ export default {
   'pages.job.table.col.name': '链路名称/ID',
   'pages.job.table.col.syncPlan': '数据源同步方案',
   'pages.job.table.col.status': '健康状态',
+  'pages.job.table.col.metrics': '负载情况',
   'pages.job.table.col.execution': '执行概况',
   'pages.job.table.col.schedule': '链路动态调度',
   'pages.job.table.col.createTime': '创建时间',
+  'pages.job.table.col.updateTime': '最近更新时间',
   'pages.job.table.col.operate': '操作',
 
   // labels inside Name column

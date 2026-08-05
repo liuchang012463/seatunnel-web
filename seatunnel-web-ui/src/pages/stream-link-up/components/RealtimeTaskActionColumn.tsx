@@ -26,6 +26,7 @@ export interface StreamingJobDefinitionVO {
   lastJobStatus?: string;
   lastErrorMessage?: string;
   instanceId?: string | number;
+  engineJobId?: string | number;
   sourceType?: string;
   sinkType?: string;
   sourceTable?: string;
