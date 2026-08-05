@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -35,6 +36,9 @@ class JobLogServiceTest {
 
     @Mock
     private SeaTunnelRestClient seaTunnelRestClient;
+
+    @Spy
+    private JobLogParser jobLogParser = new JobLogParser();
 
     @InjectMocks
     private JobLogService jobLogService;
@@ -69,6 +73,39 @@ class JobLogServiceTest {
         assertEquals(1, count(stored, "=== SEA TUNNEL ENGINE LOG SNAPSHOT"));
         assertTrue(jobLogService.getFullContent(1L, JobMode.BATCH).contains("engine failure"));
         verify(seaTunnelRestClient, times(3)).jobLogs(eq(2L), eq("engine-1"), eq("json"));
+    }
+
+    @Test
+    void searchesCompleteDocumentByKeywordAndLevel() throws Exception {
+        Path logPath = tempDir.resolve("job-2.log");
+        Files.writeString(logPath, """
+                [2026-08-05 10:00:00] [INFO] submit started
+                [2026-08-05 10:00:01] [ERROR] timeout while reading source
+                [2026-08-05 10:00:02] [WARN] retry scheduled
+                """, StandardCharsets.UTF_8);
+
+        JobInstance instance = JobInstance.builder()
+                .id(2L)
+                .clientId(2L)
+                .jobStatus(JobStatus.FINISHED)
+                .logPath(logPath.toString())
+                .build();
+        when(jobInstanceDao.queryById(2L)).thenReturn(instance);
+
+        JobLogSearchResult result = jobLogService.search(
+                2L,
+                JobMode.BATCH,
+                "timeout",
+                "ERROR",
+                null,
+                null,
+                1,
+                10
+        );
+
+        assertEquals(1, result.total());
+        assertEquals(1, result.entries().size());
+        assertTrue(result.entries().get(0).message().contains("timeout"));
     }
 
     private long count(String value, String target) {

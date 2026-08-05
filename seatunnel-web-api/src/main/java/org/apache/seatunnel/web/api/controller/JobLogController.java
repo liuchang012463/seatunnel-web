@@ -1,0 +1,68 @@
+package org.apache.seatunnel.web.api.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.Resource;
+import org.apache.seatunnel.web.api.log.JobLogSearchResult;
+import org.apache.seatunnel.web.api.log.JobLogService;
+import org.apache.seatunnel.web.common.enums.JobMode;
+import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.spi.bean.entity.Result;
+import org.apache.seatunnel.web.spi.enums.Status;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/job-log")
+@Tag(name = "JOB_LOG_TAG")
+public class JobLogController {
+
+    @Resource
+    private JobLogService jobLogService;
+
+    @GetMapping("/{jobMode}/{instanceId}/search")
+    @Operation(summary = "searchJobInstanceLog", description = "按条件检索任务完整日志")
+    @Parameters({
+            @Parameter(name = "jobMode", description = "BATCH or STREAMING", required = true),
+            @Parameter(name = "instanceId", description = "任务实例 ID", required = true),
+            @Parameter(name = "keyword", description = "不区分大小写的关键字"),
+            @Parameter(name = "level", description = "日志级别，例如 ERROR"),
+            @Parameter(name = "source", description = "日志来源，例如 WEB 或 ENGINE"),
+            @Parameter(name = "category", description = "日志分类，例如 EXECUTION_FLOW"),
+            @Parameter(name = "page", description = "页码，从 1 开始"),
+            @Parameter(name = "pageSize", description = "页大小，最大 500")
+    })
+    public Result<JobLogSearchResult> search(
+            @PathVariable String jobMode,
+            @PathVariable Long instanceId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String level,
+            @RequestParam(required = false) String source,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return Result.buildSuc(jobLogService.search(
+                instanceId,
+                parseMode(jobMode),
+                keyword,
+                level,
+                source,
+                category,
+                page,
+                pageSize
+        ));
+    }
+
+    private JobMode parseMode(String value) {
+        try {
+            return JobMode.valueOf(value.trim().toUpperCase());
+        } catch (Exception e) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "jobMode");
+        }
+    }
+}

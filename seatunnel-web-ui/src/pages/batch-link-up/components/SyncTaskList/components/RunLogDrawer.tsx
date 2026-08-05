@@ -1,10 +1,10 @@
-import { seatunnelClientApi } from "@/pages/batch-link-up/type";
+import { jobLogApi, type JobLogMode } from "@/services/jobLog";
 import {
   CloseOutlined, EditOutlined,
   FileSearchOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
-import {Button, Spin, Tooltip} from "antd";
+import { Button, Empty, Input, Spin, Tag, Tooltip } from "antd";
 import React, { FC, ReactNode } from "react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -201,6 +201,10 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
   const [loading, setLoading] = useState(false);
   const [logContent, setLogContent] = useState("");
   const [errorText, setErrorText] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResult, setSearchResult] = useState<any>(null);
+  const [activeView, setActiveView] = useState<"raw" | "search">("raw");
 
   const panelStyle = useMemo(
     () =>
@@ -234,9 +238,9 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
       setErrorText("");
       setLogContent("");
 
-      const response = await seatunnelClientApi.getLogsByInstanceId(
+      const response = await jobLogApi.content(
         instanceId,
-        jobMode
+        jobMode as JobLogMode,
       );
 
       if (response?.code !== 0) {
@@ -255,6 +259,31 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
       setLoading(false);
     }
   }, [open, instanceId, jobMode]);
+
+  const searchLogs = useCallback(async () => {
+    if (!instanceId) {
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      const response = await jobLogApi.search(instanceId, jobMode as JobLogMode, {
+        keyword: searchKeyword,
+        page: 1,
+        pageSize: 200,
+      });
+      if (response?.code !== 0) {
+        setErrorText(response?.msg || response?.message || "检索日志失败");
+        return;
+      }
+      setSearchResult(getResponseData(response));
+      setActiveView("search");
+    } catch (error: any) {
+      setErrorText(error?.message || "检索日志失败");
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [instanceId, jobMode, searchKeyword]);
 
   useEffect(() => {
     if (!open) {
@@ -373,6 +402,22 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
             </div>
 
             <div className="flex items-center gap-1.5">
+              <Button
+                type="text"
+                size="small"
+                onClick={() => setActiveView("raw")}
+                className={activeView === "raw" ? "!text-[#315efb]" : "!text-slate-500"}
+              >
+                原始
+              </Button>
+              <Button
+                type="text"
+                size="small"
+                onClick={() => setActiveView("search")}
+                className={activeView === "search" ? "!text-[#315efb]" : "!text-slate-500"}
+              >
+                检索
+              </Button>
               <button
                 type="button"
                 onClick={() => void loadLogs()}
@@ -421,6 +466,37 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 <div className="mt-1 max-w-[520px] text-xs leading-5 text-slate-400">
                   {errorText}
                 </div>
+              </div>
+            ) : activeView === "search" ? (
+              <div className="flex h-full min-h-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center gap-2">
+                  <Input.Search
+                    value={searchKeyword}
+                    allowClear
+                    placeholder="检索关键字，例如 timeout、ERROR、连接"
+                    enterButton="检索"
+                    loading={searchLoading}
+                    onChange={(event) => setSearchKeyword(event.target.value)}
+                    onSearch={() => void searchLogs()}
+                  />
+                  {searchResult ? <Tag color="blue">命中 {searchResult.total ?? 0} 行</Tag> : null}
+                </div>
+                {searchResult?.entries?.length ? (
+                  <div className="min-h-0 flex-1 overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-100">
+                    {searchResult.entries.map((entry: any) => (
+                      <div key={`${entry.lineNumber}-${entry.sequence}`} className="mb-1 border-b border-white/5 pb-1 last:border-0">
+                        <span className="mr-2 text-slate-500">L{entry.lineNumber}</span>
+                        <span className="mr-2 text-cyan-300">{entry.level}</span>
+                        <span className="mr-2 text-violet-300">{entry.source}</span>
+                        {entry.message}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center">
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="输入关键字检索完整日志" />
+                  </div>
+                )}
               </div>
             ) : logContent ? (
               <pre

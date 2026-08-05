@@ -20,6 +20,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.HexFormat;
 
 /**
@@ -42,6 +45,9 @@ public class JobLogService {
 
     @Resource
     private SeaTunnelRestClient seaTunnelRestClient;
+
+    @Resource
+    private JobLogParser jobLogParser;
 
     /**
      * Returns the complete log currently available for an instance.  A running
@@ -85,6 +91,48 @@ public class JobLogService {
         }
 
         appendEngineSnapshot(context, engineContent);
+    }
+
+    public JobLogSearchResult search(Long instanceId,
+                                     JobMode requestedMode,
+                                     String keyword,
+                                     String level,
+                                     String source,
+                                     String category,
+                                     Integer page,
+                                     Integer pageSize) {
+        List<JobLogEntry> entries = jobLogParser.parse(getFullContent(instanceId, requestedMode));
+        String normalizedKeyword = StringUtils.defaultString(keyword).trim().toLowerCase(Locale.ROOT);
+        String normalizedLevel = StringUtils.defaultString(level).trim().toUpperCase(Locale.ROOT);
+        String normalizedSource = StringUtils.defaultString(source).trim().toUpperCase(Locale.ROOT);
+        String normalizedCategory = StringUtils.defaultString(category).trim().toUpperCase(Locale.ROOT);
+
+        List<JobLogEntry> matches = entries.stream()
+                .filter(entry -> normalizedKeyword.isEmpty()
+                        || entry.message().toLowerCase(Locale.ROOT).contains(normalizedKeyword)
+                        || entry.raw().toLowerCase(Locale.ROOT).contains(normalizedKeyword))
+                .filter(entry -> normalizedLevel.isEmpty() || normalizedLevel.equals(entry.level()))
+                .filter(entry -> normalizedSource.isEmpty() || normalizedSource.equals(entry.source()))
+                .filter(entry -> normalizedCategory.isEmpty() || normalizedCategory.equals(entry.category()))
+                .toList();
+
+        int safePage = page == null || page < 1 ? 1 : page;
+        int safePageSize = pageSize == null || pageSize < 1 ? 100 : Math.min(pageSize, 500);
+        int fromIndex = Math.min((safePage - 1) * safePageSize, matches.size());
+        int toIndex = Math.min(fromIndex + safePageSize, matches.size());
+        List<JobLogEntry> pageEntries = new ArrayList<>(matches.subList(fromIndex, toIndex));
+
+        return new JobLogSearchResult(
+                keyword,
+                level,
+                source,
+                category,
+                matches.size(),
+                safePage,
+                safePageSize,
+                toIndex < matches.size(),
+                pageEntries
+        );
     }
 
     public JobLogContext resolve(Long instanceId, JobMode requestedMode) {
