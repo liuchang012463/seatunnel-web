@@ -366,7 +366,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 <div className="run-log-drawer__title truncate text-[15px] font-semibold text-slate-900">
                   {title}
                 </div>
-                <div className="run-log-drawer__subtitle truncate text-xs text-slate-400">
+                <div className="truncate text-xs text-slate-600">
                   {subtitle}
                 </div>
               </div>
@@ -378,10 +378,13 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 onClick={() => void loadLogs()}
                 disabled={loading}
                 className={[
-                  "run-log-drawer__refresh-button flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs",
-                  "text-slate-500 transition-all duration-200",
-                  "hover:bg-slate-100 hover:text-slate-700",
-                  loading ? "cursor-not-allowed opacity-60" : "",
+                  "run-log-drawer__refresh-button inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium",
+                  "border-0 bg-transparent text-[var(--st-color-text-secondary)]",
+                  "transition-colors duration-200 hover:bg-[var(--st-color-hover)] hover:text-[var(--st-color-accent)]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--st-color-focus)]",
+                  loading
+                    ? "cursor-not-allowed opacity-60"
+                    : "active:scale-[0.98]",
                 ].join(" ")}
               >
                 <ReloadOutlined className={loading ? "animate-spin" : ""} />
@@ -418,7 +421,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 <div className="text-sm font-medium text-red-500">
                   获取日志失败
                 </div>
-                <div className="mt-1 max-w-[520px] text-xs leading-5 text-slate-400">
+                <div className="mt-1 max-w-[520px] text-xs leading-5 text-slate-500">
                   {errorText}
                 </div>
               </div>
@@ -437,7 +440,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 <div className="text-sm font-medium text-slate-600">
                   暂无日志
                 </div>
-                <div className="mt-1 text-xs text-slate-400">
+                <div className="mt-1 text-xs text-slate-600">
                   当前任务实例暂未返回运行日志
                 </div>
               </div>
