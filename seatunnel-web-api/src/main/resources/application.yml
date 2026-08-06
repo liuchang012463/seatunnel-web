@@ -54,12 +54,12 @@ spring:
   main:
     allow-bean-definition-overriding: true
   ai:
-    deepseek:
-      api-key: sk-****
-      base-url: "https://api.deepseek.com"
+    minimax:
+      api-key: ${SPRING_AI_API_KEY}
+      base-url: ${SPRING_AI_BASE_URL}
       chat:
         options:
-          model: deepseek-chat
+          model: ${SPRING_AI_LLM_MODEL}
       embedding:
         enabled: false
 
