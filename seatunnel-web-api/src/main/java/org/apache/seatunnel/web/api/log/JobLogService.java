@@ -144,25 +144,31 @@ public class JobLogService {
                 entries.size(),
                 countByLevel(entries, "ERROR"),
                 countByLevel(entries, "WARN"),
-                entriesByCategory(entries, JobLogParser.CATEGORY_OPERATION),
-                entriesByCategory(entries, JobLogParser.CATEGORY_DATA_SNAPSHOT),
-                entriesByCategory(entries, JobLogParser.CATEGORY_EXECUTION_FLOW),
+                structuredEntriesByCategory(entries, JobLogParser.CATEGORY_OPERATION),
+                structuredEntriesByCategory(entries, JobLogParser.CATEGORY_DATA_SNAPSHOT),
+                structuredEntriesByCategory(entries, JobLogParser.CATEGORY_EXECUTION_FLOW),
                 entriesByCategory(entries, JobLogParser.CATEGORY_ERROR),
-                entriesByCategory(entries, JobLogParser.CATEGORY_TIMELINE)
+                structuredEntriesByCategory(entries, JobLogParser.CATEGORY_TIMELINE)
         );
     }
 
     public JobLogReplayResult replay(Long instanceId, JobMode requestedMode) {
         List<JobLogEntry> entries = parseEntries(instanceId, requestedMode);
-        List<JobLogReplayStep> steps = entries.stream()
-                .map(this::toReplayStep)
-                .toList();
+        List<JobLogReplaySection> sections = replaySections(entries);
         Long durationMs = entries.stream()
                 .map(JobLogEntry::elapsedMs)
                 .filter(Objects::nonNull)
                 .max(Long::compareTo)
                 .orElse(null);
-        return new JobLogReplayResult(instanceId, requestedMode.name(), steps.size(), durationMs, steps);
+        int totalSteps = sections.stream().mapToInt(section -> section.steps().size()).sum();
+        return new JobLogReplayResult(
+                instanceId,
+                requestedMode.name(),
+                sections.size(),
+                totalSteps,
+                durationMs,
+                sections
+        );
     }
 
     private List<JobLogEntry> parseEntries(Long instanceId, JobMode requestedMode) {
@@ -177,27 +183,77 @@ public class JobLogService {
         return entries.stream().filter(entry -> category.equals(entry.category())).toList();
     }
 
+    private List<JobLogStructuredRecord> structuredEntriesByCategory(List<JobLogEntry> entries, String category) {
+        return entries.stream()
+                .filter(entry -> category.equals(entry.category()))
+                .map(jobLogParser::toStructuredRecord)
+                .toList();
+    }
+
+    private List<JobLogReplaySection> replaySections(List<JobLogEntry> entries) {
+        List<JobLogReplaySection> sections = new ArrayList<>();
+        List<JobLogEntry> current = new ArrayList<>();
+        String currentCategory = null;
+        int sectionNumber = 0;
+
+        for (JobLogEntry entry : entries) {
+            if (currentCategory != null && !currentCategory.equals(entry.category())) {
+                sections.add(toReplaySection(++sectionNumber, currentCategory, current));
+                current = new ArrayList<>();
+            }
+            currentCategory = entry.category();
+            current.add(entry);
+        }
+        if (!current.isEmpty()) {
+            sections.add(toReplaySection(++sectionNumber, currentCategory, current));
+        }
+        return sections;
+    }
+
+    private JobLogReplaySection toReplaySection(int sectionNumber, String category, List<JobLogEntry> entries) {
+        List<JobLogReplayStep> steps = entries.stream().map(this::toReplayStep).toList();
+        Long startElapsed = entries.get(0).elapsedMs();
+        Long endElapsed = entries.get(entries.size() - 1).elapsedMs();
+        Long durationMs = startElapsed == null || endElapsed == null
+                ? null
+                : Math.max(0L, endElapsed - startElapsed);
+        return new JobLogReplaySection(
+                "section-" + sectionNumber,
+                sectionTitle(category),
+                category,
+                entries.get(0).timestamp(),
+                entries.get(entries.size() - 1).timestamp(),
+                durationMs,
+                steps
+        );
+    }
+
     private JobLogReplayStep toReplayStep(JobLogEntry entry) {
-        String title = switch (entry.category()) {
-            case JobLogParser.CATEGORY_OPERATION -> "操作行为";
-            case JobLogParser.CATEGORY_DATA_SNAPSHOT -> "数据读取快照";
+        JobLogStructuredRecord record = jobLogParser.toStructuredRecord(entry);
+        return new JobLogReplayStep(
+                record.sequence(),
+                record.lineNumber(),
+                record.timestamp(),
+                record.elapsedMs(),
+                record.source(),
+                record.category(),
+                record.eventType(),
+                record.operation(),
+                record.target(),
+                record.status(),
+                record.detail(),
+                sectionTitle(record.category())
+        );
+    }
+
+    private String sectionTitle(String category) {
+        return switch (category) {
+            case JobLogParser.CATEGORY_OPERATION -> "任务操作";
+            case JobLogParser.CATEGORY_DATA_SNAPSHOT -> "数据读取";
             case JobLogParser.CATEGORY_EXECUTION_FLOW -> "执行流程";
-            case JobLogParser.CATEGORY_ERROR -> "错误事件";
+            case JobLogParser.CATEGORY_ERROR -> "异常处理";
             default -> "时序记录";
         };
-        return new JobLogReplayStep(
-                entry.sequence(),
-                entry.lineNumber(),
-                entry.timestamp(),
-                entry.elapsedMs(),
-                entry.source(),
-                entry.category(),
-                entry.eventType(),
-                title,
-                entry.level(),
-                entry.message(),
-                entry.raw()
-        );
     }
 
     public JobLogContext resolve(Long instanceId, JobMode requestedMode) {

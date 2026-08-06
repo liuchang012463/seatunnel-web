@@ -3,10 +3,10 @@ package org.apache.seatunnel.web.api.log;
 import java.util.List;
 
 /**
- * Structured v1 view of a complete task log.
+ * Rule-derived view of a complete task log.
  *
- * <p>The four lists intentionally keep the original line metadata so the UI
- * can jump from a structured record back to the source log line.</p>
+ * <p>The observability lists contain normalized records. Raw entries remain
+ * available in {@link #errors()} for evidence and fault diagnosis.</p>
  */
 public record JobLogAnalysisResult(
         Long instanceId,
@@ -14,10 +14,10 @@ public record JobLogAnalysisResult(
         int totalLines,
         int errorCount,
         int warningCount,
-        List<JobLogEntry> operationRecords,
-        List<JobLogEntry> dataSnapshots,
-        List<JobLogEntry> executionFlow,
+        List<JobLogStructuredRecord> operationRecords,
+        List<JobLogStructuredRecord> dataSnapshots,
+        List<JobLogStructuredRecord> executionFlow,
         List<JobLogEntry> errors,
-        List<JobLogEntry> timeline
+        List<JobLogStructuredRecord> timeline
 ) {
 }

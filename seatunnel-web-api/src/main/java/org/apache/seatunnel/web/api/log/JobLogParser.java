@@ -33,6 +33,12 @@ public class JobLogParser {
     private static final Pattern GENERIC_LINE = Pattern.compile(
             "^(?<timestamp>\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d{3})?)\\s+(?:\\[(?<level1>[A-Za-z]+)]|(?<level2>[A-Za-z]+))\\s*[-:]?\\s*(?<message>.*)$"
     );
+    private static final Pattern TARGET_ASSIGNMENT = Pattern.compile(
+            "(?i)(?:table|index|pipeline|source|sink|job|task|表|索引|任务)\\s*(?:name\\s*)?(?:=|:|：)\\s*([^,;\\s]+)"
+    );
+    private static final Pattern TARGET_REFERENCE = Pattern.compile(
+            "(?i)\\b(?:for|from|to|on)\\s+(?:table|index|pipeline|source|sink|job|task)?\\s*([\\w./:-]+)"
+    );
     private static final List<DateTimeFormatter> TIMESTAMP_FORMATTERS = List.of(
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"),
@@ -99,6 +105,115 @@ public class JobLogParser {
         }
 
         return entries;
+    }
+
+    /**
+     * Converts one parsed physical line into a normalized observability row.
+     * The mapping is deliberately deterministic so the same log always
+     * produces the same table and replay labels.
+     */
+    public JobLogStructuredRecord toStructuredRecord(JobLogEntry entry) {
+        String message = StringUtils.defaultString(entry.message()).trim();
+        String lower = message.toLowerCase(Locale.ROOT);
+        String operation = operation(entry.category(), lower);
+        String target = target(message);
+        String status = status(entry.level(), lower);
+        return new JobLogStructuredRecord(
+                entry.sequence(),
+                entry.lineNumber(),
+                entry.timestamp(),
+                entry.elapsedMs(),
+                entry.source(),
+                entry.category(),
+                entry.eventType(),
+                operation,
+                target,
+                status,
+                message
+        );
+    }
+
+    private String operation(String category, String lower) {
+        if (CATEGORY_DATA_SNAPSHOT.equals(category)) {
+            if (containsAny(lower, "read", "scan", "fetch", "query", "pull", "读取", "扫描", "拉取")) {
+                return "读取数据";
+            }
+            if (containsAny(lower, "write", "sink", "insert", "append", "写入", "落盘")) {
+                return "写入数据";
+            }
+            return "记录数据快照";
+        }
+        if (CATEGORY_EXECUTION_FLOW.equals(category)) {
+            if (containsAny(lower, "finished", "complete", "completed", "成功", "完成")) {
+                return "完成执行";
+            }
+            if (containsAny(lower, "running", "scheduled", "pending", "启动", "运行", "调度")) {
+                return "推进执行";
+            }
+            return "更新执行状态";
+        }
+        if (CATEGORY_ERROR.equals(category)) {
+            return "记录异常";
+        }
+        if (containsAny(lower, "submit", "submitted", "提交")) {
+            return "提交任务";
+        }
+        if (containsAny(lower, "config", "配置")) {
+            return "加载配置";
+        }
+        if (containsAny(lower, "checkpoint", "检查点")) {
+            return "处理检查点";
+        }
+        if (containsAny(lower, "savepoint", "保存点")) {
+            return "处理保存点";
+        }
+        if (containsAny(lower, "pause", "stop", "cancel", "暂停", "终止", "取消")) {
+            return "控制任务";
+        }
+        if (containsAny(lower, "connect", "connection", "连接")) {
+            return "建立连接";
+        }
+        if (containsAny(lower, "create", "created", "init", "initialize", "初始化")) {
+            return "初始化任务";
+        }
+        return CATEGORY_TIMELINE.equals(category) ? "记录时序" : "记录操作";
+    }
+
+    private String target(String message) {
+        Matcher assignment = TARGET_ASSIGNMENT.matcher(message);
+        if (assignment.find()) {
+            return assignment.group(1);
+        }
+        Matcher reference = TARGET_REFERENCE.matcher(message);
+        if (reference.find()) {
+            return reference.group(1);
+        }
+        return "-";
+    }
+
+    private String status(String level, String lower) {
+        if ("ERROR".equalsIgnoreCase(level) || containsAny(lower, "failed", "failure", "exception", "失败", "异常")) {
+            return "失败";
+        }
+        if (containsAny(lower, "finished", "complete", "completed", "success", "成功", "完成")) {
+            return "完成";
+        }
+        if ("WARN".equalsIgnoreCase(level) || containsAny(lower, "retry", "warning", "警告", "重试")) {
+            return "警告";
+        }
+        if (containsAny(lower, "submit", "submitted", "created", "initialized", "running", "scheduled", "pending", "进行中", "运行", "调度")) {
+            return "进行中";
+        }
+        return "记录";
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ParsedLine parseLine(String rawLine, String previousLevel) {

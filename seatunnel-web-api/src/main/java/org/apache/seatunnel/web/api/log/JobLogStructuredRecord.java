@@ -1,9 +1,12 @@
 package org.apache.seatunnel.web.api.log;
 
 /**
- * One normalized step inside a named operation replay section.
+ * A rule-derived record for the task-log observability views.
+ *
+ * <p>This is intentionally different from {@link JobLogEntry}: the UI uses
+ * normalized operation fields instead of rendering a raw physical log line.</p>
  */
-public record JobLogReplayStep(
+public record JobLogStructuredRecord(
         long sequence,
         long lineNumber,
         String timestamp,
@@ -14,7 +17,6 @@ public record JobLogReplayStep(
         String operation,
         String target,
         String status,
-        String detail,
-        String title
+        String detail
 ) {
 }

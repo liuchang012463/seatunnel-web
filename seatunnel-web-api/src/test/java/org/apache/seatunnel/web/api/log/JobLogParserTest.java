@@ -30,5 +30,9 @@ class JobLogParserTest {
         assertEquals("ERROR", entries.get(2).eventType());
         assertTrue(entries.get(2).message().contains("connection refused"));
         assertEquals(1000L, entries.get(1).elapsedMs());
+
+        JobLogStructuredRecord structured = parser.toStructuredRecord(entries.get(0));
+        assertEquals("提交任务", structured.operation());
+        assertEquals("进行中", structured.status());
     }
 }

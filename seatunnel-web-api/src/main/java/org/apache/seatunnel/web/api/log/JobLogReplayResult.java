@@ -3,13 +3,14 @@ package org.apache.seatunnel.web.api.log;
 import java.util.List;
 
 /**
- * Ordered, replayable representation of a complete task log.
+ * Named, ordered, replayable representation of a complete task log.
  */
 public record JobLogReplayResult(
         Long instanceId,
         String jobMode,
+        int totalSections,
         int totalSteps,
         Long durationMs,
-        List<JobLogReplayStep> steps
+        List<JobLogReplaySection> sections
 ) {
 }

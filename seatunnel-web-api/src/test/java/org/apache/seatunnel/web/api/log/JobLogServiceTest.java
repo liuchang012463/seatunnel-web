@@ -133,10 +133,13 @@ class JobLogServiceTest {
         assertEquals(1, analysis.dataSnapshots().size());
         assertEquals(1, analysis.executionFlow().size());
         assertEquals(1, analysis.errors().size());
+        assertEquals("提交任务", analysis.operationRecords().get(0).operation());
+        assertEquals("记录数据快照", analysis.dataSnapshots().get(0).operation());
+        assertEquals("推进执行", analysis.executionFlow().get(0).operation());
     }
 
     @Test
-    void replaysAllParsedLinesInSequenceOrder() throws Exception {
+    void groupsReplayIntoNamedSectionsAndKeepsNormalizedSteps() throws Exception {
         Path logPath = tempDir.resolve("job-4.log");
         Files.writeString(logPath, """
                 [2026-08-05 10:00:00] [INFO] submit started
@@ -154,11 +157,14 @@ class JobLogServiceTest {
 
         JobLogReplayResult replay = jobLogService.replay(4L, JobMode.BATCH);
 
+        assertEquals(3, replay.totalSections());
         assertEquals(3, replay.totalSteps());
         assertEquals(3000L, replay.durationMs());
-        assertEquals(1L, replay.steps().get(0).sequence());
-        assertEquals("错误事件", replay.steps().get(2).title());
-        assertTrue(replay.steps().get(2).detail().contains("connection refused"));
+        assertEquals("任务操作", replay.sections().get(0).title());
+        assertEquals(1L, replay.sections().get(0).steps().get(0).sequence());
+        assertEquals("异常处理", replay.sections().get(2).title());
+        assertEquals("记录异常", replay.sections().get(2).steps().get(0).operation());
+        assertTrue(replay.sections().get(2).steps().get(0).detail().contains("connection refused"));
     }
 
     private long count(String value, String target) {
