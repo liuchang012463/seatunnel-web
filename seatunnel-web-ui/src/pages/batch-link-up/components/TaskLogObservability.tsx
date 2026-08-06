@@ -342,12 +342,6 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
       </div>
       {analysisResult ? (
         <>
-          <div className="mb-3 flex flex-wrap gap-2 text-xs">
-            <Tag color="blue">总记录 {analysisResult.totalLines}</Tag>
-            <Tag color="red">错误 {analysisResult.errorCount}</Tag>
-            <Tag color="orange">警告 {analysisResult.warningCount}</Tag>
-            <Tag>规则版本 v2</Tag>
-          </div>
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
             <span>{title}</span><Tag className="!mr-0">{rows.length}</Tag>
           </div>

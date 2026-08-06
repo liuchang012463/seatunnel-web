@@ -36,7 +36,6 @@ export interface JobLogStructuredRecord {
   target: string;
   status: string;
   detail: string;
-  logs?: string[];
 }
 
 export interface JobLogAnalysisResult {
@@ -65,6 +64,7 @@ export interface JobLogReplayStep {
   title: string;
   status: string;
   detail: string;
+  logs?: string[];
 }
 
 export interface JobLogReplaySection {
