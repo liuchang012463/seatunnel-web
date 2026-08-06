@@ -56,7 +56,7 @@ spring:
   ai:
     minimax:
       api-key: ${SPRING_AI_API_KEY}
-      base-url: https://api.minimaxi.com/v1
+      base-url: ${SPRING_AI_BASE_URL}
       chat:
         options:
           model: ${SPRING_AI_LLM_MODEL}
