@@ -198,14 +198,14 @@ const ChannelTypeSelector: React.FC<
           选择通道类型
         </h3>
 
-        <p className="m-0 mt-1 text-xs leading-5 text-slate-400">
+        <p className="m-0 mt-1 text-xs leading-5 text-slate-white">
           选择告警消息需要投递到的平台或服务。
         </p>
       </div>
 
       {!loading && channelTypes.length === 0 ? (
         <div className="flex flex-col items-center py-20 text-center">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-white">
             <RadioTower className="h-5 w-5" />
           </div>
 
@@ -213,7 +213,7 @@ const ChannelTypeSelector: React.FC<
             暂无可用的通道类型
           </p>
 
-          <p className="m-0 mt-2 text-xs text-slate-400">
+          <p className="m-0 mt-2 text-xs text-slate-white">
             请检查告警通道 SPI 是否已经正确加载
           </p>
         </div>
@@ -232,7 +232,7 @@ const ChannelTypeSelector: React.FC<
                   'group flex w-full items-center gap-4',
                   'rounded-xl px-3 py-4 text-left',
                   'transition-all duration-200',
-                  'hover:bg-slate-50',
+                  'alarm-channel-type-option',
                   'focus-visible:outline-none',
                   'focus-visible:ring-2',
                   'focus-visible:ring-slate-300',
@@ -244,9 +244,8 @@ const ChannelTypeSelector: React.FC<
                     'flex h-10 w-10 shrink-0 items-center',
                     'justify-center rounded-xl bg-slate-100',
                     'text-sm font-semibold text-slate-600',
+                    'alarm-channel-type-option__icon',
                     'transition-colors duration-200',
-                    'group-hover:bg-white',
-                    'group-hover:text-slate-950',
                   ].join(' ')}
                 >
                   {displayName
@@ -255,11 +254,11 @@ const ChannelTypeSelector: React.FC<
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="m-0 truncate text-sm font-semibold text-slate-900">
+                  <p className="alarm-channel-type-option__title m-0 truncate text-sm font-semibold text-slate-900">
                     {displayName}
                   </p>
 
-                  <p className="m-0 mt-1 text-xs text-slate-400">
+                  <p className="alarm-channel-type-option__meta m-0 mt-1 text-xs text-slate-600">
                     {type.channelType}
                     <span className="mx-1.5">·</span>
                     {type.configFields?.length || 0}
@@ -270,9 +269,9 @@ const ChannelTypeSelector: React.FC<
                 <ChevronRight
                   className={[
                     'h-4 w-4 shrink-0 text-slate-300',
+                    'alarm-channel-type-option__arrow',
                     'transition-all duration-200',
                     'group-hover:translate-x-0.5',
-                    'group-hover:text-slate-600',
                   ].join(' ')}
                 />
               </button>
@@ -768,7 +767,7 @@ const AddOrEditChannelModal =
                     )}
                 </div>
 
-                <p className="m-0 mt-1 truncate text-xs text-slate-400">
+                <p className="m-0 mt-1 truncate text-xs text-slate-white">
                   {drawerDescription}
                 </p>
               </div>
@@ -933,7 +932,7 @@ const AddOrEditChannelModal =
                         </p>
                       </div>
 
-                      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-white">
                         {sortedFields.length}
                         个配置项
                       </span>

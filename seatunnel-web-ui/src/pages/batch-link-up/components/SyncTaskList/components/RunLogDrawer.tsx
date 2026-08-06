@@ -1,5 +1,5 @@
 import { CloseOutlined, FileSearchOutlined, ReloadOutlined } from "@ant-design/icons";
-import { Button, Empty, Input, Spin, Tooltip } from "antd";
+import { Empty, Input, Spin, Tooltip } from "antd";
 import React, { FC, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -262,21 +262,28 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
               </Tooltip>
               <div className="min-w-0">
                 <div className="run-log-drawer__title truncate text-[15px] font-semibold text-slate-900">{title}</div>
-                <div className="run-log-drawer__subtitle truncate text-xs text-slate-400">{subtitle} · 实时刷新</div>
+                <div className="truncate text-xs text-slate-600">{subtitle} · 实时刷新</div>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5">
-              <Button
-                type="text"
-                size="small"
-                icon={<ReloadOutlined className={loading ? "animate-spin" : ""} />}
-                loading={loading}
+              <button
+                type="button"
                 onClick={() => void loadLogs(true)}
-                className="!text-slate-500"
+                disabled={loading}
+                className={[
+                  "run-log-drawer__refresh-button inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium",
+                  "border-0 bg-transparent text-[var(--st-color-text-secondary)]",
+                  "transition-colors duration-200 hover:bg-[var(--st-color-hover)] hover:text-[var(--st-color-accent)]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--st-color-focus)]",
+                  loading
+                    ? "cursor-not-allowed opacity-60"
+                    : "active:scale-[0.98]",
+                ].join(" ")}
               >
+                <ReloadOutlined className={loading ? "animate-spin" : ""} />
                 刷新
-              </Button>
+              </button>
               <button
                 type="button"
                 onClick={onClose}
@@ -307,14 +314,17 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 </div>
 
                 {loading && !logContent ? (
-                  <div className="flex min-h-[180px] flex-1 items-center justify-center"><Spin size="small" /></div>
+                  <div className="run-log-drawer__state-card flex min-h-[180px] flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center">
+                    <Spin size="small" />
+                    <span className="ml-2 text-xs text-slate-400">正在加载日志...</span>
+                  </div>
                 ) : errorText ? (
-                  <div className="flex min-h-[180px] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-red-100 bg-white text-center">
+                  <div className="run-log-drawer__state-card flex min-h-[180px] flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-red-100 bg-white text-center">
                     <div className="text-sm font-medium text-red-500">获取日志失败</div>
-                    <div className="mt-1 max-w-[520px] text-xs leading-5 text-slate-400">{errorText}</div>
+                    <div className="mt-1 max-w-[520px] text-xs leading-5 text-slate-500">{errorText}</div>
                   </div>
                 ) : (
-                  <div className="min-h-0 flex-1 overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-100">
+                  <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-slate-800/90 bg-slate-950 p-4 font-mono text-xs leading-5 text-slate-100">
                     {logContent ? (
                       logLines.map((line, index) => {
                         const matched = Boolean(normalizedKeyword && line.toLowerCase().includes(normalizedKeyword));
@@ -325,7 +335,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                         );
                       })
                     ) : (
-                      <div className="flex h-full min-h-[180px] items-center justify-center">
+                      <div className="run-log-drawer__state-card flex h-full min-h-[180px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center">
                         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前实例暂无日志" />
                       </div>
                     )}
@@ -334,7 +344,11 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
               </div>
             )}
           </main>
-          {footer ? <footer className="border-t border-slate-100 bg-white px-5 py-3">{footer}</footer> : null}
+          {footer ? (
+            <footer className="run-log-drawer__footer flex items-center justify-end gap-2 border-t border-slate-100 bg-white px-5 py-3">
+              {footer}
+            </footer>
+          ) : null}
         </section>
       </div>
     </div>,

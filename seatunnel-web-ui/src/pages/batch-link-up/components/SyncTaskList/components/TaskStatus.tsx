@@ -77,7 +77,7 @@ const getStatusConfig = (status?: string) => {
 
   return (
     statusConfig[normalizedStatus] || {
-      color: "#64748b",
+      color: "#c0ccdc",
       label: status ? "未识别" : "未开始",
     }
   );

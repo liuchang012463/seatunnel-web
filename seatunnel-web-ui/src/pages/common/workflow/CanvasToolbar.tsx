@@ -45,7 +45,7 @@ const isEditableTarget = (target: EventTarget | null) => {
 };
 
 const TooltipShortcut = ({ children }: { children: ReactNode }) => (
-  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded bg-[#f2f4f7] px-1.5 text-[11px] font-medium leading-none text-[#667085]">
+  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded border border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)] px-1.5 text-[11px] font-medium leading-none text-[var(--st-color-text-primary)] shadow-sm">
     {children}
   </span>
 );

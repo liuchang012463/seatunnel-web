@@ -112,50 +112,50 @@ const hoconLanguage = StreamLanguage.define<HoconState>({
 const hoconHighlightStyle = HighlightStyle.define([
   {
     tag: tags.keyword,
-    color: "#2563eb",
+    color: "#4DD2FF",
     fontWeight: "600",
   },
   {
     tag: tags.comment,
-    color: "#94a3b8",
+    color: "#8DA6AE",
     fontStyle: "italic",
   },
   {
     tag: tags.string,
-    color: "#0f766e",
+    color: "#64E6B1",
   },
   {
     tag: tags.number,
-    color: "#d97706",
+    color: "#FFD166",
     fontWeight: "500",
   },
   {
     tag: tags.bool,
-    color: "#7c3aed",
+    color: "#C4B5FD",
     fontWeight: "600",
   },
   {
     tag: tags.propertyName,
-    color: "#334155",
+    color: "#D5D5D5",
     fontWeight: "500",
   },
   {
     tag: tags.typeName,
-    color: "#4f46e5",
+    color: "#A78BFA",
     fontWeight: "600",
   },
   {
     tag: tags.variableName,
-    color: "#475569",
+    color: "#D5D5D5",
   },
   {
     tag: [tags.brace, tags.squareBracket],
-    color: "#0284c7",
+    color: "#4DD2FF",
     fontWeight: "600",
   },
   {
     tag: tags.operator,
-    color: "#94a3b8",
+    color: "#8DA6AE",
   },
 ]);
 
@@ -164,8 +164,8 @@ const createPreviewTheme = (height: number) =>
     "&": {
       height: `calc(${height}px - 58px)`,
       fontSize: "13px",
-      backgroundColor: "#FCFDFE",
-      color: "#334155",
+      backgroundColor: "var(--st-color-bg-panel)",
+      color: "var(--st-color-text-primary)",
       outline: "none !important",
     },
 
@@ -192,9 +192,9 @@ const createPreviewTheme = (height: number) =>
     },
 
     ".cm-gutters": {
-      backgroundColor: "#F8FAFC",
-      color: "#94A3B8",
-      borderRight: "1px solid rgba(226, 232, 240, 0.9)",
+      backgroundColor: "var(--st-color-bg-elevated)",
+      color: "var(--st-color-text-secondary)",
+      borderRight: "1px solid var(--st-color-border)",
       padding: "14px 0 16px 0",
     },
 
@@ -206,27 +206,49 @@ const createPreviewTheme = (height: number) =>
       padding: "0 12px 0 14px",
       fontSize: "12px",
       lineHeight: "28px",
+      color: "var(--st-color-text-secondary)",
     },
 
     ".cm-activeLine": {
-      backgroundColor: "rgba(241, 245, 249, 0.72)",
+      backgroundColor: "var(--st-color-hover)",
     },
 
     ".cm-activeLineGutter": {
-      backgroundColor: "#F1F5F9",
-      color: "#64748B",
+      backgroundColor: "var(--st-color-selected)",
+      color: "var(--st-color-text-primary)",
     },
 
     ".cm-selectionBackground": {
-      backgroundColor: "rgba(59, 130, 246, 0.14) !important",
+      backgroundColor: "var(--st-color-focus) !important",
     },
 
     "&.cm-focused .cm-selectionBackground": {
-      backgroundColor: "rgba(59, 130, 246, 0.14) !important",
+      backgroundColor: "var(--st-color-focus) !important",
     },
 
     ".cm-cursor": {
       display: "none",
+    },
+
+    ".cm-scroller::-webkit-scrollbar": {
+      width: "10px",
+      height: "10px",
+    },
+
+    ".cm-scroller::-webkit-scrollbar-track": {
+      background: "transparent",
+    },
+
+    ".cm-scroller::-webkit-scrollbar-thumb": {
+      background: "rgba(33, 135, 168, 0.72)",
+      border: "2px solid transparent",
+      borderRadius: "999px",
+      backgroundClip: "padding-box",
+    },
+
+    ".cm-scroller::-webkit-scrollbar-thumb:hover": {
+      background: "#4DD2FF",
+      backgroundClip: "padding-box",
     },
   });
 
@@ -311,22 +333,19 @@ const CodeBlockWithCopy: React.FC<CodeBlockWithCopyProps> = ({
 
   return (
     <div
-      className="code-block-with-copy overflow-hidden rounded-[18px] border border-slate-200 bg-[#FCFDFE] shadow-sm"
+      className="code-block-with-copy overflow-hidden rounded-[18px] border border-[var(--st-color-border)] bg-[var(--st-color-bg-panel)] shadow-[0_10px_30px_rgba(0,25,34,0.2)]"
       style={{ height }}
     >
-      <div className="code-block-with-copy__header flex h-[58px] items-center justify-between border-b border-slate-200 bg-[#FCFDFE] px-4">
+      <div className="code-block-with-copy__header flex h-[58px] items-center justify-between border-b border-[var(--st-color-divider)] bg-[var(--st-color-bg-elevated)] px-4">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="code-block-with-copy__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-            <span> H</span>
+          <div className="code-block-with-copy__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-bg-control)] text-[var(--st-color-accent)] shadow-sm">
+            <span className="font-semibold">H</span>
           </div>
 
           <div className="min-w-0">
-            <div className="code-block-with-copy__title truncate text-sm font-semibold tracking-[-0.01em] text-slate-800">
+            <div className="code-block-with-copy__title truncate text-sm font-semibold tracking-[-0.01em] text-[var(--st-color-text-primary)]">
               {title}
             </div>
-            {/* <div className="mt-0.5 text-[11px] text-slate-400">
-              Generated SeaTunnel HOCON configuration
-            </div> */}
           </div>
         </div>
 
@@ -337,8 +356,8 @@ const CodeBlockWithCopy: React.FC<CodeBlockWithCopyProps> = ({
             className={[
               "code-block-with-copy__copy-button inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all",
               copied
-                ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800",
+                ? "border-[rgba(53,211,153,0.34)] bg-[rgba(53,211,153,0.14)] text-[#64E6B1]"
+                : "border-[var(--st-color-border)] bg-[var(--st-color-bg-control)] text-[#D5D5D5] hover:border-[var(--st-color-accent)] hover:bg-[var(--st-color-hover)] hover:text-white",
             ].join(" ")}
           >
             {copied ? <CheckCircleOutlined /> : <CopyOutlined />}
@@ -349,7 +368,7 @@ const CodeBlockWithCopy: React.FC<CodeBlockWithCopyProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="code-block-with-copy__close-button inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              className="code-block-with-copy__close-button inline-flex h-8 w-8 items-center justify-center rounded-full text-[#D5D5D5] transition hover:bg-[var(--st-color-hover)] hover:text-[var(--st-color-accent)]"
               title="关闭"
             >
               <CloseOutlined />
@@ -358,7 +377,7 @@ const CodeBlockWithCopy: React.FC<CodeBlockWithCopyProps> = ({
         </div>
       </div>
 
-      <div ref={containerRef} />
+      <div ref={containerRef} className="code-block-with-copy__editor" />
     </div>
   );
 };

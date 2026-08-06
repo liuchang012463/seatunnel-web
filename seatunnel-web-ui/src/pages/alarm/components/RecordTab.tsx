@@ -57,15 +57,15 @@ const SEVERITY_STYLE_MAP: Record<
 > = {
   INFO: {
     label: '信息',
-    className: 'bg-blue-50 text-blue-600',
+    className: 'alarm-record-badge--info',
   },
   WARN: {
     label: '警告',
-    className: 'bg-orange-50 text-orange-600',
+    className: 'alarm-record-badge--warning',
   },
   CRITICAL: {
     label: '严重',
-    className: 'bg-red-50 text-red-600',
+    className: 'alarm-record-badge--critical',
   },
 };
 
@@ -78,61 +78,61 @@ const STATUS_STYLE_MAP: Record<
 > = {
   CREATED: {
     label: '已创建',
-    className: 'bg-slate-100 text-slate-600',
+    className: 'alarm-record-badge--neutral',
   },
   SCHEDULED: {
     label: '等待调度',
-    className: 'bg-blue-50 text-blue-600',
+    className: 'alarm-record-badge--info',
   },
   PENDING: {
     label: '等待运行',
-    className: 'bg-orange-50 text-orange-600',
+    className: 'alarm-record-badge--warning',
   },
   INITIALIZING: {
     label: '初始化中',
-    className: 'bg-blue-50 text-blue-600',
+    className: 'alarm-record-badge--info',
   },
   RUNNING: {
     label: '运行中',
-    className: 'bg-blue-50 text-blue-600',
+    className: 'alarm-record-badge--info',
   },
   FINISHED: {
     label: '已完成',
-    className: 'bg-emerald-50 text-emerald-600',
+    className: 'alarm-record-badge--success',
   },
   FAILED: {
     label: '运行失败',
-    className: 'bg-red-50 text-red-600',
+    className: 'alarm-record-badge--critical',
   },
   FAILING: {
     label: '失败处理中',
-    className: 'bg-red-50 text-red-600',
+    className: 'alarm-record-badge--critical',
   },
   CANCELED: {
     label: '已取消',
-    className: 'bg-slate-100 text-slate-600',
+    className: 'alarm-record-badge--neutral',
   },
   CANCELING: {
     label: '取消中',
-    className: 'bg-orange-50 text-orange-600',
+    className: 'alarm-record-badge--warning',
   },
   DOING_SAVEPOINT: {
     label: '保存点处理中',
-    className: 'bg-orange-50 text-orange-600',
+    className: 'alarm-record-badge--warning',
   },
   SAVEPOINT_DONE: {
     label: '保存点完成',
-    className: 'bg-emerald-50 text-emerald-600',
+    className: 'alarm-record-badge--success',
   },
   UNKNOWABLE: {
     label: '未知状态',
-    className: 'bg-slate-100 text-slate-600',
+    className: 'alarm-record-badge--neutral',
   },
 };
 
 const DEFAULT_STATUS_STYLE: DisplayStyle = {
   label: '未知状态',
-  className: 'bg-slate-100 text-slate-600',
+  className: 'alarm-record-badge--neutral',
 };
 
 const RecordTab: React.FC = () => {
@@ -375,9 +375,10 @@ const RecordTab: React.FC = () => {
                   'flex h-9 w-9 shrink-0',
                   'items-center justify-center',
                   'rounded-lg',
+                  'alarm-record-icon',
                   record.success === 1
-                    ? 'bg-emerald-50 text-emerald-600'
-                    : 'bg-red-50 text-red-500',
+                    ? 'alarm-record-icon--success'
+                    : 'alarm-record-icon--failure',
                 ].join(' ')}
               >
                 {record.success === 1 ? (
@@ -392,7 +393,7 @@ const RecordTab: React.FC = () => {
                   title={jobTitle}
                   placement="topLeft"
                 >
-                  <p className="m-0 truncate text-sm font-semibold text-slate-900">
+                  <p className="alarm-record-job-title m-0 truncate text-sm font-semibold">
                     {jobTitle}
                   </p>
                 </Tooltip>
@@ -403,7 +404,7 @@ const RecordTab: React.FC = () => {
                   }
                   placement="topLeft"
                 >
-                  <p className="m-0 mt-1 truncate text-xs leading-5 text-slate-400">
+                  <p className="alarm-record-job-content m-0 mt-1 truncate text-xs leading-5">
                     {record.content ||
                       '暂无告警内容'}
                   </p>
@@ -421,7 +422,7 @@ const RecordTab: React.FC = () => {
         render: (status?: string) => {
           if (!status) {
             return (
-              <span className="text-xs text-slate-400">
+              <span className="alarm-record-empty text-xs">
                 -
               </span>
             );
@@ -437,6 +438,7 @@ const RecordTab: React.FC = () => {
             <span
               className={[
                 'inline-flex rounded-md',
+                'alarm-record-badge',
                 'px-2 py-1',
                 'text-[11px] font-medium',
                 statusStyle.className,
@@ -455,7 +457,7 @@ const RecordTab: React.FC = () => {
         render: (severity?: string) => {
           if (!severity) {
             return (
-              <span className="text-xs text-slate-400">
+              <span className="alarm-record-empty text-xs">
                 -
               </span>
             );
@@ -466,7 +468,7 @@ const RecordTab: React.FC = () => {
 
           if (!severityStyle) {
             return (
-              <span className="text-xs text-slate-500">
+              <span className="alarm-record-empty text-xs">
                 {severity}
               </span>
             );
@@ -476,6 +478,7 @@ const RecordTab: React.FC = () => {
             <span
               className={[
                 'inline-flex rounded-full',
+                'alarm-record-badge',
                 'px-2 py-0.5',
                 'text-[11px] font-medium',
                 severityStyle.className,
@@ -492,8 +495,8 @@ const RecordTab: React.FC = () => {
         key: 'channelType',
         width: 150,
         render: (channelType?: string) => (
-          <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-slate-600">
-            <BellRing className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+          <span className="alarm-record-channel inline-flex max-w-full items-center gap-1.5 text-xs">
+            <BellRing className="alarm-record-channel__icon h-3.5 w-3.5 shrink-0" />
 
             <Tooltip
               title={channelType || undefined}
@@ -514,13 +517,24 @@ const RecordTab: React.FC = () => {
             record.success === 1;
 
           const tooltipContent = (
-            <div className="w-[350px] max-w-[calc(100vw-64px)] py-1">
+            <div
+              className="min-w-0 max-w-full overflow-hidden py-1"
+              style={{
+                width: '100%',
+              }}
+            >
               <div>
                 <p className="m-0 text-xs font-medium text-white/60">
                   告警内容
                 </p>
 
-                <p className="m-0 mt-1 max-h-[180px] overflow-y-auto whitespace-pre-wrap break-words text-xs leading-5 text-white">
+                <p
+                  className="m-0 mt-1 max-h-[180px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words text-xs leading-5 text-white"
+                  style={{
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
+                  }}
+                >
                   {record.content ||
                     '暂无告警内容'}
                 </p>
@@ -532,7 +546,13 @@ const RecordTab: React.FC = () => {
                     错误信息
                   </p>
 
-                  <p className="m-0 mt-1 max-h-[180px] overflow-y-auto whitespace-pre-wrap break-words text-xs leading-5 text-red-200">
+                  <p
+                    className="m-0 mt-1 max-h-[180px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words text-xs leading-5 text-red-200"
+                    style={{
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'break-word',
+                    }}
+                  >
                     {record.errorMessage}
                   </p>
                 </div>
@@ -545,18 +565,19 @@ const RecordTab: React.FC = () => {
               <span
                 className={[
                   'inline-flex items-center gap-1.5',
-                  'whitespace-nowrap text-xs font-medium',
+                  'alarm-record-delivery whitespace-nowrap text-xs font-medium',
                   delivered
-                    ? 'text-emerald-600'
-                    : 'text-red-500',
+                    ? 'alarm-record-delivery--success'
+                    : 'alarm-record-delivery--failure',
                 ].join(' ')}
               >
                 <span
                   className={[
                     'h-1.5 w-1.5 rounded-full',
+                    'alarm-record-delivery__indicator',
                     delivered
-                      ? 'bg-emerald-500'
-                      : 'bg-red-500',
+                      ? 'alarm-record-delivery__indicator--success'
+                      : 'alarm-record-delivery__indicator--failure',
                   ].join(' ')}
                 />
 
@@ -568,11 +589,19 @@ const RecordTab: React.FC = () => {
               <Tooltip
                 title={tooltipContent}
                 placement="topRight"
-                color="#101828"
+                color="var(--st-color-bg-panel)"
+                overlayStyle={{
+                  maxWidth: 'calc(100vw - 24px)',
+                }}
                 overlayInnerStyle={{
-                  maxWidth: 420,
+                  width: 'min(360px, calc(100vw - 48px))',
+                  maxWidth: 'calc(100vw - 48px)',
+                  boxSizing: 'border-box',
+                  overflow: 'hidden',
                   padding: '10px 12px',
                   borderRadius: 10,
+                  border: '1px solid rgba(33, 135, 168, 0.72)',
+                  boxShadow: '0 12px 28px rgba(0, 25, 34, 0.3)',
                 }}
               >
                 <button
@@ -581,10 +610,8 @@ const RecordTab: React.FC = () => {
                   className={[
                     'inline-flex h-7 w-7 shrink-0',
                     'items-center justify-center',
-                    'rounded-md text-slate-300',
+                    'alarm-record-detail-button rounded-md',
                     'transition-colors duration-200',
-                    'hover:bg-slate-100',
-                    'hover:text-slate-600',
                     'focus-visible:outline-none',
                     'focus-visible:ring-2',
                     'focus-visible:ring-slate-300',
@@ -603,8 +630,8 @@ const RecordTab: React.FC = () => {
         key: 'sentTime',
         width: 180,
         render: (sentTime?: string) => (
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-slate-500">
-            <Clock3 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+          <span className="alarm-record-time inline-flex items-center gap-1.5 whitespace-nowrap text-xs">
+            <Clock3 className="alarm-record-time__icon h-3.5 w-3.5 shrink-0" />
 
             {sentTime
               ? formatTime(sentTime)
@@ -625,7 +652,7 @@ const RecordTab: React.FC = () => {
             共 {total} 条告警记录
           </p>
 
-          <p className="m-0 mt-1 text-xs text-slate-400">
+          <p className="m-0 mt-1 text-xs text-slate-500">
             查看告警消息的触发状态与投递结果
           </p>
         </div>
@@ -642,110 +669,10 @@ const RecordTab: React.FC = () => {
         </Button>
       </div>
 
-      {/* 筛选区域 */}
-      {/* <div
-        className={[
-          'mb-5 flex flex-wrap items-center gap-3',
-          'rounded-xl border border-slate-100',
-          'bg-slate-50/70 px-3 py-3',
-        ].join(' ')}
-      >
-        <Select
-          allowClear
-          placeholder="通道类型"
-          className="w-[160px]"
-          value={filterValues.channelType}
-          onChange={(channelType) =>
-            setFilterValues((prev) => ({
-              ...prev,
-              channelType,
-            }))
-          }
-          options={channelTypes.map(
-            (channelType) => ({
-              label: channelType,
-              value: channelType,
-            }),
-          )}
-        />
-
-        <Select
-          allowClear
-          placeholder="严重级别"
-          className="w-[140px]"
-          value={filterValues.severity}
-          onChange={(severity) =>
-            setFilterValues((prev) => ({
-              ...prev,
-              severity,
-            }))
-          }
-          options={[
-            {
-              label: '信息',
-              value: 'INFO',
-            },
-            {
-              label: '警告',
-              value: 'WARN',
-            },
-            {
-              label: '严重',
-              value: 'CRITICAL',
-            },
-          ]}
-        />
-
-        <Select
-          allowClear
-          placeholder="投递结果"
-          className="w-[140px]"
-          value={filterValues.success}
-          onChange={(success) =>
-            setFilterValues((prev) => ({
-              ...prev,
-              success,
-            }))
-          }
-          options={[
-            {
-              label: '投递成功',
-              value: 1,
-            },
-            {
-              label: '投递失败',
-              value: 0,
-            },
-          ]}
-        />
-
-        <Button
-          type="primary"
-          onClick={handleFilter}
-          className="rounded-lg px-5 shadow-none"
-        >
-          筛选
-        </Button>
-
-        {(hasFilterValues ||
-          hasAppliedFilters) && (
-          <Button
-            icon={
-              <RotateCcw className="h-3.5 w-3.5" />
-            }
-            onClick={handleReset}
-            className="rounded-lg"
-          >
-            重置
-          </Button>
-        )}
-      </div> */}
-
       {/* 告警记录表格 */}
       <div
         className={[
           'overflow-hidden rounded-xl',
-          'border border-slate-200/80',
           'bg-white',
         ].join(' ')}
       >
@@ -809,20 +736,21 @@ const RecordTab: React.FC = () => {
           }}
           onChange={handleTableChange}
           className={[
+            'alarm-record-table',
             '[&_.ant-table]:bg-transparent',
             '[&_.ant-table-container]:border-0',
 
-            '[&_.ant-table-thead>tr>th]:border-slate-100',
+            '[&_.ant-table-thead>tr>th]:border-[#2187a8]',
             '[&_.ant-table-thead>tr>th]:bg-slate-50/95',
             '[&_.ant-table-thead>tr>th]:py-3.5',
             '[&_.ant-table-thead>tr>th]:text-xs',
             '[&_.ant-table-thead>tr>th]:font-medium',
-            '[&_.ant-table-thead>tr>th]:text-slate-500',
+            '[&_.ant-table-thead>tr>th]:text-white',
 
-            '[&_.ant-table-tbody>tr>td]:border-slate-100',
+            '[&_.ant-table-tbody>tr>td]:border-[#2187a8]',
             '[&_.ant-table-tbody>tr>td]:py-3.5',
+            '[&_.ant-table-tbody>tr>td]:text-white',
             '[&_.ant-table-tbody>tr>td]:transition-colors',
-            '[&_.ant-table-tbody>tr:hover>td]:bg-slate-50/70',
 
             '[&_.ant-table-cell]:align-middle',
 
@@ -833,8 +761,8 @@ const RecordTab: React.FC = () => {
             '[&_.ant-table-body::-webkit-scrollbar]:w-2',
             '[&_.ant-table-body::-webkit-scrollbar-track]:bg-transparent',
             '[&_.ant-table-body::-webkit-scrollbar-thumb]:rounded-full',
-            '[&_.ant-table-body::-webkit-scrollbar-thumb]:bg-slate-200',
-            '[&_.ant-table-body::-webkit-scrollbar-thumb:hover]:bg-slate-300',
+            '[&_.ant-table-body::-webkit-scrollbar-thumb]:bg-[#2187a8]',
+            '[&_.ant-table-body::-webkit-scrollbar-thumb:hover]:bg-[#4dd2ff]',
           ].join(' ')}
         />
       </div>

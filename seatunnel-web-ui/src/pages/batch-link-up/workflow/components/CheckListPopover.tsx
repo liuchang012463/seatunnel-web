@@ -54,7 +54,7 @@ export const CheckListPopover = ({
             </div>
           </div>
 
-          <div className="mb-2 mt-1 text-xs leading-4 text-[#676f83]">
+          <div className="mb-2 mt-1 text-xs leading-4 text-[#a7b5d6]">
             {intl.formatMessage({
               id: "pages.checklist.subtitle",
               defaultMessage:

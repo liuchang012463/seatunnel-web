@@ -1,4 +1,4 @@
-import { ReloadOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import React, { memo } from "react";
 
@@ -14,19 +14,19 @@ const steps = [
 
 function FieldMapperInitGuide({ onRefresh }: FieldMapperInitGuideProps) {
   return (
-    <div className="rounded-[22px] bg-whiteshadow-[0_12px_30px_rgba(15,23,42,0.04)]">
-      <div className="rounded-[18px] bg-gradient-to-b from-blue-50/80 to-white px-4 py-4">
+    <div className="rounded-[18px] border border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)] p-3 shadow-[0_10px_28px_rgba(0,25,34,0.16)]">
+      <div className="rounded-[14px] border border-[var(--st-color-divider)] bg-[var(--st-color-bg-panel)] px-3.5 py-3.5">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white shadow-[0_8px_18px_rgba(37,99,235,0.22)]">
-            i
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-primary)] text-sm text-[var(--st-color-bg-primary)] shadow-[0_6px_16px_rgba(33,135,168,0.22)]">
+            <InfoCircleOutlined />
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="text-[15px] font-bold leading-5 text-slate-900">
+            <div className="text-[15px] font-semibold leading-5 text-[var(--st-color-text-primary)]">
               先解析上游字段
             </div>
 
-            <div className="mt-1 text-xs leading-5 text-slate-500">
+            <div className="mt-1 text-xs leading-5 text-[var(--st-color-text-secondary)]">
               在上游节点完成字段解析后，这里会自动显示字段映射。
             </div>
           </div>
@@ -36,13 +36,13 @@ function FieldMapperInitGuide({ onRefresh }: FieldMapperInitGuideProps) {
           {steps.map((step, index) => (
             <div
               key={step}
-              className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/90 px-3 py-2.5 shadow-[0_6px_18px_rgba(15,23,42,0.03)]"
+              className="flex items-center gap-3 rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-bg-control)] px-3 py-2.5 transition-colors duration-200 hover:border-[var(--st-color-accent)] hover:bg-[var(--st-color-hover)]"
             >
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[11px] font-bold text-blue-600">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[var(--st-color-divider)] bg-[var(--st-color-selected)] text-[11px] font-semibold text-[var(--st-color-accent)]">
                 {index + 1}
               </div>
 
-              <div className="text-[13px] font-medium leading-5 text-slate-700">
+              <div className="text-[13px] font-medium leading-5 text-[var(--st-color-text-primary)]">
                 {step}
               </div>
             </div>
@@ -53,7 +53,7 @@ function FieldMapperInitGuide({ onRefresh }: FieldMapperInitGuideProps) {
           <Button
             icon={<ReloadOutlined />}
             onClick={onRefresh}
-            className="!h-8 !rounded-full !border-blue-100 !bg-white !px-4 !text-xs !font-semibold !text-slate-700 shadow-sm hover:!border-blue-300 hover:!text-blue-600"
+            className="!h-8 !rounded-full !border-[var(--st-color-border)] !bg-[var(--st-color-bg-control)] !px-3.5 !text-xs !font-semibold !text-[var(--st-color-text-primary)] shadow-sm hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-hover)] hover:!text-[var(--st-color-accent)]"
           >
             重新检测
           </Button>

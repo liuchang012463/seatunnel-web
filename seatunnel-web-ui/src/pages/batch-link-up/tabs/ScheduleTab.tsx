@@ -31,7 +31,7 @@ const ScheduleInfoItem: React.FC<ScheduleInfoItemProps> = ({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium text-slate-400">{label}</div>
+          <div className="text-xs font-medium text-slate-500">{label}</div>
           <div className="mt-1.5 truncate text-sm font-medium text-slate-900">
             {value || "-"}
           </div>
@@ -63,7 +63,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ instanceItem }) => {
             <div className="text-sm font-semibold text-slate-900">
               {t("pages.job.detail.schedule.title", "调度概览")}
             </div>
-            <div className="mt-0.5 text-xs text-slate-400">
+            <div className="mt-0.5 text-xs text-slate-500">
               {t(
                 "pages.job.detail.schedule.desc",
                 "查看当前任务的调度状态与触发时间信息"
@@ -109,7 +109,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ instanceItem }) => {
             <div className="text-sm font-semibold text-slate-900">
               {t("pages.job.detail.schedule.cron", "Cron 表达式")}
             </div>
-            <div className="mt-0.5 text-xs text-slate-400">
+            <div className="mt-0.5 text-xs text-slate-500">
               {t(
                 "pages.job.detail.schedule.cronDesc",
                 "用于触发当前任务的调度规则"

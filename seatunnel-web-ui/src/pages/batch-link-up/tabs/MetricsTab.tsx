@@ -170,7 +170,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
     <div className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-all duration-200 hover:border-slate-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.07)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">
+          <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-600">
             {title}
           </div>
 
@@ -178,7 +178,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
             <span className="text-[28px] font-semibold leading-none tracking-[-0.04em] text-slate-950">
               <CountUp end={value} duration={1.1} separator="," decimals={0} />
             </span>
-            <span className="pb-0.5 text-xs font-medium text-slate-400">
+            <span className="pb-0.5 text-xs font-medium text-slate-600">
               {unit}
             </span>
           </div>
@@ -223,7 +223,7 @@ const SectionHeader: React.FC<{
 
         <div>
           <div className="text-sm font-semibold text-slate-900">{title}</div>
-          <div className="mt-0.5 text-xs text-slate-400">{description}</div>
+          <div className="mt-0.5 text-xs text-slate-500">{description}</div>
         </div>
       </div>
 
@@ -323,7 +323,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
                 <div className="truncate text-xs font-medium text-slate-800">
                   {getShortTableName(value)}
                 </div>
-                <div className="truncate text-[11px] text-slate-400">
+                <div className="truncate text-[11px] text-slate-500">
                   {value || "-"}
                 </div>
               </div>
@@ -358,7 +358,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
                 <div className="truncate text-xs font-medium text-slate-800">
                   {getShortTableName(value)}
                 </div>
-                <div className="truncate text-[11px] text-slate-400">
+                <div className="truncate text-[11px] text-slate-500">
                   {value || "-"}
                 </div>
               </div>

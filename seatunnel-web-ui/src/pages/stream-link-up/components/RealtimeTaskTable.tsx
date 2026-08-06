@@ -101,10 +101,12 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         <div className="stream-link-task-name-cell">
           <div className="sync-task-name-cell__title">
             <em>
-              {intl.formatMessage({
-                id: "pages.job.table.label.jobName",
-                defaultMessage: "任务名",
-              })}
+              <span style={{ fontWeight: "bold", color: "#fff" }}>
+                {intl.formatMessage({
+                  id: "pages.job.table.label.jobName",
+                  defaultMessage: "任务名",
+                })}
+              </span>
             </em>
             <span>&nbsp;:&nbsp;</span>
 

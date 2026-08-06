@@ -36,10 +36,11 @@ const HistoryFilterBar: React.FC<HistoryFilterBarProps> = ({
     <Space direction="vertical" size={8} style={{ width: "100%" }}>
       <Input
         allowClear
-        prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+        className="history-filter-input"
+        prefix={<SearchOutlined style={{ color: "var(--st-color-accent)" }} />}
         placeholder={intl.formatMessage({
           id: "pages.job.history.search.placeholder",
-          defaultMessage: "Search by job name",
+          defaultMessage: "根据任务名称搜索",
         })}
         value={keyword}
         onChange={(e) => onKeywordChange(e.target.value)}
@@ -93,6 +94,7 @@ const HistoryFilterBar: React.FC<HistoryFilterBarProps> = ({
       {timeRangeType === "自定义" && (
         <DatePicker.RangePicker
           showTime
+          className="history-filter-picker"
           style={{ width: "100%" }}
           value={customTimeRange as any}
           onChange={(values) => {

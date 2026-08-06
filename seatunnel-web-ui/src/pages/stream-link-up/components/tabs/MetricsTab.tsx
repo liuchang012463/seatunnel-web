@@ -124,7 +124,7 @@ const SectionHeader: React.FC<{
 
         <div>
           <div className="text-sm font-semibold text-slate-900">{title}</div>
-          <div className="mt-0.5 text-xs text-slate-400">{description}</div>
+          <div className="mt-0.5 text-xs text-slate-500">{description}</div>
         </div>
       </div>
 
