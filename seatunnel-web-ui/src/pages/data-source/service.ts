@@ -20,7 +20,7 @@ export async function fetchDataSourceDetail(id: string): Promise<CommonApiRespon
 }
 
 export async function fetchDataSourceAll(): Promise<CommonApiResponse<DataSourcePageResult>> {
-  return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/all`);
+  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/all`);
 }
 
 export async function createDataSource(payload: Record<string, unknown>): Promise<CommonApiResponse<boolean>> {
