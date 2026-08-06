@@ -699,7 +699,7 @@ const App: React.FC<Props> = ({
             pagination={false}
             loading={loading}
             rowSelection={{ type: "checkbox", ...rowSelection }}
-            scroll={{ x: "max-content", y: "calc(100vh - 470px)" }}
+            scroll={{ x: "max-content", y: "calc(100vh - 380px)" }}
             className="task-table"
             locale={{
               emptyText: (
