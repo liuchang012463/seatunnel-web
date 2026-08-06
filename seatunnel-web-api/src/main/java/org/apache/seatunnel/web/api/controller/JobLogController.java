@@ -45,8 +45,8 @@ public class JobLogController {
             @Parameter(name = "pageSize", description = "页大小，最大 500")
     })
     public Result<JobLogSearchResult> search(
-            @PathVariable String jobMode,
-            @PathVariable Long instanceId,
+            @PathVariable("jobMode") String jobMode,
+            @PathVariable("instanceId") Long instanceId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String level,
             @RequestParam(required = false) String source,
@@ -68,24 +68,24 @@ public class JobLogController {
     @GetMapping("/{jobMode}/{instanceId}/analysis")
     @Operation(summary = "analyzeJobInstanceLog", description = "按规则提取任务日志中的操作、数据、流程和时序记录")
     public Result<JobLogAnalysisResult> analysis(
-            @PathVariable String jobMode,
-            @PathVariable Long instanceId) {
+            @PathVariable("jobMode") String jobMode,
+            @PathVariable("instanceId") Long instanceId) {
         return Result.buildSuc(jobLogService.analyze(instanceId, parseMode(jobMode)));
     }
 
     @GetMapping("/{jobMode}/{instanceId}/replay")
     @Operation(summary = "replayJobInstanceLog", description = "返回可视化操作回放所需的有序日志步骤")
     public Result<JobLogReplayResult> replay(
-            @PathVariable String jobMode,
-            @PathVariable Long instanceId) {
+            @PathVariable("jobMode") String jobMode,
+            @PathVariable("instanceId") Long instanceId) {
         return Result.buildSuc(jobLogService.replay(instanceId, parseMode(jobMode)));
     }
 
     @GetMapping("/{jobMode}/{instanceId}/diagnosis")
     @Operation(summary = "diagnoseJobInstanceLog", description = "分析日志、数据快照和执行流程，定位任务故障类型及原因")
     public Result<JobLogFaultDiagnosisResult> diagnosis(
-            @PathVariable String jobMode,
-            @PathVariable Long instanceId) {
+            @PathVariable("jobMode") String jobMode,
+            @PathVariable("instanceId") Long instanceId) {
         return Result.buildSuc(jobLogFaultDiagnosisService.diagnose(instanceId, parseMode(jobMode)));
     }
 
