@@ -20,6 +20,7 @@ import {
 interface TaskLogObservabilityProps {
   instanceItem: any;
   jobMode: JobLogMode;
+  view: "operation" | "snapshot" | "execution" | "timeline" | "replay" | "diagnosis";
 }
 
 const getResponseData = (response: any) => response?.data ?? response;
@@ -135,6 +136,8 @@ const ReplayStepView: React.FC<{ step?: JobLogReplayStep; sectionTitle?: string 
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击加载命名阶段后开始回放" />;
   }
 
+  const logs = step.logs?.length ? step.logs : [step.detail];
+
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-950 p-4 text-slate-100">
       <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
@@ -144,14 +147,23 @@ const ReplayStepView: React.FC<{ step?: JobLogReplayStep; sectionTitle?: string 
         <span>{step.target !== "-" ? `目标：${step.target}` : ""}</span>
         <span>{formatTime(step.timestamp, step.elapsedMs)}</span>
       </div>
-      <div className="text-sm leading-6 text-slate-100">{step.detail}</div>
+      <div className="mb-2 text-xs text-slate-400">本步骤全部日志 · {logs.length} 行</div>
+      <div className="max-h-[360px] overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-xs leading-5 text-slate-100">
+        {logs.map((line, index) => <div key={index}>{line || " "}</div>)}
+      </div>
     </div>
   );
 };
 
-const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceItem, jobMode }) => {
+const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceItem, jobMode, view }) => {
   const instanceId = instanceItem?.id;
   const isFailed = String(instanceItem?.jobStatus || "").toUpperCase() === "FAILED";
+  const canDiagnose = Boolean(instanceId) && isFailed;
+  const diagnosisDisabledReason = !isFailed
+    ? `当前实例状态为 ${instanceItem?.jobStatus || "未知"}，仅 FAILED 状态允许故障定位。`
+    : !instanceId
+      ? "当前任务暂无运行实例，无法进行故障定位。"
+      : "";
   const [logContent, setLogContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState("");
@@ -201,8 +213,10 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     setDiagnosisOutput("");
     setDiagnosisResult(null);
     diagnosisAbortRef.current?.abort();
-    void loadLog();
-  }, [loadLog]);
+    if (view === "execution") {
+      void loadLog();
+    }
+  }, [loadLog, view]);
 
   const loadAnalysis = useCallback(async () => {
     if (!instanceId) return;
@@ -264,7 +278,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
   }, [replayCursor, replayPlaying, replayPositions.length]);
 
   const startDiagnosis = useCallback(async () => {
-    if (!instanceId || !isFailed) {
+    if (!canDiagnose) {
       message.info("只有日志状态为 FAILED 的任务才可以进行故障定位");
       return;
     }
@@ -297,7 +311,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     } finally {
       setDiagnosisLoading(false);
     }
-  }, [instanceId, isFailed, jobMode]);
+  }, [canDiagnose, instanceId, jobMode]);
 
   useEffect(() => () => diagnosisAbortRef.current?.abort(), []);
 
@@ -306,23 +320,45 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
   const matchedLineCount = normalizedKeyword
     ? logLines.filter((line) => line.toLowerCase().includes(normalizedKeyword)).length
     : 0;
-  const analysisGroups: Array<[string, JobLogStructuredRecord[]]> = [
-    ["操作行为记录", analysisResult?.operationRecords || []],
-    ["数据读取快照", analysisResult?.dataSnapshots || []],
-    ["执行流程日志", analysisResult?.executionFlow || []],
-    ["操作时序记录", analysisResult?.timeline || []],
-  ];
 
   if (!instanceItem?.jobStatus) {
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先从左侧选择任务实例" />;
   }
 
-  return (
+  const renderAnalysisPanel = (
+    title: string,
+    description: string,
+    rows: JobLogStructuredRecord[],
+  ) => (
+    <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-slate-800">{title}</div>
+          <div className="mt-1 text-xs text-slate-400">{description}</div>
+        </div>
+        <Button type="primary" size="small" loading={analysisLoading} onClick={() => void loadAnalysis()}>
+          {analysisResult ? "重新解析" : "解析日志"}
+        </Button>
+      </div>
+      {analysisResult ? (
+        <>
+          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <span>{title}</span><Tag className="!mr-0">{rows.length}</Tag>
+          </div>
+          <StructuredRecordTable rows={rows} />
+        </>
+      ) : (
+        <div className="py-8 text-center text-xs text-slate-400">点击“解析日志”生成{title}</div>
+      )}
+    </section>
+  );
+
+  const renderExecutionPanel = () => (
     <div className="space-y-4">
       <section className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="text-sm font-semibold text-slate-800">原始日志</div>
+            <div className="text-sm font-semibold text-slate-800">原始执行日志</div>
             <div className="mt-1 text-xs text-slate-400">完整日志 · 当前实例 #{instanceId}</div>
           </div>
           <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={() => void loadLog()}>
@@ -352,141 +388,127 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
           )}
         </div>
       </section>
-
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="text-sm font-semibold text-slate-800">规则结构化记录</div>
-            <div className="mt-1 text-xs text-slate-400">按时间、关键词和级别解析为操作表格，不直接展示原始行</div>
-          </div>
-          <Button type="primary" size="small" loading={analysisLoading} onClick={() => void loadAnalysis()}>
-            {analysisResult ? "重新解析" : "解析日志"}
-          </Button>
-        </div>
-        {analysisResult ? (
-          <>
-            <div className="mb-3 flex flex-wrap gap-2 text-xs">
-              <Tag color="blue">总记录 {analysisResult.totalLines}</Tag>
-              <Tag color="red">错误 {analysisResult.errorCount}</Tag>
-              <Tag color="orange">警告 {analysisResult.warningCount}</Tag>
-              <Tag>规则版本 v2</Tag>
-            </div>
-            <div className="space-y-4">
-              {analysisGroups.map(([title, rows]) => (
-                <div key={title}>
-                  <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <span>{title}</span><Tag className="!mr-0">{rows.length}</Tag>
-                  </div>
-                  <StructuredRecordTable rows={rows} />
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="py-8 text-center text-xs text-slate-400">点击“解析日志”生成四类结构化表格</div>
-        )}
-      </section>
-
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="text-sm font-semibold text-slate-800">操作可视化回放</div>
-            <div className="mt-1 text-xs text-slate-400">按连续日志阶段命名分段，再回放每个阶段的结构化操作</div>
-          </div>
-          <Button size="small" loading={replayLoading} onClick={() => void loadReplay()}>
-            {replayResult ? "重新加载回放" : "加载回放"}
-          </Button>
-        </div>
-        {replayResult ? (
-          <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <div className="space-y-2">
-              {replayResult.sections.map((section, index) => {
-                const firstPosition = replayPositions.findIndex((position) => position.sectionIndex === index);
-                const active = currentReplay?.sectionIndex === index;
-                return (
-                  <button
-                    type="button"
-                    key={section.id}
-                    onClick={() => { setReplayPlaying(false); setReplayCursor(Math.max(firstPosition, 0)); }}
-                    className={["w-full rounded-lg border px-3 py-2 text-left transition", active ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-white hover:bg-slate-50"].join(" ")}
-                  >
-                    <div className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-700">
-                      <span>{index + 1}. {section.title}</span><Tag className="!mr-0">{section.steps.length}</Tag>
-                    </div>
-                    <div className="mt-1 text-[11px] text-slate-400">{formatTime(section.startTime)} → {formatTime(section.endTime)}</div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="min-w-0">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Button size="small" type="primary" icon={replayPlaying ? <PauseOutlined /> : <PlayCircleOutlined />} onClick={() => setReplayPlaying((current) => !current)}>
-                  {replayPlaying ? "暂停" : "播放"}
-                </Button>
-                <Button size="small" onClick={() => { setReplayPlaying(false); setReplayCursor((current) => Math.max(0, current - 1)); }}>上一步</Button>
-                <Button size="small" onClick={() => { setReplayPlaying(false); setReplayCursor((current) => Math.min(replayPositions.length - 1, current + 1)); }}>下一步</Button>
-                <span className="text-xs text-slate-400">第 {replayCursor + 1} / {replayPositions.length} 步</span>
-              </div>
-              <input type="range" min={0} max={Math.max(0, replayPositions.length - 1)} value={replayCursor} onChange={(event) => { setReplayPlaying(false); setReplayCursor(Number(event.target.value)); }} className="mb-3 w-full accent-[#315efb]" aria-label="操作回放进度" />
-              <ReplayStepView step={currentReplay?.step} sectionTitle={currentReplay?.section.title} />
-            </div>
-          </div>
-        ) : (
-          <div className="py-8 text-center text-xs text-slate-400">点击“加载回放”生成命名阶段</div>
-        )}
-      </section>
-
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="text-sm font-semibold text-slate-800">故障定位</div>
-            <div className="mt-1 text-xs text-slate-400">流式分析日志、数据快照和执行流程，结论输出后再展示归因</div>
-          </div>
-          <Tooltip title={isFailed ? "分析当前 FAILED 实例" : "只有 FAILED 实例可以分析"}>
-            <span>
-              <Button type="primary" danger disabled={!isFailed || diagnosisLoading} loading={diagnosisLoading} onClick={() => void startDiagnosis()}>
-                {diagnosisLoading ? "分析中..." : "开始故障定位"}
-              </Button>
-            </span>
-          </Tooltip>
-        </div>
-        {!isFailed ? (
-          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500">当前实例状态为 {instanceItem?.jobStatus || "未知"}，仅 FAILED 状态允许故障定位。</div>
-        ) : null}
-        {diagnosisStatus || diagnosisOutput ? (
-          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100">
-            <div className="mb-2 flex items-center gap-2 text-xs text-cyan-300"><span className="h-2 w-2 rounded-full bg-cyan-400" />{diagnosisStatus || "正在输出..."}</div>
-            <div className="whitespace-pre-wrap">{diagnosisOutput || "等待模型输出..."}</div>
-          </div>
-        ) : null}
-        {diagnosisResult ? (
-          <div className="mt-3 space-y-3">
-            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
-              <Tag color="purple">归因：{diagnosisResult.faultTypeLabel || diagnosisResult.faultType}</Tag>
-              <Tag color="blue">类型：{diagnosisResult.faultType}</Tag>
-              <Tag>置信度 {Math.round((diagnosisResult.confidence || 0) * 100)}%</Tag>
-              <Tag>{diagnosisResult.aiUsed ? "Spring AI" : "规则兜底"}</Tag>
-            </div>
-            <div className="rounded-xl border border-red-100 bg-red-50/60 p-4">
-              <div className="text-sm font-semibold text-slate-800">错误原因</div>
-              <div className="mt-2 text-sm leading-6 text-slate-600">{diagnosisResult.rootCause || "暂无明确原因"}</div>
-              <div className="mt-2 text-xs text-slate-400">影响阶段：{diagnosisResult.affectedStage || "未明确"}</div>
-            </div>
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <div className="mb-2 text-sm font-semibold text-slate-700">证据</div>
-                <div className="max-h-48 space-y-1 overflow-auto text-xs leading-5 text-slate-600">{(diagnosisResult.evidence || []).map((item, index) => <div key={index}>{item}</div>)}</div>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <div className="mb-2 text-sm font-semibold text-slate-700">建议动作</div>
-                <div className="space-y-1 text-xs leading-5 text-slate-600">{(diagnosisResult.recommendedActions || []).map((item, index) => <div key={index}>{index + 1}. {item}</div>)}</div>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </section>
+      {renderAnalysisPanel("执行流程日志", "按执行阶段整理任务运行过程和状态变化。", analysisResult?.executionFlow || [])}
     </div>
   );
+
+  const renderReplayPanel = () => (
+    <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-slate-800">操作可视化回放</div>
+          <div className="mt-1 text-xs text-slate-400">按规则将完整日志切分为不超过 10 个步骤，每步保留全部原始日志</div>
+        </div>
+        <Button size="small" loading={replayLoading} onClick={() => void loadReplay()}>
+          {replayResult ? "重新加载回放" : "加载回放"}
+        </Button>
+      </div>
+      {replayResult ? (
+        <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <div className="space-y-2">
+            {replayResult.sections.map((section, index) => {
+              const firstPosition = replayPositions.findIndex((position) => position.sectionIndex === index);
+              const active = currentReplay?.sectionIndex === index;
+              return (
+                <button
+                  type="button"
+                  key={section.id}
+                  onClick={() => { setReplayPlaying(false); setReplayCursor(Math.max(firstPosition, 0)); }}
+                  className={["w-full rounded-lg border px-3 py-2 text-left transition", active ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-white hover:bg-slate-50"].join(" ")}
+                >
+                  <div className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-700">
+                    <span>{index + 1}. {section.title}</span><Tag className="!mr-0">{section.steps[0]?.logs?.length || section.steps.length} 行</Tag>
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-400">{formatTime(section.startTime)} → {formatTime(section.endTime)}</div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="min-w-0">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Button size="small" type="primary" icon={replayPlaying ? <PauseOutlined /> : <PlayCircleOutlined />} onClick={() => setReplayPlaying((current) => !current)}>
+                {replayPlaying ? "暂停" : "播放"}
+              </Button>
+              <Button size="small" onClick={() => { setReplayPlaying(false); setReplayCursor((current) => Math.max(0, current - 1)); }}>上一步</Button>
+              <Button size="small" onClick={() => { setReplayPlaying(false); setReplayCursor((current) => Math.min(replayPositions.length - 1, current + 1)); }}>下一步</Button>
+              <span className="text-xs text-slate-400">第 {replayCursor + 1} / {replayPositions.length} 步</span>
+            </div>
+            <input type="range" min={0} max={Math.max(0, replayPositions.length - 1)} value={replayCursor} onChange={(event) => { setReplayPlaying(false); setReplayCursor(Number(event.target.value)); }} className="mb-3 w-full accent-[#315efb]" aria-label="操作回放进度" />
+            <ReplayStepView step={currentReplay?.step} sectionTitle={currentReplay?.section.title} />
+          </div>
+        </div>
+      ) : (
+        <div className="py-8 text-center text-xs text-slate-400">点击“加载回放”生成命名阶段</div>
+      )}
+    </section>
+  );
+
+  const renderDiagnosisPanel = () => (
+    <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-slate-800">AI故障定位</div>
+          <div className="mt-1 text-xs text-slate-400">仅对 FAILED 任务调用故障定位服务，其他状态保留 Tab 但不可执行。</div>
+        </div>
+        <Tooltip title={canDiagnose ? "分析当前 FAILED 实例" : diagnosisDisabledReason}>
+          <span>
+            <Button type="primary" danger disabled={!canDiagnose || diagnosisLoading} loading={diagnosisLoading} onClick={() => void startDiagnosis()}>
+              {diagnosisLoading ? "分析中..." : "开始故障定位"}
+            </Button>
+          </span>
+        </Tooltip>
+      </div>
+      {!canDiagnose ? (
+        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500">{diagnosisDisabledReason}</div>
+      ) : null}
+      {diagnosisStatus || diagnosisOutput ? (
+        <div className="mt-3 rounded-xl border border-cyan-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100">
+          <div className="mb-2 flex items-center gap-2 text-xs text-cyan-300"><span className="h-2 w-2 rounded-full bg-cyan-400" />{diagnosisStatus || "正在输出..."}</div>
+          <div className="mb-2 text-xs font-semibold text-slate-300">模型输出</div>
+          <div className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-900/80 p-3 text-slate-100">{diagnosisOutput || "等待模型输出..."}</div>
+        </div>
+      ) : null}
+      {diagnosisResult ? (
+        <div className="mt-3 space-y-3">
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
+            <Tag color="purple">归因：{diagnosisResult.faultTypeLabel || diagnosisResult.faultType}</Tag>
+            <Tag color="blue">类型：{diagnosisResult.faultType}</Tag>
+            <Tag>置信度 {Math.round((diagnosisResult.confidence || 0) * 100)}%</Tag>
+          </div>
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm" style={{ backgroundColor: "#fff1f2" }}>
+            <div className="text-sm font-semibold text-rose-900" style={{ color: "#881337" }}>错误原因</div>
+            <div className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-sm leading-6 text-slate-700" style={{ color: "#334155" }}>{diagnosisResult.rootCause || "暂无明确原因"}</div>
+            <div className="mt-2 text-xs text-slate-500" style={{ color: "#64748b" }}>影响阶段：{diagnosisResult.affectedStage || "未明确"}</div>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <div className="mb-2 text-sm font-semibold text-slate-700">证据</div>
+              <div className="max-h-48 space-y-1 overflow-auto text-xs leading-5 text-slate-600">{(diagnosisResult.evidence || []).map((item, index) => <div key={index}>{item}</div>)}</div>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <div className="mb-2 text-sm font-semibold text-slate-700">建议动作</div>
+              <div className="space-y-1 text-xs leading-5 text-slate-600">{(diagnosisResult.recommendedActions || []).map((item, index) => <div key={index}>{index + 1}. {item}</div>)}</div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+
+  const content =
+    view === "operation"
+      ? renderAnalysisPanel("操作行为记录", "按时间、操作、目标和状态展示任务行为规则命中记录。", analysisResult?.operationRecords || [])
+      : view === "snapshot"
+        ? renderAnalysisPanel("数据读取快照", "展示日志中识别出的数据读取、写入和快照信息。", analysisResult?.dataSnapshots || [])
+        : view === "execution"
+          ? renderExecutionPanel()
+          : view === "timeline"
+            ? renderAnalysisPanel("操作时序记录", "按时间顺序还原任务各阶段的操作先后关系。", analysisResult?.timeline || [])
+            : view === "replay"
+              ? renderReplayPanel()
+              : renderDiagnosisPanel();
+
+  return <div className="space-y-4">{content}</div>;
 };
 
 export default TaskLogObservability;

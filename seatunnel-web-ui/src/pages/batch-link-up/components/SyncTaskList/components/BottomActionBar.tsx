@@ -2,6 +2,7 @@ import {
   CloudDownloadOutlined,
   CloudUploadOutlined,
   CopyOutlined,
+  DeleteOutlined,
   PlayCircleOutlined,
   StopOutlined,
 } from "@ant-design/icons";
@@ -14,6 +15,7 @@ interface BottomActionBarProps {
   onStop: () => void;
   onOnline: () => void;
   onOffline: () => void;
+  onDelete: () => void;
   onCreate: () => void;
   pagination: {
     total: number;
@@ -51,6 +53,8 @@ interface BottomActionBarProps {
   offlineDisabled?: boolean;
   onlineTooltip?: string;
   offlineTooltip?: string;
+  deleteDisabled?: boolean;
+  deleteTooltip?: string;
 }
 
 const BottomActionBar: React.FC<BottomActionBarProps> = ({
@@ -58,6 +62,7 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   onStop,
   onOnline,
   onOffline,
+  onDelete,
   onCreate,
   pagination,
   selectedCount = 0,
@@ -70,11 +75,14 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   offlineDisabled = false,
   onlineTooltip,
   offlineTooltip,
+  deleteDisabled = false,
+  deleteTooltip,
 }) => {
   const finalStartDisabled = disabled || startDisabled;
   const finalStopDisabled = disabled || stopDisabled;
   const finalOnlineDisabled = disabled || onlineDisabled;
   const finalOfflineDisabled = disabled || offlineDisabled;
+  const finalDeleteDisabled = disabled || deleteDisabled;
 
   const defaultDisabledTooltip =
     selectedCount <= 0 ? "请先选择任务" : undefined;
@@ -184,6 +192,23 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
               </span>
             </>
           ) : null}
+
+          <Divider type="vertical" />
+
+          <Tooltip title={deleteTooltip || defaultDisabledTooltip}>
+            <span style={{ display: "inline-flex" }}>
+              <Button
+                size="small"
+                danger
+                onClick={onDelete}
+                disabled={finalDeleteDisabled}
+                className="h-8 min-w-[82px] rounded-full font-bold"
+                icon={<DeleteOutlined />}
+              >
+                删除
+              </Button>
+            </span>
+          </Tooltip>
         </div>
 
         <div style={{ marginRight: 8 }}>

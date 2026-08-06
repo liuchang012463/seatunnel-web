@@ -64,6 +64,7 @@ export interface JobLogReplayStep {
   title: string;
   status: string;
   detail: string;
+  logs?: string[];
 }
 
 export interface JobLogReplaySection {

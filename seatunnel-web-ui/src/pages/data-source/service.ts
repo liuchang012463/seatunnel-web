@@ -20,7 +20,7 @@ export async function fetchDataSourceDetail(id: string): Promise<CommonApiRespon
 }
 
 export async function fetchDataSourceAll(): Promise<CommonApiResponse<DataSourcePageResult>> {
-  return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/all`);
+  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/all`);
 }
 
 export async function createDataSource(payload: Record<string, unknown>): Promise<CommonApiResponse<boolean>> {
@@ -40,6 +40,10 @@ export async function selectDataSourceById(id: any): Promise<any> {
 
 export async function deleteDataSource(id: string): Promise<CommonApiResponse<boolean>> {
   return HttpUtils.delete(`${DATA_SOURCE_API_PREFIX}/${id}`);
+}
+
+export async function checkDataSourceUsage(id: string): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/usage`);
 }
 
 export async function updateDataSourceStatus(

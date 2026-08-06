@@ -33,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -174,7 +175,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         getDataSourceOrThrow(datasourceId);
 
         try {
-            checkDataSourceNotUsed(datasourceId);
+            checkDataSourceNotUsedByAnyJob(datasourceId);
             dataSourceDao.deleteById(datasourceId);
         } catch (ServiceException e) {
             throw e;
@@ -182,6 +183,13 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             log.error("Delete data source failed, id={}", datasourceId, e);
             throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, e.getMessage());
         }
+    }
+
+    @Override
+    public boolean isDataSourceUsed(Long datasourceId) {
+        validateId(datasourceId);
+        getDataSourceOrThrow(datasourceId);
+        return isReferencedByAnyJob(datasourceId);
     }
 
     @Override
@@ -388,6 +396,18 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
     private void checkDataSourceNotUsed(Long datasourceId) {
         checkDataSourceNotUsed(datasourceId, "deleted");
+    }
+
+    private void checkDataSourceNotUsedByAnyJob(Long datasourceId) {
+        if (isReferencedByAnyJob(datasourceId)) {
+            throw new ServiceException("The data source is currently used by a job and cannot be deleted.");
+        }
+    }
+
+    private boolean isReferencedByAnyJob(Long datasourceId) {
+        List<Long> datasourceIds = Collections.singletonList(datasourceId);
+        return !jobDefinitionDao.selectReferencedDatasourceIds(datasourceIds).isEmpty()
+                || !streamingJobDefinitionDao.selectReferencedDatasourceIds(datasourceIds).isEmpty();
     }
 
     private void checkDataSourceNotUsed(Long datasourceId, String operation) {

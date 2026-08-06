@@ -15,6 +15,7 @@ import {
 } from "./dataSourceRegistry";
 import "./index.less";
 import {
+  checkDataSourceUsage,
   deleteDataSource,
   fetchDataSourceUnits,
   fetchDataSourcePage,
@@ -148,7 +149,47 @@ const DataSourcePage: React.FC = () => {
     });
   };
 
-  const handleDelete = (record: DataSourceRecord) => {
+  const handleDelete = async (record: DataSourceRecord) => {
+    if (!record.id) {
+      message.error(
+        intl.formatMessage({
+          id: "pages.datasource.message.idNotExist",
+          defaultMessage: "id does not exist",
+        })
+      );
+      return;
+    }
+    const dataSourceId = record.id;
+
+    try {
+      const usageResponse = await checkDataSourceUsage(dataSourceId);
+      if (usageResponse.code !== 0) {
+        message.error(usageResponse.message || "检查数据源任务关联失败，请稍后重试");
+        return;
+      }
+
+      if (usageResponse.data) {
+        Modal.warning({
+          title: "数据源暂不可删除",
+          centered: true,
+          content: (
+            <span>
+              数据源 <strong>{record.name || "-"}</strong> 当前已被任务引用，请先解除任务关联后再删除。
+            </span>
+          ),
+          okText: "知道了",
+        });
+        return;
+      }
+    } catch (error: any) {
+      message.error(
+        error?.response?.data?.message ||
+          error?.response?.data?.msg ||
+          "检查数据源任务关联失败，请稍后重试"
+      );
+      return;
+    }
+
     confirm({
       title: intl.formatMessage({
         id: "pages.datasource.delete.confirmTitle",
@@ -188,28 +229,22 @@ const DataSourcePage: React.FC = () => {
       },
       maskClosable: true,
       async onOk() {
-        if (!record.id) {
-          message.error(
-            intl.formatMessage({
-              id: "pages.datasource.message.idNotExist",
-              defaultMessage: "id does not exist",
-            })
-          );
-          return;
-        }
-
         try {
-          const response = await deleteDataSource(record.id);
+          const response = await deleteDataSource(dataSourceId);
 
           if (response.code !== 0) {
-            
+            message.error(response.message || "删除数据源失败，请稍后重试");
             return;
           }
 
           message.success(response.message || "Delete success");
           handleRefresh();
         } catch (error: any) {
-          
+          message.error(
+            error?.response?.data?.message ||
+              error?.response?.data?.msg ||
+              "删除数据源失败，请稍后重试"
+          );
         }
       },
     });

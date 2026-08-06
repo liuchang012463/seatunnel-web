@@ -273,7 +273,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         columnWidth: 42,
       }}
       size="middle"
-      scroll={{ x: "max-content", y: "calc(100vh - 480px)" }}
+      scroll={{ x: "max-content", y: "calc(100vh - 380px)" }}
       className="stream-link-task-table"
       locale={{
         emptyText: (

@@ -17,7 +17,7 @@ interface TaskDetailPanelProps {
 const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
   const intl = useIntl();
 
-  const [activeKey, setActiveKey] = useState<string>("log");
+  const [activeKey, setActiveKey] = useState<string>("execution");
 
   if (!instanceItem?.jobStatus) {
     return (
@@ -36,15 +36,68 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
     instanceItem?.definitionMode
   );
 
-  const tabs = [
+  const observabilityTabs = [
     {
-      key: "log",
+      key: "execution",
+      view: "execution" as const,
       label: intl.formatMessage({
-        id: "pages.job.detail.tabs.log",
-        defaultMessage: "Log",
+        id: "pages.job.detail.tabs.executionFlow",
+        defaultMessage: "执行流程日志",
       }),
-      children: <TaskLogObservability instanceItem={instanceItem} jobMode="BATCH" />,
     },
+    {
+      key: "diagnosis",
+      view: "diagnosis" as const,
+      label: intl.formatMessage({
+        id: "pages.job.detail.tabs.aiDiagnosis",
+        defaultMessage: "AI故障定位",
+      }),
+    },
+    {
+      key: "operation",
+      view: "operation" as const,
+      label: intl.formatMessage({
+        id: "pages.job.detail.tabs.operationRecords",
+        defaultMessage: "操作行为记录",
+      }),
+    },
+    {
+      key: "snapshot",
+      view: "snapshot" as const,
+      label: intl.formatMessage({
+        id: "pages.job.detail.tabs.dataSnapshots",
+        defaultMessage: "数据读取快照",
+      }),
+    },
+    {
+      key: "timeline",
+      view: "timeline" as const,
+      label: intl.formatMessage({
+        id: "pages.job.detail.tabs.operationTimeline",
+        defaultMessage: "操作时序记录",
+      }),
+    },
+    {
+      key: "replay",
+      view: "replay" as const,
+      label: intl.formatMessage({
+        id: "pages.job.detail.tabs.operationReplay",
+        defaultMessage: "操作可视化回放",
+      }),
+    },
+  ];
+
+  const observabilityTab = (tab: (typeof observabilityTabs)[number]) => ({
+    key: tab.key,
+    label: tab.label,
+    children: <TaskLogObservability instanceItem={instanceItem} jobMode="BATCH" view={tab.view} />,
+  });
+  const observabilityByKey = Object.fromEntries(
+    observabilityTabs.map((tab) => [tab.key, observabilityTab(tab)])
+  ) as Record<string, ReturnType<typeof observabilityTab>>;
+
+  const tabs = [
+    observabilityByKey.execution,
     {
       key: "hocon",
       label: intl.formatMessage({
@@ -81,6 +134,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
           },
         ]
       : []),
+    observabilityByKey.diagnosis,
+    observabilityByKey.operation,
+    observabilityByKey.snapshot,
+    observabilityByKey.timeline,
+    observabilityByKey.replay,
   ];
 
   return (

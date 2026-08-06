@@ -89,6 +89,19 @@ public class DataSourceController {
     }
 
     /**
+     * Checks whether a data source is referenced by any job definition before deletion.
+     */
+    @GetMapping("/{id}/usage")
+    @Operation(summary = "checkDataSourceUsage", description = "CHECK_DATA_SOURCE_USAGE_NOTES")
+    @Parameters({
+            @Parameter(name = "id", description = "DATA_SOURCE_ID", required = true)
+    })
+    @ApiException(QUERY_DATASOURCE_ERROR)
+    public Result<Boolean> usage(@PathVariable("id") Long id) {
+        return Result.buildSuc(dataSourceService.isDataSourceUsed(id));
+    }
+
+    /**
      * Updates the business lifecycle status of a data source.
      */
     @PutMapping("/{id}/status")

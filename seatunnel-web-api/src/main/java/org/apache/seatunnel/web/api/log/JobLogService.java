@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.HexFormat;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Owns the complete task-log document.  The document is kept on the Web node
@@ -37,6 +38,7 @@ public class JobLogService {
 
     private static final String ENGINE_SNAPSHOT_MARKER = "=== SEA TUNNEL ENGINE LOG SNAPSHOT";
     private static final String ENGINE_SNAPSHOT_END_MARKER = "=== END SEA TUNNEL ENGINE LOG SNAPSHOT ===";
+    private static final int MAX_REPLAY_STEPS = 10;
 
     @Resource
     private JobInstanceDao jobInstanceDao;
@@ -191,27 +193,49 @@ public class JobLogService {
     }
 
     private List<JobLogReplaySection> replaySections(List<JobLogEntry> entries) {
-        List<JobLogReplaySection> sections = new ArrayList<>();
+        List<List<JobLogEntry>> groups = new ArrayList<>();
         List<JobLogEntry> current = new ArrayList<>();
         String currentCategory = null;
-        int sectionNumber = 0;
 
         for (JobLogEntry entry : entries) {
             if (currentCategory != null && !currentCategory.equals(entry.category())) {
-                sections.add(toReplaySection(++sectionNumber, currentCategory, current));
+                groups.add(current);
                 current = new ArrayList<>();
             }
             currentCategory = entry.category();
             current.add(entry);
         }
         if (!current.isEmpty()) {
-            sections.add(toReplaySection(++sectionNumber, currentCategory, current));
+            groups.add(current);
+        }
+
+        while (groups.size() > MAX_REPLAY_STEPS) {
+            int mergeIndex = 0;
+            int smallestPair = Integer.MAX_VALUE;
+            for (int index = 0; index < groups.size() - 1; index++) {
+                int pairSize = groups.get(index).size() + groups.get(index + 1).size();
+                if (pairSize < smallestPair) {
+                    smallestPair = pairSize;
+                    mergeIndex = index;
+                }
+            }
+
+            List<JobLogEntry> merged = new ArrayList<>(groups.get(mergeIndex));
+            merged.addAll(groups.get(mergeIndex + 1));
+            groups.set(mergeIndex, merged);
+            groups.remove(mergeIndex + 1);
+        }
+
+        List<JobLogReplaySection> sections = new ArrayList<>();
+        for (int index = 0; index < groups.size(); index++) {
+            sections.add(toReplaySection(index + 1, groups.get(index)));
         }
         return sections;
     }
 
-    private JobLogReplaySection toReplaySection(int sectionNumber, String category, List<JobLogEntry> entries) {
-        List<JobLogReplayStep> steps = entries.stream().map(this::toReplayStep).toList();
+    private JobLogReplaySection toReplaySection(int sectionNumber, List<JobLogEntry> entries) {
+        String category = entries.get(0).category();
+        List<JobLogReplayStep> steps = List.of(toReplayStep(entries));
         Long startElapsed = entries.get(0).elapsedMs();
         Long endElapsed = entries.get(entries.size() - 1).elapsedMs();
         Long durationMs = startElapsed == null || endElapsed == null
@@ -228,22 +252,50 @@ public class JobLogService {
         );
     }
 
-    private JobLogReplayStep toReplayStep(JobLogEntry entry) {
-        JobLogStructuredRecord record = jobLogParser.toStructuredRecord(entry);
+    private JobLogReplayStep toReplayStep(List<JobLogEntry> entries) {
+        List<JobLogStructuredRecord> records = entries.stream()
+                .map(jobLogParser::toStructuredRecord)
+                .toList();
+        JobLogStructuredRecord record = records.get(0);
+        String operation = records.size() == 1 ? record.operation() : sectionTitle(record.category());
+        String target = distinctValues(records.stream().map(JobLogStructuredRecord::target).toList(), "-");
+        String source = distinctValues(records.stream().map(JobLogStructuredRecord::source).toList(), "-");
+        String detail = records.size() == 1
+                ? record.detail()
+                : "本阶段包含 " + entries.size() + " 条日志，右侧保留该阶段全部原始日志。";
         return new JobLogReplayStep(
                 record.sequence(),
                 record.lineNumber(),
                 record.timestamp(),
                 record.elapsedMs(),
-                record.source(),
+                source,
                 record.category(),
-                record.eventType(),
-                record.operation(),
-                record.target(),
-                record.status(),
-                record.detail(),
-                sectionTitle(record.category())
+                records.size() == 1 ? record.eventType() : "LOG_GROUP",
+                operation,
+                target,
+                aggregateStatus(records),
+                detail,
+                sectionTitle(record.category()),
+                entries.stream().map(JobLogEntry::raw).toList()
         );
+    }
+
+    private String distinctValues(List<String> values, String fallback) {
+        String result = values.stream()
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .collect(Collectors.joining("、"));
+        return StringUtils.defaultIfBlank(result, fallback);
+    }
+
+    private String aggregateStatus(List<JobLogStructuredRecord> records) {
+        if (records.stream().anyMatch(record -> "失败".equals(record.status()))) {
+            return "失败";
+        }
+        if (records.stream().anyMatch(record -> "警告".equals(record.status()))) {
+            return "警告";
+        }
+        return records.get(records.size() - 1).status();
     }
 
     private String sectionTitle(String category) {

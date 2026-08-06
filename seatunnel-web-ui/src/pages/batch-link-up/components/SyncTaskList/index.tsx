@@ -1,6 +1,6 @@
 import { CopyOutlined } from "@ant-design/icons";
 import { history, useIntl } from "@umijs/max";
-import { Divider, Empty, Table, Tooltip, message } from "antd";
+import { Divider, Empty, Modal, Table, Tooltip, message } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
 import moment from "moment";
 import { useEffect, useState } from "react";
@@ -175,7 +175,13 @@ const App: React.FC<Props> = ({
         pageSize: pagination.pageSize,
       });
 
-      setTaskList(data?.data?.bizData || []);
+      const nextTaskList = data?.data?.bizData || [];
+      setTaskList(nextTaskList);
+      setSelectedRowKeys((previousKeys) =>
+        previousKeys.filter((key) =>
+          nextTaskList.some((record: any) => String(record?.id) === String(key)),
+        ),
+      );
       setPagination((prev) => ({
         ...prev,
         total: data?.data?.pagination?.total || 0,
@@ -330,11 +336,13 @@ const App: React.FC<Props> = ({
   };
 
   const handleSearch = (values: any) => {
+    setSelectedRowKeys([]);
     setSearchParams(values);
     setPagination((prev) => ({ ...prev, current: 1 }));
   };
 
   const handleReset = () => {
+    setSelectedRowKeys([]);
     setSearchParams({
       createTime: DEFAULT_TIME_RANGE,
     });
@@ -345,6 +353,7 @@ const App: React.FC<Props> = ({
   };
 
   const handlePaginationChange = (page: number, pageSize: number) => {
+    setSelectedRowKeys([]);
     setPagination((prev) => ({
       ...prev,
       current: page,
@@ -390,10 +399,12 @@ const App: React.FC<Props> = ({
         stopDisabled: true,
         onlineDisabled: true,
         offlineDisabled: true,
+        deleteDisabled: true,
         startTooltip: "请先选择任务",
         stopTooltip: "请先选择要终止的任务",
         onlineTooltip: "请先选择任务",
         offlineTooltip: "请先选择任务",
+        deleteTooltip: "请先选择要删除的任务",
       };
     }
 
@@ -401,16 +412,21 @@ const App: React.FC<Props> = ({
     const onlineRows = selectedRows.filter(isOnline);
     const runningRows = selectedRows.filter(isRunning);
     const notRunningRows = selectedRows.filter((item) => !isRunning(item));
+    const onlineOrRunningRows = selectedRows.filter(
+      (item) => isOnline(item) || isRunning(item),
+    );
 
     const startDisabled = offlineRows.length > 0 || runningRows.length > 0;
     const stopDisabled = notRunningRows.length > 0;
     const onlineDisabled = offlineRows.length === 0;
     const offlineDisabled = onlineRows.length === 0 || runningRows.length > 0;
+    const deleteDisabled = onlineOrRunningRows.length > 0;
 
     let startTooltip: string | undefined;
     let stopTooltip: string | undefined;
     let onlineTooltip: string | undefined;
     let offlineTooltip: string | undefined;
+    let deleteTooltip: string | undefined;
 
     if (offlineRows.length > 0) {
       startTooltip = `存在未上线任务，请先上线后再启动：${buildLimitedJobLabels(
@@ -442,15 +458,31 @@ const App: React.FC<Props> = ({
       offlineTooltip = "所选任务已经全部下线";
     }
 
+    if (onlineOrRunningRows.length > 0) {
+      const onlineRows = onlineOrRunningRows.filter((item) => isOnline(item));
+      const runningRows = onlineOrRunningRows.filter((item) => isRunning(item));
+      const reasons = [
+        onlineRows.length > 0
+          ? `已上线任务：${buildLimitedJobLabels(onlineRows)}`
+          : "",
+        runningRows.length > 0
+          ? `运行中任务：${buildLimitedJobLabels(runningRows)}`
+          : "",
+      ].filter(Boolean);
+      deleteTooltip = `请先下线并终止不可删除任务：${reasons.join("；")}`;
+    }
+
     return {
       startDisabled,
       stopDisabled,
       onlineDisabled,
       offlineDisabled,
+      deleteDisabled,
       startTooltip,
       stopTooltip,
       onlineTooltip,
       offlineTooltip,
+      deleteTooltip,
     };
   };
 
@@ -634,6 +666,58 @@ const App: React.FC<Props> = ({
     setSelectedRowKeys([]);
   };
 
+  const onDeleteAll = () => {
+    const selectedRows = getSelectedRows();
+    if (selectedRows.length === 0) {
+      message.warning("请先选择要删除的任务");
+      return;
+    }
+
+    const blockedRows = selectedRows.filter(
+      (record) => isOnline(record) || isRunning(record),
+    );
+    if (blockedRows.length > 0) {
+      message.warning(batchActionState.deleteTooltip || "所选任务当前不可删除");
+      return;
+    }
+
+    Modal.confirm({
+      title: "确认批量删除任务？",
+      centered: true,
+      content: `将删除 ${selectedRows.length} 个离线任务定义及其历史记录，删除后不可恢复。`,
+      okText: "删除",
+      cancelText: "取消",
+      okButtonProps: { danger: true },
+      async onOk() {
+        const responses = await Promise.allSettled(
+          selectedRows.map((record) => seatunnelJobDefinitionApi.delete(String(record.id))),
+        );
+        const successCount = responses.filter(
+          (item) => item.status === "fulfilled" && item.value?.code === 0,
+        ).length;
+        const failedCount = responses.length - successCount;
+
+        if (successCount > 0) {
+          message.success(`批量删除完成：成功 ${successCount} 个`);
+          setSelectedRowKeys([]);
+          const shouldTurnPage =
+            successCount === taskList.length && pagination.current > 1;
+          if (shouldTurnPage) {
+            setPagination((previous) => ({
+              ...previous,
+              current: previous.current - 1,
+            }));
+          } else {
+            fetchTaskList();
+          }
+        }
+        if (failedCount > 0) {
+          message.error(`批量删除失败：${failedCount} 个`);
+        }
+      },
+    });
+  };
+
   const openBatchCreate = () => {
     if (getSelectedRows().length === 0) {
       message.warning("请先选择一个或多个模板任务");
@@ -699,7 +783,7 @@ const App: React.FC<Props> = ({
             pagination={false}
             loading={loading}
             rowSelection={{ type: "checkbox", ...rowSelection }}
-            scroll={{ x: "max-content", y: "calc(100vh - 470px)" }}
+            scroll={{ x: "max-content", y: "calc(100vh - 380px)" }}
             className="task-table"
             locale={{
               emptyText: (
@@ -719,6 +803,7 @@ const App: React.FC<Props> = ({
         onStop={onTerminateAll}
         onOnline={onOnlineAll}
         onOffline={onOfflineAll}
+        onDelete={onDeleteAll}
         onCreate={openBatchCreate}
         pagination={{
           ...pagination,
@@ -734,6 +819,8 @@ const App: React.FC<Props> = ({
         offlineDisabled={batchActionState.offlineDisabled}
         onlineTooltip={batchActionState.onlineTooltip}
         offlineTooltip={batchActionState.offlineTooltip}
+        deleteDisabled={batchActionState.deleteDisabled}
+        deleteTooltip={batchActionState.deleteTooltip}
       />
 
       <BatchCreateJobModal

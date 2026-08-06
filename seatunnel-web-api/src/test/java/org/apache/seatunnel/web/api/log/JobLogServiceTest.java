@@ -165,6 +165,38 @@ class JobLogServiceTest {
         assertEquals("异常处理", replay.sections().get(2).title());
         assertEquals("记录异常", replay.sections().get(2).steps().get(0).operation());
         assertTrue(replay.sections().get(2).steps().get(0).detail().contains("connection refused"));
+        assertEquals(1, replay.sections().get(2).steps().get(0).logs().size());
+    }
+
+    @Test
+    void capsReplayStepsAtTenAndKeepsAllRawLogsInEachStep() throws Exception {
+        Path logPath = tempDir.resolve("job-5.log");
+        StringBuilder content = new StringBuilder();
+        for (int index = 0; index < 15; index++) {
+            content.append(switch (index % 3) {
+                case 0 -> "[2026-08-05 10:00:00] [INFO] submit started";
+                case 1 -> "[2026-08-05 10:00:01] [INFO] running source task";
+                default -> "[2026-08-05 10:00:02] [ERROR] connection refused";
+            }).append(System.lineSeparator());
+        }
+        Files.writeString(logPath, content, StandardCharsets.UTF_8);
+
+        JobInstance instance = JobInstance.builder()
+                .id(5L)
+                .clientId(2L)
+                .jobStatus(JobStatus.FINISHED)
+                .logPath(logPath.toString())
+                .build();
+        when(jobInstanceDao.queryById(5L)).thenReturn(instance);
+
+        JobLogReplayResult replay = jobLogService.replay(5L, JobMode.BATCH);
+
+        assertTrue(replay.totalSteps() <= 10);
+        assertEquals(15, replay.sections().stream()
+                .flatMap(section -> section.steps().stream())
+                .mapToInt(step -> step.logs().size())
+                .sum());
+        assertTrue(replay.sections().stream().allMatch(section -> section.steps().size() == 1));
     }
 
     private long count(String value, String target) {
