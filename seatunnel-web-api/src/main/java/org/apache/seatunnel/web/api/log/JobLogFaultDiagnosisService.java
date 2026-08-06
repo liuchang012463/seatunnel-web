@@ -35,6 +35,7 @@ public class JobLogFaultDiagnosisService {
     private static final String DATA_SOURCE = "DATA_SOURCE";
     private static final String SYSTEM_COMPONENT = "SYSTEM_COMPONENT";
     private static final int MAX_EVIDENCE_LINES = 80;
+    private static final int MAX_MODEL_LOG_CHARS = 12000;
     private static final int MAX_PROMPT_CHARS = 24_000;
     private static final String MODEL_SYSTEM_PROMPT = """
             你是 SeaTunnel 数据引接故障定位助手。只根据提供的日志、结构化记录和脱敏配置判断故障，禁止臆造。
@@ -79,7 +80,7 @@ public class JobLogFaultDiagnosisService {
                     return aiResult;
                 }
             } catch (Exception e) {
-                log.warn("Spring AI task-log diagnosis failed, falling back to rules, instanceId={}", instanceId, e);
+                log.warn("AI task-log diagnosis failed, falling back to rules, instanceId={}", instanceId, e);
             }
         }
 
@@ -106,16 +107,31 @@ public class JobLogFaultDiagnosisService {
                 return fallbackStream(instanceId, requestedMode, evidence, "RULE");
             }
 
+            String modelPrompt;
+            try {
+                modelPrompt = prompt(context, analysis, evidence, maskedRuntimeConfig);
+                log.info(
+                        "Task-log diagnosis model request, instanceId={}, jobMode={}, systemPrompt={}, userPrompt={}",
+                        instanceId,
+                        requestedMode,
+                        safeModelLog(MODEL_SYSTEM_PROMPT),
+                        safeModelLog(modelPrompt)
+                );
+            } catch (JsonProcessingException e) {
+                log.warn("Build task-log diagnosis model prompt failed, instanceId={}", instanceId, e);
+                return fallbackStream(instanceId, requestedMode, evidence, "RULE_FALLBACK");
+            }
+
             StringBuilder modelOutput = new StringBuilder();
             Flux<String> chunks;
             try {
                 chunks = chatClient.prompt()
                         .system(MODEL_SYSTEM_PROMPT)
-                        .user(prompt(context, analysis, evidence, maskedRuntimeConfig))
+                        .user(modelPrompt)
                         .stream()
                         .content();
             } catch (Exception e) {
-                log.warn("Spring AI task-log diagnosis stream could not start, instanceId={}", instanceId, e);
+                log.warn("AI task-log diagnosis stream could not start, instanceId={}", instanceId, e);
                 return fallbackStream(instanceId, requestedMode, evidence, "RULE_FALLBACK");
             }
 
@@ -126,14 +142,21 @@ public class JobLogFaultDiagnosisService {
                         return JobLogDiagnosisStreamEvent.delta(chunk);
                     });
             Mono<JobLogDiagnosisStreamEvent> finalResult = Mono.fromSupplier(() -> {
+                String response = modelOutput.toString();
+                log.info(
+                        "Task-log diagnosis model response, instanceId={}, jobMode={}, response={}",
+                        instanceId,
+                        requestedMode,
+                        safeModelLog(response)
+                );
                 try {
                     JobLogFaultDiagnosisResult result = parseModelResult(
-                            modelOutput.toString(), context, evidence);
+                            response, context, evidence);
                     if (result != null) {
                         return JobLogDiagnosisStreamEvent.result(result);
                     }
                 } catch (Exception e) {
-                    log.warn("Spring AI task-log diagnosis stream response was invalid, instanceId={}", instanceId, e);
+                    log.warn("AI task-log diagnosis stream response was invalid, instanceId={}", instanceId, e);
                 }
                 return JobLogDiagnosisStreamEvent.result(
                         ruleBased(instanceId, requestedMode, evidence, "RULE_FALLBACK")
@@ -146,7 +169,7 @@ public class JobLogFaultDiagnosisService {
                     finalResult,
                     Mono.just(JobLogDiagnosisStreamEvent.done())
             ).onErrorResume(error -> {
-                log.warn("Spring AI task-log diagnosis stream failed, instanceId={}", instanceId, error);
+                log.warn("AI task-log diagnosis stream failed, instanceId={}", instanceId, error);
                 return fallbackStream(instanceId, requestedMode, evidence, "RULE_FALLBACK");
             });
         });
@@ -160,7 +183,7 @@ public class JobLogFaultDiagnosisService {
         String summary = "已完成规则分析，故障归因：" + result.faultTypeLabel()
                 + "。" + result.rootCause();
         return Flux.just(
-                JobLogDiagnosisStreamEvent.status("Spring AI 当前不可用，正在使用规则证据完成定位..."),
+                JobLogDiagnosisStreamEvent.status("模型服务当前不可用，正在使用规则证据完成定位..."),
                 JobLogDiagnosisStreamEvent.delta(summary),
                 JobLogDiagnosisStreamEvent.result(result),
                 JobLogDiagnosisStreamEvent.done()
@@ -182,15 +205,41 @@ public class JobLogFaultDiagnosisService {
                                                  String maskedRuntimeConfig) throws JsonProcessingException {
         String response = chatClient.prompt()
                 .system(MODEL_SYSTEM_PROMPT)
-                .user(prompt(context, analysis, evidence, maskedRuntimeConfig))
+                .user(logModelRequest(context, analysis, evidence, maskedRuntimeConfig))
                 .call()
                 .content();
+
+        log.info(
+                "Task-log diagnosis model response, instanceId={}, jobMode={}, response={}",
+                context.instanceId(),
+                context.jobMode(),
+                safeModelLog(response)
+        );
 
         if (StringUtils.isBlank(response)) {
             return null;
         }
 
         return parseModelResult(response, context, evidence);
+    }
+
+    private String logModelRequest(JobLogContext context,
+                                   JobLogAnalysisResult analysis,
+                                   List<String> evidence,
+                                   String maskedRuntimeConfig) throws JsonProcessingException {
+        String modelPrompt = prompt(context, analysis, evidence, maskedRuntimeConfig);
+        log.info(
+                "Task-log diagnosis model request, instanceId={}, jobMode={}, systemPrompt={}, userPrompt={}",
+                context.instanceId(),
+                context.jobMode(),
+                safeModelLog(MODEL_SYSTEM_PROMPT),
+                safeModelLog(modelPrompt)
+        );
+        return modelPrompt;
+    }
+
+    private String safeModelLog(String value) {
+        return truncate(HoconSensitiveMaskUtil.maskSensitiveInfo(StringUtils.defaultString(value)), MAX_MODEL_LOG_CHARS);
     }
 
     private JobLogFaultDiagnosisResult parseModelResult(String response,

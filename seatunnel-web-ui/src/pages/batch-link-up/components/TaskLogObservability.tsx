@@ -462,9 +462,10 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
         <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500">{diagnosisDisabledReason}</div>
       ) : null}
       {diagnosisStatus || diagnosisOutput ? (
-        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100">
+        <div className="mt-3 rounded-xl border border-cyan-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100">
           <div className="mb-2 flex items-center gap-2 text-xs text-cyan-300"><span className="h-2 w-2 rounded-full bg-cyan-400" />{diagnosisStatus || "正在输出..."}</div>
-          <div className="whitespace-pre-wrap">{diagnosisOutput || "等待模型输出..."}</div>
+          <div className="mb-2 text-xs font-semibold text-slate-300">模型输出</div>
+          <div className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-900/80 p-3 text-slate-100">{diagnosisOutput || "等待模型输出..."}</div>
         </div>
       ) : null}
       {diagnosisResult ? (
@@ -473,12 +474,11 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
             <Tag color="purple">归因：{diagnosisResult.faultTypeLabel || diagnosisResult.faultType}</Tag>
             <Tag color="blue">类型：{diagnosisResult.faultType}</Tag>
             <Tag>置信度 {Math.round((diagnosisResult.confidence || 0) * 100)}%</Tag>
-            <Tag>{diagnosisResult.aiUsed ? "Spring AI" : "规则兜底"}</Tag>
           </div>
-          <div className="rounded-xl border border-red-100 bg-red-50/60 p-4">
-            <div className="text-sm font-semibold text-slate-800">错误原因</div>
-            <div className="mt-2 text-sm leading-6 text-slate-600">{diagnosisResult.rootCause || "暂无明确原因"}</div>
-            <div className="mt-2 text-xs text-slate-400">影响阶段：{diagnosisResult.affectedStage || "未明确"}</div>
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm" style={{ backgroundColor: "#fff1f2" }}>
+            <div className="text-sm font-semibold text-rose-900" style={{ color: "#881337" }}>错误原因</div>
+            <div className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-sm leading-6 text-slate-700" style={{ color: "#334155" }}>{diagnosisResult.rootCause || "暂无明确原因"}</div>
+            <div className="mt-2 text-xs text-slate-500" style={{ color: "#64748b" }}>影响阶段：{diagnosisResult.affectedStage || "未明确"}</div>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
