@@ -136,6 +136,8 @@ const ReplayStepView: React.FC<{ step?: JobLogReplayStep; sectionTitle?: string 
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击加载命名阶段后开始回放" />;
   }
 
+  const logs = step.logs?.length ? step.logs : [step.detail];
+
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-950 p-4 text-slate-100">
       <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
@@ -145,7 +147,10 @@ const ReplayStepView: React.FC<{ step?: JobLogReplayStep; sectionTitle?: string 
         <span>{step.target !== "-" ? `目标：${step.target}` : ""}</span>
         <span>{formatTime(step.timestamp, step.elapsedMs)}</span>
       </div>
-      <div className="text-sm leading-6 text-slate-100">{step.detail}</div>
+      <div className="mb-2 text-xs text-slate-400">本步骤全部日志 · {logs.length} 行</div>
+      <div className="max-h-[360px] overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-xs leading-5 text-slate-100">
+        {logs.map((line, index) => <div key={index}>{line || " "}</div>)}
+      </div>
     </div>
   );
 };
@@ -398,7 +403,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-sm font-semibold text-slate-800">操作可视化回放</div>
-          <div className="mt-1 text-xs text-slate-400">按连续日志阶段命名分段，再回放每个阶段的结构化操作</div>
+          <div className="mt-1 text-xs text-slate-400">按规则将完整日志切分为不超过 10 个步骤，每步保留全部原始日志</div>
         </div>
         <Button size="small" loading={replayLoading} onClick={() => void loadReplay()}>
           {replayResult ? "重新加载回放" : "加载回放"}
@@ -418,7 +423,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
                   className={["w-full rounded-lg border px-3 py-2 text-left transition", active ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-white hover:bg-slate-50"].join(" ")}
                 >
                   <div className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-700">
-                    <span>{index + 1}. {section.title}</span><Tag className="!mr-0">{section.steps.length}</Tag>
+                    <span>{index + 1}. {section.title}</span><Tag className="!mr-0">{section.steps[0]?.logs?.length || section.steps.length} 行</Tag>
                   </div>
                   <div className="mt-1 text-[11px] text-slate-400">{formatTime(section.startTime)} → {formatTime(section.endTime)}</div>
                 </button>

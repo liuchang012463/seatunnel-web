@@ -1,7 +1,9 @@
 package org.apache.seatunnel.web.api.log;
 
+import java.util.List;
+
 /**
- * One normalized step inside a named operation replay section.
+ * One bounded replay step containing the complete raw log for that phase.
  */
 public record JobLogReplayStep(
         long sequence,
@@ -15,6 +17,7 @@ public record JobLogReplayStep(
         String target,
         String status,
         String detail,
-        String title
+        String title,
+        List<String> logs
 ) {
 }

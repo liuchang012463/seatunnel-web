@@ -36,6 +36,7 @@ export interface JobLogStructuredRecord {
   target: string;
   status: string;
   detail: string;
+  logs?: string[];
 }
 
 export interface JobLogAnalysisResult {
