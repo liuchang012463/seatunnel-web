@@ -263,12 +263,24 @@ public class JobLogFaultDiagnosisService {
 
     private String stripCodeFence(String value) {
         String result = value.trim();
+        int thinkEnd = result.indexOf("</think>");
+        if (thinkEnd >= 0) {
+            result = result.substring(thinkEnd + "</think>".length()).trim();
+        }
+
         if (result.startsWith("```") && result.endsWith("```")) {
             int firstLineEnd = result.indexOf('\n');
-            return firstLineEnd >= 0
+            result = firstLineEnd >= 0
                     ? result.substring(firstLineEnd + 1, result.length() - 3).trim()
                     : result.substring(3, result.length() - 3).trim();
         }
+
+        int objectStart = result.indexOf('{');
+        int objectEnd = result.lastIndexOf('}');
+        if (objectStart >= 0 && objectEnd > objectStart) {
+            return result.substring(objectStart, objectEnd + 1);
+        }
+
         return result;
     }
 
