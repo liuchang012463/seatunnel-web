@@ -153,6 +153,12 @@ const ReplayStepView: React.FC<{ step?: JobLogReplayStep; sectionTitle?: string 
 const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceItem, jobMode, view }) => {
   const instanceId = instanceItem?.id;
   const isFailed = String(instanceItem?.jobStatus || "").toUpperCase() === "FAILED";
+  const canDiagnose = Boolean(instanceId) && isFailed;
+  const diagnosisDisabledReason = !isFailed
+    ? `当前实例状态为 ${instanceItem?.jobStatus || "未知"}，仅 FAILED 状态允许故障定位。`
+    : !instanceId
+      ? "当前任务暂无运行实例，无法进行故障定位。"
+      : "";
   const [logContent, setLogContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState("");
@@ -267,7 +273,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
   }, [replayCursor, replayPlaying, replayPositions.length]);
 
   const startDiagnosis = useCallback(async () => {
-    if (!instanceId || !isFailed) {
+    if (!canDiagnose) {
       message.info("只有日志状态为 FAILED 的任务才可以进行故障定位");
       return;
     }
@@ -300,7 +306,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     } finally {
       setDiagnosisLoading(false);
     }
-  }, [instanceId, isFailed, jobMode]);
+  }, [canDiagnose, instanceId, jobMode]);
 
   useEffect(() => () => diagnosisAbortRef.current?.abort(), []);
 
@@ -445,16 +451,16 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
           <div className="text-sm font-semibold text-slate-800">AI故障定位</div>
           <div className="mt-1 text-xs text-slate-400">仅对 FAILED 任务调用故障定位服务，其他状态保留 Tab 但不可执行。</div>
         </div>
-        <Tooltip title={isFailed ? "分析当前 FAILED 实例" : "只有 FAILED 实例可以分析"}>
+        <Tooltip title={canDiagnose ? "分析当前 FAILED 实例" : diagnosisDisabledReason}>
           <span>
-            <Button type="primary" danger disabled={!isFailed || diagnosisLoading} loading={diagnosisLoading} onClick={() => void startDiagnosis()}>
+            <Button type="primary" danger disabled={!canDiagnose || diagnosisLoading} loading={diagnosisLoading} onClick={() => void startDiagnosis()}>
               {diagnosisLoading ? "分析中..." : "开始故障定位"}
             </Button>
           </span>
         </Tooltip>
       </div>
-      {!isFailed ? (
-        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500">当前实例状态为 {instanceItem?.jobStatus || "未知"}，仅 FAILED 状态允许故障定位。</div>
+      {!canDiagnose ? (
+        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500">{diagnosisDisabledReason}</div>
       ) : null}
       {diagnosisStatus || diagnosisOutput ? (
         <div className="mt-3 rounded-xl border border-slate-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100">
