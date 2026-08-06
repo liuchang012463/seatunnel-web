@@ -8,11 +8,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.ObjectProvider;
+import org.apache.seatunnel.web.core.exceptions.ServiceException;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -76,5 +78,71 @@ class JobLogFaultDiagnosisServiceTest {
         assertEquals("DATA_SOURCE", result.faultType());
         assertEquals("数据源", result.faultTypeLabel());
         assertEquals("RULE", result.provider());
+    }
+
+    @Test
+    void rejectsDiagnosisWhenTaskIsNotFailed() {
+        Long instanceId = 12L;
+        JobMode mode = JobMode.BATCH;
+        JobLogContext context = new JobLogContext(
+                instanceId,
+                21L,
+                null,
+                null,
+                mode,
+                "source { plugin = Jdbc }",
+                null,
+                "FINISHED"
+        );
+        when(jobLogService.resolve(instanceId, mode)).thenReturn(context);
+
+        JobLogFaultDiagnosisService service = new JobLogFaultDiagnosisService(
+                jobLogService,
+                new ObjectMapper(),
+                chatClientProvider
+        );
+
+        assertThrows(ServiceException.class, () -> service.diagnose(instanceId, mode));
+    }
+
+    @Test
+    void streamsRuleFallbackStatusTextAndFinalResult() {
+        Long instanceId = 13L;
+        JobMode mode = JobMode.BATCH;
+        JobLogContext context = new JobLogContext(
+                instanceId,
+                21L,
+                null,
+                null,
+                mode,
+                "source { plugin = Jdbc }",
+                null,
+                "FAILED"
+        );
+        JobLogAnalysisResult analysis = new JobLogAnalysisResult(
+                instanceId,
+                mode.name(),
+                1,
+                1,
+                0,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new JobLogEntry(1L, 1L, null, "ERROR", "WEB", "ERROR", "ERROR", "timeout", "timeout", null)),
+                List.of()
+        );
+        when(jobLogService.resolve(instanceId, mode)).thenReturn(context);
+        when(jobLogService.analyze(instanceId, mode)).thenReturn(analysis);
+        when(chatClientProvider.getIfAvailable()).thenReturn(null);
+
+        List<JobLogDiagnosisStreamEvent> events = new JobLogFaultDiagnosisService(
+                jobLogService,
+                new ObjectMapper(),
+                chatClientProvider
+        ).streamDiagnose(instanceId, mode).collectList().block();
+
+        assertEquals(List.of("status", "delta", "result", "done"),
+                events.stream().map(JobLogDiagnosisStreamEvent::type).toList());
+        assertEquals("TRANSPORT", events.get(2).result().faultType());
     }
 }

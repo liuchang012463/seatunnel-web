@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.api.log.JobLogAnalysisResult;
 import org.apache.seatunnel.web.api.log.JobLogReplayResult;
 import org.apache.seatunnel.web.api.log.JobLogFaultDiagnosisResult;
 import org.apache.seatunnel.web.api.log.JobLogFaultDiagnosisService;
+import org.apache.seatunnel.web.api.log.JobLogDiagnosisStreamEvent;
 import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -20,6 +21,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
+import reactor.core.publisher.Flux;
 
 @RestController
 @RequestMapping("/api/v1/job-log")
@@ -87,6 +91,18 @@ public class JobLogController {
             @PathVariable("jobMode") String jobMode,
             @PathVariable("instanceId") Long instanceId) {
         return Result.buildSuc(jobLogFaultDiagnosisService.diagnose(instanceId, parseMode(jobMode)));
+    }
+
+    @GetMapping(value = "/{jobMode}/{instanceId}/diagnosis/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "streamDiagnoseJobInstanceLog", description = "流式分析失败任务日志并定位故障类型")
+    public Flux<ServerSentEvent<JobLogDiagnosisStreamEvent>> diagnosisStream(
+            @PathVariable("jobMode") String jobMode,
+            @PathVariable("instanceId") Long instanceId) {
+        return jobLogFaultDiagnosisService.streamDiagnose(instanceId, parseMode(jobMode))
+                .map(event -> ServerSentEvent.<JobLogDiagnosisStreamEvent>builder()
+                        .event(event.type())
+                        .data(event)
+                        .build());
     }
 
     private JobMode parseMode(String value) {

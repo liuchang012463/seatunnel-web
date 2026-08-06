@@ -8,9 +8,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.common.enums.JobMode;
+import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -33,6 +36,13 @@ public class JobLogFaultDiagnosisService {
     private static final String SYSTEM_COMPONENT = "SYSTEM_COMPONENT";
     private static final int MAX_EVIDENCE_LINES = 80;
     private static final int MAX_PROMPT_CHARS = 24_000;
+    private static final String MODEL_SYSTEM_PROMPT = """
+            你是 SeaTunnel 数据引接故障定位助手。只根据提供的日志、结构化记录和脱敏配置判断故障，禁止臆造。
+            faultType 优先使用以下四类之一：COLLECTOR（采集端）、TRANSPORT（传输链路）、DATA_SOURCE（数据源）、SYSTEM_COMPONENT（系统组件）。
+            只有当四类都不适用时，才可以定义新的 faultType，并在 faultTypeLabel 中给出清晰中文名称。
+            必须只输出 JSON，不要 Markdown，字段为：faultType、faultTypeLabel、confidence、rootCause、affectedStage、evidence、recommendedActions、uncertainties。
+            confidence 为 0 到 1 的数字；evidence 和 recommendedActions 为字符串数组；无法确定时降低 confidence 并填写 uncertainties。
+            """;
 
     private final JobLogService jobLogService;
     private final ObjectMapper objectMapper;
@@ -47,7 +57,7 @@ public class JobLogFaultDiagnosisService {
     }
 
     public JobLogFaultDiagnosisResult diagnose(Long instanceId, JobMode requestedMode) {
-        JobLogContext context = jobLogService.resolve(instanceId, requestedMode);
+        JobLogContext context = resolveFailedContext(instanceId, requestedMode);
         JobLogAnalysisResult analysis = jobLogService.analyze(instanceId, requestedMode);
         List<String> evidence = evidence(analysis);
         String maskedRuntimeConfig = truncate(
@@ -76,18 +86,102 @@ public class JobLogFaultDiagnosisService {
         return ruleBased(instanceId, requestedMode, evidence, chatClient == null ? "RULE" : "RULE_FALLBACK");
     }
 
+    /**
+     * Streams status, model text deltas and a final structured diagnosis for a
+     * failed task. A missing/unavailable model uses the same deterministic
+     * fallback as the non-streaming endpoint.
+     */
+    public Flux<JobLogDiagnosisStreamEvent> streamDiagnose(Long instanceId, JobMode requestedMode) {
+        return Flux.defer(() -> {
+            JobLogContext context = resolveFailedContext(instanceId, requestedMode);
+            JobLogAnalysisResult analysis = jobLogService.analyze(instanceId, requestedMode);
+            List<String> evidence = evidence(analysis);
+            String maskedRuntimeConfig = truncate(
+                    HoconSensitiveMaskUtil.maskSensitiveInfo(context.runtimeConfig()),
+                    MAX_PROMPT_CHARS
+            );
+            ChatClient chatClient = chatClientProvider.getIfAvailable();
+
+            if (chatClient == null) {
+                return fallbackStream(instanceId, requestedMode, evidence, "RULE");
+            }
+
+            StringBuilder modelOutput = new StringBuilder();
+            Flux<String> chunks;
+            try {
+                chunks = chatClient.prompt()
+                        .system(MODEL_SYSTEM_PROMPT)
+                        .user(prompt(context, analysis, evidence, maskedRuntimeConfig))
+                        .stream()
+                        .content();
+            } catch (Exception e) {
+                log.warn("Spring AI task-log diagnosis stream could not start, instanceId={}", instanceId, e);
+                return fallbackStream(instanceId, requestedMode, evidence, "RULE_FALLBACK");
+            }
+
+            Flux<JobLogDiagnosisStreamEvent> deltas = chunks
+                    .filter(StringUtils::isNotBlank)
+                    .map(chunk -> {
+                        modelOutput.append(chunk);
+                        return JobLogDiagnosisStreamEvent.delta(chunk);
+                    });
+            Mono<JobLogDiagnosisStreamEvent> finalResult = Mono.fromSupplier(() -> {
+                try {
+                    JobLogFaultDiagnosisResult result = parseModelResult(
+                            modelOutput.toString(), context, evidence);
+                    if (result != null) {
+                        return JobLogDiagnosisStreamEvent.result(result);
+                    }
+                } catch (Exception e) {
+                    log.warn("Spring AI task-log diagnosis stream response was invalid, instanceId={}", instanceId, e);
+                }
+                return JobLogDiagnosisStreamEvent.result(
+                        ruleBased(instanceId, requestedMode, evidence, "RULE_FALLBACK")
+                );
+            });
+
+            return Flux.concat(
+                    Flux.just(JobLogDiagnosisStreamEvent.status("正在读取失败任务的日志、数据快照和执行流程...")),
+                    deltas,
+                    finalResult,
+                    Mono.just(JobLogDiagnosisStreamEvent.done())
+            ).onErrorResume(error -> {
+                log.warn("Spring AI task-log diagnosis stream failed, instanceId={}", instanceId, error);
+                return fallbackStream(instanceId, requestedMode, evidence, "RULE_FALLBACK");
+            });
+        });
+    }
+
+    private Flux<JobLogDiagnosisStreamEvent> fallbackStream(Long instanceId,
+                                                              JobMode requestedMode,
+                                                              List<String> evidence,
+                                                              String provider) {
+        JobLogFaultDiagnosisResult result = ruleBased(instanceId, requestedMode, evidence, provider);
+        String summary = "已完成规则分析，故障归因：" + result.faultTypeLabel()
+                + "。" + result.rootCause();
+        return Flux.just(
+                JobLogDiagnosisStreamEvent.status("Spring AI 当前不可用，正在使用规则证据完成定位..."),
+                JobLogDiagnosisStreamEvent.delta(summary),
+                JobLogDiagnosisStreamEvent.result(result),
+                JobLogDiagnosisStreamEvent.done()
+        );
+    }
+
+    private JobLogContext resolveFailedContext(Long instanceId, JobMode requestedMode) {
+        JobLogContext context = jobLogService.resolve(instanceId, requestedMode);
+        if (!"FAILED".equalsIgnoreCase(context.jobStatus())) {
+            throw new ServiceException("仅状态为 FAILED 的任务实例可以进行故障定位");
+        }
+        return context;
+    }
+
     private JobLogFaultDiagnosisResult callModel(ChatClient chatClient,
                                                  JobLogContext context,
                                                  JobLogAnalysisResult analysis,
                                                  List<String> evidence,
                                                  String maskedRuntimeConfig) throws JsonProcessingException {
         String response = chatClient.prompt()
-                .system("""
-                        你是 SeaTunnel 数据引接故障定位助手。只根据提供的日志、结构化记录和脱敏配置判断故障，禁止臆造。
-                        faultType 只能是 COLLECTOR、TRANSPORT、DATA_SOURCE、SYSTEM_COMPONENT 四者之一，分别表示采集端、传输链路、数据源、系统组件。
-                        必须只输出 JSON，不要 Markdown，字段为：faultType、faultTypeLabel、confidence、rootCause、affectedStage、evidence、recommendedActions、uncertainties。
-                        confidence 为 0 到 1 的数字；evidence 和 recommendedActions 为字符串数组；无法确定时降低 confidence 并填写 uncertainties。
-                        """)
+                .system(MODEL_SYSTEM_PROMPT)
                 .user(prompt(context, analysis, evidence, maskedRuntimeConfig))
                 .call()
                 .content();
@@ -95,6 +189,13 @@ public class JobLogFaultDiagnosisService {
         if (StringUtils.isBlank(response)) {
             return null;
         }
+
+        return parseModelResult(response, context, evidence);
+    }
+
+    private JobLogFaultDiagnosisResult parseModelResult(String response,
+                                                         JobLogContext context,
+                                                         List<String> fallbackEvidence) throws JsonProcessingException {
 
         JsonNode node = objectMapper.readTree(stripCodeFence(response));
         String faultType = normalizeFaultType(text(node, "faultType"));
@@ -112,7 +213,7 @@ public class JobLogFaultDiagnosisService {
                 clampConfidence(node.path("confidence").asDouble(0.5)),
                 StringUtils.defaultIfBlank(text(node, "rootCause"), "模型未返回明确原因"),
                 StringUtils.defaultIfBlank(text(node, "affectedStage"), "未明确"),
-                list(node, "evidence", evidence),
+                list(node, "evidence", fallbackEvidence),
                 list(node, "recommendedActions", List.of("结合证据继续检查对应阶段")),
                 list(node, "uncertainties", List.of()),
                 Instant.now()
@@ -190,18 +291,28 @@ public class JobLogFaultDiagnosisService {
     }
 
     private List<String> evidence(JobLogAnalysisResult analysis) {
-        List<JobLogEntry> entries = new ArrayList<>();
-        entries.addAll(analysis.errors());
-        entries.addAll(analysis.executionFlow());
-        entries.addAll(analysis.dataSnapshots());
-        if (entries.isEmpty()) {
-            entries.addAll(analysis.timeline());
-        }
-        return entries.stream()
+        List<String> evidence = new ArrayList<>();
+        evidence.addAll(analysis.errors().stream()
                 .map(entry -> "L" + entry.lineNumber() + " [" + entry.source() + "] " + entry.raw())
+                .toList());
+        evidence.addAll(analysis.executionFlow().stream().map(this::structuredEvidence).toList());
+        evidence.addAll(analysis.dataSnapshots().stream().map(this::structuredEvidence).toList());
+        if (evidence.isEmpty()) {
+            evidence.addAll(analysis.timeline().stream().map(this::structuredEvidence).toList());
+        }
+        return evidence.stream()
                 .filter(StringUtils::isNotBlank)
                 .limit(MAX_EVIDENCE_LINES)
                 .toList();
+    }
+
+    private String structuredEvidence(JobLogStructuredRecord record) {
+        return "L" + record.lineNumber()
+                + " [" + record.source() + "] "
+                + record.operation()
+                + " target=" + record.target()
+                + " status=" + record.status()
+                + " detail=" + record.detail();
     }
 
     private List<String> list(JsonNode node, String field, List<String> fallback) {
@@ -235,7 +346,7 @@ public class JobLogFaultDiagnosisService {
         if (normalized.contains("系统") || normalized.equals("SYSTEM_COMPONENT")) {
             return SYSTEM_COMPONENT;
         }
-        return null;
+        return normalized.length() > 64 ? normalized.substring(0, 64) : normalized;
     }
 
     private String label(String faultType) {
@@ -244,7 +355,7 @@ public class JobLogFaultDiagnosisService {
             case TRANSPORT -> "传输链路";
             case DATA_SOURCE -> "数据源";
             case SYSTEM_COMPONENT -> "系统组件";
-            default -> "未明确";
+            default -> faultType;
         };
     }
 
