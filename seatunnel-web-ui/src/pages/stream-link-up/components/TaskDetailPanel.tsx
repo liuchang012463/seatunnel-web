@@ -1,12 +1,11 @@
 import { useIntl } from "@umijs/max";
 import { Tabs } from "antd";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 import BasicInfoSection from "@/pages/batch-link-up/BasicInfoSection";
+import TaskLogObservability from "@/pages/batch-link-up/components/TaskLogObservability";
 import TaskHeader from "@/pages/batch-link-up/TaskHeader";
-import { streamingSeatunnelJobInstanceApi } from "@/pages/batch-link-up/api";
 import HoconTab from "./tabs/HoconTab";
-import LogTab from "./tabs/LogTab";
 import MetricsTab from "./tabs/MetricsTab";
 import TableTab from "./tabs/TableTab";
 
@@ -17,42 +16,7 @@ interface TaskDetailPanelProps {
 const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
   const intl = useIntl();
 
-  const [logContent, setLogContent] = useState<any>("");
-  const [logLoading, setLogLoading] = useState<boolean>(false);
   const [activeKey, setActiveKey] = useState<string>("log");
-
-  const fetchLog = async () => {
-    try {
-      setLogLoading(true);
-
-      const res = await streamingSeatunnelJobInstanceApi.getLog(
-        instanceItem?.id
-      );
-
-      setLogContent(
-        res?.data ||
-          intl.formatMessage({
-            id: "pages.job.detail.noLog",
-            defaultMessage: "No log available",
-          })
-      );
-    } catch (err) {
-      const errorText = intl.formatMessage({
-        id: "pages.job.detail.loadLogFailed",
-        defaultMessage: "Failed to load log",
-      });
-
-      setLogContent(errorText);
-    } finally {
-      setLogLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (instanceItem?.id) {
-      fetchLog();
-    }
-  }, [instanceItem?.id]);
 
   if (!instanceItem?.jobStatus) {
     return (
@@ -78,7 +42,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
         id: "pages.job.detail.tabs.log",
         defaultMessage: "Log",
       }),
-      children: <LogTab content={logContent} loading={logLoading} />,
+      children: <TaskLogObservability instanceItem={instanceItem} jobMode="STREAMING" />,
     },
     {
       key: "hocon",
