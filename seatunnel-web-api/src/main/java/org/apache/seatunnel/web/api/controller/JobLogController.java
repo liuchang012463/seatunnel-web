@@ -47,12 +47,12 @@ public class JobLogController {
     public Result<JobLogSearchResult> search(
             @PathVariable("jobMode") String jobMode,
             @PathVariable("instanceId") Long instanceId,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String level,
-            @RequestParam(required = false) String source,
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "level", required = false) String level,
+            @RequestParam(value = "source", required = false) String source,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
         return Result.buildSuc(jobLogService.search(
                 instanceId,
                 parseMode(jobMode),
