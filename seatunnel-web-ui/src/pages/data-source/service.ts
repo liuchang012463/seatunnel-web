@@ -42,6 +42,10 @@ export async function deleteDataSource(id: string): Promise<CommonApiResponse<bo
   return HttpUtils.delete(`${DATA_SOURCE_API_PREFIX}/${id}`);
 }
 
+export async function checkDataSourceUsage(id: string): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/usage`);
+}
+
 export async function updateDataSourceStatus(
   id: string,
   status: DataSourceLifecycleStatus,

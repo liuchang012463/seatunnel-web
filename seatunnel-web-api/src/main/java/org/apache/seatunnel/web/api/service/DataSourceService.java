@@ -67,6 +67,11 @@ public interface DataSourceService {
     void delete(Long id);
 
     /**
+     * Checks whether a data source is referenced by any batch or streaming job definition.
+     */
+    boolean isDataSourceUsed(Long id);
+
+    /**
      * Updates the business lifecycle status of a data source.
      */
     boolean updateStatus(Long id, DataSourceLifecycleStatus status);

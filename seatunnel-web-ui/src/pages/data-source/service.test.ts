@@ -1,5 +1,5 @@
 import HttpUtils from '@/utils/HttpUtils';
-import { fetchDataSourceAll } from './service';
+import { checkDataSourceUsage, fetchDataSourceAll } from './service';
 
 jest.mock('@/utils/HttpUtils', () => ({
   __esModule: true,
@@ -22,5 +22,14 @@ describe('data source service', () => {
 
     expect(HttpUtils.get).toHaveBeenCalledWith('/api/v1/data-source/all');
     expect(HttpUtils.post).not.toHaveBeenCalled();
+  });
+
+  it('checks data source usage before delete', async () => {
+    const response = { code: 0, data: true };
+    (HttpUtils.get as jest.Mock).mockResolvedValue(response);
+
+    await expect(checkDataSourceUsage('42')).resolves.toBe(response);
+
+    expect(HttpUtils.get).toHaveBeenCalledWith('/api/v1/data-source/42/usage');
   });
 });
