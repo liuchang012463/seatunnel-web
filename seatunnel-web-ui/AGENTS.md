@@ -1,5 +1,12 @@
 # Repository Guidelines
 
+## 协作要求
+
+- 默认使用中文回答。
+- 修改文件前先说明计划。
+- 重要操作前先列出影响范围。
+- 文档改写时保留原意，不制造未经确认的数据。
+
 ## 项目结构与模块组织
 
 本项目是基于 React、TypeScript、Umi Max 和 Ant Design Pro 的 SeaTunnel Web 前端。业务页面位于 `src/pages/`，通用组件放在 `src/components/`，接口客户端与类型位于 `src/services/`，公共逻辑放在 `src/utils/`。图片、字体等资源归入 `src/assets/` 或 `public/`；多语言文案维护在 `src/locales/`。路由、代理和应用配置集中在 `config/`，本地模拟接口位于 `mock/`。不要手工修改生成目录 `src/.umi/`、`dist/` 或覆盖率产物。
