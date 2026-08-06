@@ -1,6 +1,7 @@
 import {
   CloudDownloadOutlined,
   CloudUploadOutlined,
+  DeleteOutlined,
   CopyOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
@@ -21,6 +22,7 @@ interface BottomActionBarProps {
   onTerminate: () => void;
   onPause: () => void;
   onResume: () => void;
+  onDelete?: () => void;
   onlineDisabled?: boolean;
   offlineDisabled?: boolean;
   startDisabled?: boolean;
@@ -33,6 +35,8 @@ interface BottomActionBarProps {
   terminateTooltip?: string;
   pauseTooltip?: string;
   resumeTooltip?: string;
+  deleteDisabled?: boolean;
+  deleteTooltip?: string;
   current?: number;
   pageSize?: number;
   onPageChange?: (page: number, pageSize: number) => void;
@@ -49,6 +53,7 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   onTerminate,
   onPause,
   onResume,
+  onDelete,
   onlineDisabled = false,
   offlineDisabled = false,
   startDisabled = false,
@@ -61,6 +66,8 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   terminateTooltip,
   pauseTooltip,
   resumeTooltip,
+  deleteDisabled = false,
+  deleteTooltip,
   current = 1,
   pageSize = 10,
   onPageChange,
@@ -126,6 +133,22 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
             </Button>
           </span>
         </Tooltip>
+
+        {onDelete ? (
+          <Tooltip title={withDefault(deleteTooltip)}>
+            <span>
+              <Button
+                danger
+                size="small"
+                disabled={disabled || deleteDisabled}
+                onClick={onDelete}
+                icon={<DeleteOutlined />}
+              >
+                删除
+              </Button>
+            </span>
+          </Tooltip>
+        ) : null}
 
         {selectedCount > 0 ? <Tag color="blue" className="rounded-full px-3 py-0.5">已选择 {selectedCount}</Tag> : null}
       </div>

@@ -613,12 +613,14 @@ const RealtimeSyncPage: React.FC = () => {
         terminateDisabled: true,
         pauseDisabled: true,
         resumeDisabled: true,
+        deleteDisabled: true,
         onlineTooltip: '请先选择任务',
         offlineTooltip: '请先选择任务',
         startTooltip: '请先选择任务',
         terminateTooltip: '请先选择任务',
         pauseTooltip: '请先选择任务',
         resumeTooltip: '请先选择任务',
+        deleteTooltip: '请先选择要删除的任务',
       };
     }
 
@@ -628,6 +630,9 @@ const RealtimeSyncPage: React.FC = () => {
     const notRunningRecords = selectedRecords.filter((record) => !isRunningStatus(record.lastJobStatus));
     const recordsWithoutInstance = selectedRecords.filter((record) => !record.instanceId);
     const recordsWithoutSavepoint = selectedRecords.filter((record) => !record.savepointPath);
+    const deleteBlockedRecords = selectedRecords.filter(
+      (record) => isReleaseOnline(record.releaseState) || isRunningStatus(record.lastJobStatus),
+    );
 
     return {
       onlineDisabled: offlineRecords.length === 0,
@@ -637,6 +642,7 @@ const RealtimeSyncPage: React.FC = () => {
       pauseDisabled: notRunningRecords.length > 0 || recordsWithoutInstance.length > 0,
       resumeDisabled:
         offlineRecords.length > 0 || runningRecords.length > 0 || recordsWithoutInstance.length > 0 || recordsWithoutSavepoint.length > 0,
+      deleteDisabled: deleteBlockedRecords.length > 0,
       onlineTooltip: offlineRecords.length === 0 ? '所选任务已经全部上线' : undefined,
       offlineTooltip:
         runningRecords.length > 0
@@ -661,6 +667,10 @@ const RealtimeSyncPage: React.FC = () => {
       resumeTooltip:
         offlineRecords.length > 0 || runningRecords.length > 0 || recordsWithoutInstance.length > 0 || recordsWithoutSavepoint.length > 0
           ? '批量恢复要求任务已上线、未运行且都有可用检查点'
+          : undefined,
+      deleteTooltip:
+        deleteBlockedRecords.length > 0
+          ? '批量删除仅支持全部已下线且未运行的任务'
           : undefined,
     };
   };
@@ -787,6 +797,54 @@ const RealtimeSyncPage: React.FC = () => {
       '批量恢复完成',
       '批量恢复失败',
     );
+  };
+
+  const handleBatchDelete = () => {
+    const selectedRecords = getSelectedRecords();
+    if (selectedRecords.length === 0) {
+      message.warning('请先选择要删除的任务');
+      return;
+    }
+
+    const blockedRecords = selectedRecords.filter(
+      (record) => isReleaseOnline(record.releaseState) || isRunningStatus(record.lastJobStatus),
+    );
+    if (blockedRecords.length > 0) {
+      message.warning(batchActionState.deleteTooltip || '所选任务当前不可删除');
+      return;
+    }
+
+    Modal.confirm({
+      title: '确认批量删除实时任务？',
+      centered: true,
+      content: `将删除 ${selectedRecords.length} 个实时任务定义及其历史记录，删除后不可恢复。`,
+      okText: '删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      async onOk() {
+        const responses = await Promise.allSettled(
+          selectedRecords.map((record) => seatunnelStremJobDefinitionApi.delete(String(record.id))),
+        );
+        const successCount = responses.filter(
+          (item) => item.status === 'fulfilled' && isSuccessResponse(item.value),
+        ).length;
+        const failedCount = responses.length - successCount;
+
+        if (successCount > 0) {
+          message.success(`批量删除完成：成功 ${successCount} 个`);
+          setSelectedRowKeys([]);
+          const shouldTurnPage = successCount === dataSource.length && pagination.current > 1;
+          if (shouldTurnPage) {
+            setPagination((previous) => ({ ...previous, current: previous.current - 1 }));
+          } else {
+            await loadData();
+          }
+        }
+        if (failedCount > 0) {
+          message.error(`批量删除失败：${failedCount} 个`);
+        }
+      },
+    });
   };
 
   const openBatchCreate = () => {
@@ -955,6 +1013,7 @@ const RealtimeSyncPage: React.FC = () => {
           onTerminate={handleBatchTerminate}
           onPause={handleBatchPause}
           onResume={handleBatchResume}
+          onDelete={handleBatchDelete}
           onlineDisabled={batchActionState.onlineDisabled}
           offlineDisabled={batchActionState.offlineDisabled}
           startDisabled={batchActionState.startDisabled}
@@ -967,6 +1026,8 @@ const RealtimeSyncPage: React.FC = () => {
           terminateTooltip={batchActionState.terminateTooltip}
           pauseTooltip={batchActionState.pauseTooltip}
           resumeTooltip={batchActionState.resumeTooltip}
+          deleteDisabled={batchActionState.deleteDisabled}
+          deleteTooltip={batchActionState.deleteTooltip}
           current={pagination.current}
           pageSize={pagination.pageSize}
           onPageChange={handlePaginationChange}
