@@ -148,6 +148,17 @@ type ApiResult<T> = {
 };
 
 const REFRESH_INTERVAL = 5000;
+const rangeSelectClassName = [
+  "w-[132px]",
+  "[&_.ant-select-arrow]:!text-[#b7d9e2]",
+  "[&_.ant-select-selection-item]:!text-[#dff7ff]",
+  "[&_.ant-select-selector]:!border-[#1a829a]",
+  "[&_.ant-select-selector]:!bg-[#064b5f]",
+].join(" ");
+const refreshButtonClassName = [
+  "hidden items-center gap-2 border border-[#1a829a] bg-[#064b5f] px-3 py-1.5",
+  "text-xs text-[#bdeaf5] transition hover:bg-[#0a5b70] hover:text-white md:flex",
+].join(" ");
 
 const RealtimeGrafanaLightModal = forwardRef<
   RealtimeGrafanaLightModalRef,
@@ -363,39 +374,39 @@ const RealtimeGrafanaLightModal = forwardRef<
       style={{ top: 16 }}
       styles={{
         mask: {
-          background: "rgba(242, 244, 247, 0.95)",
+          background: "rgba(0, 22, 31, 0.82)",
         },
         content: {
           padding: 0,
           overflow: "hidden",
           borderRadius: 18,
-          background: "#f8fafc",
+          background: "#002f3f",
           boxShadow: "none",
-          border: "1px solid #e2e8f0",
+          border: "1px solid #0d6a80",
         },
         body: {
           padding: 0,
         },
       }}
     >
-      <div className="h-[calc(100vh-45px)] overflow-hidden bg-[#f6f8fb] text-slate-900">
+      <div className="h-[calc(100vh-45px)] overflow-hidden bg-[#002f3f] text-[#dff7ff]">
         <div className="flex h-full flex-col">
-          <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+          <header className="flex shrink-0 items-center justify-between border-b border-[#0d6a80] bg-[#003a4d] px-5 py-4">
             <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-600">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#1a829a] bg-[#064b5f] text-[#4bd8ff]">
                 <Gauge className="h-5 w-5" />
               </div>
 
               <div className="min-w-0">
                 <div className="flex items-center gap-3">
-                  <h1 className="m-0 truncate text-lg font-bold text-slate-950">
+                  <h1 className="m-0 truncate text-lg font-bold text-white">
                     {viewData.jobName}
                   </h1>
 
                   <TaskStatus status={viewData.status} />
                 </div>
 
-                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#a9cbd4]">
                   <span>实例 (Instance)：{viewData.jobInstanceId}</span>
                   <span>引擎 (Engine)：{viewData.engineJobId}</span>
                   <span>模式 (Mode)：{viewData.syncMode}</span>
@@ -412,7 +423,7 @@ const RealtimeGrafanaLightModal = forwardRef<
                 // size="small"
                 value={range}
                 onChange={setRange}
-                className="w-[132px]"
+                className={rangeSelectClassName}
                 options={[
                   { label: "最近 15 分钟 (Last 15 min)", value: "15m" },
                   { label: "最近 1 小时 (Last 1 hour)", value: "1h" },
@@ -424,7 +435,7 @@ const RealtimeGrafanaLightModal = forwardRef<
               <button
                 type="button"
                 onClick={() => fetchDashboard(false)}
-                className="hidden items-center gap-2  border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-500 transition hover:bg-white hover:text-slate-900 md:flex"
+                className={refreshButtonClassName}
                 style={{ borderRadius: "16px", height: 33 }}
               >
                 <RefreshCw
@@ -439,7 +450,7 @@ const RealtimeGrafanaLightModal = forwardRef<
                 type="button"
                 aria-label="Close"
                 className="ant-modal-close"
-                style={{ top: "22px" }}
+                style={{ top: "22px", color: "#b7d9e2" }}
                 onClick={handleClose}
               >
                 <span className="ant-modal-close-x" aria-label="关闭">
@@ -469,7 +480,7 @@ const RealtimeGrafanaLightModal = forwardRef<
           <main className="flex-1 overflow-auto p-5">
             <Spin spinning={loading && !dashboard}>
               {!instanceId ? (
-                <div className="flex h-[520px] items-center justify-center rounded-xl border border-slate-200 bg-white">
+                <div className="flex h-[520px] items-center justify-center rounded-xl border border-[#0d6a80] bg-[#003a4d]">
                   <Empty description="缺少 instanceId，无法加载实时监控数据" />
                 </div>
               ) : (
@@ -644,16 +655,16 @@ const LightPanel: React.FC<{
   return (
     <section
       className={[
-        "rounded-xl border border-slate-200 bg-white ",
+        "rounded-xl border border-[#0d6a80] bg-[#003a4d] ",
         className,
       ].join(" ")}
     >
-      <div className="border-b border-slate-100 px-4 py-3">
+      <div className="border-b border-[#0d6a80] px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="m-0 text-sm font-bold text-slate-900">{title}</h2>
+            <h2 className="m-0 text-sm font-bold text-white">{title}</h2>
             {description ? (
-              <div className="mt-1 text-xs text-slate-400">{description}</div>
+              <div className="mt-1 text-xs text-[#b7d9e2]">{description}</div>
             ) : null}
           </div>
         </div>
@@ -685,12 +696,12 @@ const LightStatPanel: React.FC<{
   return (
     <section
       className={[
-        "rounded-xl border border-slate-200 bg-white p-4 ",
+        "rounded-xl border border-[#0d6a80] bg-[#003a4d] p-4 ",
         className,
       ].join(" ")}
     >
       <div className="mb-6 flex items-center justify-between">
-        <div className="text-sm font-semibold text-slate-500">{title}</div>
+        <div className="text-sm font-semibold text-[#c3e7ef]">{title}</div>
         <div
           className={[
             "flex h-8 w-8 items-center justify-center rounded-lg border",
@@ -702,7 +713,7 @@ const LightStatPanel: React.FC<{
       </div>
 
       <div className="flex items-end gap-2">
-        <div className="text-4xl font-bold tracking-tight text-slate-950">
+        <div className="text-4xl font-bold tracking-tight text-white">
           {canCountUp ? (
             <CountUp
               key={`${title}-${num}`}
@@ -717,7 +728,7 @@ const LightStatPanel: React.FC<{
         </div>
 
         {unit ? (
-          <div className="mb-1 text-sm font-semibold text-slate-400">
+          <div className="mb-1 text-sm font-semibold text-[#c3e7ef]">
             {unit}
           </div>
         ) : null}
@@ -731,9 +742,9 @@ const MiniInfo: React.FC<{
   value: React.ReactNode;
 }> = ({ label, value }) => {
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-      <div className="text-xs text-slate-400">{label}</div>
-      <div className="mt-2 truncate text-lg font-bold text-slate-900">
+    <div className="rounded-lg border border-[#1a829a] bg-[#033747] p-3">
+      <div className="text-xs text-[#b7d9e2]">{label}</div>
+      <div className="mt-2 truncate text-lg font-bold text-white">
         {value || "-"}
       </div>
     </div>
@@ -745,9 +756,9 @@ const BasicRow: React.FC<{
   value: React.ReactNode;
 }> = ({ label, value }) => {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-      <span className="text-slate-400">{label}</span>
-      <span className="truncate text-right font-semibold text-slate-700">
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-[#1a829a] bg-[#033747] px-3 py-2">
+      <span className="text-[#b7d9e2]">{label}</span>
+      <span className="truncate text-right font-semibold text-white">
         {value || "-"}
       </span>
     </div>
@@ -787,9 +798,9 @@ const TableMetricsView: React.FC<{
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
+    <div className="overflow-hidden rounded-lg border border-[#0d6a80]">
       <table className="w-full text-left text-sm">
-        <thead className="bg-slate-50 text-xs text-slate-500">
+        <thead className="bg-[#033747] text-xs text-[#b7d9e2]">
           <tr>
             <th className="px-4 py-3 font-semibold">表 (Table)</th>
             <th className="px-4 py-3 text-right font-semibold">
@@ -813,7 +824,7 @@ const TableMetricsView: React.FC<{
           </tr>
         </thead>
 
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-[#0d6a80]">
           {rows.map((item, index) => {
             const tableName = buildTableName(item);
             const rowDiff = calcRowDiff(item);
@@ -821,9 +832,9 @@ const TableMetricsView: React.FC<{
             return (
               <tr
                 key={`${tableName}-${item.pipelineId || index}`}
-                className="bg-white text-slate-600 hover:bg-slate-50"
+                className="bg-[#003a4d] text-[#c3e7ef] hover:bg-[#064b5f]"
               >
-                <td className="max-w-[220px] truncate px-4 py-3 font-semibold text-slate-800">
+                <td className="max-w-[220px] truncate px-4 py-3 font-semibold text-white">
                   {tableName}
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -833,7 +844,7 @@ const TableMetricsView: React.FC<{
                   {formatNumber(item.writeRowCount)}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <span className="rounded-md bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-600">
+                  <span className="rounded-md bg-orange-500/15 px-2 py-1 text-xs font-semibold text-orange-300">
                     {formatNumber(rowDiff)}
                   </span>
                 </td>
@@ -844,7 +855,7 @@ const TableMetricsView: React.FC<{
                   {formatNumber(item.writeQps)}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <span className="rounded-md bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-500">
+                  <span className="rounded-md bg-white/5 px-2 py-1 text-xs font-semibold text-[#b7d9e2]">
                     {item.status || "-"}
                   </span>
                 </td>
@@ -889,7 +900,7 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
     xAxis: {
       type: "value",
       axisLabel: {
-        color: "#94a3b8",
+        color: "#8fb5c0",
         formatter: formatShortNumber,
       },
       axisLine: {
@@ -900,7 +911,7 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
       },
       splitLine: {
         lineStyle: {
-          color: "#eef2f7",
+          color: "rgba(125, 190, 205, 0.34)",
         },
       },
     },
@@ -908,7 +919,7 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
       type: "category",
       data: yAxis,
       axisLabel: {
-        color: "#475569",
+        color: "#8fb5c0",
         width: 82,
         overflow: "truncate",
       },
@@ -972,7 +983,7 @@ const buildLightLineOption = ({
       itemWidth: 12,
       itemHeight: 8,
       textStyle: {
-        color: "#64748b",
+        color: "#b7d9e2",
       },
     },
     xAxis: {
@@ -981,30 +992,30 @@ const buildLightLineOption = ({
       data: xAxis,
       axisLine: {
         lineStyle: {
-          color: "#e2e8f0",
+          color: "rgba(125, 190, 205, 0.4)",
         },
       },
       axisTick: {
         show: false,
       },
       axisLabel: {
-        color: "#94a3b8",
+        color: "#8fb5c0",
       },
     },
     yAxis: {
       type: "value",
       name: unit,
       nameTextStyle: {
-        color: "#94a3b8",
+        color: "#8fb5c0",
         padding: [0, 0, 0, -28],
       },
       axisLabel: {
-        color: "#94a3b8",
+        color: "#8fb5c0",
         formatter,
       },
       splitLine: {
         lineStyle: {
-          color: "#eef2f7",
+          color: "rgba(125, 190, 205, 0.28)",
         },
       },
     },
