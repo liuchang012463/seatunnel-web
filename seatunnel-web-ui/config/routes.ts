@@ -1,5 +1,12 @@
-﻿const prototypeMode = process.env.REACT_APP_PROTOTYPE === '1' || process.env.UMI_APP_PROTOTYPE === '1';
+import { HIDDEN_LAYOUT_ROUTE_PREFIX } from './routePrefix';
+
+const prototypeMode = process.env.REACT_APP_PROTOTYPE === '1' || process.env.UMI_APP_PROTOTYPE === '1';
 const prototypePage = './prototype/CapabilityPage';
+const hiddenLayoutRoutePrefix = HIDDEN_LAYOUT_ROUTE_PREFIX;
+const withHiddenLayoutPrefix = (path: string) =>
+  path === '/'
+    ? hiddenLayoutRoutePrefix
+    : `${hiddenLayoutRoutePrefix}${path.startsWith('/') ? path : `/${path}`}`;
 const component = (existing: string) => (prototypeMode ? prototypePage : existing);
 
 /**
@@ -60,11 +67,7 @@ const hiddenRoutes = [
   parentKeys: [parentPath],
 }));
 
-export default [
-  {
-    path: '/',
-    redirect: prototypeMode ? '/prototype/traceability' : '/data-source',
-  },
+const framedRoutes = [
   {
     path: '/prototype/traceability',
     component: './prototype/TraceabilityPage',
@@ -72,6 +75,28 @@ export default [
   },
   ...businessRoutes,
   ...hiddenRoutes,
+];
+
+const hiddenLayoutRoutes = [
+  {
+    path: hiddenLayoutRoutePrefix,
+    redirect: withHiddenLayoutPrefix(prototypeMode ? '/prototype/traceability' : '/data-source'),
+    hideInMenu: true,
+  },
+  ...framedRoutes.map((route) => ({
+    ...route,
+    path: withHiddenLayoutPrefix(route.path),
+    hideInMenu: true,
+  })),
+];
+
+export default [
+  {
+    path: '/',
+    redirect: prototypeMode ? '/prototype/traceability' : '/data-source',
+  },
+  ...framedRoutes,
+  ...hiddenLayoutRoutes,
   {
     path: '*',
     layout: false,

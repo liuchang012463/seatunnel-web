@@ -13,11 +13,9 @@ import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
 import { errorConfig } from './requestErrorConfig';
 import { applyNavTheme, getStoredNavTheme } from './theme';
 import HttpUtils from './utils/HttpUtils';
-import { applySidebarVisibility, shouldHideSidebar } from './utils/iframeLayout';
+import { applyLayoutVisibility, shouldHideLayout } from './utils/iframeLayout';
 
 const isDev = process.env.NODE_ENV === 'development';
-const hideSidebar = shouldHideSidebar();
-applySidebarVisibility(hideSidebar);
 const prototypeUser = {
   name: '原型演示用户',
   avatar: '',
@@ -80,6 +78,9 @@ export async function getInitialState(): Promise<{
 
 // ProLayout 支持的api https://procomponents.ant.design/components/layout
 export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => {
+  const hideLayout = shouldHideLayout();
+  applyLayoutVisibility(hideLayout);
+
   return {
     menuDataRender: () => prototypeMenuData,
     menuProps: {
@@ -144,8 +145,9 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
       );
     },
     ...initialState?.settings,
-    menuRender: hideSidebar ? false : initialState?.settings?.menuRender,
-    menuHeaderRender: hideSidebar ? false : undefined,
+    menuRender: hideLayout ? false : initialState?.settings?.menuRender,
+    menuHeaderRender: hideLayout ? false : undefined,
+    headerRender: hideLayout ? false : undefined,
   };
 };
 

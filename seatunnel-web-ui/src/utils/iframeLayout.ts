@@ -1,10 +1,4 @@
-const TRUE_VALUES = new Set(['1', 'true', 'yes', 'on']);
-const FALSE_VALUES = new Set(['0', 'false', 'no', 'off']);
-
-export interface IframeLayoutEnvironment {
-  UMI_APP_HIDE_SIDEBAR?: string;
-  REACT_APP_HIDE_SIDEBAR?: string;
-}
+import { HIDDEN_LAYOUT_ROUTE_PREFIX } from '../../config/routePrefix';
 
 export interface IframeWindowContext {
   self: unknown;
@@ -18,50 +12,34 @@ export interface IframeWindowContext {
   };
 }
 
-const parseSwitch = (value?: string | null): boolean | undefined => {
-  if (value == null || value.trim() === '') {
-    return undefined;
+const normalizePathname = (pathname: string): string => {
+  const normalizedPathname = pathname.split(/[?#]/)[0] || '/';
+  const pathWithLeadingSlash = normalizedPathname.startsWith('/') ? normalizedPathname : `/${normalizedPathname}`;
+
+  if (pathWithLeadingSlash.length > 1) {
+    return pathWithLeadingSlash.replace(/\/+$/, '');
   }
-  const normalized = value.trim().toLowerCase();
-  if (TRUE_VALUES.has(normalized)) {
-    return true;
-  }
-  if (FALSE_VALUES.has(normalized)) {
-    return false;
-  }
-  return undefined;
+
+  return pathWithLeadingSlash;
 };
 
-/**
- * The URL switch has priority so one deployment can serve both the standalone
- * shell and iframe pages. Environment variables provide a deployment default.
- */
-export const shouldHideSidebar = (
-  search = typeof window === 'undefined' ? '' : window.location.search,
-  environment: IframeLayoutEnvironment = {
-    UMI_APP_HIDE_SIDEBAR: process.env.UMI_APP_HIDE_SIDEBAR,
-    REACT_APP_HIDE_SIDEBAR: process.env.REACT_APP_HIDE_SIDEBAR,
-  },
+export const shouldHideLayout = (
+  pathname = typeof window === 'undefined' ? '' : window.location.pathname,
 ): boolean => {
-  const querySwitch = parseSwitch(
-    new URLSearchParams(search).get('hideMenu'),
-  );
-  if (querySwitch !== undefined) {
-    return querySwitch;
-  }
+  const normalizedPathname = normalizePathname(pathname);
 
   return (
-    parseSwitch(environment.UMI_APP_HIDE_SIDEBAR) ??
-    parseSwitch(environment.REACT_APP_HIDE_SIDEBAR) ??
-    false
+    normalizedPathname === HIDDEN_LAYOUT_ROUTE_PREFIX ||
+    normalizedPathname.startsWith(`${HIDDEN_LAYOUT_ROUTE_PREFIX}/`)
   );
 };
 
-export const applySidebarVisibility = (hidden: boolean): void => {
+export const applyLayoutVisibility = (hidden: boolean): void => {
   if (typeof document === 'undefined') {
     return;
   }
   document.documentElement.dataset.hideSidebar = String(hidden);
+  document.documentElement.dataset.hideHeader = String(hidden);
 };
 
 /**
