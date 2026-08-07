@@ -26,7 +26,16 @@ const formatNumber = (value: any) => {
 };
 
 const dashboardIconClass =
-  "absolute bottom-1 right-1 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#d6e4ff] bg-white/95 text-xs text-[#3157d5] opacity-0 shadow-sm backdrop-blur transition-all duration-150 hover:bg-[#eef3ff] hover:text-[#2448c2] group-hover:opacity-100";
+  [
+    "absolute bottom-2 right-2 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full",
+    "border border-cyan-200/45 bg-[linear-gradient(135deg,#07364a_0%,#075c76_52%,#24bde9_100%)]",
+    "text-[15px] text-white opacity-0 shadow-[0_10px_24px_rgba(5,150,190,0.32)] ring-1 ring-white/15",
+    "backdrop-blur transition-all duration-200 ease-out group-hover:opacity-100",
+    "hover:-translate-y-0.5 hover:scale-105 hover:border-cyan-100/80",
+    "hover:shadow-[0_14px_30px_rgba(5,150,190,0.42)] hover:ring-white/25",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70",
+    "focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b2530]",
+  ].join(" ");
 
 const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
   record,
@@ -80,6 +89,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
         borderWidth: 0,
         padding: [6, 8],
         textStyle: {
+          color: "#fff",
           fontSize: 12,
         },
         formatter: (params: any[]) => {
@@ -87,7 +97,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
           const qpsItem = params?.find((item) => item.seriesName === "速度");
 
           return `
-            <div>
+            <div style="color:#fff;line-height:1.6;">
               <div>条数：${formatNumber(rowItem?.value ?? 0)}</div>
               <div>速度：${formatNumber(qpsItem?.value ?? 0)} r/s</div>
             </div>
@@ -171,7 +181,8 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
           className={dashboardIconClass}
           onClick={handleOpenDashboard}
         >
-          <DashboardOutlined />
+          <span className="pointer-events-none absolute inset-[3px] rounded-full border border-white/10" />
+          <DashboardOutlined className="relative z-10" />
         </button>
       </Tooltip>
     );
