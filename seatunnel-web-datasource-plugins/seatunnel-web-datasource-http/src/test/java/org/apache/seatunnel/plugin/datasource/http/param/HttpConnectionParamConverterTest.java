@@ -80,6 +80,18 @@ class HttpConnectionParamConverterTest {
         assertEquals("authenticationType=API_KEY", field(fields, "apiKeyValue").getVisibleWhen());
     }
 
+    @Test
+    void shouldExposeBaseUrlGuidanceToFrontend() {
+        List<FormFieldConfig> fields = ReflectionFormGenerator.generate(HttpConnectionParam.class);
+
+        assertEquals(
+                "填写 API 服务的根地址，不要填写具体接口路径；例如 https://api.example.com。具体接口路径请在引接任务中填写。",
+                field(fields, "baseUrl").getDescription());
+        assertEquals(
+                "用于连接测试的相对路径，例如 /health；留空时使用 Base URL 本身进行检查。",
+                field(fields, "healthCheckPath").getDescription());
+    }
+
     private FormFieldConfig field(List<FormFieldConfig> fields, String key) {
         return fields.stream()
                 .filter(item -> key.equals(item.getKey()))

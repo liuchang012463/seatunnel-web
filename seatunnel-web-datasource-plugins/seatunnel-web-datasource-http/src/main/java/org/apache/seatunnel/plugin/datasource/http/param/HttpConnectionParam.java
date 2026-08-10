@@ -16,10 +16,21 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class HttpConnectionParam implements ConnectionParam {
 
-    @FormField(label = "Base URL", required = true, order = 1, placeholder = "https://api.example.com")
+    @FormField(
+            label = "Base URL",
+            required = true,
+            order = 1,
+            placeholder = "https://api.example.com",
+            description = "填写 API 服务的根地址，不要填写具体接口路径；例如 https://api.example.com。具体接口路径请在引接任务中填写。"
+    )
     private String baseUrl;
 
-    @FormField(label = "健康检查路径", order = 2, placeholder = "/health")
+    @FormField(
+            label = "健康检查路径",
+            order = 2,
+            placeholder = "/health",
+            description = "用于连接测试的相对路径，例如 /health；留空时使用 Base URL 本身进行检查。"
+    )
     private String healthCheckPath;
 
     @FormField(label = "认证方式", required = true, type = FieldType.SELECT, order = 3, defaultValue = "NONE")

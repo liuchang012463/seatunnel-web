@@ -15,6 +15,8 @@ public @interface FormField {
 
     String placeholder() default "";
 
+    String description() default "";
+
     String defaultValue() default "";
 
     /**

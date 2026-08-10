@@ -335,6 +335,21 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
     }
   };
 
+  const renderFieldLabel = (field: any): React.ReactNode => {
+    if (!field.description) {
+      return field.label;
+    }
+
+    return (
+      <span className="inline-flex items-center">
+        {field.label}
+        <Tooltip title={field.description}>
+          <InfoCircleOutlined className="ml-1 text-slate-400" />
+        </Tooltip>
+      </span>
+    );
+  };
+
   if (loading) {
     return (
       <div className="datasource-form-panel flex min-h-[220px] items-center justify-center p-5">
@@ -507,7 +522,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
               return (
                 <Form.Item
                   key={field.key}
-                  label={field.label}
+                  label={renderFieldLabel(field)}
                   name={field.key}
                   preserve={false}
                   rules={transformRules(field?.rules)}

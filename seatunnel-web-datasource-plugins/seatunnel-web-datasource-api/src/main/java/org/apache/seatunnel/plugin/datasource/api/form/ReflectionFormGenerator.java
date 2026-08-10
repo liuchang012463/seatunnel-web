@@ -134,6 +134,7 @@ public final class ReflectionFormGenerator {
         config.setKey(field.getName());
         config.setLabel(formField.label());
         config.setPlaceholder(formField.placeholder());
+        config.setDescription(formField.description());
         config.setVisibleWhen(formField.visibleWhen());
         config.setOrder(formField.order());
 
