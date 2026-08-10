@@ -239,6 +239,19 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
             throw new IllegalArgumentException("HTTP 增量时间格式不合法: " + timeFormat, error);
         }
 
+        String fieldName = firstNonBlank(sourceIncremental.get("fieldName"));
+        if (StringUtils.isBlank(fieldName)) {
+            throw new IllegalArgumentException("请选择 HTTP 响应中的代表时间字段");
+        }
+        String format = firstNonBlank(source.get("format"), "text").toLowerCase(Locale.ROOT);
+        if (!"json".equals(format)) {
+            throw new IllegalArgumentException("HTTP 增量任务响应格式必须为 JSON，才能识别代表时间字段");
+        }
+        if (StringUtils.isBlank(firstNonBlank(source.get("contentField"), source.get("content_field")))) {
+            throw new IllegalArgumentException("HTTP 增量任务必须配置响应内容字段");
+        }
+        validateHttpTemporalField(source, fieldName);
+
         String method = firstNonBlank(source.get("method"), "GET").toUpperCase(Locale.ROOT);
         if (!"GET".equals(method) && !"POST".equals(method)) {
             throw new IllegalArgumentException("HTTP 增量请求方法只支持 GET 或 POST");
@@ -249,6 +262,34 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         }
         if (StringUtils.isBlank(firstNonBlank(source.get("path")))) {
             throw new IllegalArgumentException("HTTP 增量任务必须配置请求相对路径");
+        }
+    }
+
+    private void validateHttpTemporalField(Map<String, Object> source, String fieldName) {
+        Object rawSchema = source.get("schema");
+        if (!(rawSchema instanceof Map<?, ?> schema)) {
+            throw new IllegalArgumentException("HTTP 增量任务必须先生成响应 Schema");
+        }
+        Object rawFields = schema.get("fields");
+        if (!(rawFields instanceof Map<?, ?> fields) || fields.isEmpty()) {
+            throw new IllegalArgumentException("HTTP 增量任务必须先生成响应 Schema 字段");
+        }
+
+        Object rawType = fields.get(fieldName);
+        if (rawType == null) {
+            for (Map.Entry<?, ?> entry : fields.entrySet()) {
+                if (fieldName.equalsIgnoreCase(String.valueOf(entry.getKey()))) {
+                    rawType = entry.getValue();
+                    break;
+                }
+            }
+        }
+        String type = firstNonBlank(rawType).toUpperCase(Locale.ROOT);
+        if (StringUtils.isBlank(type)) {
+            throw new IllegalArgumentException("代表时间字段必须选择 SeaTunnel 时间类型");
+        }
+        if (!type.contains("DATE") && !type.contains("TIME") && !type.contains("TIMESTAMP")) {
+            throw new IllegalArgumentException("HTTP 代表时间字段必须是 DATE、TIME 或 TIMESTAMP 类型");
         }
     }
 

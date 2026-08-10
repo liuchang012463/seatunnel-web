@@ -4,7 +4,6 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import {
-  Alert,
   Button,
   Collapse,
   Input,
@@ -250,6 +249,12 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
   });
   const selectedContentField = String(config.contentField || '');
   const selectedSchemaFields = asRecord(schemaFields);
+  const timeFieldOptions = schemaCandidates
+    .filter((field) => /date|time|timestamp/i.test(String(selectedSchemaFields[field.name] || '')))
+    .map((field) => ({
+      label: `${field.name}（${selectedSchemaFields[field.name]}）`,
+      value: field.name,
+    }));
 
   useEffect(() => {
     if (parsedRequestRef.current && parsedRequestRef.current !== requestSignature) {
@@ -259,10 +264,23 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
       setContentFieldOptions([]);
       setSchemaCandidates([]);
       if (selectedContentField || Object.keys(selectedSchemaFields).length > 0) {
-        onChange({ contentField: '', schema: { fields: {} } });
+        onChange({
+          contentField: '',
+          schema: { fields: {} },
+          ...(isIncremental
+            ? { incrementalConfig: { ...incrementalConfig, fieldName: '' } }
+            : {}),
+        });
       }
     }
-  }, [requestSignature, onChange, selectedContentField, selectedSchemaFields]);
+  }, [
+    requestSignature,
+    onChange,
+    selectedContentField,
+    selectedSchemaFields,
+    isIncremental,
+    incrementalConfig,
+  ]);
 
   const handleParseHttp = async () => {
     if (!config.dataSourceId) {
@@ -295,7 +313,13 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
       setParsedStatus(response?.data?.status);
       setContentFieldOptions(options);
       setSchemaCandidates([]);
-      onChange({ contentField: '', schema: { fields: {} } });
+      onChange({
+        contentField: '',
+        schema: { fields: {} },
+        ...(isIncremental
+          ? { incrementalConfig: { ...incrementalConfig, fieldName: '' } }
+          : {}),
+      });
     } catch (error: any) {
       message.error(error?.message || '接口解析失败，请检查请求参数和响应格式');
     } finally {
@@ -310,7 +334,13 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
       return fields;
     }, {});
     setSchemaCandidates(candidates);
-    onChange({ contentField: value, schema: { fields: nextFields } });
+    onChange({
+      contentField: value,
+      schema: { fields: nextFields },
+      ...(isIncremental
+        ? { incrementalConfig: { ...incrementalConfig, fieldName: '' } }
+        : {}),
+    });
   };
 
   const handleSchemaTypeChange = (fieldName: string, value: string) => {
@@ -363,6 +393,28 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
           onChange={(value) => onChange({ format: value })}
         />
       </Field>
+
+      {isIncremental && (
+        <Field
+          label="增量时间格式"
+          required
+          hint="先填写接口时间字段的格式，例如 yyyy-MM-dd HH:mm:ss；系统调度时会用它格式化 start_time 和 end_time。"
+        >
+          <Input
+            value={incrementalConfig.timeFormat || DEFAULT_HTTP_TIME_FORMAT}
+            placeholder={DEFAULT_HTTP_TIME_FORMAT}
+            onChange={(event) =>
+              onChange({
+                incrementalConfig: {
+                  ...incrementalConfig,
+                  enabled: true,
+                  timeFormat: event.target.value,
+                },
+              })
+            }
+          />
+        </Field>
+      )}
 
       <Field
         label="Query Params"
@@ -476,44 +528,41 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
                   )}
                 </Field>
               )}
+              {isIncremental && selectedContentField && (
+                <Field
+                  label="代表时间字段"
+                  required
+                  hint="这是响应记录中用于增量水位判断的字段，不是系统自动传入请求的 start_time 或 end_time。"
+                >
+                  <Select
+                    value={incrementalConfig.fieldName || undefined}
+                    options={timeFieldOptions}
+                    disabled={!String(incrementalConfig.timeFormat || '').trim() || timeFieldOptions.length === 0}
+                    placeholder="请先为时间字段选择 date / time / timestamp 类型"
+                    onChange={(value) =>
+                      onChange({
+                        incrementalConfig: {
+                          ...incrementalConfig,
+                          enabled: true,
+                          fieldName: value,
+                        },
+                      })
+                    }
+                    style={{ width: '100%' }}
+                  />
+                  {timeFieldOptions.length === 0 && (
+                    <div className="mt-1 text-xs text-slate-400">
+                      请先在上方为响应中的时间字段选择 date、time 或 timestamp 类型。
+                    </div>
+                  )}
+                </Field>
+              )}
               <details className="http-node-config__response-details">
                 <summary>查看响应样例</summary>
                 <pre>{JSON.stringify(parsedJson, null, 2)}</pre>
               </details>
             </>
           )}
-        </div>
-      )}
-
-      {isIncremental && (
-        <div className="workflow-panel__field workflow-panel__field--full">
-          <Alert
-            type="info"
-            showIcon
-            message="单表微批增量"
-            description="每次自动调度会按固定窗口请求 HTTP 接口：POST 写入 JSON Body，GET 写入 Query Params。系统自动传入 start_time 和 end_time，首次起始时间默认从 1970-01-01 00:00:00 开始。"
-          />
-          <div className="mt-3">
-            <Field
-              label="增量时间格式"
-              required
-              hint="填写 Java DateTimeFormatter 格式，例如 yyyy-MM-dd HH:mm:ss；用户无需再填写 start_time/end_time。"
-            >
-              <Input
-                value={incrementalConfig.timeFormat || DEFAULT_HTTP_TIME_FORMAT}
-                placeholder={DEFAULT_HTTP_TIME_FORMAT}
-                onChange={(event) =>
-                  onChange({
-                    incrementalConfig: {
-                      ...incrementalConfig,
-                      enabled: true,
-                      timeFormat: event.target.value,
-                    },
-                  })
-                }
-              />
-            </Field>
-          </div>
         </div>
       )}
 

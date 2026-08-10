@@ -39,7 +39,7 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
     }
 
     @Test
-    void acceptsHttpSourceWithOnlyTimeFormat() {
+    void acceptsHttpSourceWithResponseTimeField() {
         BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
                 "{\"status\":\"active\"}");
 
@@ -55,6 +55,39 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
                 () -> handler.validate(command)
         );
         assertTrue(error.getMessage().contains("JSON 对象"));
+    }
+
+    @Test
+    void rejectsHttpIncrementalWithoutResponseTimeField() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
+                "{\"status\":\"active\"}");
+        Map<String, Object> sourceConfig = sourceConfig(command);
+        Map<String, Object> incremental = new java.util.HashMap<>(
+                (Map<String, Object>) sourceConfig.get("incrementalConfig"));
+        incremental.put("fieldName", "");
+        sourceConfig.put("incrementalConfig", incremental);
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> handler.validate(command)
+        );
+        assertTrue(error.getMessage().contains("代表时间字段"));
+    }
+
+    @Test
+    void rejectsHttpIncrementalWithNonTemporalResponseTimeField() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
+                "{\"status\":\"active\"}");
+        Map<String, Object> sourceConfig = sourceConfig(command);
+        sourceConfig.put("schema", Map.of("fields", Map.of(
+                "id", "bigint",
+                "event_time", "string")));
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> handler.validate(command)
+        );
+        assertTrue(error.getMessage().contains("DATE、TIME 或 TIMESTAMP"));
     }
 
     @Test
@@ -192,9 +225,13 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
                 "method", "POST",
                 "body", body,
                 "format", "json",
-                "schema", Map.of("fields", Map.of("id", "bigint")),
+                "contentField", "$.data.*",
+                "schema", Map.of("fields", Map.of(
+                        "id", "bigint",
+                        "event_time", "timestamp")),
                 "incrementalConfig", Map.of(
                         "enabled", true,
+                        "fieldName", "event_time",
                         "timeFormat", "yyyy-MM-dd HH:mm:ss")
         ));
         Map<String, Object> sourceData = Map.of(

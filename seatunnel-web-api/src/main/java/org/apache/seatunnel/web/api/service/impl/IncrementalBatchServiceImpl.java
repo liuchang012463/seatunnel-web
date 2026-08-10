@@ -354,7 +354,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         if (incremental == null || !Boolean.TRUE.equals(incremental.getEnabled())) {
             throw new IllegalArgumentException("incremental configuration is not enabled");
         }
-        if (!httpSource && StringUtils.isBlank(incremental.getWatermarkColumn())) {
+        if (StringUtils.isBlank(incremental.getWatermarkColumn())) {
             throw new IllegalArgumentException("incremental watermark column is empty");
         }
         if (valueOrDefault(incremental.getMaxWindowSeconds(), 1800) <= 0) {
