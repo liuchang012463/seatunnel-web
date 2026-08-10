@@ -9,12 +9,12 @@ import {
   Collapse,
   Input,
   InputNumber,
-  Segmented,
   Select,
   Switch,
   Tooltip,
 } from 'antd';
 import { useEffect, useRef, useState } from 'react';
+import './HttpNodeConfig.less';
 import {
   asRecord,
   toObject,
@@ -140,6 +140,36 @@ function KeyValueEditor({
   );
 }
 
+function ChoiceGroup({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: Array<{ label: string; value: string }>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="http-node-config__choice-group" role="radiogroup">
+      {options.map((option) => {
+        const selected = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            className={`http-node-config__choice${selected ? ' is-selected' : ''}`}
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function HttpNodeConfig({ streaming, isIncremental = false, config, onChange }: Props) {
   const method = String(config.method || DEFAULT_HTTP_CONFIG.method).toUpperCase();
   const format = String(config.format || DEFAULT_HTTP_CONFIG.format).toLowerCase();
@@ -210,10 +240,12 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
       </Field>
 
       <Field label="请求方法" required hint="SeaTunnel HTTP Source 支持 GET 和 POST。">
-        <Segmented
-          block
+        <ChoiceGroup
           value={method}
-          options={['GET', 'POST']}
+          options={[
+            { label: 'GET', value: 'GET' },
+            { label: 'POST', value: 'POST' },
+          ]}
           onChange={(value) => onChange({ method: value })}
         />
       </Field>
@@ -223,8 +255,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         required
         hint="JSON 响应需要在下方填写 Schema；纯文本响应会输出 content 字段。"
       >
-        <Segmented
-          block
+        <ChoiceGroup
           value={format}
           options={[
             { label: '文本', value: 'text' },

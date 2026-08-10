@@ -1,0 +1,44 @@
+.http-node-config__choice-group {
+  display: flex;
+  width: 100%;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--st-color-border);
+  border-radius: var(--st-radius-md);
+  background: var(--st-color-bg-control);
+}
+
+.http-node-config__choice {
+  flex: 1;
+  min-height: var(--st-control-height);
+  padding: 0 12px;
+  border: 0;
+  border-radius: calc(var(--st-radius-md) - 1px);
+  color: var(--st-color-text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: var(--st-type-content-sm-size);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.http-node-config__choice:hover {
+  color: var(--st-color-text-primary);
+  background: var(--st-color-hover);
+}
+
+.http-node-config__choice.is-selected,
+.http-node-config__choice.is-selected:hover {
+  color: var(--st-color-text-primary);
+  background: var(--st-color-primary);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--st-color-primary) 38%, transparent);
+}
+
+.http-node-config__choice:focus-visible {
+  outline: 2px solid var(--st-color-accent);
+  outline-offset: 1px;
+}
