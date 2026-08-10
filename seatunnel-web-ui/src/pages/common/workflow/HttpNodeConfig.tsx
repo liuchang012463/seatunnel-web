@@ -197,13 +197,6 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
 
   return (
     <div className="workflow-panel__form-grid">
-      <Alert
-        type="info"
-        showIcon
-        message="按 SeaTunnel HTTP Source 配置"
-        description="基础参数用于完成一次请求；分页、重试和响应字段映射等低频参数已收纳到高级参数。"
-      />
-
       <Field
         label="请求相对路径"
         required
