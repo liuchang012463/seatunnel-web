@@ -1,7 +1,11 @@
 package org.apache.seatunnel.plugin.datasource.http.param;
 
+import org.apache.seatunnel.plugin.datasource.api.form.ReflectionFormGenerator;
+import org.apache.seatunnel.web.spi.form.FormFieldConfig;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -63,5 +67,23 @@ class HttpConnectionParamConverterTest {
 
         assertFalse(param.toString().contains("very-secret"));
         assertFalse(param.toString().contains("alice"));
+    }
+
+    @Test
+    void shouldExposeAuthenticationVisibilityRulesToFrontend() {
+        List<FormFieldConfig> fields = ReflectionFormGenerator.generate(HttpConnectionParam.class);
+
+        assertEquals("authenticationType=BASIC", field(fields, "username").getVisibleWhen());
+        assertEquals("authenticationType=BASIC", field(fields, "password").getVisibleWhen());
+        assertEquals("authenticationType=BEARER", field(fields, "bearerToken").getVisibleWhen());
+        assertEquals("authenticationType=API_KEY", field(fields, "apiKeyHeader").getVisibleWhen());
+        assertEquals("authenticationType=API_KEY", field(fields, "apiKeyValue").getVisibleWhen());
+    }
+
+    private FormFieldConfig field(List<FormFieldConfig> fields, String key) {
+        return fields.stream()
+                .filter(item -> key.equals(item.getKey()))
+                .findFirst()
+                .orElseThrow();
     }
 }

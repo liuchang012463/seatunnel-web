@@ -25,19 +25,23 @@ public class HttpConnectionParam implements ConnectionParam {
     @FormField(label = "认证方式", required = true, type = FieldType.SELECT, order = 3, defaultValue = "NONE")
     private HttpAuthenticationType authenticationType = HttpAuthenticationType.NONE;
 
-    @FormField(label = "用户名", order = 4)
+    @FormField(label = "用户名", order = 4, visibleWhen = "authenticationType=BASIC")
     private String username;
 
-    @FormField(label = "密码", type = FieldType.PASSWORD, order = 5)
+    @FormField(label = "密码", type = FieldType.PASSWORD, order = 5,
+            visibleWhen = "authenticationType=BASIC")
     private String password;
 
-    @FormField(label = "Bearer Token", type = FieldType.PASSWORD, order = 6)
+    @FormField(label = "Bearer Token", type = FieldType.PASSWORD, order = 6,
+            visibleWhen = "authenticationType=BEARER")
     private String bearerToken;
 
-    @FormField(label = "API Key Header", order = 7, placeholder = "X-API-Key")
+    @FormField(label = "API Key Header", order = 7, placeholder = "X-API-Key",
+            visibleWhen = "authenticationType=API_KEY")
     private String apiKeyHeader;
 
-    @FormField(label = "API Key Value", type = FieldType.PASSWORD, order = 8)
+    @FormField(label = "API Key Value", type = FieldType.PASSWORD, order = 8,
+            visibleWhen = "authenticationType=API_KEY")
     private String apiKeyValue;
 
     @FormField(label = "默认 Headers（JSON）", type = FieldType.TEXTAREA, order = 9)

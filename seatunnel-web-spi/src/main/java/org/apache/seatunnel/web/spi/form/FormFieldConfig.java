@@ -12,6 +12,7 @@ public class FormFieldConfig {
     private FieldType type;
     private String placeholder;
     private Object defaultValue;
+    private String visibleWhen;
     private List<Option> options;
     private List<Rule> rules;
     private int order;

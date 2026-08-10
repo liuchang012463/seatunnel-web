@@ -17,6 +17,14 @@ public @interface FormField {
 
     String defaultValue() default "";
 
+    /**
+     * Optional visibility expression consumed by dynamic frontend forms.
+     *
+     * <p>The expression uses the simple form {@code field=value}. Multiple
+     * accepted values can be separated with {@code |}.</p>
+     */
+    String visibleWhen() default "";
+
     FieldType type() default FieldType.INPUT;
 
     int order() default 0;

@@ -97,6 +97,7 @@ export interface DynamicFormField {
   placeholder?: string;
   options?: Array<{ label: string; value: string | number }>;
   defaultValue?: unknown;
+  visibleWhen?: string;
   rules?: DynamicFormFieldRule[];
 }
 

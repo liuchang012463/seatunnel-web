@@ -18,7 +18,11 @@ import { DataSourceOperateType, DynamicDataSourceFormProps } from "../../types";
 import DataSourceUnitSelect from "../DataSourceUnitSelect";
 import CustomKVList from "./components/CustomKVList";
 import DriverLocationField from "./components/DriverLocationField";
-import { getConfigInitialValues, transformRules } from "./utils/formUtils";
+import {
+  getConfigInitialValues,
+  isFieldVisible,
+  transformRules,
+} from "./utils/formUtils";
 
 import { Code2, FlaskConical, ShieldCheck } from "lucide-react";
 
@@ -85,6 +89,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
 
   const [formConfig, setFormConfig] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const authenticationType = Form.useWatch("authenticationType", configForm);
 
   const [needInstall, setNeedInstall] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -218,6 +223,18 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   useEffect(() => {
     fillCreateDefaultBaseInfo();
   }, [fillCreateDefaultBaseInfo]);
+
+  useEffect(() => {
+    if (!authenticationType) return;
+
+    const hiddenKeys = formConfig
+      .filter((field) => !isFieldVisible(field, { authenticationType }))
+      .map((field) => field.key);
+
+    if (hiddenKeys.length) {
+      configForm.resetFields(hiddenKeys);
+    }
+  }, [authenticationType, configForm, formConfig]);
 
   useEffect(() => {
     if (!dbType) {
@@ -477,6 +494,10 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
             labelAlign="left"
           >
             {formConfig.map((field) => {
+              if (!isFieldVisible(field, { authenticationType })) {
+                return null;
+              }
+
               if (field.type === "CUSTOM_SELECT") {
                 return (
                   <CustomKVList key={field.key} intl={intl} field={field} />
@@ -488,6 +509,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
                   key={field.key}
                   label={field.label}
                   name={field.key}
+                  preserve={false}
                   rules={transformRules(field?.rules)}
                   validateTrigger={["onChange", "onBlur"]}
                   className="!mb-[18px]"
