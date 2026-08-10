@@ -372,7 +372,11 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
               <div className="workflow-panel__form-grid">
                 {format === 'json' && (
                   <>
-                    <Field label="内容字段" hint="从响应中提取记录数组的 JSONPath，例如 $.data.*。">
+                    <Field
+                      label="内容字段"
+                      required
+                      hint="从响应中提取记录数组的 JSONPath，例如 $.data.*。"
+                    >
                       <Input
                         value={config.contentField || ''}
                         placeholder="例如 $.data.*"

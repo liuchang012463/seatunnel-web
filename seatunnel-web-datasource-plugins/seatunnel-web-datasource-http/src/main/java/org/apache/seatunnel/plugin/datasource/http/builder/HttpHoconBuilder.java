@@ -97,6 +97,11 @@ public class HttpHoconBuilder implements DataSourceHoconBuilder {
         if ("json".equals(format) && config.get("schema") == null) {
             throw new IllegalArgumentException("HTTP Source schema is required when format is json");
         }
+        if ("json".equals(format)
+                && StringUtils.isBlank(stringValue(config.get("content_field")))) {
+            throw new IllegalArgumentException(
+                    "HTTP Source content_field is required when format is json");
+        }
 
         validatePositive(config, "connect_timeout_ms");
         validatePositive(config, "socket_timeout_ms");

@@ -92,6 +92,18 @@ class HttpHoconBuilderTest {
                         Map.of("path", "/v1/orders", "format", "json"))));
     }
 
+    @Test
+    void shouldRequireContentFieldForJson() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> builder.buildSourceHocon(context(
+                        "{\"baseUrl\":\"https://api.example.com\"}",
+                        Map.of(
+                                "path", "/v1/orders",
+                                "format", "json",
+                                "schema", Map.of("fields", Map.of("id", "bigint"))))));
+    }
+
     private HoconBuildContext context(String connection, Map<String, Object> node) {
         return HoconBuildContext.builder()
                 .connectionParam(connection)
