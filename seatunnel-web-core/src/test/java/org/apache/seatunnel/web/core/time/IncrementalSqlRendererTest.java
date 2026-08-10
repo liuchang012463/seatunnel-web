@@ -100,6 +100,57 @@ class IncrementalSqlRendererTest {
                 rendered.getString("where_condition"));
     }
 
+    @Test
+    void injectsHttpPostWindowIntoJsonBody() {
+        JobScheduleConfig schedule = incrementalSchedule();
+        schedule.setRuntimeParams(Map.of(
+                "window_start", "2024-02-01 10:00:00.000000",
+                "window_end", "2024-02-01 10:30:00.000000",
+                "query_start", "2024-02-01 10:00:00.000000",
+                "batch_id", "batch-http",
+                "start_time", "2024-02-01 10:00:00",
+                "end_time", "2024-02-01 10:30:00"));
+
+        Config rendered = IncrementalSqlRenderer.render(
+                ConfigFactory.parseMap(Map.of(
+                        "dbType", "HTTP",
+                        "method", "POST",
+                        "body", "{\"status\":\"active\"}",
+                        "incrementalConfig", Map.of(
+                                "enabled", true,
+                                "timeFormat", "yyyy-MM-dd HH:mm:ss"))),
+                schedule);
+
+        assertEquals(
+                "{\"status\":\"active\",\"start_time\":\"2024-02-01 10:00:00\","
+                        + "\"end_time\":\"2024-02-01 10:30:00\"}",
+                rendered.getString("body"));
+    }
+
+    @Test
+    void injectsHttpGetWindowIntoQueryParams() {
+        JobScheduleConfig schedule = incrementalSchedule();
+        schedule.setRuntimeParams(Map.of(
+                "window_start", "2024-02-01 10:00:00.000000",
+                "window_end", "2024-02-01 10:30:00.000000",
+                "query_start", "2024-02-01 10:00:00.000000",
+                "batch_id", "batch-http"));
+
+        Config rendered = IncrementalSqlRenderer.render(
+                ConfigFactory.parseMap(Map.of(
+                        "dbType", "HTTP",
+                        "method", "GET",
+                        "params", Map.of("status", "active"),
+                        "incrementalConfig", Map.of(
+                                "enabled", true,
+                                "timeFormat", "yyyy-MM-dd HH:mm:ss"))),
+                schedule);
+
+        assertEquals("active", rendered.getString("params.status"));
+        assertEquals("2024-02-01 10:00:00", rendered.getString("params.start_time"));
+        assertEquals("2024-02-01 10:30:00", rendered.getString("params.end_time"));
+    }
+
     private JobScheduleConfig incrementalSchedule() {
         JobScheduleConfig config = new JobScheduleConfig();
         JobScheduleConfig.IncrementalConfig incremental = new JobScheduleConfig.IncrementalConfig();

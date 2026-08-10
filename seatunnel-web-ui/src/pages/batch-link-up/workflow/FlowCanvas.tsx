@@ -129,6 +129,9 @@ function buildInitialGraph(
                 enabled: true,
                 fieldName: '',
                 startValue: '1970-01-01 00:00:00',
+                ...(String(sourceDbType).toUpperCase() === 'HTTP'
+                  ? { timeFormat: 'yyyy-MM-dd HH:mm:ss' }
+                  : {}),
               }
             : undefined,
         },

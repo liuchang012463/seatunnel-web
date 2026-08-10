@@ -169,7 +169,11 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         }
         String fieldName = incremental.getWatermarkColumn();
         String startValue = incremental.getInitialWatermark();
-        if (IncrementalConfigResolver.hasCanonicalSourceConfig(workflow)) {
+        String sourceDbType = firstNonBlank(source.get("dbType"), source.get("sourceDbType"));
+        boolean httpSource = "HTTP".equalsIgnoreCase(sourceDbType);
+        if (httpSource) {
+            validateHttpIncremental(source, IncrementalConfigResolver.sourceIncrementalConfig(workflow));
+        } else if (IncrementalConfigResolver.hasCanonicalSourceConfig(workflow)) {
             Map<String, Object> sourceIncremental =
                     IncrementalConfigResolver.sourceIncrementalConfig(workflow);
             if (!Boolean.TRUE.equals(booleanValue(sourceIncremental.get("enabled")))) {
@@ -188,33 +192,79 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         } else {
             parseDateTime(startValue, "增量起始值");
         }
-        if (!isIdentifier(fieldName)) {
+        if (!httpSource && !isIdentifier(fieldName)) {
             throw new IllegalArgumentException("增量识别字段必须是合法字段名");
         }
         int safetyDelay = valueOrDefault(incremental.getSafetyDelaySeconds(), 0);
         int overlap = valueOrDefault(incremental.getOverlapSeconds(), 0);
         int maxWindow = valueOrDefault(incremental.getMaxWindowSeconds(), 1800);
-        String sourceDbType = firstNonBlank(source.get("dbType"), source.get("sourceDbType"));
-        if (!JDBC_DB_TYPES.contains(sourceDbType.toUpperCase(Locale.ROOT))) {
+        if (!httpSource && !JDBC_DB_TYPES.contains(sourceDbType.toUpperCase(Locale.ROOT))) {
             throw new IllegalArgumentException("单表增量任务来源必须是 JDBC 数据源");
         }
         if (safetyDelay < 0 || overlap < 0 || maxWindow <= 0 || overlap >= maxWindow) {
             throw new IllegalArgumentException("增量任务运行参数不合法");
         }
-        String sql = firstNonBlank(source.get("sql"), source.get("query"));
-        String table = firstNonBlank(source.get("table"), source.get("table_path"));
-        if (sql.isEmpty() && table.isEmpty()) {
-            throw new IllegalArgumentException("增量来源必须配置表或 SQL");
-        }
-        if (!sql.isEmpty()
-                && (!sql.contains("${window_start}") || !sql.contains("${window_end}"))) {
-            throw new IllegalArgumentException("增量 SQL 必须包含 ${window_start} 和 ${window_end}");
+        if (!httpSource) {
+            String sql = firstNonBlank(source.get("sql"), source.get("query"));
+            String table = firstNonBlank(source.get("table"), source.get("table_path"));
+            if (sql.isEmpty() && table.isEmpty()) {
+                throw new IllegalArgumentException("增量来源必须配置表或 SQL");
+            }
+            if (!sql.isEmpty()
+                    && (!sql.contains("${window_start}") || !sql.contains("${window_end}"))) {
+                throw new IllegalArgumentException("增量 SQL 必须包含 ${window_start} 和 ${window_end}");
+            }
         }
         String writeMode = firstNonBlank(sink.get("writeMode"), sink.get("data_save_mode"));
         String primaryKey = firstNonBlank(sink.get("primaryKey"), sink.get("primary_keys"));
         if (!"upsert".equalsIgnoreCase(writeMode)
                 || primaryKey.isEmpty()) {
             throw new IllegalArgumentException("增量任务目标必须配置 Upsert 写入模式和主键");
+        }
+    }
+
+    private void validateHttpIncremental(Map<String, Object> source,
+                                         Map<String, Object> sourceIncremental) {
+        if (!sourceIncremental.isEmpty()
+                && !Boolean.TRUE.equals(booleanValue(sourceIncremental.get("enabled")))) {
+            throw new IllegalArgumentException("HTTP 增量配置未启用");
+        }
+
+        String timeFormat = firstNonBlank(
+                sourceIncremental.get("timeFormat"),
+                IncrementalConfigResolver.DEFAULT_TIME_FORMAT);
+        try {
+            DateTimeFormatter.ofPattern(timeFormat);
+        } catch (IllegalArgumentException error) {
+            throw new IllegalArgumentException("HTTP 增量时间格式不合法: " + timeFormat, error);
+        }
+
+        String method = firstNonBlank(source.get("method"), "GET").toUpperCase(Locale.ROOT);
+        if (!"GET".equals(method) && !"POST".equals(method)) {
+            throw new IllegalArgumentException("HTTP 增量请求方法只支持 GET 或 POST");
+        }
+        if ("POST".equals(method) && !isJsonObject(source.get("body"))) {
+            throw new IllegalArgumentException(
+                    "HTTP 增量 POST 请求体必须是 JSON 对象，以便系统注入 start_time 和 end_time");
+        }
+        if (StringUtils.isBlank(firstNonBlank(source.get("path")))) {
+            throw new IllegalArgumentException("HTTP 增量任务必须配置请求相对路径");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean isJsonObject(Object rawBody) {
+        if (rawBody == null || StringUtils.isBlank(String.valueOf(rawBody))) {
+            return true;
+        }
+        if (rawBody instanceof Map) {
+            return true;
+        }
+        try {
+            Object parsed = JSONUtils.parseObject(String.valueOf(rawBody), Map.class);
+            return parsed instanceof Map;
+        } catch (Exception error) {
+            return false;
         }
     }
 

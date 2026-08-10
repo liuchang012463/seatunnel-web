@@ -24,6 +24,7 @@ import {
 
 type Props = {
   streaming?: boolean;
+  isIncremental?: boolean;
   config: Record<string, any>;
   onChange: (patch: Record<string, any>) => void;
 };
@@ -38,6 +39,7 @@ const DEFAULT_HTTP_CONFIG = {
   keepParamsAsForm: false,
   keepPageParamAsHttpParam: false,
 };
+const DEFAULT_HTTP_TIME_FORMAT = 'yyyy-MM-dd HH:mm:ss';
 
 function Field({
   label,
@@ -138,7 +140,7 @@ function KeyValueEditor({
   );
 }
 
-export default function HttpNodeConfig({ streaming, config, onChange }: Props) {
+export default function HttpNodeConfig({ streaming, isIncremental = false, config, onChange }: Props) {
   const method = String(config.method || DEFAULT_HTTP_CONFIG.method).toUpperCase();
   const format = String(config.format || DEFAULT_HTTP_CONFIG.format).toLowerCase();
   const pageType = config.pageing
@@ -161,6 +163,29 @@ export default function HttpNodeConfig({ streaming, config, onChange }: Props) {
     }
   }, [config, onChange]);
 
+  useEffect(() => {
+    if (!isIncremental) {
+      return;
+    }
+    const incrementalConfig = asRecord(config.incrementalConfig);
+    const patch: Record<string, any> = {};
+    if (incrementalConfig.enabled !== true) {
+      patch.enabled = true;
+    }
+    if (incrementalConfig.fieldName === undefined || incrementalConfig.fieldName === null) {
+      patch.fieldName = '';
+    }
+    if (!incrementalConfig.startValue) {
+      patch.startValue = '1970-01-01 00:00:00';
+    }
+    if (!incrementalConfig.timeFormat) {
+      patch.timeFormat = DEFAULT_HTTP_TIME_FORMAT;
+    }
+    if (Object.keys(patch).length) {
+      onChange({ incrementalConfig: { ...incrementalConfig, ...patch } });
+    }
+  }, [config, isIncremental, onChange]);
+
   const patchPageing = (patch: Record<string, any>) =>
     onChange({ pageing: { ...pageConfig, ...patch } });
 
@@ -168,6 +193,7 @@ export default function HttpNodeConfig({ streaming, config, onChange }: Props) {
     onChange({ pageing: value === 'NONE' ? undefined : { page_type: value } });
 
   const schemaFields = asRecord(config.schema).fields;
+  const incrementalConfig = asRecord(config.incrementalConfig);
 
   return (
     <div className="workflow-panel__form-grid">
@@ -217,7 +243,11 @@ export default function HttpNodeConfig({ streaming, config, onChange }: Props) {
 
       <Field
         label="Query Params"
-        hint="每行一个键值对；值可以使用 ${window_start} 和 ${window_end} 动态时间占位符。"
+        hint={
+          isIncremental
+            ? '每行一个键值对；GET 请求会由系统自动追加 start_time 和 end_time。其它值仍可使用时间占位符。'
+            : '每行一个键值对；值可以使用 ${window_start} 和 ${window_end} 动态时间占位符。'
+        }
       >
         <KeyValueEditor
           value={config.params}
@@ -242,12 +272,20 @@ export default function HttpNodeConfig({ streaming, config, onChange }: Props) {
       {method === 'POST' && (
         <Field
           label="请求体 Body"
-          hint="按接口要求填写 JSON 或文本；值可以使用 ${window_start} 和 ${window_end}。"
+          hint={
+            isIncremental
+              ? '请填写 JSON 对象中的固定业务参数；系统会在每次调度时自动注入 start_time 和 end_time。'
+              : '按接口要求填写 JSON 或文本；值可以使用 ${window_start} 和 ${window_end}。'
+          }
         >
           <Input.TextArea
             rows={5}
             value={config.body || ''}
-            placeholder={'例如 {"start_time":"${window_start}","end_time":"${window_end}"}'}
+            placeholder={
+              isIncremental
+                ? '例如 {"status":"active"}；start_time/end_time 由系统自动注入'
+                : '{"start_time":"${window_start}","end_time":"${window_end}"}'
+            }
             onChange={(event) => onChange({ body: event.target.value })}
           />
         </Field>
@@ -266,6 +304,38 @@ export default function HttpNodeConfig({ streaming, config, onChange }: Props) {
             onChange={(value) => onChange({ schema: { fields: value } })}
           />
         </Field>
+      )}
+
+      {isIncremental && (
+        <div className="workflow-panel__field workflow-panel__field--full">
+          <Alert
+            type="info"
+            showIcon
+            message="单表微批增量"
+            description="每次自动调度会按固定窗口请求 HTTP 接口：POST 写入 JSON Body，GET 写入 Query Params。系统自动传入 start_time 和 end_time，首次起始时间默认从 1970-01-01 00:00:00 开始。"
+          />
+          <div className="mt-3">
+            <Field
+              label="增量时间格式"
+              required
+              hint="填写 Java DateTimeFormatter 格式，例如 yyyy-MM-dd HH:mm:ss；用户无需再填写 start_time/end_time。"
+            >
+              <Input
+                value={incrementalConfig.timeFormat || DEFAULT_HTTP_TIME_FORMAT}
+                placeholder={DEFAULT_HTTP_TIME_FORMAT}
+                onChange={(event) =>
+                  onChange({
+                    incrementalConfig: {
+                      ...incrementalConfig,
+                      enabled: true,
+                      timeFormat: event.target.value,
+                    },
+                  })
+                }
+              />
+            </Field>
+          </div>
+        </div>
       )}
 
       <Collapse

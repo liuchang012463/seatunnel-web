@@ -94,9 +94,13 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
 
         IncrementalBatchControl control = controlDao.queryByDefinitionIdForUpdate(jobDefinitionId);
         JobScheduleConfig config = loadScheduleConfig(jobDefinitionId);
-        IncrementalConfigResolver.resolve(loadWorkflow(jobDefinitionId), config);
+        Map<String, Object> workflow = loadWorkflow(jobDefinitionId);
+        boolean httpSource = IncrementalConfigResolver.isHttpSource(workflow);
+        IncrementalConfigResolver.resolve(workflow, config);
         JobScheduleConfig.IncrementalConfig incremental = config.getIncremental();
-        validateRuntimeConfig(incremental);
+        validateRuntimeConfig(incremental, httpSource);
+        String httpTimeFormat = httpSource
+                ? IncrementalConfigResolver.sourceTimeFormat(workflow) : null;
         boolean bootstrap = control == null;
 
         IncrementalBatchRecord running = recordDao.queryRunningByDefinitionId(jobDefinitionId);
@@ -109,7 +113,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         if (control != null && retry != null
                 && toLocalDateTime(retry.getWindowStart())
                         .equals(toLocalDateTime(control.getCommittedWatermark()))) {
-            return reopenFailedBatch(control, retry);
+            return reopenFailedBatch(control, retry, httpTimeFormat);
         }
 
         LocalDateTime start = bootstrap
@@ -146,7 +150,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         recordDao.insert(record);
         controlDao.updateStatus(control.getId(), RUNNING, now);
 
-        return execution(record);
+        return execution(record, httpTimeFormat);
     }
 
     @Override
@@ -212,7 +216,8 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
     }
 
     private IncrementalBatchExecution reopenFailedBatch(IncrementalBatchControl control,
-                                                        IncrementalBatchRecord record) {
+                                                        IncrementalBatchRecord record,
+                                                        String httpTimeFormat) {
         Date now = new Date();
         record.setBatchStatus(RUNNING);
         record.setRetryCount(valueOrDefault(record.getRetryCount(), 0) + 1);
@@ -222,7 +227,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         record.setUpdateTime(now);
         recordDao.updateById(record);
         controlDao.updateStatus(control.getId(), RUNNING, now);
-        return execution(record);
+        return execution(record, httpTimeFormat);
     }
 
     private void commitSuccess(IncrementalBatchRecord record) {
@@ -263,12 +268,19 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         }
     }
 
-    private IncrementalBatchExecution execution(IncrementalBatchRecord record) {
+    private IncrementalBatchExecution execution(IncrementalBatchRecord record,
+                                                String httpTimeFormat) {
         Map<String, String> params = new HashMap<>();
         params.put("batch_id", record.getBatchId());
-        params.put("window_start", IncrementalSqlRenderer.format(toLocalDateTime(record.getWindowStart())));
-        params.put("window_end", IncrementalSqlRenderer.format(toLocalDateTime(record.getWindowEnd())));
+        LocalDateTime windowStart = toLocalDateTime(record.getWindowStart());
+        LocalDateTime windowEnd = toLocalDateTime(record.getWindowEnd());
+        params.put("window_start", IncrementalSqlRenderer.format(windowStart));
+        params.put("window_end", IncrementalSqlRenderer.format(windowEnd));
         params.put("query_start", IncrementalSqlRenderer.format(toLocalDateTime(record.getQueryStart())));
+        if (StringUtils.isNotBlank(httpTimeFormat)) {
+            params.put("start_time", IncrementalSqlRenderer.format(windowStart, httpTimeFormat));
+            params.put("end_time", IncrementalSqlRenderer.format(windowEnd, httpTimeFormat));
+        }
         return IncrementalBatchExecution.builder()
                 .skipped(false)
                 .batchId(record.getBatchId())
@@ -337,11 +349,12 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         }
     }
 
-    private void validateRuntimeConfig(JobScheduleConfig.IncrementalConfig incremental) {
+    private void validateRuntimeConfig(JobScheduleConfig.IncrementalConfig incremental,
+                                       boolean httpSource) {
         if (incremental == null || !Boolean.TRUE.equals(incremental.getEnabled())) {
             throw new IllegalArgumentException("incremental configuration is not enabled");
         }
-        if (StringUtils.isBlank(incremental.getWatermarkColumn())) {
+        if (!httpSource && StringUtils.isBlank(incremental.getWatermarkColumn())) {
             throw new IllegalArgumentException("incremental watermark column is empty");
         }
         if (valueOrDefault(incremental.getMaxWindowSeconds(), 1800) <= 0) {
@@ -356,6 +369,13 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         DataSource dataSource = dataSourceDao.queryById(definition.getSourceDatasourceId());
         if (dataSource == null || dataSource.getDbType() == null) {
             throw new IllegalArgumentException("incremental source datasource does not exist");
+        }
+
+        if (dataSource.getDbType() == DbType.HTTP) {
+            ConnectionParam param = DataSourceUtils.buildConnectionParams(
+                    dataSource.getDbType(), dataSource.getConnectionParams());
+            DataSourceUtils.checkDatasourceParam(param);
+            return LocalDateTime.now();
         }
 
         DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dataSource.getDbType());

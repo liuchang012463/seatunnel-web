@@ -39,6 +39,25 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
     }
 
     @Test
+    void acceptsHttpSourceWithOnlyTimeFormat() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
+                "{\"status\":\"active\"}");
+
+        assertDoesNotThrow(() -> handler.validate(command));
+    }
+
+    @Test
+    void rejectsHttpIncrementalPostWithNonJsonBody() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand("status=active");
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> handler.validate(command)
+        );
+        assertTrue(error.getMessage().contains("JSON 对象"));
+    }
+
+    @Test
     void rejectsNonTemporalSourceField() {
         BatchGuideSingleIncrementalJobSaveCommand command = validCommand("BIGINT");
 
@@ -138,6 +157,51 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
                         ))
                 )
         ));
+        Map<String, Object> sinkConfig = new java.util.HashMap<>(Map.of(
+                "dbType", "MYSQL",
+                "dataSourceId", "2",
+                "table", "orders",
+                "writeMode", "upsert",
+                "primaryKey", "id"
+        ));
+        Map<String, Object> sinkData = Map.of("nodeType", "sink", "config", sinkConfig);
+
+        BatchGuideSingleIncrementalJobSaveCommand command =
+                new BatchGuideSingleIncrementalJobSaveCommand();
+        command.setWorkflow(new java.util.HashMap<>(Map.of(
+                "nodes", List.of(
+                        Map.of("id", "source", "data", sourceData),
+                        Map.of("id", "sink", "data", sinkData)
+                ),
+                "edges", List.of(Map.of("source", "source", "target", "sink"))
+        )));
+        JobScheduleConfig schedule = new JobScheduleConfig();
+        schedule.setExecutionMode(TaskExecutionMode.AUTO);
+        schedule.setCronExpression("0 0/5 * * * ?");
+        schedule.setScheduleType("minute");
+        schedule.setMinuteValue(Map.of("intervalMinute", 5));
+        command.setSchedule(schedule);
+        return command;
+    }
+
+    private BatchGuideSingleIncrementalJobSaveCommand validHttpCommand(String body) {
+        Map<String, Object> sourceConfig = new java.util.HashMap<>(Map.of(
+                "dbType", "HTTP",
+                "dataSourceId", "1",
+                "path", "/omext/mock/seatunnel-http",
+                "method", "POST",
+                "body", body,
+                "format", "json",
+                "schema", Map.of("fields", Map.of("id", "bigint")),
+                "incrementalConfig", Map.of(
+                        "enabled", true,
+                        "timeFormat", "yyyy-MM-dd HH:mm:ss")
+        ));
+        Map<String, Object> sourceData = Map.of(
+                "nodeType", "source",
+                "config", sourceConfig,
+                "meta", Map.of("outputSchema", List.of())
+        );
         Map<String, Object> sinkConfig = new java.util.HashMap<>(Map.of(
                 "dbType", "MYSQL",
                 "dataSourceId", "2",
