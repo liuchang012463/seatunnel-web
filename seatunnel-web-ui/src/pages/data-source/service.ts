@@ -103,6 +103,13 @@ export const dataSourceCatalogApi = {
     return HttpUtils.post(`${apiPrefixCatalog}/getTop20Data/${datasourceId}`, requestBody);
   },
 
+  parseHttpResponse: (
+    datasourceId: string,
+    requestBody: any,
+  ): Promise<{ code: number; data: { status: number; body: string; json: unknown }; message?: string }> => {
+    return HttpUtils.post(`${apiPrefixCatalog}/parse-http/${datasourceId}`, requestBody);
+  },
+
   buildSqlTemplate: (
     datasourceId: string,
     requestBody: any,

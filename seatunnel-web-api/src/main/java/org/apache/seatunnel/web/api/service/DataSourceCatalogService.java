@@ -61,6 +61,12 @@ public interface DataSourceCatalogService {
     QueryResult getTop20Data(Long datasourceId, Map<String, Object> requestBody);
 
     /**
+     * Executes one configured HTTP Source request and returns its JSON response
+     * for the interactive schema parser.
+     */
+    Map<String, Object> parseHttpResponse(Long datasourceId, Map<String, Object> requestBody);
+
+    /**
      * Count total number of rows from the specified table or query.
      *
      * @param datasourceId primary key of the data source

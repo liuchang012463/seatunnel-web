@@ -9,11 +9,13 @@ import {
   Collapse,
   Input,
   InputNumber,
+  message,
   Select,
   Switch,
   Tooltip,
 } from 'antd';
 import { useEffect, useRef, useState } from 'react';
+import { dataSourceCatalogApi } from '@/pages/data-source/service';
 import './HttpNodeConfig.less';
 import {
   asRecord,
@@ -21,6 +23,14 @@ import {
   toRows,
   type KeyValueRow,
 } from './HttpNodeConfigUtils';
+import {
+  buildHttpSchemaFieldCandidates,
+  findHttpContentFields,
+  formatHttpSchemaSample,
+  SEATUNNEL_HTTP_SCHEMA_TYPES,
+  type HttpContentFieldOption,
+  type HttpSchemaFieldCandidate,
+} from './HttpResponseSchemaUtils';
 
 type Props = {
   streaming?: boolean;
@@ -224,6 +234,95 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
 
   const schemaFields = asRecord(config.schema).fields;
   const incrementalConfig = asRecord(config.incrementalConfig);
+  const [parseLoading, setParseLoading] = useState(false);
+  const [parsedJson, setParsedJson] = useState<unknown>();
+  const [parsedStatus, setParsedStatus] = useState<number>();
+  const [contentFieldOptions, setContentFieldOptions] = useState<HttpContentFieldOption[]>([]);
+  const [schemaCandidates, setSchemaCandidates] = useState<HttpSchemaFieldCandidate[]>([]);
+  const parsedRequestRef = useRef<string>();
+
+  const requestSignature = JSON.stringify({
+    path: config.path || '',
+    method,
+    params: config.params || {},
+    headers: config.headers || {},
+    body: config.body || '',
+  });
+  const selectedContentField = String(config.contentField || '');
+  const selectedSchemaFields = asRecord(schemaFields);
+
+  useEffect(() => {
+    if (parsedRequestRef.current && parsedRequestRef.current !== requestSignature) {
+      parsedRequestRef.current = undefined;
+      setParsedJson(undefined);
+      setParsedStatus(undefined);
+      setContentFieldOptions([]);
+      setSchemaCandidates([]);
+      if (selectedContentField || Object.keys(selectedSchemaFields).length > 0) {
+        onChange({ contentField: '', schema: { fields: {} } });
+      }
+    }
+  }, [requestSignature, onChange, selectedContentField, selectedSchemaFields]);
+
+  const handleParseHttp = async () => {
+    if (!config.dataSourceId) {
+      message.warning('请先选择 HTTP 数据源');
+      return;
+    }
+    if (!String(config.path || '').trim()) {
+      message.warning('请先填写请求相对路径');
+      return;
+    }
+
+    setParseLoading(true);
+    try {
+      const response = await dataSourceCatalogApi.parseHttpResponse(String(config.dataSourceId), {
+        path: config.path,
+        method,
+        params: config.params || {},
+        headers: config.headers || {},
+        body: config.body || '',
+      });
+      if (response?.code !== 0) {
+        message.error(response?.message || '接口解析失败');
+        return;
+      }
+
+      const responseJson = response?.data?.json ?? JSON.parse(response?.data?.body || 'null');
+      const options = findHttpContentFields(responseJson);
+      parsedRequestRef.current = requestSignature;
+      setParsedJson(responseJson);
+      setParsedStatus(response?.data?.status);
+      setContentFieldOptions(options);
+      setSchemaCandidates([]);
+      onChange({ contentField: '', schema: { fields: {} } });
+    } catch (error: any) {
+      message.error(error?.message || '接口解析失败，请检查请求参数和响应格式');
+    } finally {
+      setParseLoading(false);
+    }
+  };
+
+  const handleContentFieldChange = (value: string) => {
+    const candidates = buildHttpSchemaFieldCandidates(parsedJson, value);
+    const nextFields = candidates.reduce<Record<string, string>>((fields, candidate) => {
+      fields[candidate.name] = String(selectedSchemaFields[candidate.name] || '');
+      return fields;
+    }, {});
+    setSchemaCandidates(candidates);
+    onChange({ contentField: value, schema: { fields: nextFields } });
+  };
+
+  const handleSchemaTypeChange = (fieldName: string, value: string) => {
+    onChange({
+      schema: {
+        fields: {
+          ...selectedSchemaFields,
+          [fieldName]: value,
+        },
+      },
+    });
+  };
 
   return (
     <div className="workflow-panel__form-grid">
@@ -316,18 +415,74 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
       )}
 
       {format === 'json' && (
-        <Field
-          label="Schema 字段"
-          required
-          hint="按字段名和 SeaTunnel 类型填写，例如 id=bigint、event_time=timestamp。"
-        >
-          <KeyValueEditor
-            value={schemaFields}
-            keyPlaceholder="字段名，例如 id"
-            valuePlaceholder="SeaTunnel 类型，例如 bigint"
-            onChange={(value) => onChange({ schema: { fields: value } })}
-          />
-        </Field>
+        <div className="workflow-panel__field workflow-panel__field--full http-node-config__schema-flow">
+          <div className="workflow-panel__label">
+            <span className="mr-1 text-rose-500">*</span>
+            响应字段与 Schema
+            <Tooltip title="先解析接口响应，再选择内容字段，最后为每个字段选择 SeaTunnel 类型。">
+              <InfoCircleOutlined className="ml-1 text-slate-400" />
+            </Tooltip>
+          </div>
+          <div className="http-node-config__parse-actions">
+            <Button type="primary" loading={parseLoading} onClick={handleParseHttp}>
+              解析接口
+            </Button>
+            <span>填写完路径、方法、参数和请求体后执行一次请求。</span>
+          </div>
+
+          {parsedJson !== undefined && (
+            <>
+              <div className="http-node-config__parse-result">
+                接口返回 {parsedStatus ? `HTTP ${parsedStatus}` : 'JSON'}，请选择记录所在的内容字段。
+              </div>
+              <Field
+                label="内容字段"
+                required
+                hint="选择响应中代表记录数组的 JSONPath，例如 $.data.*。"
+              >
+                <Select
+                  value={selectedContentField || undefined}
+                  placeholder="请选择内容字段"
+                  options={contentFieldOptions}
+                  onChange={handleContentFieldChange}
+                  style={{ width: '100%' }}
+                />
+              </Field>
+              {selectedContentField && (
+                <Field label="Schema 字段" required hint="为每个解析出的字段逐一选择 SeaTunnel 类型。">
+                  {schemaCandidates.length > 0 ? (
+                    <div className="http-node-config__schema-list">
+                      {schemaCandidates.map((field) => (
+                        <div className="http-node-config__schema-row" key={field.name}>
+                          <div className="http-node-config__schema-name">{field.name}</div>
+                          <div className="http-node-config__schema-sample">
+                            示例：{formatHttpSchemaSample(field.sample)} · 建议 {field.inferredType}
+                          </div>
+                          <Select
+                            value={selectedSchemaFields[field.name] || undefined}
+                            placeholder="请选择类型"
+                            options={SEATUNNEL_HTTP_SCHEMA_TYPES.map((type) => ({
+                              label: type,
+                              value: type,
+                            }))}
+                            onChange={(value) => handleSchemaTypeChange(field.name, value)}
+                            style={{ width: 150, flexShrink: 0 }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="http-node-config__parse-result">当前内容字段没有可生成的对象字段。</div>
+                  )}
+                </Field>
+              )}
+              <details className="http-node-config__response-details">
+                <summary>查看响应样例</summary>
+                <pre>{JSON.stringify(parsedJson, null, 2)}</pre>
+              </details>
+            </>
+          )}
+        </div>
       )}
 
       {isIncremental && (
@@ -372,17 +527,6 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
               <div className="workflow-panel__form-grid">
                 {format === 'json' && (
                   <>
-                    <Field
-                      label="内容字段"
-                      required
-                      hint="从响应中提取记录数组的 JSONPath，例如 $.data.*。"
-                    >
-                      <Input
-                        value={config.contentField || ''}
-                        placeholder="例如 $.data.*"
-                        onChange={(event) => onChange({ contentField: event.target.value })}
-                      />
-                    </Field>
                     <Field label="JSON 字段映射" hint="把响应 JSONPath 映射为输出字段。">
                       <KeyValueEditor
                         value={config.jsonField}

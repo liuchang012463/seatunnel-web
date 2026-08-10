@@ -97,6 +97,9 @@ public class HttpHoconBuilder implements DataSourceHoconBuilder {
         if ("json".equals(format) && config.get("schema") == null) {
             throw new IllegalArgumentException("HTTP Source schema is required when format is json");
         }
+        if ("json".equals(format)) {
+            validateSchema(config.get("schema"));
+        }
         if ("json".equals(format)
                 && StringUtils.isBlank(stringValue(config.get("content_field")))) {
             throw new IllegalArgumentException(
@@ -110,6 +113,21 @@ public class HttpHoconBuilder implements DataSourceHoconBuilder {
         validateOptionalPositive(config, "retry_backoff_max_ms");
         validateOptionalPositive(config, "poll_interval_millis");
         validatePageing(asMap(config.get("pageing")));
+    }
+
+    private void validateSchema(Object rawSchema) {
+        Map<String, Object> schema = asMap(rawSchema);
+        Map<String, Object> fields = asMap(schema.get("fields"));
+        if (fields.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "HTTP Source schema.fields must contain at least one field");
+        }
+        fields.forEach((name, type) -> {
+            if (StringUtils.isBlank(name) || StringUtils.isBlank(stringValue(type))) {
+                throw new IllegalArgumentException(
+                        "HTTP Source schema.fields requires a type for every field");
+            }
+        });
     }
 
     private void validatePageing(Map<String, Object> pageing) {

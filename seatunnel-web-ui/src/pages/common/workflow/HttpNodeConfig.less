@@ -42,3 +42,93 @@
   outline: 2px solid var(--st-color-accent);
   outline-offset: 1px;
 }
+
+.http-node-config__schema-flow {
+  gap: 10px;
+}
+
+.http-node-config__parse-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--st-color-text-secondary);
+  font-size: var(--st-type-caption-size);
+}
+
+.http-node-config__parse-result {
+  color: var(--st-color-text-secondary);
+  font-size: var(--st-type-caption-size);
+  line-height: var(--st-type-caption-line);
+}
+
+.http-node-config__schema-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.http-node-config__schema-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--st-color-divider);
+  border-radius: var(--st-radius-md);
+  background: var(--st-color-bg-control);
+}
+
+.http-node-config__schema-name {
+  min-width: 120px;
+  color: var(--st-color-text-primary);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.http-node-config__schema-sample {
+  min-width: 0;
+  flex: 1;
+  color: var(--st-color-text-secondary);
+  font-size: var(--st-type-caption-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.http-node-config__response-details {
+  color: var(--st-color-text-secondary);
+  font-size: var(--st-type-caption-size);
+}
+
+.http-node-config__response-details summary {
+  cursor: pointer;
+  color: var(--st-color-accent);
+}
+
+.http-node-config__response-details pre {
+  max-height: 180px;
+  margin: 8px 0 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--st-color-divider);
+  border-radius: var(--st-radius-md);
+  background: var(--st-color-bg-control);
+  color: var(--st-color-text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  .http-node-config__schema-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .http-node-config__schema-sample {
+    white-space: normal;
+  }
+
+  .http-node-config__schema-row .ant-select {
+    width: 100% !important;
+  }
+}

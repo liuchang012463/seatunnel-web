@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
@@ -11,9 +12,12 @@ import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
+import org.apache.seatunnel.plugin.datasource.http.client.HttpRequestSupport;
+import org.apache.seatunnel.plugin.datasource.http.param.HttpConnectionParam;
 import org.apache.seatunnel.web.api.service.DataSourceCatalogService;
 import org.apache.seatunnel.web.api.service.DataSourceService;
 import org.apache.seatunnel.web.common.QueryResult;
+import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.time.TimeVariableJdbcSqlRenderService;
 import org.apache.seatunnel.web.dao.entity.DataSource;
@@ -23,13 +27,22 @@ import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.FileEntryVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
+import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.Duration;
+import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -175,6 +188,82 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
             throw e;
         } catch (Exception e) {
             log.error("Failed to query top20 preview data, datasourceId={}, requestBody={}", datasourceId, requestBody, e);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
+        }
+    }
+
+    @Override
+    public Map<String, Object> parseHttpResponse(
+            Long datasourceId, Map<String, Object> requestBody) {
+        validateDatasourceId(datasourceId);
+        validateRequestBody(requestBody, "requestBody");
+
+        DataSource dataSource = getDataSourceOrThrow(datasourceId);
+        if (dataSource.getDbType() != DbType.HTTP) {
+            throw new ServiceException(
+                    Status.DATASOURCE_METADATA_ERROR,
+                    "HTTP response parsing is only supported for HTTP data sources");
+        }
+
+        ConnectionParam connectionParam = buildConnectionParam(dataSource);
+        if (!(connectionParam instanceof HttpConnectionParam httpParam)) {
+            throw new ServiceException(
+                    Status.DATASOURCE_METADATA_ERROR,
+                    "Invalid HTTP connection parameters");
+        }
+
+        String path = getRequiredText(requestBody, "path");
+        String method = StringUtils.defaultIfBlank(getText(requestBody, "method"), "GET")
+                .toUpperCase();
+        if (!"GET".equals(method) && !"POST".equals(method)) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "method");
+        }
+
+        try {
+            Map<String, Object> params = asObjectMap(requestBody.get("params"));
+            String url = HttpRequestSupport.resolveUrl(httpParam.getBaseUrl(), path);
+            if ("GET".equals(method)) {
+                url = appendQueryParams(url, params);
+            }
+
+            Map<String, String> headers = toStringMap(requestBody.get("headers"));
+            headers = HttpRequestSupport.mergeHeaders(httpParam, headers);
+            headers.putIfAbsent("Accept", "application/json");
+            if ("POST".equals(method)) {
+                headers.putIfAbsent("Content-Type", "application/json");
+            }
+
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofMillis(Math.max(1_000, httpParam.getSocketTimeoutMs())))
+                    .method(method, bodyPublisher(method, requestBody.get("body")));
+            headers.forEach(requestBuilder::header);
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofMillis(Math.max(1_000, httpParam.getConnectTimeoutMs())))
+                    .build();
+            HttpResponse<String> response = client.send(
+                    requestBuilder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new ServiceException(
+                        Status.DATASOURCE_METADATA_ERROR,
+                        "HTTP response parsing failed with status " + response.statusCode());
+            }
+
+            JsonNode json = JSONUtils.parseObject(response.body(), JsonNode.class);
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("status", response.statusCode());
+            result.put("body", response.body());
+            result.put("json", json);
+            return result;
+        } catch (ServiceException e) {
+            throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, "HTTP response parsing interrupted");
+        } catch (Exception e) {
+            log.error("Failed to parse HTTP response, datasourceId={}, requestBody={}", datasourceId, requestBody, e);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
         }
     }
@@ -416,6 +505,71 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
             log.error("Failed to get datasource catalog, datasourceId={}", dataSource.getId(), e);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
         }
+    }
+
+    private HttpRequest.BodyPublisher bodyPublisher(String method, Object rawBody) {
+        if ("GET".equals(method)) {
+            return HttpRequest.BodyPublishers.noBody();
+        }
+
+        String body = rawBody == null
+                ? ""
+                : rawBody instanceof String
+                        ? (String) rawBody
+                        : JSONUtils.toJsonString(rawBody);
+        return HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8);
+    }
+
+    private String appendQueryParams(String url, Map<String, Object> params) {
+        if (params.isEmpty()) {
+            return url;
+        }
+
+        StringBuilder query = new StringBuilder();
+        for (Map.Entry<String, Object> entry : params.entrySet()) {
+            if (StringUtils.isBlank(entry.getKey()) || entry.getValue() == null) {
+                continue;
+            }
+            if (query.length() > 0) {
+                query.append('&');
+            }
+            query.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
+            query.append('=');
+            query.append(URLEncoder.encode(String.valueOf(entry.getValue()), StandardCharsets.UTF_8));
+        }
+        if (query.length() == 0) {
+            return url;
+        }
+
+        StringBuilder result = new StringBuilder(url);
+        result.append(url.contains("?") ? (url.endsWith("?") || url.endsWith("&") ? "" : "&") : "?");
+        result.append(query);
+        return result.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> asObjectMap(Object raw) {
+        if (!(raw instanceof Map<?, ?> rawMap)) {
+            return new LinkedHashMap<>();
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        rawMap.forEach((key, value) -> {
+            if (key != null) {
+                result.put(String.valueOf(key), value);
+            }
+        });
+        return result;
+    }
+
+    private Map<String, String> toStringMap(Object raw) {
+        Map<String, Object> source = asObjectMap(raw);
+        Map<String, String> result = new LinkedHashMap<>();
+        source.forEach((key, value) -> {
+            if (value != null) {
+                result.put(key, String.valueOf(value));
+            }
+        });
+        return result;
     }
 
     private JdbcCatalog getJdbcCatalog(DataSource dataSource, ConnectionParam connectionParam) {
