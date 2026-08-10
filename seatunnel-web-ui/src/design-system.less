@@ -743,13 +743,14 @@ body [class*="[background:radial-gradient(circle_at_top_left"] {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--st-color-bg-primary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--st-color-primary);
-  border: 2px solid var(--st-color-bg-primary);
-  border-radius: 0;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -757,7 +758,7 @@ body [class*="[background:radial-gradient(circle_at_top_left"] {
 }
 
 * {
-  scrollbar-color: var(--st-color-primary) var(--st-color-bg-primary);
+  scrollbar-color: var(--st-color-primary) transparent;
 }
 
 @media (max-width: 768px) {

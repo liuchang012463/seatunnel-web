@@ -24,7 +24,7 @@ import './index.less';
 const REALTIME_DETAIL_CACHE_PREFIX = 'stream-link-up-detail';
 const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
-const getDefaultTimeRange = () => [moment().subtract(4, 'days'), moment().add(1, 'days')];
+const getDefaultTimeRange = () => [];
 
 interface StreamingJobDefinitionVO {
   id: string | number;

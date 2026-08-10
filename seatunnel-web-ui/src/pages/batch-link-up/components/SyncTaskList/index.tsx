@@ -26,10 +26,7 @@ interface Props {
   emptyDescription?: string;
 }
 
-const DEFAULT_TIME_RANGE = [
-  moment().subtract(4, "days"),
-  moment().add(1, "days"),
-];
+const DEFAULT_TIME_RANGE = [];
 
 const RUNNING_STATUS_SET = new Set([
   "INITIALIZING",
