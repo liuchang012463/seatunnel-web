@@ -247,9 +247,12 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
                     requestBuilder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                String responseBody = StringUtils.abbreviate(
+                        StringUtils.normalizeSpace(response.body()), 1000);
+                String detail = StringUtils.isBlank(responseBody) ? "" : ": " + responseBody;
                 throw new ServiceException(
                         Status.DATASOURCE_METADATA_ERROR,
-                        "HTTP response parsing failed with status " + response.statusCode());
+                        "HTTP response parsing failed with status " + response.statusCode() + detail);
             }
 
             JsonNode json = JSONUtils.parseObject(response.body(), JsonNode.class);

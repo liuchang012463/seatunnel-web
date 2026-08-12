@@ -50,6 +50,21 @@ const DEFAULT_HTTP_CONFIG = {
 };
 const DEFAULT_HTTP_TIME_FORMAT = 'yyyy-MM-dd HH:mm:ss';
 
+function getHttpErrorMessage(error: any, fallback: string) {
+  const candidates = [
+    error?.response?.msg,
+    error?.response?.message,
+    error?.data?.msg,
+    error?.data?.message,
+    error?.msg,
+    error?.message,
+  ];
+  const messageText = candidates.find(
+    (value) => typeof value === 'string' && value.trim() && value.trim() !== '[object Object]',
+  );
+  return messageText ? messageText.trim() : fallback;
+}
+
 function Field({
   label,
   hint,
@@ -302,7 +317,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         body: config.body || '',
       });
       if (response?.code !== 0) {
-        message.error(response?.message || '接口解析失败');
+        message.error(getHttpErrorMessage(response, '接口解析失败，请检查请求参数和响应格式'));
         return;
       }
 
@@ -321,7 +336,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
           : {}),
       });
     } catch (error: any) {
-      message.error(error?.message || '接口解析失败，请检查请求参数和响应格式');
+      message.error(getHttpErrorMessage(error, '接口解析失败，请检查请求参数和响应格式'));
     } finally {
       setParseLoading(false);
     }
