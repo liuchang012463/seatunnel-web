@@ -241,6 +241,7 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofMillis(Math.max(1_000, httpParam.getConnectTimeoutMs())))
+                    .version(HttpClient.Version.HTTP_1_1)
                     .build();
             HttpResponse<String> response = client.send(
                     requestBuilder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
