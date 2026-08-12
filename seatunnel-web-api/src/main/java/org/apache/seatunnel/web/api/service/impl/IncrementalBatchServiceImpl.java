@@ -95,12 +95,9 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         IncrementalBatchControl control = controlDao.queryByDefinitionIdForUpdate(jobDefinitionId);
         JobScheduleConfig config = loadScheduleConfig(jobDefinitionId);
         Map<String, Object> workflow = loadWorkflow(jobDefinitionId);
-        boolean httpSource = IncrementalConfigResolver.isHttpSource(workflow);
         IncrementalConfigResolver.resolve(workflow, config);
         JobScheduleConfig.IncrementalConfig incremental = config.getIncremental();
-        validateRuntimeConfig(incremental, httpSource);
-        String httpTimeFormat = httpSource
-                ? IncrementalConfigResolver.sourceTimeFormat(workflow) : null;
+        validateRuntimeConfig(incremental);
         boolean bootstrap = control == null;
 
         IncrementalBatchRecord running = recordDao.queryRunningByDefinitionId(jobDefinitionId);
@@ -113,7 +110,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         if (control != null && retry != null
                 && toLocalDateTime(retry.getWindowStart())
                         .equals(toLocalDateTime(control.getCommittedWatermark()))) {
-            return reopenFailedBatch(control, retry, httpTimeFormat);
+            return reopenFailedBatch(control, retry);
         }
 
         LocalDateTime start = bootstrap
@@ -150,7 +147,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         recordDao.insert(record);
         controlDao.updateStatus(control.getId(), RUNNING, now);
 
-        return execution(record, httpTimeFormat);
+        return execution(record);
     }
 
     @Override
@@ -216,8 +213,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
     }
 
     private IncrementalBatchExecution reopenFailedBatch(IncrementalBatchControl control,
-                                                        IncrementalBatchRecord record,
-                                                        String httpTimeFormat) {
+                                                        IncrementalBatchRecord record) {
         Date now = new Date();
         record.setBatchStatus(RUNNING);
         record.setRetryCount(valueOrDefault(record.getRetryCount(), 0) + 1);
@@ -227,7 +223,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         record.setUpdateTime(now);
         recordDao.updateById(record);
         controlDao.updateStatus(control.getId(), RUNNING, now);
-        return execution(record, httpTimeFormat);
+        return execution(record);
     }
 
     private void commitSuccess(IncrementalBatchRecord record) {
@@ -268,8 +264,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         }
     }
 
-    private IncrementalBatchExecution execution(IncrementalBatchRecord record,
-                                                String httpTimeFormat) {
+    private IncrementalBatchExecution execution(IncrementalBatchRecord record) {
         Map<String, String> params = new HashMap<>();
         params.put("batch_id", record.getBatchId());
         LocalDateTime windowStart = toLocalDateTime(record.getWindowStart());
@@ -277,10 +272,6 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         params.put("window_start", IncrementalSqlRenderer.format(windowStart));
         params.put("window_end", IncrementalSqlRenderer.format(windowEnd));
         params.put("query_start", IncrementalSqlRenderer.format(toLocalDateTime(record.getQueryStart())));
-        if (StringUtils.isNotBlank(httpTimeFormat)) {
-            params.put("start_time", IncrementalSqlRenderer.format(windowStart, httpTimeFormat));
-            params.put("end_time", IncrementalSqlRenderer.format(windowEnd, httpTimeFormat));
-        }
         return IncrementalBatchExecution.builder()
                 .skipped(false)
                 .batchId(record.getBatchId())
@@ -349,8 +340,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         }
     }
 
-    private void validateRuntimeConfig(JobScheduleConfig.IncrementalConfig incremental,
-                                       boolean httpSource) {
+    private void validateRuntimeConfig(JobScheduleConfig.IncrementalConfig incremental) {
         if (incremental == null || !Boolean.TRUE.equals(incremental.getEnabled())) {
             throw new IllegalArgumentException("incremental configuration is not enabled");
         }

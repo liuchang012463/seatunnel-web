@@ -47,14 +47,10 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
     }
 
     @Test
-    void rejectsHttpIncrementalPostWithNonJsonBody() {
+    void acceptsHttpIncrementalWithUserProvidedTextBody() {
         BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand("status=active");
 
-        IllegalArgumentException error = assertThrows(
-                IllegalArgumentException.class,
-                () -> handler.validate(command)
-        );
-        assertTrue(error.getMessage().contains("JSON 对象"));
+        assertDoesNotThrow(() -> handler.validate(command));
     }
 
     @Test

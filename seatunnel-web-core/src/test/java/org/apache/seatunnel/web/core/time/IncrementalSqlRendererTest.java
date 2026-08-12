@@ -101,15 +101,13 @@ class IncrementalSqlRendererTest {
     }
 
     @Test
-    void injectsHttpPostWindowIntoJsonBody() {
+    void keepsHttpPostBodyWithoutImplicitWindowFields() {
         JobScheduleConfig schedule = incrementalSchedule();
         schedule.setRuntimeParams(Map.of(
                 "window_start", "2024-02-01 10:00:00.000000",
                 "window_end", "2024-02-01 10:30:00.000000",
                 "query_start", "2024-02-01 10:00:00.000000",
-                "batch_id", "batch-http",
-                "start_time", "2024-02-01 10:00:00",
-                "end_time", "2024-02-01 10:30:00"));
+                "batch_id", "batch-http"));
 
         Config rendered = IncrementalSqlRenderer.render(
                 ConfigFactory.parseMap(Map.of(
@@ -122,13 +120,12 @@ class IncrementalSqlRendererTest {
                 schedule);
 
         assertEquals(
-                "{\"status\":\"active\",\"start_time\":\"2024-02-01 10:00:00\","
-                        + "\"end_time\":\"2024-02-01 10:30:00\"}",
+                "{\"status\":\"active\"}",
                 rendered.getString("body"));
     }
 
     @Test
-    void injectsHttpGetWindowIntoQueryParams() {
+    void rendersOnlyUserConfiguredHttpWindowParams() {
         JobScheduleConfig schedule = incrementalSchedule();
         schedule.setRuntimeParams(Map.of(
                 "window_start", "2024-02-01 10:00:00.000000",
@@ -140,15 +137,40 @@ class IncrementalSqlRendererTest {
                 ConfigFactory.parseMap(Map.of(
                         "dbType", "HTTP",
                         "method", "GET",
-                        "params", Map.of("status", "active"),
-                        "incrementalConfig", Map.of(
-                                "enabled", true,
-                                "timeFormat", "yyyy-MM-dd HH:mm:ss"))),
+                        "params", Map.of(
+                                "status", "active",
+                                "from", "${window_start}",
+                                "to", "${window_end}"))),
                 schedule);
 
         assertEquals("active", rendered.getString("params.status"));
-        assertEquals("2024-02-01 10:00:00", rendered.getString("params.start_time"));
-        assertEquals("2024-02-01 10:30:00", rendered.getString("params.end_time"));
+        assertEquals("2024-02-01 10:00:00.000000", rendered.getString("params.from"));
+        assertEquals("2024-02-01 10:30:00.000000", rendered.getString("params.to"));
+        assertTrue(!rendered.hasPath("params.start_time"));
+        assertTrue(!rendered.hasPath("params.end_time"));
+    }
+
+    @Test
+    void rendersOnlyUserConfiguredHttpPostBodyWindowFields() {
+        JobScheduleConfig schedule = incrementalSchedule();
+        schedule.setRuntimeParams(Map.of(
+                "window_start", "2024-02-01 10:00:00.000000",
+                "window_end", "2024-02-01 10:30:00.000000",
+                "query_start", "2024-02-01 10:00:00.000000",
+                "batch_id", "batch-http"));
+
+        Config rendered = IncrementalSqlRenderer.render(
+                ConfigFactory.parseMap(Map.of(
+                        "dbType", "HTTP",
+                        "method", "POST",
+                        "body", "{\"from\":\"${window_start}\",\"to\":\"${window_end}\"}")),
+                schedule);
+
+        assertEquals(
+                "{\"from\":\"2024-02-01 10:00:00.000000\",\"to\":\"2024-02-01 10:30:00.000000\"}",
+                rendered.getString("body"));
+        assertTrue(!rendered.getString("body").contains("start_time"));
+        assertTrue(!rendered.getString("body").contains("end_time"));
     }
 
     private JobScheduleConfig incrementalSchedule() {

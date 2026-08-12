@@ -1,6 +1,5 @@
 package org.apache.seatunnel.web.core.time;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.apache.commons.lang3.StringUtils;
@@ -39,8 +38,7 @@ public final class IncrementalSqlRenderer {
 
         JobScheduleConfig.IncrementalConfig incremental = schedule.getIncremental();
         boolean httpSource = isHttpSource(config);
-        Map<String, String> values = resolveValues(
-                config, incremental, schedule.getRuntimeParams(), httpSource);
+        Map<String, String> values = resolveValues(incremental, schedule.getRuntimeParams());
         Map<String, Object> overrides = new HashMap<>();
 
         renderTokenizedValue(config, "sql", values, overrides);
@@ -71,21 +69,14 @@ public final class IncrementalSqlRenderer {
     }
 
     private static Map<String, String> resolveValues(
-            Config config,
             JobScheduleConfig.IncrementalConfig incremental,
-            Map<String, String> runtimeParams,
-            boolean httpSource) {
+            Map<String, String> runtimeParams) {
         Map<String, String> values = new HashMap<>();
         if (runtimeParams != null) {
             values.putAll(runtimeParams);
         }
         if (values.containsKey("window_start") && values.containsKey("window_end")
                 && values.containsKey("query_start")) {
-            if (httpSource) {
-                String timeFormat = httpTimeFormat(config);
-                values.putIfAbsent("start_time", format(parse(values.get("window_start")), timeFormat));
-                values.putIfAbsent("end_time", format(parse(values.get("window_end")), timeFormat));
-            }
             return values;
         }
 
@@ -98,11 +89,6 @@ public final class IncrementalSqlRenderer {
         values.putIfAbsent("window_start", format(start));
         values.putIfAbsent("window_end", format(end));
         values.putIfAbsent("query_start", format(start.minusSeconds(overlap)));
-        if (httpSource) {
-            String timeFormat = httpTimeFormat(config);
-            values.putIfAbsent("start_time", format(start, timeFormat));
-            values.putIfAbsent("end_time", format(end, timeFormat));
-        }
         values.putIfAbsent("batch_id", "preview");
         return values;
     }
@@ -116,48 +102,30 @@ public final class IncrementalSqlRenderer {
         }
 
         Map<String, Object> params = renderObject(config, "params", values);
-        String method = StringUtils.defaultIfBlank(getString(config, "method"), "GET")
-                .toUpperCase(java.util.Locale.ROOT);
-        if ("GET".equals(method)) {
-            params.put("start_time", values.get("start_time"));
-            params.put("end_time", values.get("end_time"));
-        }
         if (!params.isEmpty()) {
             overrides.put("params", params);
         }
 
+        String method = StringUtils.defaultIfBlank(getString(config, "method"), "GET")
+                .toUpperCase(java.util.Locale.ROOT);
         if (!"POST".equals(method)) {
             return;
         }
 
-        Map<String, Object> body = renderBody(config, values);
-        body.put("start_time", values.get("start_time"));
-        body.put("end_time", values.get("end_time"));
-        overrides.put("body", JSONUtils.toJsonString(body));
-    }
-
-    private static Map<String, Object> renderBody(Config config, Map<String, String> values) {
         if (!config.hasPath("body")) {
-            return new LinkedHashMap<>();
+            return;
         }
         Object rawBody = config.getAnyRef("body");
         if (rawBody instanceof Map) {
-            return renderMap((Map<?, ?>) rawBody, values);
+            Map<String, Object> rendered = renderMap((Map<?, ?>) rawBody, values);
+            if (!rendered.equals(rawBody)) {
+                overrides.put("body", JSONUtils.toJsonString(rendered));
+            }
+            return;
         }
         String body = renderTokens(String.valueOf(rawBody), values);
-        if (StringUtils.isBlank(body)) {
-            return new LinkedHashMap<>();
-        }
-        try {
-            Map<String, Object> parsed = JSONUtils.parseObject(
-                    body, new TypeReference<Map<String, Object>>() {});
-            if (parsed == null) {
-                throw new IllegalArgumentException("not a JSON object");
-            }
-            return new LinkedHashMap<>(parsed);
-        } catch (Exception error) {
-            throw new IllegalArgumentException(
-                    "HTTP 增量 POST 请求体必须是 JSON 对象，以便注入 start_time 和 end_time", error);
+        if (!body.equals(String.valueOf(rawBody))) {
+            overrides.put("body", body);
         }
     }
 
@@ -223,15 +191,6 @@ public final class IncrementalSqlRenderer {
 
     private static boolean isHttpSource(Config config) {
         return "HTTP".equalsIgnoreCase(getString(config, "dbType"));
-    }
-
-    private static String httpTimeFormat(Config config) {
-        if (!config.hasPath("incrementalConfig.timeFormat")) {
-            return IncrementalConfigResolver.DEFAULT_TIME_FORMAT;
-        }
-        return StringUtils.defaultIfBlank(
-                getString(config, "incrementalConfig.timeFormat"),
-                IncrementalConfigResolver.DEFAULT_TIME_FORMAT);
     }
 
     private static String getString(Config config, String key) {

@@ -256,10 +256,6 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         if (!"GET".equals(method) && !"POST".equals(method)) {
             throw new IllegalArgumentException("HTTP 增量请求方法只支持 GET 或 POST");
         }
-        if ("POST".equals(method) && !isJsonObject(source.get("body"))) {
-            throw new IllegalArgumentException(
-                    "HTTP 增量 POST 请求体必须是 JSON 对象，以便系统注入 start_time 和 end_time");
-        }
         if (StringUtils.isBlank(firstNonBlank(source.get("path")))) {
             throw new IllegalArgumentException("HTTP 增量任务必须配置请求相对路径");
         }
@@ -290,22 +286,6 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         }
         if (!type.contains("DATE") && !type.contains("TIME") && !type.contains("TIMESTAMP")) {
             throw new IllegalArgumentException("HTTP 代表时间字段必须是 DATE、TIME 或 TIMESTAMP 类型");
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private boolean isJsonObject(Object rawBody) {
-        if (rawBody == null || StringUtils.isBlank(String.valueOf(rawBody))) {
-            return true;
-        }
-        if (rawBody instanceof Map) {
-            return true;
-        }
-        try {
-            Object parsed = JSONUtils.parseObject(String.valueOf(rawBody), Map.class);
-            return parsed instanceof Map;
-        } catch (Exception error) {
-            return false;
         }
     }
 

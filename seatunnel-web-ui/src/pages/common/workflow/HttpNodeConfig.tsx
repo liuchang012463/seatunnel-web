@@ -229,9 +229,6 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
     if (incrementalConfig.fieldName === undefined || incrementalConfig.fieldName === null) {
       patch.fieldName = '';
     }
-    if (!incrementalConfig.startValue) {
-      patch.startValue = '1970-01-01 00:00:00';
-    }
     if (!incrementalConfig.timeFormat) {
       patch.timeFormat = DEFAULT_HTTP_TIME_FORMAT;
     }
@@ -413,7 +410,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         <Field
           label="增量时间格式"
           required
-          hint="先填写接口时间字段的格式，例如 yyyy-MM-dd HH:mm:ss；系统调度时会用它格式化 start_time 和 end_time。"
+          hint="填写响应代表时间字段的格式，例如 yyyy-MM-dd HH:mm:ss；请求参数名和位置请在 Query Params 或 Body 中自行配置。"
         >
           <Input
             value={incrementalConfig.timeFormat || DEFAULT_HTTP_TIME_FORMAT}
@@ -435,7 +432,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         label="Query Params"
         hint={
           isIncremental
-            ? '每行一个键值对；GET 请求会由系统自动追加 start_time 和 end_time。其它值仍可使用时间占位符。'
+            ? '按接口文档填写参数名和值；需要动态窗口时，在值中手动使用 ${window_start} 或 ${window_end}，系统不会自动添加 start_time/end_time。'
             : '每行一个键值对；值可以使用 ${window_start} 和 ${window_end} 动态时间占位符。'
         }
       >
@@ -464,7 +461,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
           label="请求体 Body"
           hint={
             isIncremental
-              ? '请填写 JSON 对象中的固定业务参数；系统会在每次调度时自动注入 start_time 和 end_time。'
+              ? '按接口文档填写 JSON 或文本请求体；需要动态窗口时，在字段值中手动使用 ${window_start} 或 ${window_end}。'
               : '按接口要求填写 JSON 或文本；值可以使用 ${window_start} 和 ${window_end}。'
           }
         >
@@ -473,7 +470,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
             value={config.body || ''}
             placeholder={
               isIncremental
-                ? '例如 {"status":"active"}；start_time/end_time 由系统自动注入'
+                ? '{"from":"${window_start}","to":"${window_end}","status":"active"}'
                 : '{"start_time":"${window_start}","end_time":"${window_end}"}'
             }
             onChange={(event) => onChange({ body: event.target.value })}
@@ -547,7 +544,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
                 <Field
                   label="代表时间字段"
                   required
-                  hint="这是响应记录中用于增量水位判断的字段，不是系统自动传入请求的 start_time 或 end_time。"
+                  hint="选择响应记录中用于增量水位判断的时间字段；请求参数名和位置由上方 Query Params 或 Body 自行配置。"
                 >
                   <Select
                     value={incrementalConfig.fieldName || undefined}
