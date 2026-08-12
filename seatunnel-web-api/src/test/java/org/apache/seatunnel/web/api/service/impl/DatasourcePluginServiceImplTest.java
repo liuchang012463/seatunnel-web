@@ -12,6 +12,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class DatasourcePluginServiceImplTest {
@@ -52,5 +53,23 @@ class DatasourcePluginServiceImplTest {
         assertEquals(1, fields.get(0).getOrder());
         assertEquals("authenticationType=BASIC", fields.get(1).getVisibleWhen());
         assertTrue(fields.get(1).getOrder() > fields.get(0).getOrder());
+    }
+
+    @Test
+    void refreshesExistingPluginSchemaWhenInstallingPlugin() {
+        DataSourcePluginConfigDao dao = mock(DataSourcePluginConfigDao.class);
+        DataSourcePluginConfig config = new DataSourcePluginConfig();
+        config.setPluginType(DbType.HTTP);
+        config.setConfigSchema("{\"fields\":[]}");
+        when(dao.queryByPluginType(DbType.HTTP)).thenReturn(config);
+
+        DatasourcePluginServiceImpl service = new DatasourcePluginServiceImpl();
+        ReflectionTestUtils.setField(service, "dataSourcePluginConfigDao", dao);
+
+        service.installPlugin("HTTP");
+
+        verify(dao).updatePluginConfig(config);
+        assertTrue(config.getConfigSchema().contains("authenticationType=BASIC"));
+        assertTrue(config.getConfigSchema().contains("填写 API 服务的根地址"));
     }
 }

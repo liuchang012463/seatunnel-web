@@ -60,10 +60,6 @@ public class DatasourcePluginServiceImpl implements DatasourcePluginService {
 
         DbType dbType = parseDbType(pluginType);
 
-        if (dataSourcePluginConfigDao.existsByPluginType(dbType)) {
-            return;
-        }
-
         try {
             DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
             if (processor == null) {
