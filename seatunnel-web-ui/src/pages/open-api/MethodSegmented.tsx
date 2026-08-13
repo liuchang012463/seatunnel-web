@@ -7,9 +7,10 @@ import {
   Trash2,
   Waypoints,
 } from "lucide-react";
+import type { HttpMethod } from "./openapi-parser";
 import "./index.less"
 
-type FilterMethod = "ALL" | "GET" | "POST" | "PUT" | "DELETE";
+export type FilterMethod = "ALL" | HttpMethod;
 
 interface MethodSegmentedProps {
   method: FilterMethod;

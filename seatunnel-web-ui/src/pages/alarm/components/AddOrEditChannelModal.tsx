@@ -50,7 +50,7 @@ const { TextArea } = Input;
  */
 function parseConfigJson(
   configJson?: string,
-): Record<string, unknown> {
+): Record<string, any> {
   if (!configJson) {
     return {};
   }
@@ -291,7 +291,7 @@ const AddOrEditChannelModal =
       Form.useForm<ChannelFormValues>();
 
     const [configForm] =
-      Form.useForm<Record<string, unknown>>();
+      Form.useForm<Record<string, any>>();
 
     const [open, setOpen] = useState(false);
 
@@ -517,10 +517,7 @@ const AddOrEditChannelModal =
         return;
       }
 
-      const defaultValues: Record<
-        string,
-        unknown
-      > = {};
+      const defaultValues: Record<string, any> = {};
 
       selectedType.configFields?.forEach(
         (field) => {

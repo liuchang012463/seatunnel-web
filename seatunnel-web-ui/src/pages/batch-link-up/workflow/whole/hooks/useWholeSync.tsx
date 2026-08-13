@@ -195,7 +195,11 @@ export const useWholeSync = ({ baseForm, form }: UseWholeSyncProps) => {
 
   const handleSourceTypeChange = async (value: string, option: any) => {
     console.log(option);
-    const next = { dbType: value, connectorType: option?.connectorType };
+    const next = {
+      dbType: value,
+      connectorType: option?.connectorType,
+      pluginName: option?.pluginName ?? value,
+    };
     setSourceType(next);
 
     const options = await fetchDataSourceOptionsU(value);
@@ -217,7 +221,11 @@ export const useWholeSync = ({ baseForm, form }: UseWholeSyncProps) => {
   };
 
   const handleTargetTypeChange = async (value: string, option: any) => {
-    const next = { dbType: value, connectorType: option?.connectorType };
+    const next = {
+      dbType: value,
+      connectorType: option?.connectorType,
+      pluginName: option?.pluginName ?? value,
+    };
     setTargetType(next);
 
     const options = await fetchDataSourceOptionsU(value);

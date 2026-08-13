@@ -2,12 +2,8 @@
 const Icon = ({ height = "1em", width = "1em" }) => {
   return (
     <svg
-      t="1727332167563"
-      class="icon"
       viewBox="0 0 1130 1024"
-      version="1.1"
       xmlns="http://www.w3.org/2000/svg"
-      p-id="14859"
       width="28"
       height="28"
     >

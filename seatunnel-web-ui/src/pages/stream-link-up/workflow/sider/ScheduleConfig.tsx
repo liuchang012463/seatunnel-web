@@ -1,10 +1,11 @@
 import Header from "@/components/Header";
 import { Col, Form, Input, message, Popover, Radio, Row } from "antd";
+import type { FormInstance } from "antd";
 import { useState } from "react";
-import { taskScheduleApi } from "../../type";
+import { taskScheduleApi } from "@/pages/batch-link-up/type";
 import { useIntl } from "@umijs/max";
 
-function ScheduleConfig({ form }) {
+function ScheduleConfig({ form }: { form: FormInstance }) {
   const intl = useIntl();
   const [preview, setPreview] = useState<string[]>([]);
 

@@ -34,7 +34,7 @@ export default function FieldRenderer(props: {
         <Select
           {...common}
           size="small"
-          options={field.options?.map((o) => ({
+          options={field.options?.map((o: any) => ({
             label: o.label,
             value: o.value,
           }))}

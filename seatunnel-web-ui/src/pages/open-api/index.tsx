@@ -6,12 +6,10 @@ import {
 } from "@ant-design/icons";
 import { Alert, Button, Input, Skeleton, Tag } from "antd";
 import React, { useMemo, useState } from "react";
-import MethodSegmented from "./MethodSegmented";
+import MethodSegmented, { type FilterMethod } from "./MethodSegmented";
 import { HttpMethod, useOpenApiData } from "./openapi-parser";
 import "./index.less";
 import {history} from "umi";
-
-type FilterMethod = "ALL" | HttpMethod;
 
 const methodColorMap: Record<HttpMethod, string> = {
   GET: "green",

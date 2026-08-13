@@ -2,12 +2,8 @@
 const StarRocksIcon = ({ height = '24', width = '24' }) => {
   return (
     <svg
-      t="1763126867519"
-      class="icon"
       viewBox="0 0 1024 1024"
-      version="1.1"
       xmlns="http://www.w3.org/2000/svg"
-      p-id="8788"
       width={width}
       height={height}
     >

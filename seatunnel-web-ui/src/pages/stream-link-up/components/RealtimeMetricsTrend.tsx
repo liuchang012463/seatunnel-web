@@ -43,8 +43,10 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
 }) => {
   const chartRef = useRef<HTMLDivElement | null>(null);
 
-  const points = useMemo(() => {
-    return (record?.recentMetrics || []).slice(-20);
+  const points = useMemo<MetricPoint[]>(() => {
+    return Array.isArray(record?.recentMetrics)
+      ? record.recentMetrics.slice(-20)
+      : [];
   }, [record?.recentMetrics]);
 
   const rowValues = useMemo(() => {

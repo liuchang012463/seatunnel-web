@@ -1,8 +1,17 @@
+import type { ReactNode } from "react";
+
 export type MenuKey = "connector" | "time";
 
 export type TimeVariableSource = "SYSTEM" | "CUSTOM";
 
 export type TimeVariableValueType = "FIXED" | "DYNAMIC";
+
+export interface MenuItemConfig {
+  key: MenuKey;
+  label: string;
+  desc: string;
+  icon: ReactNode;
+}
 
 export interface PaginationInfo {
   total: number;
@@ -13,6 +22,8 @@ export interface PaginationInfo {
 export interface PaginationData<T> {
   bizData: T[];
   pagination: PaginationInfo;
+  records?: T[];
+  total?: number;
 }
 
 export interface PageResult<T> {
@@ -88,6 +99,10 @@ export interface FormValues {
 
   timeFormat?: string;
   expression?: string;
+  variableSource?: TimeVariableSource;
+  valueType?: TimeVariableValueType;
+  enabled?: boolean;
+  remark?: string;
 }
 
 

@@ -140,7 +140,7 @@ function normalizeDatasourceOptions(data: any): DatasourceOption[] {
         description,
       };
     })
-    .filter((item) => item.id !== undefined && item.id !== null);
+    .filter((item: DatasourceOption) => item.id !== undefined && item.id !== null);
 }
 
 /**

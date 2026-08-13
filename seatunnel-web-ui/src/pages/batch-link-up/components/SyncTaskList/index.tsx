@@ -26,7 +26,7 @@ interface Props {
   emptyDescription?: string;
 }
 
-const DEFAULT_TIME_RANGE = [];
+const DEFAULT_TIME_RANGE: moment.Moment[] = [];
 
 const RUNNING_STATUS_SET = new Set([
   "INITIALIZING",
@@ -144,6 +144,7 @@ const App: React.FC<Props> = ({
     query.set("pageSize", String(pageInfo.pageSize || 10));
 
     history.replace({
+      pathname: window.location.pathname,
       search: `?${query.toString()}`,
     });
   };
