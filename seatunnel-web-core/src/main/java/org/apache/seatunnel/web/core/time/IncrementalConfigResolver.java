@@ -67,6 +67,12 @@ public final class IncrementalConfigResolver {
                 legacy == null ? null : legacy.getInitialWatermark(),
                 httpSource ? DEFAULT_START_VALUE : null
         );
+        String timeFormat = sourceConfigPresent
+                ? sourceTimeFormat(workflow)
+                : firstNonBlank(
+                legacy == null ? null : legacy.getTimeFormat(),
+                DEFAULT_TIME_FORMAT
+        );
 
         int maxWindow = IncrementalScheduleIntervalResolver.resolveSeconds(schedule);
         // Keep explicitly persisted legacy runtime values when an old task is
@@ -86,6 +92,7 @@ public final class IncrementalConfigResolver {
         legacy.setEnabled(true);
         legacy.setWatermarkColumn(fieldName);
         legacy.setInitialWatermark(startValue);
+        legacy.setTimeFormat(timeFormat);
         legacy.setSafetyDelaySeconds(safetyDelay);
         legacy.setOverlapSeconds(overlap);
         legacy.setMaxWindowSeconds(maxWindow);
@@ -118,6 +125,9 @@ public final class IncrementalConfigResolver {
         sourceIncremental.put("fieldName", legacy.getWatermarkColumn());
         sourceIncremental.put("startValue", firstNonBlank(
                 legacy.getInitialWatermark(), DEFAULT_START_VALUE));
+        if (StringUtils.isNotBlank(legacy.getTimeFormat())) {
+            sourceIncremental.put("timeFormat", legacy.getTimeFormat());
+        }
         sourceConfig.put("incrementalConfig", sourceIncremental);
     }
 

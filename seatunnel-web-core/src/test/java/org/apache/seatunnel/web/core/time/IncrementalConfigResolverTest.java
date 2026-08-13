@@ -30,5 +30,6 @@ class IncrementalConfigResolverTest {
         assertEquals(
                 IncrementalConfigResolver.DEFAULT_TIME_FORMAT,
                 IncrementalConfigResolver.sourceTimeFormat(workflow));
+        assertEquals(IncrementalConfigResolver.DEFAULT_TIME_FORMAT, resolved.getTimeFormat());
     }
 }

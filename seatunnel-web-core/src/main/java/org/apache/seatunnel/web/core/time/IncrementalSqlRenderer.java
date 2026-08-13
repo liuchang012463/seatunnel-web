@@ -25,7 +25,7 @@ import java.util.Map;
 public final class IncrementalSqlRenderer {
 
     private static final DateTimeFormatter FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+            DateTimeFormatter.ofPattern(IncrementalConfigResolver.DEFAULT_TIME_FORMAT);
 
     private IncrementalSqlRenderer() {
     }
@@ -86,9 +86,12 @@ public final class IncrementalSqlRenderer {
         int overlap = incremental.getOverlapSeconds() == null
                 ? 0 : incremental.getOverlapSeconds();
         LocalDateTime end = start.plusSeconds(maxWindow);
-        values.putIfAbsent("window_start", format(start));
-        values.putIfAbsent("window_end", format(end));
-        values.putIfAbsent("query_start", format(start.minusSeconds(overlap)));
+        String timeFormat = StringUtils.defaultIfBlank(
+                incremental.getTimeFormat(),
+                IncrementalConfigResolver.DEFAULT_TIME_FORMAT);
+        values.putIfAbsent("window_start", format(start, timeFormat));
+        values.putIfAbsent("window_end", format(end, timeFormat));
+        values.putIfAbsent("query_start", format(start.minusSeconds(overlap), timeFormat));
         values.putIfAbsent("batch_id", "preview");
         return values;
     }

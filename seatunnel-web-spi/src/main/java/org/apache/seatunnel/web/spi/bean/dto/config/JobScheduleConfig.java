@@ -87,6 +87,13 @@ public class JobScheduleConfig {
 
         private String initialWatermark;
 
+        /**
+         * Format used when runtime window parameters are injected into the
+         * source request.  HTTP incremental endpoints commonly require an
+         * exact pattern such as yyyy-MM-dd HH:mm:ss.
+         */
+        private String timeFormat;
+
         private Integer safetyDelaySeconds = 0;
 
         private Integer overlapSeconds = 0;
