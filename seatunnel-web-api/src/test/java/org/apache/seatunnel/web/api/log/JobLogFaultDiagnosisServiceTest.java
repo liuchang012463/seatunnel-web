@@ -141,8 +141,10 @@ class JobLogFaultDiagnosisServiceTest {
                 chatClientProvider
         ).streamDiagnose(instanceId, mode).collectList().block();
 
-        assertEquals(List.of("status", "delta", "result", "done"),
+        assertEquals(List.of("status", "status", "delta", "result", "done"),
                 events.stream().map(JobLogDiagnosisStreamEvent::type).toList());
-        assertEquals("TRANSPORT", events.get(2).result().faultType());
+        assertEquals("正在读取失败任务的日志、数据快照和执行流程...", events.get(0).content());
+        assertEquals("模型服务当前不可用，正在使用规则证据完成定位...", events.get(1).content());
+        assertEquals("TRANSPORT", events.get(3).result().faultType());
     }
 }
