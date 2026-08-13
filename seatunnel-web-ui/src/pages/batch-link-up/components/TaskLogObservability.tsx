@@ -23,7 +23,7 @@ import {
 interface TaskLogObservabilityProps {
   instanceItem: any;
   jobMode: JobLogMode;
-  view: "operation" | "snapshot" | "execution" | "timeline" | "replay" | "diagnosis";
+  view: "logs" | "operation" | "snapshot" | "execution" | "timeline" | "replay" | "diagnosis";
 }
 
 const getResponseData = (response: any) => response?.data ?? response;
@@ -208,6 +208,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
 
   useEffect(() => {
     setSearchKeyword("");
+    setErrorText("");
     setAnalysisResult(null);
     setReplayResult(null);
     setReplayCursor(0);
@@ -216,7 +217,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     setDiagnosisOutput("");
     setDiagnosisResult(null);
     diagnosisAbortRef.current?.abort();
-    if (view === "execution") {
+    if (view === "logs") {
       void loadLog();
     }
   }, [loadLog, view]);
@@ -356,43 +357,46 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     </section>
   );
 
-  const renderExecutionPanel = () => (
-    <div className="space-y-4">
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="text-sm font-semibold text-slate-800">原始执行日志</div>
-            <div className="mt-1 text-xs text-slate-400">完整日志 · 当前实例 #{instanceId}</div>
-          </div>
-          <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={() => void loadLog()}>
-            刷新
-          </Button>
+  const renderLogPanel = () => (
+    <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-slate-800">原始执行日志</div>
+          <div className="mt-1 text-xs text-slate-400">完整日志 · 当前实例 #{instanceId}</div>
         </div>
-        <Input
-          allowClear
-          prefix={<SearchOutlined className="text-slate-400" />}
-          value={searchKeyword}
-          onChange={(event) => setSearchKeyword(event.target.value)}
-          placeholder="在当前完整日志中检索 timeout、ERROR、连接..."
-          suffix={normalizedKeyword ? <span className="text-xs text-slate-400">命中 {matchedLineCount} 行</span> : null}
-        />
-        <div className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-100">
-          {loading && !logContent ? (
-            <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
-          ) : errorText ? (
-            <div className="py-12 text-center text-red-300">{errorText}</div>
-          ) : logContent ? (
-            logLines.map((line, index) => {
-              const matched = normalizedKeyword && line.toLowerCase().includes(normalizedKeyword);
-              return <div key={index} className={matched ? "rounded bg-cyan-950/80 text-cyan-100" : ""}>{line || " "}</div>;
-            })
-          ) : (
-            <div className="py-12 text-center text-slate-500">当前实例暂无日志</div>
-          )}
-        </div>
-      </section>
-      {renderAnalysisPanel("执行流程日志", "按执行阶段整理任务运行过程和状态变化。", analysisResult?.executionFlow || [])}
-    </div>
+        <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={() => void loadLog()}>
+          刷新
+        </Button>
+      </div>
+      <Input
+        allowClear
+        prefix={<SearchOutlined className="text-slate-400" />}
+        value={searchKeyword}
+        onChange={(event) => setSearchKeyword(event.target.value)}
+        placeholder="在当前完整日志中检索 timeout、ERROR、连接..."
+        suffix={normalizedKeyword ? <span className="text-xs text-slate-400">命中 {matchedLineCount} 行</span> : null}
+      />
+      <div className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-100">
+        {loading && !logContent ? (
+          <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
+        ) : errorText ? (
+          <div className="py-12 text-center text-red-300">{errorText}</div>
+        ) : logContent ? (
+          logLines.map((line, index) => {
+            const matched = normalizedKeyword && line.toLowerCase().includes(normalizedKeyword);
+            return <div key={index} className={matched ? "rounded bg-cyan-950/80 text-cyan-100" : ""}>{line || " "}</div>;
+          })
+        ) : (
+          <div className="py-12 text-center text-slate-500">当前实例暂无日志</div>
+        )}
+      </div>
+    </section>
+  );
+
+  const renderExecutionFlowPanel = () => renderAnalysisPanel(
+    "执行流程日志",
+    "按执行阶段整理任务运行过程和状态变化。原始执行日志请切换到“日志”Tab查看。",
+    analysisResult?.executionFlow || [],
   );
 
   const renderReplayPanel = () => (
@@ -532,17 +536,19 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
   );
 
   const content =
-    view === "operation"
-      ? renderAnalysisPanel("操作行为记录", "按时间、操作、目标和状态展示任务行为规则命中记录。", analysisResult?.operationRecords || [])
-      : view === "snapshot"
-        ? renderAnalysisPanel("数据读取快照", "展示日志中识别出的数据读取、写入和快照信息。", analysisResult?.dataSnapshots || [])
-        : view === "execution"
-          ? renderExecutionPanel()
-          : view === "timeline"
-            ? renderAnalysisPanel("操作时序记录", "按时间顺序还原任务各阶段的操作先后关系。", analysisResult?.timeline || [])
-            : view === "replay"
-              ? renderReplayPanel()
-              : renderDiagnosisPanel();
+    view === "logs"
+      ? renderLogPanel()
+      : view === "operation"
+        ? renderAnalysisPanel("操作行为记录", "按时间、操作、目标和状态展示任务行为规则命中记录。", analysisResult?.operationRecords || [])
+        : view === "snapshot"
+          ? renderAnalysisPanel("数据读取快照", "展示日志中识别出的数据读取、写入和快照信息。", analysisResult?.dataSnapshots || [])
+          : view === "execution"
+            ? renderExecutionFlowPanel()
+            : view === "timeline"
+              ? renderAnalysisPanel("操作时序记录", "按时间顺序还原任务各阶段的操作先后关系。", analysisResult?.timeline || [])
+              : view === "replay"
+                ? renderReplayPanel()
+                : renderDiagnosisPanel();
 
   return <div className="space-y-4">{content}</div>;
 };
