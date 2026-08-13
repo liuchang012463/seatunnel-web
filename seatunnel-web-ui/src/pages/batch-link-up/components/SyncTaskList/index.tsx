@@ -796,13 +796,13 @@ const App: React.FC<Props> = ({
                 onReset={handleReset}
                 initialValues={searchParams}
                 fileMode={mode === "FILE_SYNC"}
-              />
-            </div>
-            <div className="right flex items-center justify-end px-5 pb-3">
-              <TaskSortControls
-                field={sort.field}
-                order={sort.order}
-                onChange={handleSortChange}
+                sortControls={
+                  <TaskSortControls
+                    field={sort.field}
+                    order={sort.order}
+                    onChange={handleSortChange}
+                  />
+                }
               />
             </div>
           </div>
