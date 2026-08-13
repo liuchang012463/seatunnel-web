@@ -281,7 +281,14 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
             map.put("database", database);
         }
 
-        String table = JdbcConfigReaders.getString(config, "table", "");
+        // The single-table workflow persists the destination name as
+        // targetTableName. Doris has a custom sink builder instead of the
+        // shared JDBC target resolver, so translate that workflow field to
+        // SeaTunnel's required table option here.
+        String table = JdbcConfigReaders.getString(config, "targetTableName", "");
+        if (table.isEmpty()) {
+            table = JdbcConfigReaders.getString(config, "table", "");
+        }
         if (!table.isEmpty()) {
             map.put("table", table);
         }
