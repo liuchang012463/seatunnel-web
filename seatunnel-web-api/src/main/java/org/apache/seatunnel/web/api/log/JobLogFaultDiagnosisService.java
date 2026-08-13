@@ -93,7 +93,9 @@ public class JobLogFaultDiagnosisService {
      * fallback as the non-streaming endpoint.
      */
     public Flux<JobLogDiagnosisStreamEvent> streamDiagnose(Long instanceId, JobMode requestedMode) {
-        return Flux.defer(() -> {
+        return Flux.concat(
+                Flux.just(JobLogDiagnosisStreamEvent.status("正在读取失败任务的日志、数据快照和执行流程...")),
+                Flux.defer(() -> {
             JobLogContext context = resolveFailedContext(instanceId, requestedMode);
             JobLogAnalysisResult analysis = jobLogService.analyze(instanceId, requestedMode);
             List<String> evidence = evidence(analysis);
@@ -164,7 +166,6 @@ public class JobLogFaultDiagnosisService {
             });
 
             return Flux.concat(
-                    Flux.just(JobLogDiagnosisStreamEvent.status("正在读取失败任务的日志、数据快照和执行流程...")),
                     deltas,
                     finalResult,
                     Mono.just(JobLogDiagnosisStreamEvent.done())
@@ -172,7 +173,8 @@ public class JobLogFaultDiagnosisService {
                 log.warn("AI task-log diagnosis stream failed, instanceId={}", instanceId, error);
                 return fallbackStream(instanceId, requestedMode, evidence, "RULE_FALLBACK");
             });
-        });
+                })
+        );
     }
 
     private Flux<JobLogDiagnosisStreamEvent> fallbackStream(Long instanceId,

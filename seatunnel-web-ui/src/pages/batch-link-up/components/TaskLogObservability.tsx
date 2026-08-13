@@ -1,7 +1,10 @@
 import {
+  CheckCircleOutlined,
+  LoadingOutlined,
   PauseOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
+  RobotOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 import { Button, Empty, Input, Spin, Tag, Tooltip, message } from "antd";
@@ -444,32 +447,64 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
   );
 
   const renderDiagnosisPanel = () => (
-    <section className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-semibold text-slate-800">AI故障定位</div>
-          <div className="mt-1 text-xs text-slate-400">仅对 FAILED 任务调用故障定位服务，其他状态保留 Tab 但不可执行。</div>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-cyan-50/60 px-5 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+            <RobotOutlined className="text-lg" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800">
+              <span>AI故障定位</span>
+              <Tag color={canDiagnose ? "red" : "default"} className="!mr-0">{canDiagnose ? "FAILED 可分析" : "暂不可用"}</Tag>
+            </div>
+            <div className="mt-1 text-xs text-slate-400">基于当前实例日志、执行流程和脱敏运行配置生成定位结论。</div>
+          </div>
         </div>
         <Tooltip title={canDiagnose ? "分析当前 FAILED 实例" : diagnosisDisabledReason}>
           <span>
             <Button type="primary" danger disabled={!canDiagnose || diagnosisLoading} loading={diagnosisLoading} onClick={() => void startDiagnosis()}>
-              {diagnosisLoading ? "分析中..." : "开始故障定位"}
+              {diagnosisLoading ? "定位中..." : diagnosisResult ? "重新定位" : "开始故障定位"}
             </Button>
           </span>
         </Tooltip>
       </div>
-      {!canDiagnose ? (
-        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500">{diagnosisDisabledReason}</div>
-      ) : null}
-      {diagnosisStatus || diagnosisOutput ? (
-        <div className="mt-3 rounded-xl border border-cyan-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100">
-          <div className="mb-2 flex items-center gap-2 text-xs text-cyan-300"><span className="h-2 w-2 rounded-full bg-cyan-400" />{diagnosisStatus || "正在输出..."}</div>
-          <div className="mb-2 text-xs font-semibold text-slate-300">模型输出</div>
-          <div className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-900/80 p-3 text-slate-100">{diagnosisOutput || "等待模型输出..."}</div>
-        </div>
-      ) : null}
+
+      <div className="space-y-4 p-5">
+        {!canDiagnose ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-500">{diagnosisDisabledReason}</div>
+        ) : null}
+
+        {(diagnosisLoading || diagnosisStatus || diagnosisOutput) ? (
+          <div className="rounded-2xl border border-cyan-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100 shadow-inner">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-cyan-200">
+                {diagnosisLoading ? <LoadingOutlined className="text-cyan-300" /> : <CheckCircleOutlined className="text-emerald-300" />}
+                <span>{diagnosisStatus || (diagnosisLoading ? "正在接收模型输出..." : "故障定位完成")}</span>
+              </div>
+              <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[11px] text-slate-400">
+                {diagnosisLoading ? "流式生成中" : "已完成"}
+              </span>
+            </div>
+            <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-300">
+              <span>模型实时输出</span>
+              <span className="font-normal text-slate-500">内容会随模型生成持续更新</span>
+            </div>
+            <div className="min-h-[180px] max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-slate-800 bg-slate-900 p-4 text-[13px] leading-6 text-slate-100">
+              {diagnosisOutput || <span className="text-slate-500">正在读取日志并生成诊断，请稍候...</span>}
+              {diagnosisLoading ? <span className="ml-1 inline-block animate-pulse text-cyan-300">▍</span> : null}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-8 text-center">
+            <RobotOutlined className="text-2xl text-slate-300" />
+            <div className="mt-2 text-sm font-medium text-slate-600">尚未开始故障定位</div>
+            <div className="mt-1 text-xs text-slate-400">点击右上角按钮后，模型输出会在本区域流式展示。</div>
+          </div>
+        )}
+
       {diagnosisResult ? (
-        <div className="mt-3 space-y-3">
+        <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
             <Tag color="purple">归因：{diagnosisResult.faultTypeLabel || diagnosisResult.faultType}</Tag>
             <Tag color="blue">类型：{diagnosisResult.faultType}</Tag>
@@ -492,6 +527,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
           </div>
         </div>
       ) : null}
+      </div>
     </section>
   );
 

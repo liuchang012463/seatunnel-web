@@ -149,7 +149,7 @@ export const jobLogApi = {
       {
         method: "GET",
         headers: { Accept: "text/event-stream" },
-        credentials: "omit",
+        credentials: "include",
         signal,
       },
     );
