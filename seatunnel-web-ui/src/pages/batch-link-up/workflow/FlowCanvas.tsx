@@ -183,6 +183,26 @@ function buildInitialGraph(
   return { nodes, edges };
 }
 
+function hasPersistedGraph(params?: any) {
+  if (Array.isArray(params?.workflow?.nodes) && params.workflow.nodes.length > 0) {
+    return true;
+  }
+
+  if (params?.jobDefinitionInfo === undefined || params?.jobDefinitionInfo === null) {
+    return false;
+  }
+
+  try {
+    const contentInfo =
+      typeof params.jobDefinitionInfo === 'string'
+        ? JSON.parse(params.jobDefinitionInfo || '{}')
+        : params.jobDefinitionInfo;
+    return Array.isArray(contentInfo?.nodes) && contentInfo.nodes.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export default function FlowCanvas({
   form,
   params,
@@ -334,6 +354,14 @@ export default function FlowCanvas({
 
     const hasNodes = Array.isArray(flow.nodes) && flow.nodes.length > 0;
     if (hasNodes) {
+      initializedRef.current = true;
+      return;
+    }
+
+    // useFlowBuilder loads an existing workflow in its own effect. Do not let
+    // the new-task fallback race that effect and overwrite the saved node
+    // configuration while opening an edit page.
+    if (hasPersistedGraph(params)) {
       initializedRef.current = true;
       return;
     }

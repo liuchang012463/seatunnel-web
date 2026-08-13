@@ -210,6 +210,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         }
         return patch;
       },
+      {},
     );
 
     if (Object.keys(defaults).length) {
@@ -243,7 +244,8 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
   const setPageType = (value: string) =>
     onChange({ pageing: value === 'NONE' ? undefined : { page_type: value } });
 
-  const schemaFields = asRecord(config.schema).fields;
+  const schemaConfig = asRecord(config.schema);
+  const schemaFields = asRecord(schemaConfig.fields ?? schemaConfig);
   const incrementalConfig = asRecord(config.incrementalConfig);
   const [parseLoading, setParseLoading] = useState(false);
   const [parsedJson, setParsedJson] = useState<unknown>();
@@ -269,21 +271,77 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
     }));
 
   useEffect(() => {
+    if (format !== 'json' || !selectedContentField) {
+      return;
+    }
+
+    const persistedCandidates = Object.entries(selectedSchemaFields).map(([name, type]) => ({
+      name,
+      sample: undefined,
+      inferredType: String(type || 'string'),
+    }));
+
+    // Render the saved selection immediately. The best-effort request below
+    // enriches it with the latest response sample, but a failed request must
+    // never hide the schema already stored in the task definition.
+    setContentFieldOptions((current) => {
+      if (current.some((option) => option.value === selectedContentField)) {
+        return current;
+      }
+      return [
+        { value: selectedContentField, label: `${selectedContentField}（已保存）` },
+        ...current,
+      ];
+    });
+    setSchemaCandidates((current) => (current.length ? current : persistedCandidates));
+
+    if (!config.dataSourceId || !String(config.path || '').trim()) {
+      return;
+    }
+
+    let cancelled = false;
+    const restoreResponseSchema = async () => {
+      try {
+        const response = await dataSourceCatalogApi.parseHttpResponse(String(config.dataSourceId), {
+          path: config.path,
+          method,
+          params: config.params || {},
+          headers: config.headers || {},
+          body: config.body || '',
+        });
+        if (cancelled || response?.code !== 0) {
+          return;
+        }
+
+        const responseJson = response?.data?.json ?? JSON.parse(response?.data?.body || 'null');
+        const options = findHttpContentFields(responseJson);
+        if (!options.some((option) => option.value === selectedContentField)) {
+          options.unshift({ value: selectedContentField, label: `${selectedContentField}（已保存）` });
+        }
+        setParsedJson(responseJson);
+        setParsedStatus(response?.data?.status);
+        setContentFieldOptions(options);
+        const responseCandidates = buildHttpSchemaFieldCandidates(responseJson, selectedContentField);
+        setSchemaCandidates(responseCandidates.length ? responseCandidates : persistedCandidates);
+      } catch {
+        // Keep the persisted field names and types visible when the endpoint
+        // is temporarily unavailable while opening the edit page.
+      }
+    };
+
+    void restoreResponseSchema();
+    return () => {
+      cancelled = true;
+    };
+  }, [config.body, config.dataSourceId, config.headers, config.params, config.path, format, method, selectedContentField, selectedSchemaFields]);
+
+  useEffect(() => {
     if (parsedRequestRef.current && parsedRequestRef.current !== requestSignature) {
       parsedRequestRef.current = undefined;
       setParsedJson(undefined);
       setParsedStatus(undefined);
       setContentFieldOptions([]);
       setSchemaCandidates([]);
-      if (selectedContentField || Object.keys(selectedSchemaFields).length > 0) {
-        onChange({
-          contentField: '',
-          schema: { fields: {} },
-          ...(isIncremental
-            ? { incrementalConfig: { ...incrementalConfig, fieldName: '' } }
-            : {}),
-        });
-      }
     }
   }, [
     requestSignature,
