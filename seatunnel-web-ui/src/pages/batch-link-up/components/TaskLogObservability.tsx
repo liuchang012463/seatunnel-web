@@ -1,5 +1,6 @@
 import {
   CheckCircleOutlined,
+  ExclamationCircleOutlined,
   LoadingOutlined,
   PauseOutlined,
   PlayCircleOutlined,
@@ -514,10 +515,28 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
             <Tag color="blue">类型：{diagnosisResult.faultType}</Tag>
             <Tag>置信度 {Math.round((diagnosisResult.confidence || 0) * 100)}%</Tag>
           </div>
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm" style={{ backgroundColor: "#fff1f2" }}>
-            <div className="text-sm font-semibold text-rose-900" style={{ color: "#881337" }}>错误原因</div>
-            <div className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-sm leading-6 text-slate-700" style={{ color: "#334155" }}>{diagnosisResult.rootCause || "暂无明确原因"}</div>
-            <div className="mt-2 text-xs text-slate-500" style={{ color: "#64748b" }}>影响阶段：{diagnosisResult.affectedStage || "未明确"}</div>
+          <div
+            className="rounded-2xl border border-rose-300/60 bg-[#3a1420] p-4 shadow-[0_12px_30px_rgba(127,29,29,0.16)]"
+            style={{ backgroundColor: "#3a1420" }}
+          >
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/20 text-rose-200">
+                <ExclamationCircleOutlined />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold !text-rose-100" style={{ color: "#fff1f2" }}>错误原因</div>
+                <div
+                  className="mt-3 max-h-48 overflow-auto rounded-xl border border-rose-200/20 bg-black/20 px-4 py-3 whitespace-pre-wrap break-words text-[14px] font-medium leading-7 !text-rose-50"
+                  style={{ color: "#fff7ed" }}
+                >
+                  {diagnosisResult.rootCause || "暂无明确原因"}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs !text-rose-200" style={{ color: "#fecdd3" }}>
+                  <span className="rounded-full border border-rose-200/25 bg-rose-200/10 px-2 py-1">影响阶段</span>
+                  <span>{diagnosisResult.affectedStage || "未明确"}</span>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
