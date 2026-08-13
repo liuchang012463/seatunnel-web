@@ -466,14 +466,14 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800">
               <span>AI故障定位</span>
-              <Tag color={canDiagnose ? "red" : "default"} className="!mr-0">{canDiagnose ? "FAILED 可分析" : "暂不可用"}</Tag>
+              <Tag color={canDiagnose ? "gold" : "default"} className="!mr-0">{canDiagnose ? "FAILED 可分析" : "暂不可用"}</Tag>
             </div>
             <div className="mt-1 text-xs text-slate-400">基于当前实例日志、执行流程和脱敏运行配置生成定位结论。</div>
           </div>
         </div>
         <Tooltip title={canDiagnose ? "分析当前 FAILED 实例" : diagnosisDisabledReason}>
           <span>
-            <Button type="primary" danger disabled={!canDiagnose || diagnosisLoading} loading={diagnosisLoading} onClick={() => void startDiagnosis()}>
+            <Button type="primary" disabled={!canDiagnose || diagnosisLoading} loading={diagnosisLoading} onClick={() => void startDiagnosis()}>
               {diagnosisLoading ? "定位中..." : diagnosisResult ? "重新定位" : "开始故障定位"}
             </Button>
           </span>
@@ -520,25 +520,19 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
             <Tag color="blue">类型：{diagnosisResult.faultType}</Tag>
             <Tag>置信度 {Math.round((diagnosisResult.confidence || 0) * 100)}%</Tag>
           </div>
-          <div
-            className="rounded-2xl border border-rose-300/60 bg-[#3a1420] p-4 shadow-[0_12px_30px_rgba(127,29,29,0.16)]"
-            style={{ backgroundColor: "#3a1420" }}
-          >
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/20 text-rose-200">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
                 <ExclamationCircleOutlined />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold !text-rose-100" style={{ color: "#fff1f2" }}>错误原因</div>
-                <div
-                  className="mt-3 max-h-48 overflow-auto rounded-xl border border-rose-200/20 bg-black/20 px-4 py-3 whitespace-pre-wrap break-words text-[14px] font-medium leading-7 !text-rose-50"
-                  style={{ color: "#fff7ed" }}
-                >
+                <div className="text-sm font-semibold text-slate-700">错误原因</div>
+                <div className="mt-3 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-white px-4 py-3 whitespace-pre-wrap break-words text-[14px] font-medium leading-7 text-slate-700">
                   {diagnosisResult.rootCause || "暂无明确原因"}
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs !text-rose-200" style={{ color: "#fecdd3" }}>
-                  <span className="rounded-full border border-rose-200/25 bg-rose-200/10 px-2 py-1">影响阶段</span>
-                  <span>{diagnosisResult.affectedStage || "未明确"}</span>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-500">影响阶段</span>
+                  <span className="text-slate-600">{diagnosisResult.affectedStage || "未明确"}</span>
                 </div>
               </div>
             </div>
