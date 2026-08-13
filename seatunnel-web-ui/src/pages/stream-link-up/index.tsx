@@ -1016,14 +1016,18 @@ const RealtimeSyncPage: React.FC = () => {
           creating={creating}
         />
 
-        <SearchToolbar initialValues={searchValues} onSearch={handleSearch} onReset={handleReset} />
-        <div className="flex justify-end px-5 pt-3">
-          <TaskSortControls
-            field={sort.field}
-            order={sort.order}
-            onChange={handleSortChange}
-          />
-        </div>
+        <SearchToolbar
+          initialValues={searchValues}
+          onSearch={handleSearch}
+          onReset={handleReset}
+          sortControls={
+            <TaskSortControls
+              field={sort.field}
+              order={sort.order}
+              onChange={handleSortChange}
+            />
+          }
+        />
         <Divider style={{ margin: "16px 0" }} />
 
         <RealtimeTaskTable
