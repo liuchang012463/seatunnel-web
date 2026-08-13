@@ -3,6 +3,16 @@ export type KeyValueRow = {
   value: string;
 };
 
+export const DEFAULT_HTTP_INCREMENTAL_PARAMS = {
+  from: '${window_start}',
+  to: '${window_end}',
+};
+
+export const DEFAULT_HTTP_INCREMENTAL_BODY = `{
+  "from": \${window_start},
+  "to": \${window_end}
+}`;
+
 export const asRecord = (value: unknown): Record<string, any> =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, any>)
@@ -23,4 +33,15 @@ export const toObject = (rows: KeyValueRow[]) => {
     }
   });
   return result;
+};
+
+export const getHttpIncrementalDefaults = (config: Record<string, any>) => {
+  const patch: Record<string, any> = {};
+  if (config.params === undefined || config.params === null) {
+    patch.params = { ...DEFAULT_HTTP_INCREMENTAL_PARAMS };
+  }
+  if (config.body === undefined || config.body === null) {
+    patch.body = DEFAULT_HTTP_INCREMENTAL_BODY;
+  }
+  return patch;
 };

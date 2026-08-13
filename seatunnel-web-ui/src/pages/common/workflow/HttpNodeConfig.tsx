@@ -18,6 +18,7 @@ import { dataSourceCatalogApi } from '@/pages/data-source/service';
 import './HttpNodeConfig.less';
 import {
   asRecord,
+  getHttpIncrementalDefaults,
   toObject,
   toRows,
   type KeyValueRow,
@@ -223,6 +224,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
       return;
     }
     const incrementalConfig = asRecord(config.incrementalConfig);
+    const requestDefaults = getHttpIncrementalDefaults(config);
     const patch: Record<string, any> = {};
     if (incrementalConfig.enabled !== true) {
       patch.enabled = true;
@@ -233,8 +235,13 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
     if (!incrementalConfig.timeFormat) {
       patch.timeFormat = DEFAULT_HTTP_TIME_FORMAT;
     }
-    if (Object.keys(patch).length) {
-      onChange({ incrementalConfig: { ...incrementalConfig, ...patch } });
+    if (Object.keys(patch).length || Object.keys(requestDefaults).length) {
+      onChange({
+        ...requestDefaults,
+        ...(Object.keys(patch).length
+          ? { incrementalConfig: { ...incrementalConfig, ...patch } }
+          : {}),
+      });
     }
   }, [config, isIncremental, onChange]);
 
@@ -468,7 +475,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         <Field
           label="增量时间格式"
           required
-          hint="填写响应代表时间字段的格式，例如 yyyy-MM-dd HH:mm:ss；请求参数名和位置请在 Query Params 或 Body 中自行配置。"
+          hint="填写响应代表时间字段的格式，例如 yyyy-MM-dd HH:mm:ss；新建任务会自动填充 from/to 时间窗口参数，也可以按接口文档修改。"
         >
           <Input
             value={incrementalConfig.timeFormat || DEFAULT_HTTP_TIME_FORMAT}
@@ -490,7 +497,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         label="Query Params"
         hint={
           isIncremental
-            ? '按接口文档填写参数名和值；需要动态窗口时，在值中手动使用 ${window_start} 或 ${window_end}，系统不会自动添加 start_time/end_time。'
+            ? '新建单表微批任务默认填充 from=${window_start}、to=${window_end}；可按接口文档修改，调度时系统会自动替换时间值。'
             : '每行一个键值对；值可以使用 ${window_start} 和 ${window_end} 动态时间占位符。'
         }
       >
@@ -519,7 +526,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
           label="请求体 Body"
           hint={
             isIncremental
-              ? '按接口文档填写 JSON 或文本请求体；需要动态窗口时，在字段值中手动使用 ${window_start} 或 ${window_end}。'
+              ? '新建单表微批任务默认填充 from/to 时间窗口；请求体中的占位符会在解析预览和调度执行时自动替换。'
               : '按接口要求填写 JSON 或文本；值可以使用 ${window_start} 和 ${window_end}。'
           }
         >
@@ -528,7 +535,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
             value={config.body || ''}
             placeholder={
               isIncremental
-                ? '{"from":"${window_start}","to":"${window_end}","status":"active"}'
+                ? '{"from":${window_start},"to":${window_end}}'
                 : '{"start_time":"${window_start}","end_time":"${window_end}"}'
             }
             onChange={(event) => onChange({ body: event.target.value })}
