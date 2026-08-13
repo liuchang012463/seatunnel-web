@@ -4,6 +4,10 @@ import { Divider, Empty, Modal, Table, Tooltip, message } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
 import moment from "moment";
 import { useEffect, useState } from "react";
+import TaskSortControls, {
+  type TaskSortField,
+  type TaskSortOrder,
+} from "@/pages/common/components/TaskSortControls";
 import { seatunnelJobDefinitionApi } from "../../api";
 import BatchCreateJobModal, {
   BatchCreateValues,
@@ -26,7 +30,9 @@ interface Props {
   emptyDescription?: string;
 }
 
-const DEFAULT_TIME_RANGE = [];
+const DEFAULT_TIME_RANGE: any[] = [];
+const DEFAULT_SORT_FIELD: TaskSortField = "createTime";
+const DEFAULT_SORT_ORDER: TaskSortOrder = "desc";
 
 const RUNNING_STATUS_SET = new Set([
   "INITIALIZING",
@@ -73,6 +79,17 @@ const parsePaginationFromUrl = () => {
   };
 };
 
+const parseSortFromUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  const field = params.get("sortField");
+  const order = params.get("sortOrder");
+
+  return {
+    field: field === "name" || field === "createTime" ? field : DEFAULT_SORT_FIELD,
+    order: order === "asc" || order === "desc" ? order : DEFAULT_SORT_ORDER,
+  } as { field: TaskSortField; order: TaskSortOrder };
+};
+
 const App: React.FC<Props> = ({
   goDetail,
   mode,
@@ -86,6 +103,7 @@ const App: React.FC<Props> = ({
     parseSearchParamsFromUrl()
   );
   const [pagination, setPagination] = useState(() => parsePaginationFromUrl());
+  const [sort, setSort] = useState(() => parseSortFromUrl());
   const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [batchCreateOpen, setBatchCreateOpen] = useState(false);
@@ -117,7 +135,8 @@ const App: React.FC<Props> = ({
 
   const syncUrlParams = (
     params: any,
-    pageInfo: { current: number; pageSize: number }
+    pageInfo: { current: number; pageSize: number },
+    sortInfo: { field: TaskSortField; order: TaskSortOrder },
   ) => {
     const query = new URLSearchParams();
 
@@ -142,6 +161,8 @@ const App: React.FC<Props> = ({
 
     query.set("current", String(pageInfo.current || 1));
     query.set("pageSize", String(pageInfo.pageSize || 10));
+    query.set("sortField", sortInfo.field);
+    query.set("sortOrder", sortInfo.order);
 
     history.replace({
       search: `?${query.toString()}`,
@@ -168,7 +189,9 @@ const App: React.FC<Props> = ({
         ...transformedParams,
         mode,
         excludeMode,
-        current: pagination.current,
+        sortField: sort.field,
+        sortOrder: sort.order,
+        pageNo: pagination.current,
         pageSize: pagination.pageSize,
       });
 
@@ -191,12 +214,12 @@ const App: React.FC<Props> = ({
   };
 
   useEffect(() => {
-    syncUrlParams(searchParams, pagination);
-  }, [searchParams, pagination.current, pagination.pageSize]);
+    syncUrlParams(searchParams, pagination, sort);
+  }, [searchParams, pagination.current, pagination.pageSize, sort]);
 
   useEffect(() => {
     fetchTaskList();
-  }, [searchParams, pagination.current, pagination.pageSize]);
+  }, [searchParams, pagination.current, pagination.pageSize, sort]);
 
   const baseColumns = [
     {
@@ -340,6 +363,7 @@ const App: React.FC<Props> = ({
 
   const handleReset = () => {
     setSelectedRowKeys([]);
+    setSort({ field: DEFAULT_SORT_FIELD, order: DEFAULT_SORT_ORDER });
     setSearchParams({
       createTime: DEFAULT_TIME_RANGE,
     });
@@ -356,6 +380,12 @@ const App: React.FC<Props> = ({
       current: page,
       pageSize,
     }));
+  };
+
+  const handleSortChange = (field: TaskSortField, order: TaskSortOrder) => {
+    setSort({ field, order });
+    setSelectedRowKeys([]);
+    setPagination((prev) => ({ ...prev, current: 1 }));
   };
 
   const hasSelected = selectedRowKeys.length > 0;
@@ -766,6 +796,13 @@ const App: React.FC<Props> = ({
                 onReset={handleReset}
                 initialValues={searchParams}
                 fileMode={mode === "FILE_SYNC"}
+              />
+            </div>
+            <div className="right flex items-center justify-end px-5 pb-3">
+              <TaskSortControls
+                field={sort.field}
+                order={sort.order}
+                onChange={handleSortChange}
               />
             </div>
           </div>

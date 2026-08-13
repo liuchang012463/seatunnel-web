@@ -48,6 +48,34 @@ class JobDefinitionMapperModeFilterTest {
         assertModePredicates("selectDefinitionCount", params);
     }
 
+    @Test
+    void shouldSortByConfigurationTimeDescendingByDefault() {
+        BatchJobDefinitionQueryDTO dto = new BatchJobDefinitionQueryDTO();
+        Map<String, Object> params = new HashMap<>();
+        params.put("dto", dto);
+        params.put("offset", 0);
+        params.put("pageSize", 10);
+
+        String sql = pageSql(params);
+
+        assertTrue(sql.contains("ORDER BY CREATE_TIME DESC"), sql);
+    }
+
+    @Test
+    void shouldAllowNameAscendingSort() {
+        BatchJobDefinitionQueryDTO dto = new BatchJobDefinitionQueryDTO();
+        dto.setSortField("name");
+        dto.setSortOrder("asc");
+        Map<String, Object> params = new HashMap<>();
+        params.put("dto", dto);
+        params.put("offset", 0);
+        params.put("pageSize", 10);
+
+        String sql = pageSql(params);
+
+        assertTrue(sql.contains("ORDER BY JOB_NAME ASC"), sql);
+    }
+
     private static void assertModePredicates(
             String statementName, Map<String, Object> params) {
         MappedStatement statement = configuration.getMappedStatement(
@@ -59,5 +87,14 @@ class JobDefinitionMapperModeFilterTest {
 
         assertTrue(sql.contains("MODE = ?"), sql);
         assertTrue(sql.contains("MODE != ?"), sql);
+    }
+
+    private static String pageSql(Map<String, Object> params) {
+        MappedStatement statement = configuration.getMappedStatement(
+                JobDefinitionMapper.class.getName() + ".selectPageWithLatestInstance");
+        return statement.getBoundSql(params)
+                .getSql()
+                .replaceAll("\\s+", " ")
+                .toUpperCase();
     }
 }

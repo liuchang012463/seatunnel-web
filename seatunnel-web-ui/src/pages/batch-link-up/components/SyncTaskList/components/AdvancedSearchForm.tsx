@@ -100,11 +100,17 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
         createDataSourceOption("MINIO", "MINIO"),
       ]
     : [
+        createDataSourceOption("JDBC", "JDBC"),
         createDataSourceOption("MySql", "MYSQL"),
         createDataSourceOption("Oracle", "ORACLE"),
         createDataSourceOption("PostgreSQL", "POSTGRE_SQL"),
+        createDataSourceOption("Doris", "DORIS"),
+        createDataSourceOption("Elasticsearch", "ELASTICSEARCH"),
         createDataSourceOption("Kingbase", "KINGBASE"),
         createDataSourceOption("Dameng", "DAMENG"),
+        createDataSourceOption("H2", "H2"),
+        createDataSourceOption("Kafka", "KAFKA"),
+        createDataSourceOption("HTTP", "HTTP"),
       ];
 
   const statusOptions = [

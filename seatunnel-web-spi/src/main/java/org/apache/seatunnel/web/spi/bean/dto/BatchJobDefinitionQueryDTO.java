@@ -58,4 +58,10 @@ public class BatchJobDefinitionQueryDTO extends PaginationBaseDTO {
 
     private String sinkTable;
 
+    /** Sort field accepted by the task list: name or createTime. */
+    private String sortField;
+
+    /** Sort direction accepted by the task list: asc or desc. */
+    private String sortOrder;
+
 }
