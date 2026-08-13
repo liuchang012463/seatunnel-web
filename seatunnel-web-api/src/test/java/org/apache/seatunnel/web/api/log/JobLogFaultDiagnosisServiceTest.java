@@ -146,7 +146,7 @@ class JobLogFaultDiagnosisServiceTest {
         assertEquals(List.of("status", "status", "delta", "delta", "result", "done"),
                 events.stream().map(JobLogDiagnosisStreamEvent::type).toList());
         assertEquals("正在读取失败任务的日志、数据快照和执行流程...", events.get(0).content());
-        assertEquals("模型服务当前不可用，正在使用规则证据完成定位...", events.get(1).content());
+        assertEquals("模型服务响应超时或不可用，正在使用规则证据完成定位...", events.get(1).content());
         List<String> deltas = events.stream()
                 .filter(event -> "delta".equals(event.type()))
                 .map(JobLogDiagnosisStreamEvent::content)

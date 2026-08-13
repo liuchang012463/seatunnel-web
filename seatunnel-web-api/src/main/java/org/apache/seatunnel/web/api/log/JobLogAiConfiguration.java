@@ -31,10 +31,7 @@ public class JobLogAiConfiguration {
                 .model(model)
                 .build();
         HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(List.of(
-                MediaType.TEXT_EVENT_STREAM,
-                MediaType.APPLICATION_JSON
-        ));
+        headers.setAccept(List.of(MediaType.TEXT_EVENT_STREAM));
         OpenAiApi api = OpenAiApi.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)

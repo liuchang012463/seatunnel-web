@@ -41,6 +41,7 @@ public class JobLogFaultDiagnosisService {
     private static final int MAX_PROMPT_CHARS = 24_000;
     private static final int STREAM_TEXT_CHUNK_CODE_POINTS = 32;
     private static final Duration STREAM_TEXT_CHUNK_DELAY = Duration.ofMillis(18);
+    private static final Duration MODEL_STREAM_IDLE_TIMEOUT = Duration.ofSeconds(15);
     private static final String MODEL_SYSTEM_PROMPT = """
             你是 SeaTunnel 数据引接故障定位助手。只根据提供的日志、结构化记录和脱敏配置判断故障，禁止臆造。
             faultType 优先使用以下四类之一：COLLECTOR（采集端）、TRANSPORT（传输链路）、DATA_SOURCE（数据源）、SYSTEM_COMPONENT（系统组件）。
@@ -147,7 +148,8 @@ public class JobLogFaultDiagnosisService {
                     .map(chunk -> {
                         modelOutput.append(chunk);
                         return JobLogDiagnosisStreamEvent.delta(chunk);
-                    });
+                    })
+                    .timeout(MODEL_STREAM_IDLE_TIMEOUT);
             Mono<JobLogDiagnosisStreamEvent> finalResult = Mono.fromSupplier(() -> {
                 String response = modelOutput.toString();
                 log.info(
@@ -176,7 +178,7 @@ public class JobLogFaultDiagnosisService {
                     finalResult,
                     Mono.just(JobLogDiagnosisStreamEvent.done())
             ).onErrorResume(error -> {
-                log.warn("AI task-log diagnosis stream failed, instanceId={}", instanceId, error);
+                log.warn("AI task-log diagnosis stream failed or timed out, instanceId={}", instanceId, error);
                 return fallbackStream(instanceId, requestedMode, evidence, "RULE_FALLBACK");
             });
                 }).subscribeOn(Schedulers.boundedElastic())
@@ -191,7 +193,7 @@ public class JobLogFaultDiagnosisService {
         String summary = "已完成规则分析，故障归因：" + result.faultTypeLabel()
                 + "。" + result.rootCause();
         return Flux.concat(
-                Flux.just(JobLogDiagnosisStreamEvent.status("模型服务当前不可用，正在使用规则证据完成定位...")),
+                Flux.just(JobLogDiagnosisStreamEvent.status("模型服务响应超时或不可用，正在使用规则证据完成定位...")),
                 splitForDisplay(summary).map(JobLogDiagnosisStreamEvent::delta),
                 Flux.just(JobLogDiagnosisStreamEvent.result(result), JobLogDiagnosisStreamEvent.done())
         );
