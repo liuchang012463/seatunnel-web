@@ -35,6 +35,11 @@ const getConfig = (node: any) => node?.data?.config || {};
 const isElasticsearchNode = (node: any) =>
   String(node?.data?.dbType || "").toUpperCase() === "ELASTICSEARCH";
 
+const isNonTabularSourceNode = (node: any) =>
+  ["HTTP", "KAFKA", "ELASTICSEARCH"].includes(
+    String(node?.data?.dbType || "").toUpperCase()
+  );
+
 const hasElasticsearchTarget = (config: any) => {
   const directTarget = [
     config.index,
@@ -106,7 +111,7 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
-    if (isElasticsearchNode(node)) {
+    if (isNonTabularSourceNode(node)) {
       return null;
     }
     if (!config.readMode) {
@@ -122,6 +127,9 @@ const sourceRules: NodeCheckRule[] = [
       }
       return null;
     }
+    if (isNonTabularSourceNode(node)) {
+      return null;
+    }
     if (config.readMode === "table" && !config.table) {
       return buildWarning(node, "table", "按表读取时必须选择源表");
     }
@@ -129,7 +137,7 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
-    if (isElasticsearchNode(node)) {
+    if (isNonTabularSourceNode(node)) {
       return null;
     }
     if (config.readMode === "sql" && !String(config.sql || "").trim()) {
