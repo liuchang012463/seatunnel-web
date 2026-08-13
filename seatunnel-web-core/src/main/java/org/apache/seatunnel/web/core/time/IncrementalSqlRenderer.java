@@ -123,7 +123,7 @@ public final class IncrementalSqlRenderer {
             }
             return;
         }
-        String body = renderTokens(String.valueOf(rawBody), values);
+        String body = RuntimeParameterRenderer.renderJsonBody(String.valueOf(rawBody), values);
         if (!body.equals(String.valueOf(rawBody))) {
             overrides.put("body", body);
         }
@@ -152,7 +152,7 @@ public final class IncrementalSqlRenderer {
 
     private static Object renderObjectValue(Object value, Map<String, String> values) {
         if (value instanceof String) {
-            return renderTokens((String) value, values);
+            return RuntimeParameterRenderer.renderText((String) value, values);
         }
         if (value instanceof Map) {
             return renderMap((Map<?, ?>) value, values);
@@ -175,18 +175,10 @@ public final class IncrementalSqlRenderer {
         if (StringUtils.isBlank(value)) {
             return;
         }
-        String rendered = renderTokens(value, values);
+        String rendered = RuntimeParameterRenderer.renderText(value, values);
         if (!rendered.equals(value)) {
             overrides.put(key, rendered);
         }
-    }
-
-    private static String renderTokens(String value, Map<String, String> values) {
-        String rendered = value;
-        for (Map.Entry<String, String> entry : values.entrySet()) {
-            rendered = rendered.replace("${" + entry.getKey() + "}", entry.getValue());
-        }
-        return rendered;
     }
 
     private static boolean isHttpSource(Config config) {

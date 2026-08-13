@@ -20,6 +20,7 @@ import org.apache.seatunnel.web.common.QueryResult;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.time.TimeVariableJdbcSqlRenderService;
+import org.apache.seatunnel.web.core.time.RuntimeParameterRenderer;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.apache.seatunnel.web.spi.bean.vo.ColumnOptionVO;
@@ -220,13 +221,15 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         }
 
         try {
-            Map<String, Object> params = asObjectMap(requestBody.get("params"));
+            Map<String, String> previewValues = RuntimeParameterRenderer.previewValues();
+            Map<String, Object> params = asObjectMap(
+                    RuntimeParameterRenderer.renderValue(requestBody.get("params"), previewValues));
             String url = HttpRequestSupport.resolveUrl(httpParam.getBaseUrl(), path);
-            if ("GET".equals(method)) {
-                url = appendQueryParams(url, params);
-            }
+            url = appendQueryParams(url, params);
 
             Map<String, String> headers = toStringMap(requestBody.get("headers"));
+            headers.replaceAll((key, value) ->
+                    RuntimeParameterRenderer.renderText(value, previewValues));
             headers = HttpRequestSupport.mergeHeaders(httpParam, headers);
             headers.putIfAbsent("Accept", "application/json");
             if ("POST".equals(method)) {
@@ -236,7 +239,8 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .timeout(Duration.ofMillis(Math.max(1_000, httpParam.getSocketTimeoutMs())))
-                    .method(method, bodyPublisher(method, requestBody.get("body")));
+                    .method(method, bodyPublisher(
+                            method, requestBody.get("body"), previewValues));
             headers.forEach(requestBuilder::header);
 
             HttpClient client = HttpClient.newBuilder()
@@ -511,16 +515,18 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         }
     }
 
-    private HttpRequest.BodyPublisher bodyPublisher(String method, Object rawBody) {
+    private HttpRequest.BodyPublisher bodyPublisher(
+            String method, Object rawBody, Map<String, String> previewValues) {
         if ("GET".equals(method)) {
             return HttpRequest.BodyPublishers.noBody();
         }
 
-        String body = rawBody == null
-                ? ""
-                : rawBody instanceof String
-                        ? (String) rawBody
-                        : JSONUtils.toJsonString(rawBody);
+        Object renderedBody = rawBody instanceof String
+                ? RuntimeParameterRenderer.renderJsonBody((String) rawBody, previewValues)
+                : RuntimeParameterRenderer.renderValue(rawBody, previewValues);
+        String body = renderedBody == null ? "" : renderedBody instanceof String
+                ? (String) renderedBody
+                : JSONUtils.toJsonString(renderedBody);
         return HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8);
     }
 
