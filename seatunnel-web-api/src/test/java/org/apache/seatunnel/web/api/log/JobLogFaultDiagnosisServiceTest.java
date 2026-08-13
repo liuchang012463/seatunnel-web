@@ -11,10 +11,12 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -141,10 +143,17 @@ class JobLogFaultDiagnosisServiceTest {
                 chatClientProvider
         ).streamDiagnose(instanceId, mode).collectList().block();
 
-        assertEquals(List.of("status", "status", "delta", "result", "done"),
+        assertEquals(List.of("status", "status", "delta", "delta", "result", "done"),
                 events.stream().map(JobLogDiagnosisStreamEvent::type).toList());
         assertEquals("正在读取失败任务的日志、数据快照和执行流程...", events.get(0).content());
         assertEquals("模型服务当前不可用，正在使用规则证据完成定位...", events.get(1).content());
-        assertEquals("TRANSPORT", events.get(3).result().faultType());
+        List<String> deltas = events.stream()
+                .filter(event -> "delta".equals(event.type()))
+                .map(JobLogDiagnosisStreamEvent::content)
+                .collect(Collectors.toList());
+        assertTrue(deltas.size() > 1);
+        assertEquals("已完成规则分析，故障归因：传输链路。采集端与引接目标之间的传输链路异常或超时",
+                String.join("", deltas));
+        assertEquals("TRANSPORT", events.get(events.size() - 2).result().faultType());
     }
 }

@@ -181,6 +181,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
   const [diagnosisLoading, setDiagnosisLoading] = useState(false);
   const [diagnosisStatus, setDiagnosisStatus] = useState("");
   const [diagnosisOutput, setDiagnosisOutput] = useState("");
+  const [diagnosisChunkCount, setDiagnosisChunkCount] = useState(0);
   const [diagnosisResult, setDiagnosisResult] = useState<JobLogFaultDiagnosisResult | null>(null);
   const diagnosisAbortRef = useRef<AbortController | null>(null);
 
@@ -216,6 +217,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     setReplayPlaying(false);
     setDiagnosisStatus("");
     setDiagnosisOutput("");
+    setDiagnosisChunkCount(0);
     setDiagnosisResult(null);
     diagnosisAbortRef.current?.abort();
     if (view === "logs") {
@@ -294,6 +296,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     setDiagnosisLoading(true);
     setDiagnosisStatus("正在连接故障定位服务...");
     setDiagnosisOutput("");
+    setDiagnosisChunkCount(0);
     setDiagnosisResult(null);
 
     try {
@@ -301,6 +304,8 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
         if (event.type === "status") {
           setDiagnosisStatus(event.content || "正在分析...");
         } else if (event.type === "delta") {
+          setDiagnosisStatus("模型实时输出中...");
+          setDiagnosisChunkCount((count) => count + 1);
           setDiagnosisOutput((current) => current + (event.content || ""));
         } else if (event.type === "result" && event.result) {
           setDiagnosisResult(event.result);
@@ -488,14 +493,14 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
                 <span>{diagnosisStatus || (diagnosisLoading ? "正在接收模型输出..." : "故障定位完成")}</span>
               </div>
               <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[11px] text-slate-400">
-                {diagnosisLoading ? "流式生成中" : "已完成"}
+                {diagnosisLoading ? `流式生成中 · ${diagnosisChunkCount} 段` : `已接收 ${diagnosisChunkCount} 段`}
               </span>
             </div>
             <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-300">
               <span>模型实时输出</span>
-              <span className="font-normal text-slate-500">内容会随模型生成持续更新</span>
+              <span className="font-normal text-slate-500">SSE 增量事件 · {diagnosisChunkCount} 段</span>
             </div>
-            <div className="min-h-[180px] max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-slate-800 bg-slate-900 p-4 text-[13px] leading-6 text-slate-100">
+            <div aria-live="polite" className="min-h-[180px] max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-slate-800 bg-slate-900 p-4 text-[13px] leading-6 text-slate-100">
               {diagnosisOutput || <span className="text-slate-500">正在读取日志并生成诊断，请稍候...</span>}
               {diagnosisLoading ? <span className="ml-1 inline-block animate-pulse text-cyan-300">▍</span> : null}
             </div>

@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.seatunnel.web.api.log.JobLogSearchResult;
 import org.apache.seatunnel.web.api.log.JobLogAnalysisResult;
 import org.apache.seatunnel.web.api.log.JobLogReplayResult;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import reactor.core.publisher.Flux;
@@ -97,7 +99,12 @@ public class JobLogController {
     @Operation(summary = "streamDiagnoseJobInstanceLog", description = "流式分析失败任务日志并定位故障类型")
     public Flux<ServerSentEvent<JobLogDiagnosisStreamEvent>> diagnosisStream(
             @PathVariable("jobMode") String jobMode,
-            @PathVariable("instanceId") Long instanceId) {
+            @PathVariable("instanceId") Long instanceId,
+            HttpServletResponse response) {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-transform");
+        response.setHeader(HttpHeaders.PRAGMA, "no-cache");
+        response.setDateHeader(HttpHeaders.EXPIRES, 0);
+        response.setHeader("X-Accel-Buffering", "no");
         return jobLogFaultDiagnosisService.streamDiagnose(instanceId, parseMode(jobMode))
                 .map(event -> ServerSentEvent.<JobLogDiagnosisStreamEvent>builder()
                         .event(event.type())
