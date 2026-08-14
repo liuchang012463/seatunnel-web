@@ -2,7 +2,7 @@ import HttpUtils from "@/utils/HttpUtils";
 import {
   ConnectorParamQuery,
   ConnectorParamVO,
-  PageResult,
+  PaginationData,
   SaveTimeVariablePayload,
   TimeVariablePreviewPayload,
   TimeVariablePreviewVO,
@@ -30,7 +30,7 @@ export interface ConnectorParamListQuery {
 }
 
 export async function fetchConnectorParamPage(params: ConnectorParamQuery) {
-  return HttpUtils.post<PageResult<ConnectorParamVO>>(
+  return HttpUtils.post<PaginationData<ConnectorParamVO>>(
     "/api/v1/connector-param-meta/page",
     params
   );
@@ -115,7 +115,10 @@ export async function fetchConnectorParamOptions(
  * 时间变量分页查询
  */
 export async function fetchTimeVariablePage(params: TimeVariableQuery) {
-  return HttpUtils.post<any>("/api/v1/time-variable/page", params);
+  return HttpUtils.post<PaginationData<TimeVariableVO>>(
+    "/api/v1/time-variable/page",
+    params
+  );
 }
 
 /**

@@ -52,7 +52,7 @@ const EmojiPicker: FC<AppIconPickerProps> = ({ onSelect, onClose, className }) =
   const [emoji, setEmoji] = useState<{ emoji: string; background: string }>();
   const [activeTab, setActiveTab] = useState<AppIconType>('emoji');
 
-  const handleButtonClick = (buttonType) => {
+  const handleButtonClick = (buttonType: AppIconType) => {
     setActiveTab(buttonType);
   };
 
@@ -115,11 +115,8 @@ const EmojiPicker: FC<AppIconPickerProps> = ({ onSelect, onClose, className }) =
 
   return true ? (
     <Modal
-      onClose={() => {
-        onClose && onClose();
-      }}
       // isShow
-      visible={true}
+      open={true}
       style={{ top: 10 }}
       width={360}
       closable={false}

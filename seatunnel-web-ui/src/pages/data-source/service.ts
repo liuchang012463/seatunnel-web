@@ -67,7 +67,18 @@ export async function fetchDataSourceUnits(): Promise<CommonApiResponse<string[]
   return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/units`);
 }
 
-export async function fetchDataSourceOptions(dbType: string): Promise<CommonApiResponse<unknown[]>> {
+export interface DataSourceOptionRecord {
+  id?: string | number;
+  value?: string | number;
+  name?: string;
+  label?: string;
+  dbType?: string;
+  [key: string]: unknown;
+}
+
+export async function fetchDataSourceOptions(
+  dbType: string,
+): Promise<CommonApiResponse<DataSourceOptionRecord[]>> {
   return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/option?dbType=${dbType}`);
 }
 

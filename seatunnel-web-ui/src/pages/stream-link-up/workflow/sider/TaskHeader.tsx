@@ -2,12 +2,12 @@ import { useState } from "react";
 import Down from "../icon/Down";
 import WorkflowSmallIcon from "../icon/WorkflowSmallIcon";
 import AppIcon from "./app-icon";
-import EmojiPicker from "./emoji-picker";
+import EmojiPicker, { type AppIconSelection } from "./emoji-picker";
 import "./index.less";
 
 const TaskHeader = () => {
-  const [showEmojiPicker, setShowEmojiPicker] = useState<Boolean>(false);
-  const [appIcon, setAppIcon] = useState({
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [appIcon, setAppIcon] = useState<AppIconSelection>({
     type: "emoji",
     icon: "robot_face",
     background: "rgb(255, 234, 213)",

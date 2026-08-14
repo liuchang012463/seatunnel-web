@@ -39,7 +39,7 @@ const AppIcon: FC<AppIconProps> = ({
         alignItems: "center",
         cursor: "pointer",
         flexGrow: 0,
-        flexShink: 0,
+        flexShrink: 0,
         width: "3.5rem",
         padding: "0.5rem",
         height: "3.5rem",

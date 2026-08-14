@@ -12,7 +12,7 @@ import "./sync.less"
 interface TaskHistoryPanelProps {
   selectedItem: any;
   statusFilter: string;
-  onItemSelect: (id: number) => void;
+  onItemSelect: (id: string | number) => void;
   onStatusFilterChange: (status: string) => void;
   instanceItem: any;
   setInstanceItem: (item: any) => void;

@@ -1,7 +1,10 @@
-// ConfigCodeBlock.jsx
-const ConfigCodeBlock = ({ content }) => {
+interface ConfigCodeBlockProps {
+  content: string;
+}
+
+const ConfigCodeBlock = ({ content }: ConfigCodeBlockProps) => {
   // 简单的语法高亮（纯CSS实现）
-  const highlightConfig = (text) => {
+  const highlightConfig = (text: string) => {
     return text
       .replace(/(\w+\s*\{)/g, '<span style="color: #d73a49;">$1</span>')
       .replace(/(\w+\s*=)/g, '<span style="color: #6f42c1;">$1</span>')

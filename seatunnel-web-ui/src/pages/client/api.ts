@@ -1,4 +1,5 @@
 import HttpUtils from "@/utils/HttpUtils";
+import type { ApiResponse } from "@/utils/request";
 
 export const apiPrefix = "/api/v1/devops/client";
 
@@ -48,6 +49,26 @@ export interface SeatunnelClientOption {
   description?: string;
 }
 
+export interface SeatunnelClientSaveResult {
+  id?: number | string;
+  value?: number | string;
+}
+
+export interface DatasourceVerifyItem {
+  code?: string;
+  name?: string;
+  success?: boolean;
+  actualValue?: string;
+  expectedValue?: string;
+  message?: string;
+}
+
+export interface DatasourceVerifyResult {
+  success: boolean;
+  items: DatasourceVerifyItem[];
+  message?: string;
+}
+
 export interface SeatunnelClientLog {
   clientId: number;
   clientName: string;
@@ -55,8 +76,13 @@ export interface SeatunnelClientLog {
 }
 
 export const seatunnelClientApi = {
-  saveOrUpdate: (data: SeatunnelClient) => {
-    return HttpUtils.post(`${apiPrefix}/saveOrUpdate`, data);
+  saveOrUpdate: (
+    data: SeatunnelClient
+  ): Promise<ApiResponse<SeatunnelClientSaveResult>> => {
+    return HttpUtils.post<SeatunnelClientSaveResult>(
+      `${apiPrefix}/saveOrUpdate`,
+      data
+    );
   },
 
 
@@ -94,13 +120,17 @@ export const seatunnelClientApi = {
       role?: "SOURCE" | "SINK";
       triggerMode?: "AUTO" | "MANUAL";
       forceRefresh?: boolean;
+      scene?: "offline" | "realtime";
     }
-  ) => {
-    return HttpUtils.post(`${apiPrefix}/${clientId}/verify-datasource`, {
+  ): Promise<ApiResponse<DatasourceVerifyResult>> => {
+    return HttpUtils.post<DatasourceVerifyResult>(
+      `${apiPrefix}/${clientId}/verify-datasource`,
+      {
       ...params,
       timeoutMs: 15000,
       pollIntervalMs: 1000,
-    });
+      }
+    );
   },
 
   metrics: (

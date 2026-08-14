@@ -310,7 +310,7 @@ export default function Workflow({
     };
   }, []);
 
-  const buildEnvData = () => {
+  const buildEnvData = (): EnvConfig => {
     return {
       ...envConfig,
       jobMode: "STREAMING",

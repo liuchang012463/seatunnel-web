@@ -101,7 +101,7 @@ const DataSourceSelector = ({
       suffixIcon={<SendOutlined />}
       style={style}
       filterOption={(input, option) =>
-        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+        String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
       }
     >
       {dataSources.map(renderDataSourceOption)}

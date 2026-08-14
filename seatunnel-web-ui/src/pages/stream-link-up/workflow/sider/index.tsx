@@ -1,4 +1,5 @@
 import { Divider, Form, Layout } from "antd";
+import type { FormInstance } from "antd";
 import { useEffect, useState } from "react";
 import BasicConfig from "./BasicConfig";
 import EmojiPicker from "./emoji-picker";
@@ -7,7 +8,12 @@ import styles from "./index.less";
 import ScheduleConfig from "./ScheduleConfig";
 import TaskHeader from "./TaskHeader";
 const { Sider } = Layout;
-export default function LeftSider({ params, form }) {
+interface LeftSiderProps {
+  params?: Record<string, any>;
+  form: FormInstance;
+}
+
+export default function LeftSider({ params, form }: LeftSiderProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [appIcon, setAppIcon] = useState({
     type: "emoji",

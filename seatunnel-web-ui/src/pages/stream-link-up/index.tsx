@@ -168,6 +168,7 @@ const syncUrlParams = (params: SearchValues, pageInfo: { current: number; pageSi
   query.set('pageSize', String(pageInfo.pageSize || 10));
 
   history.replace({
+    pathname: window.location.pathname,
     search: `?${query.toString()}`,
   });
 };
@@ -543,7 +544,9 @@ const RealtimeSyncPage: React.FC = () => {
         message.error(getErrorMessage(historyRes, '获取检查点历史失败'));
         setCheckpointHistory([]);
       } else {
-        setCheckpointHistory(historyRes?.data || []);
+        setCheckpointHistory(
+          Array.isArray(historyRes?.data) ? historyRes.data : []
+        );
       }
     } catch (error) {
       message.error('获取检查点数据失败');

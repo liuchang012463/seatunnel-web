@@ -88,8 +88,9 @@ const Index: React.FC = () => {
   );
 
   const mapTimeVOToItem = useCallback(
-    (record: TimeVariableVO): TimeParamItem => ({
-      id: record.id,
+  (record: TimeVariableVO): TimeParamItem => ({
+    key: String(record.id),
+    id: record.id,
       type: "time",
       paramName: record.paramName,
       paramDesc: record.paramDesc,

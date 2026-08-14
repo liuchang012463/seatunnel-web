@@ -214,11 +214,7 @@ const DetailPage = () => {
                   targetType={targetType}
                   sourceLabel={sourceLabel}
                   targetLabel={targetLabel}
-                  sourceClientId={sourceClientId}
-                  targetClientId={targetClientId}
                   clientId={clientId}
-                  setSourceClientId={setSourceClientId}
-                  setTargetClientId={setTargetClientId}
                   setClientId={setClientId}
                   handleSourceChange={handleSourceChange}
                   handleTargetChange={handleTargetChange}

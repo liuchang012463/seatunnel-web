@@ -38,7 +38,7 @@ export const contentSwapVariants = {
     y: 0,
     transition: {
       duration: 0.24,
-      ease: [0.22, 1, 0.36, 1],
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
     },
   },
   exit: {
@@ -46,7 +46,7 @@ export const contentSwapVariants = {
     y: -6,
     transition: {
       duration: 0.16,
-      ease: [0.4, 0, 1, 1],
+      ease: [0.4, 0, 1, 1] as [number, number, number, number],
     },
   },
 };

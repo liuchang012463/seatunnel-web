@@ -1,12 +1,9 @@
 const ClickhouseIcon = ({ height = '24', width = '24' }) => {
   return (
     <svg
-      t="1763126974122"
       className="icon"
       viewBox="0 0 1024 1024"
-      version="1.1"
       xmlns="http://www.w3.org/2000/svg"
-      p-id="9799"
       width={width}
       height={height}
     >
