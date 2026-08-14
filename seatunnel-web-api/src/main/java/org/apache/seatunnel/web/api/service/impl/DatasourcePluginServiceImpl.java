@@ -60,10 +60,6 @@ public class DatasourcePluginServiceImpl implements DatasourcePluginService {
 
         DbType dbType = parseDbType(pluginType);
 
-        if (dataSourcePluginConfigDao.existsByPluginType(dbType)) {
-            return;
-        }
-
         try {
             DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
             if (processor == null) {
@@ -176,7 +172,10 @@ public class DatasourcePluginServiceImpl implements DatasourcePluginService {
         field.setLabel(getText(fieldNode, "label"));
         field.setType(parseFieldType(fieldNode));
         field.setPlaceholder(getText(fieldNode, "placeholder"));
+        field.setDescription(getText(fieldNode, "description"));
         field.setDefaultValue(getValue(fieldNode.get("defaultValue")));
+        field.setVisibleWhen(getText(fieldNode, "visibleWhen"));
+        field.setOrder(fieldNode.path("order").asInt(0));
 
         if (FieldType.SELECT.equals(field.getType())) {
             field.setOptions(parseOptions(fieldNode.get("options")));

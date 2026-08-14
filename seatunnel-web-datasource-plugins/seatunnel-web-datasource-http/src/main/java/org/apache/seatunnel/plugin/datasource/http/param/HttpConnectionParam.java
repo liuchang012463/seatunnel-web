@@ -16,28 +16,43 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class HttpConnectionParam implements ConnectionParam {
 
-    @FormField(label = "Base URL", required = true, order = 1, placeholder = "https://api.example.com")
+    @FormField(
+            label = "Base URL",
+            required = true,
+            order = 1,
+            placeholder = "https://api.example.com",
+            description = "填写 API 服务的根地址，不要填写具体接口路径；例如 https://api.example.com。具体接口路径请在引接任务中填写。"
+    )
     private String baseUrl;
 
-    @FormField(label = "健康检查路径", order = 2, placeholder = "/health")
+    @FormField(
+            label = "健康检查路径",
+            order = 2,
+            placeholder = "/health",
+            description = "用于连接测试的相对路径，例如 /health；留空时使用 Base URL 本身进行检查。"
+    )
     private String healthCheckPath;
 
     @FormField(label = "认证方式", required = true, type = FieldType.SELECT, order = 3, defaultValue = "NONE")
     private HttpAuthenticationType authenticationType = HttpAuthenticationType.NONE;
 
-    @FormField(label = "用户名", order = 4)
+    @FormField(label = "用户名", order = 4, visibleWhen = "authenticationType=BASIC")
     private String username;
 
-    @FormField(label = "密码", type = FieldType.PASSWORD, order = 5)
+    @FormField(label = "密码", type = FieldType.PASSWORD, order = 5,
+            visibleWhen = "authenticationType=BASIC")
     private String password;
 
-    @FormField(label = "Bearer Token", type = FieldType.PASSWORD, order = 6)
+    @FormField(label = "Bearer Token", type = FieldType.PASSWORD, order = 6,
+            visibleWhen = "authenticationType=BEARER")
     private String bearerToken;
 
-    @FormField(label = "API Key Header", order = 7, placeholder = "X-API-Key")
+    @FormField(label = "API Key Header", order = 7, placeholder = "X-API-Key",
+            visibleWhen = "authenticationType=API_KEY")
     private String apiKeyHeader;
 
-    @FormField(label = "API Key Value", type = FieldType.PASSWORD, order = 8)
+    @FormField(label = "API Key Value", type = FieldType.PASSWORD, order = 8,
+            visibleWhen = "authenticationType=API_KEY")
     private String apiKeyValue;
 
     @FormField(label = "默认 Headers（JSON）", type = FieldType.TEXTAREA, order = 9)

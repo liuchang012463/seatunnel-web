@@ -1,7 +1,11 @@
 import {
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  LoadingOutlined,
   PauseOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
+  RobotOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 import { Button, Empty, Input, Spin, Tag, Tooltip, message } from "antd";
@@ -20,7 +24,7 @@ import {
 interface TaskLogObservabilityProps {
   instanceItem: any;
   jobMode: JobLogMode;
-  view: "operation" | "snapshot" | "execution" | "timeline" | "replay" | "diagnosis";
+  view: "logs" | "operation" | "snapshot" | "execution" | "timeline" | "replay" | "diagnosis";
 }
 
 const getResponseData = (response: any) => response?.data ?? response;
@@ -177,6 +181,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
   const [diagnosisLoading, setDiagnosisLoading] = useState(false);
   const [diagnosisStatus, setDiagnosisStatus] = useState("");
   const [diagnosisOutput, setDiagnosisOutput] = useState("");
+  const [diagnosisChunkCount, setDiagnosisChunkCount] = useState(0);
   const [diagnosisResult, setDiagnosisResult] = useState<JobLogFaultDiagnosisResult | null>(null);
   const diagnosisAbortRef = useRef<AbortController | null>(null);
 
@@ -205,15 +210,17 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
 
   useEffect(() => {
     setSearchKeyword("");
+    setErrorText("");
     setAnalysisResult(null);
     setReplayResult(null);
     setReplayCursor(0);
     setReplayPlaying(false);
     setDiagnosisStatus("");
     setDiagnosisOutput("");
+    setDiagnosisChunkCount(0);
     setDiagnosisResult(null);
     diagnosisAbortRef.current?.abort();
-    if (view === "execution") {
+    if (view === "logs") {
       void loadLog();
     }
   }, [loadLog, view]);
@@ -289,6 +296,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     setDiagnosisLoading(true);
     setDiagnosisStatus("正在连接故障定位服务...");
     setDiagnosisOutput("");
+    setDiagnosisChunkCount(0);
     setDiagnosisResult(null);
 
     try {
@@ -296,6 +304,8 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
         if (event.type === "status") {
           setDiagnosisStatus(event.content || "正在分析...");
         } else if (event.type === "delta") {
+          setDiagnosisStatus("模型实时输出中...");
+          setDiagnosisChunkCount((count) => count + 1);
           setDiagnosisOutput((current) => current + (event.content || ""));
         } else if (event.type === "result" && event.result) {
           setDiagnosisResult(event.result);
@@ -353,43 +363,46 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     </section>
   );
 
-  const renderExecutionPanel = () => (
-    <div className="space-y-4">
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="text-sm font-semibold text-slate-800">原始执行日志</div>
-            <div className="mt-1 text-xs text-slate-400">完整日志 · 当前实例 #{instanceId}</div>
-          </div>
-          <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={() => void loadLog()}>
-            刷新
-          </Button>
+  const renderLogPanel = () => (
+    <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-slate-800">原始执行日志</div>
+          <div className="mt-1 text-xs text-slate-400">完整日志 · 当前实例 #{instanceId}</div>
         </div>
-        <Input
-          allowClear
-          prefix={<SearchOutlined className="text-slate-400" />}
-          value={searchKeyword}
-          onChange={(event) => setSearchKeyword(event.target.value)}
-          placeholder="在当前完整日志中检索 timeout、ERROR、连接..."
-          suffix={normalizedKeyword ? <span className="text-xs text-slate-400">命中 {matchedLineCount} 行</span> : null}
-        />
-        <div className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-100">
-          {loading && !logContent ? (
-            <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
-          ) : errorText ? (
-            <div className="py-12 text-center text-red-300">{errorText}</div>
-          ) : logContent ? (
-            logLines.map((line, index) => {
-              const matched = normalizedKeyword && line.toLowerCase().includes(normalizedKeyword);
-              return <div key={index} className={matched ? "rounded bg-cyan-950/80 text-cyan-100" : ""}>{line || " "}</div>;
-            })
-          ) : (
-            <div className="py-12 text-center text-slate-500">当前实例暂无日志</div>
-          )}
-        </div>
-      </section>
-      {renderAnalysisPanel("执行流程日志", "按执行阶段整理任务运行过程和状态变化。", analysisResult?.executionFlow || [])}
-    </div>
+        <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={() => void loadLog()}>
+          刷新
+        </Button>
+      </div>
+      <Input
+        allowClear
+        prefix={<SearchOutlined className="text-slate-400" />}
+        value={searchKeyword}
+        onChange={(event) => setSearchKeyword(event.target.value)}
+        placeholder="在当前完整日志中检索 timeout、ERROR、连接..."
+        suffix={normalizedKeyword ? <span className="text-xs text-slate-400">命中 {matchedLineCount} 行</span> : null}
+      />
+      <div className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-100">
+        {loading && !logContent ? (
+          <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
+        ) : errorText ? (
+          <div className="py-12 text-center text-red-300">{errorText}</div>
+        ) : logContent ? (
+          logLines.map((line, index) => {
+            const matched = normalizedKeyword && line.toLowerCase().includes(normalizedKeyword);
+            return <div key={index} className={matched ? "rounded bg-cyan-950/80 text-cyan-100" : ""}>{line || " "}</div>;
+          })
+        ) : (
+          <div className="py-12 text-center text-slate-500">当前实例暂无日志</div>
+        )}
+      </div>
+    </section>
+  );
+
+  const renderExecutionFlowPanel = () => renderAnalysisPanel(
+    "执行流程日志",
+    "按执行阶段整理任务运行过程和状态变化。原始执行日志请切换到“日志”Tab查看。",
+    analysisResult?.executionFlow || [],
   );
 
   const renderReplayPanel = () => (
@@ -444,41 +457,85 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
   );
 
   const renderDiagnosisPanel = () => (
-    <section className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-semibold text-slate-800">AI故障定位</div>
-          <div className="mt-1 text-xs text-slate-400">仅对 FAILED 任务调用故障定位服务，其他状态保留 Tab 但不可执行。</div>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-cyan-50/60 px-5 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+            <RobotOutlined className="text-lg" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800">
+              <span>AI故障定位</span>
+              <Tag color={canDiagnose ? "gold" : "default"} className="!mr-0">{canDiagnose ? "FAILED 可分析" : "暂不可用"}</Tag>
+            </div>
+            <div className="mt-1 text-xs text-slate-400">基于当前实例日志、执行流程和脱敏运行配置生成定位结论。</div>
+          </div>
         </div>
         <Tooltip title={canDiagnose ? "分析当前 FAILED 实例" : diagnosisDisabledReason}>
           <span>
-            <Button type="primary" danger disabled={!canDiagnose || diagnosisLoading} loading={diagnosisLoading} onClick={() => void startDiagnosis()}>
-              {diagnosisLoading ? "分析中..." : "开始故障定位"}
+            <Button type="primary" disabled={!canDiagnose || diagnosisLoading} loading={diagnosisLoading} onClick={() => void startDiagnosis()}>
+              {diagnosisLoading ? "定位中..." : diagnosisResult ? "重新定位" : "开始故障定位"}
             </Button>
           </span>
         </Tooltip>
       </div>
-      {!canDiagnose ? (
-        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500">{diagnosisDisabledReason}</div>
-      ) : null}
-      {diagnosisStatus || diagnosisOutput ? (
-        <div className="mt-3 rounded-xl border border-cyan-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100">
-          <div className="mb-2 flex items-center gap-2 text-xs text-cyan-300"><span className="h-2 w-2 rounded-full bg-cyan-400" />{diagnosisStatus || "正在输出..."}</div>
-          <div className="mb-2 text-xs font-semibold text-slate-300">模型输出</div>
-          <div className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-900/80 p-3 text-slate-100">{diagnosisOutput || "等待模型输出..."}</div>
-        </div>
-      ) : null}
+
+      <div className="space-y-4 p-5">
+        {!canDiagnose ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-500">{diagnosisDisabledReason}</div>
+        ) : null}
+
+        {(diagnosisLoading || diagnosisStatus || diagnosisOutput) ? (
+          <div className="rounded-2xl border border-cyan-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100 shadow-inner">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-cyan-200">
+                {diagnosisLoading ? <LoadingOutlined className="text-cyan-300" /> : <CheckCircleOutlined className="text-emerald-300" />}
+                <span>{diagnosisStatus || (diagnosisLoading ? "正在接收模型输出..." : "故障定位完成")}</span>
+              </div>
+              <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[11px] text-slate-400">
+                {diagnosisLoading ? `流式生成中 · ${diagnosisChunkCount} 段` : `已接收 ${diagnosisChunkCount} 段`}
+              </span>
+            </div>
+            <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-300">
+              <span>模型实时输出</span>
+              <span className="font-normal text-slate-500">SSE 增量事件 · {diagnosisChunkCount} 段</span>
+            </div>
+            <div aria-live="polite" className="min-h-[180px] max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-slate-800 bg-slate-900 p-4 text-[13px] leading-6 text-slate-100">
+              {diagnosisOutput || <span className="text-slate-500">正在读取日志并生成诊断，请稍候...</span>}
+              {diagnosisLoading ? <span className="ml-1 inline-block animate-pulse text-cyan-300">▍</span> : null}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-8 text-center">
+            <RobotOutlined className="text-2xl text-slate-300" />
+            <div className="mt-2 text-sm font-medium text-slate-600">尚未开始故障定位</div>
+            <div className="mt-1 text-xs text-slate-400">点击右上角按钮后，模型输出会在本区域流式展示。</div>
+          </div>
+        )}
+
       {diagnosisResult ? (
-        <div className="mt-3 space-y-3">
+        <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
             <Tag color="purple">归因：{diagnosisResult.faultTypeLabel || diagnosisResult.faultType}</Tag>
             <Tag color="blue">类型：{diagnosisResult.faultType}</Tag>
             <Tag>置信度 {Math.round((diagnosisResult.confidence || 0) * 100)}%</Tag>
           </div>
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm" style={{ backgroundColor: "#fff1f2" }}>
-            <div className="text-sm font-semibold text-rose-900" style={{ color: "#881337" }}>错误原因</div>
-            <div className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-sm leading-6 text-slate-700" style={{ color: "#334155" }}>{diagnosisResult.rootCause || "暂无明确原因"}</div>
-            <div className="mt-2 text-xs text-slate-500" style={{ color: "#64748b" }}>影响阶段：{diagnosisResult.affectedStage || "未明确"}</div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                <ExclamationCircleOutlined />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-slate-700">错误原因</div>
+                <div className="mt-3 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-white px-4 py-3 whitespace-pre-wrap break-words text-[14px] font-medium leading-7 text-slate-700">
+                  {diagnosisResult.rootCause || "暂无明确原因"}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-500">影响阶段</span>
+                  <span className="text-slate-600">{diagnosisResult.affectedStage || "未明确"}</span>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
@@ -492,21 +549,24 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
           </div>
         </div>
       ) : null}
+      </div>
     </section>
   );
 
   const content =
-    view === "operation"
-      ? renderAnalysisPanel("操作行为记录", "按时间、操作、目标和状态展示任务行为规则命中记录。", analysisResult?.operationRecords || [])
-      : view === "snapshot"
-        ? renderAnalysisPanel("数据读取快照", "展示日志中识别出的数据读取、写入和快照信息。", analysisResult?.dataSnapshots || [])
-        : view === "execution"
-          ? renderExecutionPanel()
-          : view === "timeline"
-            ? renderAnalysisPanel("操作时序记录", "按时间顺序还原任务各阶段的操作先后关系。", analysisResult?.timeline || [])
-            : view === "replay"
-              ? renderReplayPanel()
-              : renderDiagnosisPanel();
+    view === "logs"
+      ? renderLogPanel()
+      : view === "operation"
+        ? renderAnalysisPanel("操作行为记录", "按时间、操作、目标和状态展示任务行为规则命中记录。", analysisResult?.operationRecords || [])
+        : view === "snapshot"
+          ? renderAnalysisPanel("数据读取快照", "展示日志中识别出的数据读取、写入和快照信息。", analysisResult?.dataSnapshots || [])
+          : view === "execution"
+            ? renderExecutionFlowPanel()
+            : view === "timeline"
+              ? renderAnalysisPanel("操作时序记录", "按时间顺序还原任务各阶段的操作先后关系。", analysisResult?.timeline || [])
+              : view === "replay"
+                ? renderReplayPanel()
+                : renderDiagnosisPanel();
 
   return <div className="space-y-4">{content}</div>;
 };

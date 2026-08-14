@@ -77,7 +77,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
         eyebrow="Source Config"
         title="来源配置"
         badge="输入节点"
-        desc={`${isHttp ? 'HTTP' : isElasticsearch ? 'Elasticsearch' : 'Kafka'} 节点不支持关系型表、SQL、列解析或数据预览`}
+        desc={`${isHttp ? 'HTTP' : isElasticsearch ? 'Elasticsearch' : 'Kafka'} 节点不支持关系型表、SQL、列解析或数据预览${isHttp && isIncremental ? '；增量窗口请在请求参数或 Body 中手动使用 ${window_start}/${window_end}' : ''}`}
         heroTitle={title}
         heroDesc={description}
         heroTag="SOURCE"
@@ -106,6 +106,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
             {isHttp ? (
               <HttpNodeConfig
                 config={selectedNode?.data?.config || {}}
+                isIncremental={isIncremental}
                 onChange={(patch) => updateNode(patch)}
               />
             ) : isKafka ? (

@@ -19,12 +19,18 @@ import TaskViewModal from './components/TaskViewModal';
 import BatchCreateJobModal, {
   BatchCreateValues,
 } from '@/pages/common/components/BatchCreateJobModal';
+import TaskSortControls, {
+  type TaskSortField,
+  type TaskSortOrder,
+} from '@/pages/common/components/TaskSortControls';
 import './index.less';
 
 const REALTIME_DETAIL_CACHE_PREFIX = 'stream-link-up-detail';
 const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
 const getDefaultTimeRange = () => [];
+const DEFAULT_SORT_FIELD: TaskSortField = 'createTime';
+const DEFAULT_SORT_ORDER: TaskSortOrder = 'desc';
 
 interface StreamingJobDefinitionVO {
   id: string | number;
@@ -93,10 +99,16 @@ const getErrorMessage = (res: any, fallback: string) => {
   return failedRes?.message || failedRes?.msg || fallback;
 };
 
-const buildQueryParams = (searchValues: SearchValues, pagination: PaginationState) => {
+const buildQueryParams = (
+  searchValues: SearchValues,
+  pagination: PaginationState,
+  sort: { field: TaskSortField; order: TaskSortOrder },
+) => {
   const params: any = {
     pageNo: pagination.current,
     pageSize: pagination.pageSize,
+    sortField: sort.field,
+    sortOrder: sort.order,
   };
 
   searchParamKeys.forEach((key) => {
@@ -148,7 +160,22 @@ const parsePaginationFromUrl = (): PaginationState => {
   };
 };
 
-const syncUrlParams = (params: SearchValues, pageInfo: { current: number; pageSize: number }) => {
+const parseSortFromUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  const field = params.get('sortField');
+  const order = params.get('sortOrder');
+
+  return {
+    field: field === 'name' || field === 'createTime' ? field : DEFAULT_SORT_FIELD,
+    order: order === 'asc' || order === 'desc' ? order : DEFAULT_SORT_ORDER,
+  } as { field: TaskSortField; order: TaskSortOrder };
+};
+
+const syncUrlParams = (
+  params: SearchValues,
+  pageInfo: { current: number; pageSize: number },
+  sort: { field: TaskSortField; order: TaskSortOrder },
+) => {
   const query = new URLSearchParams();
 
   searchParamKeys.forEach((key) => {
@@ -166,6 +193,8 @@ const syncUrlParams = (params: SearchValues, pageInfo: { current: number; pageSi
 
   query.set('current', String(pageInfo.current || 1));
   query.set('pageSize', String(pageInfo.pageSize || 10));
+  query.set('sortField', sort.field);
+  query.set('sortOrder', sort.order);
 
   history.replace({
     pathname: window.location.pathname,
@@ -205,6 +234,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   const [searchValues, setSearchValues] = useState<SearchValues>(() => parseSearchParamsFromUrl());
   const [pagination, setPagination] = useState<PaginationState>(() => parsePaginationFromUrl());
+  const [sort, setSort] = useState(() => parseSortFromUrl());
   const [dataSource, setDataSource] = useState<StreamingJobDefinitionVO[]>([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [logRecord, setLogRecord] = useState<StreamingJobDefinitionVO | null>(null);
@@ -229,8 +259,8 @@ const RealtimeSyncPage: React.FC = () => {
   }, [dataSource, selectedRowKeys]);
 
   const queryParams = useMemo(
-    () => buildQueryParams(searchValues, pagination),
-    [pagination.current, pagination.pageSize, searchValues],
+    () => buildQueryParams(searchValues, pagination, sort),
+    [pagination.current, pagination.pageSize, searchValues, sort],
   );
 
   const loadData = useCallback(async () => {
@@ -299,8 +329,8 @@ const RealtimeSyncPage: React.FC = () => {
     syncUrlParams(searchValues, {
       current: pagination.current,
       pageSize: pagination.pageSize,
-    });
-  }, [searchValues, pagination.current, pagination.pageSize]);
+    }, sort);
+  }, [searchValues, pagination.current, pagination.pageSize, sort]);
 
   useEffect(() => {
     loadData();
@@ -358,6 +388,7 @@ const RealtimeSyncPage: React.FC = () => {
   };
 
   const handleReset = () => {
+    setSort({ field: DEFAULT_SORT_FIELD, order: DEFAULT_SORT_ORDER });
     setSearchValues({
       createTime: getDefaultTimeRange(),
     });
@@ -368,6 +399,12 @@ const RealtimeSyncPage: React.FC = () => {
   const handlePaginationChange = (page: number, pageSize: number) => {
     setPagination((prev) => ({ ...prev, current: page, pageSize }));
     setSelectedRowKeys([]);
+  };
+
+  const handleSortChange = (field: TaskSortField, order: TaskSortOrder) => {
+    setSort({ field, order });
+    setSelectedRowKeys([]);
+    setPagination((prev) => ({ ...prev, current: 1 }));
   };
 
   const handleView = (record: StreamingJobDefinitionVO) => {
@@ -982,7 +1019,18 @@ const RealtimeSyncPage: React.FC = () => {
           creating={creating}
         />
 
-        <SearchToolbar initialValues={searchValues} onSearch={handleSearch} onReset={handleReset} />
+        <SearchToolbar
+          initialValues={searchValues}
+          onSearch={handleSearch}
+          onReset={handleReset}
+          sortControls={
+            <TaskSortControls
+              field={sort.field}
+              order={sort.order}
+              onChange={handleSortChange}
+            />
+          }
+        />
         <Divider style={{ margin: "16px 0" }} />
 
         <RealtimeTaskTable

@@ -14,7 +14,9 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -37,6 +39,9 @@ public class JobLogFaultDiagnosisService {
     private static final int MAX_EVIDENCE_LINES = 80;
     private static final int MAX_MODEL_LOG_CHARS = 12000;
     private static final int MAX_PROMPT_CHARS = 24_000;
+    private static final int STREAM_TEXT_CHUNK_CODE_POINTS = 32;
+    private static final Duration STREAM_TEXT_CHUNK_DELAY = Duration.ofMillis(18);
+    private static final Duration MODEL_STREAM_IDLE_TIMEOUT = Duration.ofSeconds(15);
     private static final String MODEL_SYSTEM_PROMPT = """
             你是 SeaTunnel 数据引接故障定位助手。只根据提供的日志、结构化记录和脱敏配置判断故障，禁止臆造。
             faultType 优先使用以下四类之一：COLLECTOR（采集端）、TRANSPORT（传输链路）、DATA_SOURCE（数据源）、SYSTEM_COMPONENT（系统组件）。
@@ -93,7 +98,9 @@ public class JobLogFaultDiagnosisService {
      * fallback as the non-streaming endpoint.
      */
     public Flux<JobLogDiagnosisStreamEvent> streamDiagnose(Long instanceId, JobMode requestedMode) {
-        return Flux.defer(() -> {
+        return Flux.concat(
+                Flux.just(JobLogDiagnosisStreamEvent.status("正在读取失败任务的日志、数据快照和执行流程...")),
+                Flux.defer(() -> {
             JobLogContext context = resolveFailedContext(instanceId, requestedMode);
             JobLogAnalysisResult analysis = jobLogService.analyze(instanceId, requestedMode);
             List<String> evidence = evidence(analysis);
@@ -137,10 +144,12 @@ public class JobLogFaultDiagnosisService {
 
             Flux<JobLogDiagnosisStreamEvent> deltas = chunks
                     .filter(StringUtils::isNotBlank)
+                    .concatMap(this::splitForDisplay)
                     .map(chunk -> {
                         modelOutput.append(chunk);
                         return JobLogDiagnosisStreamEvent.delta(chunk);
-                    });
+                    })
+                    .timeout(MODEL_STREAM_IDLE_TIMEOUT);
             Mono<JobLogDiagnosisStreamEvent> finalResult = Mono.fromSupplier(() -> {
                 String response = modelOutput.toString();
                 log.info(
@@ -164,15 +173,16 @@ public class JobLogFaultDiagnosisService {
             });
 
             return Flux.concat(
-                    Flux.just(JobLogDiagnosisStreamEvent.status("正在读取失败任务的日志、数据快照和执行流程...")),
+                    Flux.just(JobLogDiagnosisStreamEvent.status("已读取日志，正在请求模型流式分析...")),
                     deltas,
                     finalResult,
                     Mono.just(JobLogDiagnosisStreamEvent.done())
             ).onErrorResume(error -> {
-                log.warn("AI task-log diagnosis stream failed, instanceId={}", instanceId, error);
+                log.warn("AI task-log diagnosis stream failed or timed out, instanceId={}", instanceId, error);
                 return fallbackStream(instanceId, requestedMode, evidence, "RULE_FALLBACK");
             });
-        });
+                }).subscribeOn(Schedulers.boundedElastic())
+        );
     }
 
     private Flux<JobLogDiagnosisStreamEvent> fallbackStream(Long instanceId,
@@ -182,12 +192,34 @@ public class JobLogFaultDiagnosisService {
         JobLogFaultDiagnosisResult result = ruleBased(instanceId, requestedMode, evidence, provider);
         String summary = "已完成规则分析，故障归因：" + result.faultTypeLabel()
                 + "。" + result.rootCause();
-        return Flux.just(
-                JobLogDiagnosisStreamEvent.status("模型服务当前不可用，正在使用规则证据完成定位..."),
-                JobLogDiagnosisStreamEvent.delta(summary),
-                JobLogDiagnosisStreamEvent.result(result),
-                JobLogDiagnosisStreamEvent.done()
+        return Flux.concat(
+                Flux.just(JobLogDiagnosisStreamEvent.status("模型服务响应超时或不可用，正在使用规则证据完成定位...")),
+                splitForDisplay(summary).map(JobLogDiagnosisStreamEvent::delta),
+                Flux.just(JobLogDiagnosisStreamEvent.result(result), JobLogDiagnosisStreamEvent.done())
         );
+    }
+
+    /**
+     * A provider is allowed to send a large delta. Split it before publishing
+     * the browser-facing SSE event so every rendered update remains visible as
+     * incremental output even when the upstream provider batches tokens.
+     */
+    private Flux<String> splitForDisplay(String text) {
+        if (StringUtils.isBlank(text)) {
+            return Flux.empty();
+        }
+
+        List<String> parts = new ArrayList<>();
+        for (int offset = 0; offset < text.length();) {
+            int codePoints = Math.min(
+                    STREAM_TEXT_CHUNK_CODE_POINTS,
+                    text.codePointCount(offset, text.length())
+            );
+            int end = text.offsetByCodePoints(offset, codePoints);
+            parts.add(text.substring(offset, end));
+            offset = end;
+        }
+        return Flux.fromIterable(parts).delayElements(STREAM_TEXT_CHUNK_DELAY);
     }
 
     private JobLogContext resolveFailedContext(Long instanceId, JobMode requestedMode) {

@@ -94,7 +94,8 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
 
         IncrementalBatchControl control = controlDao.queryByDefinitionIdForUpdate(jobDefinitionId);
         JobScheduleConfig config = loadScheduleConfig(jobDefinitionId);
-        IncrementalConfigResolver.resolve(loadWorkflow(jobDefinitionId), config);
+        Map<String, Object> workflow = loadWorkflow(jobDefinitionId);
+        IncrementalConfigResolver.resolve(workflow, config);
         JobScheduleConfig.IncrementalConfig incremental = config.getIncremental();
         validateRuntimeConfig(incremental);
         boolean bootstrap = control == null;
@@ -109,7 +110,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         if (control != null && retry != null
                 && toLocalDateTime(retry.getWindowStart())
                         .equals(toLocalDateTime(control.getCommittedWatermark()))) {
-            return reopenFailedBatch(control, retry);
+            return reopenFailedBatch(control, retry, incremental.getTimeFormat());
         }
 
         LocalDateTime start = bootstrap
@@ -146,7 +147,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         recordDao.insert(record);
         controlDao.updateStatus(control.getId(), RUNNING, now);
 
-        return execution(record);
+        return execution(record, incremental.getTimeFormat());
     }
 
     @Override
@@ -212,7 +213,8 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
     }
 
     private IncrementalBatchExecution reopenFailedBatch(IncrementalBatchControl control,
-                                                        IncrementalBatchRecord record) {
+                                                        IncrementalBatchRecord record,
+                                                        String timeFormat) {
         Date now = new Date();
         record.setBatchStatus(RUNNING);
         record.setRetryCount(valueOrDefault(record.getRetryCount(), 0) + 1);
@@ -222,7 +224,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         record.setUpdateTime(now);
         recordDao.updateById(record);
         controlDao.updateStatus(control.getId(), RUNNING, now);
-        return execution(record);
+        return execution(record, timeFormat);
     }
 
     private void commitSuccess(IncrementalBatchRecord record) {
@@ -263,12 +265,15 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         }
     }
 
-    private IncrementalBatchExecution execution(IncrementalBatchRecord record) {
+    private IncrementalBatchExecution execution(IncrementalBatchRecord record, String timeFormat) {
         Map<String, String> params = new HashMap<>();
         params.put("batch_id", record.getBatchId());
-        params.put("window_start", IncrementalSqlRenderer.format(toLocalDateTime(record.getWindowStart())));
-        params.put("window_end", IncrementalSqlRenderer.format(toLocalDateTime(record.getWindowEnd())));
-        params.put("query_start", IncrementalSqlRenderer.format(toLocalDateTime(record.getQueryStart())));
+        LocalDateTime windowStart = toLocalDateTime(record.getWindowStart());
+        LocalDateTime windowEnd = toLocalDateTime(record.getWindowEnd());
+        params.put("window_start", IncrementalSqlRenderer.format(windowStart, timeFormat));
+        params.put("window_end", IncrementalSqlRenderer.format(windowEnd, timeFormat));
+        params.put("query_start", IncrementalSqlRenderer.format(
+                toLocalDateTime(record.getQueryStart()), timeFormat));
         return IncrementalBatchExecution.builder()
                 .skipped(false)
                 .batchId(record.getBatchId())
@@ -356,6 +361,13 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         DataSource dataSource = dataSourceDao.queryById(definition.getSourceDatasourceId());
         if (dataSource == null || dataSource.getDbType() == null) {
             throw new IllegalArgumentException("incremental source datasource does not exist");
+        }
+
+        if (dataSource.getDbType() == DbType.HTTP) {
+            ConnectionParam param = DataSourceUtils.buildConnectionParams(
+                    dataSource.getDbType(), dataSource.getConnectionParams());
+            DataSourceUtils.checkDatasourceParam(param);
+            return LocalDateTime.now();
         }
 
         DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dataSource.getDbType());

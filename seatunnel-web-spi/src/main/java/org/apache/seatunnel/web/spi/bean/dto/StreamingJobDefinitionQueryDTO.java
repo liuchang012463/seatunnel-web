@@ -25,4 +25,10 @@ public class StreamingJobDefinitionQueryDTO extends PaginationBaseDTO {
     private String sourceType;
 
     private String sinkType;
+
+    /** Sort field accepted by the task list: name or createTime. */
+    private String sortField;
+
+    /** Sort direction accepted by the task list: asc or desc. */
+    private String sortOrder;
 }

@@ -98,7 +98,22 @@
                 AND sink_table LIKE CONCAT('%', #{dto.sinkTable}, '%')
             </if>
         </where>
-        ORDER BY create_time DESC
+        <choose>
+            <when test="dto.sortField == 'name'">
+                ORDER BY job_name
+                <choose>
+                    <when test="dto.sortOrder == 'asc' or dto.sortOrder == 'ASC'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>, id DESC
+            </when>
+            <otherwise>
+                ORDER BY create_time
+                <choose>
+                    <when test="dto.sortOrder == 'asc' or dto.sortOrder == 'ASC'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>, id DESC
+            </otherwise>
+        </choose>
         LIMIT #{offset}, #{pageSize}
         ) d
         LEFT JOIN t_seatunnel_web_job_instance i
@@ -135,10 +150,22 @@
             </if>
         </where>
 
-        ORDER BY
-        COALESCE(i.start_time, d.update_time, d.create_time) DESC,
-        d.update_time DESC,
-        d.id DESC
+        <choose>
+            <when test="dto.sortField == 'name'">
+                ORDER BY d.job_name
+                <choose>
+                    <when test="dto.sortOrder == 'asc' or dto.sortOrder == 'ASC'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>, d.id DESC
+            </when>
+            <otherwise>
+                ORDER BY d.create_time
+                <choose>
+                    <when test="dto.sortOrder == 'asc' or dto.sortOrder == 'ASC'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>, d.id DESC
+            </otherwise>
+        </choose>
 
     </select>
 

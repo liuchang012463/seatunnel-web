@@ -56,4 +56,17 @@ describe('batch flow check engine source targets', () => {
       expect.objectContaining({ field: 'table', message: '按表读取时必须选择源表' }),
     ]);
   });
+
+  it('does not require a source table for HTTP sources', () => {
+    expect(
+      generateCheckList([
+        sourceNode('HTTP', {
+          readMode: 'table',
+          path: '/v1/orders',
+          method: 'POST',
+          format: 'json',
+        }),
+      ])
+    ).toEqual([]);
+  });
 });

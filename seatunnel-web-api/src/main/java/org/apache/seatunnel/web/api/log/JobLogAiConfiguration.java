@@ -8,6 +8,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+
+import java.util.List;
 
 /**
  * Creates a Spring AI client only when all three IDEA-provided environment
@@ -26,9 +30,12 @@ public class JobLogAiConfiguration {
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .model(model)
                 .build();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.TEXT_EVENT_STREAM));
         OpenAiApi api = OpenAiApi.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
+                .headers(headers)
                 .build();
         return ChatClient.create(OpenAiChatModel.builder()
                 .openAiApi(api)

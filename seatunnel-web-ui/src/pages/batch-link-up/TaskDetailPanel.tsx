@@ -17,7 +17,7 @@ interface TaskDetailPanelProps {
 const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
   const intl = useIntl();
 
-  const [activeKey, setActiveKey] = useState<string>("execution");
+  const [activeKey, setActiveKey] = useState<string>("logs");
 
   if (!instanceItem?.jobStatus) {
     return (
@@ -37,6 +37,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
   );
 
   const observabilityTabs = [
+    {
+      key: "logs",
+      view: "logs" as const,
+      label: "日志",
+    },
     {
       key: "execution",
       view: "execution" as const,
@@ -97,7 +102,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
   ) as Record<string, ReturnType<typeof observabilityTab>>;
 
   const tabs = [
-    observabilityByKey.execution,
+    observabilityByKey.logs,
     {
       key: "hocon",
       label: intl.formatMessage({
@@ -135,6 +140,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
         ]
       : []),
     observabilityByKey.diagnosis,
+    observabilityByKey.execution,
     observabilityByKey.operation,
     observabilityByKey.snapshot,
     observabilityByKey.timeline,

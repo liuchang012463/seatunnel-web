@@ -95,8 +95,10 @@ export interface DynamicFormField {
   label: string;
   type: 'INPUT' | 'PASSWORD' | 'SELECT' | 'NUMBER' | 'SWITCH' | 'TEXTAREA' | 'CUSTOM_SELECT';
   placeholder?: string;
+  description?: string;
   options?: Array<{ label: string; value: string | number }>;
   defaultValue?: unknown;
+  visibleWhen?: string;
   rules?: DynamicFormFieldRule[];
 }
 

@@ -69,3 +69,22 @@ export const patchEmptyWithDefaults = (
   });
   return patch;
 };
+
+export const isFieldVisible = (
+  field: { visibleWhen?: string },
+  values: Record<string, unknown> = {},
+) => {
+  const expression = field?.visibleWhen?.trim();
+  if (!expression) return true;
+
+  return expression.split("||").some((clause) => {
+    const [rawKey, rawExpected] = clause.split("=").map((part) => part.trim());
+    if (!rawKey || !rawExpected) return true;
+
+    const actual = String(values[rawKey] ?? "").trim().toUpperCase();
+    return rawExpected
+      .split("|")
+      .map((value) => value.trim().toUpperCase())
+      .includes(actual);
+  });
+};

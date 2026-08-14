@@ -108,6 +108,22 @@ export interface JobLogDiagnosisStreamEvent {
   result?: JobLogFaultDiagnosisResult;
 }
 
+export function parseJobLogDiagnosisSseBlock(
+  block: string,
+): JobLogDiagnosisStreamEvent | null {
+  const data = block
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice(5).trimStart())
+    .join("\n");
+
+  if (!data) {
+    return null;
+  }
+
+  return JSON.parse(data) as JobLogDiagnosisStreamEvent;
+}
+
 export const jobLogApi = {
   content: (instanceId: string | number, jobMode: JobLogMode) => {
     const segment = jobMode === "STREAMING" ? "streaming" : "batch";
@@ -148,8 +164,12 @@ export const jobLogApi = {
       `/api/v1/job-log/${jobMode}/${instanceId}/diagnosis/stream`,
       {
         method: "GET",
-        headers: { Accept: "text/event-stream" },
-        credentials: "omit",
+        headers: {
+          Accept: "text/event-stream",
+          "Cache-Control": "no-cache",
+        },
+        credentials: "include",
+        cache: "no-store",
         signal,
       },
     );
@@ -167,44 +187,34 @@ export const jobLogApi = {
     const decoder = new TextDecoder();
     let buffer = "";
 
-    const parseBlock = (block: string): JobLogDiagnosisStreamEvent | null => {
-      const data = block
-        .split(/\r?\n/)
-        .filter((line) => line.startsWith("data:"))
-        .map((line) => line.slice(5).trimStart())
-        .join("\n");
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
 
-      if (!data) {
-        return null;
+        const blocks = buffer.split(/\r?\n\r?\n/);
+        buffer = blocks.pop() || "";
+
+        for (const block of blocks) {
+          const event = parseJobLogDiagnosisSseBlock(block);
+          if (event) {
+            yield event;
+          }
+        }
+
+        if (done) {
+          break;
+        }
       }
 
-      return JSON.parse(data) as JobLogDiagnosisStreamEvent;
-    };
-
-    while (true) {
-      const { value, done } = await reader.read();
-      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
-
-      const blocks = buffer.split(/\r?\n\r?\n/);
-      buffer = blocks.pop() || "";
-
-      for (const block of blocks) {
-        const event = parseBlock(block);
+      if (buffer.trim()) {
+        const event = parseJobLogDiagnosisSseBlock(buffer);
         if (event) {
           yield event;
         }
       }
-
-      if (done) {
-        break;
-      }
-    }
-
-    if (buffer.trim()) {
-      const event = parseBlock(buffer);
-      if (event) {
-        yield event;
-      }
+    } finally {
+      reader.releaseLock();
     }
   },
 

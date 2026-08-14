@@ -110,6 +110,24 @@ public class DataSourceCatalogController {
     }
 
     /**
+     * Execute one HTTP Source request for interactive response/schema parsing.
+     */
+    @PostMapping("/parse-http/{id}")
+    @Operation(summary = "parseHttpResponse", description = "Parse one HTTP Source response")
+    @Parameters({
+            @Parameter(name = "id", description = "DATA_SOURCE_ID", required = true)
+    })
+    @ApiException(DATASOURCE_CATALOG_PREVIEW_DATA_ERROR)
+    public Result<Map<String, Object>> parseHttpResponse(
+            @PathVariable("id") Long id,
+            @RequestBody Map<String, Object> requestBody) {
+
+        return Result.buildSuc(
+                dataSourceCatalogService.parseHttpResponse(id, requestBody)
+        );
+    }
+
+    /**
      * Count rows from table.
      */
     @PostMapping("/count/{id}")
