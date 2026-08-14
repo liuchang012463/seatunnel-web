@@ -69,3 +69,6 @@ profile/
 jdbc-drivers/
 docs
 AGENTS.md
+
+.vscode/
+.mavenrc
