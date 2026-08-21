@@ -294,7 +294,7 @@ export default {
   'pages.job.node.sink.fieldsValidate.col.targetField': 'Target Field',
 
   'pages.hoconPreview.resolveIssuesFirst': 'Resolve all issues first 😊',
-  'pages.hoconPreview.title': 'SeaTunnel HOCON',
+  'pages.hoconPreview.title': 'Aircas HOCON',
   'pages.hoconPreview.tooltip': 'HOCON preview (simulated generation)',
 
   // common

@@ -15,7 +15,7 @@ const Settings: ProLayoutProps & {
   fixedHeader: false,
   fixSiderbar: true,
   colorWeak: false,
-  title: 'SeaTunnel Web',
+  title: 'Aircas Web',
   pwa: true,
   logo: '/logo.png',
   iconfontUrl: '',

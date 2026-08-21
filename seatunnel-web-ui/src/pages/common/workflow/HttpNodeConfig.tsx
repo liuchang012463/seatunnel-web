@@ -445,7 +445,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         />
       </Field>
 
-      <Field label="请求方法" required hint="SeaTunnel HTTP Source 支持 GET 和 POST。">
+      <Field label="请求方法" required hint="Aircas HTTP Source 支持 GET 和 POST。">
         <ChoiceGroup
           value={method}
           options={[
@@ -548,7 +548,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
           <div className="workflow-panel__label">
             <span className="mr-1 text-rose-500">*</span>
             响应字段与 Schema
-            <Tooltip title="先解析接口响应，再选择内容字段，最后为每个字段选择 SeaTunnel 类型。">
+            <Tooltip title="先解析接口响应，再选择内容字段，最后为每个字段选择 Aircas 类型。">
               <InfoCircleOutlined className="ml-1 text-slate-400" />
             </Tooltip>
           </div>
@@ -578,7 +578,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
                 />
               </Field>
               {selectedContentField && (
-                <Field label="Schema 字段" required hint="为每个解析出的字段逐一选择 SeaTunnel 类型。">
+                <Field label="Schema 字段" required hint="为每个解析出的字段逐一选择 Aircas 类型。">
                   {schemaCandidates.length > 0 ? (
                     <div className="http-node-config__schema-list">
                       {schemaCandidates.map((field) => (
@@ -780,7 +780,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
                     onChange={(checked) => onChange({ enableMultiLines: checked })}
                   />
                 </Field>
-                <Field label="兼容请求参数模式" hint="仅在接口兼容旧版 SeaTunnel 参数行为时开启。">
+                <Field label="兼容请求参数模式" hint="仅在接口兼容旧版 Aircas 参数行为时开启。">
                   <div className="flex flex-wrap gap-4">
                     <Switch
                       checked={config.keepParamsAsForm ?? DEFAULT_HTTP_CONFIG.keepParamsAsForm}

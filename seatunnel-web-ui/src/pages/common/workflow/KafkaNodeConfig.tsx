@@ -227,7 +227,7 @@ export default function KafkaNodeConfig({
         <Field label="Schema（JSON）">
           <JsonField
             value={config.schema}
-            placeholder="SeaTunnel Kafka schema JSON"
+            placeholder="Aircas Kafka schema JSON"
             onChange={(value) => onChange({ schema: value })}
           />
         </Field>

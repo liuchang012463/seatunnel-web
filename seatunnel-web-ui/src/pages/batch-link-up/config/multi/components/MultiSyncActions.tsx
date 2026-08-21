@@ -139,7 +139,7 @@ const MultiSyncActions: React.FC<Props> = ({
                   }}
                 >
                   <div className="latest-publish" style={{ fontWeight: 500 }}>
-                    Seatunnel Hocon
+                    Aircas Hocon
                   </div>
                   <div
                     onClick={() => setOpen(false)}

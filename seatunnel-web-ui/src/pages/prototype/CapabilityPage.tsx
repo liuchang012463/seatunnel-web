@@ -98,7 +98,7 @@ const topologyNodes: Node[] = [
   {
     id: 'job',
     position: { x: 280, y: 80 },
-    data: { label: 'SeaTunnel 离线任务' },
+    data: { label: 'Aircas 离线任务' },
     style: { borderColor: '#9333ea', borderRadius: 10 },
   },
   {
@@ -376,7 +376,7 @@ const CapabilityPage: React.FC = () => {
       ) : null}
 
       {isTopology ? (
-        <Card className="prototype-special-card" title="SeaTunnel DAG + OpenMetadata 血缘">
+        <Card className="prototype-special-card" title="Aircas DAG + OpenMetadata 血缘">
           <div style={{ height: 260 }}>
             <ReactFlow
               nodes={topologyNodes.map((node) => ({

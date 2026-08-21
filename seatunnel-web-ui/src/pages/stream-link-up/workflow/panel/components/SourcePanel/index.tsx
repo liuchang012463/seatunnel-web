@@ -396,7 +396,7 @@ function SourcePanel({
                 <div className="text-[13px] font-semibold text-slate-400 tracking-wide">Replication slot</div>
                 <Input
                   value={slotName}
-                  placeholder="seatunnel_orders"
+                  placeholder="aircas_orders"
                   onChange={(e) => updateNode({ slotName: e.target.value, "slot.name": e.target.value.trim() || undefined })}
                 />
               </div>
@@ -404,7 +404,7 @@ function SourcePanel({
                 <div className="text-[13px] font-semibold text-slate-400 tracking-wide">Publication</div>
                 <Input
                   value={publicationName}
-                  placeholder="seatunnel_orders_pub"
+                  placeholder="aircas_orders_pub"
                   onChange={(e) => updateNode({ publicationName: e.target.value })}
                 />
               </div>

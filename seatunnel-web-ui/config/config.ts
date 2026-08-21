@@ -90,7 +90,7 @@ export default defineConfig({
    * @name layout 插件
    * @doc https://umijs.org/docs/max/layout-menu
    */
-  title: IS_PROTOTYPE ? "数据采集引接软件" : "Seatunnel Web",
+  title: IS_PROTOTYPE ? "数据采集引接软件" : "Aircas Web",
   layout: {
     locale: true,
     ...defaultSettings,

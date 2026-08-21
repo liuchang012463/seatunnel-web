@@ -172,7 +172,7 @@ export const handlePrototypeRequest: PrototypeRequestHandler = async ({
       ...incoming,
       id,
       name: incoming.name || incoming.jobName || `原型记录 ${id}`,
-      type: incoming.type || incoming.mode || 'SeaTunnel',
+      type: incoming.type || incoming.mode || 'Aircas',
       status: incoming.status || 'DRAFT',
       owner: incoming.owner || '当前 SSO 用户',
       updatedAt: '2026-07-27 16:40',

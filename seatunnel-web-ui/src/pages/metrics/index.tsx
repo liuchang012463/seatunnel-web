@@ -68,7 +68,7 @@ const App: React.FC = () => {
   });
 
   const [taskType, setTaskType] = useState<TaskType>("BATCH");
-  const [timeRange, setTimeRange] = useState<TimeRange>("H24");
+  const [timeRange, setTimeRange] = useState<TimeRange>("D30");
 
   const refreshSummaryData = useCallback(async () => {
     const data = await fetchSummaryData(timeRange, taskType);
@@ -218,7 +218,10 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <Segmented
+                  <div className="task-type-option">
+                    <Layers3 size={14} /> 引接链路（离线）
+                  </div>
+                  {/* <Segmented
                     value={taskType}
                     onChange={(value) => setTaskType(value as TaskType)}
                     className="task-type-segmented"
@@ -242,7 +245,7 @@ const App: React.FC = () => {
                         value: "STREAMING",
                       },
                     ]}
-                  />
+                  /> */}
                   <Select
                     value={timeRange}
                     onChange={(value) => setTimeRange(value)}

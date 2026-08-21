@@ -1,5 +1,5 @@
 /**
- * SeaTunnel Web initial loading
+ * Aircas Web initial loading
  * React 接管前展示一次启动动画
  */
 (function () {
@@ -341,7 +341,7 @@
           </div>
 
           <div class="stw-title">
-            <span class="stw-title-main">SeaTunnel</span>
+            <span class="stw-title-main">Aircas</span>
             <span class="stw-title-sub"> Web</span>
           </div>
         </div>

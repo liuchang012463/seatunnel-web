@@ -484,7 +484,7 @@ export const generatedTraceability = [
   {
     "id": "F-13.02",
     "parentId": "F-13",
-    "title": "从 SeaTunnel DAG 和 OpenMetadata 血缘生成引接拓扑",
+    "title": "从 Aircas DAG 和 OpenMetadata 血缘生成引接拓扑",
     "technicalModule": "MOD-006",
     "strategy": "INTEGRATE",
     "pageIds": [

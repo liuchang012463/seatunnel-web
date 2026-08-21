@@ -42,7 +42,7 @@ const MultiWorkflowParamConfig: React.FC<MultiWorkflowParamConfigProps> = ({
               extra="PostgreSQL 逻辑复制槽；需由 DBA 预先创建，并且不得被其他任务占用。"
               rules={[{ required: true, message: "请输入 slot.name" }]}
             >
-              <Input placeholder="例如：seatunnel_orders" allowClear />
+              <Input placeholder="例如：aircas_orders" allowClear />
             </Form.Item>
             <Form.Item
               label="publicationName"
@@ -50,7 +50,7 @@ const MultiWorkflowParamConfig: React.FC<MultiWorkflowParamConfigProps> = ({
               extra="PostgreSQL publication；需由 DBA 预先创建并覆盖所选表。"
               rules={[{ required: true, message: "请输入 publicationName" }]}
             >
-              <Input placeholder="例如：seatunnel_orders_pub" allowClear />
+              <Input placeholder="例如：aircas_orders_pub" allowClear />
             </Form.Item>
             <Form.Item
               label="启动模式"

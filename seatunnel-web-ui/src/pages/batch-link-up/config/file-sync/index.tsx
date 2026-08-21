@@ -99,7 +99,7 @@ const FileSyncPage: React.FC = () => {
   useEffect(() => {
     if (!incrementalSupported && syncType === 'INCREMENTAL') {
       form.setFieldValue('syncType', 'FULL');
-      message.info('SeaTunnel 2.3.13 的 S3File 不支持增量 update，已切换为全量复制');
+      message.info('Aircas 2.3.13 的 S3File 不支持增量 update，已切换为全量复制');
     }
   }, [form, incrementalSupported, syncType]);
 
@@ -124,7 +124,7 @@ const FileSyncPage: React.FC = () => {
     const targetMeta = sources.find((item) => String(item.id) === String(values.targetDatasourceId))!;
     if (!canUseIncrementalFileSync(sourceMeta.dbType, targetMeta.dbType)
       && values.syncType === 'INCREMENTAL') {
-      throw new Error('SeaTunnel 2.3.13 的 S3File 不支持增量 update');
+      throw new Error('Aircas 2.3.13 的 S3File 不支持增量 update');
     }
     if (values.syncType === 'INCREMENTAL' && String(values.sourceDatasourceId) !== String(values.targetDatasourceId)) {
       throw new Error('增量 update 模式只支持同一数据源内的目录同步');
@@ -408,7 +408,7 @@ const FileSyncPage: React.FC = () => {
       <Modal
         width={840}
         open={!!preview}
-        title="SeaTunnel 2.3.13 HOCON 预览"
+        title="Aircas 2.3.13 HOCON 预览"
         footer={null}
         onCancel={() => setPreview('')}
       >

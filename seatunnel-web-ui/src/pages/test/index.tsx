@@ -365,7 +365,7 @@ const App: React.FC = () => {
           <div className="brand">
             <div className="brand-icon">S</div>
             <div className="brand-text-wrap">
-              <div className="brand-title">SeaTunnel Web</div>
+              <div className="brand-title">Aircas Web</div>
               <div className="brand-subtitle">Smooth Sider Demo</div>
             </div>
           </div>

@@ -546,7 +546,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   const loadCheckpointData = async (record: StreamingJobDefinitionVO) => {
     if (!record?.clientId) {
-      message.warning('当前任务没有绑定 SeaTunnel Client');
+      message.warning('当前任务没有绑定 Aircas Client');
       return;
     }
 
@@ -596,7 +596,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   const handleCheckpoint = async (record: StreamingJobDefinitionVO) => {
     if (!record?.clientId) {
-      message.warning('当前任务没有绑定 SeaTunnel Client');
+      message.warning('当前任务没有绑定 Aircas Client');
       return;
     }
 

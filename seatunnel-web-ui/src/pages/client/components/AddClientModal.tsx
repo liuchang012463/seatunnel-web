@@ -264,7 +264,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
               {isEdit ? "编辑 Client" : "新增 Client"}
             </div>
             <div className="mt-0.5 text-[13px] text-[#667085]">
-              配置 SeaTunnel Zeta REST 连接信息。
+              配置 Aircas Zeta REST 连接信息。
             </div>
           </div>
         </div>
