@@ -1,0 +1,20 @@
+{
+  "runId": "<RUN_UUID>",
+  "pipelineState": "success",
+  "startDate": 0,
+  "timestamp": 0,
+  "endDate": 0,
+  "status": [
+    {
+      "name": "DatabaseMetadata",
+      "records": 1,
+      "updated_records": 1,
+      "warnings": 0,
+      "errors": 0,
+      "filtered": 0,
+      "failures": []
+    }
+  ],
+  "config": {},
+  "metadata": null
+}

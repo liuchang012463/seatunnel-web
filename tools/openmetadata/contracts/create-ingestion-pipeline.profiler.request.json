@@ -1,0 +1,39 @@
+{
+  "name": "<STABLE_SERVICE_NAME>_profiler",
+  "displayName": "<STABLE_SERVICE_NAME>_profiler",
+  "service": {
+    "id": "<DATABASE_SERVICE_UUID>",
+    "type": "databaseService",
+    "name": "<DATABASE_SERVICE_FQN>",
+    "fullyQualifiedName": "<DATABASE_SERVICE_FQN>"
+  },
+  "pipelineType": "profiler",
+  "sourceConfig": {
+    "config": {
+      "type": "Profiler",
+      "databaseFilterPattern": {
+        "includes": [
+          "<DATABASE_NAME>"
+        ],
+        "excludes": []
+      },
+      "includeViews": false,
+      "computeMetrics": true,
+      "computeTableMetrics": true,
+      "computeColumnMetrics": true,
+      "profileSampleType": "PERCENTAGE",
+      "profileSample": 100
+    }
+  },
+  "airflowConfig": {
+    "pausePipeline": false,
+    "concurrency": 1,
+    "scheduleInterval": "0 0 1 1 *",
+    "pipelineCatchup": false,
+    "maxActiveRuns": 1,
+    "retries": 0,
+    "retryDelay": 300
+  },
+  "loggerLevel": "INFO",
+  "raiseOnError": true
+}

@@ -1,0 +1,32 @@
+{
+  "name": "<STABLE_SERVICE_NAME>_metadata",
+  "displayName": "<STABLE_SERVICE_NAME>_metadata",
+  "service": {
+    "id": "<DATABASE_SERVICE_UUID>",
+    "type": "databaseService",
+    "name": "<DATABASE_SERVICE_FQN>",
+    "fullyQualifiedName": "<DATABASE_SERVICE_FQN>"
+  },
+  "pipelineType": "metadata",
+  "sourceConfig": {
+    "config": {
+      "type": "DatabaseMetadata",
+      "markDeletedTables": true,
+      "markDeletedSchemas": true,
+      "markDeletedDatabases": true,
+      "includeTables": true,
+      "includeViews": false
+    }
+  },
+  "airflowConfig": {
+    "pausePipeline": false,
+    "concurrency": 1,
+    "scheduleInterval": "0 0 1 1 *",
+    "pipelineCatchup": false,
+    "maxActiveRuns": 1,
+    "retries": 0,
+    "retryDelay": 300
+  },
+  "loggerLevel": "INFO",
+  "raiseOnError": true
+}
