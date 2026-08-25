@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.common.enums.ConnStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface DataSourceDao extends IDao<DataSource> {
@@ -16,11 +17,20 @@ public interface DataSourceDao extends IDao<DataSource> {
 
     IPage<DataSource> queryPage(DataSourceDTO dto);
 
+    /**
+     * Queries data sources while constraining their business systems. A unit
+     * filter is resolved to system IDs by the API service before calling this
+     * method, keeping the data-source table free of a redundant unit_id column.
+     */
+    IPage<DataSource> queryPage(DataSourceDTO dto, Collection<Long> businessSystemIds);
+
     List<DataSource> queryByDbType(String dbType);
 
     List<String> queryDataSourceUnits();
 
     int updateConnStatus(Long id, ConnStatus status);
+
+    boolean existsByBusinessSystemId(Long businessSystemId);
 
 
 }

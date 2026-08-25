@@ -22,6 +22,12 @@ public class DataSourceDTO extends PaginationBaseDTO {
 
     private String dataSourceUnit;
 
+    /** Canonical owning business system. Required for create/update requests. */
+    private Long businessSystemId;
+
+    /** Optional query-only unit filter; the unit is derived through BusinessSystem. */
+    private Long unitId;
+
     private DbType dbType;
 
     /** Compatible multi-type filter used by category-based datasource management. */

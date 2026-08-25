@@ -14,6 +14,7 @@ import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -43,13 +44,24 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
 
     @Override
     public IPage<DataSource> queryPage(DataSourceDTO dto) {
-        LambdaQueryWrapper<DataSource> wrapper = buildQueryWrapper(dto);
+        return queryPage(dto, null);
+    }
+
+    @Override
+    public IPage<DataSource> queryPage(DataSourceDTO dto, Collection<Long> businessSystemIds) {
+        LambdaQueryWrapper<DataSource> wrapper = buildQueryWrapper(dto, businessSystemIds);
 
         IPage<DataSource> page = new Page<>(dto.getPageNo(), dto.getPageSize());
         return dataSourceMapper.selectPage(page, wrapper);
     }
 
     static LambdaQueryWrapper<DataSource> buildQueryWrapper(DataSourceDTO dto) {
+        return buildQueryWrapper(dto, null);
+    }
+
+    static LambdaQueryWrapper<DataSource> buildQueryWrapper(
+            DataSourceDTO dto, Collection<Long> businessSystemIds) {
+        boolean hasSystemIds = businessSystemIds != null;
         return new LambdaQueryWrapper<DataSource>()
                 .like(StringUtils.isNotBlank(dto.getName()), DataSource::getName,
                         StringUtils.trimToEmpty(dto.getName()))
@@ -60,6 +72,11 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
                         DataSource::getDbType, dto.getDbType())
                 .eq(StringUtils.isNotBlank(dto.getDataSourceUnit()),
                         DataSource::getDataSourceUnit, StringUtils.trimToEmpty(dto.getDataSourceUnit()))
+                .eq(dto.getBusinessSystemId() != null,
+                        DataSource::getBusinessSystemId, dto.getBusinessSystemId())
+                .in(hasSystemIds && !businessSystemIds.isEmpty(),
+                        DataSource::getBusinessSystemId, businessSystemIds)
+                .eq(hasSystemIds && businessSystemIds.isEmpty(), DataSource::getId, -1L)
                 .eq(dto.getStatus() != null, DataSource::getStatus, dto.getStatus())
                 .eq(dto.getEnvironment() != null, DataSource::getEnvironment, dto.getEnvironment())
                 .orderByDesc(DataSource::getCreateTime);
@@ -83,5 +100,11 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
         entity.setId(id);
         entity.setConnStatus(status);
         return dataSourceMapper.updateById(entity);
+    }
+
+    @Override
+    public boolean existsByBusinessSystemId(Long businessSystemId) {
+        return dataSourceMapper.selectCount(new LambdaQueryWrapper<DataSource>()
+                .eq(DataSource::getBusinessSystemId, businessSystemId)) > 0;
     }
 }

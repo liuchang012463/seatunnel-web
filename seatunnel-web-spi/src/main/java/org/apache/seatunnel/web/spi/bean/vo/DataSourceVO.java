@@ -23,6 +23,18 @@ public class DataSourceVO {
 
     private String dataSourceUnit;
 
+    private Long businessSystemId;
+
+    private Long unitId;
+
+    private String unitCode;
+
+    private String unitName;
+
+    private String systemCode;
+
+    private String businessSystemName;
+
     private DbType dbType;
 
     private String jdbcUrl;

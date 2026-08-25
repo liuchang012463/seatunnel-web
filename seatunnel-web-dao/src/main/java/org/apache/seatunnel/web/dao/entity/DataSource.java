@@ -1,6 +1,7 @@
 
 package org.apache.seatunnel.web.dao.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -31,9 +32,14 @@ public class DataSource extends BaseEntity {
     private String name;
 
     /**
-     * 数据源所属单位
+     * @deprecated use {@link #businessSystemId}; retained for compatibility with historical rows.
      */
+    @Deprecated
     private String dataSourceUnit;
+
+    /** Canonical business-system ownership; nullable for historical rows awaiting assignment. */
+    @TableField("business_system_id")
+    private Long businessSystemId;
 
     /**
      * 数据源类型

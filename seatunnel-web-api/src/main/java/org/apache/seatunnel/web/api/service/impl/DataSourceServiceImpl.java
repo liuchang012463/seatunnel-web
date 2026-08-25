@@ -1,12 +1,14 @@
 package org.apache.seatunnel.web.api.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
 import org.apache.seatunnel.web.api.service.DataSourceService;
+import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
@@ -14,7 +16,11 @@ import org.apache.seatunnel.web.common.utils.ConvertUtil;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.DataSource;
+import org.apache.seatunnel.web.dao.entity.DataSourceUnit;
+import org.apache.seatunnel.web.dao.entity.BusinessSystem;
+import org.apache.seatunnel.web.dao.repository.BusinessSystemDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
+import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
 import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
@@ -34,6 +40,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
 import java.util.Collections;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,12 +50,23 @@ import java.util.stream.Collectors;
 @Service
 public class DataSourceServiceImpl extends BaseServiceImpl implements DataSourceService {
 
+    private static final String UNASSIGNED_LABEL = "待归属";
+
     private static final long MAX_JDBC_DRIVER_SIZE = 200L * 1024 * 1024;
     private static final String JDBC_DRIVER_DIR = "jdbc-drivers";
     private static final String JDBC_JAR_SUFFIX = ".jar";
 
     @Resource
     private DataSourceDao dataSourceDao;
+
+    @Resource
+    private BusinessSystemDao businessSystemDao;
+
+    @Resource
+    private DataSourceUnitDao dataSourceUnitDao;
+
+    @Resource
+    private MetadataBindingCommandService metadataBindingCommandService;
 
     @Resource
     private JobDefinitionDao jobDefinitionDao;
@@ -63,6 +81,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     @Transactional(rollbackFor = Exception.class)
     public DataSource createDataSource(DataSourceDTO dto) {
         validateCreateRequest(dto);
+        BusinessSystemOwnership ownership = resolveActiveBusinessSystem(dto.getBusinessSystemId());
 
         try {
             ConnectionParam connectionParam =
@@ -74,7 +93,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
             DataSource entity = ConvertUtil.sourceToTarget(dto, DataSource.class);
             entity.setName(dto.getName().trim());
-            entity.setDataSourceUnit(dto.getDataSourceUnit().trim());
+            entity.setBusinessSystemId(ownership.system().getId());
+            // Legacy data_source_unit is nullable. Canonical ownership is kept only in business_system_id.
+            entity.setDataSourceUnit(null);
             entity.setConnectionParams(JSONUtils.toJsonString(connectionParam));
             entity.setOriginalJson(dto.getConnectionParams());
 
@@ -88,6 +109,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             entity.initInsert();
 
             dataSourceDao.insert(entity);
+            metadataBindingCommandService.createForDataSource(entity.getId());
             return entity;
         } catch (DuplicateKeyException e) {
             log.warn("Create data source failed due to duplicate key, name={}", dto.getName(), e);
@@ -107,6 +129,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
         DataSource existing = getDataSourceOrThrow(id);
         validateUpdateRequest(id, dto);
+        BusinessSystemOwnership ownership = resolveActiveBusinessSystem(dto.getBusinessSystemId());
 
         try {
             ConnectionParam connectionParam =
@@ -119,7 +142,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             DataSource entity = ConvertUtil.sourceToTarget(dto, DataSource.class);
             entity.setId(id);
             entity.setName(dto.getName().trim());
-            entity.setDataSourceUnit(dto.getDataSourceUnit().trim());
+            entity.setBusinessSystemId(ownership.system().getId());
+            // Do not mutate the legacy compatibility value on canonical updates.
+            entity.setDataSourceUnit(existing.getDataSourceUnit());
             entity.setConnectionParams(JSONUtils.toJsonString(connectionParam));
             entity.setOriginalJson(dto.getConnectionParams());
             entity.setConnStatus(existing.getConnStatus());
@@ -132,6 +157,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             entity.setCreateTime(existing.getCreateTime());
 
             dataSourceDao.updateById(entity);
+            metadataBindingCommandService.markConfigurationChanged(id);
             return entity;
         } catch (DuplicateKeyException e) {
             log.warn("Update data source failed due to duplicate key, id={}, name={}", id, dto.getName(), e);
@@ -153,11 +179,25 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     @Override
     public PaginationResult<DataSourceVO> queryDataSourceListPaging(DataSourceDTO dto) {
         try {
-            IPage<DataSource> pageResult = dataSourceDao.queryPage(dto);
+            if (dto == null) {
+                dto = new DataSourceDTO();
+            }
+            normalizePage(dto);
+            Collection<Long> systemIds = null;
+            if (dto.getUnitId() != null) {
+                systemIds = businessSystemDao.queryByUnitId(dto.getUnitId()).stream()
+                        .map(BusinessSystem::getId)
+                        .filter(java.util.Objects::nonNull)
+                        .collect(Collectors.toList());
+            }
+
+            IPage<DataSource> pageResult = dataSourceDao.queryPage(dto, systemIds);
             List<DataSourceVO> records =
                     ConvertUtil.sourceListToTarget(pageResult.getRecords(), DataSourceVO.class);
 
-            records.forEach(this::fillDerivedFields);
+            Map<Long, BusinessSystem> systems = loadBusinessSystems(pageResult.getRecords());
+            Map<Long, DataSourceUnit> units = loadUnits(systems);
+            records.forEach(record -> fillDerivedFields(record, systems, units));
 
             return PaginationResult.buildSuc(records, pageResult);
         } catch (ServiceException e) {
@@ -177,6 +217,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         try {
             checkDataSourceNotUsedByAnyJob(datasourceId);
             dataSourceDao.deleteById(datasourceId);
+            metadataBindingCommandService.markDeleted(datasourceId);
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -259,7 +300,11 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
             checkDataSourcesNotUsed(distinctIds);
 
-            return dataSourceDao.deleteByIds(distinctIds);
+            boolean deleted = dataSourceDao.deleteByIds(distinctIds);
+            for (Long id : distinctIds) {
+                metadataBindingCommandService.markDeleted(id);
+            }
+            return deleted;
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -307,7 +352,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         try {
             List<DataSource> entities = dataSourceDao.queryAll();
             List<DataSourceVO> result = ConvertUtil.sourceListToTarget(entities, DataSourceVO.class);
-            result.forEach(this::fillDerivedFields);
+            Map<Long, BusinessSystem> systems = loadBusinessSystems(entities);
+            Map<Long, DataSourceUnit> units = loadUnits(systems);
+            result.forEach(record -> fillDerivedFields(record, systems, units));
             return result;
         } catch (Exception e) {
             log.error("List all data sources failed", e);
@@ -487,11 +534,8 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         if (StringUtils.isBlank(dto.getName())) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "name");
         }
-        if (StringUtils.isBlank(dto.getDataSourceUnit())) {
-            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "dataSourceUnit");
-        }
-        if (dto.getDataSourceUnit().trim().length() > 128) {
-            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "dataSourceUnit");
+        if (dto.getBusinessSystemId() == null || dto.getBusinessSystemId() <= 0) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "businessSystemId");
         }
         if (dto.getDbType() == null) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "dbType");
@@ -505,6 +549,42 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         if (id == null || id <= 0) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "id");
         }
+    }
+
+    private void normalizePage(DataSourceDTO dto) {
+        if (dto.getPageNo() == null || dto.getPageNo() <= 0) {
+            dto.setPageNo(1);
+        }
+        if (dto.getPageSize() == null || dto.getPageSize() <= 0) {
+            dto.setPageSize(10);
+        }
+    }
+
+    private BusinessSystemOwnership resolveActiveBusinessSystem(Long businessSystemId) {
+        if (businessSystemId == null || businessSystemId <= 0) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "businessSystemId");
+        }
+
+        BusinessSystem system = businessSystemDao.queryById(businessSystemId);
+        if (system == null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "businessSystemId does not exist");
+        }
+        if (system.getStatus() != null && !Integer.valueOf(1).equals(system.getStatus())) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "businessSystemId is inactive");
+        }
+
+        DataSourceUnit unit = dataSourceUnitDao.queryById(system.getUnitId());
+        if (unit == null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "business system unit does not exist");
+        }
+        if (unit.getStatus() != null && !Integer.valueOf(1).equals(unit.getStatus())) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "business system unit is inactive");
+        }
+        return new BusinessSystemOwnership(system, unit);
     }
 
     private void validateJdbcDriverFile(MultipartFile file) {
@@ -584,9 +664,29 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         }
     }
 
-    private void fillDerivedFields(DataSourceVO vo) {
+    private void fillDerivedFields(
+            DataSourceVO vo, Map<Long, BusinessSystem> systems, Map<Long, DataSourceUnit> units) {
         if (vo == null) {
             return;
+        }
+
+        BusinessSystem system = vo.getBusinessSystemId() == null
+                ? null
+                : systems.get(vo.getBusinessSystemId());
+        DataSourceUnit unit = system == null ? null : units.get(system.getUnitId());
+        if (system != null) {
+            vo.setSystemCode(system.getSystemCode());
+            vo.setBusinessSystemName(system.getSystemName());
+            vo.setUnitId(system.getUnitId());
+        }
+        if (unit != null) {
+            vo.setUnitCode(unit.getUnitCode());
+            vo.setUnitName(unit.getUnitName());
+            // The old string is a derived compatibility field for canonical rows.
+            vo.setDataSourceUnit(unit.getUnitName());
+        } else if (StringUtils.isBlank(vo.getDataSourceUnit())) {
+            vo.setDataSourceUnit(UNASSIGNED_LABEL);
+            vo.setUnitName(UNASSIGNED_LABEL);
         }
 
         try {
@@ -610,5 +710,34 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         option.setLabel(entity.getName());
         option.setDbType(entity.getDbType());
         return option;
+    }
+
+    private Map<Long, BusinessSystem> loadBusinessSystems(List<DataSource> entities) {
+        List<Long> ids = entities.stream()
+                .map(DataSource::getBusinessSystemId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return businessSystemDao.queryByIds(ids).stream()
+                .collect(Collectors.toMap(BusinessSystem::getId, item -> item, (left, right) -> left));
+    }
+
+    private Map<Long, DataSourceUnit> loadUnits(Map<Long, BusinessSystem> systems) {
+        List<Long> ids = systems.values().stream()
+                .map(BusinessSystem::getUnitId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return dataSourceUnitDao.queryByIds(ids).stream()
+                .collect(Collectors.toMap(DataSourceUnit::getId, item -> item, (left, right) -> left));
+    }
+
+    private record BusinessSystemOwnership(BusinessSystem system, DataSourceUnit unit) {
     }
 }

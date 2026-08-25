@@ -1,13 +1,35 @@
 import HttpUtils from '@/utils/HttpUtils';
 import type {
+  BusinessSystemOption,
   CommonApiResponse,
   DataSourceLifecycleStatus,
   DataSourcePageParams,
   DataSourcePageResult,
   DataSourceRecord,
+  DataSourceUnitOption,
 } from './types';
 
 const DATA_SOURCE_API_PREFIX = '/api/v1/data-source';
+const DATA_SOURCE_UNIT_API_PREFIX = '/api/v1/data-source-units';
+const BUSINESS_SYSTEM_API_PREFIX = '/api/v1/business-systems';
+
+export type MasterDataList<T> =
+  | T[]
+  | {
+      bizData: T[];
+      pagination: {
+        pageNo: number;
+        pageSize: number;
+        total: number;
+      };
+    };
+
+export type MasterDataListResponse<T> = CommonApiResponse<MasterDataList<T>>;
+
+export function unwrapMasterDataList<T>(response?: MasterDataListResponse<T>): T[] {
+  const data = response?.data;
+  return Array.isArray(data) ? data : data?.bizData || [];
+}
 
 export async function fetchDataSourcePage(
   params: DataSourcePageParams,
@@ -63,8 +85,27 @@ export async function testDataSourceConnectionWithParams(
   return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/connect-test-with-param`, payload);
 }
 
-export async function fetchDataSourceUnits(): Promise<CommonApiResponse<string[]>> {
-  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/units`);
+/**
+ * Loads active data-source owning units for the unit/system selectors.
+ * The endpoint returns a Result containing the active option list.
+ */
+export async function fetchDataSourceUnitOptions(): Promise<MasterDataListResponse<DataSourceUnitOption>> {
+  return HttpUtils.get(`${DATA_SOURCE_UNIT_API_PREFIX}/active`);
+}
+
+/**
+ * Loads active business systems belonging to a selected unit.
+ */
+export async function fetchBusinessSystemOptions(
+  unitId: string | number,
+): Promise<MasterDataListResponse<BusinessSystemOption>> {
+  const query = `?unitId=${encodeURIComponent(String(unitId))}`;
+  return HttpUtils.get(`${BUSINESS_SYSTEM_API_PREFIX}/active${query}`);
+}
+
+/** @deprecated Use fetchDataSourceUnitOptions. Kept as a compatibility alias for page integrations. */
+export async function fetchDataSourceUnits(): Promise<MasterDataListResponse<DataSourceUnitOption>> {
+  return fetchDataSourceUnitOptions();
 }
 
 export interface DataSourceOptionRecord {
@@ -76,9 +117,7 @@ export interface DataSourceOptionRecord {
   [key: string]: unknown;
 }
 
-export async function fetchDataSourceOptions(
-  dbType: string,
-): Promise<CommonApiResponse<DataSourceOptionRecord[]>> {
+export async function fetchDataSourceOptions(dbType: string): Promise<CommonApiResponse<DataSourceOptionRecord[]>> {
   return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/option?dbType=${dbType}`);
 }
 

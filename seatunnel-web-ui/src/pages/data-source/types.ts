@@ -19,10 +19,37 @@ export interface PaginationInfo {
   total: number;
 }
 
+export type DataSourceEntityId = string | number;
+
+export interface DataSourceUnitOption {
+  id: DataSourceEntityId;
+  unitCode?: string;
+  unitName: string;
+  status?: number;
+  remark?: string;
+}
+
+export interface BusinessSystemOption {
+  id: DataSourceEntityId;
+  unitId: DataSourceEntityId;
+  systemCode?: string;
+  systemName: string;
+  status?: number;
+  remark?: string;
+}
+
 export interface DataSourceRecord {
   id?: string;
   name?: string;
+  /** @deprecated Response compatibility for historical data source rows. */
   dataSourceUnit?: string;
+  businessSystemId?: DataSourceEntityId | null;
+  unitId?: DataSourceEntityId | null;
+  unitCode?: string;
+  unitName?: string;
+  systemCode?: string;
+  businessSystemName?: string;
+  systemName?: string;
   dbType?: string;
   jdbcUrl?: string;
   environment?: string;
@@ -46,6 +73,9 @@ export interface DataSourcePageParams {
   dbType?: string;
   dbTypes?: string[];
   name?: string;
+  unitId?: DataSourceEntityId;
+  businessSystemId?: DataSourceEntityId;
+  /** @deprecated Do not send this field for canonical data-source filtering. */
   dataSourceUnit?: string;
   status?: DataSourceLifecycleStatus;
   environment?: string;
@@ -53,7 +83,8 @@ export interface DataSourcePageParams {
 
 export interface DataSourceFormValues {
   name: string;
-  dataSourceUnit: string;
+  unitId?: DataSourceEntityId;
+  businessSystemId?: DataSourceEntityId | null;
   environment: string;
   remark?: string;
 }
@@ -64,7 +95,7 @@ export interface DataSourceModalOpenPayload {
   operateType: DataSourceOperateType;
   currentRecord?: DataSourceRecord;
   onSuccess?: () => void;
-   /**
+  /**
    * 外部创建入口已确定 dbType 时传入。
    * 传入后弹窗会跳过数据源类型选择页。
    */
