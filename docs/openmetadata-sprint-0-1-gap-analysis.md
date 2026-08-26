@@ -63,9 +63,9 @@
 ### 2.4 数据库脚本
 
 - Flyway 实际目录：`seatunnel-web-dao-plugin/seatunnel-web-dao-mysql/src/main/resources/db/migration/mysql`。
-- 当前最高版本是 **`V1_0_14`**，不是设计前置分析里提到的 `V1_0_10`。
-- `V1_0_11` 已应用于字符串 `data_source_unit` 和 lifecycle `status`，绝对不能复用、改名或修改。
-- 新迁移必须从 **`V1_0_15`** 开始。
+- develop 源码原先最高版本是 **`V1_0_14`**，但当前部署 MySQL 库已由 `codex/lake-ingestion-management-design` 应用 `V1_0_15`～`V1_0_19`。
+- `V1_0_11` 以及已应用的 Lake `V1_0_15`～`V1_0_19` 都是历史事实，绝对不能复用、改名或修改；本分支保留这些迁移原文仅用于 Flyway 解析既有历史。
+- OpenMetadata 主数据与 Binding 迁移改用 **`V1_0_20`**，后续新迁移从 `V1_0_21` 继续。
 - `tools/database/mysql/legacy_full_init.sql` 是 legacy 全量初始化脚本；Flyway 是已有环境升级事实源。Sprint 1 是否同步 legacy 脚本应单独验证启动方式，不能只改 legacy 而漏 Flyway。
 
 ### 2.5 前端数据源管理
@@ -159,7 +159,7 @@ Profiler schema 的数据库过滤字段确认为 `databaseFilterPattern`；采�
 | GAP-003 | 历史数据兼容、显示“待归属” | 新增/修改和前端都强制字符串单位 | 1 |
 | GAP-004 | MetadataBinding 一源一条、三组正交状态/版本 | 无表、Entity、DAO、enum、service | 1 |
 | GAP-005 | 稳定技术名 `st_ds_{id}` | 无 naming helper/test | 1 |
-| GAP-006 | 新迁移服从现有版本 | 最高已是 V1_0_14，旧计划版本已失真 | 1：V1_0_15 |
+| GAP-006 | 新迁移服从现有版本 | Lake 分支已占用 V1_0_15～V1_0_19；主数据迁移若继续使用 V1_0_15 会触发 checksum mismatch | 1：V1_0_20 |
 | GAP-007 | 1.12.10 精确 BOM 可复现 | Server 固定；ingestion `.0` 已运行，但自定义镜像缺 Dockerfile/lock/provenance | 0 |
 | GAP-008 | 当前三库可重复 smoke，延期库有真实结论 | 已新增统一脚本/报告；MySQL/PostgreSQL/Doris 通过，Oracle/Dameng/Kingbase 明确延期 | 0 |
 | GAP-009 | 精确 deploy/run/status/kill/delete contract | JAR/OpenAPI 已核实，但仓库尚无契约文档/测试资产 | 0 |
@@ -213,7 +213,8 @@ Sprint 0 不改 SeaTunnel 业务功能。先在 `luna max` 子代理中按下列
 
 | 文件 | 改造 |
 |---|---|
-| `.../db/migration/mysql/V1_0_15__add_metadata_master_data_and_binding.sql` | 创建 unit/system/binding，DataSource 加 nullable `business_system_id` 和索引；按旧单位 distinct 回填 Unit，不伪造默认 System；ID 不用 AUTO_INCREMENT |
+| `.../db/migration/mysql/V1_0_20__add_metadata_master_data_and_binding.sql` | 创建 unit/system/binding，DataSource 加 nullable `business_system_id` 和索引；按旧单位 distinct 回填 Unit，不伪造默认 System；ID 不用 AUTO_INCREMENT |
+| `.../db/migration/mysql/V1_0_15__init_lake_ingestion.sql` ～ `V1_0_19__add_lake_lifecycle_cold_storage.sql` | 保留 Lake 分支已经应用的历史迁移原文，不改 SQL、不新增 Lake 业务实现，仅避免既有数据库出现“applied migration not resolved locally” |
 | `tools/database/mysql/legacy_full_init.sql` | 仅在确认仍为受支持的新环境初始化入口后同步最终表结构；不能代替 Flyway |
 
 ### DAO / Entity
@@ -276,7 +277,7 @@ Sprint 0 不改 SeaTunnel 业务功能。先在 `luna max` 子代理中按下列
 
 ### Sprint 1 验收
 
-- migration 在全新库与已到 V1_0_14 的库均成功；Flyway 无重复版本。
+- migration 在全新库、已到 V1_0_14 的库以及已到 Lake V1_0_19 的库均成功；Flyway 无重复版本且不修改历史 checksum。
 - Unit 删除受 System 引用时拒绝；System 删除受 DataSource 引用时拒绝。
 - 新建/修改 DataSource 必须绑定启用 System；历史 null 可读且显示待归属。
 - DataSource 仍由原 CRUD/页面管理，连接测试、任务引用保护和 Top20 回归通过。
