@@ -164,3 +164,8 @@ metadata:
     batch-size: ${METADATA_RECONCILE_BATCH_SIZE:20}
     lease-seconds: ${METADATA_RECONCILE_LEASE_SECONDS:60}
     max-retry-count: ${METADATA_RECONCILE_MAX_RETRY_COUNT:4}
+  status:
+    interval-ms: ${METADATA_STATUS_INTERVAL_MS:10000}
+    batch-size: ${METADATA_STATUS_BATCH_SIZE:50}
+    idle-refresh-seconds: ${METADATA_STATUS_IDLE_REFRESH_SECONDS:60}
+    trigger-grace-seconds: ${METADATA_STATUS_TRIGGER_GRACE_SECONDS:60}

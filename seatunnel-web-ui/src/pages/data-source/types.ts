@@ -55,6 +55,13 @@ export interface DataSourceRecord {
   environment?: string;
   environmentName?: string;
   connStatus?: string;
+  metadataSyncStatus?: string;
+  scanStatus?: string;
+  scanLastRunTime?: string;
+  scanLastSuccessTime?: string;
+  profileStatus?: string;
+  profileLastRunTime?: string;
+  profileLastSuccessTime?: string;
   status?: DataSourceLifecycleStatus;
   remark?: string;
   originalJson?: string;

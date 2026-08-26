@@ -100,6 +100,7 @@ public class MetadataSourceReconciler {
                 adapter.databaseServiceRequest(dataSource, serviceName));
         OpenMetadataEntity metadataPipeline = openMetadataClient.upsertIngestionPipeline(
                 adapter.metadataPipelineRequest(
+                        dataSource,
                         MetadataStableName.metadataPipelineName(dataSource.getId()),
                         service.id(), service.fullyQualifiedName()));
         OpenMetadataEntity profilerPipeline = openMetadataClient.upsertIngestionPipeline(
@@ -130,12 +131,14 @@ public class MetadataSourceReconciler {
 
     private void reconcileDeletion(MetadataSourceBinding claimed, long claimedVersion) {
         openMetadataClient.assertFixedVersion();
-        deletePipeline(claimed.getOmMetadataPipelineId(), defaultIfBlank(
+        String metadataFqn = defaultIfBlank(
                 claimed.getOmMetadataPipelineFqn(),
-                MetadataStableName.metadataPipelineFqn(claimed.getDataSourceId())));
-        deletePipeline(claimed.getOmProfilerPipelineId(), defaultIfBlank(
+                MetadataStableName.metadataPipelineFqn(claimed.getDataSourceId()));
+        String profilerFqn = defaultIfBlank(
                 claimed.getOmProfilerPipelineFqn(),
-                MetadataStableName.profilerPipelineFqn(claimed.getDataSourceId())));
+                MetadataStableName.profilerPipelineFqn(claimed.getDataSourceId()));
+        deletePipeline(claimed.getOmMetadataPipelineId(), metadataFqn);
+        deletePipeline(claimed.getOmProfilerPipelineId(), profilerFqn);
         String serviceId = claimed.getOmServiceId();
         if (serviceId != null && !serviceId.isBlank()) {
             openMetadataClient.deleteDatabaseServiceRecursively(serviceId);
@@ -151,14 +154,29 @@ public class MetadataSourceReconciler {
     }
 
     private void deletePipeline(String id, String fqn) {
-        if (id != null && !id.isBlank()) {
-            openMetadataClient.deleteIngestionPipeline(id);
+        String resolvedId = id;
+        if (resolvedId == null || resolvedId.isBlank()) {
+            resolvedId = openMetadataClient.findIngestionPipeline(fqn)
+                    .map(OpenMetadataEntity::id)
+                    .orElse(null);
+        }
+        if (resolvedId == null || resolvedId.isBlank()) {
             return;
         }
-        if (fqn != null && !fqn.isBlank()) {
-            openMetadataClient.findIngestionPipeline(fqn)
-                    .ifPresent(pipeline -> openMetadataClient.deleteIngestionPipeline(pipeline.id()));
+        if (isRunning(fqn)) {
+            openMetadataClient.killIngestionPipeline(resolvedId);
         }
+        openMetadataClient.deleteIngestionPipeline(resolvedId);
+    }
+
+    private boolean isRunning(String fqn) {
+        if (fqn == null || fqn.isBlank()) {
+            return false;
+        }
+        return openMetadataClient.listIngestionPipelineRuns(fqn, 1).stream()
+                .map(run -> OpenMetadataRunStatusMapper.fromPipelineState(run.pipelineState()))
+                .anyMatch(status -> status == org.apache.seatunnel.web.common.enums.MetadataRunStatus.QUEUED
+                        || status == org.apache.seatunnel.web.common.enums.MetadataRunStatus.RUNNING);
     }
 
     private void saveFailure(MetadataSourceBinding claimed, long claimedVersion, MetadataErrorCode errorCode) {

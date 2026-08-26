@@ -1,6 +1,6 @@
 import ClickSpark from '@/components/ClickSpark';
 import { useIntl } from '@umijs/max';
-import { Button, message, Modal, Pagination, Spin } from 'antd';
+import { Button, message, Modal, Pagination, Select, Spin } from 'antd';
 import { motion } from 'framer-motion';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AddOrEditDataSourceModal from './components/AddOrEditDataSourceModal';
@@ -15,9 +15,13 @@ import {
   checkDataSourceUsage,
   deleteDataSource,
   fetchBusinessSystemOptions,
+  fetchDataSourceMetadataDatabases,
+  fetchDataSourceMetadataRuns,
   fetchDataSourcePage,
   fetchDataSourceUnitOptions,
   testDataSourceConnection,
+  triggerDataSourceExploration,
+  triggerDataSourceScan,
   unwrapMasterDataList,
   updateDataSourceStatus,
 } from './service';
@@ -284,6 +288,126 @@ const DataSourcePage: React.FC = () => {
     } catch (_) {}
   };
 
+  const handleScan = async (record: DataSourceRecord) => {
+    if (!record.id) {
+      return;
+    }
+    try {
+      const response = await triggerDataSourceScan(record.id);
+      if (response.code !== 0) {
+        message.error(response.message || '自动扫描暂不可触发');
+        return;
+      }
+      message.success('已提交自动扫描');
+      handleRefresh();
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || '自动扫描暂不可触发');
+    }
+  };
+
+  const handleExplore = async (record: DataSourceRecord) => {
+    if (!record.id) {
+      return;
+    }
+    let databases: Array<{ value: string; label: string }> = [];
+    try {
+      const response = await fetchDataSourceMetadataDatabases(record.id);
+      if (response.code !== 0) {
+        message.error(response.message || '无法读取可探查的 Database');
+        return;
+      }
+      databases = response.data || [];
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || '无法读取可探查的 Database');
+      return;
+    }
+    if (databases.length === 0) {
+      message.warning('自动扫描尚未发现可探查的 Database');
+      return;
+    }
+    let databaseFqn = databases.length === 1 ? databases[0].value : '';
+    Modal.confirm({
+      title: '数据源探查',
+      centered: true,
+      content: (
+        <div className="mt-3">
+          <div className="mb-2 text-sm text-[var(--st-color-text-muted)]">
+            一次探查一个 Database。{databases.length === 1 ? '已自动选择唯一的 Database。' : '请选择要探查的 Database。'}
+          </div>
+          {databases.length > 1 && (
+            <Select
+              className="w-full"
+              placeholder="选择 Database"
+              options={databases}
+              onChange={(value) => { databaseFqn = value; }}
+            />
+          )}
+        </div>
+      ),
+      okText: '开始探查',
+      cancelText: '取消',
+      async onOk() {
+        if (!databaseFqn) {
+          message.error('请选择 Database');
+          return Promise.reject();
+        }
+        try {
+          const response = await triggerDataSourceExploration(record.id!, databaseFqn);
+          if (response.code !== 0) {
+            message.error(response.message || '数据源探查暂不可触发');
+            return Promise.reject();
+          }
+          message.success('已提交数据源探查');
+          handleRefresh();
+        } catch (error: any) {
+          message.error(error?.response?.data?.message || '数据源探查暂不可触发');
+          return Promise.reject();
+        }
+      },
+    });
+  };
+
+  const handleRuns = async (record: DataSourceRecord) => {
+    if (!record.id) {
+      return;
+    }
+    try {
+      const [scanResponse, explorationResponse] = await Promise.all([
+        fetchDataSourceMetadataRuns(record.id, 'SCAN'),
+        fetchDataSourceMetadataRuns(record.id, 'EXPLORATION'),
+      ]);
+      if (scanResponse.code !== 0 || explorationResponse.code !== 0) {
+        message.error(scanResponse.message || explorationResponse.message || '无法读取运行记录');
+        return;
+      }
+      const renderRuns = (runs: Array<{ runId: string; status: string; startTime?: string; endTime?: string }>) => (
+        runs.length === 0
+          ? <div className="text-[var(--st-color-text-muted)]">暂无运行记录</div>
+          : runs.map((run) => (
+            <div key={run.runId} className="mb-2 rounded-md bg-[rgba(77,210,255,0.06)] px-3 py-2 text-sm">
+              <span className="mr-3 font-medium">{run.status}</span>
+              <span className="text-[var(--st-color-text-muted)]">{run.startTime || '-'} → {run.endTime || '-'}</span>
+            </div>
+          ))
+      );
+      Modal.info({
+        title: `${record.name || '数据源'}运行记录`,
+        centered: true,
+        width: 680,
+        content: (
+          <div className="mt-4">
+            <div className="mb-2 font-medium">自动扫描（最近 5 次）</div>
+            {renderRuns(scanResponse.data || [])}
+            <div className="mb-2 mt-4 font-medium">数据源探查（最近 5 次）</div>
+            {renderRuns(explorationResponse.data || [])}
+          </div>
+        ),
+      });
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || '无法读取运行记录');
+    }
+  };
+
   const handleStatusChange = (record: DataSourceRecord, nextStatus: DataSourceLifecycleStatus) => {
     const statusLabel = {
       ENABLED: '启用',
@@ -415,6 +539,9 @@ const DataSourcePage: React.FC = () => {
                               onEdit={handleEdit}
                               onDelete={handleDelete}
                               onTestConnection={handleTestConnection}
+                              onScan={handleScan}
+                              onExplore={handleExplore}
+                              onRuns={handleRuns}
                               onStatusChange={handleStatusChange}
                             />
                           </motion.div>

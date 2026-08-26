@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.NonNull;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
+import org.apache.seatunnel.web.common.enums.MetadataRunStatus;
 import org.apache.seatunnel.web.common.enums.MetadataSyncStatus;
 import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
 import org.apache.seatunnel.web.dao.mapper.MetadataSourceBindingMapper;
@@ -29,6 +30,15 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
     public MetadataSourceBinding queryByDataSourceId(Long dataSourceId) {
         return metadataSourceBindingMapper.selectOne(new LambdaQueryWrapper<MetadataSourceBinding>()
                 .eq(MetadataSourceBinding::getDataSourceId, dataSourceId));
+    }
+
+    @Override
+    public List<MetadataSourceBinding> queryByDataSourceIds(java.util.Collection<Long> dataSourceIds) {
+        if (dataSourceIds == null || dataSourceIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return metadataSourceBindingMapper.selectList(new LambdaQueryWrapper<MetadataSourceBinding>()
+                .in(MetadataSourceBinding::getDataSourceId, dataSourceIds));
     }
 
     @Override
@@ -100,5 +110,63 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
                 .eq(MetadataSourceBinding::getId, id)
                 .eq(MetadataSourceBinding::getVersion, expectedVersion)
                 .eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)) > 0;
+    }
+
+    @Override
+    public List<MetadataSourceBinding> queryStatusRefreshCandidates(Date olderThan, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 1000));
+        return metadataSourceBindingMapper.selectList(new LambdaQueryWrapper<MetadataSourceBinding>()
+                .eq(MetadataSourceBinding::getDesiredState, MetadataDesiredState.ACTIVE)
+                .in(MetadataSourceBinding::getSyncStatus,
+                        MetadataSyncStatus.READY,
+                        MetadataSyncStatus.WAITING,
+                        MetadataSyncStatus.ERROR,
+                        MetadataSyncStatus.DELETING)
+                .and(wrapper -> wrapper.isNull(MetadataSourceBinding::getLastStatusRefreshTime)
+                        .or(stale -> stale.le(MetadataSourceBinding::getLastStatusRefreshTime, olderThan)))
+                .orderByAsc(MetadataSourceBinding::getLastStatusRefreshTime)
+                .last("LIMIT " + safeLimit));
+    }
+
+    @Override
+    public boolean reserveRun(
+            Long id, Long expectedVersion, boolean metadataScan, Long metadataTriggeredVersion, Date now) {
+        if (id == null || expectedVersion == null) {
+            return false;
+        }
+        LambdaUpdateWrapper<MetadataSourceBinding> update = new LambdaUpdateWrapper<MetadataSourceBinding>()
+                .eq(MetadataSourceBinding::getId, id)
+                .eq(MetadataSourceBinding::getVersion, expectedVersion)
+                .eq(MetadataSourceBinding::getDesiredState, MetadataDesiredState.ACTIVE)
+                .eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.READY)
+                .set(MetadataSourceBinding::getVersion, expectedVersion + 1L)
+                .set(MetadataSourceBinding::getUpdateTime, now);
+        if (metadataScan) {
+            update.notIn(MetadataSourceBinding::getScanStatus, MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
+                    .notIn(MetadataSourceBinding::getProfileStatus, MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
+                    .set(MetadataSourceBinding::getScanStatus, MetadataRunStatus.QUEUED)
+                    .set(MetadataSourceBinding::getScanLastRunTime, now)
+                    .set(MetadataSourceBinding::getScanLastError, null);
+            if (metadataTriggeredVersion != null) {
+                update.set(MetadataSourceBinding::getMetadataTriggeredVersion, metadataTriggeredVersion);
+            }
+        } else {
+            update.notIn(MetadataSourceBinding::getScanStatus, MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
+                    .notIn(MetadataSourceBinding::getProfileStatus, MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
+                    .set(MetadataSourceBinding::getProfileStatus, MetadataRunStatus.QUEUED)
+                    .set(MetadataSourceBinding::getProfileLastRunTime, now)
+                    .set(MetadataSourceBinding::getProfileLastError, null);
+        }
+        return metadataSourceBindingMapper.update(null, update) > 0;
+    }
+
+    @Override
+    public boolean updateIfVersion(MetadataSourceBinding binding, Long expectedVersion) {
+        if (binding == null || binding.getId() == null || expectedVersion == null) {
+            return false;
+        }
+        return metadataSourceBindingMapper.update(binding, new LambdaUpdateWrapper<MetadataSourceBinding>()
+                .eq(MetadataSourceBinding::getId, binding.getId())
+                .eq(MetadataSourceBinding::getVersion, expectedVersion)) > 0;
     }
 }

@@ -49,15 +49,15 @@ class MetadataSourceReconcilerTest {
         stubCandidate(candidate, live);
         when(dataSourceDao.queryById(42L)).thenReturn(source);
         when(registry.require(DbType.MYSQL)).thenReturn(adapter);
-        when(adapter.databaseServiceRequest(eq(source), eq("st_ds_42"))).thenReturn(JSON.createObjectNode());
-        when(adapter.metadataPipelineRequest(eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42")))
+        when(adapter.metadataPipelineRequest(eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42")))
                 .thenReturn(JSON.createObjectNode());
+        when(adapter.databaseServiceRequest(eq(source), eq("st_ds_42"))).thenReturn(JSON.createObjectNode());
         when(adapter.profilerPipelineRequest(eq("st_ds_42_profiler"), eq("svc"), eq("st_ds_42")))
                 .thenReturn(JSON.createObjectNode());
         when(openMetadataClient.upsertDatabaseService(any())).thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
         when(openMetadataClient.upsertIngestionPipeline(any()))
-                .thenReturn(new OpenMetadataEntity("meta", "st_ds_42_metadata"))
-                .thenReturn(new OpenMetadataEntity("prof", "st_ds_42_profiler"));
+                .thenReturn(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata"))
+                .thenReturn(new OpenMetadataEntity("prof", "st_ds_42.st_ds_42_profiler"));
 
         reconciler().reconcilePendingBindings();
 
@@ -66,6 +66,7 @@ class MetadataSourceReconcilerTest {
         assertEquals(MetadataSyncStatus.READY, saved.getValue().getSyncStatus());
         assertEquals(1L, saved.getValue().getSyncedConfigVersion());
         assertEquals("svc", saved.getValue().getOmServiceId());
+        assertEquals("st_ds_42.st_ds_42_metadata", saved.getValue().getOmMetadataPipelineFqn());
         verify(openMetadataClient).deployIngestionPipeline("meta");
         verify(openMetadataClient).deployIngestionPipeline("prof");
     }
@@ -78,13 +79,13 @@ class MetadataSourceReconcilerTest {
         stubCandidate(candidate, live);
         when(dataSourceDao.queryById(42L)).thenReturn(source);
         when(registry.require(DbType.MYSQL)).thenReturn(adapter);
+        when(adapter.metadataPipelineRequest(eq(source), any(), any(), any())).thenReturn(JSON.createObjectNode());
         when(adapter.databaseServiceRequest(any(), any())).thenReturn(JSON.createObjectNode());
-        when(adapter.metadataPipelineRequest(any(), any(), any())).thenReturn(JSON.createObjectNode());
         when(adapter.profilerPipelineRequest(any(), any(), any())).thenReturn(JSON.createObjectNode());
         when(openMetadataClient.upsertDatabaseService(any())).thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
         when(openMetadataClient.upsertIngestionPipeline(any()))
-                .thenReturn(new OpenMetadataEntity("meta", "st_ds_42_metadata"))
-                .thenReturn(new OpenMetadataEntity("prof", "st_ds_42_profiler"));
+                .thenReturn(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata"))
+                .thenReturn(new OpenMetadataEntity("prof", "st_ds_42.st_ds_42_profiler"));
 
         reconciler().reconcilePendingBindings();
 
@@ -133,10 +134,10 @@ class MetadataSourceReconcilerTest {
     void adoptsStableNamesForDeletionWhenAnOlderBindingHasNoOmIds() {
         MetadataSourceBinding candidate = binding(1L, MetadataDesiredState.DELETED, 2L, 0L);
         stubCandidate(candidate, null);
-        when(openMetadataClient.findIngestionPipeline("st_ds_42_metadata"))
-                .thenReturn(Optional.of(new OpenMetadataEntity("meta", "st_ds_42_metadata")));
-        when(openMetadataClient.findIngestionPipeline("st_ds_42_profiler"))
-                .thenReturn(Optional.of(new OpenMetadataEntity("prof", "st_ds_42_profiler")));
+        when(openMetadataClient.findIngestionPipeline("st_ds_42.st_ds_42_metadata"))
+                .thenReturn(Optional.of(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata")));
+        when(openMetadataClient.findIngestionPipeline("st_ds_42.st_ds_42_profiler"))
+                .thenReturn(Optional.of(new OpenMetadataEntity("prof", "st_ds_42.st_ds_42_profiler")));
         when(openMetadataClient.findDatabaseService("st_ds_42"))
                 .thenReturn(Optional.of(new OpenMetadataEntity("svc", "st_ds_42")));
         when(bindingDao.deleteClaimed(1L, 1L)).thenReturn(true);

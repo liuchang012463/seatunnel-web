@@ -27,6 +27,8 @@ class MetadataConnectorRegistryTest {
         MetadataConnectorAdapter adapter = registry.require(dataSource.getDbType());
         JsonNode service = adapter.databaseServiceRequest(dataSource, "st_ds_7");
         JsonNode pipeline = adapter.metadataPipelineRequest("st_ds_7_metadata", "uuid-1", "st_ds_7");
+        JsonNode scheduledPipeline = adapter.metadataPipelineRequest(
+                dataSource, "st_ds_7_metadata", "uuid-1", "st_ds_7");
 
         assertEquals("Mysql", service.at("/connection/config/type").asText());
         assertEquals("db.example:3307", service.at("/connection/config/hostPort").asText());
@@ -37,6 +39,7 @@ class MetadataConnectorRegistryTest {
         assertEquals(true, pipeline.at("/sourceConfig/config/markDeletedDatabases").asBoolean());
         assertEquals(false, pipeline.at("/sourceConfig/config/includeViews").asBoolean());
         assertEquals(1, pipeline.at("/airflowConfig/maxActiveRuns").asInt());
+        assertEquals("7 1 * * *", scheduledPipeline.at("/airflowConfig/scheduleInterval").asText());
     }
 
     @Test
@@ -47,6 +50,17 @@ class MetadataConnectorRegistryTest {
         MetadataIntegrationException error = assertThrows(
                 MetadataIntegrationException.class, () -> registry.require(DbType.KINGBASE));
         assertEquals(MetadataErrorCode.CONNECTOR_NOT_SUPPORTED, error.getErrorCode());
+    }
+
+    @Test
+    void profilerUsesAnExactFqnFilterForTheSelectedDatabase() {
+        MetadataConnectorAdapter adapter = registry.require(DbType.DORIS);
+        JsonNode pipeline = adapter.profilerPipelineRequest(
+                "st_ds_7_profiler", "uuid-1", "st_ds_7", "st_ds_7.orders");
+
+        assertEquals(true, pipeline.at("/sourceConfig/config/useFqnForFiltering").asBoolean());
+        assertEquals("^st_ds_7\\.orders$",
+                pipeline.at("/sourceConfig/config/databaseFilterPattern/includes/0").asText());
     }
 
     private static DataSource source(Long id, DbType dbType, String connectionParams) {

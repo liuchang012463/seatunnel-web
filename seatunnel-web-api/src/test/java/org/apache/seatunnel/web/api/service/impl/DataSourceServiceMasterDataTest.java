@@ -11,6 +11,7 @@ import org.apache.seatunnel.web.dao.repository.BusinessSystemDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
 import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
@@ -48,6 +49,9 @@ class DataSourceServiceMasterDataTest {
 
     @Mock
     private MetadataBindingCommandService metadataBindingCommandService;
+
+    @Mock
+    private MetadataBindingDao metadataBindingDao;
 
     @Mock
     private JobDefinitionDao jobDefinitionDao;
@@ -105,6 +109,7 @@ class DataSourceServiceMasterDataTest {
         when(dataSourceDao.queryPage(any(DataSourceDTO.class), isNull())).thenReturn(page);
         when(businessSystemDao.queryByIds(List.of(9L))).thenReturn(List.of(system));
         when(dataSourceUnitDao.queryByIds(List.of(7L))).thenReturn(List.of(unit));
+        when(metadataBindingDao.queryByDataSourceIds(List.of(1L, 2L))).thenReturn(List.of());
 
         PaginationResult<DataSourceVO> result = service.queryDataSourceListPaging(new DataSourceDTO());
 
@@ -112,6 +117,7 @@ class DataSourceServiceMasterDataTest {
         assertEquals("Order System", result.getData().getBizData().get(0).getBusinessSystemName());
         assertEquals(7L, result.getData().getBizData().get(0).getUnitId());
         assertEquals("待归属", result.getData().getBizData().get(1).getDataSourceUnit());
+        assertEquals("NOT_INITIALIZED", result.getData().getBizData().get(0).getMetadataSyncStatus());
     }
 
     @Test

@@ -79,6 +79,31 @@ export async function testDataSourceConnection(id: string): Promise<CommonApiRes
   return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/connect-test`);
 }
 
+export async function triggerDataSourceScan(id: string): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/${id}/scan`);
+}
+
+export async function triggerDataSourceExploration(
+  id: string,
+  databaseFqn: string,
+): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/${id}/explore`, { databaseFqn });
+}
+
+export async function fetchDataSourceMetadataDatabases(
+  id: string,
+): Promise<CommonApiResponse<Array<{ value: string; label: string }>>> {
+  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/metadata-databases`);
+}
+
+export async function fetchDataSourceMetadataRuns(
+  id: string,
+  type: 'SCAN' | 'EXPLORATION',
+  limit = 5,
+): Promise<CommonApiResponse<Array<{ runId: string; status: string; startTime?: string; endTime?: string }>>> {
+  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/runs?type=${type}&limit=${limit}`);
+}
+
 export async function testDataSourceConnectionWithParams(
   payload: Record<string, unknown>,
 ): Promise<CommonApiResponse<boolean>> {

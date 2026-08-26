@@ -15,6 +15,17 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
 
     @Override
     public JsonNode metadataPipelineRequest(String pipelineName, String serviceId, String serviceFqn) {
+        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, "0 0 1 1 *");
+    }
+
+    @Override
+    public JsonNode metadataPipelineRequest(
+            DataSource dataSource, String pipelineName, String serviceId, String serviceFqn) {
+        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, dailyMetadataSchedule(dataSource));
+    }
+
+    private JsonNode metadataPipelineRequestInternal(
+            String pipelineName, String serviceId, String serviceFqn, String scheduleInterval) {
         ObjectNode config = OBJECT_MAPPER.createObjectNode();
         config.put("type", "DatabaseMetadata");
         config.put("markDeletedTables", true);
@@ -22,21 +33,29 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         config.put("markDeletedDatabases", true);
         config.put("includeTables", true);
         config.put("includeViews", false);
-        return pipelineRequest(pipelineName, serviceId, serviceFqn, "metadata", config);
+        return pipelineRequest(pipelineName, serviceId, serviceFqn, "metadata", config, scheduleInterval);
     }
 
     @Override
     public JsonNode profilerPipelineRequest(String pipelineName, String serviceId, String serviceFqn) {
+        return profilerPipelineRequest(pipelineName, serviceId, serviceFqn, null);
+    }
+
+    @Override
+    public JsonNode profilerPipelineRequest(
+            String pipelineName, String serviceId, String serviceFqn, String databaseFqn) {
         ObjectNode config = OBJECT_MAPPER.createObjectNode();
         config.put("type", "Profiler");
-        config.set("databaseFilterPattern", filterPattern());
+        config.set("databaseFilterPattern", filterPattern(databaseFqn));
+        config.put("useFqnForFiltering", true);
         config.put("includeViews", false);
         config.put("computeMetrics", true);
         config.put("computeTableMetrics", true);
         config.put("computeColumnMetrics", true);
         config.put("profileSampleType", "PERCENTAGE");
         config.put("profileSample", 100);
-        return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config);
+        // The profiler is user-triggered only in this MVP.
+        return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config, "0 0 1 1 *");
     }
 
     protected ObjectNode baseServiceRequest(DataSource dataSource, String stableServiceName) {
@@ -76,7 +95,12 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
     }
 
     private ObjectNode pipelineRequest(
-            String pipelineName, String serviceId, String serviceFqn, String pipelineType, ObjectNode config) {
+            String pipelineName,
+            String serviceId,
+            String serviceFqn,
+            String pipelineType,
+            ObjectNode config,
+            String scheduleInterval) {
         ObjectNode root = OBJECT_MAPPER.createObjectNode();
         root.put("name", pipelineName);
         root.put("displayName", pipelineName);
@@ -90,7 +114,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         ObjectNode airflow = root.putObject("airflowConfig");
         airflow.put("pausePipeline", false);
         airflow.put("concurrency", 1);
-        airflow.put("scheduleInterval", "0 0 1 1 *");
+        airflow.put("scheduleInterval", scheduleInterval);
         airflow.put("pipelineCatchup", false);
         airflow.put("maxActiveRuns", 1);
         airflow.put("retries", 0);
@@ -101,10 +125,38 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
     }
 
     protected ObjectNode filterPattern() {
+        return filterPattern(null);
+    }
+
+    protected ObjectNode filterPattern(String databaseFqn) {
         ObjectNode filter = OBJECT_MAPPER.createObjectNode();
-        filter.set("includes", OBJECT_MAPPER.createArrayNode());
+        if (isBlank(databaseFqn)) {
+            filter.set("includes", OBJECT_MAPPER.createArrayNode());
+        } else {
+            // OpenMetadata ingestion uses Python regular expressions, so avoid Java-only Pattern.quote syntax.
+            filter.withArray("includes").add("^" + pythonRegexLiteral(databaseFqn) + "$");
+        }
         filter.set("excludes", OBJECT_MAPPER.createArrayNode());
         return filter;
+    }
+
+    private static String pythonRegexLiteral(String value) {
+        StringBuilder escaped = new StringBuilder(value.length());
+        for (int index = 0; index < value.length(); index++) {
+            char ch = value.charAt(index);
+            if ("\\.^$|?*+()[]{}".indexOf(ch) >= 0) {
+                escaped.append('\\');
+            }
+            escaped.append(ch);
+        }
+        return escaped.toString();
+    }
+
+    private static String dailyMetadataSchedule(DataSource dataSource) {
+        long id = dataSource == null || dataSource.getId() == null ? 0L : dataSource.getId();
+        int minute = (int) Math.floorMod(id, 60L);
+        int hour = 1 + (int) Math.floorMod(id / 60L, 3L);
+        return minute + " " + hour + " * * *";
     }
 
     protected ObjectNode passwordAuth(String password) {

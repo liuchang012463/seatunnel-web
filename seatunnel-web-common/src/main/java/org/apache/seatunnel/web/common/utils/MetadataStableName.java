@@ -26,7 +26,7 @@ public final class MetadataStableName {
     }
 
     public static String metadataPipelineFqn(Long dataSourceId) {
-        return metadataPipelineName(dataSourceId);
+        return serviceFqn(dataSourceId) + "." + metadataPipelineName(dataSourceId);
     }
 
     public static String profilerPipelineName(Long dataSourceId) {
@@ -34,7 +34,7 @@ public final class MetadataStableName {
     }
 
     public static String profilerPipelineFqn(Long dataSourceId) {
-        return profilerPipelineName(dataSourceId);
+        return serviceFqn(dataSourceId) + "." + profilerPipelineName(dataSourceId);
     }
 
     private static long requireId(Long dataSourceId) {

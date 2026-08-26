@@ -18,10 +18,12 @@ import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.DataSourceUnit;
 import org.apache.seatunnel.web.dao.entity.BusinessSystem;
+import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
 import org.apache.seatunnel.web.dao.repository.BusinessSystemDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
 import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
@@ -67,6 +69,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
     @Resource
     private MetadataBindingCommandService metadataBindingCommandService;
+
+    @Resource
+    private MetadataBindingDao metadataBindingDao;
 
     @Resource
     private JobDefinitionDao jobDefinitionDao;
@@ -201,7 +206,11 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
             Map<Long, BusinessSystem> systems = loadBusinessSystems(pageResult.getRecords());
             Map<Long, DataSourceUnit> units = loadUnits(systems);
-            records.forEach(record -> fillDerivedFields(record, systems, units));
+            Map<Long, MetadataSourceBinding> bindings = loadMetadataBindings(pageResult.getRecords());
+            records.forEach(record -> {
+                fillDerivedFields(record, systems, units);
+                fillMetadataFields(record, bindings.get(record.getId()));
+            });
 
             return PaginationResult.buildSuc(records, pageResult);
         } catch (ServiceException e) {
@@ -358,7 +367,11 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             List<DataSourceVO> result = ConvertUtil.sourceListToTarget(entities, DataSourceVO.class);
             Map<Long, BusinessSystem> systems = loadBusinessSystems(entities);
             Map<Long, DataSourceUnit> units = loadUnits(systems);
-            result.forEach(record -> fillDerivedFields(record, systems, units));
+            Map<Long, MetadataSourceBinding> bindings = loadMetadataBindings(entities);
+            result.forEach(record -> {
+                fillDerivedFields(record, systems, units);
+                fillMetadataFields(record, bindings.get(record.getId()));
+            });
             return result;
         } catch (Exception e) {
             log.error("List all data sources failed", e);
@@ -717,6 +730,22 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         }
     }
 
+    private static void fillMetadataFields(DataSourceVO vo, MetadataSourceBinding binding) {
+        if (binding == null) {
+            vo.setMetadataSyncStatus("NOT_INITIALIZED");
+            vo.setScanStatus(org.apache.seatunnel.web.common.enums.MetadataRunStatus.NEVER);
+            vo.setProfileStatus(org.apache.seatunnel.web.common.enums.MetadataRunStatus.NEVER);
+            return;
+        }
+        vo.setMetadataSyncStatus(binding.getSyncStatus() == null ? "NOT_INITIALIZED" : binding.getSyncStatus().name());
+        vo.setScanStatus(binding.getScanStatus());
+        vo.setScanLastRunTime(binding.getScanLastRunTime());
+        vo.setScanLastSuccessTime(binding.getScanLastSuccessTime());
+        vo.setProfileStatus(binding.getProfileStatus());
+        vo.setProfileLastRunTime(binding.getProfileLastRunTime());
+        vo.setProfileLastSuccessTime(binding.getProfileLastSuccessTime());
+    }
+
     private DBOptionVO toOptionVO(DataSource entity) {
         DBOptionVO option = new DBOptionVO();
         option.setValue(entity.getId());
@@ -736,6 +765,18 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         }
         return businessSystemDao.queryByIds(ids).stream()
                 .collect(Collectors.toMap(BusinessSystem::getId, item -> item, (left, right) -> left));
+    }
+
+    private Map<Long, MetadataSourceBinding> loadMetadataBindings(List<DataSource> entities) {
+        List<Long> ids = entities.stream()
+                .map(DataSource::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return metadataBindingDao.queryByDataSourceIds(ids).stream()
+                .collect(Collectors.toMap(MetadataSourceBinding::getDataSourceId, item -> item, (left, right) -> left));
     }
 
     private Map<Long, DataSourceUnit> loadUnits(Map<Long, BusinessSystem> systems) {

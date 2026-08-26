@@ -2,8 +2,11 @@ import {
   ApiOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
+  HistoryOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
+  RadarChartOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import { Button, Card, Tag, Tooltip } from 'antd';
 import React from 'react';
@@ -13,12 +16,16 @@ import DatabaseIcons from '../icon/DatabaseIcons';
 import type { DataSourceLifecycleStatus, DataSourceRecord } from '../types';
 import DataSourceLifecycleStatusTag from './DataSourceLifecycleStatus';
 import DataSourceStatus from './DataSourceStatus';
+import MetadataStatus from './MetadataStatus';
 
 interface DataSourceCardProps {
   record: DataSourceRecord;
   onEdit: (record: DataSourceRecord) => void;
   onDelete: (record: DataSourceRecord) => void;
   onTestConnection: (record: DataSourceRecord) => void;
+  onScan: (record: DataSourceRecord) => void;
+  onExplore: (record: DataSourceRecord) => void;
+  onRuns: (record: DataSourceRecord) => void;
   onStatusChange: (record: DataSourceRecord, status: DataSourceLifecycleStatus) => void;
 }
 
@@ -27,6 +34,9 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   onEdit,
   onDelete,
   onTestConnection,
+  onScan,
+  onExplore,
+  onRuns,
   onStatusChange,
 }) => {
   const environmentConfig = environmentTagConfigMap[record.environment || ''] || {
@@ -38,6 +48,13 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   const category = getDataSourceCategory(record.dbType);
   const currentStatus = record.status || 'ENABLED';
   const isRevoked = currentStatus === 'REVOKED';
+  const isDeleting = isRevoked || record.metadataSyncStatus === 'DELETING';
+  const metadataReady = record.metadataSyncStatus === 'READY';
+  const metadataBusy = record.scanStatus === 'QUEUED'
+    || record.scanStatus === 'RUNNING'
+    || record.profileStatus === 'QUEUED'
+    || record.profileStatus === 'RUNNING';
+  const canOperateMetadata = !isDeleting && metadataReady && !metadataBusy;
   const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
   const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
   const isUnassigned = record.businessSystemId === undefined || record.businessSystemId === null;
@@ -82,6 +99,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           <Tooltip title="测试连接" placement="top">
             <button
               type="button"
+              disabled={isDeleting}
               className="datasource-card-hover-action"
               onClick={(event) => {
                 event.stopPropagation();
@@ -92,10 +110,52 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
             </button>
           </Tooltip>
 
+          <Tooltip title={canOperateMetadata ? '重新扫描' : '自动扫描暂不可触发'} placement="top">
+            <button
+              type="button"
+              disabled={!canOperateMetadata}
+              className="datasource-card-hover-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onScan(record);
+              }}
+            >
+              <SyncOutlined />
+            </button>
+          </Tooltip>
+
+          <Tooltip title={canOperateMetadata ? '数据源探查' : '数据源探查暂不可触发'} placement="top">
+            <button
+              type="button"
+              disabled={!canOperateMetadata}
+              className="datasource-card-hover-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onExplore(record);
+              }}
+            >
+              <RadarChartOutlined />
+            </button>
+          </Tooltip>
+
+          <Tooltip title={metadataReady && !isDeleting ? '查看运行记录' : '运行记录暂不可查看'} placement="top">
+            <button
+              type="button"
+              disabled={!metadataReady || isDeleting}
+              className="datasource-card-hover-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onRuns(record);
+              }}
+            >
+              <HistoryOutlined />
+            </button>
+          </Tooltip>
+
           <Tooltip title={statusActionLabel} placement="top">
             <button
               type="button"
-              disabled={isRevoked}
+              disabled={isDeleting}
               className="datasource-card-hover-action"
               onClick={(event) => {
                 event.stopPropagation();
@@ -109,7 +169,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           <Tooltip title={isRevoked ? '已注销' : '注销'} placement="top">
             <button
               type="button"
-              disabled={isRevoked}
+              disabled={isDeleting}
               className="datasource-card-hover-action datasource-card-hover-action--danger"
               onClick={(event) => {
                 event.stopPropagation();
@@ -123,6 +183,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           <Tooltip title="删除" placement="top">
             <button
               type="button"
+              disabled={isDeleting}
               className="datasource-card-hover-action datasource-card-hover-action--danger"
               onClick={(event) => {
                 event.stopPropagation();
@@ -152,6 +213,21 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           </Tag>
         </div>
 
+        <div className="mt-2">
+          <MetadataStatus
+            syncStatus={record.metadataSyncStatus}
+            scanStatus={record.scanStatus}
+            scanLastRunTime={record.scanLastRunTime}
+            profileStatus={record.profileStatus}
+            profileLastRunTime={record.profileLastRunTime}
+          />
+        </div>
+
+        <div className="mt-2 space-y-0.5 text-xs text-[var(--st-color-text-muted)]">
+          <div>最近扫描：{record.scanLastSuccessTime || record.scanLastRunTime || '-'}</div>
+          <div>最近探查：{record.profileLastSuccessTime || record.profileLastRunTime || '-'}</div>
+        </div>
+
         <div className="datasource-card-unit" title={unitName}>
           单位：{unitName}
         </div>
@@ -167,6 +243,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
         <Button
           block
           type="primary"
+          disabled={isDeleting}
           className={[
             'datasource-card-detail-button group/detail relative overflow-hidden p-0',
             'transition-all duration-300 ease-out',
