@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -33,6 +34,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     private final HttpClient httpClient;
     private final AtomicBoolean versionVerified = new AtomicBoolean(false);
 
+    @Autowired
     public OpenMetadataRestClient(OpenMetadataProperties properties) {
         this(properties, HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(properties.getConnectTimeoutMs()))
