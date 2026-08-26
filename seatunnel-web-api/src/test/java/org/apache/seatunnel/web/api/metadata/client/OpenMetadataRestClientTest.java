@@ -77,6 +77,34 @@ class OpenMetadataRestClientTest {
     }
 
     @Test
+    void readsOperatorHealthOnlyThroughOpenMetadataEndpoints() throws Exception {
+        AtomicReference<String> versionPath = new AtomicReference<>();
+        AtomicReference<String> statusPath = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/system/version", exchange -> {
+            versionPath.set(exchange.getRequestURI().getPath());
+            respond(exchange, 200, "{\"version\":\"1.12.10\"}");
+        });
+        server.createContext("/api/v1/services/ingestionPipelines/status", exchange -> {
+            statusPath.set(exchange.getRequestURI().getPath());
+            respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"1.12.10.0\"}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataHealth health = client.health();
+
+        assertEquals("/api/v1/system/version", versionPath.get());
+        assertEquals("/api/v1/services/ingestionPipelines/status", statusPath.get());
+        assertEquals("1.12.10", health.serverVersion());
+        assertEquals("1.12.10.0", health.ingestionVersion());
+        org.junit.jupiter.api.Assertions.assertTrue(health.openMetadataUp());
+        org.junit.jupiter.api.Assertions.assertTrue(health.orchestratorUp());
+    }
+
+    @Test
     void uses11210TriggerKillAndPipelineStatusPathsWithoutAirflowCalls() throws Exception {
         AtomicReference<String> triggerBody = new AtomicReference<>();
         AtomicReference<String> killBody = new AtomicReference<>();

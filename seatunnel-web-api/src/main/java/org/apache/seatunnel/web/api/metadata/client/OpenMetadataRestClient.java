@@ -73,6 +73,31 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     @Override
+    public OpenMetadataHealth health() {
+        String serverVersion = null;
+        boolean openMetadataUp = false;
+        try {
+            JsonNode versionResponse = request("GET", "/v1/system/version", null, false);
+            serverVersion = versionResponse.path("version").asText(null);
+            openMetadataUp = true;
+        } catch (Exception ignored) {
+            return new OpenMetadataHealth(false, false, null, null);
+        }
+        try {
+            JsonNode ingestionServiceStatus = request(
+                    "GET", "/v1/services/ingestionPipelines/status", null, false);
+            int code = ingestionServiceStatus.path("code").asInt(-1);
+            return new OpenMetadataHealth(
+                    openMetadataUp,
+                    code >= 200 && code < 300,
+                    serverVersion,
+                    ingestionServiceStatus.path("version").asText(null));
+        } catch (Exception ignored) {
+            return new OpenMetadataHealth(openMetadataUp, false, serverVersion, null);
+        }
+    }
+
+    @Override
     public Optional<OpenMetadataEntity> findDatabaseService(String fullyQualifiedName) {
         return findByName("/v1/services/databaseServices/name/", fullyQualifiedName);
     }

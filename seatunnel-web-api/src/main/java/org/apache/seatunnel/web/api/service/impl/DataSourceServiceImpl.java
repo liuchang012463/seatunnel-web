@@ -216,7 +216,14 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Query data source list paging failed, dto={}", dto, e);
+            // Do not log the DTO: it may contain the datasource connection JSON/password.
+            log.error("Query data source list paging failed: pageNo={}, pageSize={}, dbType={}, unitId={}, businessSystemId={}",
+                    dto == null ? null : dto.getPageNo(),
+                    dto == null ? null : dto.getPageSize(),
+                    dto == null ? null : dto.getDbType(),
+                    dto == null ? null : dto.getUnitId(),
+                    dto == null ? null : dto.getBusinessSystemId(),
+                    e);
             throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, e.getMessage());
         }
     }

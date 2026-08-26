@@ -10,6 +10,9 @@ public interface OpenMetadataClient {
 
     void assertFixedVersion();
 
+    /** Reads Server and managed-ingestion health through OpenMetadata 1.12.10. */
+    OpenMetadataHealth health();
+
     Optional<OpenMetadataEntity> findDatabaseService(String fullyQualifiedName);
 
     Optional<OpenMetadataDatabase> findDatabase(String fullyQualifiedName);
