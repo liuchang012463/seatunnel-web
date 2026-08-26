@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.common.enums.MetadataRunStatus;
 import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Comparator;
 import java.util.Date;
@@ -21,6 +22,10 @@ public class MetadataStatusSynchronizer {
     private final OpenMetadataClient openMetadataClient;
     private final MetadataStatusProperties properties;
     private final MetadataPipelineOperationService operationService;
+
+    /** Optional to keep existing unit-test constructors and lightweight deployments compatible. */
+    @Autowired(required = false)
+    private MetadataInventoryCache metadataInventoryCache;
 
     public MetadataStatusSynchronizer(
             MetadataBindingDao metadataBindingDao,
@@ -65,6 +70,9 @@ public class MetadataStatusSynchronizer {
             latest.setVersion(version + 1L);
             latest.initUpdate();
             if (metadataBindingDao.updateIfVersion(latest, version)) {
+                if (metadataInventoryCache != null) {
+                    metadataInventoryCache.invalidateDataSource(candidate.getDataSourceId());
+                }
                 operationService.triggerPendingMetadataScan(latest);
             }
         } catch (Exception e) {

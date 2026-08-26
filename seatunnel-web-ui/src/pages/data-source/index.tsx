@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AddOrEditDataSourceModal from './components/AddOrEditDataSourceModal';
 import DataSourceCard from './components/DataSourceCard';
 import DataExplorationDrawer from './components/DataExplorationDrawer';
+import DataInventoryDashboard from './components/DataInventoryDashboard';
 import EmptyState from './components/EmptyState';
 import PageHeader from './components/PageHeader';
 import SearchBar from './components/SearchBar';
@@ -473,6 +474,8 @@ const DataSourcePage: React.FC = () => {
               <motion.div variants={PAGE_ANIMATION.fadeUp}>
                 <PageHeader onCreate={handleCreate} />
               </motion.div>
+
+              <DataInventoryDashboard />
 
               <motion.div variants={PAGE_ANIMATION.fadeUp}>
                 <SearchBar

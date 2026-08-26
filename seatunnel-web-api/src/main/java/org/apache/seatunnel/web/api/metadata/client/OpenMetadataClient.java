@@ -16,8 +16,22 @@ public interface OpenMetadataClient {
 
     List<OpenMetadataDatabase> listDatabases(String serviceFullyQualifiedName, int limit);
 
+    /** Reads one cursor page from the OpenMetadata 1.12.10 database collection. */
+    default OpenMetadataPage<OpenMetadataDatabase> listDatabasesPage(
+            String serviceFullyQualifiedName, int limit, String after) {
+        List<OpenMetadataDatabase> data = listDatabases(serviceFullyQualifiedName, limit);
+        return new OpenMetadataPage<>(data, data.size(), null);
+    }
+
     /** Lists non-deleted schemas belonging to one OpenMetadata Database FQN. */
     List<OpenMetadataDatabaseSchema> listSchemas(String databaseFullyQualifiedName, int limit);
+
+    /** Reads one cursor page from the OpenMetadata 1.12.10 schema collection. */
+    default OpenMetadataPage<OpenMetadataDatabaseSchema> listSchemasPage(
+            String databaseFullyQualifiedName, int limit, String after) {
+        List<OpenMetadataDatabaseSchema> data = listSchemas(databaseFullyQualifiedName, limit);
+        return new OpenMetadataPage<>(data, data.size(), null);
+    }
 
     /**
      * Lists non-deleted tables for one schema. The 1.12.10 contract uses the
@@ -25,6 +39,13 @@ public interface OpenMetadataClient {
      */
     List<OpenMetadataTable> listTables(
             String schemaFullyQualifiedName, boolean includeColumns, int limit);
+
+    /** Reads one cursor page from the OpenMetadata 1.12.10 table collection. */
+    default OpenMetadataPage<OpenMetadataTable> listTablesPage(
+            String schemaFullyQualifiedName, boolean includeColumns, int limit, String after) {
+        List<OpenMetadataTable> data = listTables(schemaFullyQualifiedName, includeColumns, limit);
+        return new OpenMetadataPage<>(data, data.size(), null);
+    }
 
     /** Gets a table entity by its OpenMetadata UUID. */
     OpenMetadataTable getTable(String tableId);

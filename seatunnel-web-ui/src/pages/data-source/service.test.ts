@@ -10,6 +10,8 @@ import {
   fetchDataExplorationTables,
   fetchDataExplorationTable,
   fetchDataExplorationProfile,
+  fetchDataSourceTopologyChildren,
+  fetchDataSourceTopologyTree,
   previewDataExplorationTable,
   triggerDataSourceExploration,
   triggerDataSourceScan,
@@ -136,6 +138,23 @@ describe('data source service', () => {
     expect(HttpUtils.post).toHaveBeenCalledWith(
       '/api/v1/data-exploration/tables/table-id/preview?dataSourceId=42',
       {},
+    );
+  });
+
+  it('loads topology levels through the SeaTunnel lazy topology facade', async () => {
+    const response = { code: 0, data: [] };
+    (HttpUtils.get as jest.Mock).mockResolvedValue(response);
+
+    await expect(fetchDataSourceTopologyTree({ dataSourceId: 42 })).resolves.toBe(response);
+    await expect(fetchDataSourceTopologyChildren('DATA_SOURCE', '42')).resolves.toBe(response);
+
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/data-source-topology/tree?dataSourceId=42',
+    );
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/data-source-topology/children?nodeType=DATA_SOURCE&nodeId=42',
     );
   });
 });

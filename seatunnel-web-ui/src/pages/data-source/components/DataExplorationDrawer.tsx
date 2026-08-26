@@ -16,8 +16,9 @@ import {
   Table,
   Tabs,
   Tag,
+  Tree,
 } from 'antd';
-import type { TableColumnsType } from 'antd';
+import type { TableColumnsType, TreeDataNode } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   fetchDataExplorationDatabases,
@@ -25,6 +26,8 @@ import {
   fetchDataExplorationSchemas,
   fetchDataExplorationTable,
   fetchDataExplorationTables,
+  fetchDataSourceTopologyChildren,
+  fetchDataSourceTopologyTree,
   previewDataExplorationTable,
 } from '../service';
 import type {
@@ -39,6 +42,8 @@ import type {
   DataExplorationTableDetail,
   DataExplorationTablePage,
   ExplorationQualityStatus,
+  DataSourceTopologyNode,
+  DataSourceTopologyNodeType,
 } from '../types';
 
 interface DataExplorationDrawerProps {
@@ -74,6 +79,37 @@ function qualityTag(status?: ExplorationQualityStatus, reason?: string) {
   return <Tag color={config.color} title={reason}>{config.label}</Tag>;
 }
 
+function topologyKey(node: DataSourceTopologyNode) {
+  return `${node.nodeType}:${node.id}`;
+}
+
+function topologyTreeData(nodes: DataSourceTopologyNode[]): TreeDataNode[] {
+  return nodes.map((node) => ({
+    key: topologyKey(node),
+    title: node.name || node.id,
+    isLeaf: node.nodeType === 'TABLE',
+    children: node.children && node.children.length > 0
+      ? topologyTreeData(node.children)
+      : undefined,
+  }));
+}
+
+function replaceTopologyChildren(
+  nodes: DataSourceTopologyNode[],
+  key: string,
+  children: DataSourceTopologyNode[],
+): DataSourceTopologyNode[] {
+  return nodes.map((node) => {
+    if (topologyKey(node) === key) {
+      return { ...node, children };
+    }
+    if (node.children && node.children.length > 0) {
+      return { ...node, children: replaceTopologyChildren(node.children, key, children) };
+    }
+    return node;
+  });
+}
+
 const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   dataSourceId,
   dataSourceName,
@@ -95,6 +131,9 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const [preview, setPreview] = useState<DataExplorationPreview>();
   const [previewLoading, setPreviewLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('structure');
+  const [topologyNodes, setTopologyNodes] = useState<DataSourceTopologyNode[]>([]);
+  const [topologyLoading, setTopologyLoading] = useState(false);
+  const [pendingSchemaFqn, setPendingSchemaFqn] = useState<string>();
 
   useEffect(() => {
     if (!open || !dataSourceId) {
@@ -114,6 +153,30 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setProfile(undefined);
     setPreview(undefined);
     setActiveTab('structure');
+    setTopologyNodes([]);
+    setPendingSchemaFqn(undefined);
+
+    setTopologyLoading(true);
+    fetchDataSourceTopologyTree({ dataSourceId })
+      .then((response) => {
+        if (!disposed) {
+          if (response.code !== 0) {
+            message.warning(response.message || '拓扑暂不可用');
+          } else {
+            setTopologyNodes(response.data || []);
+          }
+        }
+      })
+      .catch((error: any) => {
+        if (!disposed) {
+          message.warning(error?.response?.data?.message || '拓扑暂不可用');
+        }
+      })
+      .finally(() => {
+        if (!disposed) {
+          setTopologyLoading(false);
+        }
+      });
 
     fetchDataExplorationDatabases(dataSourceId)
       .then((response) => {
@@ -171,7 +234,12 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
         }
         const nextSchemas = response.data || [];
         setSchemas(nextSchemas);
-        setSchemaFqn(nextSchemas[0]?.fullyQualifiedName);
+        const preferredSchema = pendingSchemaFqn
+          && nextSchemas.some((item) => item.fullyQualifiedName === pendingSchemaFqn)
+          ? pendingSchemaFqn
+          : nextSchemas[0]?.fullyQualifiedName;
+        setSchemaFqn(preferredSchema);
+        setPendingSchemaFqn(undefined);
       })
       .catch((error: any) => {
         if (!disposed) {
@@ -182,7 +250,7 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     return () => {
       disposed = true;
     };
-  }, [open, dataSourceId, databaseFqn]);
+  }, [open, dataSourceId, databaseFqn, pendingSchemaFqn]);
 
   const loadTables = async (pageNo: number) => {
     if (!dataSourceId || !databaseFqn || !schemaFqn) {
@@ -329,6 +397,62 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       });
   }, [preview]);
 
+  const onTopologySelect = (keys: React.Key[]) => {
+    if (keys.length === 0) {
+      return;
+    }
+    const key = String(keys[0]);
+    const separator = key.indexOf(':');
+    if (separator <= 0) {
+      return;
+    }
+    const nodeType = key.substring(0, separator) as DataSourceTopologyNodeType;
+    const nodeId = key.substring(separator + 1);
+    if (nodeType === 'DATABASE') {
+      setPendingSchemaFqn(undefined);
+      setDatabaseFqn(nodeId);
+    } else if (nodeType === 'SCHEMA') {
+      const split = nodeId.indexOf('|');
+      if (split <= 0) {
+        return;
+      }
+      const nextDatabaseFqn = nodeId.substring(0, split);
+      const nextSchemaFqn = nodeId.substring(split + 1);
+      if (nextDatabaseFqn === databaseFqn) {
+        setSchemaFqn(nextSchemaFqn);
+      } else {
+        setPendingSchemaFqn(nextSchemaFqn);
+        setDatabaseFqn(nextDatabaseFqn);
+      }
+    } else if (nodeType === 'TABLE') {
+      setSelectedTableId(nodeId);
+      setActiveTab('structure');
+    }
+  };
+
+  const loadTopologyData = async (node: TreeDataNode) => {
+    const key = String(node.key);
+    const separator = key.indexOf(':');
+    if (separator <= 0) {
+      return;
+    }
+    const nodeType = key.substring(0, separator) as DataSourceTopologyNodeType;
+    if (nodeType === 'TABLE' || node.children) {
+      return;
+    }
+    const nodeId = key.substring(separator + 1);
+    try {
+      const response = await fetchDataSourceTopologyChildren(nodeType, nodeId);
+      if (response.code !== 0) {
+        message.warning(response.message || '拓扑节点暂不可用');
+        return;
+      }
+      setTopologyNodes((current) => replaceTopologyChildren(current, key, response.data || []));
+    } catch (error: any) {
+      message.warning(error?.response?.data?.message || '拓扑节点暂不可用');
+    }
+  };
+
   const constraints = tableDetail?.tableConstraints || [];
   const tables = tablePage?.records || [];
 
@@ -353,6 +477,28 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       )}
     >
       <Spin spinning={loading}>
+        <div className="mb-4 rounded-lg border border-[var(--st-color-border)] p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 font-medium">
+              <ApartmentOutlined className="text-[var(--st-color-primary)]" />
+              数据源拓扑
+            </div>
+            <span className="text-xs text-[var(--st-color-text-muted)]">展开节点按需读取 OM</span>
+          </div>
+          <Spin spinning={topologyLoading}>
+            {topologyNodes.length === 0 ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可展示的拓扑" />
+            ) : (
+              <Tree
+                blockNode
+                selectable
+                treeData={topologyTreeData(topologyNodes)}
+                loadData={loadTopologyData}
+                onSelect={onTopologySelect}
+              />
+            )}
+          </Spin>
+        </div>
         <div className="mb-4 grid grid-cols-1 gap-3 rounded-lg border border-[var(--st-color-border)] bg-[rgba(77,210,255,0.03)] p-4 md:grid-cols-2">
           <div>
             <div className="mb-1 text-xs text-[var(--st-color-text-muted)]">Database</div>

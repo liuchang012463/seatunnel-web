@@ -13,12 +13,20 @@ import type {
   DataExplorationTableDetail,
   DataExplorationProfile,
   DataExplorationPreview,
+  DataInventoryDistributionItem,
+  DataInventoryFilter,
+  DataInventoryProfileCoverage,
+  DataInventorySummary,
+  DataSourceTopologyNode,
+  DataSourceTopologyNodeType,
 } from './types';
 
 const DATA_SOURCE_API_PREFIX = '/api/v1/data-source';
 const DATA_SOURCE_UNIT_API_PREFIX = '/api/v1/data-source-units';
 const BUSINESS_SYSTEM_API_PREFIX = '/api/v1/business-systems';
 const DATA_EXPLORATION_API_PREFIX = '/api/v1/data-exploration';
+const DATA_INVENTORY_API_PREFIX = '/api/v1/data-inventory';
+const DATA_SOURCE_TOPOLOGY_API_PREFIX = '/api/v1/data-source-topology';
 
 export type MasterDataList<T> =
   | T[]
@@ -169,6 +177,89 @@ export async function previewDataExplorationTable(
     `${DATA_EXPLORATION_API_PREFIX}/tables/${encodeURIComponent(tableId)}/preview?dataSourceId=${encodeURIComponent(id)}`,
     {},
   );
+}
+
+export async function fetchDataInventorySummary(
+  filter: DataInventoryFilter = {},
+): Promise<CommonApiResponse<DataInventorySummary>> {
+  const query = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value));
+    }
+  });
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/summary${suffix}`);
+}
+
+export async function fetchDataInventorySourceTypes(
+  filter: DataInventoryFilter = {},
+): Promise<CommonApiResponse<DataInventoryDistributionItem[]>> {
+  return fetchInventoryDistribution('source-type', filter);
+}
+
+export async function fetchDataInventoryUnits(
+  filter: DataInventoryFilter = {},
+): Promise<CommonApiResponse<DataInventoryDistributionItem[]>> {
+  return fetchInventoryDistribution('unit', filter);
+}
+
+export async function fetchDataInventoryBusinessSystems(
+  filter: DataInventoryFilter = {},
+): Promise<CommonApiResponse<DataInventoryDistributionItem[]>> {
+  return fetchInventoryDistribution('business-system', filter);
+}
+
+export async function fetchDataInventoryProfileCoverage(
+  filter: DataInventoryFilter = {},
+): Promise<CommonApiResponse<DataInventoryProfileCoverage>> {
+  const query = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value));
+    }
+  });
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/profile-coverage${suffix}`);
+}
+
+async function fetchInventoryDistribution(
+  dimension: string,
+  filter: DataInventoryFilter,
+): Promise<CommonApiResponse<DataInventoryDistributionItem[]>> {
+  const query = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value));
+    }
+  });
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/distribution/${dimension}${suffix}`);
+}
+
+export async function downloadDataExplorationExport(filter: DataInventoryFilter = {}): Promise<any> {
+  return HttpUtils.downloadPost(`${DATA_EXPLORATION_API_PREFIX}/export`, filter);
+}
+
+export async function fetchDataSourceTopologyTree(
+  filter: Pick<DataInventoryFilter, 'unitId' | 'businessSystemId' | 'dataSourceId'> = {},
+): Promise<CommonApiResponse<DataSourceTopologyNode[]>> {
+  const query = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value));
+    }
+  });
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return HttpUtils.get(`${DATA_SOURCE_TOPOLOGY_API_PREFIX}/tree${suffix}`);
+}
+
+export async function fetchDataSourceTopologyChildren(
+  nodeType: DataSourceTopologyNodeType,
+  nodeId: string,
+): Promise<CommonApiResponse<DataSourceTopologyNode[]>> {
+  const query = new URLSearchParams({ nodeType, nodeId });
+  return HttpUtils.get(`${DATA_SOURCE_TOPOLOGY_API_PREFIX}/children?${query.toString()}`);
 }
 
 export async function testDataSourceConnectionWithParams(

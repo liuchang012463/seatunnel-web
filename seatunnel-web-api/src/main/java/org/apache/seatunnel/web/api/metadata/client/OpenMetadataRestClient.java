@@ -96,11 +96,18 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public List<OpenMetadataDatabase> listDatabases(String serviceFullyQualifiedName, int limit) {
+        return listDatabasesPage(serviceFullyQualifiedName, limit, null).data();
+    }
+
+    @Override
+    public OpenMetadataPage<OpenMetadataDatabase> listDatabasesPage(
+            String serviceFullyQualifiedName, int limit, String after) {
         int safeLimit = Math.max(1, Math.min(limit, 1000));
         JsonNode response = request(
                 "GET",
                 "/v1/databases?service=" + encode(serviceFullyQualifiedName)
-                        + "&include=non-deleted&limit=" + safeLimit,
+                        + "&include=non-deleted&limit=" + safeLimit
+                        + cursor(after),
                 null,
                 false);
         List<OpenMetadataDatabase> databases = new ArrayList<>();
@@ -112,16 +119,23 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 databases.add(new OpenMetadataDatabase(id, fqn, serviceFqn));
             }
         }
-        return databases;
+        return page(response, databases);
     }
 
     @Override
     public List<OpenMetadataDatabaseSchema> listSchemas(String databaseFullyQualifiedName, int limit) {
+        return listSchemasPage(databaseFullyQualifiedName, limit, null).data();
+    }
+
+    @Override
+    public OpenMetadataPage<OpenMetadataDatabaseSchema> listSchemasPage(
+            String databaseFullyQualifiedName, int limit, String after) {
         int safeLimit = Math.max(1, Math.min(limit, 1000));
         JsonNode response = request(
                 "GET",
                 "/v1/databaseSchemas?database=" + encode(databaseFullyQualifiedName)
-                        + "&limit=" + safeLimit + "&include=non-deleted",
+                        + "&limit=" + safeLimit + "&include=non-deleted"
+                        + cursor(after),
                 null,
                 false);
         List<OpenMetadataDatabaseSchema> schemas = new ArrayList<>();
@@ -131,19 +145,26 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 schemas.add(parsed);
             }
         }
-        return schemas;
+        return page(response, schemas);
     }
 
     @Override
     public List<OpenMetadataTable> listTables(
             String schemaFullyQualifiedName, boolean includeColumns, int limit) {
+        return listTablesPage(schemaFullyQualifiedName, includeColumns, limit, null).data();
+    }
+
+    @Override
+    public OpenMetadataPage<OpenMetadataTable> listTablesPage(
+            String schemaFullyQualifiedName, boolean includeColumns, int limit, String after) {
         int safeLimit = Math.max(1, Math.min(limit, 1000));
         String fields = includeColumns ? "columns,tableConstraints" : "tableConstraints";
         JsonNode response = request(
                 "GET",
                 "/v1/tables?databaseSchema=" + encode(schemaFullyQualifiedName)
                         + "&fields=" + fields
-                        + "&include=non-deleted&limit=" + safeLimit,
+                        + "&include=non-deleted&limit=" + safeLimit
+                        + cursor(after),
                 null,
                 false);
         List<OpenMetadataTable> tables = new ArrayList<>();
@@ -153,7 +174,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 tables.add(parsed);
             }
         }
-        return tables;
+        return page(response, tables);
     }
 
     @Override
@@ -596,5 +617,18 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     private static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private static String cursor(String after) {
+        return after == null || after.isBlank() ? "" : "&after=" + encode(after);
+    }
+
+    private static <T> OpenMetadataPage<T> page(JsonNode response, List<T> data) {
+        JsonNode paging = response == null ? null : response.path("paging");
+        long total = paging == null || paging.isMissingNode()
+                ? data.size() : paging.path("total").asLong(data.size());
+        String after = paging == null || paging.isMissingNode()
+                ? null : paging.path("after").asText(null);
+        return new OpenMetadataPage<>(data, total, after);
     }
 }

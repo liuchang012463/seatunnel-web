@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.api.metadata.client.OpenMetadataColumn;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataColumnProfile;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabaseSchema;
+import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPage;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTable;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTableConstraint;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTableProfile;
@@ -37,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,9 +53,10 @@ class DataExplorationServiceTest {
     @Test
     void listsOnlyDatabasesOwnedByTheDataSourceBinding() {
         stubReadySource();
-        when(openMetadataClient.listDatabases("st_ds_42", 1000)).thenReturn(List.of(
+        doReturn(new OpenMetadataPage<>(List.of(
                 new OpenMetadataDatabase("db-id", "st_ds_42.orders", "st_ds_42"),
-                new OpenMetadataDatabase("foreign-id", "other.orders", "other")));
+                new OpenMetadataDatabase("foreign-id", "other.orders", "other")), 2L, null))
+                .when(openMetadataClient).listDatabasesPage("st_ds_42", 1000, null);
 
         assertEquals(1, service().listDatabases(42L).size());
         assertEquals("st_ds_42.orders", service().listDatabases(42L).get(0).getFullyQualifiedName());
@@ -74,9 +77,10 @@ class DataExplorationServiceTest {
         table.setTableConstraints(List.of(constraint));
         when(openMetadataClient.findDatabase("st_ds_42.orders"))
                 .thenReturn(Optional.of(new OpenMetadataDatabase("db-id", "st_ds_42.orders", "st_ds_42")));
-        when(openMetadataClient.listSchemas("st_ds_42.orders", 1000)).thenReturn(List.of(
-                schema("schema-id", "st_ds_42.orders.public")));
-        when(openMetadataClient.listTables("st_ds_42.orders.public", true, 20)).thenReturn(List.of(table));
+        doReturn(new OpenMetadataPage<>(List.of(schema("schema-id", "st_ds_42.orders.public")), 1L, null))
+                .when(openMetadataClient).listSchemasPage("st_ds_42.orders", 1000, null);
+        doReturn(new OpenMetadataPage<>(List.of(table), 1L, null))
+                .when(openMetadataClient).listTablesPage("st_ds_42.orders.public", true, 20, null);
         when(openMetadataClient.getTable("table-id")).thenReturn(table);
 
         DataExplorationTablePageVO page = service().listTables(

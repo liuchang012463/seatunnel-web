@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
+import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPage;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPipelineRun;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
@@ -28,7 +29,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
 
 /**
  * User and scheduler operations on the existing DataSource binding. Every external
@@ -37,6 +41,9 @@ import java.util.List;
 @Slf4j
 @Service
 public class MetadataPipelineOperationService {
+
+    private static final int MAX_OM_PAGE_SIZE = 1000;
+    private static final int MAX_OM_PAGES = 10_000;
 
     private final OpenMetadataProperties openMetadataProperties;
     private final MetadataBindingDao metadataBindingDao;
@@ -174,7 +181,8 @@ public class MetadataPipelineOperationService {
         String serviceFqn = requireServiceFqn(binding, dataSourceId);
         openMetadataClient.assertFixedVersion();
         List<OptionVO> options = new ArrayList<>();
-        for (OpenMetadataDatabase database : openMetadataClient.listDatabases(serviceFqn, 1000)) {
+        for (OpenMetadataDatabase database : collectPages(
+                after -> openMetadataClient.listDatabasesPage(serviceFqn, MAX_OM_PAGE_SIZE, after))) {
             if (!serviceFqn.equals(database.serviceFullyQualifiedName())) {
                 continue;
             }
@@ -357,6 +365,25 @@ public class MetadataPipelineOperationService {
                 .max(Comparator.comparing(run -> firstNonNull(run.timestamp(), run.startDate(), 0L)))
                 .map(run -> OpenMetadataRunStatusMapper.fromPipelineState(run.pipelineState()))
                 .orElse(MetadataRunStatus.NEVER);
+    }
+
+    private static <T> List<T> collectPages(Function<String, OpenMetadataPage<T>> loader) {
+        List<T> result = new ArrayList<>();
+        String after = null;
+        Set<String> seen = new HashSet<>();
+        for (int pageNumber = 0; pageNumber < MAX_OM_PAGES; pageNumber++) {
+            OpenMetadataPage<T> page = loader.apply(after);
+            if (page == null) {
+                break;
+            }
+            result.addAll(page.data() == null ? List.of() : page.data());
+            String next = page.after();
+            if (next == null || next.isBlank() || !seen.add(next)) {
+                break;
+            }
+            after = next;
+        }
+        return result;
     }
 
     private static MetadataRunStateVO runState(

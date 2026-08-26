@@ -287,3 +287,53 @@ export interface DataExplorationPreview {
   data?: Array<Record<string, unknown>>;
   total?: number;
 }
+
+export interface DataInventorySummary {
+  unitCount: number;
+  businessSystemCount: number;
+  dataSourceCount: number;
+  databaseCount: number;
+  schemaCount: number;
+  tableCount: number;
+  columnCount: number;
+  profiledDatabaseCount: number;
+  profiledTableCount: number;
+  knownRowCount: number;
+}
+
+export interface DataInventoryFilter {
+  unitId?: DataSourceEntityId;
+  businessSystemId?: DataSourceEntityId;
+  dataSourceId?: DataSourceEntityId;
+  databaseFqn?: string;
+}
+
+export interface DataInventoryDistributionItem {
+  key: string;
+  name: string;
+  count: number;
+}
+
+export interface DataInventoryProfileCoverage {
+  databaseCount: number;
+  profiledDatabaseCount: number;
+  tableCount: number;
+  profiledTableCount: number;
+  knownRowCount: number;
+  tableCoveragePercent: number;
+}
+
+export type DataSourceTopologyNodeType =
+  | 'UNIT'
+  | 'BUSINESS_SYSTEM'
+  | 'DATA_SOURCE'
+  | 'DATABASE'
+  | 'SCHEMA'
+  | 'TABLE';
+
+export interface DataSourceTopologyNode {
+  id: string;
+  nodeType: DataSourceTopologyNodeType;
+  name: string;
+  children?: DataSourceTopologyNode[];
+}

@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.api.metadata.client.OpenMetadataColumn;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataColumnProfile;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabaseSchema;
+import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPage;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTable;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTableConstraint;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTableProfile;
@@ -36,11 +37,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -53,6 +56,9 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class DataExplorationService {
+
+    private static final int MAX_OM_PAGE_SIZE = 1000;
+    private static final int MAX_OM_PAGES = 10_000;
 
     private final DataSourceDao dataSourceDao;
     private final MetadataBindingDao metadataBindingDao;
@@ -87,7 +93,8 @@ public class DataExplorationService {
     public List<DataExplorationDatabaseVO> listDatabases(Long dataSourceId) {
         ExplorationContext context = context(dataSourceId);
         List<DataExplorationDatabaseVO> result = new ArrayList<>();
-        for (OpenMetadataDatabase database : openMetadataClient.listDatabases(context.serviceFqn(), 1000)) {
+        for (OpenMetadataDatabase database : collectPages(
+                after -> openMetadataClient.listDatabasesPage(context.serviceFqn(), MAX_OM_PAGE_SIZE, after))) {
             if (database == null || !context.serviceFqn().equals(database.serviceFullyQualifiedName())) {
                 continue;
             }
@@ -104,7 +111,9 @@ public class DataExplorationService {
         ExplorationContext context = context(dataSourceId);
         OpenMetadataDatabase database = requireOwnedDatabase(context, databaseFqn);
         List<DataExplorationSchemaVO> result = new ArrayList<>();
-        for (OpenMetadataDatabaseSchema schema : openMetadataClient.listSchemas(database.fullyQualifiedName(), 1000)) {
+        for (OpenMetadataDatabaseSchema schema : collectPages(
+                after -> openMetadataClient.listSchemasPage(
+                        database.fullyQualifiedName(), MAX_OM_PAGE_SIZE, after))) {
             if (schema == null
                     || !database.fullyQualifiedName().equals(schema.getDatabaseFullyQualifiedName())
                     || !context.serviceFqn().equals(schema.getServiceFullyQualifiedName())) {
@@ -131,18 +140,39 @@ public class DataExplorationService {
         requireOwnedSchema(context, database, schemaFqn);
         int safePageNo = Math.max(1, pageNo);
         int safePageSize = Math.max(1, Math.min(pageSize, 100));
-        int fetchLimit = Math.min(1000, safePageNo * safePageSize);
-        List<OpenMetadataTable> tables = openMetadataClient.listTables(schemaFqn, true, fetchLimit);
-        List<DataExplorationTableVO> all = tables.stream()
-                .filter(Objects::nonNull)
-                .filter(table -> context.serviceFqn().equals(table.getServiceFullyQualifiedName()))
-                .map(this::toTable)
-                .collect(Collectors.toList());
-        int from = Math.min((safePageNo - 1) * safePageSize, all.size());
-        int to = Math.min(from + safePageSize, all.size());
+        int offset = (safePageNo - 1) * safePageSize;
+        int pageLimit = Math.min(MAX_OM_PAGE_SIZE, Math.max(safePageSize, safePageNo * safePageSize));
+        List<DataExplorationTableVO> records = new ArrayList<>();
+        long[] matched = {0L};
+        long[] total = {0L};
+        String after = null;
+        Set<String> seen = new HashSet<>();
+        for (int pageNumber = 0; pageNumber < MAX_OM_PAGES; pageNumber++) {
+            OpenMetadataPage<OpenMetadataTable> page = openMetadataClient.listTablesPage(
+                    schemaFqn, true, pageLimit, after);
+            if (page == null) {
+                break;
+            }
+            total[0] = Math.max(total[0], page.total());
+            for (OpenMetadataTable table : safe(page.data())) {
+                if (table == null || !context.serviceFqn().equals(table.getServiceFullyQualifiedName())) {
+                    continue;
+                }
+                if (matched[0] >= offset && records.size() < safePageSize) {
+                    records.add(toTable(table));
+                }
+                matched[0]++;
+            }
+            String next = page.after();
+            boolean enough = records.size() >= safePageSize && total[0] > 0;
+            if (enough || next == null || next.isBlank() || !seen.add(next)) {
+                break;
+            }
+            after = next;
+        }
         DataExplorationTablePageVO page = new DataExplorationTablePageVO();
-        page.setRecords(new ArrayList<>(all.subList(from, to)));
-        page.setTotal(all.size());
+        page.setRecords(records);
+        page.setTotal(total[0] > 0 ? total[0] : matched[0]);
         page.setPageNo(safePageNo);
         page.setPageSize(safePageSize);
         return page;
@@ -315,7 +345,8 @@ public class DataExplorationService {
         if (schemaFqn == null || schemaFqn.isBlank()) {
             throw invalid("schemaFqn");
         }
-        boolean owned = openMetadataClient.listSchemas(database.fullyQualifiedName(), 1000).stream()
+        boolean owned = collectPages(after -> openMetadataClient.listSchemasPage(
+                        database.fullyQualifiedName(), MAX_OM_PAGE_SIZE, after)).stream()
                 .filter(Objects::nonNull)
                 .anyMatch(schema -> schemaFqn.equals(schema.getFullyQualifiedName())
                         && database.fullyQualifiedName().equals(schema.getDatabaseFullyQualifiedName())
@@ -406,6 +437,25 @@ public class DataExplorationService {
 
     private static <T> List<T> safe(List<T> values) {
         return values == null ? Collections.emptyList() : values;
+    }
+
+    private static <T> List<T> collectPages(Function<String, OpenMetadataPage<T>> loader) {
+        List<T> result = new ArrayList<>();
+        String after = null;
+        Set<String> seen = new HashSet<>();
+        for (int pageNumber = 0; pageNumber < MAX_OM_PAGES; pageNumber++) {
+            OpenMetadataPage<T> page = loader.apply(after);
+            if (page == null) {
+                break;
+            }
+            result.addAll(safe(page.data()));
+            String next = page.after();
+            if (next == null || next.isBlank() || !seen.add(next)) {
+                break;
+            }
+            after = next;
+        }
+        return result;
     }
 
     private static ServiceException invalid(String field) {

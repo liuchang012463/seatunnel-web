@@ -212,6 +212,38 @@ class OpenMetadataRestClientTest {
     }
 
     @Test
+    void followsOpenMetadata11210AfterCursorAndPreservesPagingTotal() throws Exception {
+        AtomicReference<String> firstUri = new AtomicReference<>();
+        AtomicReference<String> secondUri = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/databases", exchange -> {
+            if (exchange.getRequestURI().getQuery().contains("after=")) {
+                secondUri.set(exchange.getRequestURI().toString());
+                respond(exchange, 200, "{\"data\":[{\"id\":\"db-2\",\"fullyQualifiedName\":\"st_ds_42.archive\","
+                        + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}],"
+                        + "\"paging\":{\"total\":2}}");
+            } else {
+                firstUri.set(exchange.getRequestURI().toString());
+                respond(exchange, 200, "{\"data\":[{\"id\":\"db-1\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                        + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}],"
+                        + "\"paging\":{\"total\":2,\"after\":\"next token\"}}");
+            }
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+        OpenMetadataPage<OpenMetadataDatabase> first = client.listDatabasesPage("st_ds_42", 1000, null);
+        OpenMetadataPage<OpenMetadataDatabase> second = client.listDatabasesPage("st_ds_42", 1000, first.after());
+
+        assertEquals(2L, first.total());
+        assertEquals(2L, second.total());
+        assertEquals("/api/v1/databases?service=st_ds_42&include=non-deleted&limit=1000", firstUri.get());
+        assertEquals("/api/v1/databases?service=st_ds_42&include=non-deleted&limit=1000&after=next%20token",
+                secondUri.get());
+    }
+
+    @Test
     void readsLatestProfilesAndUpdatesThe11210TableProfilerConfig() throws Exception {
         AtomicReference<String> latestUri = new AtomicReference<>();
         AtomicReference<String> columnUri = new AtomicReference<>();
