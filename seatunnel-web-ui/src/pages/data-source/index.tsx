@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AddOrEditDataSourceModal from './components/AddOrEditDataSourceModal';
 import DataSourceCard from './components/DataSourceCard';
+import DataExplorationDrawer from './components/DataExplorationDrawer';
 import EmptyState from './components/EmptyState';
 import PageHeader from './components/PageHeader';
 import SearchBar from './components/SearchBar';
@@ -52,6 +53,7 @@ const DataSourcePage: React.FC = () => {
   const [businessSystemOptions, setBusinessSystemOptions] = useState<BusinessSystemOption[]>([]);
   const [selectedBusinessSystem, setSelectedBusinessSystem] = useState<string>();
   const [selectedStatus, setSelectedStatus] = useState<DataSourceLifecycleStatus>();
+  const [explorationRecord, setExplorationRecord] = useState<DataSourceRecord>();
 
   const refreshUnitOptions = async () => {
     try {
@@ -408,6 +410,13 @@ const DataSourcePage: React.FC = () => {
     }
   };
 
+  const handleResults = (record: DataSourceRecord) => {
+    if (!record.id) {
+      return;
+    }
+    setExplorationRecord(record);
+  };
+
   const handleStatusChange = (record: DataSourceRecord, nextStatus: DataSourceLifecycleStatus) => {
     const statusLabel = {
       ENABLED: '启用',
@@ -542,6 +551,7 @@ const DataSourcePage: React.FC = () => {
                               onScan={handleScan}
                               onExplore={handleExplore}
                               onRuns={handleRuns}
+                              onResults={handleResults}
                               onStatusChange={handleStatusChange}
                             />
                           </motion.div>
@@ -587,6 +597,12 @@ const DataSourcePage: React.FC = () => {
       </ClickSpark>
 
       <AddOrEditDataSourceModal ref={modalRef} />
+      <DataExplorationDrawer
+        open={Boolean(explorationRecord?.id)}
+        dataSourceId={explorationRecord?.id}
+        dataSourceName={explorationRecord?.name}
+        onClose={() => setExplorationRecord(undefined)}
+      />
     </>
   );
 };

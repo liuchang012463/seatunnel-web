@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.math.BigDecimal;
 
 /**
  * Strict REST client for the OpenMetadata 1.12.10 Server API. It never targets
@@ -98,7 +99,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         int safeLimit = Math.max(1, Math.min(limit, 1000));
         JsonNode response = request(
                 "GET",
-                "/v1/databases?service=" + encode(serviceFullyQualifiedName) + "&limit=" + safeLimit,
+                "/v1/databases?service=" + encode(serviceFullyQualifiedName)
+                        + "&include=non-deleted&limit=" + safeLimit,
                 null,
                 false);
         List<OpenMetadataDatabase> databases = new ArrayList<>();
@@ -111,6 +113,107 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             }
         }
         return databases;
+    }
+
+    @Override
+    public List<OpenMetadataDatabaseSchema> listSchemas(String databaseFullyQualifiedName, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 1000));
+        JsonNode response = request(
+                "GET",
+                "/v1/databaseSchemas?database=" + encode(databaseFullyQualifiedName)
+                        + "&limit=" + safeLimit + "&include=non-deleted",
+                null,
+                false);
+        List<OpenMetadataDatabaseSchema> schemas = new ArrayList<>();
+        for (JsonNode schema : response.path("data")) {
+            OpenMetadataDatabaseSchema parsed = parseSchema(schema);
+            if (parsed != null) {
+                schemas.add(parsed);
+            }
+        }
+        return schemas;
+    }
+
+    @Override
+    public List<OpenMetadataTable> listTables(
+            String schemaFullyQualifiedName, boolean includeColumns, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 1000));
+        String fields = includeColumns ? "columns,tableConstraints" : "tableConstraints";
+        JsonNode response = request(
+                "GET",
+                "/v1/tables?databaseSchema=" + encode(schemaFullyQualifiedName)
+                        + "&fields=" + fields
+                        + "&include=non-deleted&limit=" + safeLimit,
+                null,
+                false);
+        List<OpenMetadataTable> tables = new ArrayList<>();
+        for (JsonNode table : response.path("data")) {
+            OpenMetadataTable parsed = parseTable(table);
+            if (parsed != null) {
+                tables.add(parsed);
+            }
+        }
+        return tables;
+    }
+
+    @Override
+    public OpenMetadataTable getTable(String tableId) {
+        JsonNode response = request(
+                "GET",
+                "/v1/tables/" + encode(tableId)
+                        + "?fields=columns,tableConstraints&include=non-deleted",
+                null,
+                true);
+        return response == null ? null : parseRequiredTable(response);
+    }
+
+    @Override
+    public OpenMetadataTableProfile getLatestTableProfile(String tableFullyQualifiedName) {
+        JsonNode response = request(
+                "GET",
+                "/v1/tables/" + encode(tableFullyQualifiedName)
+                        + "/tableProfile/latest?includeColumnProfile=true",
+                null,
+                true);
+        return response == null ? null : parseLatestProfile(response, response);
+    }
+
+    @Override
+    public List<OpenMetadataColumnProfile> listColumnProfiles(
+            String columnOrTableFullyQualifiedName, long startTs, long endTs) {
+        JsonNode response = request(
+                "GET",
+                "/v1/tables/" + encode(columnOrTableFullyQualifiedName)
+                        + "/columnProfile?startTs=" + startTs + "&endTs=" + endTs,
+                null,
+                false);
+        List<OpenMetadataColumnProfile> profiles = new ArrayList<>();
+        for (JsonNode profile : response.path("data")) {
+            OpenMetadataColumnProfile parsed = parseColumnProfile(profile);
+            if (parsed != null) {
+                profiles.add(parsed);
+            }
+        }
+        return profiles;
+    }
+
+    @Override
+    public JsonNode getTableProfilerConfig(String tableId) {
+        return request("GET", "/v1/tables/" + encode(tableId) + "/tableProfilerConfig", null, true);
+    }
+
+    @Override
+    public JsonNode updateTableProfilerConfig(String tableId, JsonNode profilerConfig) {
+        if (profilerConfig == null || profilerConfig.isNull()) {
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata table profiler config cannot be empty");
+        }
+        return request(
+                "PUT",
+                "/v1/tables/" + encode(tableId) + "/tableProfilerConfig",
+                profilerConfig,
+                false);
     }
 
     @Override
@@ -181,6 +284,219 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     private Optional<OpenMetadataEntity> findByName(String prefix, String fullyQualifiedName) {
         JsonNode result = request("GET", prefix + encode(fullyQualifiedName), null, true);
         return result == null ? Optional.empty() : Optional.of(entity(result));
+    }
+
+    private static OpenMetadataDatabaseSchema parseSchema(JsonNode json) {
+        if (json == null || json.isNull()) {
+            return null;
+        }
+        String id = text(json, "id");
+        String fqn = text(json, "fullyQualifiedName");
+        if (id.isBlank() || fqn.isBlank()) {
+            return null;
+        }
+        OpenMetadataDatabaseSchema schema = new OpenMetadataDatabaseSchema();
+        schema.setId(id);
+        schema.setName(text(json, "name"));
+        schema.setFullyQualifiedName(fqn);
+        schema.setDatabaseFullyQualifiedName(referenceFqn(json, "database"));
+        schema.setServiceFullyQualifiedName(referenceFqn(json, "service"));
+        return schema;
+    }
+
+    private static OpenMetadataTable parseRequiredTable(JsonNode json) {
+        OpenMetadataTable table = parseTable(json);
+        if (table == null) {
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata table response lacks its identity");
+        }
+        return table;
+    }
+
+    private static OpenMetadataTable parseTable(JsonNode json) {
+        if (json == null || json.isNull()) {
+            return null;
+        }
+        String id = text(json, "id");
+        String fqn = text(json, "fullyQualifiedName");
+        if (id.isBlank() || fqn.isBlank()) {
+            return null;
+        }
+        OpenMetadataTable table = new OpenMetadataTable();
+        table.setId(id);
+        table.setName(text(json, "name"));
+        table.setFullyQualifiedName(fqn);
+        table.setTableType(text(json, "tableType"));
+        table.setDescription(text(json, "description"));
+        table.setServiceFullyQualifiedName(referenceFqn(json, "service"));
+        table.setDatabaseFullyQualifiedName(referenceFqn(json, "database"));
+        table.setSchemaFullyQualifiedName(referenceFqn(json, "databaseSchema"));
+        List<OpenMetadataColumn> columns = new ArrayList<>();
+        for (JsonNode column : json.path("columns")) {
+            OpenMetadataColumn parsed = parseColumn(column);
+            if (parsed != null) {
+                columns.add(parsed);
+            }
+        }
+        table.setColumns(columns);
+        List<OpenMetadataTableConstraint> constraints = new ArrayList<>();
+        for (JsonNode constraint : json.path("tableConstraints")) {
+            OpenMetadataTableConstraint parsed = parseConstraint(constraint);
+            if (parsed != null) {
+                constraints.add(parsed);
+            }
+        }
+        table.setTableConstraints(constraints);
+        JsonNode profile = json.get("profile");
+        if (profile != null && !profile.isNull()) {
+            table.setProfile(parseProfile(json, profile, columns));
+        }
+        return table;
+    }
+
+    private static OpenMetadataColumn parseColumn(JsonNode json) {
+        if (json == null || json.isNull() || text(json, "name").isBlank()) {
+            return null;
+        }
+        OpenMetadataColumn column = new OpenMetadataColumn();
+        column.setName(text(json, "name"));
+        column.setFullyQualifiedName(text(json, "fullyQualifiedName"));
+        column.setDataType(text(json, "dataType"));
+        column.setDataTypeDisplay(text(json, "dataTypeDisplay"));
+        column.setDataLength(nullableLong(json, "dataLength"));
+        column.setPrecision(nullableLong(json, "precision"));
+        column.setScale(nullableLong(json, "scale"));
+        column.setDescription(text(json, "description"));
+        column.setConstraint(text(json, "constraint"));
+        column.setOrdinalPosition(nullableInteger(json, "ordinalPosition"));
+        JsonNode profile = json.get("profile");
+        if (profile != null && !profile.isNull()) {
+            column.setProfile(parseColumnProfile(profile));
+        }
+        return column;
+    }
+
+    private static OpenMetadataTableConstraint parseConstraint(JsonNode json) {
+        if (json == null || json.isNull()) {
+            return null;
+        }
+        OpenMetadataTableConstraint constraint = new OpenMetadataTableConstraint();
+        constraint.setConstraintType(text(json, "constraintType"));
+        constraint.setRelationshipType(text(json, "relationshipType"));
+        constraint.setColumns(stringList(json.path("columns")));
+        constraint.setReferredColumns(stringList(json.path("referredColumns")));
+        return constraint;
+    }
+
+    private static OpenMetadataTableProfile parseLatestProfile(JsonNode table, JsonNode profileNode) {
+        JsonNode profile = table.get("profile");
+        if (profile == null || profile.isNull()) {
+            return null;
+        }
+        List<OpenMetadataColumnProfile> columns = new ArrayList<>();
+        for (JsonNode column : table.path("columns")) {
+            JsonNode columnProfile = column.get("profile");
+            if (columnProfile != null && !columnProfile.isNull()) {
+                OpenMetadataColumnProfile parsed = parseColumnProfile(columnProfile);
+                if (parsed != null) {
+                    columns.add(parsed);
+                }
+            }
+        }
+        return parseProfile(table, profile, columns);
+    }
+
+    private static OpenMetadataTableProfile parseProfile(
+            JsonNode table, JsonNode profile, List<?> parsedColumns) {
+        OpenMetadataTableProfile result = new OpenMetadataTableProfile();
+        result.setTableId(text(table, "id"));
+        result.setTableName(text(table, "name"));
+        result.setTableFullyQualifiedName(text(table, "fullyQualifiedName"));
+        result.setTimestamp(nullableLong(profile, "timestamp"));
+        result.setProfileSample(nullableLong(profile, "profileSample"));
+        result.setProfileSampleType(text(profile, "profileSampleType"));
+        result.setRowCount(nullableLong(profile, "rowCount"));
+        result.setColumnCount(nullableLong(profile, "columnCount"));
+        result.setSizeInByte(nullableLong(profile, "sizeInByte"));
+        List<OpenMetadataColumnProfile> columns = new ArrayList<>();
+        for (Object parsedColumn : parsedColumns) {
+            if (parsedColumn instanceof OpenMetadataColumnProfile columnProfile) {
+                columns.add(columnProfile);
+            }
+        }
+        result.setColumns(columns);
+        return result;
+    }
+
+    private static OpenMetadataColumnProfile parseColumnProfile(JsonNode json) {
+        if (json == null || json.isNull() || text(json, "name").isBlank()) {
+            return null;
+        }
+        OpenMetadataColumnProfile profile = new OpenMetadataColumnProfile();
+        profile.setName(text(json, "name"));
+        profile.setTimestamp(nullableLong(json, "timestamp"));
+        profile.setValuesCount(nullableLong(json, "valuesCount"));
+        profile.setValidCount(nullableLong(json, "validCount"));
+        profile.setDuplicateCount(nullableLong(json, "duplicateCount"));
+        profile.setNullCount(nullableLong(json, "nullCount"));
+        profile.setMissingCount(nullableLong(json, "missingCount"));
+        profile.setUniqueCount(nullableLong(json, "uniqueCount"));
+        profile.setDistinctCount(nullableLong(json, "distinctCount"));
+        profile.setMin(json.get("min"));
+        profile.setMax(json.get("max"));
+        profile.setMinLength(nullableLong(json, "minLength"));
+        profile.setMaxLength(nullableLong(json, "maxLength"));
+        profile.setMean(decimal(json, "mean"));
+        profile.setNullProportion(decimal(json, "nullProportion"));
+        profile.setDistinctProportion(decimal(json, "distinctProportion"));
+        profile.setUniqueProportion(decimal(json, "uniqueProportion"));
+        profile.setValuesPercentage(decimal(json, "valuesPercentage"));
+        profile.setMissingPercentage(decimal(json, "missingPercentage"));
+        profile.setSum(decimal(json, "sum"));
+        profile.setStddev(decimal(json, "stddev"));
+        profile.setVariance(decimal(json, "variance"));
+        profile.setMedian(decimal(json, "median"));
+        return profile;
+    }
+
+    private static List<String> stringList(JsonNode values) {
+        if (values == null || !values.isArray()) {
+            return new ArrayList<>();
+        }
+        List<String> result = new ArrayList<>();
+        for (JsonNode value : values) {
+            if (value != null && !value.isNull() && !value.asText().isBlank()) {
+                result.add(value.asText());
+            }
+        }
+        return result;
+    }
+
+    private static String referenceFqn(JsonNode parent, String field) {
+        JsonNode value = parent.get(field);
+        if (value == null || value.isNull()) {
+            return "";
+        }
+        return value.isTextual() ? value.asText() : text(value, "fullyQualifiedName");
+    }
+
+    private static String text(JsonNode json, String field) {
+        JsonNode value = json == null ? null : json.get(field);
+        return value == null || value.isNull() ? "" : value.asText();
+    }
+
+    private static Integer nullableInteger(JsonNode json, String field) {
+        JsonNode value = json == null ? null : json.get(field);
+        return value == null || value.isNull() ? null : value.asInt();
+    }
+
+    private static BigDecimal decimal(JsonNode json, String field) {
+        JsonNode value = json == null ? null : json.get(field);
+        if (value == null || value.isNull() || !value.isNumber()) {
+            return null;
+        }
+        return value.decimalValue();
     }
 
     private void pipelineControl(String method, String path) {

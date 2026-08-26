@@ -1,5 +1,6 @@
 import {
   ApiOutlined,
+  ApartmentOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
   HistoryOutlined,
@@ -26,6 +27,7 @@ interface DataSourceCardProps {
   onScan: (record: DataSourceRecord) => void;
   onExplore: (record: DataSourceRecord) => void;
   onRuns: (record: DataSourceRecord) => void;
+  onResults: (record: DataSourceRecord) => void;
   onStatusChange: (record: DataSourceRecord, status: DataSourceLifecycleStatus) => void;
 }
 
@@ -37,6 +39,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   onScan,
   onExplore,
   onRuns,
+  onResults,
   onStatusChange,
 }) => {
   const environmentConfig = environmentTagConfigMap[record.environment || ''] || {
@@ -149,6 +152,20 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
               }}
             >
               <HistoryOutlined />
+            </button>
+          </Tooltip>
+
+          <Tooltip title={metadataReady && !isDeleting ? '查看扫描结果' : '扫描结果暂不可查看'} placement="top">
+            <button
+              type="button"
+              disabled={!metadataReady || isDeleting}
+              className="datasource-card-hover-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onResults(record);
+              }}
+            >
+              <ApartmentOutlined />
             </button>
           </Tooltip>
 

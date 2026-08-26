@@ -6,6 +6,8 @@ import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -137,6 +139,140 @@ class OpenMetadataRestClientTest {
 
         assertEquals("db-id", result.orElseThrow().id());
         assertEquals("st_ds_42", result.orElseThrow().serviceFullyQualifiedName());
+    }
+
+    @Test
+    void readsDatabasesSchemasTablesAndTableDetailsUsingThe11210Paths() throws Exception {
+        AtomicReference<String> databasesUri = new AtomicReference<>();
+        AtomicReference<String> schemasUri = new AtomicReference<>();
+        AtomicReference<String> tablesUri = new AtomicReference<>();
+        AtomicReference<String> tableUri = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/databases", exchange -> {
+            databasesUri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200, "{\"data\":[{\"id\":\"db-id\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                    + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}]}");
+        });
+        server.createContext("/api/v1/databaseSchemas", exchange -> {
+            schemasUri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200, "{\"data\":[{\"id\":\"schema-id\",\"name\":\"public\","
+                    + "\"fullyQualifiedName\":\"st_ds_42.orders.public\","
+                    + "\"database\":{\"fullyQualifiedName\":\"st_ds_42.orders\"},"
+                    + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}]}");
+        });
+        server.createContext("/api/v1/tables", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            if (path.endsWith("/table-id")) {
+                tableUri.set(exchange.getRequestURI().toString());
+                respond(exchange, 200, "{\"id\":\"table-id\",\"name\":\"orders\","
+                        + "\"fullyQualifiedName\":\"st_ds_42.orders.public.orders\","
+                        + "\"tableType\":\"Regular\",\"description\":\"Orders\","
+                        + "\"databaseSchema\":{\"fullyQualifiedName\":\"st_ds_42.orders.public\"},"
+                        + "\"database\":{\"fullyQualifiedName\":\"st_ds_42.orders\"},"
+                        + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                        + "\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\","
+                        + "\"constraint\":\"PRIMARY_KEY\",\"dataLength\":11,"
+                        + "\"precision\":10,\"scale\":0,\"ordinalPosition\":1}],"
+                        + "\"tableConstraints\":[{\"constraintType\":\"PRIMARY_KEY\","
+                        + "\"columns\":[\"id\"]}]} ");
+            } else {
+                tablesUri.set(exchange.getRequestURI().toString());
+                respond(exchange, 200, "{\"data\":[{\"id\":\"table-id\",\"name\":\"orders\","
+                        + "\"fullyQualifiedName\":\"st_ds_42.orders.public.orders\","
+                        + "\"tableType\":\"Regular\",\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                        + "\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\","
+                        + "\"constraint\":\"PRIMARY_KEY\",\"ordinalPosition\":1}],"
+                        + "\"tableConstraints\":[{\"constraintType\":\"PRIMARY_KEY\","
+                        + "\"columns\":[\"id\"]}]}]}");
+            }
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        List<OpenMetadataDatabase> databases = client.listDatabases("st_ds_42", 20);
+        List<OpenMetadataDatabaseSchema> schemas = client.listSchemas("st_ds_42.orders", 20);
+        List<OpenMetadataTable> tables = client.listTables("st_ds_42.orders.public", true, 20);
+        OpenMetadataTable table = client.getTable("table-id");
+
+        assertEquals("db-id", databases.get(0).id());
+        assertEquals("schema-id", schemas.get(0).getId());
+        assertEquals("st_ds_42.orders", schemas.get(0).getDatabaseFullyQualifiedName());
+        assertEquals("table-id", tables.get(0).getId());
+        assertEquals("PRIMARY_KEY", tables.get(0).getColumns().get(0).getConstraint());
+        assertEquals("orders", table.getName());
+        assertEquals("st_ds_42", table.getServiceFullyQualifiedName());
+        assertEquals("/api/v1/databases?service=st_ds_42&include=non-deleted&limit=20", databasesUri.get());
+        assertEquals("/api/v1/databaseSchemas?database=st_ds_42.orders&limit=20&include=non-deleted", schemasUri.get());
+        assertEquals("/api/v1/tables?databaseSchema=st_ds_42.orders.public&fields=columns,tableConstraints&include=non-deleted&limit=20", tablesUri.get());
+        assertEquals(
+                "/api/v1/tables/table-id?fields=columns,tableConstraints&include=non-deleted",
+                tableUri.get());
+    }
+
+    @Test
+    void readsLatestProfilesAndUpdatesThe11210TableProfilerConfig() throws Exception {
+        AtomicReference<String> latestUri = new AtomicReference<>();
+        AtomicReference<String> columnUri = new AtomicReference<>();
+        AtomicReference<String> configGetMethod = new AtomicReference<>();
+        AtomicReference<String> configPutMethod = new AtomicReference<>();
+        AtomicReference<String> configUri = new AtomicReference<>();
+        AtomicReference<String> configBody = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/tables/st_ds_42.orders.public.orders/tableProfile/latest", exchange -> {
+            latestUri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200, "{\"id\":\"table-id\",\"name\":\"orders\","
+                    + "\"fullyQualifiedName\":\"st_ds_42.orders.public.orders\","
+                    + "\"profile\":{\"timestamp\":1700000000000,\"rowCount\":100,\"columnCount\":1},"
+                    + "\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\","
+                    + "\"constraint\":\"PRIMARY_KEY\",\"profile\":{\"name\":\"id\","
+                    + "\"timestamp\":1700000000000,\"valuesCount\":100,\"validCount\":100,"
+                    + "\"nullCount\":0,\"distinctCount\":100,\"uniqueCount\":100,"
+                    + "\"distinctProportion\":1,\"uniqueProportion\":1,\"min\":1,\"max\":100,"
+                    + "\"mean\":50.5}}]}");
+        });
+        server.createContext("/api/v1/tables/st_ds_42.orders.public.orders/columnProfile", exchange -> {
+            columnUri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200, "{\"data\":[{\"name\":\"id\",\"timestamp\":1700000000000,"
+                    + "\"valuesCount\":100,\"nullCount\":0,\"distinctCount\":100}]} ");
+        });
+        server.createContext("/api/v1/tables/table-id/tableProfilerConfig", exchange -> {
+            if ("GET".equals(exchange.getRequestMethod())) {
+                configGetMethod.set(exchange.getRequestMethod());
+                configBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                respond(exchange, 200, "{\"tableProfilerConfig\":{\"excludeColumns\":[\"secret\"]}}");
+            } else {
+                configPutMethod.set(exchange.getRequestMethod());
+                configBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                respond(exchange, 200, "{\"tableProfilerConfig\":{\"excludeColumns\":[\"id\"]}}");
+            }
+            configUri.set(exchange.getRequestURI().toString());
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+        OpenMetadataTableProfile profile = client.getLatestTableProfile("st_ds_42.orders.public.orders");
+        List<OpenMetadataColumnProfile> columns = client.listColumnProfiles(
+                "st_ds_42.orders.public.orders", 1700000000000L, 1700000001000L);
+        JsonNode config = client.getTableProfilerConfig("table-id");
+        JsonNode updated = client.updateTableProfilerConfig(
+                "table-id", new ObjectMapper().readTree("{\"excludeColumns\":[\"id\"]}"));
+
+        assertEquals(100L, profile.getRowCount());
+        assertEquals(1, profile.getColumns().size());
+        assertEquals(100L, profile.getColumns().get(0).getDistinctCount());
+        assertEquals(1, columns.size());
+        assertEquals("id", columns.get(0).getName());
+        assertEquals("/api/v1/tables/st_ds_42.orders.public.orders/tableProfile/latest?includeColumnProfile=true", latestUri.get());
+        assertEquals("/api/v1/tables/st_ds_42.orders.public.orders/columnProfile?startTs=1700000000000&endTs=1700000001000", columnUri.get());
+        assertEquals("GET", configGetMethod.get());
+        assertEquals("PUT", configPutMethod.get());
+        assertEquals("/api/v1/tables/table-id/tableProfilerConfig", configUri.get());
+        assertEquals("{\"excludeColumns\":[\"id\"]}", configBody.get());
+        assertEquals("secret", config.path("tableProfilerConfig").path("excludeColumns").get(0).asText());
+        assertEquals("id", updated.path("tableProfilerConfig").path("excludeColumns").get(0).asText());
     }
 
     private static OpenMetadataProperties properties(String baseUrl) {

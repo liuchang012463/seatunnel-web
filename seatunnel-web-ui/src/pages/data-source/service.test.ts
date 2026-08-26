@@ -5,6 +5,12 @@ import {
   fetchDataSourceAll,
   fetchDataSourceUnitOptions,
   fetchDataSourceMetadataRuns,
+  fetchDataExplorationDatabases,
+  fetchDataExplorationSchemas,
+  fetchDataExplorationTables,
+  fetchDataExplorationTable,
+  fetchDataExplorationProfile,
+  previewDataExplorationTable,
   triggerDataSourceExploration,
   triggerDataSourceScan,
   unwrapMasterDataList,
@@ -93,5 +99,43 @@ describe('data source service', () => {
 
     expect(HttpUtils.get).toHaveBeenNthCalledWith(1, '/api/v1/data-source/42/runs?type=SCAN&limit=5');
     expect(HttpUtils.get).toHaveBeenNthCalledWith(2, '/api/v1/data-source/42/runs?type=EXPLORATION&limit=5');
+  });
+
+  it('keeps scan-result reads behind the SeaTunnel data-exploration facade', async () => {
+    const response = { code: 0, data: [] };
+    (HttpUtils.get as jest.Mock).mockResolvedValue(response);
+    (HttpUtils.post as jest.Mock).mockResolvedValue(response);
+
+    await expect(fetchDataExplorationDatabases('42')).resolves.toBe(response);
+    await expect(fetchDataExplorationSchemas('42', 'st_ds_42.orders')).resolves.toBe(response);
+    await expect(fetchDataExplorationTables('42', 'st_ds_42.orders', 'st_ds_42.orders.public')).resolves.toBe(response);
+    await expect(fetchDataExplorationTable('42', 'table-id')).resolves.toBe(response);
+    await expect(fetchDataExplorationProfile('42', 'table-id')).resolves.toBe(response);
+    await expect(previewDataExplorationTable('42', 'table-id')).resolves.toBe(response);
+
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/data-exploration/databases?dataSourceId=42',
+    );
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/data-exploration/schemas?dataSourceId=42&databaseFqn=st_ds_42.orders',
+    );
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/data-exploration/tables?dataSourceId=42&databaseFqn=st_ds_42.orders&schemaFqn=st_ds_42.orders.public&pageNo=1&pageSize=20',
+    );
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      4,
+      '/api/v1/data-exploration/tables/table-id?dataSourceId=42',
+    );
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      5,
+      '/api/v1/data-exploration/tables/table-id/profile?dataSourceId=42',
+    );
+    expect(HttpUtils.post).toHaveBeenCalledWith(
+      '/api/v1/data-exploration/tables/table-id/preview?dataSourceId=42',
+      {},
+    );
   });
 });

@@ -7,11 +7,18 @@ import type {
   DataSourcePageResult,
   DataSourceRecord,
   DataSourceUnitOption,
+  DataExplorationDatabase,
+  DataExplorationSchema,
+  DataExplorationTablePage,
+  DataExplorationTableDetail,
+  DataExplorationProfile,
+  DataExplorationPreview,
 } from './types';
 
 const DATA_SOURCE_API_PREFIX = '/api/v1/data-source';
 const DATA_SOURCE_UNIT_API_PREFIX = '/api/v1/data-source-units';
 const BUSINESS_SYSTEM_API_PREFIX = '/api/v1/business-systems';
+const DATA_EXPLORATION_API_PREFIX = '/api/v1/data-exploration';
 
 export type MasterDataList<T> =
   | T[]
@@ -102,6 +109,66 @@ export async function fetchDataSourceMetadataRuns(
   limit = 5,
 ): Promise<CommonApiResponse<Array<{ runId: string; status: string; startTime?: string; endTime?: string }>>> {
   return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/runs?type=${type}&limit=${limit}`);
+}
+
+export async function fetchDataExplorationDatabases(
+  id: string,
+): Promise<CommonApiResponse<DataExplorationDatabase[]>> {
+  return HttpUtils.get(`${DATA_EXPLORATION_API_PREFIX}/databases?dataSourceId=${encodeURIComponent(id)}`);
+}
+
+export async function fetchDataExplorationSchemas(
+  id: string,
+  databaseFqn: string,
+): Promise<CommonApiResponse<DataExplorationSchema[]>> {
+  return HttpUtils.get(
+    `${DATA_EXPLORATION_API_PREFIX}/schemas?dataSourceId=${encodeURIComponent(id)}&databaseFqn=${encodeURIComponent(databaseFqn)}`,
+  );
+}
+
+export async function fetchDataExplorationTables(
+  id: string,
+  databaseFqn: string,
+  schemaFqn: string,
+  pageNo = 1,
+  pageSize = 20,
+): Promise<CommonApiResponse<DataExplorationTablePage>> {
+  const query = new URLSearchParams({
+    dataSourceId: id,
+    databaseFqn,
+    schemaFqn,
+    pageNo: String(pageNo),
+    pageSize: String(pageSize),
+  });
+  return HttpUtils.get(`${DATA_EXPLORATION_API_PREFIX}/tables?${query.toString()}`);
+}
+
+export async function fetchDataExplorationTable(
+  id: string,
+  tableId: string,
+): Promise<CommonApiResponse<DataExplorationTableDetail>> {
+  return HttpUtils.get(
+    `${DATA_EXPLORATION_API_PREFIX}/tables/${encodeURIComponent(tableId)}?dataSourceId=${encodeURIComponent(id)}`,
+  );
+}
+
+export async function fetchDataExplorationProfile(
+  id: string,
+  tableId: string,
+): Promise<CommonApiResponse<DataExplorationProfile>> {
+  return HttpUtils.get(
+    `${DATA_EXPLORATION_API_PREFIX}/tables/${encodeURIComponent(tableId)}/profile?dataSourceId=${encodeURIComponent(id)}`,
+  );
+}
+
+export async function previewDataExplorationTable(
+  id: string,
+  tableId: string,
+): Promise<CommonApiResponse<DataExplorationPreview>> {
+  return HttpUtils.post(
+    `${DATA_EXPLORATION_API_PREFIX}/tables/${encodeURIComponent(tableId)}/preview?dataSourceId=${encodeURIComponent(id)}`,
+    {},
+  );
 }
 
 export async function testDataSourceConnectionWithParams(

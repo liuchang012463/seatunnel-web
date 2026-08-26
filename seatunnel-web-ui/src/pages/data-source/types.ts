@@ -176,3 +176,114 @@ export interface DataSourceGroup {
   groupName: string;
   datasourceList: DataSourceCatalogItem[];
 }
+
+/** Read-only projections returned by the backend OpenMetadata exploration facade. */
+export interface DataExplorationDatabase {
+  id: string;
+  name: string;
+  fullyQualifiedName: string;
+}
+
+export interface DataExplorationSchema {
+  id: string;
+  name: string;
+  fullyQualifiedName: string;
+  databaseFullyQualifiedName?: string;
+}
+
+export interface DataExplorationTable {
+  id: string;
+  name: string;
+  fullyQualifiedName: string;
+  tableType?: string;
+  description?: string;
+  columnCount?: number;
+  profileAvailable?: boolean;
+  profileTime?: number;
+}
+
+export interface DataExplorationTablePage {
+  records: DataExplorationTable[];
+  total: number;
+  pageNo: number;
+  pageSize: number;
+}
+
+export interface DataExplorationColumn {
+  name: string;
+  fullyQualifiedName?: string;
+  dataType?: string;
+  dataTypeDisplay?: string;
+  dataLength?: number;
+  precision?: number;
+  scale?: number;
+  description?: string;
+  constraint?: string;
+  ordinalPosition?: number;
+}
+
+export interface DataExplorationConstraint {
+  constraintType?: string;
+  columns?: string[];
+  referredColumns?: string[];
+  relationshipType?: string;
+}
+
+export interface DataExplorationTableDetail extends DataExplorationTable {
+  serviceFullyQualifiedName?: string;
+  databaseFullyQualifiedName?: string;
+  schemaFullyQualifiedName?: string;
+  columns: DataExplorationColumn[];
+  tableConstraints: DataExplorationConstraint[];
+}
+
+export interface DataExplorationTableMetrics {
+  rowCount?: number;
+  columnCount?: number;
+  sizeInByte?: number;
+}
+
+export type ExplorationQualityStatus = 'NORMAL' | 'ABNORMAL' | 'NO_RULE' | 'NO_PROFILE';
+
+export interface DataExplorationColumnProfile {
+  name: string;
+  dataType?: string;
+  constraint?: string;
+  profileTime?: number;
+  valuesCount?: number;
+  validCount?: number;
+  duplicateCount?: number;
+  nullCount?: number;
+  missingCount?: number;
+  distinctCount?: number;
+  uniqueCount?: number;
+  nullProportion?: number;
+  distinctProportion?: number;
+  uniqueProportion?: number;
+  min?: unknown;
+  max?: unknown;
+  mean?: number;
+  minLength?: number;
+  maxLength?: number;
+  qualityStatus?: ExplorationQualityStatus;
+  qualityReason?: string;
+}
+
+export interface DataExplorationProfile {
+  profileTime?: number;
+  table?: DataExplorationTableMetrics;
+  columns: DataExplorationColumnProfile[];
+}
+
+export interface DataExplorationPreviewColumn {
+  title?: string;
+  dataIndex?: string;
+  key?: string;
+  ellipsis?: boolean;
+}
+
+export interface DataExplorationPreview {
+  columns?: DataExplorationPreviewColumn[];
+  data?: Array<Record<string, unknown>>;
+  total?: number;
+}
