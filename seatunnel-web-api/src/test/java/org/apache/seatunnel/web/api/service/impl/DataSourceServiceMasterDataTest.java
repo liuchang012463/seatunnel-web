@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 class DataSourceServiceMasterDataTest {
@@ -111,5 +112,24 @@ class DataSourceServiceMasterDataTest {
         assertEquals("Order System", result.getData().getBizData().get(0).getBusinessSystemName());
         assertEquals(7L, result.getData().getBizData().get(0).getUnitId());
         assertEquals("待归属", result.getData().getBizData().get(1).getDataSourceUnit());
+    }
+
+    @Test
+    void deletionKeepsTheLocalSourceUntilTheReconcilerCleansOpenMetadata() {
+        DataSource source = new DataSource();
+        source.setId(42L);
+        source.setStatus(DataSourceLifecycleStatus.ENABLED);
+        when(dataSourceDao.queryById(42L)).thenReturn(source);
+        when(jobDefinitionDao.selectReferencedDatasourceIds(List.of(42L))).thenReturn(List.of());
+        when(streamingJobDefinitionDao.selectReferencedDatasourceIds(List.of(42L))).thenReturn(List.of());
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1);
+
+        service.delete(42L);
+
+        verify(metadataBindingCommandService).markDeleted(42L);
+        verify(dataSourceDao, never()).deleteById(42L);
+        ArgumentCaptor<DataSource> update = ArgumentCaptor.forClass(DataSource.class);
+        verify(dataSourceDao).updateById(update.capture());
+        assertEquals(DataSourceLifecycleStatus.REVOKED, update.getValue().getStatus());
     }
 }

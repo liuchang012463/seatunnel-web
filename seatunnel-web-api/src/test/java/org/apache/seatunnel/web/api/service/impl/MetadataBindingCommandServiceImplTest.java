@@ -85,7 +85,7 @@ class MetadataBindingCommandServiceImplTest {
         MetadataSourceBinding changed = service.markDeleted(1024L);
 
         assertEquals(MetadataDesiredState.DELETED, changed.getDesiredState());
-        assertEquals(MetadataSyncStatus.PENDING, changed.getSyncStatus());
+        assertEquals(MetadataSyncStatus.DELETING, changed.getSyncStatus());
         assertEquals(5L, changed.getConfigVersion());
         assertEquals(4L, changed.getVersion());
         verify(metadataBindingDao).updateById(binding);

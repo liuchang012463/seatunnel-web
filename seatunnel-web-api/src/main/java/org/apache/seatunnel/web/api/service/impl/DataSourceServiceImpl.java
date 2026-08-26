@@ -128,6 +128,10 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         validateId(id);
 
         DataSource existing = getDataSourceOrThrow(id);
+        if (existing.getStatus() == DataSourceLifecycleStatus.REVOKED) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "A data source pending metadata deletion cannot be updated.");
+        }
         validateUpdateRequest(id, dto);
         BusinessSystemOwnership ownership = resolveActiveBusinessSystem(dto.getBusinessSystemId());
 
@@ -216,8 +220,8 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
         try {
             checkDataSourceNotUsedByAnyJob(datasourceId);
-            dataSourceDao.deleteById(datasourceId);
             metadataBindingCommandService.markDeleted(datasourceId);
+            markDataSourcePendingDeletion(datasourceId);
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -300,11 +304,11 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
             checkDataSourcesNotUsed(distinctIds);
 
-            boolean deleted = dataSourceDao.deleteByIds(distinctIds);
             for (Long id : distinctIds) {
                 metadataBindingCommandService.markDeleted(id);
+                markDataSourcePendingDeletion(id);
             }
-            return deleted;
+            return true;
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -617,6 +621,15 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             throw new ServiceException(Status.DATASOURCE_NOT_EXIST);
         }
         return entity;
+    }
+
+    private void markDataSourcePendingDeletion(Long id) {
+        DataSource entity = new DataSource();
+        entity.setId(id);
+        entity.setStatus(DataSourceLifecycleStatus.REVOKED);
+        entity.setUpdateUserId(currentUserProvider.getCurrentUserId());
+        entity.initUpdate();
+        dataSourceDao.updateById(entity);
     }
 
     private DbType extractDbType(String connJson) {

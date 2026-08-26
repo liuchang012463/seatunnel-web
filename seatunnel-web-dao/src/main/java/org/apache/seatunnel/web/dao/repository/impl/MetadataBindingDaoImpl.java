@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.dao.repository.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.NonNull;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
 import org.apache.seatunnel.web.common.enums.MetadataSyncStatus;
@@ -10,6 +11,7 @@ import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.springframework.stereotype.Repository;
 
+import java.util.Date;
 import java.util.List;
 
 @Repository
@@ -36,16 +38,67 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
     }
 
     @Override
-    public List<MetadataSourceBinding> queryReconcileCandidates(int limit) {
+    public List<MetadataSourceBinding> queryReconcileCandidates(Date now, Date staleClaimBefore, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 1000));
         return metadataSourceBindingMapper.selectList(new LambdaQueryWrapper<MetadataSourceBinding>()
                 .in(MetadataSourceBinding::getDesiredState, MetadataDesiredState.ACTIVE, MetadataDesiredState.DELETED)
-                .in(MetadataSourceBinding::getSyncStatus,
-                        MetadataSyncStatus.PENDING,
-                        MetadataSyncStatus.ERROR,
-                        MetadataSyncStatus.DELETING,
-                        MetadataSyncStatus.WAITING)
+                .and(wrapper -> wrapper.in(MetadataSourceBinding::getSyncStatus,
+                                MetadataSyncStatus.PENDING,
+                                MetadataSyncStatus.ERROR,
+                                MetadataSyncStatus.DELETING,
+                                MetadataSyncStatus.WAITING)
+                        .or(stale -> stale.eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)
+                                .le(MetadataSourceBinding::getUpdateTime, staleClaimBefore)))
+                .and(wrapper -> wrapper.ne(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.ERROR)
+                        .or()
+                        .isNotNull(MetadataSourceBinding::getNextRetryTime)
+                        .le(MetadataSourceBinding::getNextRetryTime, now))
                 .orderByAsc(MetadataSourceBinding::getNextRetryTime)
                 .last("LIMIT " + safeLimit));
+    }
+
+    @Override
+    public boolean tryClaim(Long id, Long expectedVersion, Date now, Date staleClaimBefore) {
+        if (id == null || expectedVersion == null) {
+            return false;
+        }
+        return metadataSourceBindingMapper.update(null, new LambdaUpdateWrapper<MetadataSourceBinding>()
+                .eq(MetadataSourceBinding::getId, id)
+                .eq(MetadataSourceBinding::getVersion, expectedVersion)
+                .and(wrapper -> wrapper.in(MetadataSourceBinding::getSyncStatus,
+                                MetadataSyncStatus.PENDING,
+                                MetadataSyncStatus.ERROR,
+                                MetadataSyncStatus.DELETING,
+                                MetadataSyncStatus.WAITING)
+                        .or(stale -> stale.eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)
+                                .le(MetadataSourceBinding::getUpdateTime, staleClaimBefore)))
+                .and(wrapper -> wrapper.ne(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.ERROR)
+                        .or(retry -> retry.isNotNull(MetadataSourceBinding::getNextRetryTime)
+                                .le(MetadataSourceBinding::getNextRetryTime, now)))
+                .set(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)
+                .set(MetadataSourceBinding::getVersion, expectedVersion + 1L)
+                .set(MetadataSourceBinding::getUpdateTime, now)) > 0;
+    }
+
+    @Override
+    public boolean updateClaimed(MetadataSourceBinding binding, Long expectedVersion) {
+        if (binding == null || binding.getId() == null || expectedVersion == null) {
+            return false;
+        }
+        return metadataSourceBindingMapper.update(binding, new LambdaUpdateWrapper<MetadataSourceBinding>()
+                .eq(MetadataSourceBinding::getId, binding.getId())
+                .eq(MetadataSourceBinding::getVersion, expectedVersion)
+                .eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)) > 0;
+    }
+
+    @Override
+    public boolean deleteClaimed(Long id, Long expectedVersion) {
+        if (id == null || expectedVersion == null) {
+            return false;
+        }
+        return metadataSourceBindingMapper.delete(new LambdaQueryWrapper<MetadataSourceBinding>()
+                .eq(MetadataSourceBinding::getId, id)
+                .eq(MetadataSourceBinding::getVersion, expectedVersion)
+                .eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)) > 0;
     }
 }

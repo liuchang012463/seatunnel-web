@@ -13,7 +13,7 @@ import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Local metadata-binding primitive; external reconciliation is Sprint 2. */
+/** Local metadata-binding primitive. External work is delegated to the reconciler. */
 @Slf4j
 @Service
 public class MetadataBindingCommandServiceImpl implements MetadataBindingCommandService {
@@ -95,13 +95,13 @@ public class MetadataBindingCommandServiceImpl implements MetadataBindingCommand
         validateDataSourceId(dataSourceId);
         MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
         if (binding == null) {
-            return null;
+            binding = createForDataSource(dataSourceId);
         }
 
         long currentVersion = binding.getConfigVersion() == null ? 0L : binding.getConfigVersion();
         binding.setConfigVersion(currentVersion + 1L);
         binding.setDesiredState(MetadataDesiredState.DELETED);
-        binding.setSyncStatus(MetadataSyncStatus.PENDING);
+        binding.setSyncStatus(MetadataSyncStatus.DELETING);
         binding.setVersion((binding.getVersion() == null ? 0L : binding.getVersion()) + 1L);
         binding.initUpdate();
         metadataBindingDao.updateById(binding);
