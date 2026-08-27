@@ -45,6 +45,7 @@ import type {
   DataSourceTopologyNode,
   DataSourceTopologyNodeType,
 } from '../types';
+import '@/pages/data-exploration/index.less';
 
 interface DataExplorationDrawerProps {
   dataSourceId?: string;
@@ -458,6 +459,7 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
 
   return (
     <Drawer
+      className="exploration-drawer"
       open={open}
       onClose={onClose}
       width={1120}
@@ -477,7 +479,7 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       )}
     >
       <Spin spinning={loading}>
-        <div className="mb-4 rounded-lg border border-[var(--st-color-border)] p-3">
+        <div className="exploration-drawer-section mb-4">
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2 font-medium">
               <ApartmentOutlined className="text-[var(--st-color-primary)]" />
@@ -499,7 +501,7 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
             )}
           </Spin>
         </div>
-        <div className="mb-4 grid grid-cols-1 gap-3 rounded-lg border border-[var(--st-color-border)] bg-[rgba(77,210,255,0.03)] p-4 md:grid-cols-2">
+        <div className="exploration-drawer-section mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <div className="mb-1 text-xs text-[var(--st-color-text-muted)]">Database</div>
             <Select
@@ -530,7 +532,7 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
           <Empty description="该 Database 暂无可展示的 Schema" />
         ) : (
           <div className="grid min-h-[520px] grid-cols-1 gap-4 xl:grid-cols-[minmax(320px,0.82fr)_minmax(520px,1.4fr)]">
-            <div className="min-w-0 rounded-lg border border-[var(--st-color-border)] p-3">
+            <div className="exploration-drawer-section min-w-0">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 font-medium">
                   <DatabaseOutlined className="text-[var(--st-color-primary)]" />
@@ -591,7 +593,7 @@ const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
               />
             </div>
 
-            <div className="min-w-0 rounded-lg border border-[var(--st-color-border)] p-3">
+            <div className="exploration-drawer-section min-w-0">
               {!selectedTableId ? (
                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择一张表查看扫描结果" />
               ) : detailLoading ? (

@@ -1,0 +1,350 @@
+.data-exploration-page {
+  min-height: 560px;
+
+  .task-list-page-header {
+    padding: 4px 0 18px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--st-color-divider);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .task-list-page-header__top {
+    margin-bottom: 0;
+  }
+
+  /* OpenMetadata-inspired asset explorer surface: flat panels, quiet borders,
+     and one hierarchy per screen instead of nested floating cards. */
+  .exploration-panel.ant-card {
+    overflow: hidden;
+    color: var(--st-color-text-secondary);
+    background: var(--st-color-bg-panel);
+    border: 1px solid var(--st-color-divider);
+    border-radius: 10px;
+    box-shadow: none;
+  }
+
+  .exploration-panel.ant-card .ant-card-head {
+    min-height: 52px;
+    padding: 0 18px;
+    background: transparent;
+    border-bottom: 1px solid var(--st-color-divider);
+  }
+
+  .exploration-panel.ant-card .ant-card-head-title {
+    color: var(--st-color-text-primary) !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+  }
+
+  .exploration-panel.ant-card .ant-card-body {
+    padding: 16px 18px;
+  }
+
+  .exploration-filter-panel.ant-card .ant-card-body {
+    padding: 14px 18px;
+  }
+
+  .exploration-filter-panel .ant-input-affix-wrapper,
+  .exploration-filter-panel .ant-select-selector {
+    min-height: 36px;
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-bg-control) !important;
+    border-color: var(--st-color-divider) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  .exploration-filter-panel .ant-select-selection-placeholder,
+  .exploration-filter-panel .ant-select-selection-item,
+  .exploration-filter-panel .ant-input,
+  .exploration-filter-panel .ant-input-prefix,
+  .exploration-filter-panel .ant-select-arrow {
+    color: var(--st-color-text-secondary) !important;
+  }
+
+  .exploration-filter-panel .ant-input-affix-wrapper:focus-within,
+  .exploration-filter-panel .ant-select-focused .ant-select-selector,
+  .exploration-filter-panel .ant-select-selector:hover,
+  .exploration-filter-panel .ant-input-affix-wrapper:hover {
+    border-color: var(--st-color-accent) !important;
+  }
+
+  .exploration-table-panel .ant-table,
+  .exploration-topology-panel .ant-tree,
+  .exploration-source-card .ant-table {
+    color: var(--st-color-text-secondary);
+    background: transparent;
+  }
+
+  .exploration-table-panel .ant-table-thead > tr > th,
+  .exploration-source-card .ant-table-thead > tr > th {
+    color: var(--st-color-text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--st-color-bg-control);
+    border-bottom-color: var(--st-color-divider);
+  }
+
+  .exploration-table-panel .ant-table-tbody > tr > td,
+  .exploration-source-card .ant-table-tbody > tr > td {
+    border-bottom-color: var(--st-color-divider-subtle);
+  }
+
+  .exploration-table-panel .ant-table-tbody > tr:hover > td,
+  .exploration-source-card .ant-table-tbody > tr:hover > td {
+    background: var(--st-color-hover) !important;
+  }
+
+  .exploration-stat-strip .ant-col {
+    display: flex;
+  }
+
+  .exploration-stat-strip .exploration-metric-card {
+    width: 100%;
+    min-height: 100px;
+  }
+
+  .exploration-stat-strip .exploration-metric-card .ant-card-body {
+    display: flex;
+    align-items: center;
+  }
+
+  .exploration-stat-strip .ant-statistic-title {
+    margin-bottom: 8px;
+    color: var(--st-color-text-muted);
+    font-size: 12px;
+  }
+
+  .exploration-stat-strip .ant-statistic-content {
+    color: var(--st-color-text-primary);
+    font-size: 25px;
+    font-weight: 600;
+  }
+
+  .exploration-topology-panel .ant-card-body {
+    padding: 12px;
+  }
+
+  .exploration-topology-panel .ant-tree .ant-tree-node-content-wrapper {
+    min-height: 34px;
+    padding: 6px 10px;
+    border-radius: 5px;
+  }
+
+  .exploration-topology-panel .ant-tree .ant-tree-node-content-wrapper:hover,
+  .exploration-topology-panel .ant-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+    color: var(--st-color-text-primary);
+    background: var(--st-color-selected);
+  }
+
+  .exploration-run-item {
+    background: var(--st-color-bg-control);
+    border: 1px solid var(--st-color-divider);
+  }
+
+  .exploration-drawer.ant-drawer .ant-drawer-content,
+  .exploration-drawer.ant-drawer .ant-drawer-header,
+  .exploration-drawer.ant-drawer .ant-drawer-body {
+    color: var(--st-color-text-secondary);
+    background: var(--st-color-bg-panel);
+    border-color: var(--st-color-divider);
+  }
+
+  .exploration-drawer .exploration-drawer-section {
+    padding: 14px;
+    background: var(--st-color-bg-control);
+    border: 1px solid var(--st-color-divider);
+    border-radius: 8px;
+  }
+}
+
+.data-exploration-overview {
+  .task-list-page-header__top {
+    align-items: flex-start;
+  }
+
+  .task-list-page-header__actions {
+    max-width: min(100%, 820px);
+  }
+
+  .exploration-overview-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .exploration-overview-filter {
+    width: 170px;
+
+    &--system {
+      width: 180px;
+    }
+
+    &--source {
+      width: 190px;
+    }
+
+    .ant-select-selector {
+      min-height: 38px !important;
+      padding: 0 12px !important;
+      color: var(--st-color-text-primary) !important;
+      background: var(--st-color-bg-control) !important;
+      border-color: var(--st-color-border) !important;
+      border-radius: 8px !important;
+      box-shadow: none !important;
+    }
+
+    .ant-select-selection-placeholder,
+    .ant-select-selection-item,
+    .ant-select-arrow {
+      color: var(--st-color-text-secondary);
+    }
+  }
+
+  .exploration-overview-actions > .ant-btn {
+    height: 38px;
+    border-radius: 8px;
+  }
+
+  .exploration-overview-body {
+    .ant-card {
+      color: var(--st-color-text-secondary);
+      background: var(--st-color-bg-panel);
+      border-color: var(--st-color-border);
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgb(15 23 42 / 8%);
+    }
+
+    .ant-card-head {
+      min-height: 52px;
+      padding: 0 18px;
+      border-bottom-color: var(--st-color-divider);
+    }
+
+    .ant-card-head-title {
+      color: var(--st-color-text-primary) !important;
+      font-size: 15px !important;
+      font-weight: 600 !important;
+      line-height: 22px !important;
+    }
+
+    .ant-card-body {
+      padding: 16px 18px;
+    }
+  }
+
+  .exploration-metric-card {
+    min-height: 112px;
+
+    .ant-card-body {
+      display: flex;
+      min-height: 112px;
+      align-items: center;
+    }
+
+    .ant-statistic {
+      width: 100%;
+    }
+
+    .ant-statistic-title {
+      margin-bottom: 8px;
+      color: var(--st-color-text-muted);
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    .ant-statistic-content {
+      color: var(--st-color-text-primary);
+      font-size: 26px;
+      font-weight: 600;
+      line-height: 34px;
+    }
+
+    .ant-statistic-content-prefix {
+      margin-inline-end: 8px;
+      color: var(--st-color-accent);
+      font-size: 17px;
+    }
+  }
+
+  .exploration-coverage-content {
+    min-height: 150px;
+  }
+
+  .exploration-scope-content {
+    min-height: 150px;
+    align-content: flex-start;
+    align-items: center;
+  }
+
+  .exploration-scope-content .ant-tag {
+    margin-inline-end: 0;
+    padding-inline: 10px;
+    line-height: 26px;
+    border-radius: 999px;
+  }
+
+  .exploration-source-card {
+    .ant-card-body {
+      padding: 0 0 8px;
+    }
+
+    .ant-table-wrapper {
+      padding: 0 8px;
+    }
+
+    .ant-table {
+      background: transparent;
+    }
+
+    .ant-table-thead > tr > th {
+      color: var(--st-color-text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--st-color-bg-control);
+      border-bottom-color: var(--st-color-divider);
+    }
+
+    .ant-table-tbody > tr > td {
+      color: var(--st-color-text-secondary);
+      border-bottom-color: var(--st-color-divider-subtle);
+    }
+
+    .ant-table-tbody > tr:hover > td {
+      background: var(--st-color-hover) !important;
+    }
+  }
+}
+
+@media (max-width: 1200px) {
+  .data-exploration-overview {
+    .task-list-page-header__top {
+      flex-direction: column;
+    }
+
+    .task-list-page-header__actions,
+    .exploration-overview-actions {
+      width: 100%;
+      max-width: none;
+      justify-content: flex-start;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .data-exploration-overview {
+    .exploration-overview-filter,
+    .exploration-overview-filter--system,
+    .exploration-overview-filter--source {
+      width: 100%;
+    }
+
+    .exploration-overview-actions > .ant-btn {
+      flex: 1;
+    }
+  }
+}

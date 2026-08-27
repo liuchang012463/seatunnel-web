@@ -3,11 +3,8 @@ import {
   ApartmentOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
-  HistoryOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
-  RadarChartOutlined,
-  SyncOutlined,
 } from '@ant-design/icons';
 import { Button, Card, Tag, Tooltip } from 'antd';
 import React from 'react';
@@ -17,17 +14,13 @@ import DatabaseIcons from '../icon/DatabaseIcons';
 import type { DataSourceLifecycleStatus, DataSourceRecord } from '../types';
 import DataSourceLifecycleStatusTag from './DataSourceLifecycleStatus';
 import DataSourceStatus from './DataSourceStatus';
-import MetadataStatus from './MetadataStatus';
 
 interface DataSourceCardProps {
   record: DataSourceRecord;
   onEdit: (record: DataSourceRecord) => void;
   onDelete: (record: DataSourceRecord) => void;
   onTestConnection: (record: DataSourceRecord) => void;
-  onScan: (record: DataSourceRecord) => void;
-  onExplore: (record: DataSourceRecord) => void;
-  onRuns: (record: DataSourceRecord) => void;
-  onResults: (record: DataSourceRecord) => void;
+  onViewExploration: (record: DataSourceRecord) => void;
   onStatusChange: (record: DataSourceRecord, status: DataSourceLifecycleStatus) => void;
 }
 
@@ -36,10 +29,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   onEdit,
   onDelete,
   onTestConnection,
-  onScan,
-  onExplore,
-  onRuns,
-  onResults,
+  onViewExploration,
   onStatusChange,
 }) => {
   const environmentConfig = environmentTagConfigMap[record.environment || ''] || {
@@ -52,17 +42,10 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   const currentStatus = record.status || 'ENABLED';
   const isRevoked = currentStatus === 'REVOKED';
   const isDeleting = isRevoked || record.metadataSyncStatus === 'DELETING';
-  const metadataReady = record.metadataSyncStatus === 'READY';
-  const metadataBusy = record.scanStatus === 'QUEUED'
-    || record.scanStatus === 'RUNNING'
-    || record.profileStatus === 'QUEUED'
-    || record.profileStatus === 'RUNNING';
-  const canOperateMetadata = !isDeleting && metadataReady && !metadataBusy;
   const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
   const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
-  const isUnassigned = record.businessSystemId === undefined || record.businessSystemId === null;
-  const unitName = isUnassigned ? '待归属' : record.unitName || record.dataSourceUnit || '待归属';
-  const businessSystemName = isUnassigned ? '待归属' : record.businessSystemName || record.systemName || '待归属';
+  const unitName = record.unitName || record.dataSourceUnit || '待归属';
+  const businessSystemName = record.businessSystemName || record.systemName || '待归属';
 
   return (
     <Card
@@ -113,56 +96,14 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
             </button>
           </Tooltip>
 
-          <Tooltip title={canOperateMetadata ? '重新扫描' : '自动扫描暂不可触发'} placement="top">
+          <Tooltip title="查看探查结果" placement="top">
             <button
               type="button"
-              disabled={!canOperateMetadata}
+              disabled={isDeleting}
               className="datasource-card-hover-action"
               onClick={(event) => {
                 event.stopPropagation();
-                onScan(record);
-              }}
-            >
-              <SyncOutlined />
-            </button>
-          </Tooltip>
-
-          <Tooltip title={canOperateMetadata ? '数据源探查' : '数据源探查暂不可触发'} placement="top">
-            <button
-              type="button"
-              disabled={!canOperateMetadata}
-              className="datasource-card-hover-action"
-              onClick={(event) => {
-                event.stopPropagation();
-                onExplore(record);
-              }}
-            >
-              <RadarChartOutlined />
-            </button>
-          </Tooltip>
-
-          <Tooltip title={metadataReady && !isDeleting ? '查看运行记录' : '运行记录暂不可查看'} placement="top">
-            <button
-              type="button"
-              disabled={!metadataReady || isDeleting}
-              className="datasource-card-hover-action"
-              onClick={(event) => {
-                event.stopPropagation();
-                onRuns(record);
-              }}
-            >
-              <HistoryOutlined />
-            </button>
-          </Tooltip>
-
-          <Tooltip title={metadataReady && !isDeleting ? '查看扫描结果' : '扫描结果暂不可查看'} placement="top">
-            <button
-              type="button"
-              disabled={!metadataReady || isDeleting}
-              className="datasource-card-hover-action"
-              onClick={(event) => {
-                event.stopPropagation();
-                onResults(record);
+                onViewExploration(record);
               }}
             >
               <ApartmentOutlined />
@@ -222,7 +163,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           {record.jdbcUrl || '-'}
         </div>
 
-        <div className="datasource-card-status flex items-center gap-2">
+        <div className="datasource-card-status">
           <DataSourceStatus status={record.connStatus} />
           <DataSourceLifecycleStatusTag status={record.status} />
           <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
@@ -230,30 +171,35 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           </Tag>
         </div>
 
-        <div className="mt-2">
-          <MetadataStatus
-            syncStatus={record.metadataSyncStatus}
-            scanStatus={record.scanStatus}
-            scanLastRunTime={record.scanLastRunTime}
-            profileStatus={record.profileStatus}
-            profileLastRunTime={record.profileLastRunTime}
-          />
+        <div className="datasource-card-exploration-row">
+          <span className="datasource-card-label">探查状态</span>
+          <Tag
+            color={record.profileStatus === 'SUCCESS' ? 'success' : record.profileStatus === 'FAILED' ? 'error' : 'default'}
+            style={{ marginInlineEnd: 0, borderRadius: 999 }}
+          >
+            {record.profileStatus === 'SUCCESS'
+              ? '已完成'
+              : record.profileStatus === 'FAILED'
+                ? '异常'
+                : record.profileStatus === 'RUNNING' || record.profileStatus === 'QUEUED'
+                  ? '处理中'
+                  : '未探查'}
+          </Tag>
         </div>
 
-        <div className="mt-2 space-y-0.5 text-xs text-[var(--st-color-text-muted)]">
-          <div>最近扫描：{record.scanLastSuccessTime || record.scanLastRunTime || '-'}</div>
-          <div>最近探查：{record.profileLastSuccessTime || record.profileLastRunTime || '-'}</div>
-        </div>
-
-        <div className="datasource-card-unit" title={unitName}>
-          单位：{unitName}
-        </div>
-
-        <div className="datasource-card-system" title={businessSystemName}>
-          业务系统：{businessSystemName}
+        <div className="datasource-card-owner-grid">
+          <div className="datasource-card-owner-row" title={unitName}>
+            <span className="datasource-card-label">单位</span>
+            <span className="datasource-card-value">{unitName}</span>
+          </div>
+          <div className="datasource-card-owner-row" title={businessSystemName}>
+            <span className="datasource-card-label">业务系统</span>
+            <span className="datasource-card-value">{businessSystemName}</span>
+          </div>
         </div>
 
         <div className="datasource-card-update-time">
+          <span className="datasource-card-label">最近更新</span>
           <span className="datasource-card-update-time-value">{record.updateTime || '-'}</span>
         </div>
 

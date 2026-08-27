@@ -33,7 +33,14 @@ describe('data ingestion prototype registry', () => {
     const businessPaths = new Set(prototypePageRegistry.map(({ route }) => route));
     const routeList = routes as any[];
     expect(routeList.filter(({ path }) => businessPaths.has(path))).toHaveLength(20);
-    expect(routeList.filter(({ path }) => /:id\/(detail|config\/)/.test(path || ''))).toHaveLength(11);
+    // Each detail route is mirrored under the iframe layout prefix. Count the
+    // canonical business routes here and leave the mirrored wrappers to the
+    // layout integration itself.
+    expect(
+      routeList.filter(
+        ({ path }) => /:id\/(detail|config\/)/.test(path || '') && !String(path).startsWith('/iframe/'),
+      ),
+    ).toHaveLength(11);
   });
 
   it('supports graph filter inputs and parent expansion data', () => {

@@ -52,6 +52,25 @@ export async function fetchDataSourcePage(
   return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/page`, params);
 }
 
+/**
+ * Some legacy deployments return all matching rows but leave the MyBatis
+ * pagination total at zero. Keep the page usable while the server is being
+ * upgraded; a real positive total always wins.
+ */
+export function normalizeDataSourcePageResult(data?: Partial<DataSourcePageResult> | null): DataSourcePageResult {
+  const bizData = Array.isArray(data?.bizData) ? data.bizData : [];
+  const rawPagination = data?.pagination;
+  const total = Number(rawPagination?.total || 0);
+  return {
+    bizData,
+    pagination: {
+      pageNo: Number(rawPagination?.pageNo || 1),
+      pageSize: Number(rawPagination?.pageSize || 10),
+      total: total > 0 ? total : bizData.length,
+    },
+  };
+}
+
 export async function fetchDataSourceDetail(id: string): Promise<CommonApiResponse<DataSourceRecord>> {
   return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}`);
 }
@@ -69,6 +88,18 @@ export async function updateDataSource(
   payload: Record<string, unknown>,
 ): Promise<CommonApiResponse<boolean>> {
   return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}`, payload);
+}
+
+/**
+ * Updates only the canonical ownership binding. Connection parameters are
+ * deliberately not accepted by this endpoint, so legacy/job-referenced
+ * sources can be assigned safely during a data-governance backfill.
+ */
+export async function assignDataSourceBusinessSystem(
+  id: string,
+  businessSystemId: string | number,
+): Promise<CommonApiResponse<DataSourceRecord>> {
+  return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}/ownership`, { businessSystemId });
 }
 
 export async function selectDataSourceById(id: any): Promise<any> {

@@ -67,6 +67,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   form,
   configForm,
   operateType,
+  onManageMasterData,
   initialConfig,
 }) => {
   const intl = useIntl();
@@ -398,7 +399,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
           </Form.Item>
         </div>
 
-        <DataSourceUnitSelect form={form} />
+        <DataSourceUnitSelect form={form} onManageMasterData={onManageMasterData} />
 
         <Form.Item
           label={intl.formatMessage({

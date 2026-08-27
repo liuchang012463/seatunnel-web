@@ -1,29 +1,34 @@
 import ClickSpark from '@/components/ClickSpark';
-import { useIntl } from '@umijs/max';
-import { Button, message, Modal, Pagination, Select, Spin } from 'antd';
+import { history, useIntl } from '@umijs/max';
+import {
+  ApiOutlined,
+  ApartmentOutlined,
+  CloseCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
+} from '@ant-design/icons';
+import { Button, Drawer, Empty, message, Modal, Pagination, Space, Spin, Table, Tag, Tooltip } from 'antd';
+import type { TableColumnsType } from 'antd';
 import { motion } from 'framer-motion';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AddOrEditDataSourceModal from './components/AddOrEditDataSourceModal';
-import DataSourceCard from './components/DataSourceCard';
-import DataExplorationDrawer from './components/DataExplorationDrawer';
-import DataInventoryDashboard from './components/DataInventoryDashboard';
 import EmptyState from './components/EmptyState';
 import PageHeader from './components/PageHeader';
 import SearchBar from './components/SearchBar';
+import MasterDataPage from '../master-data';
 import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from './constants';
-import { DATA_SOURCE_CATEGORIES, groupDataSourcesByCategory } from './dataSourceRegistry';
+import { DATA_SOURCE_CATEGORIES } from './dataSourceRegistry';
 import './index.less';
 import {
   checkDataSourceUsage,
   deleteDataSource,
   fetchBusinessSystemOptions,
-  fetchDataSourceMetadataDatabases,
-  fetchDataSourceMetadataRuns,
   fetchDataSourcePage,
   fetchDataSourceUnitOptions,
+  normalizeDataSourcePageResult,
   testDataSourceConnection,
-  triggerDataSourceExploration,
-  triggerDataSourceScan,
   unwrapMasterDataList,
   updateDataSourceStatus,
 } from './service';
@@ -37,6 +42,8 @@ import type {
   DataSourceUnitOption,
   PaginationInfo,
 } from './types';
+import DataSourceLifecycleStatusTag from './components/DataSourceLifecycleStatus';
+import DataSourceStatus from './components/DataSourceStatus';
 
 const { confirm } = Modal;
 
@@ -54,7 +61,7 @@ const DataSourcePage: React.FC = () => {
   const [businessSystemOptions, setBusinessSystemOptions] = useState<BusinessSystemOption[]>([]);
   const [selectedBusinessSystem, setSelectedBusinessSystem] = useState<string>();
   const [selectedStatus, setSelectedStatus] = useState<DataSourceLifecycleStatus>();
-  const [explorationRecord, setExplorationRecord] = useState<DataSourceRecord>();
+  const [masterDataOpen, setMasterDataOpen] = useState(false);
 
   const refreshUnitOptions = async () => {
     try {
@@ -104,8 +111,9 @@ const DataSourcePage: React.FC = () => {
         return;
       }
 
-      setDataSourceList(response.data?.bizData || []);
-      setPagination(response.data?.pagination || PAGE_DEFAULT_PAGINATION);
+      const page = normalizeDataSourcePageResult(response.data);
+      setDataSourceList(page.bizData);
+      setPagination(page.pagination);
     } catch (error: any) {
     } finally {
       setLoading(false);
@@ -149,8 +157,6 @@ const DataSourcePage: React.FC = () => {
     selectedBusinessSystem,
     selectedStatus,
   ]);
-
-  const groupedDataSourceList = useMemo(() => groupDataSourcesByCategory(dataSourceList), [dataSourceList]);
 
   const handleRefresh = () => {
     fetchList();
@@ -291,131 +297,11 @@ const DataSourcePage: React.FC = () => {
     } catch (_) {}
   };
 
-  const handleScan = async (record: DataSourceRecord) => {
+  const handleViewExploration = (record: DataSourceRecord) => {
     if (!record.id) {
       return;
     }
-    try {
-      const response = await triggerDataSourceScan(record.id);
-      if (response.code !== 0) {
-        message.error(response.message || '自动扫描暂不可触发');
-        return;
-      }
-      message.success('已提交自动扫描');
-      handleRefresh();
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || '自动扫描暂不可触发');
-    }
-  };
-
-  const handleExplore = async (record: DataSourceRecord) => {
-    if (!record.id) {
-      return;
-    }
-    let databases: Array<{ value: string; label: string }> = [];
-    try {
-      const response = await fetchDataSourceMetadataDatabases(record.id);
-      if (response.code !== 0) {
-        message.error(response.message || '无法读取可探查的 Database');
-        return;
-      }
-      databases = response.data || [];
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || '无法读取可探查的 Database');
-      return;
-    }
-    if (databases.length === 0) {
-      message.warning('自动扫描尚未发现可探查的 Database');
-      return;
-    }
-    let databaseFqn = databases.length === 1 ? databases[0].value : '';
-    Modal.confirm({
-      title: '数据源探查',
-      centered: true,
-      content: (
-        <div className="mt-3">
-          <div className="mb-2 text-sm text-[var(--st-color-text-muted)]">
-            一次探查一个 Database。{databases.length === 1 ? '已自动选择唯一的 Database。' : '请选择要探查的 Database。'}
-          </div>
-          {databases.length > 1 && (
-            <Select
-              className="w-full"
-              placeholder="选择 Database"
-              options={databases}
-              onChange={(value) => { databaseFqn = value; }}
-            />
-          )}
-        </div>
-      ),
-      okText: '开始探查',
-      cancelText: '取消',
-      async onOk() {
-        if (!databaseFqn) {
-          message.error('请选择 Database');
-          return Promise.reject();
-        }
-        try {
-          const response = await triggerDataSourceExploration(record.id!, databaseFqn);
-          if (response.code !== 0) {
-            message.error(response.message || '数据源探查暂不可触发');
-            return Promise.reject();
-          }
-          message.success('已提交数据源探查');
-          handleRefresh();
-        } catch (error: any) {
-          message.error(error?.response?.data?.message || '数据源探查暂不可触发');
-          return Promise.reject();
-        }
-      },
-    });
-  };
-
-  const handleRuns = async (record: DataSourceRecord) => {
-    if (!record.id) {
-      return;
-    }
-    try {
-      const [scanResponse, explorationResponse] = await Promise.all([
-        fetchDataSourceMetadataRuns(record.id, 'SCAN'),
-        fetchDataSourceMetadataRuns(record.id, 'EXPLORATION'),
-      ]);
-      if (scanResponse.code !== 0 || explorationResponse.code !== 0) {
-        message.error(scanResponse.message || explorationResponse.message || '无法读取运行记录');
-        return;
-      }
-      const renderRuns = (runs: Array<{ runId: string; status: string; startTime?: string; endTime?: string }>) => (
-        runs.length === 0
-          ? <div className="text-[var(--st-color-text-muted)]">暂无运行记录</div>
-          : runs.map((run) => (
-            <div key={run.runId} className="mb-2 rounded-md bg-[rgba(77,210,255,0.06)] px-3 py-2 text-sm">
-              <span className="mr-3 font-medium">{run.status}</span>
-              <span className="text-[var(--st-color-text-muted)]">{run.startTime || '-'} → {run.endTime || '-'}</span>
-            </div>
-          ))
-      );
-      Modal.info({
-        title: `${record.name || '数据源'}运行记录`,
-        centered: true,
-        width: 680,
-        content: (
-          <div className="mt-4">
-            <div className="mb-2 font-medium">自动扫描（最近 5 次）</div>
-            {renderRuns(scanResponse.data || [])}
-            <div className="mb-2 mt-4 font-medium">数据源探查（最近 5 次）</div>
-            {renderRuns(explorationResponse.data || [])}
-          </div>
-        ),
-      });
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || '无法读取运行记录');
-    }
-  };
-
-  const handleResults = (record: DataSourceRecord) => {
-    if (!record.id) {
-      return;
-    }
-    setExplorationRecord(record);
+    history.push(`/data-exploration/results?dataSourceId=${encodeURIComponent(record.id)}`);
   };
 
   const handleStatusChange = (record: DataSourceRecord, nextStatus: DataSourceLifecycleStatus) => {
@@ -457,6 +343,90 @@ const DataSourcePage: React.FC = () => {
     });
   };
 
+  const dataSourceColumns: TableColumnsType<DataSourceRecord> = useMemo(() => [
+    {
+      title: '数据源',
+      key: 'name',
+      fixed: 'left',
+      width: 220,
+      render: (_value, record) => (
+        <div className="datasource-catalog-name">
+          <div className="datasource-catalog-name__title" title={record.name}>{record.name || '-'}</div>
+          <div className="datasource-catalog-name__type">{record.dbType || '-'}</div>
+        </div>
+      ),
+    },
+    {
+      title: '连接地址',
+      key: 'jdbcUrl',
+      width: 260,
+      ellipsis: true,
+      render: (_value, record) => <span title={record.jdbcUrl}>{record.jdbcUrl || '-'}</span>,
+    },
+    {
+      title: '归属',
+      key: 'owner',
+      width: 220,
+      render: (_value, record) => (
+        <div className="datasource-catalog-owner">
+          <div><span>单位</span>{record.unitName || record.dataSourceUnit || '待归属'}</div>
+          <div><span>系统</span>{record.businessSystemName || record.systemName || '待归属'}</div>
+        </div>
+      ),
+    },
+    {
+      title: '状态',
+      key: 'status',
+      width: 190,
+      render: (_value, record) => (
+        <Space wrap size={[4, 4]}>
+          <DataSourceStatus status={record.connStatus} />
+          <DataSourceLifecycleStatusTag status={record.status} />
+        </Space>
+      ),
+    },
+    {
+      title: '探查',
+      key: 'exploration',
+      width: 150,
+      render: (_value, record) => {
+        const status = record.profileStatus;
+        const color = status === 'SUCCESS' ? 'success' : status === 'FAILED' ? 'error' : status === 'RUNNING' || status === 'QUEUED' ? 'processing' : 'default';
+        const label = status === 'SUCCESS' ? '已完成' : status === 'FAILED' ? '异常' : status === 'RUNNING' || status === 'QUEUED' ? '处理中' : '未探查';
+        return <Tag color={color}>{label}</Tag>;
+      },
+    },
+    {
+      title: '最近更新',
+      dataIndex: 'updateTime',
+      key: 'updateTime',
+      width: 170,
+      render: (value) => value || '-',
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      fixed: 'right',
+      width: 210,
+      render: (_value, record) => {
+        const currentStatus = record.status || 'ENABLED';
+        const isRevoked = currentStatus === 'REVOKED';
+        const isDeleting = isRevoked || record.metadataSyncStatus === 'DELETING';
+        const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
+        return (
+          <Space size={0}>
+            <Tooltip title="查看探查结果"><Button type="link" size="small" icon={<ApartmentOutlined />} disabled={isDeleting} onClick={() => handleViewExploration(record)} /></Tooltip>
+            <Tooltip title="测试连接"><Button type="link" size="small" icon={<ApiOutlined />} disabled={isDeleting} onClick={() => void handleTestConnection(record)} /></Tooltip>
+            <Tooltip title="编辑"><Button type="link" size="small" icon={<EditOutlined />} disabled={isDeleting} onClick={() => handleEdit(record)} /></Tooltip>
+            <Tooltip title={currentStatus === 'DISABLED' ? '启用' : '停用'}><Button type="link" size="small" icon={currentStatus === 'DISABLED' ? <PlayCircleOutlined /> : <PauseCircleOutlined />} disabled={isDeleting} onClick={() => handleStatusChange(record, nextStatus)} /></Tooltip>
+            <Tooltip title={isRevoked ? '已注销' : '注销'}><Button type="link" danger size="small" icon={<CloseCircleOutlined />} disabled={isDeleting} onClick={() => handleStatusChange(record, 'REVOKED')} /></Tooltip>
+            <Tooltip title="删除"><Button type="link" danger size="small" icon={<DeleteOutlined />} disabled={isDeleting} onClick={() => void handleDelete(record)} /></Tooltip>
+          </Space>
+        );
+      },
+    },
+  ], [handleDelete, handleEdit, handleStatusChange, handleTestConnection, handleViewExploration]);
+
   return (
     <>
       <ClickSpark
@@ -472,10 +442,11 @@ const DataSourcePage: React.FC = () => {
           <div className="datasource-page-content">
             <motion.div initial="hidden" animate="visible" variants={PAGE_ANIMATION.sectionStagger}>
               <motion.div variants={PAGE_ANIMATION.fadeUp}>
-                <PageHeader onCreate={handleCreate} />
+                <PageHeader
+                  onCreate={handleCreate}
+                  onManageMasterData={() => setMasterDataOpen(true)}
+                />
               </motion.div>
-
-              <DataInventoryDashboard />
 
               <motion.div variants={PAGE_ANIMATION.fadeUp}>
                 <SearchBar
@@ -537,33 +508,28 @@ const DataSourcePage: React.FC = () => {
 
               <Spin spinning={loading}>
                 <motion.div variants={PAGE_ANIMATION.cardStagger} initial="hidden" animate="visible">
-                  {groupedDataSourceList.map(({ category, records }) => (
-                    <section key={category.key} className="mb-8">
-                      <div className="mb-3 flex items-center gap-3">
-                        <h2 className="datasource-category-title">{category.label}</h2>
-                        <span className="datasource-category-count">{records.length}</span>
+                  {dataSourceList.length > 0 ? (
+                    <section className="datasource-catalog-panel">
+                      <div className="datasource-catalog-panel__heading">
+                        <div>
+                          <h2 className="datasource-category-title">数据源清单</h2>
+                          <p>集中查看连接、归属和探查状态；操作入口保持在同一行，减少页面跳转。</p>
+                        </div>
+                        <span className="datasource-category-count">{pagination.total}</span>
                       </div>
-                      <div className="grid grid-cols-[repeat(auto-fill,440px)] justify-start gap-5">
-                        {records.map((record) => (
-                          <motion.div key={record.id} variants={PAGE_ANIMATION.fadeUp}>
-                            <DataSourceCard
-                              record={record}
-                              onEdit={handleEdit}
-                              onDelete={handleDelete}
-                              onTestConnection={handleTestConnection}
-                              onScan={handleScan}
-                              onExplore={handleExplore}
-                              onRuns={handleRuns}
-                              onResults={handleResults}
-                              onStatusChange={handleStatusChange}
-                            />
-                          </motion.div>
-                        ))}
-                      </div>
+                      <Table<DataSourceRecord>
+                        rowKey={(record) => String(record.id || record.name)}
+                        className="datasource-catalog-table"
+                        columns={dataSourceColumns}
+                        dataSource={dataSourceList}
+                        pagination={false}
+                        scroll={{ x: 1320 }}
+                        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
+                      />
                     </section>
-                  ))}
-
-                  {!loading && dataSourceList.length === 0 && <EmptyState onCreate={handleCreate} />}
+                  ) : (
+                    !loading && <EmptyState onCreate={handleCreate} />
+                  )}
 
                   {pagination.total > 0 && (
                     <div className="mt-8 flex justify-end">
@@ -599,13 +565,18 @@ const DataSourcePage: React.FC = () => {
         </div>
       </ClickSpark>
 
-      <AddOrEditDataSourceModal ref={modalRef} />
-      <DataExplorationDrawer
-        open={Boolean(explorationRecord?.id)}
-        dataSourceId={explorationRecord?.id}
-        dataSourceName={explorationRecord?.name}
-        onClose={() => setExplorationRecord(undefined)}
-      />
+      <AddOrEditDataSourceModal ref={modalRef} onManageMasterData={() => setMasterDataOpen(true)} />
+      <Drawer
+        title="单位与业务系统维护"
+        placement="right"
+        width={1120}
+        open={masterDataOpen}
+        destroyOnClose
+        onClose={() => setMasterDataOpen(false)}
+        styles={{ body: { padding: '8px 20px 24px' } }}
+      >
+        <MasterDataPage embedded />
+      </Drawer>
     </>
   );
 };

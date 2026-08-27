@@ -15,7 +15,11 @@ import { buildSubmitPayload, parseOriginalJson } from '../utils';
 import DataSourceTypeSelector from './DataSourceTypeSelector';
 import DynamicDataSourceForm from './DynamicDataSourceForm';
 
-const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
+interface AddOrEditDataSourceModalProps {
+  onManageMasterData?: () => void;
+}
+
+const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSourceModalProps>(({ onManageMasterData }, ref) => {
   const intl = useIntl();
 
   const [basicForm] = Form.useForm<DataSourceFormValues>();
@@ -216,7 +220,8 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
 
   return (
     <Modal
-      width="67vw"
+      className="datasource-editor-modal"
+      width="min(920px, 92vw)"
       open={open}
       centered
       maskClosable={false}
@@ -231,10 +236,9 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
         },
         body: {
           padding: '20px 24px 16px',
-          background: '#07303d',
-          maxHeight: '69vh',
+          background: 'var(--st-color-bg-panel)',
+          maxHeight: '72vh',
           overflowY: 'auto',
-          minHeight: '65vh',
         },
         footer: {
           padding: '14px 24px 18px',
@@ -243,7 +247,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
           marginTop: 0,
         },
         content: {
-          borderRadius: 4,
+          borderRadius: 10,
           overflow: 'hidden',
         },
       }}
@@ -325,16 +329,16 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
           <div>
             {showFormStep ? (
               isCreateMode && !hideBackButton ? (
-                <Button onClick={handleBackToTypeSelection} style={{ height: 32, borderRadius: 16 }}>
+                <Button onClick={handleBackToTypeSelection} style={{ height: 34, borderRadius: 6 }}>
                   上一步
                 </Button>
               ) : (
-                <Button onClick={handleClose} style={{ height: 32, borderRadius: 16 }}>
+                <Button onClick={handleClose} style={{ height: 34, borderRadius: 6 }}>
                   取消
                 </Button>
               )
             ) : (
-              <Button onClick={handleClose} style={{ height: 32, borderRadius: 16 }}>
+                <Button onClick={handleClose} style={{ height: 34, borderRadius: 6 }}>
                 取消
               </Button>
             )}
@@ -342,11 +346,11 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
 
           {showFormStep ? (
             <div style={{ display: 'flex', gap: 10 }}>
-              <Button onClick={handleTestConnection} style={{ height: 32, borderRadius: 16 }}>
+              <Button onClick={handleTestConnection} style={{ height: 34, borderRadius: 6 }}>
                 连接测试
               </Button>
 
-              <Button type="primary" onClick={handleSubmit} style={{ height: 32, borderRadius: 16, paddingInline: 18 }}>
+              <Button type="primary" onClick={handleSubmit} style={{ height: 34, borderRadius: 6, paddingInline: 18 }}>
                 完成
               </Button>
             </div>
@@ -361,6 +365,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef>((_, ref) => {
           form={basicForm}
           configForm={configForm}
           operateType={operateType}
+          onManageMasterData={onManageMasterData}
           initialConfig={isEditMode ? parseOriginalJson(currentRecord?.originalJson) : undefined}
         />
       ) : (
