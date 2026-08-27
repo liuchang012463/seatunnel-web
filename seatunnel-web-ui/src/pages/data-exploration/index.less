@@ -160,6 +160,89 @@
   }
 }
 
+/* Modals render into document.body, so keep their layout rules outside the
+   page scope. The global shell intentionally removes Ant Design's content
+   padding; exploration actions need an explicit, stable surface instead. */
+.exploration-action-modal {
+  .ant-modal-content {
+    overflow: hidden;
+    color: var(--st-color-text-secondary);
+    background: var(--st-color-bg-panel);
+    border: 1px solid var(--st-color-divider);
+    border-radius: 10px;
+    box-shadow: 0 18px 50px rgb(0 0 0 / 30%);
+  }
+
+  .ant-modal-header {
+    min-width: 0;
+    margin: 0;
+    padding: 18px 64px 15px 24px;
+    color: var(--st-color-text-primary);
+    background: var(--st-color-bg-panel);
+    border-bottom: 1px solid var(--st-color-divider);
+  }
+
+  .ant-modal-title,
+  .exploration-modal-title {
+    min-width: 0;
+    color: var(--st-color-text-primary) !important;
+    line-height: 24px !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .exploration-modal-title {
+    display: block;
+  }
+
+  .ant-modal-body {
+    min-height: 112px;
+    padding: 20px 24px 24px !important;
+    color: var(--st-color-text-secondary);
+    background: var(--st-color-bg-panel);
+  }
+
+  .ant-modal-footer {
+    margin: 0;
+    padding: 14px 24px 18px;
+    background: var(--st-color-bg-panel);
+    border-top: 1px solid var(--st-color-divider);
+  }
+
+  .ant-modal-close {
+    top: 14px;
+    right: 16px;
+  }
+
+  .ant-modal-body .ant-select-selector {
+    min-height: 38px;
+    padding-inline: 12px !important;
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-bg-control) !important;
+    border-color: var(--st-color-divider) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  .ant-modal-body .ant-select-selection-placeholder,
+  .ant-modal-body .ant-select-selection-item,
+  .ant-modal-body .ant-select-arrow {
+    color: var(--st-color-text-secondary) !important;
+  }
+}
+
+.exploration-task-feedback {
+  color: var(--st-color-text-secondary);
+  background: var(--st-color-bg-panel);
+  border-color: var(--st-color-divider);
+
+  .ant-alert-message,
+  .ant-alert-description {
+    color: inherit;
+  }
+}
+
 .data-exploration-overview {
   .task-list-page-header__top {
     align-items: flex-start;

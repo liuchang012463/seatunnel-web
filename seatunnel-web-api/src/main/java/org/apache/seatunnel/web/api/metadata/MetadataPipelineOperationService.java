@@ -24,6 +24,7 @@ import org.apache.seatunnel.web.spi.bean.vo.MetadataPipelineRunVO;
 import org.apache.seatunnel.web.spi.bean.vo.MetadataRunStateVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.enums.Status;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -46,6 +47,16 @@ public class MetadataPipelineOperationService {
 
     private static final int MAX_OM_PAGE_SIZE = 1000;
     private static final int MAX_OM_PAGES = 10_000;
+    private static final long RESERVATION_TIME_TOLERANCE_MILLIS = 5_000L;
+
+    /** Local reservation returned before the potentially slow OpenMetadata work starts. */
+    public record ExplorationReservation(
+            Long bindingId,
+            Long dataSourceId,
+            String databaseFqn,
+            long reservedVersion,
+            Date reservedAt) {
+    }
 
     private final OpenMetadataProperties openMetadataProperties;
     private final MetadataBindingDao metadataBindingDao;
@@ -126,6 +137,78 @@ public class MetadataPipelineOperationService {
         } catch (Exception e) {
             failReservation(binding.getId(), reservedVersion, false, null, MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR);
             throw operationFailure("data-source exploration could not be triggered");
+        }
+    }
+
+    /**
+     * Reserves an exploration in the local control plane without waiting for
+     * OpenMetadata to deploy and trigger the profiler pipeline.
+     */
+    public ExplorationReservation reserveExploration(Long dataSourceId, String databaseFqn) {
+        if (databaseFqn == null || databaseFqn.isBlank()) {
+            throw invalid("databaseFqn");
+        }
+        requireEnabled();
+        MetadataSourceBinding binding = requireReadyBinding(dataSourceId);
+        requireActiveDataSource(dataSourceId);
+        long initialVersion = requireVersion(binding);
+        Date now = new Date();
+        if (!metadataBindingDao.reserveRun(binding.getId(), initialVersion, false, null, now)) {
+            throw invalid("a scan or exploration is already running");
+        }
+        return new ExplorationReservation(
+                binding.getId(), dataSourceId, databaseFqn, initialVersion + 1L, now);
+    }
+
+    /**
+     * Performs the external pipeline operations off the request thread. The
+     * controller invokes this method through the Spring proxy, so the local
+     * QUEUED state is visible to the caller immediately.
+     */
+    @Async("metadataExplorationExecutor")
+    public void executeExploration(ExplorationReservation reservation) {
+        if (reservation == null) {
+            return;
+        }
+        try {
+            MetadataSourceBinding binding = metadataBindingDao.queryById(reservation.bindingId());
+            if (binding == null) {
+                throw invalid("metadata binding is not initialized");
+            }
+            DataSource dataSource = requireActiveDataSource(reservation.dataSourceId());
+            String serviceFqn = requireServiceFqn(binding, reservation.dataSourceId());
+            OpenMetadataDatabase database = openMetadataClient.findDatabase(reservation.databaseFqn())
+                    .orElseThrow(() -> invalid("databaseFqn does not exist"));
+            if (!serviceFqn.equals(database.serviceFullyQualifiedName())) {
+                throw invalid("databaseFqn does not belong to this data source");
+            }
+            openMetadataClient.assertFixedVersion();
+            ensureNoRunningPipelineForReservedExploration(binding);
+
+            MetadataConnectorAdapter adapter = connectorRegistry.require(dataSource.getDbType());
+            OpenMetadataEntity pipeline = openMetadataClient.upsertIngestionPipeline(
+                    adapter.profilerPipelineRequest(
+                            MetadataStableName.profilerPipelineName(reservation.dataSourceId()),
+                            requireProfilerServiceId(binding, reservation.dataSourceId()),
+                            serviceFqn,
+                            reservation.databaseFqn()));
+            openMetadataClient.deployIngestionPipeline(pipeline.id());
+            openMetadataClient.enableIngestionPipeline(pipeline.id());
+            openMetadataClient.triggerIngestionPipeline(pipeline.id());
+            completeExplorationReservation(reservation);
+            log.info("Data-source exploration triggered: dataSourceId={}, databaseFqn={}",
+                    reservation.dataSourceId(), reservation.databaseFqn());
+        } catch (MetadataIntegrationException e) {
+            MetadataErrorCode errorCode = e.getErrorCode() == null
+                    ? MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR
+                    : e.getErrorCode();
+            failExplorationReservation(reservation, errorCode);
+            log.warn("Data-source exploration failed: dataSourceId={}, errorCode={}",
+                    reservation.dataSourceId(), errorCode);
+        } catch (Exception e) {
+            failExplorationReservation(reservation, MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR);
+            log.warn("Data-source exploration failed: dataSourceId={}, type={}",
+                    reservation.dataSourceId(), e.getClass().getSimpleName());
         }
     }
 
@@ -273,6 +356,18 @@ public class MetadataPipelineOperationService {
         }
     }
 
+    /** The local profile QUEUED flag belongs to the reservation being executed. */
+    private void ensureNoRunningPipelineForReservedExploration(MetadataSourceBinding binding) {
+        if (isRunning(binding.getScanStatus())) {
+            throw invalid("a scan or exploration is already running");
+        }
+        List<OpenMetadataPipelineRun> scanRuns = runs(binding.getOmMetadataPipelineFqn());
+        List<OpenMetadataPipelineRun> profileRuns = runs(binding.getOmProfilerPipelineFqn());
+        if (isRunning(latestStatus(scanRuns)) || isRunning(latestStatus(profileRuns))) {
+            throw invalid("a scan or exploration is already running");
+        }
+    }
+
     private List<OpenMetadataPipelineRun> runs(String fqn) {
         if (fqn == null || fqn.isBlank()) {
             return List.of();
@@ -291,6 +386,30 @@ public class MetadataPipelineOperationService {
         latest.setVersion(reservedVersion + 1L);
         latest.initUpdate();
         metadataBindingDao.updateIfVersion(latest, reservedVersion);
+    }
+
+    private void completeExplorationReservation(ExplorationReservation reservation) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            MetadataSourceBinding latest = metadataBindingDao.queryById(reservation.bindingId());
+            if (latest == null || latest.getVersion() == null
+                    || !isReservationRun(latest.getProfileLastRunTime(), reservation.reservedAt())) {
+                return;
+            }
+            if (latest.getProfileStatus() == MetadataRunStatus.SUCCESS
+                    || latest.getProfileStatus() == MetadataRunStatus.FAILED) {
+                return;
+            }
+            long expectedVersion = latest.getVersion();
+            latest.setProfileStatus(MetadataRunStatus.RUNNING);
+            latest.setProfileLastError(null);
+            latest.setVersion(expectedVersion + 1L);
+            latest.initUpdate();
+            if (metadataBindingDao.updateIfVersion(latest, expectedVersion)) {
+                return;
+            }
+        }
+        log.warn("Could not persist running exploration state after concurrent updates: dataSourceId={}",
+                reservation.dataSourceId());
     }
 
     private void failReservation(
@@ -314,6 +433,43 @@ public class MetadataPipelineOperationService {
         latest.setVersion(reservedVersion + 1L);
         latest.initUpdate();
         metadataBindingDao.updateIfVersion(latest, reservedVersion);
+    }
+
+    private void failExplorationReservation(
+            ExplorationReservation reservation, MetadataErrorCode errorCode) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            MetadataSourceBinding latest = metadataBindingDao.queryById(reservation.bindingId());
+            if (latest == null || latest.getVersion() == null) {
+                return;
+            }
+            Date lastRunTime = latest.getProfileLastRunTime();
+            if (!isReservationRun(lastRunTime, reservation.reservedAt())
+                    || latest.getProfileStatus() == MetadataRunStatus.SUCCESS
+                    || latest.getProfileStatus() == MetadataRunStatus.FAILED) {
+                return;
+            }
+            long expectedVersion = latest.getVersion();
+            latest.setProfileStatus(MetadataRunStatus.FAILED);
+            latest.setProfileLastError(errorCode.name());
+            latest.setVersion(expectedVersion + 1L);
+            latest.initUpdate();
+            if (metadataBindingDao.updateIfVersion(latest, expectedVersion)) {
+                return;
+            }
+        }
+        log.warn("Could not persist failed exploration state after concurrent updates: dataSourceId={}",
+                reservation.dataSourceId());
+    }
+
+    /**
+     * MySQL Date columns in the metadata binding table are second-precision in
+     * some deployments, while the reservation is created with millisecond
+     * precision. Allow that storage truncation without accepting an older run.
+     */
+    private static boolean isReservationRun(Date lastRunTime, Date reservedAt) {
+        return lastRunTime != null
+                && reservedAt != null
+                && lastRunTime.getTime() >= reservedAt.getTime() - RESERVATION_TIME_TOLERANCE_MILLIS;
     }
 
     private MetadataSourceBinding requireReadyBinding(Long dataSourceId) {

@@ -19,6 +19,7 @@ import type {
   DataInventorySummary,
   DataSourceTopologyNode,
   DataSourceTopologyNodeType,
+  DataSourceMetadataStatus,
 } from './types';
 
 const DATA_SOURCE_API_PREFIX = '/api/v1/data-source';
@@ -134,6 +135,12 @@ export async function triggerDataSourceExploration(
   databaseFqn: string,
 ): Promise<CommonApiResponse<boolean>> {
   return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/${id}/explore`, { databaseFqn });
+}
+
+export async function fetchDataSourceMetadataStatus(
+  id: string,
+): Promise<CommonApiResponse<DataSourceMetadataStatus>> {
+  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/metadata-status`);
 }
 
 export async function fetchDataSourceMetadataDatabases(

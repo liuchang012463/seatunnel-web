@@ -125,7 +125,7 @@ export async function deleteBusinessSystem(
 export function toUnitOptions(units: DataSourceUnitRecord[]): MasterDataOption[] {
   return units.map((unit) => ({
     id: unit.id,
-    label: unit.unitCode ? `${unit.unitName}（${unit.unitCode}）` : unit.unitName,
+    label: unit.unitName,
     unitCode: unit.unitCode,
     unitName: unit.unitName,
   }));

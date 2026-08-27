@@ -174,9 +174,34 @@ ol {
   box-shadow: none;
   padding: 0 !important;
   border-radius: var(--st-radius-md, 4px) !important;
+  overflow: hidden;
+  background: var(--st-color-bg-panel, #002e41);
+  border: 1px solid var(--st-color-divider, rgba(17, 125, 160, 0.24));
+}
+
+.ant-modal .ant-modal-header {
+  margin: 0;
+  padding: 18px 56px 15px 24px;
+  background: var(--st-color-bg-panel, #002e41);
+  border-bottom: 1px solid var(--st-color-divider, rgba(17, 125, 160, 0.24));
+}
+
+.ant-modal .ant-modal-body {
+  padding: 20px 24px 24px;
+  color: var(--st-color-text-secondary, #d5d5d5);
+  background: var(--st-color-bg-panel, #002e41);
+}
+
+.ant-modal .ant-modal-footer {
+  margin: 0;
+  padding: 14px 24px 18px;
+  background: var(--st-color-bg-panel, #002e41);
+  border-top: 1px solid var(--st-color-divider, rgba(17, 125, 160, 0.24));
 }
 
 .ant-modal .ant-modal-close {
+  top: 12px;
+  right: 16px;
   width: 36px;
   height: 36px;
   background: var(--st-color-hover, rgba(33, 135, 168, 0.24));

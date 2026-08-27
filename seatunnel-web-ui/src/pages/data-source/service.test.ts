@@ -15,6 +15,7 @@ import {
   previewDataExplorationTable,
   triggerDataSourceExploration,
   triggerDataSourceScan,
+  fetchDataSourceMetadataStatus,
   unwrapMasterDataList,
 } from './service';
 
@@ -90,6 +91,15 @@ describe('data source service', () => {
     expect(HttpUtils.post).toHaveBeenNthCalledWith(2, '/api/v1/data-source/42/explore', {
       databaseFqn: 'st_ds_42.orders',
     });
+  });
+
+  it('reads the cached metadata status used by exploration feedback polling', async () => {
+    const response = { code: 0, data: { exploration: { status: 'QUEUED' } } };
+    (HttpUtils.get as jest.Mock).mockResolvedValue(response);
+
+    await expect(fetchDataSourceMetadataStatus('42')).resolves.toBe(response);
+
+    expect(HttpUtils.get).toHaveBeenCalledWith('/api/v1/data-source/42/metadata-status');
   });
 
   it('reads the two product-facing run histories through the existing data-source route', async () => {

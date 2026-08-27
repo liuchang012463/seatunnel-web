@@ -97,7 +97,7 @@ const DataSourceUnitSelect: React.FC<DataSourceUnitSelectProps> = ({ form, onMan
     () =>
       units.map((unit) => ({
         value: String(unit.id),
-        label: unit.unitCode ? `${unit.unitName}（${unit.unitCode}）` : unit.unitName,
+        label: unit.unitName,
       })),
     [units],
   );
@@ -106,7 +106,7 @@ const DataSourceUnitSelect: React.FC<DataSourceUnitSelectProps> = ({ form, onMan
     () =>
       businessSystems.map((system) => ({
         value: String(system.id),
-        label: system.systemCode ? `${system.systemName}（${system.systemCode}）` : system.systemName,
+        label: system.systemName,
       })),
     [businessSystems],
   );

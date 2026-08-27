@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import { history } from '@umijs/max';
 import {
+  Alert,
   Button,
   Card,
   Input,
@@ -29,6 +30,7 @@ import {
   fetchBusinessSystemOptions,
   fetchDataSourceMetadataDatabases,
   fetchDataSourceMetadataRuns,
+  fetchDataSourceMetadataStatus,
   fetchDataSourcePage,
   fetchDataSourceUnitOptions,
   normalizeDataSourcePageResult,
@@ -42,6 +44,7 @@ import type {
   DataSourcePageParams,
   DataSourceRecord,
   DataSourceUnitOption,
+  DataSourceMetadataStatus,
   PaginationInfo,
 } from '@/pages/data-source/types';
 import { displayOwner, explorationStatus, metadataStatus } from '../shared';
@@ -50,6 +53,39 @@ import '../index.less';
 const DEFAULT_PAGINATION: PaginationInfo = { pageNo: 1, pageSize: 10, total: 0 };
 
 type RunRecord = { runId: string; status: string; startTime?: string; endTime?: string };
+type ExplorationTracking = { id: string; name: string; submittedAt: number };
+type ExplorationFeedback = { type: 'info' | 'success' | 'error'; message: string; description?: string };
+
+function errorMessage(error: any, fallback: string) {
+  return error?.response?.message
+    || error?.response?.msg
+    || error?.response?.data?.message
+    || error?.response?.data?.msg
+    || error?.message
+    || fallback;
+}
+
+function parseServerTime(value?: string) {
+  if (!value) return undefined;
+  const timestamp = Date.parse(value.replace(' ', 'T').replace(/\//g, '-'));
+  return Number.isNaN(timestamp) ? undefined : timestamp;
+}
+
+function isCurrentRun(status: DataSourceMetadataStatus['exploration'], submittedAt: number) {
+  const lastRunTime = parseServerTime(status?.lastRunTime);
+  return lastRunTime === undefined || lastRunTime >= submittedAt - 5_000;
+}
+
+function explorationErrorText(status?: DataSourceMetadataStatus['exploration']) {
+  const code = status?.lastError;
+  if (!code) return '探查任务执行失败，请查看运行记录。';
+  const labels: Record<string, string> = {
+    OM_PIPELINE_TRIGGER_ERROR: 'OpenMetadata 探查管道触发失败',
+    OM_PIPELINE_STATUS_ERROR: '无法同步 OpenMetadata 探查状态',
+    PIPELINE_EXECUTION_ERROR: '探查管道执行失败',
+  };
+  return labels[code] || `探查任务执行失败（${code}）`;
+}
 
 const DataExplorationTasksPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -69,6 +105,8 @@ const DataExplorationTasksPage: React.FC = () => {
   const [runRecordOpen, setRunRecordOpen] = useState(false);
   const [runRecords, setRunRecords] = useState<RunRecord[]>([]);
   const [runRecordName, setRunRecordName] = useState('');
+  const [trackingExploration, setTrackingExploration] = useState<ExplorationTracking>();
+  const [explorationFeedback, setExplorationFeedback] = useState<ExplorationFeedback>();
 
   const loadUnits = useCallback(async () => {
     try {
@@ -130,10 +168,92 @@ const DataExplorationTasksPage: React.FC = () => {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!trackingExploration) return;
+
+    let disposed = false;
+    let timer: number | undefined;
+    let attempts = 0;
+
+    const poll = async () => {
+      if (disposed) return;
+      attempts += 1;
+
+      try {
+        const response = await fetchDataSourceMetadataStatus(trackingExploration.id);
+        if (disposed) return;
+
+        const status = response.data?.exploration;
+        if (response.code === 0 && status && isCurrentRun(status, trackingExploration.submittedAt)) {
+          if (status.status === 'FAILED') {
+            setExplorationFeedback({
+              type: 'error',
+              message: `${trackingExploration.name} 探查失败`,
+              description: explorationErrorText(status),
+            });
+            setTrackingExploration(undefined);
+            void load();
+            return;
+          }
+
+          if (status.status === 'UNKNOWN') {
+            setExplorationFeedback({
+              type: 'error',
+              message: `${trackingExploration.name} 探查状态未知`,
+              description: explorationErrorText(status),
+            });
+            setTrackingExploration(undefined);
+            void load();
+            return;
+          }
+
+          if (status.status === 'SUCCESS') {
+            setExplorationFeedback({
+              type: 'success',
+              message: `${trackingExploration.name} 探查已完成`,
+              description: '探查结果已写入 OpenMetadata，可前往结果页查看。',
+            });
+            setTrackingExploration(undefined);
+            void load();
+            return;
+          }
+        }
+      } catch (_) {
+        // Keep polling. A transient status-read failure must not hide the accepted task.
+      }
+
+      if (attempts >= 60) {
+        setExplorationFeedback({
+          type: 'info',
+          message: `${trackingExploration.name} 探查已提交`,
+          description: '状态同步超时，请稍后刷新或查看运行记录。',
+        });
+        setTrackingExploration(undefined);
+        return;
+      }
+
+      if (!disposed) timer = window.setTimeout(() => void poll(), 2_000);
+    };
+
+    void poll();
+    return () => {
+      disposed = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [load, trackingExploration]);
+
   const resetPage = () => setPagination((current) => ({ ...current, pageNo: 1 }));
 
   const openExplore = async (record: DataSourceRecord) => {
     if (!record.id) return;
+    if (record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING') {
+      setExplorationFeedback({
+        type: 'info',
+        message: `${record.name || '数据源'} 探查正在执行`,
+        description: '请等待当前任务完成后再提交新的探查。',
+      });
+      return;
+    }
     setExploreRecord(record);
     setExploreOpen(true);
     setExploreLoading(true);
@@ -148,7 +268,7 @@ const DataExplorationTasksPage: React.FC = () => {
       setDatabases(nextDatabases);
       setDatabaseFqn(nextDatabases.length === 1 ? nextDatabases[0].value : undefined);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || '无法读取可探查的 Database');
+      message.error(errorMessage(error, '无法读取可探查的 Database'));
       setDatabases([]);
     } finally {
       setExploreLoading(false);
@@ -160,18 +280,33 @@ const DataExplorationTasksPage: React.FC = () => {
       message.error('请选择 Database');
       return;
     }
+    if (exploreLoading) return;
+
+    const dataSourceId = exploreRecord.id;
+    const dataSourceName = exploreRecord.name || '数据源';
+    const submittedAt = Date.now();
     setExploreLoading(true);
     try {
-      const response = await triggerDataSourceExploration(exploreRecord.id, databaseFqn);
+      const response = await triggerDataSourceExploration(dataSourceId, databaseFqn);
       if (response.code !== 0) {
         message.error(response.message || '数据源探查暂不可触发');
         return;
       }
-      message.success('已提交数据源探查');
+      setRecords((current) => current.map((record) => (
+        String(record.id) === String(dataSourceId)
+          ? { ...record, profileStatus: 'QUEUED' }
+          : record
+      )));
+      setExplorationFeedback({
+        type: 'info',
+        message: `${dataSourceName} 探查已开始`,
+        description: '任务已提交到后台，页面会自动同步执行状态。',
+      });
+      setTrackingExploration({ id: dataSourceId, name: dataSourceName, submittedAt });
       setExploreOpen(false);
       void load();
     } catch (error: any) {
-      message.error(error?.response?.data?.message || '数据源探查暂不可触发');
+      message.error(errorMessage(error, '数据源探查暂不可触发'));
     } finally {
       setExploreLoading(false);
     }
@@ -189,7 +324,7 @@ const DataExplorationTasksPage: React.FC = () => {
       setRunRecords(response.data || []);
       setRunRecordOpen(true);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || '无法读取探查运行记录');
+      message.error(errorMessage(error, '无法读取探查运行记录'));
     }
   };
 
@@ -204,7 +339,7 @@ const DataExplorationTasksPage: React.FC = () => {
       message.success('已提交元数据扫描');
       void load();
     } catch (error: any) {
-      message.error(error?.response?.data?.message || '元数据扫描暂不可触发');
+      message.error(errorMessage(error, '元数据扫描暂不可触发'));
     }
   };
 
@@ -259,8 +394,13 @@ const DataExplorationTasksPage: React.FC = () => {
           <Button type="link" icon={<SyncOutlined />} onClick={() => void triggerScan(record)}>
             重新扫描
           </Button>
-          <Button type="link" icon={<PlayCircleOutlined />} onClick={() => void openExplore(record)}>
-            开始探查
+          <Button
+            type="link"
+            icon={<PlayCircleOutlined />}
+            disabled={record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING'}
+            onClick={() => void openExplore(record)}
+          >
+            {record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING' ? '探查中' : '开始探查'}
           </Button>
           <Button type="link" icon={<ClockCircleOutlined />} onClick={() => void showRuns(record)}>
             运行记录
@@ -307,7 +447,7 @@ const DataExplorationTasksPage: React.FC = () => {
             className="w-[190px]"
             value={unitId}
             options={unitOptions.map((item) => ({
-              label: item.unitCode ? `${item.unitName}（${item.unitCode}）` : item.unitName,
+              label: item.unitName,
               value: String(item.id),
             }))}
             onChange={(value) => {
@@ -325,7 +465,7 @@ const DataExplorationTasksPage: React.FC = () => {
             className="w-[210px]"
             value={businessSystemId}
             options={businessSystemOptions.map((item) => ({
-              label: item.systemCode ? `${item.systemName}（${item.systemCode}）` : item.systemName,
+              label: item.systemName,
               value: String(item.id),
             }))}
             onChange={(value) => {
@@ -347,6 +487,18 @@ const DataExplorationTasksPage: React.FC = () => {
           <span className="ml-auto text-xs text-[var(--st-color-text-muted)]">共 {pagination.total} 个数据源</span>
         </div>
       </Card>
+
+      {explorationFeedback && (
+        <Alert
+          className="exploration-task-feedback mt-3"
+          type={explorationFeedback.type}
+          showIcon
+          closable
+          message={explorationFeedback.message}
+          description={explorationFeedback.description}
+          onClose={() => setExplorationFeedback(undefined)}
+        />
+      )}
 
       <Card className="exploration-panel exploration-table-panel mt-3" bodyStyle={{ padding: 0 }}>
         <Spin spinning={loading}>
@@ -376,9 +528,11 @@ const DataExplorationTasksPage: React.FC = () => {
       </Card>
 
       <Modal
-        title={`开始探查${exploreRecord?.name ? ` · ${exploreRecord.name}` : ''}`}
+        className="exploration-action-modal"
+        title={<span className="exploration-modal-title">开始探查{exploreRecord?.name ? ` · ${exploreRecord.name}` : ''}</span>}
         open={exploreOpen}
         centered
+        width="min(640px, calc(100vw - 32px))"
         okText="提交探查"
         cancelText="取消"
         confirmLoading={exploreLoading}
@@ -404,10 +558,12 @@ const DataExplorationTasksPage: React.FC = () => {
       </Modal>
 
       <Modal
-        title={`${runRecordName} · 探查运行记录`}
+        className="exploration-action-modal exploration-run-record-modal"
+        title={<span className="exploration-modal-title">{runRecordName} · 探查运行记录</span>}
         open={runRecordOpen}
         footer={null}
         centered
+        width="min(720px, calc(100vw - 32px))"
         onCancel={() => setRunRecordOpen(false)}
       >
         {runRecords.length === 0 ? (

@@ -9,6 +9,7 @@ import {
   fetchBusinessSystemPage,
   fetchDataSourceUnitPage,
   normalizePageData,
+  toUnitOptions,
   updateBusinessSystem,
   updateDataSourceUnit,
 } from './service';
@@ -109,5 +110,11 @@ describe('master-data service', () => {
       records: [{ id: 2 }],
       pagination: { pageNo: 1, pageSize: 10, total: 1 },
     });
+  });
+
+  it('uses the unit name as the option label while retaining the generated code separately', async () => {
+    expect(toUnitOptions([{ id: 1, unitCode: 'UNIT_001', unitName: '测试单位', status: 1 }])).toEqual([
+      { id: 1, label: '测试单位', unitCode: 'UNIT_001', unitName: '测试单位' },
+    ]);
   });
 });

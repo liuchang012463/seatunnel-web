@@ -22,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -118,6 +120,75 @@ class MetadataPipelineOperationServiceTest {
         verify(openMetadataClient).deployIngestionPipeline("profile-updated");
         verify(openMetadataClient).enableIngestionPipeline("profile-updated");
         verify(openMetadataClient).triggerIngestionPipeline("profile-updated");
+    }
+
+    @Test
+    void explorationReservationReturnsBeforeOpenMetadataPipelineOperations() {
+        MetadataSourceBinding binding = binding(0L);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        when(bindingDao.reserveRun(eq(1L), eq(0L), eq(false), isNull(), any())).thenReturn(true);
+
+        MetadataPipelineOperationService.ExplorationReservation reservation =
+                service().reserveExploration(42L, "st_ds_42.orders");
+
+        assertEquals(1L, reservation.reservedVersion());
+        assertEquals(42L, reservation.dataSourceId());
+        verify(openMetadataClient, org.mockito.Mockito.never()).findDatabase(anyString());
+    }
+
+    @Test
+    void explorationCompletionRestoresRunningStateAfterAStatusRefreshVersionBump() {
+        Date reservationTime = new Date(1_700_001_000_000L);
+        MetadataSourceBinding binding = binding(2L);
+        binding.setProfileLastRunTime(reservationTime);
+        when(bindingDao.queryById(1L)).thenReturn(binding);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(openMetadataClient.findDatabase("st_ds_42.orders"))
+                .thenReturn(Optional.of(new OpenMetadataDatabase("database-id", "st_ds_42.orders", "st_ds_42")));
+        when(openMetadataClient.listIngestionPipelineRuns(anyString(), eq(1))).thenReturn(List.of());
+        when(connectorRegistry.require(DbType.DORIS)).thenReturn(connectorAdapter);
+        when(connectorAdapter.profilerPipelineRequest(anyString(), anyString(), anyString(), eq("st_ds_42.orders")))
+                .thenReturn(JSON.createObjectNode());
+        when(openMetadataClient.upsertIngestionPipeline(any()))
+                .thenReturn(new OpenMetadataEntity("profile-updated", "st_ds_42.st_ds_42_profiler"));
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(2L))).thenReturn(true);
+
+        service().executeExploration(new MetadataPipelineOperationService.ExplorationReservation(
+                1L, 42L, "st_ds_42.orders", 1L, reservationTime));
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateIfVersion(saved.capture(), eq(2L));
+        assertEquals(MetadataRunStatus.RUNNING, saved.getValue().getProfileStatus());
+    }
+
+    @Test
+    void explorationFailureIsPersistedWhenDatabaseTruncatesReservationTime() {
+        Date reservationTime = new Date(1_700_001_000_900L);
+        MetadataSourceBinding binding = binding(2L);
+        binding.setProfileStatus(MetadataRunStatus.QUEUED);
+        binding.setProfileLastRunTime(new Date(1_700_001_000_000L));
+        when(bindingDao.queryById(1L)).thenReturn(binding);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(openMetadataClient.findDatabase("st_ds_42.orders"))
+                .thenReturn(Optional.of(new OpenMetadataDatabase("database-id", "st_ds_42.orders", "st_ds_42")));
+        when(openMetadataClient.listIngestionPipelineRuns(anyString(), eq(1))).thenReturn(List.of());
+        when(connectorRegistry.require(DbType.DORIS)).thenReturn(connectorAdapter);
+        when(connectorAdapter.profilerPipelineRequest(anyString(), anyString(), anyString(), eq("st_ds_42.orders")))
+                .thenReturn(JSON.createObjectNode());
+        when(openMetadataClient.upsertIngestionPipeline(any()))
+                .thenReturn(new OpenMetadataEntity("profile-updated", "st_ds_42.st_ds_42_profiler"));
+        doThrow(new MetadataIntegrationException(MetadataErrorCode.OM_PIPELINE_DEPLOY_ERROR, "deploy failed"))
+                .when(openMetadataClient).deployIngestionPipeline("profile-updated");
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(2L))).thenReturn(true);
+
+        service().executeExploration(new MetadataPipelineOperationService.ExplorationReservation(
+                1L, 42L, "st_ds_42.orders", 1L, reservationTime));
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateIfVersion(saved.capture(), eq(2L));
+        assertEquals(MetadataRunStatus.FAILED, saved.getValue().getProfileStatus());
+        assertEquals(MetadataErrorCode.OM_PIPELINE_DEPLOY_ERROR.name(), saved.getValue().getProfileLastError());
     }
 
     private void stubReady(MetadataSourceBinding binding, MetadataSourceBinding reserved) {

@@ -211,7 +211,7 @@ const DataExplorationResultsPage: React.FC = () => {
             placeholder="全部单位"
             value={filter.unitId}
             options={unitOptions.map((item) => ({
-              label: item.unitCode ? `${item.unitName}（${item.unitCode}）` : item.unitName,
+              label: item.unitName,
               value: String(item.id),
             }))}
             onChange={(value) => {
@@ -229,7 +229,7 @@ const DataExplorationResultsPage: React.FC = () => {
             disabled={!filter.unitId}
             value={filter.businessSystemId}
             options={businessSystemOptions.map((item) => ({
-              label: item.systemCode ? `${item.systemName}（${item.systemCode}）` : item.systemName,
+              label: item.systemName,
               value: String(item.id),
             }))}
             onChange={(value) => {

@@ -69,6 +69,19 @@ export interface DataSourceRecord {
   updateTime?: string;
 }
 
+export interface DataSourceMetadataRunState {
+  status?: 'NEVER' | 'QUEUED' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'UNKNOWN';
+  lastRunTime?: string;
+  lastSuccessTime?: string;
+  lastError?: string;
+}
+
+export interface DataSourceMetadataStatus {
+  syncStatus?: string;
+  scan?: DataSourceMetadataRunState;
+  exploration?: DataSourceMetadataRunState;
+}
+
 export interface DataSourcePageResult {
   bizData: DataSourceRecord[];
   pagination: PaginationInfo;

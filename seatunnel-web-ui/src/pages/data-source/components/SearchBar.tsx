@@ -89,7 +89,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           showSearch
           value={selectedUnit === undefined ? undefined : String(selectedUnit)}
           options={unitOptions.map((unit) => ({
-            label: unit.unitCode ? `${unit.unitName}（${unit.unitCode}）` : unit.unitName,
+            label: unit.unitName,
             value: String(unit.id),
           }))}
           placeholder="按数据源单位筛选"
@@ -103,7 +103,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           showSearch
           value={selectedBusinessSystem === undefined ? undefined : String(selectedBusinessSystem)}
           options={businessSystemOptions.map((system) => ({
-            label: system.systemCode ? `${system.systemName}（${system.systemCode}）` : system.systemName,
+            label: system.systemName,
             value: String(system.id),
           }))}
           placeholder="按业务系统筛选"

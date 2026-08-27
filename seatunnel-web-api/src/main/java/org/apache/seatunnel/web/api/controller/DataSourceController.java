@@ -186,8 +186,11 @@ public class DataSourceController {
     public Result<Boolean> triggerExploration(
             @PathVariable("id") Long id,
             @RequestBody DataSourceExploreDTO dto) {
-        return Result.buildSuc(metadataPipelineOperationService.triggerExploration(
-                id, dto == null ? null : dto.getDatabaseFqn()));
+        MetadataPipelineOperationService.ExplorationReservation reservation =
+                metadataPipelineOperationService.reserveExploration(
+                        id, dto == null ? null : dto.getDatabaseFqn());
+        metadataPipelineOperationService.executeExploration(reservation);
+        return Result.buildSuc(true);
     }
 
     @GetMapping("/{id}/metadata-status")

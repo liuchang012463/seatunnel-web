@@ -137,6 +137,11 @@ public class MetadataStatusSynchronizer {
     private void applyRun(MetadataSourceBinding binding, boolean scan, OpenMetadataPipelineRun run, Date now) {
         MetadataRunStatus currentStatus = scan ? binding.getScanStatus() : binding.getProfileStatus();
         Date currentLastRunTime = scan ? binding.getScanLastRunTime() : binding.getProfileLastRunTime();
+        if (run != null && isOlderThanLocalRun(run, currentStatus, currentLastRunTime)) {
+            // A user-triggered run is reserved locally before OpenMetadata registers it.
+            // Do not replace a newer local run state with the previous run returned by OM.
+            return;
+        }
         if (run == null
                 && MetadataPipelineOperationService.isRunning(currentStatus)
                 && currentLastRunTime != null
@@ -187,5 +192,16 @@ public class MetadataStatusSynchronizer {
                 binding.setProfileLastError(MetadataErrorCode.PIPELINE_EXECUTION_ERROR.name());
             }
         }
+    }
+
+    private static boolean isOlderThanLocalRun(
+            OpenMetadataPipelineRun run, MetadataRunStatus currentStatus, Date currentLastRunTime) {
+        if (currentStatus == null || currentStatus == MetadataRunStatus.NEVER || currentLastRunTime == null) {
+            return false;
+        }
+        Long timestamp = run.timestamp() == null ? run.startDate() : run.timestamp();
+        Date runTime = MetadataPipelineOperationService.fromOmTimestamp(timestamp);
+        // OM timestamps are commonly second-precision; allow a small clock/precision skew.
+        return runTime != null && runTime.getTime() + 5_000L < currentLastRunTime.getTime();
     }
 }
