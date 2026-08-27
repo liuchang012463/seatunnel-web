@@ -46,7 +46,9 @@ docker-compose ps
 
 部署 `.env` 只保存本机密钥和运行参数，不能提交 Git；metadata 至少需要配置
 `METADATA_OPENMETADATA_ENABLED`、`METADATA_OPENMETADATA_BASE_URL` 和
-`METADATA_OPENMETADATA_TOKEN`。当前 OM 地址必须是 `/api` 入口。
+`METADATA_OPENMETADATA_TOKEN`。当前 OM 地址必须是 `/api` 入口；Kingbase 元数据探查可额外
+配置 `METADATA_OPENMETADATA_KINGBASE_TUNNEL_HOST/PORT`，仅替换 OpenMetadata 元数据连接端点，
+不改变 SeaTunnel 数据源或任务配置。
 
 ## VS Code
 
@@ -64,6 +66,8 @@ docker-compose ps
 - 探查为用户触发的一次性 metadata/profile 操作，不配置定时调度；Server 和 managed
   ingestion 版本不允许自行升级或切换。
 - Kingbase 远端通过 SSH 隧道提供给容器；隧道断开时先恢复隧道，再重试数据源探查。
+  本机隧道示例：`ssh -fNT -o ExitOnForwardFailure=yes -L 0.0.0.0:25432:127.0.0.1:54321 root@192.168.100.91`；
+  部署 `.env` 使用 Docker 宿主机网关地址和 `25432`，重启前确认端口仍在监听。
 
 ## 数据库、测试与提交
 
