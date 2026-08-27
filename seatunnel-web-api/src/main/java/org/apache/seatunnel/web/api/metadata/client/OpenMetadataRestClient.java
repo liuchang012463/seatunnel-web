@@ -484,6 +484,43 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     @Override
+    public void enableIngestionPipeline(String id) {
+        validateBaseUrl();
+        try {
+            org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline pipeline =
+                    sdkClient.ingestionPipelines().get(id);
+            // OpenMetadata 1.12.10's managed deploy creates a DAG with the
+            // requested pause-on-creation value, but it does not unpause an
+            // already existing DagModel. Toggle through the OM resource so
+            // the official PipelineServiceClient calls its /enable operation.
+            // Setting enabled=false first selects the enable branch in the
+            // server-side toggle implementation; the response persists it
+            // back as enabled=true after the managed call succeeds.
+            if (!Boolean.FALSE.equals(pipeline.getEnabled())) {
+                pipeline.setEnabled(false);
+                sdkClient.ingestionPipelines().update(id, pipeline);
+            }
+            sdkRequest(
+                    "POST",
+                    "/v1/services/ingestionPipelines/toggleIngestion/" + encode(id),
+                    null,
+                    false);
+        } catch (OpenMetadataException error) {
+            throw sdkFailure(
+                    MetadataErrorCode.OM_PIPELINE_DEPLOY_ERROR,
+                    "OpenMetadata ingestion pipeline enable failed",
+                    error);
+        } catch (MetadataIntegrationException error) {
+            throw error;
+        } catch (Exception error) {
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_PIPELINE_DEPLOY_ERROR,
+                    "OpenMetadata ingestion pipeline enable failed",
+                    error);
+        }
+    }
+
+    @Override
     public void triggerIngestionPipeline(String id) {
         pipelineControl("/v1/services/ingestionPipelines/trigger/" + encode(id),
                 MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR);

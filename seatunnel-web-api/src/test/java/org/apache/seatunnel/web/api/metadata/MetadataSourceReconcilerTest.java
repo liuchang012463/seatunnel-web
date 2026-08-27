@@ -68,7 +68,9 @@ class MetadataSourceReconcilerTest {
         assertEquals("svc", saved.getValue().getOmServiceId());
         assertEquals("st_ds_42.st_ds_42_metadata", saved.getValue().getOmMetadataPipelineFqn());
         verify(openMetadataClient).deployIngestionPipeline("meta");
+        verify(openMetadataClient).enableIngestionPipeline("meta");
         verify(openMetadataClient).deployIngestionPipeline("prof");
+        verify(openMetadataClient).enableIngestionPipeline("prof");
     }
 
     @Test

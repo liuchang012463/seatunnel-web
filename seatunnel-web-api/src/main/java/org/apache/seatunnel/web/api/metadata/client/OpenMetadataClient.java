@@ -106,6 +106,12 @@ public interface OpenMetadataClient {
 
     void deployIngestionPipeline(String id);
 
+    /**
+     * Ensures the managed Airflow DAG is enabled through OpenMetadata 1.12.10.
+     * This is deliberately not an Airflow client operation.
+     */
+    void enableIngestionPipeline(String id);
+
     /** OpenMetadata 1.12.10 trigger endpoint; it intentionally has no request body. */
     void triggerIngestionPipeline(String id);
 

@@ -109,7 +109,9 @@ public class MetadataSourceReconciler {
                         service.id(), service.fullyQualifiedName()));
         // The 1.12.10 deploy endpoints deliberately have no request body.
         openMetadataClient.deployIngestionPipeline(metadataPipeline.id());
+        openMetadataClient.enableIngestionPipeline(metadataPipeline.id());
         openMetadataClient.deployIngestionPipeline(profilerPipeline.id());
+        openMetadataClient.enableIngestionPipeline(profilerPipeline.id());
 
         MetadataSourceBinding latest = metadataBindingDao.queryById(claimed.getId());
         if (!owned(latest, claimedVersion)) {

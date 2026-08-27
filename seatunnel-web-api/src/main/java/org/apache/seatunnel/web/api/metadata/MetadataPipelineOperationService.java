@@ -99,6 +99,7 @@ public class MetadataPipelineOperationService {
                             serviceFqn,
                             databaseFqn));
             openMetadataClient.deployIngestionPipeline(pipeline.id());
+            openMetadataClient.enableIngestionPipeline(pipeline.id());
             openMetadataClient.triggerIngestionPipeline(pipeline.id());
             completeReservation(binding.getId(), reservedVersion, false, null);
             return true;

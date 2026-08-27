@@ -40,7 +40,7 @@ class MetadataConnectorRegistryTest {
         assertEquals(true, pipeline.at("/sourceConfig/config/markDeletedDatabases").asBoolean());
         assertEquals(false, pipeline.at("/sourceConfig/config/includeViews").asBoolean());
         assertEquals(1, pipeline.at("/airflowConfig/maxActiveRuns").asInt());
-        assertEquals(true, scheduledPipeline.at("/airflowConfig/pausePipeline").asBoolean());
+        assertEquals(false, scheduledPipeline.at("/airflowConfig/pausePipeline").asBoolean());
         assertEquals(true, scheduledPipeline.at("/airflowConfig/scheduleInterval").isNull());
     }
 

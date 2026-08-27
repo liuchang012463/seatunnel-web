@@ -105,6 +105,7 @@ class MetadataPipelineOperationServiceTest {
         service().triggerExploration(42L, "st_ds_42.orders");
 
         verify(openMetadataClient).deployIngestionPipeline("profile-updated");
+        verify(openMetadataClient).enableIngestionPipeline("profile-updated");
         verify(openMetadataClient).triggerIngestionPipeline("profile-updated");
     }
 

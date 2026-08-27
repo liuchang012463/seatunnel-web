@@ -143,6 +143,39 @@ class OpenMetadataRestClientTest {
     }
 
     @Test
+    void enablesAnExistingDagThroughTheOpenMetadataToggleResource() throws Exception {
+        String pipelineId = "00000000-0000-0000-0000-000000000012";
+        AtomicReference<String> patchBody = new AtomicReference<>();
+        AtomicReference<String> toggleMethod = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/services/ingestionPipelines/" + pipelineId, exchange -> {
+            if ("GET".equals(exchange.getRequestMethod())) {
+                respond(exchange, 200, "{\"id\":\"" + pipelineId + "\",\"name\":\"diag-pipeline\","
+                        + "\"fullyQualifiedName\":\"svc.diag-pipeline\",\"enabled\":true,"
+                        + "\"pipelineType\":\"metadata\"}");
+            } else {
+                patchBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                respond(exchange, 200, "{\"id\":\"" + pipelineId + "\",\"name\":\"diag-pipeline\","
+                        + "\"fullyQualifiedName\":\"svc.diag-pipeline\",\"enabled\":false,"
+                        + "\"pipelineType\":\"metadata\"}");
+            }
+        });
+        server.createContext("/api/v1/services/ingestionPipelines/toggleIngestion/" + pipelineId, exchange -> {
+            toggleMethod.set(exchange.getRequestMethod());
+            respond(exchange, 200, "{\"id\":\"" + pipelineId + "\",\"enabled\":true}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        client.enableIngestionPipeline(pipelineId);
+
+        assertTrue(patchBody.get().contains("enabled"));
+        assertEquals("POST", toggleMethod.get());
+    }
+
+    @Test
     void rejectsAnHttpSuccessWhoseManagedClientResponseReportsFailure() throws Exception {
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/services/ingestionPipelines/trigger/pipeline-id",
