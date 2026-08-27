@@ -63,13 +63,13 @@ public class BusinessSystemController {
 
     @GetMapping({"/active", "/list"})
     @Operation(summary = "listActiveBusinessSystemsByUnit")
-    public Result<List<BusinessSystemVO>> active(@RequestParam Long unitId) {
+    public Result<List<BusinessSystemVO>> active(@RequestParam("unitId") Long unitId) {
         return Result.buildSuc(businessSystemService.listByUnitId(unitId));
     }
 
     @GetMapping("/options")
     @Operation(summary = "businessSystemOptionsByUnit")
-    public Result<List<OptionVO>> options(@RequestParam Long unitId) {
+    public Result<List<OptionVO>> options(@RequestParam("unitId") Long unitId) {
         return Result.buildSuc(businessSystemService.options(unitId));
     }
 }

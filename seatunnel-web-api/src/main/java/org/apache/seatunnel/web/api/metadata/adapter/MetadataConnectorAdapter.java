@@ -15,7 +15,7 @@ public interface MetadataConnectorAdapter {
 
     JsonNode metadataPipelineRequest(String pipelineName, String serviceId, String serviceFqn);
 
-    /** System-generated daily schedule for the existing DataSource. */
+    /** Request shape for the existing DataSource; the MVP keeps it manual-only. */
     default JsonNode metadataPipelineRequest(
             DataSource dataSource, String pipelineName, String serviceId, String serviceFqn) {
         return metadataPipelineRequest(pipelineName, serviceId, serviceFqn);

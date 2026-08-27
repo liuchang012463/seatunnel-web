@@ -32,7 +32,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -91,14 +90,16 @@ class DataInventoryServiceTest {
     }
 
     @Test
-    void skipsUnsupportedSourceWithoutCallingOpenMetadata() {
+    void includesOracleSourceAndUsesOpenMetadataWhenBindingIsReady() {
         when(dataSourceDao.queryAll()).thenReturn(List.of(source(42L, org.apache.seatunnel.web.spi.enums.DbType.ORACLE)));
         when(dataSourceUnitDao.queryAll()).thenReturn(List.of());
         when(businessSystemDao.queryAll()).thenReturn(List.of());
         when(metadataBindingDao.queryAll()).thenReturn(List.of(binding(42L)));
+        when(openMetadataClient.listDatabasesPage(eq("st_ds_42"), any(Integer.class), eq(null)))
+                .thenReturn(new OpenMetadataPage<>(List.of(), 0L, null));
 
         assertEquals(1L, service().summary(new DataInventoryFilterDTO()).getDataSourceCount());
-        verify(openMetadataClient, never()).listDatabasesPage(any(), any(Integer.class), any());
+        verify(openMetadataClient).listDatabasesPage(eq("st_ds_42"), any(Integer.class), eq(null));
     }
 
     private DataInventoryService service() {

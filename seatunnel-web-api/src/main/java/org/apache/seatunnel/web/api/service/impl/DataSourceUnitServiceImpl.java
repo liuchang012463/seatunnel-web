@@ -160,7 +160,9 @@ public class DataSourceUnitServiceImpl implements DataSourceUnitService {
     public List<OptionVO> options() {
         return listActive().stream().map(unit -> {
             OptionVO option = new OptionVO();
-            option.setValue(unit.getId());
+            // Keep Snowflake IDs exact when this option is consumed by a
+            // browser; JavaScript cannot represent these values as numbers.
+            option.setValue(unit.getId() == null ? null : String.valueOf(unit.getId()));
             option.setLabel(unit.getUnitName());
             option.setDescription(unit.getUnitCode());
             return option;

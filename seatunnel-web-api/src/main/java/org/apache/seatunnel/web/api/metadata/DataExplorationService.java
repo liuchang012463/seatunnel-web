@@ -387,10 +387,14 @@ public class DataExplorationService {
         }
         if (source.getDbType() != DbType.MYSQL
                 && source.getDbType() != DbType.POSTGRE_SQL
-                && source.getDbType() != DbType.DORIS) {
+                && source.getDbType() != DbType.JDBC
+                && source.getDbType() != DbType.DORIS
+                && source.getDbType() != DbType.ORACLE
+                && source.getDbType() != DbType.DAMENG
+                && source.getDbType() != DbType.KINGBASE) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.CONNECTOR_NOT_SUPPORTED,
-                    "OpenMetadata 1.12.10 exploration is supported only for MYSQL, POSTGRE_SQL and DORIS");
+                    "OpenMetadata 1.12.10 exploration is supported only for MYSQL, POSTGRE_SQL, JDBC(PostgreSQL), DORIS, ORACLE, DAMENG and KINGBASE");
         }
         MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
         if (binding == null

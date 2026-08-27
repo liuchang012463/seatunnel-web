@@ -21,7 +21,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
     @Override
     public JsonNode metadataPipelineRequest(
             DataSource dataSource, String pipelineName, String serviceId, String serviceFqn) {
-        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, dailyMetadataSchedule(dataSource));
+        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, null);
     }
 
     private JsonNode metadataPipelineRequestInternal(
@@ -55,7 +55,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         config.put("profileSampleType", "PERCENTAGE");
         config.put("profileSample", 100);
         // The profiler is user-triggered only in this MVP.
-        return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config, "0 0 1 1 *");
+        return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config, null);
     }
 
     protected ObjectNode baseServiceRequest(DataSource dataSource, String stableServiceName) {
@@ -84,13 +84,13 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
                 host = host + ":" + port;
             }
             if (isBlank(host) || isBlank(username)) {
-                throw invalidConnection();
+                throw invalidConnectionFailure();
             }
             return new ConnectionValues(host, database, username, password);
         } catch (MetadataIntegrationException e) {
             throw e;
         } catch (Exception e) {
-            throw invalidConnection();
+            throw invalidConnectionFailure();
         }
     }
 
@@ -112,9 +112,18 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         root.put("pipelineType", pipelineType);
         root.putObject("sourceConfig").set("config", config);
         ObjectNode airflow = root.putObject("airflowConfig");
+        // Exploration is explicitly user-triggered in this product. Keep the
+        // pipeline unpaused so a managed trigger can execute, but omit a cron
+        // expression so Airflow cannot create a schedule behind the operator's
+        // back.  A paused DAG accepts a trigger in 1.12.10 but leaves the run
+        // permanently queued.
         airflow.put("pausePipeline", false);
         airflow.put("concurrency", 1);
-        airflow.put("scheduleInterval", scheduleInterval);
+        if (scheduleInterval == null || scheduleInterval.isBlank()) {
+            airflow.putNull("scheduleInterval");
+        } else {
+            airflow.put("scheduleInterval", scheduleInterval);
+        }
         airflow.put("pipelineCatchup", false);
         airflow.put("maxActiveRuns", 1);
         airflow.put("retries", 0);
@@ -152,16 +161,9 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         return escaped.toString();
     }
 
-    private static String dailyMetadataSchedule(DataSource dataSource) {
-        long id = dataSource == null || dataSource.getId() == null ? 0L : dataSource.getId();
-        int minute = (int) Math.floorMod(id, 60L);
-        int hour = 1 + (int) Math.floorMod(id / 60L, 3L);
-        return minute + " " + hour + " * * *";
-    }
-
     protected ObjectNode passwordAuth(String password) {
         if (isBlank(password)) {
-            throw invalidConnection();
+            throw invalidConnectionFailure();
         }
         ObjectNode auth = OBJECT_MAPPER.createObjectNode();
         auth.put("password", password);
@@ -181,10 +183,23 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         return value == null || value.isBlank();
     }
 
-    private static MetadataIntegrationException invalidConnection() {
+    protected static MetadataIntegrationException invalidConnectionFailure() {
         return new MetadataIntegrationException(
                 MetadataErrorCode.SOURCE_CONNECTION_ERROR,
                 "Data source connection cannot be converted to the OpenMetadata 1.12.10 schema");
+    }
+
+    /** Returns the persisted SeaTunnel connection JSON for connector-specific options. */
+    protected JsonNode rawConnection(DataSource dataSource) {
+        try {
+            return OBJECT_MAPPER.readTree(dataSource.getConnectionParams());
+        } catch (Exception error) {
+            throw invalidConnectionFailure();
+        }
+    }
+
+    protected String connectionText(JsonNode source, String field) {
+        return text(source, field);
     }
 
     protected record ConnectionValues(String hostPort, String database, String username, String password) {

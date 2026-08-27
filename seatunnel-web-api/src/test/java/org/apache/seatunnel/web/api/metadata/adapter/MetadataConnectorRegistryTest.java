@@ -1,8 +1,6 @@
 package org.apache.seatunnel.web.api.metadata.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
-import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
@@ -10,14 +8,17 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MetadataConnectorRegistryTest {
 
     private final MetadataConnectorRegistry registry = new MetadataConnectorRegistry(List.of(
             new MysqlMetadataConnectorAdapter(),
             new PostgresMetadataConnectorAdapter(),
-            new DorisMetadataConnectorAdapter()));
+            new DorisMetadataConnectorAdapter(),
+            new OracleMetadataConnectorAdapter(),
+            new DamengMetadataConnectorAdapter(),
+            new KingbaseMetadataConnectorAdapter(),
+            new JdbcMetadataConnectorAdapter()));
 
     @Test
     void buildsFixed11210MysqlRequestWithExplicitMetadataDefaults() {
@@ -39,17 +40,83 @@ class MetadataConnectorRegistryTest {
         assertEquals(true, pipeline.at("/sourceConfig/config/markDeletedDatabases").asBoolean());
         assertEquals(false, pipeline.at("/sourceConfig/config/includeViews").asBoolean());
         assertEquals(1, pipeline.at("/airflowConfig/maxActiveRuns").asInt());
-        assertEquals("7 1 * * *", scheduledPipeline.at("/airflowConfig/scheduleInterval").asText());
+        assertEquals(true, scheduledPipeline.at("/airflowConfig/pausePipeline").asBoolean());
+        assertEquals(true, scheduledPipeline.at("/airflowConfig/scheduleInterval").isNull());
     }
 
     @Test
-    void supportsPostgresAndDorisButRejectsDeferredDatabases() {
+    void supportsPostgresDorisAndCustomDatabaseExtensions() {
         assertEquals("Postgres", registry.require(DbType.POSTGRE_SQL).openMetadataServiceType());
         assertEquals("Doris", registry.require(DbType.DORIS).openMetadataServiceType());
+        assertEquals("CustomDatabase", registry.require(DbType.DAMENG).openMetadataServiceType());
+        assertEquals("CustomDatabase", registry.require(DbType.KINGBASE).openMetadataServiceType());
+    }
 
-        MetadataIntegrationException error = assertThrows(
-                MetadataIntegrationException.class, () -> registry.require(DbType.KINGBASE));
-        assertEquals(MetadataErrorCode.CONNECTOR_NOT_SUPPORTED, error.getErrorCode());
+    @Test
+    void buildsFixed11210OracleServiceNameRequest() {
+        DataSource dataSource = source(8L, DbType.ORACLE,
+                "{\"url\":\"jdbc:oracle:thin:@//oracle.example:1521/FREEPDB1\","
+                        + "\"user\":\"oracle_app\",\"password\":\"secret\","
+                        + "\"connectType\":\"ORACLE_SERVICE_NAME\"}");
+
+        JsonNode service = registry.require(DbType.ORACLE)
+                .databaseServiceRequest(dataSource, "st_ds_8");
+
+        assertEquals("Oracle", service.at("/connection/config/type").asText());
+        assertEquals("oracle+cx_oracle", service.at("/connection/config/scheme").asText());
+        assertEquals("oracle.example:1521", service.at("/connection/config/hostPort").asText());
+        assertEquals("FREEPDB1", service.at("/connection/config/oracleConnectionType/oracleServiceName").asText());
+        assertEquals("/instantclient", service.at("/connection/config/instantClientDirectory").asText());
+        assertEquals(true, service.at("/connection/config/supportsProfiler").asBoolean());
+    }
+
+    @Test
+    void convertsHistoricalPostgresJdbcRow() {
+        DataSource dataSource = source(9L, DbType.JDBC,
+                "{\"url\":\"jdbc:postgresql://db.example:5432/orders\","
+                        + "\"user\":\"reader\",\"password\":\"secret\"}");
+        JsonNode service = registry.require(DbType.JDBC)
+                .databaseServiceRequest(dataSource, "st_ds_9");
+        assertEquals("Postgres", service.at("/serviceType").asText());
+        assertEquals("orders", service.at("/connection/config/database").asText());
+    }
+
+    @Test
+    void emitsVerifiedCustomDatabaseConnectionForKingbase() {
+        DataSource dataSource = source(10L, DbType.KINGBASE,
+                "{\"url\":\"jdbc:kingbase8://192.168.100.91:54321/kingbase\","
+                        + "\"user\":\"system\",\"password\":\"secret\",\"schemaName\":\"PUBLIC\"}");
+
+        JsonNode service = registry.require(DbType.KINGBASE)
+                .databaseServiceRequest(dataSource, "st_ds_10");
+
+        assertEquals("CustomDatabase", service.at("/serviceType").asText());
+        assertEquals("CustomDatabase", service.at("/connection/config/type").asText());
+        assertEquals("kingbase_connector.kingbase_source.KingbaseSource",
+                service.at("/connection/config/sourcePythonClass").asText());
+        assertEquals("192.168.100.91:54321",
+                service.at("/connection/config/connectionOptions/hostPort").asText());
+        assertEquals("kingbase",
+                service.at("/connection/config/connectionOptions/database").asText());
+        assertEquals("PUBLIC",
+                service.at("/connection/config/connectionOptions/schema").asText());
+    }
+
+    @Test
+    void emitsVerifiedCustomDatabaseConnectionForDameng() {
+        DataSource dataSource = source(11L, DbType.DAMENG,
+                "{\"url\":\"jdbc:dm://dm.example:5236\","
+                        + "\"user\":\"SYSDBA\",\"password\":\"secret\",\"database\":\"DAMENG\"}");
+
+        JsonNode service = registry.require(DbType.DAMENG)
+                .databaseServiceRequest(dataSource, "st_ds_11");
+
+        assertEquals("dameng_connector.dameng_source.DamengSource",
+                service.at("/connection/config/sourcePythonClass").asText());
+        assertEquals("dm.example:5236",
+                service.at("/connection/config/connectionOptions/hostPort").asText());
+        assertEquals("DAMENG",
+                service.at("/connection/config/connectionOptions/database").asText());
     }
 
     @Test

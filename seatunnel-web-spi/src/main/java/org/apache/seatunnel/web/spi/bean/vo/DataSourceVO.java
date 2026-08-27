@@ -2,6 +2,8 @@ package org.apache.seatunnel.web.spi.bean.vo;
 
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
@@ -14,6 +16,7 @@ import java.util.Date;
 @Data
 public class DataSourceVO {
 
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     private Integer createUserId;
@@ -24,8 +27,10 @@ public class DataSourceVO {
 
     private String dataSourceUnit;
 
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long businessSystemId;
 
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long unitId;
 
     private String unitCode;

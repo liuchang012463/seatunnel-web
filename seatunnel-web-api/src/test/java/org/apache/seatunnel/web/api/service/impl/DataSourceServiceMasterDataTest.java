@@ -138,4 +138,39 @@ class DataSourceServiceMasterDataTest {
         verify(dataSourceDao).updateById(update.capture());
         assertEquals(DataSourceLifecycleStatus.REVOKED, update.getValue().getStatus());
     }
+
+    @Test
+    void ownershipBackfillDoesNotRejectAJobReferencedSource() {
+        DataSource source = new DataSource();
+        source.setId(42L);
+        source.setStatus(DataSourceLifecycleStatus.ENABLED);
+        source.setBusinessSystemId(null);
+
+        BusinessSystem system = new BusinessSystem();
+        system.setId(9L);
+        system.setUnitId(7L);
+        system.setStatus(1);
+
+        DataSourceUnit unit = new DataSourceUnit();
+        unit.setId(7L);
+        unit.setStatus(1);
+
+        when(dataSourceDao.queryById(42L)).thenReturn(source);
+        when(businessSystemDao.queryById(9L)).thenReturn(system);
+        when(dataSourceUnitDao.queryById(7L)).thenReturn(unit);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1);
+        when(dataSourceDao.updateById(any(DataSource.class))).thenAnswer(invocation -> {
+            DataSource update = invocation.getArgument(0);
+            source.setBusinessSystemId(update.getBusinessSystemId());
+            return true;
+        });
+
+        DataSource assigned = service.assignBusinessSystem(42L, 9L);
+
+        assertEquals(9L, assigned.getBusinessSystemId());
+        verify(dataSourceDao).updateById(any(DataSource.class));
+        verify(metadataBindingCommandService).markConfigurationChanged(42L);
+        verify(jobDefinitionDao, never()).existsByDatasourceId(42L);
+        verify(streamingJobDefinitionDao, never()).existsByDatasourceId(42L);
+    }
 }

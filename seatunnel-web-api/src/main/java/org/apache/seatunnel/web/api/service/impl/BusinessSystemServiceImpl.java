@@ -173,7 +173,7 @@ public class BusinessSystemServiceImpl implements BusinessSystemService {
     public List<OptionVO> options(Long unitId) {
         return listByUnitId(unitId).stream().map(system -> {
             OptionVO option = new OptionVO();
-            option.setValue(system.getId());
+            option.setValue(system.getId() == null ? null : String.valueOf(system.getId()));
             option.setLabel(system.getSystemName());
             option.setDescription(system.getSystemCode());
             return option;

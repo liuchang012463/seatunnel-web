@@ -180,6 +180,32 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public DataSource assignBusinessSystem(Long id, Long businessSystemId) {
+        validateId(id);
+
+        DataSource existing = getDataSourceOrThrow(id);
+        if (existing.getStatus() == DataSourceLifecycleStatus.REVOKED) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "A revoked data source cannot be assigned.");
+        }
+
+        BusinessSystemOwnership ownership = resolveActiveBusinessSystem(businessSystemId);
+        if (java.util.Objects.equals(existing.getBusinessSystemId(), ownership.system().getId())) {
+            return existing;
+        }
+
+        DataSource entity = new DataSource();
+        entity.setId(id);
+        entity.setBusinessSystemId(ownership.system().getId());
+        entity.setUpdateUserId(currentUserProvider.getCurrentUserId());
+        entity.initUpdate();
+        dataSourceDao.updateById(entity);
+        metadataBindingCommandService.markConfigurationChanged(id);
+        return getDataSourceOrThrow(id);
+    }
+
+    @Override
     public DataSource selectById(Long id) {
         validateId(id);
         return getDataSourceOrThrow(id);

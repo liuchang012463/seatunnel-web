@@ -70,6 +70,22 @@ public class DataSourceController {
     }
 
     /**
+     * Changes only the canonical business-system ownership of a data source.
+     * Connection parameters remain untouched, including for job-referenced
+     * legacy rows being backfilled during migration.
+     */
+    @PutMapping("/{id}/ownership")
+    @Operation(summary = "assignDataSourceBusinessSystem",
+            description = "Assign a data source to an active business system without changing connection parameters")
+    @ApiException(UPDATE_DATASOURCE_ERROR)
+    public Result<DataSource> assignBusinessSystem(
+            @PathVariable("id") Long id,
+            @RequestBody DataSourceDTO dto) {
+        return Result.buildSuc(dataSourceService.assignBusinessSystem(
+                id, dto == null ? null : dto.getBusinessSystemId()));
+    }
+
+    /**
      * select a data source by ID.
      */
     @GetMapping("/{id}")

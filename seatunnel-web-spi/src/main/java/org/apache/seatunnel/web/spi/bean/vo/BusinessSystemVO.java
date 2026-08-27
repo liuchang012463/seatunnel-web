@@ -1,6 +1,8 @@
 package org.apache.seatunnel.web.spi.bean.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.util.Date;
@@ -9,8 +11,11 @@ import java.util.Date;
 @Data
 public class BusinessSystemVO {
 
+    /** Snowflake IDs exceed JavaScript's safe integer range. */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long unitId;
 
     private String unitCode;

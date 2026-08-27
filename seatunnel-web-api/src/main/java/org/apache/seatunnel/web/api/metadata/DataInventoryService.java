@@ -493,7 +493,9 @@ public class DataInventoryService {
     }
 
     private static boolean isSupported(DbType dbType) {
-        return dbType == DbType.MYSQL || dbType == DbType.POSTGRE_SQL || dbType == DbType.DORIS;
+        return dbType == DbType.MYSQL || dbType == DbType.POSTGRE_SQL || dbType == DbType.JDBC
+                || dbType == DbType.DORIS || dbType == DbType.ORACLE
+                || dbType == DbType.DAMENG || dbType == DbType.KINGBASE;
     }
 
     private static String lower(String value) {

@@ -11,13 +11,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OpenMetadataRestClientTest {
 
@@ -153,10 +156,78 @@ class OpenMetadataRestClientTest {
     }
 
     @Test
+    void createsDatabaseServiceWithSdkCreateRequestWithoutEntityFields() throws Exception {
+        AtomicReference<String> method = new AtomicReference<>();
+        AtomicReference<String> body = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/services/databaseServices/name/diag-service", exchange ->
+                respond(exchange, 404, "{\"message\":\"not found\"}"));
+        server.createContext("/api/v1/services/databaseServices", exchange -> {
+            method.set(exchange.getRequestMethod());
+            body.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000010\","
+                    + "\"name\":\"diag-service\",\"fullyQualifiedName\":\"diag-service\","
+                    + "\"serviceType\":\"CustomDatabase\"}");
+        });
+        server.start();
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode request = mapper.readTree("{"
+                + "\"name\":\"diag-service\",\"displayName\":\"Diag\","
+                + "\"serviceType\":\"CustomDatabase\","
+                + "\"connection\":{\"config\":{\"type\":\"CustomDatabase\","
+                + "\"sourcePythonClass\":\"diag.Source\","
+                + "\"connectionOptions\":{\"hostPort\":\"127.0.0.1:1\","
+                + "\"username\":\"diag\",\"password\":\"diag\"}}}}");
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataEntity result = client.upsertDatabaseService(request);
+
+        assertEquals("00000000-0000-0000-0000-000000000010", result.id());
+        assertEquals("POST", method.get());
+        assertTrue(!body.get().contains("\"version\""));
+        assertTrue(!body.get().contains("\"deleted\""));
+    }
+
+    @Test
+    void createsIngestionPipelineWithSdkCreateRequestWithoutEntityFields() throws Exception {
+        AtomicReference<String> method = new AtomicReference<>();
+        AtomicReference<String> body = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/services/ingestionPipelines/name/diag-pipeline", exchange ->
+                respond(exchange, 404, "{\"message\":\"not found\"}"));
+        server.createContext("/api/v1/services/ingestionPipelines", exchange -> {
+            method.set(exchange.getRequestMethod());
+            body.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000011\","
+                    + "\"name\":\"diag-pipeline\",\"fullyQualifiedName\":\"diag-pipeline\","
+                    + "\"pipelineType\":\"metadata\"}");
+        });
+        server.start();
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode request = mapper.readTree("{"
+                + "\"name\":\"diag-pipeline\",\"displayName\":\"Diag pipeline\","
+                + "\"pipelineType\":\"metadata\","
+                + "\"sourceConfig\":{\"config\":{\"type\":\"DatabaseMetadata\"}},"
+                + "\"airflowConfig\":{\"pausePipeline\":true,\"scheduleInterval\":null}}");
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataEntity result = client.upsertIngestionPipeline(request);
+
+        assertEquals("00000000-0000-0000-0000-000000000011", result.id());
+        assertEquals("POST", method.get());
+        assertTrue(!body.get().contains("\"version\""));
+        assertTrue(!body.get().contains("\"deleted\""));
+    }
+
+    @Test
     void readsDatabaseServiceOwnershipFromThe11210DatabaseNameEndpoint() throws Exception {
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/databases/name/st_ds_42.orders", exchange -> respond(exchange, 200,
-                "{\"id\":\"db-id\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                "{\"id\":\"00000000-0000-0000-0000-000000000001\",\"fullyQualifiedName\":\"st_ds_42.orders\","
                         + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}"));
         server.start();
 
@@ -165,7 +236,7 @@ class OpenMetadataRestClientTest {
 
         Optional<OpenMetadataDatabase> result = client.findDatabase("st_ds_42.orders");
 
-        assertEquals("db-id", result.orElseThrow().id());
+        assertEquals("00000000-0000-0000-0000-000000000001", result.orElseThrow().id());
         assertEquals("st_ds_42", result.orElseThrow().serviceFullyQualifiedName());
     }
 
@@ -178,12 +249,12 @@ class OpenMetadataRestClientTest {
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/databases", exchange -> {
             databasesUri.set(exchange.getRequestURI().toString());
-            respond(exchange, 200, "{\"data\":[{\"id\":\"db-id\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+            respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"fullyQualifiedName\":\"st_ds_42.orders\","
                     + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}]}");
         });
         server.createContext("/api/v1/databaseSchemas", exchange -> {
             schemasUri.set(exchange.getRequestURI().toString());
-            respond(exchange, 200, "{\"data\":[{\"id\":\"schema-id\",\"name\":\"public\","
+            respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000003\",\"name\":\"public\","
                     + "\"fullyQualifiedName\":\"st_ds_42.orders.public\","
                     + "\"database\":{\"fullyQualifiedName\":\"st_ds_42.orders\"},"
                     + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}]}");
@@ -192,7 +263,7 @@ class OpenMetadataRestClientTest {
             String path = exchange.getRequestURI().getPath();
             if (path.endsWith("/table-id")) {
                 tableUri.set(exchange.getRequestURI().toString());
-                respond(exchange, 200, "{\"id\":\"table-id\",\"name\":\"orders\","
+                respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000004\",\"name\":\"orders\","
                         + "\"fullyQualifiedName\":\"st_ds_42.orders.public.orders\","
                         + "\"tableType\":\"Regular\",\"description\":\"Orders\","
                         + "\"databaseSchema\":{\"fullyQualifiedName\":\"st_ds_42.orders.public\"},"
@@ -205,7 +276,7 @@ class OpenMetadataRestClientTest {
                         + "\"columns\":[\"id\"]}]} ");
             } else {
                 tablesUri.set(exchange.getRequestURI().toString());
-                respond(exchange, 200, "{\"data\":[{\"id\":\"table-id\",\"name\":\"orders\","
+                respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000004\",\"name\":\"orders\","
                         + "\"fullyQualifiedName\":\"st_ds_42.orders.public.orders\","
                         + "\"tableType\":\"Regular\",\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
                         + "\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\","
@@ -224,19 +295,22 @@ class OpenMetadataRestClientTest {
         List<OpenMetadataTable> tables = client.listTables("st_ds_42.orders.public", true, 20);
         OpenMetadataTable table = client.getTable("table-id");
 
-        assertEquals("db-id", databases.get(0).id());
-        assertEquals("schema-id", schemas.get(0).getId());
+        assertEquals("00000000-0000-0000-0000-000000000001", databases.get(0).id());
+        assertEquals("00000000-0000-0000-0000-000000000003", schemas.get(0).getId());
         assertEquals("st_ds_42.orders", schemas.get(0).getDatabaseFullyQualifiedName());
-        assertEquals("table-id", tables.get(0).getId());
+        assertEquals("00000000-0000-0000-0000-000000000004", tables.get(0).getId());
         assertEquals("PRIMARY_KEY", tables.get(0).getColumns().get(0).getConstraint());
         assertEquals("orders", table.getName());
         assertEquals("st_ds_42", table.getServiceFullyQualifiedName());
-        assertEquals("/api/v1/databases?service=st_ds_42&include=non-deleted&limit=20", databasesUri.get());
-        assertEquals("/api/v1/databaseSchemas?database=st_ds_42.orders&limit=20&include=non-deleted", schemasUri.get());
-        assertEquals("/api/v1/tables?databaseSchema=st_ds_42.orders.public&fields=columns,tableConstraints&include=non-deleted&limit=20", tablesUri.get());
-        assertEquals(
-                "/api/v1/tables/table-id?fields=columns,tableConstraints&include=non-deleted",
-                tableUri.get());
+        assertQuery("/api/v1/databases", databasesUri.get(),
+                "service=st_ds_42", "include=non-deleted", "limit=20");
+        assertQuery("/api/v1/databaseSchemas", schemasUri.get(),
+                "database=st_ds_42.orders", "limit=20", "include=non-deleted");
+        assertQuery("/api/v1/tables", tablesUri.get(),
+                "databaseSchema=st_ds_42.orders.public", "fields=columns,tableConstraints",
+                "include=non-deleted", "limit=20");
+        assertQuery("/api/v1/tables/table-id", tableUri.get(),
+                "fields=columns,tableConstraints", "include=non-deleted");
     }
 
     @Test
@@ -247,12 +321,12 @@ class OpenMetadataRestClientTest {
         server.createContext("/api/v1/databases", exchange -> {
             if (exchange.getRequestURI().getQuery().contains("after=")) {
                 secondUri.set(exchange.getRequestURI().toString());
-                respond(exchange, 200, "{\"data\":[{\"id\":\"db-2\",\"fullyQualifiedName\":\"st_ds_42.archive\","
+                respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000002\",\"fullyQualifiedName\":\"st_ds_42.archive\","
                         + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}],"
                         + "\"paging\":{\"total\":2}}");
             } else {
                 firstUri.set(exchange.getRequestURI().toString());
-                respond(exchange, 200, "{\"data\":[{\"id\":\"db-1\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"fullyQualifiedName\":\"st_ds_42.orders\","
                         + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}],"
                         + "\"paging\":{\"total\":2,\"after\":\"next token\"}}");
             }
@@ -266,9 +340,10 @@ class OpenMetadataRestClientTest {
 
         assertEquals(2L, first.total());
         assertEquals(2L, second.total());
-        assertEquals("/api/v1/databases?service=st_ds_42&include=non-deleted&limit=1000", firstUri.get());
-        assertEquals("/api/v1/databases?service=st_ds_42&include=non-deleted&limit=1000&after=next%20token",
-                secondUri.get());
+        assertQuery("/api/v1/databases", firstUri.get(),
+                "service=st_ds_42", "include=non-deleted", "limit=1000");
+        assertQuery("/api/v1/databases", secondUri.get(),
+                "service=st_ds_42", "include=non-deleted", "limit=1000", "after=next token");
     }
 
     @Test
@@ -340,6 +415,16 @@ class OpenMetadataRestClientTest {
         properties.setBaseUrl(baseUrl);
         properties.setToken("test-jwt");
         return properties;
+    }
+
+    private static void assertQuery(String expectedPath, String actualUri, String... expectedParams) {
+        URI uri = URI.create(actualUri);
+        assertEquals(expectedPath, uri.getPath());
+        List<String> params = Arrays.asList(uri.getQuery().split("&"));
+        for (String expectedParam : expectedParams) {
+            assertTrue(params.contains(expectedParam),
+                    () -> "Missing query parameter " + expectedParam + " in " + actualUri);
+        }
     }
 
     private static void respond(HttpExchange exchange, int status, String body) throws IOException {
