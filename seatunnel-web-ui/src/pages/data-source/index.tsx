@@ -3,17 +3,33 @@ import { history, useIntl } from '@umijs/max';
 import {
   ApiOutlined,
   ApartmentOutlined,
+  AppstoreOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
   EditOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
-import { Button, Drawer, Empty, message, Modal, Pagination, Space, Spin, Table, Tag, Tooltip } from 'antd';
+import {
+  Button,
+  Drawer,
+  Empty,
+  message,
+  Modal,
+  Pagination,
+  Segmented,
+  Space,
+  Spin,
+  Table,
+  Tag,
+  Tooltip,
+} from 'antd';
 import type { TableColumnsType } from 'antd';
 import { motion } from 'framer-motion';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AddOrEditDataSourceModal from './components/AddOrEditDataSourceModal';
+import DataSourceCard from './components/DataSourceCard';
 import EmptyState from './components/EmptyState';
 import PageHeader from './components/PageHeader';
 import SearchBar from './components/SearchBar';
@@ -47,6 +63,8 @@ import DataSourceStatus from './components/DataSourceStatus';
 
 const { confirm } = Modal;
 
+type DataSourceViewMode = 'card' | 'list';
+
 const DataSourcePage: React.FC = () => {
   const intl = useIntl();
   const modalRef = useRef<DataSourceModalRef>(null);
@@ -61,6 +79,7 @@ const DataSourcePage: React.FC = () => {
   const [businessSystemOptions, setBusinessSystemOptions] = useState<BusinessSystemOption[]>([]);
   const [selectedBusinessSystem, setSelectedBusinessSystem] = useState<string>();
   const [selectedStatus, setSelectedStatus] = useState<DataSourceLifecycleStatus>();
+  const [viewMode, setViewMode] = useState<DataSourceViewMode>('card');
   const [masterDataOpen, setMasterDataOpen] = useState(false);
 
   const refreshUnitOptions = async () => {
@@ -513,19 +532,67 @@ const DataSourcePage: React.FC = () => {
                       <div className="datasource-catalog-panel__heading">
                         <div>
                           <h2 className="datasource-category-title">数据源清单</h2>
-                          <p>集中查看连接、归属和探查状态；操作入口保持在同一行，减少页面跳转。</p>
+                          <p>集中查看连接、归属和探查状态；支持在卡片和列表视图之间切换。</p>
                         </div>
-                        <span className="datasource-category-count">{pagination.total}</span>
+                        <div className="datasource-catalog-panel__controls">
+                          <span className="datasource-category-count">{pagination.total}</span>
+                          <Segmented
+                            aria-label="数据源视图"
+                            className="datasource-view-switcher"
+                            value={viewMode}
+                            onChange={(value) => setViewMode(value as DataSourceViewMode)}
+                            options={[
+                              {
+                                label: (
+                                  <span className="datasource-view-option">
+                                    <AppstoreOutlined />
+                                    卡片
+                                  </span>
+                                ),
+                                value: 'card',
+                              },
+                              {
+                                label: (
+                                  <span className="datasource-view-option">
+                                    <UnorderedListOutlined />
+                                    列表
+                                  </span>
+                                ),
+                                value: 'list',
+                              },
+                            ]}
+                          />
+                        </div>
                       </div>
-                      <Table<DataSourceRecord>
-                        rowKey={(record) => String(record.id || record.name)}
-                        className="datasource-catalog-table"
-                        columns={dataSourceColumns}
-                        dataSource={dataSourceList}
-                        pagination={false}
-                        scroll={{ x: 1320 }}
-                        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
-                      />
+                      {viewMode === 'card' ? (
+                        <div className="datasource-card-grid">
+                          {dataSourceList.map((record, index) => (
+                            <DataSourceCard
+                              key={String(record.id || record.name || `data-source-${index}`)}
+                              record={record}
+                              onEdit={handleEdit}
+                              onDelete={(currentRecord) => {
+                                void handleDelete(currentRecord);
+                              }}
+                              onTestConnection={(currentRecord) => {
+                                void handleTestConnection(currentRecord);
+                              }}
+                              onViewExploration={handleViewExploration}
+                              onStatusChange={handleStatusChange}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <Table<DataSourceRecord>
+                          rowKey={(record) => String(record.id || record.name)}
+                          className="datasource-catalog-table"
+                          columns={dataSourceColumns}
+                          dataSource={dataSourceList}
+                          pagination={false}
+                          scroll={{ x: 1320 }}
+                          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
+                        />
+                      )}
                     </section>
                   ) : (
                     !loading && <EmptyState onCreate={handleCreate} />

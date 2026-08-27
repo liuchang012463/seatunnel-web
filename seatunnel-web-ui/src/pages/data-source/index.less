@@ -392,6 +392,32 @@
   }
 }
 
+.datasource-catalog-panel__controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.datasource-view-switcher {
+  .datasource-view-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.datasource-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  padding: 16px;
+
+  > .datasource-card {
+    height: 100%;
+  }
+}
+
 .datasource-catalog-table {
   .ant-table,
   .ant-table-container {
@@ -934,6 +960,21 @@
 }
 
 @media (max-width: 768px) {
+  .datasource-catalog-panel__heading {
+    flex-direction: column;
+  }
+
+  .datasource-catalog-panel__controls {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .datasource-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+
   .datasource-search-control,
   .datasource-filter-select {
     width: 100%;
