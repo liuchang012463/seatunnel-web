@@ -35,8 +35,11 @@ PATH=/opt/jdk-21.0.11+10/bin:$PATH \
 
 ```bash
 DEPLOY=/mnt/lc/seatunnel-web-docker-new
-rm -rf "$DEPLOY/dist/seatunnel-web-1.0.0"
 mkdir -p "$DEPLOY/dist"
+if [ -d "$DEPLOY/dist/seatunnel-web-1.0.0" ]; then
+  mv "$DEPLOY/dist/seatunnel-web-1.0.0" \
+    "$DEPLOY/dist/seatunnel-web-1.0.0.backup-$(date +%Y%m%d%H%M%S)"
+fi
 tar -xzf seatunnel-web-dist/target/seatunnel-web-1.0.0.tar.gz -C "$DEPLOY/dist"
 chmod -R a+rX "$DEPLOY/dist/seatunnel-web-1.0.0"
 cd "$DEPLOY"
