@@ -65,6 +65,10 @@ docker-compose ps
   Airflow 或引用 `1.13.x` 路径/Schema。
 - 探查为用户触发的一次性 metadata/profile 操作，不配置定时调度；Server 和 managed
   ingestion 版本不允许自行升级或切换。
+- `CustomDatabase` 的 1.12.10 profiler 扩展位于
+  `openmetadata-ingestion-extension/customdatabase`，由
+  `/mnt/lc/open_metadata/docker-compose.yml` 只读挂载到 ingestion 容器的
+  `metadata/ingestion/source/database/customdatabase`；保持镜像和 Python 包版本不变。
 - Kingbase 远端通过 SSH 隧道提供给容器；隧道断开时先恢复隧道，再重试数据源探查。
   本机隧道示例：`ssh -fNT -o ExitOnForwardFailure=yes -L 0.0.0.0:25432:127.0.0.1:54321 root@192.168.100.91`；
   部署 `.env` 使用 Docker 宿主机网关地址和 `25432`，重启前确认端口仍在监听。
