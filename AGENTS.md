@@ -58,6 +58,7 @@ docker-compose ps
 - `.vscode/launch.json` 使用主类
   `org.apache.seatunnel.web.api.SeaTunnelWebApplication`、项目
   `seatunnel-web-api`，并从 `${workspaceFolder}/.env` 读取变量；Flyway repair 默认关闭。
+- Java 调试器按 dotenv 语法解析 `.env`；本地数据库密码含 `#` 或 `$` 时必须用引号包裹。
 - `.vscode/settings.json` 使用 `/opt/jdk-21.0.11+10`、JavaSE-21、`./mvnw` 和
   `/home/haruka/.m2/settings.xml`，终端自动注入同一 JDK，Maven 视图为 hierarchical。
 
