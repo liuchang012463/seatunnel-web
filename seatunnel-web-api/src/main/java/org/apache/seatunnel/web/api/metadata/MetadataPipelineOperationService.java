@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPage;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPipelineRun;
+import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
 import org.apache.seatunnel.web.common.enums.MetadataRunStatus;
@@ -24,6 +25,7 @@ import org.apache.seatunnel.web.spi.bean.vo.MetadataRunStateVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -50,18 +52,33 @@ public class MetadataPipelineOperationService {
     private final DataSourceDao dataSourceDao;
     private final MetadataConnectorRegistry connectorRegistry;
     private final OpenMetadataClient openMetadataClient;
+    private final MetadataBindingCommandService metadataBindingCommandService;
 
+    @Autowired
     public MetadataPipelineOperationService(
             OpenMetadataProperties openMetadataProperties,
             MetadataBindingDao metadataBindingDao,
             DataSourceDao dataSourceDao,
             MetadataConnectorRegistry connectorRegistry,
-            OpenMetadataClient openMetadataClient) {
+            OpenMetadataClient openMetadataClient,
+            MetadataBindingCommandService metadataBindingCommandService) {
         this.openMetadataProperties = openMetadataProperties;
         this.metadataBindingDao = metadataBindingDao;
         this.dataSourceDao = dataSourceDao;
         this.connectorRegistry = connectorRegistry;
         this.openMetadataClient = openMetadataClient;
+        this.metadataBindingCommandService = metadataBindingCommandService;
+    }
+
+    /**
+     * Requests a desired-state reconciliation without changing the local data
+     * source or any SeaTunnel job reference. This is useful after a connector
+     * patch or an infrastructure-only metadata endpoint change.
+     */
+    public boolean reconcileMetadata(Long dataSourceId) {
+        requireActiveDataSource(dataSourceId);
+        metadataBindingCommandService.markConfigurationChanged(dataSourceId);
+        return true;
     }
 
     public boolean triggerScan(Long dataSourceId) {

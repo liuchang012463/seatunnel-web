@@ -217,6 +217,12 @@ public class DataSourceController {
         return Result.buildSuc(metadataPipelineOperationService.retryMetadataSync(id));
     }
 
+    @PostMapping("/{id}/metadata-sync/reconcile")
+    @Operation(summary = "reconcileDataSourceMetadata", description = "Request an OpenMetadata desired-state reconciliation")
+    public Result<Boolean> reconcileMetadata(@PathVariable("id") Long id) {
+        return Result.buildSuc(metadataPipelineOperationService.reconcileMetadata(id));
+    }
+
     /**
      * Tests connection with provided parameters without saving.
      */

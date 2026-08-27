@@ -25,4 +25,10 @@ public class OpenMetadataProperties {
 
     /** Proven Sprint 0 patch range, recorded so deployment cannot silently drift. */
     private String expectedIngestionPatch = "1.12.10.0";
+
+    /** Optional host used only by the Kingbase metadata connector over an SSH tunnel. */
+    private String kingbaseTunnelHost;
+
+    /** Optional port used only by the Kingbase metadata connector over an SSH tunnel. */
+    private int kingbaseTunnelPort;
 }

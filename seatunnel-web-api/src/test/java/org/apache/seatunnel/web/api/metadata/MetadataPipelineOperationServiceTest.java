@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
+import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
 import org.apache.seatunnel.web.common.enums.MetadataRunStatus;
@@ -45,6 +46,7 @@ class MetadataPipelineOperationServiceTest {
     @Mock private MetadataConnectorRegistry connectorRegistry;
     @Mock private MetadataConnectorAdapter connectorAdapter;
     @Mock private OpenMetadataClient openMetadataClient;
+    @Mock private MetadataBindingCommandService metadataBindingCommandService;
 
     @Test
     void manualScanReservesTheExistingBindingAndTriggersOnlyOpenMetadata() {
@@ -62,6 +64,15 @@ class MetadataPipelineOperationServiceTest {
         verify(bindingDao).updateIfVersion(saved.capture(), eq(1L));
         assertEquals(1L, saved.getValue().getMetadataTriggeredVersion());
         assertEquals(MetadataRunStatus.QUEUED, saved.getValue().getScanStatus());
+    }
+
+    @Test
+    void metadataReconcileOnlyMarksTheExistingBindingPending() {
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+
+        service().reconcileMetadata(42L);
+
+        verify(metadataBindingCommandService).markConfigurationChanged(42L);
     }
 
     @Test
@@ -120,7 +131,12 @@ class MetadataPipelineOperationServiceTest {
         OpenMetadataProperties properties = new OpenMetadataProperties();
         properties.setEnabled(true);
         return new MetadataPipelineOperationService(
-                properties, bindingDao, dataSourceDao, connectorRegistry, openMetadataClient);
+                properties,
+                bindingDao,
+                dataSourceDao,
+                connectorRegistry,
+                openMetadataClient,
+                metadataBindingCommandService);
     }
 
     private static MetadataSourceBinding binding(Long version) {

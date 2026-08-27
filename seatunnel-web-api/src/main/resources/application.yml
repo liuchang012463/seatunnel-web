@@ -159,6 +159,8 @@ metadata:
     read-timeout-ms: ${METADATA_OPENMETADATA_READ_TIMEOUT_MS:10000}
     expected-server-version: 1.12.10
     expected-ingestion-patch: 1.12.10.0
+    kingbase-tunnel-host: ${METADATA_OPENMETADATA_KINGBASE_TUNNEL_HOST:}
+    kingbase-tunnel-port: ${METADATA_OPENMETADATA_KINGBASE_TUNNEL_PORT:0}
   reconcile:
     interval-ms: ${METADATA_RECONCILE_INTERVAL_MS:20000}
     batch-size: ${METADATA_RECONCILE_BATCH_SIZE:20}
