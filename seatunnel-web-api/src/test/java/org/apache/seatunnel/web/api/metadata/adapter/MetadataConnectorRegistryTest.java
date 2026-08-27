@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MetadataConnectorRegistryTest {
 
@@ -106,7 +107,8 @@ class MetadataConnectorRegistryTest {
     void emitsVerifiedCustomDatabaseConnectionForDameng() {
         DataSource dataSource = source(11L, DbType.DAMENG,
                 "{\"url\":\"jdbc:dm://dm.example:5236\","
-                        + "\"user\":\"SYSDBA\",\"password\":\"secret\",\"database\":\"DAMENG\"}");
+                        + "\"user\":\"SYSDBA\",\"password\":\"secret\","
+                        + "\"database\":\"DAMENG\",\"schemaName\":\"TEST\"}");
 
         JsonNode service = registry.require(DbType.DAMENG)
                 .databaseServiceRequest(dataSource, "st_ds_11");
@@ -115,8 +117,9 @@ class MetadataConnectorRegistryTest {
                 service.at("/connection/config/sourcePythonClass").asText());
         assertEquals("dm.example:5236",
                 service.at("/connection/config/connectionOptions/hostPort").asText());
-        assertEquals("DAMENG",
-                service.at("/connection/config/connectionOptions/database").asText());
+        assertTrue(service.at("/connection/config/connectionOptions/database").isMissingNode());
+        assertEquals("TEST",
+                service.at("/connection/config/connectionOptions/schema").asText());
     }
 
     @Test

@@ -16,4 +16,11 @@ public class DamengMetadataConnectorAdapter extends CustomDatabaseMetadataConnec
     protected String sourcePythonClass() {
         return "dameng_connector.dameng_source.DamengSource";
     }
+
+    @Override
+    protected boolean includeDatabase() {
+        // Dameng's 1.12.10 custom connector treats the database option as a
+        // JDBC schema and rejects the conventional DAMENG URL segment.
+        return false;
+    }
 }

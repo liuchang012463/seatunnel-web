@@ -36,7 +36,7 @@ abstract class CustomDatabaseMetadataConnectorAdapter extends AbstractDatabaseMe
         options.put("hostPort", source.hostPort());
         options.put("username", source.username());
         options.put("password", source.password());
-        if (!isBlank(source.database())) {
+        if (includeDatabase() && !isBlank(source.database())) {
             options.put("database", source.database());
         }
         String schema = firstNonBlank(
@@ -50,6 +50,15 @@ abstract class CustomDatabaseMetadataConnectorAdapter extends AbstractDatabaseMe
         // flag lets the profiler workflow treat this source as profileable.
         config.put("supportsProfiler", true);
         return root;
+    }
+
+    /**
+     * CustomDatabase connectors may use the JDBC path as a schema rather than
+     * a database/catalog.  Subclasses can opt out of emitting the database
+     * option while keeping the common connection shape.
+     */
+    protected boolean includeDatabase() {
+        return true;
     }
 
     private static String firstNonBlank(String first, String second) {
