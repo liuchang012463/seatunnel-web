@@ -1,5 +1,5 @@
 import {
-  genericAssetTerm,
+  genericMetadataTerm,
   isGenericExplorationDbType,
   normalizeExplorationDbType,
 } from './GenericDataExplorationDrawer';
@@ -12,11 +12,12 @@ describe('generic data exploration routing', () => {
     expect(isGenericExplorationDbType('JDBC')).toBe(false);
   });
 
-  it('uses connector-specific asset terminology', () => {
-    expect(genericAssetTerm('KAFKA')).toBe('Kafka 主题');
-    expect(genericAssetTerm('ELASTICSEARCH')).toBe('ES 索引');
-    expect(genericAssetTerm('HTTP')).toBe('HTTP 接口');
-    expect(genericAssetTerm('S3')).toBe('S3 对象');
-    expect(genericAssetTerm('FTP')).toBe('文件');
+  it('uses connector-specific resource terminology', () => {
+    expect(genericMetadataTerm('KAFKA')).toBe('Kafka 主题');
+    expect(genericMetadataTerm('ELASTICSEARCH')).toBe('ES 索引');
+    expect(genericMetadataTerm('HTTP')).toBe('HTTP 接口');
+    expect(genericMetadataTerm('S3')).toBe('S3 对象');
+    expect(genericMetadataTerm('FTP')).toBe('文件');
+    expect(genericMetadataTerm('UNKNOWN')).toBe('资源');
   });
 });

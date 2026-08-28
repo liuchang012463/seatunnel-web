@@ -1,4 +1,4 @@
-/* The drawer is a self-contained OpenMetadata-inspired asset workspace.
+/* The drawer is a self-contained OpenMetadata-inspired metadata workspace.
    Keep these rules local to the source-page drawer so the overview/results
    pages can evolve independently. */
 .exploration-drawer {
@@ -12,6 +12,48 @@
   --exploration-text-secondary: var(--st-color-text-secondary, #d5d5d5);
   --exploration-text-muted: #8799a3;
   --exploration-accent: var(--st-color-accent, #4dd2ff);
+
+  &.exploration-drawer--inline {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--exploration-surface);
+    border: 1px solid var(--exploration-line);
+    border-radius: 8px;
+
+    .exploration-drawer__inline-header {
+      display: flex;
+      min-width: 0;
+      min-height: 72px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 24px;
+      background: var(--exploration-surface);
+      border-bottom: 1px solid var(--exploration-line);
+
+      .exploration-drawer__title {
+        flex: 1 1 auto;
+      }
+
+      > .ant-btn {
+        flex: 0 0 auto;
+        color: var(--exploration-accent);
+        font-size: 12px;
+
+        &:hover {
+          color: var(--exploration-text);
+          background: rgb(77 210 255 / 10%);
+        }
+      }
+    }
+
+    .exploration-drawer__workspace {
+      height: clamp(540px, calc(100vh - 250px), 780px);
+      min-height: 540px;
+    }
+  }
 
   .ant-drawer-content,
   .ant-drawer-header,
@@ -132,7 +174,7 @@
 
   .exploration-drawer__workspace {
     display: grid;
-    grid-template-columns: 276px minmax(0, 1fr) 286px;
+    grid-template-columns: 300px minmax(0, 1fr) 286px;
     width: 100%;
     height: clamp(520px, calc(100vh - 145px), 780px);
     min-height: 0;
@@ -161,7 +203,6 @@
   }
 
   .exploration-drawer__nav-context,
-  .exploration-drawer__topology,
   .exploration-drawer__tables,
   .exploration-drawer__inspector-header {
     padding: 16px 16px 14px;
@@ -279,72 +320,6 @@
       font-size: 13px;
       font-weight: 600;
       line-height: 18px;
-    }
-  }
-
-  .exploration-drawer__section-note {
-    padding-top: 3px;
-    color: var(--exploration-text-muted);
-    font-size: 10px;
-    white-space: nowrap;
-  }
-
-  .exploration-drawer__topology {
-    display: flex;
-    min-height: 0;
-    max-height: 198px;
-    flex: 0 1 198px;
-    flex-direction: column;
-    gap: 9px;
-  }
-
-  .exploration-drawer__topology-scroll {
-    min-height: 0;
-    overflow: auto;
-    padding-right: 2px;
-
-    .ant-spin-nested-loading,
-    .ant-spin-container {
-      height: auto;
-      min-height: 0;
-    }
-
-    .ant-tree {
-      min-width: max-content;
-      color: var(--exploration-text-secondary);
-      background: transparent;
-      font-size: 11px;
-    }
-
-    .ant-tree-treenode {
-      width: 100%;
-      padding: 0;
-    }
-
-    .ant-tree-node-content-wrapper {
-      min-height: 27px;
-      padding: 5px 6px;
-      border-radius: 4px;
-
-      &:hover,
-      &.ant-tree-node-selected {
-        color: var(--exploration-text);
-        background: rgb(77 210 255 / 10%);
-      }
-    }
-
-    .ant-tree-switcher {
-      width: 18px;
-      color: var(--exploration-text-muted);
-    }
-
-    .ant-empty {
-      margin: 10px 0;
-
-      .ant-empty-description {
-        color: var(--exploration-text-muted);
-        font-size: 11px;
-      }
     }
   }
 

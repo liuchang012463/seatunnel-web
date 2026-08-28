@@ -8,6 +8,48 @@
   --generic-surface-subtle: var(--st-color-bg-control);
   --generic-primary: var(--st-color-accent);
 
+  &.generic-exploration--inline {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--generic-surface);
+    border: 1px solid var(--generic-line);
+    border-radius: 8px;
+
+    .generic-exploration__inline-header {
+      display: flex;
+      min-width: 0;
+      min-height: 64px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 20px;
+      background: var(--generic-surface);
+      border-bottom: 1px solid var(--generic-line);
+
+      .generic-exploration__title {
+        flex: 1 1 auto;
+      }
+
+      > .ant-btn {
+        flex: 0 0 auto;
+        color: var(--generic-primary);
+        font-size: 12px;
+
+        &:hover {
+          color: var(--generic-text);
+          background: var(--st-color-hover);
+        }
+      }
+    }
+
+    .generic-exploration__workspace {
+      height: clamp(540px, calc(100vh - 250px), 780px);
+      min-height: 540px;
+    }
+  }
+
   .ant-drawer-content,
   .ant-drawer-header,
   .ant-drawer-body {
@@ -89,7 +131,7 @@
 
   .generic-exploration__workspace {
     display: grid;
-    grid-template-columns: 268px minmax(0, 1fr) 282px;
+    grid-template-columns: 300px minmax(0, 1fr) 282px;
     width: 100%;
     height: clamp(520px, calc(100vh - 130px), 820px);
     min-height: 0;
@@ -706,7 +748,7 @@
 
   @media (max-width: 1000px) {
     .generic-exploration__workspace {
-      grid-template-columns: 230px minmax(0, 1fr) 240px;
+      grid-template-columns: 260px minmax(0, 1fr) 240px;
     }
 
     .generic-exploration__main {

@@ -25,9 +25,8 @@ import {
   Table,
   Tabs,
   Tag,
-  Tree,
 } from 'antd';
-import type { TableColumnsType, TreeDataNode } from 'antd';
+import type { TableColumnsType } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   fetchDataExplorationDatabases,
@@ -36,8 +35,6 @@ import {
   fetchDataExplorationSchemas,
   fetchDataExplorationTable,
   fetchDataExplorationTables,
-  fetchDataSourceTopologyChildren,
-  fetchDataSourceTopologyTree,
   previewDataExplorationTable,
   startDataExplorationMetadataCompletion,
   updateDataExplorationMetadata,
@@ -55,8 +52,6 @@ import type {
   DataExplorationTableDetail,
   DataExplorationTablePage,
   ExplorationQualityStatus,
-  DataSourceTopologyNode,
-  DataSourceTopologyNodeType,
 } from '../types';
 import DataExplorationErDiagram from '@/pages/data-exploration/components/DataExplorationErDiagram';
 import GenericDataExplorationDrawer, {
@@ -70,6 +65,8 @@ export interface DataExplorationDrawerProps {
   /** Explicit connector type used to route non-JDBC sources to their catalog workspace. */
   dbType?: string;
   open: boolean;
+  /** Render the exploration workspace directly in the page instead of an Ant Drawer. */
+  inline?: boolean;
   onClose: () => void;
 }
 
@@ -121,40 +118,10 @@ function completionColor(status?: string) {
   return 'default';
 }
 
-function topologyKey(node: DataSourceTopologyNode) {
-  return `${node.nodeType}:${node.id}`;
-}
-
-function topologyTreeData(nodes: DataSourceTopologyNode[]): TreeDataNode[] {
-  return nodes.map((node) => ({
-    key: topologyKey(node),
-    title: node.name || node.id,
-    isLeaf: node.nodeType === 'TABLE',
-    children: node.children && node.children.length > 0
-      ? topologyTreeData(node.children)
-      : undefined,
-  }));
-}
-
-function replaceTopologyChildren(
-  nodes: DataSourceTopologyNode[],
-  key: string,
-  children: DataSourceTopologyNode[],
-): DataSourceTopologyNode[] {
-  return nodes.map((node) => {
-    if (topologyKey(node) === key) {
-      return { ...node, children };
-    }
-    if (node.children && node.children.length > 0) {
-      return { ...node, children: replaceTopologyChildren(node.children, key, children) };
-    }
-    return node;
-  });
-}
-
 const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   dataSourceId,
   dataSourceName,
+  inline = false,
   open,
   onClose,
 }) => {
@@ -175,8 +142,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('columns');
   const [tableSearch, setTableSearch] = useState('');
-  const [topologyNodes, setTopologyNodes] = useState<DataSourceTopologyNode[]>([]);
-  const [topologyLoading, setTopologyLoading] = useState(false);
   const [pendingSchemaFqn, setPendingSchemaFqn] = useState<string>();
   const [erOpen, setErOpen] = useState(false);
   const [completionJob, setCompletionJob] = useState<DataExplorationMetadataJob>();
@@ -211,33 +176,10 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setPreview(undefined);
     setTableSearch('');
     setActiveTab('columns');
-    setTopologyNodes([]);
     setPendingSchemaFqn(undefined);
     setErOpen(false);
     setCompletionJob(undefined);
     setMetadataEditorOpen(false);
-
-    setTopologyLoading(true);
-    fetchDataSourceTopologyTree({ dataSourceId })
-      .then((response) => {
-        if (!disposed) {
-          if (response.code !== 0) {
-            message.warning(response.message || '拓扑暂不可用');
-          } else {
-            setTopologyNodes(response.data || []);
-          }
-        }
-      })
-      .catch((error: any) => {
-        if (!disposed) {
-          message.warning(error?.response?.data?.message || '拓扑暂不可用');
-        }
-      })
-      .finally(() => {
-        if (!disposed) {
-          setTopologyLoading(false);
-        }
-      });
 
     fetchDataExplorationDatabases(dataSourceId)
       .then((response) => {
@@ -603,62 +545,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       });
   }, [preview]);
 
-  const onTopologySelect = (keys: React.Key[]) => {
-    if (keys.length === 0) {
-      return;
-    }
-    const key = String(keys[0]);
-    const separator = key.indexOf(':');
-    if (separator <= 0) {
-      return;
-    }
-    const nodeType = key.substring(0, separator) as DataSourceTopologyNodeType;
-    const nodeId = key.substring(separator + 1);
-    if (nodeType === 'DATABASE') {
-      setPendingSchemaFqn(undefined);
-      setDatabaseFqn(nodeId);
-    } else if (nodeType === 'SCHEMA') {
-      const split = nodeId.indexOf('|');
-      if (split <= 0) {
-        return;
-      }
-      const nextDatabaseFqn = nodeId.substring(0, split);
-      const nextSchemaFqn = nodeId.substring(split + 1);
-      if (nextDatabaseFqn === databaseFqn) {
-        setSchemaFqn(nextSchemaFqn);
-      } else {
-        setPendingSchemaFqn(nextSchemaFqn);
-        setDatabaseFqn(nextDatabaseFqn);
-      }
-    } else if (nodeType === 'TABLE') {
-      setSelectedTableId(nodeId);
-      setActiveTab('columns');
-    }
-  };
-
-  const loadTopologyData = async (node: TreeDataNode) => {
-    const key = String(node.key);
-    const separator = key.indexOf(':');
-    if (separator <= 0) {
-      return;
-    }
-    const nodeType = key.substring(0, separator) as DataSourceTopologyNodeType;
-    if (nodeType === 'TABLE' || node.children) {
-      return;
-    }
-    const nodeId = key.substring(separator + 1);
-    try {
-      const response = await fetchDataSourceTopologyChildren(nodeType, nodeId);
-      if (response.code !== 0) {
-        message.warning(response.message || '拓扑节点暂不可用');
-        return;
-      }
-      setTopologyNodes((current) => replaceTopologyChildren(current, key, response.data || []));
-    } catch (error: any) {
-      message.warning(error?.response?.data?.message || '拓扑节点暂不可用');
-    }
-  };
-
   const constraints = tableDetail?.tableConstraints || [];
   const tables = tablePage?.records || [];
   const visibleTables = useMemo(() => {
@@ -679,34 +565,28 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     .filter(Boolean)
     .join(' / ');
 
-  return (
-    <>
-      <Drawer
-        className="exploration-drawer"
-        open={open}
-        onClose={() => {
-          setErOpen(false);
-          onClose();
-        }}
-        width="min(1500px, calc(100vw - 80px))"
-        destroyOnHidden
-        title={(
-          <div className="exploration-drawer__title">
-            <div className="exploration-drawer__title-icon"><ApartmentOutlined /></div>
-            <div className="exploration-drawer__title-copy">
-              <div className="exploration-drawer__title-name">数据探查</div>
-              <div className="exploration-drawer__title-path" title={sourcePath}>
-                {sourcePath || '正在连接数据源'}
-              </div>
-            </div>
-            <div className="exploration-drawer__title-status">
-              <span className="exploration-status-dot" />
-              OpenMetadata
-            </div>
-          </div>
-        )}
-        styles={{ body: { padding: 0 } }}
-      >
+  const explorationTitle = (
+    <div className="exploration-drawer__title">
+      <div className="exploration-drawer__title-icon"><ApartmentOutlined /></div>
+      <div className="exploration-drawer__title-copy">
+        <div className="exploration-drawer__title-name">数据探查</div>
+        <div className="exploration-drawer__title-path" title={sourcePath}>
+          {sourcePath || '正在连接数据源'}
+        </div>
+      </div>
+      <div className="exploration-drawer__title-status">
+        <span className="exploration-status-dot" />
+        OpenMetadata
+      </div>
+    </div>
+  );
+
+  const closeExploration = () => {
+    setErOpen(false);
+    onClose();
+  };
+
+  const workspace = (
         <Spin spinning={loading} className="exploration-drawer__spin">
           <div className="exploration-drawer__workspace">
             <aside className="exploration-drawer__nav">
@@ -751,33 +631,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                   <span><ApartmentOutlined /> ER 图</span>
                   <RightOutlined />
                 </button>
-              </div>
-
-              <div className="exploration-drawer__nav-divider" />
-
-              <div className="exploration-drawer__topology">
-                <div className="exploration-drawer__section-heading">
-                  <div>
-                    <div className="exploration-drawer__eyebrow">TOPOLOGY</div>
-                    <strong>数据源导航</strong>
-                  </div>
-                  <span className="exploration-drawer__section-note">按需展开</span>
-                </div>
-                <div className="exploration-drawer__topology-scroll">
-                  <Spin spinning={topologyLoading} size="small">
-                    {topologyNodes.length === 0 ? (
-                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无拓扑" />
-                    ) : (
-                      <Tree
-                        blockNode
-                        selectable
-                        treeData={topologyTreeData(topologyNodes)}
-                        loadData={loadTopologyData}
-                        onSelect={onTopologySelect}
-                      />
-                    )}
-                  </Spin>
-                </div>
               </div>
 
               <div className="exploration-drawer__nav-divider" />
@@ -848,14 +701,14 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
               {databases.length === 0 ? (
                 <div className="exploration-drawer__empty-state">
                   <div className="exploration-drawer__empty-icon"><DatabaseOutlined /></div>
-                  <strong>暂无可用的探查资产</strong>
+                  <strong>暂无可用的探查结果</strong>
                   <span>请先完成数据源扫描，再从目录中选择数据库。</span>
                 </div>
               ) : !schemaFqn ? (
                 <div className="exploration-drawer__empty-state">
                   <div className="exploration-drawer__empty-icon"><DatabaseOutlined /></div>
                   <strong>选择一个 Schema</strong>
-                  <span>从左侧目录选择 Schema，查看其中的表资产。</span>
+                  <span>从左侧目录选择 Schema，查看其中的数据表。</span>
                 </div>
               ) : !selectedTableId ? (
                 <div className="exploration-drawer__empty-state">
@@ -874,7 +727,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                 <>
                   <header className="exploration-drawer__asset-header">
                     <div className="exploration-drawer__asset-copy">
-                      <div className="exploration-drawer__eyebrow">TABLE ASSET</div>
+                      <div className="exploration-drawer__eyebrow">TABLE RESOURCE</div>
                       <h1 title={tableDetail.fullyQualifiedName}>{selectedTableTitle}</h1>
                       <div className="exploration-drawer__fqn" title={tableDetail.fullyQualifiedName}>
                         <span>FQN</span>
@@ -1018,7 +871,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
             <aside className="exploration-drawer__inspector">
               <div className="exploration-drawer__inspector-header">
                 <div className="exploration-drawer__eyebrow">INSPECTOR</div>
-                <strong>资产信息</strong>
+                <strong>元数据摘要</strong>
               </div>
               {tableDetail ? (
                 <div className="exploration-drawer__inspector-scroll">
@@ -1039,10 +892,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                     </div>
                     <div className="exploration-drawer__property"><span>域</span><strong>{(tableDetail.domains || []).join(', ') || '未分配'}</strong></div>
                     <div className="exploration-drawer__property"><span>保留周期</span><strong>{tableDetail.retentionPeriod || '未设置'}</strong></div>
-                  </section>
-                  <section className="exploration-drawer__inspector-section">
-                    <div className="exploration-drawer__property"><span>Database</span><code>{tableDetail.databaseFullyQualifiedName || databaseFqn || '-'}</code></div>
-                    <div className="exploration-drawer__property"><span>Schema</span><code>{tableDetail.schemaFullyQualifiedName || schemaFqn || '-'}</code></div>
                   </section>
                   <section className="exploration-drawer__inspector-section">
                     <div className="exploration-drawer__property-label">约束</div>
@@ -1100,7 +949,31 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
             </aside>
           </div>
         </Spin>
-      </Drawer>
+  );
+
+  return (
+    <>
+      {inline ? (
+        <section className="exploration-drawer exploration-drawer--inline" aria-label="数据探查详情">
+          <div className="exploration-drawer__inline-header">
+            {explorationTitle}
+            <Button type="text" icon={<RightOutlined rotate={180} />} onClick={closeExploration}>返回探查结果</Button>
+          </div>
+          {workspace}
+        </section>
+      ) : (
+        <Drawer
+          className="exploration-drawer"
+          open={open}
+          onClose={closeExploration}
+          width="min(1500px, calc(100vw - 80px))"
+          destroyOnHidden
+          title={explorationTitle}
+          styles={{ body: { padding: 0 } }}
+        >
+          {workspace}
+        </Drawer>
+      )}
       <DataExplorationErDiagram
         open={erOpen}
         dataSourceId={dataSourceId}

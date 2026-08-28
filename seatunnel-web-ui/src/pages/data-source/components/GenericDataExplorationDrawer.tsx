@@ -43,7 +43,7 @@ export function isGenericExplorationDbType(dbType?: string): dbType is GenericEx
   return (GENERIC_EXPLORATION_DB_TYPES as readonly string[]).includes(normalizeExplorationDbType(dbType));
 }
 
-export function genericAssetTerm(dbType?: string): string {
+export function genericMetadataTerm(dbType?: string): string {
   switch (normalizeExplorationDbType(dbType)) {
     case 'KAFKA':
       return 'Kafka 主题';
@@ -59,11 +59,18 @@ export function genericAssetTerm(dbType?: string): string {
     case 'SFTP':
       return '文件';
     default:
-      return '资产';
+      return '资源';
   }
 }
 
-function genericAssetEnglishTerm(dbType?: string): string {
+/**
+ * Compatibility export for callers that still use the pre-Metadata naming.
+ * The returned label is intentionally resource-oriented and never exposes the
+ * retired “asset” terminology in the UI.
+ */
+export const genericAssetTerm = genericMetadataTerm;
+
+function genericMetadataEnglishTerm(dbType?: string): string {
   switch (normalizeExplorationDbType(dbType)) {
     case 'KAFKA':
       return 'KAFKA TOPIC';
@@ -78,7 +85,7 @@ function genericAssetEnglishTerm(dbType?: string): string {
     case 'SFTP':
       return 'REMOTE FILE';
     default:
-      return 'ASSET';
+      return 'RESOURCE';
   }
 }
 
@@ -124,6 +131,8 @@ export interface GenericDataExplorationDrawerProps {
   dataSourceName?: string;
   dbType?: string;
   open: boolean;
+  /** Render the catalog workspace in the current page instead of an Ant Drawer. */
+  inline?: boolean;
   onClose: () => void;
 }
 
@@ -132,11 +141,12 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
   dataSourceName,
   dbType,
   open,
+  inline = false,
   onClose,
 }) => {
   const normalizedDbType = normalizeExplorationDbType(dbType);
   const fileSource = isFileType(normalizedDbType);
-  const term = genericAssetTerm(normalizedDbType);
+  const term = genericMetadataTerm(normalizedDbType);
   const [loading, setLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string>();
   const [options, setOptions] = useState<DataSourceCatalogOption[]>([]);
@@ -274,33 +284,26 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
   const listCount = fileSource ? visibleFiles.length : visibleOptions.length;
   const sourceIcon = fileSource ? <FolderOpenOutlined /> : normalizedDbType === 'HTTP' ? <ApiOutlined /> : <InboxOutlined />;
 
-  return (
-    <Drawer
-      className="generic-exploration"
-      open={open}
-      onClose={onClose}
-      width="min(1500px, calc(100vw - 40px))"
-      destroyOnHidden
-      title={(
-        <div className="generic-exploration__title">
-          <div className="generic-exploration__title-icon">
-            <DatabaseIcons dbType={normalizedDbType} width="22" height="22" />
-          </div>
-          <div className="generic-exploration__title-copy">
-            <strong>数据探查</strong>
-            <span>{dataSourceName || '正在连接数据源'} · {term}</span>
-          </div>
-          <Tag color="blue">{normalizedDbType || '未知类型'}</Tag>
-        </div>
-      )}
-      styles={{ body: { padding: 0 } }}
-    >
+  const explorationTitle = (
+    <div className="generic-exploration__title">
+      <div className="generic-exploration__title-icon">
+        <DatabaseIcons dbType={normalizedDbType} width="22" height="22" />
+      </div>
+      <div className="generic-exploration__title-copy">
+        <strong>数据探查</strong>
+        <span>{dataSourceName || '正在连接数据源'} · {term}</span>
+      </div>
+      <Tag color="blue">{normalizedDbType || '未知类型'}</Tag>
+    </div>
+  );
+
+  const workspace = (
       <div className="generic-exploration__workspace">
         <aside className="generic-exploration__nav" aria-label={`${term}目录`}>
           <div className="generic-exploration__nav-head">
             <div className="generic-exploration__eyebrow">CATALOG</div>
             <strong>{term}目录</strong>
-            <span>浏览连接器返回的一级资产</span>
+            <span>浏览连接器返回的一级资源</span>
           </div>
           {fileSource && path && (
             <Button
@@ -385,7 +388,7 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
               )}
             </Spin>
           </div>
-          <div className="generic-exploration__nav-footer">{listCount} 项资产</div>
+          <div className="generic-exploration__nav-footer">{listCount} 项资源</div>
         </aside>
 
         <main className="generic-exploration__main" aria-label={`${term}详情`}>
@@ -404,13 +407,13 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
             <div className="generic-exploration__state">
               <div className="generic-exploration__state-icon">{sourceIcon}</div>
               <strong>选择一个{term}开始查看</strong>
-              <span>从左侧目录选择资产，查看身份、概览和连接信息。</span>
+              <span>从左侧目录选择资源，查看身份、概览和连接信息。</span>
             </div>
           ) : (
             <>
               <header className="generic-exploration__asset-header">
                 <div className="generic-exploration__asset-copy">
-                  <div className="generic-exploration__eyebrow">{genericAssetEnglishTerm(normalizedDbType)}</div>
+                  <div className="generic-exploration__eyebrow">{genericMetadataEnglishTerm(normalizedDbType)}</div>
                   <h1 title={selectedName}>{selectedName}</h1>
                   <div className="generic-exploration__asset-value" title={String(selectedValue)}>
                     <span>IDENTIFIER</span>
@@ -439,11 +442,11 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
                     children: (
                       <div className="generic-exploration__tab-pane">
                         <div className="generic-exploration__tab-title">
-                          <div><div className="generic-exploration__eyebrow">ASSET OVERVIEW</div><strong>资产身份</strong></div>
+                          <div><div className="generic-exploration__eyebrow">RESOURCE OVERVIEW</div><strong>资源身份</strong></div>
                           <Tag>{term}</Tag>
                         </div>
                         <div className="generic-exploration__overview-grid">
-                          <div><span>资产名称</span><strong>{selectedName}</strong></div>
+                          <div><span>资源名称</span><strong>{selectedName}</strong></div>
                           <div><span>数据源类型</span><strong>{normalizedDbType || '—'}</strong></div>
                           <div><span>资源标识</span><code>{String(selectedValue)}</code></div>
                           <div><span>目录位置</span><strong>{fileSource ? (path || '根目录') : '数据源 catalog'}</strong></div>
@@ -490,7 +493,7 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
               <dl className="generic-exploration__property-list">
                 <div><dt>数据源</dt><dd>{dataSourceName || '—'}</dd></div>
                 <div><dt>类型</dt><dd>{normalizedDbType || '—'}</dd></div>
-                <div><dt>资产术语</dt><dd>{term}</dd></div>
+                <div><dt>资源类型</dt><dd>{term}</dd></div>
               </dl>
             </section>
             <section>
@@ -506,14 +509,39 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
               </p>
             </section>
             <section>
-              <div className="generic-exploration__section-title">选中资产</div>
-              <p className="generic-exploration__selected-path" title={String(selectedValue)}>{selectedName || '未选择资产'}</p>
+              <div className="generic-exploration__section-title">选中资源</div>
+              <p className="generic-exploration__selected-path" title={String(selectedValue)}>{selectedName || '未选择资源'}</p>
               <Tag color={selectedOption || selectedFile ? 'blue' : 'default'}>{selectedOption || selectedFile ? '已选择' : '等待选择'}</Tag>
             </section>
           </div>
         </aside>
       </div>
-    </Drawer>
+  );
+
+  return (
+    <>
+      {inline ? (
+        <section className="generic-exploration generic-exploration--inline" aria-label="数据探查详情">
+          <div className="generic-exploration__inline-header">
+            {explorationTitle}
+            <Button type="text" icon={<ArrowLeftOutlined />} onClick={onClose}>返回探查结果</Button>
+          </div>
+          {workspace}
+        </section>
+      ) : (
+        <Drawer
+          className="generic-exploration"
+          open={open}
+          onClose={onClose}
+          width="min(1500px, calc(100vw - 40px))"
+          destroyOnHidden
+          title={explorationTitle}
+          styles={{ body: { padding: 0 } }}
+        >
+          {workspace}
+        </Drawer>
+      )}
+    </>
   );
 };
 
