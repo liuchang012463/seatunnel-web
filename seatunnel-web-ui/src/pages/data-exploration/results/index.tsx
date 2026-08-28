@@ -195,7 +195,6 @@ const DataExplorationResultsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedSourceId, setSelectedSourceId] = useState<string>(route.dataSourceId || '');
   const [selectedSourceDbType, setSelectedSourceDbType] = useState<string | undefined>(route.dbType);
-  const [drawerOpen, setDrawerOpen] = useState(Boolean(route.dataSourceId));
 
   const loadUnits = useCallback(async () => {
     setUnitLoading(true);
@@ -333,20 +332,32 @@ const DataExplorationResultsPage: React.FC = () => {
   const selectedSourceOwner = selectedSource ? sourceOwner(selectedSource) : undefined;
   const pageLoading = sourcesLoading || summaryLoading;
 
-  const clearSelection = () => {
+  const syncRoute = (nextFilters: ResultFilters, source?: DataSourceRecord) => {
+    const query = new URLSearchParams();
+    if (nextFilters.unitId) query.set('unitId', nextFilters.unitId);
+    if (nextFilters.businessSystemId) query.set('businessSystemId', nextFilters.businessSystemId);
+    if (source?.id) query.set('dataSourceId', String(source.id));
+    if (source?.dbType) query.set('dbType', source.dbType);
+    const queryString = query.toString();
+    history.replace(`/data-exploration/results${queryString ? `?${queryString}` : ''}`);
+  };
+
+  const clearSelection = (nextFilters: ResultFilters = filters) => {
     setSelectedSourceId('');
     setSelectedSourceDbType(undefined);
-    setDrawerOpen(false);
+    syncRoute(nextFilters);
   };
 
   const handleUnitChange = (value?: string) => {
-    clearSelection();
-    setFilters({ unitId: value || undefined, businessSystemId: undefined });
+    const nextFilters = { unitId: value || undefined, businessSystemId: undefined };
+    setFilters(nextFilters);
+    clearSelection(nextFilters);
   };
 
   const handleBusinessSystemChange = (value?: string) => {
-    clearSelection();
-    setFilters((current) => ({ ...current, businessSystemId: value || undefined }));
+    const nextFilters = { ...filters, businessSystemId: value || undefined };
+    setFilters(nextFilters);
+    clearSelection(nextFilters);
   };
 
   const handleGroupChange = (group: SelectedGroupKey) => {
@@ -359,7 +370,7 @@ const DataExplorationResultsPage: React.FC = () => {
     if (!sourceId) return;
     setSelectedSourceId(sourceId);
     setSelectedSourceDbType(source.dbType);
-    setDrawerOpen(true);
+    syncRoute(filters, source);
   };
 
   const exportAllResults = async () => {
@@ -385,6 +396,21 @@ const DataExplorationResultsPage: React.FC = () => {
   const selectedBusinessSystem = businessSystemOptions.find(
     (item) => String(item.id) === filters.businessSystemId,
   );
+
+  if (selectedSourceId) {
+    return (
+      <div className="data-exploration-page data-exploration-results data-exploration-results--detail">
+        <DataExplorationDrawer
+          inline
+          open
+          dataSourceId={selectedSourceId}
+          dataSourceName={selectedSource?.name}
+          dbType={selectedSource?.dbType || selectedSourceDbType}
+          onClose={() => clearSelection()}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="data-exploration-page data-exploration-results">
@@ -647,14 +673,6 @@ const DataExplorationResultsPage: React.FC = () => {
           </div>
         </aside>
       </section>
-
-      <DataExplorationDrawer
-        open={drawerOpen && Boolean(selectedSourceId)}
-        dataSourceId={selectedSourceId || undefined}
-        dataSourceName={selectedSource?.name}
-        dbType={selectedSource?.dbType || selectedSourceDbType}
-        onClose={() => setDrawerOpen(false)}
-      />
     </div>
   );
 };
