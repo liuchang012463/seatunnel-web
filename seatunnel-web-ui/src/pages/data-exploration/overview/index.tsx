@@ -297,7 +297,7 @@ const DataExplorationOverviewPage: React.FC = () => {
           <div className="overview-panel-heading">
             <div>
               <span className="overview-panel-heading__eyebrow">INVENTORY</span>
-              <h2>资产规模</h2>
+              <h2>元数据规模</h2>
             </div>
             <span className="overview-panel-heading__meta">已纳入当前范围</span>
           </div>
@@ -319,7 +319,7 @@ const DataExplorationOverviewPage: React.FC = () => {
               <Statistic title="已统计行数" value={summary.knownRowCount} />
             </div>
           </div>
-          <div className="overview-secondary-metrics" aria-label="次级资产指标">
+          <div className="overview-secondary-metrics" aria-label="次级元数据指标">
             <span><small>Database</small><strong>{summary.databaseCount}</strong></span>
             <span><small>Schema</small><strong>{summary.schemaCount}</strong></span>
             <span><small>单位</small><strong>{summary.unitCount}</strong></span>
