@@ -161,6 +161,13 @@ metadata:
     expected-ingestion-patch: 1.12.10.0
     kingbase-tunnel-host: ${METADATA_OPENMETADATA_KINGBASE_TUNNEL_HOST:}
     kingbase-tunnel-port: ${METADATA_OPENMETADATA_KINGBASE_TUNNEL_PORT:0}
+  # Optional server-side adapter for /mnt/lc/open_metadata_extension/project.
+  # Set the base URL to the extension's /omext route, not its OpenMetadata URL.
+  extension:
+    enabled: ${METADATA_OPENMETADATA_EXTENSION_ENABLED:false}
+    base-url: ${METADATA_OPENMETADATA_EXTENSION_BASE_URL:}
+    connect-timeout-ms: ${METADATA_OPENMETADATA_EXTENSION_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${METADATA_OPENMETADATA_EXTENSION_READ_TIMEOUT_MS:15000}
   reconcile:
     interval-ms: ${METADATA_RECONCILE_INTERVAL_MS:20000}
     batch-size: ${METADATA_RECONCILE_BATCH_SIZE:20}

@@ -10,12 +10,16 @@ import java.util.List;
 public class DataExplorationTableDetailVO {
     private String id;
     private String name;
+    private String displayName;
     private String fullyQualifiedName;
     private String tableType;
     private String description;
+    private String retentionPeriod;
     private String serviceFullyQualifiedName;
     private String databaseFullyQualifiedName;
     private String schemaFullyQualifiedName;
     private List<DataExplorationColumnVO> columns = new ArrayList<>();
     private List<DataExplorationConstraintVO> tableConstraints = new ArrayList<>();
+    private List<String> tags = new ArrayList<>();
+    private List<String> domains = new ArrayList<>();
 }

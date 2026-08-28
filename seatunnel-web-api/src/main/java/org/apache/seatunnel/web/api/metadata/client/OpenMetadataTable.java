@@ -11,13 +11,17 @@ public class OpenMetadataTable {
 
     private String id;
     private String name;
+    private String displayName;
     private String fullyQualifiedName;
     private String tableType;
     private String description;
+    private String retentionPeriod;
     private String serviceFullyQualifiedName;
     private String databaseFullyQualifiedName;
     private String schemaFullyQualifiedName;
     private List<OpenMetadataColumn> columns = new ArrayList<>();
     private List<OpenMetadataTableConstraint> tableConstraints = new ArrayList<>();
+    private List<String> tags = new ArrayList<>();
+    private List<String> domains = new ArrayList<>();
     private OpenMetadataTableProfile profile;
 }

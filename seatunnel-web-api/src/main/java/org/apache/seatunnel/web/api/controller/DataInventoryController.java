@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.api.metadata.DataInventoryService;
 import org.apache.seatunnel.web.spi.bean.dto.DataInventoryFilterDTO;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.DataInventoryDistributionVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataInventoryOverviewVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataInventoryProfileCoverageVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataInventorySummaryVO;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +34,17 @@ public class DataInventoryController {
             @RequestParam(value = "dataSourceId", required = false) Long dataSourceId,
             @RequestParam(value = "databaseFqn", required = false) String databaseFqn) {
         return Result.buildSuc(dataInventoryService.summary(filter(unitId, businessSystemId, dataSourceId, databaseFqn)));
+    }
+
+    @GetMapping("/overview")
+    @Operation(summary = "getDataInventoryOverview", description = "Read summary and profile coverage from one inventory snapshot")
+    public Result<DataInventoryOverviewVO> overview(
+            @RequestParam(value = "unitId", required = false) Long unitId,
+            @RequestParam(value = "businessSystemId", required = false) Long businessSystemId,
+            @RequestParam(value = "dataSourceId", required = false) Long dataSourceId,
+            @RequestParam(value = "databaseFqn", required = false) String databaseFqn) {
+        return Result.buildSuc(dataInventoryService.overview(
+                filter(unitId, businessSystemId, dataSourceId, databaseFqn)));
     }
 
     @GetMapping("/distribution/source-type")

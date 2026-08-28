@@ -1,6 +1,7 @@
 package org.apache.seatunnel.plugin.datasource.http.param;
 
 import org.apache.seatunnel.plugin.datasource.api.form.ReflectionFormGenerator;
+import org.apache.seatunnel.web.spi.form.FieldType;
 import org.apache.seatunnel.web.spi.form.FormFieldConfig;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
@@ -9,6 +10,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class HttpConnectionParamConverterTest {
@@ -26,6 +28,16 @@ class HttpConnectionParamConverterTest {
         assertEquals(HttpAuthenticationType.NONE, param.getAuthenticationType());
         assertEquals(12000, param.getConnectTimeoutMs());
         assertEquals(60000, param.getSocketTimeoutMs());
+    }
+
+    @Test
+    void parsesOptionalOpenApiSpecUrlWithoutChangingConnectivityValidation() {
+        HttpConnectionParam param = converter.createConnectionParams(
+                "{\"baseUrl\":\"https://api.example.com\","
+                        + "\"openApiSpecUrl\":\"https://api.example.com/openapi.json\"}");
+
+        assertEquals("https://api.example.com/openapi.json", param.getOpenApiSpecUrl());
+        converter.checkDatasourceParam(param);
     }
 
     @Test
@@ -90,6 +102,18 @@ class HttpConnectionParamConverterTest {
         assertEquals(
                 "用于连接测试的相对路径，例如 /health；留空时使用 Base URL 本身进行检查。",
                 field(fields, "healthCheckPath").getDescription());
+    }
+
+    @Test
+    void shouldExposeOptionalOpenApiSpecFieldToFrontend() {
+        List<FormFieldConfig> fields = ReflectionFormGenerator.generate(HttpConnectionParam.class);
+
+        FormFieldConfig openApiField = field(fields, "openApiSpecUrl");
+        assertEquals("OpenAPI 文档地址", openApiField.getLabel());
+        assertEquals("https://api.example.com/openapi.json", openApiField.getPlaceholder());
+        assertEquals(FieldType.INPUT, openApiField.getType());
+        assertEquals(12, openApiField.getOrder());
+        assertNull(openApiField.getRules());
     }
 
     private FormFieldConfig field(List<FormFieldConfig> fields, String key) {

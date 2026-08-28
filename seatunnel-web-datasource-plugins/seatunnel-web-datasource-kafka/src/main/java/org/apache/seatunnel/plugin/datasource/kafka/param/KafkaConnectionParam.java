@@ -40,6 +40,11 @@ public class KafkaConnectionParam implements ConnectionParam {
     @FormField(label = "Kafka 高级配置（JSON）", type = FieldType.TEXTAREA, order = 8)
     private Map<String, String> kafkaConfig = new LinkedHashMap<>();
 
+    @FormField(label = "Schema Registry 地址", order = 9,
+            placeholder = "http://localhost:8081",
+            description = "可选。用于需要 Schema Registry 的 Kafka 数据格式配置。")
+    private String schemaRegistryUrl;
+
     private DbType dbType = DbType.KAFKA;
 
     @Override

@@ -50,8 +50,15 @@ public interface OpenMetadataClient {
         return new OpenMetadataPage<>(data, data.size(), null);
     }
 
+    /** Reads tables directly under one Database, matching the OM extension ER endpoint. */
+    OpenMetadataPage<OpenMetadataTable> listTablesByDatabasePage(
+            String databaseFullyQualifiedName, boolean includeColumns, int limit, String after);
+
     /** Gets a table entity by its OpenMetadata UUID. */
     OpenMetadataTable getTable(String tableId);
+
+    /** Applies an OpenMetadata JSON Patch through the official SDK table service. */
+    OpenMetadataTable patchTable(String tableId, JsonNode patchDocument);
 
     /**
      * Reads the latest table profile. The OpenMetadata endpoint is FQN based,

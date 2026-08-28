@@ -253,6 +253,27 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         if (after != null && !after.isBlank()) {
             params.setAfter(after);
         }
+        return listTables(params, "OpenMetadata table collection lookup failed");
+    }
+
+    @Override
+    public OpenMetadataPage<OpenMetadataTable> listTablesByDatabasePage(
+            String databaseFullyQualifiedName, boolean includeColumns, int limit, String after) {
+        validateBaseUrl();
+        int safeLimit = safeLimit(limit, 1000);
+        ListParams params = new ListParams()
+                .setDatabase(databaseFullyQualifiedName)
+                .setFields(includeColumns ? "columns,tableConstraints" : "tableConstraints")
+                .setLimit(safeLimit)
+                .addQueryParam("include", "non-deleted");
+        if (after != null && !after.isBlank()) {
+            params.setAfter(after);
+        }
+        return listTables(params, "OpenMetadata database table collection lookup failed");
+    }
+
+    private OpenMetadataPage<OpenMetadataTable> listTables(
+            ListParams params, String failureMessage) {
         try {
             ListResponse<org.openmetadata.schema.entity.data.Table> response = sdkClient.tables().list(params);
             List<OpenMetadataTable> data = new ArrayList<>();
@@ -265,8 +286,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             }
             return page(response, data);
         } catch (OpenMetadataException error) {
-            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
-                    "OpenMetadata table collection lookup failed", error);
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR, failureMessage, error);
         }
     }
 
@@ -274,13 +294,30 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public OpenMetadataTable getTable(String tableId) {
         validateBaseUrl();
         try {
-            return toTable(sdkClient.tables().get(tableId, "columns,tableConstraints", "non-deleted"));
+            return toTable(sdkClient.tables().get(
+                    tableId, "columns,tableConstraints,tags,domains", "non-deleted"));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
             }
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
                     "OpenMetadata table lookup failed", error);
+        }
+    }
+
+    @Override
+    public OpenMetadataTable patchTable(String tableId, JsonNode patchDocument) {
+        validateBaseUrl();
+        if (patchDocument == null || !patchDocument.isArray()) {
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata table patch must be a JSON array");
+        }
+        try {
+            return toTable(sdkClient.tables().patch(tableId, patchDocument));
+        } catch (OpenMetadataException error) {
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata table metadata update failed", error);
         }
     }
 
@@ -701,9 +738,11 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         OpenMetadataTable result = new OpenMetadataTable();
         result.setId(table.getId().toString());
         result.setName(table.getName());
+        result.setDisplayName(table.getDisplayName());
         result.setFullyQualifiedName(table.getFullyQualifiedName());
         result.setTableType(table.getTableType() == null ? null : table.getTableType().toString());
         result.setDescription(table.getDescription());
+        result.setRetentionPeriod(table.getRetentionPeriod());
         result.setServiceFullyQualifiedName(referenceFqn(table.getService()));
         result.setDatabaseFullyQualifiedName(referenceFqn(table.getDatabase()));
         result.setSchemaFullyQualifiedName(referenceFqn(table.getDatabaseSchema()));
@@ -734,6 +773,24 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             constraints.add(parsed);
         }
         result.setTableConstraints(constraints);
+        List<String> tags = new ArrayList<>();
+        for (org.openmetadata.schema.type.TagLabel tag : safeList(table.getTags())) {
+            if (tag != null) {
+                String value = blank(tag.getTagFQN()) ? tag.getName() : tag.getTagFQN();
+                if (!blank(value)) {
+                    tags.add(value);
+                }
+            }
+        }
+        result.setTags(tags);
+        List<String> domains = new ArrayList<>();
+        for (org.openmetadata.schema.type.EntityReference domain : safeList(table.getDomains())) {
+            String value = referenceFqn(domain);
+            if (!blank(value)) {
+                domains.add(value);
+            }
+        }
+        result.setDomains(domains);
         if (table.getProfile() != null) {
             result.setProfile(toTableProfile(table));
         }
@@ -746,6 +803,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         }
         OpenMetadataColumn result = new OpenMetadataColumn();
         result.setName(column.getName());
+        result.setDisplayName(column.getDisplayName());
         result.setFullyQualifiedName(column.getFullyQualifiedName());
         result.setDataType(column.getDataType() == null ? null : column.getDataType().toString());
         result.setDataTypeDisplay(column.getDataTypeDisplay());

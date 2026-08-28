@@ -13,13 +13,19 @@ import type {
   DataExplorationTableDetail,
   DataExplorationProfile,
   DataExplorationPreview,
+  DataExplorationErDiagram,
+  DataExplorationMetadataJob,
+  DataExplorationMetadataUpdate,
   DataInventoryDistributionItem,
   DataInventoryFilter,
   DataInventoryProfileCoverage,
   DataInventorySummary,
+  DataInventoryOverview,
   DataSourceTopologyNode,
   DataSourceTopologyNodeType,
   DataSourceMetadataStatus,
+  DataSourceCatalogFileEntry,
+  DataSourceCatalogOption,
 } from './types';
 
 const DATA_SOURCE_API_PREFIX = '/api/v1/data-source';
@@ -207,6 +213,51 @@ export async function fetchDataExplorationProfile(
   );
 }
 
+export async function fetchDataExplorationErDiagram(
+  id: string,
+  databaseFqn: string,
+  schemaFqn?: string,
+): Promise<CommonApiResponse<DataExplorationErDiagram>> {
+  const query = new URLSearchParams({
+    dataSourceId: id,
+    databaseFqn,
+  });
+  if (schemaFqn) query.set('schemaFqn', schemaFqn);
+  return HttpUtils.get(`${DATA_EXPLORATION_API_PREFIX}/er-diagram?${query.toString()}`);
+}
+
+export async function updateDataExplorationMetadata(
+  id: string,
+  tableId: string,
+  payload: DataExplorationMetadataUpdate,
+): Promise<CommonApiResponse<DataExplorationTableDetail>> {
+  return HttpUtils.request(
+    `${DATA_EXPLORATION_API_PREFIX}/tables/${encodeURIComponent(tableId)}/metadata?dataSourceId=${encodeURIComponent(id)}`,
+    'PATCH',
+    payload,
+  );
+}
+
+export async function startDataExplorationMetadataCompletion(
+  id: string,
+  tableId: string,
+): Promise<CommonApiResponse<DataExplorationMetadataJob>> {
+  return HttpUtils.post(
+    `${DATA_EXPLORATION_API_PREFIX}/tables/${encodeURIComponent(tableId)}/metadata-completion?dataSourceId=${encodeURIComponent(id)}`,
+    {},
+  );
+}
+
+export async function fetchDataExplorationMetadataCompletion(
+  id: string,
+  tableId: string,
+  jobId: string,
+): Promise<CommonApiResponse<DataExplorationMetadataJob>> {
+  return HttpUtils.get(
+    `${DATA_EXPLORATION_API_PREFIX}/tables/${encodeURIComponent(tableId)}/metadata-completion/jobs/${encodeURIComponent(jobId)}?dataSourceId=${encodeURIComponent(id)}`,
+  );
+}
+
 export async function previewDataExplorationTable(
   id: string,
   tableId: string,
@@ -228,6 +279,17 @@ export async function fetchDataInventorySummary(
   });
   const suffix = query.toString() ? `?${query.toString()}` : '';
   return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/summary${suffix}`);
+}
+
+export async function fetchDataInventoryOverview(
+  filter: DataInventoryFilter = {},
+): Promise<CommonApiResponse<DataInventoryOverview>> {
+  const query = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+  });
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/overview${suffix}`);
 }
 
 export async function fetchDataInventorySourceTypes(
@@ -343,6 +405,25 @@ export async function fetchDataSourceOptions(dbType: string): Promise<CommonApiR
 }
 
 export const apiPrefixCatalog = '/api/v1/data-source/catalog';
+
+/**
+ * Catalog endpoints used by the non-database exploration workspace. These
+ * typed functions sit beside the legacy dataSourceCatalogApi object so new
+ * callers do not have to depend on `any` response payloads.
+ */
+export async function fetchDataSourceCatalogOptions(
+  id: string,
+): Promise<CommonApiResponse<DataSourceCatalogOption[]>> {
+  return HttpUtils.get(`${apiPrefixCatalog}/list/${encodeURIComponent(id)}`);
+}
+
+export async function fetchDataSourceCatalogFiles(
+  id: string,
+  path?: string,
+): Promise<CommonApiResponse<DataSourceCatalogFileEntry[]>> {
+  const query = path ? `?path=${encodeURIComponent(path)}` : '';
+  return HttpUtils.get(`${apiPrefixCatalog}/files/${encodeURIComponent(id)}${query}`);
+}
 
 export const dataSourceCatalogApi = {
   listFiles: (id: string, path?: string): Promise<{ code: number; data: any[]; message?: string }> => {

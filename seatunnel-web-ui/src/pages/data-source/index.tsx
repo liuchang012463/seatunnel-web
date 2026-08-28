@@ -320,7 +320,9 @@ const DataSourcePage: React.FC = () => {
     if (!record.id) {
       return;
     }
-    history.push(`/data-exploration/results?dataSourceId=${encodeURIComponent(record.id)}`);
+    const query = new URLSearchParams({ dataSourceId: String(record.id) });
+    if (record.dbType) query.set('dbType', record.dbType);
+    history.push(`/data-exploration/results?${query.toString()}`);
   };
 
   const handleStatusChange = (record: DataSourceRecord, nextStatus: DataSourceLifecycleStatus) => {

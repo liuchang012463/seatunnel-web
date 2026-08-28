@@ -1,6 +1,6 @@
 package org.apache.seatunnel.web.api.metadata;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataColumn;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataColumnProfile;
@@ -19,7 +19,9 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
+import org.apache.seatunnel.web.spi.bean.dto.DataExplorationMetadataUpdateDTO;
 import org.apache.seatunnel.web.spi.bean.vo.DataExplorationColumnProfileVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataExplorationErDiagramVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataExplorationProfileVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataExplorationTableDetailVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataExplorationTablePageVO;
@@ -135,7 +137,95 @@ class DataExplorationServiceTest {
         assertEquals(expected, preview);
         ArgumentCaptor<Map<String, Object>> request = ArgumentCaptor.forClass(Map.class);
         verify(catalogService).getTop20Data(eq(42L), request.capture());
-        assertEquals("public.orders", request.getValue().get("table_path"));
+        assertEquals("orders", request.getValue().get("table_path"));
+    }
+
+    @Test
+    void buildsErDiagramNodesAndForeignKeyEdgesFromTableConstraints() {
+        stubReadySource();
+        String databaseFqn = "st_ds_42.orders";
+        String schemaFqn = "st_ds_42.orders.public";
+        when(openMetadataClient.findDatabase(databaseFqn))
+                .thenReturn(Optional.of(new OpenMetadataDatabase("db-id", databaseFqn, "st_ds_42")));
+        doReturn(new OpenMetadataPage<>(List.of(schema("schema-id", schemaFqn)), 1L, null))
+                .when(openMetadataClient).listSchemasPage(databaseFqn, 1000, null);
+
+        OpenMetadataTable customers = tableWithFqn(
+                "customers-id", "customers", "st_ds_42.orders.public.customers");
+        OpenMetadataColumn customerId = column("id", "BIGINT", "PRIMARY_KEY");
+        customers.setColumns(List.of(customerId));
+        OpenMetadataTableConstraint customerPrimaryKey = new OpenMetadataTableConstraint();
+        customerPrimaryKey.setConstraintType("PRIMARY_KEY");
+        customerPrimaryKey.setColumns(List.of("id"));
+        customers.setTableConstraints(List.of(customerPrimaryKey));
+
+        OpenMetadataTable orders = tableWithFqn(
+                "orders-id", "orders", "st_ds_42.orders.public.orders");
+        orders.setColumns(List.of(column("customer_id", "BIGINT", null)));
+        OpenMetadataTableConstraint foreignKey = new OpenMetadataTableConstraint();
+        foreignKey.setConstraintType("foreignKey");
+        foreignKey.setColumns(List.of("customer_id"));
+        foreignKey.setReferredColumns(List.of("st_ds_42.orders.public.customers.id"));
+        orders.setTableConstraints(List.of(foreignKey));
+
+        doReturn(new OpenMetadataPage<>(List.of(customers, orders), 2L, null))
+                .when(openMetadataClient).listTablesPage(schemaFqn, true, 1000, null);
+
+        DataExplorationErDiagramVO result = service().getErDiagram(42L, databaseFqn, schemaFqn);
+
+        assertEquals(databaseFqn, result.getDatabaseFqn());
+        assertEquals(2, result.getNodes().size());
+        assertEquals(1, result.getEdges().size());
+        assertEquals("orders-id", result.getEdges().get(0).getSource().getNodeId());
+        assertEquals("customers-id", result.getEdges().get(0).getTarget().getNodeId());
+        assertEquals(List.of("customer_id"), result.getEdges().get(0).getSource().getColumns());
+        assertEquals(List.of("id"), result.getEdges().get(0).getTarget().getColumns());
+    }
+
+    @Test
+    void usesDatabaseTableCollectionWhenSchemaIsOmitted() {
+        stubReadySource();
+        String databaseFqn = "st_ds_42.orders";
+        OpenMetadataTable table = tableWithFqn(
+                "orders-id", "orders", "st_ds_42.orders.public.orders");
+        table.setDatabaseFullyQualifiedName(databaseFqn);
+        when(openMetadataClient.findDatabase(databaseFqn))
+                .thenReturn(Optional.of(new OpenMetadataDatabase("db-id", databaseFqn, "st_ds_42")));
+        doReturn(new OpenMetadataPage<>(List.of(table), 1L, null))
+                .when(openMetadataClient).listTablesByDatabasePage(databaseFqn, true, 1000, null);
+
+        DataExplorationErDiagramVO result = service().getErDiagram(42L, databaseFqn, null);
+
+        assertEquals(1, result.getNodes().size());
+        assertEquals("orders-id", result.getNodes().get(0).getId());
+        verify(openMetadataClient).listTablesByDatabasePage(databaseFqn, true, 1000, null);
+    }
+
+    @Test
+    void updatesGovernanceFieldsWithReferencePatchSemantics() {
+        stubReadySource();
+        OpenMetadataTable table = table("table-id", "orders");
+        when(openMetadataClient.getTable("table-id")).thenReturn(table);
+        when(openMetadataClient.patchTable(eq("table-id"), any(JsonNode.class))).thenReturn(table);
+
+        DataExplorationMetadataUpdateDTO request = new DataExplorationMetadataUpdateDTO();
+        request.setDisplayName("订单");
+        request.setDescription("订单主表");
+        request.setRetentionPeriod("");
+        request.setTags(List.of("PII.Sensitive"));
+        request.setDomainId("");
+
+        service().updateMetadata(42L, "table-id", request);
+
+        ArgumentCaptor<JsonNode> patch = ArgumentCaptor.forClass(JsonNode.class);
+        verify(openMetadataClient).patchTable(eq("table-id"), patch.capture());
+        assertEquals("add", patch.getValue().get(0).get("op").asText());
+        assertEquals("add", patch.getValue().get(1).get("op").asText());
+        assertEquals("replace", patch.getValue().get(2).get("op").asText());
+        assertEquals("replace", patch.getValue().get(3).get("op").asText());
+        assertEquals("add", patch.getValue().get(4).get("op").asText());
+        assertEquals("PII.Sensitive", patch.getValue().get(3).get("value").get(0).get("tagFQN").asText());
+        assertEquals("null", patch.getValue().get(2).get("value").toString());
     }
 
     @Test
@@ -185,12 +275,24 @@ class DataExplorationServiceTest {
     }
 
     private static OpenMetadataTable table(String id, String name) {
+        return tableWithFqn(id, name, "st_ds_42.orders.public.orders");
+    }
+
+    private static OpenMetadataTable tableWithFqn(String id, String name, String fqn) {
         OpenMetadataTable table = new OpenMetadataTable();
         table.setId(id);
         table.setName(name);
-        table.setFullyQualifiedName("st_ds_42.orders.public.orders");
+        table.setFullyQualifiedName(fqn);
         table.setServiceFullyQualifiedName("st_ds_42");
         table.setTableType("Regular");
         return table;
+    }
+
+    private static OpenMetadataColumn column(String name, String dataType, String constraint) {
+        OpenMetadataColumn column = new OpenMetadataColumn();
+        column.setName(name);
+        column.setDataType(dataType);
+        column.setConstraint(constraint);
+        return column;
     }
 }

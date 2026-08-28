@@ -12,6 +12,8 @@ import {
   fetchDataExplorationProfile,
   fetchDataSourceTopologyChildren,
   fetchDataSourceTopologyTree,
+  fetchDataSourceCatalogFiles,
+  fetchDataSourceCatalogOptions,
   previewDataExplorationTable,
   triggerDataSourceExploration,
   triggerDataSourceScan,
@@ -165,6 +167,22 @@ describe('data source service', () => {
     expect(HttpUtils.get).toHaveBeenNthCalledWith(
       2,
       '/api/v1/data-source-topology/children?nodeType=DATA_SOURCE&nodeId=42',
+    );
+  });
+
+  it('loads connector assets and file prefixes through the catalog endpoints', async () => {
+    const response = { code: 0, data: [] };
+    (HttpUtils.get as jest.Mock).mockResolvedValue(response);
+
+    await expect(fetchDataSourceCatalogOptions('42')).resolves.toBe(response);
+    await expect(fetchDataSourceCatalogFiles('42')).resolves.toBe(response);
+    await expect(fetchDataSourceCatalogFiles('42', '/bucket/orders 2026')).resolves.toBe(response);
+
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(1, '/api/v1/data-source/catalog/list/42');
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(2, '/api/v1/data-source/catalog/files/42');
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/data-source/catalog/files/42?path=%2Fbucket%2Forders%202026',
     );
   });
 });

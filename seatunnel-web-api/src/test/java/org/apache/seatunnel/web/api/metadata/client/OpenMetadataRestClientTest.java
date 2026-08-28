@@ -278,6 +278,7 @@ class OpenMetadataRestClientTest {
         AtomicReference<String> databasesUri = new AtomicReference<>();
         AtomicReference<String> schemasUri = new AtomicReference<>();
         AtomicReference<String> tablesUri = new AtomicReference<>();
+        AtomicReference<String> databaseTablesUri = new AtomicReference<>();
         AtomicReference<String> tableUri = new AtomicReference<>();
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/databases", exchange -> {
@@ -308,7 +309,12 @@ class OpenMetadataRestClientTest {
                         + "\"tableConstraints\":[{\"constraintType\":\"PRIMARY_KEY\","
                         + "\"columns\":[\"id\"]}]} ");
             } else {
-                tablesUri.set(exchange.getRequestURI().toString());
+                String query = exchange.getRequestURI().getQuery();
+                if (query != null && query.contains("database=")) {
+                    databaseTablesUri.set(exchange.getRequestURI().toString());
+                } else {
+                    tablesUri.set(exchange.getRequestURI().toString());
+                }
                 respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000004\",\"name\":\"orders\","
                         + "\"fullyQualifiedName\":\"st_ds_42.orders.public.orders\","
                         + "\"tableType\":\"Regular\",\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
@@ -326,12 +332,15 @@ class OpenMetadataRestClientTest {
         List<OpenMetadataDatabase> databases = client.listDatabases("st_ds_42", 20);
         List<OpenMetadataDatabaseSchema> schemas = client.listSchemas("st_ds_42.orders", 20);
         List<OpenMetadataTable> tables = client.listTables("st_ds_42.orders.public", true, 20);
+        List<OpenMetadataTable> databaseTables = client.listTablesByDatabasePage(
+                "st_ds_42.orders", true, 20, null).data();
         OpenMetadataTable table = client.getTable("table-id");
 
         assertEquals("00000000-0000-0000-0000-000000000001", databases.get(0).id());
         assertEquals("00000000-0000-0000-0000-000000000003", schemas.get(0).getId());
         assertEquals("st_ds_42.orders", schemas.get(0).getDatabaseFullyQualifiedName());
         assertEquals("00000000-0000-0000-0000-000000000004", tables.get(0).getId());
+        assertEquals("00000000-0000-0000-0000-000000000004", databaseTables.get(0).getId());
         assertEquals("PRIMARY_KEY", tables.get(0).getColumns().get(0).getConstraint());
         assertEquals("orders", table.getName());
         assertEquals("st_ds_42", table.getServiceFullyQualifiedName());
@@ -342,8 +351,11 @@ class OpenMetadataRestClientTest {
         assertQuery("/api/v1/tables", tablesUri.get(),
                 "databaseSchema=st_ds_42.orders.public", "fields=columns,tableConstraints",
                 "include=non-deleted", "limit=20");
+        assertQuery("/api/v1/tables", databaseTablesUri.get(),
+                "database=st_ds_42.orders", "fields=columns,tableConstraints",
+                "include=non-deleted", "limit=20");
         assertQuery("/api/v1/tables/table-id", tableUri.get(),
-                "fields=columns,tableConstraints", "include=non-deleted");
+                "fields=columns,tableConstraints,tags,domains", "include=non-deleted");
     }
 
     @Test

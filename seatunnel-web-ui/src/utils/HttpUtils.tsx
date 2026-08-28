@@ -130,6 +130,9 @@ class HttpUtils {
       method: "GET",
       responseType: "blob",
       getResponse: true,
+      headers: {
+        Accept: "*/*",
+      },
       ...(options || {}),
     });
   }
@@ -147,6 +150,7 @@ class HttpUtils {
       responseType: "blob",
       getResponse: true,
       headers: {
+        Accept: "*/*",
         "Content-Type": "application/json",
       },
     });

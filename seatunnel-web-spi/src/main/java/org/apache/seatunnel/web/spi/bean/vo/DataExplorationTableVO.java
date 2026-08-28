@@ -7,6 +7,7 @@ import lombok.Data;
 public class DataExplorationTableVO {
     private String id;
     private String name;
+    private String displayName;
     private String fullyQualifiedName;
     private String tableType;
     private String description;

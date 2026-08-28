@@ -5,14 +5,18 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.apache.seatunnel.web.api.metadata.DataExplorationService;
 import org.apache.seatunnel.web.common.QueryResult;
+import org.apache.seatunnel.web.spi.bean.dto.DataExplorationMetadataUpdateDTO;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.DataExplorationDatabaseVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataExplorationErDiagramVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataExplorationProfileVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataExplorationMetadataJobVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataExplorationSchemaVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataExplorationTableDetailVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataExplorationTablePageVO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -64,6 +68,41 @@ public class DataExplorationController {
             @PathVariable("tableId") String tableId,
             @RequestParam("dataSourceId") Long dataSourceId) {
         return Result.buildSuc(dataExplorationService.getTable(dataSourceId, tableId));
+    }
+
+    @PatchMapping("/tables/{tableId}/metadata")
+    @Operation(summary = "updateDataExplorationTableMetadata", description = "Update editable OpenMetadata table governance fields")
+    public Result<DataExplorationTableDetailVO> updateMetadata(
+            @PathVariable("tableId") String tableId,
+            @RequestParam("dataSourceId") Long dataSourceId,
+            @RequestBody DataExplorationMetadataUpdateDTO request) {
+        return Result.buildSuc(dataExplorationService.updateMetadata(dataSourceId, tableId, request));
+    }
+
+    @PostMapping("/tables/{tableId}/metadata-completion")
+    @Operation(summary = "startDataExplorationMetadataCompletion", description = "Submit an asynchronous metadata description completion task")
+    public Result<DataExplorationMetadataJobVO> startMetadataCompletion(
+            @PathVariable("tableId") String tableId,
+            @RequestParam("dataSourceId") Long dataSourceId) {
+        return Result.buildSuc(dataExplorationService.startMetadataCompletion(dataSourceId, tableId));
+    }
+
+    @GetMapping("/tables/{tableId}/metadata-completion/jobs/{jobId}")
+    @Operation(summary = "getDataExplorationMetadataCompletion", description = "Read metadata description completion task status")
+    public Result<DataExplorationMetadataJobVO> metadataCompletion(
+            @PathVariable("tableId") String tableId,
+            @PathVariable("jobId") String jobId,
+            @RequestParam("dataSourceId") Long dataSourceId) {
+        return Result.buildSuc(dataExplorationService.getMetadataCompletion(dataSourceId, tableId, jobId));
+    }
+
+    @GetMapping("/er-diagram")
+    @Operation(summary = "getDataExplorationErDiagram", description = "Build ER diagram data from OpenMetadata table constraints")
+    public Result<DataExplorationErDiagramVO> erDiagram(
+            @RequestParam("dataSourceId") Long dataSourceId,
+            @RequestParam("databaseFqn") String databaseFqn,
+            @RequestParam(value = "schemaFqn", required = false) String schemaFqn) {
+        return Result.buildSuc(dataExplorationService.getErDiagram(dataSourceId, databaseFqn, schemaFqn));
     }
 
     @GetMapping("/tables/{tableId}/profile")

@@ -10,7 +10,9 @@ import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilderFa
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.SourceOptionRuleFactory;
 import org.apache.seatunnel.plugin.datasource.http.analysis.HttpJobDefinitionAnalyzer;
+import org.apache.seatunnel.plugin.datasource.http.catalog.HttpCatalog;
 import org.apache.seatunnel.plugin.datasource.http.client.HttpConnectivityVerifier;
+import org.apache.seatunnel.plugin.datasource.http.param.HttpConnectionParam;
 import org.apache.seatunnel.plugin.datasource.http.param.HttpConnectionParamConverter;
 import org.apache.seatunnel.web.common.config.OptionRule;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
@@ -41,12 +43,15 @@ public class HttpDataSourceProcessor implements DataSourceProcessor {
 
     @Override
     public Optional<DataSourceCatalog> getCatalog(ConnectionParam connectionParam) {
-        return Optional.empty();
+        if (!(connectionParam instanceof HttpConnectionParam)) {
+            throw new IllegalArgumentException("Invalid HTTP connection param type");
+        }
+        return Optional.of(new HttpCatalog((HttpConnectionParam) connectionParam));
     }
 
     @Override
     public boolean supportsCatalog() {
-        return false;
+        return true;
     }
 
     @Override

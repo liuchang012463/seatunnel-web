@@ -408,7 +408,11 @@ const DataExplorationTasksPage: React.FC = () => {
           <Button
             type="link"
             icon={<EyeOutlined />}
-            onClick={() => history.push(`/data-exploration/results?dataSourceId=${encodeURIComponent(String(record.id))}`)}
+            onClick={() => {
+              const query = new URLSearchParams({ dataSourceId: String(record.id) });
+              if (record.dbType) query.set('dbType', record.dbType);
+              history.push(`/data-exploration/results?${query.toString()}`);
+            }}
           >
             查看结果
           </Button>

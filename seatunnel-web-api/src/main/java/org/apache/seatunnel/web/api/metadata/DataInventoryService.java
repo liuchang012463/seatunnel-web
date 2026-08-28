@@ -24,6 +24,7 @@ import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataInventoryFilterDTO;
 import org.apache.seatunnel.web.spi.bean.vo.DataInventoryDistributionVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataInventoryOverviewVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataInventoryProfileCoverageVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataInventorySummaryVO;
 import org.apache.seatunnel.web.spi.enums.DbType;
@@ -41,6 +42,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -55,6 +59,19 @@ public class DataInventoryService {
 
     private static final int PAGE_SIZE = 1000;
     private static final int MAX_PAGES = 10_000;
+    /**
+     * Profile reads are independent network calls. Keep them bounded so a
+     * large catalog does not make the overview wait for a serial N+1 walk or
+     * overwhelm OpenMetadata with an unbounded burst.
+     */
+    private static final int PROFILE_CONCURRENCY = 8;
+    private static final ExecutorService PROFILE_EXECUTOR = Executors.newFixedThreadPool(
+            PROFILE_CONCURRENCY,
+            runnable -> {
+                Thread thread = new Thread(runnable, "metadata-inventory-profile");
+                thread.setDaemon(true);
+                return thread;
+            });
 
     private final DataSourceDao dataSourceDao;
     private final DataSourceUnitDao dataSourceUnitDao;
@@ -92,6 +109,16 @@ public class DataInventoryService {
 
     public DataInventorySummaryVO summary(DataInventoryFilterDTO request) {
         return snapshot(normalize(request)).summary();
+    }
+
+    /** Returns summary and profile coverage from one shared aggregate build. */
+    public DataInventoryOverviewVO overview(DataInventoryFilterDTO request) {
+        AggregateSnapshot aggregate = snapshot(normalize(request));
+        DataInventoryOverviewVO result = new DataInventoryOverviewVO();
+        result.setSummary(aggregate.summary());
+        result.setCoverage(aggregate.coverage());
+        result.setGeneratedAt(System.currentTimeMillis());
+        return result;
     }
 
     public List<DataInventoryDistributionVO> sourceTypeDistribution(DataInventoryFilterDTO request) {
@@ -179,10 +206,10 @@ public class DataInventoryService {
 
     private AggregateSnapshot snapshot(InventoryFilter filter) {
         String key = filter.cacheKey();
-        Object cached = cache.get(key);
-        if (cached instanceof AggregateSnapshot aggregate) {
-            return aggregate;
-        }
+        return cache.getOrCompute(key, () -> buildSnapshot(filter));
+    }
+
+    private AggregateSnapshot buildSnapshot(InventoryFilter filter) {
         AggregateBuilder aggregate = new AggregateBuilder();
         SourceCatalog catalog = loadSources(filter);
         aggregate.addMasterData(catalog.unitIds(), catalog.systemIds());
@@ -205,11 +232,8 @@ public class DataInventoryService {
                                     after -> openMetadataClient.listSchemasPage(
                                             database.fullyQualifiedName(), PAGE_SIZE, after),
                                     schema -> {
-                                        long tableTotal = walkPages(
-                                                after -> openMetadataClient.listTablesPage(
-                                                        schema.getFullyQualifiedName(), true, PAGE_SIZE, after),
-                                                table -> aggregate.addTable(
-                                                        source, database, schema, table, profile(source, table)));
+                                        long tableTotal = walkTablesWithProfiles(
+                                                source, database, schema, aggregate);
                                         aggregate.tableCount = add(aggregate.tableCount, tableTotal);
                                     });
                             aggregate.schemaCount = add(aggregate.schemaCount, schemaTotal);
@@ -224,8 +248,48 @@ public class DataInventoryService {
             }
         }
         AggregateSnapshot result = aggregate.freeze();
-        cache.put(key, result);
         return result;
+    }
+
+    /**
+     * Reads table pages in the foreground but fetches the independent latest
+     * profiles for each page with a small bounded executor. The table list is
+     * never retained beyond one page, so the optimization does not turn the
+     * inventory aggregate into an in-memory metadata mirror.
+     */
+    private long walkTablesWithProfiles(
+            SourceContext source,
+            OpenMetadataDatabase database,
+            OpenMetadataDatabaseSchema schema,
+            AggregateBuilder aggregate) {
+        String after = null;
+        Set<String> seen = new HashSet<>();
+        long total = 0L;
+        long local = 0L;
+        for (int pageNumber = 0; pageNumber < MAX_PAGES; pageNumber++) {
+            OpenMetadataPage<OpenMetadataTable> page = openMetadataClient.listTablesPage(
+                    schema.getFullyQualifiedName(), true, PAGE_SIZE, after);
+            if (page == null) {
+                break;
+            }
+            total = Math.max(total, page.total());
+            List<OpenMetadataTable> tables = safe(page.data());
+            List<CompletableFuture<OpenMetadataTableProfile>> profiles = new ArrayList<>(tables.size());
+            for (OpenMetadataTable table : tables) {
+                profiles.add(CompletableFuture.supplyAsync(
+                        () -> profile(source, table), PROFILE_EXECUTOR));
+            }
+            for (int index = 0; index < tables.size(); index++) {
+                aggregate.addTable(source, database, schema, tables.get(index), profiles.get(index).join());
+                local++;
+            }
+            String next = page.after();
+            if (next == null || next.isBlank() || !seen.add(next)) {
+                break;
+            }
+            after = next;
+        }
+        return total == 0L ? local : total;
     }
 
     private SourceCatalog loadSources(InventoryFilter filter) {

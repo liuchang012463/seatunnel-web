@@ -5,6 +5,9 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.function.Supplier;
 
 /**
  * Small process-local cache for inventory aggregates.  The cache stores only
@@ -18,6 +21,7 @@ public class MetadataInventoryCache {
     private static final long TTL_MILLIS = Duration.ofMinutes(5).toMillis();
 
     private final Map<String, Entry> entries = new ConcurrentHashMap<>();
+    private final Map<String, CompletableFuture<Object>> inFlight = new ConcurrentHashMap<>();
 
     public Object get(String key) {
         Entry entry = entries.get(key);
@@ -37,13 +41,51 @@ public class MetadataInventoryCache {
         }
     }
 
+    /**
+     * Shares a cold-cache build between concurrent callers with the same key.
+     * The inventory page requests summary and coverage independently in older
+     * clients, so this guard prevents two full OpenMetadata walks at once.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T getOrCompute(String key, Supplier<T> supplier) {
+        Object cached = get(key);
+        if (cached != null) {
+            return (T) cached;
+        }
+        CompletableFuture<Object> promise = new CompletableFuture<>();
+        CompletableFuture<Object> existing = inFlight.putIfAbsent(key, promise);
+        if (existing != null) {
+            try {
+                return (T) existing.join();
+            } catch (CompletionException error) {
+                if (error.getCause() instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                throw error;
+            }
+        }
+        try {
+            T value = supplier.get();
+            put(key, value);
+            promise.complete(value);
+            return value;
+        } catch (RuntimeException | Error error) {
+            promise.completeExceptionally(error);
+            throw error;
+        } finally {
+            inFlight.remove(key, promise);
+        }
+    }
+
     /** Invalidates all aggregates because one source may affect all dimensions. */
     public void invalidateDataSource(Long dataSourceId) {
         entries.clear();
+        inFlight.clear();
     }
 
     public void clear() {
         entries.clear();
+        inFlight.clear();
     }
 
     private record Entry(Object value, long expiresAt) {

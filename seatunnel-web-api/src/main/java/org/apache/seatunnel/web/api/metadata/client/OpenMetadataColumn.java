@@ -7,6 +7,7 @@ import lombok.Data;
 public class OpenMetadataColumn {
 
     private String name;
+    private String displayName;
     private String fullyQualifiedName;
     private String dataType;
     private String dataTypeDisplay;

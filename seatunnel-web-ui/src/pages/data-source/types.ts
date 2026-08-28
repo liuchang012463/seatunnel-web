@@ -172,6 +172,28 @@ export interface DataSourceOptionItem {
   value: string;
 }
 
+/**
+ * Read-only catalog entries for non-JDBC sources. Kafka and Elasticsearch
+ * expose these as OptionVO records while the file connectors use
+ * DataSourceCatalogFileEntry below. Keep the value open because older
+ * deployments sometimes return numeric identifiers.
+ */
+export interface DataSourceCatalogOption {
+  value?: string | number;
+  label?: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface DataSourceCatalogFileEntry {
+  name?: string;
+  path?: string;
+  type?: string;
+  size?: number;
+  modifiedTime?: number;
+  [key: string]: unknown;
+}
+
 export interface DataSourceCatalogItem {
   onlyDiScript: boolean;
   dbType: string;
@@ -208,6 +230,7 @@ export interface DataExplorationSchema {
 export interface DataExplorationTable {
   id: string;
   name: string;
+  displayName?: string;
   fullyQualifiedName: string;
   tableType?: string;
   description?: string;
@@ -247,8 +270,76 @@ export interface DataExplorationTableDetail extends DataExplorationTable {
   serviceFullyQualifiedName?: string;
   databaseFullyQualifiedName?: string;
   schemaFullyQualifiedName?: string;
+  retentionPeriod?: string;
+  tags?: string[];
+  domains?: string[];
   columns: DataExplorationColumn[];
   tableConstraints: DataExplorationConstraint[];
+}
+
+export interface DataExplorationMetadataUpdate {
+  displayName?: string;
+  description?: string;
+  tags?: string[];
+  domainId?: string;
+  retentionPeriod?: string;
+}
+
+export interface DataExplorationMetadataJob {
+  jobId?: string;
+  status?: string;
+  type?: string;
+  fullyQualifiedName?: string;
+  level?: string;
+  totalTables?: number;
+  progress?: {
+    total?: number;
+    completed?: number;
+    failed?: number;
+    skipped?: number;
+    [key: string]: unknown;
+  };
+  result?: unknown;
+  error?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DataExplorationErColumn {
+  id: string;
+  name: string;
+  displayName?: string;
+  description?: string;
+  dataType?: string;
+  constraints: string[];
+}
+
+export interface DataExplorationErNode {
+  id: string;
+  name: string;
+  displayName?: string;
+  description?: string;
+  fullyQualifiedName: string;
+  columns: DataExplorationErColumn[];
+}
+
+export interface DataExplorationErEndpoint {
+  nodeId: string;
+  columns: string[];
+}
+
+export interface DataExplorationErEdge {
+  id: string;
+  type: 'FOREIGN_KEY' | string;
+  source: DataExplorationErEndpoint;
+  target: DataExplorationErEndpoint;
+}
+
+export interface DataExplorationErDiagram {
+  databaseFqn: string;
+  schemaFullyQualifiedName?: string;
+  nodes: DataExplorationErNode[];
+  edges: DataExplorationErEdge[];
 }
 
 export interface DataExplorationTableMetrics {
@@ -335,6 +426,12 @@ export interface DataInventoryProfileCoverage {
   profiledTableCount: number;
   knownRowCount: number;
   tableCoveragePercent: number;
+}
+
+export interface DataInventoryOverview {
+  summary: DataInventorySummary;
+  coverage: DataInventoryProfileCoverage;
+  generatedAt?: number;
 }
 
 export type DataSourceTopologyNodeType =
