@@ -27,6 +27,16 @@ public class LakeProperties {
     /** Maximum time allowed for a read-only metadata query. */
     private Duration queryTimeout = Duration.ofSeconds(30);
 
+    /**
+     * HMAC key used for short-lived, one-time MANAGED table preview tokens.
+     * When unset, a process-local random key is generated at startup; a shared
+     * value is required when several Web instances serve the same requests.
+     */
+    private String previewTokenSecret;
+
+    /** Preview tokens are intentionally short lived. */
+    private Duration previewTokenTtl = Duration.ofMinutes(5);
+
     private long maxRows = 10_000;
 
     private long maxBytes = 10 * 1024 * 1024L;
