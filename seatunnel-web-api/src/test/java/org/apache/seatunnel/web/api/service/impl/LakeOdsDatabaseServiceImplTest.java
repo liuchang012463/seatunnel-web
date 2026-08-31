@@ -47,6 +47,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -202,7 +203,7 @@ class LakeOdsDatabaseServiceImplTest {
     }
 
     @Test
-    void pageFiltersResourceStatusBeforePagingAndPreservesDaoTotalAcrossPages() {
+    void pageDelegatesResourceStatusFilteringAndPreservesDaoTotalAcrossPages() {
         LakePhysicalDataSourcePageDTO request = new LakePhysicalDataSourcePageDTO();
         request.setPageNo(2);
         request.setPageSize(1);
@@ -211,9 +212,7 @@ class LakeOdsDatabaseServiceImplTest {
         Page<DataSource> filteredPage = new Page<>(2, 1);
         filteredPage.setTotal(2);
         filteredPage.setRecords(List.of(source(8L, "orders-2", 11L, DbType.MYSQL)));
-        when(bindingDao.querySourceDataSourceIdsByResourceStatus(LakeResourceStatus.READY))
-                .thenReturn(List.of(7L, 8L));
-        when(dataSourceDao.queryPageByDataSourceIds(any(), eq(List.of(7L, 8L))))
+        when(dataSourceDao.queryPageByLakeResourceStatus(any(), eq(LakeResourceStatus.READY)))
                 .thenReturn(filteredPage);
 
         var result = service.page(request);
@@ -222,8 +221,21 @@ class LakeOdsDatabaseServiceImplTest {
         assertEquals(2, result.getData().getPagination().getPageNo());
         assertEquals(1, result.getData().getPagination().getPageSize());
         assertEquals(1, result.getData().getBizData().size());
-        verify(dataSourceDao).queryPageByDataSourceIds(any(), eq(List.of(7L, 8L)));
+        verify(dataSourceDao).queryPageByLakeResourceStatus(any(), eq(LakeResourceStatus.READY));
         verify(dataSourceDao, never()).queryPage(any());
+    }
+
+    @Test
+    void pageRejectsAnUnknownResourceStatusWithTheGenericRequestError() {
+        LakePhysicalDataSourcePageDTO request = new LakePhysicalDataSourcePageDTO();
+        request.setResourceStatus("not-a-resource-status");
+
+        LakeServiceException exception = assertThrows(LakeServiceException.class,
+                () -> service.page(request));
+
+        assertEquals(LakeErrorCode.LAKE_REQUEST_INVALID, exception.getLakeErrorCode());
+        assertEquals(11911, LakeErrorCode.httpCode(LakeErrorCode.LAKE_REQUEST_INVALID));
+        verifyNoInteractions(dataSourceDao, bindingDao);
     }
 
     private void stubCoordinatorFor(AtomicReference<LakeOdsDatabaseBinding> binding) {

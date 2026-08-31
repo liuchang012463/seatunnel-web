@@ -1,8 +1,8 @@
 package org.apache.seatunnel.web.dao.repository;
 
-
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
+import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 
@@ -25,11 +25,10 @@ public interface DataSourceDao extends IDao<DataSource> {
     IPage<DataSource> queryPage(DataSourceDTO dto, Collection<Long> businessSystemIds);
 
     /**
-     * Queries a page constrained by the physical data-source identifiers. The
-     * identifier predicate is applied to the paged SQL query so callers do not
-     * have to page first and filter the result in memory.
+     * Queries a physical source page and applies the ODS resource status in
+     * the same SQL statement used for pagination and count.
      */
-    IPage<DataSource> queryPageByDataSourceIds(DataSourceDTO dto, Collection<Long> dataSourceIds);
+    IPage<DataSource> queryPageByLakeResourceStatus(DataSourceDTO dto, LakeResourceStatus resourceStatus);
 
     List<DataSource> queryByDbType(String dbType);
 
@@ -38,6 +37,4 @@ public interface DataSourceDao extends IDao<DataSource> {
     int updateConnStatus(Long id, ConnStatus status);
 
     boolean existsByBusinessSystemId(Long businessSystemId);
-
-
 }

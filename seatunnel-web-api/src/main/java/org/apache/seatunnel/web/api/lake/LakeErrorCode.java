@@ -13,6 +13,7 @@ public final class LakeErrorCode {
     public static final String LAKE_RESOURCE_CONFLICT = "LAKE_RESOURCE_CONFLICT";
     public static final String LAKE_OPERATION_STALE = "LAKE_OPERATION_STALE";
     public static final String LAKE_DORIS_UNAVAILABLE = "LAKE_DORIS_UNAVAILABLE";
+    public static final String LAKE_REQUEST_INVALID = "LAKE_REQUEST_INVALID";
 
     private LakeErrorCode() {
     }
@@ -30,6 +31,7 @@ public final class LakeErrorCode {
             case LAKE_RESOURCE_CONFLICT -> 11908;
             case LAKE_OPERATION_STALE -> 11909;
             case LAKE_DORIS_UNAVAILABLE -> 11910;
+            case LAKE_REQUEST_INVALID -> 11911;
             default -> 11900;
         };
     }

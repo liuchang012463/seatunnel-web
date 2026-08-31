@@ -7,6 +7,7 @@ import jakarta.annotation.Resource;
 import lombok.NonNull;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
+import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.mapper.DataSourceMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
@@ -56,16 +57,11 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
     }
 
     @Override
-    public IPage<DataSource> queryPageByDataSourceIds(
-            DataSourceDTO dto, Collection<Long> dataSourceIds) {
+    public IPage<DataSource> queryPageByLakeResourceStatus(
+            DataSourceDTO dto, LakeResourceStatus resourceStatus) {
         IPage<DataSource> page = new Page<>(dto.getPageNo(), dto.getPageSize());
-        if (dataSourceIds == null || dataSourceIds.isEmpty()) {
-            page.setTotal(0);
-            page.setRecords(List.of());
-            return page;
-        }
-        LambdaQueryWrapper<DataSource> wrapper = buildQueryWrapper(dto, null, dataSourceIds);
-        return dataSourceMapper.selectPage(page, wrapper);
+        return dataSourceMapper.selectPageByLakeResourceStatus(
+                page, dto.getName(), resourceStatus == null ? null : resourceStatus.getCode());
     }
 
     static LambdaQueryWrapper<DataSource> buildQueryWrapper(DataSourceDTO dto) {
@@ -93,15 +89,6 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
                 .eq(dto.getStatus() != null, DataSource::getStatus, dto.getStatus())
                 .eq(dto.getEnvironment() != null, DataSource::getEnvironment, dto.getEnvironment())
                 .orderByDesc(DataSource::getCreateTime);
-    }
-
-    static LambdaQueryWrapper<DataSource> buildQueryWrapper(
-            DataSourceDTO dto, Collection<Long> businessSystemIds, Collection<Long> dataSourceIds) {
-        LambdaQueryWrapper<DataSource> wrapper = buildQueryWrapper(dto, businessSystemIds);
-        boolean hasIds = dataSourceIds != null;
-        return wrapper
-                .in(hasIds && !dataSourceIds.isEmpty(), DataSource::getId, dataSourceIds)
-                .eq(hasIds && dataSourceIds.isEmpty(), DataSource::getId, -1L);
     }
 
     @Override

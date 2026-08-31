@@ -116,11 +116,10 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
         try {
             status = LakeResourceStatus.valueOf(resourceStatus.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
-            throw new LakeServiceException(LakeErrorCode.LAKE_MASTER_DATA_CODE_INVALID,
+            throw new LakeServiceException(LakeErrorCode.LAKE_REQUEST_INVALID,
                     "resourceStatus is invalid");
         }
-        List<Long> sourceDataSourceIds = bindingDao.querySourceDataSourceIdsByResourceStatus(status);
-        return dataSourceDao.queryPageByDataSourceIds(query, sourceDataSourceIds);
+        return dataSourceDao.queryPageByLakeResourceStatus(query, status);
     }
 
     @Override

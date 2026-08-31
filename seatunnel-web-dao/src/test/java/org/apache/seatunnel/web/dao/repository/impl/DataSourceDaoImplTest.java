@@ -76,17 +76,4 @@ class DataSourceDaoImplTest {
         assertTrue(sql.contains("STATUS ="));
     }
 
-    @Test
-    void shouldApplyPhysicalDataSourceIdsBeforeTheDatabasePageIsCounted() {
-        DataSourceDTO dto = new DataSourceDTO();
-
-        LambdaQueryWrapper<DataSource> wrapper = DataSourceDaoImpl.buildQueryWrapper(
-                dto, null, List.of(7L, 8L));
-        String sql = wrapper.getSqlSegment().toUpperCase();
-
-        assertTrue(sql.contains("ID IN"), sql);
-        String parameters = wrapper.getParamNameValuePairs().values().toString();
-        assertTrue(parameters.contains("7"));
-        assertTrue(parameters.contains("8"));
-    }
 }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.apache.seatunnel.web.dao.mapper.DataSourceMapper">
+
+    <!--
+        The EXISTS predicate is deliberately part of the paged mapper
+        statement. MyBatis-Plus can derive its count from this same statement,
+        so status filtering cannot produce a page/count mismatch or an
+        unbounded application-side IN list.
+    -->
+    <select id="selectPageByLakeResourceStatus"
+            resultType="org.apache.seatunnel.web.dao.entity.DataSource">
+        SELECT d.*
+        FROM t_seatunnel_web_datasource d
+        WHERE EXISTS (
+            SELECT 1
+            FROM t_seatunnel_web_lake_ods_database_binding b
+            WHERE b.source_data_source_id = d.id
+              AND b.resource_status = #{resourceStatus}
+              AND b.deleted = 0
+        )
+        <if test="keyword != null and keyword != ''">
+            AND d.name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY d.create_time DESC, d.id DESC
+    </select>
+
+</mapper>
