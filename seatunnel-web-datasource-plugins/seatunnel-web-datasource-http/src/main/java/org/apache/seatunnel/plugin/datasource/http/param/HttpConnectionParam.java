@@ -33,6 +33,11 @@ public class HttpConnectionParam implements ConnectionParam {
     )
     private String healthCheckPath;
 
+    @FormField(label = "OpenAPI 文档地址", order = 12,
+            placeholder = "https://api.example.com/openapi.json",
+            description = "可选。填写 OpenAPI 3 或 Swagger 2 JSON 文档地址后，可在目录中浏览接口。")
+    private String openApiSpecUrl;
+
     @FormField(label = "认证方式", required = true, type = FieldType.SELECT, order = 3, defaultValue = "NONE")
     private HttpAuthenticationType authenticationType = HttpAuthenticationType.NONE;
 

@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+      {
+        "type": "java",
+        "name": "SeaTunnelWebApplication",
+        "request": "launch",
+        "mainClass": "org.apache.seatunnel.web.api.SeaTunnelWebApplication",
+        "projectName": "seatunnel-web-api",
+        "console": "integratedTerminal",
+        "envFile": "${workspaceFolder}/.env",
+        "env": {
+          "SPRING_FLYWAY_REPAIR_ON_MIGRATE": "false"
+        }
+      }
+    ]
+  }

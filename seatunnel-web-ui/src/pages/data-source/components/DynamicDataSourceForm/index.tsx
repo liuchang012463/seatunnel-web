@@ -1,36 +1,23 @@
-import HttpUtils from "@/utils/HttpUtils";
-import { InfoCircleOutlined, LoadingOutlined } from "@ant-design/icons";
-import { useIntl } from "@umijs/max";
-import {
-  Button,
-  Form,
-  Input,
-  InputNumber,
-  message,
-  Select,
-  Switch,
-  Tooltip,
-} from "antd";
-import TextArea from "antd/es/input/TextArea";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import DatabaseIcons from "../../icon/DatabaseIcons";
-import { DataSourceOperateType, DynamicDataSourceFormProps } from "../../types";
-import DataSourceUnitSelect from "../DataSourceUnitSelect";
-import CustomKVList from "./components/CustomKVList";
-import DriverLocationField from "./components/DriverLocationField";
-import {
-  getConfigInitialValues,
-  isFieldVisible,
-  transformRules,
-} from "./utils/formUtils";
+import HttpUtils from '@/utils/HttpUtils';
+import { InfoCircleOutlined, LoadingOutlined } from '@ant-design/icons';
+import { useIntl } from '@umijs/max';
+import { Button, Form, Input, InputNumber, message, Select, Switch, Tooltip } from 'antd';
+import TextArea from 'antd/es/input/TextArea';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import DatabaseIcons from '../../icon/DatabaseIcons';
+import { DataSourceOperateType, DynamicDataSourceFormProps } from '../../types';
+import DataSourceUnitSelect from '../DataSourceUnitSelect';
+import CustomKVList from './components/CustomKVList';
+import DriverLocationField from './components/DriverLocationField';
+import { getConfigInitialValues, isFieldVisible, transformRules } from './utils/formUtils';
 
-import { Code2, FlaskConical, ShieldCheck } from "lucide-react";
+import { Code2, FlaskConical, ShieldCheck } from 'lucide-react';
 
-const DEFAULT_ENVIRONMENT = "DEVELOP";
+const DEFAULT_ENVIRONMENT = 'DEVELOP';
 
 const ENV_OPTIONS = [
   {
-    value: "DEVELOP",
+    value: 'DEVELOP',
     label: (
       <div className="flex items-center gap-2">
         <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
@@ -41,7 +28,7 @@ const ENV_OPTIONS = [
     ),
   },
   {
-    value: "TEST",
+    value: 'TEST',
     label: (
       <div className="flex items-center gap-2">
         <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
@@ -52,7 +39,7 @@ const ENV_OPTIONS = [
     ),
   },
   {
-    value: "PROD",
+    value: 'PROD',
     label: (
       <div className="flex items-center gap-2">
         <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
@@ -64,18 +51,15 @@ const ENV_OPTIONS = [
   },
 ];
 
-const sectionTitleClass = "m-0 text-[15px] font-semibold text-slate-800";
-const sectionDescClass = "mt-1 mb-0 text-[13px] leading-[22px] text-slate-500";
+const sectionTitleClass = 'm-0 text-[15px] font-semibold text-slate-800';
+const sectionDescClass = 'mt-1 mb-0 text-[13px] leading-[22px] text-slate-500';
 
 const isEmptyValue = (value: any) => {
-  return value === undefined || value === null || value === "";
+  return value === undefined || value === null || value === '';
 };
 
 const isCreateOperateType = (operateType?: DataSourceOperateType) => {
-  return (
-    operateType === ("CREATE" as DataSourceOperateType) ||
-    operateType === (DataSourceOperateType as any)?.Create
-  );
+  return operateType === ('CREATE' as DataSourceOperateType) || operateType === (DataSourceOperateType as any)?.Create;
 };
 
 const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
@@ -83,17 +67,18 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   form,
   configForm,
   operateType,
+  onManageMasterData,
   initialConfig,
 }) => {
   const intl = useIntl();
 
   const [formConfig, setFormConfig] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const authenticationType = Form.useWatch("authenticationType", configForm);
+  const authenticationType = Form.useWatch('authenticationType', configForm);
 
   const [needInstall, setNeedInstall] = useState(false);
   const [installing, setInstalling] = useState(false);
-  const [loadErrMsg, setLoadErrMsg] = useState<string>("");
+  const [loadErrMsg, setLoadErrMsg] = useState<string>('');
 
   /**
    * 用请求序号解决“慢一拍”的问题。
@@ -127,7 +112,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
       try {
         setLoading(true);
         setNeedInstall(false);
-        setLoadErrMsg("");
+        setLoadErrMsg('');
 
         /**
          * 切换 dbType 时，先把旧字段清掉。
@@ -136,9 +121,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         setFormConfig([]);
         configForm.resetFields();
 
-        const response = await HttpUtils.get<any>(
-          `/api/v1/data-source/plugin/config?pluginType=${currentDbType}`
-        );
+        const response = await HttpUtils.get<any>(`/api/v1/data-source/plugin/config?pluginType=${currentDbType}`);
 
         /**
          * 只允许最新请求更新页面。
@@ -150,22 +133,22 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
 
         if (response?.code === 0) {
           const data = response?.data || {};
-                  
+
           // 检查是否需要安装插件
           if (data.installRequired) {
             setNeedInstall(true);
-            setLoadErrMsg(data.installHint || "请先安装数据源插件");
+            setLoadErrMsg(data.installHint || '请先安装数据源插件');
             setFormConfig([]);
             configForm.resetFields();
             return;
           }
-                  
+
           const fields = data.formFields || [];
-        
+
           setNeedInstall(false);
-          setLoadErrMsg("");
+          setLoadErrMsg('');
           setFormConfig(fields);
-        
+
           /**
            * 注意：
            * 这里不要用"只 patch 空值"的方式。
@@ -174,7 +157,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
            */
           const init = getConfigInitialValues(fields);
           configForm.resetFields();
-          
+
           /**
            * 编辑模式：使用传入的 initialConfig 覆盖默认值
            * 创建模式：使用表单的默认值
@@ -191,9 +174,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         }
 
         setNeedInstall(true);
-        setLoadErrMsg(
-          response?.msg || response?.message || "Plugin config not available"
-        );
+        setLoadErrMsg(response?.msg || response?.message || 'Plugin config not available');
         setFormConfig([]);
         configForm.resetFields();
       } catch (error: any) {
@@ -205,9 +186,9 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         setLoadErrMsg(
           error?.message ||
             intl.formatMessage({
-              id: "pages.datasource.form.loadConfigFail",
-              defaultMessage: "Failed to load form config",
-            })
+              id: 'pages.datasource.form.loadConfigFail',
+              defaultMessage: 'Failed to load form config',
+            }),
         );
         setFormConfig([]);
         configForm.resetFields();
@@ -217,7 +198,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         }
       }
     },
-    [configForm, intl]
+    [configForm, intl],
   );
 
   useEffect(() => {
@@ -241,7 +222,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
       requestSeqRef.current += 1;
       setFormConfig([]);
       setNeedInstall(false);
-      setLoadErrMsg("");
+      setLoadErrMsg('');
       setLoading(false);
       configForm.resetFields();
       return;
@@ -259,24 +240,20 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
 
   const installPlugin = async () => {
     if (!dbType) {
-      message.warning("请先选择数据源类型");
+      message.warning('请先选择数据源类型');
       return;
     }
 
     try {
       setInstalling(true);
 
-      const resp = await HttpUtils.post<any>(
-        `/api/v1/data-source/plugin/config/install?pluginType=${dbType}`,
-        {}
-      );
+      const resp = await HttpUtils.post<any>(`/api/v1/data-source/plugin/config/install?pluginType=${dbType}`, {});
 
       if (resp?.code === 0) {
-        message.success("插件安装成功");
+        message.success('插件安装成功');
         await loadFormConfig(dbType);
         return;
       }
-
     } catch (e: any) {
     } finally {
       setInstalling(false);
@@ -293,24 +270,18 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
       },
     };
 
-    if (field.key === "driverLocation") {
-      return (
-        <DriverLocationField
-          field={field}
-          dbType={dbType}
-          configForm={configForm}
-        />
-      );
+    if (field.key === 'driverLocation') {
+      return <DriverLocationField field={field} dbType={dbType} configForm={configForm} />;
     }
 
     switch (field.type) {
-      case "INPUT":
+      case 'INPUT':
         return <Input {...commonProps} />;
 
-      case "PASSWORD":
+      case 'PASSWORD':
         return <Input.Password {...commonProps} />;
 
-      case "SELECT":
+      case 'SELECT':
         return (
           <Select {...commonProps}>
             {field.options?.map((option: any) => (
@@ -321,13 +292,13 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
           </Select>
         );
 
-      case "NUMBER":
+      case 'NUMBER':
         return <InputNumber {...commonProps} className="!w-full" />;
 
-      case "SWITCH":
+      case 'SWITCH':
         return <Switch {...commonProps} />;
 
-      case "TEXTAREA":
+      case 'TEXTAREA':
         return <Input.TextArea rows={4} {...commonProps} />;
 
       default:
@@ -365,33 +336,31 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
     <div className="datasource-form-panel p-5">
       <div className="mb-5">
         <h3 className={sectionTitleClass}>数据源信息</h3>
-        <p className={sectionDescClass}>
-          先填写基础信息，再补充当前数据源类型对应的连接参数。
-        </p>
+        <p className={sectionDescClass}>先填写基础信息，再补充当前数据源类型对应的连接参数。</p>
       </div>
 
       <Form form={form} layout="vertical">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Form.Item
             label={intl.formatMessage({
-              id: "pages.datasource.form.dsName",
-              defaultMessage: "DS Name",
+              id: 'pages.datasource.form.dsName',
+              defaultMessage: 'DS Name',
             })}
             name="name"
             rules={[
               {
                 required: true,
                 message: intl.formatMessage({
-                  id: "pages.datasource.form.dsNameRequired",
-                  defaultMessage: "DS Name is required",
+                  id: 'pages.datasource.form.dsNameRequired',
+                  defaultMessage: 'DS Name is required',
                 }),
               },
             ]}
           >
             <Input
               placeholder={intl.formatMessage({
-                id: "pages.datasource.form.inputPlaceholder",
-                defaultMessage: "Input...",
+                id: 'pages.datasource.form.inputPlaceholder',
+                defaultMessage: 'Input...',
               })}
               maxLength={100}
             />
@@ -401,8 +370,8 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
             label={
               <span className="inline-flex items-center">
                 {intl.formatMessage({
-                  id: "pages.datasource.form.env",
-                  defaultMessage: "Env",
+                  id: 'pages.datasource.form.env',
+                  defaultMessage: 'Env',
                 })}
                 <Tooltip title="Deployment environment of the datasource">
                   <InfoCircleOutlined className="ml-1 text-slate-400" />
@@ -414,41 +383,35 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
               {
                 required: true,
                 message: intl.formatMessage({
-                  id: "pages.datasource.form.envRequired",
-                  defaultMessage: "Env is required",
+                  id: 'pages.datasource.form.envRequired',
+                  defaultMessage: 'Env is required',
                 }),
               },
             ]}
           >
             <Select
               placeholder={intl.formatMessage({
-                id: "pages.datasource.form.selectPlaceholder",
-                defaultMessage: "Select...",
+                id: 'pages.datasource.form.selectPlaceholder',
+                defaultMessage: 'Select...',
               })}
               options={ENV_OPTIONS}
             />
           </Form.Item>
         </div>
 
-        <Form.Item
-          label="数据源单位"
-          name="dataSourceUnit"
-          rules={[{ required: true, message: "请选择或创建数据源单位" }]}
-        >
-          <DataSourceUnitSelect />
-        </Form.Item>
+        <DataSourceUnitSelect form={form} onManageMasterData={onManageMasterData} />
 
         <Form.Item
           label={intl.formatMessage({
-            id: "pages.datasource.form.description",
-            defaultMessage: "Description",
+            id: 'pages.datasource.form.description',
+            defaultMessage: 'Description',
           })}
           name="remark"
         >
           <TextArea
             placeholder={intl.formatMessage({
-              id: "pages.datasource.form.inputPlaceholder",
-              defaultMessage: "Input...",
+              id: 'pages.datasource.form.inputPlaceholder',
+              defaultMessage: 'Input...',
             })}
             rows={4}
           />
@@ -464,11 +427,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
               当前插件配置暂不可用，可能尚未安装。请先安装对应插件后，再继续填写连接参数。
             </div>
 
-            {loadErrMsg ? (
-              <div className="mb-3 text-xs leading-5 text-slate-400">
-                {loadErrMsg}
-              </div>
-            ) : null}
+            {loadErrMsg ? <div className="mb-3 text-xs leading-5 text-slate-400">{loadErrMsg}</div> : null}
 
             <Button
               type="default"
@@ -479,8 +438,8 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
               <span className="inline-flex items-center gap-2">
                 <span>
                   {intl.formatMessage({
-                    id: "pages.datasource.form.installPlugin",
-                    defaultMessage: "Install Plugin",
+                    id: 'pages.datasource.form.installPlugin',
+                    defaultMessage: 'Install Plugin',
                   })}
                 </span>
 
@@ -496,16 +455,14 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         <div className="mt-2 border-t border-[var(--st-color-divider)] pt-[18px]">
           <div className="mb-4">
             <h3 className={sectionTitleClass}>连接参数</h3>
-            <p className={sectionDescClass}>
-              根据当前数据源类型自动渲染配置项，建议优先填写必填字段。
-            </p>
+            <p className={sectionDescClass}>根据当前数据源类型自动渲染配置项，建议优先填写必填字段。</p>
           </div>
 
           <Form
             form={configForm}
             component={false}
-            labelCol={{ flex: "110px" }}
-            wrapperCol={{ flex: "1" }}
+            labelCol={{ flex: '110px' }}
+            wrapperCol={{ flex: '1' }}
             labelAlign="left"
           >
             {formConfig.map((field) => {
@@ -513,10 +470,8 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
                 return null;
               }
 
-              if (field.type === "CUSTOM_SELECT") {
-                return (
-                  <CustomKVList key={field.key} intl={intl} field={field} />
-                );
+              if (field.type === 'CUSTOM_SELECT') {
+                return <CustomKVList key={field.key} intl={intl} field={field} />;
               }
 
               return (
@@ -526,7 +481,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
                   name={field.key}
                   preserve={false}
                   rules={transformRules(field?.rules)}
-                  validateTrigger={["onChange", "onBlur"]}
+                  validateTrigger={['onChange', 'onBlur']}
                   className="!mb-[18px]"
                 >
                   {renderFormItem(field)}

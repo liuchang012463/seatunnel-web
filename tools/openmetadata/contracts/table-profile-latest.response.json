@@ -1,0 +1,30 @@
+{
+  "id": "<TABLE_UUID>",
+  "name": "<TABLE_NAME>",
+  "fullyQualifiedName": "<SERVICE_FQN>.<DATABASE>.<SCHEMA>.<TABLE>",
+  "serviceType": "Mysql",
+  "columns": [
+    {
+      "name": "id",
+      "dataType": "INT",
+      "constraint": "PRIMARY_KEY",
+      "profile": {
+        "name": "id",
+        "timestamp": 0,
+        "valuesCount": 1,
+        "nullCount": 0,
+        "nullProportion": 0,
+        "distinctCount": 1,
+        "distinctProportion": 1
+      }
+    }
+  ],
+  "profile": {
+    "timestamp": 0,
+    "profileSample": 100,
+    "profileSampleType": "PERCENTAGE",
+    "columnCount": 1,
+    "rowCount": 1
+  },
+  "deleted": false
+}

@@ -147,3 +147,34 @@ seatunnel:
   web:
     database:
       type: ${SEATUNNEL_WEB_DATABASE_TYPE:mysql}
+
+# OpenMetadata integration is intentionally opt-in. The base URL must be the
+# OpenMetadata Server /api endpoint; this application never calls Airflow.
+metadata:
+  openmetadata:
+    enabled: ${METADATA_OPENMETADATA_ENABLED:false}
+    base-url: ${METADATA_OPENMETADATA_BASE_URL:}
+    token: ${METADATA_OPENMETADATA_TOKEN:}
+    connect-timeout-ms: ${METADATA_OPENMETADATA_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${METADATA_OPENMETADATA_READ_TIMEOUT_MS:10000}
+    expected-server-version: 1.12.10
+    expected-ingestion-patch: 1.12.10.0
+    kingbase-tunnel-host: ${METADATA_OPENMETADATA_KINGBASE_TUNNEL_HOST:}
+    kingbase-tunnel-port: ${METADATA_OPENMETADATA_KINGBASE_TUNNEL_PORT:0}
+  # Optional server-side adapter for /mnt/lc/open_metadata_extension/project.
+  # Set the base URL to the extension's /omext route, not its OpenMetadata URL.
+  extension:
+    enabled: ${METADATA_OPENMETADATA_EXTENSION_ENABLED:false}
+    base-url: ${METADATA_OPENMETADATA_EXTENSION_BASE_URL:}
+    connect-timeout-ms: ${METADATA_OPENMETADATA_EXTENSION_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${METADATA_OPENMETADATA_EXTENSION_READ_TIMEOUT_MS:15000}
+  reconcile:
+    interval-ms: ${METADATA_RECONCILE_INTERVAL_MS:20000}
+    batch-size: ${METADATA_RECONCILE_BATCH_SIZE:20}
+    lease-seconds: ${METADATA_RECONCILE_LEASE_SECONDS:60}
+    max-retry-count: ${METADATA_RECONCILE_MAX_RETRY_COUNT:4}
+  status:
+    interval-ms: ${METADATA_STATUS_INTERVAL_MS:10000}
+    batch-size: ${METADATA_STATUS_BATCH_SIZE:50}
+    idle-refresh-seconds: ${METADATA_STATUS_IDLE_REFRESH_SECONDS:60}
+    trigger-grace-seconds: ${METADATA_STATUS_TRIGGER_GRACE_SECONDS:60}

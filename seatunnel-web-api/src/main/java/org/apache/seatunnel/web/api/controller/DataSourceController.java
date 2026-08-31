@@ -10,12 +10,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.exceptions.ApiException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.api.service.DataSourceService;
+import org.apache.seatunnel.web.api.metadata.MetadataPipelineOperationService;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
+import org.apache.seatunnel.web.spi.bean.dto.DataSourceExploreDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.bean.vo.DBOptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataSourceMetadataStatusVO;
+import org.apache.seatunnel.web.spi.bean.vo.MetadataPipelineRunVO;
+import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +40,9 @@ public class DataSourceController {
 
     @Resource
     private DataSourceService dataSourceService;
+
+    @Resource
+    private MetadataPipelineOperationService metadataPipelineOperationService;
 
     /**
      * Creates a new data source.
@@ -59,6 +67,22 @@ public class DataSourceController {
             @PathVariable("id") Long id,
             @RequestBody DataSourceDTO dto) {
         return Result.buildSuc(dataSourceService.updateDataSource(id, dto));
+    }
+
+    /**
+     * Changes only the canonical business-system ownership of a data source.
+     * Connection parameters remain untouched, including for job-referenced
+     * legacy rows being backfilled during migration.
+     */
+    @PutMapping("/{id}/ownership")
+    @Operation(summary = "assignDataSourceBusinessSystem",
+            description = "Assign a data source to an active business system without changing connection parameters")
+    @ApiException(UPDATE_DATASOURCE_ERROR)
+    public Result<DataSource> assignBusinessSystem(
+            @PathVariable("id") Long id,
+            @RequestBody DataSourceDTO dto) {
+        return Result.buildSuc(dataSourceService.assignBusinessSystem(
+                id, dto == null ? null : dto.getBusinessSystemId()));
     }
 
     /**
@@ -149,6 +173,57 @@ public class DataSourceController {
     @ApiException(CONNECTION_TEST_FAILURE)
     public Result<Boolean> connectionTest(@PathVariable("id") Long id) {
         return Result.buildSuc(dataSourceService.connectionTest(id));
+    }
+
+    @PostMapping("/{id}/scan")
+    @Operation(summary = "triggerDataSourceScan", description = "Trigger a manual OpenMetadata metadata scan")
+    public Result<Boolean> triggerScan(@PathVariable("id") Long id) {
+        return Result.buildSuc(metadataPipelineOperationService.triggerScan(id));
+    }
+
+    @PostMapping("/{id}/explore")
+    @Operation(summary = "triggerDataSourceExploration", description = "Trigger one database-scoped data-source exploration")
+    public Result<Boolean> triggerExploration(
+            @PathVariable("id") Long id,
+            @RequestBody DataSourceExploreDTO dto) {
+        MetadataPipelineOperationService.ExplorationReservation reservation =
+                metadataPipelineOperationService.reserveExploration(
+                        id, dto == null ? null : dto.getDatabaseFqn());
+        metadataPipelineOperationService.executeExploration(reservation);
+        return Result.buildSuc(true);
+    }
+
+    @GetMapping("/{id}/metadata-status")
+    @Operation(summary = "getDataSourceMetadataStatus", description = "Read the local latest scan and exploration cache")
+    public Result<DataSourceMetadataStatusVO> metadataStatus(@PathVariable("id") Long id) {
+        return Result.buildSuc(metadataPipelineOperationService.getCachedStatus(id));
+    }
+
+    @GetMapping("/{id}/metadata-databases")
+    @Operation(summary = "listDataSourceMetadataDatabases", description = "List discovered OpenMetadata databases for exploration")
+    public Result<List<OptionVO>> metadataDatabases(@PathVariable("id") Long id) {
+        return Result.buildSuc(metadataPipelineOperationService.listDatabases(id));
+    }
+
+    @GetMapping("/{id}/runs")
+    @Operation(summary = "listDataSourceMetadataRuns", description = "Read recent OpenMetadata pipeline status records")
+    public Result<List<MetadataPipelineRunVO>> runs(
+            @PathVariable("id") Long id,
+            @RequestParam(value = "type", defaultValue = "SCAN") String type,
+            @RequestParam(value = "limit", defaultValue = "5") int limit) {
+        return Result.buildSuc(metadataPipelineOperationService.listRuns(id, type, limit));
+    }
+
+    @PostMapping("/{id}/metadata-sync/retry")
+    @Operation(summary = "retryDataSourceMetadataSync", description = "Retry a failed OpenMetadata control-plane sync")
+    public Result<Boolean> retryMetadataSync(@PathVariable("id") Long id) {
+        return Result.buildSuc(metadataPipelineOperationService.retryMetadataSync(id));
+    }
+
+    @PostMapping("/{id}/metadata-sync/reconcile")
+    @Operation(summary = "reconcileDataSourceMetadata", description = "Request an OpenMetadata desired-state reconciliation")
+    public Result<Boolean> reconcileMetadata(@PathVariable("id") Long id) {
+        return Result.buildSuc(metadataPipelineOperationService.reconcileMetadata(id));
     }
 
     /**

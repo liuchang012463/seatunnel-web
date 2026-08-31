@@ -80,21 +80,20 @@ export async function getInitialState(): Promise<{
 export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => {
   const hideLayout = shouldHideLayout();
   applyLayoutVisibility(hideLayout);
+  const showWatermark = typeof window === 'undefined' || window.location.pathname !== '/data-source/master-data';
 
   return {
     menuDataRender: () => prototypeMenuData,
     menuProps: {
       defaultOpenKeys: isPrototypeMode
-        ? ['/menu/ingestion', '/menu/operations', '/menu/lake', '/menu/system']
+        ? ['/menu/exploration', '/menu/ingestion', '/menu/operations', '/menu/lake', '/menu/system']
         : ['/menu/ingestion'],
     },
     actionsRender: () =>
       isPrototypeMode
         ? []
         : [<Knowledge key="knowledge" />, <ThemeSwitch key="theme-switch" />],
-    waterMarkProps: {
-      content: initialState?.currentUser?.name,
-    },
+    waterMarkProps: showWatermark ? { content: initialState?.currentUser?.name } : undefined,
     footerRender: () => <Footer />,
     bgLayoutImgList: isPrototypeMode
       ? []

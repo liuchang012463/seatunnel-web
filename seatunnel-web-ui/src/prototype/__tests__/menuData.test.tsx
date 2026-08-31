@@ -10,7 +10,15 @@ describe('prototype navigation menu', () => {
     expect(summarizeMenu(prototypeMenuData)).toEqual([
       { path: '/bi', name: '引接态势' },
       { path: '/data-source', name: '数据源管理' },
-      { path: '/resources/data-discovery', name: '数据探查' },
+      {
+        path: '/menu/exploration',
+        name: '数据探查',
+        children: [
+          { path: '/data-exploration/overview', name: '探查概览' },
+          { path: '/data-exploration/tasks', name: '探查任务配置' },
+          { path: '/data-exploration/results', name: '探查结果展示' },
+        ],
+      },
       { path: '/reporting/forms', name: '数据采报' },
       {
         path: '/menu/ingestion',

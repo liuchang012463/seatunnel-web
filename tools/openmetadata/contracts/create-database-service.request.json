@@ -1,0 +1,26 @@
+{
+  "name": "<STABLE_SERVICE_NAME>",
+  "displayName": "<DISPLAY_NAME>",
+  "serviceType": "Mysql",
+  "connection": {
+    "config": {
+      "type": "Mysql",
+      "scheme": "mysql+pymysql",
+      "username": "<USERNAME>",
+      "authType": {
+        "password": "<SECRET_NOT_IN_REPOSITORY>"
+      },
+      "hostPort": "<HOST:PORT>",
+      "databaseName": "<OPTIONAL_DATABASE_NAME>",
+      "schemaFilterPattern": {
+        "includes": [],
+        "excludes": [
+          "^information_schema$",
+          "^performance_schema$"
+        ]
+      },
+      "supportsMetadataExtraction": true,
+      "supportsProfiler": true
+    }
+  }
+}

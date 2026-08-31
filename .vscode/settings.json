@@ -1,0 +1,32 @@
+{
+  // 1. 语言服务（代码跳转、自动补全、检查）
+  "java.jdt.ls.java.home": "/opt/jdk-21.0.11+10",
+
+  // 2. 告诉 VS Code 当前项目的运行时版本
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-21",
+      "path": "/opt/jdk-21.0.11+10",
+      "default": true
+    }
+  ],
+
+  // 3. Maven 插件与 Wrapper 设置
+  "maven.executable.preferMavenWrapper": true,
+  "maven.executable.path": "./mvnw",
+  "java.configuration.maven.userSettings": "/home/haruka/.m2/settings.xml",
+
+  // 4. 为 VS Code 内置终端自动绑定 JDK 21（无需手动 source）
+  "terminal.integrated.env.linux": {
+    "JAVA_HOME": "/opt/jdk-21.0.11+10",
+    "PATH": "/opt/jdk-21.0.11+10/bin:${env:PATH}"
+  },
+  "java.compile.nullAnalysis.mode": "automatic",
+
+  // 5. 开启递归自动检测所有子目录中的 package.json
+  "npm.autoDetect": "on",
+  // 开启 package.json 文件内的 CodeLens（直接在文件里显示 Run 按钮）
+  "npm.enableRunFromFolder": true,
+  "maven.view": "hierarchical",
+  "java.configuration.updateBuildConfiguration": "interactive"
+}

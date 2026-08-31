@@ -29,9 +29,14 @@ export const prototypeMenuData: MenuDataItem[] = [
     icon: <DatabaseOutlined />,
   },
   {
-    path: '/resources/data-discovery',
+    path: '/menu/exploration',
     name: '数据探查',
     icon: <ReadOutlined />,
+    children: [
+      { path: '/data-exploration/overview', name: '探查概览', icon: <BarChartOutlined /> },
+      { path: '/data-exploration/tasks', name: '探查任务配置', icon: <ThunderboltOutlined /> },
+      { path: '/data-exploration/results', name: '探查结果展示', icon: <ApartmentOutlined /> },
+    ],
   },
   {
     path: '/reporting/forms',

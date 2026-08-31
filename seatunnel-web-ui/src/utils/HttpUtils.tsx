@@ -130,7 +130,29 @@ class HttpUtils {
       method: "GET",
       responseType: "blob",
       getResponse: true,
+      headers: {
+        Accept: "*/*",
+      },
       ...(options || {}),
+    });
+  }
+
+  public static async downloadPost(
+    url: string,
+    body?: Record<string, any>
+  ): Promise<any> {
+    if (isPrototypeMode) {
+      return new Blob(["prototype export"], { type: "text/plain" });
+    }
+    return request(url, {
+      method: "POST",
+      data: body,
+      responseType: "blob",
+      getResponse: true,
+      headers: {
+        Accept: "*/*",
+        "Content-Type": "application/json",
+      },
     });
   }
 }

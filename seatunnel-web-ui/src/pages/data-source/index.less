@@ -308,6 +308,231 @@
   }
 }
 
+/* Data-source catalog uses the same dense asset-list language as the
+   exploration pages; keep the existing component API but remove the oversized
+   marketing-card treatment. */
+.datasource-page-container {
+  .datasource-card {
+    border-radius: 10px;
+    border-color: var(--st-color-divider);
+    box-shadow: none;
+  }
+
+  .datasource-card-cover {
+    height: 68px;
+    background: var(--st-color-bg-elevated);
+    border-bottom-color: var(--st-color-divider);
+  }
+
+  .datasource-card-logo {
+    left: 18px;
+    bottom: -20px;
+    width: 52px;
+    height: 52px;
+    border-width: 2px;
+    background: var(--st-color-bg-panel);
+  }
+
+  .datasource-card-env-tag {
+    top: 14px;
+    right: 16px;
+  }
+
+  .datasource-card-content {
+    gap: 9px;
+    padding: 18px 18px 16px;
+  }
+
+  .datasource-card-title {
+    font-size: 15px;
+  }
+
+  .datasource-card-exploration-row,
+  .datasource-card-owner-grid {
+    padding: 8px 10px;
+    background: var(--st-color-bg-control);
+    border-color: var(--st-color-divider);
+    border-radius: 6px;
+  }
+
+  .datasource-card-detail-button {
+    height: 34px;
+    border-radius: 6px;
+  }
+}
+
+.datasource-page-container .datasource-empty-state {
+  margin-top: 18px;
+  padding: 44px 24px 36px;
+  background: var(--st-color-bg-panel);
+  border-color: var(--st-color-divider);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.datasource-catalog-panel {
+  overflow: hidden;
+  background: var(--st-color-bg-panel);
+  border: 1px solid var(--st-color-divider);
+  border-radius: 10px;
+}
+
+.datasource-catalog-panel__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--st-color-divider);
+
+  p {
+    margin: 4px 0 0;
+    color: var(--st-color-text-muted);
+    font-size: 12px;
+  }
+}
+
+.datasource-catalog-panel__controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.datasource-view-switcher {
+  .datasource-view-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.datasource-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  padding: 16px;
+
+  > .datasource-card {
+    height: 100%;
+  }
+}
+
+.datasource-catalog-table {
+  .ant-table,
+  .ant-table-container {
+    color: var(--st-color-text-secondary);
+    background: transparent;
+  }
+
+  .ant-table-thead > tr > th {
+    color: var(--st-color-text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--st-color-bg-control);
+    border-bottom-color: var(--st-color-divider);
+  }
+
+  .ant-table-tbody > tr > td {
+    border-bottom-color: var(--st-color-divider-subtle);
+  }
+
+  .ant-table-tbody > tr:hover > td {
+    background: var(--st-color-hover) !important;
+  }
+}
+
+.datasource-catalog-name__title {
+  color: var(--st-color-text-primary);
+  font-weight: 600;
+}
+
+.datasource-catalog-name__type {
+  margin-top: 3px;
+  color: var(--st-color-text-muted);
+  font-size: 11px;
+}
+
+.datasource-catalog-owner {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+
+  span {
+    display: inline-block;
+    width: 32px;
+    color: var(--st-color-text-muted);
+    font-size: 11px;
+  }
+}
+
+.datasource-editor-modal {
+  .ant-modal-content {
+    padding: 0;
+    overflow: hidden;
+    background: var(--st-color-bg-panel);
+    border: 1px solid var(--st-color-divider);
+    border-radius: 10px;
+    box-shadow: 0 18px 50px rgb(0 0 0 / 30%);
+  }
+
+  .ant-modal-header,
+  .ant-modal-footer {
+    background: var(--st-color-bg-panel);
+    border-color: var(--st-color-divider);
+  }
+
+  .ant-modal-title {
+    color: var(--st-color-text-primary) !important;
+  }
+
+  .ant-modal-body {
+    background: var(--st-color-bg-panel) !important;
+  }
+
+  .datasource-form-panel {
+    padding: 0 !important;
+    color: var(--st-color-text-secondary);
+    background: transparent;
+    border: 0;
+  }
+
+  .datasource-form-panel h3,
+  .datasource-form-panel .text-slate-800,
+  .datasource-form-panel .text-slate-700 {
+    color: var(--st-color-text-primary) !important;
+  }
+
+  .datasource-form-panel p,
+  .datasource-form-panel .text-slate-500,
+  .datasource-form-panel .text-slate-600,
+  .datasource-form-panel .text-slate-400,
+  .datasource-form-panel .text-slate-300 {
+    color: var(--st-color-text-muted) !important;
+  }
+
+  .datasource-form-panel .ant-form-item-label > label {
+    color: var(--st-color-text-secondary) !important;
+  }
+
+  .datasource-form-panel .ant-input,
+  .datasource-form-panel .ant-input-affix-wrapper,
+  .datasource-form-panel .ant-select-selector,
+  .datasource-form-panel .ant-input-number,
+  .datasource-form-panel textarea.ant-input {
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-bg-control) !important;
+    border-color: var(--st-color-divider) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  .datasource-form-panel .ant-input::placeholder,
+  .datasource-form-panel .ant-select-selection-placeholder {
+    color: var(--st-color-text-muted) !important;
+  }
+}
+
 .datasource-page-container {
   min-height: calc(100vh - 56px);
   height: calc(100vh - 56px);
@@ -622,58 +847,107 @@
 }
 
 .datasource-card-content {
-  padding: 36px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 22px 20px;
   background: var(--st-color-bg-panel);
 }
 
 .datasource-card-title {
-  margin-bottom: 8px;
+  margin: 0;
   color: var(--st-color-text-primary);
-  font-size: var(--st-type-content-lg-size);
-  font-weight: 400;
-  line-height: var(--st-type-content-lg-line);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
 }
 
 .datasource-card-jdbc-url {
-  margin-bottom: 12px;
+  height: 18px;
   overflow: hidden;
   color: var(--st-color-text-secondary);
-  font-size: var(--st-type-content-sm-size);
-  line-height: var(--st-type-content-sm-line);
+  font-size: 12px;
+  line-height: 18px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .datasource-card-status {
-  margin-bottom: 16px;
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
-.datasource-card-unit {
-  max-width: 100%;
-  margin: -4px 0 12px;
+.datasource-card-exploration-row {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  color: var(--st-color-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  background: color-mix(in srgb, var(--st-color-bg-control) 76%, transparent);
+  border: 1px solid var(--st-color-border);
+  border-radius: 8px;
+}
+
+.datasource-card-owner-grid {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--st-color-bg-control) 54%, transparent);
+  border: 1px solid var(--st-color-border);
+  border-radius: 8px;
+}
+
+.datasource-card-owner-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.datasource-card-label {
+  flex: 0 0 auto;
+  color: var(--st-color-text-muted);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.datasource-card-value {
+  min-width: 0;
   overflow: hidden;
-  color: #D5D5D5;
-  font-size: var(--st-type-caption-size);
-  line-height: var(--st-type-caption-line);
+  color: var(--st-color-text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .datasource-card-update-time {
-  margin-top: 12px;
-  margin-bottom: 16px;
-  color: #D5D5D5;
-  font-size: var(--st-type-caption-size);
-  line-height: var(--st-type-caption-line);
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--st-color-text-secondary);
+  font-size: 11px;
+  line-height: 18px;
 }
 
 .datasource-card-update-time-value {
-  color: #D5D5D5;
-  font-weight: 400;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--st-color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .datasource-card-detail-button {
-  height: 42px;
+  height: 38px;
+  margin-top: 2px;
   color: var(--st-color-text-primary);
   background: transparent;
   border-color: var(--st-color-border);
@@ -686,6 +960,21 @@
 }
 
 @media (max-width: 768px) {
+  .datasource-catalog-panel__heading {
+    flex-direction: column;
+  }
+
+  .datasource-catalog-panel__controls {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .datasource-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+
   .datasource-search-control,
   .datasource-filter-select {
     width: 100%;
@@ -735,6 +1024,58 @@
   background: var(--st-color-bg-panel);
   border: 1px dashed var(--st-color-border);
   border-radius: var(--st-radius-md);
+}
+
+/* Final catalog overrides intentionally sit after the legacy card rules. */
+.datasource-page-container .datasource-card {
+  border-color: var(--st-color-divider);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.datasource-page-container .datasource-card:hover {
+  box-shadow: none;
+}
+
+.datasource-page-container .datasource-card-cover {
+  height: 68px;
+  background: var(--st-color-bg-elevated);
+  border-bottom-color: var(--st-color-divider);
+}
+
+.datasource-page-container .datasource-card-logo {
+  left: 18px;
+  bottom: -20px;
+  width: 52px;
+  height: 52px;
+  border-width: 2px;
+  background: var(--st-color-bg-panel);
+}
+
+.datasource-page-container .datasource-card-content {
+  gap: 9px;
+  padding: 18px 18px 16px;
+}
+
+.datasource-page-container .datasource-card-exploration-row,
+.datasource-page-container .datasource-card-owner-grid {
+  padding: 8px 10px;
+  background: var(--st-color-bg-control);
+  border-color: var(--st-color-divider);
+  border-radius: 6px;
+}
+
+.datasource-page-container .datasource-card-detail-button {
+  height: 34px;
+  border-radius: 6px;
+}
+
+.datasource-page-container .datasource-empty-state {
+  padding: 44px 24px 36px;
+  background: var(--st-color-bg-panel);
+  border-color: var(--st-color-divider);
+  border-radius: 10px;
+  box-shadow: none;
 }
 
 .datasource-type-search {
@@ -929,3 +1270,54 @@
   padding: 0 4px;
 }
 
+/* Final catalog overrides intentionally sit after the legacy card rules. */
+.datasource-page-container .datasource-card {
+  border-color: var(--st-color-divider);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.datasource-page-container .datasource-card:hover {
+  box-shadow: none;
+}
+
+.datasource-page-container .datasource-card-cover {
+  height: 68px;
+  background: var(--st-color-bg-elevated);
+  border-bottom-color: var(--st-color-divider);
+}
+
+.datasource-page-container .datasource-card-logo {
+  left: 18px;
+  bottom: -20px;
+  width: 52px;
+  height: 52px;
+  border-width: 2px;
+  background: var(--st-color-bg-panel);
+}
+
+.datasource-page-container .datasource-card-content {
+  gap: 9px;
+  padding: 18px 18px 16px;
+}
+
+.datasource-page-container .datasource-card-exploration-row,
+.datasource-page-container .datasource-card-owner-grid {
+  padding: 8px 10px;
+  background: var(--st-color-bg-control);
+  border-color: var(--st-color-divider);
+  border-radius: 6px;
+}
+
+.datasource-page-container .datasource-card-detail-button {
+  height: 34px;
+  border-radius: 6px;
+}
+
+.datasource-page-container .datasource-empty-state {
+  padding: 44px 24px 36px;
+  background: var(--st-color-bg-panel);
+  border-color: var(--st-color-divider);
+  border-radius: 10px;
+  box-shadow: none;
+}

@@ -40,6 +40,14 @@ public interface DataSourceService {
     DataSource updateDataSource(Long id, DataSourceDTO dto);
 
     /**
+     * Assigns an existing data source to an active business system without
+     * changing its connection parameters. This operation is intentionally
+     * allowed for job-referenced sources so ownership backfill does not break
+     * existing job definitions.
+     */
+    DataSource assignBusinessSystem(Long id, Long businessSystemId);
+
+    /**
      * Retrieves a datasource by its primary key.
      *
      * @param id primary key
