@@ -21,6 +21,21 @@ public class LakeSourceObjectRefDaoImpl extends BaseDao<LakeSourceObjectRef, Lak
     }
 
     @Override
+    public LakeSourceObjectRef queryActiveById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return mapper.selectOne(new LambdaQueryWrapper<LakeSourceObjectRef>()
+                .eq(LakeSourceObjectRef::getId, id)
+                .eq(LakeSourceObjectRef::getDeleted, false));
+    }
+
+    @Override
+    public LakeSourceObjectRef queryByIdIncludingDeleted(Long id) {
+        return id == null ? null : mapper.selectById(id);
+    }
+
+    @Override
     public LakeSourceObjectRef queryByOmEntityId(String omEntityId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeSourceObjectRef>()
                 .eq(LakeSourceObjectRef::getOmEntityId, omEntityId)
@@ -39,14 +54,32 @@ public class LakeSourceObjectRefDaoImpl extends BaseDao<LakeSourceObjectRef, Lak
     @Override
     public boolean updateIfTokenAndVersion(
             LakeSourceObjectRef entity, String operationToken, Integer lockVersion) {
-        if (entity == null || entity.getId() == null || operationToken == null || lockVersion == null) {
+        return updateIfTokenAndVersion(entity, operationToken, lockVersion, true);
+    }
+
+    @Override
+    public boolean updateIfTokenAndVersionIncludingDeleted(
+            LakeSourceObjectRef entity, String operationToken, Integer lockVersion) {
+        return updateIfTokenAndVersion(entity, operationToken, lockVersion, false);
+    }
+
+    private boolean updateIfTokenAndVersion(
+            LakeSourceObjectRef entity, String operationToken, Integer lockVersion, boolean activeOnly) {
+        if (entity == null || entity.getId() == null || lockVersion == null) {
             return false;
         }
         entity.setLockVersion(lockVersion + 1);
-        return mapper.update(entity, new LambdaUpdateWrapper<LakeSourceObjectRef>()
+        LambdaUpdateWrapper<LakeSourceObjectRef> wrapper = new LambdaUpdateWrapper<LakeSourceObjectRef>()
                 .eq(LakeSourceObjectRef::getId, entity.getId())
-                .eq(LakeSourceObjectRef::getOperationToken, operationToken)
-                .eq(LakeSourceObjectRef::getLockVersion, lockVersion)
-                .eq(LakeSourceObjectRef::getDeleted, false)) > 0;
+                .eq(LakeSourceObjectRef::getLockVersion, lockVersion);
+        if (activeOnly) {
+            wrapper.eq(LakeSourceObjectRef::getDeleted, false);
+        }
+        if (operationToken == null) {
+            wrapper.isNull(LakeSourceObjectRef::getOperationToken);
+        } else {
+            wrapper.eq(LakeSourceObjectRef::getOperationToken, operationToken);
+        }
+        return mapper.update(entity, wrapper) > 0;
     }
 }

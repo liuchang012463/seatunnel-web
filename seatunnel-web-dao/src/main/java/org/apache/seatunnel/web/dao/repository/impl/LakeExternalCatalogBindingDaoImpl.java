@@ -22,6 +22,21 @@ public class LakeExternalCatalogBindingDaoImpl
     }
 
     @Override
+    public LakeExternalCatalogBinding queryActiveById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return mapper.selectOne(new LambdaQueryWrapper<LakeExternalCatalogBinding>()
+                .eq(LakeExternalCatalogBinding::getId, id)
+                .eq(LakeExternalCatalogBinding::getDeleted, false));
+    }
+
+    @Override
+    public LakeExternalCatalogBinding queryByIdIncludingDeleted(Long id) {
+        return id == null ? null : mapper.selectById(id);
+    }
+
+    @Override
     public LakeExternalCatalogBinding queryBySourceDataSourceId(Long sourceDataSourceId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeExternalCatalogBinding>()
                 .eq(LakeExternalCatalogBinding::getSourceDataSourceId, sourceDataSourceId)
@@ -40,14 +55,32 @@ public class LakeExternalCatalogBindingDaoImpl
     @Override
     public boolean updateIfTokenAndVersion(
             LakeExternalCatalogBinding entity, String operationToken, Integer lockVersion) {
-        if (entity == null || entity.getId() == null || operationToken == null || lockVersion == null) {
+        return updateIfTokenAndVersion(entity, operationToken, lockVersion, true);
+    }
+
+    @Override
+    public boolean updateIfTokenAndVersionIncludingDeleted(
+            LakeExternalCatalogBinding entity, String operationToken, Integer lockVersion) {
+        return updateIfTokenAndVersion(entity, operationToken, lockVersion, false);
+    }
+
+    private boolean updateIfTokenAndVersion(
+            LakeExternalCatalogBinding entity, String operationToken, Integer lockVersion, boolean activeOnly) {
+        if (entity == null || entity.getId() == null || lockVersion == null) {
             return false;
         }
         entity.setLockVersion(lockVersion + 1);
-        return mapper.update(entity, new LambdaUpdateWrapper<LakeExternalCatalogBinding>()
+        LambdaUpdateWrapper<LakeExternalCatalogBinding> wrapper = new LambdaUpdateWrapper<LakeExternalCatalogBinding>()
                 .eq(LakeExternalCatalogBinding::getId, entity.getId())
-                .eq(LakeExternalCatalogBinding::getOperationToken, operationToken)
-                .eq(LakeExternalCatalogBinding::getLockVersion, lockVersion)
-                .eq(LakeExternalCatalogBinding::getDeleted, false)) > 0;
+                .eq(LakeExternalCatalogBinding::getLockVersion, lockVersion);
+        if (activeOnly) {
+            wrapper.eq(LakeExternalCatalogBinding::getDeleted, false);
+        }
+        if (operationToken == null) {
+            wrapper.isNull(LakeExternalCatalogBinding::getOperationToken);
+        } else {
+            wrapper.eq(LakeExternalCatalogBinding::getOperationToken, operationToken);
+        }
+        return mapper.update(entity, wrapper) > 0;
     }
 }

@@ -6,6 +6,10 @@ import java.util.List;
 
 public interface LakeOdsTableMappingDao extends IDao<LakeOdsTableMapping> {
 
+    LakeOdsTableMapping queryActiveById(Long id);
+
+    LakeOdsTableMapping queryByIdIncludingDeleted(Long id);
+
     List<LakeOdsTableMapping> queryByOdsDatabaseBindingId(Long odsDatabaseBindingId);
 
     LakeOdsTableMapping queryByBindingIdAndTargetTable(Long odsDatabaseBindingId, String targetTableName);
@@ -13,4 +17,7 @@ public interface LakeOdsTableMappingDao extends IDao<LakeOdsTableMapping> {
     LakeOdsTableMapping queryByBindingIdAndSourceObject(Long odsDatabaseBindingId, Long sourceObjectRefId);
 
     boolean updateIfTokenAndVersion(LakeOdsTableMapping entity, String operationToken, Integer lockVersion);
+
+    boolean updateIfTokenAndVersionIncludingDeleted(
+            LakeOdsTableMapping entity, String operationToken, Integer lockVersion);
 }

@@ -21,6 +21,21 @@ public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBindin
     }
 
     @Override
+    public LakeOdsDatabaseBinding queryActiveById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
+                .eq(LakeOdsDatabaseBinding::getId, id)
+                .eq(LakeOdsDatabaseBinding::getDeleted, false));
+    }
+
+    @Override
+    public LakeOdsDatabaseBinding queryByIdIncludingDeleted(Long id) {
+        return id == null ? null : mapper.selectById(id);
+    }
+
+    @Override
     public LakeOdsDatabaseBinding queryBySourceDataSourceId(Long sourceDataSourceId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
                 .eq(LakeOdsDatabaseBinding::getSourceDataSourceId, sourceDataSourceId)
@@ -39,14 +54,32 @@ public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBindin
     @Override
     public boolean updateIfTokenAndVersion(
             LakeOdsDatabaseBinding entity, String operationToken, Integer lockVersion) {
-        if (entity == null || entity.getId() == null || operationToken == null || lockVersion == null) {
+        return updateIfTokenAndVersion(entity, operationToken, lockVersion, true);
+    }
+
+    @Override
+    public boolean updateIfTokenAndVersionIncludingDeleted(
+            LakeOdsDatabaseBinding entity, String operationToken, Integer lockVersion) {
+        return updateIfTokenAndVersion(entity, operationToken, lockVersion, false);
+    }
+
+    private boolean updateIfTokenAndVersion(
+            LakeOdsDatabaseBinding entity, String operationToken, Integer lockVersion, boolean activeOnly) {
+        if (entity == null || entity.getId() == null || lockVersion == null) {
             return false;
         }
         entity.setLockVersion(lockVersion + 1);
-        return mapper.update(entity, new LambdaUpdateWrapper<LakeOdsDatabaseBinding>()
+        LambdaUpdateWrapper<LakeOdsDatabaseBinding> wrapper = new LambdaUpdateWrapper<LakeOdsDatabaseBinding>()
                 .eq(LakeOdsDatabaseBinding::getId, entity.getId())
-                .eq(LakeOdsDatabaseBinding::getOperationToken, operationToken)
-                .eq(LakeOdsDatabaseBinding::getLockVersion, lockVersion)
-                .eq(LakeOdsDatabaseBinding::getDeleted, false)) > 0;
+                .eq(LakeOdsDatabaseBinding::getLockVersion, lockVersion);
+        if (activeOnly) {
+            wrapper.eq(LakeOdsDatabaseBinding::getDeleted, false);
+        }
+        if (operationToken == null) {
+            wrapper.isNull(LakeOdsDatabaseBinding::getOperationToken);
+        } else {
+            wrapper.eq(LakeOdsDatabaseBinding::getOperationToken, operationToken);
+        }
+        return mapper.update(entity, wrapper) > 0;
     }
 }

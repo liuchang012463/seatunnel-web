@@ -30,13 +30,18 @@ public class LakeTableLifecycleBindingDaoImpl
     @Override
     public boolean updateIfTokenAndVersion(
             LakeTableLifecycleBinding entity, String operationToken, Integer lockVersion) {
-        if (entity == null || entity.getId() == null || operationToken == null || lockVersion == null) {
+        if (entity == null || entity.getId() == null || lockVersion == null) {
             return false;
         }
         entity.setLockVersion(lockVersion + 1);
-        return mapper.update(entity, new LambdaUpdateWrapper<LakeTableLifecycleBinding>()
+        LambdaUpdateWrapper<LakeTableLifecycleBinding> wrapper = new LambdaUpdateWrapper<LakeTableLifecycleBinding>()
                 .eq(LakeTableLifecycleBinding::getId, entity.getId())
-                .eq(LakeTableLifecycleBinding::getOperationToken, operationToken)
-                .eq(LakeTableLifecycleBinding::getLockVersion, lockVersion)) > 0;
+                .eq(LakeTableLifecycleBinding::getLockVersion, lockVersion);
+        if (operationToken == null) {
+            wrapper.isNull(LakeTableLifecycleBinding::getOperationToken);
+        } else {
+            wrapper.eq(LakeTableLifecycleBinding::getOperationToken, operationToken);
+        }
+        return mapper.update(entity, wrapper) > 0;
     }
 }
