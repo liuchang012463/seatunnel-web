@@ -12,9 +12,11 @@ import org.apache.seatunnel.web.api.service.FileUploadService;
 import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.api.service.application.JobScheduleApplicationService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
+import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
+import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
 import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
@@ -100,6 +102,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     @Resource
     private FileUploadService fileUploadService;
 
+    @Resource
+    private LakeJobRelationBridgeService lakeJobRelationBridgeService;
+
     /**
      * Save or update batch job definition.
      */
@@ -156,6 +161,11 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
             scheduleApplicationService.saveOrUpdateSchedule(entity.getId(), command);
             fileUploadService.attach(entity.getId());
+
+            if (lakeJobRelationBridgeService != null) {
+                lakeJobRelationBridgeService.syncRelationAfterJobSave(
+                        command, entity.getId(), nextVersion, LakeJobRuntimeType.BATCH);
+            }
 
             return buildSaveResult(entity, nextVersion);
         } catch (ServiceException e) {
@@ -275,6 +285,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             scheduleApplicationService.removeSchedule(jobDefinitionId);
             incrementalBatchService.removeByDefinitionId(jobDefinitionId);
             jobInstanceService.removeAllByDefinitionId(jobDefinitionId);
+            if (lakeJobRelationBridgeService != null) {
+                lakeJobRelationBridgeService.markRelationsAfterJobDelete(jobDefinitionId);
+            }
             jobDefinitionContentDao.deleteByJobDefinitionId(jobDefinitionId);
             boolean deleted = jobDefinitionDao.deleteById(jobDefinitionId);
             fileUploadService.deleteByJobDefinitionId(jobDefinitionId);

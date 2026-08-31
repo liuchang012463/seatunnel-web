@@ -10,9 +10,11 @@ import org.apache.seatunnel.web.api.service.StreamingJobDefinitionService;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
 import org.apache.seatunnel.web.api.service.StreamingJobMetricsService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
+import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
+import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
@@ -85,6 +87,9 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
     @Resource
     private CurrentUserProvider currentUserProvider;
 
+    @Resource
+    private LakeJobRelationBridgeService lakeJobRelationBridgeService;
+
     @Override
     public JobDefinitionSaveResultVO saveOrUpdate(StreamingScriptJobSaveCommand command) {
         return doSaveOrUpdate(command);
@@ -113,6 +118,11 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
             cdcServerIdAllocationService.prepare(command, entity.getId());
 
             saveDefinitionContent(command, context, entity);
+
+            if (lakeJobRelationBridgeService != null) {
+                lakeJobRelationBridgeService.syncRelationAfterJobSave(
+                        command, entity.getId(), context.getNextVersion(), LakeJobRuntimeType.STREAMING);
+            }
 
             return buildSaveResult(entity, context.getNextVersion());
         } catch (ServiceException e) {
@@ -234,6 +244,9 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
         try {
             cdcServerIdAllocationService.release(jobDefinitionId);
             streamingJobInstanceService.removeAllByDefinitionId(jobDefinitionId);
+            if (lakeJobRelationBridgeService != null) {
+                lakeJobRelationBridgeService.markRelationsAfterJobDelete(jobDefinitionId);
+            }
             streamingJobDefinitionContentDao.deleteByJobDefinitionId(jobDefinitionId);
 
             boolean deleted = streamingJobDefinitionDao.deleteById(jobDefinitionId);

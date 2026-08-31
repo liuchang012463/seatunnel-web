@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.service.impl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.common.utils.ConvertUtil;
+import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.job.registry.StreamingJobEditCommandBuilderRegistry;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionContentEntity;
@@ -22,6 +23,9 @@ public class StreamingJobDefinitionQueryService {
 
     @Resource
     private StreamingJobEditCommandBuilderRegistry editCommandBuilderRegistry;
+
+    @Resource
+    private LakeJobRelationBridgeService lakeJobRelationBridgeService;
 
     public StreamingJobDefinitionVO selectById(Long id) {
         validateId(id);
@@ -53,9 +57,13 @@ public class StreamingJobDefinitionQueryService {
             throw new ServiceException(Status.BATCH_JOB_DEFINITION_NOT_EXIST);
         }
 
-        return editCommandBuilderRegistry
+        JobDefinitionSaveCommand command = editCommandBuilderRegistry
                 .getBuilder(definition.getMode())
                 .build(definition, contentEntity);
+        if (lakeJobRelationBridgeService != null) {
+            lakeJobRelationBridgeService.restoreBinding(command, definition.getId());
+        }
+        return command;
     }
 
     private void validateId(Long id) {

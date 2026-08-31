@@ -4,6 +4,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.service.application.JobScheduleApplicationService;
+import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
 import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
 import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.utils.ConvertUtil;
@@ -31,6 +32,9 @@ public class BatchJobDefinitionQueryService {
 
     @Resource
     private BatchJobEditCommandBuilderRegistry editCommandBuilderRegistry;
+
+    @Resource
+    private LakeJobRelationBridgeService lakeJobRelationBridgeService;
 
     /**
      * Query batch job definition detail by id.
@@ -74,9 +78,13 @@ public class BatchJobDefinitionQueryService {
             throw new ServiceException(Status.BATCH_JOB_DEFINITION_NOT_EXIST);
         }
 
-        return editCommandBuilderRegistry
+        JobDefinitionSaveCommand command = editCommandBuilderRegistry
                 .getBuilder(definition.getMode())
                 .build(definition, contentEntity, scheduleConfig);
+        if (lakeJobRelationBridgeService != null) {
+            lakeJobRelationBridgeService.restoreBinding(command, definition.getId());
+        }
+        return command;
     }
 
     /**
