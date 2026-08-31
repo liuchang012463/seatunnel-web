@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.lake.operation;
 
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
+import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
 import org.apache.seatunnel.web.dao.repository.LakeExternalCatalogBindingDao;
@@ -65,6 +66,8 @@ class DaoLakeResourceGatewayTest {
         row.setDeleted(false);
         row.setOperationToken("drop-token");
         row.setResourceStatus(LakeResourceStatus.DELETING);
+        row.setActualTableExists(true);
+        row.setTargetConsistencyStatus(LakeConsistencyStatus.CONSISTENT);
         when(tableDao.queryByIdIncludingDeleted(21L)).thenReturn(row);
         doAnswer(invocation -> {
             LakeOdsTableMapping entity = invocation.getArgument(0);
@@ -87,6 +90,7 @@ class DaoLakeResourceGatewayTest {
         assertEquals(LakeResourceStatus.DELETED, row.getResourceStatus());
         assertTrue(row.getDeleted());
         assertEquals(null, row.getOperationToken());
+        assertFalse(row.getActualTableExists());
 
         row.setGeneration(3);
         row.setLockVersion(6);
@@ -99,6 +103,42 @@ class DaoLakeResourceGatewayTest {
         assertFalse(row.getDeleted());
         assertEquals(7, row.getLockVersion());
         verify(tableDao).updateIfTokenAndVersionIncludingDeleted(row, null, 6);
+    }
+
+    @Test
+    void createFinalizationPublishesObservedTableStateWithTheCasUpdate() {
+        LakeSourceObjectRefDao sourceDao = mock(LakeSourceObjectRefDao.class);
+        LakeOdsDatabaseBindingDao databaseDao = mock(LakeOdsDatabaseBindingDao.class);
+        LakeOdsTableMappingDao tableDao = mock(LakeOdsTableMappingDao.class);
+        LakeExternalCatalogBindingDao catalogDao = mock(LakeExternalCatalogBindingDao.class);
+        LakeOdsTableMapping row = new LakeOdsTableMapping();
+        row.setId(23L);
+        row.setGeneration(1);
+        row.setLockVersion(2);
+        row.setDeleted(false);
+        row.setOperationToken("create-token");
+        row.setResourceStatus(LakeResourceStatus.CREATING);
+        row.setActualTableExists(false);
+        row.setTargetConsistencyStatus(LakeConsistencyStatus.UNKNOWN);
+        when(tableDao.queryByIdIncludingDeleted(23L)).thenReturn(row);
+        doAnswer(invocation -> {
+            LakeOdsTableMapping entity = invocation.getArgument(0);
+            Integer expectedVersion = invocation.getArgument(2);
+            entity.setLockVersion(expectedVersion + 1);
+            return true;
+        }).when(tableDao).updateIfTokenAndVersion(any(), any(), anyInt());
+
+        DaoLakeResourceGateway gateway = new DaoLakeResourceGateway(
+                sourceDao, databaseDao, tableDao, catalogDao);
+        LakeOperationHandle handle = new LakeOperationHandle(
+                3L, LakeResourceTypes.ODS_TABLE_MAPPING, 23L, 1, "create-token", 2);
+
+        assertTrue(gateway.finalizeSuccess(handle, "created"));
+        assertEquals(LakeResourceStatus.READY, row.getResourceStatus());
+        assertFalse(row.getDeleted());
+        assertTrue(row.getActualTableExists());
+        assertEquals(LakeConsistencyStatus.CONSISTENT, row.getTargetConsistencyStatus());
+        verify(tableDao).updateIfTokenAndVersion(row, "create-token", 2);
     }
 
     @Test

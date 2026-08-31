@@ -10,6 +10,8 @@ public interface LakeSourceObjectRefDao extends IDao<LakeSourceObjectRef> {
 
     LakeSourceObjectRef queryByOmEntityId(String omEntityId);
 
+    LakeSourceObjectRef queryByOmEntityIdIncludingDeleted(String omEntityId);
+
     LakeSourceObjectRef queryBySourceDataSourceIdAndOmEntityId(Long sourceDataSourceId, String omEntityId);
 
     boolean updateIfTokenAndVersion(LakeSourceObjectRef entity, String operationToken, Integer lockVersion);

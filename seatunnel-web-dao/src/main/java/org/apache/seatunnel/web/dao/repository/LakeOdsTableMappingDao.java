@@ -14,7 +14,13 @@ public interface LakeOdsTableMappingDao extends IDao<LakeOdsTableMapping> {
 
     LakeOdsTableMapping queryByBindingIdAndTargetTable(Long odsDatabaseBindingId, String targetTableName);
 
+    LakeOdsTableMapping queryByBindingIdAndTargetTableIncludingDeleted(
+            Long odsDatabaseBindingId, String targetTableName);
+
     LakeOdsTableMapping queryByBindingIdAndSourceObject(Long odsDatabaseBindingId, Long sourceObjectRefId);
+
+    LakeOdsTableMapping queryByBindingIdAndSourceObjectIncludingDeleted(
+            Long odsDatabaseBindingId, Long sourceObjectRefId);
 
     boolean updateIfTokenAndVersion(LakeOdsTableMapping entity, String operationToken, Integer lockVersion);
 

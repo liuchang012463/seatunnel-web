@@ -59,12 +59,34 @@ public class LakeOdsTableMappingDaoImpl extends BaseDao<LakeOdsTableMapping, Lak
     }
 
     @Override
+    public LakeOdsTableMapping queryByBindingIdAndTargetTableIncludingDeleted(
+            Long odsDatabaseBindingId, String targetTableName) {
+        if (odsDatabaseBindingId == null || targetTableName == null) {
+            return null;
+        }
+        return mapper.selectOne(new LambdaQueryWrapper<LakeOdsTableMapping>()
+                .eq(LakeOdsTableMapping::getOdsDatabaseBindingId, odsDatabaseBindingId)
+                .eq(LakeOdsTableMapping::getTargetTableName, targetTableName));
+    }
+
+    @Override
     public LakeOdsTableMapping queryByBindingIdAndSourceObject(
             Long odsDatabaseBindingId, Long sourceObjectRefId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeOdsTableMapping>()
                 .eq(LakeOdsTableMapping::getOdsDatabaseBindingId, odsDatabaseBindingId)
                 .eq(LakeOdsTableMapping::getSourceObjectRefId, sourceObjectRefId)
                 .eq(LakeOdsTableMapping::getDeleted, false));
+    }
+
+    @Override
+    public LakeOdsTableMapping queryByBindingIdAndSourceObjectIncludingDeleted(
+            Long odsDatabaseBindingId, Long sourceObjectRefId) {
+        if (odsDatabaseBindingId == null || sourceObjectRefId == null) {
+            return null;
+        }
+        return mapper.selectOne(new LambdaQueryWrapper<LakeOdsTableMapping>()
+                .eq(LakeOdsTableMapping::getOdsDatabaseBindingId, odsDatabaseBindingId)
+                .eq(LakeOdsTableMapping::getSourceObjectRefId, sourceObjectRefId));
     }
 
     @Override

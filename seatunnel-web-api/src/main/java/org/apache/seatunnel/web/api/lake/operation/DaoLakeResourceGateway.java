@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.lake.operation;
 
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import lombok.NonNull;
+import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.LakeExternalCatalogBinding;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
@@ -85,6 +86,11 @@ public class DaoLakeResourceGateway implements LakeResourceGateway {
             boolean deleting = entity.getResourceStatus() == LakeResourceStatus.DELETING;
             entity.setResourceStatus(deleting ? LakeResourceStatus.DELETED : LakeResourceStatus.READY);
             entity.setDeleted(deleting);
+            if (entity instanceof LakeOdsTableMapping table) {
+                table.setActualTableExists(!deleting);
+                table.setTargetConsistencyStatus(deleting
+                        ? null : LakeConsistencyStatus.CONSISTENT);
+            }
             entity.setOperationToken(null);
             entity.setErrorCode(null);
             entity.setErrorMessage(null);

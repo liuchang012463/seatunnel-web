@@ -45,13 +45,13 @@ public final class LakePreviewTokenService {
 
     @Autowired
     public LakePreviewTokenService(LakeProperties properties) {
-        this(properties, Clock.systemUTC(), configuredSecret(properties));
+        this(properties, Clock.systemUTC(), properties == null ? null : properties.getPreviewTokenSecret());
     }
 
     /** Visible for deterministic token tests. */
     public LakePreviewTokenService(LakeProperties properties, Clock clock, String configuredSecret) {
         this.clock = clock == null ? Clock.systemUTC() : clock;
-        this.secret = secret(configuredSecret);
+        this.secret = secret(configuredSecret(properties, configuredSecret));
         Duration ttl = properties == null ? null : properties.getPreviewTokenTtl();
         this.ttlSeconds = ttl == null || ttl.isZero() || ttl.isNegative()
                 ? Duration.ofMinutes(5).toSeconds() : Math.max(1, ttl.toSeconds());
@@ -150,14 +150,13 @@ public final class LakePreviewTokenService {
         return generated;
     }
 
-    private static String configuredSecret(LakeProperties properties) {
+    private static String configuredSecret(LakeProperties properties, String configuredSecret) {
         if (properties != null && properties.isEnabled()
-                && (properties.getPreviewTokenSecret() == null
-                        || properties.getPreviewTokenSecret().isBlank())) {
+                && (configuredSecret == null || configuredSecret.isBlank())) {
             throw new IllegalStateException(
                     "Lake preview token secret is required when lake control plane is enabled");
         }
-        return properties == null ? null : properties.getPreviewTokenSecret();
+        return configuredSecret;
     }
 
     private static void validatePayload(Payload payload, Integer currentUserId) {

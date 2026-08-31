@@ -43,6 +43,12 @@ public class LakeSourceObjectRefDaoImpl extends BaseDao<LakeSourceObjectRef, Lak
     }
 
     @Override
+    public LakeSourceObjectRef queryByOmEntityIdIncludingDeleted(String omEntityId) {
+        return omEntityId == null ? null : mapper.selectOne(new LambdaQueryWrapper<LakeSourceObjectRef>()
+                .eq(LakeSourceObjectRef::getOmEntityId, omEntityId));
+    }
+
+    @Override
     public LakeSourceObjectRef queryBySourceDataSourceIdAndOmEntityId(
             Long sourceDataSourceId, String omEntityId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeSourceObjectRef>()

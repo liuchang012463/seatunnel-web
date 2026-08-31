@@ -1,0 +1,398 @@
+package org.apache.seatunnel.web.api.service.impl;
+
+import org.apache.seatunnel.web.api.lake.LakeErrorCode;
+import org.apache.seatunnel.web.api.lake.LakeProperties;
+import org.apache.seatunnel.web.api.lake.LakeServiceException;
+import org.apache.seatunnel.web.api.lake.contract.DorisTypeBase;
+import org.apache.seatunnel.web.api.lake.contract.TargetColumn;
+import org.apache.seatunnel.web.api.lake.contract.TargetContract;
+import org.apache.seatunnel.web.api.lake.contract.TargetContractCanonicalizer;
+import org.apache.seatunnel.web.api.lake.contract.TargetDistribution;
+import org.apache.seatunnel.web.api.lake.contract.TargetPartition;
+import org.apache.seatunnel.web.api.lake.contract.TargetType;
+import org.apache.seatunnel.web.api.lake.doris.DorisLakeClient;
+import org.apache.seatunnel.web.api.lake.doris.LakeDorisClientProvider;
+import org.apache.seatunnel.web.api.lake.operation.LakeOperationExecution;
+import org.apache.seatunnel.web.api.lake.operation.LakeOperationHandle;
+import org.apache.seatunnel.web.api.lake.operation.LakeOperationIntent;
+import org.apache.seatunnel.web.api.lake.operation.LakeResourceOperationCoordinator;
+import org.apache.seatunnel.web.api.lake.operation.LakeResourceTypes;
+import org.apache.seatunnel.web.api.lake.source.LakeSourceObjectResolver;
+import org.apache.seatunnel.web.api.lake.source.SourceColumnSnapshot;
+import org.apache.seatunnel.web.api.lake.source.SourceConstraintSnapshot;
+import org.apache.seatunnel.web.api.lake.source.SourceObjectSnapshot;
+import org.apache.seatunnel.web.api.lake.table.LakeManagedTableContractFactory;
+import org.apache.seatunnel.web.api.lake.table.LakeManagedTableDeleteImpactVO;
+import org.apache.seatunnel.web.api.lake.table.LakeManagedTablePreviewVO;
+import org.apache.seatunnel.web.api.lake.table.LakeManagedTableVO;
+import org.apache.seatunnel.web.api.lake.table.LakePreviewTokenService;
+import org.apache.seatunnel.web.api.security.CurrentUserProvider;
+import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
+import org.apache.seatunnel.web.common.enums.LakeManagementLevel;
+import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
+import org.apache.seatunnel.web.common.enums.LakeTableModel;
+import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
+import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
+import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
+import org.apache.seatunnel.web.dao.entity.LakeSourceObjectRef;
+import org.apache.seatunnel.web.dao.entity.LakeTableLifecycleBinding;
+import org.apache.seatunnel.web.dao.repository.DataSourceDao;
+import org.apache.seatunnel.web.dao.repository.LakeJobRelationDao;
+import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
+import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
+import org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao;
+import org.apache.seatunnel.web.dao.repository.LakeTableLifecycleBindingDao;
+import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTableCreateDTO;
+import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTableDeleteDTO;
+import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTablePreviewDTO;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class LakeManagedTableServiceImplTest {
+
+    @Mock private DataSourceDao dataSourceDao;
+    @Mock private LakeOdsDatabaseBindingDao databaseBindingDao;
+    @Mock private LakeOdsTableMappingDao tableMappingDao;
+    @Mock private LakeSourceObjectRefDao sourceObjectRefDao;
+    @Mock private LakeJobRelationDao jobRelationDao;
+    @Mock private LakeTableLifecycleBindingDao lifecycleBindingDao;
+    @Mock private LakeSourceObjectResolver sourceResolver;
+    @Mock private LakeDorisClientProvider dorisClientProvider;
+    @Mock private LakeResourceOperationCoordinator coordinator;
+    @Mock private CurrentUserProvider currentUserProvider;
+    @Mock private DorisLakeClient dorisClient;
+
+    private LakeProperties properties;
+    private LakePreviewTokenService tokenService;
+    private LakeManagedTableContractFactory contractFactory;
+    private LakeManagedTableServiceImpl service;
+    private LakeOdsDatabaseBinding binding;
+    private SourceObjectSnapshot source;
+
+    @BeforeEach
+    void setUp() {
+        properties = new LakeProperties();
+        properties.setEnabled(true);
+        properties.setPreviewTokenTtl(java.time.Duration.ofMinutes(5));
+        tokenService = new LakePreviewTokenService(properties,
+                Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC), "test-secret");
+        contractFactory = new LakeManagedTableContractFactory();
+        binding = binding(21L);
+        source = source("source-hash");
+        service = new LakeManagedTableServiceImpl(
+                dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
+                jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
+                coordinator, currentUserProvider, tokenService, properties,
+                contractFactory, new org.apache.seatunnel.web.api.lake.doris.DorisDdlBuilder());
+
+        lenient().when(currentUserProvider.getCurrentUserId()).thenReturn(7);
+        lenient().when(databaseBindingDao.queryActiveById(21L)).thenReturn(binding);
+        lenient().when(sourceResolver.resolve(11L, "om-table")).thenReturn(source);
+        lenient().when(dorisClientProvider.get(31L)).thenReturn(dorisClient);
+        lenient().when(dorisClient.tableExists(anyString(), anyString())).thenReturn(false);
+        lenient().when(sourceObjectRefDao.queryByOmEntityIdIncludingDeleted("om-table"))
+                .thenReturn(null);
+        lenient().when(tableMappingDao.queryByBindingIdAndTargetTableIncludingDeleted(21L, "orders"))
+                .thenReturn(null);
+        lenient().when(tableMappingDao.queryByBindingIdAndSourceObjectIncludingDeleted(anyLong(), anyLong()))
+                .thenReturn(null);
+    }
+
+    @Test
+    void previewBuildsServerContractAndBindsAllIdentityFieldsIntoToken() {
+        LakeManagedTablePreviewVO result = service.preview(previewRequest());
+
+        assertTrue(result.isValid());
+        assertNotNull(result.getDdl());
+        assertTrue(result.getDdl().contains("CREATE TABLE"));
+        assertNotNull(result.getPreviewToken());
+        LakePreviewTokenService.Payload payload = tokenService.verify(result.getPreviewToken(), 7);
+        assertEquals(11L, payload.sourceDataSourceId());
+        assertEquals("om-table", payload.omEntityId());
+        assertEquals(21L, payload.odsDatabaseBindingId());
+        assertEquals("orders", payload.targetTableName());
+        assertEquals(result.getSourceSchemaHash(), payload.sourceSchemaHash());
+        assertEquals(result.getTargetContractHash(), payload.targetContractHash());
+        assertEquals(result.getTargetContractHash(),
+                TargetContractCanonicalizer.canonicalHash(result.getTargetContract()));
+    }
+
+    @Test
+    void createRereadsSourceAndUsesStructuredContractAfterPreview() {
+        LakeManagedTablePreviewVO preview = service.preview(previewRequest());
+        AtomicReference<LakeSourceObjectRef> storedSource = new AtomicReference<>();
+        AtomicReference<LakeOdsTableMapping> storedMapping = new AtomicReference<>();
+        when(sourceObjectRefDao.insert(any(LakeSourceObjectRef.class))).thenAnswer(invocation -> {
+            LakeSourceObjectRef reference = invocation.getArgument(0);
+            reference.setId(401L);
+            storedSource.set(reference);
+            return 1;
+        });
+        when(sourceObjectRefDao.queryByIdIncludingDeleted(401L))
+                .thenAnswer(invocation -> storedSource.get());
+        when(tableMappingDao.insert(any(LakeOdsTableMapping.class))).thenAnswer(invocation -> {
+            LakeOdsTableMapping mapping = invocation.getArgument(0);
+            mapping.setId(501L);
+            storedMapping.set(mapping);
+            return 1;
+        });
+        when(tableMappingDao.queryByIdIncludingDeleted(501L))
+                .thenAnswer(invocation -> storedMapping.get());
+        when(dorisClient.tableExists(anyString(), anyString())).thenReturn(false, true);
+        when(dorisClient.readContract("ods", "orders"))
+                .thenReturn(preview.getTargetContract());
+        when(coordinator.begin(any(LakeOperationIntent.class))).thenAnswer(invocation ->
+                new LakeOperationHandle(601L, LakeResourceTypes.ODS_TABLE_MAPPING, 501L,
+                        storedMapping.get().getGeneration(), "operation-token", 2));
+        doAnswer(invocation -> {
+            var operation = invocation.<org.apache.seatunnel.web.api.lake.operation.LakeExternalOperation<?>>
+                    getArgument(1);
+            Object externalResult = operation.execute();
+            return new LakeOperationExecution<>(invocation.getArgument(0), externalResult);
+        }).when(coordinator).execute(any(), any());
+        when(coordinator.finalizeSuccess(any(), any())).thenAnswer(invocation -> {
+            LakeOdsTableMapping mapping = storedMapping.get();
+            mapping.setResourceStatus(LakeResourceStatus.READY);
+            mapping.setActualTableExists(true);
+            mapping.setTargetConsistencyStatus(LakeConsistencyStatus.CONSISTENT);
+            mapping.setOperationToken(null);
+            return true;
+        });
+
+        LakeManagedTableCreateDTO request = new LakeManagedTableCreateDTO();
+        request.setPreviewToken(preview.getPreviewToken());
+        LakeManagedTableVO result = service.create(request);
+
+        assertEquals(LakeResourceStatus.READY, result.getResourceStatus());
+        assertTrue(result.getActualTableExists());
+        assertEquals(LakeConsistencyStatus.CONSISTENT, result.getTargetConsistencyStatus());
+        verify(dorisClient).createTable(eq("ods"), eq("orders"), eq(preview.getTargetContract()));
+        verify(coordinator).finalizeSuccess(any(), eq("Doris table exists and matches contract"));
+    }
+
+    @Test
+    void createRejectsAChangedSourceBeforeAnyDorisMutation() {
+        LakeManagedTablePreviewVO preview = service.preview(previewRequest());
+        SourceObjectSnapshot changed = source("changed-source-hash");
+        when(sourceResolver.resolve(11L, "om-table")).thenReturn(source, changed);
+
+        LakeManagedTableCreateDTO request = new LakeManagedTableCreateDTO();
+        request.setPreviewToken(preview.getPreviewToken());
+        LakeServiceException exception = assertThrows(
+                LakeServiceException.class, () -> service.create(request));
+
+        assertEquals(LakeErrorCode.LAKE_RESOURCE_CONFLICT, exception.getLakeErrorCode());
+        verify(dorisClient, never()).createTable(anyString(), anyString(), any(TargetContract.class));
+        verify(coordinator, never()).begin(any());
+    }
+
+    @Test
+    void previewRejectsAnExistingActualTargetWithoutAdoption() {
+        when(dorisClient.tableExists("ods", "orders")).thenReturn(true);
+
+        LakeManagedTablePreviewVO result = service.preview(previewRequest());
+
+        assertFalse(result.isValid());
+        assertTrue(result.getErrors().get(0).contains("adoption"));
+        verify(tableMappingDao, never()).insert(any());
+    }
+
+    @Test
+    void deleteImpactBlocksActiveRelationsAndDeleteDoesNotDrop() {
+        LakeOdsTableMapping mapping = storedMapping(501L);
+        LakeJobRelation relation = new LakeJobRelation();
+        relation.setId(801L);
+        relation.setTableMappingId(501L);
+        relation.setRelationStatus(org.apache.seatunnel.web.common.enums.LakeRelationStatus.ACTIVE);
+        relation.setRelationScope(org.apache.seatunnel.web.common.enums.LakeRelationScope.TABLE);
+        when(tableMappingDao.queryByIdIncludingDeleted(501L)).thenReturn(mapping);
+        when(dorisClient.tableExists("ods", "orders")).thenReturn(true);
+        when(jobRelationDao.queryByOdsDatabaseBindingId(21L)).thenReturn(List.of(relation));
+        when(lifecycleBindingDao.queryByTableMappingId(501L)).thenReturn(null);
+
+        LakeManagedTableDeleteImpactVO impact = service.deleteImpact(501L);
+
+        assertFalse(impact.isAllowed());
+        assertEquals(1, impact.getRelations().size());
+        assertFalse(impact.getBlockers().isEmpty());
+        LakeManagedTableDeleteDTO request = new LakeManagedTableDeleteDTO();
+        request.setTargetTableName("orders");
+        request.setImpactHash(impact.getImpactHash());
+        LakeServiceException exception = assertThrows(
+                LakeServiceException.class, () -> service.delete(501L, request));
+
+        assertEquals(LakeErrorCode.LAKE_RESOURCE_CONFLICT, exception.getLakeErrorCode());
+        verify(coordinator, never()).begin(any());
+        verify(dorisClient, never()).dropTable(anyString(), anyString());
+    }
+
+    @Test
+    void deleteUsesImpactConfirmationAndPublishesDropThroughCoordinator() {
+        LakeOdsTableMapping mapping = storedMapping(502L);
+        when(tableMappingDao.queryByIdIncludingDeleted(502L)).thenReturn(mapping);
+        when(dorisClient.tableExists("ods", "orders")).thenReturn(true, true, false);
+        when(jobRelationDao.queryByOdsDatabaseBindingId(21L)).thenReturn(List.of());
+        when(lifecycleBindingDao.queryByTableMappingId(502L)).thenReturn(null);
+        when(coordinator.begin(any(LakeOperationIntent.class))).thenReturn(
+                new LakeOperationHandle(602L, LakeResourceTypes.ODS_TABLE_MAPPING,
+                        502L, 1, "drop-token", 2));
+        doAnswer(invocation -> {
+            var operation = invocation.<org.apache.seatunnel.web.api.lake.operation.LakeExternalOperation<?>>
+                    getArgument(1);
+            Object externalResult = operation.execute();
+            return new LakeOperationExecution<>(invocation.getArgument(0), externalResult);
+        }).when(coordinator).execute(any(), any());
+        when(coordinator.finalizeSuccess(any(), any())).thenAnswer(invocation -> {
+            mapping.setResourceStatus(LakeResourceStatus.DELETED);
+            mapping.setDeleted(true);
+            mapping.setActualTableExists(false);
+            mapping.setOperationToken(null);
+            return true;
+        });
+        LakeManagedTableDeleteImpactVO impact = service.deleteImpact(502L);
+        LakeManagedTableDeleteDTO request = new LakeManagedTableDeleteDTO();
+        request.setTargetTableName("orders");
+        request.setImpactHash(impact.getImpactHash());
+
+        service.delete(502L, request);
+
+        verify(dorisClient).dropTable("ods", "orders");
+        verify(coordinator).finalizeSuccess(any(), eq("Doris table deleted"));
+        assertTrue(mapping.getDeleted());
+        assertFalse(mapping.getActualTableExists());
+    }
+
+    @Test
+    void detailOnlyReadsPersistedContractAndNeverReconcilesDoris() {
+        LakeOdsTableMapping mapping = storedMapping(503L);
+        LakeSourceObjectRef reference = new LakeSourceObjectRef();
+        reference.setId(701L);
+        reference.setSourceDataSourceId(11L);
+        reference.setOmEntityId("om-table");
+        mapping.setSourceObjectRefId(701L);
+        when(tableMappingDao.queryByIdIncludingDeleted(503L)).thenReturn(mapping);
+        when(sourceObjectRefDao.queryByIdIncludingDeleted(701L)).thenReturn(reference);
+
+        LakeManagedTableVO result = service.detail(503L);
+
+        assertEquals(503L, result.getId());
+        assertNotNull(result.getTargetContract());
+        verify(dorisClient, never()).tableExists(anyString(), anyString());
+        verify(dorisClientProvider, never()).get(anyLong());
+        verify(tableMappingDao, never()).updateById(any());
+    }
+
+    @Test
+    void retryRejectsAnActualTableThatDiffersInsteadOfAdoptingIt() {
+        LakeOdsTableMapping mapping = storedMapping(504L);
+        when(tableMappingDao.queryByIdIncludingDeleted(504L)).thenReturn(mapping);
+        when(dorisClient.tableExists("ods", "orders")).thenReturn(true);
+        TargetContract different = new TargetContract(LakeTableModel.DUPLICATE, List.of(
+                new TargetColumn("id", 1, "id", TargetType.varchar(255), false, true, 1)),
+                List.of("id"), TargetPartition.disabled(), TargetDistribution.random());
+        when(dorisClient.readContract("ods", "orders")).thenReturn(different);
+
+        LakeServiceException exception = assertThrows(
+                LakeServiceException.class, () -> service.retry(504L));
+
+        assertEquals(LakeErrorCode.LAKE_RESOURCE_CONFLICT, exception.getLakeErrorCode());
+        verify(coordinator, never()).begin(any());
+        verify(dorisClient, never()).dropTable(anyString(), anyString());
+    }
+
+    private LakeManagedTablePreviewDTO previewRequest() {
+        LakeManagedTablePreviewDTO request = new LakeManagedTablePreviewDTO();
+        request.setSourceDataSourceId(11L);
+        request.setOmEntityId("om-table");
+        request.setOdsDatabaseBindingId(21L);
+        request.setTargetTableName("orders");
+        request.setTableModel(LakeTableModel.DUPLICATE);
+        return request;
+    }
+
+    private LakeOdsTableMapping storedMapping(Long id) {
+        TargetContract contract = new TargetContract(LakeTableModel.DUPLICATE, List.of(
+                new TargetColumn("ID", 1, "id", TargetType.varchar(255), false, true, 1),
+                new TargetColumn("PAYLOAD", 2, "payload", new TargetType(DorisTypeBase.STRING),
+                        true, false, 2)), List.of("id"), TargetPartition.disabled(),
+                TargetDistribution.random());
+        LakeOdsTableMapping mapping = new LakeOdsTableMapping();
+        mapping.setId(id);
+        mapping.setSourceObjectRefId(701L);
+        mapping.setOdsDatabaseBindingId(21L);
+        mapping.setLakeDataSourceId(31L);
+        mapping.setDatabaseName("ods");
+        mapping.setTargetTableName("orders");
+        mapping.setManagementLevel(LakeManagementLevel.MANAGED);
+        mapping.setTableModel(LakeTableModel.DUPLICATE);
+        mapping.setSourceSchemaHash(source.sourceSchemaHash());
+        mapping.setTargetContractHash(TargetContractCanonicalizer.canonicalHash(contract));
+        try {
+            mapping.setTargetContractJson(new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(contract));
+            mapping.setFieldMappingsJson(new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(contractFactory.fieldMappings(contract)));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException exception) {
+            throw new AssertionError(exception);
+        }
+        mapping.setSourceConsistencyStatus(LakeConsistencyStatus.CONSISTENT);
+        mapping.setTargetConsistencyStatus(LakeConsistencyStatus.CONSISTENT);
+        mapping.setTaskConsistencyStatus(LakeConsistencyStatus.UNBOUND);
+        mapping.setActualTableExists(true);
+        mapping.setResourceStatus(LakeResourceStatus.READY);
+        mapping.setGeneration(1);
+        mapping.setLockVersion(1);
+        mapping.setDeleted(false);
+        return mapping;
+    }
+
+    private static LakeOdsDatabaseBinding binding(Long id) {
+        LakeOdsDatabaseBinding binding = new LakeOdsDatabaseBinding();
+        binding.setId(id);
+        binding.setLakeDataSourceId(31L);
+        binding.setSourceDataSourceId(11L);
+        binding.setDatabaseName("ods");
+        binding.setResourceStatus(LakeResourceStatus.READY);
+        binding.setGeneration(1);
+        binding.setLockVersion(1);
+        binding.setDeleted(false);
+        return binding;
+    }
+
+    private static SourceObjectSnapshot source(String hash) {
+        return new SourceObjectSnapshot(
+                "om-table", "svc.db.public.orders",
+                List.of(
+                        new SourceColumnSnapshot("ID", 1, "BIGINT", "BIGINT", null, 19L, 0L,
+                                "PRIMARY_KEY", false),
+                        new SourceColumnSnapshot("PAYLOAD", 2, "JSON", "JSON", null, null, null,
+                                null, true)),
+                List.of(new SourceConstraintSnapshot("PRIMARY_KEY", List.of("ID"), List.of(), null)),
+                hash, "snapshot");
+    }
+}

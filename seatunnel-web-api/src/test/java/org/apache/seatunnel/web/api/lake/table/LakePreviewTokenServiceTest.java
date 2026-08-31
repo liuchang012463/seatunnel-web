@@ -25,6 +25,9 @@ class LakePreviewTokenServiceTest {
         assertEquals(
                 "Lake preview token secret is required when lake control plane is enabled",
                 error.getMessage());
+
+        assertThrows(IllegalStateException.class,
+                () -> new LakePreviewTokenService(properties, Clock.systemUTC(), null));
     }
 
     @Test
