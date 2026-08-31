@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.builder.HoconConfigBuilder;
 import org.apache.seatunnel.web.core.dag.DagGraph;
+import org.apache.seatunnel.web.core.job.bridge.LakeJobBindingResolver;
 import org.apache.seatunnel.web.core.job.handler.JobRuntimeContext;
 import org.apache.seatunnel.web.core.job.handler.JobRuntimeContextFactory;
 import org.apache.seatunnel.web.core.time.IncrementalConfigResolver;
@@ -52,7 +53,8 @@ public class GuideSingleHoconBuildService {
         return hoconConfigBuilder.build(
                 dagGraph,
                 runtimeContext.getEnv(),
-                runtimeContext.getSchedule()
+                runtimeContext.getSchedule(),
+                LakeJobBindingResolver.resolve(command)
         );
     }
 }

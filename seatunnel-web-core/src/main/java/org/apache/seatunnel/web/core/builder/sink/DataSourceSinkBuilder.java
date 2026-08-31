@@ -13,8 +13,11 @@ import org.apache.seatunnel.web.common.config.ReadonlyConfig;
 import org.apache.seatunnel.web.common.enums.HoconBuildStage;
 import org.apache.seatunnel.web.core.builder.context.DagBuildContext;
 import org.apache.seatunnel.web.dao.entity.DataSource;
+import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
+import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.spi.enums.DbType;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -42,6 +45,12 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
     @Resource
     private DataSourceDao dataSourceDao;
 
+    @Resource
+    private LakeOdsDatabaseBindingDao lakeOdsDatabaseBindingDao;
+
+    @Resource
+    private Environment environment;
+
     @Override
     public String nodeType() {
         return NODE_TYPE;
@@ -63,6 +72,8 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
         DbType dbType = parseDbType(data);
         String pluginName = getRequiredPluginName(data);
 
+        config = overrideLakeDatabase(config, context, dataSourceId, dataSource, dbType, pluginName);
+
         DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
         DataSourceHoconBuilder hoconBuilder = processor.getQueryBuilder(pluginName);
 
@@ -81,6 +92,82 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
         validateSinkConfig(processor, pluginName, sinkConfig);
 
         return sinkConfig;
+    }
+
+    /**
+     * Apply the server-owned ODS database to a Doris sink.  The raw node
+     * database is intentionally only a fallback for ordinary non-lake jobs.
+     */
+    private Config overrideLakeDatabase(Config config,
+                                        DagBuildContext context,
+                                        Long sinkDataSourceId,
+                                        DataSource sinkDataSource,
+                                        DbType dbType,
+                                        String pluginName) {
+        Long bindingId = context == null ? null : context.getOdsDatabaseBindingId();
+        if (bindingId == null) {
+            bindingId = parseOptionalLong(config, "odsDatabaseBindingId");
+            if (bindingId == null) {
+                bindingId = parseOptionalLong(config, "ods_database_binding_id");
+            }
+        }
+        if (bindingId == null) {
+            return config;
+        }
+        if (bindingId <= 0) {
+            throw new IllegalArgumentException("odsDatabaseBindingId must be positive");
+        }
+
+        if (dbType != DbType.DORIS || sinkDataSource == null
+                || sinkDataSource.getDbType() != DbType.DORIS
+                || !"DORIS".equalsIgnoreCase(pluginName)) {
+            throw new IllegalArgumentException(
+                    "odsDatabaseBindingId requires the configured Doris sink data source");
+        }
+        if (lakeOdsDatabaseBindingDao == null) {
+            throw new IllegalStateException("lake ODS database binding resolver is not configured");
+        }
+
+        LakeOdsDatabaseBinding binding = lakeOdsDatabaseBindingDao.queryActiveById(bindingId);
+        if (binding == null
+                || binding.getResourceStatus() == null
+                || !"READY".equals(binding.getResourceStatus().getCode())
+                || StringUtils.isBlank(binding.getDatabaseName())) {
+            throw new IllegalArgumentException(
+                    "ODS database binding is not active and READY, bindingId=" + bindingId);
+        }
+        if (!sinkDataSourceId.equals(binding.getLakeDataSourceId())) {
+            throw new IllegalArgumentException(
+                    "ODS database binding does not belong to the configured Doris sink, bindingId="
+                            + bindingId);
+        }
+
+        Long configuredLakeDataSourceId = configuredLakeDataSourceId();
+        if (!configuredLakeDataSourceId.equals(binding.getLakeDataSourceId())) {
+            throw new IllegalArgumentException(
+                    "ODS database binding does not belong to the configured Lake Doris data source, "
+                            + "bindingId=" + bindingId);
+        }
+
+        Map<String, Object> override = new HashMap<>(1);
+        override.put("database", binding.getDatabaseName().trim());
+        return ConfigFactory.parseMap(override)
+                .withFallback(config)
+                .resolve();
+    }
+
+    private Long configuredLakeDataSourceId() {
+        String value = environment == null
+                ? null
+                : environment.getProperty("seatunnel.lake.data-source-id");
+        if (StringUtils.isBlank(value)) {
+            throw new IllegalArgumentException("Lake Doris data source is not configured");
+        }
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid configured Lake Doris data source id", e);
+        }
     }
 
     private HoconBuildContext buildHoconContext(DataSource dataSource,
@@ -199,5 +286,22 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
 
         String value = config.getString(path);
         return value == null ? null : value.trim();
+    }
+
+    private Long parseOptionalLong(Config config, String path) {
+        if (config == null || !config.hasPath(path)) {
+            return null;
+        }
+        Object value = config.getAnyRef(path);
+        if (value == null || StringUtils.isBlank(String.valueOf(value))) {
+            return null;
+        }
+        try {
+            return value instanceof Number number
+                    ? number.longValue()
+                    : Long.valueOf(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid '" + path + "': " + value, e);
+        }
     }
 }

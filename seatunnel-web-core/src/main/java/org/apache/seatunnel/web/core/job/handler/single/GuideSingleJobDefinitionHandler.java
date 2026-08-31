@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.job.handler.JobDefinitionModeHandler;
+import org.apache.seatunnel.web.core.job.bridge.LakeManagedMappingPrefillService;
 import org.apache.seatunnel.web.core.time.IncrementalConfigResolver;
 import org.apache.seatunnel.web.spi.bean.dto.command.GuideSingleJobContentCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
@@ -33,6 +34,9 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
     private final GuideSingleWorkflowAnalyzer workflowAnalyzer;
     private final GuideSingleHoconBuildService hoconBuildService;
 
+    @jakarta.annotation.Resource
+    private LakeManagedMappingPrefillService lakeManagedMappingPrefillService;
+
     public GuideSingleJobDefinitionHandler(
             GuideSingleWorkflowValidator workflowValidator,
             GuideSingleWorkflowAnalyzer workflowAnalyzer,
@@ -51,6 +55,7 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
 
     @Override
     public void validate(JobDefinitionSaveCommand command) {
+        prefillManagedMappings(command);
         GuideSingleJobContentCommand cmd = cast(command);
         workflowValidator.validate(cmd.getWorkflow());
         if (command.getMode() == JobDefinitionMode.FILE_SYNC) {
@@ -63,18 +68,21 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
 
     @Override
     public JobDefinitionAnalysisResult analyze(JobDefinitionSaveCommand command) {
+        prefillManagedMappings(command);
         GuideSingleJobContentCommand cmd = cast(command);
         return workflowAnalyzer.analyze(cmd.getWorkflow());
     }
 
     @Override
     public String serializeDefinition(JobDefinitionSaveCommand command) {
+        prefillManagedMappings(command);
         GuideSingleJobContentCommand cmd = cast(command);
         return JSONUtils.toJsonString(cmd.getWorkflow());
     }
 
     @Override
     public String buildHoconConfig(JobDefinitionSaveCommand command) {
+        prefillManagedMappings(command);
         GuideSingleJobContentCommand cmd = cast(command);
         return hoconBuildService.build(cmd.getWorkflow(), command);
     }
@@ -84,6 +92,12 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
             throw new IllegalArgumentException("command must implement GuideSingleJobContentCommand");
         }
         return (GuideSingleJobContentCommand) command;
+    }
+
+    private void prefillManagedMappings(JobDefinitionSaveCommand command) {
+        if (lakeManagedMappingPrefillService != null) {
+            lakeManagedMappingPrefillService.prefill(command);
+        }
     }
 
     @SuppressWarnings("unchecked")

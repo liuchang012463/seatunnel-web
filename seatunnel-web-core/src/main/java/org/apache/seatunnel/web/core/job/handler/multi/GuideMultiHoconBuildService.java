@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.builder.HoconConfigBuilder;
 import org.apache.seatunnel.web.core.dag.DagGraph;
+import org.apache.seatunnel.web.core.job.bridge.LakeJobBindingResolver;
 import org.apache.seatunnel.web.core.job.handler.JobRuntimeContext;
 import org.apache.seatunnel.web.core.job.handler.JobRuntimeContextFactory;
 import org.apache.seatunnel.web.core.utils.DagUtil;
@@ -67,7 +68,11 @@ public class GuideMultiHoconBuildService {
 
         DagGraph dagGraph = DagUtil.parseAndCheck(dagJson);
 
-        return hoconConfigBuilder.build(dagGraph, runtimeContext.getEnv());
+        return hoconConfigBuilder.build(
+                dagGraph,
+                runtimeContext.getEnv(),
+                runtimeContext.getSchedule(),
+                LakeJobBindingResolver.resolve(command));
     }
 
     private Map<String, Object> buildWorkflow(

@@ -38,6 +38,9 @@ public class DagBuildContext {
      */
     private final JobScheduleConfig scheduleConfig;
 
+    /** Server-selected lake binding id; sink builders resolve its database. */
+    private final Long odsDatabaseBindingId;
+
     /**
      * source node id -> downstream transform node id
      */
@@ -50,21 +53,29 @@ public class DagBuildContext {
 
     private DagBuildContext(boolean hasTransform,
                             JobScheduleConfig scheduleConfig,
+                            Long odsDatabaseBindingId,
                             Map<String, String> sourcePluginOutputMap,
                             Map<String, String> sinkPluginInputMap) {
         this.hasTransform = hasTransform;
         this.scheduleConfig = scheduleConfig;
+        this.odsDatabaseBindingId = odsDatabaseBindingId;
         this.sourcePluginOutputMap = sourcePluginOutputMap;
         this.sinkPluginInputMap = sinkPluginInputMap;
     }
 
     public static DagBuildContext from(DagGraph dagGraph) {
-        return from(dagGraph, null);
+        return from(dagGraph, null, null);
     }
 
     public static DagBuildContext from(DagGraph dagGraph, JobScheduleConfig scheduleConfig) {
+        return from(dagGraph, scheduleConfig, null);
+    }
+
+    public static DagBuildContext from(DagGraph dagGraph,
+                                       JobScheduleConfig scheduleConfig,
+                                       Long odsDatabaseBindingId) {
         if (dagGraph == null || dagGraph.getNodes() == null || dagGraph.getNodes().isEmpty()) {
-            return empty(scheduleConfig);
+            return empty(scheduleConfig, odsDatabaseBindingId);
         }
 
         List<Config> nodes = dagGraph.getNodesAsConfig();
@@ -77,6 +88,7 @@ public class DagBuildContext {
             return new DagBuildContext(
                     false,
                     scheduleConfig,
+                    odsDatabaseBindingId,
                     new HashMap<>(),
                     new HashMap<>()
             );
@@ -106,19 +118,26 @@ public class DagBuildContext {
         return new DagBuildContext(
                 true,
                 scheduleConfig,
+                odsDatabaseBindingId,
                 sourcePluginOutputMap,
                 sinkPluginInputMap
         );
     }
 
     public static DagBuildContext empty() {
-        return empty(null);
+        return empty(null, null);
     }
 
     public static DagBuildContext empty(JobScheduleConfig scheduleConfig) {
+        return empty(scheduleConfig, null);
+    }
+
+    public static DagBuildContext empty(JobScheduleConfig scheduleConfig,
+                                        Long odsDatabaseBindingId) {
         return new DagBuildContext(
                 false,
                 scheduleConfig,
+                odsDatabaseBindingId,
                 new HashMap<>(),
                 new HashMap<>()
         );
@@ -130,6 +149,10 @@ public class DagBuildContext {
 
     public JobScheduleConfig getScheduleConfig() {
         return scheduleConfig;
+    }
+
+    public Long getOdsDatabaseBindingId() {
+        return odsDatabaseBindingId;
     }
 
     public String resolveSourcePluginOutput(Config sourceData) {
