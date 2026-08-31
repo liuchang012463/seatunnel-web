@@ -15,4 +15,15 @@ public interface LakeResourceOperationDao extends IDao<LakeResourceOperation> {
 
     boolean updateStatusIfToken(
             Long id, String operationToken, LakeOperationStatus status, String errorCode, String errorSummary);
+
+    /**
+     * Compare-and-set operation status as well as id and token.  The expected
+     * status is required by terminal-state transitions so a repeated callback
+     * cannot turn SUCCEEDED/FAILED/IGNORED back into another terminal state.
+     */
+    default boolean updateStatusIfToken(
+            Long id, String operationToken, LakeOperationStatus expectedStatus,
+            LakeOperationStatus status, String errorCode, String errorSummary) {
+        return updateStatusIfToken(id, operationToken, status, errorCode, errorSummary);
+    }
 }

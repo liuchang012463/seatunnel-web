@@ -11,6 +11,7 @@ import org.apache.seatunnel.web.dao.repository.LakeExternalCatalogBindingDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
 import org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao;
+import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 
@@ -21,6 +22,7 @@ import java.util.Objects;
  * including-deleted variant is used only for a rebuild, so a deleted row can
  * be reopened and reused instead of colliding with a unique key.</p>
  */
+@Component
 public class DaoLakeResourceGateway implements LakeResourceGateway {
 
     private final LakeSourceObjectRefDao sourceObjectRefDao;

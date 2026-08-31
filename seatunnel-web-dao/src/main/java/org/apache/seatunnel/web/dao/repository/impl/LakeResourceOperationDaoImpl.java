@@ -57,13 +57,30 @@ public class LakeResourceOperationDaoImpl
     public boolean updateStatusIfToken(
             Long id, String operationToken, LakeOperationStatus status,
             String errorCode, String errorSummary) {
+        return updateStatusIfToken(id, operationToken, null, status, errorCode, errorSummary);
+    }
+
+    @Override
+    public boolean updateStatusIfToken(
+            Long id, String operationToken, LakeOperationStatus expectedStatus,
+            LakeOperationStatus status, String errorCode, String errorSummary) {
         if (id == null || operationToken == null || status == null) {
             return false;
         }
         Date now = new Date();
-        return mapper.update(null, new LambdaUpdateWrapper<LakeResourceOperation>()
+        LambdaUpdateWrapper<LakeResourceOperation> wrapper = new LambdaUpdateWrapper<LakeResourceOperation>()
                 .eq(LakeResourceOperation::getId, id)
-                .eq(LakeResourceOperation::getOperationToken, operationToken)
+                .eq(LakeResourceOperation::getOperationToken, operationToken);
+        if (expectedStatus != null) {
+            wrapper.eq(LakeResourceOperation::getStatus, expectedStatus);
+        } else {
+            // The legacy overload has no caller-supplied expected state.  It
+            // is therefore restricted to an open state and can never rewrite
+            // a terminal journal row.
+            wrapper.in(LakeResourceOperation::getStatus,
+                    LakeOperationStatus.PENDING, LakeOperationStatus.RUNNING);
+        }
+        return mapper.update(null, wrapper
                 .set(LakeResourceOperation::getStatus, status)
                 .set(LakeResourceOperation::getErrorCode, errorCode)
                 .set(LakeResourceOperation::getErrorSummary, errorSummary)

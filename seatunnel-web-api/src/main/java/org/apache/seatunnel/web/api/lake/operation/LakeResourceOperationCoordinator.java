@@ -7,7 +7,8 @@ import org.apache.seatunnel.web.common.enums.LakeOperationType;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.LakeResourceOperation;
 import org.apache.seatunnel.web.dao.repository.LakeResourceOperationDao;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -26,6 +27,7 @@ import java.util.function.Function;
  * intentionally has no transaction annotation and is the only method that
  * invokes external work.</p>
  */
+@Component
 public class LakeResourceOperationCoordinator {
 
     private static final int MAX_SUMMARY_LENGTH = 2_000;
@@ -33,14 +35,27 @@ public class LakeResourceOperationCoordinator {
 
     private final LakeResourceOperationDao operationDao;
     private final LakeResourceGateway resourceGateway;
+    private final LakeOperationTransactionBoundary transactionBoundary;
     private final Clock clock;
     private final Duration operationStaleAfter;
 
+    /** Production constructor; local phases use an explicit REQUIRES_NEW boundary. */
+    @Autowired
     public LakeResourceOperationCoordinator(
             LakeResourceOperationDao operationDao,
             LakeResourceGateway resourceGateway,
-            LakeProperties properties) {
-        this(operationDao, resourceGateway, properties, Clock.systemUTC());
+            LakeProperties properties,
+            SpringLakeOperationTransactionBoundary transactionBoundary) {
+        this(operationDao, resourceGateway, properties, transactionBoundary, Clock.systemUTC());
+    }
+
+    /** Injectable boundary constructor for integration tests and embedders. */
+    public LakeResourceOperationCoordinator(
+            LakeResourceOperationDao operationDao,
+            LakeResourceGateway resourceGateway,
+            LakeProperties properties,
+            LakeOperationTransactionBoundary transactionBoundary) {
+        this(operationDao, resourceGateway, properties, transactionBoundary, Clock.systemUTC());
     }
 
     /** Visible for deterministic stale-lease tests. */
@@ -49,8 +64,20 @@ public class LakeResourceOperationCoordinator {
             LakeResourceGateway resourceGateway,
             LakeProperties properties,
             Clock clock) {
+        this(operationDao, resourceGateway, properties,
+                new DirectLakeOperationTransactionBoundary(), clock);
+    }
+
+    /** Visible for deterministic tests with a real transaction manager. */
+    public LakeResourceOperationCoordinator(
+            LakeResourceOperationDao operationDao,
+            LakeResourceGateway resourceGateway,
+            LakeProperties properties,
+            LakeOperationTransactionBoundary transactionBoundary,
+            Clock clock) {
         this.operationDao = Objects.requireNonNull(operationDao, "operationDao");
         this.resourceGateway = Objects.requireNonNull(resourceGateway, "resourceGateway");
+        this.transactionBoundary = Objects.requireNonNull(transactionBoundary, "transactionBoundary");
         Objects.requireNonNull(properties, "properties");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.operationStaleAfter = positiveDuration(
@@ -58,11 +85,19 @@ public class LakeResourceOperationCoordinator {
     }
 
     /** TX1: write intent and lease the existing resource row, then commit. */
-    @Transactional
     public LakeOperationHandle begin(LakeOperationIntent intent) {
+        return transactionBoundary.requiresNew(() -> beginInTransaction(intent));
+    }
+
+    private LakeOperationHandle beginInTransaction(LakeOperationIntent intent) {
         validateIntent(intent);
         LakeResourceState current = requiredState(intent.getResourceType(), intent.getResourceId());
         ensureExpectedState(intent, current);
+        if (current.operationToken() != null) {
+            // A live lease belongs to another operation.  Only the explicit
+            // stale-takeover path may replace it.
+            throw new LakeOperationException("Lake resource is already leased");
+        }
         if (current.deleted() && !intent.isRebuild()) {
             throw new LakeOperationException("Lake resource is deleted");
         }
@@ -98,11 +133,7 @@ public class LakeResourceOperationCoordinator {
             LakeOperationHandle handle, LakeExternalOperation<T> externalOperation) {
         requireHandle(handle);
         Objects.requireNonNull(externalOperation, "externalOperation");
-        ensureCurrent(handle);
-        if (!operationDao.updateStatusIfToken(
-                handle.operationId(), handle.operationToken(), LakeOperationStatus.RUNNING, null, null)) {
-            throw new LakeOperationException("Lake operation is no longer active");
-        }
+        markRunning(handle);
         try {
             return new LakeOperationExecution<>(handle, externalOperation.execute());
         } catch (Exception exception) {
@@ -112,9 +143,17 @@ public class LakeResourceOperationCoordinator {
     }
 
     /** TX2: compare token/version and publish the verified actual state. */
-    @Transactional
     public boolean finalizeSuccess(LakeOperationHandle handle, String summary) {
+        return transactionBoundary.requiresNew(() -> finalizeSuccessInTransaction(handle, summary));
+    }
+
+    private boolean finalizeSuccessInTransaction(LakeOperationHandle handle, String summary) {
         requireHandle(handle);
+        LakeResourceOperation operation = currentOpenOperation(handle);
+        if (operation == null) {
+            markIgnored(handle, "STALE_OPERATION", "Stale operation result ignored");
+            return false;
+        }
         if (!isCurrent(handle)) {
             markIgnored(handle, "STALE_OPERATION", "Stale operation result ignored");
             return false;
@@ -125,17 +164,25 @@ public class LakeResourceOperationCoordinator {
             return false;
         }
         if (!operationDao.updateStatusIfToken(
-                handle.operationId(), handle.operationToken(), LakeOperationStatus.SUCCEEDED,
-                null, safeSummary)) {
+                handle.operationId(), handle.operationToken(), operation.getStatus(),
+                LakeOperationStatus.SUCCEEDED, null, safeSummary)) {
             throw new LakeOperationException("Lake operation journal finalize failed");
         }
         return true;
     }
 
     /** TX2 failure path; stale failures cannot mutate a newer generation. */
-    @Transactional
     public boolean fail(LakeOperationHandle handle, String errorCode, String summary) {
+        return transactionBoundary.requiresNew(() -> failInTransaction(handle, errorCode, summary));
+    }
+
+    private boolean failInTransaction(LakeOperationHandle handle, String errorCode, String summary) {
         requireHandle(handle);
+        LakeResourceOperation operation = currentOpenOperation(handle);
+        if (operation == null) {
+            markIgnored(handle, "STALE_OPERATION", "Stale operation failure ignored");
+            return false;
+        }
         if (!isCurrent(handle)) {
             markIgnored(handle, "STALE_OPERATION", "Stale operation failure ignored");
             return false;
@@ -147,8 +194,8 @@ public class LakeResourceOperationCoordinator {
             return false;
         }
         if (!operationDao.updateStatusIfToken(
-                handle.operationId(), handle.operationToken(), LakeOperationStatus.FAILED,
-                safeCode, safeSummary)) {
+                handle.operationId(), handle.operationToken(), operation.getStatus(),
+                LakeOperationStatus.FAILED, safeCode, safeSummary)) {
             throw new LakeOperationException("Lake operation journal failure update failed");
         }
         return true;
@@ -172,8 +219,12 @@ public class LakeResourceOperationCoordinator {
      * Explicit Retry takeover for a stale PENDING/RUNNING operation. The old
      * token and lock version are compared before a new token is installed.
      */
-    @Transactional
     public LakeOperationHandle takeOverStale(
+            LakeOperationHandle staleHandle, LakeOperationIntent intent) {
+        return transactionBoundary.requiresNew(() -> takeOverStaleInTransaction(staleHandle, intent));
+    }
+
+    private LakeOperationHandle takeOverStaleInTransaction(
             LakeOperationHandle staleHandle, LakeOperationIntent intent) {
         requireHandle(staleHandle);
         validateIntent(intent);
@@ -190,10 +241,11 @@ public class LakeResourceOperationCoordinator {
             throw new LakeOperationException("Lake operation lease was already replaced");
         }
 
+        // Retry takes over the existing resource generation.  A rebuild has
+        // already advanced the generation in its original begin() call; a
+        // second increment would make late callbacks indistinguishable from
+        // a new requested rebuild.
         int generation = current.generation();
-        if (intent.isRebuild()) {
-            generation = Math.addExact(generation, 1);
-        }
         String token = newToken();
         if (!resourceGateway.takeOver(
                 staleHandle, token, generation, pendingStatus(intent.getOperationType()))) {
@@ -207,8 +259,8 @@ public class LakeResourceOperationCoordinator {
             throw new LakeOperationException("Lake retry intent could not be persisted");
         }
         operationDao.updateStatusIfToken(
-                oldOperation.getId(), oldOperation.getOperationToken(), LakeOperationStatus.IGNORED,
-                "REPLACED_BY_RETRY", "Stale operation replaced by explicit Retry");
+                oldOperation.getId(), oldOperation.getOperationToken(), oldOperation.getStatus(),
+                LakeOperationStatus.IGNORED, "REPLACED_BY_RETRY", "Stale operation replaced by explicit Retry");
         return new LakeOperationHandle(
                 operation.getId(), intent.getResourceType(), intent.getResourceId(), generation,
                 token, staleHandle.lockVersion() + 1);
@@ -271,6 +323,24 @@ public class LakeResourceOperationCoordinator {
         if (!isCurrent(handle)) {
             throw new LakeOperationException("Lake operation lease is stale");
         }
+    }
+
+    /** Marks RUNNING in its own committed transaction before external work. */
+    private void markRunning(LakeOperationHandle handle) {
+        transactionBoundary.requiresNew(() -> {
+            requireHandle(handle);
+            ensureCurrent(handle);
+            LakeResourceOperation operation = operationDao.queryById(handle.operationId());
+            if (operation == null
+                    || !Objects.equals(operation.getOperationToken(), handle.operationToken())
+                    || operation.getStatus() != LakeOperationStatus.PENDING
+                    || !operationDao.updateStatusIfToken(
+                    handle.operationId(), handle.operationToken(), LakeOperationStatus.PENDING,
+                    LakeOperationStatus.RUNNING, null, null)) {
+                throw new LakeOperationException("Lake operation is no longer active");
+            }
+            return null;
+        });
     }
 
     private boolean isCurrent(LakeOperationHandle handle) {
@@ -353,10 +423,23 @@ public class LakeResourceOperationCoordinator {
         return safe.substring(0, Math.min(MAX_SUMMARY_LENGTH, safe.length()));
     }
 
-    private void markIgnored(LakeOperationHandle handle, String code, String summary) {
-        operationDao.updateStatusIfToken(
-                handle.operationId(), handle.operationToken(), LakeOperationStatus.IGNORED,
+    private boolean markIgnored(LakeOperationHandle handle, String code, String summary) {
+        LakeResourceOperation operation = operationDao.queryById(handle.operationId());
+        if (operation == null
+                || !Objects.equals(operation.getOperationToken(), handle.operationToken())
+                || !isOpen(operation.getStatus())) {
+            return false;
+        }
+        return operationDao.updateStatusIfToken(
+                handle.operationId(), handle.operationToken(), operation.getStatus(), LakeOperationStatus.IGNORED,
                 safeErrorCode(code), safeSummary(summary));
+    }
+
+    private LakeResourceOperation currentOpenOperation(LakeOperationHandle handle) {
+        LakeResourceOperation operation = operationDao.queryById(handle.operationId());
+        return operation != null
+                && Objects.equals(operation.getOperationToken(), handle.operationToken())
+                && isOpen(operation.getStatus()) ? operation : null;
     }
 
     private static LakeResourceOperation sanitize(LakeResourceOperation source) {

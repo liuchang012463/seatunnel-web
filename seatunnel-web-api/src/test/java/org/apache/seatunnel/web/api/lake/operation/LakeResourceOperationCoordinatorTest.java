@@ -15,6 +15,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,6 +47,22 @@ class LakeResourceOperationCoordinatorTest {
     }
 
     @Test
+    void beginCannotStealAnExistingLease() {
+        FakeJournal journal = new FakeJournal();
+        FakeResourceGateway resources = new FakeResourceGateway();
+        resources.state = new LakeResourceState(
+                "TABLE", 10L, 1, 1, "owned-by-other", LakeResourceStatus.CREATING, false);
+        LakeResourceOperationCoordinator coordinator = coordinator(
+                journal, resources, Instant.parse("2026-01-01T00:00:00Z"));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                LakeOperationException.class,
+                () -> coordinator.begin(intent(LakeOperationType.CREATE_TABLE)));
+        assertTrue(journal.records.isEmpty());
+        assertEquals("owned-by-other", resources.state.operationToken());
+    }
+
+    @Test
     void oldCallbackCannotOverwriteNewLeaseAfterStaleTakeover() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
         FakeJournal journal = new FakeJournal();
@@ -58,6 +75,7 @@ class LakeResourceOperationCoordinatorTest {
         LakeResourceOperationCoordinator retryCoordinator = new LakeResourceOperationCoordinator(
                 journal, resources, properties, Clock.fixed(start.plus(Duration.ofMinutes(2)), ZoneOffset.UTC));
         LakeOperationIntent retryIntent = intent(LakeOperationType.CREATE_TABLE);
+        retryIntent.setRebuild(true);
         LakeOperationHandle newHandle = retryCoordinator.takeOverStale(oldHandle, retryIntent);
         assertNotEquals(oldHandle.operationToken(), newHandle.operationToken());
         assertEquals(oldHandle.generation(), newHandle.generation());
@@ -86,6 +104,37 @@ class LakeResourceOperationCoordinatorTest {
         assertFalse(coordinator.finalizeSuccess(handle, "external success"));
         assertEquals(LakeResourceStatus.CREATING, resources.state.status());
         assertEquals(2, resources.state.lockVersion());
+    }
+
+    @Test
+    void repeatedFinalizeCannotRewriteTerminalJournalState() {
+        FakeJournal journal = new FakeJournal();
+        FakeResourceGateway resources = new FakeResourceGateway();
+        LakeResourceOperationCoordinator coordinator = coordinator(
+                journal, resources, Instant.parse("2026-01-01T00:00:00Z"));
+        LakeOperationHandle handle = coordinator.begin(intent(LakeOperationType.CREATE_TABLE));
+        coordinator.execute(handle, () -> "actual");
+        assertTrue(coordinator.finalizeSuccess(handle, "first"));
+        assertFalse(coordinator.finalizeSuccess(handle, "late callback"));
+        assertEquals(LakeOperationStatus.SUCCEEDED, journal.byToken(handle.operationToken()).getStatus());
+        assertEquals(3, resources.state.lockVersion());
+    }
+
+    @Test
+    void externalCallbackRunsOutsideEveryLocalTransactionBoundary() {
+        FakeJournal journal = new FakeJournal();
+        FakeResourceGateway resources = new FakeResourceGateway();
+        RecordingBoundary boundary = new RecordingBoundary();
+        LakeResourceOperationCoordinator coordinator = new LakeResourceOperationCoordinator(
+                journal, resources, new LakeProperties(), boundary,
+                Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));
+        LakeOperationHandle handle = coordinator.begin(intent(LakeOperationType.CREATE_TABLE));
+
+        coordinator.execute(handle, () -> {
+            assertFalse(boundary.inTransaction);
+            return "external result";
+        });
+        assertEquals(2, boundary.transactionCount);
     }
 
     private static LakeResourceOperationCoordinator coordinator(
@@ -186,8 +235,17 @@ class LakeResourceOperationCoordinatorTest {
         @Override
         public boolean updateStatusIfToken(Long id, String operationToken, LakeOperationStatus status,
                                            String errorCode, String errorSummary) {
+            return updateStatusIfToken(id, operationToken, null, status, errorCode, errorSummary);
+        }
+
+        @Override
+        public boolean updateStatusIfToken(Long id, String operationToken, LakeOperationStatus expectedStatus,
+                                           LakeOperationStatus status, String errorCode, String errorSummary) {
             LakeResourceOperation operation = byToken(operationToken);
             if (operation == null || !operation.getId().equals(id)) {
+                return false;
+            }
+            if (expectedStatus != null && operation.getStatus() != expectedStatus) {
                 return false;
             }
             operation.setStatus(status);
@@ -229,5 +287,21 @@ class LakeResourceOperationCoordinatorTest {
         @Override public com.baomidou.mybatisplus.core.metadata.IPage<LakeResourceOperation> selectPage(
                 com.baomidou.mybatisplus.core.metadata.IPage<LakeResourceOperation> page,
                 com.baomidou.mybatisplus.core.conditions.Wrapper<LakeResourceOperation> wrapper) { return page; }
+    }
+
+    private static final class RecordingBoundary implements LakeOperationTransactionBoundary {
+        private boolean inTransaction;
+        private int transactionCount;
+
+        @Override
+        public <T> T requiresNew(Supplier<T> action) {
+            transactionCount++;
+            inTransaction = true;
+            try {
+                return action.get();
+            } finally {
+                inTransaction = false;
+            }
+        }
     }
 }
