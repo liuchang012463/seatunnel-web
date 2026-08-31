@@ -30,6 +30,7 @@ public class LakeOdsTableMappingDaoImpl extends BaseDao<LakeOdsTableMapping, Lak
         }
         return mapper.selectList(new LambdaQueryWrapper<LakeOdsTableMapping>()
                 .eq(LakeOdsTableMapping::getOdsDatabaseBindingId, odsDatabaseBindingId)
+                .eq(LakeOdsTableMapping::getDeleted, false)
                 .orderByAsc(LakeOdsTableMapping::getTargetTableName));
     }
 
@@ -38,7 +39,8 @@ public class LakeOdsTableMappingDaoImpl extends BaseDao<LakeOdsTableMapping, Lak
             Long odsDatabaseBindingId, String targetTableName) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeOdsTableMapping>()
                 .eq(LakeOdsTableMapping::getOdsDatabaseBindingId, odsDatabaseBindingId)
-                .eq(LakeOdsTableMapping::getTargetTableName, targetTableName));
+                .eq(LakeOdsTableMapping::getTargetTableName, targetTableName)
+                .eq(LakeOdsTableMapping::getDeleted, false));
     }
 
     @Override
@@ -46,7 +48,8 @@ public class LakeOdsTableMappingDaoImpl extends BaseDao<LakeOdsTableMapping, Lak
             Long odsDatabaseBindingId, Long sourceObjectRefId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeOdsTableMapping>()
                 .eq(LakeOdsTableMapping::getOdsDatabaseBindingId, odsDatabaseBindingId)
-                .eq(LakeOdsTableMapping::getSourceObjectRefId, sourceObjectRefId));
+                .eq(LakeOdsTableMapping::getSourceObjectRefId, sourceObjectRefId)
+                .eq(LakeOdsTableMapping::getDeleted, false));
     }
 
     @Override
@@ -55,9 +58,11 @@ public class LakeOdsTableMappingDaoImpl extends BaseDao<LakeOdsTableMapping, Lak
         if (entity == null || entity.getId() == null || operationToken == null || lockVersion == null) {
             return false;
         }
+        entity.setLockVersion(lockVersion + 1);
         return mapper.update(entity, new LambdaUpdateWrapper<LakeOdsTableMapping>()
                 .eq(LakeOdsTableMapping::getId, entity.getId())
                 .eq(LakeOdsTableMapping::getOperationToken, operationToken)
-                .eq(LakeOdsTableMapping::getLockVersion, lockVersion)) > 0;
+                .eq(LakeOdsTableMapping::getLockVersion, lockVersion)
+                .eq(LakeOdsTableMapping::getDeleted, false)) > 0;
     }
 }

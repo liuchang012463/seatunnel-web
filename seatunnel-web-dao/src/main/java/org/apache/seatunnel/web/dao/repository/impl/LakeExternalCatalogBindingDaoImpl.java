@@ -24,7 +24,8 @@ public class LakeExternalCatalogBindingDaoImpl
     @Override
     public LakeExternalCatalogBinding queryBySourceDataSourceId(Long sourceDataSourceId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeExternalCatalogBinding>()
-                .eq(LakeExternalCatalogBinding::getSourceDataSourceId, sourceDataSourceId));
+                .eq(LakeExternalCatalogBinding::getSourceDataSourceId, sourceDataSourceId)
+                .eq(LakeExternalCatalogBinding::getDeleted, false));
     }
 
     @Override
@@ -32,7 +33,8 @@ public class LakeExternalCatalogBindingDaoImpl
             Long lakeDataSourceId, String catalogName) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeExternalCatalogBinding>()
                 .eq(LakeExternalCatalogBinding::getLakeDataSourceId, lakeDataSourceId)
-                .eq(LakeExternalCatalogBinding::getCatalogName, catalogName));
+                .eq(LakeExternalCatalogBinding::getCatalogName, catalogName)
+                .eq(LakeExternalCatalogBinding::getDeleted, false));
     }
 
     @Override
@@ -41,9 +43,11 @@ public class LakeExternalCatalogBindingDaoImpl
         if (entity == null || entity.getId() == null || operationToken == null || lockVersion == null) {
             return false;
         }
+        entity.setLockVersion(lockVersion + 1);
         return mapper.update(entity, new LambdaUpdateWrapper<LakeExternalCatalogBinding>()
                 .eq(LakeExternalCatalogBinding::getId, entity.getId())
                 .eq(LakeExternalCatalogBinding::getOperationToken, operationToken)
-                .eq(LakeExternalCatalogBinding::getLockVersion, lockVersion)) > 0;
+                .eq(LakeExternalCatalogBinding::getLockVersion, lockVersion)
+                .eq(LakeExternalCatalogBinding::getDeleted, false)) > 0;
     }
 }

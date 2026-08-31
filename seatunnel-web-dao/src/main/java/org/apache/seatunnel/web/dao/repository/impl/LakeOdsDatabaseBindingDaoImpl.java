@@ -23,7 +23,8 @@ public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBindin
     @Override
     public LakeOdsDatabaseBinding queryBySourceDataSourceId(Long sourceDataSourceId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
-                .eq(LakeOdsDatabaseBinding::getSourceDataSourceId, sourceDataSourceId));
+                .eq(LakeOdsDatabaseBinding::getSourceDataSourceId, sourceDataSourceId)
+                .eq(LakeOdsDatabaseBinding::getDeleted, false));
     }
 
     @Override
@@ -31,7 +32,8 @@ public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBindin
             Long lakeDataSourceId, String databaseName) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
                 .eq(LakeOdsDatabaseBinding::getLakeDataSourceId, lakeDataSourceId)
-                .eq(LakeOdsDatabaseBinding::getDatabaseName, databaseName));
+                .eq(LakeOdsDatabaseBinding::getDatabaseName, databaseName)
+                .eq(LakeOdsDatabaseBinding::getDeleted, false));
     }
 
     @Override
@@ -40,9 +42,11 @@ public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBindin
         if (entity == null || entity.getId() == null || operationToken == null || lockVersion == null) {
             return false;
         }
+        entity.setLockVersion(lockVersion + 1);
         return mapper.update(entity, new LambdaUpdateWrapper<LakeOdsDatabaseBinding>()
                 .eq(LakeOdsDatabaseBinding::getId, entity.getId())
                 .eq(LakeOdsDatabaseBinding::getOperationToken, operationToken)
-                .eq(LakeOdsDatabaseBinding::getLockVersion, lockVersion)) > 0;
+                .eq(LakeOdsDatabaseBinding::getLockVersion, lockVersion)
+                .eq(LakeOdsDatabaseBinding::getDeleted, false)) > 0;
     }
 }

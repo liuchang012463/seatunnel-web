@@ -23,7 +23,8 @@ public class LakeSourceObjectRefDaoImpl extends BaseDao<LakeSourceObjectRef, Lak
     @Override
     public LakeSourceObjectRef queryByOmEntityId(String omEntityId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeSourceObjectRef>()
-                .eq(LakeSourceObjectRef::getOmEntityId, omEntityId));
+                .eq(LakeSourceObjectRef::getOmEntityId, omEntityId)
+                .eq(LakeSourceObjectRef::getDeleted, false));
     }
 
     @Override
@@ -31,7 +32,8 @@ public class LakeSourceObjectRefDaoImpl extends BaseDao<LakeSourceObjectRef, Lak
             Long sourceDataSourceId, String omEntityId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeSourceObjectRef>()
                 .eq(LakeSourceObjectRef::getSourceDataSourceId, sourceDataSourceId)
-                .eq(LakeSourceObjectRef::getOmEntityId, omEntityId));
+                .eq(LakeSourceObjectRef::getOmEntityId, omEntityId)
+                .eq(LakeSourceObjectRef::getDeleted, false));
     }
 
     @Override
@@ -40,9 +42,11 @@ public class LakeSourceObjectRefDaoImpl extends BaseDao<LakeSourceObjectRef, Lak
         if (entity == null || entity.getId() == null || operationToken == null || lockVersion == null) {
             return false;
         }
+        entity.setLockVersion(lockVersion + 1);
         return mapper.update(entity, new LambdaUpdateWrapper<LakeSourceObjectRef>()
                 .eq(LakeSourceObjectRef::getId, entity.getId())
                 .eq(LakeSourceObjectRef::getOperationToken, operationToken)
-                .eq(LakeSourceObjectRef::getLockVersion, lockVersion)) > 0;
+                .eq(LakeSourceObjectRef::getLockVersion, lockVersion)
+                .eq(LakeSourceObjectRef::getDeleted, false)) > 0;
     }
 }

@@ -33,6 +33,7 @@ public class LakeTableLifecycleBindingDaoImpl
         if (entity == null || entity.getId() == null || operationToken == null || lockVersion == null) {
             return false;
         }
+        entity.setLockVersion(lockVersion + 1);
         return mapper.update(entity, new LambdaUpdateWrapper<LakeTableLifecycleBinding>()
                 .eq(LakeTableLifecycleBinding::getId, entity.getId())
                 .eq(LakeTableLifecycleBinding::getOperationToken, operationToken)
