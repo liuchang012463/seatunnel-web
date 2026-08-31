@@ -27,6 +27,7 @@ import org.apache.seatunnel.web.api.lake.table.LakeManagedTableRelationImpactVO;
 import org.apache.seatunnel.web.api.lake.table.LakeManagedTablePreviewVO;
 import org.apache.seatunnel.web.api.lake.table.LakeManagedTableVO;
 import org.apache.seatunnel.web.api.lake.table.LakePreviewTokenService;
+import org.apache.seatunnel.web.api.lake.table.LakeTableDriftEvaluator;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
 import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
@@ -80,6 +81,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -104,6 +106,8 @@ class LakeManagedTableServiceImplTest {
     @Mock private LakeResourceOperationCoordinator coordinator;
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private DorisLakeClient dorisClient;
+    @Mock private LakeTableDriftEvaluator driftEvaluator;
+    @Mock private LakeTableReconcilePersistenceService reconcilePersistenceService;
 
     private LakeProperties properties;
     private LakePreviewTokenService tokenService;
@@ -128,7 +132,8 @@ class LakeManagedTableServiceImplTest {
                 coordinator, currentUserProvider, tokenService, properties,
                 contractFactory, new org.apache.seatunnel.web.api.lake.doris.DorisDdlBuilder(),
                 batchJobDefinitionDao, streamingJobDefinitionDao, jobScheduleDao,
-                jobInstanceDao, streamingJobInstanceDao);
+                jobInstanceDao, streamingJobInstanceDao, driftEvaluator,
+                reconcilePersistenceService);
 
         lenient().when(currentUserProvider.getCurrentUserId()).thenReturn(7);
         lenient().when(databaseBindingDao.queryActiveById(21L)).thenReturn(binding);
@@ -463,6 +468,54 @@ class LakeManagedTableServiceImplTest {
         verify(dorisClient, never()).tableExists(anyString(), anyString());
         verify(dorisClientProvider, never()).get(anyLong());
         verify(tableMappingDao, never()).updateById(any());
+    }
+
+    @Test
+    void reconcileReadsThroughEvaluatorBeforeShortPersistenceAndDetailStaysCached() {
+        LakeOdsTableMapping mapping = storedMapping(506L);
+        when(tableMappingDao.queryByIdIncludingDeleted(506L)).thenReturn(mapping);
+        LakeTableDriftEvaluator.Evaluation evaluation = new LakeTableDriftEvaluator.Evaluation(
+                506L, LakeManagementLevel.MANAGED,
+                new LakeTableDriftEvaluator.DimensionResult(
+                        LakeConsistencyStatus.CONSISTENT, "SOURCE_OK", "source"),
+                new LakeTableDriftEvaluator.DimensionResult(
+                        LakeConsistencyStatus.MISSING,
+                        LakeTableDriftEvaluator.TARGET_TABLE_MISSING, "target"),
+                new LakeTableDriftEvaluator.DimensionResult(
+                        LakeConsistencyStatus.UNBOUND, "TASK_UNBOUND", "task"),
+                LakeConsistencyStatus.MISSING, List.of());
+        LakeSourceObjectRef reference = new LakeSourceObjectRef();
+        reference.setId(701L);
+        reference.setSourceDataSourceId(11L);
+        reference.setOmEntityId("om-table");
+        when(sourceObjectRefDao.queryByIdIncludingDeleted(701L)).thenReturn(reference);
+        when(driftEvaluator.evaluate(mapping)).thenReturn(evaluation);
+        when(reconcilePersistenceService.persist(mapping, evaluation, 7)).thenReturn(mapping);
+
+        LakeManagedTableVO result = service.reconcile(506L);
+
+        assertEquals(506L, result.getId());
+        verify(driftEvaluator).evaluate(mapping);
+        verify(reconcilePersistenceService).persist(mapping, evaluation, 7);
+        var order = inOrder(driftEvaluator, reconcilePersistenceService);
+        order.verify(driftEvaluator).evaluate(mapping);
+        order.verify(reconcilePersistenceService).persist(mapping, evaluation, 7);
+        verify(tableMappingDao, never()).updateIfTokenAndVersion(any(), any(), any());
+        verify(dorisClient, never()).tableExists(anyString(), anyString());
+    }
+
+    @Test
+    void reconcileRejectsPendingCreateBeforeAnyExternalRead() {
+        LakeOdsTableMapping mapping = storedMapping(507L);
+        mapping.setResourceStatus(LakeResourceStatus.PENDING_CREATE);
+        when(tableMappingDao.queryByIdIncludingDeleted(507L)).thenReturn(mapping);
+
+        LakeServiceException exception = assertThrows(
+                LakeServiceException.class, () -> service.reconcile(507L));
+
+        assertEquals(LakeErrorCode.LAKE_OPERATION_STALE, exception.getLakeErrorCode());
+        verify(driftEvaluator, never()).evaluate(any());
+        verify(reconcilePersistenceService, never()).persist(any(), any(), any());
     }
 
     @Test

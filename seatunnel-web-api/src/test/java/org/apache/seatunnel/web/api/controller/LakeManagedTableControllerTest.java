@@ -38,20 +38,24 @@ class LakeManagedTableControllerTest {
     void getEndpointsOnlyReadAndDeleteRequiresImpactConfirmation() {
         LakeManagedTableService service = mock(LakeManagedTableService.class);
         LakeManagedTableVO detail = new LakeManagedTableVO();
+        LakeManagedTableVO reconciled = new LakeManagedTableVO();
         LakeManagedTableVO retry = new LakeManagedTableVO();
         LakeManagedTableDeleteImpactVO impact = new LakeManagedTableDeleteImpactVO();
         LakeManagedTableDeleteDTO request = new LakeManagedTableDeleteDTO();
         when(service.detail(41L)).thenReturn(detail);
+        when(service.reconcile(41L)).thenReturn(reconciled);
         when(service.retry(41L)).thenReturn(retry);
         when(service.deleteImpact(41L)).thenReturn(impact);
         LakeManagedTableController controller = new LakeManagedTableController(service);
 
         assertEquals(detail, controller.detail(41L).getData());
+        assertEquals(reconciled, controller.reconcile(41L).getData());
         assertEquals(retry, controller.retry(41L).getData());
         assertEquals(impact, controller.deleteImpact(41L).getData());
         Result<Void> deleted = controller.delete(41L, request);
 
         verify(service).detail(41L);
+        verify(service).reconcile(41L);
         verify(service).retry(41L);
         verify(service).deleteImpact(41L);
         verify(service).delete(41L, request);

@@ -16,6 +16,9 @@ public interface LakeManagedTableService {
 
     LakeManagedTableVO detail(Long id);
 
+    /** Explicit, read-through reconcile; detail() remains a cached read. */
+    LakeManagedTableVO reconcile(Long id);
+
     LakeManagedTableVO retry(Long id);
 
     LakeManagedTableDeleteImpactVO deleteImpact(Long id);

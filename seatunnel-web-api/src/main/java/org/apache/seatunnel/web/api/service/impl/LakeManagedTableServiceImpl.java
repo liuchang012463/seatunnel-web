@@ -17,6 +17,7 @@ import org.apache.seatunnel.web.api.lake.operation.LakeOperationIntent;
 import org.apache.seatunnel.web.api.lake.operation.LakeOperationException;
 import org.apache.seatunnel.web.api.lake.operation.LakeResourceOperationCoordinator;
 import org.apache.seatunnel.web.api.lake.operation.LakeResourceTypes;
+import org.apache.seatunnel.web.api.lake.table.LakeTableDriftEvaluator;
 import org.apache.seatunnel.web.api.lake.source.LakeSourceObjectResolver;
 import org.apache.seatunnel.web.api.lake.source.SourceObjectSnapshot;
 import org.apache.seatunnel.web.api.lake.table.LakeManagedTableContractFactory;
@@ -97,8 +98,40 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
     private final LakeManagedTableContractFactory contractFactory;
     private final DorisDdlBuilder ddlBuilder;
     private final LakeProperties lakeProperties;
+    private final LakeTableDriftEvaluator driftEvaluator;
+    private final LakeTableReconcilePersistenceService reconcilePersistenceService;
 
     @Autowired
+    public LakeManagedTableServiceImpl(
+            DataSourceDao dataSourceDao,
+            LakeOdsDatabaseBindingDao databaseBindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            LakeSourceObjectRefDao sourceObjectRefDao,
+            LakeJobRelationDao jobRelationDao,
+            JobDefinitionDao batchJobDefinitionDao,
+            StreamingJobDefinitionDao streamingJobDefinitionDao,
+            JobScheduleDao jobScheduleDao,
+            JobInstanceDao jobInstanceDao,
+            StreamingJobInstanceDao streamingJobInstanceDao,
+            LakeTableLifecycleBindingDao lifecycleBindingDao,
+            LakeSourceObjectResolver sourceResolver,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeResourceOperationCoordinator coordinator,
+            CurrentUserProvider currentUserProvider,
+            LakePreviewTokenService previewTokenService,
+            LakeProperties lakeProperties,
+            LakeTableDriftEvaluator driftEvaluator,
+            LakeTableReconcilePersistenceService reconcilePersistenceService) {
+        this(dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
+                jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
+                coordinator, currentUserProvider, previewTokenService, lakeProperties,
+                new LakeManagedTableContractFactory(), new DorisDdlBuilder(),
+                batchJobDefinitionDao, streamingJobDefinitionDao, jobScheduleDao,
+                jobInstanceDao, streamingJobInstanceDao, driftEvaluator,
+                reconcilePersistenceService);
+    }
+
+    /** Backwards-compatible constructor for callers that do not reconcile. */
     public LakeManagedTableServiceImpl(
             DataSourceDao dataSourceDao,
             LakeOdsDatabaseBindingDao databaseBindingDao,
@@ -122,7 +155,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 coordinator, currentUserProvider, previewTokenService, lakeProperties,
                 new LakeManagedTableContractFactory(), new DorisDdlBuilder(),
                 batchJobDefinitionDao, streamingJobDefinitionDao, jobScheduleDao,
-                jobInstanceDao, streamingJobInstanceDao);
+                jobInstanceDao, streamingJobInstanceDao, null, null);
     }
 
     /** Visible for unit tests that provide deterministic factories. */
@@ -144,7 +177,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         this(dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
                 jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
                 coordinator, currentUserProvider, previewTokenService, lakeProperties,
-                contractFactory, ddlBuilder, null, null, null, null, null);
+                contractFactory, ddlBuilder, null, null, null, null, null, null, null);
     }
 
     /** Visible for unit tests that also exercise job lifecycle delete guards. */
@@ -168,6 +201,65 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             JobScheduleDao jobScheduleDao,
             JobInstanceDao jobInstanceDao,
             StreamingJobInstanceDao streamingJobInstanceDao) {
+        this(dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
+                jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
+                coordinator, currentUserProvider, previewTokenService, lakeProperties,
+                contractFactory, ddlBuilder, batchJobDefinitionDao, streamingJobDefinitionDao,
+                jobScheduleDao, jobInstanceDao, streamingJobInstanceDao, null, null);
+    }
+
+    /** Constructor used by reconcile tests that provide the read-only evaluator. */
+    public LakeManagedTableServiceImpl(
+            DataSourceDao dataSourceDao,
+            LakeOdsDatabaseBindingDao databaseBindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            LakeSourceObjectRefDao sourceObjectRefDao,
+            LakeJobRelationDao jobRelationDao,
+            LakeTableLifecycleBindingDao lifecycleBindingDao,
+            LakeSourceObjectResolver sourceResolver,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeResourceOperationCoordinator coordinator,
+            CurrentUserProvider currentUserProvider,
+            LakePreviewTokenService previewTokenService,
+            LakeProperties lakeProperties,
+            LakeManagedTableContractFactory contractFactory,
+            DorisDdlBuilder ddlBuilder,
+            JobDefinitionDao batchJobDefinitionDao,
+            StreamingJobDefinitionDao streamingJobDefinitionDao,
+            JobScheduleDao jobScheduleDao,
+            JobInstanceDao jobInstanceDao,
+            StreamingJobInstanceDao streamingJobInstanceDao,
+            LakeTableDriftEvaluator driftEvaluator) {
+        this(dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
+                jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
+                coordinator, currentUserProvider, previewTokenService, lakeProperties,
+                contractFactory, ddlBuilder, batchJobDefinitionDao, streamingJobDefinitionDao,
+                jobScheduleDao, jobInstanceDao, streamingJobInstanceDao, driftEvaluator, null);
+    }
+
+    /** Constructor used by reconcile tests that provide the evaluator and short CAS writer. */
+    public LakeManagedTableServiceImpl(
+            DataSourceDao dataSourceDao,
+            LakeOdsDatabaseBindingDao databaseBindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            LakeSourceObjectRefDao sourceObjectRefDao,
+            LakeJobRelationDao jobRelationDao,
+            LakeTableLifecycleBindingDao lifecycleBindingDao,
+            LakeSourceObjectResolver sourceResolver,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeResourceOperationCoordinator coordinator,
+            CurrentUserProvider currentUserProvider,
+            LakePreviewTokenService previewTokenService,
+            LakeProperties lakeProperties,
+            LakeManagedTableContractFactory contractFactory,
+            DorisDdlBuilder ddlBuilder,
+            JobDefinitionDao batchJobDefinitionDao,
+            StreamingJobDefinitionDao streamingJobDefinitionDao,
+            JobScheduleDao jobScheduleDao,
+            JobInstanceDao jobInstanceDao,
+            StreamingJobInstanceDao streamingJobInstanceDao,
+            LakeTableDriftEvaluator driftEvaluator,
+            LakeTableReconcilePersistenceService reconcilePersistenceService) {
         this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
         this.databaseBindingDao = Objects.requireNonNull(databaseBindingDao, "databaseBindingDao");
         this.tableMappingDao = Objects.requireNonNull(tableMappingDao, "tableMappingDao");
@@ -187,6 +279,13 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         this.lakeProperties = Objects.requireNonNull(lakeProperties, "lakeProperties");
         this.contractFactory = Objects.requireNonNull(contractFactory, "contractFactory");
         this.ddlBuilder = Objects.requireNonNull(ddlBuilder, "ddlBuilder");
+        this.driftEvaluator = driftEvaluator == null
+                ? new LakeTableDriftEvaluator(sourceObjectRefDao, jobRelationDao,
+                sourceResolver, dorisClientProvider, null)
+                : driftEvaluator;
+        this.reconcilePersistenceService = reconcilePersistenceService == null
+                ? new LakeTableReconcilePersistenceService(tableMappingDao)
+                : reconcilePersistenceService;
     }
 
     @Override
@@ -314,6 +413,40 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
     @Override
     public LakeManagedTableVO detail(Long id) {
         return toVO(requireMappingIncludingDeleted(id));
+    }
+
+    /**
+     * Explicit read-through reconcile.  The evaluator performs all external
+     * reads; this method only persists the resulting cached dimensions with a
+     * token/version compare-and-set.  detail() deliberately remains cached.
+     */
+    @Override
+    public LakeManagedTableVO reconcile(Long id) {
+        LakeOdsTableMapping mapping = requireMappingIncludingDeleted(id);
+        if (Boolean.TRUE.equals(mapping.getDeleted())) {
+            throw conflict("Deleted lake table mapping cannot be reconciled");
+        }
+        if (mapping.getOperationToken() != null
+                || !isStableReconcileStatus(mapping.getResourceStatus())) {
+            throw stale("The lake table mapping is currently being changed");
+        }
+        Integer userId = requireCurrentUserId();
+        LakeTableDriftEvaluator.Evaluation evaluation;
+        try {
+            evaluation = driftEvaluator.evaluate(mapping);
+        } catch (RuntimeException exception) {
+            throw conflict("Lake table reconcile could not be completed");
+        }
+        LakeOdsTableMapping persisted = reconcilePersistenceService.persist(mapping, evaluation, userId);
+        return toVO(persisted);
+    }
+
+    private static boolean isStableReconcileStatus(LakeResourceStatus status) {
+        return status == LakeResourceStatus.READY
+                || status == LakeResourceStatus.ERROR
+                || status == LakeResourceStatus.CREATE_FAILED
+                || status == LakeResourceStatus.MISSING
+                || status == LakeResourceStatus.UNKNOWN;
     }
 
     @Override
@@ -893,7 +1026,14 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             result.setOmEntityId(sourceRef.getOmEntityId());
             result.setOmFqn(sourceRef.getOmFqn());
         }
-        result.setTargetContract(readStoredContract(mapping));
+        // AUTO_CREATED/UNMANAGED projections intentionally have no Web
+        // structural contract.  GET detail must still be a cached read for
+        // those mappings; MANAGED mappings retain strict contract validation.
+        if (mapping.getManagementLevel() == LakeManagementLevel.MANAGED
+                || (mapping.getTargetContractJson() != null
+                && !mapping.getTargetContractJson().isBlank())) {
+            result.setTargetContract(readStoredContract(mapping));
+        }
         result.setFieldMappings(readMappings(mapping.getFieldMappingsJson()));
         return result;
     }

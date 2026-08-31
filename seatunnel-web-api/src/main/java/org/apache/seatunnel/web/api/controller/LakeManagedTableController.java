@@ -47,6 +47,11 @@ public class LakeManagedTableController {
         return Result.buildSuc(service.detail(id));
     }
 
+    @PostMapping("/{id}/reconcile")
+    public Result<LakeManagedTableVO> reconcile(@PathVariable Long id) {
+        return Result.buildSuc(service.reconcile(id));
+    }
+
     @PostMapping("/{id}/retry")
     public Result<LakeManagedTableVO> retry(@PathVariable Long id) {
         return Result.buildSuc(service.retry(id));
