@@ -24,6 +24,13 @@ public interface DataSourceDao extends IDao<DataSource> {
      */
     IPage<DataSource> queryPage(DataSourceDTO dto, Collection<Long> businessSystemIds);
 
+    /**
+     * Queries a page constrained by the physical data-source identifiers. The
+     * identifier predicate is applied to the paged SQL query so callers do not
+     * have to page first and filter the result in memory.
+     */
+    IPage<DataSource> queryPageByDataSourceIds(DataSourceDTO dto, Collection<Long> dataSourceIds);
+
     List<DataSource> queryByDbType(String dbType);
 
     List<String> queryDataSourceUnits();

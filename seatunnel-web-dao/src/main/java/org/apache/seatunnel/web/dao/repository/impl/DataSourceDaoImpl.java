@@ -55,6 +55,19 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
         return dataSourceMapper.selectPage(page, wrapper);
     }
 
+    @Override
+    public IPage<DataSource> queryPageByDataSourceIds(
+            DataSourceDTO dto, Collection<Long> dataSourceIds) {
+        IPage<DataSource> page = new Page<>(dto.getPageNo(), dto.getPageSize());
+        if (dataSourceIds == null || dataSourceIds.isEmpty()) {
+            page.setTotal(0);
+            page.setRecords(List.of());
+            return page;
+        }
+        LambdaQueryWrapper<DataSource> wrapper = buildQueryWrapper(dto, null, dataSourceIds);
+        return dataSourceMapper.selectPage(page, wrapper);
+    }
+
     static LambdaQueryWrapper<DataSource> buildQueryWrapper(DataSourceDTO dto) {
         return buildQueryWrapper(dto, null);
     }
@@ -80,6 +93,15 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
                 .eq(dto.getStatus() != null, DataSource::getStatus, dto.getStatus())
                 .eq(dto.getEnvironment() != null, DataSource::getEnvironment, dto.getEnvironment())
                 .orderByDesc(DataSource::getCreateTime);
+    }
+
+    static LambdaQueryWrapper<DataSource> buildQueryWrapper(
+            DataSourceDTO dto, Collection<Long> businessSystemIds, Collection<Long> dataSourceIds) {
+        LambdaQueryWrapper<DataSource> wrapper = buildQueryWrapper(dto, businessSystemIds);
+        boolean hasIds = dataSourceIds != null;
+        return wrapper
+                .in(hasIds && !dataSourceIds.isEmpty(), DataSource::getId, dataSourceIds)
+                .eq(hasIds && dataSourceIds.isEmpty(), DataSource::getId, -1L);
     }
 
     @Override
