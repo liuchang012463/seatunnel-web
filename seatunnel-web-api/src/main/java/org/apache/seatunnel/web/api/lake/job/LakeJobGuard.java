@@ -7,15 +7,22 @@ import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeProperties;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
+import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.LakeManagementLevel;
+import org.apache.seatunnel.web.common.enums.LakeRelationScope;
+import org.apache.seatunnel.web.common.enums.LakeRelationStatus;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
+import org.apache.seatunnel.web.core.hocon.JobDefinitionCommandResolver;
+import org.apache.seatunnel.web.core.hocon.StreamingJobDefinitionCommandResolver;
 import org.apache.seatunnel.web.core.job.bridge.LakeJobBindingResolver;
 import org.apache.seatunnel.web.core.job.handler.script.PluginConfig;
 import org.apache.seatunnel.web.core.job.handler.script.ScriptJobDefinitionParser;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
+import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
 import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
+import org.apache.seatunnel.web.dao.repository.LakeJobRelationDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
 import org.apache.seatunnel.web.spi.bean.dto.command.GuideMultiJobContentCommand;
@@ -24,6 +31,7 @@ import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.ScriptJobContentCommand;
 import org.apache.seatunnel.web.spi.bean.dto.config.GuideMultiJobContent;
 import org.apache.seatunnel.web.spi.bean.dto.config.ScriptJobContent;
+import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -52,6 +60,9 @@ public class LakeJobGuard {
     private final LakeOdsDatabaseBindingDao bindingDao;
     private final LakeOdsTableMappingDao tableMappingDao;
     private final ScriptJobDefinitionParser scriptJobDefinitionParser;
+    private final LakeJobRelationDao relationDao;
+    private final JobDefinitionCommandResolver batchCommandResolver;
+    private final StreamingJobDefinitionCommandResolver streamingCommandResolver;
 
     @Autowired
     public LakeJobGuard(
@@ -59,20 +70,141 @@ public class LakeJobGuard {
             DataSourceDao dataSourceDao,
             LakeOdsDatabaseBindingDao bindingDao,
             LakeOdsTableMappingDao tableMappingDao,
-            ScriptJobDefinitionParser scriptJobDefinitionParser) {
+            ScriptJobDefinitionParser scriptJobDefinitionParser,
+            LakeJobRelationDao relationDao,
+            JobDefinitionCommandResolver batchCommandResolver,
+            StreamingJobDefinitionCommandResolver streamingCommandResolver) {
         this.lakeProperties = lakeProperties;
         this.dataSourceDao = dataSourceDao;
         this.bindingDao = bindingDao;
         this.tableMappingDao = tableMappingDao;
         this.scriptJobDefinitionParser = scriptJobDefinitionParser;
+        this.relationDao = relationDao;
+        this.batchCommandResolver = batchCommandResolver;
+        this.streamingCommandResolver = streamingCommandResolver;
+    }
+
+    /**
+     * Source-compatible constructor for small clients that only need the
+     * command-level save gate.  Production wiring uses the constructor above
+     * so lifecycle checks always reload the durable definition.
+     */
+    public LakeJobGuard(
+            LakeProperties lakeProperties,
+            DataSourceDao dataSourceDao,
+            LakeOdsDatabaseBindingDao bindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            ScriptJobDefinitionParser scriptJobDefinitionParser) {
+        this(lakeProperties, dataSourceDao, bindingDao, tableMappingDao,
+                scriptJobDefinitionParser, null, null, null);
     }
 
     /** Validate and normalize a structured or script save command. */
     public void validateBeforeSave(JobDefinitionSaveCommand command) {
-        validate(command);
+        validate(command, command == null ? null : command.getId(), ValidationPhase.SAVE);
     }
 
-    private void validate(JobDefinitionSaveCommand command) {
+    /**
+     * Validate the latest persisted definition before it is released.  The
+     * resolver rebuilds the command from content, environment and schedule;
+     * callers must not pass a stale browser payload here.
+     */
+    public void validateBeforeOnline(Long jobDefinitionId, LakeJobRuntimeType runtimeType) {
+        validatePersisted(jobDefinitionId, runtimeType, ValidationPhase.ONLINE);
+    }
+
+    /** Validate the latest persisted definition immediately before execution. */
+    public void validateBeforeExecute(Long jobDefinitionId, LakeJobRuntimeType runtimeType) {
+        validatePersisted(jobDefinitionId, runtimeType, ValidationPhase.EXECUTE);
+    }
+
+    /** Validate an already-resolved command before an instance config is built. */
+    public void validateBeforeExecute(JobDefinitionSaveCommand command) {
+        try {
+            restoreLegacyBinding(command, command == null ? null : command.getId());
+            validate(command, command == null ? null : command.getId(), ValidationPhase.EXECUTE);
+        } catch (Exception e) {
+            throw invalid();
+        }
+    }
+
+    /** Validate once more at the submit boundary, immediately before Engine I/O. */
+    public void validateBeforeSubmit(JobInstanceVO instance, LakeJobRuntimeType runtimeType) {
+        if (instance == null) {
+            throw invalid();
+        }
+        validatePersisted(instance.getJobDefinitionId(), runtimeType, ValidationPhase.SUBMIT);
+    }
+
+    private void validatePersisted(
+            Long jobDefinitionId, LakeJobRuntimeType runtimeType, ValidationPhase phase) {
+        if (!isEnabled()) {
+            return;
+        }
+        if (jobDefinitionId == null || jobDefinitionId <= 0) {
+            throw invalid();
+        }
+
+        try {
+            JobDefinitionSaveCommand command = resolvePersisted(jobDefinitionId, runtimeType);
+            restoreLegacyBinding(command, jobDefinitionId);
+            validate(command, jobDefinitionId, phase);
+        } catch (Exception e) {
+            // Resolver/parser exceptions may contain persisted HOCON and
+            // connection parameters.  Never preserve them as a cause.
+            throw invalid();
+        }
+    }
+
+    private JobDefinitionSaveCommand resolvePersisted(
+            Long jobDefinitionId, LakeJobRuntimeType runtimeType) {
+        LakeJobRuntimeType effectiveType = runtimeType;
+        if (effectiveType == null) {
+            throw invalid();
+        }
+        JobDefinitionSaveCommand command = effectiveType == LakeJobRuntimeType.STREAMING
+                ? streamingCommandResolver == null
+                ? null
+                : streamingCommandResolver.resolve(jobDefinitionId)
+                : batchCommandResolver == null
+                ? null
+                : batchCommandResolver.resolve(jobDefinitionId);
+        if (command == null) {
+            throw invalid();
+        }
+        return command;
+    }
+
+    private void restoreLegacyBinding(JobDefinitionSaveCommand command, Long jobDefinitionId) {
+        if (command == null || jobDefinitionId == null || relationDao == null
+                || !isStructuredMode(command.getMode())
+                || command.getOdsDatabaseBindingId() != null
+                || LakeJobBindingResolver.resolveTargetBindingId(command) != null) {
+            return;
+        }
+
+        List<LakeJobRelation> relations = relationDao.queryActiveByJobId(jobDefinitionId);
+        Long bindingId = null;
+        if (relations == null) {
+            return;
+        }
+        for (LakeJobRelation relation : relations) {
+            if (relation == null || relation.getRelationStatus() != LakeRelationStatus.ACTIVE
+                    || relation.getOdsDatabaseBindingId() == null) {
+                continue;
+            }
+            if (bindingId != null && !bindingId.equals(relation.getOdsDatabaseBindingId())) {
+                throw invalid();
+            }
+            bindingId = relation.getOdsDatabaseBindingId();
+        }
+        if (bindingId != null) {
+            command.setOdsDatabaseBindingId(bindingId);
+        }
+    }
+
+    private void validate(
+            JobDefinitionSaveCommand command, Long jobDefinitionId, ValidationPhase phase) {
         if (!isEnabled() || command == null || command.getMode() == null) {
             return;
         }
@@ -131,6 +263,7 @@ public class LakeJobGuard {
         if (mapping != null && mapping.getManagementLevel() == LakeManagementLevel.MANAGED) {
             forceManagedSchemaMode(details);
         }
+        validateActiveRelations(jobDefinitionId, details, bindingId, mapping, phase);
     }
 
     private void validateScript(JobDefinitionSaveCommand command) {
@@ -236,7 +369,74 @@ public class LakeJobGuard {
         if (tableMappingDao == null) {
             return null;
         }
-        return safeQueryTableMapping(bindingId, details.targetTableName());
+        String targetTable = details.targetTableName().trim();
+        LakeOdsTableMapping mapping = safeQueryTableMapping(bindingId, targetTable);
+        if (mapping != null && Boolean.TRUE.equals(mapping.getDeleted())) {
+            throw invalid();
+        }
+        if (mapping != null) {
+            return mapping;
+        }
+
+        // A deleted AUTO_CREATED/MANAGED mapping deliberately remains a
+        // tombstone.  Treating an empty active lookup as a brand-new table
+        // would allow CREATE_SCHEMA_WHEN_NOT_EXIST to silently recreate it.
+        LakeOdsTableMapping historical = safeQueryTableMappingIncludingDeleted(bindingId, targetTable);
+        if (historical != null && Boolean.TRUE.equals(historical.getDeleted())) {
+            throw invalid();
+        }
+        return historical;
+    }
+
+    private void validateActiveRelations(
+            Long jobDefinitionId,
+            StructuredDetails details,
+            Long bindingId,
+            LakeOdsTableMapping mapping,
+            ValidationPhase phase) {
+        if (relationDao == null || jobDefinitionId == null || bindingId == null) {
+            return;
+        }
+
+        for (LakeJobRelation relation : safeActiveRelations(jobDefinitionId)) {
+            if (relation == null || relation.getRelationStatus() != LakeRelationStatus.ACTIVE) {
+                continue;
+            }
+            if (!Objects.equals(bindingId, relation.getOdsDatabaseBindingId())) {
+                throw invalid();
+            }
+
+            if (relation.getRelationScope() == LakeRelationScope.NAMESPACE) {
+                if (details.exactSingle()) {
+                    throw invalid();
+                }
+                continue;
+            }
+
+            if (relation.getRelationScope() != LakeRelationScope.TABLE
+                    || !details.exactSingle()
+                    || mapping == null
+                    || !Objects.equals(mapping.getId(), relation.getTableMappingId())) {
+                throw invalid();
+            }
+
+            LakeOdsTableMapping relatedMapping = safeQueryMappingIncludingDeleted(
+                    relation.getTableMappingId());
+            if (relatedMapping == null
+                    || Boolean.TRUE.equals(relatedMapping.getDeleted())
+                    || !Objects.equals(bindingId, relatedMapping.getOdsDatabaseBindingId())) {
+                throw invalid();
+            }
+        }
+    }
+
+    private List<LakeJobRelation> safeActiveRelations(Long jobDefinitionId) {
+        try {
+            List<LakeJobRelation> relations = relationDao.queryActiveByJobId(jobDefinitionId);
+            return relations == null ? Collections.emptyList() : relations;
+        } catch (Exception e) {
+            throw invalid();
+        }
     }
 
     private void rejectDangerousSchemaMode(Map<String, Object> sinkConfig) {
@@ -475,6 +675,27 @@ public class LakeJobGuard {
         }
     }
 
+    private LakeOdsTableMapping safeQueryTableMappingIncludingDeleted(
+            Long bindingId, String targetTable) {
+        try {
+            return tableMappingDao.queryByBindingIdAndTargetTableIncludingDeleted(
+                    bindingId, targetTable.trim());
+        } catch (Exception e) {
+            throw invalid();
+        }
+    }
+
+    private LakeOdsTableMapping safeQueryMappingIncludingDeleted(Long mappingId) {
+        if (mappingId == null) {
+            return null;
+        }
+        try {
+            return tableMappingDao.queryByIdIncludingDeleted(mappingId);
+        } catch (Exception e) {
+            throw invalid();
+        }
+    }
+
     private boolean isDataSourceKey(String key) {
         return "datasourceid".equals(key)
                 || "data_source_id".equals(key)
@@ -506,6 +727,13 @@ public class LakeJobGuard {
         return new LakeServiceException(
                 LakeErrorCode.LAKE_REQUEST_INVALID,
                 "lake job safety validation failed");
+    }
+
+    private enum ValidationPhase {
+        SAVE,
+        ONLINE,
+        EXECUTE,
+        SUBMIT
     }
 
     private record StructuredDetails(

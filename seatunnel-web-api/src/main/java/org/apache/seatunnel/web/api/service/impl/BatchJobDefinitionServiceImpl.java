@@ -422,6 +422,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         }
 
         if (releaseState.isOnline()) {
+            if (lakeJobGuard != null) {
+                lakeJobGuard.validateBeforeOnline(id, LakeJobRuntimeType.BATCH);
+            }
             updateJobReleaseState(id, ReleaseState.ONLINE);
             syncScheduleState(id, ReleaseState.ONLINE);
 

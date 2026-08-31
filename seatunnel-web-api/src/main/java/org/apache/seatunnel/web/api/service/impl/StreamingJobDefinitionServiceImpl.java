@@ -345,6 +345,9 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
             }
 
             if (releaseState.isOnline()) {
+                if (lakeJobGuard != null) {
+                    lakeJobGuard.validateBeforeOnline(id, LakeJobRuntimeType.STREAMING);
+                }
                 validateBeforeOnline(id);
             }
 

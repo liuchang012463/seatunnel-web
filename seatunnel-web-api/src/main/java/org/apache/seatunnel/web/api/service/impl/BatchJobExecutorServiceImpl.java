@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
 import org.apache.seatunnel.web.api.metrics.BatchJobSubmitter;
 import org.apache.seatunnel.web.api.service.BatchJobDefinitionService;
 import org.apache.seatunnel.web.api.service.BatchJobExecutorService;
@@ -10,6 +11,7 @@ import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.api.service.IncrementalBatchExecution;
 import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.RunMode;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -19,6 +21,7 @@ import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobOperateResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.enums.Status;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,23 +37,35 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
-
     private final BatchJobInstanceService instanceService;
     private final BatchJobDefinitionService definitionService;
     private final BatchJobSubmitter jobSubmitter;
     private final IncrementalBatchService incrementalBatchService;
     private final JobScheduleService jobScheduleService;
+    private final LakeJobGuard lakeJobGuard;
+
+    @Autowired
+    public BatchJobExecutorServiceImpl(BatchJobInstanceService instanceService,
+                                       BatchJobDefinitionService definitionService,
+                                       BatchJobSubmitter jobSubmitter,
+                                       IncrementalBatchService incrementalBatchService,
+                                       JobScheduleService jobScheduleService,
+                                       LakeJobGuard lakeJobGuard) {
+        this.instanceService = instanceService;
+        this.definitionService = definitionService;
+        this.jobSubmitter = jobSubmitter;
+        this.incrementalBatchService = incrementalBatchService;
+        this.jobScheduleService = jobScheduleService;
+        this.lakeJobGuard = lakeJobGuard;
+    }
 
     public BatchJobExecutorServiceImpl(BatchJobInstanceService instanceService,
                                        BatchJobDefinitionService definitionService,
                                        BatchJobSubmitter jobSubmitter,
                                        IncrementalBatchService incrementalBatchService,
                                        JobScheduleService jobScheduleService) {
-        this.instanceService = instanceService;
-        this.definitionService = definitionService;
-        this.jobSubmitter = jobSubmitter;
-        this.incrementalBatchService = incrementalBatchService;
-        this.jobScheduleService = jobScheduleService;
+        this(instanceService, definitionService, jobSubmitter, incrementalBatchService,
+                jobScheduleService, null);
     }
 
     @Override
@@ -58,6 +73,9 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         validateJobDefinitionId(jobDefineId);
         validateRunMode(runMode);
         validateJobDefinitionOnline(jobDefineId);
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeExecute(jobDefineId, LakeJobRuntimeType.BATCH);
+        }
 
         IncrementalBatchExecution incrementalExecution = incrementalBatchService.prepare(jobDefineId);
         if (incrementalExecution != null && incrementalExecution.isSkipped()) {

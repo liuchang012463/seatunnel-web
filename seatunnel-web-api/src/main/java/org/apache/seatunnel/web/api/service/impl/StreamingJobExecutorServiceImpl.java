@@ -2,11 +2,13 @@ package org.apache.seatunnel.web.api.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
 import org.apache.seatunnel.web.api.metrics.streaming.StreamingJobSubmitter;
 import org.apache.seatunnel.web.api.service.StreamingJobExecutorService;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.RunMode;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -16,6 +18,7 @@ import org.apache.seatunnel.web.engine.client.handler.ZetaJobStatusHandler;
 import org.apache.seatunnel.web.engine.client.modal.ZetaJobStatusResolveResult;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.enums.Status;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,28 +27,42 @@ import java.util.Date;
 @Service
 @Slf4j
 public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorService {
-
     private static final String ZETA_SAVEPOINT_TOKEN_PREFIX = "zeta://savepoint/job/";
 
     private final StreamingJobInstanceService streamingJobInstanceService;
     private final StreamingJobDefinitionQueryService streamingJobDefinitionQueryService;
     private final StreamingJobSubmitter streamingJobSubmitter;
     private final ZetaJobStatusHandler zetaJobStatusHandler;
+    private final LakeJobGuard lakeJobGuard;
+
+    @Autowired
+    public StreamingJobExecutorServiceImpl(StreamingJobInstanceService streamingJobInstanceService,
+                                           StreamingJobDefinitionQueryService streamingJobDefinitionQueryService,
+                                           StreamingJobSubmitter streamingJobSubmitter,
+                                           ZetaJobStatusHandler zetaJobStatusHandler,
+                                           LakeJobGuard lakeJobGuard) {
+        this.streamingJobInstanceService = streamingJobInstanceService;
+        this.streamingJobDefinitionQueryService = streamingJobDefinitionQueryService;
+        this.streamingJobSubmitter = streamingJobSubmitter;
+        this.zetaJobStatusHandler = zetaJobStatusHandler;
+        this.lakeJobGuard = lakeJobGuard;
+    }
 
     public StreamingJobExecutorServiceImpl(StreamingJobInstanceService streamingJobInstanceService,
                                            StreamingJobDefinitionQueryService streamingJobDefinitionQueryService,
                                            StreamingJobSubmitter streamingJobSubmitter,
                                            ZetaJobStatusHandler zetaJobStatusHandler) {
-        this.streamingJobInstanceService = streamingJobInstanceService;
-        this.streamingJobDefinitionQueryService = streamingJobDefinitionQueryService;
-        this.streamingJobSubmitter = streamingJobSubmitter;
-        this.zetaJobStatusHandler = zetaJobStatusHandler;
+        this(streamingJobInstanceService, streamingJobDefinitionQueryService,
+                streamingJobSubmitter, zetaJobStatusHandler, null);
     }
 
     @Override
     public Long jobExecute(Long jobDefineId, RunMode runMode) {
         validateDefinitionId(jobDefineId);
         validateRunnable(jobDefineId);
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeExecute(jobDefineId, LakeJobRuntimeType.STREAMING);
+        }
 
         if (streamingJobInstanceService.existsRunningInstance(jobDefineId)) {
             throw new ServiceException(
@@ -253,6 +270,9 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
         Long jobDefineId = sourceInstance.getJobDefinitionId();
         validateDefinitionId(jobDefineId);
         validateRunnable(jobDefineId);
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeExecute(jobDefineId, LakeJobRuntimeType.STREAMING);
+        }
 
         if (streamingJobInstanceService.existsRunningInstance(jobDefineId)) {
             throw new ServiceException(

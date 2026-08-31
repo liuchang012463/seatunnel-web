@@ -4,13 +4,20 @@ import com.typesafe.config.ConfigFactory;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeProperties;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
+import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.LakeManagementLevel;
+import org.apache.seatunnel.web.common.enums.LakeRelationScope;
+import org.apache.seatunnel.web.common.enums.LakeRelationStatus;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
+import org.apache.seatunnel.web.core.hocon.JobDefinitionCommandResolver;
+import org.apache.seatunnel.web.core.hocon.StreamingJobDefinitionCommandResolver;
 import org.apache.seatunnel.web.core.job.handler.script.ScriptJobDefinitionParser;
 import org.apache.seatunnel.web.dao.entity.DataSource;
+import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
+import org.apache.seatunnel.web.dao.repository.LakeJobRelationDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideMultiJobSaveCommand;
@@ -36,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class LakeJobGuardTest {
@@ -44,6 +52,9 @@ class LakeJobGuardTest {
     private static final long LAKE_DATA_SOURCE_ID = 99L;
 
     private LakeOdsTableMappingDao tableMappingDao;
+    private LakeJobRelationDao relationDao;
+    private JobDefinitionCommandResolver batchCommandResolver;
+    private StreamingJobDefinitionCommandResolver streamingCommandResolver;
     private LakeJobGuard guard;
 
     @BeforeEach
@@ -65,12 +76,19 @@ class LakeJobGuardTest {
         when(tableMappingDao.queryByBindingIdAndTargetTable(eq(BINDING_ID), eq("ods_orders")))
                 .thenReturn(managedMapping());
 
+        relationDao = mock(LakeJobRelationDao.class);
+        batchCommandResolver = mock(JobDefinitionCommandResolver.class);
+        streamingCommandResolver = mock(StreamingJobDefinitionCommandResolver.class);
+
         guard = new LakeJobGuard(
                 properties,
                 dataSourceDao,
                 bindingDao,
                 tableMappingDao,
-                new ScriptJobDefinitionParser());
+                new ScriptJobDefinitionParser(),
+                relationDao,
+                batchCommandResolver,
+                streamingCommandResolver);
     }
 
     @Test
@@ -163,6 +181,64 @@ class LakeJobGuardTest {
         BatchScriptJobSaveCommand ordinary = new BatchScriptJobSaveCommand();
         ordinary.setContent(scriptContent("100"));
         assertDoesNotThrow(() -> guard.validateBeforeSave(ordinary));
+    }
+
+    @Test
+    void onlineReloadsPersistedBatchCommandAndRestoresLegacyBinding() {
+        BatchGuideSingleJobSaveCommand legacy = new BatchGuideSingleJobSaveCommand();
+        legacy.setId(101L);
+        legacy.setWorkflow(singleWorkflowWithoutBinding());
+
+        LakeJobRelation relation = new LakeJobRelation();
+        relation.setJobId(101L);
+        relation.setOdsDatabaseBindingId(BINDING_ID);
+        relation.setTableMappingId(70L);
+        relation.setRelationScope(LakeRelationScope.TABLE);
+        relation.setRelationStatus(LakeRelationStatus.ACTIVE);
+
+        when(batchCommandResolver.resolve(101L)).thenReturn(legacy);
+        when(relationDao.queryActiveByJobId(101L)).thenReturn(List.of(relation));
+        when(tableMappingDao.queryByIdIncludingDeleted(70L)).thenReturn(managedMapping());
+
+        guard.validateBeforeOnline(101L, LakeJobRuntimeType.BATCH);
+
+        assertEquals(BINDING_ID, legacy.getOdsDatabaseBindingId());
+        assertEquals("ERROR_WHEN_SCHEMA_NOT_EXIST", sinkConfig(legacy.getWorkflow()).get("schemaSaveMode"));
+        verify(batchCommandResolver).resolve(101L);
+    }
+
+    @Test
+    void executeRejectsDeletedHistoricalMappingInsteadOfRecreatingIt() {
+        BatchGuideSingleJobSaveCommand persisted = new BatchGuideSingleJobSaveCommand();
+        persisted.setId(202L);
+        persisted.setOdsDatabaseBindingId(BINDING_ID);
+        persisted.setWorkflow(singleWorkflow("CREATE_SCHEMA_WHEN_NOT_EXIST"));
+
+        LakeOdsTableMapping deleted = managedMapping();
+        deleted.setDeleted(true);
+        when(batchCommandResolver.resolve(202L)).thenReturn(persisted);
+        when(tableMappingDao.queryByBindingIdAndTargetTable(BINDING_ID, "ods_orders"))
+                .thenReturn(null);
+        when(tableMappingDao.queryByBindingIdAndTargetTableIncludingDeleted(BINDING_ID, "ods_orders"))
+                .thenReturn(deleted);
+
+        assertLakeRequestInvalid(
+                () -> guard.validateBeforeExecute(202L, LakeJobRuntimeType.BATCH));
+        verify(tableMappingDao)
+                .queryByBindingIdAndTargetTableIncludingDeleted(BINDING_ID, "ods_orders");
+    }
+
+    @Test
+    void executeReloadsLatestStreamingCommandThroughTheStreamingResolver() {
+        StreamingGuideMultiJobSaveCommand persisted = new StreamingGuideMultiJobSaveCommand();
+        persisted.setId(303L);
+        persisted.setContent(multiContent("ERROR_WHEN_SCHEMA_NOT_EXIST", "4"));
+
+        when(streamingCommandResolver.resolve(303L)).thenReturn(persisted);
+
+        guard.validateBeforeExecute(303L, LakeJobRuntimeType.STREAMING);
+
+        verify(streamingCommandResolver).resolve(303L);
     }
 
     private void assertLakeRequestInvalid(Runnable action) {
