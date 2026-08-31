@@ -29,6 +29,7 @@ import org.apache.seatunnel.web.api.lake.table.LakePreviewTokenService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.LakeManagedTableService;
 import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
+import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.LakeLifecycleBindingStatus;
 import org.apache.seatunnel.web.common.enums.LakeManagementLevel;
 import org.apache.seatunnel.web.common.enums.LakeOperationStatus;
@@ -36,18 +37,28 @@ import org.apache.seatunnel.web.common.enums.LakeOperationType;
 import org.apache.seatunnel.web.common.enums.LakeRelationScope;
 import org.apache.seatunnel.web.common.enums.LakeRelationStatus;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
+import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
+import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
 import org.apache.seatunnel.web.dao.entity.LakeResourceOperation;
 import org.apache.seatunnel.web.dao.entity.LakeSourceObjectRef;
 import org.apache.seatunnel.web.dao.entity.LakeTableLifecycleBinding;
+import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
+import org.apache.seatunnel.web.dao.entity.JobSchedule;
+import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
+import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
+import org.apache.seatunnel.web.dao.repository.JobScheduleDao;
 import org.apache.seatunnel.web.dao.repository.LakeJobRelationDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
 import org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao;
 import org.apache.seatunnel.web.dao.repository.LakeTableLifecycleBindingDao;
+import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTableCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTableDeleteDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTablePreviewDTO;
@@ -72,6 +83,11 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
     private final LakeOdsTableMappingDao tableMappingDao;
     private final LakeSourceObjectRefDao sourceObjectRefDao;
     private final LakeJobRelationDao jobRelationDao;
+    private final JobDefinitionDao batchJobDefinitionDao;
+    private final StreamingJobDefinitionDao streamingJobDefinitionDao;
+    private final JobScheduleDao jobScheduleDao;
+    private final JobInstanceDao jobInstanceDao;
+    private final StreamingJobInstanceDao streamingJobInstanceDao;
     private final LakeTableLifecycleBindingDao lifecycleBindingDao;
     private final LakeSourceObjectResolver sourceResolver;
     private final LakeDorisClientProvider dorisClientProvider;
@@ -89,6 +105,11 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             LakeOdsTableMappingDao tableMappingDao,
             LakeSourceObjectRefDao sourceObjectRefDao,
             LakeJobRelationDao jobRelationDao,
+            JobDefinitionDao batchJobDefinitionDao,
+            StreamingJobDefinitionDao streamingJobDefinitionDao,
+            JobScheduleDao jobScheduleDao,
+            JobInstanceDao jobInstanceDao,
+            StreamingJobInstanceDao streamingJobInstanceDao,
             LakeTableLifecycleBindingDao lifecycleBindingDao,
             LakeSourceObjectResolver sourceResolver,
             LakeDorisClientProvider dorisClientProvider,
@@ -99,7 +120,9 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         this(dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
                 jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
                 coordinator, currentUserProvider, previewTokenService, lakeProperties,
-                new LakeManagedTableContractFactory(), new DorisDdlBuilder());
+                new LakeManagedTableContractFactory(), new DorisDdlBuilder(),
+                batchJobDefinitionDao, streamingJobDefinitionDao, jobScheduleDao,
+                jobInstanceDao, streamingJobInstanceDao);
     }
 
     /** Visible for unit tests that provide deterministic factories. */
@@ -118,11 +141,43 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             LakeProperties lakeProperties,
             LakeManagedTableContractFactory contractFactory,
             DorisDdlBuilder ddlBuilder) {
+        this(dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
+                jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
+                coordinator, currentUserProvider, previewTokenService, lakeProperties,
+                contractFactory, ddlBuilder, null, null, null, null, null);
+    }
+
+    /** Visible for unit tests that also exercise job lifecycle delete guards. */
+    public LakeManagedTableServiceImpl(
+            DataSourceDao dataSourceDao,
+            LakeOdsDatabaseBindingDao databaseBindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            LakeSourceObjectRefDao sourceObjectRefDao,
+            LakeJobRelationDao jobRelationDao,
+            LakeTableLifecycleBindingDao lifecycleBindingDao,
+            LakeSourceObjectResolver sourceResolver,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeResourceOperationCoordinator coordinator,
+            CurrentUserProvider currentUserProvider,
+            LakePreviewTokenService previewTokenService,
+            LakeProperties lakeProperties,
+            LakeManagedTableContractFactory contractFactory,
+            DorisDdlBuilder ddlBuilder,
+            JobDefinitionDao batchJobDefinitionDao,
+            StreamingJobDefinitionDao streamingJobDefinitionDao,
+            JobScheduleDao jobScheduleDao,
+            JobInstanceDao jobInstanceDao,
+            StreamingJobInstanceDao streamingJobInstanceDao) {
         this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
         this.databaseBindingDao = Objects.requireNonNull(databaseBindingDao, "databaseBindingDao");
         this.tableMappingDao = Objects.requireNonNull(tableMappingDao, "tableMappingDao");
         this.sourceObjectRefDao = Objects.requireNonNull(sourceObjectRefDao, "sourceObjectRefDao");
         this.jobRelationDao = Objects.requireNonNull(jobRelationDao, "jobRelationDao");
+        this.batchJobDefinitionDao = batchJobDefinitionDao;
+        this.streamingJobDefinitionDao = streamingJobDefinitionDao;
+        this.jobScheduleDao = jobScheduleDao;
+        this.jobInstanceDao = jobInstanceDao;
+        this.streamingJobInstanceDao = streamingJobInstanceDao;
         this.lifecycleBindingDao = Objects.requireNonNull(lifecycleBindingDao, "lifecycleBindingDao");
         this.sourceResolver = Objects.requireNonNull(sourceResolver, "sourceResolver");
         this.dorisClientProvider = Objects.requireNonNull(dorisClientProvider, "dorisClientProvider");
@@ -309,13 +364,8 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         List<LakeJobRelation> relations = jobRelationDao.queryByOdsDatabaseBindingId(binding.getId());
         if (relations != null) {
             for (LakeJobRelation relation : relations) {
-                if (relation == null || relation.getRelationStatus() != LakeRelationStatus.ACTIVE) {
-                    continue;
-                }
-                if (Objects.equals(relation.getTableMappingId(), mapping.getId())
-                        || relation.getRelationScope() == LakeRelationScope.NAMESPACE) {
-                    result.getRelations().add(toImpact(relation));
-                    result.getBlockers().add("An active job relation still references this table");
+                if (isActiveRelationForMapping(relation, mapping)) {
+                    addRelationImpact(result, relation);
                 }
             }
         }
@@ -325,6 +375,126 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         result.setAllowed(result.getBlockers().isEmpty());
         result.setImpactHash(impactHash(result));
         return result;
+    }
+
+    private boolean isActiveRelationForMapping(
+            LakeJobRelation relation, LakeOdsTableMapping mapping) {
+        if (relation == null || relation.getRelationStatus() != LakeRelationStatus.ACTIVE) {
+            return false;
+        }
+        if (relation.getRelationScope() == LakeRelationScope.TABLE) {
+            return Objects.equals(relation.getTableMappingId(), mapping.getId());
+        }
+        return relation.getRelationScope() == LakeRelationScope.NAMESPACE;
+    }
+
+    private void addRelationImpact(
+            LakeManagedTableDeleteImpactVO result, LakeJobRelation relation) {
+        result.getRelations().add(toImpact(relation));
+        if (relation.getJobRuntimeType() == null) {
+            result.getBlockers().add("An active job relation has an unknown runtime type");
+            return;
+        }
+        if (relation.getJobId() == null) {
+            result.getBlockers().add("An active job relation has no job definition");
+            return;
+        }
+
+        switch (relation.getJobRuntimeType()) {
+            case BATCH -> inspectBatchRelation(result, relation);
+            case STREAMING -> inspectStreamingRelation(result, relation);
+        }
+    }
+
+    private void inspectBatchRelation(
+            LakeManagedTableDeleteImpactVO result, LakeJobRelation relation) {
+        if (batchJobDefinitionDao == null || jobScheduleDao == null || jobInstanceDao == null) {
+            result.getBlockers().add("An active batch job relation cannot be verified");
+            return;
+        }
+
+        JobDefinitionEntity definition;
+        try {
+            definition = batchJobDefinitionDao.queryById(relation.getJobId());
+        } catch (RuntimeException exception) {
+            result.getBlockers().add("An active batch job relation cannot be verified");
+            return;
+        }
+        if (definition == null) {
+            result.getBlockers().add("An active batch job relation references a missing job definition");
+            return;
+        }
+        if (definition.getReleaseState() == null) {
+            result.getBlockers().add("An active batch job relation has an unknown release state");
+        } else if (definition.getReleaseState().isOnline()) {
+            result.getBlockers().add("An active batch job relation references an online job");
+        }
+
+        JobSchedule schedule;
+        try {
+            schedule = jobScheduleDao.queryByJobDefinitionId(relation.getJobId());
+        } catch (RuntimeException exception) {
+            result.getBlockers().add("An active batch job schedule cannot be verified");
+            schedule = null;
+        }
+        if (schedule != null && scheduleEnabled(schedule)) {
+            result.getBlockers().add("An active batch job relation has an enabled schedule");
+        } else if (schedule != null && schedule.getScheduleStatus() == null) {
+            result.getBlockers().add("An active batch job schedule has an unknown state");
+        }
+
+        try {
+            if (jobInstanceDao.existsRunningInstance(relation.getJobId())) {
+                result.getBlockers().add("An active batch job relation has a running instance");
+            }
+        } catch (RuntimeException exception) {
+            result.getBlockers().add("An active batch job instance cannot be verified");
+        }
+    }
+
+    private void inspectStreamingRelation(
+            LakeManagedTableDeleteImpactVO result, LakeJobRelation relation) {
+        if (streamingJobDefinitionDao == null || streamingJobInstanceDao == null) {
+            result.getBlockers().add("An active streaming job relation cannot be verified");
+            return;
+        }
+
+        StreamingJobDefinitionEntity definition;
+        try {
+            definition = streamingJobDefinitionDao.queryById(relation.getJobId());
+        } catch (RuntimeException exception) {
+            result.getBlockers().add("An active streaming job relation cannot be verified");
+            return;
+        }
+        if (definition == null) {
+            result.getBlockers().add(
+                    "An active streaming job relation references a missing job definition");
+            return;
+        }
+        if (definition.getReleaseState() == null) {
+            result.getBlockers().add("An active streaming job relation has an unknown release state");
+        } else if (definition.getReleaseState().isOnline()) {
+            result.getBlockers().add("An active streaming job relation references an online job");
+        }
+
+        try {
+            if (streamingJobInstanceDao.existsRunningInstance(relation.getJobId())) {
+                result.getBlockers().add("An active streaming job relation has a running instance");
+            }
+        } catch (RuntimeException exception) {
+            result.getBlockers().add("An active streaming job instance cannot be verified");
+        }
+    }
+
+    private boolean scheduleEnabled(JobSchedule schedule) {
+        ScheduleStatusEnum status = schedule.getScheduleStatus();
+        if (status != null) {
+            return status.shouldStartQuartz();
+        }
+        return schedule.getExecutionMode() != null
+                && schedule.getExecutionMode() != TaskExecutionMode.MANUAL
+                && schedule.getCronExpression() != null
+                && !schedule.getCronExpression().isBlank();
     }
 
     @Override
@@ -766,7 +936,8 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                         .append(relation.getJobId()).append(':').append(relation.getJobVersion()).append(':')
                         .append(relation.getRelationScope()).append(':').append(relation.getJobRuntimeType())
                         .append(':').append(relation.getRelationStatus()).append('\u0000'));
-        impact.getBlockers().forEach(blocker -> value.append(blocker).append('\u0000'));
+        impact.getBlockers().stream().sorted()
+                .forEach(blocker -> value.append(blocker).append('\u0000'));
         return org.apache.seatunnel.web.api.lake.source.SourceSchemaCanonicalizer.sha256(value.toString());
     }
 

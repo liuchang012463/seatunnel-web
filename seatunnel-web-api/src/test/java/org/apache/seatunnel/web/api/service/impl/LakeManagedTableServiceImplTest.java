@@ -23,25 +23,38 @@ import org.apache.seatunnel.web.api.lake.source.SourceConstraintSnapshot;
 import org.apache.seatunnel.web.api.lake.source.SourceObjectSnapshot;
 import org.apache.seatunnel.web.api.lake.table.LakeManagedTableContractFactory;
 import org.apache.seatunnel.web.api.lake.table.LakeManagedTableDeleteImpactVO;
+import org.apache.seatunnel.web.api.lake.table.LakeManagedTableRelationImpactVO;
 import org.apache.seatunnel.web.api.lake.table.LakeManagedTablePreviewVO;
 import org.apache.seatunnel.web.api.lake.table.LakeManagedTableVO;
 import org.apache.seatunnel.web.api.lake.table.LakePreviewTokenService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
+import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.LakeManagementLevel;
+import org.apache.seatunnel.web.common.enums.LakeRelationScope;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
+import org.apache.seatunnel.web.common.enums.ReleaseState;
+import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
 import org.apache.seatunnel.web.common.enums.LakeTableModel;
+import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
+import org.apache.seatunnel.web.dao.entity.JobSchedule;
 import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
 import org.apache.seatunnel.web.dao.entity.LakeSourceObjectRef;
 import org.apache.seatunnel.web.dao.entity.LakeTableLifecycleBinding;
+import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
+import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
+import org.apache.seatunnel.web.dao.repository.JobScheduleDao;
 import org.apache.seatunnel.web.dao.repository.LakeJobRelationDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
 import org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao;
 import org.apache.seatunnel.web.dao.repository.LakeTableLifecycleBindingDao;
+import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTableCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTableDeleteDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTablePreviewDTO;
@@ -80,6 +93,11 @@ class LakeManagedTableServiceImplTest {
     @Mock private LakeOdsTableMappingDao tableMappingDao;
     @Mock private LakeSourceObjectRefDao sourceObjectRefDao;
     @Mock private LakeJobRelationDao jobRelationDao;
+    @Mock private JobDefinitionDao batchJobDefinitionDao;
+    @Mock private StreamingJobDefinitionDao streamingJobDefinitionDao;
+    @Mock private JobScheduleDao jobScheduleDao;
+    @Mock private JobInstanceDao jobInstanceDao;
+    @Mock private StreamingJobInstanceDao streamingJobInstanceDao;
     @Mock private LakeTableLifecycleBindingDao lifecycleBindingDao;
     @Mock private LakeSourceObjectResolver sourceResolver;
     @Mock private LakeDorisClientProvider dorisClientProvider;
@@ -108,7 +126,9 @@ class LakeManagedTableServiceImplTest {
                 dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
                 jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
                 coordinator, currentUserProvider, tokenService, properties,
-                contractFactory, new org.apache.seatunnel.web.api.lake.doris.DorisDdlBuilder());
+                contractFactory, new org.apache.seatunnel.web.api.lake.doris.DorisDdlBuilder(),
+                batchJobDefinitionDao, streamingJobDefinitionDao, jobScheduleDao,
+                jobInstanceDao, streamingJobInstanceDao);
 
         lenient().when(currentUserProvider.getCurrentUserId()).thenReturn(7);
         lenient().when(databaseBindingDao.queryActiveById(21L)).thenReturn(binding);
@@ -252,6 +272,144 @@ class LakeManagedTableServiceImplTest {
     }
 
     @Test
+    void deleteImpactBlocksBatchRelationWhenDefinitionIsOnline() {
+        LakeOdsTableMapping mapping = storedMapping(505L);
+        LakeJobRelation relation = tableRelation(
+                805L, 905L, 505L, LakeJobRuntimeType.BATCH);
+        when(tableMappingDao.queryByIdIncludingDeleted(505L)).thenReturn(mapping);
+        when(jobRelationDao.queryByOdsDatabaseBindingId(21L)).thenReturn(List.of(relation));
+        when(batchJobDefinitionDao.queryById(905L)).thenReturn(
+                batchDefinition(905L, ReleaseState.ONLINE));
+        when(jobInstanceDao.existsRunningInstance(905L)).thenReturn(false);
+
+        LakeManagedTableDeleteImpactVO impact = service.deleteImpact(505L);
+
+        assertFalse(impact.isAllowed());
+        assertEquals(List.of(805L), impact.getRelations().stream()
+                .map(LakeManagedTableRelationImpactVO::getRelationId).toList());
+        assertTrue(impact.getBlockers().stream()
+                .anyMatch(blocker -> blocker.contains("online")));
+        verify(jobScheduleDao).queryByJobDefinitionId(905L);
+        verify(jobInstanceDao).existsRunningInstance(905L);
+    }
+
+    @Test
+    void deleteImpactBlocksBatchRelationWhenScheduleIsEnabled() {
+        LakeOdsTableMapping mapping = storedMapping(506L);
+        LakeJobRelation relation = tableRelation(
+                806L, 906L, 506L, LakeJobRuntimeType.BATCH);
+        when(tableMappingDao.queryByIdIncludingDeleted(506L)).thenReturn(mapping);
+        when(jobRelationDao.queryByOdsDatabaseBindingId(21L)).thenReturn(List.of(relation));
+        when(batchJobDefinitionDao.queryById(906L)).thenReturn(
+                batchDefinition(906L, ReleaseState.OFFLINE));
+        when(jobScheduleDao.queryByJobDefinitionId(906L)).thenReturn(schedule(ScheduleStatusEnum.NORMAL));
+        when(jobInstanceDao.existsRunningInstance(906L)).thenReturn(false);
+
+        LakeManagedTableDeleteImpactVO impact = service.deleteImpact(506L);
+
+        assertFalse(impact.isAllowed());
+        assertTrue(impact.getBlockers().stream()
+                .anyMatch(blocker -> blocker.contains("enabled schedule")));
+    }
+
+    @Test
+    void deleteImpactBlocksBatchRelationWhenInstanceIsRunning() {
+        LakeOdsTableMapping mapping = storedMapping(507L);
+        mapping.setManagementLevel(LakeManagementLevel.AUTO_CREATED);
+        LakeJobRelation relation = tableRelation(
+                807L, 907L, 507L, LakeJobRuntimeType.BATCH);
+        when(tableMappingDao.queryByIdIncludingDeleted(507L)).thenReturn(mapping);
+        when(jobRelationDao.queryByOdsDatabaseBindingId(21L)).thenReturn(List.of(relation));
+        when(batchJobDefinitionDao.queryById(907L)).thenReturn(
+                batchDefinition(907L, ReleaseState.OFFLINE));
+        when(jobInstanceDao.existsRunningInstance(907L)).thenReturn(true);
+
+        LakeManagedTableDeleteImpactVO impact = service.deleteImpact(507L);
+
+        assertFalse(impact.isAllowed());
+        assertTrue(impact.getBlockers().stream()
+                .anyMatch(blocker -> blocker.contains("running instance")));
+    }
+
+    @Test
+    void deleteImpactBlocksStreamingRelationWhenDefinitionIsOnline() {
+        LakeOdsTableMapping mapping = storedMapping(508L);
+        LakeJobRelation relation = tableRelation(
+                808L, 908L, 508L, LakeJobRuntimeType.STREAMING);
+        when(tableMappingDao.queryByIdIncludingDeleted(508L)).thenReturn(mapping);
+        when(jobRelationDao.queryByOdsDatabaseBindingId(21L)).thenReturn(List.of(relation));
+        when(streamingJobDefinitionDao.queryById(908L)).thenReturn(
+                streamingDefinition(908L, ReleaseState.ONLINE));
+        when(streamingJobInstanceDao.existsRunningInstance(908L)).thenReturn(false);
+
+        LakeManagedTableDeleteImpactVO impact = service.deleteImpact(508L);
+
+        assertFalse(impact.isAllowed());
+        assertTrue(impact.getBlockers().stream()
+                .anyMatch(blocker -> blocker.contains("online")));
+    }
+
+    @Test
+    void deleteImpactBlocksStreamingRelationWhenInstanceIsRunning() {
+        LakeOdsTableMapping mapping = storedMapping(509L);
+        LakeJobRelation relation = tableRelation(
+                809L, 909L, 509L, LakeJobRuntimeType.STREAMING);
+        when(tableMappingDao.queryByIdIncludingDeleted(509L)).thenReturn(mapping);
+        when(jobRelationDao.queryByOdsDatabaseBindingId(21L)).thenReturn(List.of(relation));
+        when(streamingJobDefinitionDao.queryById(909L)).thenReturn(
+                streamingDefinition(909L, ReleaseState.OFFLINE));
+        when(streamingJobInstanceDao.existsRunningInstance(909L)).thenReturn(true);
+
+        LakeManagedTableDeleteImpactVO impact = service.deleteImpact(509L);
+
+        assertFalse(impact.isAllowed());
+        assertTrue(impact.getBlockers().stream()
+                .anyMatch(blocker -> blocker.contains("running instance")));
+    }
+
+    @Test
+    void deleteImpactAllowsOfflineBatchRelationWithoutScheduleOrRunningInstance() {
+        LakeOdsTableMapping mapping = storedMapping(510L);
+        LakeJobRelation relation = tableRelation(
+                810L, 910L, 510L, LakeJobRuntimeType.BATCH);
+        when(tableMappingDao.queryByIdIncludingDeleted(510L)).thenReturn(mapping);
+        when(jobRelationDao.queryByOdsDatabaseBindingId(21L)).thenReturn(List.of(relation));
+        when(batchJobDefinitionDao.queryById(910L)).thenReturn(
+                batchDefinition(910L, ReleaseState.OFFLINE));
+        when(jobScheduleDao.queryByJobDefinitionId(910L)).thenReturn(null);
+        when(jobInstanceDao.existsRunningInstance(910L)).thenReturn(false);
+
+        LakeManagedTableDeleteImpactVO impact = service.deleteImpact(510L);
+
+        assertTrue(impact.isAllowed());
+        assertEquals(1, impact.getRelations().size());
+        verify(jobRelationDao, never()).updateById(any());
+        verify(tableMappingDao, never()).updateById(any());
+    }
+
+    @Test
+    void deleteImpactIncludesNamespaceRelationAndRemainsReadOnly() {
+        LakeOdsTableMapping mapping = storedMapping(511L);
+        LakeJobRelation relation = namespaceRelation(
+                811L, 911L, LakeJobRuntimeType.STREAMING);
+        when(tableMappingDao.queryByIdIncludingDeleted(511L)).thenReturn(mapping);
+        when(jobRelationDao.queryByOdsDatabaseBindingId(21L)).thenReturn(List.of(relation));
+        when(streamingJobDefinitionDao.queryById(911L)).thenReturn(
+                streamingDefinition(911L, ReleaseState.ONLINE));
+        when(streamingJobInstanceDao.existsRunningInstance(911L)).thenReturn(false);
+
+        LakeManagedTableDeleteImpactVO impact = service.deleteImpact(511L);
+
+        assertFalse(impact.isAllowed());
+        assertEquals(LakeRelationScope.NAMESPACE,
+                impact.getRelations().get(0).getRelationScope());
+        assertTrue(impact.getBlockers().stream()
+                .anyMatch(blocker -> blocker.contains("online")));
+        verify(jobRelationDao, never()).updateById(any());
+        verify(jobRelationDao, never()).markStaleByJobId(anyLong());
+    }
+
+    @Test
     void deleteUsesImpactConfirmationAndPublishesDropThroughCoordinator() {
         LakeOdsTableMapping mapping = storedMapping(502L);
         when(tableMappingDao.queryByIdIncludingDeleted(502L)).thenReturn(mapping);
@@ -369,6 +527,48 @@ class LakeManagedTableServiceImplTest {
         mapping.setLockVersion(1);
         mapping.setDeleted(false);
         return mapping;
+    }
+
+    private static LakeJobRelation tableRelation(
+            Long relationId, Long jobId, Long mappingId, LakeJobRuntimeType runtimeType) {
+        LakeJobRelation relation = new LakeJobRelation();
+        relation.setId(relationId);
+        relation.setOdsDatabaseBindingId(21L);
+        relation.setTableMappingId(mappingId);
+        relation.setRelationScope(LakeRelationScope.TABLE);
+        relation.setJobRuntimeType(runtimeType);
+        relation.setJobId(jobId);
+        relation.setJobVersion(1);
+        relation.setRelationStatus(org.apache.seatunnel.web.common.enums.LakeRelationStatus.ACTIVE);
+        return relation;
+    }
+
+    private static LakeJobRelation namespaceRelation(
+            Long relationId, Long jobId, LakeJobRuntimeType runtimeType) {
+        LakeJobRelation relation = tableRelation(relationId, jobId, null, runtimeType);
+        relation.setRelationScope(LakeRelationScope.NAMESPACE);
+        return relation;
+    }
+
+    private static JobDefinitionEntity batchDefinition(Long id, ReleaseState releaseState) {
+        JobDefinitionEntity definition = new JobDefinitionEntity();
+        definition.setId(id);
+        definition.setReleaseState(releaseState);
+        return definition;
+    }
+
+    private static StreamingJobDefinitionEntity streamingDefinition(
+            Long id, ReleaseState releaseState) {
+        StreamingJobDefinitionEntity definition = new StreamingJobDefinitionEntity();
+        definition.setId(id);
+        definition.setReleaseState(releaseState);
+        return definition;
+    }
+
+    private static JobSchedule schedule(ScheduleStatusEnum status) {
+        JobSchedule schedule = new JobSchedule();
+        schedule.setScheduleStatus(status);
+        return schedule;
     }
 
     private static LakeOdsDatabaseBinding binding(Long id) {
