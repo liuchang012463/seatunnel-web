@@ -85,7 +85,7 @@ public class LakeDataSourceResolver implements AutoCloseable {
         } catch (RuntimeException exception) {
             // Do not include connectionParams or the exception text in a
             // user-facing/loggable message; plugin exceptions can echo JSON.
-            throw new IllegalArgumentException("Lake Doris data source configuration is invalid", exception);
+            throw new IllegalArgumentException("Lake Doris data source configuration is invalid");
         }
         if (param == null || param.getUrl() == null || param.getUrl().isBlank()) {
             throw new IllegalArgumentException("Lake Doris JDBC URL is not configured");

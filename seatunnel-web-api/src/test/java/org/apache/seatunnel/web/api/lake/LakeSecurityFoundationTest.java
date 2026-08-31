@@ -83,4 +83,23 @@ class LakeSecurityFoundationTest {
             assertNotSame(first, second);
         }
     }
+
+    @Test
+    void resolverDoesNotExposePluginConfigurationException() {
+        DataSourceDao dao = mock(DataSourceDao.class);
+        DataSource entity = new DataSource();
+        entity.setId(8L);
+        entity.setDbType(DbType.DORIS);
+        entity.setConnectionParams("{password:'do-not-log'}");
+        when(dao.queryById(8L)).thenReturn(entity);
+        LakeProperties properties = new LakeProperties();
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> new LakeDataSourceResolver(dao, properties,
+                        ignored -> {
+                            throw new IllegalStateException("connectionParams password=do-not-log");
+                        }).resolve(8L));
+        assertEquals("Lake Doris data source configuration is invalid", error.getMessage());
+        assertEquals(null, error.getCause());
+        assertFalse(error.toString().contains("do-not-log"));
+    }
 }
