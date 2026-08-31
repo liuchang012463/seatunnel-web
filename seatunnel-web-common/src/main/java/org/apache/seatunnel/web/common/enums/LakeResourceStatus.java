@@ -14,6 +14,7 @@ public enum LakeResourceStatus {
     ERROR("ERROR"),
     CREATE_FAILED("CREATE_FAILED"),
     MISSING("MISSING"),
+    UNKNOWN("UNKNOWN"),
     DELETING("DELETING"),
     DELETED("DELETED");
 

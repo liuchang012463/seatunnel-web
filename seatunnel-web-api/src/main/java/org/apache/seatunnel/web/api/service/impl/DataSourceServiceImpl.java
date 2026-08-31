@@ -9,6 +9,8 @@ import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
 import org.apache.seatunnel.web.api.service.DataSourceService;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
+import org.apache.seatunnel.web.api.lake.LakeErrorCode;
+import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
@@ -23,6 +25,7 @@ import org.apache.seatunnel.web.dao.repository.BusinessSystemDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
 import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
@@ -78,6 +81,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
     @Resource
     private StreamingJobDefinitionDao streamingJobDefinitionDao;
+
+    @Resource
+    private LakeOdsDatabaseBindingDao lakeOdsDatabaseBindingDao;
 
     @Resource
     private CurrentUserProvider currentUserProvider;
@@ -262,6 +268,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
         try {
             checkDataSourceNotUsedByAnyJob(datasourceId);
+            checkDataSourceNotUsedByLake(datasourceId);
             metadataBindingCommandService.markDeleted(datasourceId);
             markDataSourcePendingDeletion(datasourceId);
         } catch (ServiceException e) {
@@ -308,6 +315,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
                 checkDataSourceNotUsed(id, status == DataSourceLifecycleStatus.REVOKED
                         ? "revoked"
                         : "disabled");
+                if (status == DataSourceLifecycleStatus.REVOKED) {
+                    checkDataSourceNotUsedByLake(id);
+                }
             }
 
             DataSource entity = new DataSource();
@@ -347,6 +357,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             checkDataSourcesNotUsed(distinctIds);
 
             for (Long id : distinctIds) {
+                checkDataSourceNotUsedByLake(id);
                 metadataBindingCommandService.markDeleted(id);
                 markDataSourcePendingDeletion(id);
             }
@@ -498,6 +509,15 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     private void checkDataSourceNotUsedByAnyJob(Long datasourceId) {
         if (isReferencedByAnyJob(datasourceId)) {
             throw new ServiceException("The data source is currently used by a job and cannot be deleted.");
+        }
+    }
+
+    private void checkDataSourceNotUsedByLake(Long datasourceId) {
+        if (lakeOdsDatabaseBindingDao != null
+                && (lakeOdsDatabaseBindingDao.existsActiveBySourceDataSourceId(datasourceId)
+                || lakeOdsDatabaseBindingDao.existsActiveByLakeDataSourceId(datasourceId))) {
+            throw new LakeServiceException(LakeErrorCode.LAKE_RESOURCE_CONFLICT,
+                    "The data source is referenced by an active lake ODS database");
         }
     }
 

@@ -136,6 +136,9 @@ public class LakeResourceOperationCoordinator {
         markRunning(handle);
         try {
             return new LakeOperationExecution<>(handle, externalOperation.execute());
+        } catch (LakeExternalOperationException exception) {
+            fail(handle, exception.getErrorCode(), exception.getMessage());
+            throw new LakeOperationException("Lake external operation failed");
         } catch (Exception exception) {
             fail(handle, safeErrorCode("EXTERNAL_OPERATION_FAILED"), exception.getMessage());
             throw new LakeOperationException("Lake external operation failed");

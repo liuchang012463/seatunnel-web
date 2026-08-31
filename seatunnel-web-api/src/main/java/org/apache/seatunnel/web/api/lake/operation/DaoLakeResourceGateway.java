@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.lake.operation;
 
+import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import lombok.NonNull;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.LakeExternalCatalogBinding;
@@ -100,13 +101,25 @@ public class DaoLakeResourceGateway implements LakeResourceGateway {
             return false;
         }
         return update(expected, entity -> {
-            entity.setResourceStatus(LakeResourceStatus.ERROR);
+            entity.setResourceStatus(failureStatus(errorCode));
             entity.setOperationToken(null);
             entity.setErrorCode(errorCode);
             entity.setErrorMessage(summary);
             entity.setLastReconcileAt(new java.util.Date());
             entity.initUpdate();
         });
+    }
+
+    private static LakeResourceStatus failureStatus(String errorCode) {
+        if (LakeErrorCode.LAKE_DATABASE_MISSING.equals(errorCode)
+                || LakeErrorCode.LAKE_SOURCE_OBJECT_MISSING.equals(errorCode)) {
+            return LakeResourceStatus.MISSING;
+        }
+        if (LakeErrorCode.LAKE_SOURCE_OBJECT_UNKNOWN.equals(errorCode)
+                || LakeErrorCode.LAKE_DORIS_UNAVAILABLE.equals(errorCode)) {
+            return LakeResourceStatus.UNKNOWN;
+        }
+        return LakeResourceStatus.ERROR;
     }
 
     @Override

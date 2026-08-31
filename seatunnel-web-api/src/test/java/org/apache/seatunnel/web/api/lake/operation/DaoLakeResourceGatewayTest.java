@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.lake.operation;
 
+import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
 import org.apache.seatunnel.web.dao.repository.LakeExternalCatalogBindingDao;
@@ -98,5 +99,45 @@ class DaoLakeResourceGatewayTest {
         assertFalse(row.getDeleted());
         assertEquals(7, row.getLockVersion());
         verify(tableDao).updateIfTokenAndVersionIncludingDeleted(row, null, 6);
+    }
+
+    @Test
+    void externalFailureMapsMissingAndUnavailableToStableResourceStates() {
+        LakeSourceObjectRefDao sourceDao = mock(LakeSourceObjectRefDao.class);
+        LakeOdsDatabaseBindingDao databaseDao = mock(LakeOdsDatabaseBindingDao.class);
+        LakeOdsTableMappingDao tableDao = mock(LakeOdsTableMappingDao.class);
+        LakeExternalCatalogBindingDao catalogDao = mock(LakeExternalCatalogBindingDao.class);
+        LakeOdsTableMapping row = new LakeOdsTableMapping();
+        row.setId(22L);
+        row.setGeneration(1);
+        row.setLockVersion(1);
+        row.setDeleted(false);
+        row.setOperationToken("missing-token");
+        row.setResourceStatus(LakeResourceStatus.CREATING);
+        when(tableDao.queryByIdIncludingDeleted(22L)).thenReturn(row);
+        doAnswer(invocation -> {
+            LakeOdsTableMapping entity = invocation.getArgument(0);
+            Integer expectedVersion = invocation.getArgument(2);
+            entity.setLockVersion(expectedVersion + 1);
+            return true;
+        }).when(tableDao).updateIfTokenAndVersion(any(), any(), anyInt());
+
+        DaoLakeResourceGateway gateway = new DaoLakeResourceGateway(
+                sourceDao, databaseDao, tableDao, catalogDao);
+
+        LakeOperationHandle missingHandle = new LakeOperationHandle(
+                1L, LakeResourceTypes.ODS_TABLE_MAPPING, 22L, 1, "missing-token", 1);
+        assertTrue(gateway.finalizeFailure(
+                missingHandle, LakeErrorCode.LAKE_DATABASE_MISSING, "missing"));
+        assertEquals(LakeResourceStatus.MISSING, row.getResourceStatus());
+
+        row.setOperationToken("unknown-token");
+        row.setResourceStatus(LakeResourceStatus.CREATING);
+        row.setLockVersion(2);
+        LakeOperationHandle unknownHandle = new LakeOperationHandle(
+                2L, LakeResourceTypes.ODS_TABLE_MAPPING, 22L, 1, "unknown-token", 2);
+        assertTrue(gateway.finalizeFailure(
+                unknownHandle, LakeErrorCode.LAKE_DORIS_UNAVAILABLE, "unavailable"));
+        assertEquals(LakeResourceStatus.UNKNOWN, row.getResourceStatus());
     }
 }
