@@ -13,7 +13,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Produces the stable JSON and SHA-256 identity of a TargetContract v2. */
+/**
+ * Produces the stable JSON and SHA-256 identity of a TargetContract v2.
+ *
+ * <p>The hash is deliberately limited to structure observable in Doris
+ * metadata.  Source names and source ordinals belong to the source schema
+ * hash and field-mapping binding; including them here would make a renamed
+ * target column fail an otherwise successful CREATE/SHOW CREATE comparison,
+ * because Doris does not retain those source facts.</p>
+ */
 public final class TargetContractCanonicalizer {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
@@ -63,8 +71,6 @@ public final class TargetContractCanonicalizer {
         List<Map<String, Object>> columns = new ArrayList<>();
         for (TargetColumn column : contract.getColumns()) {
             Map<String, Object> value = new LinkedHashMap<>();
-            value.put("sourceName", column.getSourceName());
-            value.put("sourceOrdinal", column.getSourceOrdinal());
             value.put("targetName", column.getTargetName());
             value.put("targetType", typeMap(column.getTargetType()));
             value.put("nullable", column.getNullable());

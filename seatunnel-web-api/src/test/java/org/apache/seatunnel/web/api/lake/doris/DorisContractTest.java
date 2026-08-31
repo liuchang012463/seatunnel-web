@@ -72,6 +72,23 @@ class DorisContractTest {
     }
 
     @Test
+    void renamedSourceColumnHasTheSameHashAfterDorisCreateAndShowCreate() {
+        TargetContract desired = new TargetContract(LakeTableModel.DUPLICATE, List.of(
+                new TargetColumn("SOURCE_ID", 17, "target_id", TargetType.varchar(255), false, true, 1),
+                new TargetColumn("SOURCE_PAYLOAD", 23, "target_payload", new TargetType(DorisTypeBase.STRING),
+                        true, false, 2)), List.of("target_id"), TargetPartition.disabled(),
+                TargetDistribution.random());
+
+        String ddl = new DorisDdlBuilder().build("lake_db", "renamed", desired);
+        TargetContract observed = new DorisContractReader().read(ddl);
+
+        assertEquals(TargetContractCanonicalizer.sha256(desired),
+                TargetContractCanonicalizer.sha256(observed));
+        assertEquals("target_id", observed.getColumns().get(0).getSourceName());
+        assertEquals("target_payload", observed.getColumns().get(1).getSourceName());
+    }
+
+    @Test
     void validatorRejectsStringKeyAndUnsafeProperties() {
         TargetContract invalidKey = new TargetContract(LakeTableModel.DUPLICATE,
                 List.of(new TargetColumn("id", 1, "id", new TargetType(DorisTypeBase.STRING),

@@ -171,6 +171,8 @@ seatunnel:
     data-source-id: ${SEATUNNEL_LAKE_DATASOURCE_ID:}
     operation-stale-after: ${SEATUNNEL_LAKE_OPERATION_STALE_AFTER:15m}
     query-timeout: ${SEATUNNEL_LAKE_QUERY_TIMEOUT:30s}
+    # Required when enabled. P0 consumes tokens in this Web process only;
+    # multi-instance deployments must add shared consume storage/routing later.
     preview-token-secret: ${SEATUNNEL_LAKE_PREVIEW_TOKEN_SECRET:}
     preview-token-ttl: ${SEATUNNEL_LAKE_PREVIEW_TOKEN_TTL:5m}
     max-rows: ${SEATUNNEL_LAKE_MAX_ROWS:10000}

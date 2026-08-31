@@ -3,6 +3,8 @@ package org.apache.seatunnel.web.api.lake.table;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.lake.LakeProperties;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -27,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * configure the same secret and route token consumption through a shared
  * store in a future infrastructure change.</p>
  */
+@Component
 public final class LakePreviewTokenService {
 
     private static final String TOKEN_KIND = "MANAGED_TABLE_PREVIEW";
@@ -40,9 +43,9 @@ public final class LakePreviewTokenService {
     private final long ttlSeconds;
     private final Map<String, Long> consumed = new ConcurrentHashMap<>();
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public LakePreviewTokenService(LakeProperties properties) {
-        this(properties, Clock.systemUTC(), properties == null ? null : properties.getPreviewTokenSecret());
+        this(properties, Clock.systemUTC(), configuredSecret(properties));
     }
 
     /** Visible for deterministic token tests. */
@@ -145,6 +148,16 @@ public final class LakePreviewTokenService {
         byte[] generated = new byte[32];
         new SecureRandom().nextBytes(generated);
         return generated;
+    }
+
+    private static String configuredSecret(LakeProperties properties) {
+        if (properties != null && properties.isEnabled()
+                && (properties.getPreviewTokenSecret() == null
+                        || properties.getPreviewTokenSecret().isBlank())) {
+            throw new IllegalStateException(
+                    "Lake preview token secret is required when lake control plane is enabled");
+        }
+        return properties == null ? null : properties.getPreviewTokenSecret();
     }
 
     private static void validatePayload(Payload payload, Integer currentUserId) {

@@ -29,8 +29,9 @@ public class LakeProperties {
 
     /**
      * HMAC key used for short-lived, one-time MANAGED table preview tokens.
-     * When unset, a process-local random key is generated at startup; a shared
-     * value is required when several Web instances serve the same requests.
+     * This value is required when the lake control plane is enabled.  A
+     * process-local random key is used only while the opt-in control plane is
+     * disabled, so a disabled default can still start without a secret.
      */
     private String previewTokenSecret;
 
