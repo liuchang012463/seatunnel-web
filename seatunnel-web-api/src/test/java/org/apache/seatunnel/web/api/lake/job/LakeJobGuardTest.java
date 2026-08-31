@@ -169,6 +169,57 @@ class LakeJobGuardTest {
     }
 
     @Test
+    void saveAllowsChangingExistingTableRelationToAnotherManagedMapping() {
+        BatchGuideSingleJobSaveCommand command = new BatchGuideSingleJobSaveCommand();
+        command.setId(404L);
+        command.setOdsDatabaseBindingId(BINDING_ID);
+        Map<String, Object> workflow = singleWorkflow("ERROR_WHEN_SCHEMA_NOT_EXIST");
+        sinkConfig(workflow).put("targetTableName", "ods_customers");
+        command.setWorkflow(workflow);
+
+        when(relationDao.queryActiveByJobId(404L))
+                .thenReturn(List.of(activeTableRelation(404L, 70L)));
+        when(tableMappingDao.queryByBindingIdAndTargetTable(BINDING_ID, "ods_customers"))
+                .thenReturn(managedMapping(71L));
+
+        assertDoesNotThrow(() -> guard.validateBeforeSave(command));
+    }
+
+    @Test
+    void saveAllowsChangingExistingTableRelationToNamespace() {
+        BatchGuideMultiJobSaveCommand command = new BatchGuideMultiJobSaveCommand();
+        command.setId(405L);
+        command.setOdsDatabaseBindingId(BINDING_ID);
+        command.setContent(multiContent("ERROR_WHEN_SCHEMA_NOT_EXIST", "4"));
+
+        when(relationDao.queryActiveByJobId(405L))
+                .thenReturn(List.of(activeTableRelation(405L, 70L)));
+
+        assertDoesNotThrow(() -> guard.validateBeforeSave(command));
+    }
+
+    @Test
+    void onlineAndExecuteRejectPersistedRelationMismatch() {
+        BatchGuideSingleJobSaveCommand persisted = new BatchGuideSingleJobSaveCommand();
+        persisted.setId(406L);
+        persisted.setOdsDatabaseBindingId(BINDING_ID);
+        Map<String, Object> workflow = singleWorkflow("ERROR_WHEN_SCHEMA_NOT_EXIST");
+        sinkConfig(workflow).put("targetTableName", "ods_customers");
+        persisted.setWorkflow(workflow);
+
+        when(batchCommandResolver.resolve(406L)).thenReturn(persisted);
+        when(relationDao.queryActiveByJobId(406L))
+                .thenReturn(List.of(activeTableRelation(406L, 70L)));
+        when(tableMappingDao.queryByBindingIdAndTargetTable(BINDING_ID, "ods_customers"))
+                .thenReturn(managedMapping(71L));
+
+        assertLakeRequestInvalid(
+                () -> guard.validateBeforeOnline(406L, LakeJobRuntimeType.BATCH));
+        assertLakeRequestInvalid(
+                () -> guard.validateBeforeExecute(406L, LakeJobRuntimeType.BATCH));
+    }
+
+    @Test
     void rejectsLakeDataSourceInBatchAndStreamingScripts() {
         BatchScriptJobSaveCommand batch = new BatchScriptJobSaveCommand();
         batch.setContent(scriptContent("99"));
@@ -260,12 +311,26 @@ class LakeJobGuardTest {
     }
 
     private LakeOdsTableMapping managedMapping() {
+        return managedMapping(70L);
+    }
+
+    private LakeOdsTableMapping managedMapping(long mappingId) {
         LakeOdsTableMapping mapping = new LakeOdsTableMapping();
-        mapping.setId(70L);
+        mapping.setId(mappingId);
         mapping.setOdsDatabaseBindingId(BINDING_ID);
         mapping.setManagementLevel(LakeManagementLevel.MANAGED);
         mapping.setDeleted(false);
         return mapping;
+    }
+
+    private LakeJobRelation activeTableRelation(long jobId, long mappingId) {
+        LakeJobRelation relation = new LakeJobRelation();
+        relation.setJobId(jobId);
+        relation.setOdsDatabaseBindingId(BINDING_ID);
+        relation.setTableMappingId(mappingId);
+        relation.setRelationScope(LakeRelationScope.TABLE);
+        relation.setRelationStatus(LakeRelationStatus.ACTIVE);
+        return relation;
     }
 
     private Map<String, Object> singleWorkflow(String schemaSaveMode) {

@@ -263,7 +263,9 @@ public class LakeJobGuard {
         if (mapping != null && mapping.getManagementLevel() == LakeManagementLevel.MANAGED) {
             forceManagedSchemaMode(details);
         }
-        validateActiveRelations(jobDefinitionId, details, bindingId, mapping, phase);
+        if (phase != ValidationPhase.SAVE) {
+            validateActiveRelations(jobDefinitionId, details, bindingId, mapping, phase);
+        }
     }
 
     private void validateScript(JobDefinitionSaveCommand command) {
