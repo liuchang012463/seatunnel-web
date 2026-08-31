@@ -21,6 +21,8 @@ public class StreamingGuideMultiJobSaveCommand implements StreamingJobSaveComman
 
     private StreamingJobEnvConfig env;
 
+    private Long odsDatabaseBindingId;
+
     @Override
     public JobDefinitionMode getMode() {
         return JobDefinitionMode.GUIDE_MULTI;

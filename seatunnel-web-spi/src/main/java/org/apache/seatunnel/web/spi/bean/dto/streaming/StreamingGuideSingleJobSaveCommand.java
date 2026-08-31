@@ -23,6 +23,8 @@ public class StreamingGuideSingleJobSaveCommand implements StreamingJobSaveComma
 
     private StreamingJobEnvConfig env;
 
+    private Long odsDatabaseBindingId;
+
     @Override
     public JobDefinitionMode getMode() {
         return JobDefinitionMode.GUIDE_SINGLE;

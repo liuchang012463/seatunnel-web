@@ -43,5 +43,8 @@ public class JobDefinitionEditDetailVO {
 
     private Object runtimeType;
 
+    /** Binding restored from the active lake job relation, when applicable. */
+    private Long odsDatabaseBindingId;
+
     private JobDefinitionStateVO state;
 }

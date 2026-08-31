@@ -20,5 +20,7 @@ public class BatchFileSyncJobSaveCommand implements BatchJobSaveCommand, GuideSi
     private JobScheduleConfig schedule;
     private BatchJobEnvConfig env;
 
+    private Long odsDatabaseBindingId;
+
     @Override public JobDefinitionMode getMode() { return JobDefinitionMode.FILE_SYNC; }
 }

@@ -25,6 +25,8 @@ public class BatchGuideSingleJobSaveCommand implements BatchJobSaveCommand, Guid
 
     private BatchJobEnvConfig env;
 
+    private Long odsDatabaseBindingId;
+
     @Override
     public JobDefinitionMode getMode() {
         return JobDefinitionMode.GUIDE_SINGLE;
