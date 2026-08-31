@@ -11,6 +11,7 @@ import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
 import org.apache.seatunnel.web.api.service.StreamingJobMetricsService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
 import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
+import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
@@ -90,6 +91,9 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
     @Resource
     private LakeJobRelationBridgeService lakeJobRelationBridgeService;
 
+    @Resource
+    private LakeJobGuard lakeJobGuard;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(StreamingScriptJobSaveCommand command) {
@@ -110,6 +114,9 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
 
     protected JobDefinitionSaveResultVO doSaveOrUpdate(StreamingJobSaveCommand command) {
         validatePersistCommand(command);
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeSave(command);
+        }
         validateStreaming(command);
 
         try {
@@ -152,6 +159,9 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
 
     protected String doBuildHoconConfig(StreamingJobSaveCommand command) {
         validatePersistCommand(command);
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeSave(command);
+        }
         validateStreaming(command);
 
         try {

@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.api.service.application.JobScheduleApplicationService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
 import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
+import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
@@ -105,11 +106,17 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     @Resource
     private LakeJobRelationBridgeService lakeJobRelationBridgeService;
 
+    @Resource
+    private LakeJobGuard lakeJobGuard;
+
     /**
      * Save or update batch job definition.
      */
     protected JobDefinitionSaveResultVO doSaveOrUpdate(BatchJobSaveCommand command) {
         validateBase(command);
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeSave(command);
+        }
 
         try {
             Date now = new Date();
@@ -210,6 +217,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
      */
     protected String doBuildHoconConfig(JobDefinitionSaveCommand command) {
         validateBase(command);
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeSave(command);
+        }
 
         try {
             return HoconSensitiveMaskUtil.maskSensitiveInfo(buildHoconConfigInternal(command));
