@@ -164,6 +164,24 @@ seatunnel:
         root-prefix: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX:seatunnel-web-upload}
         session-ttl-hours: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS:24}
 
+  # The lake control plane is opt-in and uses an existing Doris DataSource.
+  # Credentials remain in t_seatunnel_web_datasource and are never copied here.
+  lake:
+    enabled: ${SEATUNNEL_LAKE_ENABLED:false}
+    data-source-id: ${SEATUNNEL_LAKE_DATASOURCE_ID:}
+    operation-stale-after: ${SEATUNNEL_LAKE_OPERATION_STALE_AFTER:15m}
+    query-timeout: ${SEATUNNEL_LAKE_QUERY_TIMEOUT:30s}
+    max-rows: ${SEATUNNEL_LAKE_MAX_ROWS:10000}
+    max-bytes: ${SEATUNNEL_LAKE_MAX_BYTES:10485760}
+    driver-url: ${SEATUNNEL_LAKE_DORIS_DRIVER_URL:}
+    driver-class: ${SEATUNNEL_LAKE_DORIS_DRIVER_CLASS:com.mysql.cj.jdbc.Driver}
+    driver-checksum: ${SEATUNNEL_LAKE_DORIS_DRIVER_CHECKSUM:}
+    connection-pool:
+      maximum-pool-size: ${SEATUNNEL_LAKE_POOL_MAX_SIZE:4}
+      minimum-idle: ${SEATUNNEL_LAKE_POOL_MIN_IDLE:0}
+      connection-timeout: ${SEATUNNEL_LAKE_POOL_CONNECTION_TIMEOUT:10s}
+      validation-timeout: ${SEATUNNEL_LAKE_POOL_VALIDATION_TIMEOUT:5s}
+
 # OpenMetadata integration is intentionally opt-in. The base URL must be the
 # OpenMetadata Server /api endpoint; this application never calls Airflow.
 metadata:
