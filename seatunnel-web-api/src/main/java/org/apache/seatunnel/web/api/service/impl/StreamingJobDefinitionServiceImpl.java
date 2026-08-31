@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
 import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
 import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
+import org.apache.seatunnel.web.api.service.application.LakeExactSingleProjectionApplicationService;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
@@ -94,6 +95,9 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
     @Resource
     private LakeJobGuard lakeJobGuard;
 
+    @Resource
+    private LakeExactSingleProjectionApplicationService lakeProjectionApplicationService;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(StreamingScriptJobSaveCommand command) {
@@ -118,15 +122,25 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
             lakeJobGuard.validateBeforeSave(command);
         }
         validateStreaming(command);
+        Integer currentUserId = currentUserProvider.getCurrentUserId();
+        LakeExactSingleProjectionApplicationService.PreparedProjection preparedProjection =
+                lakeProjectionApplicationService == null
+                        ? null : lakeProjectionApplicationService.prepare(command);
 
         try {
             SaveContext context = prepareSaveContext(command);
+            context.setCurrentUserId(currentUserId);
 
             StreamingJobDefinitionEntity entity = saveDefinition(command, context);
 
             cdcServerIdAllocationService.prepare(command, entity.getId());
 
             saveDefinitionContent(command, context, entity);
+
+            if (preparedProjection != null) {
+                lakeProjectionApplicationService.applyPrepared(
+                        preparedProjection, currentUserId);
+            }
 
             if (lakeJobRelationBridgeService != null) {
                 lakeJobRelationBridgeService.syncRelationAfterJobSave(
@@ -412,7 +426,7 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
 
         if (ObjectUtils.isEmpty(context.getExisting())) {
             entity = streamingJobDefinitionAssembler.create(command, context.getAnalysis());
-            Integer currentUserId = currentUserProvider.getCurrentUserId();
+            Integer currentUserId = context.getCurrentUserId();
             entity.setCreateUserId(currentUserId);
             entity.setUpdateUserId(currentUserId);
         } else {
@@ -424,7 +438,7 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
                     context.getNow(),
                     context.getNextVersion()
             );
-            entity.setUpdateUserId(currentUserProvider.getCurrentUserId());
+            entity.setUpdateUserId(context.getCurrentUserId());
         }
 
         normalizePersistState(entity, context.getNextVersion());
@@ -758,5 +772,6 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
         private StreamingJobDefinitionEntity existing;
         private Integer nextVersion;
         private Date now;
+        private Integer currentUserId;
     }
 }

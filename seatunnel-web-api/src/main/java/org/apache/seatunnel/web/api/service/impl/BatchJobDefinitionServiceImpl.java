@@ -11,6 +11,7 @@ import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.service.FileUploadService;
 import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.api.service.application.JobScheduleApplicationService;
+import org.apache.seatunnel.web.api.service.application.LakeExactSingleProjectionApplicationService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
 import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
 import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
@@ -109,6 +110,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     @Resource
     private LakeJobGuard lakeJobGuard;
 
+    @Resource
+    private LakeExactSingleProjectionApplicationService lakeProjectionApplicationService;
+
     /**
      * Save or update batch job definition.
      */
@@ -117,6 +121,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         if (lakeJobGuard != null) {
             lakeJobGuard.validateBeforeSave(command);
         }
+        LakeExactSingleProjectionApplicationService.PreparedProjection preparedProjection =
+                lakeProjectionApplicationService == null
+                        ? null : lakeProjectionApplicationService.prepare(command);
 
         try {
             Date now = new Date();
@@ -164,6 +171,11 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
                     .build();
 
             jobDefinitionContentDao.save(contentEntity);
+
+            if (preparedProjection != null) {
+                lakeProjectionApplicationService.applyPrepared(
+                        preparedProjection, currentUserId);
+            }
 
             scheduleApplicationService.saveOrUpdateSchedule(entity.getId(), command);
             fileUploadService.attach(entity.getId());

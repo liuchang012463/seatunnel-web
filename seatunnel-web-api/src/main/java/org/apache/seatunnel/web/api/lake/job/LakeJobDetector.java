@@ -184,7 +184,8 @@ public class LakeJobDetector {
                 || Boolean.TRUE.equals(mapping.getDeleted())
                 || mapping.getManagementLevel() == null
                 || (mapping.getManagementLevel() != LakeManagementLevel.MANAGED
-                && mapping.getManagementLevel() != LakeManagementLevel.AUTO_CREATED)) {
+                && mapping.getManagementLevel() != LakeManagementLevel.AUTO_CREATED
+                && mapping.getManagementLevel() != LakeManagementLevel.UNMANAGED)) {
             return null;
         }
 

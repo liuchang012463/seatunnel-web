@@ -74,6 +74,20 @@ class LakeJobDetectorTest {
     }
 
     @Test
+    void exactSingleUnmanagedMappingUsesTableRelation() {
+        LakeOdsTableMapping mapping = managedMapping();
+        mapping.setManagementLevel(LakeManagementLevel.UNMANAGED);
+        when(tableMappingDao.queryByBindingIdAndTargetTable(eq(BINDING_ID), eq("ods_orders")))
+                .thenReturn(mapping);
+
+        BatchGuideSingleJobSaveCommand command = new BatchGuideSingleJobSaveCommand();
+        command.setOdsDatabaseBindingId(BINDING_ID);
+        command.setWorkflow(singleWorkflow());
+
+        assertTableDescriptor(detector.detect(command), LakeJobRuntimeType.BATCH);
+    }
+
+    @Test
     void multiAndWholeAlwaysUseNamespaceWithoutTableMapping() {
         BatchGuideMultiJobSaveCommand exact = new BatchGuideMultiJobSaveCommand();
         exact.setOdsDatabaseBindingId(BINDING_ID);
