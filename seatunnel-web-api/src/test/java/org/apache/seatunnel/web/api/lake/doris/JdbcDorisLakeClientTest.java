@@ -11,11 +11,13 @@ import org.apache.seatunnel.web.common.enums.LakeTableModel;
 import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
+import java.lang.reflect.Modifier;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -96,10 +98,18 @@ class JdbcDorisLakeClientTest {
 
         when(statement.execute(anyString())).thenThrow(new SQLException("password=private-value"));
         IllegalStateException error = assertThrows(IllegalStateException.class,
-                () -> client.execute("SELECT 1"));
+                () -> client.createDatabase("lake_db"));
         assertNotNull(error.getMessage());
         assertFalse(error.getMessage().contains("private-value"));
         assertFalse(error.toString().contains("private-value"));
+    }
+
+    @Test
+    void publicApiDoesNotExposeCallerGeneratedSqlExecution() throws Exception {
+        assertTrue(Arrays.stream(DorisLakeClient.class.getMethods())
+                .noneMatch(method -> method.getName().equals("execute")));
+        assertFalse(Modifier.isPublic(JdbcDorisLakeClient.class
+                .getDeclaredMethod("execute", String.class).getModifiers()));
     }
 
     @Test

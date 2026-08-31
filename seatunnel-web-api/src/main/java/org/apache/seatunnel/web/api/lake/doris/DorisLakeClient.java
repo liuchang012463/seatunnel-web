@@ -48,9 +48,6 @@ public interface DorisLakeClient extends AutoCloseable {
 
     void dropCatalog(String catalogName);
 
-    /** Executes a caller-generated Doris statement outside the local DB transaction. */
-    void execute(String sql);
-
     @Override
     default void close() {
         // The data source is owned by LakeDataSourceResolver.
