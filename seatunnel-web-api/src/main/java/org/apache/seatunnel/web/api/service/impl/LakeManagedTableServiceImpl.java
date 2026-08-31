@@ -36,7 +36,6 @@ import org.apache.seatunnel.web.common.enums.LakeOperationType;
 import org.apache.seatunnel.web.common.enums.LakeRelationScope;
 import org.apache.seatunnel.web.common.enums.LakeRelationStatus;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
-import org.apache.seatunnel.web.common.enums.LakeTableModel;
 import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
