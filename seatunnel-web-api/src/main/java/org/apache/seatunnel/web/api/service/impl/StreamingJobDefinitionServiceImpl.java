@@ -91,21 +91,23 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
     private LakeJobRelationBridgeService lakeJobRelationBridgeService;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(StreamingScriptJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(StreamingGuideSingleJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(StreamingGuideMultiJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
-    @Transactional(rollbackFor = Exception.class)
     protected JobDefinitionSaveResultVO doSaveOrUpdate(StreamingJobSaveCommand command) {
         validatePersistCommand(command);
         validateStreaming(command);

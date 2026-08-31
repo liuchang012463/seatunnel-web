@@ -108,7 +108,6 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     /**
      * Save or update batch job definition.
      */
-    @Transactional(rollbackFor = Exception.class)
     protected JobDefinitionSaveResultVO doSaveOrUpdate(BatchJobSaveCommand command) {
         validateBase(command);
 
@@ -177,26 +176,31 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(BatchScriptJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(BatchGuideSingleJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(BatchGuideSingleIncrementalJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(BatchFileSyncJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(BatchGuideMultiJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
