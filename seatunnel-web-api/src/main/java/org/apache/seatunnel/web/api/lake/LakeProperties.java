@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.lake;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -34,6 +35,14 @@ public class LakeProperties {
      * disabled, so a disabled default can still start without a secret.
      */
     private String previewTokenSecret;
+
+    /**
+     * Server-only HMAC key used to derive a stable revision for source
+     * credentials.  It is deliberately separate from the desired catalog
+     * spec and must never be serialized as part of a capability response.
+     */
+    @JsonIgnore
+    private String catalogCredentialSecret;
 
     /** Preview tokens are intentionally short lived. */
     private Duration previewTokenTtl = Duration.ofMinutes(5);

@@ -12,8 +12,14 @@ public final class LakeCatalogCapabilityReason {
     public static final String DRIVER_UNAVAILABLE = "DRIVER_UNAVAILABLE";
     public static final String DRIVER_NOT_VERIFIED = "DRIVER_NOT_VERIFIED";
     public static final String SOURCE_CONFIG_INCOMPLETE = "SOURCE_CONFIG_INCOMPLETE";
+    public static final String SOURCE_NOT_FOUND = "SOURCE_NOT_FOUND";
+    public static final String SOURCE_DISABLED = "SOURCE_DISABLED";
+    public static final String SOURCE_TYPE_MISMATCH = "SOURCE_TYPE_MISMATCH";
     public static final String LAKE_DORIS_UNREACHABLE = "LAKE_DORIS_UNREACHABLE";
     public static final String SOURCE_NETWORK_UNREACHABLE = "SOURCE_NETWORK_UNREACHABLE";
+    public static final String LAKE_CONTROL_PLANE_DISABLED = "LAKE_CONTROL_PLANE_DISABLED";
+    /** PG and Oracle remain opt-in until their server-side driver is verified. */
+    public static final String ADAPTER_DISABLED = "ADAPTER_DISABLED";
     public static final String SCOPE_UNSUPPORTED = "SCOPE_UNSUPPORTED";
     public static final String UPDATE_UNSUPPORTED = "UPDATE_UNSUPPORTED";
 

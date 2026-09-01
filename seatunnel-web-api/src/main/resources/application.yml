@@ -174,12 +174,39 @@ seatunnel:
     # Required when enabled. P0 consumes tokens in this Web process only;
     # multi-instance deployments must add shared consume storage/routing later.
     preview-token-secret: ${SEATUNNEL_LAKE_PREVIEW_TOKEN_SECRET:}
+    # Dedicated server secret for HMAC credential revisions.  It is never
+    # copied into a catalog desired spec or a response.
+    catalog-credential-secret: ${SEATUNNEL_LAKE_CATALOG_CREDENTIAL_SECRET:}
     preview-token-ttl: ${SEATUNNEL_LAKE_PREVIEW_TOKEN_TTL:5m}
     max-rows: ${SEATUNNEL_LAKE_MAX_ROWS:10000}
     max-bytes: ${SEATUNNEL_LAKE_MAX_BYTES:10485760}
     driver-url: ${SEATUNNEL_LAKE_DORIS_DRIVER_URL:}
     driver-class: ${SEATUNNEL_LAKE_DORIS_DRIVER_CLASS:com.mysql.cj.jdbc.Driver}
     driver-checksum: ${SEATUNNEL_LAKE_DORIS_DRIVER_CHECKSUM:}
+    # Logical JDBC catalog drivers are server-owned.  MySQL is the only
+    # current default; a driver is usable only after operators set verified.
+    jdbc-catalog:
+      registry-revision: ${SEATUNNEL_LAKE_JDBC_CATALOG_REGISTRY_REVISION:}
+      mysql:
+        enabled: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_ENABLED:false}
+        url: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_URL:}
+        driver-class: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_DRIVER_CLASS:com.mysql.cj.jdbc.Driver}
+        checksum: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_CHECKSUM:}
+        verified: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_VERIFIED:false}
+      # PostgreSQL/Oracle remain explicitly disabled until a server-side
+      # registry entry is complete and verified.
+      postgresql:
+        enabled: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_ENABLED:false}
+        url: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_URL:}
+        driver-class: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_DRIVER_CLASS:org.postgresql.Driver}
+        checksum: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_CHECKSUM:}
+        verified: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_VERIFIED:false}
+      oracle:
+        enabled: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_ENABLED:false}
+        url: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_URL:}
+        driver-class: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_DRIVER_CLASS:oracle.jdbc.OracleDriver}
+        checksum: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_CHECKSUM:}
+        verified: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_VERIFIED:false}
     connection-pool:
       maximum-pool-size: ${SEATUNNEL_LAKE_POOL_MAX_SIZE:4}
       minimum-idle: ${SEATUNNEL_LAKE_POOL_MIN_IDLE:0}

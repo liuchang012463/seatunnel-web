@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.lake.catalog;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.lake.CatalogPropertyRedactor;
 import org.apache.seatunnel.web.api.lake.CatalogPropertyWhitelist;
@@ -148,6 +149,19 @@ public final class LakeJdbcCatalogDdlBuilder {
                 throw new IllegalArgumentException("Catalog credentials are incomplete");
             }
             username = username.trim();
+        }
+
+        /** Execution-only accessors must never be part of a JSON response. */
+        @Override
+        @JsonIgnore
+        public String username() {
+            return username;
+        }
+
+        @Override
+        @JsonIgnore
+        public String password() {
+            return password;
         }
 
         @Override
