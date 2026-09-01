@@ -1,0 +1,122 @@
+.lake-physical-page {
+  min-width: 0;
+}
+
+.lake-page-intro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--st-color-border-secondary, rgba(33, 135, 168, 0.32));
+}
+
+.lake-page-intro-icon {
+  display: grid;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: var(--ant-color-primary);
+  font-size: 22px;
+  background: var(--ant-color-fill-tertiary);
+  border-radius: 8px;
+}
+
+.lake-page-intro .ant-typography {
+  margin-bottom: 0;
+}
+
+.lake-page-intro > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.lake-source-link {
+  padding-inline: 0;
+  white-space: normal;
+  text-align: left;
+}
+
+.lake-source-link .anticon {
+  margin-left: 5px;
+  font-size: 11px;
+}
+
+.lake-capability-card {
+  margin-bottom: 16px;
+}
+
+.lake-recommendation-form .ant-form-item {
+  margin-bottom: 18px;
+}
+
+.lake-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.lake-drawer-alert {
+  margin: 16px 0;
+}
+
+.lake-ods-form {
+  margin-top: 20px;
+}
+
+.lake-name-preview {
+  margin-bottom: 20px;
+}
+
+.lake-name-preview-count {
+  margin-top: 8px;
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+}
+
+.lake-physical-summary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill-quaternary);
+  border-radius: 6px;
+}
+
+.lake-physical-summary .ant-statistic {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  .lake-page-intro {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .lake-page-intro > .ant-btn {
+    width: 100%;
+    padding-left: 0;
+    text-align: left;
+  }
+
+  .lake-physical-summary {
+    display: block;
+  }
+
+  .lake-physical-summary .ant-statistic {
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .lake-modal-footer {
+    flex-wrap: wrap;
+  }
+
+  .lake-modal-footer .ant-btn {
+    flex: 1;
+  }
+}
