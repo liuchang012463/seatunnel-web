@@ -6,6 +6,7 @@ import type {
   LakeInventoryTable,
   LakeLifecyclePolicy,
   LakeLifecycleValidation,
+  LakeLogicalCapability,
   LakeManagedTable,
   LakeManagedTablePreview,
   LakeOdsDatabase,
@@ -172,10 +173,17 @@ export async function updateRetention(
   return HttpUtils.put(`${LIFECYCLE}/tables/${pathId(mappingId)}/retention`, payload);
 }
 
+/** Cached lifecycle detail; this GET never triggers a remote observation. */
+export async function fetchLifecycleDetail(
+  mappingId: string | number,
+): Promise<LakeApiResponse<LakeLifecycleValidation>> {
+  return HttpUtils.get(`${LIFECYCLE}/tables/${pathId(mappingId)}`);
+}
+
 export async function fetchCatalogCapability(
   sourceDataSourceId: string | number,
   params?: { adapter?: string; scope?: string },
-): Promise<LakeApiResponse<Record<string, unknown>>> {
+): Promise<LakeApiResponse<LakeLogicalCapability>> {
   const query = new URLSearchParams();
   if (params?.adapter) query.set('adapter', params.adapter);
   if (params?.scope) query.set('scope', params.scope);
@@ -197,34 +205,6 @@ export async function fetchCatalog(id: string | number): Promise<LakeApiResponse
   return HttpUtils.get(`${LOGICAL}/catalogs/${pathId(id)}`);
 }
 
-export async function updateCatalog(id: string | number, payload: Record<string, unknown>): Promise<LakeApiResponse<LakeCatalog>> {
-  return HttpUtils.put(`${LOGICAL}/catalogs/${pathId(id)}`, payload);
-}
-
-export async function deleteCatalog(id: string | number): Promise<LakeApiResponse<void>> {
-  return HttpUtils.delete(`${LOGICAL}/catalogs/${pathId(id)}`);
-}
-
-export async function refreshCatalog(id: string | number): Promise<LakeApiResponse<LakeCatalog>> {
-  return HttpUtils.post(`${LOGICAL}/catalogs/${pathId(id)}/refresh`);
-}
-
 export async function validateCatalog(id: string | number): Promise<LakeApiResponse<LakeCatalog>> {
   return HttpUtils.post(`${LOGICAL}/catalogs/${pathId(id)}/validate`);
-}
-
-export async function reconcileCatalog(id: string | number): Promise<LakeApiResponse<LakeCatalog>> {
-  return HttpUtils.post(`${LOGICAL}/catalogs/${pathId(id)}/reconcile`);
-}
-
-export async function querySingleTable(payload: Record<string, unknown>): Promise<LakeApiResponse<Record<string, unknown>>> {
-  return HttpUtils.post(`${LOGICAL}/query/single-table`, payload);
-}
-
-export async function previewJoinQuery(payload: Record<string, unknown>): Promise<LakeApiResponse<Record<string, unknown>>> {
-  return HttpUtils.post(`${LOGICAL}/query/join/preview`, payload);
-}
-
-export async function executeJoinQuery(payload: Record<string, unknown>): Promise<LakeApiResponse<Record<string, unknown>>> {
-  return HttpUtils.post(`${LOGICAL}/query/join`, payload);
 }

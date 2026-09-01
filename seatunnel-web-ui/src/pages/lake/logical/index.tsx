@@ -16,7 +16,7 @@ import {
   fetchCatalogs,
   normalizeLakePage,
 } from '@/services/lake';
-import type { LakeApiResponse, LakeCatalog, LakeCatalogScope, LakeCapability } from '@/services/lake';
+import type { LakeApiResponse, LakeCatalog, LakeCatalogScope, LakeLogicalCapability } from '@/services/lake';
 import './index.less';
 
 const adapterOptions = [
@@ -57,7 +57,7 @@ interface CatalogFormValues {
 const CapabilityCard: React.FC = () => {
   const [form] = Form.useForm<CapabilityFormValues>();
   const [loading, setLoading] = useState(false);
-  const [capability, setCapability] = useState<LakeCapability & Record<string, unknown>>();
+  const [capability, setCapability] = useState<LakeLogicalCapability>();
 
   const checkCapability = async (values: CapabilityFormValues) => {
     if (!values.sourceDataSourceId) return;
@@ -68,7 +68,7 @@ const CapabilityCard: React.FC = () => {
         scope: values.scope,
       });
       if (response.code !== 0) throw new Error(responseMessage(response));
-      setCapability((response.data || {}) as LakeCapability & Record<string, unknown>);
+      setCapability(response.data);
     } catch (error) {
       setCapability(undefined);
       message.error(error instanceof Error ? error.message : '能力检查失败');
@@ -98,7 +98,7 @@ const CapabilityCard: React.FC = () => {
           {supported ? <CheckCircleOutlined /> : <WarningOutlined />}
           <Typography.Text strong>{supported ? '当前支持逻辑挂载' : '当前不可用'}</Typography.Text>
           {capability.adapter ? <Tag>{String(capability.adapter)}</Tag> : null}
-          {'scope' in capability && capability.scope ? <Tag>{String(capability.scope)}</Tag> : null}
+          {capability.scope ? <Tag>{String(capability.scope)}</Tag> : null}
           {!supported && reasons.length ? <Typography.Text type="secondary">原因：{reasons.join('、')}</Typography.Text> : null}
           {capability.sourceNetworkReachabilityKnown === false ? <Typography.Text type="secondary">源端网络尚未探查</Typography.Text> : null}
         </div>
@@ -152,7 +152,7 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
         <Form.Item name="sourceDataSourceId" label="源数据源 ID" rules={[{ required: true, message: '请输入源数据源 ID' }]}>
           <InputNumber min={1} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item name="lakeDataSourceId" label="湖 Doris 数据源 ID" rules={[{ required: true, message: '请输入湖数据源 ID' }]}>
+        <Form.Item name="lakeDataSourceId" label="湖 Doris 数据源 ID" extra="可选；未填写时由服务端使用默认湖数据源">
           <InputNumber min={1} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="targetCatalogName" label="Catalog 名称" rules={[{ required: true, max: 128, message: '请输入 128 字符以内的名称' }]}>

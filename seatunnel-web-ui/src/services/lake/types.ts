@@ -228,6 +228,15 @@ export interface LakeCapability {
   disabledReasons?: string[];
 }
 
+/** Exact payload returned by LakeLogicalCatalogController.capability. */
+export interface LakeLogicalCapability extends LakeCapability {
+  sourceDataSourceId?: number;
+  scope?: LakeCatalogScope;
+  logicalSupported?: boolean;
+  sourceNetworkReachabilityKnown?: boolean;
+  lakeDorisReachable?: boolean;
+}
+
 export interface LakeRecommendation {
   mode: LakeRecommendationMode;
   recommendation?: LakeRecommendationMode;
@@ -265,4 +274,3 @@ export interface LakeErrorPayload {
   code?: string;
   message?: string;
 }
-

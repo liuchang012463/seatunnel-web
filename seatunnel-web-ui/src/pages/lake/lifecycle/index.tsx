@@ -145,6 +145,9 @@ const PolicyEditorDrawer: React.FC<{
         description: values.description?.trim() || undefined,
         status: values.status,
       };
+      if (policy?.id && policy.version == null) {
+        throw new Error('策略版本缺失，请刷新后重试');
+      }
       const response = policy?.id
         ? await updateLifecyclePolicy(policy.id, { ...payload, expectedVersion: policy.version })
         : await createLifecyclePolicy(payload);
@@ -216,7 +219,7 @@ const ImpactConfirmModal: React.FC<{
   preview?: RetentionPreviewView;
   loading?: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
 }> = ({ open, preview, loading, onCancel, onConfirm }) => {
   const impacted = preview?.impactedHistoricalPartitionNames || [];
   return (
@@ -301,6 +304,10 @@ const ApplyPolicyDrawer: React.FC<{
               }));
           }),
       );
+      const rejectedCount = inventoryResults.filter((result) => result.status === 'rejected').length;
+      if (rejectedCount) {
+        message.warning(`${rejectedCount} 个物理库存读取失败，候选表列表可能不完整`);
+      }
       const rows = inventoryResults.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
       const checked = await Promise.all(rows.map(async (candidate) => {
         if (candidate.managementLevel !== 'MANAGED' || candidate.resourceStatus !== 'READY') {
@@ -308,7 +315,7 @@ const ApplyPolicyDrawer: React.FC<{
         }
         try {
           const response = await validateLifecycle({ mappingId: candidate.mappingId, policyId: policy.id as number });
-          const data = response.data as LifecycleValidationView;
+          const data = (response.data || {}) as LifecycleValidationView;
           const partition = data.mappingSnapshot?.targetContract?.partition;
           const autoRange = Boolean(partition?.enabled || data.partitionColumn);
           const valid = response.code === 0 && Boolean(data.valid) && autoRange;
@@ -594,7 +601,13 @@ const LifecycleTableDetail: React.FC<{
           {preview && !preview.requiresConfirmation && preview.valid ? <Alert type="success" showIcon className="lake-lifecycle-alert" message={`预览通过：目标保留 ${retentionText(preview.requestedRetentionCount, selectedPolicy?.granularity)}`} /> : null}
         </Card>
       </Spin>
-      <ImpactConfirmModal open={impactOpen} preview={preview} loading={updateLoading} onCancel={() => setImpactOpen(false)} onConfirm={() => { if (preview) void submitRetention(preview); }} />
+      <ImpactConfirmModal
+        open={impactOpen}
+        preview={preview}
+        loading={updateLoading}
+        onCancel={() => setImpactOpen(false)}
+        onConfirm={() => (preview ? submitRetention(preview) : Promise.resolve())}
+      />
     </Drawer>
   );
 };
@@ -610,7 +623,7 @@ const LifecyclePage: React.FC = () => {
   const [policies, setPolicies] = useState<LakeLifecyclePolicy[]>([]);
 
   const reload = () => {
-    actionRef.current?.reload();
+    actionRef.current?.reloadAndRest?.();
     void loadPolicyOptions();
   };
 
@@ -618,8 +631,8 @@ const LifecyclePage: React.FC = () => {
     try {
       const response = await fetchLifecyclePolicies({ pageNo: 1, pageSize: 200 });
       if (response.code === 0) setPolicies(normalizeLakePage(response.data).data);
-    } catch (_) {
-      // The table request still reports its own error; the drawer can be retried independently.
+    } catch (error) {
+      message.warning(error instanceof Error ? error.message : '生命周期策略选项加载失败');
     }
   }, []);
 
@@ -684,7 +697,9 @@ const LifecyclePage: React.FC = () => {
                 cancelText: '取消',
                 okButtonProps: { danger: true },
                 onOk: async () => {
-                  if (!row.id || !row.version) return;
+                  if (!row.id || row.version == null) {
+                    throw new Error('策略版本缺失，请刷新后重试');
+                  }
                   const response = await disableLifecyclePolicy(row.id, { expectedVersion: row.version });
                   if (response.code !== 0) throw new Error(responseError(response, '策略停用失败'));
                   message.success('策略已停用');

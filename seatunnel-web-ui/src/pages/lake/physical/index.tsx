@@ -84,7 +84,8 @@ const inferAdapter = (source?: PhysicalDataSource): string | undefined => {
 
 const unwrapPage = (data?: LakePage<PhysicalDataSource>): { rows: PhysicalDataSource[]; total: number } => ({
   rows: Array.isArray(data?.bizData) ? data.bizData : [],
-  total: Number(data?.pagination?.total || 0),
+  // Some deployed MyBatis versions return total=0 with a usable page.
+  total: Number(data?.pagination?.total || data?.bizData?.length || 0),
 });
 
 const formatTime = (value?: string) => (value ? value.replace('T', ' ').replace(/\.\d+Z$/, '') : '-');
@@ -335,7 +336,7 @@ const PhysicalResourcesPage: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [resourceStatus, setResourceStatus] = useState<LakeResourceStatus>();
 
-  const reload = () => actionRef.current?.reload();
+  const reload = () => actionRef.current?.reloadAndRest?.();
 
   const operate = async (type: 'retry' | 'reconcile', database?: OdsDatabase) => {
     if (!database?.id) return;

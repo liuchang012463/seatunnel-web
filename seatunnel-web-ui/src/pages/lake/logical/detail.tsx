@@ -1,23 +1,13 @@
 import {
   CheckOutlined,
-  DeleteOutlined,
   EyeOutlined,
-  ReloadOutlined,
-  SyncOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { Button, Card, Descriptions, Empty, Form, Input, InputNumber, message, Modal, Space, Spin, Table, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Descriptions, Empty, Form, Input, InputNumber, message, Space, Spin, Table, Tabs, Tag, Tooltip, Typography } from 'antd';
 import { history, useParams } from '@umijs/max';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  deleteCatalog,
-  executeJoinQuery,
   fetchCatalog,
-  normalizeLakePage,
-  previewJoinQuery,
-  querySingleTable,
-  reconcileCatalog,
-  refreshCatalog,
   validateCatalog,
 } from '@/services/lake';
 import type { LakeApiResponse, LakeCatalog, LakeReadOnlyQueryResult } from '@/services/lake';
@@ -43,34 +33,21 @@ const QueryResult: React.FC<{ result?: LakeReadOnlyQueryResult }> = ({ result })
   );
 };
 
+const QUERY_API_UNAVAILABLE = '当前后端 controller 尚未暴露结构化查询 API；条件表单保留用于后续接入，暂不会发送请求。';
+
 const SingleTableQuery: React.FC<{ catalog: LakeCatalog }> = ({ catalog }) => {
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<LakeReadOnlyQueryResult>();
-  const run = async (values: { database: string; table: string; columns?: string; limit?: number; explain?: boolean }) => {
-    setLoading(true);
-    try {
-      const table = { catalog: catalog.targetCatalogName || '', database: values.database, table: values.table };
-      const columns = (values.columns || '').split(',').map((column) => column.trim()).filter(Boolean).map((column) => ({ table, column }));
-      const response = await querySingleTable({ table, selectedColumns: columns, limit: values.limit || 10, explain: Boolean(values.explain) });
-      if (response.code !== 0) throw new Error(responseMessage(response));
-      setResult(response.data as unknown as LakeReadOnlyQueryResult);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '查询失败');
-    } finally {
-      setLoading(false);
-    }
-  };
   return <Space direction="vertical" style={{ width: '100%' }}>
-    <Typography.Paragraph type="secondary">查询条件由 Catalog、数据库、表和字段选择组成；页面不接受任意 SQL。</Typography.Paragraph>
-    <Form form={form} layout="inline" onFinish={run} initialValues={{ limit: 10 }}>
-      <Form.Item name="database" label="数据库" rules={[{ required: true }]}><Input placeholder="database" /></Form.Item>
-      <Form.Item name="table" label="表" rules={[{ required: true }]}><Input placeholder="table" /></Form.Item>
-      <Form.Item name="columns" label="字段"><Input placeholder="id,name（逗号分隔）" /></Form.Item>
-      <Form.Item name="limit" label="Limit" rules={[{ type: 'number', min: 1, max: 100 }]}><InputNumber min={1} max={100} /></Form.Item>
-      <Button type="primary" htmlType="submit" loading={loading}>EXPLAIN / 执行</Button>
+    <Alert type="info" showIcon message="结构化单表验证暂不可用" description={QUERY_API_UNAVAILABLE} />
+    <Typography.Paragraph type="secondary">Catalog：{catalog.targetCatalogName || '-'}。查询条件由 Catalog、数据库、表和字段选择组成；页面不接受任意 SQL。</Typography.Paragraph>
+    <Form form={form} layout="inline" initialValues={{ limit: 10 }}>
+      <Form.Item name="database" label="数据库"><Input placeholder="database" disabled /></Form.Item>
+      <Form.Item name="table" label="表"><Input placeholder="table" disabled /></Form.Item>
+      <Form.Item name="columns" label="字段"><Input placeholder="id,name（逗号分隔）" disabled /></Form.Item>
+      <Form.Item name="limit" label="Limit"><InputNumber min={1} max={100} disabled /></Form.Item>
+      <Tooltip title={QUERY_API_UNAVAILABLE}><span><Button type="primary" disabled>EXPLAIN / 执行</Button></span></Tooltip>
     </Form>
-    <QueryResult result={result} />
+    <QueryResult />
   </Space>;
 };
 
@@ -86,43 +63,17 @@ interface JoinValues {
 
 const JoinQuery: React.FC<{ catalog: LakeCatalog }> = ({ catalog }) => {
   const [form] = Form.useForm<JoinValues>();
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<LakeReadOnlyQueryResult>();
-  const run = async (values: JoinValues, preview = false) => {
-    setLoading(true);
-    try {
-      const leftTable = { catalog: catalog.targetCatalogName || '', database: values.leftDatabase, table: values.leftTable };
-      const rightTable = { catalog: catalog.targetCatalogName || '', database: values.rightDatabase, table: values.rightTable };
-      const payload = {
-        leftTable,
-        rightTable,
-        leftColumns: [{ table: leftTable, column: values.leftColumn }],
-        rightColumns: [{ table: rightTable, column: values.rightColumn }],
-        leftJoinColumn: { table: leftTable, column: values.leftColumn },
-        rightJoinColumn: { table: rightTable, column: values.rightColumn },
-        limit: values.limit || 10,
-        explain: preview,
-      };
-      const response = preview ? await previewJoinQuery(payload) : await executeJoinQuery(payload);
-      if (response.code !== 0) throw new Error(responseMessage(response));
-      if (!preview) setResult(response.data as unknown as LakeReadOnlyQueryResult);
-      else message.success('结构化 JOIN 校验通过');
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : 'JOIN 校验失败');
-    } finally {
-      setLoading(false);
-    }
-  };
   return <Space direction="vertical" style={{ width: '100%' }}>
-    <Typography.Paragraph type="secondary">仅支持两个 Catalog 的 INNER/LEFT 等值 Join Key；本页只生成结构化请求。</Typography.Paragraph>
-    <Form form={form} layout="vertical" onFinish={(values) => run(values)} initialValues={{ limit: 10 }}>
+    <Alert type="info" showIcon message="结构化 JOIN 验证暂不可用" description={QUERY_API_UNAVAILABLE} />
+    <Typography.Paragraph type="secondary">Catalog：{catalog.targetCatalogName || '-'}。仅支持两个 Catalog 的 INNER/LEFT 等值 Join Key；本页只生成结构化请求。</Typography.Paragraph>
+    <Form form={form} layout="vertical" initialValues={{ limit: 10 }}>
       <Space align="start" wrap>
-        <Card size="small" title="左表"><Form.Item name="leftDatabase" label="数据库" rules={[{ required: true }]}><Input /></Form.Item><Form.Item name="leftTable" label="表" rules={[{ required: true }]}><Input /></Form.Item><Form.Item name="leftColumn" label="Join Key" rules={[{ required: true }]}><Input /></Form.Item></Card>
-        <Card size="small" title="右表"><Form.Item name="rightDatabase" label="数据库" rules={[{ required: true }]}><Input /></Form.Item><Form.Item name="rightTable" label="表" rules={[{ required: true }]}><Input /></Form.Item><Form.Item name="rightColumn" label="Join Key" rules={[{ required: true }]}><Input /></Form.Item></Card>
+        <Card size="small" title="左表"><Form.Item name="leftDatabase" label="数据库"><Input disabled /></Form.Item><Form.Item name="leftTable" label="表"><Input disabled /></Form.Item><Form.Item name="leftColumn" label="Join Key"><Input disabled /></Form.Item></Card>
+        <Card size="small" title="右表"><Form.Item name="rightDatabase" label="数据库"><Input disabled /></Form.Item><Form.Item name="rightTable" label="表"><Input disabled /></Form.Item><Form.Item name="rightColumn" label="Join Key"><Input disabled /></Form.Item></Card>
       </Space>
-      <Space style={{ marginTop: 12 }}><Form.Item name="limit" label="Limit"><InputNumber min={1} max={100} /></Form.Item><Button onClick={() => form.validateFields().then((values) => run(values, true))}>预览 / EXPLAIN</Button><Button type="primary" htmlType="submit" loading={loading}>执行 JOIN</Button></Space>
+      <Space style={{ marginTop: 12 }}><Form.Item name="limit" label="Limit"><InputNumber min={1} max={100} disabled /></Form.Item><Tooltip title={QUERY_API_UNAVAILABLE}><span><Button disabled>预览 / EXPLAIN</Button></span></Tooltip><Tooltip title={QUERY_API_UNAVAILABLE}><span><Button type="primary" disabled>执行 JOIN</Button></span></Tooltip></Space>
     </Form>
-    <QueryResult result={result} />
+    <QueryResult />
   </Space>;
 };
 
@@ -159,23 +110,6 @@ const LogicalCatalogDetail: React.FC = () => {
       setActionLoading(undefined);
     }
   };
-  const remove = () => {
-    if (!catalogId) return;
-    Modal.confirm({
-      title: '删除逻辑挂载？',
-      icon: <DeleteOutlined />,
-      okText: '确认删除',
-      okType: 'danger',
-      cancelText: '取消',
-      content: '该操作仅删除 Doris 中的逻辑挂载关系，不会删除源数据库数据。',
-      onOk: async () => {
-        const response = await deleteCatalog(catalogId);
-        if (response.code !== 0) throw new Error(responseMessage(response));
-        message.success('逻辑挂载已删除');
-        history.push('/lake/logical-access');
-      },
-    });
-  };
   const tabs = useMemo(() => catalog ? [
     { key: 'base', label: '基本信息', children: <Descriptions bordered column={2}><Descriptions.Item label="Catalog">{catalog.targetCatalogName || '-'}</Descriptions.Item><Descriptions.Item label="源数据源">{catalog.sourceDataSourceId || '-'}</Descriptions.Item><Descriptions.Item label="Adapter">{catalog.adapter || '-'}</Descriptions.Item><Descriptions.Item label="Scope">{catalog.scope || '-'}</Descriptions.Item><Descriptions.Item label="Resource"><Tag color={statusColor(catalog.resourceStatus)}>{catalog.resourceStatus || 'UNKNOWN'}</Tag></Descriptions.Item><Descriptions.Item label="Validation"><Tag color={statusColor(catalog.validationStatus)}>{catalog.validationStatus || 'UNKNOWN'}</Tag></Descriptions.Item><Descriptions.Item label="最近对账">{catalog.lastReconcileAt || '-'}</Descriptions.Item><Descriptions.Item label="错误码">{catalog.errorCode || '-'}</Descriptions.Item></Descriptions> },
     { key: 'query', label: '查询验证', children: <Tabs items={[{ key: 'single', label: '单表验证', children: <SingleTableQuery catalog={catalog} /> }, { key: 'join', label: '双 Catalog JOIN', children: <JoinQuery catalog={catalog} /> }]} /> },
@@ -183,7 +117,13 @@ const LogicalCatalogDetail: React.FC = () => {
   ] : [], [catalog]);
   if (loading) return <PageContainer title="逻辑挂载详情"><Spin /></PageContainer>;
   if (!catalog) return <PageContainer title="逻辑挂载详情"><Empty description="未找到逻辑挂载" /></PageContainer>;
-  return <PageContainer title={catalog.targetCatalogName || '逻辑挂载详情'} onBack={() => history.push('/lake/logical-access')} extra={<Space><Button icon={<CheckOutlined />} loading={actionLoading === '验证'} onClick={() => execute('验证', validateCatalog)}>验证</Button><Button icon={<ReloadOutlined />} loading={actionLoading === '刷新'} onClick={() => execute('刷新', refreshCatalog)}>Refresh</Button><Button icon={<SyncOutlined />} loading={actionLoading === '对账'} onClick={() => execute('对账', reconcileCatalog)}>Reconcile</Button><Button danger icon={<DeleteOutlined />} onClick={remove}>删除</Button></Space>}>
+  const unsupportedActionReason = '当前后端 controller 尚未提供该操作 API，暂不可用。';
+  const unsupportedButton = (label: string) => (
+    <Tooltip title={unsupportedActionReason} key={label}>
+      <span><Button disabled>{label}</Button></span>
+    </Tooltip>
+  );
+  return <PageContainer title={catalog.targetCatalogName || '逻辑挂载详情'} onBack={() => history.push('/lake/logical-access')} extra={<Space><Button icon={<CheckOutlined />} loading={actionLoading === '验证'} onClick={() => execute('验证', validateCatalog)}>验证</Button>{unsupportedButton('Refresh')}{unsupportedButton('Reconcile')}{unsupportedButton('删除')}</Space>}>
     {catalog.errorCode || catalog.errorMessage ? <Card size="small" style={{ marginBottom: 16 }}><Typography.Text type="danger">{catalog.errorCode || '操作异常'}：{catalog.errorMessage || '请查看操作记录并重试'}</Typography.Text></Card> : null}
     <Tabs items={tabs} />
   </PageContainer>;

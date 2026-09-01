@@ -1,4 +1,3 @@
-import HttpUtils from '@/utils/HttpUtils';
 import {
   fetchPhysicalInventory,
   fetchPhysicalSources,
@@ -10,6 +9,7 @@ import {
   applyLifecycle,
   previewRetention,
   updateRetention,
+  fetchLifecycleDetail as fetchLakeLifecycleDetail,
 } from '@/services/lake';
 import type { LakeApiResponse } from '@/services/lake';
 import type { LifecycleValidationView, RetentionPreviewView } from './types';
@@ -28,9 +28,8 @@ export {
   updateRetention,
 };
 
-/** Cache-only table detail is not yet exported by the shared client. */
 export const fetchLifecycleDetail = (mappingId: number): Promise<LakeApiResponse<LifecycleValidationView>> =>
-  HttpUtils.get(`/api/v1/lake/lifecycle/tables/${encodeURIComponent(String(mappingId))}`);
+  fetchLakeLifecycleDetail(mappingId) as Promise<LakeApiResponse<LifecycleValidationView>>;
 
 export const fetchRetentionPreview = (
   mappingId: number,
