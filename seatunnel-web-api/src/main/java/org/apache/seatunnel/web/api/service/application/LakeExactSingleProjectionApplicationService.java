@@ -16,6 +16,7 @@ import org.apache.seatunnel.web.dao.entity.LakeSourceObjectRef;
 import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
 import org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +41,7 @@ public class LakeExactSingleProjectionApplicationService {
     private final LakeOdsTableMappingDao tableMappingDao;
     private final CurrentUserProvider currentUserProvider;
 
+    @Autowired
     public LakeExactSingleProjectionApplicationService(
             LakeExactSingleProjectionPlanner planner,
             LakeSourceObjectResolver sourceResolver,

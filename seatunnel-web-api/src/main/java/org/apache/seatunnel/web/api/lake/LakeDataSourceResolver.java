@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -31,6 +32,7 @@ public class LakeDataSourceResolver implements AutoCloseable {
     private final Function<DataSource, BaseConnectionParam> connectionParamFactory;
     private final Map<Long, CachedPool> pools = new HashMap<>();
 
+    @Autowired
     public LakeDataSourceResolver(DataSourceDao dataSourceDao, LakeProperties properties) {
         this(dataSourceDao, properties,
                 dataSource -> DataSourceUtils.buildJdbcConnectionParams(
