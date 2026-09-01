@@ -43,14 +43,14 @@ public class LakeLifecyclePolicyController {
 
     @PutMapping("/policies/{id}")
     public Result<LakeLifecyclePolicyVO> update(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody LakeLifecyclePolicyUpdateDTO request) {
         return Result.buildSuc(service.update(id, request));
     }
 
     @PostMapping("/policies/{id}/disable")
     public Result<LakeLifecyclePolicyVO> disable(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody LakeLifecyclePolicyDisableDTO request) {
         return Result.buildSuc(service.disable(id, request));
     }

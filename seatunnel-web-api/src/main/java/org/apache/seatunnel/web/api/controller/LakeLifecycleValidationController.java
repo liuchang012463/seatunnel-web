@@ -34,7 +34,7 @@ public class LakeLifecycleValidationController {
 
     /** Cached detail never calls Doris or changes observation state. */
     @GetMapping("/tables/{mappingId}")
-    public Result<LakeLifecycleValidateVO> detail(@PathVariable Long mappingId) {
+    public Result<LakeLifecycleValidateVO> detail(@PathVariable("mappingId") Long mappingId) {
         return Result.buildSuc(service.detail(mappingId));
     }
 }

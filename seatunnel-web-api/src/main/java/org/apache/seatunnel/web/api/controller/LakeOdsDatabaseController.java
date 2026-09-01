@@ -36,34 +36,35 @@ public class LakeOdsDatabaseController {
     }
 
     @GetMapping("/datasources/{sourceDataSourceId}")
-    public Result<LakePhysicalDataSourceVO> sourceDetail(@PathVariable Long sourceDataSourceId) {
+    public Result<LakePhysicalDataSourceVO> sourceDetail(
+            @PathVariable("sourceDataSourceId") Long sourceDataSourceId) {
         return Result.buildSuc(service.sourceDetail(sourceDataSourceId));
     }
 
     @PostMapping("/datasources/{sourceDataSourceId}/database")
     public Result<LakeOdsDatabaseVO> create(
-            @PathVariable Long sourceDataSourceId,
+            @PathVariable("sourceDataSourceId") Long sourceDataSourceId,
             @Valid @RequestBody LakeOdsDatabaseCreateDTO request) {
         return Result.buildSuc(service.create(sourceDataSourceId, request));
     }
 
     @GetMapping("/databases/{id}")
-    public Result<LakeOdsDatabaseVO> detail(@PathVariable Long id) {
+    public Result<LakeOdsDatabaseVO> detail(@PathVariable("id") Long id) {
         return Result.buildSuc(service.detail(id));
     }
 
     @PostMapping("/databases/{id}/retry")
-    public Result<LakeOdsDatabaseVO> retry(@PathVariable Long id) {
+    public Result<LakeOdsDatabaseVO> retry(@PathVariable("id") Long id) {
         return Result.buildSuc(service.retry(id));
     }
 
     @PostMapping("/databases/{id}/reconcile")
-    public Result<LakeOdsDatabaseVO> reconcile(@PathVariable Long id) {
+    public Result<LakeOdsDatabaseVO> reconcile(@PathVariable("id") Long id) {
         return Result.buildSuc(service.reconcile(id));
     }
 
     @DeleteMapping("/databases/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
+    public Result<Void> delete(@PathVariable("id") Long id) {
         service.delete(id);
         return Result.buildSuc();
     }

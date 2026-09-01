@@ -33,9 +33,9 @@ public class LakeLogicalCatalogController {
 
     @GetMapping("/datasources/{sourceDataSourceId}/capability")
     public Result<LakeLogicalCapabilityVO> capability(
-            @PathVariable Long sourceDataSourceId,
-            @RequestParam(required = false) String adapter,
-            @RequestParam(required = false) LakeCatalogScope scope) {
+            @PathVariable("sourceDataSourceId") Long sourceDataSourceId,
+            @RequestParam(value = "adapter", required = false) String adapter,
+            @RequestParam(value = "scope", required = false) LakeCatalogScope scope) {
         LakeJdbcAdapterType parsedAdapter = null;
         if (adapter != null && !adapter.isBlank()) {
             try {
@@ -58,7 +58,7 @@ public class LakeLogicalCatalogController {
     }
 
     @GetMapping("/catalogs/{id}")
-    public Result<LakeExternalCatalogVO> detail(@PathVariable Long id) {
+    public Result<LakeExternalCatalogVO> detail(@PathVariable("id") Long id) {
         return Result.buildSuc(service.detail(id));
     }
 
@@ -69,7 +69,7 @@ public class LakeLogicalCatalogController {
     }
 
     @PostMapping("/catalogs/{id}/validate")
-    public Result<LakeExternalCatalogVO> validate(@PathVariable Long id) {
+    public Result<LakeExternalCatalogVO> validate(@PathVariable("id") Long id) {
         return Result.buildSuc(service.validate(id));
     }
 }

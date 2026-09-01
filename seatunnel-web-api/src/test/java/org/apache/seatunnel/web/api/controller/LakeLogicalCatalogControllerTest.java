@@ -10,15 +10,42 @@ import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.LakeExternalCatalogVO;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
 class LakeLogicalCatalogControllerTest {
+
+    @Test
+    void capabilityBindsPathVariableAndRequestParametersWithoutMethodParameterMetadata()
+            throws Exception {
+        LakeLogicalCatalogService service = mock(LakeLogicalCatalogService.class);
+        LakeLogicalCapabilityVO capability = new LakeLogicalCapabilityVO();
+        when(service.capability(22416910285280L, LakeJdbcAdapterType.MYSQL,
+                LakeCatalogScope.DATABASE)).thenReturn(capability);
+        MockMvc mockMvc = standaloneSetup(new LakeLogicalCatalogController(service)).build();
+
+        mockMvc.perform(get(
+                        "/api/v1/lake/logical/datasources/{sourceDataSourceId}/capability",
+                        22416910285280L)
+                        .param("adapter", "MYSQL")
+                        .param("scope", "DATABASE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code", is(0)));
+
+        verify(service).capability(22416910285280L, LakeJdbcAdapterType.MYSQL,
+                LakeCatalogScope.DATABASE);
+    }
 
     @Test
     void exposesCapabilityPageAndDetailRoutesThroughService() {

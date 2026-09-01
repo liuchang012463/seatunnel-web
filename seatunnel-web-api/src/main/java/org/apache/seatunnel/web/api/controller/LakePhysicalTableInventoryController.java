@@ -22,7 +22,7 @@ public class LakePhysicalTableInventoryController {
     }
 
     @GetMapping("/{id}/inventory")
-    public Result<LakePhysicalTableInventoryVO> inventory(@PathVariable Long id) {
+    public Result<LakePhysicalTableInventoryVO> inventory(@PathVariable("id") Long id) {
         return Result.buildSuc(service.inventory(id));
     }
 }

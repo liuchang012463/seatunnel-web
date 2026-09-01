@@ -43,28 +43,28 @@ public class LakeManagedTableController {
     }
 
     @GetMapping("/{id}")
-    public Result<LakeManagedTableVO> detail(@PathVariable Long id) {
+    public Result<LakeManagedTableVO> detail(@PathVariable("id") Long id) {
         return Result.buildSuc(service.detail(id));
     }
 
     @PostMapping("/{id}/reconcile")
-    public Result<LakeManagedTableVO> reconcile(@PathVariable Long id) {
+    public Result<LakeManagedTableVO> reconcile(@PathVariable("id") Long id) {
         return Result.buildSuc(service.reconcile(id));
     }
 
     @PostMapping("/{id}/retry")
-    public Result<LakeManagedTableVO> retry(@PathVariable Long id) {
+    public Result<LakeManagedTableVO> retry(@PathVariable("id") Long id) {
         return Result.buildSuc(service.retry(id));
     }
 
     @GetMapping("/{id}/delete-impact")
-    public Result<LakeManagedTableDeleteImpactVO> deleteImpact(@PathVariable Long id) {
+    public Result<LakeManagedTableDeleteImpactVO> deleteImpact(@PathVariable("id") Long id) {
         return Result.buildSuc(service.deleteImpact(id));
     }
 
     @DeleteMapping("/{id}")
     public Result<Void> delete(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @RequestBody(required = false) LakeManagedTableDeleteDTO request) {
         service.delete(id, request);
         return Result.buildSuc();

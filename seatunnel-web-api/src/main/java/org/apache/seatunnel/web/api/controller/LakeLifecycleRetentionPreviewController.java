@@ -27,7 +27,7 @@ public class LakeLifecycleRetentionPreviewController {
 
     @PostMapping("/tables/{mappingId}/retention/preview")
     public Result<LakeLifecycleRetentionPreviewVO> preview(
-            @PathVariable Long mappingId,
+            @PathVariable("mappingId") Long mappingId,
             @Valid @RequestBody LakeLifecycleRetentionPreviewDTO request) {
         return Result.buildSuc(service.preview(mappingId, request));
     }

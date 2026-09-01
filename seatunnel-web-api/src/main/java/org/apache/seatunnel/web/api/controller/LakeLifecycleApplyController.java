@@ -34,7 +34,7 @@ public class LakeLifecycleApplyController {
 
     @PutMapping("/tables/{mappingId}/retention")
     public Result<LakeLifecycleValidateVO> update(
-            @PathVariable Long mappingId,
+            @PathVariable("mappingId") Long mappingId,
             @Valid @RequestBody LakeLifecycleRetentionUpdateDTO request) {
         return Result.buildSuc(service.update(mappingId, request));
     }

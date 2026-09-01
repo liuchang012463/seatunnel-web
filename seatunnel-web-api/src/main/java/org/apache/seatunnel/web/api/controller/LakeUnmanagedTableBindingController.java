@@ -32,7 +32,7 @@ public class LakeUnmanagedTableBindingController {
     }
 
     @DeleteMapping("/{id}/binding")
-    public Result<LakeManagedTableVO> unbind(@PathVariable Long id) {
+    public Result<LakeManagedTableVO> unbind(@PathVariable("id") Long id) {
         return Result.buildSuc(service.unbind(id));
     }
 }
