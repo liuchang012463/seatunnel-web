@@ -307,6 +307,11 @@ public class LakeExternalCatalogBindingPersistenceService {
         result.setTargetCatalogName(binding.getTargetCatalogName());
         result.setAdapter(binding.getAdapter());
         result.setScope(binding.getScope());
+        LakeCatalogDesiredSpec desired = readDesiredSpec(binding.getDesiredSpecJson());
+        if (desired != null) {
+            result.setDatabaseInclude(desired.databaseInclude());
+            result.setTableInclude(desired.tableInclude());
+        }
         result.setDesiredSpecHash(binding.getDesiredSpecHash());
         result.setCredentialRevision(binding.getCredentialRevision());
         result.setDriverChecksum(binding.getDriverChecksum());
@@ -325,6 +330,18 @@ public class LakeExternalCatalogBindingPersistenceService {
         result.setCreateTime(binding.getCreateTime());
         result.setUpdateTime(binding.getUpdateTime());
         return result;
+    }
+
+    private static LakeCatalogDesiredSpec readDesiredSpec(String desiredSpecJson) {
+        if (StringUtils.isBlank(desiredSpecJson)) {
+            return null;
+        }
+        try {
+            return MAPPER.readValue(desiredSpecJson, LakeCatalogDesiredSpec.class);
+        } catch (JsonProcessingException exception) {
+            // An invalid historical desired spec must not make a local GET fail.
+            return null;
+        }
     }
 
     private LakeExternalCatalogBinding candidate(

@@ -59,7 +59,12 @@ public final class LakeReadOnlyQuerySqlGenerator {
         sql.append(" FROM ").append(qualified(plan.leftTable()))
                 .append(" AS ").append(LakeQueryIdentifier.quote(plan.leftAlias()));
         if (plan.isJoin()) {
-            sql.append(" JOIN ").append(qualified(plan.rightTable()))
+            if ("INNER".equals(plan.joinType())) {
+                sql.append(" JOIN ");
+            } else {
+                sql.append(' ').append(plan.joinType()).append(" JOIN ");
+            }
+            sql.append(qualified(plan.rightTable()))
                     .append(" AS ").append(LakeQueryIdentifier.quote(plan.rightAlias()))
                     .append(" ON ")
                     .append(LakeQueryIdentifier.quote(plan.leftAlias())).append('.')

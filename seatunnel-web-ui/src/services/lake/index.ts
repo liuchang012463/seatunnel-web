@@ -14,6 +14,9 @@ import type {
   LakePhysicalDataSource,
   LakePhysicalInventory,
   LakeRecommendation,
+  LakeReadOnlyQueryResult,
+  LakeReadOnlyQueryPreview,
+  LakeQueryColumnOption,
 } from './types';
 
 export * from './types';
@@ -201,10 +204,76 @@ export async function createCatalog(payload: Record<string, unknown>): Promise<L
   return HttpUtils.post(`${LOGICAL}/catalogs`, payload);
 }
 
+export async function updateCatalog(
+  id: string | number,
+  payload: Record<string, unknown>,
+): Promise<LakeApiResponse<LakeCatalog>> {
+  return HttpUtils.put(`${LOGICAL}/catalogs/${pathId(id)}`, payload);
+}
+
 export async function fetchCatalog(id: string | number): Promise<LakeApiResponse<LakeCatalog>> {
   return HttpUtils.get(`${LOGICAL}/catalogs/${pathId(id)}`);
 }
 
 export async function validateCatalog(id: string | number): Promise<LakeApiResponse<LakeCatalog>> {
   return HttpUtils.post(`${LOGICAL}/catalogs/${pathId(id)}/validate`);
+}
+
+export async function refreshCatalog(id: string | number): Promise<LakeApiResponse<LakeCatalog>> {
+  return HttpUtils.post(`${LOGICAL}/catalogs/${pathId(id)}/refresh`);
+}
+
+export async function reconcileCatalog(id: string | number): Promise<LakeApiResponse<LakeCatalog>> {
+  return HttpUtils.post(`${LOGICAL}/catalogs/${pathId(id)}/reconcile`);
+}
+
+export async function deleteCatalog(id: string | number): Promise<LakeApiResponse<LakeCatalog>> {
+  return HttpUtils.delete(`${LOGICAL}/catalogs/${pathId(id)}`);
+}
+
+export async function queryCatalogSingle(
+  id: string | number,
+  payload: Record<string, unknown>,
+): Promise<LakeApiResponse<LakeReadOnlyQueryResult>> {
+  return HttpUtils.post(`${LOGICAL}/query/single-table?catalogBindingId=${pathId(id)}`, payload);
+}
+
+export async function previewCatalogSingle(
+  id: string | number,
+  payload: Record<string, unknown>,
+): Promise<LakeApiResponse<LakeReadOnlyQueryPreview>> {
+  return HttpUtils.post(`${LOGICAL}/query/single-table/preview?catalogBindingId=${pathId(id)}`, payload);
+}
+
+export async function queryCatalogJoin(
+  payload: Record<string, unknown>,
+): Promise<LakeApiResponse<LakeReadOnlyQueryResult>> {
+  return HttpUtils.post(`${LOGICAL}/query/join`, payload);
+}
+
+export async function previewCatalogJoin(
+  payload: Record<string, unknown>,
+): Promise<LakeApiResponse<LakeReadOnlyQueryPreview>> {
+  return HttpUtils.post(`${LOGICAL}/query/join/preview`, payload);
+}
+
+export async function fetchCatalogQueryDatabases(
+  id: string | number,
+): Promise<LakeApiResponse<string[]>> {
+  return HttpUtils.get(`${LOGICAL}/query/catalogs/${pathId(id)}/databases`);
+}
+
+export async function fetchCatalogQueryTables(
+  id: string | number,
+  database: string,
+): Promise<LakeApiResponse<string[]>> {
+  return HttpUtils.get(`${LOGICAL}/query/catalogs/${pathId(id)}/tables?database=${encodeURIComponent(database)}`);
+}
+
+export async function fetchCatalogQueryColumns(
+  id: string | number,
+  database: string,
+  table: string,
+): Promise<LakeApiResponse<LakeQueryColumnOption[]>> {
+  return HttpUtils.get(`${LOGICAL}/query/catalogs/${pathId(id)}/columns?database=${encodeURIComponent(database)}&table=${encodeURIComponent(table)}`);
 }

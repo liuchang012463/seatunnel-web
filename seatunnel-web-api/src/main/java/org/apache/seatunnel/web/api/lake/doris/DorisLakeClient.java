@@ -42,6 +42,22 @@ public interface DorisLakeClient extends AutoCloseable {
 
     List<DorisColumnMetadata> listColumns(String databaseName, String tableName);
 
+    /** Reads a bounded column allowlist from one external catalog table. */
+    default List<DorisColumnMetadata> listCatalogColumns(
+            String catalogName, String databaseName, String tableName) {
+        throw new UnsupportedOperationException("Catalog column metadata is unavailable");
+    }
+
+    /** Lists databases exposed by one external catalog for the structured picker. */
+    default List<String> listCatalogDatabases(String catalogName) {
+        throw new UnsupportedOperationException("Catalog database metadata is unavailable");
+    }
+
+    /** Lists tables exposed by one external catalog database for the structured picker. */
+    default List<String> listCatalogTables(String catalogName, String databaseName) {
+        throw new UnsupportedOperationException("Catalog table metadata is unavailable");
+    }
+
     Map<String, String> readTableProperties(String databaseName, String tableName);
 
     /** Applies only the explicitly allowlisted mutable table properties. */

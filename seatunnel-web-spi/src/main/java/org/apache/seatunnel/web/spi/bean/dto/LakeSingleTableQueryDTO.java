@@ -10,7 +10,17 @@ public record LakeSingleTableQueryDTO(
         LakeQueryTableIdentityDTO table,
         List<LakeQueryColumnIdentityDTO> selectedColumns,
         Integer limit,
-        Boolean explain) {
+        Boolean explain,
+        Long catalogBindingId) {
+
+    /** Keeps the original structured request source-compatible. */
+    public LakeSingleTableQueryDTO(
+            LakeQueryTableIdentityDTO table,
+            List<LakeQueryColumnIdentityDTO> selectedColumns,
+            Integer limit,
+            Boolean explain) {
+        this(table, selectedColumns, limit, explain, null);
+    }
 
     public LakeSingleTableQueryDTO {
         selectedColumns = selectedColumns == null ? List.of() : List.copyOf(selectedColumns);

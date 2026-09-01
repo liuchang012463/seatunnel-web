@@ -20,6 +20,7 @@ public final class LakeReadOnlyQueryPlan {
     private final int requestedLimit;
     private final int effectiveLimit;
     private final boolean explain;
+    private final String joinType;
     private final String leftAlias;
     private final String rightAlias;
 
@@ -33,6 +34,7 @@ public final class LakeReadOnlyQueryPlan {
             int requestedLimit,
             int effectiveLimit,
             boolean explain,
+            String joinType,
             String leftAlias,
             String rightAlias) {
         this.kind = Objects.requireNonNull(kind);
@@ -44,6 +46,7 @@ public final class LakeReadOnlyQueryPlan {
         this.requestedLimit = requestedLimit;
         this.effectiveLimit = effectiveLimit;
         this.explain = explain;
+        this.joinType = Objects.requireNonNull(joinType);
         this.leftAlias = Objects.requireNonNull(leftAlias);
         this.rightAlias = rightAlias;
     }
@@ -55,7 +58,7 @@ public final class LakeReadOnlyQueryPlan {
             int effectiveLimit,
             boolean explain) {
         return new LakeReadOnlyQueryPlan(Kind.SINGLE_TABLE, table, null, columns,
-                null, null, requestedLimit, effectiveLimit, explain, "t0", null);
+                null, null, requestedLimit, effectiveLimit, explain, "INNER", "t0", null);
     }
 
     public static LakeReadOnlyQueryPlan join(
@@ -67,9 +70,23 @@ public final class LakeReadOnlyQueryPlan {
             int requestedLimit,
             int effectiveLimit,
             boolean explain) {
+        return join(leftTable, rightTable, columns, leftJoinColumn, rightJoinColumn,
+                requestedLimit, effectiveLimit, explain, "INNER");
+    }
+
+    public static LakeReadOnlyQueryPlan join(
+            LakeQueryTableIdentity leftTable,
+            LakeQueryTableIdentity rightTable,
+            List<LakeQueryOutputColumn> columns,
+            LakeQueryColumnIdentity leftJoinColumn,
+            LakeQueryColumnIdentity rightJoinColumn,
+            int requestedLimit,
+            int effectiveLimit,
+            boolean explain,
+            String joinType) {
         return new LakeReadOnlyQueryPlan(Kind.EQUALITY_JOIN, leftTable, rightTable, columns,
                 Objects.requireNonNull(leftJoinColumn), Objects.requireNonNull(rightJoinColumn),
-                requestedLimit, effectiveLimit, explain, "l", "r");
+                requestedLimit, effectiveLimit, explain, joinType, "l", "r");
     }
 
     public Kind kind() {
@@ -118,6 +135,10 @@ public final class LakeReadOnlyQueryPlan {
 
     public boolean explain() {
         return explain;
+    }
+
+    public String joinType() {
+        return joinType;
     }
 
     public String leftAlias() {

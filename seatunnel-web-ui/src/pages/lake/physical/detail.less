@@ -1,0 +1,143 @@
+.lake-resource-detail {
+  min-width: 0;
+}
+
+.lake-detail-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 132px;
+  padding: 24px;
+  margin-bottom: 18px;
+  background: linear-gradient(110deg, rgba(33, 135, 168, 0.28), rgba(0, 46, 65, 0.72));
+  border: 1px solid rgba(77, 210, 255, 0.28);
+}
+
+.lake-detail-hero-icon {
+  display: grid;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  color: #4dd2ff;
+  font-size: 28px;
+  background: rgba(77, 210, 255, 0.12);
+  border: 1px solid rgba(77, 210, 255, 0.3);
+  border-radius: 14px;
+}
+
+.lake-detail-hero-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.lake-detail-hero-copy .ant-typography {
+  margin-bottom: 0;
+}
+
+.lake-detail-kicker {
+  margin-bottom: 6px;
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lake-detail-hero-status {
+  align-self: flex-start;
+}
+
+.lake-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.lake-summary-grid .ant-card {
+  border: 1px solid var(--ant-color-border-secondary);
+}
+
+.lake-summary-grid .ant-statistic-content {
+  overflow: hidden;
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lake-detail-card,
+.lake-detail-tabs {
+  margin-top: 18px;
+}
+
+.lake-tab-content {
+  width: 100%;
+}
+
+.lake-tab-content > .ant-card {
+  width: 100%;
+}
+
+.lake-table-link {
+  padding-inline: 0;
+  text-align: left;
+}
+
+.lake-table-link .anticon {
+  margin-left: 5px;
+  font-size: 11px;
+}
+
+.lake-detail-alert {
+  margin: 16px 0;
+}
+
+.lake-drawer-form {
+  margin-top: 20px;
+}
+
+.lake-name-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.lake-name-card .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lake-drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 20px;
+  margin-top: 20px;
+  border-top: 1px solid var(--ant-color-split);
+}
+
+@media (max-width: 900px) {
+  .lake-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .lake-detail-hero {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 18px;
+  }
+
+  .lake-detail-hero-status {
+    width: 100%;
+    margin-left: 74px;
+  }
+
+  .lake-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

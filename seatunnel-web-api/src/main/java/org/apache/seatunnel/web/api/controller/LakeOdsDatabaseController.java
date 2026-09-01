@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.LakeOdsDatabaseVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalDataSourceVO;
+import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalSummaryVO;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +34,11 @@ public class LakeOdsDatabaseController {
     public PaginationResult<LakePhysicalDataSourceVO> page(
             @RequestBody(required = false) LakePhysicalDataSourcePageDTO request) {
         return service.page(request);
+    }
+
+    @GetMapping("/summary")
+    public Result<LakePhysicalSummaryVO> summary() {
+        return Result.buildSuc(service.summary());
     }
 
     @GetMapping("/datasources/{sourceDataSourceId}")

@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.api.service.LakeLogicalCatalogService;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 import org.apache.seatunnel.web.spi.bean.dto.LakeExternalCatalogPageDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeExternalCatalogCreateDTO;
+import org.apache.seatunnel.web.spi.bean.dto.LakeExternalCatalogUpdateDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.LakeExternalCatalogVO;
@@ -14,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -68,8 +71,30 @@ public class LakeLogicalCatalogController {
         return Result.buildSuc(service.create(request));
     }
 
+    @PutMapping("/catalogs/{id}")
+    public Result<LakeExternalCatalogVO> update(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody LakeExternalCatalogUpdateDTO request) {
+        return Result.buildSuc(service.update(id, request));
+    }
+
     @PostMapping("/catalogs/{id}/validate")
     public Result<LakeExternalCatalogVO> validate(@PathVariable("id") Long id) {
         return Result.buildSuc(service.validate(id));
+    }
+
+    @PostMapping("/catalogs/{id}/refresh")
+    public Result<LakeExternalCatalogVO> refresh(@PathVariable("id") Long id) {
+        return Result.buildSuc(service.refresh(id));
+    }
+
+    @PostMapping("/catalogs/{id}/reconcile")
+    public Result<LakeExternalCatalogVO> reconcile(@PathVariable("id") Long id) {
+        return Result.buildSuc(service.reconcile(id));
+    }
+
+    @DeleteMapping("/catalogs/{id}")
+    public Result<LakeExternalCatalogVO> delete(@PathVariable("id") Long id) {
+        return Result.buildSuc(service.delete(id));
     }
 }

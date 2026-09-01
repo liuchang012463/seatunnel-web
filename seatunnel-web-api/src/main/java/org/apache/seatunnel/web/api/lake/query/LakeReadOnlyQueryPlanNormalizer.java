@@ -77,6 +77,9 @@ public final class LakeReadOnlyQueryPlanNormalizer {
         if (request.leftJoinColumn() == null || request.rightJoinColumn() == null) {
             throw invalid(LakeQueryValidationCode.JOIN_REQUIRED);
         }
+        if (!"INNER".equals(request.joinType()) && !"LEFT".equals(request.joinType())) {
+            throw invalid(LakeQueryValidationCode.JOIN_TYPE_INVALID);
+        }
         validateAllowlist(leftAllowlist);
         validateAllowlist(rightAllowlist);
         List<LakeQueryOutputColumn> columns = new java.util.ArrayList<>();
@@ -113,7 +116,7 @@ public final class LakeReadOnlyQueryPlanNormalizer {
             }
         }
         return LakeReadOnlyQueryPlan.join(leftTable, rightTable, columns, leftJoin, rightJoin,
-                limit, capped(limit), Boolean.TRUE.equals(request.explain()));
+                limit, capped(limit), Boolean.TRUE.equals(request.explain()), request.joinType());
     }
 
     public LakeQueryValidationResult<LakeReadOnlyQueryPlan> tryNormalize(

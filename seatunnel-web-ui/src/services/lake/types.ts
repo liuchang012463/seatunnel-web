@@ -204,6 +204,8 @@ export interface LakeCatalog {
   targetCatalogName?: string;
   adapter?: string;
   scope?: LakeCatalogScope;
+  databaseInclude?: string[];
+  tableInclude?: string[];
   desiredSpecHash?: string;
   credentialRevision?: string;
   driverChecksum?: string;
@@ -216,6 +218,7 @@ export interface LakeCatalog {
   actualSnapshot?: Record<string, unknown>;
   lastObservedAt?: string;
   lastReconcileAt?: string;
+  deleted?: boolean;
   createTime?: string;
   updateTime?: string;
 }
@@ -268,6 +271,22 @@ export interface LakeReadOnlyQueryResult {
   truncated: boolean;
   elapsedMillis: number;
   explain: boolean;
+}
+
+export interface LakeReadOnlyQueryPreview {
+  sql: string;
+  outputColumns: string[];
+  effectiveLimit: number;
+  explain: boolean;
+  joinType?: 'INNER' | 'LEFT';
+}
+
+export interface LakeQueryColumnOption {
+  name: string;
+  type?: string;
+  nullable?: boolean;
+  selectable?: boolean;
+  reason?: string;
 }
 
 export interface LakeErrorPayload {

@@ -22,6 +22,17 @@ public final class LakeErrorCode {
     public static final String LAKE_CATALOG_REQUEST_INVALID = "LAKE_CATALOG_REQUEST_INVALID";
     public static final String LAKE_CATALOG_VALIDATION_FAILED =
             "LAKE_CATALOG_VALIDATION_FAILED";
+    public static final String LAKE_QUERY_TIMEOUT = "LAKE_QUERY_TIMEOUT";
+    public static final String LAKE_QUERY_CANCELLED = "LAKE_QUERY_CANCELLED";
+    public static final String LAKE_QUERY_EXECUTION_FAILED = "LAKE_QUERY_EXECUTION_FAILED";
+    public static final String LAKE_QUERY_DATASOURCE_UNAVAILABLE =
+            "LAKE_QUERY_DATASOURCE_UNAVAILABLE";
+    public static final String LAKE_QUERY_READONLY_REJECTED = "LAKE_QUERY_READONLY_REJECTED";
+    public static final String LAKE_QUERY_CONFIG_INVALID = "LAKE_QUERY_CONFIG_INVALID";
+    public static final String LAKE_QUERY_RESULT_LIMIT_INVALID =
+            "LAKE_QUERY_RESULT_LIMIT_INVALID";
+    public static final String LAKE_QUERY_RESULT_BYTES_INVALID =
+            "LAKE_QUERY_RESULT_BYTES_INVALID";
 
     private LakeErrorCode() {
     }
@@ -46,6 +57,14 @@ public final class LakeErrorCode {
             case LAKE_CATALOG_CAS_FAILED -> 11915;
             case LAKE_CATALOG_REQUEST_INVALID -> 11916;
             case LAKE_CATALOG_VALIDATION_FAILED -> 11917;
+            case LAKE_QUERY_TIMEOUT -> 11918;
+            case LAKE_QUERY_CANCELLED -> 11919;
+            case LAKE_QUERY_EXECUTION_FAILED -> 11920;
+            case LAKE_QUERY_DATASOURCE_UNAVAILABLE -> 11921;
+            case LAKE_QUERY_READONLY_REJECTED -> 11922;
+            case LAKE_QUERY_CONFIG_INVALID -> 11923;
+            case LAKE_QUERY_RESULT_LIMIT_INVALID -> 11924;
+            case LAKE_QUERY_RESULT_BYTES_INVALID -> 11925;
             default -> 11900;
         };
     }

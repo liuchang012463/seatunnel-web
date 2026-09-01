@@ -1,6 +1,10 @@
 export default {
   'pages.datasource.header.title': '数据源列表',
   'pages.datasource.header.desc': '一个统一的数据源治理系统，用于管理连接、访问权限和安全策略',
+  'pages.datasource.empty': '暂无数据源',
+  'pages.datasource.empty.desc': '先创建一个数据源，再开始探查或双模入湖。',
+  'pages.datasource.empty.tip': '数据源连接、权限和探查状态会在这里统一管理。',
+  'pages.datasource.create': '新建数据源',
 
 
   'pages.datasource.common.title': '数据源',

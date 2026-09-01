@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,6 +23,9 @@ public class LakeExternalCatalogVO {
     private String targetCatalogName;
     private String adapter;
     private LakeCatalogScope scope;
+    /** Non-secret scope selections needed to render a faithful update form. */
+    private List<String> databaseInclude = List.of();
+    private List<String> tableInclude = List.of();
     private String desiredSpecHash;
     private String credentialRevision;
     private String driverChecksum;

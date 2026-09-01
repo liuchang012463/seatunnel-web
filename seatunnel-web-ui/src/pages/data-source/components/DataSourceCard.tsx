@@ -22,6 +22,9 @@ interface DataSourceCardProps {
   onTestConnection: (record: DataSourceRecord) => void;
   onViewExploration: (record: DataSourceRecord) => void;
   onStatusChange: (record: DataSourceRecord, status: DataSourceLifecycleStatus) => void;
+  onLakePhysical: (record: DataSourceRecord) => void;
+  onLakeLogical: (record: DataSourceRecord) => void;
+  onLakeRecommend: (record: DataSourceRecord) => void;
 }
 
 const DataSourceCard: React.FC<DataSourceCardProps> = ({
@@ -31,6 +34,9 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   onTestConnection,
   onViewExploration,
   onStatusChange,
+  onLakePhysical,
+  onLakeLogical,
+  onLakeRecommend,
 }) => {
   const environmentConfig = environmentTagConfigMap[record.environment || ''] || {
     text: record.environmentName || '-',
@@ -46,6 +52,8 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
   const unitName = record.unitName || record.dataSourceUnit || '待归属';
   const businessSystemName = record.businessSystemName || record.systemName || '待归属';
+  const metadataReady = record.metadataSyncStatus === 'READY';
+  const lakeDisabledReason = metadataReady ? undefined : 'Metadata 尚未 READY，请先完成数据源探查';
 
   return (
     <Card
@@ -201,6 +209,21 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
         <div className="datasource-card-update-time">
           <span className="datasource-card-label">最近更新</span>
           <span className="datasource-card-update-time-value">{record.updateTime || '-'}</span>
+        </div>
+
+        <div className="datasource-card-lake-actions">
+          <span className="datasource-card-label">双模入湖</span>
+          <div className="datasource-card-lake-buttons">
+            <Tooltip title={lakeDisabledReason || '打开物理入湖资源'}>
+              <Button size="small" disabled={isDeleting || !metadataReady} onClick={() => onLakePhysical(record)}>物理</Button>
+            </Tooltip>
+            <Tooltip title={lakeDisabledReason || '检查推荐并进入逻辑入湖'}>
+              <Button size="small" disabled={isDeleting || !metadataReady} onClick={() => onLakeRecommend(record)}>推荐</Button>
+            </Tooltip>
+            <Tooltip title={lakeDisabledReason || '打开逻辑入湖能力检查'}>
+              <Button size="small" disabled={isDeleting || !metadataReady} onClick={() => onLakeLogical(record)}>逻辑</Button>
+            </Tooltip>
+          </div>
         </div>
 
         <Button

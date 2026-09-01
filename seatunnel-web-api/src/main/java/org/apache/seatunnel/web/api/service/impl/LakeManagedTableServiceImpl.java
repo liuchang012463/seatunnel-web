@@ -15,6 +15,7 @@ import org.apache.seatunnel.web.api.lake.operation.LakeExternalOperationExceptio
 import org.apache.seatunnel.web.api.lake.operation.LakeOperationHandle;
 import org.apache.seatunnel.web.api.lake.operation.LakeOperationIntent;
 import org.apache.seatunnel.web.api.lake.operation.LakeOperationException;
+import org.apache.seatunnel.web.api.lake.operation.LakeManagedTableOperationPublication;
 import org.apache.seatunnel.web.api.lake.operation.LakeResourceOperationCoordinator;
 import org.apache.seatunnel.web.api.lake.operation.LakeResourceTypes;
 import org.apache.seatunnel.web.api.lake.table.LakeTableDriftEvaluator;
@@ -105,6 +106,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
     private final LakeProperties lakeProperties;
     private final LakeTableDriftEvaluator driftEvaluator;
     private final LakeTableReconcilePersistenceService reconcilePersistenceService;
+    private final LakeManagedTableLifecycleCreatePersistenceService lifecycleCreatePersistenceService;
 
     @Autowired
     public LakeManagedTableServiceImpl(
@@ -127,14 +129,15 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             LakePreviewTokenService previewTokenService,
             LakeProperties lakeProperties,
             LakeTableDriftEvaluator driftEvaluator,
-            LakeTableReconcilePersistenceService reconcilePersistenceService) {
+            LakeTableReconcilePersistenceService reconcilePersistenceService,
+            LakeManagedTableLifecycleCreatePersistenceService lifecycleCreatePersistenceService) {
         this(dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
                 jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
                 coordinator, currentUserProvider, previewTokenService, lakeProperties,
                 new LakeManagedTableContractFactory(), new DorisDdlBuilder(),
                 batchJobDefinitionDao, streamingJobDefinitionDao, jobScheduleDao,
                 jobInstanceDao, streamingJobInstanceDao, driftEvaluator,
-                reconcilePersistenceService, lifecyclePolicyDao);
+                reconcilePersistenceService, lifecyclePolicyDao, lifecycleCreatePersistenceService);
     }
 
     /** Backwards-compatible constructor for callers that do not reconcile. */
@@ -298,6 +301,39 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             LakeTableDriftEvaluator driftEvaluator,
             LakeTableReconcilePersistenceService reconcilePersistenceService,
             LakeLifecyclePolicyDao lifecyclePolicyDao) {
+        this(dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
+                jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
+                coordinator, currentUserProvider, previewTokenService, lakeProperties,
+                contractFactory, ddlBuilder, batchJobDefinitionDao, streamingJobDefinitionDao,
+                jobScheduleDao, jobInstanceDao, streamingJobInstanceDao, driftEvaluator,
+                reconcilePersistenceService, lifecyclePolicyDao, null);
+    }
+
+    /** Full constructor with atomic lifecycle-create persistence. */
+    public LakeManagedTableServiceImpl(
+            DataSourceDao dataSourceDao,
+            LakeOdsDatabaseBindingDao databaseBindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            LakeSourceObjectRefDao sourceObjectRefDao,
+            LakeJobRelationDao jobRelationDao,
+            LakeTableLifecycleBindingDao lifecycleBindingDao,
+            LakeSourceObjectResolver sourceResolver,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeResourceOperationCoordinator coordinator,
+            CurrentUserProvider currentUserProvider,
+            LakePreviewTokenService previewTokenService,
+            LakeProperties lakeProperties,
+            LakeManagedTableContractFactory contractFactory,
+            DorisDdlBuilder ddlBuilder,
+            JobDefinitionDao batchJobDefinitionDao,
+            StreamingJobDefinitionDao streamingJobDefinitionDao,
+            JobScheduleDao jobScheduleDao,
+            JobInstanceDao jobInstanceDao,
+            StreamingJobInstanceDao streamingJobInstanceDao,
+            LakeTableDriftEvaluator driftEvaluator,
+            LakeTableReconcilePersistenceService reconcilePersistenceService,
+            LakeLifecyclePolicyDao lifecyclePolicyDao,
+            LakeManagedTableLifecycleCreatePersistenceService lifecycleCreatePersistenceService) {
         this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
         this.databaseBindingDao = Objects.requireNonNull(databaseBindingDao, "databaseBindingDao");
         this.tableMappingDao = Objects.requireNonNull(tableMappingDao, "tableMappingDao");
@@ -325,6 +361,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         this.reconcilePersistenceService = reconcilePersistenceService == null
                 ? new LakeTableReconcilePersistenceService(tableMappingDao)
                 : reconcilePersistenceService;
+        this.lifecycleCreatePersistenceService = lifecycleCreatePersistenceService;
     }
 
     @Override
@@ -476,11 +513,35 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         }
 
         LakeSourceObjectRef sourceRef = ensureSourceRef(source, payload.sourceDataSourceId(), userId);
-        LakeOdsTableMapping mapping = prepareMapping(
-                payload.mappingId(), sourceRef, binding, targetTableName, contract, mappings, userId);
-        LakeOperationHandle handle = begin(mapping, LakeOperationType.CREATE_TABLE,
-                payload.mappingId() != null);
-        return executeCreate(mapping, handle, client, contract, false, lifecycleProperties);
+        LakeOdsTableMapping mapping;
+        LakeOperationHandle handle;
+        LakeManagedTableOperationPublication publication = null;
+        if (payload.hasLifecyclePolicy() && lifecycleCreatePersistenceService != null) {
+            mapping = prepareMappingCandidate(
+                    payload.mappingId(), sourceRef, binding, targetTableName,
+                    contract, mappings, userId);
+            LakeManagedTableLifecycleCreatePersistenceService.StartResult start =
+                    lifecycleCreatePersistenceService.start(
+                            mapping,
+                            new LakeManagedTableLifecycleCreatePersistenceService.LifecycleSpec(
+                                    payload.lifecyclePolicyId(), payload.lifecyclePolicyVersion(),
+                                    payload.lifecyclePartitionColumn(),
+                                    parseLifecycleGranularity(payload.lifecycleGranularity()),
+                                    payload.lifecycleRetentionCount(),
+                                    payload.lifecyclePolicySnapshotJson()),
+                            userId);
+            mapping = start.mapping();
+            handle = start.handle();
+            publication = start.publication();
+        } else {
+            mapping = prepareMapping(
+                    payload.mappingId(), sourceRef, binding, targetTableName,
+                    contract, mappings, userId);
+            handle = begin(mapping, LakeOperationType.CREATE_TABLE,
+                    payload.mappingId() != null);
+        }
+        return executeCreate(mapping, handle, client, contract, false,
+                lifecycleProperties, publication);
     }
 
     @Override
@@ -541,7 +602,8 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             return toVO(mapping);
         }
         LakeOperationHandle handle = retryHandle(mapping);
-        return executeCreate(mapping, handle, client, contract, actualExists, java.util.Map.of());
+        return executeCreate(mapping, handle, client, contract, actualExists,
+                java.util.Map.of(), null);
     }
 
     @Override
@@ -764,7 +826,8 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             DorisLakeClient client,
             TargetContract contract,
             boolean actualExists,
-            java.util.Map<String, String> tableProperties) {
+            java.util.Map<String, String> tableProperties,
+            LakeManagedTableOperationPublication lifecyclePublication) {
         AtomicReference<String> errorCode = new AtomicReference<>();
         try {
             coordinator.execute(handle, () -> {
@@ -804,7 +867,11 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                             LakeErrorCode.LAKE_DORIS_UNAVAILABLE, "Doris table operation is unavailable");
                 }
             });
-            if (!coordinator.finalizeSuccess(handle, "Doris table exists and matches contract")) {
+            boolean finalized = lifecyclePublication == null
+                    ? coordinator.finalizeSuccess(handle, "Doris table exists and matches contract")
+                    : coordinator.finalizeSuccess(
+                            handle, "Doris table exists and matches contract", lifecyclePublication);
+            if (!finalized) {
                 throw stale("The table create result is stale");
             }
             return detail(mapping.getId());
@@ -865,6 +932,32 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             TargetContract contract,
             List<LakeManagedTableFieldMapping> mappings,
             Integer userId) {
+        return prepareMappingInternal(expectedMappingId, sourceRef, binding,
+                targetTableName, contract, mappings, userId, true);
+    }
+
+    /** Builds the mapping candidate without writing it; atomic lifecycle TX1 persists it. */
+    private LakeOdsTableMapping prepareMappingCandidate(
+            Long expectedMappingId,
+            LakeSourceObjectRef sourceRef,
+            LakeOdsDatabaseBinding binding,
+            String targetTableName,
+            TargetContract contract,
+            List<LakeManagedTableFieldMapping> mappings,
+            Integer userId) {
+        return prepareMappingInternal(expectedMappingId, sourceRef, binding,
+                targetTableName, contract, mappings, userId, false);
+    }
+
+    private LakeOdsTableMapping prepareMappingInternal(
+            Long expectedMappingId,
+            LakeSourceObjectRef sourceRef,
+            LakeOdsDatabaseBinding binding,
+            String targetTableName,
+            TargetContract contract,
+            List<LakeManagedTableFieldMapping> mappings,
+            Integer userId,
+            boolean persist) {
         LakeOdsTableMapping bySource = tableMappingDao
                 .queryByBindingIdAndSourceObjectIncludingDeleted(binding.getId(), sourceRef.getId());
         LakeOdsTableMapping byTarget = tableMappingDao
@@ -893,6 +986,9 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             mapping.setCreateUserId(userId);
         }
         fillMapping(mapping, sourceRef, binding, targetTableName, contract, mappings, userId);
+        if (!persist) {
+            return mapping;
+        }
         if (rebuild) {
             mapping.setDeleted(false);
             mapping.setResourceStatus(LakeResourceStatus.PENDING_CREATE);
@@ -1278,6 +1374,17 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         return policy == null ? java.util.Map.of()
                 : java.util.Map.of("partition.retention_count",
                 String.valueOf(policy.getRetentionCount()));
+    }
+
+    private static LakePartitionGranularity parseLifecycleGranularity(String value) {
+        if (value == null || value.isBlank()) {
+            throw conflict("Lifecycle granularity is invalid");
+        }
+        try {
+            return LakePartitionGranularity.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw conflict("Lifecycle granularity is invalid");
+        }
     }
 
     private static String lifecyclePolicySnapshot(LakeLifecyclePolicy policy) {

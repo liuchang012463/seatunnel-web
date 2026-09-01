@@ -18,6 +18,7 @@ import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.LakeOperationStatus;
 import org.apache.seatunnel.web.common.enums.LakeOperationType;
+import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
 import org.apache.seatunnel.web.common.enums.LakeRelationScope;
 import org.apache.seatunnel.web.common.enums.LakeRelationStatus;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
@@ -40,6 +41,7 @@ import org.apache.seatunnel.web.spi.bean.dto.LakePhysicalDataSourcePageDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.LakeOdsDatabaseVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalDataSourceVO;
+import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalSummaryVO;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
@@ -49,7 +51,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /** Task 5 ODS database backend. External Doris work is always coordinator-bound. */
 @Service
@@ -106,6 +110,42 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
                 .map(this::toSourceVO)
                 .toList();
         return PaginationResult.buildSuc(result, page.getTotal(), page.getCurrent(), page.getSize());
+    }
+
+    @Override
+    public LakePhysicalSummaryVO summary() {
+        List<LakeOdsDatabaseBinding> bindings = bindingDao.queryAll();
+        List<LakeOdsTableMapping> mappings = tableMappingDao.queryAll();
+        Set<Long> activeBindingIds = bindings == null ? Set.of() : bindings.stream()
+                .filter(Objects::nonNull)
+                .filter(binding -> !Boolean.TRUE.equals(binding.getDeleted()))
+                .map(LakeOdsDatabaseBinding::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        LakePhysicalSummaryVO result = new LakePhysicalSummaryVO();
+        result.setBoundDataSourceCount(activeBindingIds.size());
+        result.setOdsTableCount(mappings == null ? 0 : mappings.stream()
+                .filter(Objects::nonNull)
+                .filter(mapping -> !Boolean.TRUE.equals(mapping.getDeleted()))
+                .filter(mapping -> activeBindingIds.contains(mapping.getOdsDatabaseBindingId()))
+                .count());
+        long bindingExceptions = bindings == null ? 0 : bindings.stream()
+                .filter(Objects::nonNull)
+                .filter(binding -> !Boolean.TRUE.equals(binding.getDeleted()))
+                .filter(binding -> binding.getResourceStatus() != LakeResourceStatus.READY)
+                .count();
+        long mappingExceptions = mappings == null ? 0 : mappings.stream()
+                .filter(Objects::nonNull)
+                .filter(mapping -> !Boolean.TRUE.equals(mapping.getDeleted()))
+                .filter(mapping -> activeBindingIds.contains(mapping.getOdsDatabaseBindingId()))
+                .filter(mapping -> mapping.getResourceStatus() != LakeResourceStatus.READY
+                        || Boolean.FALSE.equals(mapping.getActualTableExists())
+                        || mapping.getTargetConsistencyStatus() == LakeConsistencyStatus.DRIFT
+                        || mapping.getSourceConsistencyStatus() == LakeConsistencyStatus.DRIFT
+                        || mapping.getTaskConsistencyStatus() == LakeConsistencyStatus.DRIFT)
+                .count();
+        result.setPendingExceptionCount(bindingExceptions + mappingExceptions);
+        return result;
     }
 
     private IPage<DataSource> queryPage(DataSourceDTO query, String resourceStatus) {

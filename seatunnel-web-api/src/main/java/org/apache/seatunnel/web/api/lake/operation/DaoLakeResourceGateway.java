@@ -14,6 +14,8 @@ import org.apache.seatunnel.web.dao.repository.LakeExternalCatalogBindingDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
 import org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao;
+import org.apache.seatunnel.web.dao.repository.LakeTableLifecycleBindingDao;
+import org.apache.seatunnel.web.common.enums.LakeLifecycleBindingStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -32,16 +34,31 @@ public class DaoLakeResourceGateway implements LakeResourceGateway {
     private final LakeOdsDatabaseBindingDao odsDatabaseBindingDao;
     private final LakeOdsTableMappingDao odsTableMappingDao;
     private final LakeExternalCatalogBindingDao externalCatalogBindingDao;
+    private final LakeTableLifecycleBindingDao lifecycleBindingDao;
 
+    /** Spring constructor; lifecycle publication is finalized with the table lease. */
+    @org.springframework.beans.factory.annotation.Autowired
+    public DaoLakeResourceGateway(
+            @NonNull LakeSourceObjectRefDao sourceObjectRefDao,
+            @NonNull LakeOdsDatabaseBindingDao odsDatabaseBindingDao,
+            @NonNull LakeOdsTableMappingDao odsTableMappingDao,
+            @NonNull LakeExternalCatalogBindingDao externalCatalogBindingDao,
+            LakeTableLifecycleBindingDao lifecycleBindingDao) {
+        this.sourceObjectRefDao = sourceObjectRefDao;
+        this.odsDatabaseBindingDao = odsDatabaseBindingDao;
+        this.odsTableMappingDao = odsTableMappingDao;
+        this.externalCatalogBindingDao = externalCatalogBindingDao;
+        this.lifecycleBindingDao = lifecycleBindingDao;
+    }
+
+    /** Backwards-compatible constructor for gateway-focused tests without lifecycle rows. */
     public DaoLakeResourceGateway(
             @NonNull LakeSourceObjectRefDao sourceObjectRefDao,
             @NonNull LakeOdsDatabaseBindingDao odsDatabaseBindingDao,
             @NonNull LakeOdsTableMappingDao odsTableMappingDao,
             @NonNull LakeExternalCatalogBindingDao externalCatalogBindingDao) {
-        this.sourceObjectRefDao = sourceObjectRefDao;
-        this.odsDatabaseBindingDao = odsDatabaseBindingDao;
-        this.odsTableMappingDao = odsTableMappingDao;
-        this.externalCatalogBindingDao = externalCatalogBindingDao;
+        this(sourceObjectRefDao, odsDatabaseBindingDao, odsTableMappingDao,
+                externalCatalogBindingDao, null);
     }
 
     @Override
@@ -89,6 +106,12 @@ public class DaoLakeResourceGateway implements LakeResourceGateway {
         if (!sameLease(expected, handle)) {
             return false;
         }
+        LakeManagedTableOperationPublication lifecyclePublication =
+                publication instanceof LakeManagedTableOperationPublication value ? value : null;
+        if (lifecyclePublication != null && !lifecycleReadyForFinalize(
+                handle, lifecyclePublication)) {
+            return false;
+        }
         return update(expected, entity -> {
             boolean deleting = entity.getResourceStatus() == LakeResourceStatus.DELETING;
             entity.setResourceStatus(deleting ? LakeResourceStatus.DELETED : LakeResourceStatus.READY);
@@ -124,6 +147,11 @@ public class DaoLakeResourceGateway implements LakeResourceGateway {
                     catalog.setDeleted(result.resourceStatus() == LakeResourceStatus.DELETED);
                 }
             }
+            if (lifecyclePublication != null && entity instanceof LakeOdsTableMapping) {
+                if (!finalizeLifecycleSuccess(handle, lifecyclePublication)) {
+                    throw new IllegalStateException("Lifecycle binding lease was lost");
+                }
+            }
             entity.setOperationToken(null);
             entity.setErrorCode(null);
             entity.setErrorMessage(null);
@@ -139,14 +167,87 @@ public class DaoLakeResourceGateway implements LakeResourceGateway {
         if (!sameLease(expected, handle)) {
             return false;
         }
+        if (!lifecycleReadyForFailure(handle)) {
+            return false;
+        }
         return update(expected, entity -> {
             entity.setResourceStatus(failureStatus(errorCode));
             entity.setOperationToken(null);
             entity.setErrorCode(errorCode);
             entity.setErrorMessage(summary);
             entity.setLastReconcileAt(new java.util.Date());
+            if (entity instanceof LakeOdsTableMapping && lifecycleBindingDao != null) {
+                if (!finalizeLifecycleFailure(handle, errorCode, summary)) {
+                    throw new IllegalStateException("Lifecycle binding failure lease was lost");
+                }
+            }
             entity.initUpdate();
         });
+    }
+
+    private boolean lifecycleReadyForFinalize(
+            LakeOperationHandle handle, LakeManagedTableOperationPublication publication) {
+        if (lifecycleBindingDao == null || publication.lifecycleBindingId() == null
+                || publication.lifecycleLockVersion() == null) {
+            return false;
+        }
+        org.apache.seatunnel.web.dao.entity.LakeTableLifecycleBinding binding =
+                lifecycleBindingDao.queryByTableMappingId(handle.resourceId());
+        return binding != null
+                && Objects.equals(binding.getId(), publication.lifecycleBindingId())
+                && Objects.equals(binding.getLockVersion(), publication.lifecycleLockVersion())
+                && Objects.equals(binding.getOperationToken(), handle.operationToken())
+                && binding.getStatus() == LakeLifecycleBindingStatus.PENDING;
+    }
+
+    private boolean finalizeLifecycleSuccess(
+            LakeOperationHandle handle, LakeManagedTableOperationPublication publication) {
+        if (lifecycleBindingDao == null) {
+            return false;
+        }
+        org.apache.seatunnel.web.dao.entity.LakeTableLifecycleBinding binding =
+                lifecycleBindingDao.queryByTableMappingId(handle.resourceId());
+        if (binding == null
+                || !Objects.equals(binding.getId(), publication.lifecycleBindingId())
+                || !Objects.equals(binding.getLockVersion(), publication.lifecycleLockVersion())
+                || !Objects.equals(binding.getOperationToken(), handle.operationToken())) {
+            return false;
+        }
+        binding.setStatus(LakeLifecycleBindingStatus.ACTIVE);
+        binding.setActualRetentionCount(publication.retentionCount());
+        binding.setLastObservedAt(new java.util.Date());
+        binding.setOperationToken(null);
+        binding.setErrorCode(null);
+        binding.setErrorMessage(null);
+        binding.setUpdateTime(new java.util.Date());
+        return lifecycleBindingDao.updateIfTokenAndVersion(
+                binding, handle.operationToken(), publication.lifecycleLockVersion());
+    }
+
+    private boolean lifecycleReadyForFailure(LakeOperationHandle handle) {
+        if (lifecycleBindingDao == null || !LakeResourceTypes.ODS_TABLE_MAPPING
+                .equals(LakeResourceTypes.normalize(handle.resourceType()))) {
+            return true;
+        }
+        org.apache.seatunnel.web.dao.entity.LakeTableLifecycleBinding binding =
+                lifecycleBindingDao.queryByTableMappingId(handle.resourceId());
+        return binding == null || Objects.equals(binding.getOperationToken(), handle.operationToken());
+    }
+
+    private boolean finalizeLifecycleFailure(
+            LakeOperationHandle handle, String errorCode, String summary) {
+        org.apache.seatunnel.web.dao.entity.LakeTableLifecycleBinding binding =
+                lifecycleBindingDao.queryByTableMappingId(handle.resourceId());
+        if (binding == null || !Objects.equals(binding.getOperationToken(), handle.operationToken())) {
+            return true;
+        }
+        binding.setStatus(LakeLifecycleBindingStatus.ERROR);
+        binding.setOperationToken(null);
+        binding.setErrorCode(errorCode);
+        binding.setErrorMessage(summary);
+        binding.setUpdateTime(new java.util.Date());
+        return lifecycleBindingDao.updateIfTokenAndVersion(
+                binding, handle.operationToken(), binding.getLockVersion());
     }
 
     private static LakeResourceStatus failureStatus(String errorCode) {

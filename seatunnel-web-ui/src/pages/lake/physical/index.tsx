@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { history } from '@umijs/max';
+import { history, useLocation } from '@umijs/max';
 import {
   Alert,
   Button,
@@ -29,9 +29,10 @@ import {
   Typography,
   message,
 } from 'antd';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createOdsDatabase,
+  fetchPhysicalSummary,
   fetchPhysicalSources,
   recommendLakeMode,
   reconcileOdsDatabase,
@@ -158,7 +159,8 @@ const RecommendationModal: React.FC<{
       open={open}
       title="智能推荐入湖方式"
       width={720}
-      destroyOnClose
+      forceRender
+      destroyOnHidden
       onCancel={onClose}
       footer={null}
     >
@@ -273,7 +275,8 @@ const OdsDatabaseDrawer: React.FC<{
       open={open}
       width={520}
       title="创建 ODS Database"
-      destroyOnClose
+      forceRender
+      destroyOnHidden
       onClose={onClose}
       extra={<Tag color="blue">服务端创建</Tag>}
     >
@@ -327,6 +330,7 @@ const OdsDatabaseDrawer: React.FC<{
 };
 
 const PhysicalResourcesPage: React.FC = () => {
+  const location = useLocation();
   const actionRef = useRef<ActionType>();
   const [createSource, setCreateSource] = useState<PhysicalDataSource>();
   const [recommendSource, setRecommendSource] = useState<PhysicalDataSource>();
@@ -335,8 +339,36 @@ const PhysicalResourcesPage: React.FC = () => {
   const [recommendOpen, setRecommendOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [resourceStatus, setResourceStatus] = useState<LakeResourceStatus>();
+  const [loadedSources, setLoadedSources] = useState<PhysicalDataSource[]>([]);
+  const [summary, setSummary] = useState<{ boundDataSourceCount?: number; odsTableCount?: number; pendingExceptionCount?: number }>();
+  const recommendationSourceId = useMemo(() => {
+    const value = new URLSearchParams(location.search).get('recommendSourceDataSourceId');
+    return value ? Number(value) : undefined;
+  }, [location.search]);
 
-  const reload = () => actionRef.current?.reloadAndRest?.();
+  const loadSummary = () => {
+    void fetchPhysicalSummary().then((response) => {
+      if (response.code === 0) setSummary(response.data);
+    }).catch(() => undefined);
+  };
+
+  const reload = () => {
+    actionRef.current?.reloadAndRest?.();
+    loadSummary();
+  };
+
+  useEffect(() => {
+    loadSummary();
+  }, []);
+
+  useEffect(() => {
+    if (!recommendationSourceId || !loadedSources.length) return;
+    const source = loadedSources.find((item) => item.sourceDataSourceId === recommendationSourceId);
+    if (!source) return;
+    setRecommendSource(source);
+    setRecommendOpen(true);
+    history.replace('/lake/resources');
+  }, [loadedSources, recommendationSourceId]);
 
   const operate = async (type: 'retry' | 'reconcile', database?: OdsDatabase) => {
     if (!database?.id) return;
@@ -461,6 +493,12 @@ const PhysicalResourcesPage: React.FC = () => {
             查看数据源
           </Button>
         </Card>
+        <div className="lake-physical-summary">
+          <Card size="small" className="lake-physical-stat"><Statistic title="已绑定数据源" value={summary?.boundDataSourceCount ?? 0} /></Card>
+          <Card size="small" className="lake-physical-stat"><Statistic title="ODS 表总数" value={summary?.odsTableCount ?? 0} /></Card>
+          <Card size="small" className="lake-physical-stat" data-warning={(summary?.pendingExceptionCount || 0) > 0}><Statistic title="待处理异常" value={summary?.pendingExceptionCount ?? 0} /></Card>
+          <Text type="secondary" className="lake-physical-summary-note"><CheckCircleOutlined /> 页面 GET 只读取本地汇总；请使用行内“对账”按钮读取 Doris 实际状态。</Text>
+        </div>
         <ProTable<PhysicalDataSource>
           actionRef={actionRef}
           rowKey="sourceDataSourceId"
@@ -480,6 +518,7 @@ const PhysicalResourcesPage: React.FC = () => {
               });
               if (response.code !== 0) throw new Error(response.message || response.msg || '物理入湖列表加载失败');
               const page = unwrapPage(response.data);
+              setLoadedSources(page.rows);
               return { data: page.rows, success: true, total: page.total };
             } catch (error) {
               message.error(error instanceof Error ? error.message : '物理入湖列表加载失败');
@@ -494,7 +533,7 @@ const PhysicalResourcesPage: React.FC = () => {
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               onSearch={() => actionRef.current?.reload(true)}
-              style={{ width: 240 }}
+              style={{ width: 'min(240px, 100%)' }}
             />,
             <Select
               key="status"
@@ -506,16 +545,12 @@ const PhysicalResourcesPage: React.FC = () => {
                 setResourceStatus(value);
                 window.setTimeout(() => actionRef.current?.reload(true), 0);
               }}
-              style={{ width: 130 }}
+              style={{ width: 'min(130px, 100%)' }}
             />,
           ]}
           tableAlertRender={false}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已接入的数据源" /> }}
         />
-        <div className="lake-physical-summary">
-          <Statistic title="工作台说明" value="显式操作" prefix={<CheckCircleOutlined />} />
-          <Text type="secondary">页面 GET 不隐式触发对账；请使用行内“对账”按钮读取 Doris 实际状态。</Text>
-        </div>
       </div>
       <OdsDatabaseDrawer
         open={!!createSource}

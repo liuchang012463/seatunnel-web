@@ -5,10 +5,13 @@ import org.apache.seatunnel.web.spi.bean.dto.LakePhysicalDataSourcePageDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.LakeOdsDatabaseVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalDataSourceVO;
+import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalSummaryVO;
 
 public interface LakeOdsDatabaseService {
 
     PaginationResult<LakePhysicalDataSourceVO> page(LakePhysicalDataSourcePageDTO request);
+
+    LakePhysicalSummaryVO summary();
 
     LakePhysicalDataSourceVO sourceDetail(Long sourceDataSourceId);
 

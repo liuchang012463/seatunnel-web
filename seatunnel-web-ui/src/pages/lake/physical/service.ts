@@ -16,6 +16,7 @@ import type {
   OdsSourceTableDetail,
   PhysicalDataSource,
   PhysicalInventory,
+  LakePhysicalSummary,
 } from './types';
 
 const PHYSICAL_API = '/api/v1/lake/physical';
@@ -34,6 +35,9 @@ export interface LakeRecommendation {
 
 export const fetchPhysicalSources = (params: Record<string, unknown>): Promise<ApiResponse<LakePage<PhysicalDataSource>>> =>
   HttpUtils.post(`${PHYSICAL_API}/datasources/page`, params);
+
+export const fetchPhysicalSummary = (): Promise<ApiResponse<LakePhysicalSummary>> =>
+  HttpUtils.get(`${PHYSICAL_API}/summary`);
 
 export const recommendLakeMode = (payload: Record<string, unknown>): Promise<ApiResponse<LakeRecommendation>> =>
   HttpUtils.post('/api/v1/lake/recommend', payload);

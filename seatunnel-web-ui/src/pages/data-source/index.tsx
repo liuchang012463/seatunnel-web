@@ -325,6 +325,18 @@ const DataSourcePage: React.FC = () => {
     history.push(`/data-exploration/results?${query.toString()}`);
   };
 
+  const handleLakePhysical = (record: DataSourceRecord) => {
+    if (record.id) history.push(`/lake/resources/${record.id}`);
+  };
+
+  const handleLakeLogical = (record: DataSourceRecord) => {
+    if (record.id) history.push(`/lake/logical-access?sourceDataSourceId=${record.id}`);
+  };
+
+  const handleLakeRecommend = (record: DataSourceRecord) => {
+    if (record.id) history.push(`/lake/resources?recommendSourceDataSourceId=${record.id}`);
+  };
+
   const handleStatusChange = (record: DataSourceRecord, nextStatus: DataSourceLifecycleStatus) => {
     const statusLabel = {
       ENABLED: '启用',
@@ -423,6 +435,21 @@ const DataSourcePage: React.FC = () => {
       key: 'updateTime',
       width: 170,
       render: (value) => value || '-',
+    },
+    {
+      title: '双模入湖',
+      key: 'lake',
+      width: 220,
+      render: (_value, record) => {
+        const ready = record.metadataSyncStatus === 'READY';
+        const disabled = !ready || record.status === 'REVOKED';
+        const reason = ready ? undefined : 'Metadata 尚未 READY，请先完成数据源探查';
+        return <Space size={2}>
+          <Tooltip title={reason || '物理入湖'}><Button type="link" size="small" disabled={disabled} onClick={() => handleLakePhysical(record)}>物理</Button></Tooltip>
+          <Tooltip title={reason || '推荐入口'}><Button type="link" size="small" disabled={disabled} onClick={() => handleLakeRecommend(record)}>推荐</Button></Tooltip>
+          <Tooltip title={reason || '逻辑入湖'}><Button type="link" size="small" disabled={disabled} onClick={() => handleLakeLogical(record)}>逻辑</Button></Tooltip>
+        </Space>;
+      },
     },
     {
       title: '操作',
@@ -581,6 +608,9 @@ const DataSourcePage: React.FC = () => {
                               }}
                               onViewExploration={handleViewExploration}
                               onStatusChange={handleStatusChange}
+                              onLakePhysical={handleLakePhysical}
+                              onLakeLogical={handleLakeLogical}
+                              onLakeRecommend={handleLakeRecommend}
                             />
                           ))}
                         </div>
