@@ -34,7 +34,8 @@ class LakeRecommendationServiceImplTest {
         assertEquals(LakeRecommendationReason.PHYSICAL_MODE_SELECTED, result.reason());
         assertTrue(result.physicalCapability().supported());
         assertTrue(result.disabledReasons().isEmpty());
-        verify(resolver).resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE);
+        verify(resolver).resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE,
+                true, true);
 
         LakeRecommendationVO governance = service.recommend(request(false, true, false));
         assertEquals(LakeRecommendationMode.PHYSICAL, governance.mode());
@@ -44,7 +45,8 @@ class LakeRecommendationServiceImplTest {
     void returnsUnsupportedWithPhysicalReasonsWhenPhysicalCapabilityIsMissing() {
         LakeExternalCatalogCapabilityResolver resolver = mock(
                 LakeExternalCatalogCapabilityResolver.class);
-        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE))
+        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE,
+                true, true))
                 .thenReturn(new LakeCatalogCapability(LakeJdbcAdapterType.MYSQL, true, List.of()));
         LakeRecommendationServiceImpl service = new LakeRecommendationServiceImpl(resolver,
                 (DorisCapability) null);
@@ -63,7 +65,8 @@ class LakeRecommendationServiceImplTest {
     void recommendsLogicalOnlyForJoinOnlyWhenCatalogCapabilityIsEnabled() {
         LakeExternalCatalogCapabilityResolver resolver = mock(
                 LakeExternalCatalogCapabilityResolver.class);
-        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE))
+        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE,
+                true, true))
                 .thenReturn(new LakeCatalogCapability(LakeJdbcAdapterType.MYSQL, true, List.of()));
         LakeRecommendationServiceImpl service = new LakeRecommendationServiceImpl(resolver,
                 new DorisCapability(false, false, List.of(DorisCapabilityReason.LAKE_DORIS_UNREACHABLE)));
@@ -80,7 +83,8 @@ class LakeRecommendationServiceImplTest {
     void returnsUnsupportedWithCatalogReasonsWhenJoinCapabilityIsDisabled() {
         LakeExternalCatalogCapabilityResolver resolver = mock(
                 LakeExternalCatalogCapabilityResolver.class);
-        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE))
+        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE,
+                true, true))
                 .thenReturn(new LakeCatalogCapability(LakeJdbcAdapterType.MYSQL, false,
                         List.of("SOURCE_NOT_FOUND")));
         LakeRecommendationServiceImpl service = new LakeRecommendationServiceImpl(resolver,
@@ -98,7 +102,8 @@ class LakeRecommendationServiceImplTest {
     void noIntentIsUnsupportedAndDoesNotTreatScopeAsAuthorization() {
         LakeExternalCatalogCapabilityResolver resolver = mock(
                 LakeExternalCatalogCapabilityResolver.class);
-        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.ALL))
+        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.ALL,
+                true, true))
                 .thenReturn(new LakeCatalogCapability(LakeJdbcAdapterType.MYSQL, true, List.of()));
         LakeRecommendationServiceImpl service = new LakeRecommendationServiceImpl(resolver,
                 new DorisCapability(true, true, List.of()));
@@ -110,7 +115,8 @@ class LakeRecommendationServiceImplTest {
         assertEquals(LakeRecommendationMode.UNSUPPORTED, result.mode());
         assertEquals(LakeRecommendationReason.NO_MODE_REQUESTED, result.reason());
         assertTrue(result.disabledReasons().isEmpty());
-        verify(resolver).resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.ALL);
+        verify(resolver).resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.ALL,
+                true, true);
     }
 
     @Test
@@ -137,7 +143,8 @@ class LakeRecommendationServiceImplTest {
     void resolverFailureIsReportedWithoutEscapingItsDetails() {
         LakeExternalCatalogCapabilityResolver resolver = mock(
                 LakeExternalCatalogCapabilityResolver.class);
-        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE))
+        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE,
+                true, true))
                 .thenThrow(new IllegalStateException("jdbc password=secret"));
         LakeRecommendationServiceImpl service = new LakeRecommendationServiceImpl(resolver,
                 new DorisCapability(false, false, List.of()));
@@ -149,6 +156,26 @@ class LakeRecommendationServiceImplTest {
         assertFalse(result.toString().contains("secret"));
         assertTrue(result.logicalCapability().disabledReasons().contains(
                 LakeRecommendationReason.LOGICAL_CAPABILITY_MISSING));
+    }
+
+    @Test
+    void productionPathUsesExplicitUnknownLogicalReachability() {
+        LakeExternalCatalogCapabilityResolver resolver = mock(
+                LakeExternalCatalogCapabilityResolver.class);
+        when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE,
+                false, false))
+                .thenReturn(new LakeCatalogCapability(LakeJdbcAdapterType.MYSQL, true, List.of()));
+        LakeRecommendationServiceImpl service = new LakeRecommendationServiceImpl(
+                resolver, (sourceDataSourceId, adapter) ->
+                        new DorisCapability(false, false, List.of()), false);
+
+        LakeRecommendationVO result = service.recommend(request(false, false, true));
+
+        assertEquals(LakeRecommendationMode.UNSUPPORTED, result.mode());
+        assertTrue(result.logicalCapability().disabledReasons().contains(
+                LakeRecommendationReason.LOGICAL_CAPABILITY_UNKNOWN));
+        verify(resolver).resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE,
+                false, false);
     }
 
     private static LakeRecommendationRequestDTO request(

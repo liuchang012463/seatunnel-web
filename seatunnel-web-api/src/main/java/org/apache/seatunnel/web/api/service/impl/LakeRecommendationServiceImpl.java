@@ -9,9 +9,9 @@ import org.apache.seatunnel.web.api.lake.recommendation.LakeRecommendationMode;
 import org.apache.seatunnel.web.api.lake.recommendation.LakeRecommendationReason;
 import org.apache.seatunnel.web.api.lake.recommendation.LakeRecommendationRequestDTO;
 import org.apache.seatunnel.web.api.lake.recommendation.LakeRecommendationVO;
+import org.apache.seatunnel.web.api.lake.recommendation.LakePhysicalCapabilityPublisher;
 import org.apache.seatunnel.web.api.service.LakeRecommendationService;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +20,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 /**
@@ -32,37 +33,54 @@ import java.util.function.Supplier;
 public class LakeRecommendationServiceImpl implements LakeRecommendationService {
 
     private final LakeExternalCatalogCapabilityResolver catalogCapabilityResolver;
-    private final Supplier<DorisCapability> physicalCapabilitySupplier;
+    private final BiFunction<Long, LakeJdbcAdapterType, DorisCapability>
+            physicalCapabilitySupplier;
+    private final boolean logicalReachabilityKnown;
 
     /**
-     * Optional capability publication keeps this endpoint safe while the
-     * physical capability provider is not configured.  Missing capability is
-     * represented as UNSUPPORTED rather than guessed from request scope.
+     * Production wiring uses the server-owned publisher.  A missing or
+     * unavailable target/source is represented as UNSUPPORTED rather than
+     * guessed from request scope.
      */
     @Autowired
     public LakeRecommendationServiceImpl(
             LakeExternalCatalogCapabilityResolver catalogCapabilityResolver,
-            ObjectProvider<DorisCapability> physicalCapabilityProvider) {
+            LakePhysicalCapabilityPublisher physicalCapabilityPublisher) {
         this(catalogCapabilityResolver,
-                physicalCapabilityProvider == null
-                        ? () -> null
-                        : physicalCapabilityProvider::getIfAvailable);
+                (sourceDataSourceId, ignoredAdapter) ->
+                        physicalCapabilityPublisher.current(sourceDataSourceId),
+                false);
     }
 
     /** Constructor used by focused tests and a server-owned capability facade. */
     public LakeRecommendationServiceImpl(
             LakeExternalCatalogCapabilityResolver catalogCapabilityResolver,
             DorisCapability physicalCapability) {
-        this(catalogCapabilityResolver, () -> physicalCapability);
+        this(catalogCapabilityResolver, (sourceDataSourceId, adapter) -> physicalCapability, true);
     }
 
     public LakeRecommendationServiceImpl(
             LakeExternalCatalogCapabilityResolver catalogCapabilityResolver,
             Supplier<DorisCapability> physicalCapabilitySupplier) {
+        this(catalogCapabilityResolver,
+                (sourceDataSourceId, adapter) -> physicalCapabilitySupplier.get(), true);
+    }
+
+    /**
+     * The production path deliberately passes {@code false}: the current
+     * server has no bounded source-side reachability probe and must not let
+     * the resolver's convenience overload turn configuration into a claim of
+     * network reachability.  Focused tests may provide known probe outcomes.
+     */
+    public LakeRecommendationServiceImpl(
+            LakeExternalCatalogCapabilityResolver catalogCapabilityResolver,
+            BiFunction<Long, LakeJdbcAdapterType, DorisCapability> physicalCapabilitySupplier,
+            boolean logicalReachabilityKnown) {
         this.catalogCapabilityResolver = Objects.requireNonNull(
                 catalogCapabilityResolver, "catalogCapabilityResolver");
         this.physicalCapabilitySupplier = Objects.requireNonNull(
                 physicalCapabilitySupplier, "physicalCapabilitySupplier");
+        this.logicalReachabilityKnown = logicalReachabilityKnown;
     }
 
     @Override
@@ -72,7 +90,7 @@ public class LakeRecommendationServiceImpl implements LakeRecommendationService 
                     physicalSummary(null), logicalSummary(null));
         }
 
-        DorisCapability physicalCapability = physicalCapability();
+        DorisCapability physicalCapability = physicalCapability(request);
         LakeCatalogCapability logicalCapability = logicalCapability(request);
         LakeRecommendationCapabilitySummary physical = physicalSummary(physicalCapability);
         LakeRecommendationCapabilitySummary logical = logicalSummary(logicalCapability);
@@ -97,9 +115,10 @@ public class LakeRecommendationServiceImpl implements LakeRecommendationService 
         return unsupported(request, LakeRecommendationReason.NO_MODE_REQUESTED, physical, logical);
     }
 
-    private DorisCapability physicalCapability() {
+    private DorisCapability physicalCapability(LakeRecommendationRequestDTO request) {
         try {
-            return physicalCapabilitySupplier.get();
+            return physicalCapabilitySupplier.apply(
+                    request.getSourceDataSourceId(), request.getAdapter());
         } catch (RuntimeException ignored) {
             return null;
         }
@@ -107,11 +126,24 @@ public class LakeRecommendationServiceImpl implements LakeRecommendationService 
 
     private LakeCatalogCapability logicalCapability(LakeRecommendationRequestDTO request) {
         try {
-            return catalogCapabilityResolver.resolve(
-                    request.getSourceDataSourceId(), request.getAdapter(), request.getTargetScope());
+            LakeCatalogCapability capability = catalogCapabilityResolver.resolve(
+                    request.getSourceDataSourceId(), request.getAdapter(), request.getTargetScope(),
+                    logicalReachabilityKnown, logicalReachabilityKnown);
+            if (capability == null || logicalReachabilityKnown) {
+                return capability;
+            }
+            return new LakeCatalogCapability(capability.adapter(), false,
+                    appendReason(capability.reasonCodes(),
+                            LakeRecommendationReason.LOGICAL_CAPABILITY_UNKNOWN));
         } catch (RuntimeException ignored) {
             return null;
         }
+    }
+
+    private static List<String> appendReason(List<String> reasons, String reason) {
+        Set<String> values = new LinkedHashSet<>(safeReasons(reasons));
+        values.add(reason);
+        return List.copyOf(values);
     }
 
     private static boolean isComplete(LakeRecommendationRequestDTO request) {

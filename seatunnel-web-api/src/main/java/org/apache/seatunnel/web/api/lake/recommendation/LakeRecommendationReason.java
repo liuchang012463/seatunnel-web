@@ -14,6 +14,8 @@ public final class LakeRecommendationReason {
     public static final String LOGICAL_CAPABILITY_MISSING = "LOGICAL_CAPABILITY_MISSING";
     public static final String LOGICAL_CAPABILITY_UNAVAILABLE =
             "LOGICAL_CAPABILITY_UNAVAILABLE";
+    /** Logical reachability is intentionally not inferred from static metadata. */
+    public static final String LOGICAL_CAPABILITY_UNKNOWN = "LOGICAL_CAPABILITY_UNKNOWN";
 
     private LakeRecommendationReason() {
     }
