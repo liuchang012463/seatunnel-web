@@ -1,18 +1,43 @@
 package org.apache.seatunnel.web.api.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.seatunnel.web.api.lake.LakeErrorCode;
+import org.apache.seatunnel.web.api.lake.DorisIdentifier;
 import org.apache.seatunnel.web.api.lake.LakeProperties;
+import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogCapability;
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogCapabilityReason;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpec;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpecCanonicalizer;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpecValidator;
 import org.apache.seatunnel.web.api.lake.catalog.LakeExternalCatalogCapabilityResolver;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogOperationResult;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogValidationResult;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogCredentialRevisionService;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcCatalogDdlBuilder;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcDriverRegistry;
 import org.apache.seatunnel.web.api.lake.catalog.LakeLogicalCapabilityVO;
 import org.apache.seatunnel.web.api.lake.doris.DorisLakeClient;
 import org.apache.seatunnel.web.api.lake.doris.LakeDorisClientProvider;
+import org.apache.seatunnel.web.api.lake.operation.LakeExternalOperationException;
+import org.apache.seatunnel.web.api.lake.operation.LakeOperationException;
+import org.apache.seatunnel.web.api.lake.operation.LakeOperationExecution;
+import org.apache.seatunnel.web.api.lake.operation.LakeOperationHandle;
+import org.apache.seatunnel.web.api.lake.operation.LakeOperationIntent;
+import org.apache.seatunnel.web.api.lake.operation.LakeResourceOperationCoordinator;
+import org.apache.seatunnel.web.api.lake.operation.LakeResourceTypes;
+import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.LakeLogicalCatalogService;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
+import org.apache.seatunnel.web.common.enums.LakeOperationType;
+import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
+import org.apache.seatunnel.web.spi.bean.dto.LakeExternalCatalogCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeExternalCatalogPageDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.LakeExternalCatalogVO;
@@ -20,9 +45,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Read-only logical catalog facade.
@@ -34,13 +62,43 @@ import java.util.Set;
 @Service
 public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService {
 
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .disable(SerializationFeature.INDENT_OUTPUT);
+
     private final DataSourceDao dataSourceDao;
     private final LakeProperties lakeProperties;
     private final LakeExternalCatalogCapabilityResolver capabilityResolver;
     private final LakeDorisClientProvider dorisClientProvider;
     private final LakeExternalCatalogBindingPersistenceService persistenceService;
+    private final LakeJdbcDriverRegistry driverRegistry;
+    private final LakeCatalogCredentialRevisionService credentialService;
+    private final LakeResourceOperationCoordinator coordinator;
+    private final CurrentUserProvider currentUserProvider;
 
     @Autowired
+    public LakeLogicalCatalogServiceImpl(
+            DataSourceDao dataSourceDao,
+            LakeProperties lakeProperties,
+            LakeExternalCatalogCapabilityResolver capabilityResolver,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeExternalCatalogBindingPersistenceService persistenceService,
+            LakeJdbcDriverRegistry driverRegistry,
+            LakeCatalogCredentialRevisionService credentialService,
+            LakeResourceOperationCoordinator coordinator,
+            CurrentUserProvider currentUserProvider) {
+        this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
+        this.lakeProperties = Objects.requireNonNull(lakeProperties, "lakeProperties");
+        this.capabilityResolver = Objects.requireNonNull(capabilityResolver, "capabilityResolver");
+        this.dorisClientProvider = Objects.requireNonNull(dorisClientProvider, "dorisClientProvider");
+        this.persistenceService = Objects.requireNonNull(persistenceService, "persistenceService");
+        this.driverRegistry = Objects.requireNonNull(driverRegistry, "driverRegistry");
+        this.credentialService = Objects.requireNonNull(credentialService, "credentialService");
+        this.coordinator = Objects.requireNonNull(coordinator, "coordinator");
+        this.currentUserProvider = Objects.requireNonNull(currentUserProvider, "currentUserProvider");
+    }
+
+    /** Constructor retained for focused read-only tests and embedders. */
     public LakeLogicalCatalogServiceImpl(
             DataSourceDao dataSourceDao,
             LakeProperties lakeProperties,
@@ -52,6 +110,11 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
         this.capabilityResolver = Objects.requireNonNull(capabilityResolver, "capabilityResolver");
         this.dorisClientProvider = Objects.requireNonNull(dorisClientProvider, "dorisClientProvider");
         this.persistenceService = Objects.requireNonNull(persistenceService, "persistenceService");
+        this.driverRegistry = new LakeJdbcDriverRegistry();
+        this.credentialService = new LakeCatalogCredentialRevisionService(
+                lakeProperties, ignored -> null);
+        this.coordinator = null;
+        this.currentUserProvider = null;
     }
 
     @Override
@@ -73,10 +136,13 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
         List<String> reasons = capability == null || capability.reasonCodes() == null
                 ? List.of(LakeCatalogCapabilityReason.ADAPTER_MISSING)
                 : capability.reasonCodes();
-        // Keep the source-network unknown state visible even if a custom
-        // resolver implementation omits the stable reason code.
-        if (!containsIgnoreCase(reasons, LakeCatalogCapabilityReason.SOURCE_NETWORK_UNREACHABLE)) {
-            reasons = append(reasons, LakeCatalogCapabilityReason.SOURCE_NETWORK_UNREACHABLE);
+        // The resolver uses the same disabled reason for an explicit failed
+        // probe and an omitted probe.  This API has not probed the source, so
+        // publish the more precise UNKNOWN warning and never imply failure.
+        reasons = withoutIgnoreCase(reasons,
+                LakeCatalogCapabilityReason.SOURCE_NETWORK_UNREACHABLE);
+        if (!containsIgnoreCase(reasons, LakeCatalogCapabilityReason.SOURCE_NETWORK_UNKNOWN)) {
+            reasons = append(reasons, LakeCatalogCapabilityReason.SOURCE_NETWORK_UNKNOWN);
         }
         // Source reachability is intentionally unprobed, therefore this
         // endpoint must remain disabled even when static checks and the lake
@@ -100,6 +166,444 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
     @Override
     public LakeExternalCatalogVO detail(Long bindingId) {
         return persistenceService.detail(bindingId);
+    }
+
+    /**
+     * Creates a catalog through the durable three-phase operation boundary.
+     * The request is persisted first without credentials; credentials and the
+     * complete desired spec exist only inside the external-operation callback.
+     */
+    @Override
+    public LakeExternalCatalogVO create(LakeExternalCatalogCreateDTO request) {
+        CreateInput input = validateCreateInput(request);
+        requireExecutionBoundaries();
+        if (!credentialService.isConfigured()) {
+            throw catalogInvalid("catalog credential secret is not configured");
+        }
+        staticPreflight(input.sourceDataSourceId(), input.adapter(), input.scope());
+
+        LakeExternalCatalogCreateDTO pendingRequest = pendingRequest(input);
+        LakeExternalCatalogVO pending = persistenceService.createPending(
+                pendingRequest, requireCurrentUserId());
+        if (pending == null || pending.getId() == null || pending.getId() <= 0) {
+            throw catalogInvalid("catalog binding could not be reserved");
+        }
+
+        LakeOperationHandle handle;
+        try {
+            handle = coordinator.begin(new LakeOperationIntent(
+                    LakeResourceTypes.EXTERNAL_CATALOG_BINDING,
+                    pending.getId(),
+                    LakeOperationType.CREATE_CATALOG,
+                    requestHash(input),
+                    requireCurrentUserId()));
+        } catch (LakeOperationException exception) {
+            throw catalogConflict("catalog binding is currently being changed");
+        }
+
+        AtomicReference<String> errorCode = new AtomicReference<>();
+        try {
+            LakeOperationExecution<LakeCatalogOperationResult> execution = coordinator.execute(
+                    handle, () -> executeCreate(input, errorCode));
+            if (!coordinator.finalizeSuccess(
+                    handle, "Catalog created and validated", execution.externalResult())) {
+                throw catalogStale("catalog create result is stale");
+            }
+            return persistenceService.detail(pending.getId());
+        } catch (LakeOperationException exception) {
+            throw classifiedOperationFailure(errorCode.get(),
+                    "catalog create is unavailable");
+        }
+    }
+
+    /** Reads the existing Doris catalog and commits a safe actual snapshot. */
+    @Override
+    public LakeExternalCatalogVO validate(Long bindingId) {
+        requireExecutionBoundaries();
+        LakeExternalCatalogVO binding = persistenceService.detail(bindingId);
+        if (binding == null || Boolean.TRUE.equals(binding.getDeleted())) {
+            throw catalogNotFound();
+        }
+        LakeCatalogDesiredSpec desired = persistenceService.desiredSpec(bindingId);
+        final LakeCatalogDesiredSpec normalized;
+        try {
+            normalized = LakeCatalogDesiredSpecValidator.validateAndNormalize(desired);
+        } catch (RuntimeException exception) {
+            throw catalogInvalid("persisted desired spec");
+        }
+        LakeJdbcAdapterType adapter = normalized.adapter();
+        Long lakeDataSourceId = binding.getLakeDataSourceId();
+        if (lakeDataSourceId == null || lakeDataSourceId <= 0) {
+            throw catalogInvalid("lakeDataSourceId");
+        }
+        LakeOperationHandle handle;
+        try {
+            handle = coordinator.begin(new LakeOperationIntent(
+                    LakeResourceTypes.EXTERNAL_CATALOG_BINDING,
+                    bindingId,
+                    LakeOperationType.VALIDATE,
+                    LakeCatalogDesiredSpecCanonicalizer.sha256(normalized),
+                    requireCurrentUserId()));
+        } catch (LakeOperationException exception) {
+            throw catalogConflict("catalog binding is currently being changed");
+        }
+
+        AtomicReference<String> errorCode = new AtomicReference<>();
+        try {
+            LakeOperationExecution<LakeCatalogOperationResult> execution = coordinator.execute(
+                    handle, () -> executeValidation(
+                            lakeDataSourceId, normalized, errorCode));
+            if (!coordinator.finalizeSuccess(
+                    handle, "Catalog validation completed", execution.externalResult())) {
+                throw catalogStale("catalog validation result is stale");
+            }
+            return persistenceService.detail(bindingId);
+        } catch (LakeOperationException exception) {
+            throw classifiedOperationFailure(errorCode.get(),
+                    "catalog validation is unavailable");
+        }
+    }
+
+    private LakeCatalogOperationResult executeCreate(
+            CreateInput input, AtomicReference<String> errorCode) {
+        try (DorisLakeClient client = dorisClientProvider.get(input.lakeDataSourceId())) {
+            if (!client.ping()) {
+                errorCode.set(LakeErrorCode.LAKE_DORIS_UNAVAILABLE);
+                throw external(LakeErrorCode.LAKE_DORIS_UNAVAILABLE,
+                        "lake Doris is unavailable");
+            }
+            DataSource source = requireSource(input.sourceDataSourceId());
+            LakeCatalogCredentialRevisionService.ExecutionCredentials credentials =
+                    credentialService.resolveForExecution(source, input.adapter());
+            LakeJdbcDriverRegistry.DriverStatus driverStatus =
+                    driverRegistry.status(input.adapter());
+            LakeJdbcDriverRegistry.DriverRegistration registration = driverStatus.registration();
+            if (!driverStatus.available() || registration == null) {
+                errorCode.set(LakeErrorCode.LAKE_CATALOG_REQUEST_INVALID);
+                throw external(LakeErrorCode.LAKE_CATALOG_REQUEST_INVALID,
+                        "catalog driver is unavailable");
+            }
+            LakeCatalogDesiredSpec desired = desiredSpec(input, source, credentials, registration);
+            client.createCatalog(desired, driverRegistry, credentials.ddlCredentials());
+            if (!client.catalogExists(desired.catalogName())) {
+                errorCode.set(LakeErrorCode.LAKE_DORIS_UNAVAILABLE);
+                throw external(LakeErrorCode.LAKE_DORIS_UNAVAILABLE,
+                        "catalog create could not be verified");
+            }
+            LakeCatalogValidationResult validation = client.validateCatalog(
+                    desired.catalogName(), desired);
+            if (validation == null || !validation.isMatch()) {
+                errorCode.set(LakeErrorCode.LAKE_CATALOG_VALIDATION_FAILED);
+                throw external(LakeErrorCode.LAKE_CATALOG_VALIDATION_FAILED,
+                        "catalog validation did not match");
+            }
+            return publication(desired, validation, LakeResourceStatus.READY);
+        } catch (LakeExternalOperationException exception) {
+            throw exception;
+        } catch (LakeServiceException exception) {
+            String code = exception.getLakeErrorCode();
+            errorCode.set(code);
+            throw external(code, "catalog operation is unavailable");
+        } catch (RuntimeException exception) {
+            errorCode.set(classifyRuntime(exception));
+            throw external(errorCode.get(), "catalog operation is unavailable");
+        }
+    }
+
+    private LakeCatalogOperationResult executeValidation(
+            Long lakeDataSourceId,
+            LakeCatalogDesiredSpec desired,
+            AtomicReference<String> errorCode) {
+        try (DorisLakeClient client = dorisClientProvider.get(lakeDataSourceId)) {
+            if (!client.ping()) {
+                errorCode.set(LakeErrorCode.LAKE_DORIS_UNAVAILABLE);
+                throw external(LakeErrorCode.LAKE_DORIS_UNAVAILABLE,
+                        "lake Doris is unavailable");
+            }
+            LakeCatalogValidationResult validation = client.validateCatalog(
+                    desired.catalogName(), desired);
+            if (validation == null) {
+                errorCode.set(LakeErrorCode.LAKE_CATALOG_VALIDATION_FAILED);
+                throw external(LakeErrorCode.LAKE_CATALOG_VALIDATION_FAILED,
+                        "catalog validation returned no result");
+            }
+            return new LakeCatalogOperationResult(
+                    null,
+                    null,
+                    null,
+                    null,
+                    snapshotJson(validation),
+                    validation.status().name(),
+                    resourceStatus(validation));
+        } catch (LakeExternalOperationException exception) {
+            throw exception;
+        } catch (LakeServiceException exception) {
+            String code = exception.getLakeErrorCode();
+            errorCode.set(code);
+            throw external(code, "catalog validation is unavailable");
+        } catch (RuntimeException exception) {
+            errorCode.set(LakeErrorCode.LAKE_DORIS_UNAVAILABLE);
+            throw external(LakeErrorCode.LAKE_DORIS_UNAVAILABLE,
+                    "catalog validation is unavailable");
+        }
+    }
+
+    private CreateInput validateCreateInput(LakeExternalCatalogCreateDTO request) {
+        if (request == null || request.getSourceDataSourceId() == null
+                || request.getSourceDataSourceId() <= 0) {
+            throw catalogInvalid("sourceDataSourceId");
+        }
+        Long lakeDataSourceId = request.getLakeDataSourceId() == null
+                ? lakeProperties.getDataSourceId() : request.getLakeDataSourceId();
+        if (lakeDataSourceId == null || lakeDataSourceId <= 0) {
+            throw catalogInvalid("lakeDataSourceId");
+        }
+        LakeJdbcAdapterType adapter = adapterFor(request.getAdapter());
+        if (adapter == null) {
+            throw catalogInvalid("adapter");
+        }
+        if (request.getScope() == null) {
+            throw catalogInvalid("scope");
+        }
+        String catalogName;
+        try {
+            catalogName = DorisIdentifier.normalize(request.getTargetCatalogName());
+        } catch (RuntimeException exception) {
+            throw catalogInvalid("targetCatalogName");
+        }
+        // Exercise the same strict scope/list/option validation as the DDL
+        // builder without reading credentials or driver configuration.
+        LakeCatalogDesiredSpec shape = new LakeCatalogDesiredSpec(
+                catalogName, request.getSourceDataSourceId(), "source",
+                adapter, request.getScope(), "jdbc:placeholder", "driver.jar",
+                "x.Driver", SHA256_PLACEHOLDER, "registry", "credential",
+                request.getDatabaseInclude(), request.getTableInclude(), request.getOptions());
+        try {
+            shape = LakeCatalogDesiredSpecValidator.validateAndNormalize(shape);
+        } catch (RuntimeException exception) {
+            throw catalogInvalid("scope or catalog filters");
+        }
+        return new CreateInput(
+                lakeDataSourceId,
+                request.getSourceDataSourceId(),
+                catalogName,
+                adapter,
+                request.getScope(),
+                shape.databaseInclude(),
+                shape.tableInclude(),
+                shape.options());
+    }
+
+    private LakeExternalCatalogCreateDTO pendingRequest(CreateInput input) {
+        LakeExternalCatalogCreateDTO pending = new LakeExternalCatalogCreateDTO();
+        pending.setLakeDataSourceId(input.lakeDataSourceId());
+        pending.setSourceDataSourceId(input.sourceDataSourceId());
+        pending.setTargetCatalogName(input.catalogName());
+        pending.setAdapter(input.adapter().code());
+        pending.setScope(input.scope());
+        pending.setDatabaseInclude(input.databaseInclude());
+        pending.setTableInclude(input.tableInclude());
+        pending.setOptions(input.options());
+        return pending;
+    }
+
+    private void staticPreflight(Long sourceId, LakeJdbcAdapterType adapter,
+                                 LakeCatalogScope scope) {
+        LakeCatalogCapability capability;
+        try {
+            // Network is deliberately not a static gate.  The external
+            // callback performs the real ping/create/validate proof.
+            capability = capabilityResolver.resolve(sourceId, adapter, scope, true, true);
+        } catch (RuntimeException exception) {
+            throw catalogInvalid("catalog capability");
+        }
+        if (capability == null) {
+            throw catalogInvalid("catalog capability");
+        }
+        List<String> reasons = capability.reasonCodes() == null
+                ? List.of() : capability.reasonCodes();
+        boolean blocking = !capability.enabled()
+                && reasons.stream().noneMatch(LakeLogicalCatalogServiceImpl::isNetworkWarning)
+                || reasons.stream().anyMatch(reason -> !isNetworkWarning(reason));
+        if (blocking) {
+            throw catalogInvalid("catalog capability");
+        }
+    }
+
+    private LakeCatalogDesiredSpec desiredSpec(
+            CreateInput input,
+            DataSource source,
+            LakeCatalogCredentialRevisionService.ExecutionCredentials credentials,
+            LakeJdbcDriverRegistry.DriverRegistration registration) {
+        LakeCatalogDesiredSpec desired = new LakeCatalogDesiredSpec(
+                input.catalogName(),
+                source.getId(),
+                sourceRevision(source),
+                input.adapter(),
+                input.scope(),
+                credentials.jdbcUrl(),
+                registration.url(),
+                registration.driverClass(),
+                registration.checksum(),
+                registration.registryRevision(),
+                credentials.credentialRevision(),
+                input.databaseInclude(),
+                input.tableInclude(),
+                input.options());
+        try {
+            return LakeCatalogDesiredSpecValidator.validateAndNormalize(desired, driverRegistry);
+        } catch (RuntimeException exception) {
+            throw external(LakeErrorCode.LAKE_CATALOG_REQUEST_INVALID,
+                    "catalog desired state is invalid");
+        }
+    }
+
+    private LakeCatalogOperationResult publication(
+            LakeCatalogDesiredSpec desired,
+            LakeCatalogValidationResult validation,
+            LakeResourceStatus resourceStatus) {
+        String canonicalJson = LakeCatalogDesiredSpecCanonicalizer.canonicalJson(desired);
+        return new LakeCatalogOperationResult(
+                canonicalJson,
+                LakeCatalogDesiredSpecCanonicalizer.sha256(canonicalJson),
+                desired.credentialRevision(),
+                desired.driverChecksum(),
+                snapshotJson(validation),
+                validation.status().name(),
+                resourceStatus);
+    }
+
+    private static String snapshotJson(LakeCatalogValidationResult validation) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("status", validation.status().name());
+        snapshot.put("code", validation.code());
+        snapshot.put("actualProperties", validation.actualProperties());
+        snapshot.put("mismatches", validation.mismatches());
+        try {
+            return MAPPER.writeValueAsString(snapshot);
+        } catch (JsonProcessingException exception) {
+            return null;
+        }
+    }
+
+    private static LakeResourceStatus resourceStatus(LakeCatalogValidationResult result) {
+        return switch (result.status()) {
+            case MATCH, MISMATCH -> LakeResourceStatus.READY;
+            case MISSING -> LakeResourceStatus.MISSING;
+            case UNKNOWN -> LakeResourceStatus.UNKNOWN;
+        };
+    }
+
+    private DataSource requireSource(Long sourceId) {
+        try {
+            DataSource source = dataSourceDao.queryById(sourceId);
+            if (source == null) {
+                throw catalogInvalid("sourceDataSourceId");
+            }
+            return source;
+        } catch (LakeServiceException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw catalogInvalid("sourceDataSourceId");
+        }
+    }
+
+    private Integer requireCurrentUserId() {
+        try {
+            Integer userId = currentUserProvider.getCurrentUserId();
+            if (userId == null || userId <= 0) {
+                throw catalogInvalid("current user");
+            }
+            return userId;
+        } catch (LakeServiceException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw catalogInvalid("current user");
+        }
+    }
+
+    private void requireExecutionBoundaries() {
+        if (coordinator == null || currentUserProvider == null) {
+            throw catalogInvalid("catalog execution boundary");
+        }
+    }
+
+    private static String sourceRevision(DataSource source) {
+        if (source.getUpdateTime() == null) {
+            return "datasource-" + source.getId();
+        }
+        return "datasource-" + source.getId() + "-" + source.getUpdateTime().getTime();
+    }
+
+    private static String requestHash(CreateInput input) {
+        return LakeCatalogDesiredSpecCanonicalizer.sha256(
+                "EXTERNAL_CATALOG\u0000" + input.sourceDataSourceId()
+                        + "\u0000" + input.catalogName() + "\u0000"
+                        + input.adapter().code() + "\u0000" + input.scope().name());
+    }
+
+    private static boolean isNetworkWarning(String reason) {
+        return LakeCatalogCapabilityReason.SOURCE_NETWORK_UNKNOWN.equalsIgnoreCase(reason)
+                || LakeCatalogCapabilityReason.SOURCE_NETWORK_UNREACHABLE.equalsIgnoreCase(reason)
+                || LakeCatalogCapabilityReason.LAKE_DORIS_UNREACHABLE.equalsIgnoreCase(reason);
+    }
+
+    private static String classifyRuntime(RuntimeException exception) {
+        if (exception instanceof IllegalArgumentException) {
+            return LakeErrorCode.LAKE_CATALOG_REQUEST_INVALID;
+        }
+        return LakeErrorCode.LAKE_DORIS_UNAVAILABLE;
+    }
+
+    private static LakeExternalOperationException external(String code, String message) {
+        return new LakeExternalOperationException(code, message);
+    }
+
+    private static LakeServiceException classifiedOperationFailure(
+            String errorCode, String fallback) {
+        String code = errorCode == null ? LakeErrorCode.LAKE_DORIS_UNAVAILABLE : errorCode;
+        if (LakeErrorCode.LAKE_CATALOG_REQUEST_INVALID.equals(code)) {
+            return catalogInvalid(fallback);
+        }
+        if (LakeErrorCode.LAKE_CATALOG_VALIDATION_FAILED.equals(code)) {
+            return new LakeServiceException(code, fallback);
+        }
+        if (LakeErrorCode.LAKE_OPERATION_STALE.equals(code)) {
+            return catalogStale(fallback);
+        }
+        return new LakeServiceException(LakeErrorCode.LAKE_DORIS_UNAVAILABLE, fallback);
+    }
+
+    private static LakeServiceException catalogInvalid(String field) {
+        return new LakeServiceException(LakeErrorCode.LAKE_CATALOG_REQUEST_INVALID,
+                "Catalog request is invalid: " + field);
+    }
+
+    private static LakeServiceException catalogConflict(String message) {
+        return new LakeServiceException(LakeErrorCode.LAKE_CATALOG_CONFLICT, message);
+    }
+
+    private static LakeServiceException catalogNotFound() {
+        return new LakeServiceException(LakeErrorCode.LAKE_CATALOG_NOT_FOUND,
+                "Catalog binding does not exist");
+    }
+
+    private static LakeServiceException catalogStale(String message) {
+        return new LakeServiceException(LakeErrorCode.LAKE_OPERATION_STALE, message);
+    }
+
+    private static final String SHA256_PLACEHOLDER =
+            "0000000000000000000000000000000000000000000000000000000000000000";
+
+    private record CreateInput(
+            Long lakeDataSourceId,
+            Long sourceDataSourceId,
+            String catalogName,
+            LakeJdbcAdapterType adapter,
+            LakeCatalogScope scope,
+            List<String> databaseInclude,
+            List<String> tableInclude,
+            Map<String, String> options) {
     }
 
     private LakeJdbcAdapterType adapterFor(Long sourceDataSourceId) {
@@ -150,5 +654,12 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
 
     private static boolean containsIgnoreCase(List<String> values, String expected) {
         return values != null && values.stream().anyMatch(value -> expected.equalsIgnoreCase(value));
+    }
+
+    private static List<String> withoutIgnoreCase(List<String> values, String excluded) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        return values.stream().filter(value -> !excluded.equalsIgnoreCase(value)).toList();
     }
 }

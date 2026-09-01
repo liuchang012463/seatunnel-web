@@ -20,6 +20,8 @@ public final class LakeErrorCode {
     public static final String LAKE_CATALOG_CONFLICT = "LAKE_CATALOG_CONFLICT";
     public static final String LAKE_CATALOG_CAS_FAILED = "LAKE_CATALOG_CAS_FAILED";
     public static final String LAKE_CATALOG_REQUEST_INVALID = "LAKE_CATALOG_REQUEST_INVALID";
+    public static final String LAKE_CATALOG_VALIDATION_FAILED =
+            "LAKE_CATALOG_VALIDATION_FAILED";
 
     private LakeErrorCode() {
     }
@@ -43,6 +45,7 @@ public final class LakeErrorCode {
             case LAKE_CATALOG_CONFLICT -> 11914;
             case LAKE_CATALOG_CAS_FAILED -> 11915;
             case LAKE_CATALOG_REQUEST_INVALID -> 11916;
+            case LAKE_CATALOG_VALIDATION_FAILED -> 11917;
             default -> 11900;
         };
     }

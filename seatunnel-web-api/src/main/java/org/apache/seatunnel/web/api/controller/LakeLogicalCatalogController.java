@@ -1,10 +1,12 @@
 package org.apache.seatunnel.web.api.controller;
 
+import jakarta.validation.Valid;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
 import org.apache.seatunnel.web.api.lake.catalog.LakeLogicalCapabilityVO;
 import org.apache.seatunnel.web.api.service.LakeLogicalCatalogService;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 import org.apache.seatunnel.web.spi.bean.dto.LakeExternalCatalogPageDTO;
+import org.apache.seatunnel.web.spi.bean.dto.LakeExternalCatalogCreateDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.LakeExternalCatalogVO;
@@ -58,5 +60,16 @@ public class LakeLogicalCatalogController {
     @GetMapping("/catalogs/{id}")
     public Result<LakeExternalCatalogVO> detail(@PathVariable Long id) {
         return Result.buildSuc(service.detail(id));
+    }
+
+    @PostMapping("/catalogs")
+    public Result<LakeExternalCatalogVO> create(
+            @Valid @RequestBody LakeExternalCatalogCreateDTO request) {
+        return Result.buildSuc(service.create(request));
+    }
+
+    @PostMapping("/catalogs/{id}/validate")
+    public Result<LakeExternalCatalogVO> validate(@PathVariable Long id) {
+        return Result.buildSuc(service.validate(id));
     }
 }

@@ -66,11 +66,7 @@ public class LakeCatalogCredentialRevisionService {
                 connectionParamFactory, "connectionParamFactory");
         this.configuredSecret = firstNonBlank(
                 configuredSecret,
-                properties.getCatalogCredentialSecret(),
-                // Keep existing installations usable while the dedicated
-                // setting is rolled out.  The HMAC domain still separates
-                // catalog revisions from preview-token signatures.
-                properties.getPreviewTokenSecret());
+                properties.getCatalogCredentialSecret());
     }
 
     /**
@@ -115,6 +111,11 @@ public class LakeCatalogCredentialRevisionService {
     /** Alias kept explicit for callers that prefer a verb-style method name. */
     public String computeCredentialRevision(DataSource source, LakeJdbcAdapterType adapter) {
         return credentialRevision(source, adapter);
+    }
+
+    /** Returns whether the independent catalog HMAC secret is configured. */
+    public boolean isConfigured() {
+        return StringUtils.isNotBlank(configuredSecret);
     }
 
     /** Resolves an existing source by id without retaining it in this service. */

@@ -19,6 +19,16 @@ public interface LakeResourceGateway {
 
     boolean finalizeSuccess(LakeOperationHandle handle, String summary);
 
+    /**
+     * Finalizes a resource and publishes an optional secret-free operation
+     * result in the same local transaction. Existing resource gateways keep
+     * their old behavior unless they understand the payload.
+     */
+    default boolean finalizeSuccess(
+            LakeOperationHandle handle, String summary, Object publication) {
+        return finalizeSuccess(handle, summary);
+    }
+
     boolean finalizeFailure(LakeOperationHandle handle, String errorCode, String summary);
 
     /** Takes over a stale lease, retaining the row and advancing its lock version. */

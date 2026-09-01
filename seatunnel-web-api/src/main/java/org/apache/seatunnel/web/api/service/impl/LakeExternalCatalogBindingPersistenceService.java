@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeProperties;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpec;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.LakeExternalCatalogBinding;
@@ -158,6 +159,20 @@ public class LakeExternalCatalogBindingPersistenceService {
             throw notFound();
         }
         return toVO(binding);
+    }
+
+    /** Reads the persisted, non-secret desired spec for an external operation. */
+    public LakeCatalogDesiredSpec desiredSpec(Long id) {
+        LakeExternalCatalogBinding binding = requireIncludingDeleted(id);
+        if (Boolean.TRUE.equals(binding.getDeleted())
+                || StringUtils.isBlank(binding.getDesiredSpecJson())) {
+            throw invalid("desiredSpecJson");
+        }
+        try {
+            return MAPPER.readValue(binding.getDesiredSpecJson(), LakeCatalogDesiredSpec.class);
+        } catch (JsonProcessingException exception) {
+            throw invalid("desiredSpecJson");
+        }
     }
 
     /** Local page: filters and rows are sourced exclusively from MySQL. */

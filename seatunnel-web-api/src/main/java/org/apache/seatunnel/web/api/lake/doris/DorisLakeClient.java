@@ -57,6 +57,14 @@ public interface DorisLakeClient extends AutoCloseable {
 
     void createCatalog(String catalogName, Map<String, String> properties);
 
+    /** Creates a JDBC catalog from a validated non-secret desired spec. */
+    default void createCatalog(
+            LakeCatalogDesiredSpec desiredSpec,
+            LakeJdbcDriverRegistry driverRegistry,
+            LakeJdbcCatalogDdlBuilder.CatalogCredentials credentials) {
+        throw new UnsupportedOperationException("Validated catalog create is unavailable");
+    }
+
     /** Reads only Web-owned, non-secret properties from SHOW CATALOG. */
     Map<String, String> readCatalogProperties(String catalogName);
 

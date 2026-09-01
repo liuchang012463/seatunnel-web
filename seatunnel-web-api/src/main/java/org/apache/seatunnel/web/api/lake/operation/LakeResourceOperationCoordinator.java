@@ -147,10 +147,25 @@ public class LakeResourceOperationCoordinator {
 
     /** TX2: compare token/version and publish the verified actual state. */
     public boolean finalizeSuccess(LakeOperationHandle handle, String summary) {
-        return transactionBoundary.requiresNew(() -> finalizeSuccessInTransaction(handle, summary));
+        return finalizeSuccess(handle, summary, null);
+    }
+
+    /**
+     * TX2 variant that lets a resource gateway publish a secret-free external
+     * observation together with the lease/CAS and operation-journal update.
+     */
+    public boolean finalizeSuccess(
+            LakeOperationHandle handle, String summary, Object publication) {
+        return transactionBoundary.requiresNew(
+                () -> finalizeSuccessInTransaction(handle, summary, publication));
     }
 
     private boolean finalizeSuccessInTransaction(LakeOperationHandle handle, String summary) {
+        return finalizeSuccessInTransaction(handle, summary, null);
+    }
+
+    private boolean finalizeSuccessInTransaction(
+            LakeOperationHandle handle, String summary, Object publication) {
         requireHandle(handle);
         LakeResourceOperation operation = currentOpenOperation(handle);
         if (operation == null) {
@@ -162,7 +177,7 @@ public class LakeResourceOperationCoordinator {
             return false;
         }
         String safeSummary = safeSummary(summary);
-        if (!resourceGateway.finalizeSuccess(handle, safeSummary)) {
+        if (!resourceGateway.finalizeSuccess(handle, safeSummary, publication)) {
             markIgnored(handle, "STALE_OPERATION", "Stale operation result ignored");
             return false;
         }

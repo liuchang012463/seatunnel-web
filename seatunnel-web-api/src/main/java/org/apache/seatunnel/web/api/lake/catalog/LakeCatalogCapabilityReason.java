@@ -17,6 +17,8 @@ public final class LakeCatalogCapabilityReason {
     public static final String SOURCE_TYPE_MISMATCH = "SOURCE_TYPE_MISMATCH";
     public static final String LAKE_DORIS_UNREACHABLE = "LAKE_DORIS_UNREACHABLE";
     public static final String SOURCE_NETWORK_UNREACHABLE = "SOURCE_NETWORK_UNREACHABLE";
+    /** Source-side reachability was not probed by the capability endpoint. */
+    public static final String SOURCE_NETWORK_UNKNOWN = "SOURCE_NETWORK_UNKNOWN";
     public static final String LAKE_CONTROL_PLANE_DISABLED = "LAKE_CONTROL_PLANE_DISABLED";
     /** PG and Oracle remain opt-in until their server-side driver is verified. */
     public static final String ADAPTER_DISABLED = "ADAPTER_DISABLED";

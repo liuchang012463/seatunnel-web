@@ -531,6 +531,16 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
     }
 
     @Override
+    public void createCatalog(
+            LakeCatalogDesiredSpec desiredSpec,
+            LakeJdbcDriverRegistry driverRegistry,
+            LakeJdbcCatalogDdlBuilder.CatalogCredentials credentials) {
+        LakeCatalogDesiredSpec normalized = LakeCatalogDesiredSpecValidator
+                .validateAndNormalize(desiredSpec, driverRegistry);
+        execute(catalogDdlBuilder.buildCreateCatalog(normalized, driverRegistry, credentials));
+    }
+
+    @Override
     public void dropCatalog(String catalogName) {
         String catalog = DorisIdentifier.validate(catalogName);
         execute("DROP CATALOG IF EXISTS " + DorisIdentifier.quote(catalog));

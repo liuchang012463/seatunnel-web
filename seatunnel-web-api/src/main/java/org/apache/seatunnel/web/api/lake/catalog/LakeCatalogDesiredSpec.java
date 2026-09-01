@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.lake.catalog;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Map;
  * <p>Credentials are deliberately absent.  A service resolves them from the
  * server-side source DataSource only at external-operation time.</p>
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record LakeCatalogDesiredSpec(
         String catalogName,
         Long sourceDataSourceId,

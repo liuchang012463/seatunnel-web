@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.lake.operation;
 
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogOperationResult;
 import lombok.NonNull;
 import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
@@ -77,6 +78,12 @@ public class DaoLakeResourceGateway implements LakeResourceGateway {
 
     @Override
     public boolean finalizeSuccess(LakeOperationHandle handle, String summary) {
+        return finalizeSuccess(handle, summary, null);
+    }
+
+    @Override
+    public boolean finalizeSuccess(
+            LakeOperationHandle handle, String summary, Object publication) {
         Objects.requireNonNull(handle, "handle");
         LakeResourceState expected = get(handle.resourceType(), handle.resourceId());
         if (!sameLease(expected, handle)) {
@@ -90,6 +97,32 @@ public class DaoLakeResourceGateway implements LakeResourceGateway {
                 table.setActualTableExists(!deleting);
                 table.setTargetConsistencyStatus(deleting
                         ? null : LakeConsistencyStatus.CONSISTENT);
+            }
+            if (entity instanceof LakeExternalCatalogBinding catalog
+                    && publication instanceof LakeCatalogOperationResult result) {
+                if (result.desiredSpecJson() != null) {
+                    catalog.setDesiredSpecJson(result.desiredSpecJson());
+                }
+                if (result.desiredSpecHash() != null) {
+                    catalog.setDesiredSpecHash(result.desiredSpecHash());
+                }
+                if (result.credentialRevision() != null) {
+                    catalog.setCredentialRevision(result.credentialRevision());
+                }
+                if (result.driverChecksum() != null) {
+                    catalog.setDriverChecksum(result.driverChecksum());
+                }
+                if (result.actualSnapshotJson() != null) {
+                    catalog.setActualSnapshotJson(result.actualSnapshotJson());
+                    catalog.setLastObservedAt(new java.util.Date());
+                }
+                if (result.validationStatus() != null) {
+                    catalog.setValidationStatus(result.validationStatus());
+                }
+                if (result.resourceStatus() != null) {
+                    catalog.setResourceStatus(result.resourceStatus());
+                    catalog.setDeleted(result.resourceStatus() == LakeResourceStatus.DELETED);
+                }
             }
             entity.setOperationToken(null);
             entity.setErrorCode(null);
