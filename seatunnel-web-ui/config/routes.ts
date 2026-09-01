@@ -37,9 +37,9 @@ const businessRoutes = [
   ['/alarm', component('./alarm')],
   ['/operations/protocol', './prototype/ProtocolPlaceholderPage'],
   ['/operations/diagnostics', prototypePage],
-  ['/lake/resources', prototypePage],
-  ['/lake/lifecycle', prototypePage],
-  ['/lake/logical-access', prototypePage],
+  ['/lake/resources', component('./lake/physical')],
+  ['/lake/lifecycle', component('./lake/lifecycle')],
+  ['/lake/logical-access', component('./lake/logical')],
   ['/knowledge-management', component('./knowledge-management')],
   ['/open-api', component('./open-api')],
 ].map(([path, routeComponent]) => ({
@@ -49,6 +49,7 @@ const businessRoutes = [
 }));
 
 const hiddenRoutes = [
+  ['/lake/logical-access/:catalogId', './lake/logical/detail', '/lake/logical-access'],
   ['/sync/batch-link-up/:id/detail', './batch-link-up/detail', '/sync/batch-link-up'],
   ['/sync/batch-link-up/:id/config/single', './batch-link-up/config/single', '/sync/batch-link-up'],
   [
