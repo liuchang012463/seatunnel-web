@@ -28,6 +28,39 @@ v1.4 保留 v1.3 的领域方向，并修复实施前 Review 暴露的阻塞项�
 11. Reconcile 由显式 POST 触发；GET 详情不写库；远端不可用与资源不存在严格区分。
 12. Catalog 增加安全指纹、credential revision、driver checksum 和只读查询边界。
 
+## 0.1 首版审核基线（2026-09-01）
+
+本节是当前首版审核口径，审核对象为提交 `5c528967`（以及其父提交）中已经提交的代码；工作区内尚未提交的修改不计入“已完成”。
+
+### 验证边界
+
+- 数据库只考虑并只验收 MySQL **8.0.39**；不考虑 H2，不新增 H2 等价 migration、H2 兼容门禁或 H2 验收结论。
+- 本首版不执行应用部署、不以 Docker Compose 重建或发布作为验收条件；Web 仅通过仓库 `.vscode/launch.json` 启动，Java/Maven/JDK 等运行设置以 `.vscode/settings.json` 为准。
+- Doris 只使用本机现有 `/mnt/lc/doris` 环境做真实验证，沿用文档记录的 4.1.2 实际版本和现有 Driver 状态；不得把未部署的 PostgreSQL/Oracle Driver 写成环境验收通过。
+- 真实验证使用唯一临时 Database/Catalog，完成后清理；密钥、Token、`.env` 和完整 DDL 不进入提交或验收证据。
+
+### 已提交的首版能力（代码已落地，不等同于最终合同联调通过）
+
+| 能力 | 代表提交 | 首版状态 |
+|---|---|---|
+| V1.0.21 控制面、Doris 安全工具和外部操作协调 | `7a06eb57`、`a2e49f21`、`64b8371f`、`6240e974`、`0564c2fc` | 已提交 |
+| Contract/DDL/Reader、Source baseline、ODS Database | `c8d06249`、`8a81cdef`、`6f111dfb`、`9956abb9`、`d2134098` | 已提交 |
+| MANAGED preview/create 基础、Job Bridge 和任务安全 | `e9c5fd4b`、`89bfeb35`、`8f81960c`、`f7e5c433`、`902d91a0`、`2a17a167`、`1671460c`、`5b45fd8d` | 已提交，生命周期建表原子发布仍见下文 |
+| AUTO_CREATED、UNMANAGED、库存、Drift 和显式 Reconcile | `6ddd938f`、`27a85769`、`d7703c24` | 已提交 |
+| Lifecycle Policy、观察、validate、retention preview/apply | `b928bc42`、`7aef6386`、`47d8b206`、`128f01fe`、`1c678bc3`、`691e38dc` | 已提交，最终真实联调待完成 |
+| Logical Catalog 基础、能力和脱敏 binding 投影 | `30abb88f`、`3352a331`、`4facc9bf`、`c8dbfa5d` | 基础已提交 |
+| 结构化只读查询生成、边界执行器和 Doris Catalog 验证基础 | `21dd589d`、`f4b42298`、`6f1075c9` | 基础已提交 |
+| Recommendation 后端与能力探查 | `e277bf8d`、`55005be5` | 已提交 |
+| 前端 lake API client、物理列表、Lifecycle 首版和 Logical 首版页面 | `cee832cf`、`1ae6ff69`、`5c528967`、`c9b78f3a` | 首版页面已提交，完整页面验收待完成 |
+
+### 明确未完成或待增强项
+
+1. **MANAGED 建表时 lifecycle binding 的原子发布**：当前 `LakeManagedTableServiceImpl.create` 仍需接入生命周期建表 persistence 协调器，确保 mapping、PENDING binding、operation journal 在 Doris 调用前同一短事务写入，并在外部成功/失败时以 token/version CAS 一起 finalize。现有 helper 或 preview 逻辑不能代替这条接线和故障注入测试。
+2. **Logical Catalog update/delete/refresh/reconcile**：当前 Logical controller 已覆盖 capability、page、detail、create、validate，但 update/delete/refresh/reconcile 尚未形成可验收的 controller/service/API 闭环；前端已有入口不得视为后端已完成。
+3. **结构化查询 audit wiring**：查询计划规范化、SQL 生成和有界执行器已有基础，但单表/JOIN controller、专用 readonly DataSource 的应用边界、超时/取消结果和操作审计接线仍需补齐；没有审计证据前不宣称查询 P0 完成。
+4. **前端闭环**：物理首版当前以列表和 ODS 基础操作为主，MANAGED 四步向导、详情/Diff、操作记录、任务预填、UNMANAGED bind/unbind、删除 impact 尚未全部验收；Lifecycle 首版尚需真实页面状态、320/768/1440 和关键交互测试；Logical 页面需等待上述后端闭环。
+5. **最终合同联调**：F6-01/F6-02/F15-01、前端 build、现有引接回归和部署文档仍属于 Task 18，当前不能标记为完成。
+
 ---
 
 ## 1. 实际基线与已验证事实
@@ -851,4 +884,3 @@ POST   /api/v1/lake/logical/query/join
 14. External Catalog scope 不是权限边界。
 15. P0 不开放任意 SQL 编辑器。
 16. 不修改 V1.0.15–V1.0.20。
-

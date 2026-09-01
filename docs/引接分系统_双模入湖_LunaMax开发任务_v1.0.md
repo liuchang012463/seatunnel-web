@@ -4,6 +4,40 @@
 > 前端基线：`引接分系统_双模入湖_前端页面设计_v1.0.md`  
 > 执行方式：按依赖小步提交；每个任务完成后运行指定测试；不得回用旧分支湖设计。
 
+## 0.1 首版审核基线（2026-09-01）
+
+审核以提交 `5c528967` 及其父提交为准，未提交工作区修改不计入完成。环境和验收边界固定为：
+
+- 只考虑、只验收 MySQL **8.0.39**；**不考虑 H2**，不新增 H2 等价 migration、H2 DAO runtime 或 H2 兼容门禁。
+- 不部署、不发布应用；只使用 `.vscode/launch.json` 启动 Web，`.vscode/settings.json` 提供 Java 21、Maven Wrapper 和本地 IDE 运行设置。
+- Doris 真实验证只使用本机 `/mnt/lc/doris` 当前环境；不得以 Docker Compose 部署动作、远程环境或未安装 Driver 的 PostgreSQL/Oracle 结果替代验收。
+- 代码“已提交”只表示对应 commit 存在，不表示 F6/F15 合同、真实 Doris、全页面响应式和最终回归已经通过。
+
+### 当前提交状态矩阵
+
+| 任务 | 当前提交/内容 | 首版审核状态 |
+|---|---|---|
+| Task 0 | `47c7a19c` Doris 4.1.2 Spike 记录 | 已提交；真实回归仍按本基线执行 |
+| Task 1–5 | `7a06eb57`、`a2e49f21`、`64b8371f`、`c8d06249`、`6f111dfb`、`9956abb9` 等控制面、Doris、Source/ODS 基础 | 已提交 |
+| Task 6 | `e9c5fd4b`、`89bfeb35`、`8f81960c` MANAGED preview/create 基础 | 部分完成；建表时 lifecycle binding 原子发布尚未接入当前 create 路径 |
+| Task 7–9 | `f7e5c433`、`902d91a0`、`2a17a167`、`1671460c`、`5b45fd8d`、`6ddd938f`、`27a85769`、`d7703c24` | 代码已提交；需合同联调和现有任务回归 |
+| Task 10 | `b928bc42`、`7aef6386`、`47d8b206`、`128f01fe`、`1c678bc3`、`691e38dc` Lifecycle policy/validate/preview/apply | 后端基础已提交；需补建表原子发布联调和最终验收 |
+| Task 11 | `30abb88f`、`3352a331`、`4facc9bf`、`c8dbfa5d` Logical Catalog 基础和读 API | 部分完成；update/delete/refresh/reconcile controller/service 尚未闭环 |
+| Task 12 | `21dd589d`、`f4b42298`、`6f1075c9` 结构化查询生成/验证/执行器 | 部分完成；query controller、readonly 边界和 audit wiring 尚未验收 |
+| Task 13 | `e277bf8d`、`55005be5` Recommendation 和 capability probe | 已提交；需真实环境验证 |
+| Task 14 | `cee832cf`、`c9b78f3a` shared client/types 与三路由首版接入 | 部分完成；DataSource Card/shared 状态组件闭环待补 |
+| Task 15 | `1ae6ff69` 物理入湖首版列表和 ODS 基础操作 | 部分完成；详情、四步向导、任务预填、UNMANAGED、删除 impact 待增强 |
+| Task 16 | `5c528967` Lifecycle 策略/Apply/表详情/retention impact 首版 | 首版已提交；需真实状态、响应式和关键测试验收 |
+| Task 17 | `c9b78f3a` Logical 首版页面 | 部分完成；依赖 Task 11/12 未完成项 |
+| Task 18 | F6-01/F6-02/F15-01 合同联调、最终 tsc/build/Maven/回归 | 未开始，不能标记完成 |
+
+### 审核阻塞项（必须继续跟踪）
+
+1. **Managed create lifecycle binding 原子发布**：mapping、PENDING binding、operation journal 必须在 Doris 外部调用前同一短事务写入，并以 token/version CAS 一起 finalize；仅有 helper、preview 或策略 UI 不算完成。
+2. **Logical update/delete/reconcile**：当前 controller 已有 capability/page/detail/create/validate，尚无可验收的 update/delete/refresh/reconcile 闭环；前端入口不得虚报可用。
+3. **Query audit wiring**：已有结构化计划、SQL 生成和有界执行器，但尚无完整 controller/readonly DataSource/audit wiring 证据；不开放 raw SQL，也不宣称查询 P0 完成。
+4. **最终验收**：使用 `.vscode` 本地启动 Web、`/mnt/lc/doris` 做真实验证，补齐前端页面状态/320/768/1440、关键测试和 F6/F15 证据；不通过部署动作替代这些证据。
+
 ---
 
 ## 0. 总门禁
@@ -36,7 +70,7 @@
 交付：
 
 - MySQL V1.0.21 八张表；
-- H2 测试等价 migration（若现有 DAO test runtime 需要）；
+- 不考虑 H2；migration、DAO runtime 和验收只针对 MySQL 8.0.39；
 - Entity/Enum/Mapper/Repository；
 - lock_version/generation/operation_token；
 - Repository 测试和唯一约束竞态测试。
@@ -311,4 +345,3 @@ Task 5 → Task 6 → Task 7 → Task 8 → Task 9
                           ↓
                        Task 18
 ```
-
