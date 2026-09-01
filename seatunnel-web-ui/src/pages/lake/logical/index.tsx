@@ -78,7 +78,16 @@ const CapabilityCard: React.FC = () => {
   };
 
   const supported = capability?.logicalSupported === true || capability?.supported === true || capability?.enabled === true;
-  const reasons = capability?.reasonCodes || capability?.disabledReasons || [];
+  const reasons = capability?.reasonCodes?.length ? capability.reasonCodes : capability?.disabledReasons || [];
+  const sourceNetworkPending = !supported
+    && capability?.lakeDorisReachable === true
+    && reasons.length === 1
+    && reasons[0] === 'SOURCE_NETWORK_UNKNOWN';
+  const capabilityLabel = supported
+    ? '当前支持逻辑挂载'
+    : sourceNetworkPending
+      ? '静态条件就绪，创建时验证源端网络'
+      : '当前不可用';
   return (
     <Card
       className="lake-capability-card"
@@ -94,13 +103,13 @@ const CapabilityCard: React.FC = () => {
         <Button type="primary" htmlType="submit" loading={loading}>检查能力</Button>
       </Form>
       {capability ? (
-        <div className={`lake-capability-result ${supported ? 'is-supported' : 'is-disabled'}`}>
+        <div className={`lake-capability-result ${supported ? 'is-supported' : sourceNetworkPending ? 'is-pending' : 'is-disabled'}`}>
           {supported ? <CheckCircleOutlined /> : <WarningOutlined />}
-          <Typography.Text strong>{supported ? '当前支持逻辑挂载' : '当前不可用'}</Typography.Text>
+          <Typography.Text strong>{capabilityLabel}</Typography.Text>
           {capability.adapter ? <Tag>{String(capability.adapter)}</Tag> : null}
           {capability.scope ? <Tag>{String(capability.scope)}</Tag> : null}
-          {!supported && reasons.length ? <Typography.Text type="secondary">原因：{reasons.join('、')}</Typography.Text> : null}
-          {capability.sourceNetworkReachabilityKnown === false ? <Typography.Text type="secondary">源端网络尚未探查</Typography.Text> : null}
+          {!supported && !sourceNetworkPending && reasons.length ? <Typography.Text type="secondary">原因：{reasons.join('、')}</Typography.Text> : null}
+          {sourceNetworkPending ? <Typography.Text type="secondary">源端网络尚未探查，创建时会由服务端验证。</Typography.Text> : null}
         </div>
       ) : (
         <Typography.Text type="secondary">请输入源数据源 ID 后检查能力；不可用时会展示稳定原因。</Typography.Text>
