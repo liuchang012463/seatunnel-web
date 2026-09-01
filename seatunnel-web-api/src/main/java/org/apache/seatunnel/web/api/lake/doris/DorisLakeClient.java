@@ -40,6 +40,13 @@ public interface DorisLakeClient extends AutoCloseable {
 
     Map<String, String> readTableProperties(String databaseName, String tableName);
 
+    /** Applies only the explicitly allowlisted mutable table properties. */
+    void alterTableProperties(String databaseName, String tableName,
+                              Map<String, String> tableProperties);
+
+    /** Reads bounded partition metadata without returning raw SQL. */
+    List<DorisPartitionMetadata> listPartitions(String databaseName, String tableName);
+
     List<String> listCatalogs();
 
     boolean catalogExists(String catalogName);

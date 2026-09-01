@@ -6,6 +6,8 @@ import lombok.EqualsAndHashCode;
 import org.apache.seatunnel.web.common.enums.LakeLifecycleBindingStatus;
 import org.apache.seatunnel.web.common.enums.LakePartitionGranularity;
 
+import java.util.Date;
+
 @Data
 @TableName("t_seatunnel_web_lake_table_lifecycle_binding")
 @EqualsAndHashCode(callSuper = true)
@@ -24,6 +26,10 @@ public class LakeTableLifecycleBinding extends BaseEntity {
     private Integer retentionCount;
 
     private Integer actualRetentionCount;
+
+    private String actualPartitionSummaryJson;
+
+    private Date lastObservedAt;
 
     private String policySnapshotJson;
 

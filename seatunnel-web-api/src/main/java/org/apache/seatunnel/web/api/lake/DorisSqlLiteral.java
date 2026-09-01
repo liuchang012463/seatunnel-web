@@ -29,4 +29,25 @@ public final class DorisSqlLiteral {
     public static String quoteProperty(String value) {
         return quote(value);
     }
+
+    /** Quotes a Doris PROPERTIES key/value using Doris' double-quoted syntax. */
+    public static String quoteDorisProperty(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Doris property must not be null");
+        }
+        StringBuilder escaped = new StringBuilder(value.length() + 2);
+        for (int i = 0; i < value.length(); i++) {
+            char character = value.charAt(i);
+            switch (character) {
+                case '\\' -> escaped.append("\\\\");
+                case '"' -> escaped.append("\\\"");
+                case '\n' -> escaped.append("\\n");
+                case '\r' -> escaped.append("\\r");
+                case '\t' -> escaped.append("\\t");
+                case '\0' -> throw new IllegalArgumentException("NUL is not a valid Doris property");
+                default -> escaped.append(character);
+            }
+        }
+        return "\"" + escaped + "\"";
+    }
 }

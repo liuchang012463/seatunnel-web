@@ -16,7 +16,9 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -218,6 +220,55 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
     }
 
     @Override
+    public void alterTableProperties(String databaseName, String tableName,
+                                     Map<String, String> tableProperties) {
+        String database = DorisIdentifier.validate(databaseName);
+        String table = DorisIdentifier.validate(tableName);
+        Map<String, String> validated = DorisTablePropertyWhitelist
+                .validateAlterAndCopy(tableProperties);
+        StringBuilder sql = new StringBuilder("ALTER TABLE ")
+                .append(DorisIdentifier.quote(database)).append('.')
+                .append(DorisIdentifier.quote(table)).append(" SET (");
+        int index = 0;
+        for (Map.Entry<String, String> entry : validated.entrySet()) {
+            if (index++ > 0) {
+                sql.append(", ");
+            }
+            sql.append(DorisSqlLiteral.quoteDorisProperty(entry.getKey())).append(" = ")
+                    .append(DorisSqlLiteral.quoteDorisProperty(entry.getValue()));
+        }
+        sql.append(')');
+        execute(sql.toString());
+    }
+
+    @Override
+    public List<DorisPartitionMetadata> listPartitions(String databaseName, String tableName) {
+        String database = DorisIdentifier.validate(databaseName);
+        String table = DorisIdentifier.validate(tableName);
+        String sql = "SHOW PARTITIONS FROM " + DorisIdentifier.quote(database) + '.'
+                + DorisIdentifier.quote(table);
+        return withConnection("list partitions", connection -> {
+            try (Statement statement = connection.createStatement()) {
+                configure(statement);
+                try (ResultSet result = statement.executeQuery(sql)) {
+                    Map<String, Integer> columns = partitionColumns(result.getMetaData());
+                    List<DorisPartitionMetadata> partitions = new ArrayList<>();
+                    while (result.next()) {
+                        partitions.add(new DorisPartitionMetadata(
+                                value(result, columns, "PARTITIONNAME", "PARTITION_NAME", "NAME"),
+                                value(result, columns, "STATE", "STATUS"),
+                                value(result, columns, "PARTITIONKEY", "PARTITION_KEY", "KEY"),
+                                value(result, columns, "RANGE"),
+                                value(result, columns, "LOWERBOUND", "LOWER_BOUND", "LOWER"),
+                                value(result, columns, "UPPERBOUND", "UPPER_BOUND", "UPPER")));
+                    }
+                    return List.copyOf(partitions);
+                }
+            }
+        });
+    }
+
+    @Override
     public List<String> listCatalogs() {
         return withConnection("list catalogs", connection -> {
             try (Statement statement = connection.createStatement()) {
@@ -348,6 +399,38 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
     private static Integer nullableInteger(ResultSet result, String column) throws SQLException {
         int value = result.getInt(column);
         return result.wasNull() ? null : value;
+    }
+
+    private static Map<String, Integer> partitionColumns(ResultSetMetaData metadata) throws SQLException {
+        Map<String, Integer> columns = new HashMap<>();
+        if (metadata == null) {
+            return columns;
+        }
+        for (int index = 1; index <= metadata.getColumnCount(); index++) {
+            String label = metadata.getColumnLabel(index);
+            if (label == null || label.isBlank()) {
+                label = metadata.getColumnName(index);
+            }
+            if (label != null && !label.isBlank()) {
+                columns.putIfAbsent(normalizeColumn(label), index);
+            }
+        }
+        return columns;
+    }
+
+    private static String value(ResultSet result, Map<String, Integer> columns,
+                                String... names) throws SQLException {
+        for (String name : names) {
+            Integer index = columns.get(normalizeColumn(name));
+            if (index != null) {
+                return result.getString(index);
+            }
+        }
+        return null;
+    }
+
+    private static String normalizeColumn(String value) {
+        return value.replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
     }
 
     private static IllegalStateException safeFailure(String operation, SQLException exception) {

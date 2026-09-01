@@ -24,6 +24,9 @@ public final class DorisTablePropertyWhitelist {
             "replication_allocation"
     );
 
+    /** Properties that the lifecycle reconciler is allowed to change in P0. */
+    private static final Set<String> ALTER_ALLOWED = Set.of("partition.retention_count");
+
     private DorisTablePropertyWhitelist() {
     }
 
@@ -57,6 +60,22 @@ public final class DorisTablePropertyWhitelist {
             validateValue(key, entry.getValue());
         }
         return Collections.unmodifiableMap(result);
+    }
+
+    /**
+     * Validates the deliberately smaller ALTER TABLE surface.  CREATE TABLE
+     * accepts a few more immutable/runtime properties, but allowing those to
+     * be changed by reconciliation would make the operation unsafe.
+     */
+    public static Map<String, String> validateAlterAndCopy(Map<String, String> properties) {
+        if (properties == null || properties.isEmpty()) {
+            throw new IllegalArgumentException("Doris table property update must not be empty");
+        }
+        Map<String, String> validated = validateAndCopy(properties);
+        if (!ALTER_ALLOWED.containsAll(validated.keySet())) {
+            throw new IllegalArgumentException("Unsupported Doris table property update");
+        }
+        return validated;
     }
 
     private static void validateValue(String key, String value) {

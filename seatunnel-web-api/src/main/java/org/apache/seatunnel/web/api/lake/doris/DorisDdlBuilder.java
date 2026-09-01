@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.lake.doris;
 
 import org.apache.seatunnel.web.api.lake.DorisIdentifier;
+import org.apache.seatunnel.web.api.lake.DorisSqlLiteral;
 import org.apache.seatunnel.web.api.lake.contract.DorisTypeBase;
 import org.apache.seatunnel.web.api.lake.contract.TargetColumn;
 import org.apache.seatunnel.web.api.lake.contract.TargetContract;
@@ -114,19 +115,6 @@ public final class DorisDdlBuilder {
     }
 
     private static String quoteProperty(String value) {
-        StringBuilder escaped = new StringBuilder(value.length() + 2);
-        for (int i = 0; i < value.length(); i++) {
-            char character = value.charAt(i);
-            switch (character) {
-                case '\\' -> escaped.append("\\\\");
-                case '"' -> escaped.append("\\\"");
-                case '\n' -> escaped.append("\\n");
-                case '\r' -> escaped.append("\\r");
-                case '\t' -> escaped.append("\\t");
-                case '\0' -> throw new IllegalArgumentException("NUL is not a valid Doris property");
-                default -> escaped.append(character);
-            }
-        }
-        return '"' + escaped.toString() + '"';
+        return DorisSqlLiteral.quoteDorisProperty(value);
     }
 }
