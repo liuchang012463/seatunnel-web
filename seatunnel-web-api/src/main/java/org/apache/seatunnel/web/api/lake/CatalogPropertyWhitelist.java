@@ -23,6 +23,7 @@ public final class CatalogPropertyWhitelist {
             "driver_class",
             "checksum",
             "credential_revision",
+            "only_specified_database",
             "include_database_list",
             "include_table_list",
             "only_known",
@@ -35,6 +36,8 @@ public final class CatalogPropertyWhitelist {
             "connection_pool_max_wait_time",
             "connection_pool_max_life_time",
             "connection_pool_keep_alive",
+            "lower_case_table_names",
+            "lower_case_database_names",
             "lower_case_meta_names"
     );
 

@@ -1,0 +1,22 @@
+package org.apache.seatunnel.web.api.lake.catalog;
+
+/** Stable, UI-safe reason codes for a logical catalog capability. */
+public final class LakeCatalogCapabilityReason {
+
+    public static final String ADAPTER_MISSING = "ADAPTER_MISSING";
+    public static final String DRIVER_CONFIG_MISSING = "DRIVER_CONFIG_MISSING";
+    public static final String DRIVER_CHECKSUM_MISSING = "DRIVER_CHECKSUM_MISSING";
+    public static final String DRIVER_CHECKSUM_INVALID = "DRIVER_CHECKSUM_INVALID";
+    public static final String DRIVER_REGISTRY_REVISION_MISSING =
+            "DRIVER_REGISTRY_REVISION_MISSING";
+    public static final String DRIVER_UNAVAILABLE = "DRIVER_UNAVAILABLE";
+    public static final String DRIVER_NOT_VERIFIED = "DRIVER_NOT_VERIFIED";
+    public static final String SOURCE_CONFIG_INCOMPLETE = "SOURCE_CONFIG_INCOMPLETE";
+    public static final String LAKE_DORIS_UNREACHABLE = "LAKE_DORIS_UNREACHABLE";
+    public static final String SOURCE_NETWORK_UNREACHABLE = "SOURCE_NETWORK_UNREACHABLE";
+    public static final String SCOPE_UNSUPPORTED = "SCOPE_UNSUPPORTED";
+    public static final String UPDATE_UNSUPPORTED = "UPDATE_UNSUPPORTED";
+
+    private LakeCatalogCapabilityReason() {
+    }
+}

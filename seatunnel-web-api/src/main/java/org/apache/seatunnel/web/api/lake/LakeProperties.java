@@ -49,6 +49,14 @@ public class LakeProperties {
 
     private String driverChecksum;
 
+    /**
+     * Server-owned configuration for logical JDBC catalogs.  It is kept
+     * separate from the Doris control-plane driver fields above: the latter
+     * describe Web's own Doris connection, while these entries describe the
+     * source drivers loaded by Doris FE/BE nodes.
+     */
+    private JdbcCatalog jdbcCatalog = new JdbcCatalog();
+
     private ConnectionPool connectionPool = new ConnectionPool();
 
     @Data
@@ -61,5 +69,53 @@ public class LakeProperties {
         private Duration connectionTimeout = Duration.ofSeconds(10);
 
         private Duration validationTimeout = Duration.ofSeconds(5);
+    }
+
+    /** Logical JDBC catalog driver registry; no credentials are accepted here. */
+    @Data
+    public static class JdbcCatalog {
+
+        /** Bumped by operators when the server-side driver inventory changes. */
+        private String registryRevision;
+
+        private Driver mysql = Driver.mysqlDefaults();
+
+        private Driver postgresql = Driver.postgresqlDefaults();
+
+        private Driver oracle = Driver.oracleDefaults();
+    }
+
+    /** One server-configured JDBC driver, intentionally credential-free. */
+    @Data
+    public static class Driver {
+
+        private boolean enabled;
+
+        private String url;
+
+        private String driverClass;
+
+        private String checksum;
+
+        /** True only after operators verify the driver on Doris FE/BE nodes. */
+        private boolean verified;
+
+        public static Driver mysqlDefaults() {
+            Driver driver = new Driver();
+            driver.driverClass = "com.mysql.cj.jdbc.Driver";
+            return driver;
+        }
+
+        public static Driver postgresqlDefaults() {
+            Driver driver = new Driver();
+            driver.driverClass = "org.postgresql.Driver";
+            return driver;
+        }
+
+        public static Driver oracleDefaults() {
+            Driver driver = new Driver();
+            driver.driverClass = "oracle.jdbc.OracleDriver";
+            return driver;
+        }
     }
 }
