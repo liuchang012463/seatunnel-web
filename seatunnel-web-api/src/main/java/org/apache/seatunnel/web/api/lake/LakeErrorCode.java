@@ -16,6 +16,10 @@ public final class LakeErrorCode {
     public static final String LAKE_REQUEST_INVALID = "LAKE_REQUEST_INVALID";
     public static final String LAKE_LIFECYCLE_REQUIRES_PREPARTITIONED_TABLE =
             "LAKE_LIFECYCLE_REQUIRES_PREPARTITIONED_TABLE";
+    public static final String LAKE_CATALOG_NOT_FOUND = "LAKE_CATALOG_NOT_FOUND";
+    public static final String LAKE_CATALOG_CONFLICT = "LAKE_CATALOG_CONFLICT";
+    public static final String LAKE_CATALOG_CAS_FAILED = "LAKE_CATALOG_CAS_FAILED";
+    public static final String LAKE_CATALOG_REQUEST_INVALID = "LAKE_CATALOG_REQUEST_INVALID";
 
     private LakeErrorCode() {
     }
@@ -35,6 +39,10 @@ public final class LakeErrorCode {
             case LAKE_DORIS_UNAVAILABLE -> 11910;
             case LAKE_REQUEST_INVALID -> 11911;
             case LAKE_LIFECYCLE_REQUIRES_PREPARTITIONED_TABLE -> 11912;
+            case LAKE_CATALOG_NOT_FOUND -> 11913;
+            case LAKE_CATALOG_CONFLICT -> 11914;
+            case LAKE_CATALOG_CAS_FAILED -> 11915;
+            case LAKE_CATALOG_REQUEST_INVALID -> 11916;
             default -> 11900;
         };
     }
