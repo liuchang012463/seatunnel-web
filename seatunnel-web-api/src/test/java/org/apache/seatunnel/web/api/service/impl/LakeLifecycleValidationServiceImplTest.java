@@ -336,6 +336,9 @@ class LakeLifecycleValidationServiceImplTest {
         binding.setPolicyVersion(1);
         binding.setStatus(LakeLifecycleBindingStatus.ACTIVE);
         binding.setLastObservedAt(java.util.Date.from(NOW));
+        binding.setPolicySnapshotJson(
+                "{\"policyId\":901,\"version\":1,\"granularity\":\"DAY\","
+                        + "\"retentionCount\":7}");
         binding.setActualPartitionSummaryJson(
                 "{\"total\":0,\"historical\":0,\"current\":0,\"future\":0,"
                         + "\"unknown\":0,\"partitionNames\":[],"
@@ -344,6 +347,9 @@ class LakeLifecycleValidationServiceImplTest {
                         + "\"futurePartitionNames\":[],\"unknownPartitionNames\":[]}");
         mapping.setTargetConsistencyStatus(LakeConsistencyStatus.CONSISTENT);
         when(lifecycleBindingDao.queryByTableMappingId(501L)).thenReturn(binding);
+        policy.setStatus(LakeLifecyclePolicyStatus.DISABLED);
+        policy.setVersion(2);
+        policy.setRetentionCount(30);
 
         LakeLifecycleValidateVO result = service.detail(501L);
 

@@ -163,16 +163,16 @@ public class LakeLifecycleValidationServiceImpl implements LakeLifecycleValidati
         }
         result.setPartitionColumn(binding.getPartitionColumn());
         result.setGranularity(binding.getGranularity());
-        // The requested policy is not available on the cache-only endpoint.  Keep
-        // the binding's identity visible while still requiring a current policy
-        // below before reporting a cached VALID result.
+        // The requested policy is not available on the cache-only endpoint. Keep
+        // the binding's frozen desired state visible; it is authoritative for
+        // cached validity even when the reusable policy row has changed.
         result.setPolicyId(binding.getPolicyId());
         result.setDesiredRetentionCount(binding.getRetentionCount());
         result.setActualRetentionCount(binding.getActualRetentionCount());
         result.setObservedAt(toInstant(binding.getLastObservedAt()));
         result.setPartitionSummary(readCachedSummary(binding.getActualPartitionSummaryJson()));
         result.setStructuralMatch(cachedStructuralMatch(mapping));
-        boolean cachedValid = isCurrentValidCache(mapping, binding, policy, result);
+        boolean cachedValid = isCurrentValidCache(mapping, binding, result);
         result.setValid(cachedValid);
         if (cachedValid) {
             result.setCode(VALID);
@@ -190,19 +190,15 @@ public class LakeLifecycleValidationServiceImpl implements LakeLifecycleValidati
     private boolean isCurrentValidCache(
             LakeOdsTableMapping mapping,
             LakeTableLifecycleBinding binding,
-            LakeLifecyclePolicy policy,
             LakeLifecycleValidateVO result) {
         return mapping.getManagementLevel() == LakeManagementLevel.MANAGED
                 && mapping.getResourceStatus() == LakeResourceStatus.READY
                 && StringUtils.isBlank(mapping.getOperationToken())
                 && binding.getStatus() == LakeLifecycleBindingStatus.ACTIVE
                 && StringUtils.isBlank(binding.getOperationToken())
-                && policy != null
-                && policy.getStatus() == LakeLifecyclePolicyStatus.ACTIVE
-                && Objects.equals(binding.getPolicyId(), policy.getId())
-                && Objects.equals(binding.getPolicyVersion(), policy.getVersion())
-                && Objects.equals(binding.getGranularity(), policy.getGranularity())
-                && Objects.equals(binding.getRetentionCount(), policy.getRetentionCount())
+                // The binding's frozen desired state remains authoritative even
+                // when the reusable policy row is later edited or disabled.
+                && validPolicySnapshot(binding)
                 && binding.getRetentionCount() != null
                 && binding.getActualRetentionCount() != null
                 && binding.getRetentionCount().equals(binding.getActualRetentionCount())
@@ -210,6 +206,27 @@ public class LakeLifecycleValidationServiceImpl implements LakeLifecycleValidati
                 && result.getObservedAt() != null
                 && result.getPartitionSummary() != null
                 && Boolean.TRUE.equals(result.getStructuralMatch());
+    }
+
+    private static boolean validPolicySnapshot(LakeTableLifecycleBinding binding) {
+        if (StringUtils.isBlank(binding.getPolicySnapshotJson())
+                || binding.getPolicyId() == null || binding.getPolicyVersion() == null
+                || binding.getGranularity() == null || binding.getRetentionCount() == null
+                || binding.getRetentionCount() <= 0) {
+            return false;
+        }
+        try {
+            JsonNode snapshot = MAPPER.readTree(binding.getPolicySnapshotJson());
+            return snapshot != null
+                    && snapshot.path("policyId").asLong(Long.MIN_VALUE) == binding.getPolicyId()
+                    && snapshot.path("version").asInt(Integer.MIN_VALUE) == binding.getPolicyVersion()
+                    && binding.getGranularity().name().equalsIgnoreCase(
+                    snapshot.path("granularity").asText())
+                    && snapshot.path("retentionCount").asInt(Integer.MIN_VALUE)
+                    == binding.getRetentionCount();
+        } catch (Exception exception) {
+            return false;
+        }
     }
 
     private LakeLifecycleValidateVO observeDoris(
