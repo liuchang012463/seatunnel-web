@@ -6,12 +6,18 @@
 
 ## 0.1 首版审核基线（2026-09-01）
 
-审核以提交 `5c528967` 及其父提交为准，未提交工作区修改不计入完成。环境和验收边界固定为：
+审核以提交 `ce440a4e` 及其父提交为准，未提交工作区修改不计入完成。环境和验收边界固定为：
 
 - 只考虑、只验收 MySQL **8.0.39**；**不考虑 H2**，不新增 H2 等价 migration、H2 DAO runtime 或 H2 兼容门禁。
 - 不部署、不发布应用；只使用 `.vscode/launch.json` 启动 Web，`.vscode/settings.json` 提供 Java 21、Maven Wrapper 和本地 IDE 运行设置。
 - Doris 真实验证只使用本机 `/mnt/lc/doris` 当前环境；不得以 Docker Compose 部署动作、远程环境或未安装 Driver 的 PostgreSQL/Oracle 结果替代验收。
 - 代码“已提交”只表示对应 commit 存在，不表示 F6/F15 合同、真实 Doris、全页面响应式和最终回归已经通过。
+
+### 已验证证据（截至 `ce440a4e`）
+
+- MySQL 8.0.39 schema 已升级至 `V1_0_23`，应用通过 `.vscode/launch.json` 启动成功。
+- 本机真实 `POST /api/v1/lake/physical/datasources/page`、`POST /api/v1/lake/logical/catalogs/page`、`GET /api/v1/lake/logical/datasources/{sourceDataSourceId}/capability`、`POST /api/v1/lake/recommend` 均返回 HTTP 200，Doris ping 为 `true`。
+- 前端 `yarn run tsc` 与 `yarn run build` 均通过。
 
 ### 当前提交状态矩阵
 
@@ -22,7 +28,7 @@
 | Task 6 | `e9c5fd4b`、`89bfeb35`、`8f81960c` MANAGED preview/create 基础 | 部分完成；建表时 lifecycle binding 原子发布尚未接入当前 create 路径 |
 | Task 7–9 | `f7e5c433`、`902d91a0`、`2a17a167`、`1671460c`、`5b45fd8d`、`6ddd938f`、`27a85769`、`d7703c24` | 代码已提交；需合同联调和现有任务回归 |
 | Task 10 | `b928bc42`、`7aef6386`、`47d8b206`、`128f01fe`、`1c678bc3`、`691e38dc` Lifecycle policy/validate/preview/apply | 后端基础已提交；需补建表原子发布联调和最终验收 |
-| Task 11 | `30abb88f`、`3352a331`、`4facc9bf`、`c8dbfa5d` Logical Catalog 基础和读 API | 部分完成；update/delete/refresh/reconcile controller/service 尚未闭环 |
+| Task 11 | `30abb88f`、`3352a331`、`4facc9bf`、`c8dbfa5d`、`0a447e2e`、`4641e912`、`ebe90fc0`、`c6f164f1` Logical Catalog 基础、读 API、create/validate | create/validate 已完成并有真实 API 200 证据；update/delete/refresh/reconcile controller/service 尚未闭环 |
 | Task 12 | `21dd589d`、`f4b42298`、`6f1075c9` 结构化查询生成/验证/执行器 | 部分完成；query controller、readonly 边界和 audit wiring 尚未验收 |
 | Task 13 | `e277bf8d`、`55005be5` Recommendation 和 capability probe | 已提交；需真实环境验证 |
 | Task 14 | `cee832cf`、`c9b78f3a` shared client/types 与三路由首版接入 | 部分完成；DataSource Card/shared 状态组件闭环待补 |

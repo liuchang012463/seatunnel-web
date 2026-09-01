@@ -30,7 +30,7 @@ v1.4 保留 v1.3 的领域方向，并修复实施前 Review 暴露的阻塞项�
 
 ## 0.1 首版审核基线（2026-09-01）
 
-本节是当前首版审核口径，审核对象为提交 `5c528967`（以及其父提交）中已经提交的代码；工作区内尚未提交的修改不计入“已完成”。
+本节是当前首版审核口径，审核对象为提交 `ce440a4e`（以及其父提交）中已经提交的代码；工作区内尚未提交的修改不计入“已完成”。
 
 ### 验证边界
 
@@ -38,6 +38,12 @@ v1.4 保留 v1.3 的领域方向，并修复实施前 Review 暴露的阻塞项�
 - 本首版不执行应用部署、不以 Docker Compose 重建或发布作为验收条件；Web 仅通过仓库 `.vscode/launch.json` 启动，Java/Maven/JDK 等运行设置以 `.vscode/settings.json` 为准。
 - Doris 只使用本机现有 `/mnt/lc/doris` 环境做真实验证，沿用文档记录的 4.1.2 实际版本和现有 Driver 状态；不得把未部署的 PostgreSQL/Oracle Driver 写成环境验收通过。
 - 真实验证使用唯一临时 Database/Catalog，完成后清理；密钥、Token、`.env` 和完整 DDL 不进入提交或验收证据。
+
+### 已验证证据（截至 `ce440a4e`）
+
+- MySQL 8.0.39 schema 已升级至 `V1_0_23`；应用通过 `.vscode/launch.json` 启动成功。
+- 本机真实 API 已返回 HTTP 200：`POST /api/v1/lake/physical/datasources/page`、`POST /api/v1/lake/logical/catalogs/page`、`GET /api/v1/lake/logical/datasources/{sourceDataSourceId}/capability`、`POST /api/v1/lake/recommend`；Doris ping 返回 `true`。
+- 前端 `yarn run tsc` 与 `yarn run build` 均通过。
 
 ### 已提交的首版能力（代码已落地，不等同于最终合同联调通过）
 
@@ -48,7 +54,7 @@ v1.4 保留 v1.3 的领域方向，并修复实施前 Review 暴露的阻塞项�
 | MANAGED preview/create 基础、Job Bridge 和任务安全 | `e9c5fd4b`、`89bfeb35`、`8f81960c`、`f7e5c433`、`902d91a0`、`2a17a167`、`1671460c`、`5b45fd8d` | 已提交，生命周期建表原子发布仍见下文 |
 | AUTO_CREATED、UNMANAGED、库存、Drift 和显式 Reconcile | `6ddd938f`、`27a85769`、`d7703c24` | 已提交 |
 | Lifecycle Policy、观察、validate、retention preview/apply | `b928bc42`、`7aef6386`、`47d8b206`、`128f01fe`、`1c678bc3`、`691e38dc` | 已提交，最终真实联调待完成 |
-| Logical Catalog 基础、能力和脱敏 binding 投影 | `30abb88f`、`3352a331`、`4facc9bf`、`c8dbfa5d` | 基础已提交 |
+| Logical Catalog 基础、能力、脱敏 binding 投影及 create/validate | `30abb88f`、`3352a331`、`4facc9bf`、`c8dbfa5d`、`0a447e2e`、`4641e912`、`ebe90fc0`、`c6f164f1` | create/validate 已提交并完成真实 API 200 验证；update/delete/refresh/reconcile 仍待闭环 |
 | 结构化只读查询生成、边界执行器和 Doris Catalog 验证基础 | `21dd589d`、`f4b42298`、`6f1075c9` | 基础已提交 |
 | Recommendation 后端与能力探查 | `e277bf8d`、`55005be5` | 已提交 |
 | 前端 lake API client、物理列表、Lifecycle 首版和 Logical 首版页面 | `cee832cf`、`1ae6ff69`、`5c528967`、`c9b78f3a` | 首版页面已提交，完整页面验收待完成 |
