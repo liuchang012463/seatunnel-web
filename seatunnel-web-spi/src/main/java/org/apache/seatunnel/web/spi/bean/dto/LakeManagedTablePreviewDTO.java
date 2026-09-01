@@ -25,6 +25,9 @@ public class LakeManagedTablePreviewDTO {
     @NotNull
     private Long odsDatabaseBindingId;
 
+    /** Optional ACTIVE policy to materialize in the CREATE TABLE statement. */
+    private Long lifecyclePolicyId;
+
     @NotBlank
     private String targetTableName;
 

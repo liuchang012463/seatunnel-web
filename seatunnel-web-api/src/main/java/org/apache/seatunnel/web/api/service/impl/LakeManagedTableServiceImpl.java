@@ -32,6 +32,8 @@ import org.apache.seatunnel.web.api.service.LakeManagedTableService;
 import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
 import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.LakeLifecycleBindingStatus;
+import org.apache.seatunnel.web.common.enums.LakeLifecyclePolicyStatus;
+import org.apache.seatunnel.web.common.enums.LakePartitionGranularity;
 import org.apache.seatunnel.web.common.enums.LakeManagementLevel;
 import org.apache.seatunnel.web.common.enums.LakeOperationStatus;
 import org.apache.seatunnel.web.common.enums.LakeOperationType;
@@ -46,6 +48,7 @@ import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
 import org.apache.seatunnel.web.dao.entity.LakeResourceOperation;
 import org.apache.seatunnel.web.dao.entity.LakeSourceObjectRef;
 import org.apache.seatunnel.web.dao.entity.LakeTableLifecycleBinding;
+import org.apache.seatunnel.web.dao.entity.LakeLifecyclePolicy;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
 import org.apache.seatunnel.web.dao.entity.JobSchedule;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
@@ -58,6 +61,7 @@ import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
 import org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao;
 import org.apache.seatunnel.web.dao.repository.LakeTableLifecycleBindingDao;
+import org.apache.seatunnel.web.dao.repository.LakeLifecyclePolicyDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTableCreateDTO;
@@ -90,6 +94,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
     private final JobInstanceDao jobInstanceDao;
     private final StreamingJobInstanceDao streamingJobInstanceDao;
     private final LakeTableLifecycleBindingDao lifecycleBindingDao;
+    private final LakeLifecyclePolicyDao lifecyclePolicyDao;
     private final LakeSourceObjectResolver sourceResolver;
     private final LakeDorisClientProvider dorisClientProvider;
     private final LakeResourceOperationCoordinator coordinator;
@@ -114,6 +119,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             JobInstanceDao jobInstanceDao,
             StreamingJobInstanceDao streamingJobInstanceDao,
             LakeTableLifecycleBindingDao lifecycleBindingDao,
+            LakeLifecyclePolicyDao lifecyclePolicyDao,
             LakeSourceObjectResolver sourceResolver,
             LakeDorisClientProvider dorisClientProvider,
             LakeResourceOperationCoordinator coordinator,
@@ -128,7 +134,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 new LakeManagedTableContractFactory(), new DorisDdlBuilder(),
                 batchJobDefinitionDao, streamingJobDefinitionDao, jobScheduleDao,
                 jobInstanceDao, streamingJobInstanceDao, driftEvaluator,
-                reconcilePersistenceService);
+                reconcilePersistenceService, lifecyclePolicyDao);
     }
 
     /** Backwards-compatible constructor for callers that do not reconcile. */
@@ -205,7 +211,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
                 coordinator, currentUserProvider, previewTokenService, lakeProperties,
                 contractFactory, ddlBuilder, batchJobDefinitionDao, streamingJobDefinitionDao,
-                jobScheduleDao, jobInstanceDao, streamingJobInstanceDao, null, null);
+                jobScheduleDao, jobInstanceDao, streamingJobInstanceDao, null, null, null);
     }
 
     /** Constructor used by reconcile tests that provide the read-only evaluator. */
@@ -234,7 +240,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
                 coordinator, currentUserProvider, previewTokenService, lakeProperties,
                 contractFactory, ddlBuilder, batchJobDefinitionDao, streamingJobDefinitionDao,
-                jobScheduleDao, jobInstanceDao, streamingJobInstanceDao, driftEvaluator, null);
+                jobScheduleDao, jobInstanceDao, streamingJobInstanceDao, driftEvaluator, null, null);
     }
 
     /** Constructor used by reconcile tests that provide the evaluator and short CAS writer. */
@@ -260,6 +266,38 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             StreamingJobInstanceDao streamingJobInstanceDao,
             LakeTableDriftEvaluator driftEvaluator,
             LakeTableReconcilePersistenceService reconcilePersistenceService) {
+        this(dataSourceDao, databaseBindingDao, tableMappingDao, sourceObjectRefDao,
+                jobRelationDao, lifecycleBindingDao, sourceResolver, dorisClientProvider,
+                coordinator, currentUserProvider, previewTokenService, lakeProperties,
+                contractFactory, ddlBuilder, batchJobDefinitionDao, streamingJobDefinitionDao,
+                jobScheduleDao, jobInstanceDao, streamingJobInstanceDao, driftEvaluator,
+                reconcilePersistenceService, null);
+    }
+
+    /** Constructor allowing managed-table tests to provide the policy reader. */
+    public LakeManagedTableServiceImpl(
+            DataSourceDao dataSourceDao,
+            LakeOdsDatabaseBindingDao databaseBindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            LakeSourceObjectRefDao sourceObjectRefDao,
+            LakeJobRelationDao jobRelationDao,
+            LakeTableLifecycleBindingDao lifecycleBindingDao,
+            LakeSourceObjectResolver sourceResolver,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeResourceOperationCoordinator coordinator,
+            CurrentUserProvider currentUserProvider,
+            LakePreviewTokenService previewTokenService,
+            LakeProperties lakeProperties,
+            LakeManagedTableContractFactory contractFactory,
+            DorisDdlBuilder ddlBuilder,
+            JobDefinitionDao batchJobDefinitionDao,
+            StreamingJobDefinitionDao streamingJobDefinitionDao,
+            JobScheduleDao jobScheduleDao,
+            JobInstanceDao jobInstanceDao,
+            StreamingJobInstanceDao streamingJobInstanceDao,
+            LakeTableDriftEvaluator driftEvaluator,
+            LakeTableReconcilePersistenceService reconcilePersistenceService,
+            LakeLifecyclePolicyDao lifecyclePolicyDao) {
         this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
         this.databaseBindingDao = Objects.requireNonNull(databaseBindingDao, "databaseBindingDao");
         this.tableMappingDao = Objects.requireNonNull(tableMappingDao, "tableMappingDao");
@@ -271,6 +309,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         this.jobInstanceDao = jobInstanceDao;
         this.streamingJobInstanceDao = streamingJobInstanceDao;
         this.lifecycleBindingDao = Objects.requireNonNull(lifecycleBindingDao, "lifecycleBindingDao");
+        this.lifecyclePolicyDao = lifecyclePolicyDao;
         this.sourceResolver = Objects.requireNonNull(sourceResolver, "sourceResolver");
         this.dorisClientProvider = Objects.requireNonNull(dorisClientProvider, "dorisClientProvider");
         this.coordinator = Objects.requireNonNull(coordinator, "coordinator");
@@ -333,14 +372,36 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         } catch (IllegalArgumentException exception) {
             return invalidPreview(request, exception.getMessage());
         }
+        LakeLifecyclePolicy lifecyclePolicy;
+        try {
+            lifecyclePolicy = readPreviewLifecyclePolicy(request.getLifecyclePolicyId(), contract, source);
+        } catch (LakeServiceException exception) {
+            return invalidPreview(request, exception.getMessage());
+        }
+        String lifecycleSnapshot = lifecyclePolicy == null
+                ? null : lifecyclePolicySnapshot(lifecyclePolicy);
+        java.util.Map<String, String> lifecycleProperties = lifecycleProperties(lifecyclePolicy);
         String contractJson = writeJson(contract, "Target contract could not be serialized");
         List<LakeManagedTableFieldMapping> mappings = contractFactory.fieldMappings(contract);
         String mappingsJson = writeJson(mappings, "Field mappings could not be serialized");
         String contractHash = TargetContractCanonicalizer.canonicalHash(contract);
-        String token = previewTokenService.issue(
-                userId, request.getSourceDataSourceId(), source.omEntityId(), binding.getId(),
-                existingBySource == null ? null : existingBySource.getId(), targetTableName,
-                source.sourceSchemaHash(), contractHash, contractJson, mappingsJson);
+        String token;
+        if (lifecyclePolicy == null) {
+            token = previewTokenService.issue(
+                    userId, request.getSourceDataSourceId(), source.omEntityId(), binding.getId(),
+                    existingBySource == null ? null : existingBySource.getId(), targetTableName,
+                    source.sourceSchemaHash(), contractHash, contractJson, mappingsJson);
+        } else {
+            token = previewTokenService.issue(
+                    userId, request.getSourceDataSourceId(), source.omEntityId(), binding.getId(),
+                    existingBySource == null ? null : existingBySource.getId(), targetTableName,
+                    source.sourceSchemaHash(), contractHash, contractJson, mappingsJson,
+                    lifecyclePolicy.getId(), lifecyclePolicy.getVersion(), lifecycleSnapshot,
+                    contract.getPartition().getColumn(), contract.getPartition().getGranularity(),
+                    lifecyclePolicy.getRetentionCount(),
+                    "partition.retention_count",
+                    lifecycleProperties.get("partition.retention_count"));
+        }
 
         LakeManagedTablePreviewVO result = new LakeManagedTablePreviewVO();
         result.setValid(true);
@@ -353,7 +414,8 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         result.setTargetContractHash(contractHash);
         result.setTargetContract(contract);
         result.setFieldMappings(mappings);
-        result.setDdl(ddlBuilder.build(binding.getDatabaseName(), targetTableName, contract));
+        result.setDdl(ddlBuilder.build(binding.getDatabaseName(), targetTableName, contract,
+                lifecycleProperties));
         return result;
     }
 
@@ -379,9 +441,20 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             throw conflict("Source metadata changed after preview; request a new preview");
         }
         TargetContract contract = readContract(payload.targetContractJson());
+        LakeLifecyclePolicy lifecyclePolicy = readCreateLifecyclePolicy(payload, contract, source);
+        java.util.Map<String, String> lifecycleProperties = lifecycleProperties(lifecyclePolicy);
         String contractHash = TargetContractCanonicalizer.canonicalHash(contract);
         if (!Objects.equals(payload.targetContractHash(), contractHash)) {
             throw invalid("previewToken contract is invalid");
+        }
+        if (payload.hasLifecyclePolicy()
+                && !Objects.equals(payload.lifecycleIntentHash(),
+                LakePreviewTokenService.lifecycleIntentHash(
+                        payload.lifecyclePolicyId(), payload.lifecyclePolicyVersion(),
+                        payload.lifecyclePolicySnapshotJson(), payload.lifecyclePartitionColumn(),
+                        payload.lifecycleGranularity(), payload.lifecycleRetentionCount(),
+                        payload.lifecyclePropertyKey(), payload.lifecyclePropertyValue()))) {
+            throw invalid("previewToken lifecycle intent is invalid");
         }
         try {
             contractFactory.validateAgainstSource(contract, source);
@@ -407,7 +480,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 payload.mappingId(), sourceRef, binding, targetTableName, contract, mappings, userId);
         LakeOperationHandle handle = begin(mapping, LakeOperationType.CREATE_TABLE,
                 payload.mappingId() != null);
-        return executeCreate(mapping, handle, client, contract, false);
+        return executeCreate(mapping, handle, client, contract, false, lifecycleProperties);
     }
 
     @Override
@@ -468,7 +541,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             return toVO(mapping);
         }
         LakeOperationHandle handle = retryHandle(mapping);
-        return executeCreate(mapping, handle, client, contract, actualExists);
+        return executeCreate(mapping, handle, client, contract, actualExists, java.util.Map.of());
     }
 
     @Override
@@ -690,7 +763,8 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             LakeOperationHandle handle,
             DorisLakeClient client,
             TargetContract contract,
-            boolean actualExists) {
+            boolean actualExists,
+            java.util.Map<String, String> tableProperties) {
         AtomicReference<String> errorCode = new AtomicReference<>();
         try {
             coordinator.execute(handle, () -> {
@@ -698,7 +772,13 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                     if (!actualExists) {
                         // The client receives the validated structured
                         // contract.  No request field contains executable SQL.
-                        client.createTable(mapping.getDatabaseName(), mapping.getTargetTableName(), contract);
+                        if (tableProperties == null || tableProperties.isEmpty()) {
+                            client.createTable(mapping.getDatabaseName(),
+                                    mapping.getTargetTableName(), contract);
+                        } else {
+                            client.createTable(mapping.getDatabaseName(),
+                                    mapping.getTargetTableName(), contract, tableProperties);
+                        }
                     }
                     if (!client.tableExists(mapping.getDatabaseName(), mapping.getTargetTableName())) {
                         errorCode.set(LakeErrorCode.LAKE_RESOURCE_CONFLICT);
@@ -1085,6 +1165,131 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         return sourceRef != null && Objects.equals(mapping.getSourceObjectRefId(), sourceRef.getId());
     }
 
+    private LakeLifecyclePolicy readPreviewLifecyclePolicy(
+            Long policyId, TargetContract contract, SourceObjectSnapshot source) {
+        if (policyId == null) {
+            return null;
+        }
+        if (policyId <= 0 || lifecyclePolicyDao == null) {
+            throw conflict("Lifecycle policy does not exist");
+        }
+        LakeLifecyclePolicy policy;
+        try {
+            policy = lifecyclePolicyDao.queryById(policyId);
+        } catch (RuntimeException exception) {
+            throw conflict("Lifecycle policy cannot be read");
+        }
+        if (policy == null || !Objects.equals(policy.getId(), policyId)) {
+            throw conflict("Lifecycle policy does not exist");
+        }
+        validateLifecyclePolicy(policy, contract, source);
+        return policy;
+    }
+
+    private LakeLifecyclePolicy readCreateLifecyclePolicy(
+            LakePreviewTokenService.Payload payload,
+            TargetContract contract,
+            SourceObjectSnapshot source) {
+        if (!payload.hasLifecyclePolicy()) {
+            return null;
+        }
+        if (lifecyclePolicyDao == null) {
+            throw conflict("Lifecycle policy changed after preview; request a new preview");
+        }
+        LakeLifecyclePolicy policy;
+        try {
+            policy = lifecyclePolicyDao.queryById(payload.lifecyclePolicyId());
+        } catch (RuntimeException exception) {
+            throw conflict("Lifecycle policy cannot be read");
+        }
+        try {
+            validateLifecyclePolicy(policy, contract, source);
+        } catch (LakeServiceException exception) {
+            throw conflict("Lifecycle policy changed after preview; request a new preview");
+        }
+        String currentSnapshot = lifecyclePolicySnapshot(policy);
+        if (!Objects.equals(payload.lifecyclePolicyVersion(), policy.getVersion())
+                || !Objects.equals(payload.lifecyclePolicySnapshotJson(), currentSnapshot)
+                || !Objects.equals(payload.lifecyclePartitionColumn(),
+                contract.getPartition().getColumn())
+                || !Objects.equals(payload.lifecycleGranularity(),
+                contract.getPartition().getGranularity())
+                || !Objects.equals(payload.lifecycleRetentionCount(), policy.getRetentionCount())
+                || !"partition.retention_count".equalsIgnoreCase(payload.lifecyclePropertyKey())
+                || !Objects.equals(payload.lifecyclePropertyValue(),
+                String.valueOf(policy.getRetentionCount()))) {
+            throw conflict("Lifecycle policy changed after preview; request a new preview");
+        }
+        return policy;
+    }
+
+    private static void validateLifecyclePolicy(
+            LakeLifecyclePolicy policy,
+            TargetContract contract,
+            SourceObjectSnapshot source) {
+        if (policy == null || policy.getId() == null || policy.getId() <= 0
+                || policy.getVersion() == null || policy.getVersion() <= 0
+                || policy.getStatus() != LakeLifecyclePolicyStatus.ACTIVE
+                || policy.getGranularity() == null
+                || policy.getRetentionCount() == null || policy.getRetentionCount() <= 0) {
+            throw conflict("Lifecycle policy must be active and valid");
+        }
+        if (contract == null || contract.getPartition() == null
+                || !Boolean.TRUE.equals(contract.getPartition().getEnabled())
+                || contract.getPartition().getColumn() == null
+                || contract.getPartition().getGranularity() == null
+                || !policy.getGranularity().name().equalsIgnoreCase(
+                contract.getPartition().getGranularity())) {
+            throw conflict("Lifecycle policy requires a matching AUTO RANGE partition");
+        }
+        String partitionColumn = contract.getPartition().getColumn();
+        org.apache.seatunnel.web.api.lake.contract.TargetColumn targetColumn = contract.getColumns()
+                .stream()
+                .filter(column -> column != null && column.getTargetName() != null
+                        && column.getTargetName().equalsIgnoreCase(partitionColumn))
+                .findFirst().orElse(null);
+        if (targetColumn == null || targetColumn.getTargetType() == null
+                || Boolean.TRUE.equals(targetColumn.getNullable())) {
+            throw conflict("Lifecycle partition column must be DATE/DATETIME and NOT NULL");
+        }
+        org.apache.seatunnel.web.api.lake.contract.DorisTypeBase base = targetColumn
+                .getTargetType().canonicalCopy().getBase().canonical();
+        if (base != org.apache.seatunnel.web.api.lake.contract.DorisTypeBase.DATE
+                && base != org.apache.seatunnel.web.api.lake.contract.DorisTypeBase.DATETIME) {
+            throw conflict("Lifecycle partition column must be DATE/DATETIME and NOT NULL");
+        }
+        String sourceName = targetColumn.getSourceName();
+        org.apache.seatunnel.web.api.lake.source.SourceColumnSnapshot sourceColumn = source == null
+                ? null : source.columns().stream()
+                .filter(column -> column != null && column.name() != null
+                        && column.name().equalsIgnoreCase(sourceName))
+                .findFirst().orElse(null);
+        String sourceType = sourceColumn == null ? null : sourceColumn.dataType();
+        if (sourceColumn == null || !Boolean.FALSE.equals(sourceColumn.nullable())
+                || sourceType == null
+                || (!sourceType.trim().equalsIgnoreCase("DATE")
+                && !sourceType.trim().toUpperCase(java.util.Locale.ROOT).startsWith("DATETIME"))) {
+            throw conflict("Lifecycle source partition column must be DATE/DATETIME and NOT NULL");
+        }
+    }
+
+    private static java.util.Map<String, String> lifecycleProperties(
+            LakeLifecyclePolicy policy) {
+        return policy == null ? java.util.Map.of()
+                : java.util.Map.of("partition.retention_count",
+                String.valueOf(policy.getRetentionCount()));
+    }
+
+    private static String lifecyclePolicySnapshot(LakeLifecyclePolicy policy) {
+        try {
+            return MAPPER.writeValueAsString(new LifecyclePolicySnapshot(
+                    policy.getId(), policy.getVersion(), policy.getGranularity().name(),
+                    policy.getRetentionCount()));
+        } catch (JsonProcessingException exception) {
+            throw conflict("Lifecycle policy snapshot is invalid");
+        }
+    }
+
     private static LakeManagedTablePreviewVO invalidPreview(
             LakeManagedTablePreviewDTO request, String message) {
         LakeManagedTablePreviewVO result = new LakeManagedTablePreviewVO();
@@ -1108,6 +1313,9 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 || request.getOmEntityId() == null || request.getOmEntityId().isBlank()
                 || request.getTargetTableName() == null || request.getTargetTableName().isBlank()) {
             throw invalid("sourceDataSourceId, omEntityId, odsDatabaseBindingId and targetTableName are required");
+        }
+        if (request.getLifecyclePolicyId() != null && request.getLifecyclePolicyId() <= 0) {
+            throw invalid("lifecyclePolicyId must be positive");
         }
     }
 
@@ -1149,5 +1357,9 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
 
     private static LakeServiceException classifiedExternal(String code, String fallback) {
         return new LakeServiceException(code == null ? LakeErrorCode.LAKE_DORIS_UNAVAILABLE : code, fallback);
+    }
+
+    private record LifecyclePolicySnapshot(
+            Long policyId, Integer version, String granularity, Integer retentionCount) {
     }
 }

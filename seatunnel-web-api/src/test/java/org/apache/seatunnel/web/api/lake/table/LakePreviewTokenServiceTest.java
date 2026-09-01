@@ -9,6 +9,7 @@ import java.time.ZoneOffset;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -69,5 +70,30 @@ class LakePreviewTokenServiceTest {
         LakePreviewTokenService expired = new LakePreviewTokenService(properties,
                 Clock.offset(clock, java.time.Duration.ofMinutes(2)), "test-secret");
         assertThrows(IllegalArgumentException.class, () -> expired.verify(token, 7));
+    }
+
+    @Test
+    void lifecycleCreateFieldsAreSignedAndTamperingIsRejected() {
+        LakeProperties properties = new LakeProperties();
+        properties.setPreviewTokenTtl(java.time.Duration.ofMinutes(5));
+        LakePreviewTokenService service = new LakePreviewTokenService(
+                properties, Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC),
+                "test-secret");
+
+        String token = service.issue(7, 11L, "om-table", 21L, null, "orders",
+                "source-hash", "contract-hash", "contract", "mappings",
+                901L, 3, "{\"policyId\":901,\"version\":3}",
+                "event_time", "DAY", 7, "7");
+        LakePreviewTokenService.Payload payload = service.verify(token, 7);
+
+        assertEquals(901L, payload.lifecyclePolicyId());
+        assertEquals(3, payload.lifecyclePolicyVersion());
+        assertEquals("event_time", payload.lifecyclePartitionColumn());
+        assertEquals("DAY", payload.lifecycleGranularity());
+        assertEquals(7, payload.lifecycleRetentionCount());
+        assertNotNull(payload.lifecycleIntentHash());
+        String tampered = token.substring(0, token.length() - 1)
+                + (token.endsWith("a") ? "b" : "a");
+        assertThrows(IllegalArgumentException.class, () -> service.verify(tampered, 7));
     }
 }
