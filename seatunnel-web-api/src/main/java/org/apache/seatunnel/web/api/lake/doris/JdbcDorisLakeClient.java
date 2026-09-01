@@ -1,10 +1,20 @@
 package org.apache.seatunnel.web.api.lake.doris;
 
+import org.apache.seatunnel.web.api.lake.CatalogPropertyRedactor;
 import org.apache.seatunnel.web.api.lake.CatalogPropertyWhitelist;
 import org.apache.seatunnel.web.api.lake.DorisIdentifier;
 import org.apache.seatunnel.web.api.lake.DorisSqlLiteral;
 import org.apache.seatunnel.web.api.lake.LakeProperties;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogActualEvaluator;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpec;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpecCanonicalizer;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpecValidator;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogValidationCode;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogValidationResult;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcCatalogDdlBuilder;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcDriverRegistry;
 import org.apache.seatunnel.web.api.lake.contract.TargetContract;
+import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -44,6 +54,8 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
     private final LakeProperties properties;
     private final DorisDdlBuilder ddlBuilder;
     private final DorisContractReader contractReader;
+    private final LakeJdbcCatalogDdlBuilder catalogDdlBuilder;
+    private final LakeCatalogActualEvaluator catalogActualEvaluator;
 
     public JdbcDorisLakeClient(DataSource dataSource) {
         this(dataSource, new LakeProperties());
@@ -59,6 +71,8 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
         this.properties = Objects.requireNonNull(properties, "properties");
         this.ddlBuilder = Objects.requireNonNull(ddlBuilder, "ddlBuilder");
         this.contractReader = Objects.requireNonNull(contractReader, "contractReader");
+        this.catalogDdlBuilder = new LakeJdbcCatalogDdlBuilder();
+        this.catalogActualEvaluator = new LakeCatalogActualEvaluator();
     }
 
     @Override
@@ -294,6 +308,206 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
     }
 
     @Override
+    public Map<String, String> readCatalogProperties(String catalogName) {
+        String catalog = DorisIdentifier.validate(catalogName);
+        // URL/driver values are compared internally by validateCatalog, but
+        // the public observation is always redacted before it leaves this
+        // client.
+        return safeCatalogProperties(readCatalogPropertiesInternal(catalog, null));
+    }
+
+    private Map<String, String> readCatalogPropertiesInternal(
+            String catalogName,
+            LakeCatalogDesiredSpec desiredSpec) {
+        String catalog = DorisIdentifier.validate(catalogName);
+        String sql = "SHOW CATALOG " + DorisIdentifier.quote(catalog);
+        return withConnection("read catalog properties", connection -> {
+            try (Statement statement = connection.createStatement()) {
+                configure(statement);
+                try (ResultSet result = statement.executeQuery(sql)) {
+                    TreeMap<String, String> raw = new TreeMap<>();
+                    while (result.next()) {
+                        String key = catalogValue(result, 1,
+                                "Key", "KEY", "PROPERTY_NAME", "NAME");
+                        String value = catalogValue(result, 2,
+                                "Value", "VALUE", "PROPERTY_VALUE");
+                        if (key != null && !key.isBlank()) {
+                            raw.put(key, value);
+                        }
+                    }
+                    return LakeCatalogDesiredSpecCanonicalizer
+                            .webOwnedActualProperties(raw, desiredSpec);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void alterCatalogProperties(String catalogName, Map<String, String> properties) {
+        execute(catalogDdlBuilder.buildAlterCatalog(catalogName, properties));
+    }
+
+    @Override
+    public void alterCatalog(
+            String catalogName,
+            LakeCatalogDesiredSpec desiredSpec,
+            LakeJdbcDriverRegistry driverRegistry,
+            LakeJdbcCatalogDdlBuilder.CatalogCredentials credentials) {
+        String normalizedCatalog = DorisIdentifier.normalize(catalogName);
+        LakeCatalogDesiredSpec normalized = LakeCatalogDesiredSpecValidator
+                .validateAndNormalize(desiredSpec);
+        if (!normalizedCatalog.equals(normalized.catalogName())) {
+            throw new IllegalArgumentException("Catalog name does not match desired spec");
+        }
+        normalized = LakeCatalogDesiredSpecValidator
+                .validateAndNormalize(normalized, driverRegistry);
+        execute(catalogDdlBuilder.buildAlterCatalog(normalized, driverRegistry, credentials));
+    }
+
+    @Override
+    public void refreshCatalog(String catalogName) {
+        execute(catalogDdlBuilder.buildRefreshCatalog(catalogName));
+    }
+
+    @Override
+    public LakeCatalogValidationResult validateCatalog(
+            String catalogName,
+            LakeCatalogDesiredSpec desiredSpec) {
+        final LakeCatalogDesiredSpec normalized;
+        final String catalog;
+        try {
+            normalized = LakeCatalogDesiredSpecValidator
+                    .validateAndNormalize(desiredSpec);
+            catalog = DorisIdentifier.normalize(catalogName);
+        } catch (RuntimeException exception) {
+            return LakeCatalogValidationResult.unknown(LakeCatalogValidationCode.INPUT_INVALID);
+        }
+        if (!catalog.equals(normalized.catalogName())) {
+            return LakeCatalogValidationResult.mismatch(
+                    LakeCatalogValidationCode.NAME_MISMATCH,
+                    Map.of(),
+                    Map.of("catalog_name", CatalogPropertyRedactor.MASK));
+        }
+        try {
+            if (!catalogExists(catalog)) {
+                return LakeCatalogValidationResult.missing();
+            }
+            Map<String, String> actual = readCatalogPropertiesInternal(catalog, normalized);
+            LakeCatalogValidationResult propertiesResult = catalogActualEvaluator
+                    .evaluate(normalized, actual);
+            if (!propertiesResult.isMatch()) {
+                return propertiesResult;
+            }
+            return validateCatalogMetadata(catalog, normalized, actual);
+        } catch (RuntimeException exception) {
+            // withConnection already strips SQLException text.  Do not return
+            // driver, URL, or credential details from this read-only API.
+            return LakeCatalogValidationResult.unknown(
+                    LakeCatalogValidationCode.METADATA_UNAVAILABLE);
+        }
+    }
+
+    /**
+     * Performs the smallest metadata read that proves the catalog's connector
+     * can answer requests for the desired scope.  The catalog properties and
+     * all source metadata stay inside this bounded client; only a safe result
+     * is returned.
+     */
+    private LakeCatalogValidationResult validateCatalogMetadata(
+            String catalog,
+            LakeCatalogDesiredSpec desired,
+            Map<String, String> actualProperties) {
+        List<String> databases = queryShowNames(
+                "list catalog databases",
+                "SHOW DATABASES FROM " + DorisIdentifier.quote(catalog));
+        if (desired.scope() == LakeCatalogScope.ALL) {
+            return LakeCatalogValidationResult.match(actualProperties);
+        }
+
+        String database = desired.databaseInclude().get(0);
+        if (!containsExact(databases, database)) {
+            return LakeCatalogValidationResult.mismatch(
+                    LakeCatalogValidationCode.DATABASE_MISSING,
+                    actualProperties,
+                    Map.of("include_database_list", CatalogPropertyRedactor.MASK));
+        }
+        if (desired.scope() == LakeCatalogScope.DATABASE) {
+            return LakeCatalogValidationResult.match(actualProperties);
+        }
+
+        List<String> tables = queryShowNames(
+                "list catalog tables",
+                "SHOW TABLES FROM " + DorisIdentifier.quote(catalog)
+                        + '.' + DorisIdentifier.quote(database));
+        for (String requestedTable : desired.tableInclude()) {
+            if (!containsExact(tables, requestedTable)) {
+                return LakeCatalogValidationResult.mismatch(
+                        LakeCatalogValidationCode.TABLE_MISSING,
+                        actualProperties,
+                        Map.of("include_table_list", CatalogPropertyRedactor.MASK));
+            }
+        }
+        return LakeCatalogValidationResult.match(actualProperties);
+    }
+
+    private List<String> queryShowNames(String operation, String sql) {
+        return withConnection(operation, connection -> {
+            try (Statement statement = connection.createStatement()) {
+                configure(statement);
+                try (ResultSet result = statement.executeQuery(sql)) {
+                    List<String> names = new ArrayList<>();
+                    while (result.next()) {
+                        String value = showName(result);
+                        if (value != null && !value.isBlank()) {
+                            names.add(value.trim());
+                        }
+                    }
+                    return List.copyOf(names);
+                }
+            }
+        });
+    }
+
+    private static String showName(ResultSet result) throws SQLException {
+        // Doris has used both descriptive labels and positional-only metadata
+        // for SHOW DATABASES/TABLES across JDBC versions.  Prefer labels when
+        // available, then retain the documented first-column contract.
+        for (String label : List.of(
+                "Database", "DATABASE", "TABLE_NAME", "TABLES_IN_DATABASE", "NAME")) {
+            try {
+                String value = result.getString(label);
+                if (value != null) {
+                    return value;
+                }
+            } catch (SQLException ignored) {
+                // Fall back to the positional SHOW result below.
+            }
+        }
+        return result.getString(1);
+    }
+
+    private static boolean containsExact(List<String> values, String expected) {
+        return values.stream().anyMatch(expected::equals);
+    }
+
+    private static Map<String, String> safeCatalogProperties(Map<String, String> properties) {
+        if (properties == null || properties.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> safe = new TreeMap<>();
+        for (Map.Entry<String, String> entry : properties.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            if (key != null && value != null) {
+                safe.put(key, CatalogPropertyRedactor.isSensitiveKey(key)
+                        ? CatalogPropertyRedactor.MASK
+                        : CatalogPropertyRedactor.redactText(value));
+            }
+        }
+        return Map.copyOf(safe);
+    }
+
+    @Override
     public void createCatalog(String catalogName, Map<String, String> properties) {
         String catalog = DorisIdentifier.validate(catalogName);
         Map<String, String> validated = CatalogPropertyWhitelist.validateAndCopy(properties);
@@ -320,6 +534,21 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
     public void dropCatalog(String catalogName) {
         String catalog = DorisIdentifier.validate(catalogName);
         execute("DROP CATALOG IF EXISTS " + DorisIdentifier.quote(catalog));
+    }
+
+    private static String catalogValue(ResultSet result, int position, String... labels)
+            throws SQLException {
+        for (String label : labels) {
+            try {
+                String value = result.getString(label);
+                if (value != null) {
+                    return value;
+                }
+            } catch (SQLException ignored) {
+                // Some Doris/JDBC versions expose only positional SHOW columns.
+            }
+        }
+        return result.getString(position);
     }
 
     /** Executes only SQL generated by this bounded client implementation. */

@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.lake.catalog;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -11,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /** Canonical JSON/SHA-256 identity for a non-secret logical catalog spec. */
 public final class LakeCatalogDesiredSpecCanonicalizer {
@@ -56,6 +58,36 @@ public final class LakeCatalogDesiredSpecCanonicalizer {
         return sha256(spec);
     }
 
+    /**
+     * Builds the non-secret properties that must be present in a Doris
+     * observation for this desired spec to match.  Password and checksum are
+     * intentionally absent: neither is a comparable SHOW CATALOG fact.
+     */
+    public static Map<String, String> webOwnedDesiredProperties(LakeCatalogDesiredSpec spec) {
+        LakeCatalogDesiredSpec normalized = LakeCatalogDesiredSpecValidator
+                .validateAndNormalize(spec);
+        TreeMap<String, String> expected = new TreeMap<>();
+        expected.put("type", "jdbc");
+        expected.put("jdbc_url", normalized.jdbcUrl());
+        expected.put("driver_url", normalized.driverUrl());
+        expected.put("driver_class", normalized.driverClass());
+        if (normalized.scope() == LakeCatalogScope.ALL) {
+            expected.put("only_specified_database", "false");
+        } else {
+            expected.put("only_specified_database", "true");
+            expected.put("include_database_list",
+                    String.join(",", normalized.databaseInclude()));
+            if (normalized.scope() == LakeCatalogScope.TABLE) {
+                String database = normalized.databaseInclude().get(0);
+                expected.put("include_table_list", normalized.tableInclude().stream()
+                        .map(table -> database + "." + table)
+                        .collect(Collectors.joining(",")));
+            }
+        }
+        expected.putAll(normalized.options());
+        return Map.copyOf(expected);
+    }
+
     public static String sha256(String canonicalJson) {
         if (canonicalJson == null) {
             throw new IllegalArgumentException("Canonical catalog JSON must not be null");
@@ -75,25 +107,49 @@ public final class LakeCatalogDesiredSpecCanonicalizer {
 
     /** Web-owned actual keys used by drift comparison; Doris defaults are ignored. */
     public static Map<String, String> webOwnedActualProperties(Map<String, String> actual) {
+        return webOwnedActualProperties(actual, null);
+    }
+
+    /**
+     * Filters an observation to the fixed Web-owned keys and the option keys
+     * present in the desired spec.  Keeping the desired keys in this overload
+     * makes option comparison forward-compatible: a newly allowlisted option
+     * is compared when requested, while connector-injected options remain
+     * ignored.
+     */
+    public static Map<String, String> webOwnedActualProperties(
+            Map<String, String> actual,
+            LakeCatalogDesiredSpec desiredSpec) {
         if (actual == null || actual.isEmpty()) {
             return Map.of();
         }
+        Map<String, String> desired = desiredSpec == null
+                ? Map.of()
+                : webOwnedDesiredProperties(desiredSpec);
         Map<String, String> result = new TreeMap<>();
         for (Map.Entry<String, String> entry : actual.entrySet()) {
-            String key = entry.getKey() == null ? "" : entry.getKey().trim()
-                    .toLowerCase(Locale.ROOT).replace('-', '_');
-            if (isWebOwnedProperty(key) && entry.getValue() != null) {
+            String key = normalizePropertyKey(entry.getKey());
+            if ((isWebOwnedProperty(key) || desired.containsKey(key))
+                    && entry.getValue() != null) {
                 result.put(key, entry.getValue().trim());
             }
         }
         return Map.copyOf(result);
     }
 
+    private static String normalizePropertyKey(String key) {
+        return key == null ? "" : key.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+    }
+
     private static boolean isWebOwnedProperty(String key) {
         return switch (key) {
             case "type", "jdbc_url", "driver_url", "driver_class",
                     "only_specified_database", "include_database_list", "include_table_list",
-                    "lower_case_table_names", "lower_case_database_names" -> true;
+                    "lower_case_table_names", "lower_case_database_names", "use_meta_cache",
+                    "enable_meta_cache", "meta_cache_expiration_second", "enable_partition_cache",
+                    "connection_pool_min_size", "connection_pool_max_size",
+                    "connection_pool_max_wait_time", "connection_pool_max_life_time",
+                    "connection_pool_keep_alive", "lower_case_meta_names" -> true;
             default -> false;
         };
     }

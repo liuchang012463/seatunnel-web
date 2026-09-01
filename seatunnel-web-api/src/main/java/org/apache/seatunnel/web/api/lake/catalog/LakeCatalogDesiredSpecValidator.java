@@ -23,6 +23,7 @@ public final class LakeCatalogDesiredSpecValidator {
     private static final Set<String> OPTIONS = Set.of(
             "lower_case_table_names",
             "lower_case_database_names",
+            "lower_case_meta_names",
             "use_meta_cache",
             "enable_meta_cache",
             "meta_cache_expiration_second",

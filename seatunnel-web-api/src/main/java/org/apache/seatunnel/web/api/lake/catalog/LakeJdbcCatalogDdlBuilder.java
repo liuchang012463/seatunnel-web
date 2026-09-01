@@ -54,7 +54,7 @@ public final class LakeJdbcCatalogDdlBuilder {
             throw new IllegalArgumentException("Catalog update properties must not be empty");
         }
         return "ALTER CATALOG " + quoteCatalog(catalog)
-                + " SET PROPERTIES " + propertiesSql(validated);
+                + " SET PROPERTIES " + propertiesSql(new TreeMap<>(validated));
     }
 
     public String buildRefreshCatalog(String catalogName) {

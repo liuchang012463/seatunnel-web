@@ -1,6 +1,10 @@
 package org.apache.seatunnel.web.api.lake.doris;
 
 import org.apache.seatunnel.web.api.lake.contract.TargetContract;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpec;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogValidationResult;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcCatalogDdlBuilder;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcDriverRegistry;
 
 import java.util.List;
 import java.util.Map;
@@ -52,6 +56,24 @@ public interface DorisLakeClient extends AutoCloseable {
     boolean catalogExists(String catalogName);
 
     void createCatalog(String catalogName, Map<String, String> properties);
+
+    /** Reads only Web-owned, non-secret properties from SHOW CATALOG. */
+    Map<String, String> readCatalogProperties(String catalogName);
+
+    /** Applies only non-secret allowlisted properties through bounded DDL. */
+    void alterCatalogProperties(String catalogName, Map<String, String> properties);
+
+    /** Applies a complete desired spec with execution-only source credentials. */
+    void alterCatalog(String catalogName, LakeCatalogDesiredSpec desiredSpec,
+                      LakeJdbcDriverRegistry driverRegistry,
+                      LakeJdbcCatalogDdlBuilder.CatalogCredentials credentials);
+
+    /** Refreshes connector metadata using Doris' bounded catalog statement. */
+    void refreshCatalog(String catalogName);
+
+    /** Performs an existence/read-only desired-state comparison. */
+    LakeCatalogValidationResult validateCatalog(String catalogName,
+                                                LakeCatalogDesiredSpec desiredSpec);
 
     void dropCatalog(String catalogName);
 
