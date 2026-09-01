@@ -68,12 +68,13 @@ public final class LakePhysicalCapabilityPublisher implements Supplier<DorisCapa
         boolean lakeConfigComplete = completeDorisSource(lakeDataSource);
         boolean sourceConfigComplete = completeSource(source);
 
-        // Do not create a pool or connect if the server-side configuration is
-        // incomplete.  This keeps a malformed/disabled setup bounded and
-        // avoids turning a provider exception into a capability claim.
+        // Doris reachability is independent from the optional server-side
+        // driver metadata used by logical JDBC catalogs.  The existing Doris
+        // data-source record already contains the driver information needed
+        // by the provider, so missing driverUrl/checksum must not suppress the
+        // real, bounded SELECT 1 evidence used by recommendation.
         boolean lakeDorisReachable = false;
-        if (adapterExists && driverConfigExists && driverChecksumConfigured
-                && lakeConfigComplete && sourceConfigComplete) {
+        if (adapterExists && lakeConfigComplete && sourceConfigComplete) {
             lakeDorisReachable = pingConfiguredDoris();
         }
 

@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.service.impl;
 
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogCapability;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogCapabilityReason;
 import org.apache.seatunnel.web.api.lake.catalog.LakeExternalCatalogCapabilityResolver;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
 import org.apache.seatunnel.web.api.lake.doris.DorisCapability;
@@ -91,7 +92,7 @@ public class LakeRecommendationServiceImpl implements LakeRecommendationService 
         }
 
         DorisCapability physicalCapability = physicalCapability(request);
-        LakeCatalogCapability logicalCapability = logicalCapability(request);
+        LakeCatalogCapability logicalCapability = logicalCapability(request, physicalCapability);
         LakeRecommendationCapabilitySummary physical = physicalSummary(physicalCapability);
         LakeRecommendationCapabilitySummary logical = logicalSummary(logicalCapability);
 
@@ -124,17 +125,27 @@ public class LakeRecommendationServiceImpl implements LakeRecommendationService 
         }
     }
 
-    private LakeCatalogCapability logicalCapability(LakeRecommendationRequestDTO request) {
+    private LakeCatalogCapability logicalCapability(
+            LakeRecommendationRequestDTO request, DorisCapability physicalCapability) {
         try {
+            // The physical publisher performs the bounded, server-owned Doris
+            // ping. Reuse that evidence for the logical preflight instead of
+            // passing the production "unknown" flag as a failed ping. The
+            // source-side network is still unprobed, so it is represented by
+            // SOURCE_NETWORK_UNKNOWN below.
+            boolean lakeDorisReachable = logicalReachabilityKnown
+                    || (physicalCapability != null
+                    && physicalCapability.isPhysicalSupported());
             LakeCatalogCapability capability = catalogCapabilityResolver.resolve(
                     request.getSourceDataSourceId(), request.getAdapter(), request.getTargetScope(),
-                    logicalReachabilityKnown, logicalReachabilityKnown);
+                    lakeDorisReachable, true);
             if (capability == null || logicalReachabilityKnown) {
                 return capability;
             }
+            List<String> reasons = appendReason(capability.reasonCodes(),
+                    LakeCatalogCapabilityReason.SOURCE_NETWORK_UNKNOWN);
             return new LakeCatalogCapability(capability.adapter(), false,
-                    appendReason(capability.reasonCodes(),
-                            LakeRecommendationReason.LOGICAL_CAPABILITY_UNKNOWN));
+                    appendReason(reasons, LakeRecommendationReason.LOGICAL_CAPABILITY_UNKNOWN));
         } catch (RuntimeException ignored) {
             return null;
         }

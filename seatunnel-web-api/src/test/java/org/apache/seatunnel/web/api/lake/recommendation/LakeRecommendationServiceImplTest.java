@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.lake.recommendation;
 
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogCapability;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogCapabilityReason;
 import org.apache.seatunnel.web.api.lake.catalog.LakeExternalCatalogCapabilityResolver;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
 import org.apache.seatunnel.web.api.lake.doris.DorisCapability;
@@ -163,19 +164,25 @@ class LakeRecommendationServiceImplTest {
         LakeExternalCatalogCapabilityResolver resolver = mock(
                 LakeExternalCatalogCapabilityResolver.class);
         when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE,
-                false, false))
+                true, true))
                 .thenReturn(new LakeCatalogCapability(LakeJdbcAdapterType.MYSQL, true, List.of()));
         LakeRecommendationServiceImpl service = new LakeRecommendationServiceImpl(
                 resolver, (sourceDataSourceId, adapter) ->
-                        new DorisCapability(false, false, List.of()), false);
+                        new DorisCapability(true, true, List.of()), false);
 
         LakeRecommendationVO result = service.recommend(request(false, false, true));
 
         assertEquals(LakeRecommendationMode.UNSUPPORTED, result.mode());
         assertTrue(result.logicalCapability().disabledReasons().contains(
+                LakeCatalogCapabilityReason.SOURCE_NETWORK_UNKNOWN));
+        assertTrue(result.logicalCapability().disabledReasons().contains(
                 LakeRecommendationReason.LOGICAL_CAPABILITY_UNKNOWN));
+        assertFalse(result.logicalCapability().disabledReasons().contains(
+                LakeCatalogCapabilityReason.SOURCE_NETWORK_UNREACHABLE));
+        assertFalse(result.logicalCapability().disabledReasons().contains(
+                LakeCatalogCapabilityReason.LAKE_DORIS_UNREACHABLE));
         verify(resolver).resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE,
-                false, false);
+                true, true);
     }
 
     private static LakeRecommendationRequestDTO request(

@@ -71,6 +71,7 @@ class LakePhysicalCapabilityPublisherTest {
     @Test
     void incompleteServerConfigurationDoesNotProbeDoris() {
         LakeProperties properties = configuredProperties();
+        properties.setDataSourceId(null);
         properties.setDriverChecksum(null);
         DataSourceDao dataSourceDao = mock(DataSourceDao.class);
         LakeDorisClientProvider provider = mock(LakeDorisClientProvider.class);
@@ -84,6 +85,30 @@ class LakePhysicalCapabilityPublisherTest {
         assertTrue(capability.getReasons().contains(
                 DorisCapabilityReason.DRIVER_CHECKSUM_MISSING));
         verifyNoInteractions(provider);
+    }
+
+    @Test
+    void dorisPingIsNotSuppressedByLogicalDriverMetadata() {
+        LakeProperties properties = configuredProperties();
+        properties.setDriverUrl(null);
+        properties.setDriverClass(null);
+        properties.setDriverChecksum(null);
+        DataSourceDao dataSourceDao = mock(DataSourceDao.class);
+        LakeDorisClientProvider provider = mock(LakeDorisClientProvider.class);
+        DorisLakeClient client = mock(DorisLakeClient.class);
+        when(dataSourceDao.queryById(99L)).thenReturn(dorisSource(99L));
+        when(dataSourceDao.queryById(42L)).thenReturn(source(42L, DbType.MYSQL));
+        when(provider.get(99L)).thenReturn(client);
+        when(client.ping()).thenReturn(true);
+
+        DorisCapability capability = new LakePhysicalCapabilityPublisher(
+                properties, dataSourceDao, provider).current(42L);
+
+        assertTrue(capability.isPhysicalSupported());
+        assertFalse(capability.getReasons().contains(
+                DorisCapabilityReason.LAKE_DORIS_UNREACHABLE));
+        verify(provider).get(99L);
+        verify(client).ping();
     }
 
     @Test
