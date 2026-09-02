@@ -73,3 +73,5 @@ AGENTS.md
 .vscode/
 .mavenrc
 tmp/
+
+.zcode/
