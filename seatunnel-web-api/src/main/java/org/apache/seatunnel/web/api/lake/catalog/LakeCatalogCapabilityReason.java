@@ -7,6 +7,8 @@ public final class LakeCatalogCapabilityReason {
     public static final String DRIVER_CONFIG_MISSING = "DRIVER_CONFIG_MISSING";
     public static final String DRIVER_CHECKSUM_MISSING = "DRIVER_CHECKSUM_MISSING";
     public static final String DRIVER_CHECKSUM_INVALID = "DRIVER_CHECKSUM_INVALID";
+    /** Optional Doris catalog checksum was supplied but is not a 32-digit MD5. */
+    public static final String DORIS_DRIVER_MD5_INVALID = "DORIS_DRIVER_MD5_INVALID";
     public static final String DRIVER_REGISTRY_REVISION_MISSING =
             "DRIVER_REGISTRY_REVISION_MISSING";
     public static final String DRIVER_UNAVAILABLE = "DRIVER_UNAVAILABLE";

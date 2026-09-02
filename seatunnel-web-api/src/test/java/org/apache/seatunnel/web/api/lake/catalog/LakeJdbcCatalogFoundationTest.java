@@ -73,6 +73,27 @@ class LakeJdbcCatalogFoundationTest {
     }
 
     @Test
+    void optionalDorisMd5IsValidatedSeparatelyFromRegistrySha256() {
+        LakeProperties.JdbcCatalog config = configuredCatalog();
+        config.getMysql().setDorisMd5("0123456789abcdef0123456789abcdef");
+        LakeJdbcDriverRegistry registry = new LakeJdbcDriverRegistry(config);
+        assertTrue(registry.status(LakeJdbcAdapterType.MYSQL).available());
+
+        LakeCatalogDesiredSpec desired = spec(
+                "source_catalog", LakeCatalogScope.ALL, List.of(), List.of(), Map.of());
+        String ddl = new LakeJdbcCatalogDdlBuilder().buildCreateCatalog(
+                desired, registry,
+                new LakeJdbcCatalogDdlBuilder.CatalogCredentials("reader", "secret"));
+        assertTrue(ddl.contains("'checksum' = '0123456789abcdef0123456789abcdef'"));
+
+        config.getMysql().setDorisMd5("not-md5");
+        LakeJdbcDriverRegistry invalid = new LakeJdbcDriverRegistry(config);
+        assertFalse(invalid.status(LakeJdbcAdapterType.MYSQL).available());
+        assertTrue(invalid.status(LakeJdbcAdapterType.MYSQL).reasonCodes().contains(
+                LakeCatalogCapabilityReason.DORIS_DRIVER_MD5_INVALID));
+    }
+
+    @Test
     void capabilityReportsStableReasonsAndNeverClaimsSuccessWithMissingDriver() {
         LakeJdbcCatalogAdapterRegistry adapters = new LakeJdbcCatalogAdapterRegistry();
         LakeProperties.JdbcCatalog config = new LakeProperties.JdbcCatalog();
@@ -82,6 +103,7 @@ class LakeJdbcCatalogFoundationTest {
         mysql.setVerified(true);
         mysql.setUrl("file:/opt/drivers/mysql.jar");
         mysql.setChecksum(CHECKSUM);
+        mysql.setDorisMd5(null);
         config.setMysql(mysql);
         LakeJdbcDriverRegistry drivers = new LakeJdbcDriverRegistry(config);
 

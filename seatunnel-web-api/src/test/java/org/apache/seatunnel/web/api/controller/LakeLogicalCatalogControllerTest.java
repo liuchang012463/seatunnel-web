@@ -20,6 +20,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -79,5 +80,35 @@ class LakeLogicalCatalogControllerTest {
         verify(service).detail(eq(11L));
         verify(service).create(any(LakeExternalCatalogCreateDTO.class));
         verify(service).validate(11L);
+    }
+
+    @Test
+    void probeBindsPathVariableAndRequestParametersWithoutFallingBackOnInvalidAdapter()
+            throws Exception {
+        LakeLogicalCatalogService service = mock(LakeLogicalCatalogService.class);
+        LakeLogicalCapabilityVO capability = new LakeLogicalCapabilityVO();
+        when(service.probe(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.ALL))
+                .thenReturn(capability);
+        when(service.capability(7L, null, LakeCatalogScope.ALL)).thenReturn(capability);
+        MockMvc mockMvc = standaloneSetup(new LakeLogicalCatalogController(service)).build();
+
+        mockMvc.perform(post(
+                        "/api/v1/lake/logical/datasources/{sourceDataSourceId}/capability/probe",
+                        7L)
+                        .param("adapter", "MYSQL")
+                        .param("scope", "ALL"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code", is(0)));
+
+        mockMvc.perform(post(
+                        "/api/v1/lake/logical/datasources/{sourceDataSourceId}/capability/probe",
+                        7L)
+                        .param("adapter", "not-a-real-adapter")
+                        .param("scope", "ALL"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code", is(0)));
+
+        verify(service).probe(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.ALL);
+        verify(service).capability(7L, null, LakeCatalogScope.ALL);
     }
 }

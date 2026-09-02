@@ -28,6 +28,9 @@ public class LakeProperties {
     /** Maximum time allowed for a read-only metadata query. */
     private Duration queryTimeout = Duration.ofSeconds(30);
 
+    /** How long an explicit Doris-side source reachability probe is reusable. */
+    private Duration sourceProbeCacheTtl = Duration.ofSeconds(60);
+
     /**
      * HMAC key used for short-lived, one-time MANAGED table preview tokens.
      * This value is required when the lake control plane is enabled.  A
@@ -110,6 +113,9 @@ public class LakeProperties {
         private String driverClass;
 
         private String checksum;
+
+        /** Optional Doris 4.1.2 catalog checksum; unlike checksum, this is an MD5. */
+        private String dorisMd5;
 
         /** True only after operators verify the driver on Doris FE/BE nodes. */
         private boolean verified;

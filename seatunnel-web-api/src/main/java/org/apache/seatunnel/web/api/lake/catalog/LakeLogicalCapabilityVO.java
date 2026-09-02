@@ -23,6 +23,9 @@ public class LakeLogicalCapabilityVO {
     /** True only when the source-side reachability check has actually run. */
     private boolean sourceNetworkReachabilityKnown;
 
+    /** The last bounded probe outcome when reachability is known. */
+    private boolean sourceNetworkReachable;
+
     private boolean lakeDorisReachable;
 
     private List<String> reasonCodes = List.of();
@@ -44,8 +47,23 @@ public class LakeLogicalCapabilityVO {
         this.logicalSupported = logicalSupported;
         this.supported = logicalSupported;
         this.sourceNetworkReachabilityKnown = sourceNetworkReachabilityKnown;
+        this.sourceNetworkReachable = false;
         this.lakeDorisReachable = lakeDorisReachable;
         this.reasonCodes = reasonCodes == null ? List.of() : List.copyOf(reasonCodes);
+    }
+
+    public LakeLogicalCapabilityVO(
+            Long sourceDataSourceId,
+            LakeJdbcAdapterType adapter,
+            LakeCatalogScope scope,
+            boolean logicalSupported,
+            boolean sourceNetworkReachabilityKnown,
+            boolean sourceNetworkReachable,
+            boolean lakeDorisReachable,
+            List<String> reasonCodes) {
+        this(sourceDataSourceId, adapter, scope, logicalSupported,
+                sourceNetworkReachabilityKnown, lakeDorisReachable, reasonCodes);
+        this.sourceNetworkReachable = sourceNetworkReachable;
     }
 
     public boolean isLogicalSupported() {
@@ -54,6 +72,10 @@ public class LakeLogicalCapabilityVO {
 
     public boolean isSupported() {
         return supported;
+    }
+
+    public boolean isSourceNetworkReachable() {
+        return sourceNetworkReachable;
     }
 
     public List<String> getReasons() {

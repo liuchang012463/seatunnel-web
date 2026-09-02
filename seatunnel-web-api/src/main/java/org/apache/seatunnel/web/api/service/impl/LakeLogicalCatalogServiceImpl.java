@@ -21,6 +21,7 @@ import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcCatalogDdlBuilder;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcDriverRegistry;
 import org.apache.seatunnel.web.api.lake.catalog.LakeLogicalCapabilityVO;
+import org.apache.seatunnel.web.api.lake.catalog.LakeSourceNetworkProbeCache;
 import org.apache.seatunnel.web.api.lake.doris.DorisLakeClient;
 import org.apache.seatunnel.web.api.lake.doris.LakeDorisClientProvider;
 import org.apache.seatunnel.web.api.lake.operation.LakeExternalOperationException;
@@ -51,14 +52,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Read-only logical catalog facade.
  *
- * <p>The capability endpoint performs only a bounded Doris ping.  It does not
- * probe the source database from the Web process, so source reachability is
- * explicitly unknown and can never make the response claim support.</p>
+ * <p>The capability endpoint performs a bounded Doris ping and can consume a
+ * short-lived source reachability observation produced by the explicit
+ * FE/BE probe endpoint.  It never probes the source from the Web process.</p>
  */
 @Service
 public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService {
@@ -76,6 +78,7 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
     private final LakeCatalogCredentialRevisionService credentialService;
     private final LakeResourceOperationCoordinator coordinator;
     private final CurrentUserProvider currentUserProvider;
+    private final LakeSourceNetworkProbeCache sourceProbeCache;
 
     @Autowired
     public LakeLogicalCatalogServiceImpl(
@@ -87,7 +90,8 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
             LakeJdbcDriverRegistry driverRegistry,
             LakeCatalogCredentialRevisionService credentialService,
             LakeResourceOperationCoordinator coordinator,
-            CurrentUserProvider currentUserProvider) {
+            CurrentUserProvider currentUserProvider,
+            LakeSourceNetworkProbeCache sourceProbeCache) {
         this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
         this.lakeProperties = Objects.requireNonNull(lakeProperties, "lakeProperties");
         this.capabilityResolver = Objects.requireNonNull(capabilityResolver, "capabilityResolver");
@@ -97,6 +101,23 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
         this.credentialService = Objects.requireNonNull(credentialService, "credentialService");
         this.coordinator = Objects.requireNonNull(coordinator, "coordinator");
         this.currentUserProvider = Objects.requireNonNull(currentUserProvider, "currentUserProvider");
+        this.sourceProbeCache = Objects.requireNonNull(sourceProbeCache, "sourceProbeCache");
+    }
+
+    /** Constructor retained for embedders that do not need a custom probe cache. */
+    public LakeLogicalCatalogServiceImpl(
+            DataSourceDao dataSourceDao,
+            LakeProperties lakeProperties,
+            LakeExternalCatalogCapabilityResolver capabilityResolver,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeExternalCatalogBindingPersistenceService persistenceService,
+            LakeJdbcDriverRegistry driverRegistry,
+            LakeCatalogCredentialRevisionService credentialService,
+            LakeResourceOperationCoordinator coordinator,
+            CurrentUserProvider currentUserProvider) {
+        this(dataSourceDao, lakeProperties, capabilityResolver, dorisClientProvider,
+                persistenceService, driverRegistry, credentialService, coordinator,
+                currentUserProvider, new LakeSourceNetworkProbeCache());
     }
 
     /** Constructor retained for focused read-only tests and embedders. */
@@ -116,6 +137,7 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
                 lakeProperties, ignored -> null);
         this.coordinator = null;
         this.currentUserProvider = null;
+        this.sourceProbeCache = new LakeSourceNetworkProbeCache();
     }
 
     @Override
@@ -129,34 +151,58 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
             Long sourceDataSourceId, LakeJdbcAdapterType adapter, LakeCatalogScope scope) {
         LakeCatalogScope requestedScope = scope == null ? LakeCatalogScope.ALL : scope;
         boolean lakeDorisReachable = probeLakeDoris();
-        // There is no source-side probe in this API.  Passing false is
-        // intentional: the resolver must publish SOURCE_NETWORK_UNREACHABLE
-        // rather than infer network support from local configuration.
-        LakeCatalogCapability capability = capabilityResolver.resolve(
-                sourceDataSourceId, adapter, requestedScope, lakeDorisReachable, false);
-        List<String> reasons = capability == null || capability.reasonCodes() == null
-                ? List.of(LakeCatalogCapabilityReason.ADAPTER_MISSING)
-                : capability.reasonCodes();
-        // The resolver uses the same disabled reason for an explicit failed
-        // probe and an omitted probe.  This API has not probed the source, so
-        // publish the more precise UNKNOWN warning and never imply failure.
-        reasons = withoutIgnoreCase(reasons,
-                LakeCatalogCapabilityReason.SOURCE_NETWORK_UNREACHABLE);
-        if (!containsIgnoreCase(reasons, LakeCatalogCapabilityReason.SOURCE_NETWORK_UNKNOWN)) {
-            reasons = append(reasons, LakeCatalogCapabilityReason.SOURCE_NETWORK_UNKNOWN);
+        LakeSourceNetworkProbeCache.ProbeResult probe = sourceProbeCache.get(
+                probeKey(sourceDataSourceId, adapter), lakeProperties.getSourceProbeCacheTtl())
+                .orElse(null);
+        return capabilityWithProbe(sourceDataSourceId, adapter, requestedScope,
+                lakeDorisReachable, probe);
+    }
+
+    @Override
+    public LakeLogicalCapabilityVO probe(
+            Long sourceDataSourceId, LakeJdbcAdapterType adapter, LakeCatalogScope scope) {
+        LakeCatalogScope requestedScope = scope == null ? LakeCatalogScope.ALL : scope;
+        LakeJdbcAdapterType requestedAdapter = adapter == null
+                ? adapterFor(sourceDataSourceId) : adapter;
+        boolean lakeDorisReachable = probeLakeDoris();
+        if (!lakeDorisReachable || requestedAdapter == null
+                || sourceDataSourceId == null || sourceDataSourceId <= 0) {
+            return capabilityWithProbe(sourceDataSourceId, requestedAdapter, requestedScope,
+                    lakeDorisReachable, null);
         }
-        // Source reachability is intentionally unprobed, therefore this
-        // endpoint must remain disabled even when static checks and the lake
-        // ping succeed.
-        boolean supported = false;
-        return new LakeLogicalCapabilityVO(
-                sourceDataSourceId,
-                adapter,
-                requestedScope,
-                supported,
-                false,
+
+        // Resolve static checks first.  A probe cannot repair a missing driver,
+        // adapter or source configuration, and avoiding a temporary catalog in
+        // those cases prevents needless side effects.
+        LakeCatalogCapability staticCapability;
+        try {
+            staticCapability = capabilityResolver.resolve(
+                    sourceDataSourceId, requestedAdapter, requestedScope,
+                    lakeDorisReachable, true);
+        } catch (RuntimeException exception) {
+            return capabilityWithProbe(sourceDataSourceId, requestedAdapter, requestedScope,
+                    lakeDorisReachable, null);
+        }
+        if (staticCapability == null || hasBlockingCapabilityReason(staticCapability.reasonCodes())) {
+            return capabilityWithProbe(sourceDataSourceId, requestedAdapter, requestedScope,
+                    lakeDorisReachable, null);
+        }
+
+        ProbeAttempt attempt = probeSourceFromDoris(sourceDataSourceId, requestedAdapter);
+        if (!attempt.completed()) {
+            // Missing credentials, an incomplete source row or an unverified
+            // driver means that no source-side observation was made.  Keep
+            // the capability UNKNOWN instead of misreporting a setup problem
+            // as a network outage.
+            return capabilityWithProbe(sourceDataSourceId, requestedAdapter, requestedScope,
+                    lakeDorisReachable, null);
+        }
+        boolean reachable = attempt.reachable();
+        String key = probeKey(sourceDataSourceId, requestedAdapter);
+        sourceProbeCache.put(key, reachable);
+        return capabilityWithProbe(sourceDataSourceId, requestedAdapter, requestedScope,
                 lakeDorisReachable,
-                reasons);
+                new LakeSourceNetworkProbeCache.ProbeResult(reachable, System.currentTimeMillis()));
     }
 
     @Override
@@ -828,6 +874,117 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
                 || LakeCatalogCapabilityReason.LAKE_DORIS_UNREACHABLE.equalsIgnoreCase(reason);
     }
 
+    /** Converts resolver facts plus an optional source observation into the safe API VO. */
+    private LakeLogicalCapabilityVO capabilityWithProbe(
+            Long sourceDataSourceId,
+            LakeJdbcAdapterType adapter,
+            LakeCatalogScope scope,
+            boolean lakeDorisReachable,
+            LakeSourceNetworkProbeCache.ProbeResult probe) {
+        boolean sourceNetworkReachable = probe != null && probe.reachable();
+        LakeCatalogCapability resolved;
+        try {
+            // The resolver accepts a boolean rather than a tri-state.  An
+            // unknown probe is represented as false and the unreachable
+            // warning is replaced below, so the response never claims a
+            // source failure that was not actually observed.
+            resolved = capabilityResolver.resolve(
+                    sourceDataSourceId, adapter, scope, lakeDorisReachable,
+                    sourceNetworkReachable);
+        } catch (RuntimeException exception) {
+            resolved = null;
+        }
+        List<String> reasons = resolved == null || resolved.reasonCodes() == null
+                ? List.of(LakeCatalogCapabilityReason.ADAPTER_MISSING)
+                : resolved.reasonCodes();
+        if (probe == null) {
+            reasons = withoutIgnoreCase(reasons,
+                    LakeCatalogCapabilityReason.SOURCE_NETWORK_UNREACHABLE);
+            reasons = append(reasons, LakeCatalogCapabilityReason.SOURCE_NETWORK_UNKNOWN);
+        }
+        boolean supported = probe != null && resolved != null && resolved.enabled();
+        return new LakeLogicalCapabilityVO(
+                sourceDataSourceId,
+                adapter,
+                scope,
+                supported,
+                probe != null,
+                sourceNetworkReachable,
+                lakeDorisReachable,
+                reasons);
+    }
+
+    private boolean hasBlockingCapabilityReason(List<String> reasons) {
+        return reasons != null && reasons.stream().anyMatch(reason -> !isNetworkWarning(reason));
+    }
+
+    /** Builds a revision-aware process-local cache key without retaining credentials. */
+    private String probeKey(Long sourceDataSourceId, LakeJdbcAdapterType adapter) {
+        String revision = "unknown";
+        if (sourceDataSourceId != null && sourceDataSourceId > 0) {
+            try {
+                DataSource source = dataSourceDao.queryById(sourceDataSourceId);
+                if (source != null) {
+                    revision = sourceRevision(source);
+                }
+            } catch (RuntimeException ignored) {
+                // A DAO failure must not make a read-only capability endpoint
+                // fail; the unknown revision simply avoids a cache hit.
+            }
+        }
+        return sourceDataSourceId + ":"
+                + (adapter == null ? "unknown" : adapter.code()) + ":" + revision;
+    }
+
+    /** Executes one temporary catalog observation from the Doris side only. */
+    private ProbeAttempt probeSourceFromDoris(
+            Long sourceDataSourceId, LakeJdbcAdapterType adapter) {
+        final DataSource source;
+        final LakeJdbcDriverRegistry.DriverRegistration registration;
+        final LakeCatalogCredentialRevisionService.ExecutionCredentials credentials;
+        try {
+            source = requireSource(sourceDataSourceId);
+            LakeJdbcDriverRegistry.DriverStatus driverStatus = driverRegistry.status(adapter);
+            registration = driverStatus.registration();
+            if (!driverStatus.available() || registration == null) {
+                return ProbeAttempt.notRun();
+            }
+            credentials = credentialService.resolveForExecution(source, adapter);
+        } catch (RuntimeException exception) {
+            return ProbeAttempt.notRun();
+        }
+
+        String catalogName = probeCatalogName(sourceDataSourceId);
+        LakeCatalogDesiredSpec desired = new LakeCatalogDesiredSpec(
+                catalogName,
+                source.getId(),
+                sourceRevision(source),
+                adapter,
+                LakeCatalogScope.ALL,
+                credentials.jdbcUrl(),
+                registration.url(),
+                registration.driverClass(),
+                registration.checksum(),
+                registration.registryRevision(),
+                credentials.credentialRevision(),
+                List.of(),
+                List.of(),
+                Map.of());
+        try (DorisLakeClient client = dorisClientProvider.get(lakeProperties.getDataSourceId())) {
+            client.probeSource(desired, driverRegistry, credentials.ddlCredentials());
+            return ProbeAttempt.completed(true);
+        } catch (RuntimeException exception) {
+            // The temporary catalog operation ran and failed.  This is a real
+            // negative observation and may safely be cached for the short TTL.
+            return ProbeAttempt.completed(false);
+        }
+    }
+
+    private static String probeCatalogName(Long sourceDataSourceId) {
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        return "_lake_probe_" + sourceDataSourceId + "_" + suffix.substring(0, 20);
+    }
+
     private static String classifyRuntime(RuntimeException exception) {
         if (exception instanceof IllegalArgumentException) {
             return LakeErrorCode.LAKE_CATALOG_REQUEST_INVALID;
@@ -920,6 +1077,17 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
             return client.ping();
         } catch (RuntimeException ignored) {
             return false;
+        }
+    }
+
+    private record ProbeAttempt(boolean completed, boolean reachable) {
+
+        private static ProbeAttempt notRun() {
+            return new ProbeAttempt(false, false);
+        }
+
+        private static ProbeAttempt completed(boolean reachable) {
+            return new ProbeAttempt(true, reachable);
         }
     }
 

@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcDriverRegistry;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Minimal Doris control-plane client.  Implementations must keep credentials
@@ -79,6 +80,51 @@ public interface DorisLakeClient extends AutoCloseable {
             LakeJdbcDriverRegistry driverRegistry,
             LakeJdbcCatalogDdlBuilder.CatalogCredentials credentials) {
         throw new UnsupportedOperationException("Validated catalog create is unavailable");
+    }
+
+    /**
+     * Proves that Doris FE/BE can reach the source represented by a temporary
+     * catalog.  The caller must provide a unique, short-lived catalog name in
+     * {@code desiredSpec}; the method always attempts to remove it again.
+     *
+     * <p>A successful CREATE alone is not enough because some JDBC connectors
+     * defer opening the source connection.  Listing databases forces a
+     * bounded connector metadata request from Doris.</p>
+     */
+    default void probeSource(
+            LakeCatalogDesiredSpec desiredSpec,
+            LakeJdbcDriverRegistry driverRegistry,
+            LakeJdbcCatalogDdlBuilder.CatalogCredentials credentials) {
+        Objects.requireNonNull(desiredSpec, "desired spec");
+        String catalogName = desiredSpec.catalogName();
+        // Cleanup is attempted after every CREATE attempt.  Doris may accept
+        // the DDL and fail while waiting for connector metadata, so tracking
+        // only a completed Java call could leave a temporary catalog behind.
+        boolean createAttempted = false;
+        RuntimeException failure = null;
+        try {
+            createAttempted = true;
+            createCatalog(desiredSpec, driverRegistry, credentials);
+            // The result may legitimately be empty for a source with no
+            // visible schemas; reaching the statement without an exception is
+            // the signal that FE/BE reached the source connector.
+            listCatalogDatabases(catalogName);
+        } catch (RuntimeException exception) {
+            failure = exception;
+            throw exception;
+        } finally {
+            if (createAttempted) {
+                try {
+                    dropCatalog(catalogName);
+                } catch (RuntimeException cleanupFailure) {
+                    if (failure != null) {
+                        failure.addSuppressed(cleanupFailure);
+                    } else {
+                        throw cleanupFailure;
+                    }
+                }
+            }
+        }
     }
 
     /** Reads only Web-owned, non-secret properties from SHOW CATALOG. */

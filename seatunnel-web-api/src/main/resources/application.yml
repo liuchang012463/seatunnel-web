@@ -171,6 +171,7 @@ seatunnel:
     data-source-id: ${SEATUNNEL_LAKE_DATASOURCE_ID:}
     operation-stale-after: ${SEATUNNEL_LAKE_OPERATION_STALE_AFTER:15m}
     query-timeout: ${SEATUNNEL_LAKE_QUERY_TIMEOUT:30s}
+    source-probe-cache-ttl: ${SEATUNNEL_LAKE_SOURCE_PROBE_CACHE_TTL:60s}
     # Required when enabled. P0 consumes tokens in this Web process only;
     # multi-instance deployments must add shared consume storage/routing later.
     preview-token-secret: ${SEATUNNEL_LAKE_PREVIEW_TOKEN_SECRET:}
@@ -193,6 +194,7 @@ seatunnel:
         url: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_URL:}
         driver-class: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_DRIVER_CLASS:com.mysql.cj.jdbc.Driver}
         checksum: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_CHECKSUM:}
+        doris-md5: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_DORIS_MD5:}
         verified: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_VERIFIED:false}
       # PostgreSQL/Oracle remain explicitly disabled until a server-side
       # registry entry is complete and verified.
@@ -201,12 +203,14 @@ seatunnel:
         url: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_URL:}
         driver-class: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_DRIVER_CLASS:org.postgresql.Driver}
         checksum: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_CHECKSUM:}
+        doris-md5: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_DORIS_MD5:}
         verified: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_VERIFIED:false}
       oracle:
         enabled: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_ENABLED:false}
         url: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_URL:}
         driver-class: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_DRIVER_CLASS:oracle.jdbc.OracleDriver}
         checksum: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_CHECKSUM:}
+        doris-md5: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_DORIS_MD5:}
         verified: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_VERIFIED:false}
     connection-pool:
       maximum-pool-size: ${SEATUNNEL_LAKE_POOL_MAX_SIZE:4}

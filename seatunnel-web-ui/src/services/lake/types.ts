@@ -239,6 +239,7 @@ export interface LakeLogicalCapability extends LakeCapability {
   scope?: LakeCatalogScope;
   logicalSupported?: boolean;
   sourceNetworkReachabilityKnown?: boolean;
+  sourceNetworkReachable?: boolean;
   lakeDorisReachable?: boolean;
 }
 

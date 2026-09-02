@@ -54,6 +54,34 @@ public class LakeLogicalCatalogController {
         return Result.buildSuc(service.capability(sourceDataSourceId, parsedAdapter, scope));
     }
 
+    /**
+     * Explicitly asks Doris FE/BE to open a temporary JDBC catalog and issue
+     * a bounded metadata request against the source.  The temporary catalog
+     * is removed before this request returns.
+     */
+    @PostMapping("/datasources/{sourceDataSourceId}/capability/probe")
+    public Result<LakeLogicalCapabilityVO> probe(
+            @PathVariable("sourceDataSourceId") Long sourceDataSourceId,
+            @RequestParam(value = "adapter", required = false) String adapter,
+            @RequestParam(value = "scope", required = false) LakeCatalogScope scope) {
+        LakeJdbcAdapterType parsedAdapter = null;
+        boolean adapterProvided = adapter != null && !adapter.isBlank();
+        if (adapterProvided) {
+            try {
+                parsedAdapter = LakeJdbcAdapterType.parse(adapter);
+            } catch (IllegalArgumentException ignored) {
+                // The service publishes a stable disabled capability.
+            }
+        }
+        if (adapterProvided && parsedAdapter == null) {
+            // An explicitly invalid adapter must never fall back to the
+            // source's inferred type, because that would turn a malformed
+            // probe request into a real source-side operation.
+            return Result.buildSuc(service.capability(sourceDataSourceId, null, scope));
+        }
+        return Result.buildSuc(service.probe(sourceDataSourceId, parsedAdapter, scope));
+    }
+
     @PostMapping("/catalogs/page")
     public PaginationResult<LakeExternalCatalogVO> page(
             @RequestBody(required = false) LakeExternalCatalogPageDTO request) {

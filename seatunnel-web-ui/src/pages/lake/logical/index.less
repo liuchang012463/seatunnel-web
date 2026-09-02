@@ -52,6 +52,29 @@
   margin-top: 16px;
 }
 
+// ProTable cards inherit the legacy dark surface from the application shell.
+// Keep this page coherent when an operator switches to the light theme.
+html[data-st-theme='light'] {
+  .ant-pro-page-container .ant-page-header-heading-sub-title {
+    color: #667085 !important;
+  }
+
+  .lake-catalog-table .ant-pro-table-search,
+  .lake-catalog-table > .ant-pro-card {
+    color: #475467;
+    background: #ffffff !important;
+    border: 1px solid #eaecf0;
+    box-shadow:
+      0 1px 2px rgba(16, 24, 40, 0.06),
+      0 1px 3px rgba(16, 24, 40, 0.1);
+  }
+
+  .lake-catalog-table .ant-pro-table-search .ant-form-item-label > label,
+  .lake-catalog-table .ant-pro-table-list-toolbar {
+    color: #475467;
+  }
+}
+
 @media (max-width: 768px) {
   .lake-capability-card .ant-form {
     display: flex;

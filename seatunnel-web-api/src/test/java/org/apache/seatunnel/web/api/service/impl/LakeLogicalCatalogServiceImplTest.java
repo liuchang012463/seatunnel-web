@@ -42,6 +42,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -83,6 +85,46 @@ class LakeLogicalCatalogServiceImplTest {
         verify(client).ping();
         verify(resolver).resolve(7L, LakeJdbcAdapterType.MYSQL,
                 LakeCatalogScope.ALL, true, false);
+    }
+
+    @Test
+    void explicitProbeRunsFromDorisAndPublishesReachableObservation() {
+        TestContext context = new TestContext();
+        doNothing().when(context.client).probeSource(
+                any(LakeCatalogDesiredSpec.class), eq(context.driverRegistry),
+                any(LakeJdbcCatalogDdlBuilder.CatalogCredentials.class));
+
+        LakeLogicalCapabilityVO result = context.service.probe(
+                7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.ALL);
+
+        assertTrue(result.isSupported());
+        assertTrue(result.isSourceNetworkReachabilityKnown());
+        assertTrue(result.isSourceNetworkReachable());
+        assertTrue(result.isLakeDorisReachable());
+        verify(context.client).probeSource(any(LakeCatalogDesiredSpec.class),
+                eq(context.driverRegistry), any(LakeJdbcCatalogDdlBuilder.CatalogCredentials.class));
+    }
+
+    @Test
+    void failedExternalProbeIsARealNegativeObservationAndIsNotSetupUnknown() {
+        TestContext context = new TestContext();
+        when(context.resolver.resolve(eq(7L), eq(LakeJdbcAdapterType.MYSQL),
+                eq(LakeCatalogScope.ALL), eq(true), eq(false)))
+                .thenReturn(new LakeCatalogCapability(
+                        LakeJdbcAdapterType.MYSQL, false,
+                        List.of(LakeCatalogCapabilityReason.SOURCE_NETWORK_UNREACHABLE)));
+        doThrow(new IllegalStateException("source unavailable")).when(context.client).probeSource(
+                any(LakeCatalogDesiredSpec.class), eq(context.driverRegistry),
+                any(LakeJdbcCatalogDdlBuilder.CatalogCredentials.class));
+
+        LakeLogicalCapabilityVO result = context.service.probe(
+                7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.ALL);
+
+        assertFalse(result.isSupported());
+        assertTrue(result.isSourceNetworkReachabilityKnown());
+        assertFalse(result.isSourceNetworkReachable());
+        assertTrue(result.getReasonCodes().contains(
+                LakeCatalogCapabilityReason.SOURCE_NETWORK_UNREACHABLE));
     }
 
     @Test
@@ -222,6 +264,7 @@ class LakeLogicalCatalogServiceImplTest {
             source.setDbType(DbType.MYSQL);
             source.setConnectionParams("{}");
             when(dataSourceDao.queryById(7L)).thenReturn(source);
+            when(client.ping()).thenReturn(true);
             when(resolver.resolve(eq(7L), eq(LakeJdbcAdapterType.MYSQL),
                     eq(LakeCatalogScope.ALL), eq(true), eq(true)))
                     .thenReturn(new LakeCatalogCapability(

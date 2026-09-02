@@ -195,6 +195,18 @@ export async function fetchCatalogCapability(
   return HttpUtils.get(`${LOGICAL}/datasources/${pathId(sourceDataSourceId)}/capability${suffix}`);
 }
 
+/** Explicitly probes the source from Doris FE/BE; unlike capability GET this may create/drop a temporary catalog. */
+export async function probeCatalogCapability(
+  sourceDataSourceId: string | number,
+  params?: { adapter?: string; scope?: string },
+): Promise<LakeApiResponse<LakeLogicalCapability>> {
+  const query = new URLSearchParams();
+  if (params?.adapter) query.set('adapter', params.adapter);
+  if (params?.scope) query.set('scope', params.scope);
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return HttpUtils.post(`${LOGICAL}/datasources/${pathId(sourceDataSourceId)}/capability/probe${suffix}`);
+}
+
 export async function fetchCatalogs(
   params: Record<string, unknown>,
 ): Promise<LakeApiResponse<LakePage<LakeCatalog>>> {

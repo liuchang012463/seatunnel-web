@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 public final class LakeJdbcDriverRegistry {
 
     private static final Pattern SHA256 = Pattern.compile("[0-9a-fA-F]{64}");
+    private static final Pattern MD5 = Pattern.compile("[0-9a-fA-F]{32}");
 
     private final String registryRevision;
     private final Map<LakeJdbcAdapterType, DriverRegistration> registrations;
@@ -93,6 +94,10 @@ public final class LakeJdbcDriverRegistry {
         } else if (!SHA256.matcher(registration.checksum()).matches()) {
             reasons.add(LakeCatalogCapabilityReason.DRIVER_CHECKSUM_INVALID);
         }
+        if (StringUtils.isNotBlank(registration.dorisMd5())
+                && !MD5.matcher(registration.dorisMd5()).matches()) {
+            reasons.add(LakeCatalogCapabilityReason.DORIS_DRIVER_MD5_INVALID);
+        }
         if (StringUtils.isBlank(registryRevision)) {
             reasons.add(LakeCatalogCapabilityReason.DRIVER_REGISTRY_REVISION_MISSING);
         }
@@ -115,7 +120,8 @@ public final class LakeJdbcDriverRegistry {
                 trimToNull(value.getDriverClass()),
                 trimToNull(value.getChecksum()),
                 registryRevision,
-                value.isVerified());
+                value.isVerified(),
+                trimToNull(value.getDorisMd5()));
     }
 
     private static String trimToNull(String value) {
@@ -130,7 +136,20 @@ public final class LakeJdbcDriverRegistry {
             String driverClass,
             String checksum,
             String registryRevision,
-            boolean verified) {
+            boolean verified,
+            String dorisMd5) {
+
+        /** Compatibility constructor for embedders using the SHA-only shape. */
+        public DriverRegistration(
+                LakeJdbcAdapterType adapter,
+                boolean enabled,
+                String url,
+                String driverClass,
+                String checksum,
+                String registryRevision,
+                boolean verified) {
+            this(adapter, enabled, url, driverClass, checksum, registryRevision, verified, null);
+        }
 
         /** Driver inventory details are server-internal, never a safe VO. */
         @Override
@@ -149,6 +168,12 @@ public final class LakeJdbcDriverRegistry {
         @JsonIgnore
         public String checksum() {
             return checksum;
+        }
+
+        @Override
+        @JsonIgnore
+        public String dorisMd5() {
+            return dorisMd5;
         }
 
         @Override

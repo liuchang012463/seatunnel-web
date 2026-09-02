@@ -17,6 +17,13 @@ public interface LakeLogicalCatalogService {
     LakeLogicalCapabilityVO capability(
             Long sourceDataSourceId, LakeJdbcAdapterType adapter, LakeCatalogScope scope);
 
+    /**
+     * Runs an explicit bounded probe from Doris FE/BE to the source and
+     * returns the refreshed capability facts.
+     */
+    LakeLogicalCapabilityVO probe(
+            Long sourceDataSourceId, LakeJdbcAdapterType adapter, LakeCatalogScope scope);
+
     PaginationResult<LakeExternalCatalogVO> page(LakeExternalCatalogPageDTO request);
 
     LakeExternalCatalogVO detail(Long bindingId);

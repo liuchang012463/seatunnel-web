@@ -1,6 +1,10 @@
 package org.apache.seatunnel.web.api.lake.doris;
 
 import org.apache.seatunnel.web.api.lake.LakeProperties;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpec;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcCatalogDdlBuilder;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcDriverRegistry;
 import org.apache.seatunnel.web.api.lake.contract.DorisTypeBase;
 import org.apache.seatunnel.web.api.lake.contract.TargetColumn;
 import org.apache.seatunnel.web.api.lake.contract.TargetContract;
@@ -8,6 +12,7 @@ import org.apache.seatunnel.web.api.lake.contract.TargetDistribution;
 import org.apache.seatunnel.web.api.lake.contract.TargetPartition;
 import org.apache.seatunnel.web.api.lake.contract.TargetType;
 import org.apache.seatunnel.web.common.enums.LakeTableModel;
+import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
@@ -27,6 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -121,11 +131,42 @@ class JdbcDorisLakeClientTest {
         assertFalse(client.ping());
     }
 
+    @Test
+    void sourceProbeAlwaysCleansUpTemporaryCatalogAfterCreateAttempt() {
+        DorisLakeClient client = mock(DorisLakeClient.class,
+                org.mockito.Mockito.CALLS_REAL_METHODS);
+        LakeJdbcDriverRegistry registry = new LakeJdbcDriverRegistry();
+        LakeCatalogDesiredSpec desired = probeSpec();
+        LakeJdbcCatalogDdlBuilder.CatalogCredentials credentials =
+                new LakeJdbcCatalogDdlBuilder.CatalogCredentials("reader", "secret");
+
+        doNothing().when(client).createCatalog(any(), eq(registry), eq(credentials));
+        doReturn(List.of()).when(client).listCatalogDatabases("_lake_probe_test");
+
+        client.probeSource(desired, registry, credentials);
+
+        verify(client).dropCatalog("_lake_probe_test");
+
+        doThrow(new IllegalStateException("source unavailable")).when(client)
+                .createCatalog(any(), eq(registry), eq(credentials));
+        assertThrows(IllegalStateException.class,
+                () -> client.probeSource(desired, registry, credentials));
+        verify(client, org.mockito.Mockito.times(2)).dropCatalog("_lake_probe_test");
+    }
+
     private static TargetContract contract() {
         return new TargetContract(LakeTableModel.DUPLICATE, List.of(
                 new TargetColumn("id", 1, "id", TargetType.varchar(255), false, true, 1),
                 new TargetColumn("payload", 2, "payload", new TargetType(DorisTypeBase.STRING),
                         true, false, 2)), List.of("id"), TargetPartition.disabled(),
                 TargetDistribution.random());
+    }
+
+    private static LakeCatalogDesiredSpec probeSpec() {
+        return new LakeCatalogDesiredSpec(
+                "_lake_probe_test", 7L, "source-7", LakeJdbcAdapterType.MYSQL,
+                LakeCatalogScope.ALL, "jdbc:mysql://db/app", "file:///mysql.jar",
+                "com.mysql.cj.jdbc.Driver", "checksum", "registry", "credential",
+                List.of(), List.of(), Map.of());
     }
 }

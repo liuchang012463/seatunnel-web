@@ -17,6 +17,7 @@ import {
   fetchCatalogs,
   fetchPhysicalSources,
   normalizeLakePage,
+  probeCatalogCapability,
 } from '@/services/lake';
 import type { LakeApiResponse, LakeCatalog, LakeCatalogScope, LakeLogicalCapability, LakePhysicalDataSource } from '@/services/lake';
 import { CapabilityReason } from '../components/LakeStatus';
@@ -28,10 +29,33 @@ const adapterOptions = [
   { label: 'Oracle', value: 'ORACLE' },
 ];
 const scopeOptions = [
-  { label: '全部资源', value: 'ALL' },
+  { label: '全部库表', value: 'ALL' },
   { label: '指定数据库', value: 'DATABASE' },
   { label: '指定表', value: 'TABLE' },
 ];
+
+const optionLabel = (options: Array<{ label: string; value: string }>, value?: string) =>
+  options.find((option) => option.value === value)?.label || value || '未设置';
+
+const statusLabel = (status?: string) => {
+  const labels: Record<string, string> = {
+    READY: '就绪',
+    VALID: '已通过',
+    CONSISTENT: '一致',
+    ERROR: '错误',
+    FAILED: '失败',
+    CREATE_FAILED: '创建失败',
+    INVALID: '未通过',
+    MISSING: '远端缺失',
+    CREATING: '创建中',
+    PENDING_CREATE: '等待创建',
+    RUNNING: '运行中',
+    DELETING: '删除中',
+    DELETED: '已删除',
+    UNKNOWN: '状态未知',
+  };
+  return labels[status || ''] || '未知';
+};
 
 const responseMessage = (response: LakeApiResponse<unknown>) => response.msg || response.message || '请求失败，请稍后重试';
 const statusColor = (status?: string) => {
@@ -69,10 +93,18 @@ const adapterForDbType = (dbType?: string): string | undefined => {
   return undefined;
 };
 
-const CapabilityCard: React.FC<{ sources: LakePhysicalDataSource[]; initialSourceId?: number }> = ({ sources, initialSourceId }) => {
+const CapabilityCard: React.FC<{
+  sources: LakePhysicalDataSource[];
+  initialSourceId?: number;
+  onSourceChange?: (sourceDataSourceId?: number) => void;
+}> = ({ sources, initialSourceId, onSourceChange }) => {
   const [form] = Form.useForm<CapabilityFormValues>();
   const [loading, setLoading] = useState(false);
+  const [probeLoading, setProbeLoading] = useState(false);
   const [capability, setCapability] = useState<LakeLogicalCapability>();
+  const sourceDataSourceId = Form.useWatch('sourceDataSourceId', form);
+  const adapter = Form.useWatch('adapter', form);
+  const scope = Form.useWatch('scope', form);
 
   const checkCapability = async (values: CapabilityFormValues) => {
     if (!values.sourceDataSourceId) return;
@@ -92,12 +124,33 @@ const CapabilityCard: React.FC<{ sources: LakePhysicalDataSource[]; initialSourc
     }
   };
 
+  const probeCapability = async () => {
+    if (!sourceDataSourceId) {
+      message.warning('请先选择数据源');
+      return;
+    }
+    setProbeLoading(true);
+    try {
+      const response = await probeCatalogCapability(sourceDataSourceId, { adapter, scope });
+      if (response.code !== 0) throw new Error(responseMessage(response));
+      setCapability(response.data);
+      message.success(response.data?.sourceNetworkReachable ? '湖侧已确认源端可达' : '湖侧未能连接源端');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '源端探查失败');
+    } finally {
+      setProbeLoading(false);
+    }
+  };
+
   const supported = capability?.logicalSupported === true || capability?.supported === true || capability?.enabled === true;
   const reasons = capability?.reasonCodes?.length ? capability.reasonCodes : capability?.disabledReasons || [];
   const sourceNetworkPending = !supported
     && capability?.lakeDorisReachable === true
     && reasons.length === 1
     && reasons[0] === 'SOURCE_NETWORK_UNKNOWN';
+  const sourceNetworkLabel = !capability?.sourceNetworkReachabilityKnown
+    ? '尚未探查'
+    : capability.sourceNetworkReachable ? '可达' : '不可达';
   const capabilityLabel = supported
     ? '当前支持逻辑挂载'
     : sourceNetworkPending
@@ -106,28 +159,49 @@ const CapabilityCard: React.FC<{ sources: LakePhysicalDataSource[]; initialSourc
   return (
     <Card
       className="lake-capability-card"
-      title={<Space><CloudServerOutlined />逻辑入湖能力</Space>}
-      extra={<Typography.Text type="secondary">能力检查只读，不会创建挂载</Typography.Text>}
+      title={<Space><CloudServerOutlined />挂载前检查</Space>}
+      extra={<Typography.Text type="secondary">先检查条件，需要时探查源端网络</Typography.Text>}
     >
       <Form form={form} layout="inline" onFinish={checkCapability} initialValues={{ adapter: 'MYSQL', scope: 'ALL', sourceDataSourceId: initialSourceId }}>
-        <Form.Item name="sourceDataSourceId" label="源数据源" rules={[{ required: true, message: '请选择数据源' }]}>
-          <Select showSearch allowClear options={sources.map(sourceOption)} placeholder="选择已有数据源" optionFilterProp="label" style={{ minWidth: 300 }} />
+        <Form.Item name="sourceDataSourceId" label="数据源" rules={[{ required: true, message: '请选择数据源' }]}>
+          <Select
+            showSearch
+            allowClear
+            options={sources.map(sourceOption)}
+            placeholder="选择已有数据源"
+            optionFilterProp="label"
+            style={{ width: 360, minWidth: 0 }}
+            onChange={(value) => {
+              setCapability(undefined);
+              onSourceChange?.(value);
+            }}
+          />
         </Form.Item>
-        <Form.Item name="adapter" label="Adapter"><Select options={adapterOptions} style={{ width: 150 }} /></Form.Item>
-        <Form.Item name="scope" label="Scope"><Select options={scopeOptions} style={{ width: 150 }} /></Form.Item>
-        <Button type="primary" htmlType="submit" loading={loading}>检查能力</Button>
+        <Form.Item name="adapter" label="数据库类型"><Select options={adapterOptions} style={{ width: 130 }} onChange={() => setCapability(undefined)} /></Form.Item>
+        <Form.Item name="scope" label="挂载范围"><Select options={scopeOptions} style={{ width: 130 }} onChange={() => setCapability(undefined)} /></Form.Item>
+        <Space>
+          <Button type="primary" htmlType="submit" loading={loading}>检查条件</Button>
+          <Button
+            onClick={probeCapability}
+            loading={probeLoading}
+            disabled={!sourceDataSourceId || capability?.lakeDorisReachable === false}
+          >
+            {capability?.sourceNetworkReachabilityKnown ? '重新探查源端' : '从湖侧探查源端'}
+          </Button>
+        </Space>
       </Form>
       {capability ? (
         <div className={`lake-capability-result ${supported ? 'is-supported' : sourceNetworkPending ? 'is-pending' : 'is-disabled'}`}>
           {supported ? <CheckCircleOutlined /> : <WarningOutlined />}
           <Typography.Text strong>{capabilityLabel}</Typography.Text>
-          {capability.adapter ? <Tag>{String(capability.adapter)}</Tag> : null}
-          {capability.scope ? <Tag>{String(capability.scope)}</Tag> : null}
+          <Typography.Text type="secondary">源端网络：{sourceNetworkLabel}</Typography.Text>
+          {capability.adapter ? <Tag>{optionLabel(adapterOptions, String(capability.adapter))}</Tag> : null}
+          {capability.scope ? <Tag>{optionLabel(scopeOptions, String(capability.scope))}</Tag> : null}
           {!supported && !sourceNetworkPending ? <CapabilityReason reasons={reasons} /> : null}
           {sourceNetworkPending ? <CapabilityReason reasons={reasons} /> : null}
         </div>
       ) : (
-        <Typography.Text type="secondary">请输入源数据源 ID 后检查能力；不可用时会展示稳定原因。</Typography.Text>
+        <Typography.Text type="secondary">操作顺序：选择数据源 → 检查条件 →（需要时）探查源端 → 创建挂载。</Typography.Text>
       )}
     </Card>
   );
@@ -143,6 +217,7 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
   const [form] = Form.useForm<CatalogFormValues>();
   const [loading, setLoading] = useState(false);
   const [capabilityLoading, setCapabilityLoading] = useState(false);
+  const [probeLoading, setProbeLoading] = useState(false);
   const [capability, setCapability] = useState<LakeLogicalCapability>();
   const [capabilityError, setCapabilityError] = useState<string>();
   const sourceDataSourceId = Form.useWatch('sourceDataSourceId', form);
@@ -189,6 +264,20 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
   const reasons = capability?.reasonCodes?.length ? capability.reasonCodes : capability?.disabledReasons || [];
   const sourceNetworkPending = !supported && capability?.lakeDorisReachable === true && reasons.length === 1 && reasons[0] === 'SOURCE_NETWORK_UNKNOWN';
   const canAttempt = supported || sourceNetworkPending;
+  const probe = async () => {
+    if (!sourceDataSourceId || !adapter || !scope) return;
+    setProbeLoading(true);
+    try {
+      const response = await probeCatalogCapability(sourceDataSourceId, { adapter, scope });
+      if (response.code !== 0 || !response.data) throw new Error(responseMessage(response));
+      setCapability(response.data);
+      message.success(response.data.sourceNetworkReachable ? '湖侧已确认源端可达' : '湖侧未能连接源端');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '源端探查失败');
+    } finally {
+      setProbeLoading(false);
+    }
+  };
   const submit = async (values: CatalogFormValues) => {
     if (!canAttempt) {
       message.warning(sourceNetworkPending ? '源端网络将在创建时验证，请稍候重试' : '当前数据源不满足逻辑挂载条件');
@@ -223,26 +312,32 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
       footer={<Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={loading} disabled={capabilityLoading || !canAttempt} onClick={() => form.submit()}>创建并验证</Button></Space>}
     >
       <Typography.Paragraph type="secondary">
-        仅填写数据源引用和结构化范围。凭证、JDBC URL、驱动地址由服务端安全配置管理，页面不会显示或上传。
+        选择数据源和挂载范围即可。凭证、JDBC 地址和驱动由服务端安全配置管理，页面不会显示或上传敏感信息。
       </Typography.Paragraph>
       {capabilityLoading ? <Alert type="info" showIcon message="正在检查数据源能力…" /> : null}
       {capabilityError ? <Alert type="error" showIcon message="能力检查失败" description={capabilityError} /> : null}
-      {!capabilityLoading && !capabilityError && capability ? <Alert type={canAttempt ? 'warning' : 'error'} showIcon message={canAttempt ? (sourceNetworkPending ? '静态条件就绪，创建时会验证源端网络' : '当前支持逻辑挂载') : '当前不可创建逻辑挂载'} description={canAttempt ? undefined : <CapabilityReason reasons={reasons} fallback="服务端未返回可用原因" />} /> : null}
+      {!capabilityLoading && !capabilityError && capability ? <Alert
+        type={canAttempt ? 'warning' : 'error'}
+        showIcon
+        message={canAttempt ? (sourceNetworkPending ? '静态条件就绪，建议先探查源端网络' : '当前支持逻辑挂载') : '当前不可创建逻辑挂载'}
+        description={canAttempt ? undefined : <CapabilityReason reasons={reasons} fallback="服务端未返回可用原因" />}
+        action={sourceNetworkPending ? <Button size="small" loading={probeLoading} onClick={probe}>从湖侧探查</Button> : undefined}
+      /> : null}
       <Form form={form} layout="vertical" onFinish={submit} initialValues={{ adapter: 'MYSQL', scope: 'ALL', sourceDataSourceId: initialSourceId }}>
-        <Form.Item name="sourceDataSourceId" label="源数据源" rules={[{ required: true, message: '请选择源数据源' }]}>
+        <Form.Item name="sourceDataSourceId" label="数据源" rules={[{ required: true, message: '请选择数据源' }]}>
           <Select showSearch options={sources.map(sourceOption)} placeholder="选择已有数据源" optionFilterProp="label" />
         </Form.Item>
-        <Form.Item name="targetCatalogName" label="Catalog 名称" rules={[{ required: true, max: 128, message: '请输入 128 字符以内的名称' }]}>
+        <Form.Item name="targetCatalogName" label="挂载名称" rules={[{ required: true, max: 128, message: '请输入 128 字符以内的名称' }]}>
           <Input maxLength={128} />
         </Form.Item>
         <Space align="start" style={{ width: '100%' }}>
-          <Form.Item name="adapter" label="Adapter" rules={[{ required: true }]}><Select options={adapterOptions} style={{ width: 210 }} /></Form.Item>
-          <Form.Item name="scope" label="Scope" rules={[{ required: true }]}><Select options={scopeOptions} style={{ width: 210 }} /></Form.Item>
+          <Form.Item name="adapter" label="数据库类型" rules={[{ required: true }]}><Select options={adapterOptions} style={{ width: 210 }} /></Form.Item>
+          <Form.Item name="scope" label="挂载范围" rules={[{ required: true }]}><Select options={scopeOptions} style={{ width: 210 }} /></Form.Item>
         </Space>
-        <Form.Item name="databaseInclude" label="数据库范围" extra="Scope 为 DATABASE/TABLE 时填写，可输入后回车">
+        <Form.Item name="databaseInclude" label="数据库范围" extra="选择指定数据库或指定表时填写，可输入后回车">
           <Select mode="tags" tokenSeparators={[',']} placeholder="例如：业务库" />
         </Form.Item>
-        <Form.Item name="tableInclude" label="表范围" extra="Scope 为 TABLE 时填写，可输入后回车；只填表名，不要写 schema.table">
+        <Form.Item name="tableInclude" label="表范围" extra="选择指定表时填写，可输入后回车；只填表名，例如 orders">
           <Select mode="tags" tokenSeparators={[',']} placeholder="例如：orders" />
         </Form.Item>
       </Form>
@@ -260,19 +355,34 @@ const LogicalAccessPage: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [sources, setSources] = useState<LakePhysicalDataSource[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(true);
+  const [selectedSourceId, setSelectedSourceId] = useState<number | undefined>(initialSourceId);
+
+  useEffect(() => {
+    setSelectedSourceId(initialSourceId);
+  }, [initialSourceId]);
 
   useEffect(() => {
     void fetchPhysicalSources({ pageNo: 1, pageSize: 100 }).then((response) => {
       if (response.code === 0) setSources(normalizeLakePage(response.data).data);
     }).catch(() => undefined).finally(() => setSourcesLoading(false));
   }, []);
+  const sourceLabelById = useMemo(
+    () => new Map(sources.map((source) => [source.sourceDataSourceId, sourceOption(source).label])),
+    [sources],
+  );
   const columns: ProColumns<LakeCatalog>[] = [
-    { title: 'Catalog', dataIndex: 'targetCatalogName', ellipsis: true },
-    { title: '源数据源', dataIndex: 'sourceDataSourceId', width: 110 },
-    { title: 'Adapter', dataIndex: 'adapter', width: 120 },
-    { title: 'Scope', dataIndex: 'scope', width: 120 },
-    { title: 'Resource', dataIndex: 'resourceStatus', width: 120, render: (_, row) => <Tag color={statusColor(row.resourceStatus)}>{row.resourceStatus || 'UNKNOWN'}</Tag> },
-    { title: 'Validation', dataIndex: 'validationStatus', width: 130, render: (_, row) => <Tag color={statusColor(row.validationStatus)}>{row.validationStatus || 'UNKNOWN'}</Tag> },
+    { title: '挂载名称', dataIndex: 'targetCatalogName', ellipsis: true },
+    {
+      title: '数据源',
+      dataIndex: 'sourceDataSourceId',
+      width: 260,
+      ellipsis: true,
+      render: (value) => sourceLabelById.get(Number(value)) || `数据源 #${value || '未知'}`,
+    },
+    { title: '数据库类型', dataIndex: 'adapter', width: 120, render: (value) => optionLabel(adapterOptions, String(value || '')) },
+    { title: '挂载范围', dataIndex: 'scope', width: 120, render: (value) => optionLabel(scopeOptions, String(value || '')) },
+    { title: '挂载状态', dataIndex: 'resourceStatus', width: 120, render: (_, row) => <Tag color={statusColor(row.resourceStatus)}>{statusLabel(row.resourceStatus)}</Tag> },
+    { title: '核验状态', dataIndex: 'validationStatus', width: 130, render: (_, row) => <Tag color={statusColor(row.validationStatus)}>{statusLabel(row.validationStatus)}</Tag> },
     { title: '最近验证', dataIndex: 'lastObservedAt', valueType: 'dateTime', width: 170 },
     {
       title: '操作', valueType: 'option', width: 110,
@@ -280,8 +390,8 @@ const LogicalAccessPage: React.FC = () => {
     },
   ];
   return (
-    <PageContainer title="逻辑入湖" subTitle="管理源数据的 Doris 逻辑挂载与结构化验证">
-      <CapabilityCard sources={sources} initialSourceId={initialSourceId} />
+    <PageContainer title="逻辑入湖" subTitle="选择已有数据源，按步骤完成 Doris 逻辑挂载">
+      <CapabilityCard sources={sources} initialSourceId={initialSourceId} onSourceChange={setSelectedSourceId} />
       <ProTable<LakeCatalog>
         className="lake-catalog-table"
         rowKey={(row) => String(row.id || `${row.sourceDataSourceId}-${row.targetCatalogName}`)}
@@ -309,7 +419,7 @@ const LogicalAccessPage: React.FC = () => {
         }}
         />
       {!sourcesLoading && !sources.length ? <Card className="lake-logical-empty"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可用业务数据源" /><Typography.Text type="secondary">请先在数据源管理中完成连接和 Metadata 探查。</Typography.Text></Card> : null}
-      <CreateCatalogDrawer open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => actionRef.current?.reloadAndRest?.()} sources={sources} initialSourceId={initialSourceId} />
+      <CreateCatalogDrawer open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => actionRef.current?.reloadAndRest?.()} sources={sources} initialSourceId={selectedSourceId} />
     </PageContainer>
   );
 };

@@ -35,6 +35,7 @@ const REASON_LABELS: Record<string, string> = {
   SOURCE_NETWORK_UNREACHABLE: '当前无法连接源端，请检查网络或数据源连接状态。',
   LAKE_DORIS_UNREACHABLE: '湖 Doris 当前不可达，请稍后重试。',
   DRIVER_MISSING: '缺少对应 JDBC Driver，请先完成服务端 Driver 配置。',
+  DORIS_DRIVER_MD5_INVALID: 'Doris Driver 的 MD5 格式不正确，请配置 32 位十六进制值。',
   CAPABILITY_UNKNOWN: '能力信息暂不可用，请先完成元数据探查。',
   LOGICAL_CAPABILITY_UNKNOWN: '逻辑挂载能力暂不可用，请检查源端和 Driver。',
 };
