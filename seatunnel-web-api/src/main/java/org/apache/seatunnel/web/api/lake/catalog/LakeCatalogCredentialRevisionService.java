@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.lake.catalog;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
+import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.seatunnel.web.api.lake.LakeProperties;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
@@ -11,11 +12,11 @@ import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
+import java.util.Locale;
 import java.util.function.Function;
 
 /**
@@ -31,12 +32,8 @@ import java.util.function.Function;
 @Component
 public class LakeCatalogCredentialRevisionService {
 
-    private static final String HMAC_ALGORITHM = "HmacSHA256";
-    private static final String HMAC_DOMAIN = "seatunnel-lake-catalog-credential-revision-v1";
-
     private final LakeProperties properties;
     private final Function<DataSource, BaseConnectionParam> connectionParamFactory;
-    private final String configuredSecret;
 
     /** Spring constructor; DataSourceUtils is invoked lazily by resolveForExecution. */
     @Autowired
@@ -53,20 +50,17 @@ public class LakeCatalogCredentialRevisionService {
     }
 
     /**
-     * Injectable constructor with an explicit secret.  The explicit value is
-     * useful for embedders; production normally supplies the value through
-     * {@code seatunnel.lake.catalog-credential-secret}.
+     * Compatibility constructor.  The third argument is deliberately
+     * ignored; lake catalog execution no longer has a feature-specific
+     * secret or HMAC credential revision.
      */
     public LakeCatalogCredentialRevisionService(
             LakeProperties properties,
             Function<DataSource, BaseConnectionParam> connectionParamFactory,
-            String configuredSecret) {
+            String ignoredSecret) {
         this.properties = Objects.requireNonNull(properties, "properties");
         this.connectionParamFactory = Objects.requireNonNull(
                 connectionParamFactory, "connectionParamFactory");
-        this.configuredSecret = firstNonBlank(
-                configuredSecret,
-                properties.getCatalogCredentialSecret());
     }
 
     /**
@@ -75,9 +69,8 @@ public class LakeCatalogCredentialRevisionService {
      * persisted desired spec; it is an execution-only object.
      */
     public ExecutionCredentials resolveForExecution(
-            DataSource source, LakeJdbcAdapterType adapter) {
+        DataSource source, LakeJdbcAdapterType adapter) {
         validateSource(source, adapter);
-        requireSecret();
 
         final BaseConnectionParam param;
         try {
@@ -97,9 +90,9 @@ public class LakeCatalogCredentialRevisionService {
         }
 
         String username = param.getUser().trim();
-        String password = param.getPassword();
+        String password = PasswordUtils.decodePassword(param.getPassword());
         String jdbcUrl = param.getUrl().trim();
-        String revision = hmacRevision(source.getId(), adapter, username, password);
+        String revision = sourceConfigRevision(source, adapter, jdbcUrl, username);
         return new ExecutionCredentials(jdbcUrl, username, password, revision);
     }
 
@@ -113,9 +106,13 @@ public class LakeCatalogCredentialRevisionService {
         return credentialRevision(source, adapter);
     }
 
-    /** Returns whether the independent catalog HMAC secret is configured. */
+    /**
+     * Kept for source compatibility.  Catalog execution is available whenever
+     * the current source row can be resolved; there is no separate secret to
+     * configure.
+     */
     public boolean isConfigured() {
-        return StringUtils.isNotBlank(configuredSecret);
+        return true;
     }
 
     /** Resolves an existing source by id without retaining it in this service. */
@@ -169,33 +166,28 @@ public class LakeCatalogCredentialRevisionService {
         return source.getDbType();
     }
 
-    private String hmacRevision(Long sourceId, LakeJdbcAdapterType adapter,
-                                String username, String password) {
+    private static String sourceConfigRevision(DataSource source,
+                                               LakeJdbcAdapterType adapter,
+                                               String jdbcUrl,
+                                               String username) {
         try {
-            Mac mac = Mac.getInstance(HMAC_ALGORITHM);
-            mac.init(new SecretKeySpec(
-                    configuredSecret.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM));
-            String payload = HMAC_DOMAIN + '\u0000'
-                    + sourceId + '\u0000'
+            // This is a change/version marker, not an authorization token.
+            // It intentionally excludes the password and changes whenever the
+            // source endpoint or durable datasource row changes.
+            String payload = "seatunnel-lake-source-config-v2" + '\u0000'
+                    + source.getId() + '\u0000'
                     + adapter.code() + '\u0000'
-                    + username + '\u0000'
-                    + password;
-            byte[] digest = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+                    + String.valueOf(source.getUpdateTime()) + '\u0000'
+                    + jdbcUrl + '\u0000' + username;
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(payload.getBytes(StandardCharsets.UTF_8));
             StringBuilder result = new StringBuilder(digest.length * 2);
             for (byte item : digest) {
-                result.append(String.format(Locale.ROOT, "%02x", item));
+                result.append(String.format("%02x", item));
             }
-            return result.toString();
-        } catch (Exception exception) {
-            // HmacSHA256 is required by the JDK.  Do not attach an exception
-            // that might contain plugin configuration or credential text.
-            throw new IllegalStateException("Catalog credential revision unavailable");
-        }
-    }
-
-    private void requireSecret() {
-        if (StringUtils.isBlank(configuredSecret)) {
-            throw new IllegalStateException("Catalog credential revision secret is not configured");
+            return "source-config-" + result;
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("Source configuration revision unavailable");
         }
     }
 
@@ -209,14 +201,6 @@ public class LakeCatalogCredentialRevisionService {
                 || normalized.matches("jdbc:[^:]+://[^/@:]+:[^/@]+@.*");
     }
 
-    private static String firstNonBlank(String... values) {
-        for (String value : values) {
-            if (StringUtils.isNotBlank(value)) {
-                return value.trim();
-            }
-        }
-        return null;
-    }
 
     /** Password-bearing object that must remain within one external call. */
     public static final class ExecutionCredentials {

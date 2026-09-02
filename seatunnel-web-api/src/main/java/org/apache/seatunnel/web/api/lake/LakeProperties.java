@@ -2,25 +2,18 @@ package org.apache.seatunnel.web.api.lake;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
 
 /**
- * Server-side settings for the v1.4 lake control plane.
+ * Runtime limits for the always-on lake control plane.
  *
- * <p>The lake data source is an existing SeaTunnel data source.  Credentials are
- * deliberately not represented by this object; they are read only from the
- * data-source record when a connection pool is created.</p>
+ * <p>Connection credentials and JDBC driver registrations live in the lake
+ * warehouse tables.  This class intentionally contains only safe operational
+ * defaults and never binds the removed lake-prefixed environment variables.</p>
  */
 @Data
-@ConfigurationProperties(prefix = "seatunnel.lake")
 public class LakeProperties {
-
-    private boolean enabled;
-
-    /** The existing Doris data-source id used by the lake control plane. */
-    private Long dataSourceId;
 
     /** How long an unfinished operation may remain leased before Retry can take it over. */
     private Duration operationStaleAfter = Duration.ofMinutes(15);
@@ -31,45 +24,71 @@ public class LakeProperties {
     /** How long an explicit Doris-side source reachability probe is reusable. */
     private Duration sourceProbeCacheTtl = Duration.ofSeconds(60);
 
-    /**
-     * HMAC key used for short-lived, one-time MANAGED table preview tokens.
-     * This value is required when the lake control plane is enabled.  A
-     * process-local random key is used only while the opt-in control plane is
-     * disabled, so a disabled default can still start without a secret.
-     */
-    private String previewTokenSecret;
-
-    /**
-     * Server-only HMAC key used to derive a stable revision for source
-     * credentials.  It is deliberately separate from the desired catalog
-     * spec and must never be serialized as part of a capability response.
-     */
-    @JsonIgnore
-    private String catalogCredentialSecret;
-
-    /** Preview tokens are intentionally short lived. */
-    private Duration previewTokenTtl = Duration.ofMinutes(5);
-
     private long maxRows = 10_000;
 
     private long maxBytes = 10 * 1024 * 1024L;
 
-    /** Server-managed JDBC driver metadata. Driver upload is intentionally unsupported. */
-    private String driverUrl;
-
-    private String driverClass = "com.mysql.cj.jdbc.Driver";
-
-    private String driverChecksum;
+    private ConnectionPool connectionPool = new ConnectionPool();
 
     /**
-     * Server-owned configuration for logical JDBC catalogs.  It is kept
-     * separate from the Doris control-plane driver fields above: the latter
-     * describe Web's own Doris connection, while these entries describe the
-     * source drivers loaded by Doris FE/BE nodes.
+     * Compatibility-only values for callers compiled against the pre-v1.4
+     * API.  They are ignored by Spring configuration binding and are never
+     * consulted by the lake runtime; the database-backed warehouse service is
+     * the sole source of truth.
      */
+    @JsonIgnore
+    @Deprecated
+    private Long dataSourceId;
+
+    @JsonIgnore
+    @Deprecated
+    private Duration previewTokenTtl = Duration.ofMinutes(5);
+
+    @JsonIgnore
+    @Deprecated
     private JdbcCatalog jdbcCatalog = new JdbcCatalog();
 
-    private ConnectionPool connectionPool = new ConnectionPool();
+    /** The capability is contractual and cannot be disabled by configuration. */
+    @JsonIgnore
+    @Deprecated
+    public boolean isEnabled() {
+        return true;
+    }
+
+    /**
+     * Source compatibility for integrations that used the old opt-in flag.
+     * The value is deliberately ignored: lake support is contractual and is
+     * always available (or reports that the warehouse has not been configured).
+     */
+    @Deprecated
+    public void setEnabled(boolean ignored) {
+        // Intentionally ignored.
+    }
+
+    /*
+     * Source-compatible setters for integrations that used the pre-v1.4
+     * driver fields.  They intentionally do not become configuration state:
+     * all live driver facts are read from t_seatunnel_web_lake_jdbc_driver.
+     */
+    @Deprecated
+    public void setDriverUrl(String ignored) {
+        // Intentionally ignored.
+    }
+
+    @Deprecated
+    public void setDriverClass(String ignored) {
+        // Intentionally ignored.
+    }
+
+    @Deprecated
+    public void setDriverChecksum(String ignored) {
+        // Intentionally ignored.
+    }
+
+    @Deprecated
+    public void setCatalogCredentialSecret(String ignored) {
+        // Catalog HMAC credentials were removed; the argument is ignored.
+    }
 
     @Data
     public static class ConnectionPool {
@@ -88,7 +107,11 @@ public class LakeProperties {
         private Duration validationTimeout = Duration.ofSeconds(5);
     }
 
-    /** Logical JDBC catalog driver registry; no credentials are accepted here. */
+    /**
+     * Compatibility DTOs used by older embedders.  Spring no longer binds
+     * these values; the live registry is database-backed.
+     */
+    @Deprecated
     @Data
     public static class JdbcCatalog {
 
@@ -100,9 +123,28 @@ public class LakeProperties {
         private Driver postgresql = Driver.postgresqlDefaults();
 
         private Driver oracle = Driver.oracleDefaults();
+
+        // Explicit accessors keep the compatibility shape usable even when
+        // this class is compiled in an annotation-processing-isolated test.
+        public String getRegistryRevision() {
+            return registryRevision;
+        }
+
+        public Driver getMysql() {
+            return mysql;
+        }
+
+        public Driver getPostgresql() {
+            return postgresql;
+        }
+
+        public Driver getOracle() {
+            return oracle;
+        }
     }
 
-    /** One server-configured JDBC driver, intentionally credential-free. */
+    /** Compatibility shape for old tests and integrations. */
+    @Deprecated
     @Data
     public static class Driver {
 
@@ -119,6 +161,30 @@ public class LakeProperties {
 
         /** True only after operators verify the driver on Doris FE/BE nodes. */
         private boolean verified;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public String getDriverClass() {
+            return driverClass;
+        }
+
+        public String getChecksum() {
+            return checksum;
+        }
+
+        public String getDorisMd5() {
+            return dorisMd5;
+        }
+
+        public boolean isVerified() {
+            return verified;
+        }
 
         public static Driver mysqlDefaults() {
             Driver driver = new Driver();

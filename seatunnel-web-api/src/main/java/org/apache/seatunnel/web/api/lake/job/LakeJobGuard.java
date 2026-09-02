@@ -15,6 +15,7 @@ import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.core.hocon.JobDefinitionCommandResolver;
 import org.apache.seatunnel.web.core.hocon.StreamingJobDefinitionCommandResolver;
 import org.apache.seatunnel.web.core.job.bridge.LakeJobBindingResolver;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.core.job.handler.script.PluginConfig;
 import org.apache.seatunnel.web.core.job.handler.script.ScriptJobDefinitionParser;
 import org.apache.seatunnel.web.dao.entity.DataSource;
@@ -63,8 +64,31 @@ public class LakeJobGuard {
     private final LakeJobRelationDao relationDao;
     private final JobDefinitionCommandResolver batchCommandResolver;
     private final StreamingJobDefinitionCommandResolver streamingCommandResolver;
+    private final LakeWarehouseService warehouseService;
 
     @Autowired
+    public LakeJobGuard(
+            LakeProperties lakeProperties,
+            DataSourceDao dataSourceDao,
+            LakeOdsDatabaseBindingDao bindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            ScriptJobDefinitionParser scriptJobDefinitionParser,
+            LakeJobRelationDao relationDao,
+            JobDefinitionCommandResolver batchCommandResolver,
+            StreamingJobDefinitionCommandResolver streamingCommandResolver,
+            LakeWarehouseService warehouseService) {
+        this.lakeProperties = lakeProperties;
+        this.dataSourceDao = dataSourceDao;
+        this.bindingDao = bindingDao;
+        this.tableMappingDao = tableMappingDao;
+        this.scriptJobDefinitionParser = scriptJobDefinitionParser;
+        this.relationDao = relationDao;
+        this.batchCommandResolver = batchCommandResolver;
+        this.streamingCommandResolver = streamingCommandResolver;
+        this.warehouseService = warehouseService;
+    }
+
+    /** Compatibility constructor retained for command-level clients/tests. */
     public LakeJobGuard(
             LakeProperties lakeProperties,
             DataSourceDao dataSourceDao,
@@ -82,6 +106,7 @@ public class LakeJobGuard {
         this.relationDao = relationDao;
         this.batchCommandResolver = batchCommandResolver;
         this.streamingCommandResolver = streamingCommandResolver;
+        this.warehouseService = null;
     }
 
     /**
@@ -227,8 +252,9 @@ public class LakeJobGuard {
         }
 
         Long configuredLakeDataSourceId = configuredLakeDataSourceId();
+        Long sinkLakeDataSourceId = canonicalLakeDataSourceId(details.sinkDataSourceId());
         boolean sinkIsConfiguredLake = configuredLakeDataSourceId != null
-                && Objects.equals(configuredLakeDataSourceId, details.sinkDataSourceId());
+                && Objects.equals(configuredLakeDataSourceId, sinkLakeDataSourceId);
 
         if (bindingId == null) {
             if (sinkIsConfiguredLake) {
@@ -251,8 +277,9 @@ public class LakeJobGuard {
         }
 
         LakeOdsDatabaseBinding binding = requiredReadyBinding(bindingId);
-        if (!Objects.equals(configuredLakeDataSourceId, binding.getLakeDataSourceId())
-                || !Objects.equals(binding.getLakeDataSourceId(), details.sinkDataSourceId())
+        Long bindingLakeDataSourceId = canonicalLakeDataSourceId(binding.getLakeDataSourceId());
+        if (!Objects.equals(configuredLakeDataSourceId, bindingLakeDataSourceId)
+                || !Objects.equals(bindingLakeDataSourceId, sinkLakeDataSourceId)
                 || details.sourceDataSourceId() == null
                 || !Objects.equals(binding.getSourceDataSourceId(), details.sourceDataSourceId())) {
             throw invalid();
@@ -321,7 +348,7 @@ public class LakeJobGuard {
         for (Map.Entry<String, ConfigValue> entry : config.root().entrySet()) {
             String key = normalizeKey(entry.getKey());
             Object value = entry.getValue() == null ? null : entry.getValue().unwrapped();
-            if (isDataSourceKey(key) && Objects.equals(parseLong(value), lakeDataSourceId)) {
+            if (isDataSourceKey(key) && isLakeDataSource(parseLong(value), lakeDataSourceId)) {
                 return true;
             }
             if (value instanceof Map<?, ?> map && configContainsDataSourceMap(map, lakeDataSourceId)) {
@@ -338,7 +365,7 @@ public class LakeJobGuard {
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             String key = normalizeKey(String.valueOf(entry.getKey()));
             Object value = entry.getValue();
-            if (isDataSourceKey(key) && Objects.equals(parseLong(value), lakeDataSourceId)) {
+            if (isDataSourceKey(key) && isLakeDataSource(parseLong(value), lakeDataSourceId)) {
                 return true;
             }
             if (value instanceof Map<?, ?> child && configContainsDataSourceMap(child, lakeDataSourceId)) {
@@ -621,15 +648,44 @@ public class LakeJobGuard {
     }
 
     private boolean isEnabled() {
-        return lakeProperties != null && lakeProperties.isEnabled();
+        return true;
     }
 
     private Long configuredLakeDataSourceId() {
+        if (warehouseService != null) {
+            try {
+                org.apache.seatunnel.web.spi.bean.vo.LakeWarehouseConfigVO config =
+                        warehouseService.getConfig();
+                return config == null ? null : config.getSystemDataSourceId();
+            } catch (RuntimeException ignored) {
+                return null;
+            }
+        }
         if (lakeProperties == null || lakeProperties.getDataSourceId() == null
                 || lakeProperties.getDataSourceId() <= 0) {
             return null;
         }
         return lakeProperties.getDataSourceId();
+    }
+
+    /** Resolve historical lake datasource IDs through the durable alias map. */
+    private Long canonicalLakeDataSourceId(Long requestedId) {
+        if (requestedId == null) {
+            return null;
+        }
+        if (warehouseService == null) {
+            return requestedId;
+        }
+        try {
+            return warehouseService.canonicalDataSourceId(requestedId);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private boolean isLakeDataSource(Long requestedId, Long canonicalId) {
+        return requestedId != null && canonicalId != null
+                && Objects.equals(canonicalLakeDataSourceId(requestedId), canonicalId);
     }
 
     private DataSource requiredLakeDataSource(Long id) {

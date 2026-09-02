@@ -14,6 +14,7 @@ import org.apache.seatunnel.web.api.lake.operation.LakeOperationIntent;
 import org.apache.seatunnel.web.api.lake.operation.LakeResourceOperationCoordinator;
 import org.apache.seatunnel.web.api.lake.operation.LakeResourceTypes;
 import org.apache.seatunnel.web.api.service.LakeOdsDatabaseService;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.LakeOperationStatus;
@@ -70,8 +71,37 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
     private final LakeResourceOperationCoordinator coordinator;
     private final CurrentUserProvider currentUserProvider;
     private final org.apache.seatunnel.web.api.lake.LakeProperties lakeProperties;
+    private final LakeWarehouseService warehouseService;
 
     @Autowired
+    public LakeOdsDatabaseServiceImpl(
+            DataSourceDao dataSourceDao,
+            BusinessSystemDao businessSystemDao,
+            DataSourceUnitDao dataSourceUnitDao,
+            LakeOdsDatabaseBindingDao bindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            LakeJobRelationDao jobRelationDao,
+            LakeOdsMasterDataResolver masterDataResolver,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeResourceOperationCoordinator coordinator,
+            CurrentUserProvider currentUserProvider,
+            org.apache.seatunnel.web.api.lake.LakeProperties lakeProperties,
+            LakeWarehouseService warehouseService) {
+        this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
+        this.businessSystemDao = Objects.requireNonNull(businessSystemDao, "businessSystemDao");
+        this.dataSourceUnitDao = Objects.requireNonNull(dataSourceUnitDao, "dataSourceUnitDao");
+        this.bindingDao = Objects.requireNonNull(bindingDao, "bindingDao");
+        this.tableMappingDao = Objects.requireNonNull(tableMappingDao, "tableMappingDao");
+        this.jobRelationDao = Objects.requireNonNull(jobRelationDao, "jobRelationDao");
+        this.masterDataResolver = Objects.requireNonNull(masterDataResolver, "masterDataResolver");
+        this.dorisClientProvider = Objects.requireNonNull(dorisClientProvider, "dorisClientProvider");
+        this.coordinator = Objects.requireNonNull(coordinator, "coordinator");
+        this.currentUserProvider = Objects.requireNonNull(currentUserProvider, "currentUserProvider");
+        this.lakeProperties = Objects.requireNonNull(lakeProperties, "lakeProperties");
+        this.warehouseService = Objects.requireNonNull(warehouseService, "warehouseService");
+    }
+
+    /** Compatibility constructor used by repository-focused clients and legacy tests. */
     public LakeOdsDatabaseServiceImpl(
             DataSourceDao dataSourceDao,
             BusinessSystemDao businessSystemDao,
@@ -95,6 +125,7 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
         this.coordinator = Objects.requireNonNull(coordinator, "coordinator");
         this.currentUserProvider = Objects.requireNonNull(currentUserProvider, "currentUserProvider");
         this.lakeProperties = Objects.requireNonNull(lakeProperties, "lakeProperties");
+        this.warehouseService = null;
     }
 
     @Override
@@ -104,6 +135,7 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
         query.setName(safe.getKeyword());
         query.setPageNo(safe.getPageNo() == null || safe.getPageNo() < 1 ? 1 : safe.getPageNo());
         query.setPageSize(safe.getPageSize() == null || safe.getPageSize() < 1 ? 10 : safe.getPageSize());
+        query.setExcludeSystemManaged(true);
         IPage<DataSource> page = queryPage(query, safe.getResourceStatus());
         List<DataSource> records = page.getRecords() == null ? List.of() : page.getRecords();
         List<LakePhysicalDataSourceVO> result = records.stream()
@@ -434,7 +466,8 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
                     org.apache.seatunnel.web.spi.enums.Status.DATASOURCE_NOT_EXIST);
         }
         DataSource source = dataSourceDao.queryById(id);
-        if (source == null || source.getStatus() == DataSourceLifecycleStatus.REVOKED) {
+        if (source == null || source.getStatus() == DataSourceLifecycleStatus.REVOKED
+                || Boolean.TRUE.equals(source.getSystemManaged())) {
             throw new org.apache.seatunnel.web.core.exceptions.ServiceException(
                     org.apache.seatunnel.web.spi.enums.Status.DATASOURCE_NOT_EXIST);
         }
@@ -442,6 +475,9 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
     }
 
     private Long requireConfiguredLakeDataSource() {
+        if (warehouseService != null) {
+            return warehouseService.requireSystemDataSourceId();
+        }
         if (!lakeProperties.isEnabled() || lakeProperties.getDataSourceId() == null) {
             throw new LakeServiceException(LakeErrorCode.LAKE_DORIS_UNAVAILABLE,
                     "Lake Doris data source is not configured");

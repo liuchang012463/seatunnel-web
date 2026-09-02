@@ -230,7 +230,7 @@ const ImpactConfirmModal: React.FC<{
       onOk={onConfirm}
       okText="确认并应用"
       cancelText="取消"
-      okButtonProps={{ danger: true, disabled: !preview?.confirmationToken }}
+      okButtonProps={{ danger: true, disabled: !preview?.planFingerprint }}
       confirmLoading={loading}
       width={620}
     >
@@ -238,7 +238,7 @@ const ImpactConfirmModal: React.FC<{
         type="warning"
         showIcon
         message="该操作可能使历史分区超出新的保留范围"
-        description="请确认影响清单。服务端会校验一次性确认令牌和最新分区观察结果，页面不展示令牌内容。"
+        description="请确认影响清单。服务端会校验计划指纹、资源版本和最新分区观察结果。"
       />
       <Descriptions size="small" column={2} className="lake-impact-summary">
         <Descriptions.Item label="当前历史分区数">{preview?.historicalPartitionCount ?? '-'}</Descriptions.Item>
@@ -254,7 +254,7 @@ const ImpactConfirmModal: React.FC<{
       ) : (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="服务端未返回可确认的影响分区" />
       )}
-      {!preview?.confirmationToken ? <Alert type="error" showIcon className="lake-lifecycle-alert" message="当前影响观察不可确认，请重新预览" /> : null}
+      {!preview?.planFingerprint ? <Alert type="error" showIcon className="lake-lifecycle-alert" message="当前影响观察不可确认，请重新预览" /> : null}
     </Modal>
   );
 };
@@ -511,7 +511,8 @@ const LifecycleTableDetail: React.FC<{
     try {
       const response = await updateRetention(mappingId, {
         policyId: selectedPolicyId,
-        confirmationToken: previewResult.confirmationToken,
+        planFingerprint: previewResult.planFingerprint,
+        confirmed: true,
       });
       if (response.code !== 0 || !response.data) throw new Error(responseError(response, '生命周期更新失败'));
       message.success('表生命周期已更新');

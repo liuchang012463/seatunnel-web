@@ -13,6 +13,8 @@ public final class LakeErrorCode {
     public static final String LAKE_RESOURCE_CONFLICT = "LAKE_RESOURCE_CONFLICT";
     public static final String LAKE_OPERATION_STALE = "LAKE_OPERATION_STALE";
     public static final String LAKE_DORIS_UNAVAILABLE = "LAKE_DORIS_UNAVAILABLE";
+    public static final String LAKE_WAREHOUSE_NOT_CONFIGURED = "LAKE_WAREHOUSE_NOT_CONFIGURED";
+    public static final String LAKE_SYSTEM_DATASOURCE_READ_ONLY = "LAKE_SYSTEM_DATASOURCE_READ_ONLY";
     public static final String LAKE_REQUEST_INVALID = "LAKE_REQUEST_INVALID";
     public static final String LAKE_LIFECYCLE_REQUIRES_PREPARTITIONED_TABLE =
             "LAKE_LIFECYCLE_REQUIRES_PREPARTITIONED_TABLE";
@@ -50,6 +52,8 @@ public final class LakeErrorCode {
             case LAKE_RESOURCE_CONFLICT -> 11908;
             case LAKE_OPERATION_STALE -> 11909;
             case LAKE_DORIS_UNAVAILABLE -> 11910;
+            case LAKE_WAREHOUSE_NOT_CONFIGURED -> 11926;
+            case LAKE_SYSTEM_DATASOURCE_READ_ONLY -> 11927;
             case LAKE_REQUEST_INVALID -> 11911;
             case LAKE_LIFECYCLE_REQUIRES_PREPARTITIONED_TABLE -> 11912;
             case LAKE_CATALOG_NOT_FOUND -> 11913;

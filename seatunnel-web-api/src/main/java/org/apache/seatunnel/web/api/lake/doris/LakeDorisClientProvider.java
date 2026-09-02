@@ -1,9 +1,10 @@
 package org.apache.seatunnel.web.api.lake.doris;
 
-import org.apache.seatunnel.web.api.lake.LakeErrorCode;
-import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.lake.LakeDataSourceResolver;
+import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeProperties;
+import org.apache.seatunnel.web.api.lake.LakeServiceException;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
@@ -13,36 +14,59 @@ import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 
-/** Creates the bounded Doris client for the configured single lake data source. */
+/** Provides Doris clients from the persisted ODS configuration. */
 @Component
 public class LakeDorisClientProvider {
 
-    private final DataSourceDao dataSourceDao;
+    private final LakeWarehouseService warehouseService;
+    private final DataSourceDao legacyDataSourceDao;
     private final LakeDataSourceResolver dataSourceResolver;
     private final LakeProperties properties;
 
     @Autowired
     public LakeDorisClientProvider(
-            DataSourceDao dataSourceDao,
+            LakeWarehouseService warehouseService,
             LakeDataSourceResolver dataSourceResolver,
             LakeProperties properties) {
-        this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
+        this.warehouseService = Objects.requireNonNull(warehouseService, "warehouseService");
+        this.legacyDataSourceDao = null;
         this.dataSourceResolver = Objects.requireNonNull(dataSourceResolver, "dataSourceResolver");
         this.properties = Objects.requireNonNull(properties, "properties");
     }
 
-    public DorisLakeClient get(Long lakeDataSourceId) {
-        if (!properties.isEnabled() || lakeDataSourceId == null || lakeDataSourceId <= 0) {
-            throw unavailable();
-        }
-        DataSource dataSource = dataSourceDao.queryById(lakeDataSourceId);
-        if (dataSource == null || dataSource.getDbType() != DbType.DORIS
-                || (dataSource.getStatus() != null
-                && dataSource.getStatus() != DataSourceLifecycleStatus.ENABLED)) {
-            throw unavailable();
-        }
+    /** Compatibility constructor retained for focused legacy tests. */
+    public LakeDorisClientProvider(
+            DataSourceDao dataSourceDao,
+            LakeDataSourceResolver dataSourceResolver,
+            LakeProperties properties) {
+        this.warehouseService = null;
+        this.legacyDataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
+        this.dataSourceResolver = Objects.requireNonNull(dataSourceResolver, "dataSourceResolver");
+        this.properties = Objects.requireNonNull(properties, "properties");
+    }
+
+    public DorisLakeClient get(Long requestedLakeDataSourceId) {
         try {
-            return new JdbcDorisLakeClient(dataSourceResolver.resolve(lakeDataSourceId), properties);
+            Long id;
+            if (warehouseService != null) {
+                id = warehouseService.canonicalDataSourceId(requestedLakeDataSourceId);
+                // The resolver reads the warehouse table directly.  The ID is
+                // retained only for task compatibility and alias validation.
+                return new JdbcDorisLakeClient(dataSourceResolver.resolve(id), properties);
+            }
+            id = requestedLakeDataSourceId;
+            if (id == null || id <= 0) {
+                throw unavailable();
+            }
+            DataSource dataSource = legacyDataSourceDao.queryById(id);
+            if (dataSource == null || dataSource.getDbType() != DbType.DORIS
+                    || (dataSource.getStatus() != null
+                    && dataSource.getStatus() != DataSourceLifecycleStatus.ENABLED)) {
+                throw unavailable();
+            }
+            return new JdbcDorisLakeClient(dataSourceResolver.resolve(id), properties);
+        } catch (LakeServiceException exception) {
+            throw exception;
         } catch (RuntimeException exception) {
             throw unavailable();
         }
@@ -50,6 +74,6 @@ public class LakeDorisClientProvider {
 
     private static LakeServiceException unavailable() {
         return new LakeServiceException(LakeErrorCode.LAKE_DORIS_UNAVAILABLE,
-                "Lake Doris data source is unavailable");
+                "湖 ODS 数仓不可用，请先完成数仓配置并检查连接");
     }
 }

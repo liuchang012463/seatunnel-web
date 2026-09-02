@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.lake.table;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import org.apache.seatunnel.web.api.lake.contract.TargetContract;
 
@@ -12,6 +13,12 @@ public class LakeManagedTablePreviewVO {
 
     private boolean valid;
 
+    /** Non-authorizing concurrency fingerprint returned by preview. */
+    private String planFingerprint;
+
+    /** @deprecated use {@link #planFingerprint}; retained for old clients only. */
+    @Deprecated
+    @JsonIgnore
     private String previewToken;
 
     private Long sourceDataSourceId;

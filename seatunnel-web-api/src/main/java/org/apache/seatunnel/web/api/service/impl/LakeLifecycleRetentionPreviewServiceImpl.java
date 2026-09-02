@@ -127,14 +127,16 @@ public class LakeLifecycleRetentionPreviewServiceImpl
             return invalidResult(result, IMPACT_OBSERVATION_UNKNOWN);
         }
         String impactHash = observedImpactHash(mapping, snapshot, validated, requestedRetention, impacted);
-        result.setConfirmationToken(tokenService.issue(
+        String fingerprint = tokenService.issue(
                 userId,
                 mapping.getId(), mapping.getGeneration(), mapping.getLockVersion(),
                 snapshot.getId(), snapshot.getGeneration(), snapshot.getLockVersion(),
                 currentDesired, validated.getPolicyId(),
                 validated.getPolicySnapshot() == null ? null
                         : validated.getPolicySnapshot().getVersion(),
-                requestedRetention, impactHash));
+                requestedRetention, impactHash);
+        result.setPlanFingerprint(fingerprint);
+        result.setConfirmationToken(fingerprint);
         return result;
     }
 
@@ -318,6 +320,7 @@ public class LakeLifecycleRetentionPreviewServiceImpl
         result.setCode(code);
         result.setReasons(List.copyOf(reasons));
         result.setRequiresConfirmation(false);
+        result.setPlanFingerprint(null);
         result.setConfirmationToken(null);
         return result;
     }

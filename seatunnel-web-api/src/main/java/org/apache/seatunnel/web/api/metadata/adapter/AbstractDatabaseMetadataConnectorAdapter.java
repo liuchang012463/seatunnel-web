@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.dao.entity.DataSource;
@@ -72,6 +73,13 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
             String jdbcUrl = text(source, "url");
             String username = firstNonBlank(text(source, "username"), text(source, "user"));
             String password = text(source, "password");
+            // System-managed lake projections persist the password using the
+            // shared datasource master key.  Ordinary historical datasource
+            // rows may still contain a clear value; decodePassword preserves
+            // those values while transparently handling the encrypted form.
+            if (!isBlank(password)) {
+                password = PasswordUtils.decodePassword(password);
+            }
             String host = text(source, "host");
             String port = text(source, "port");
             String database = firstNonBlank(text(source, "database"), text(source, "databaseName"));

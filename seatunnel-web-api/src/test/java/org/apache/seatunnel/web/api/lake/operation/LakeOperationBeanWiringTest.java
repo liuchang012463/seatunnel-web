@@ -16,7 +16,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-/** Checks the production component graph without enabling lake business operations. */
+/** Checks the production component graph for the always-on lake capability. */
 class LakeOperationBeanWiringTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
@@ -29,13 +29,13 @@ class LakeOperationBeanWiringTest {
             .withBean(LakeExternalCatalogBindingDao.class, () -> mock(LakeExternalCatalogBindingDao.class));
 
     @Test
-    void registersOneGatewayAndCoordinatorEvenWhenLakeIsDisabled() {
+    void registersOneGatewayAndCoordinatorWithoutAnEnableSwitch() {
         contextRunner.run(context -> {
             assertThat(context).hasSingleBean(LakeProperties.class);
             assertThat(context).hasSingleBean(DaoLakeResourceGateway.class);
             assertThat(context).hasSingleBean(SpringLakeOperationTransactionBoundary.class);
             assertThat(context).hasSingleBean(LakeResourceOperationCoordinator.class);
-            assertThat(context.getBean(LakeProperties.class).isEnabled()).isFalse();
+            assertThat(context.getBean(LakeProperties.class).isEnabled()).isTrue();
         });
     }
 

@@ -16,19 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class LakePreviewTokenServiceTest {
 
     @Test
-    void enabledLakeRequiresAnExplicitPreviewTokenSecret() {
+    void planFingerprintDoesNotRequireAnAuthorizationSecret() {
         LakeProperties properties = new LakeProperties();
         properties.setEnabled(true);
 
-        IllegalStateException error = assertThrows(
-                IllegalStateException.class, () -> new LakePreviewTokenService(properties));
-
-        assertEquals(
-                "Lake preview token secret is required when lake control plane is enabled",
-                error.getMessage());
-
-        assertThrows(IllegalStateException.class,
-                () -> new LakePreviewTokenService(properties, Clock.systemUTC(), null));
+        assertNotNull(new LakePreviewTokenService(properties));
+        assertNotNull(new LakePreviewTokenService(properties, Clock.systemUTC(), null));
     }
 
     @Test

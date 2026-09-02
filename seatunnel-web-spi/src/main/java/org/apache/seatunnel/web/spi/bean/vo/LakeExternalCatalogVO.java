@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.spi.bean.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
@@ -27,6 +28,9 @@ public class LakeExternalCatalogVO {
     private List<String> databaseInclude = List.of();
     private List<String> tableInclude = List.of();
     private String desiredSpecHash;
+    /** Retained only for binary compatibility with the historical schema. */
+    @JsonIgnore
+    @Deprecated
     private String credentialRevision;
     private String driverChecksum;
     private String validationStatus;

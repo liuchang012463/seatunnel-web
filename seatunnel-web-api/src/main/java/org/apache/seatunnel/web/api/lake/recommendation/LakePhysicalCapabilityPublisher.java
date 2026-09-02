@@ -6,6 +6,9 @@ import org.apache.seatunnel.web.api.lake.doris.DorisCapabilityChecks;
 import org.apache.seatunnel.web.api.lake.doris.DorisCapabilityResolver;
 import org.apache.seatunnel.web.api.lake.doris.DorisLakeClient;
 import org.apache.seatunnel.web.api.lake.doris.LakeDorisClientProvider;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcDriverRegistry;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
@@ -32,13 +35,27 @@ public final class LakePhysicalCapabilityPublisher implements Supplier<DorisCapa
     private final DataSourceDao dataSourceDao;
     private final LakeDorisClientProvider clientProvider;
     private final DorisCapabilityResolver capabilityResolver;
+    private final LakeWarehouseService warehouseService;
+    private final LakeJdbcDriverRegistry driverRegistry;
 
     @Autowired
     public LakePhysicalCapabilityPublisher(
             LakeProperties properties,
             DataSourceDao dataSourceDao,
+            LakeDorisClientProvider clientProvider,
+            LakeWarehouseService warehouseService,
+            LakeJdbcDriverRegistry driverRegistry) {
+        this(properties, dataSourceDao, clientProvider, new DorisCapabilityResolver(),
+                warehouseService, driverRegistry);
+    }
+
+    /** Compatibility constructor for embedders compiled before DB-backed lake configuration. */
+    public LakePhysicalCapabilityPublisher(
+            LakeProperties properties,
+            DataSourceDao dataSourceDao,
             LakeDorisClientProvider clientProvider) {
-        this(properties, dataSourceDao, clientProvider, new DorisCapabilityResolver());
+        this(properties, dataSourceDao, clientProvider, new DorisCapabilityResolver(),
+                null, new LakeJdbcDriverRegistry());
     }
 
     /** Visible for focused tests and alternate server-owned capability facades. */
@@ -47,10 +64,24 @@ public final class LakePhysicalCapabilityPublisher implements Supplier<DorisCapa
             DataSourceDao dataSourceDao,
             LakeDorisClientProvider clientProvider,
             DorisCapabilityResolver capabilityResolver) {
+        this(properties, dataSourceDao, clientProvider, capabilityResolver,
+                null, new LakeJdbcDriverRegistry());
+    }
+
+    /** Visible for focused tests and alternate server-owned capability facades. */
+    public LakePhysicalCapabilityPublisher(
+            LakeProperties properties,
+            DataSourceDao dataSourceDao,
+            LakeDorisClientProvider clientProvider,
+            DorisCapabilityResolver capabilityResolver,
+            LakeWarehouseService warehouseService,
+            LakeJdbcDriverRegistry driverRegistry) {
         this.properties = Objects.requireNonNull(properties, "properties");
         this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
         this.clientProvider = Objects.requireNonNull(clientProvider, "clientProvider");
         this.capabilityResolver = Objects.requireNonNull(capabilityResolver, "capabilityResolver");
+        this.warehouseService = warehouseService;
+        this.driverRegistry = Objects.requireNonNull(driverRegistry, "driverRegistry");
     }
 
     /**
@@ -59,11 +90,14 @@ public final class LakePhysicalCapabilityPublisher implements Supplier<DorisCapa
      * lake source are deliberately loaded and validated independently.
      */
     public DorisCapability current(Long sourceDataSourceId) {
-        boolean adapterExists = properties.isEnabled();
-        boolean driverConfigExists = configured(properties.getDriverUrl())
-                && configured(properties.getDriverClass());
-        boolean driverChecksumConfigured = configured(properties.getDriverChecksum());
-        DataSource lakeDataSource = source(properties.getDataSourceId());
+        Long configuredLakeId = configuredLakeDataSourceId();
+        LakeJdbcDriverRegistry.DriverStatus driverStatus = driverRegistry.status(
+                LakeJdbcAdapterType.MYSQL);
+        boolean adapterExists = true;
+        boolean driverConfigExists = driverStatus.configured();
+        boolean driverChecksumConfigured = driverStatus.registration() != null
+                && configured(driverStatus.registration().checksum());
+        DataSource lakeDataSource = source(configuredLakeId);
         DataSource source = source(sourceDataSourceId);
         boolean lakeConfigComplete = completeDorisSource(lakeDataSource);
         boolean sourceConfigComplete = completeSource(source);
@@ -74,8 +108,8 @@ public final class LakePhysicalCapabilityPublisher implements Supplier<DorisCapa
         // by the provider, so missing driverUrl/checksum must not suppress the
         // real, bounded SELECT 1 evidence used by recommendation.
         boolean lakeDorisReachable = false;
-        if (adapterExists && lakeConfigComplete && sourceConfigComplete) {
-            lakeDorisReachable = pingConfiguredDoris();
+        if (adapterExists && lakeConfigComplete && sourceConfigComplete && configuredLakeId != null) {
+            lakeDorisReachable = pingConfiguredDoris(configuredLakeId);
         }
 
         // The source-side network is not a prerequisite for PHYSICAL mode.
@@ -117,8 +151,7 @@ public final class LakePhysicalCapabilityPublisher implements Supplier<DorisCapa
         }
     }
 
-    private boolean pingConfiguredDoris() {
-        Long dataSourceId = properties.getDataSourceId();
+    private boolean pingConfiguredDoris(Long dataSourceId) {
         try (DorisLakeClient client = clientProvider.get(dataSourceId)) {
             return client != null && client.ping();
         } catch (RuntimeException ignored) {
@@ -127,6 +160,19 @@ public final class LakePhysicalCapabilityPublisher implements Supplier<DorisCapa
         } catch (Exception ignored) {
             return false;
         }
+    }
+
+    private Long configuredLakeDataSourceId() {
+        if (warehouseService != null) {
+            try {
+                org.apache.seatunnel.web.spi.bean.vo.LakeWarehouseConfigVO config =
+                        warehouseService.getConfig();
+                return config == null ? null : config.getSystemDataSourceId();
+            } catch (RuntimeException ignored) {
+                return null;
+            }
+        }
+        return properties.getDataSourceId();
     }
 
     private static boolean completeDorisSource(DataSource source) {

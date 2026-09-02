@@ -116,9 +116,6 @@ public class LakeExternalCatalogCapabilityResolver {
                 adapter, driverRegistry, scope, sourceConfigComplete,
                 lakeDorisReachable, sourceNetworkReachable);
         List<String> reasons = new ArrayList<>();
-        if (!properties.isEnabled()) {
-            reasons.add(LakeCatalogCapabilityReason.LAKE_CONTROL_PLANE_DISABLED);
-        }
         if (!sourceFound) {
             reasons.add(LakeCatalogCapabilityReason.SOURCE_NOT_FOUND);
         } else {

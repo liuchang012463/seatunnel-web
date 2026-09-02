@@ -60,8 +60,8 @@ export const fetchPhysicalInventory = (bindingId: number): Promise<ApiResponse<P
 export const previewManagedTable = (payload: Record<string, unknown>): Promise<ApiResponse<ManagedTablePreview>> =>
   HttpUtils.post(`${PHYSICAL_API}/tables/preview`, payload);
 
-export const createManagedTable = (previewToken: string): Promise<ApiResponse<ManagedTable>> =>
-  HttpUtils.post(`${PHYSICAL_API}/tables`, { previewToken });
+export const createManagedTable = (planFingerprint: string): Promise<ApiResponse<ManagedTable>> =>
+  HttpUtils.post(`${PHYSICAL_API}/tables`, { planFingerprint });
 
 export const fetchManagedTable = (mappingId: number): Promise<ApiResponse<ManagedTable>> =>
   HttpUtils.get(`${PHYSICAL_API}/tables/${encodeURIComponent(String(mappingId))}`);

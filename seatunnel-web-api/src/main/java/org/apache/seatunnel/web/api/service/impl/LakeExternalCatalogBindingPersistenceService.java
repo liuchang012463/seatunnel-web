@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.api.lake.LakeProperties;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpec;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.LakeExternalCatalogBinding;
@@ -48,19 +49,30 @@ public class LakeExternalCatalogBindingPersistenceService {
             .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
             .disable(SerializationFeature.INDENT_OUTPUT);
     private static final Pattern SHA256 = Pattern.compile("[0-9a-fA-F]{64}");
-    private static final Pattern SAFE_REVISION = Pattern.compile("[A-Za-z0-9._:-]{1,128}");
     private static final Pattern SAFE_CODE = Pattern.compile("[A-Za-z0-9._:-]{1,128}");
     private static final int MAX_ERROR_LENGTH = 1_000;
     private static final String REDACTED_ERROR = "[REDACTED_ERROR]";
 
     private final LakeExternalCatalogBindingDao bindingDao;
     private final LakeProperties lakeProperties;
+    private final LakeWarehouseService warehouseService;
 
     @Autowired
+    public LakeExternalCatalogBindingPersistenceService(
+            LakeExternalCatalogBindingDao bindingDao,
+            LakeProperties lakeProperties,
+            LakeWarehouseService warehouseService) {
+        this.bindingDao = Objects.requireNonNull(bindingDao, "bindingDao");
+        this.lakeProperties = Objects.requireNonNull(lakeProperties, "lakeProperties");
+        this.warehouseService = Objects.requireNonNull(warehouseService, "warehouseService");
+    }
+
+    /** Compatibility constructor for repository-focused clients and tests. */
     public LakeExternalCatalogBindingPersistenceService(
             LakeExternalCatalogBindingDao bindingDao, LakeProperties lakeProperties) {
         this.bindingDao = Objects.requireNonNull(bindingDao, "bindingDao");
         this.lakeProperties = Objects.requireNonNull(lakeProperties, "lakeProperties");
+        this.warehouseService = null;
     }
 
     /** Small constructor for repository-focused tests and embedders. */
@@ -313,7 +325,8 @@ public class LakeExternalCatalogBindingPersistenceService {
             result.setTableInclude(desired.tableInclude());
         }
         result.setDesiredSpecHash(binding.getDesiredSpecHash());
-        result.setCredentialRevision(binding.getCredentialRevision());
+        // credential_revision is a retained historical column.  New reads do
+        // not expose or depend on the old feature-specific credential token.
         result.setDriverChecksum(binding.getDriverChecksum());
         result.setValidationStatus(binding.getValidationStatus());
         result.setResourceStatus(binding.getResourceStatus());
@@ -350,8 +363,7 @@ public class LakeExternalCatalogBindingPersistenceService {
                 || request.getSourceDataSourceId() <= 0) {
             throw invalid("sourceDataSourceId");
         }
-        Long lakeDataSourceId = request.getLakeDataSourceId() == null
-                ? lakeProperties.getDataSourceId() : request.getLakeDataSourceId();
+        Long lakeDataSourceId = canonicalLakeDataSourceId(request.getLakeDataSourceId());
         if (lakeDataSourceId == null || lakeDataSourceId <= 0) {
             throw invalid("lakeDataSourceId");
         }
@@ -372,7 +384,8 @@ public class LakeExternalCatalogBindingPersistenceService {
         result.setScope(scope);
         result.setDesiredSpecJson(desiredJson);
         result.setDesiredSpecHash(hash(request.getDesiredSpecHash(), desiredJson));
-        result.setCredentialRevision(revision(request.getCredentialRevision()));
+        // Historical credentialRevision input is intentionally ignored.  The
+        // current source configuration is resolved at execution time.
         result.setDriverChecksum(checksum(request.getDriverChecksum()));
         result.setValidationStatus(null);
         result.setActualSnapshotJson(null);
@@ -384,6 +397,17 @@ public class LakeExternalCatalogBindingPersistenceService {
         result.setCreateUserId(operatorId);
         result.setUpdateUserId(operatorId);
         return result;
+    }
+
+    private Long canonicalLakeDataSourceId(Long requestedId) {
+        if (warehouseService != null) {
+            try {
+                return warehouseService.canonicalDataSourceId(requestedId);
+            } catch (RuntimeException exception) {
+                throw invalid("lakeDataSourceId");
+            }
+        }
+        return requestedId == null ? lakeProperties.getDataSourceId() : requestedId;
     }
 
     private LakeExternalCatalogBinding copyUpdate(
@@ -404,7 +428,7 @@ public class LakeExternalCatalogBindingPersistenceService {
         current.setScope(scope);
         current.setDesiredSpecJson(desiredJson);
         current.setDesiredSpecHash(hash(request.getDesiredSpecHash(), desiredJson));
-        current.setCredentialRevision(revision(request.getCredentialRevision()));
+        // Do not read or write the retained historical credential revision.
         current.setDriverChecksum(checksum(request.getDriverChecksum()));
         current.setValidationStatus(null);
         current.setActualSnapshotJson(null);
@@ -627,17 +651,6 @@ public class LakeExternalCatalogBindingPersistenceService {
             throw invalid("driverChecksum");
         }
         return value.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private static String revision(String value) {
-        if (StringUtils.isBlank(value)) {
-            return null;
-        }
-        String normalized = value.trim();
-        if (!SAFE_REVISION.matcher(normalized).matches()) {
-            throw invalid("credentialRevision");
-        }
-        return normalized;
     }
 
     private static String normalizeCatalogName(String value) {

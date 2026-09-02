@@ -175,7 +175,7 @@ export interface DeleteImpact {
 
 export interface ManagedTablePreview {
   valid?: boolean;
-  previewToken?: string;
+  planFingerprint?: string;
   sourceDataSourceId?: number;
   omEntityId?: string;
   odsDatabaseBindingId?: number;

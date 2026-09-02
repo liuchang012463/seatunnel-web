@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.api.lake.LakeProperties;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.lake.doris.DorisLakeClient;
 import org.apache.seatunnel.web.api.lake.doris.LakeDorisClientProvider;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.LakeManagementLevel;
@@ -101,8 +102,23 @@ public final class LakeExactSingleProjectionPlanner {
     private final LakeOdsTableMappingDao tableMappingDao;
     private final LakeDorisClientProvider dorisClientProvider;
     private final LakeProperties lakeProperties;
+    private final LakeWarehouseService warehouseService;
 
     @Autowired
+    public LakeExactSingleProjectionPlanner(
+            LakeOdsDatabaseBindingDao bindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeProperties lakeProperties,
+            LakeWarehouseService warehouseService) {
+        this.bindingDao = Objects.requireNonNull(bindingDao, "bindingDao");
+        this.tableMappingDao = Objects.requireNonNull(tableMappingDao, "tableMappingDao");
+        this.dorisClientProvider = Objects.requireNonNull(dorisClientProvider, "dorisClientProvider");
+        this.lakeProperties = lakeProperties;
+        this.warehouseService = Objects.requireNonNull(warehouseService, "warehouseService");
+    }
+
+    /** Compatibility constructor retained for callers that resolve the warehouse separately. */
     public LakeExactSingleProjectionPlanner(
             LakeOdsDatabaseBindingDao bindingDao,
             LakeOdsTableMappingDao tableMappingDao,
@@ -112,6 +128,7 @@ public final class LakeExactSingleProjectionPlanner {
         this.tableMappingDao = Objects.requireNonNull(tableMappingDao, "tableMappingDao");
         this.dorisClientProvider = Objects.requireNonNull(dorisClientProvider, "dorisClientProvider");
         this.lakeProperties = lakeProperties;
+        this.warehouseService = null;
     }
 
     /**
@@ -141,7 +158,8 @@ public final class LakeExactSingleProjectionPlanner {
         }
 
         Long configuredLakeId = configuredLakeDataSourceId();
-        if (configuredLakeId != null && !configuredLakeId.equals(parsed.sink().dataSourceId())) {
+        Long parsedSinkLakeId = canonicalLakeDataSourceId(parsed.sink().dataSourceId());
+        if (configuredLakeId != null && !configuredLakeId.equals(parsedSinkLakeId)) {
             return ProjectionPlan.notApplicable();
         }
 
@@ -150,7 +168,7 @@ public final class LakeExactSingleProjectionPlanner {
 
         Long bindingId = resolveBindingId(command, parsed.sink());
         LakeOdsDatabaseBinding binding = readBinding(bindingId);
-        validateBinding(binding, bindingId, parsed);
+        validateBinding(binding, bindingId, parsed, parsedSinkLakeId);
 
         String databaseName;
         try {
@@ -394,7 +412,10 @@ public final class LakeExactSingleProjectionPlanner {
     private void validateBinding(
             LakeOdsDatabaseBinding binding,
             Long bindingId,
-            SingleCommand parsed) {
+            SingleCommand parsed,
+            Long parsedSinkLakeId) {
+        Long bindingLakeId = canonicalLakeDataSourceId(
+                binding == null ? null : binding.getLakeDataSourceId());
         if (binding == null
                 || !Objects.equals(bindingId, binding.getId())
                 || Boolean.TRUE.equals(binding.getDeleted())
@@ -402,7 +423,7 @@ public final class LakeExactSingleProjectionPlanner {
                 || binding.getLakeDataSourceId() == null
                 || binding.getLakeDataSourceId() <= 0
                 || StringUtils.isBlank(binding.getDatabaseName())
-                || !Objects.equals(binding.getLakeDataSourceId(), parsed.sink().dataSourceId())
+                || !Objects.equals(bindingLakeId, parsedSinkLakeId)
                 || !Objects.equals(binding.getSourceDataSourceId(), parsed.source().dataSourceId())) {
             throw invalid();
         }
@@ -537,11 +558,35 @@ public final class LakeExactSingleProjectionPlanner {
     }
 
     private Long configuredLakeDataSourceId() {
+        if (warehouseService != null) {
+            try {
+                org.apache.seatunnel.web.spi.bean.vo.LakeWarehouseConfigVO config =
+                        warehouseService.getConfig();
+                return config == null ? null : config.getSystemDataSourceId();
+            } catch (RuntimeException ignored) {
+                return null;
+            }
+        }
         if (lakeProperties == null || lakeProperties.getDataSourceId() == null
                 || lakeProperties.getDataSourceId() <= 0) {
             return null;
         }
         return lakeProperties.getDataSourceId();
+    }
+
+    /** Resolve an old lake datasource ID through the durable alias map. */
+    private Long canonicalLakeDataSourceId(Long requestedId) {
+        if (requestedId == null) {
+            return null;
+        }
+        if (warehouseService == null) {
+            return requestedId;
+        }
+        try {
+            return warehouseService.canonicalDataSourceId(requestedId);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     private Long readLong(NodeValues node, String[] keys, boolean required) {

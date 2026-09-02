@@ -30,7 +30,6 @@ public final class LakeCatalogDesiredSpecCanonicalizer {
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("adapter", normalized.adapter().code());
         root.put("catalogName", normalized.catalogName());
-        root.put("credentialRevision", normalized.credentialRevision());
         root.put("databaseInclude", normalized.databaseInclude());
         root.put("driverChecksum", normalized.driverChecksum());
         root.put("driverClass", normalized.driverClass());

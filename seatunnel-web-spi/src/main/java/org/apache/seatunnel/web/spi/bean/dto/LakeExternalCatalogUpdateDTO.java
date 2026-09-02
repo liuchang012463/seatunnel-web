@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.spi.bean.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
@@ -47,7 +48,7 @@ public class LakeExternalCatalogUpdateDTO {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String desiredSpecHash;
 
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @JsonIgnore
     private String credentialRevision;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)

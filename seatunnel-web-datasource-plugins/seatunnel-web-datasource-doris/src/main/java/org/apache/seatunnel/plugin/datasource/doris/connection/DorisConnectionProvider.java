@@ -3,6 +3,7 @@ package org.apache.seatunnel.plugin.datasource.doris.connection;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.plugin.datasource.api.constants.DataSourceConstants;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.AbstractJdbcConnectionProvider;
+import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.seatunnel.plugin.datasource.doris.param.DorisConnectionParam;
 
 /**
@@ -22,5 +23,11 @@ public class DorisConnectionProvider
     @Override
     protected String resolveDriverLocation(DorisConnectionParam t) {
         return defaultBaseUrl() + t.getDriverLocation();
+    }
+
+    /** Database rows store passwords encrypted with the shared datasource key. */
+    @Override
+    protected String processPassword(DorisConnectionParam connectionParam, String rawPassword) {
+        return PasswordUtils.decodePassword(rawPassword);
     }
 }

@@ -47,6 +47,7 @@ describe('prototype navigation menu', () => {
         path: '/menu/lake',
         name: '入湖管理',
         children: [
+          { path: '/lake/warehouse', name: '数仓配置' },
           { path: '/lake/resources', name: '物理入湖管理' },
           { path: '/lake/logical-access', name: '逻辑入湖管理' },
           { path: '/lake/lifecycle', name: '数据生命周期管理' },

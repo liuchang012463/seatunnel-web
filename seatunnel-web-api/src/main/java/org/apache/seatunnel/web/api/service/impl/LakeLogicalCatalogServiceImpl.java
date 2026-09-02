@@ -33,6 +33,7 @@ import org.apache.seatunnel.web.api.lake.operation.LakeResourceOperationCoordina
 import org.apache.seatunnel.web.api.lake.operation.LakeResourceTypes;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.LakeLogicalCatalogService;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 import org.apache.seatunnel.web.common.enums.LakeOperationType;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
@@ -79,8 +80,35 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
     private final LakeResourceOperationCoordinator coordinator;
     private final CurrentUserProvider currentUserProvider;
     private final LakeSourceNetworkProbeCache sourceProbeCache;
+    private final LakeWarehouseService warehouseService;
 
     @Autowired
+    public LakeLogicalCatalogServiceImpl(
+            DataSourceDao dataSourceDao,
+            LakeProperties lakeProperties,
+            LakeExternalCatalogCapabilityResolver capabilityResolver,
+            LakeDorisClientProvider dorisClientProvider,
+            LakeExternalCatalogBindingPersistenceService persistenceService,
+            LakeJdbcDriverRegistry driverRegistry,
+            LakeCatalogCredentialRevisionService credentialService,
+            LakeResourceOperationCoordinator coordinator,
+            CurrentUserProvider currentUserProvider,
+            LakeSourceNetworkProbeCache sourceProbeCache,
+            LakeWarehouseService warehouseService) {
+        this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
+        this.lakeProperties = Objects.requireNonNull(lakeProperties, "lakeProperties");
+        this.capabilityResolver = Objects.requireNonNull(capabilityResolver, "capabilityResolver");
+        this.dorisClientProvider = Objects.requireNonNull(dorisClientProvider, "dorisClientProvider");
+        this.persistenceService = Objects.requireNonNull(persistenceService, "persistenceService");
+        this.driverRegistry = Objects.requireNonNull(driverRegistry, "driverRegistry");
+        this.credentialService = Objects.requireNonNull(credentialService, "credentialService");
+        this.coordinator = Objects.requireNonNull(coordinator, "coordinator");
+        this.currentUserProvider = Objects.requireNonNull(currentUserProvider, "currentUserProvider");
+        this.sourceProbeCache = Objects.requireNonNull(sourceProbeCache, "sourceProbeCache");
+        this.warehouseService = Objects.requireNonNull(warehouseService, "warehouseService");
+    }
+
+    /** Compatibility constructor for embedders that supply the legacy source id. */
     public LakeLogicalCatalogServiceImpl(
             DataSourceDao dataSourceDao,
             LakeProperties lakeProperties,
@@ -99,9 +127,10 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
         this.persistenceService = Objects.requireNonNull(persistenceService, "persistenceService");
         this.driverRegistry = Objects.requireNonNull(driverRegistry, "driverRegistry");
         this.credentialService = Objects.requireNonNull(credentialService, "credentialService");
-        this.coordinator = Objects.requireNonNull(coordinator, "coordinator");
-        this.currentUserProvider = Objects.requireNonNull(currentUserProvider, "currentUserProvider");
+        this.coordinator = coordinator;
+        this.currentUserProvider = currentUserProvider;
         this.sourceProbeCache = Objects.requireNonNull(sourceProbeCache, "sourceProbeCache");
+        this.warehouseService = null;
     }
 
     /** Constructor retained for embedders that do not need a custom probe cache. */
@@ -138,6 +167,7 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
         this.coordinator = null;
         this.currentUserProvider = null;
         this.sourceProbeCache = new LakeSourceNetworkProbeCache();
+        this.warehouseService = null;
     }
 
     @Override
@@ -224,9 +254,6 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
     public LakeExternalCatalogVO create(LakeExternalCatalogCreateDTO request) {
         CreateInput input = validateCreateInput(request);
         requireExecutionBoundaries();
-        if (!credentialService.isConfigured()) {
-            throw catalogInvalid("catalog credential secret is not configured");
-        }
         staticPreflight(input.sourceDataSourceId(), input.adapter(), input.scope());
 
         LakeExternalCatalogCreateDTO pendingRequest = pendingRequest(input);
@@ -272,9 +299,6 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
     @Override
     public LakeExternalCatalogVO update(Long bindingId, LakeExternalCatalogUpdateDTO request) {
         requireExecutionBoundaries();
-        if (!credentialService.isConfigured()) {
-            throw catalogInvalid("catalog credential secret is not configured");
-        }
         LakeExternalCatalogVO current = persistenceService.detail(bindingId);
         if (current == null || Boolean.TRUE.equals(current.getDeleted())) {
             throw catalogNotFound();
@@ -611,8 +635,7 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
                 || request.getSourceDataSourceId() <= 0) {
             throw catalogInvalid("sourceDataSourceId");
         }
-        Long lakeDataSourceId = request.getLakeDataSourceId() == null
-                ? lakeProperties.getDataSourceId() : request.getLakeDataSourceId();
+        Long lakeDataSourceId = canonicalLakeDataSourceId(request.getLakeDataSourceId());
         if (lakeDataSourceId == null || lakeDataSourceId <= 0) {
             throw catalogInvalid("lakeDataSourceId");
         }
@@ -768,11 +791,11 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
                 input.adapter(),
                 input.scope(),
                 credentials.jdbcUrl(),
-                registration.url(),
+                java.util.Objects.requireNonNullElse(registration.url(), registration.driverLocation()),
                 registration.driverClass(),
                 registration.checksum(),
                 registration.registryRevision(),
-                credentials.credentialRevision(),
+                null,
                 input.databaseInclude(),
                 input.tableInclude(),
                 input.options());
@@ -792,7 +815,7 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
         return new LakeCatalogOperationResult(
                 canonicalJson,
                 LakeCatalogDesiredSpecCanonicalizer.sha256(canonicalJson),
-                desired.credentialRevision(),
+                null,
                 desired.driverChecksum(),
                 snapshotJson(validation),
                 validation.status().name(),
@@ -962,15 +985,15 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
                 adapter,
                 LakeCatalogScope.ALL,
                 credentials.jdbcUrl(),
-                registration.url(),
+                java.util.Objects.requireNonNullElse(registration.url(), registration.driverLocation()),
                 registration.driverClass(),
                 registration.checksum(),
                 registration.registryRevision(),
-                credentials.credentialRevision(),
+                null,
                 List.of(),
                 List.of(),
                 Map.of());
-        try (DorisLakeClient client = dorisClientProvider.get(lakeProperties.getDataSourceId())) {
+        try (DorisLakeClient client = dorisClientProvider.get(configuredLakeDataSourceId())) {
             client.probeSource(desired, driverRegistry, credentials.ddlCredentials());
             return ProbeAttempt.completed(true);
         } catch (RuntimeException exception) {
@@ -1067,13 +1090,37 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
         }
     }
 
+    private Long configuredLakeDataSourceId() {
+        if (warehouseService != null) {
+            try {
+                org.apache.seatunnel.web.spi.bean.vo.LakeWarehouseConfigVO config =
+                        warehouseService.getConfig();
+                return config == null ? null : config.getSystemDataSourceId();
+            } catch (RuntimeException ignored) {
+                return null;
+            }
+        }
+        return lakeProperties.getDataSourceId();
+    }
+
+    private Long canonicalLakeDataSourceId(Long requestedId) {
+        Long configured = configuredLakeDataSourceId();
+        if (warehouseService == null) {
+            return requestedId == null ? configured : requestedId;
+        }
+        try {
+            return warehouseService.canonicalDataSourceId(requestedId);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
     private boolean probeLakeDoris() {
-        if (!lakeProperties.isEnabled()
-                || lakeProperties.getDataSourceId() == null
-                || lakeProperties.getDataSourceId() <= 0) {
+        Long lakeDataSourceId = configuredLakeDataSourceId();
+        if (lakeDataSourceId == null || lakeDataSourceId <= 0) {
             return false;
         }
-        try (DorisLakeClient client = dorisClientProvider.get(lakeProperties.getDataSourceId())) {
+        try (DorisLakeClient client = dorisClientProvider.get(lakeDataSourceId)) {
             return client.ping();
         } catch (RuntimeException ignored) {
             return false;

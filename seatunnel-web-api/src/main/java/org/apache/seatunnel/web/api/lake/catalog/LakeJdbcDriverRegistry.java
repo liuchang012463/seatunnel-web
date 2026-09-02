@@ -2,7 +2,10 @@ package org.apache.seatunnel.web.api.lake.catalog;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.seatunnel.web.api.lake.LakeProperties;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.seatunnel.web.api.lake.LakeJdbcDriverLoader;
+import org.apache.seatunnel.web.dao.entity.LakeJdbcDriver;
+import org.apache.seatunnel.web.dao.repository.LakeJdbcDriverDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -12,56 +15,66 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.nio.file.Files;
+import java.io.InputStream;
 
-/**
- * Server-owned logical JDBC driver inventory.
- *
- * <p>The registry deliberately has no method that accepts driver details from
- * a request.  A catalog request can only refer to an adapter; URL, class and
- * checksum are read from {@link LakeProperties} and copied into the desired
- * spec by a trusted service.</p>
- */
+/** Reads logical JDBC driver registrations from the local Web database. */
 @Component
 public final class LakeJdbcDriverRegistry {
 
     private static final Pattern SHA256 = Pattern.compile("[0-9a-fA-F]{64}");
     private static final Pattern MD5 = Pattern.compile("[0-9a-fA-F]{32}");
 
-    private final String registryRevision;
-    private final Map<LakeJdbcAdapterType, DriverRegistration> registrations;
+    private final LakeJdbcDriverDao driverDao;
+    private final Map<LakeJdbcAdapterType, DriverRegistration> staticRegistrations;
 
     @Autowired
-    public LakeJdbcDriverRegistry(LakeProperties properties) {
+    public LakeJdbcDriverRegistry(LakeJdbcDriverDao driverDao) {
+        this.driverDao = driverDao;
+        this.staticRegistrations = Map.of();
+    }
+
+    /** Compatibility constructor for old embedders/tests; no longer used by Spring. */
+    public LakeJdbcDriverRegistry(org.apache.seatunnel.web.api.lake.LakeProperties.JdbcCatalog configuration) {
+        this.driverDao = null;
+        org.apache.seatunnel.web.api.lake.LakeProperties.JdbcCatalog config = configuration == null
+                ? new org.apache.seatunnel.web.api.lake.LakeProperties.JdbcCatalog() : configuration;
+        EnumMap<LakeJdbcAdapterType, DriverRegistration> values = new EnumMap<>(LakeJdbcAdapterType.class);
+        values.put(LakeJdbcAdapterType.MYSQL, registration(LakeJdbcAdapterType.MYSQL, config.getMysql(), config.getRegistryRevision()));
+        values.put(LakeJdbcAdapterType.POSTGRESQL, registration(LakeJdbcAdapterType.POSTGRESQL, config.getPostgresql(), config.getRegistryRevision()));
+        values.put(LakeJdbcAdapterType.ORACLE, registration(LakeJdbcAdapterType.ORACLE, config.getOracle(), config.getRegistryRevision()));
+        this.staticRegistrations = Map.copyOf(values);
+    }
+
+    /** Compatibility overload for callers that still pass the old properties object. */
+    @Deprecated
+    public LakeJdbcDriverRegistry(org.apache.seatunnel.web.api.lake.LakeProperties properties) {
         this(properties == null ? null : properties.getJdbcCatalog());
     }
 
-    /** Visible for unit tests and non-Spring bootstrap code. */
-    public LakeJdbcDriverRegistry(LakeProperties.JdbcCatalog configuration) {
-        LakeProperties.JdbcCatalog config = configuration == null
-                ? new LakeProperties.JdbcCatalog() : configuration;
-        this.registryRevision = trimToNull(config.getRegistryRevision());
-        EnumMap<LakeJdbcAdapterType, DriverRegistration> values =
-                new EnumMap<>(LakeJdbcAdapterType.class);
-        values.put(LakeJdbcAdapterType.MYSQL,
-                registration(LakeJdbcAdapterType.MYSQL, config.getMysql()));
-        values.put(LakeJdbcAdapterType.POSTGRESQL,
-                registration(LakeJdbcAdapterType.POSTGRESQL, config.getPostgresql()));
-        values.put(LakeJdbcAdapterType.ORACLE,
-                registration(LakeJdbcAdapterType.ORACLE, config.getOracle()));
-        this.registrations = Map.copyOf(values);
-    }
-
-    /** Empty, disabled registry for callers that do not have application config. */
     public LakeJdbcDriverRegistry() {
-        this((LakeProperties.JdbcCatalog) null);
+        this((org.apache.seatunnel.web.api.lake.LakeProperties.JdbcCatalog) null);
     }
 
     public String registryRevision() {
-        return registryRevision;
+        if (driverDao == null) {
+            return staticRegistrations.values().stream()
+                    .map(DriverRegistration::registryRevision)
+                    .filter(StringUtils::isNotBlank)
+                    .findFirst().orElse(null);
+        }
+        return "db";
     }
 
     public Optional<DriverRegistration> find(LakeJdbcAdapterType adapter) {
-        return Optional.ofNullable(registrations.get(adapter));
+        if (adapter == null) {
+            return Optional.empty();
+        }
+        if (driverDao == null) {
+            return Optional.ofNullable(staticRegistrations.get(adapter));
+        }
+        LakeJdbcDriver driver = driverDao.queryByAdapter(adapter.name());
+        return Optional.ofNullable(driver).map(item -> registration(adapter, item));
     }
 
     public Optional<DriverRegistration> find(String adapter) {
@@ -77,29 +90,31 @@ public final class LakeJdbcDriverRegistry {
                 "JDBC catalog driver is not registered"));
     }
 
-    /** Returns configuration/availability reasons without exposing driver details. */
     public DriverStatus status(LakeJdbcAdapterType adapter) {
-        DriverRegistration registration = registrations.get(adapter);
+        DriverRegistration registration = find(adapter).orElse(null);
         List<String> reasons = new ArrayList<>();
         if (registration == null || !registration.enabled()) {
             reasons.add(LakeCatalogCapabilityReason.DRIVER_CONFIG_MISSING);
             return new DriverStatus(false, false, reasons, registration);
         }
-        if (StringUtils.isBlank(registration.url())
-                || StringUtils.isBlank(registration.driverClass())) {
+        if (StringUtils.isBlank(registration.url()) && StringUtils.isBlank(registration.driverLocation())) {
+            reasons.add(LakeCatalogCapabilityReason.DRIVER_CONFIG_MISSING);
+        }
+        if (StringUtils.isBlank(registration.driverClass())) {
             reasons.add(LakeCatalogCapabilityReason.DRIVER_CONFIG_MISSING);
         }
         if (StringUtils.isBlank(registration.checksum())) {
             reasons.add(LakeCatalogCapabilityReason.DRIVER_CHECKSUM_MISSING);
         } else if (!SHA256.matcher(registration.checksum()).matches()) {
             reasons.add(LakeCatalogCapabilityReason.DRIVER_CHECKSUM_INVALID);
+        } else if (StringUtils.isBlank(registration.url())
+                && StringUtils.isNotBlank(registration.driverLocation())
+                && !checksumMatchesLocalArtifact(registration)) {
+            reasons.add(LakeCatalogCapabilityReason.DRIVER_CHECKSUM_INVALID);
         }
         if (StringUtils.isNotBlank(registration.dorisMd5())
                 && !MD5.matcher(registration.dorisMd5()).matches()) {
             reasons.add(LakeCatalogCapabilityReason.DORIS_DRIVER_MD5_INVALID);
-        }
-        if (StringUtils.isBlank(registryRevision)) {
-            reasons.add(LakeCatalogCapabilityReason.DRIVER_REGISTRY_REVISION_MISSING);
         }
         boolean configured = reasons.isEmpty();
         boolean available = configured && registration.verified();
@@ -109,26 +124,36 @@ public final class LakeJdbcDriverRegistry {
         return new DriverStatus(configured, available, reasons, registration);
     }
 
-    private DriverRegistration registration(
-            LakeJdbcAdapterType adapter,
-            LakeProperties.Driver driver) {
-        LakeProperties.Driver value = driver == null ? new LakeProperties.Driver() : driver;
-        return new DriverRegistration(
-                adapter,
-                value.isEnabled(),
-                trimToNull(value.getUrl()),
-                trimToNull(value.getDriverClass()),
-                trimToNull(value.getChecksum()),
-                registryRevision,
-                value.isVerified(),
-                trimToNull(value.getDorisMd5()));
+    private static boolean checksumMatchesLocalArtifact(DriverRegistration registration) {
+        try {
+            java.nio.file.Path path = LakeJdbcDriverLoader.resolveLocalPath(registration.driverLocation());
+            if (!Files.isRegularFile(path)) {
+                return false;
+            }
+            try (InputStream input = Files.newInputStream(path)) {
+                return registration.checksum().equalsIgnoreCase(DigestUtils.sha256Hex(input));
+            }
+        } catch (Exception exception) {
+            return false;
+        }
     }
 
-    private static String trimToNull(String value) {
-        return StringUtils.isBlank(value) ? null : value.trim();
+    private static DriverRegistration registration(LakeJdbcAdapterType adapter,
+                                                   org.apache.seatunnel.web.api.lake.LakeProperties.Driver driver,
+                                                   String revision) {
+        org.apache.seatunnel.web.api.lake.LakeProperties.Driver value = driver == null
+                ? new org.apache.seatunnel.web.api.lake.LakeProperties.Driver() : driver;
+        return new DriverRegistration(adapter, value.isEnabled(), value.getUrl(), value.getDriverClass(),
+                value.getChecksum(), StringUtils.defaultIfBlank(revision, "config"), value.isVerified(),
+                value.getDorisMd5(), null);
     }
 
-    /** Immutable server-owned registration copied from application config. */
+    private static DriverRegistration registration(LakeJdbcAdapterType adapter, LakeJdbcDriver driver) {
+        return new DriverRegistration(adapter, Boolean.TRUE.equals(driver.getEnabled()),
+                null, driver.getDriverClass(), driver.getSha256(), "db", Boolean.TRUE.equals(driver.getVerified()),
+                driver.getDorisMd5(), driver.getDriverLocation());
+    }
+
     public record DriverRegistration(
             LakeJdbcAdapterType adapter,
             boolean enabled,
@@ -137,21 +162,15 @@ public final class LakeJdbcDriverRegistry {
             String checksum,
             String registryRevision,
             boolean verified,
-            String dorisMd5) {
+            String dorisMd5,
+            String driverLocation) {
 
-        /** Compatibility constructor for embedders using the SHA-only shape. */
-        public DriverRegistration(
-                LakeJdbcAdapterType adapter,
-                boolean enabled,
-                String url,
-                String driverClass,
-                String checksum,
-                String registryRevision,
-                boolean verified) {
-            this(adapter, enabled, url, driverClass, checksum, registryRevision, verified, null);
+        public DriverRegistration(LakeJdbcAdapterType adapter, boolean enabled, String url,
+                                  String driverClass, String checksum, String registryRevision,
+                                  boolean verified) {
+            this(adapter, enabled, url, driverClass, checksum, registryRevision, verified, null, null);
         }
 
-        /** Driver inventory details are server-internal, never a safe VO. */
         @Override
         @JsonIgnore
         public String url() {
@@ -181,15 +200,16 @@ public final class LakeJdbcDriverRegistry {
         public String registryRevision() {
             return registryRevision;
         }
+
+        @Override
+        @JsonIgnore
+        public String driverLocation() {
+            return driverLocation;
+        }
     }
 
-    /** Safe capability facts; it contains no URL/class/checksum values. */
-    public record DriverStatus(
-            boolean configured,
-            boolean available,
-            List<String> reasonCodes,
-            DriverRegistration registration) {
-
+    public record DriverStatus(boolean configured, boolean available,
+                               List<String> reasonCodes, DriverRegistration registration) {
         public DriverStatus {
             reasonCodes = reasonCodes == null ? List.of() : List.copyOf(reasonCodes);
         }

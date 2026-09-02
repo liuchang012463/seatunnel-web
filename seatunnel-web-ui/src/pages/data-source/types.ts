@@ -63,6 +63,9 @@ export interface DataSourceRecord {
   profileLastRunTime?: string;
   profileLastSuccessTime?: string;
   status?: DataSourceLifecycleStatus;
+  /** System projection rows are maintained by lake warehouse configuration. */
+  systemManaged?: boolean;
+  systemKey?: string;
   remark?: string;
   originalJson?: string;
   createTime?: string;

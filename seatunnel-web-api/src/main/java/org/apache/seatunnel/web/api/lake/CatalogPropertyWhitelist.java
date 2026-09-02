@@ -22,7 +22,6 @@ public final class CatalogPropertyWhitelist {
             "driver_url",
             "driver_class",
             "checksum",
-            "credential_revision",
             "only_specified_database",
             "include_database_list",
             "include_table_list",

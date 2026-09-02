@@ -1,10 +1,15 @@
 package org.apache.seatunnel.web.api.lake;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.annotation.PreDestroy;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
+import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.dao.entity.DataSource;
+import org.apache.seatunnel.web.dao.entity.LakeWarehouseConfig;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
@@ -20,138 +25,161 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
-/**
- * Resolves the configured Doris data source and reuses one Hikari pool while
- * its connection configuration remains unchanged.
- */
+/** Creates bounded Doris pools from the persisted lake warehouse configuration. */
 @Component
 public class LakeDataSourceResolver implements AutoCloseable {
 
-    private final DataSourceDao dataSourceDao;
+    private final LakeWarehouseService warehouseService;
+    private final DataSourceDao legacyDataSourceDao;
     private final LakeProperties properties;
-    private final Function<DataSource, BaseConnectionParam> connectionParamFactory;
-    private final Map<Long, CachedPool> pools = new HashMap<>();
-    private final Map<Long, CachedPool> readOnlyPools = new HashMap<>();
+    private final Function<DataSource, BaseConnectionParam> legacyConnectionParamFactory;
+    private final Map<String, CachedPool> pools = new HashMap<>();
+    private final Map<String, CachedPool> readOnlyPools = new HashMap<>();
 
     @Autowired
-    public LakeDataSourceResolver(DataSourceDao dataSourceDao, LakeProperties properties) {
-        this(dataSourceDao, properties,
-                dataSource -> DataSourceUtils.buildJdbcConnectionParams(
-                        DbType.DORIS, dataSource.getConnectionParams()));
+    public LakeDataSourceResolver(LakeWarehouseService warehouseService, LakeProperties properties) {
+        this.warehouseService = Objects.requireNonNull(warehouseService, "warehouseService");
+        this.legacyDataSourceDao = null;
+        this.properties = Objects.requireNonNull(properties, "properties");
+        this.legacyConnectionParamFactory = null;
     }
 
-    /** Visible for tests and alternative server-side parameter resolvers. */
+    /** Compatibility constructor retained for focused tests and embedders. */
+    public LakeDataSourceResolver(DataSourceDao dataSourceDao, LakeProperties properties) {
+        this(dataSourceDao, properties, dataSource -> DataSourceUtils.buildJdbcConnectionParams(
+                DbType.DORIS, dataSource.getConnectionParams()));
+    }
+
+    /** Compatibility constructor retained for focused tests. */
     public LakeDataSourceResolver(
             DataSourceDao dataSourceDao,
             LakeProperties properties,
             Function<DataSource, BaseConnectionParam> connectionParamFactory) {
-        this.dataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
+        this.warehouseService = null;
+        this.legacyDataSourceDao = Objects.requireNonNull(dataSourceDao, "dataSourceDao");
         this.properties = Objects.requireNonNull(properties, "properties");
-        this.connectionParamFactory = Objects.requireNonNull(connectionParamFactory, "connectionParamFactory");
+        this.legacyConnectionParamFactory = Objects.requireNonNull(connectionParamFactory,
+                "connectionParamFactory");
     }
 
     public javax.sql.DataSource resolveConfigured() {
-        if (!properties.isEnabled()) {
-            throw new IllegalStateException("Lake control plane is disabled");
-        }
-        if (properties.getDataSourceId() == null) {
-            throw new IllegalStateException("Lake Doris data source is not configured");
-        }
-        return resolve(properties.getDataSourceId());
+        return resolve(null, false);
     }
 
     public synchronized javax.sql.DataSource resolve(Long dataSourceId) {
         return resolve(dataSourceId, false);
     }
 
-    /**
-     * Resolves a separate, smaller pool for generated structured queries.
-     * Connections are marked read-only at pool level as an additional guard;
-     * the executor still validates the generated statement and sets the
-     * connection hint for drivers that apply it per checkout.
-     */
+    /** Structured queries use a separate pool marked read-only at checkout. */
     public synchronized javax.sql.DataSource resolveReadOnly(Long dataSourceId) {
         return resolve(dataSourceId, true);
     }
 
     private javax.sql.DataSource resolve(Long dataSourceId, boolean readOnly) {
+        if (warehouseService != null) {
+            LakeWarehouseConfig config = warehouseService.requireConfig();
+            String fingerprint = fingerprint(config);
+            String key = "ODS_DORIS";
+            Map<String, CachedPool> targetPools = readOnly ? readOnlyPools : pools;
+            CachedPool cached = targetPools.get(key);
+            if (cached != null && cached.fingerprint().equals(fingerprint)) {
+                return cached.dataSource();
+            }
+            BaseConnectionParam param = directConnectionParam(config);
+            LakeJdbcDriverLoader.ensureLoaded(param.getDriver(), config.getDriverLocation());
+            HikariDataSource pool = createPool(key, param, readOnly);
+            if (cached != null) {
+                cached.dataSource().close();
+            }
+            targetPools.put(key, new CachedPool(fingerprint, pool));
+            return pool;
+        }
+
         if (dataSourceId == null || dataSourceId <= 0) {
             throw new IllegalArgumentException("Lake data source id must be positive");
         }
-        DataSource dataSource = dataSourceDao.queryById(dataSourceId);
-        if (dataSource == null) {
-            throw new IllegalArgumentException("Lake Doris data source does not exist");
+        DataSource dataSource = legacyDataSourceDao.queryById(dataSourceId);
+        if (dataSource == null || dataSource.getDbType() != DbType.DORIS
+                || StringUtils.isBlank(dataSource.getConnectionParams())) {
+            throw new IllegalArgumentException("Lake Doris data source is unavailable");
         }
-        if (dataSource.getDbType() != DbType.DORIS) {
-            throw new IllegalArgumentException("Lake data source must be Doris");
-        }
-        if (dataSource.getConnectionParams() == null
-                || dataSource.getConnectionParams().isBlank()) {
-            throw new IllegalArgumentException("Lake Doris data source has no connection configuration");
-        }
-
+        String key = String.valueOf(dataSourceId);
         String fingerprint = fingerprint(dataSource);
-        Map<Long, CachedPool> targetPools = readOnly ? readOnlyPools : pools;
-        CachedPool cached = targetPools.get(dataSourceId);
+        Map<String, CachedPool> targetPools = readOnly ? readOnlyPools : pools;
+        CachedPool cached = targetPools.get(key);
         if (cached != null && cached.fingerprint().equals(fingerprint)) {
             return cached.dataSource();
         }
-
         BaseConnectionParam param;
         try {
-            param = connectionParamFactory.apply(dataSource);
+            param = legacyConnectionParamFactory.apply(dataSource);
         } catch (RuntimeException exception) {
-            // Do not include connectionParams or the exception text in a
-            // user-facing/loggable message; plugin exceptions can echo JSON.
             throw new IllegalArgumentException("Lake Doris data source configuration is invalid");
         }
-        if (param == null || param.getUrl() == null || param.getUrl().isBlank()) {
+        if (param == null || StringUtils.isBlank(param.getUrl())) {
             throw new IllegalArgumentException("Lake Doris JDBC URL is not configured");
         }
-
-        HikariDataSource pool = createPool(dataSourceId, param, readOnly);
+        HikariDataSource pool = createPool(key, param, readOnly);
         if (cached != null) {
             cached.dataSource().close();
         }
-        targetPools.put(dataSourceId, new CachedPool(fingerprint, pool));
+        targetPools.put(key, new CachedPool(fingerprint, pool));
         return pool;
     }
 
     public synchronized void evict(Long dataSourceId) {
-        CachedPool cached = pools.remove(dataSourceId);
+        String key = warehouseService != null ? "ODS_DORIS" : String.valueOf(dataSourceId);
+        CachedPool cached = pools.remove(key);
         if (cached != null) {
             cached.dataSource().close();
         }
-        CachedPool readOnlyCached = readOnlyPools.remove(dataSourceId);
+        CachedPool readOnlyCached = readOnlyPools.remove(key);
         if (readOnlyCached != null) {
             readOnlyCached.dataSource().close();
         }
     }
 
-    private HikariDataSource createPool(
-            Long dataSourceId, BaseConnectionParam param, boolean readOnly) {
+    private BaseConnectionParam directConnectionParam(LakeWarehouseConfig config) {
+        ObjectNode node = org.apache.seatunnel.web.common.utils.JSONUtils.createObjectNode();
+        node.put("url", config.getJdbcUrl());
+        node.put("user", config.getUsername());
+        node.put("password", PasswordUtils.decodePassword(config.getPassword()));
+        node.put("driver", StringUtils.defaultIfBlank(config.getDriverClass(), "com.mysql.cj.jdbc.Driver"));
+        if (StringUtils.isNotBlank(config.getDriverLocation())) {
+            node.put("driverLocation", config.getDriverLocation());
+        }
+        node.put("database", "");
+        try {
+            return DataSourceUtils.buildJdbcConnectionParams(DbType.DORIS, node.toString());
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Lake Doris warehouse configuration is invalid");
+        }
+    }
+
+    private HikariDataSource createPool(String key, BaseConnectionParam param, boolean readOnly) {
         LakeProperties.ConnectionPool poolProperties = properties.getConnectionPool();
         if (poolProperties == null) {
             poolProperties = new LakeProperties.ConnectionPool();
         }
         HikariConfig config = new HikariConfig();
-        config.setPoolName("seatunnel-lake-doris-"
-                + (readOnly ? "readonly-" : "") + dataSourceId);
+        config.setPoolName("seatunnel-lake-doris-" + (readOnly ? "readonly-" : "") + key);
         config.setJdbcUrl(param.getUrl());
-        if (param.getUser() != null && !param.getUser().isBlank()) {
+        if (StringUtils.isNotBlank(param.getUser())) {
             config.setUsername(param.getUser());
         }
         if (param.getPassword() != null) {
             config.setPassword(param.getPassword());
         }
-        if (param.getDriver() != null && !param.getDriver().isBlank()) {
+        // A locally loaded driver lives in a child classloader.  It is
+        // registered through LakeJdbcDriverLoader's DriverShim, so letting
+        // Hikari instantiate the class by name would bypass that loader.
+        if (StringUtils.isNotBlank(param.getDriver())
+                && StringUtils.isBlank(param.getDriverLocation())) {
             config.setDriverClassName(param.getDriver());
         }
-        int maximumPoolSize = readOnly
-                ? poolProperties.getReadOnlyMaximumPoolSize()
+        int maximumPoolSize = readOnly ? poolProperties.getReadOnlyMaximumPoolSize()
                 : poolProperties.getMaximumPoolSize();
-        int minimumIdle = readOnly
-                ? poolProperties.getReadOnlyMinimumIdle()
+        int minimumIdle = readOnly ? poolProperties.getReadOnlyMinimumIdle()
                 : poolProperties.getMinimumIdle();
         config.setMaximumPoolSize(Math.max(1, maximumPoolSize));
         config.setMinimumIdle(Math.max(0, Math.min(minimumIdle, config.getMaximumPoolSize())));
@@ -163,21 +191,29 @@ public class LakeDataSourceResolver implements AutoCloseable {
     }
 
     private static long durationMillis(Duration duration, long defaultValue) {
-        if (duration == null) {
-            return defaultValue;
-        }
-        return Math.max(250, duration.toMillis());
+        return duration == null ? defaultValue : Math.max(250, duration.toMillis());
+    }
+
+    private static String fingerprint(LakeWarehouseConfig config) {
+        return digest(String.valueOf(config.getId()) + '\u0000'
+                + String.valueOf(config.getJdbcUrl()) + '\u0000'
+                + String.valueOf(config.getUsername()) + '\u0000'
+                + String.valueOf(config.getPassword()) + '\u0000'
+                + String.valueOf(config.getConfigVersion()));
     }
 
     private static String fingerprint(DataSource dataSource) {
-        String value = String.valueOf(dataSource.getId()) + '\u0000'
+        return digest(String.valueOf(dataSource.getId()) + '\u0000'
                 + String.valueOf(dataSource.getConnectionParams()) + '\u0000'
-                + String.valueOf(dataSource.getUpdateTime());
+                + String.valueOf(dataSource.getUpdateTime()));
+    }
+
+    private static String digest(String value) {
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
+            byte[] bytes = MessageDigest.getInstance("SHA-256")
                     .digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder result = new StringBuilder(digest.length * 2);
-            for (byte item : digest) {
+            StringBuilder result = new StringBuilder(bytes.length * 2);
+            for (byte item : bytes) {
                 result.append(String.format("%02x", item));
             }
             return result.toString();
@@ -193,6 +229,7 @@ public class LakeDataSourceResolver implements AutoCloseable {
         readOnlyPools.values().forEach(pool -> pool.dataSource().close());
         pools.clear();
         readOnlyPools.clear();
+        LakeJdbcDriverLoader.close();
     }
 
     private record CachedPool(String fingerprint, HikariDataSource dataSource) {

@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.common.enums.LakeRelationScope;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.job.bridge.LakeJobBindingResolver;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
@@ -45,8 +46,21 @@ public class LakeJobDetector {
     private final LakeOdsDatabaseBindingDao bindingDao;
     private final LakeOdsTableMappingDao tableMappingDao;
     private final LakeProperties lakeProperties;
+    private final LakeWarehouseService warehouseService;
 
     @Autowired
+    public LakeJobDetector(
+            LakeOdsDatabaseBindingDao bindingDao,
+            LakeOdsTableMappingDao tableMappingDao,
+            LakeProperties lakeProperties,
+            LakeWarehouseService warehouseService) {
+        this.bindingDao = bindingDao;
+        this.tableMappingDao = tableMappingDao;
+        this.lakeProperties = lakeProperties;
+        this.warehouseService = warehouseService;
+    }
+
+    /** Compatibility constructor retained for legacy embedders/tests. */
     public LakeJobDetector(
             LakeOdsDatabaseBindingDao bindingDao,
             LakeOdsTableMappingDao tableMappingDao,
@@ -54,6 +68,7 @@ public class LakeJobDetector {
         this.bindingDao = bindingDao;
         this.tableMappingDao = tableMappingDao;
         this.lakeProperties = lakeProperties;
+        this.warehouseService = null;
     }
 
     /** Detect using the runtime family exposed by the command. */
@@ -82,9 +97,9 @@ public class LakeJobDetector {
             return null;
         }
 
-        Long configuredLakeDataSourceId = lakeProperties.getDataSourceId();
+        Long configuredLakeDataSourceId = configuredLakeDataSourceId();
         if (configuredLakeDataSourceId == null
-                || !configuredLakeDataSourceId.equals(binding.getLakeDataSourceId())) {
+                || !configuredLakeDataSourceId.equals(canonical(binding.getLakeDataSourceId()))) {
             return null;
         }
 
@@ -108,10 +123,12 @@ public class LakeJobDetector {
         GuideMultiJobContent.WorkflowSourceConfig source = content.getSource();
         GuideMultiJobContent.WorkflowTargetConfig target = content.getTarget();
         Long sinkDataSourceId = parseLong(target.getDatasourceId());
+        Long configuredId = configuredLakeDataSourceId();
         if (!isDorisTarget(target.getDbType(), target.getPluginName(), target.getConnectorType())
                 || sinkDataSourceId == null
-                || !sinkDataSourceId.equals(lakeProperties.getDataSourceId())
-                || !sinkDataSourceId.equals(binding.getLakeDataSourceId())) {
+                || configuredId == null
+                || !configuredId.equals(canonical(sinkDataSourceId))
+                || !configuredId.equals(canonical(binding.getLakeDataSourceId()))) {
             return null;
         }
 
@@ -159,13 +176,15 @@ public class LakeJobDetector {
         Long sinkDataSourceId = parseLong(firstValue(
                 sinkConfig.get("dataSourceId"), sinkConfig.get("datasourceId"),
                 sinkData.get("dataSourceId"), sinkData.get("datasourceId")));
+        Long configuredId = configuredLakeDataSourceId();
         if (!isDorisTarget(text(firstValue(
                 sinkConfig.get("dbType"), sinkData.get("dbType"))),
                 text(firstValue(sinkConfig.get("pluginName"), sinkData.get("pluginName"))),
                 text(firstValue(sinkConfig.get("connectorType"), sinkData.get("connectorType"))))
                 || sinkDataSourceId == null
-                || !sinkDataSourceId.equals(lakeProperties.getDataSourceId())
-                || !sinkDataSourceId.equals(binding.getLakeDataSourceId())) {
+                || configuredId == null
+                || !configuredId.equals(canonical(sinkDataSourceId))
+                || !configuredId.equals(canonical(binding.getLakeDataSourceId()))) {
             return null;
         }
 
@@ -236,6 +255,33 @@ public class LakeJobDetector {
 
     private LakeJobRuntimeType effectiveRuntimeType(LakeJobRuntimeType runtimeType) {
         return runtimeType == null ? LakeJobRuntimeType.BATCH : runtimeType;
+    }
+
+    private Long configuredLakeDataSourceId() {
+        if (warehouseService != null) {
+            try {
+                org.apache.seatunnel.web.spi.bean.vo.LakeWarehouseConfigVO config =
+                        warehouseService.getConfig();
+                return config == null ? null : config.getSystemDataSourceId();
+            } catch (RuntimeException ignored) {
+                return null;
+            }
+        }
+        return lakeProperties == null ? null : lakeProperties.getDataSourceId();
+    }
+
+    private Long canonical(Long id) {
+        if (id == null) {
+            return null;
+        }
+        if (warehouseService == null) {
+            return id;
+        }
+        try {
+            return warehouseService.canonicalDataSourceId(id);
+        } catch (RuntimeException ignored) {
+            return id;
+        }
     }
 
     private Map<String, Object> findNode(Map<String, Object> workflow, String type) {

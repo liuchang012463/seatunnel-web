@@ -58,12 +58,11 @@ class LakeLifecycleConfirmationTokenServiceTest {
     }
 
     @Test
-    void enabledLakeRequiresSecret() {
+    void lifecycleFingerprintDoesNotRequireASecret() {
         LakeProperties properties = new LakeProperties();
         properties.setEnabled(true);
 
-        assertThrows(IllegalStateException.class,
-                () -> new LakeLifecycleConfirmationTokenService(properties));
+        assertTrue(new LakeLifecycleConfirmationTokenService(properties) != null);
     }
 
     private static LakeLifecycleConfirmationTokenService service(

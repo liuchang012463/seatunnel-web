@@ -6,11 +6,8 @@ import org.apache.seatunnel.web.api.lake.LakeProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -20,38 +17,33 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Issues short-lived, user-bound and one-time tokens for retention decreases.
+ * Issues short-lived plan fingerprints for retention decreases.
  *
- * <p>The payload contains only immutable lifecycle identities and a hash of
- * the observed impact.  It never contains Doris credentials, SQL, or table
- * properties.  Consumption is process-local, matching the existing preview
- * token boundary; a shared deployment should move the consumed nonce to a
- * shared store before enabling cross-node token consumption.</p>
+ * <p>The fingerprint is a concurrency marker, not a permission or bearer
+ * token.  Submission re-reads the current mapping, policy and lock versions
+ * before applying a change.</p>
  */
 @Component
 public final class LakeLifecycleConfirmationTokenService {
 
     private static final String TOKEN_KIND = "LAKE_LIFECYCLE_RETENTION_DECREASE";
-    private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
-    private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
 
-    private final byte[] secret;
     private final Clock clock;
     private final long ttlSeconds;
+    private final Map<String, Payload> issued = new ConcurrentHashMap<>();
     private final Map<String, Long> consumed = new ConcurrentHashMap<>();
 
     @Autowired
     public LakeLifecycleConfirmationTokenService(LakeProperties properties) {
-        this(properties, Clock.systemUTC(), properties == null ? null : properties.getPreviewTokenSecret());
+        this(properties, Clock.systemUTC(), null);
     }
 
     /** Visible for deterministic token tests. */
     public LakeLifecycleConfirmationTokenService(
             LakeProperties properties, Clock clock, String configuredSecret) {
         this.clock = clock == null ? Clock.systemUTC() : clock;
-        this.secret = secret(configuredSecret(properties, configuredSecret));
         Duration ttl = properties == null ? null : properties.getPreviewTokenTtl();
         this.ttlSeconds = ttl == null || ttl.isZero() || ttl.isNegative()
                 ? Duration.ofMinutes(5).toSeconds() : Math.max(1, ttl.toSeconds());
@@ -80,29 +72,22 @@ public final class LakeLifecycleConfirmationTokenService {
         validatePayload(payload, null);
         try {
             String body = ENCODER.encodeToString(MAPPER.writeValueAsBytes(payload));
-            return body + "." + ENCODER.encodeToString(sign(body));
+            String fingerprint = fingerprint(body);
+            issued.put(fingerprint, payload);
+            return fingerprint;
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Lifecycle confirmation token could not be issued");
         }
     }
 
-    /** Verifies signature, expiry and user binding without consuming the token. */
+    /** Resolves a fingerprinted plan and checks only expiry/replay state. */
     public Payload verify(String token, Integer currentUserId) {
         cleanup();
         try {
-            if (token == null || token.isBlank() || currentUserId == null || currentUserId <= 0) {
+            if (token == null || token.isBlank()) {
                 throw new IllegalArgumentException();
             }
-            String[] parts = token.split("\\.", -1);
-            if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {
-                throw new IllegalArgumentException();
-            }
-            byte[] expected = sign(parts[0]);
-            byte[] actual = DECODER.decode(parts[1]);
-            if (!MessageDigest.isEqual(expected, actual)) {
-                throw new IllegalArgumentException();
-            }
-            Payload payload = MAPPER.readValue(DECODER.decode(parts[0]), Payload.class);
+            Payload payload = issued.get(token);
             validatePayload(payload, currentUserId);
             if (payload.expiresAt() <= Instant.now(clock).getEpochSecond()
                     || consumed.containsKey(token)) {
@@ -130,38 +115,21 @@ public final class LakeLifecycleConfirmationTokenService {
     private void cleanup() {
         long now = Instant.now(clock).getEpochSecond();
         consumed.entrySet().removeIf(entry -> entry.getValue() <= now);
+        issued.entrySet().removeIf(entry -> entry.getValue().expiresAt() <= now);
     }
 
-    private byte[] sign(String body) {
+    private static String fingerprint(String body) {
         try {
-            Mac mac = Mac.getInstance(HMAC_ALGORITHM);
-            mac.init(new SecretKeySpec(secret, HMAC_ALGORITHM));
-            return mac.doFinal(body.getBytes(StandardCharsets.UTF_8));
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(body.getBytes(StandardCharsets.UTF_8));
+            StringBuilder result = new StringBuilder(digest.length * 2);
+            for (byte value : digest) {
+                result.append(String.format("%02x", value));
+            }
+            return result.toString();
         } catch (Exception exception) {
-            throw new IllegalStateException("Lifecycle confirmation signing is unavailable");
+            throw new IllegalStateException("Plan fingerprint is unavailable");
         }
-    }
-
-    private static byte[] secret(String configuredSecret) {
-        if (configuredSecret != null && !configuredSecret.isBlank()) {
-            return configuredSecret.getBytes(StandardCharsets.UTF_8);
-        }
-        byte[] generated = new byte[32];
-        new SecureRandom().nextBytes(generated);
-        return generated;
-    }
-
-    private static String configuredSecret(LakeProperties properties, String configuredSecret) {
-        String effective = configuredSecret;
-        if (effective == null || effective.isBlank()) {
-            effective = properties == null ? null : properties.getPreviewTokenSecret();
-        }
-        if (properties != null && properties.isEnabled()
-                && (effective == null || effective.isBlank())) {
-            throw new IllegalStateException(
-                    "Lake lifecycle confirmation token secret is required when lake control plane is enabled");
-        }
-        return effective;
     }
 
     private static void validatePayload(Payload payload, Integer currentUserId) {

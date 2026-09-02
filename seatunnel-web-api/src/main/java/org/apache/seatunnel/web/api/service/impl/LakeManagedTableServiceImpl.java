@@ -443,6 +443,9 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
 
         LakeManagedTablePreviewVO result = new LakeManagedTablePreviewVO();
         result.setValid(true);
+        result.setPlanFingerprint(token);
+        // Keep the legacy Java accessor populated for older embedders.  It is
+        // ignored by JSON serialization and is not an authorization token.
         result.setPreviewToken(token);
         result.setSourceDataSourceId(request.getSourceDataSourceId());
         result.setOmEntityId(source.omEntityId());
@@ -459,17 +462,17 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
 
     @Override
     public LakeManagedTableVO create(LakeManagedTableCreateDTO request) {
-        if (request == null || request.getPreviewToken() == null
-                || request.getPreviewToken().isBlank()) {
-            throw invalid("previewToken is required");
+        if (request == null || request.effectivePlanFingerprint() == null
+                || request.effectivePlanFingerprint().isBlank()) {
+            throw invalid("planFingerprint is required");
         }
         Integer userId = requireCurrentUserId();
-        String token = request.getPreviewToken();
+        String token = request.effectivePlanFingerprint();
         LakePreviewTokenService.Payload payload;
         try {
             payload = previewTokenService.verify(token, userId);
         } catch (IllegalArgumentException exception) {
-            throw invalid("previewToken is invalid or expired");
+            throw invalid("planFingerprint is invalid or expired");
         }
         LakeOdsDatabaseBinding binding = requireReadyBinding(
                 payload.odsDatabaseBindingId(), payload.sourceDataSourceId());
@@ -483,7 +486,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         java.util.Map<String, String> lifecycleProperties = lifecycleProperties(lifecyclePolicy);
         String contractHash = TargetContractCanonicalizer.canonicalHash(contract);
         if (!Objects.equals(payload.targetContractHash(), contractHash)) {
-            throw invalid("previewToken contract is invalid");
+            throw invalid("planFingerprint contract is invalid");
         }
         if (payload.hasLifecyclePolicy()
                 && !Objects.equals(payload.lifecycleIntentHash(),
@@ -492,7 +495,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                         payload.lifecyclePolicySnapshotJson(), payload.lifecyclePartitionColumn(),
                         payload.lifecycleGranularity(), payload.lifecycleRetentionCount(),
                         payload.lifecyclePropertyKey(), payload.lifecyclePropertyValue()))) {
-            throw invalid("previewToken lifecycle intent is invalid");
+            throw invalid("planFingerprint lifecycle intent is invalid");
         }
         try {
             contractFactory.validateAgainstSource(contract, source);
@@ -502,7 +505,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         List<LakeManagedTableFieldMapping> mappings = contractFactory.fieldMappings(contract);
         if (!Objects.equals(payload.fieldMappingsJson(), writeJson(mappings,
                 "Field mappings could not be serialized"))) {
-            throw invalid("previewToken mappings are invalid");
+            throw invalid("planFingerprint mappings are invalid");
         }
         String targetTableName = normalizeTableName(payload.targetTableName());
         DorisLakeClient client = dorisClientProvider.get(binding.getLakeDataSourceId());
@@ -510,7 +513,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             throw conflict("Doris target table already exists; explicit adoption is not supported");
         }
         if (!previewTokenService.consume(token, payload)) {
-            throw invalid("previewToken has already been used");
+            throw invalid("planFingerprint has already been used");
         }
 
         LakeSourceObjectRef sourceRef = ensureSourceRef(source, payload.sourceDataSourceId(), userId);

@@ -164,62 +164,6 @@ seatunnel:
         root-prefix: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX:seatunnel-web-upload}
         session-ttl-hours: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS:24}
 
-  # The lake control plane is opt-in and uses an existing Doris DataSource.
-  # Credentials remain in t_seatunnel_web_datasource and are never copied here.
-  lake:
-    enabled: ${SEATUNNEL_LAKE_ENABLED:false}
-    data-source-id: ${SEATUNNEL_LAKE_DATASOURCE_ID:}
-    operation-stale-after: ${SEATUNNEL_LAKE_OPERATION_STALE_AFTER:15m}
-    query-timeout: ${SEATUNNEL_LAKE_QUERY_TIMEOUT:30s}
-    source-probe-cache-ttl: ${SEATUNNEL_LAKE_SOURCE_PROBE_CACHE_TTL:60s}
-    # Required when enabled. P0 consumes tokens in this Web process only;
-    # multi-instance deployments must add shared consume storage/routing later.
-    preview-token-secret: ${SEATUNNEL_LAKE_PREVIEW_TOKEN_SECRET:}
-    # Dedicated server secret for HMAC credential revisions.  It is never
-    # copied into a catalog desired spec or a response.
-    catalog-credential-secret: ${SEATUNNEL_LAKE_CATALOG_CREDENTIAL_SECRET:}
-    preview-token-ttl: ${SEATUNNEL_LAKE_PREVIEW_TOKEN_TTL:5m}
-    max-rows: ${SEATUNNEL_LAKE_MAX_ROWS:10000}
-    max-bytes: ${SEATUNNEL_LAKE_MAX_BYTES:10485760}
-    driver-url: ${SEATUNNEL_LAKE_DORIS_DRIVER_URL:}
-    driver-class: ${SEATUNNEL_LAKE_DORIS_DRIVER_CLASS:com.mysql.cj.jdbc.Driver}
-    driver-checksum: ${SEATUNNEL_LAKE_DORIS_DRIVER_CHECKSUM:}
-    # Logical JDBC catalog drivers are server-owned.  MySQL, PostgreSQL and
-    # Oracle share the same registry shape; each driver is usable only after
-    # operators set a complete, verified entry.
-    jdbc-catalog:
-      registry-revision: ${SEATUNNEL_LAKE_JDBC_CATALOG_REGISTRY_REVISION:}
-      mysql:
-        enabled: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_ENABLED:false}
-        url: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_URL:}
-        driver-class: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_DRIVER_CLASS:com.mysql.cj.jdbc.Driver}
-        checksum: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_CHECKSUM:}
-        doris-md5: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_DORIS_MD5:}
-        verified: ${SEATUNNEL_LAKE_JDBC_CATALOG_MYSQL_VERIFIED:false}
-      # PostgreSQL/Oracle remain explicitly disabled until a server-side
-      # registry entry is complete and verified.
-      postgresql:
-        enabled: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_ENABLED:false}
-        url: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_URL:}
-        driver-class: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_DRIVER_CLASS:org.postgresql.Driver}
-        checksum: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_CHECKSUM:}
-        doris-md5: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_DORIS_MD5:}
-        verified: ${SEATUNNEL_LAKE_JDBC_CATALOG_POSTGRESQL_VERIFIED:false}
-      oracle:
-        enabled: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_ENABLED:false}
-        url: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_URL:}
-        driver-class: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_DRIVER_CLASS:oracle.jdbc.OracleDriver}
-        checksum: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_CHECKSUM:}
-        doris-md5: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_DORIS_MD5:}
-        verified: ${SEATUNNEL_LAKE_JDBC_CATALOG_ORACLE_VERIFIED:false}
-    connection-pool:
-      maximum-pool-size: ${SEATUNNEL_LAKE_POOL_MAX_SIZE:4}
-      minimum-idle: ${SEATUNNEL_LAKE_POOL_MIN_IDLE:0}
-      read-only-maximum-pool-size: ${SEATUNNEL_LAKE_READONLY_POOL_MAX_SIZE:2}
-      read-only-minimum-idle: ${SEATUNNEL_LAKE_READONLY_POOL_MIN_IDLE:0}
-      connection-timeout: ${SEATUNNEL_LAKE_POOL_CONNECTION_TIMEOUT:10s}
-      validation-timeout: ${SEATUNNEL_LAKE_POOL_VALIDATION_TIMEOUT:5s}
-
 # OpenMetadata integration is intentionally opt-in. The base URL must be the
 # OpenMetadata Server /api endpoint; this application never calls Airflow.
 metadata:

@@ -18,6 +18,8 @@ import type {
   LakeReadOnlyQueryPreview,
   LakeQueryColumnOption,
   LakeResourceOperation,
+  LakeWarehouseConfig,
+  LakeJdbcDriver,
 } from './types';
 
 export * from './types';
@@ -90,8 +92,8 @@ export async function previewManagedTable(
   return HttpUtils.post(`${PHYSICAL}/tables/preview`, payload);
 }
 
-export async function createManagedTable(previewToken: string): Promise<LakeApiResponse<LakeManagedTable>> {
-  return HttpUtils.post(`${PHYSICAL}/tables`, { previewToken });
+export async function createManagedTable(planFingerprint: string): Promise<LakeApiResponse<LakeManagedTable>> {
+  return HttpUtils.post(`${PHYSICAL}/tables`, { planFingerprint });
 }
 
 export async function fetchManagedTable(id: string | number): Promise<LakeApiResponse<LakeManagedTable>> {
@@ -172,9 +174,49 @@ export async function previewRetention(
 
 export async function updateRetention(
   mappingId: string | number,
-  payload: { policyId: number; confirmationToken?: string },
+  payload: { policyId: number; planFingerprint?: string; confirmed?: boolean },
 ): Promise<LakeApiResponse<LakeLifecycleValidation>> {
   return HttpUtils.put(`${LIFECYCLE}/tables/${pathId(mappingId)}/retention`, payload);
+}
+
+const WAREHOUSE = `${LAKE}/warehouse`;
+
+export async function fetchLakeWarehouse(): Promise<LakeApiResponse<LakeWarehouseConfig>> {
+  return HttpUtils.get(WAREHOUSE);
+}
+
+export async function saveLakeWarehouse(
+  payload: Record<string, unknown>,
+): Promise<LakeApiResponse<LakeWarehouseConfig>> {
+  return HttpUtils.put(WAREHOUSE, payload);
+}
+
+export async function testLakeWarehouse(
+  payload: Record<string, unknown>,
+): Promise<LakeApiResponse<LakeWarehouseConfig>> {
+  return HttpUtils.post(`${WAREHOUSE}/connect-test`, payload);
+}
+
+export async function fetchLakeJdbcDrivers(): Promise<LakeApiResponse<LakeJdbcDriver[]>> {
+  return HttpUtils.get(`${WAREHOUSE}/drivers`);
+}
+
+export async function registerLakeJdbcDriver(payload: {
+  adapter: string;
+  fileName?: string;
+  driverLocation: string;
+  driverClass?: string;
+  sha256?: string;
+  dorisMd5?: string;
+}): Promise<LakeApiResponse<LakeJdbcDriver>> {
+  const query = new URLSearchParams();
+  query.set('adapter', payload.adapter);
+  query.set('driverLocation', payload.driverLocation);
+  if (payload.fileName) query.set('fileName', payload.fileName);
+  if (payload.driverClass) query.set('driverClass', payload.driverClass);
+  if (payload.sha256) query.set('sha256', payload.sha256);
+  if (payload.dorisMd5) query.set('dorisMd5', payload.dorisMd5);
+  return HttpUtils.post(`${WAREHOUSE}/drivers/register?${query.toString()}`);
 }
 
 /** Cached lifecycle detail; this GET never triggers a remote observation. */

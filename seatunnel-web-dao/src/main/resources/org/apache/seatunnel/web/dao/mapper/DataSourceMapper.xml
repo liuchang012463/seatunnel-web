@@ -21,6 +21,7 @@
               AND b.resource_status = #{resourceStatus}
               AND b.deleted = 0
         )
+          AND (d.system_managed = FALSE OR d.system_managed IS NULL)
         <if test="keyword != null and keyword != ''">
             AND d.name LIKE CONCAT('%', #{keyword}, '%')
         </if>

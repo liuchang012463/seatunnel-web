@@ -150,7 +150,7 @@ export interface LakeManagedTable {
 
 export interface LakeManagedTablePreview {
   valid?: boolean;
-  previewToken?: string;
+  planFingerprint?: string;
   sourceDataSourceId?: number;
   omEntityId?: string;
   odsDatabaseBindingId?: number;
@@ -209,7 +209,7 @@ export interface LakeCatalog {
   databaseInclude?: string[];
   tableInclude?: string[];
   desiredSpecHash?: string;
-  credentialRevision?: string;
+  /** Historical field; new clients do not send or display it. */
   driverChecksum?: string;
   validationStatus?: string;
   resourceStatus?: LakeResourceStatus;
@@ -222,6 +222,37 @@ export interface LakeCatalog {
   lastReconcileAt?: string;
   deleted?: boolean;
   createTime?: string;
+  updateTime?: string;
+}
+
+export interface LakeWarehouseConfig {
+  name?: string;
+  jdbcUrl?: string;
+  username?: string;
+  passwordConfigured?: boolean;
+  driverClass?: string;
+  driverLocation?: string;
+  driverSha256?: string;
+  systemDataSourceId?: number;
+  configVersion?: number;
+  connStatus?: string;
+  lastError?: string;
+  configured?: boolean;
+}
+
+export interface LakeJdbcDriver {
+  id?: number;
+  adapter?: LakeJdbcAdapter | string;
+  fileName?: string;
+  driverLocation?: string;
+  driverClass?: string;
+  sha256?: string;
+  dorisMd5?: string;
+  enabled?: boolean;
+  verified?: boolean;
+  status?: string;
+  version?: number;
+  lastError?: string;
   updateTime?: string;
 }
 

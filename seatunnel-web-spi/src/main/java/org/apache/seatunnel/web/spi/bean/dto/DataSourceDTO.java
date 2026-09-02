@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.spi.bean.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -44,4 +45,8 @@ public class DataSourceDTO extends PaginationBaseDTO {
     private ConnStatus connStatus;
 
     private DataSourceLifecycleStatus status;
+
+    /** Internal query flag used by lake source pages; never accepted from public APIs. */
+    @JsonIgnore
+    private Boolean excludeSystemManaged;
 }

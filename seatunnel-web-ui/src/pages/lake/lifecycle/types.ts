@@ -89,7 +89,7 @@ export interface RetentionPreviewView {
   impactedHistoricalPartitionNames?: string[];
   impactedHistoricalPartitionCount?: number;
   requiresConfirmation?: boolean;
-  confirmationToken?: string;
+  planFingerprint?: string;
   partitionSummary?: PartitionSummary;
   observedAt?: string;
 }

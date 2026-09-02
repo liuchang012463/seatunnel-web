@@ -32,6 +32,8 @@ public interface DataSourceDao extends IDao<DataSource> {
 
     List<DataSource> queryByDbType(String dbType);
 
+    DataSource queryBySystemKey(String systemKey);
+
     List<String> queryDataSourceUnits();
 
     int updateConnStatus(Long id, ConnStatus status);

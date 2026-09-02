@@ -337,6 +337,10 @@ const DataSourcePage: React.FC = () => {
     if (record.id) history.push(`/lake/resources?recommendSourceDataSourceId=${record.id}`);
   };
 
+  const handleOpenWarehouse = () => {
+    history.push('/lake/warehouse');
+  };
+
   const handleStatusChange = (record: DataSourceRecord, nextStatus: DataSourceLifecycleStatus) => {
     const statusLabel = {
       ENABLED: '启用',
@@ -415,6 +419,7 @@ const DataSourcePage: React.FC = () => {
         <Space wrap size={[4, 4]}>
           <DataSourceStatus status={record.connStatus} />
           <DataSourceLifecycleStatusTag status={record.status} />
+          {record.systemManaged ? <Tag color="cyan">系统内置 · 只读</Tag> : null}
         </Space>
       ),
     },
@@ -441,6 +446,9 @@ const DataSourcePage: React.FC = () => {
       key: 'lake',
       width: 220,
       render: (_value, record) => {
+        if (record.systemManaged) {
+          return <Button type="link" size="small" onClick={handleOpenWarehouse}>湖 ODS 投影 · 数仓配置</Button>;
+        }
         const ready = record.metadataSyncStatus === 'READY';
         const disabled = !ready || record.status === 'REVOKED';
         const reason = ready ? undefined : 'Metadata 尚未 READY，请先完成数据源探查';
@@ -461,6 +469,13 @@ const DataSourcePage: React.FC = () => {
         const isRevoked = currentStatus === 'REVOKED';
         const isDeleting = isRevoked || record.metadataSyncStatus === 'DELETING';
         const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
+        if (record.systemManaged) {
+          return <Space size={0}>
+            <Tooltip title="查看探查结果"><Button type="link" size="small" icon={<ApartmentOutlined />} disabled={isDeleting} onClick={() => handleViewExploration(record)} /></Tooltip>
+            <Tooltip title="测试连接"><Button type="link" size="small" icon={<ApiOutlined />} disabled={isDeleting} onClick={() => void handleTestConnection(record)} /></Tooltip>
+            <Button type="link" size="small" onClick={handleOpenWarehouse}>数仓配置</Button>
+          </Space>;
+        }
         return (
           <Space size={0}>
             <Tooltip title="查看探查结果"><Button type="link" size="small" icon={<ApartmentOutlined />} disabled={isDeleting} onClick={() => handleViewExploration(record)} /></Tooltip>
@@ -473,7 +488,7 @@ const DataSourcePage: React.FC = () => {
         );
       },
     },
-  ], [handleDelete, handleEdit, handleStatusChange, handleTestConnection, handleViewExploration]);
+  ], [handleDelete, handleEdit, handleOpenWarehouse, handleStatusChange, handleTestConnection, handleViewExploration]);
 
   return (
     <>
@@ -611,6 +626,7 @@ const DataSourcePage: React.FC = () => {
                               onLakePhysical={handleLakePhysical}
                               onLakeLogical={handleLakeLogical}
                               onLakeRecommend={handleLakeRecommend}
+                              onOpenWarehouse={handleOpenWarehouse}
                             />
                           ))}
                         </div>

@@ -66,7 +66,9 @@ public final class LakeCatalogDesiredSpecValidator {
             throw invalid("driver checksum");
         }
         String registryRevision = required(spec.driverRegistryRevision(), "driver registry revision");
-        String credentialRevision = required(spec.credentialRevision(), "credential revision");
+        // credentialRevision is a retained schema field only.  Catalog
+        // correctness is based on current source/config and metadata versions.
+        String credentialRevision = null;
 
         List<String> databases = normalizeIdentifiers(spec.databaseInclude(), "database");
         List<String> tables = normalizeIdentifiers(spec.tableInclude(), "table");
@@ -91,7 +93,9 @@ public final class LakeCatalogDesiredSpecValidator {
         if (driverRegistry != null) {
             LakeJdbcDriverRegistry.DriverRegistration registration =
                     driverRegistry.require(adapter);
-            if (!Objects.equals(driverUrl, registration.url())
+            String registeredDriverLocation = StringUtils.defaultIfBlank(
+                    registration.url(), registration.driverLocation());
+            if (!Objects.equals(driverUrl, registeredDriverLocation)
                     || !Objects.equals(driverClass, registration.driverClass())
                     || !Objects.equals(checksum.toLowerCase(Locale.ROOT),
                     safeLower(registration.checksum()))
@@ -198,7 +202,11 @@ public final class LakeCatalogDesiredSpecValidator {
     }
 
     private static void validateDriverUrl(String driverUrl) {
-        if (containsCredential(driverUrl) || driverUrl.contains("\n") || driverUrl.contains("\r")) {
+        // Doris calls this property driver_url, but this deployment is fully
+        // offline.  A registered driver may be a relative/shared filename or
+        // an explicitly local file path; network schemes are never accepted.
+        if (containsCredential(driverUrl) || driverUrl.contains("\n") || driverUrl.contains("\r")
+                || driverUrl.matches("(?i)^[a-z][a-z0-9+.-]*://.*")) {
             throw invalid("driver URL");
         }
     }

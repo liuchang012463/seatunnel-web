@@ -130,9 +130,8 @@ public class DaoLakeResourceGateway implements LakeResourceGateway {
                 if (result.desiredSpecHash() != null) {
                     catalog.setDesiredSpecHash(result.desiredSpecHash());
                 }
-                if (result.credentialRevision() != null) {
-                    catalog.setCredentialRevision(result.credentialRevision());
-                }
+                // credential_revision is retained only for historical schema
+                // compatibility and is no longer updated by catalog runs.
                 if (result.driverChecksum() != null) {
                     catalog.setDriverChecksum(result.driverChecksum());
                 }

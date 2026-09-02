@@ -132,6 +132,9 @@ public class LakeLifecycleApplyServiceImpl implements LakeLifecycleApplyService 
             throw conflict("Lifecycle binding desired retention is invalid");
         }
         if (requestedRetention < currentDesired) {
+            if (!request.isConfirmed()) {
+                throw invalid("confirmed=true is required when reducing retention");
+            }
             confirmDecrease(request, validated, mappingId, bindingSnapshot,
                     currentDesired, requestedRetention, userId);
         }
@@ -327,14 +330,15 @@ public class LakeLifecycleApplyServiceImpl implements LakeLifecycleApplyService 
             Integer currentDesired,
             Integer requestedRetention,
             Integer userId) {
-        if (StringUtils.isBlank(request.getConfirmationToken())) {
-            throw invalid("A confirmation token is required for retention decrease");
+        if (StringUtils.isBlank(request.effectivePlanFingerprint())) {
+            throw invalid("A plan fingerprint is required for retention decrease");
         }
+        String fingerprint = request.effectivePlanFingerprint();
         LakeLifecycleConfirmationTokenService.Payload payload;
         try {
-            payload = tokenService.verify(request.getConfirmationToken(), userId);
+            payload = tokenService.verify(fingerprint, userId);
         } catch (RuntimeException exception) {
-            throw invalid("Lifecycle confirmation token is invalid");
+            throw invalid("Lifecycle plan fingerprint is invalid");
         }
         LakeLifecycleMappingSnapshotVO mapping = validated.getMappingSnapshot();
         Integer policyVersion = validated.getPolicySnapshot() == null
@@ -349,7 +353,7 @@ public class LakeLifecycleApplyServiceImpl implements LakeLifecycleApplyService 
                 || !same(payload.policyId(), validated.getPolicyId())
                 || !same(payload.policyVersion(), policyVersion)
                 || !same(payload.newRetentionCount(), requestedRetention)) {
-            throw conflict("Lifecycle confirmation token is stale");
+            throw conflict("Lifecycle plan fingerprint is stale");
         }
         if (!LakeLifecycleRetentionPreviewServiceImpl.hasExactHistoricalObservation(
                 validated.getPartitionSummary())) {
@@ -362,8 +366,8 @@ public class LakeLifecycleApplyServiceImpl implements LakeLifecycleApplyService 
         if (!Objects.equals(payload.observedImpactHash(), impactHash)) {
             throw conflict("Lifecycle retention impact is stale");
         }
-        if (!tokenService.consume(request.getConfirmationToken(), payload)) {
-            throw invalid("Lifecycle confirmation token has already been used");
+        if (!tokenService.consume(fingerprint, payload)) {
+            throw invalid("Lifecycle plan fingerprint has already been used");
         }
     }
 

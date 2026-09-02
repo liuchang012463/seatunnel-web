@@ -106,7 +106,16 @@ public final class LakeJdbcCatalogDdlBuilder {
         values.put("user", credentials.username());
         values.put("password", credentials.password());
         values.put("jdbc_url", spec.jdbcUrl());
-        values.put("driver_url", driver.url());
+        // A production registration is backed by a local/shared file and
+        // deliberately has no remote URL.  Keep the Doris property name for
+        // compatibility, but never emit an external endpoint when the
+        // registry stores a local path.
+        String driverLocation = StringUtils.defaultIfBlank(
+                driver.url(), driver.driverLocation());
+        if (StringUtils.isBlank(driverLocation)) {
+            throw new IllegalArgumentException("JDBC catalog driver location is not registered");
+        }
+        values.put("driver_url", driverLocation);
         values.put("driver_class", driver.driverClass());
         // Web's registry checksum is SHA-256 and remains the artifact
         // identity.  Doris 4.1.2 accepts a separate optional 32-digit MD5
