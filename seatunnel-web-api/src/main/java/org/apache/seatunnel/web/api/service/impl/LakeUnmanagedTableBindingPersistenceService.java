@@ -306,6 +306,7 @@ public class LakeUnmanagedTableBindingPersistenceService {
         mapping.setTaskConsistencyStatus(LakeConsistencyStatus.UNBOUND);
         mapping.setTargetContractHash(null);
         mapping.setTargetContractJson(null);
+        mapping.setActualContractJson(null);
         mapping.setFieldMappingsJson(null);
         mapping.setOperationToken(null);
         mapping.setErrorCode(null);

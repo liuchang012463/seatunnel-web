@@ -22,6 +22,7 @@ import {
   Empty,
   Form,
   Input,
+  Modal,
   Select,
   Space,
   Spin,
@@ -34,6 +35,7 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { fetchLakeOperations } from '@/services/lake';
 import {
   bindUnmanagedTable,
   createOdsDatabase,
@@ -43,6 +45,7 @@ import {
   fetchSourceSchemas,
   fetchSourceTables,
   reconcileOdsDatabase,
+  unbindUnmanagedTable,
 } from './service';
 import type {
   ApiResponse,
@@ -52,7 +55,15 @@ import type {
   PhysicalDataSource,
   PhysicalInventory,
 } from './types';
-import { LakeErrorAlert, LakeResourceStatusTag, OperationTimeline } from '../components/LakeStatus';
+import {
+  LakeErrorAlert,
+  LakeResourceStatusTag,
+  OperationTimeline,
+  operationToStep,
+  relationSchemaMode,
+  relationSourceDataSource,
+  relationTargetTable,
+} from '../components/LakeStatus';
 import './detail.less';
 
 const { Paragraph, Text, Title } = Typography;
@@ -73,6 +84,9 @@ const relationColumns: ProColumns<InventoryRelation>[] = [
   { title: '运行类型', dataIndex: 'jobRuntimeType', width: 120 },
   { title: '范围', dataIndex: 'relationScope', width: 110 },
   { title: '版本', dataIndex: 'jobVersion', width: 90 },
+  { title: '目标表', key: 'targetTable', width: 180, ellipsis: true, render: (_, row) => relationTargetTable(row) || <Text type="secondary">按任务动态生成</Text> },
+  { title: 'Schema Mode', key: 'schemaSaveMode', width: 190, ellipsis: true, render: (_, row) => relationSchemaMode(row) || <Text type="secondary">未记录</Text> },
+  { title: '源 DataSource', key: 'sourceDataSource', width: 130, render: (_, row) => relationSourceDataSource(row) || '-' },
   { title: '关系状态', dataIndex: 'relationStatus', width: 120, render: (_, row) => <Tag>{row.relationStatus || 'UNKNOWN'}</Tag> },
 ];
 
@@ -249,7 +263,9 @@ const PhysicalResourceDetailPage: React.FC = () => {
   const [error, setError] = useState<string>();
   const [odsOpen, setOdsOpen] = useState(false);
   const [bindTarget, setBindTarget] = useState<InventoryTable>();
+  const [unbindLoadingId, setUnbindLoadingId] = useState<number>();
   const [reconcileLoading, setReconcileLoading] = useState(false);
+  const [operations, setOperations] = useState<import('@/services/lake').LakeResourceOperation[]>([]);
 
   const load = useCallback(async () => {
     if (!Number.isInteger(sourceId) || sourceId <= 0) {
@@ -267,8 +283,14 @@ const PhysicalResourceDetailPage: React.FC = () => {
         const inventoryResponse = await fetchPhysicalInventory(sourceResponse.data.odsDatabaseBindingId);
         if (inventoryResponse.code !== 0) throw new Error(responseMessage(inventoryResponse, 'ODS 库库存加载失败'));
         setInventory(inventoryResponse.data);
+        void fetchLakeOperations('ODS_DATABASE_BINDING', sourceResponse.data.odsDatabaseBindingId)
+          .then((operationResponse) => {
+            if (operationResponse.code === 0) setOperations(operationResponse.data || []);
+          })
+          .catch(() => undefined);
       } else {
         setInventory(undefined);
+        setOperations([]);
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '物理入湖详情加载失败');
@@ -295,6 +317,32 @@ const PhysicalResourceDetailPage: React.FC = () => {
     }
   };
 
+  const unbind = (row: InventoryTable) => {
+    const mappingId = row.mappingId;
+    if (!mappingId) return;
+    Modal.confirm({
+      title: '解除未纳管表关联？',
+      content: `将移除“${row.targetTableName || '-'}”的显式源表关联。Doris 实际表不会被删除，表仍保持未纳管状态。`,
+      okText: '确认解除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        setUnbindLoadingId(mappingId);
+        try {
+          const response = await unbindUnmanagedTable(mappingId);
+          if (response.code !== 0) throw new Error(responseMessage(response, '解除关联失败'));
+          message.success('未纳管表关联已解除');
+          await load();
+        } catch (reason) {
+          message.error(reason instanceof Error ? reason.message : '解除关联失败');
+          throw reason;
+        } finally {
+          setUnbindLoadingId(undefined);
+        }
+      },
+    });
+  };
+
   const registeredTables = inventory?.registeredTables || [];
   const discoveredTables = inventory?.discoveredTables || [];
   const tableColumns: TableColumnsType<InventoryTable> = useMemo(() => [
@@ -312,20 +360,18 @@ const PhysicalResourceDetailPage: React.FC = () => {
         <Space size={4} wrap>
           {row.mappingId ? <Button type="link" onClick={() => history.push(`/lake/resources/table/${row.mappingId}`)}>查看详情</Button> : null}
           {row.managementLevel === 'UNMANAGED' && !row.sourceBound ? <Button type="link" onClick={() => setBindTarget(row)}>关联源表</Button> : null}
+          {row.managementLevel === 'UNMANAGED' && row.sourceBound && row.mappingId ? <Button type="link" danger loading={unbindLoadingId === row.mappingId} onClick={() => unbind(row)}>解除关联</Button> : null}
         </Space>
       ),
     },
-  ], []);
+  ], [load, unbindLoadingId]);
 
   if (loading) return <PageContainer title="物理入湖详情"><Spin /></PageContainer>;
   if (error || !source) return <PageContainer title="物理入湖详情"><Alert type="error" showIcon message={error || '未找到数据源'} action={<Button onClick={() => void load()}>重试</Button>} /></PageContainer>;
 
   const database = source.odsDatabase;
   const sourceLabel = source.sourceDataSourceName || `DataSource #${source.sourceDataSourceId}`;
-  const operationItems = database ? [
-    { title: `ODS Database：${database.databaseName || '-'}`, description: `${managementLabel.MANAGED}资源入口已准备 · ${formatTime(database.updateTime || database.createTime)}`, status: database.resourceStatus === 'ERROR' || database.resourceStatus === 'CREATE_FAILED' ? 'error' as const : 'finish' as const },
-    { title: '最近一次对账', description: database.lastReconcileAt ? formatTime(database.lastReconcileAt) : '尚未执行显式对账', status: database.lastReconcileAt ? 'finish' as const : 'wait' as const },
-  ] : [];
+  const operationItems = operations.map(operationToStep);
 
   return (
     <PageContainer
@@ -360,6 +406,7 @@ const PhysicalResourceDetailPage: React.FC = () => {
           <Descriptions column={{ xs: 1, sm: 2, md: 3 }} size="small">
             <Descriptions.Item label="单位">{source.unitCode || '-'}</Descriptions.Item>
             <Descriptions.Item label="业务系统">{source.systemCode || '-'}</Descriptions.Item>
+            <Descriptions.Item label="源类型">{source.dbType || '未知'}</Descriptions.Item>
             <Descriptions.Item label="源 DataSource ID">{source.sourceDataSourceId}</Descriptions.Item>
             <Descriptions.Item label="ODS Database">{database?.databaseName || '未创建'}</Descriptions.Item>
             <Descriptions.Item label="最近对账">{formatTime(database?.lastReconcileAt)}</Descriptions.Item>

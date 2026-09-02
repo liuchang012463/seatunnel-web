@@ -164,6 +164,7 @@ public class LakeUnmanagedTableBindingServiceImpl implements LakeUnmanagedTableB
         LakeManagedTableVO result = new LakeManagedTableVO();
         result.setId(mapping.getId());
         result.setSourceObjectRefId(mapping.getSourceObjectRefId());
+        result.setSourceBound(mapping.getSourceObjectRefId() != null);
         result.setSourceDataSourceId(sourceRef == null ? null : sourceRef.getSourceDataSourceId());
         result.setOmEntityId(sourceRef == null ? null : sourceRef.getOmEntityId());
         result.setOmFqn(sourceRef == null ? null : sourceRef.getOmFqn());

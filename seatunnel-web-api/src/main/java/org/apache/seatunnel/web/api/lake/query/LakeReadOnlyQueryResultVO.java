@@ -13,7 +13,20 @@ public record LakeReadOnlyQueryResultVO(
         long byteCount,
         boolean truncated,
         long elapsedMillis,
-        boolean explain) {
+        boolean explain,
+        String queryId) {
+
+    /** Source-compatible constructor for callers that do not need cancellation. */
+    public LakeReadOnlyQueryResultVO(
+            List<String> columns,
+            List<Map<String, Object>> rows,
+            long rowCount,
+            long byteCount,
+            boolean truncated,
+            long elapsedMillis,
+            boolean explain) {
+        this(columns, rows, rowCount, byteCount, truncated, elapsedMillis, explain, null);
+    }
 
     public LakeReadOnlyQueryResultVO {
         columns = columns == null ? List.of() : List.copyOf(columns);

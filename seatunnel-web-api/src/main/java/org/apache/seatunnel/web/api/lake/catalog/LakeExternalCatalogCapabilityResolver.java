@@ -131,10 +131,10 @@ public class LakeExternalCatalogCapabilityResolver {
         }
         reasons.addAll(base.reasonCodes());
 
-        // MySQL is the only adapter enabled by the current deployment.  The
-        // other adapters are intentionally opt-in, and become available only
-        // when the server registry reports an enabled, complete and verified
-        // driver.  Do not rely on the Web classpath as proof of availability.
+        // Adapter availability is registry-driven.  A driver becomes usable
+        // only when the server registry reports an enabled, complete and
+        // verified entry; do not rely on the Web classpath as proof of
+        // availability.
         if (adapter != null && adapter != LakeJdbcAdapterType.MYSQL) {
             LakeJdbcDriverRegistry.DriverStatus status = driverRegistry.status(adapter);
             if (!status.available()) {

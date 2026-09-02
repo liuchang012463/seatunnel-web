@@ -8,6 +8,8 @@ public class LakePhysicalDataSourceVO {
 
     private Long sourceDataSourceId;
     private String sourceDataSourceName;
+    /** Registered database type, used to preselect a compatible lake adapter. */
+    private String dbType;
     private Long businessSystemId;
     private Long unitId;
     private String unitCode;

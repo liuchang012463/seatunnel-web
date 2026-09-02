@@ -101,6 +101,9 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                 jobDefineId, runMode, instance.getId());
 
         try {
+            if (lakeJobGuard != null) {
+                lakeJobGuard.validateBeforeSubmit(instance, LakeJobRuntimeType.BATCH);
+            }
             jobSubmitter.submit(instance);
         } catch (Exception e) {
             if (incrementalExecution != null) {

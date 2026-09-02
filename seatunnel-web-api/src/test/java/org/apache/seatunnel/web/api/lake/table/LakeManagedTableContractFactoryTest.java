@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.api.lake.source.SourceConstraintSnapshot;
 import org.apache.seatunnel.web.api.lake.source.SourceObjectSnapshot;
 import org.apache.seatunnel.web.common.enums.LakeTableModel;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTableColumnDTO;
+import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTablePartitionDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTablePreviewDTO;
 import org.junit.jupiter.api.Test;
 
@@ -61,6 +62,23 @@ class LakeManagedTableContractFactoryTest {
         assertEquals("order_id", contract.getColumns().get(0).getTargetName());
         assertEquals(DorisTypeBase.BIGINT, contract.getColumns().get(0).getTargetType().getBase());
         assertEquals(false, contract.getColumns().get(0).getNullable());
+    }
+
+    @Test
+    void lifecyclePartitionCannotCastAnUnrelatedSourceTypeToDate() {
+        LakeManagedTablePreviewDTO request = new LakeManagedTablePreviewDTO();
+        LakeManagedTablePartitionDTO partition = new LakeManagedTablePartitionDTO();
+        partition.setEnabled(true);
+        partition.setColumn("payload");
+        partition.setGranularity("DAY");
+        request.setPartition(partition);
+
+        LakeManagedTableColumnDTO payload = new LakeManagedTableColumnDTO();
+        payload.setSourceField("PAYLOAD");
+        payload.setTargetType("DATE");
+        request.setColumns(List.of(payload));
+
+        assertThrows(IllegalArgumentException.class, () -> factory.build(source(), request));
     }
 
     private static SourceObjectSnapshot source() {

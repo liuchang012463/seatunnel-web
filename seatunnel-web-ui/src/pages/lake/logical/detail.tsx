@@ -13,6 +13,7 @@ import { history, useParams } from '@umijs/max';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   fetchCatalog,
+  fetchLakeOperations,
   fetchCatalogQueryColumns,
   fetchCatalogQueryDatabases,
   fetchCatalogQueryTables,
@@ -24,11 +25,12 @@ import {
   refreshCatalog,
   queryCatalogJoin,
   queryCatalogSingle,
+  cancelCatalogQuery,
   updateCatalog,
   validateCatalog,
 } from '@/services/lake';
-import type { LakeApiResponse, LakeCatalog, LakeQueryColumnOption, LakeReadOnlyQueryPreview, LakeReadOnlyQueryResult } from '@/services/lake';
-import { LakeErrorAlert, LakeResourceStatusTag, OperationTimeline } from '../components/LakeStatus';
+import type { LakeApiResponse, LakeCatalog, LakeQueryColumnOption, LakeReadOnlyQueryPreview, LakeReadOnlyQueryResult, LakeResourceOperation } from '@/services/lake';
+import { LakeErrorAlert, LakeResourceStatusTag, OperationTimeline, operationToStep } from '../components/LakeStatus';
 import './index.less';
 
 const responseMessage = (response: LakeApiResponse<unknown>) => response.msg || response.message || '请求失败，请稍后重试';
@@ -57,6 +59,11 @@ const queryStatusLabel = (code?: string) => {
   if (code.includes('SENSITIVE')) return '敏感字段不可查询';
   if (code.includes('UNSUPPORTED')) return '字段类型不支持';
   return '查询条件未通过服务端校验';
+};
+
+const newQueryId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `lake-query-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
 const QueryResult: React.FC<{ result?: LakeReadOnlyQueryResult; loading?: boolean; error?: QueryError }> = ({ result, loading, error }) => {
@@ -185,6 +192,7 @@ const SingleTableQuery: React.FC<{ catalog: LakeCatalog }> = ({ catalog }) => {
   const [preview, setPreview] = useState<LakeReadOnlyQueryPreview>();
   const [error, setError] = useState<QueryError>();
   const [submitting, setSubmitting] = useState(false);
+  const [activeQueryId, setActiveQueryId] = useState<string>();
   const buildRequest = (values: { database?: string; table?: string; columns?: string[]; limit?: number; explain?: boolean }) => {
     const identity = { catalog: catalog.targetCatalogName || '', database: values.database || '', table: values.table || '' };
     return {
@@ -196,10 +204,12 @@ const SingleTableQuery: React.FC<{ catalog: LakeCatalog }> = ({ catalog }) => {
   };
   const submit = async (values: { database?: string; table?: string; columns?: string[]; limit?: number; explain?: boolean }) => {
     if (!catalog.id) return;
+    const queryId = newQueryId();
     setSubmitting(true);
+    setActiveQueryId(queryId);
     setError(undefined);
     try {
-      const response = await queryCatalogSingle(catalog.id, buildRequest(values));
+      const response = await queryCatalogSingle(catalog.id, { ...buildRequest(values), queryId });
       if (response.code !== 0 || !response.data) throw new Error(responseMessage(response));
       setResult(response.data);
       setPreview(undefined);
@@ -209,6 +219,17 @@ const SingleTableQuery: React.FC<{ catalog: LakeCatalog }> = ({ catalog }) => {
       setError(readQueryError(error, '查询失败'));
     } finally {
       setSubmitting(false);
+      setActiveQueryId(undefined);
+    }
+  };
+  const cancel = async () => {
+    if (!activeQueryId) return;
+    try {
+      const response = await cancelCatalogQuery(activeQueryId);
+      if (response.code !== 0) throw new Error(responseMessage(response));
+      message.info(response.data ? '已请求取消查询' : '查询已结束或不存在');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '取消查询失败');
     }
   };
   const previewRequest = async () => {
@@ -233,6 +254,7 @@ const SingleTableQuery: React.FC<{ catalog: LakeCatalog }> = ({ catalog }) => {
       <Form.Item name="explain" valuePropName="checked"><Checkbox>EXPLAIN</Checkbox></Form.Item>
       <Button onClick={() => void previewRequest()}>生成 SQL 预览</Button>
       <Button type="primary" htmlType="submit" loading={submitting}>执行只读验证</Button>
+      {submitting ? <Button danger onClick={() => void cancel()}>取消查询</Button> : null}
       </Space>
     </Form>
     <QueryPreview preview={preview} />
@@ -262,6 +284,7 @@ const JoinQuery: React.FC<{ catalog: LakeCatalog; catalogs: LakeCatalog[] }> = (
   const [preview, setPreview] = useState<LakeReadOnlyQueryPreview>();
   const [error, setError] = useState<QueryError>();
   const [submitting, setSubmitting] = useState(false);
+  const [activeQueryId, setActiveQueryId] = useState<string>();
   const [leftCatalogId, setLeftCatalogId] = useState<number | undefined>(catalog.id);
   const [leftCatalogName, setLeftCatalogName] = useState(catalog.targetCatalogName);
   const [rightCatalogId, setRightCatalogId] = useState<number>();
@@ -296,10 +319,12 @@ const JoinQuery: React.FC<{ catalog: LakeCatalog; catalogs: LakeCatalog[] }> = (
     };
   };
   const submit = async (values: JoinValues) => {
+    const queryId = newQueryId();
     setSubmitting(true);
+    setActiveQueryId(queryId);
     setError(undefined);
     try {
-      const response = await queryCatalogJoin(buildRequest(values));
+      const response = await queryCatalogJoin({ ...buildRequest(values), queryId });
       if (response.code !== 0 || !response.data) throw new Error(responseMessage(response));
       setResult(response.data);
       setPreview(undefined);
@@ -309,6 +334,17 @@ const JoinQuery: React.FC<{ catalog: LakeCatalog; catalogs: LakeCatalog[] }> = (
       setError(readQueryError(error, 'JOIN 查询失败'));
     } finally {
       setSubmitting(false);
+      setActiveQueryId(undefined);
+    }
+  };
+  const cancel = async () => {
+    if (!activeQueryId) return;
+    try {
+      const response = await cancelCatalogQuery(activeQueryId);
+      if (response.code !== 0) throw new Error(responseMessage(response));
+      message.info(response.data ? '已请求取消查询' : '查询已结束或不存在');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '取消查询失败');
     }
   };
   const previewRequest = async () => {
@@ -330,7 +366,7 @@ const JoinQuery: React.FC<{ catalog: LakeCatalog; catalogs: LakeCatalog[] }> = (
         <Card size="small" title="左表" className="lake-join-side"><Form.Item name="leftCatalog" label="Catalog" rules={[{ required: true, message: '请选择左侧 Catalog' }]}><Select showSearch options={catalogOptions} onChange={(name) => selectCatalog('left', name)} placeholder="选择已就绪 Catalog" /></Form.Item><CatalogTablePicker form={form} catalogId={leftCatalogId} catalogName={leftCatalogName} prefix="left" includeJoinKey /></Card>
         <Card size="small" title="右表" className="lake-join-side"><Form.Item name="rightCatalog" label="Catalog" rules={[{ required: true, message: '请选择右侧 Catalog' }]}><Select showSearch options={catalogOptions.filter((item) => item.value !== leftCatalogName)} onChange={(name) => selectCatalog('right', name)} placeholder="选择另一个 Catalog" /></Form.Item><CatalogTablePicker form={form} catalogId={rightCatalogId} catalogName={rightCatalogName} prefix="right" includeJoinKey /></Card>
       </Space>
-      <Space style={{ marginTop: 12 }} wrap><Form.Item name="joinType" label="Join 类型"><Select style={{ width: 120 }} options={[{ label: 'INNER', value: 'INNER' }, { label: 'LEFT', value: 'LEFT' }]} /></Form.Item><Form.Item name="limit" label="Limit"><InputNumber min={1} max={100} /></Form.Item><Form.Item name="explain" valuePropName="checked"><Checkbox>EXPLAIN</Checkbox></Form.Item><Button onClick={() => void previewRequest()}>生成 SQL 预览</Button><Button htmlType="submit" type="primary" loading={submitting}>执行 JOIN 验证</Button></Space>
+      <Space style={{ marginTop: 12 }} wrap><Form.Item name="joinType" label="Join 类型"><Select style={{ width: 120 }} options={[{ label: 'INNER', value: 'INNER' }, { label: 'LEFT', value: 'LEFT' }]} /></Form.Item><Form.Item name="limit" label="Limit"><InputNumber min={1} max={100} /></Form.Item><Form.Item name="explain" valuePropName="checked"><Checkbox>EXPLAIN</Checkbox></Form.Item><Button onClick={() => void previewRequest()}>生成 SQL 预览</Button><Button htmlType="submit" type="primary" loading={submitting}>执行 JOIN 验证</Button>{submitting ? <Button danger onClick={() => void cancel()}>取消查询</Button> : null}</Space>
     </Form>
     <QueryPreview preview={preview} />
     <QueryResult result={result} loading={submitting} error={error} />
@@ -416,13 +452,34 @@ const LogicalCatalogDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string>();
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [operations, setOperations] = useState<LakeResourceOperation[]>([]);
   const load = async () => {
     if (!catalogId) return;
+    setOperations([]);
     setLoading(true);
     try {
       const response = await fetchCatalog(catalogId);
       if (response.code !== 0) throw new Error(responseMessage(response));
       setCatalog(response.data);
+      if (response.data?.id) {
+        void Promise.all([
+          fetchLakeOperations('EXTERNAL_CATALOG_BINDING', response.data.id),
+          fetchLakeOperations('READONLY_QUERY', response.data.id),
+        ])
+          .then(([bindingOperations, queryOperations]) => {
+            const rows = [
+              ...(bindingOperations.code === 0 ? bindingOperations.data || [] : []),
+              ...(queryOperations.code === 0 ? queryOperations.data || [] : []),
+            ];
+            rows.sort((left, right) => {
+              const leftTime = new Date(left.startedAt || '').getTime();
+              const rightTime = new Date(right.startedAt || '').getTime();
+              return rightTime - leftTime;
+            });
+            setOperations(rows);
+          })
+          .catch(() => undefined);
+      }
       setCatalogs(response.data ? [response.data] : []);
       void fetchCatalogs({ pageNo: 1, pageSize: 100 }).then((catalogResponse) => {
         if (catalogResponse.code === 0) {
@@ -467,8 +524,8 @@ const LogicalCatalogDetail: React.FC = () => {
     { key: 'query', label: '查询验证', children: <Tabs items={[{ key: 'single', label: '单表验证', children: <SingleTableQuery catalog={catalog} /> }, { key: 'join', label: '双 Catalog JOIN', children: <JoinQuery catalog={catalog} catalogs={catalogs} /> }]} /> },
     { key: 'snapshot', label: '挂载资源', children: <Card><Typography.Text type="secondary">服务端返回的脱敏实际快照</Typography.Text><pre className="lake-snapshot">{JSON.stringify(catalog.actualSnapshot || {}, null, 2)}</pre></Card> },
     { key: 'consistency', label: '一致性', children: <Card><Alert type={catalog.validationStatus === 'MATCH' ? 'success' : 'warning'} showIcon message={catalog.validationStatus === 'MATCH' ? '挂载配置与 Doris 实际状态一致' : '当前需要重新观察或处理漂移'} description="页面读取的是服务端最近一次显式 Validate / Refresh / Reconcile 的结果，进入详情不会自动访问 Doris。" /></Card> },
-    { key: 'operations', label: '操作记录', children: <Card><OperationTimeline items={[catalog.createTime ? { title: '创建本地绑定', description: catalog.createTime, status: 'finish' } : null, catalog.lastObservedAt ? { title: '最近观察', description: catalog.lastObservedAt, status: 'finish' } : null, catalog.lastReconcileAt ? { title: '最近对账', description: catalog.lastReconcileAt, status: 'finish' } : null].filter(Boolean) as Array<{ title: string; description: string; status: 'finish' }>} /></Card> },
-  ] : [], [catalog, catalogs]);
+    { key: 'operations', label: '操作记录', children: <Card><OperationTimeline items={operations.map(operationToStep)} emptyText="暂无已记录的 Catalog 操作" /></Card> },
+  ] : [], [catalog, catalogs, operations]);
   if (loading) return <PageContainer title="逻辑挂载详情"><Spin /></PageContainer>;
   if (!catalog) return <PageContainer title="逻辑挂载详情"><Empty description="未找到逻辑挂载" /></PageContainer>;
   const busy = Boolean(actionLoading) || catalog.resourceStatus === 'DELETING';

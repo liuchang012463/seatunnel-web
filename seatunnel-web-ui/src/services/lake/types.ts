@@ -52,6 +52,7 @@ export interface LakeOdsDatabase {
 export interface LakePhysicalDataSource {
   sourceDataSourceId: number;
   sourceDataSourceName?: string;
+  dbType?: string;
   businessSystemId?: number;
   unitId?: number;
   unitCode?: string;
@@ -133,6 +134,7 @@ export interface LakeManagedTable {
   sourceSchemaHash?: string;
   targetContractHash?: string;
   targetContract?: LakeTargetContract;
+  actualContract?: LakeTargetContract;
   fieldMappings?: LakeTableColumn[];
   sourceConsistencyStatus?: LakeConsistencyStatus;
   targetConsistencyStatus?: LakeConsistencyStatus;
@@ -271,6 +273,8 @@ export interface LakeReadOnlyQueryResult {
   truncated: boolean;
   elapsedMillis: number;
   explain: boolean;
+  /** Echoed opaque id used to cancel an in-flight request. */
+  queryId?: string;
 }
 
 export interface LakeReadOnlyQueryPreview {
@@ -292,4 +296,20 @@ export interface LakeQueryColumnOption {
 export interface LakeErrorPayload {
   code?: string;
   message?: string;
+}
+
+export type LakeOperationStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'IGNORED';
+
+export interface LakeResourceOperation {
+  id?: number;
+  resourceType?: string;
+  resourceId?: number;
+  generation?: number;
+  operationType?: string;
+  status?: LakeOperationStatus | string;
+  startedAt?: string;
+  finishedAt?: string;
+  errorCode?: string;
+  errorSummary?: string;
+  operatorId?: number;
 }

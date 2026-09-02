@@ -34,6 +34,9 @@ public class LakeOdsTableMapping extends LakeResourceEntity {
 
     private String targetContractJson;
 
+    /** Last explicitly observed, secret-free Doris structural contract. */
+    private String actualContractJson;
+
     private String fieldMappingsJson;
 
     private LakeConsistencyStatus sourceConsistencyStatus;

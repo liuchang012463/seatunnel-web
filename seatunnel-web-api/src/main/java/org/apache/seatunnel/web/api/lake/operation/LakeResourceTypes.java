@@ -8,6 +8,8 @@ public final class LakeResourceTypes {
     public static final String ODS_TABLE_MAPPING = "ODS_TABLE_MAPPING";
     public static final String EXTERNAL_CATALOG_BINDING = "EXTERNAL_CATALOG_BINDING";
     public static final String TABLE_LIFECYCLE = "TABLE_LIFECYCLE";
+    /** Query audit rows are keyed by the catalog binding id but have their own resource type. */
+    public static final String READONLY_QUERY = "READONLY_QUERY";
 
     private LakeResourceTypes() {
     }
@@ -23,7 +25,7 @@ public final class LakeResourceTypes {
             case "ODS_TABLE", "TABLE", "TABLE_MAPPING" -> ODS_TABLE_MAPPING;
             case "EXTERNAL_CATALOG", "CATALOG" -> EXTERNAL_CATALOG_BINDING;
             case SOURCE_OBJECT_REF, ODS_DATABASE_BINDING, ODS_TABLE_MAPPING,
-                    EXTERNAL_CATALOG_BINDING, TABLE_LIFECYCLE -> value;
+                    EXTERNAL_CATALOG_BINDING, TABLE_LIFECYCLE, READONLY_QUERY -> value;
             default -> throw new IllegalArgumentException("Unsupported lake resource type");
         };
     }

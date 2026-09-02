@@ -25,12 +25,21 @@ public final class LakeReadOnlyQueryExecutor {
     private final DataSource dataSource;
     private final LakeReadOnlyQueryProperties properties;
     private final LakeReadOnlyQuerySqlGenerator sqlGenerator;
+    private final LakeReadOnlyQueryCancellationRegistry cancellationRegistry;
 
     public LakeReadOnlyQueryExecutor(
             DataSource dataSource,
             LakeReadOnlyQueryProperties properties) {
+        this(dataSource, properties, null);
+    }
+
+    public LakeReadOnlyQueryExecutor(
+            DataSource dataSource,
+            LakeReadOnlyQueryProperties properties,
+            LakeReadOnlyQueryCancellationRegistry cancellationRegistry) {
         this.dataSource = Objects.requireNonNull(dataSource, "dataSource");
         this.properties = Objects.requireNonNull(properties, "properties");
+        this.cancellationRegistry = cancellationRegistry;
         validateProperties(properties);
         this.sqlGenerator = new LakeReadOnlyQuerySqlGenerator(
                 boundedInt(properties.getMaxRows(), LakeQueryErrorCode.RESULT_LIMIT_INVALID));
@@ -42,6 +51,11 @@ public final class LakeReadOnlyQueryExecutor {
 
     /** Executes a normalized plan; no raw SQL entry point exists here. */
     public LakeReadOnlyQueryResultVO execute(LakeReadOnlyQueryPlan plan) {
+        return execute(plan, null);
+    }
+
+    /** Executes a plan and exposes its statement to the process-local cancel registry. */
+    public LakeReadOnlyQueryResultVO execute(LakeReadOnlyQueryPlan plan, String requestedQueryId) {
         if (plan == null) {
             throw new LakeQueryExecutionException(LakeQueryErrorCode.READONLY_REJECTED);
         }
@@ -58,18 +72,35 @@ public final class LakeReadOnlyQueryExecutor {
             throw new LakeQueryExecutionException(LakeQueryErrorCode.READONLY_REJECTED);
         }
 
+        String queryId = requestedQueryId;
+        LakeReadOnlyQueryCancellationRegistry.Registration registration = null;
+        if (cancellationRegistry != null) {
+            queryId = cancellationRegistry.normalizeOrGenerate(requestedQueryId);
+            registration = cancellationRegistry.register(queryId);
+        }
         long started = System.nanoTime();
-        try (Connection connection = dataSource.getConnection()) {
-            setReadOnlyBestEffort(connection);
-            try (PreparedStatement statement = connection.prepareStatement(generatedSql)) {
-                try {
-                    configure(statement, plan);
-                    return read(statement, plan, started);
-                } catch (SQLException exception) {
-                    // A timeout or driver-side failure may leave the
-                    // statement running; cancel before closing it.
-                    cancelBestEffort(statement);
-                    throw classify(exception, started);
+        try {
+            if (registration != null && registration.cancelled()) {
+                throw new LakeQueryExecutionException(LakeQueryErrorCode.CANCELLED);
+            }
+            try (Connection connection = dataSource.getConnection()) {
+                setReadOnlyBestEffort(connection);
+                try (PreparedStatement statement = connection.prepareStatement(generatedSql)) {
+                    if (registration != null) {
+                        registration.attach(statement);
+                        if (registration.cancelled()) {
+                            throw new LakeQueryExecutionException(LakeQueryErrorCode.CANCELLED);
+                        }
+                    }
+                    try {
+                        configure(statement, plan);
+                        return read(statement, plan, started, queryId, registration);
+                    } catch (SQLException exception) {
+                        // A timeout or driver-side failure may leave the
+                        // statement running; cancel before closing it.
+                        cancelBestEffort(statement);
+                        throw classify(exception, started, registration);
+                    }
                 }
             }
         } catch (LakeQueryExecutionException exception) {
@@ -82,13 +113,19 @@ public final class LakeReadOnlyQueryExecutor {
                 throw queryException;
             }
             throw new LakeQueryExecutionException(LakeQueryErrorCode.EXECUTION_FAILED);
+        } finally {
+            if (registration != null) {
+                registration.close();
+            }
         }
     }
 
     private LakeReadOnlyQueryResultVO read(
             PreparedStatement statement,
             LakeReadOnlyQueryPlan plan,
-            long started) throws SQLException {
+            long started,
+            String queryId,
+            LakeReadOnlyQueryCancellationRegistry.Registration registration) throws SQLException {
         long maxBytes = properties.getMaxBytes();
         int maxRows = Math.min(plan.effectiveLimit(),
                 boundedInt(properties.getMaxRows(), LakeQueryErrorCode.RESULT_LIMIT_INVALID));
@@ -101,6 +138,10 @@ public final class LakeReadOnlyQueryExecutor {
             int columnCount = metadata.getColumnCount();
             columns = columnLabels(metadata, columnCount);
             while (rows.size() < maxRows && resultSet.next()) {
+                if (registration != null && registration.cancelled()) {
+                    cancelBestEffort(statement);
+                    throw new LakeQueryExecutionException(LakeQueryErrorCode.CANCELLED);
+                }
                 Map<String, Object> row = new LinkedHashMap<>();
                 long rowBytes = 0;
                 for (int index = 1; index <= columnCount; index++) {
@@ -122,7 +163,7 @@ public final class LakeReadOnlyQueryExecutor {
             }
         }
         return new LakeReadOnlyQueryResultVO(columns, rows, rows.size(), bytes, truncated,
-                elapsedMillis(started), plan.explain());
+                elapsedMillis(started), plan.explain(), queryId);
     }
 
     private void configure(PreparedStatement statement, LakeReadOnlyQueryPlan plan)
@@ -136,7 +177,13 @@ public final class LakeReadOnlyQueryExecutor {
         statement.setMaxRows(maxRows);
     }
 
-    private LakeQueryExecutionException classify(SQLException exception, long started) {
+    private LakeQueryExecutionException classify(
+            SQLException exception,
+            long started,
+            LakeReadOnlyQueryCancellationRegistry.Registration registration) {
+        if (registration != null && registration.cancelled()) {
+            return new LakeQueryExecutionException(LakeQueryErrorCode.CANCELLED);
+        }
         if (isCancelled(exception)) {
             return new LakeQueryExecutionException(LakeQueryErrorCode.CANCELLED);
         }
@@ -210,7 +257,21 @@ public final class LakeReadOnlyQueryExecutor {
     }
 
     private static boolean isCancelled(SQLException exception) {
-        return "57014".equals(exception.getSQLState());
+        // PostgreSQL uses 57014 for both statement_timeout and an explicit
+        // Statement.cancel().  The timeout check runs first; only classify
+        // the remaining 57014 errors as user cancellation when the driver
+        // message clearly says the request was cancelled.
+        if (!"57014".equals(exception.getSQLState())) {
+            return false;
+        }
+        String message = exception.getMessage();
+        if (message == null) {
+            return false;
+        }
+        String normalized = message.toLowerCase(Locale.ROOT);
+        return normalized.contains("user request")
+                || normalized.contains("cancelled")
+                || normalized.contains("canceled");
     }
 
     private static int timeoutSeconds(Duration timeout) {

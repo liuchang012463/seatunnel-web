@@ -31,6 +31,7 @@ public class LakeDataSourceResolver implements AutoCloseable {
     private final LakeProperties properties;
     private final Function<DataSource, BaseConnectionParam> connectionParamFactory;
     private final Map<Long, CachedPool> pools = new HashMap<>();
+    private final Map<Long, CachedPool> readOnlyPools = new HashMap<>();
 
     @Autowired
     public LakeDataSourceResolver(DataSourceDao dataSourceDao, LakeProperties properties) {
@@ -60,6 +61,20 @@ public class LakeDataSourceResolver implements AutoCloseable {
     }
 
     public synchronized javax.sql.DataSource resolve(Long dataSourceId) {
+        return resolve(dataSourceId, false);
+    }
+
+    /**
+     * Resolves a separate, smaller pool for generated structured queries.
+     * Connections are marked read-only at pool level as an additional guard;
+     * the executor still validates the generated statement and sets the
+     * connection hint for drivers that apply it per checkout.
+     */
+    public synchronized javax.sql.DataSource resolveReadOnly(Long dataSourceId) {
+        return resolve(dataSourceId, true);
+    }
+
+    private javax.sql.DataSource resolve(Long dataSourceId, boolean readOnly) {
         if (dataSourceId == null || dataSourceId <= 0) {
             throw new IllegalArgumentException("Lake data source id must be positive");
         }
@@ -76,7 +91,8 @@ public class LakeDataSourceResolver implements AutoCloseable {
         }
 
         String fingerprint = fingerprint(dataSource);
-        CachedPool cached = pools.get(dataSourceId);
+        Map<Long, CachedPool> targetPools = readOnly ? readOnlyPools : pools;
+        CachedPool cached = targetPools.get(dataSourceId);
         if (cached != null && cached.fingerprint().equals(fingerprint)) {
             return cached.dataSource();
         }
@@ -93,11 +109,11 @@ public class LakeDataSourceResolver implements AutoCloseable {
             throw new IllegalArgumentException("Lake Doris JDBC URL is not configured");
         }
 
-        HikariDataSource pool = createPool(dataSourceId, param);
+        HikariDataSource pool = createPool(dataSourceId, param, readOnly);
         if (cached != null) {
             cached.dataSource().close();
         }
-        pools.put(dataSourceId, new CachedPool(fingerprint, pool));
+        targetPools.put(dataSourceId, new CachedPool(fingerprint, pool));
         return pool;
     }
 
@@ -106,15 +122,21 @@ public class LakeDataSourceResolver implements AutoCloseable {
         if (cached != null) {
             cached.dataSource().close();
         }
+        CachedPool readOnlyCached = readOnlyPools.remove(dataSourceId);
+        if (readOnlyCached != null) {
+            readOnlyCached.dataSource().close();
+        }
     }
 
-    private HikariDataSource createPool(Long dataSourceId, BaseConnectionParam param) {
+    private HikariDataSource createPool(
+            Long dataSourceId, BaseConnectionParam param, boolean readOnly) {
         LakeProperties.ConnectionPool poolProperties = properties.getConnectionPool();
         if (poolProperties == null) {
             poolProperties = new LakeProperties.ConnectionPool();
         }
         HikariConfig config = new HikariConfig();
-        config.setPoolName("seatunnel-lake-doris-" + dataSourceId);
+        config.setPoolName("seatunnel-lake-doris-"
+                + (readOnly ? "readonly-" : "") + dataSourceId);
         config.setJdbcUrl(param.getUrl());
         if (param.getUser() != null && !param.getUser().isBlank()) {
             config.setUsername(param.getUser());
@@ -125,9 +147,15 @@ public class LakeDataSourceResolver implements AutoCloseable {
         if (param.getDriver() != null && !param.getDriver().isBlank()) {
             config.setDriverClassName(param.getDriver());
         }
-        config.setMaximumPoolSize(Math.max(1, poolProperties.getMaximumPoolSize()));
-        config.setMinimumIdle(Math.max(0, Math.min(
-                poolProperties.getMinimumIdle(), config.getMaximumPoolSize())));
+        int maximumPoolSize = readOnly
+                ? poolProperties.getReadOnlyMaximumPoolSize()
+                : poolProperties.getMaximumPoolSize();
+        int minimumIdle = readOnly
+                ? poolProperties.getReadOnlyMinimumIdle()
+                : poolProperties.getMinimumIdle();
+        config.setMaximumPoolSize(Math.max(1, maximumPoolSize));
+        config.setMinimumIdle(Math.max(0, Math.min(minimumIdle, config.getMaximumPoolSize())));
+        config.setReadOnly(readOnly);
         config.setConnectionTimeout(durationMillis(poolProperties.getConnectionTimeout(), 10_000));
         config.setValidationTimeout(durationMillis(poolProperties.getValidationTimeout(), 5_000));
         config.setInitializationFailTimeout(-1);
@@ -162,7 +190,9 @@ public class LakeDataSourceResolver implements AutoCloseable {
     @PreDestroy
     public synchronized void close() {
         pools.values().forEach(pool -> pool.dataSource().close());
+        readOnlyPools.values().forEach(pool -> pool.dataSource().close());
         pools.clear();
+        readOnlyPools.clear();
     }
 
     private record CachedPool(String fingerprint, HikariDataSource dataSource) {

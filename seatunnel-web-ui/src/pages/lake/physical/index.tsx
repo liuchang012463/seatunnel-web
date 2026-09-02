@@ -128,8 +128,15 @@ const RecommendationModal: React.FC<{
   const [form] = Form.useForm<RecommendationValues>();
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<LakeRecommendation>();
+  const [selectedAdapter, setSelectedAdapter] = useState<string>();
 
   const sourceAdapter = inferAdapter(source);
+  useEffect(() => {
+    const nextAdapter = sourceAdapter || initialRecommendationValues.adapter;
+    setSelectedAdapter(nextAdapter);
+    form.setFieldValue('adapter', nextAdapter);
+  }, [form, open, sourceAdapter]);
+
   const capabilityText = (capability?: { supported?: boolean; disabledReasons?: string[] }) => {
     if (!capability) return '尚未检查';
     if (capability.supported) return '当前能力可用';
@@ -173,10 +180,13 @@ const RecommendationModal: React.FC<{
           <Descriptions.Item label="源端适配器">
             <Select
               size="small"
-              value={form.getFieldValue('adapter') || sourceAdapter || undefined}
+              value={selectedAdapter}
               placeholder="选择适配器"
               options={adapterOptions}
-              onChange={(value) => form.setFieldValue('adapter', value)}
+              onChange={(value) => {
+                setSelectedAdapter(value);
+                form.setFieldValue('adapter', value);
+              }}
               style={{ width: 150 }}
             />
           </Descriptions.Item>

@@ -16,6 +16,7 @@ import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
 import org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao;
 import org.apache.seatunnel.web.dao.repository.LakeTableLifecycleBindingDao;
 import org.apache.seatunnel.web.common.enums.LakeLifecycleBindingStatus;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -43,7 +44,7 @@ public class DaoLakeResourceGateway implements LakeResourceGateway {
             @NonNull LakeOdsDatabaseBindingDao odsDatabaseBindingDao,
             @NonNull LakeOdsTableMappingDao odsTableMappingDao,
             @NonNull LakeExternalCatalogBindingDao externalCatalogBindingDao,
-            LakeTableLifecycleBindingDao lifecycleBindingDao) {
+            @Nullable LakeTableLifecycleBindingDao lifecycleBindingDao) {
         this.sourceObjectRefDao = sourceObjectRefDao;
         this.odsDatabaseBindingDao = odsDatabaseBindingDao;
         this.odsTableMappingDao = odsTableMappingDao;

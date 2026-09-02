@@ -32,6 +32,21 @@ public class LakeTableReconcilePersistenceService {
             LakeOdsTableMapping mapping,
             LakeTableDriftEvaluator.Evaluation evaluation,
             Integer userId) {
+        return persist(mapping, evaluation, userId, null, false);
+    }
+
+    /**
+     * Persists a bounded actual-contract observation together with the
+     * consistency CAS.  The observation is supplied by the orchestration
+     * service after its explicit remote read; this class never contacts Doris.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public LakeOdsTableMapping persist(
+            LakeOdsTableMapping mapping,
+            LakeTableDriftEvaluator.Evaluation evaluation,
+            Integer userId,
+            String actualContractJson,
+            boolean actualObserved) {
         if (mapping == null || evaluation == null || userId == null || userId <= 0) {
             throw invalid("Lake table reconcile request is invalid");
         }
@@ -50,6 +65,9 @@ public class LakeTableReconcilePersistenceService {
         } else if (evaluation.target().status() == LakeConsistencyStatus.CONSISTENT
                 || evaluation.target().status() == LakeConsistencyStatus.DRIFT) {
             mapping.setActualTableExists(true);
+        }
+        if (actualObserved) {
+            mapping.setActualContractJson(actualContractJson);
         }
         mapping.setLastReconcileAt(new Date());
         mapping.setUpdateUserId(userId);

@@ -235,8 +235,13 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
         }
         CreateInput input = validateUpdateInput(bindingId, current, request);
         staticPreflight(input.sourceDataSourceId(), input.adapter(), input.scope());
+        // Persist only the server-normalized shape.  A browser request must
+        // never be able to smuggle a JDBC URL, driver facts, credentials or
+        // an arbitrary desiredSpecJson into the local binding row.
+        LakeExternalCatalogUpdateDTO pendingRequest = pendingUpdateRequest(input,
+                request.getExpectedLockVersion());
         LakeExternalCatalogVO pending = persistenceService.updatePending(
-                bindingId, request, requireCurrentUserId());
+                bindingId, pendingRequest, requireCurrentUserId());
         if (pending == null || pending.getId() == null || pending.getId() <= 0) {
             throw catalogConflict("catalog binding could not be reserved");
         }
@@ -666,6 +671,19 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
         pending.setDatabaseInclude(input.databaseInclude());
         pending.setTableInclude(input.tableInclude());
         pending.setOptions(input.options());
+        return pending;
+    }
+
+    private LakeExternalCatalogUpdateDTO pendingUpdateRequest(
+            CreateInput input, Integer expectedLockVersion) {
+        LakeExternalCatalogUpdateDTO pending = new LakeExternalCatalogUpdateDTO();
+        pending.setTargetCatalogName(input.catalogName());
+        pending.setAdapter(input.adapter().code());
+        pending.setScope(input.scope());
+        pending.setDatabaseInclude(input.databaseInclude());
+        pending.setTableInclude(input.tableInclude());
+        pending.setOptions(input.options());
+        pending.setExpectedLockVersion(expectedLockVersion);
         return pending;
     }
 

@@ -75,6 +75,11 @@ public class LakeProperties {
 
         private int minimumIdle = 0;
 
+        /** The structured query path gets its own smaller, read-only pool. */
+        private int readOnlyMaximumPoolSize = 2;
+
+        private int readOnlyMinimumIdle = 0;
+
         private Duration connectionTimeout = Duration.ofSeconds(10);
 
         private Duration validationTimeout = Duration.ofSeconds(5);

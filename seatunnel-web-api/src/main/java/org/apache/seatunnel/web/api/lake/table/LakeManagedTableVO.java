@@ -19,7 +19,13 @@ public class LakeManagedTableVO {
 
     private Long sourceObjectRefId;
 
+    /** True when an UNMANAGED mapping has an explicit OpenMetadata source association. */
+    private Boolean sourceBound;
+
     private Long sourceDataSourceId;
+
+    /** Data source types let the task wizard select the right connector without a second lookup. */
+    private String sourceDbType;
 
     private String omEntityId;
 
@@ -28,6 +34,8 @@ public class LakeManagedTableVO {
     private Long odsDatabaseBindingId;
 
     private Long lakeDataSourceId;
+
+    private String lakeDbType;
 
     private String databaseName;
 
@@ -50,6 +58,9 @@ public class LakeManagedTableVO {
     private String sourceSnapshotJson;
 
     private TargetContract targetContract;
+
+    /** Last cached Doris contract observed by an explicit reconcile. */
+    private TargetContract actualContract;
 
     private List<LakeManagedTableFieldMapping> fieldMappings = new ArrayList<>();
 

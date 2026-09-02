@@ -310,7 +310,20 @@ public final class LakeManagedTableContractFactory {
                 .filter(column -> column != null && normalizeSource(column.name())
                         .equals(normalizeSource(targetColumn.getSourceName())))
                 .findFirst().orElseThrow(() -> new IllegalArgumentException("Partition source column is not declared"));
+        if (!isDateTimeSourceType(sourceColumn.dataType())) {
+            throw new IllegalArgumentException(
+                    "Lifecycle partition source column must be DATE or DATETIME");
+        }
         TargetContractValidator.validateLifecyclePartition(contract, Boolean.TRUE.equals(sourceColumn.nullable()));
+    }
+
+    private static boolean isDateTimeSourceType(String value) {
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        return normalized.equals("DATE")
+                || normalized.matches("DATETIME(?:\\s*\\(\\s*\\d+\\s*\\))?");
     }
 
     private static Integer effectiveOrdinal(SourceColumnSnapshot source) {

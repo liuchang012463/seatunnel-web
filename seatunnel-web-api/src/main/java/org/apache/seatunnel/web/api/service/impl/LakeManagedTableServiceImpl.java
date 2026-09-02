@@ -44,6 +44,7 @@ import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
 import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
+import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
 import org.apache.seatunnel.web.dao.entity.LakeResourceOperation;
@@ -550,9 +551,10 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
     }
 
     /**
-     * Explicit read-through reconcile.  The evaluator performs all external
-     * reads; this method only persists the resulting cached dimensions with a
-     * token/version compare-and-set.  detail() deliberately remains cached.
+     * Explicit read-through reconcile.  The evaluator and the bounded actual
+     * contract observer perform external reads; local state is then persisted
+     * with a token/version compare-and-set.  detail() deliberately remains
+     * cached.
      */
     @Override
     public LakeManagedTableVO reconcile(Long id) {
@@ -571,8 +573,51 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         } catch (RuntimeException exception) {
             throw conflict("Lake table reconcile could not be completed");
         }
+        ActualContractObservation actual = observeActualContract(mapping, evaluation);
+        if (actual.observed()) {
+            // Keep the existing three-argument persistence seam for callers
+            // and tests; the mapping object is already the CAS payload.
+            mapping.setActualContractJson(actual.json());
+        }
         LakeOdsTableMapping persisted = reconcilePersistenceService.persist(mapping, evaluation, userId);
         return toVO(persisted);
+    }
+
+    /**
+     * Reads only the bounded structural contract during an explicit
+     * reconcile.  A failed remote read is not written as an empty contract,
+     * so the last known snapshot is never presented as a fresh observation.
+     */
+    private ActualContractObservation observeActualContract(
+            LakeOdsTableMapping mapping, LakeTableDriftEvaluator.Evaluation evaluation) {
+        // The evaluator already performed the authoritative existence check.  When it
+        // reports a missing target, avoid a second round trip and clear any stale
+        // cached contract directly.  For present/unknown targets we still read the
+        // bounded structural contract so the explicit reconcile can refresh it.
+        if (evaluation != null && evaluation.target() != null
+                && evaluation.target().status() == LakeConsistencyStatus.MISSING) {
+            return ActualContractObservation.observed(null);
+        }
+        if (dorisClientProvider == null || mapping.getLakeDataSourceId() == null
+                || mapping.getDatabaseName() == null || mapping.getDatabaseName().isBlank()
+                || mapping.getTargetTableName() == null || mapping.getTargetTableName().isBlank()) {
+            return ActualContractObservation.notObserved();
+        }
+        try (DorisLakeClient client = dorisClientProvider.get(mapping.getLakeDataSourceId())) {
+            if (client == null || !client.tableExists(
+                    mapping.getDatabaseName().trim(), mapping.getTargetTableName().trim())) {
+                return ActualContractObservation.observed(null);
+            }
+            TargetContract actual = client.readContract(
+                    mapping.getDatabaseName().trim(), mapping.getTargetTableName().trim());
+            if (actual == null) {
+                return ActualContractObservation.notObserved();
+            }
+            return ActualContractObservation.observed(writeJson(actual,
+                    "Actual target contract could not be serialized"));
+        } catch (RuntimeException exception) {
+            return ActualContractObservation.notObserved();
+        }
     }
 
     private static boolean isStableReconcileStatus(LakeResourceStatus status) {
@@ -601,9 +646,41 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 && mapping.getOperationToken() == null) {
             return toVO(mapping);
         }
-        LakeOperationHandle handle = retryHandle(mapping);
+        LakeOperationHandle handle;
+        LakeManagedTableOperationPublication lifecyclePublication = null;
+        java.util.Map<String, String> lifecycleProperties = java.util.Map.of();
+        LakeTableLifecycleBinding lifecycleBinding = lifecycleBindingDao
+                .queryByTableMappingId(mapping.getId());
+        if (lifecycleCreatePersistenceService != null
+                && hasRetryableLifecycleIntent(lifecycleBinding)) {
+            LakeManagedTableLifecycleCreatePersistenceService.LifecycleSpec lifecycle =
+                    new LakeManagedTableLifecycleCreatePersistenceService.LifecycleSpec(
+                            lifecycleBinding.getPolicyId(), lifecycleBinding.getPolicyVersion(),
+                            lifecycleBinding.getPartitionColumn(), lifecycleBinding.getGranularity(),
+                            lifecycleBinding.getRetentionCount(), lifecycleBinding.getPolicySnapshotJson());
+            if (lifecycle.retentionCount() != null) {
+                lifecycleProperties = java.util.Map.of(
+                        "partition.retention_count", String.valueOf(lifecycle.retentionCount()));
+            }
+            LakeManagedTableLifecycleCreatePersistenceService.StartResult start =
+                    lifecycleCreatePersistenceService.startRetry(mapping, lifecycle, requireCurrentUserId());
+            mapping = start.mapping();
+            handle = start.handle();
+            lifecyclePublication = start.publication();
+        } else {
+            handle = retryHandle(mapping);
+        }
         return executeCreate(mapping, handle, client, contract, actualExists,
-                java.util.Map.of(), null);
+                lifecycleProperties, lifecyclePublication);
+    }
+
+    private static boolean hasRetryableLifecycleIntent(LakeTableLifecycleBinding binding) {
+        return binding != null
+                && binding.getStatus() != LakeLifecycleBindingStatus.DISABLED
+                && binding.getPartitionColumn() != null
+                && !binding.getPartitionColumn().isBlank()
+                && binding.getGranularity() != null
+                && (binding.getRetentionCount() == null || binding.getRetentionCount() > 0);
     }
 
     @Override
@@ -842,6 +919,13 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                             client.createTable(mapping.getDatabaseName(),
                                     mapping.getTargetTableName(), contract, tableProperties);
                         }
+                    } else if (tableProperties != null && !tableProperties.isEmpty()) {
+                        // A failed lifecycle create may have left the physical
+                        // table behind.  Retry must still apply the persisted
+                        // lifecycle intent instead of treating existence as a
+                        // complete success.
+                        client.alterTableProperties(mapping.getDatabaseName(),
+                                mapping.getTargetTableName(), tableProperties);
                     }
                     if (!client.tableExists(mapping.getDatabaseName(), mapping.getTargetTableName())) {
                         errorCode.set(LakeErrorCode.LAKE_RESOURCE_CONFLICT);
@@ -858,6 +942,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                                 LakeErrorCode.LAKE_RESOURCE_CONFLICT,
                                 "Doris table differs from the MANAGED contract");
                     }
+                    verifyLifecycleProperties(client, mapping, tableProperties, errorCode);
                     return Boolean.TRUE;
                 } catch (LakeExternalOperationException exception) {
                     throw exception;
@@ -879,6 +964,38 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             throw classifiedExternal(exception.getErrorCode(), "Doris table create is unavailable");
         } catch (LakeOperationException exception) {
             throw classifiedExternal(errorCode.get(), "Doris table create is unavailable");
+        }
+    }
+
+    private static void verifyLifecycleProperties(
+            DorisLakeClient client,
+            LakeOdsTableMapping mapping,
+            java.util.Map<String, String> requested,
+            AtomicReference<String> errorCode) {
+        if (requested == null || requested.isEmpty()) {
+            return;
+        }
+        java.util.Map<String, String> actual = client.readTableProperties(
+                mapping.getDatabaseName(), mapping.getTargetTableName());
+        if (actual == null) {
+            errorCode.set(LakeErrorCode.LAKE_RESOURCE_CONFLICT);
+            throw new LakeExternalOperationException(
+                    LakeErrorCode.LAKE_RESOURCE_CONFLICT,
+                    "Doris lifecycle properties could not be verified");
+        }
+        for (java.util.Map.Entry<String, String> entry : requested.entrySet()) {
+            String actualValue = actual.entrySet().stream()
+                    .filter(item -> item.getKey() != null
+                            && item.getKey().trim().equalsIgnoreCase(entry.getKey()))
+                    .map(java.util.Map.Entry::getValue)
+                    .findFirst()
+                    .orElse(null);
+            if (actualValue == null || !actualValue.trim().equals(entry.getValue().trim())) {
+                errorCode.set(LakeErrorCode.LAKE_RESOURCE_CONFLICT);
+                throw new LakeExternalOperationException(
+                        LakeErrorCode.LAKE_RESOURCE_CONFLICT,
+                        "Doris lifecycle properties differ from the requested intent");
+            }
         }
     }
 
@@ -1027,6 +1144,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         mapping.setTargetContractHash(TargetContractCanonicalizer.canonicalHash(contract));
         mapping.setSourceSnapshotJson(sourceRef.getSourceSnapshotJson());
         mapping.setTargetContractJson(writeJson(contract, "Target contract could not be serialized"));
+        mapping.setActualContractJson(null);
         mapping.setFieldMappingsJson(writeJson(mappings, "Field mappings could not be serialized"));
         mapping.setSourceConsistencyStatus(LakeConsistencyStatus.CONSISTENT);
         mapping.setTargetConsistencyStatus(LakeConsistencyStatus.UNKNOWN);
@@ -1171,6 +1289,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         LakeManagedTableVO result = new LakeManagedTableVO();
         result.setId(mapping.getId());
         result.setSourceObjectRefId(mapping.getSourceObjectRefId());
+        result.setSourceBound(mapping.getSourceObjectRefId() != null);
         result.setOdsDatabaseBindingId(mapping.getOdsDatabaseBindingId());
         result.setLakeDataSourceId(mapping.getLakeDataSourceId());
         result.setDatabaseName(mapping.getDatabaseName());
@@ -1202,6 +1321,14 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             result.setOmEntityId(sourceRef.getOmEntityId());
             result.setOmFqn(sourceRef.getOmFqn());
         }
+        DataSource sourceDataSource = result.getSourceDataSourceId() == null ? null
+                : dataSourceDao.queryById(result.getSourceDataSourceId());
+        DataSource lakeDataSource = mapping.getLakeDataSourceId() == null ? null
+                : dataSourceDao.queryById(mapping.getLakeDataSourceId());
+        result.setSourceDbType(sourceDataSource == null || sourceDataSource.getDbType() == null
+                ? null : sourceDataSource.getDbType().getCode());
+        result.setLakeDbType(lakeDataSource == null || lakeDataSource.getDbType() == null
+                ? null : lakeDataSource.getDbType().getCode());
         // AUTO_CREATED/UNMANAGED projections intentionally have no Web
         // structural contract.  GET detail must still be a cached read for
         // those mappings; MANAGED mappings retain strict contract validation.
@@ -1209,6 +1336,9 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 || (mapping.getTargetContractJson() != null
                 && !mapping.getTargetContractJson().isBlank())) {
             result.setTargetContract(readStoredContract(mapping));
+        }
+        if (mapping.getActualContractJson() != null && !mapping.getActualContractJson().isBlank()) {
+            result.setActualContract(readContract(mapping.getActualContractJson()));
         }
         result.setFieldMappings(readMappings(mapping.getFieldMappingsJson()));
         return result;
@@ -1464,6 +1594,16 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
 
     private static LakeServiceException classifiedExternal(String code, String fallback) {
         return new LakeServiceException(code == null ? LakeErrorCode.LAKE_DORIS_UNAVAILABLE : code, fallback);
+    }
+
+    private record ActualContractObservation(String json, boolean observed) {
+        private static ActualContractObservation observed(String json) {
+            return new ActualContractObservation(json, true);
+        }
+
+        private static ActualContractObservation notObserved() {
+            return new ActualContractObservation(null, false);
+        }
     }
 
     private record LifecyclePolicySnapshot(

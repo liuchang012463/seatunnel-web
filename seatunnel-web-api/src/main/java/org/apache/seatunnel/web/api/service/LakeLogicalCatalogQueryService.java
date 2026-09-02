@@ -14,6 +14,9 @@ public interface LakeLogicalCatalogQueryService {
 
     LakeReadOnlyQueryResultVO join(LakeJoinQueryDTO request);
 
+    /** Requests cancellation of an in-flight query identified by its opaque client id. */
+    boolean cancel(String queryId);
+
     /** Builds the same bounded SQL as execution, without opening a query connection. */
     LakeReadOnlyQueryPreviewVO previewSingle(Long catalogBindingId, LakeSingleTableQueryDTO request);
 

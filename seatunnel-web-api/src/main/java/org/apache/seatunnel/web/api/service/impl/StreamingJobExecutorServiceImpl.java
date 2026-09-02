@@ -140,6 +140,9 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
         log.info("Streaming job execute requested: jobDefineId={}, runMode={}, instanceId={}",
                 jobDefineId, runMode, instance.getId());
 
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeSubmit(instance, LakeJobRuntimeType.STREAMING);
+        }
         streamingJobSubmitter.submit(instance);
 
         return instance.getId();
@@ -294,6 +297,9 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
                 restoreEngineJobId
         );
 
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeSubmit(newInstance, LakeJobRuntimeType.STREAMING);
+        }
         streamingJobSubmitter.submitFromSavepoint(newInstance, restoreEngineJobId);
 
         StreamingJobInstance update = new StreamingJobInstance();

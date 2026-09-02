@@ -80,6 +80,33 @@ class LakeReadOnlyQueryExecutorTest {
     }
 
     @Test
+    void postgresStatementTimeoutIsNotReportedAsUserCancellation() throws Exception {
+        JdbcFixture fixture = fixture();
+        when(fixture.statement.executeQuery()).thenThrow(new java.sql.SQLException(
+                "canceling statement due to statement timeout", "57014"));
+
+        LakeQueryExecutionException failure = assertThrows(LakeQueryExecutionException.class,
+                () -> new LakeReadOnlyQueryExecutor(fixture.dataSource,
+                        properties(10, 100)).execute(plan(false)));
+
+        assertEquals(LakeQueryErrorCode.TIMEOUT, failure.errorCode());
+    }
+
+    @Test
+    void explicitJdbcCancelMessageRemainsCancellation() throws Exception {
+        JdbcFixture fixture = fixture();
+        when(fixture.statement.executeQuery()).thenThrow(new java.sql.SQLException(
+                "canceling statement due to user request", "57014"));
+
+        LakeQueryExecutionException failure = assertThrows(LakeQueryExecutionException.class,
+                () -> new LakeReadOnlyQueryExecutor(fixture.dataSource,
+                        properties(10, 100), new LakeReadOnlyQueryCancellationRegistry())
+                        .execute(plan(false), "query-cancelled-by-driver"));
+
+        assertEquals(LakeQueryErrorCode.CANCELLED, failure.errorCode());
+    }
+
+    @Test
     void setReadOnlyFailureStillExecutesOnlyGeneratedSelect() throws Exception {
         JdbcFixture fixture = fixture();
         doThrow(new java.sql.SQLException("driver does not support hint"))

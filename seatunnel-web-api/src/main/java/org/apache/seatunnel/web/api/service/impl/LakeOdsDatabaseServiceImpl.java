@@ -508,6 +508,7 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
         LakePhysicalDataSourceVO result = new LakePhysicalDataSourceVO();
         result.setSourceDataSourceId(source.getId());
         result.setSourceDataSourceName(source.getName());
+        result.setDbType(source.getDbType() == null ? null : source.getDbType().getCode());
         result.setBusinessSystemId(source.getBusinessSystemId());
         if (source.getBusinessSystemId() != null) {
             BusinessSystem system = businessSystemDao.queryById(source.getBusinessSystemId());

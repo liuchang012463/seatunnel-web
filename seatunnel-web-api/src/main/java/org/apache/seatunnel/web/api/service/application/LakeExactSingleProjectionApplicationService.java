@@ -319,6 +319,7 @@ public class LakeExactSingleProjectionApplicationService {
         // the managed-table flow and is intentionally outside this projection.
         mapping.setTargetContractHash(null);
         mapping.setTargetContractJson(null);
+        mapping.setActualContractJson(null);
         mapping.setFieldMappingsJson(null);
         mapping.setSourceSchemaHash(source.sourceSchemaHash());
         mapping.setSourceSnapshotJson(source.snapshotJson());

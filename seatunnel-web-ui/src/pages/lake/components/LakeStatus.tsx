@@ -7,7 +7,7 @@ import {
 } from '@ant-design/icons';
 import { Alert, Space, Tag, Timeline, Typography } from 'antd';
 import React from 'react';
-import type { LakeConsistencyStatus, LakeResourceStatus } from '@/services/lake';
+import type { LakeConsistencyStatus, LakeOperationStatus, LakeResourceOperation, LakeResourceStatus } from '@/services/lake';
 import './index.less';
 
 const RESOURCE_STATUS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -103,6 +103,85 @@ export interface LakeOperationStep {
   status?: 'wait' | 'process' | 'finish' | 'error';
 }
 
+/**
+ * Relation snapshots are deliberately parsed only for a small, display-safe
+ * set of fields.  They are server-generated JSON and must never be rendered
+ * wholesale because that would make an internal connector snapshot look like
+ * a user-facing configuration (and could expose future sensitive fields).
+ */
+export const snapshotField = (snapshot: unknown, keys: string[]): string | undefined => {
+  if (typeof snapshot !== 'string' || !snapshot.trim()) return undefined;
+  try {
+    const parsed = JSON.parse(snapshot) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
+    for (const key of keys) {
+      const value = parsed[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+      if (Array.isArray(value) && value.length) return value.map((item) => String(item)).join(', ');
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+};
+
+export const relationTargetTable = (relation: { sinkEndpointSnapshot?: string }) =>
+  snapshotField(relation.sinkEndpointSnapshot, ['targetTableName', 'target_table_name', 'tableName', 'table']);
+
+export const relationSchemaMode = (relation: { schemaSaveModeSnapshot?: string; sinkEndpointSnapshot?: string }) =>
+  relation.schemaSaveModeSnapshot || snapshotField(relation.sinkEndpointSnapshot, ['schemaSaveMode', 'schema_save_mode']);
+
+export const relationSourceDataSource = (relation: { sourceEndpointSnapshot?: string }) =>
+  snapshotField(relation.sourceEndpointSnapshot, ['dataSourceId', 'sourceDataSourceId']);
+
+const OPERATION_LABELS: Record<string, string> = {
+  CREATE_DATABASE: '创建 ODS Database',
+  CREATE_TABLE: '创建 ODS 表',
+  DROP_DATABASE: '删除 ODS Database',
+  DROP_TABLE: '删除 ODS 表',
+  CREATE_CATALOG: '创建逻辑 Catalog',
+  UPDATE_CATALOG: '更新逻辑 Catalog',
+  VALIDATE_CATALOG: '验证逻辑 Catalog',
+  VALIDATE: '验证资源',
+  REFRESH_CATALOG: '刷新逻辑 Catalog',
+  DROP_CATALOG: '删除逻辑 Catalog',
+  RECONCILE: '资源对账',
+  DELETE: '删除湖侧资源',
+  READONLY_QUERY: '结构化只读查询',
+  ALTER_RETENTION: '变更生命周期',
+  RETRY: '重试资源操作',
+};
+
+const OPERATION_STATUS: Record<string, LakeOperationStep['status']> = {
+  PENDING: 'wait',
+  RUNNING: 'process',
+  SUCCEEDED: 'finish',
+  FAILED: 'error',
+  IGNORED: 'wait',
+};
+
+const operationTime = (value?: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value.replace('T', ' ').replace(/\.\d+Z$/, '') : date.toLocaleString();
+};
+
+/** Maps the durable journal projection to the same compact timeline shape used by all pages. */
+export const operationToStep = (operation: LakeResourceOperation): LakeOperationStep => {
+  const status = (operation.status || 'UNKNOWN').toUpperCase() as LakeOperationStatus | 'UNKNOWN';
+  const title = OPERATION_LABELS[operation.operationType || ''] || operation.operationType || '资源操作';
+  const when = operation.finishedAt || operation.startedAt;
+  const details = [
+    status === 'FAILED' && operation.errorCode ? operation.errorCode : undefined,
+    status === 'FAILED' && operation.errorSummary ? operation.errorSummary : undefined,
+    operation.generation ? `Generation ${operation.generation}` : undefined,
+    operation.operatorId ? `操作者 #${operation.operatorId}` : undefined,
+    operationTime(when),
+  ].filter(Boolean).join(' · ');
+  return { title, description: details || status, status: OPERATION_STATUS[status] || 'wait' };
+};
+
 export const OperationTimeline: React.FC<{ items: LakeOperationStep[]; emptyText?: string }> = ({ items, emptyText }) => {
   if (!items.length) return <Typography.Text type="secondary">{emptyText || '暂无操作记录'}</Typography.Text>;
   return (
@@ -119,4 +198,3 @@ export const OperationTimeline: React.FC<{ items: LakeOperationStep[]; emptyText
     />
   );
 };
-

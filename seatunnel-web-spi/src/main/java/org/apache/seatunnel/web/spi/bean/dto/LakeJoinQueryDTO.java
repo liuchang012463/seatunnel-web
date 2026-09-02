@@ -16,7 +16,8 @@ public record LakeJoinQueryDTO(
         LakeQueryColumnIdentityDTO rightJoinColumn,
         Integer limit,
         Boolean explain,
-        String joinType) {
+        String joinType,
+        String queryId) {
 
     /** Keeps clients compiled against the original INNER JOIN-only contract source-compatible. */
     public LakeJoinQueryDTO(
@@ -29,7 +30,21 @@ public record LakeJoinQueryDTO(
             Integer limit,
             Boolean explain) {
         this(leftTable, rightTable, leftColumns, rightColumns, leftJoinColumn,
-                rightJoinColumn, limit, explain, "INNER");
+                rightJoinColumn, limit, explain, "INNER", null);
+    }
+
+    public LakeJoinQueryDTO(
+            LakeQueryTableIdentityDTO leftTable,
+            LakeQueryTableIdentityDTO rightTable,
+            List<LakeQueryColumnIdentityDTO> leftColumns,
+            List<LakeQueryColumnIdentityDTO> rightColumns,
+            LakeQueryColumnIdentityDTO leftJoinColumn,
+            LakeQueryColumnIdentityDTO rightJoinColumn,
+            Integer limit,
+            Boolean explain,
+            String joinType) {
+        this(leftTable, rightTable, leftColumns, rightColumns, leftJoinColumn,
+                rightJoinColumn, limit, explain, joinType, null);
     }
 
     public LakeJoinQueryDTO {

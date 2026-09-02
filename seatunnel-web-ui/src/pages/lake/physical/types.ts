@@ -15,6 +15,7 @@ export type LakeConsistencyStatus = 'CONSISTENT' | 'DRIFT' | 'MISSING' | 'UNKNOW
 export interface PhysicalDataSource {
   sourceDataSourceId: number;
   sourceDataSourceName?: string;
+  dbType?: string;
   businessSystemId?: number;
   unitId?: number;
   unitCode?: string;
@@ -122,11 +123,14 @@ export interface FieldMapping {
 export interface ManagedTable {
   id: number;
   sourceObjectRefId?: number;
+  sourceBound?: boolean;
   sourceDataSourceId?: number;
+  sourceDbType?: string;
   omEntityId?: string;
   omFqn?: string;
   odsDatabaseBindingId?: number;
   lakeDataSourceId?: number;
+  lakeDbType?: string;
   databaseName?: string;
   targetTableName?: string;
   managementLevel?: LakeManagementLevel;
@@ -137,6 +141,7 @@ export interface ManagedTable {
   sourceSchemaHash?: string;
   targetContractHash?: string;
   targetContract?: TargetContract;
+  actualContract?: TargetContract;
   fieldMappings?: FieldMapping[];
   sourceConsistencyStatus?: LakeConsistencyStatus;
   targetConsistencyStatus?: LakeConsistencyStatus;

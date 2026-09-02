@@ -62,6 +62,12 @@ public class LakeLogicalCatalogQueryController {
         return Result.buildSuc(service.join(request));
     }
 
+    /** Cancels a currently running structured query; unknown ids are harmless. */
+    @PostMapping("/cancel/{queryId}")
+    public Result<Boolean> cancel(@PathVariable("queryId") String queryId) {
+        return Result.buildSuc(service.cancel(queryId));
+    }
+
     @PostMapping("/join/preview")
     public Result<LakeReadOnlyQueryPreviewVO> joinPreview(@RequestBody LakeJoinQueryDTO request) {
         return Result.buildSuc(service.previewJoin(request));

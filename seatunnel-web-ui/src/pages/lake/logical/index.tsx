@@ -7,7 +7,7 @@ import {
 } from '@ant-design/icons';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Card, Drawer, Empty, Form, Input, message, Select, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Drawer, Empty, Form, Input, message, Select, Space, Tag, Typography } from 'antd';
 import { history } from '@umijs/max';
 import { useLocation } from '@umijs/max';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -58,8 +58,16 @@ interface CatalogFormValues {
 
 const sourceOption = (source: LakePhysicalDataSource) => ({
   value: source.sourceDataSourceId,
-  label: `${source.sourceDataSourceName || `DataSource #${source.sourceDataSourceId}`} · ${source.unitCode || '未归属'}/${source.systemCode || '未归属'}`,
+  label: `${source.sourceDataSourceName || `DataSource #${source.sourceDataSourceId}`} · ${source.dbType || '未知类型'} · ${source.unitCode || '未归属'}/${source.systemCode || '未归属'}`,
 });
+
+const adapterForDbType = (dbType?: string): string | undefined => {
+  const normalized = String(dbType || '').toUpperCase();
+  if (normalized.includes('POSTGRES')) return 'POSTGRESQL';
+  if (normalized.includes('ORACLE')) return 'ORACLE';
+  if (normalized.includes('MYSQL')) return 'MYSQL';
+  return undefined;
+};
 
 const CapabilityCard: React.FC<{ sources: LakePhysicalDataSource[]; initialSourceId?: number }> = ({ sources, initialSourceId }) => {
   const [form] = Form.useForm<CapabilityFormValues>();
@@ -134,7 +142,58 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
 }) => {
   const [form] = Form.useForm<CatalogFormValues>();
   const [loading, setLoading] = useState(false);
+  const [capabilityLoading, setCapabilityLoading] = useState(false);
+  const [capability, setCapability] = useState<LakeLogicalCapability>();
+  const [capabilityError, setCapabilityError] = useState<string>();
+  const sourceDataSourceId = Form.useWatch('sourceDataSourceId', form);
+  const adapter = Form.useWatch('adapter', form);
+  const scope = Form.useWatch('scope', form);
+  const selectedSource = sources.find((source) => source.sourceDataSourceId === sourceDataSourceId);
+  const sourceAdapter = adapterForDbType(selectedSource?.dbType);
+
+  useEffect(() => {
+    if (!open) return;
+    form.setFieldsValue({
+      sourceDataSourceId: initialSourceId,
+      adapter: sourceAdapter || 'MYSQL',
+      scope: 'ALL',
+    });
+    setCapability(undefined);
+    setCapabilityError(undefined);
+  }, [form, initialSourceId, open, sourceAdapter]);
+
+  useEffect(() => {
+    if (!open || !sourceDataSourceId || !adapter || !scope) return;
+    let cancelled = false;
+    setCapabilityLoading(true);
+    setCapabilityError(undefined);
+    void fetchCatalogCapability(sourceDataSourceId, { adapter, scope })
+      .then((response) => {
+        if (cancelled) return;
+        if (response.code !== 0 || !response.data) throw new Error(responseMessage(response));
+        setCapability(response.data);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setCapability(undefined);
+          setCapabilityError(error instanceof Error ? error.message : '能力检查失败');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCapabilityLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [adapter, open, scope, sourceDataSourceId]);
+
+  const supported = capability?.logicalSupported === true || capability?.supported === true || capability?.enabled === true;
+  const reasons = capability?.reasonCodes?.length ? capability.reasonCodes : capability?.disabledReasons || [];
+  const sourceNetworkPending = !supported && capability?.lakeDorisReachable === true && reasons.length === 1 && reasons[0] === 'SOURCE_NETWORK_UNKNOWN';
+  const canAttempt = supported || sourceNetworkPending;
   const submit = async (values: CatalogFormValues) => {
+    if (!canAttempt) {
+      message.warning(sourceNetworkPending ? '源端网络将在创建时验证，请稍候重试' : '当前数据源不满足逻辑挂载条件');
+      return;
+    }
     setLoading(true);
     try {
       const response = await createCatalog({
@@ -161,11 +220,14 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
       width={520}
       destroyOnClose
       onClose={onClose}
-      footer={<Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={loading} onClick={() => form.submit()}>创建并验证</Button></Space>}
+      footer={<Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={loading} disabled={capabilityLoading || !canAttempt} onClick={() => form.submit()}>创建并验证</Button></Space>}
     >
       <Typography.Paragraph type="secondary">
         仅填写数据源引用和结构化范围。凭证、JDBC URL、驱动地址由服务端安全配置管理，页面不会显示或上传。
       </Typography.Paragraph>
+      {capabilityLoading ? <Alert type="info" showIcon message="正在检查数据源能力…" /> : null}
+      {capabilityError ? <Alert type="error" showIcon message="能力检查失败" description={capabilityError} /> : null}
+      {!capabilityLoading && !capabilityError && capability ? <Alert type={canAttempt ? 'warning' : 'error'} showIcon message={canAttempt ? (sourceNetworkPending ? '静态条件就绪，创建时会验证源端网络' : '当前支持逻辑挂载') : '当前不可创建逻辑挂载'} description={canAttempt ? undefined : <CapabilityReason reasons={reasons} fallback="服务端未返回可用原因" />} /> : null}
       <Form form={form} layout="vertical" onFinish={submit} initialValues={{ adapter: 'MYSQL', scope: 'ALL', sourceDataSourceId: initialSourceId }}>
         <Form.Item name="sourceDataSourceId" label="源数据源" rules={[{ required: true, message: '请选择源数据源' }]}>
           <Select showSearch options={sources.map(sourceOption)} placeholder="选择已有数据源" optionFilterProp="label" />
@@ -180,8 +242,8 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
         <Form.Item name="databaseInclude" label="数据库范围" extra="Scope 为 DATABASE/TABLE 时填写，可输入后回车">
           <Select mode="tags" tokenSeparators={[',']} placeholder="例如：业务库" />
         </Form.Item>
-        <Form.Item name="tableInclude" label="表范围" extra="Scope 为 TABLE 时填写，可输入后回车">
-          <Select mode="tags" tokenSeparators={[',']} placeholder="例如：schema.table" />
+        <Form.Item name="tableInclude" label="表范围" extra="Scope 为 TABLE 时填写，可输入后回车；只填表名，不要写 schema.table">
+          <Select mode="tags" tokenSeparators={[',']} placeholder="例如：orders" />
         </Form.Item>
       </Form>
     </Drawer>

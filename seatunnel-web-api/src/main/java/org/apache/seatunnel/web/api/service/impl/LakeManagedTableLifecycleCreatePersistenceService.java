@@ -86,6 +86,31 @@ public class LakeManagedTableLifecycleCreatePersistenceService {
         }
     }
 
+    /**
+     * Reopens an existing MANAGED mapping whose lifecycle create operation
+     * failed (or whose table was later removed).  The mapping and its existing
+     * lifecycle desired state receive the same new lease and operation intent
+     * in one local transaction, so Retry cannot create a structural table
+     * while leaving the lifecycle binding in ERROR.
+     */
+    public StartResult startRetry(
+            LakeOdsTableMapping expected,
+            LifecycleSpec lifecycle,
+            Integer operatorId) {
+        if (expected == null || expected.getId() == null || expected.getId() <= 0
+                || lifecycle == null || operatorId == null || operatorId <= 0) {
+            throw invalid("lifecycle retry request");
+        }
+        try {
+            return transactionBoundary.requiresNew(
+                    () -> startRetryInTransaction(expected, lifecycle, operatorId));
+        } catch (LakeServiceException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw invalid("lifecycle retry persistence");
+        }
+    }
+
     private StartResult startInTransaction(
             LakeOdsTableMapping candidate,
             LifecycleSpec lifecycle,
@@ -147,6 +172,96 @@ public class LakeManagedTableLifecycleCreatePersistenceService {
                 new LakeOperationHandle(
                         operation.getId(), LakeResourceTypes.ODS_TABLE_MAPPING,
                         mapping.getId(), mapping.getGeneration(), operationToken, handleVersion),
+                new LakeManagedTableOperationPublication(
+                        binding.getId(), binding.getLockVersion(), lifecycle.retentionCount()));
+    }
+
+    private StartResult startRetryInTransaction(
+            LakeOdsTableMapping expected,
+            LifecycleSpec lifecycle,
+            Integer operatorId) {
+        LakeOdsTableMapping mapping = tableMappingDao.queryByIdIncludingDeleted(expected.getId());
+        if (mapping == null || Boolean.TRUE.equals(mapping.getDeleted())
+                || mapping.getOperationToken() != null) {
+            throw invalid("MANAGED mapping is not retryable");
+        }
+        // The caller performs the external existence read before entering
+        // this short TX1.  Re-check its optimistic snapshot here so a
+        // concurrent reconcile/update cannot have its contract silently
+        // overwritten by Retry.
+        if (!Objects.equals(mapping.getGeneration(), expected.getGeneration())
+                || !Objects.equals(mapping.getLockVersion(), expected.getLockVersion())
+                || !Objects.equals(mapping.getTargetContractHash(), expected.getTargetContractHash())
+                || !Objects.equals(mapping.getTargetTableName(), expected.getTargetTableName())
+                || !Objects.equals(mapping.getOdsDatabaseBindingId(), expected.getOdsDatabaseBindingId())
+                || !Objects.equals(mapping.getSourceObjectRefId(), expected.getSourceObjectRefId())) {
+            throw invalid("MANAGED mapping changed concurrently");
+        }
+        Integer mappingVersion = positive(mapping.getLockVersion()) != null
+                ? mapping.getLockVersion() : 1;
+        LakeTableLifecycleBinding binding = lifecycleBindingDao
+                .queryByTableMappingId(mapping.getId());
+        if (binding == null || binding.getId() == null || binding.getOperationToken() != null) {
+            throw invalid("lifecycle binding is not retryable");
+        }
+        Integer bindingVersion = positive(binding.getLockVersion()) != null
+                ? binding.getLockVersion() : 1;
+        String operationToken = UUID.randomUUID().toString();
+
+        binding.setPolicyId(lifecycle.policyId());
+        binding.setPolicyVersion(lifecycle.policyVersion());
+        binding.setPartitionColumn(lifecycle.partitionColumn());
+        binding.setGranularity(lifecycle.granularity());
+        binding.setRetentionCount(lifecycle.retentionCount());
+        binding.setActualRetentionCount(null);
+        binding.setActualPartitionSummaryJson(null);
+        binding.setLastObservedAt(null);
+        binding.setPolicySnapshotJson(lifecycle.policySnapshotJson());
+        binding.setStatus(LakeLifecycleBindingStatus.PENDING);
+        binding.setOperationToken(operationToken);
+        binding.setErrorCode(null);
+        binding.setErrorMessage(null);
+        binding.setUpdateUserId(operatorId);
+        binding.setUpdateTime(Date.from(clock.instant()));
+        if (!lifecycleBindingDao.updateIfTokenAndVersion(binding, null, bindingVersion)) {
+            throw invalid("lifecycle binding changed concurrently");
+        }
+
+        mapping.setResourceStatus(LakeResourceStatus.CREATING);
+        mapping.setOperationToken(operationToken);
+        mapping.setDeleted(false);
+        mapping.setActualTableExists(false);
+        mapping.setActualContractJson(null);
+        mapping.setTargetConsistencyStatus(
+                org.apache.seatunnel.web.common.enums.LakeConsistencyStatus.UNKNOWN);
+        mapping.setErrorCode(null);
+        mapping.setErrorMessage(null);
+        mapping.setUpdateUserId(operatorId);
+        mapping.initUpdate();
+        if (!tableMappingDao.updateIfTokenAndVersion(mapping, null, mappingVersion)) {
+            throw invalid("MANAGED mapping changed concurrently");
+        }
+
+        LakeResourceOperation operation = new LakeResourceOperation();
+        operation.initInsert();
+        operation.setResourceType(LakeResourceTypes.ODS_TABLE_MAPPING);
+        operation.setResourceId(mapping.getId());
+        operation.setGeneration(mapping.getGeneration());
+        operation.setOperationType(LakeOperationType.RETRY);
+        operation.setOperationToken(operationToken);
+        operation.setRequestHash(mapping.getTargetContractHash());
+        operation.setStatus(LakeOperationStatus.PENDING);
+        operation.setStartedAt(Date.from(clock.instant()));
+        operation.setOperatorId(operatorId);
+        if (operationDao.insert(operation) <= 0) {
+            throw invalid("lake retry operation journal");
+        }
+        return new StartResult(
+                mapping,
+                new LakeOperationHandle(
+                        operation.getId(), LakeResourceTypes.ODS_TABLE_MAPPING,
+                        mapping.getId(), mapping.getGeneration(), operationToken,
+                        mapping.getLockVersion()),
                 new LakeManagedTableOperationPublication(
                         binding.getId(), binding.getLockVersion(), lifecycle.retentionCount()));
     }

@@ -273,6 +273,8 @@ class LakeManagedTableServiceImplTest {
         when(dorisClient.tableExists(anyString(), anyString())).thenReturn(false, true);
         when(dorisClient.readContract("ods", "orders"))
                 .thenReturn(preview.getTargetContract());
+        when(dorisClient.readTableProperties("ods", "orders"))
+                .thenReturn(java.util.Map.of("partition.retention_count", "7"));
         when(coordinator.begin(any(LakeOperationIntent.class))).thenAnswer(invocation ->
                 new LakeOperationHandle(601L, LakeResourceTypes.ODS_TABLE_MAPPING, 501L,
                         storedMapping.get().getGeneration(), "operation-token", 2));

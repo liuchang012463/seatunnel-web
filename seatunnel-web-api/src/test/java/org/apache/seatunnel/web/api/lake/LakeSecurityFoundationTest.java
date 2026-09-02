@@ -77,10 +77,14 @@ class LakeSecurityFoundationTest {
         try (LakeDataSourceResolver resolver = new LakeDataSourceResolver(dao, properties, ignored -> param)) {
             javax.sql.DataSource first = resolver.resolveConfigured();
             assertSame(first, resolver.resolve(7L));
+            javax.sql.DataSource readOnly = resolver.resolveReadOnly(7L);
+            assertNotSame(first, readOnly);
+            assertSame(readOnly, resolver.resolveReadOnly(7L));
 
             entity.setConnectionParams("{changed:true}");
             javax.sql.DataSource second = resolver.resolve(7L);
             assertNotSame(first, second);
+            assertNotSame(readOnly, resolver.resolveReadOnly(7L));
         }
     }
 

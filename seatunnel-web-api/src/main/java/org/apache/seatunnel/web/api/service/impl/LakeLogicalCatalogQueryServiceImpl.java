@@ -15,6 +15,7 @@ import org.apache.seatunnel.web.api.lake.query.LakeQueryColumnOptionVO;
 import org.apache.seatunnel.web.api.lake.query.LakeQueryErrorCode;
 import org.apache.seatunnel.web.api.lake.query.LakeQueryExecutionException;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryExecutor;
+import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryCancellationRegistry;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryPlanNormalizer;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryProperties;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryPlan;
@@ -22,6 +23,7 @@ import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryPreviewVO;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryResultVO;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQuerySqlGenerator;
 import org.apache.seatunnel.web.api.lake.query.LakeQueryValidationException;
+import org.apache.seatunnel.web.api.lake.operation.LakeResourceTypes;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.LakeLogicalCatalogQueryService;
 import org.apache.seatunnel.web.common.enums.LakeOperationType;
@@ -62,6 +64,7 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
     private final LakeReadOnlyQueryProperties queryProperties;
     private final LakeResourceOperationDao operationDao;
     private final CurrentUserProvider currentUserProvider;
+    private final LakeReadOnlyQueryCancellationRegistry cancellationRegistry;
 
     @Autowired
     public LakeLogicalCatalogQueryServiceImpl(
@@ -71,7 +74,8 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
             LakeDataSourceResolver dataSourceResolver,
             LakeReadOnlyQueryProperties queryProperties,
             LakeResourceOperationDao operationDao,
-            CurrentUserProvider currentUserProvider) {
+            CurrentUserProvider currentUserProvider,
+            LakeReadOnlyQueryCancellationRegistry cancellationRegistry) {
         this.bindingDao = Objects.requireNonNull(bindingDao, "bindingDao");
         this.persistenceService = Objects.requireNonNull(persistenceService, "persistenceService");
         this.dorisClientProvider = Objects.requireNonNull(dorisClientProvider, "dorisClientProvider");
@@ -79,6 +83,7 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
         this.queryProperties = Objects.requireNonNull(queryProperties, "queryProperties");
         this.operationDao = Objects.requireNonNull(operationDao, "operationDao");
         this.currentUserProvider = Objects.requireNonNull(currentUserProvider, "currentUserProvider");
+        this.cancellationRegistry = Objects.requireNonNull(cancellationRegistry, "cancellationRegistry");
     }
 
     @Override
@@ -93,12 +98,12 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
             requireScope(desired(binding), table);
             try (DorisLakeClient metadataClient = dorisClientProvider.get(binding.getLakeDataSourceId())) {
                 LakeQueryColumnAllowlist allowlist = allowlist(metadataClient, table);
-                DataSource dataSource = dataSourceResolver.resolve(binding.getLakeDataSourceId());
+                DataSource dataSource = dataSourceResolver.resolveReadOnly(binding.getLakeDataSourceId());
                 LakeReadOnlyQueryExecutor executor = new LakeReadOnlyQueryExecutor(
-                        dataSource, queryProperties);
+                        dataSource, queryProperties, cancellationRegistry);
                 LakeReadOnlyQueryResultVO result = executor.execute(
                         normalizer()
-                                .normalize(request, allowlist));
+                                .normalize(request, allowlist), request == null ? null : request.queryId());
                 finishAudit(audit, "Structured single-table query completed", null);
                 return result;
             }
@@ -132,12 +137,12 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
                 if (!Objects.equals(leftBinding.getLakeDataSourceId(), rightBinding.getLakeDataSourceId())) {
                     throw queryInvalid("join catalogs must use one configured lake datasource");
                 }
-                DataSource dataSource = dataSourceResolver.resolve(leftBinding.getLakeDataSourceId());
+                DataSource dataSource = dataSourceResolver.resolveReadOnly(leftBinding.getLakeDataSourceId());
                 LakeReadOnlyQueryExecutor executor = new LakeReadOnlyQueryExecutor(
-                        dataSource, queryProperties);
+                        dataSource, queryProperties, cancellationRegistry);
                 LakeReadOnlyQueryResultVO result = executor.execute(
                         normalizer()
-                                .normalize(request, leftAllowlist, rightAllowlist));
+                                .normalize(request, leftAllowlist, rightAllowlist), request == null ? null : request.queryId());
                 finishAudit(audit, "Structured equality JOIN query completed", null);
                 return result;
             }
@@ -151,6 +156,14 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
             }
             throw stableQueryFailure(exception);
         }
+    }
+
+    @Override
+    public boolean cancel(String queryId) {
+        if (queryId == null || queryId.isBlank()) {
+            return false;
+        }
+        return cancellationRegistry.cancel(queryId);
     }
 
     @Override
@@ -422,7 +435,7 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
     private LakeResourceOperation startAudit(Long resourceId, Integer operatorId, String kind) {
         LakeResourceOperation operation = new LakeResourceOperation();
         operation.initInsert();
-        operation.setResourceType("READONLY_QUERY");
+        operation.setResourceType(LakeResourceTypes.READONLY_QUERY);
         operation.setResourceId(resourceId);
         operation.setGeneration(1);
         operation.setOperationType(LakeOperationType.READONLY_QUERY);
