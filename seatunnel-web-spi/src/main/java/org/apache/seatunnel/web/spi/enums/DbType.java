@@ -26,7 +26,8 @@ public enum DbType {
     FTP("FTP", "FTP", "FTP"),
     SFTP("SFTP", "SFTP", "SFTP"),
     S3("S3", "S3", "S3"),
-    MINIO("MINIO", "MINIO", "MINIO")
+    MINIO("MINIO", "MINIO", "MINIO"),
+    LOCAL_FILE("LOCAL_FILE", "LOCAL_FILE", "LOCAL_FILE")
     ;
 
     private static final Map<String, DbType> DB_TYPE_MAP =

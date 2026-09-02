@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.service;
 
+import org.springframework.web.multipart.MultipartFile;
 import org.apache.seatunnel.web.common.QueryResult;
 import org.apache.seatunnel.web.spi.bean.vo.ColumnOptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
@@ -21,6 +22,17 @@ public interface DataSourceCatalogService {
     List<OptionVO> listTable(Long id);
 
     List<FileEntryVO> listFiles(Long id, String path);
+
+    /**
+     * Stores uploaded files under {@code path} of the given local-file datasource
+     * and returns the stored file entries.
+     *
+     * @param id            data-source primary key; must be a LOCAL_FILE datasource
+     * @param path          target directory relative to the datasource base directory
+     * @param files         uploaded files
+     * @return list of stored file descriptors
+     */
+    List<FileEntryVO> uploadFiles(Long id, String path, MultipartFile[] files);
 
     /**
      * Retrieves a list of table references from a datasource, with optional filtering based on match mode.

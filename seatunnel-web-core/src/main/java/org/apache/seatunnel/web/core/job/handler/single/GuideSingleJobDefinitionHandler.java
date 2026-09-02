@@ -125,9 +125,10 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         if (!"FTP".equalsIgnoreCase(dbType)
                 && !"SFTP".equalsIgnoreCase(dbType)
                 && !"S3".equalsIgnoreCase(dbType)
-                && !"MINIO".equalsIgnoreCase(dbType)) {
+                && !"MINIO".equalsIgnoreCase(dbType)
+                && !"LOCAL_FILE".equalsIgnoreCase(dbType)) {
             throw new IllegalArgumentException(
-                    "FILE_SYNC " + role + " dbType must be FTP, SFTP, S3, or MINIO");
+                    "FILE_SYNC " + role + " dbType must be FTP, SFTP, S3, MINIO, or LOCAL_FILE");
         }
     }
 
