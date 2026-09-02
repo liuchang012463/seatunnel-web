@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.spi.bean.dto.LakeWarehouseConfigDTO;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.LakeJdbcDriverVO;
+import org.apache.seatunnel.web.spi.bean.vo.LakeDorisStatusVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakeWarehouseConfigVO;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,6 +47,12 @@ public class LakeWarehouseController {
     @Operation(summary = "testLakeWarehouseConfig")
     public Result<LakeWarehouseConfigVO> testConfig(@RequestBody LakeWarehouseConfigDTO request) {
         return Result.buildSuc(lakeWarehouseService.testConfig(request));
+    }
+
+    @GetMapping("/status")
+    @Operation(summary = "getLakeDorisStatus")
+    public Result<LakeDorisStatusVO> status() {
+        return Result.buildSuc(lakeWarehouseService.getDorisStatus());
     }
 
     @GetMapping("/drivers")

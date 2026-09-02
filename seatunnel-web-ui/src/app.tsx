@@ -80,7 +80,8 @@ export async function getInitialState(): Promise<{
 export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => {
   const hideLayout = shouldHideLayout();
   applyLayoutVisibility(hideLayout);
-  const showWatermark = typeof window === 'undefined' || window.location.pathname !== '/data-source/master-data';
+  const pathname = typeof window === 'undefined' ? '' : window.location.pathname;
+  const showWatermark = !pathname.startsWith('/lake/') && pathname !== '/data-source/master-data';
 
   return {
     menuDataRender: () => prototypeMenuData,

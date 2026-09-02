@@ -218,7 +218,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
         {isSystemManaged ? (
           <div className="datasource-card-lake-actions">
             <span className="datasource-card-label">湖 ODS 投影</span>
-            <Button type="link" size="small" onClick={onOpenWarehouse}>管理数仓配置</Button>
+            <Button type="link" size="small" onClick={onOpenWarehouse}>管理数据湖</Button>
           </div>
         ) : (
           <div className="datasource-card-lake-actions">
@@ -247,7 +247,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           ].join(' ')}
           onClick={() => isSystemManaged ? onOpenWarehouse() : onEdit(record)}
         >
-          {isSystemManaged ? '前往数仓配置' : '查看详情'}
+          {isSystemManaged ? '前往数据湖管理' : '查看详情'}
         </Button>
       </div>
     </Card>

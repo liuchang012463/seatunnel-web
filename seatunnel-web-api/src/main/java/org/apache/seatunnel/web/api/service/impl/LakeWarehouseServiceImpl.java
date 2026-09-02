@@ -25,6 +25,8 @@ import org.apache.seatunnel.web.dao.repository.LakeJdbcDriverDao;
 import org.apache.seatunnel.web.dao.repository.LakeWarehouseConfigDao;
 import org.apache.seatunnel.web.spi.bean.dto.LakeWarehouseConfigDTO;
 import org.apache.seatunnel.web.spi.bean.vo.LakeJdbcDriverVO;
+import org.apache.seatunnel.web.spi.bean.vo.LakeDorisNodeVO;
+import org.apache.seatunnel.web.spi.bean.vo.LakeDorisStatusVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakeWarehouseConfigVO;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Service;
@@ -38,9 +40,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -51,7 +60,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
 
     public static final String CONFIG_KEY = "ODS_DORIS";
     public static final String SYSTEM_KEY = "LAKE_ODS_DORIS";
-    private static final String DEFAULT_NAME = "湖 ODS 数仓";
+    private static final String DEFAULT_NAME = "Doris 数据湖";
     private static final String DEFAULT_DRIVER = "com.mysql.cj.jdbc.Driver";
     private static final Pattern DRIVER_CLASS = Pattern.compile(
             "[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*");
@@ -233,6 +242,80 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
     }
 
     @Override
+    public LakeDorisStatusVO getDorisStatus() {
+        LakeDorisStatusVO result = new LakeDorisStatusVO();
+        LakeWarehouseConfig config = configDao.querySingleton();
+        boolean configured = config != null && StringUtils.isNotBlank(config.getJdbcUrl())
+                && StringUtils.isNotBlank(config.getUsername())
+                && StringUtils.isNotBlank(config.getPassword());
+        result.setConfigured(configured);
+        result.setFrontendCount(0);
+        result.setAliveFrontendCount(0);
+        result.setBackendCount(0);
+        result.setAliveBackendCount(0);
+        result.setDatabaseCount(0);
+        result.setQueryPort(jdbcPort(config == null ? null : config.getJdbcUrl(), "9030"));
+        result.setHttpPort("8030");
+        result.setCheckedAt(Instant.now().toString());
+
+        if (!configured) {
+            result.setStatus("NOT_CONFIGURED");
+            result.setMessage("请先完成 Doris 数据湖连接配置");
+            return result;
+        }
+
+        String password = PasswordUtils.decodePassword(config.getPassword());
+        if (StringUtils.isBlank(password)) {
+            result.setConfigured(false);
+            result.setStatus("NOT_CONFIGURED");
+            result.setMessage("Doris 连接凭据不可用，请重新保存数据湖配置");
+            return result;
+        }
+
+        try (Connection connection = LakeJdbcDriverLoader.connect(
+                config.getJdbcUrl(), config.getUsername(), password,
+                config.getDriverClass(), config.getDriverLocation());
+             Statement statement = connection.createStatement()) {
+            List<Map<String, String>> frontendRows = readRows(statement, "SHOW FRONTENDS");
+            List<Map<String, String>> backendRows = readRows(statement, "SHOW BACKENDS");
+            List<Map<String, String>> databaseRows = readRows(statement, "SHOW DATABASES");
+
+            result.setFrontends(frontendRows.stream().map(LakeWarehouseServiceImpl::toFrontendNode).toList());
+            result.setBackends(backendRows.stream().map(LakeWarehouseServiceImpl::toBackendNode).toList());
+            result.setFrontendCount(frontendRows.size());
+            result.setAliveFrontendCount((int) frontendRows.stream()
+                    .filter(row -> isTrue(value(row, "Alive"))).count());
+            result.setBackendCount(backendRows.size());
+            result.setAliveBackendCount((int) backendRows.stream()
+                    .filter(row -> isTrue(value(row, "Alive"))).count());
+            result.setDatabaseCount(databaseRows.size());
+            result.setVersion(firstNonBlank(
+                    frontendRows.isEmpty() ? null : value(frontendRows.get(0), "Version"),
+                    backendRows.isEmpty() ? null : value(backendRows.get(0), "Version")));
+            result.setMasterHost(frontendRows.stream()
+                    .filter(row -> isTrue(value(row, "IsMaster")))
+                    .map(row -> value(row, "Host"))
+                    .filter(StringUtils::isNotBlank)
+                    .findFirst()
+                    .orElse(null));
+            String httpPort = frontendRows.stream()
+                    .map(row -> value(row, "HttpPort"))
+                    .filter(StringUtils::isNotBlank)
+                    .findFirst()
+                    .orElse("8030");
+            result.setHttpPort(httpPort);
+            result.setStatus("CONNECTED_SUCCESS");
+            result.setMessage("Doris 集群状态已同步");
+            return result;
+        } catch (Exception exception) {
+            log.warn("Unable to read Doris cluster status: {}", exception.getMessage());
+            result.setStatus("CONNECTED_FAILED");
+            result.setMessage("Doris 集群状态暂不可用，请检查连接配置");
+            return result;
+        }
+    }
+
+    @Override
     public List<LakeJdbcDriverVO> listDrivers() {
         List<LakeJdbcDriverVO> result = new ArrayList<>();
         for (LakeJdbcDriver driver : driverDao.queryAll()) {
@@ -336,7 +419,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         if (config == null || StringUtils.isBlank(config.getJdbcUrl())
                 || StringUtils.isBlank(config.getUsername()) || StringUtils.isBlank(config.getPassword())) {
             throw new LakeServiceException(LakeErrorCode.LAKE_WAREHOUSE_NOT_CONFIGURED,
-                    "湖 ODS 数仓尚未配置，请先完成数仓配置");
+                    "湖 ODS 数据湖尚未配置，请先完成数据湖配置");
         }
         return config;
     }
@@ -346,14 +429,14 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         LakeWarehouseConfig config = requireConfig();
         if (config.getSystemDataSourceId() == null || config.getSystemDataSourceId() <= 0) {
             throw new LakeServiceException(LakeErrorCode.LAKE_WAREHOUSE_NOT_CONFIGURED,
-                    "湖 ODS 数仓尚未生成系统数据源，请保存数仓配置");
+                    "湖 ODS 数据湖尚未生成系统数据源，请保存数据湖配置");
         }
         DataSource projection = dataSourceDao.queryById(config.getSystemDataSourceId());
         if (projection == null || !Boolean.TRUE.equals(projection.getSystemManaged())
                 || !SYSTEM_KEY.equals(projection.getSystemKey())
                 || projection.getDbType() != DbType.DORIS) {
             throw new LakeServiceException(LakeErrorCode.LAKE_WAREHOUSE_NOT_CONFIGURED,
-                    "湖 ODS 系统数据源投影不存在，请重新保存数仓配置");
+                    "湖 ODS 系统数据源投影不存在，请重新保存数据湖配置");
         }
         return config.getSystemDataSourceId();
     }
@@ -380,7 +463,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
             return requireSystemDataSourceId();
         }
         throw new LakeServiceException(LakeErrorCode.LAKE_REQUEST_INVALID,
-                "历史湖数据源 ID 未注册兼容映射，请重新保存数仓配置");
+                "历史湖数据源 ID 未注册兼容映射，请重新保存数据湖配置");
     }
 
     private DataSource resolveProjection(Long adoptedId) {
@@ -539,7 +622,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
 
     private static LakeServiceException invalid(String field) {
         return new LakeServiceException(LakeErrorCode.LAKE_REQUEST_INVALID,
-                "数仓配置参数无效：" + field);
+                "数据湖配置参数无效：" + field);
     }
 
     private static LakeWarehouseConfigVO toVO(LakeWarehouseConfig config) {
@@ -562,6 +645,83 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
                 && StringUtils.isNotBlank(config.getUsername())
                 && StringUtils.isNotBlank(config.getPassword()));
         return result;
+    }
+
+    private static List<Map<String, String>> readRows(Statement statement, String sql) throws SQLException {
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+            ResultSetMetaData metadata = resultSet.getMetaData();
+            List<Map<String, String>> rows = new ArrayList<>();
+            while (resultSet.next()) {
+                Map<String, String> row = new LinkedHashMap<>();
+                for (int index = 1; index <= metadata.getColumnCount(); index++) {
+                    Object value = resultSet.getObject(index);
+                    row.put(metadata.getColumnLabel(index), value == null ? "" : String.valueOf(value));
+                }
+                rows.add(row);
+            }
+            return rows;
+        }
+    }
+
+    private static LakeDorisNodeVO toFrontendNode(Map<String, String> row) {
+        LakeDorisNodeVO node = new LakeDorisNodeVO();
+        node.setId(firstNonBlank(value(row, "Name"), value(row, "FrontendId")));
+        node.setHost(value(row, "Host"));
+        node.setPort(value(row, "HttpPort"));
+        node.setRole(firstNonBlank(value(row, "Role"), isTrue(value(row, "IsMaster")) ? "MASTER" : null));
+        node.setStatus(isTrue(value(row, "Alive")) ? "ALIVE" : "DOWN");
+        node.setVersion(value(row, "Version"));
+        node.setLastHeartbeat(value(row, "LastHeartbeat"));
+        return node;
+    }
+
+    private static LakeDorisNodeVO toBackendNode(Map<String, String> row) {
+        LakeDorisNodeVO node = new LakeDorisNodeVO();
+        node.setId(value(row, "BackendId"));
+        node.setHost(value(row, "Host"));
+        node.setPort(firstNonBlank(value(row, "HttpPort"), value(row, "BePort")));
+        node.setRole(firstNonBlank(value(row, "NodeRole"), "BACKEND"));
+        node.setStatus(isTrue(value(row, "Alive")) ? "ALIVE" : "DOWN");
+        node.setVersion(value(row, "Version"));
+        node.setLastHeartbeat(value(row, "LastHeartbeat"));
+        node.setUsedPct(value(row, "UsedPct"));
+        return node;
+    }
+
+    private static String value(Map<String, String> row, String key) {
+        if (row == null) {
+            return null;
+        }
+        return row.entrySet().stream()
+                .filter(entry -> entry.getKey().equalsIgnoreCase(key))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (StringUtils.isNotBlank(value)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isTrue(String value) {
+        return "true".equalsIgnoreCase(StringUtils.trimToEmpty(value))
+                || "yes".equalsIgnoreCase(StringUtils.trimToEmpty(value));
+    }
+
+    private static String jdbcPort(String jdbcUrl, String fallback) {
+        if (StringUtils.isBlank(jdbcUrl)) {
+            return fallback;
+        }
+        String normalized = jdbcUrl.replaceFirst("^jdbc:[^:]+://", "");
+        int slash = normalized.indexOf('/');
+        String authority = slash >= 0 ? normalized.substring(0, slash) : normalized;
+        int colon = authority.lastIndexOf(':');
+        return colon > 0 && colon < authority.length() - 1 ? authority.substring(colon + 1) : fallback;
     }
 
     private static LakeJdbcDriverVO toDriverVO(LakeJdbcDriver driver) {

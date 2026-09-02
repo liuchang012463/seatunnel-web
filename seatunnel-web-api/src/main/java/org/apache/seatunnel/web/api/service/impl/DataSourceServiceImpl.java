@@ -701,7 +701,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         if (entity != null && (Boolean.TRUE.equals(entity.getSystemManaged())
                 || StringUtils.isNotBlank(entity.getSystemKey()))) {
             throw new LakeServiceException(LakeErrorCode.LAKE_SYSTEM_DATASOURCE_READ_ONLY,
-                    "系统内置数据源为只读，请前往数仓配置页面修改 Doris ODS 连接");
+                    "系统内置数据源为只读，请前往数据湖管理页面修改 Doris ODS 连接");
         }
     }
 

@@ -69,6 +69,8 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   operateType,
   onManageMasterData,
   initialConfig,
+  hideBaseFields = false,
+  allowExistingPassword = false,
 }) => {
   const intl = useIntl();
 
@@ -88,7 +90,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   const requestSeqRef = useRef(0);
 
   const fillCreateDefaultBaseInfo = useCallback(() => {
-    if (!isCreateOperateType(operateType)) {
+    if (hideBaseFields || !isCreateOperateType(operateType)) {
       return;
     }
 
@@ -102,7 +104,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
     if (Object.keys(patch).length) {
       form.setFieldsValue(patch);
     }
-  }, [operateType, form]);
+  }, [hideBaseFields, operateType, form]);
 
   const loadFormConfig = useCallback(
     async (currentDbType: string): Promise<void> => {
@@ -306,7 +308,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
     }
   };
 
-  const renderFieldLabel = (field: any): React.ReactNode => {
+const renderFieldLabel = (field: any): React.ReactNode => {
     if (!field.description) {
       return field.label;
     }
@@ -319,6 +321,16 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         </Tooltip>
       </span>
     );
+  };
+
+  const fieldRules = (field: any) => {
+    const rules = transformRules(field?.rules);
+    return rules.map((rule) => {
+      if (rule.required && typeof rule.message === 'string' && /cannot be empty/i.test(rule.message)) {
+        return { ...rule, message: `请输入${field.label || '该字段'}` };
+      }
+      return rule;
+    });
   };
 
   if (loading) {
@@ -334,163 +346,171 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
 
   return (
     <div className="datasource-form-panel p-5">
-      <div className="mb-5">
-        <h3 className={sectionTitleClass}>数据源信息</h3>
-        <p className={sectionDescClass}>先填写基础信息，再补充当前数据源类型对应的连接参数。</p>
-      </div>
+      {!hideBaseFields ? (
+        <>
+          <div className="mb-5">
+            <h3 className={sectionTitleClass}>数据源信息</h3>
+            <p className={sectionDescClass}>先填写基础信息，再补充当前数据源类型对应的连接参数。</p>
+          </div>
 
-      <Form form={form} layout="vertical">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Form.Item
-            label={intl.formatMessage({
-              id: 'pages.datasource.form.dsName',
-              defaultMessage: 'DS Name',
-            })}
-            name="name"
-            rules={[
-              {
-                required: true,
-                message: intl.formatMessage({
-                  id: 'pages.datasource.form.dsNameRequired',
-                  defaultMessage: 'DS Name is required',
-                }),
-              },
-            ]}
-          >
-            <Input
-              placeholder={intl.formatMessage({
-                id: 'pages.datasource.form.inputPlaceholder',
-                defaultMessage: 'Input...',
-              })}
-              maxLength={100}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label={
-              <span className="inline-flex items-center">
-                {intl.formatMessage({
-                  id: 'pages.datasource.form.env',
-                  defaultMessage: 'Env',
+          <Form form={form} layout="vertical">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Form.Item
+                label={intl.formatMessage({
+                  id: 'pages.datasource.form.dsName',
+                  defaultMessage: 'DS Name',
                 })}
-                <Tooltip title="Deployment environment of the datasource">
-                  <InfoCircleOutlined className="ml-1 text-slate-400" />
-                </Tooltip>
-              </span>
-            }
-            name="environment"
-            rules={[
-              {
-                required: true,
-                message: intl.formatMessage({
-                  id: 'pages.datasource.form.envRequired',
-                  defaultMessage: 'Env is required',
-                }),
-              },
-            ]}
-          >
-            <Select
-              placeholder={intl.formatMessage({
-                id: 'pages.datasource.form.selectPlaceholder',
-                defaultMessage: 'Select...',
-              })}
-              options={ENV_OPTIONS}
-            />
-          </Form.Item>
-        </div>
+                name="name"
+                rules={[
+                  {
+                    required: true,
+                    message: intl.formatMessage({
+                      id: 'pages.datasource.form.dsNameRequired',
+                      defaultMessage: 'DS Name is required',
+                    }),
+                  },
+                ]}
+              >
+                <Input
+                  placeholder={intl.formatMessage({
+                    id: 'pages.datasource.form.inputPlaceholder',
+                    defaultMessage: 'Input...',
+                  })}
+                  maxLength={100}
+                />
+              </Form.Item>
 
-        <DataSourceUnitSelect form={form} onManageMasterData={onManageMasterData} />
-
-        <Form.Item
-          label={intl.formatMessage({
-            id: 'pages.datasource.form.description',
-            defaultMessage: 'Description',
-          })}
-          name="remark"
-        >
-          <TextArea
-            placeholder={intl.formatMessage({
-              id: 'pages.datasource.form.inputPlaceholder',
-              defaultMessage: 'Input...',
-            })}
-            rows={4}
-          />
-        </Form.Item>
-
-        <Form.Item name="connectionParams" hidden>
-          <Input type="hidden" />
-        </Form.Item>
-
-        {needInstall && (
-          <div className="datasource-form-notice mb-5 px-4 py-3.5">
-            <div className="mb-2.5 text-[13px] leading-[22px] text-slate-600">
-              当前插件配置暂不可用，可能尚未安装。请先安装对应插件后，再继续填写连接参数。
+              <Form.Item
+                label={
+                  <span className="inline-flex items-center">
+                    {intl.formatMessage({
+                      id: 'pages.datasource.form.env',
+                      defaultMessage: 'Env',
+                    })}
+                    <Tooltip title="Deployment environment of the datasource">
+                      <InfoCircleOutlined className="ml-1 text-slate-400" />
+                    </Tooltip>
+                  </span>
+                }
+                name="environment"
+                rules={[
+                  {
+                    required: true,
+                    message: intl.formatMessage({
+                      id: 'pages.datasource.form.envRequired',
+                      defaultMessage: 'Env is required',
+                    }),
+                  },
+                ]}
+              >
+                <Select
+                  placeholder={intl.formatMessage({
+                    id: 'pages.datasource.form.selectPlaceholder',
+                    defaultMessage: 'Select...',
+                  })}
+                  options={ENV_OPTIONS}
+                />
+              </Form.Item>
             </div>
 
-            {loadErrMsg ? <div className="mb-3 text-xs leading-5 text-slate-400">{loadErrMsg}</div> : null}
+            <DataSourceUnitSelect form={form} onManageMasterData={onManageMasterData} />
 
-            <Button
-              type="default"
-              loading={installing}
-              onClick={installPlugin}
-              className="!h-[38px] !rounded-[10px] !px-4"
+            <Form.Item
+              label={intl.formatMessage({
+                id: 'pages.datasource.form.description',
+                defaultMessage: 'Description',
+              })}
+              name="remark"
             >
-              <span className="inline-flex items-center gap-2">
-                <span>
-                  {intl.formatMessage({
-                    id: 'pages.datasource.form.installPlugin',
-                    defaultMessage: 'Install Plugin',
-                  })}
-                </span>
+              <TextArea
+                placeholder={intl.formatMessage({
+                  id: 'pages.datasource.form.inputPlaceholder',
+                  defaultMessage: 'Input...',
+                })}
+                rows={4}
+              />
+            </Form.Item>
 
-                <span className="inline-flex items-center gap-1.5">
-                  <span>({dbType})</span>
-                  <DatabaseIcons dbType={dbType} height="18" width="18" />
-                </span>
-              </span>
-            </Button>
-          </div>
-        )}
-
-        <div className="mt-2 border-t border-[var(--st-color-divider)] pt-[18px]">
-          <div className="mb-4">
-            <h3 className={sectionTitleClass}>连接参数</h3>
-            <p className={sectionDescClass}>根据当前数据源类型自动渲染配置项，建议优先填写必填字段。</p>
-          </div>
-
-          <Form
-            form={configForm}
-            component={false}
-            labelCol={{ flex: '110px' }}
-            wrapperCol={{ flex: '1' }}
-            labelAlign="left"
-          >
-            {formConfig.map((field) => {
-              if (!isFieldVisible(field, { authenticationType })) {
-                return null;
-              }
-
-              if (field.type === 'CUSTOM_SELECT') {
-                return <CustomKVList key={field.key} intl={intl} field={field} />;
-              }
-
-              return (
-                <Form.Item
-                  key={field.key}
-                  label={renderFieldLabel(field)}
-                  name={field.key}
-                  preserve={false}
-                  rules={transformRules(field?.rules)}
-                  validateTrigger={['onChange', 'onBlur']}
-                  className="!mb-[18px]"
-                >
-                  {renderFormItem(field)}
-                </Form.Item>
-              );
-            })}
+            <Form.Item name="connectionParams" hidden>
+              <Input type="hidden" />
+            </Form.Item>
           </Form>
+        </>
+      ) : null}
+
+      {needInstall && (
+        <div className="datasource-form-notice mb-5 px-4 py-3.5">
+          <div className="mb-2.5 text-[13px] leading-[22px] text-slate-600">
+            当前插件配置暂不可用，可能尚未安装。请先安装对应插件后，再继续填写连接参数。
+          </div>
+
+          {loadErrMsg ? <div className="mb-3 text-xs leading-5 text-slate-400">{loadErrMsg}</div> : null}
+
+          <Button
+            type="default"
+            loading={installing}
+            onClick={installPlugin}
+            className="!h-[38px] !rounded-[10px] !px-4"
+          >
+            <span className="inline-flex items-center gap-2">
+              <span>
+                {intl.formatMessage({
+                  id: 'pages.datasource.form.installPlugin',
+                  defaultMessage: 'Install Plugin',
+                })}
+              </span>
+
+              <span className="inline-flex items-center gap-1.5">
+                <span>({dbType})</span>
+                <DatabaseIcons dbType={dbType} height="18" width="18" />
+              </span>
+            </span>
+          </Button>
         </div>
-      </Form>
+      )}
+
+      <div className={hideBaseFields ? '' : 'mt-2 border-t border-[var(--st-color-divider)] pt-[18px]'}>
+        <div className="mb-4">
+          <h3 className={sectionTitleClass}>连接参数</h3>
+          <p className={sectionDescClass}>根据当前数据源类型自动渲染配置项，建议优先填写必填字段。</p>
+        </div>
+
+        <Form
+          form={configForm}
+          component={false}
+          labelCol={{ flex: '110px' }}
+          wrapperCol={{ flex: '1' }}
+          labelAlign="left"
+        >
+          {formConfig.map((field) => {
+            if (!isFieldVisible(field, { authenticationType })) {
+              return null;
+            }
+
+            if (field.type === 'CUSTOM_SELECT') {
+              return <CustomKVList key={field.key} intl={intl} field={field} />;
+            }
+
+            return (
+              <Form.Item
+                key={field.key}
+                label={renderFieldLabel(field)}
+                name={field.key}
+                preserve={false}
+                rules={
+                  field.key === 'password' && allowExistingPassword
+                    ? fieldRules(field).filter((rule) => !rule.required)
+                    : fieldRules(field)
+                }
+                validateTrigger={['onChange', 'onBlur']}
+                className="!mb-[18px]"
+              >
+                {renderFormItem(field)}
+              </Form.Item>
+            );
+          })}
+        </Form>
+      </div>
     </div>
   );
 };

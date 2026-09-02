@@ -2,6 +2,7 @@ import HttpUtils from '@/utils/HttpUtils';
 import type {
   LakeApiResponse,
   LakeCatalog,
+  LakeDorisStatus,
   LakeDeleteImpact,
   LakeInventoryTable,
   LakeLifecyclePolicy,
@@ -195,6 +196,10 @@ export async function testLakeWarehouse(
   payload: Record<string, unknown>,
 ): Promise<LakeApiResponse<LakeWarehouseConfig>> {
   return HttpUtils.post(`${WAREHOUSE}/connect-test`, payload);
+}
+
+export async function fetchLakeDorisStatus(): Promise<LakeApiResponse<LakeDorisStatus>> {
+  return HttpUtils.get(`${WAREHOUSE}/status`);
 }
 
 export async function fetchLakeJdbcDrivers(): Promise<LakeApiResponse<LakeJdbcDriver[]>> {

@@ -240,6 +240,35 @@ export interface LakeWarehouseConfig {
   configured?: boolean;
 }
 
+export interface LakeDorisNode {
+  id?: string;
+  host?: string;
+  port?: string;
+  role?: string;
+  status?: string;
+  version?: string;
+  lastHeartbeat?: string;
+  usedPct?: string;
+}
+
+export interface LakeDorisStatus {
+  configured?: boolean;
+  status?: string;
+  message?: string;
+  version?: string;
+  frontendCount?: number;
+  aliveFrontendCount?: number;
+  backendCount?: number;
+  aliveBackendCount?: number;
+  databaseCount?: number;
+  masterHost?: string;
+  queryPort?: string;
+  httpPort?: string;
+  checkedAt?: string;
+  frontends?: LakeDorisNode[];
+  backends?: LakeDorisNode[];
+}
+
 export interface LakeJdbcDriver {
   id?: number;
   adapter?: LakeJdbcAdapter | string;

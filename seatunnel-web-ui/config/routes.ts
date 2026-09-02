@@ -50,6 +50,7 @@ const businessRoutes = [
 }));
 
 const hiddenRoutes = [
+  ['/lake/warehouse/config', './lake/warehouse/config', '/lake/warehouse'],
   ['/lake/resources/table/create', './lake/physical/wizard', '/lake/resources'],
   ['/lake/resources/table/:mappingId', './lake/physical/table-detail', '/lake/resources'],
   ['/lake/resources/:sourceDataSourceId', './lake/physical/detail', '/lake/resources'],

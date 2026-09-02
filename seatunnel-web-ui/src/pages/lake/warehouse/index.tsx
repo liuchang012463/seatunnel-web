@@ -1,347 +1,337 @@
 import {
+  ArrowRightOutlined,
   CheckCircleOutlined,
   CloudServerOutlined,
+  DatabaseOutlined,
   LinkOutlined,
   ReloadOutlined,
-  SafetyCertificateOutlined,
-  UploadOutlined,
+  SettingOutlined,
+  TableOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
-import { PageContainer } from '@ant-design/pro-components';
-import {
-  Alert,
-  Button,
-  Card,
-  Descriptions,
-  Form,
-  Input,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography,
-  Upload,
-  message,
-} from 'antd';
-import type { UploadProps } from 'antd';
+import { Button, Spin, Tag, Typography, message } from 'antd';
 import { history } from '@umijs/max';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  fetchLakeJdbcDrivers,
-  fetchLakeWarehouse,
-  registerLakeJdbcDriver,
-  saveLakeWarehouse,
-  testLakeWarehouse,
-} from '@/services/lake';
-import { fetchDataSourceAll } from '@/pages/data-source/service';
-import type { DataSourceRecord } from '@/pages/data-source/types';
-import HttpUtils from '@/utils/HttpUtils';
-import type { LakeApiResponse, LakeJdbcDriver, LakeWarehouseConfig } from '@/services/lake';
+import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
+import { fetchLakeDorisStatus, fetchLakeWarehouse } from '@/services/lake';
+import type { LakeDorisNode, LakeDorisStatus, LakeWarehouseConfig } from '@/services/lake';
 import './index.less';
 
-const { Paragraph, Text, Title } = Typography;
+const { Paragraph } = Typography;
 
-interface WarehouseFormValues {
-  name?: string;
-  jdbcUrl?: string;
-  username?: string;
-  password?: string;
-  driverClass?: string;
-  driverLocation?: string;
-  driverSha256?: string;
-  adoptDataSourceId?: number;
-}
+type StatusTone = 'success' | 'error' | 'muted';
 
-const responseError = (response: LakeApiResponse<unknown>, fallback: string) =>
-  response.msg || response.message || fallback;
-
-const statusMeta = (status?: string) => {
-  if (status === 'CONNECTED_SUCCESS') return { color: 'success', label: '连接正常' };
-  if (status === 'CONNECTED_FAILED') return { color: 'error', label: '连接失败' };
-  return { color: 'default', label: '尚未测试' };
+const statusMeta = (status?: string): { label: string; tone: StatusTone; description: string } => {
+  if (status === 'CONNECTED_SUCCESS') {
+    return { label: '运行正常', tone: 'success', description: 'Doris FE 已响应，集群节点状态已同步。' };
+  }
+  if (status === 'CONNECTED_FAILED') {
+    return { label: '连接异常', tone: 'error', description: '无法读取 Doris 集群状态，请检查连接配置。' };
+  }
+  return { label: '待配置', tone: 'muted', description: '完成 Doris 连接配置后，这里会展示真实集群状态。' };
 };
 
+const displayValue = (value?: number | string | null) =>
+  value === undefined || value === null || value === '' ? '--' : String(value);
+
+const formatTime = (value?: string) => {
+  if (!value) return '尚未检查';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.replace('T', ' ').replace(/\.\d+Z$/, '');
+  return date.toLocaleString('zh-CN', { hour12: false });
+};
+
+const hostFromJdbcUrl = (jdbcUrl?: string) => {
+  const authority = jdbcUrl?.match(/^jdbc:[^:]+:\/\/([^/]+)/i)?.[1];
+  const host = authority?.replace(/:\d+$/, '');
+  return host || 'localhost';
+};
+
+const nodeStatusLabel = (status?: string) => status === 'ALIVE' ? '在线' : '离线';
+
+const NodeRows: React.FC<{ nodes?: LakeDorisNode[]; kind: 'FE' | 'BE' }> = ({ nodes, kind }) => {
+  if (!nodes?.length) {
+    return (
+      <div className="lake-node-empty">
+        <DatabaseOutlined />
+        <span>{kind} 节点数据将在连接 Doris 后显示</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="lake-node-table-wrap">
+      <table className="lake-node-table">
+        <thead>
+          <tr>
+            <th>节点</th>
+            <th>角色</th>
+            <th>端口</th>
+            <th>状态</th>
+            <th>最近心跳</th>
+          </tr>
+        </thead>
+        <tbody>
+          {nodes.map((node, index) => {
+            const alive = node.status === 'ALIVE';
+            return (
+              <tr key={`${kind}-${node.id || node.host || index}`}>
+                <td>
+                  <div className="lake-node-name">{node.host || '--'}</div>
+                  <div className="lake-node-id">{node.id || `${kind}-${index + 1}`}</div>
+                </td>
+                <td>{node.role || '--'}</td>
+                <td>{node.port || '--'}</td>
+                <td>
+                  <span className={`lake-inline-status lake-inline-status--${alive ? 'success' : 'error'}`}>
+                    <span />
+                    {nodeStatusLabel(node.status)}
+                  </span>
+                </td>
+                <td>{node.lastHeartbeat || '--'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const MetricCard: React.FC<{
+  label: string;
+  value: string;
+  description: string;
+  icon: React.ReactNode;
+  tone?: StatusTone;
+}> = ({ label, value, description, icon, tone = 'success' }) => (
+  <div className="lake-cluster-metric">
+    <div className="lake-cluster-metric-topline">
+      <span>{label}</span>
+      <span className={`lake-cluster-metric-icon lake-cluster-metric-icon--${tone}`}>{icon}</span>
+    </div>
+    <div className={`lake-cluster-metric-value lake-cluster-metric-value--${tone}`}>{value}</div>
+    <div className="lake-cluster-metric-description">{description}</div>
+  </div>
+);
+
 const WarehousePage: React.FC = () => {
-  const [form] = Form.useForm<WarehouseFormValues>();
   const [config, setConfig] = useState<LakeWarehouseConfig>();
-  const [drivers, setDrivers] = useState<LakeJdbcDriver[]>([]);
-  const [legacyDorisSources, setLegacyDorisSources] = useState<DataSourceRecord[]>([]);
+  const [status, setStatus] = useState<LakeDorisStatus>();
   const [loading, setLoading] = useState(true);
-  const [testing, setTesting] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [registering, setRegistering] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [configResponse, driverResponse, dataSourceResponse] = await Promise.all([
+      const [configResponse, statusResponse] = await Promise.all([
         fetchLakeWarehouse(),
-        fetchLakeJdbcDrivers(),
-        fetchDataSourceAll(),
+        fetchLakeDorisStatus(),
       ]);
       if (configResponse.code === 0) {
         setConfig(configResponse.data || undefined);
-        if (configResponse.data) {
-          form.setFieldsValue({
-            name: configResponse.data.name,
-            jdbcUrl: configResponse.data.jdbcUrl,
-            username: configResponse.data.username,
-            driverClass: configResponse.data.driverClass,
-            driverLocation: configResponse.data.driverLocation,
-            driverSha256: configResponse.data.driverSha256,
-          });
-        }
       } else {
-        message.error(responseError(configResponse, '读取数仓配置失败'));
+        message.error(configResponse.msg || configResponse.message || '读取数据湖配置失败');
       }
-      if (driverResponse.code === 0) {
-        setDrivers(Array.isArray(driverResponse.data) ? driverResponse.data : []);
+      if (statusResponse.code === 0) {
+        setStatus(statusResponse.data || undefined);
       } else {
-        message.error(responseError(driverResponse, '读取驱动列表失败'));
-      }
-      if (dataSourceResponse.code === 0) {
-        const rows = Array.isArray(dataSourceResponse.data)
-          ? dataSourceResponse.data
-          : dataSourceResponse.data?.bizData || [];
-        setLegacyDorisSources((rows as DataSourceRecord[]).filter((item) =>
-          String(item.dbType || '').toUpperCase() === 'DORIS' && !item.systemManaged));
+        message.error(statusResponse.msg || statusResponse.message || '读取 Doris 集群状态失败');
       }
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '读取数仓配置失败');
+      message.error(error instanceof Error ? error.message : '读取数据湖状态失败');
     } finally {
       setLoading(false);
     }
-  }, [form]);
+  }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const driverOptions = useMemo(() => drivers
-    .filter((driver) => driver.adapter === 'MYSQL' && driver.verified !== false)
-    .map((driver) => ({
-      value: driver.driverLocation,
-      label: `${driver.fileName || driver.driverLocation} · ${driver.driverClass || '未填写驱动类'}`,
-    })), [drivers]);
-
-  const payload = (values: WarehouseFormValues) => ({
-    ...values,
-    name: values.name?.trim() || '湖 ODS 数仓',
-    jdbcUrl: values.jdbcUrl?.trim(),
-    username: values.username?.trim(),
-    driverLocation: values.driverLocation?.trim(),
-  });
-
-  const test = async () => {
-    try {
-      const fields: Array<keyof WarehouseFormValues> = ['jdbcUrl', 'username', 'driverLocation'];
-      if (!config?.passwordConfigured) fields.push('password');
-      const values = await form.validateFields(fields);
-      setTesting(true);
-      const response = await testLakeWarehouse(payload(values));
-      if (response.code !== 0) throw new Error(responseError(response, 'Doris 连接测试失败'));
-      setConfig((current) => ({ ...current, ...(response.data || {}), connStatus: response.data?.connStatus }));
-      if (response.data?.connStatus === 'CONNECTED_SUCCESS') {
-        message.success('Doris ODS 连接测试成功');
-      } else {
-        message.error(response.data?.lastError || '连接失败，请检查地址、账号、密码和驱动');
-      }
-    } catch (error) {
-      if ((error as { errorFields?: unknown })?.errorFields) return;
-      message.error(error instanceof Error ? error.message : 'Doris 连接测试失败');
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const save = async (values: WarehouseFormValues) => {
-    setSaving(true);
-    try {
-      const response = await saveLakeWarehouse(payload(values));
-      if (response.code !== 0 || !response.data) throw new Error(responseError(response, '保存数仓配置失败'));
-      setConfig(response.data);
-      form.setFieldValue('password', undefined);
-      message.success('数仓配置已保存，系统内置 Doris 数据源已同步');
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '保存数仓配置失败');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const uploadProps: UploadProps = {
-    accept: '.jar',
-    showUploadList: false,
-    beforeUpload: (file) => {
-      if (!file.name.toLowerCase().endsWith('.jar')) {
-        message.error('只允许上传 .jar 驱动文件');
-        return Upload.LIST_IGNORE;
-      }
-      return true;
-    },
-    customRequest: async ({ file, onSuccess, onError }) => {
-      const formData = new FormData();
-      formData.append('file', file as File);
-      formData.append('adapter', 'MYSQL');
-      setUploading(true);
-      try {
-        const response = await HttpUtils.postForm<LakeJdbcDriver>('/api/v1/lake/warehouse/drivers/upload', formData);
-        if (response.code !== 0) throw new Error(responseError(response, '驱动上传失败'));
-        message.success('驱动上传并校验成功');
-        onSuccess?.(response.data);
-        await load();
-        if (response.data?.driverLocation) form.setFieldValue('driverLocation', response.data.driverLocation);
-        if (response.data?.driverClass) form.setFieldValue('driverClass', response.data.driverClass);
-        if (response.data?.sha256) form.setFieldValue('driverSha256', response.data.sha256);
-      } catch (error) {
-        onError?.(error as Error);
-        message.error(error instanceof Error ? error.message : '驱动上传失败');
-      } finally {
-        setUploading(false);
-      }
-    },
-  };
-
-  const registerPreinstalledDriver = async () => {
-    try {
-      const values = await form.validateFields(['driverLocation', 'driverClass', 'driverSha256']);
-      if (!values.driverLocation) return;
-      setRegistering(true);
-      const location = values.driverLocation.trim();
-      const response = await registerLakeJdbcDriver({
-        adapter: 'MYSQL',
-        fileName: location.split('/').pop(),
-        driverLocation: location,
-        driverClass: values.driverClass?.trim(),
-        sha256: values.driverSha256?.trim(),
-      });
-      if (response.code !== 0 || !response.data) {
-        throw new Error(responseError(response, '预装驱动注册失败'));
-      }
-      message.success('预装驱动已注册并校验');
-      await load();
-    } catch (error) {
-      if ((error as { errorFields?: unknown })?.errorFields) return;
-      message.error(error instanceof Error ? error.message : '预装驱动注册失败');
-    } finally {
-      setRegistering(false);
-    }
-  };
-
-  const currentStatus = statusMeta(config?.connStatus);
+  const clusterStatus = useMemo(() => statusMeta(status?.status), [status?.status]);
+  const configured = Boolean(config?.configured || status?.configured);
+  const consoleUrl = `http://${hostFromJdbcUrl(config?.jdbcUrl)}:8030/home`;
+  const checkedAt = formatTime(status?.checkedAt);
+  const feEndpoint = status?.masterHost
+    ? `${status.masterHost}:${status.httpPort || '8030'}`
+    : '待配置';
+  const mysqlEndpoint = config?.jdbcUrl
+    ? `${hostFromJdbcUrl(config.jdbcUrl)}:${status?.queryPort || '9030'}`
+    : '待配置';
 
   return (
-    <PageContainer
-      title="数仓配置"
-      subTitle="湖能力始终可用；这里配置唯一的 Doris ODS 连接和离线 JDBC 驱动。"
-      extra={<Button icon={<ReloadOutlined />} onClick={() => void load()} loading={loading}>刷新</Button>}
-    >
-      <div className="lake-warehouse-page">
-        <Alert
-          className="lake-warehouse-banner"
-          type={config?.configured ? 'success' : 'info'}
-          showIcon
-          icon={config?.configured ? <CheckCircleOutlined /> : <CloudServerOutlined />}
-          message={config?.configured ? 'Doris ODS 已配置' : '还没有配置 Doris ODS'}
-          description={config?.configured
-            ? '湖控制面会直接使用此连接；数据源管理中的对应记录是系统内置只读投影。'
-            : '完成连接测试并保存后，系统会自动创建一个名为 LAKE_ODS_DORIS 的只读数据源投影。'}
-        />
-
-        <div className="lake-warehouse-grid">
-          <Card className="lake-warehouse-card" loading={loading}>
-            <div className="lake-warehouse-card-heading">
-              <div>
-                <Text className="lake-warehouse-kicker">ODS CONNECTION</Text>
-                <Title level={3}>Doris ODS 连接</Title>
-                <Paragraph type="secondary">密码只用于服务端加密保存，保存后不会回显。</Paragraph>
-              </div>
-              <Tag color={currentStatus.color}>{currentStatus.label}</Tag>
-            </div>
-            <Form form={form} layout="vertical" onFinish={save} requiredMark={false}>
-              <Form.Item name="name" label="配置名称">
-                <Input placeholder="例如：生产湖 ODS" />
-              </Form.Item>
-              <Form.Item name="adoptDataSourceId" label="复用历史 Doris 数据源（可选）" extra="首次配置时可复用已有 Doris 数据源 ID，已有任务无需改动。">
-                <Select
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="不选择则自动创建系统内置数据源"
-                  options={legacyDorisSources.map((item) => ({
-                    // Keep the string form so large database IDs do not lose
-                    // precision in a browser before Spring converts them to Long.
-                    value: item.id,
-                    label: `${item.name || `Doris #${item.id}`} · ${item.jdbcUrl || '历史连接'}`,
-                  }))}
-                />
-              </Form.Item>
-              <Form.Item name="jdbcUrl" label="JDBC URL" rules={[{ required: true, message: '请输入 Doris JDBC URL' }]}>
-                <Input placeholder="jdbc:mysql://doris-fe:9030/" />
-              </Form.Item>
-              <div className="lake-warehouse-form-row">
-                <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]}>
-                  <Input placeholder="Doris 账号" />
-                </Form.Item>
-                <Form.Item name="password" label={config?.passwordConfigured ? '密码（留空保持不变）' : '密码'} rules={config?.passwordConfigured ? [] : [{ required: true, message: '请输入密码' }]}>
-                  <Input.Password placeholder={config?.passwordConfigured ? '已加密保存，留空即可' : '请输入密码'} autoComplete="new-password" />
-                </Form.Item>
-              </div>
-              <div className="lake-warehouse-form-row">
-                <Form.Item name="driverLocation" label="本地 JDBC 驱动" rules={[{ required: true, message: '请选择或上传驱动' }]}>
-                  <Input list="lake-mysql-driver-options" placeholder="mysql-connector-j.jar（位于 jdbc-drivers）" />
-                </Form.Item>
-                <Form.Item name="driverClass" label="驱动类" initialValue="com.mysql.cj.jdbc.Driver" rules={[{ required: true, message: '请输入驱动类' }]}>
-                  <Input placeholder="com.mysql.cj.jdbc.Driver" />
-                </Form.Item>
-              </div>
-              <datalist id="lake-mysql-driver-options">
-                {driverOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </datalist>
-              <Form.Item name="driverSha256" label="SHA-256（可选，服务端会重新计算）">
-                <Input placeholder="上传或注册后自动填充" />
-              </Form.Item>
-              <div className="lake-warehouse-actions">
-                <Button icon={<LinkOutlined />} loading={testing} onClick={() => void test()}>连接测试</Button>
-                <Button type="primary" htmlType="submit" loading={saving} icon={<SafetyCertificateOutlined />}>测试并保存</Button>
-              </div>
-            </Form>
-            {config?.systemDataSourceId ? (
-              <Descriptions className="lake-warehouse-summary" size="small" column={1}>
-                <Descriptions.Item label="系统投影 ID">{config.systemDataSourceId}</Descriptions.Item>
-                <Descriptions.Item label="配置版本">v{config.configVersion || 1}</Descriptions.Item>
-              </Descriptions>
-            ) : null}
-          </Card>
-
-          <Card className="lake-warehouse-card" title="离线驱动" extra={<Space>
-            <Button icon={<SafetyCertificateOutlined />} loading={registering} onClick={() => void registerPreinstalledDriver()}>注册预装驱动</Button>
-            <Upload {...uploadProps}><Button icon={<UploadOutlined />} loading={uploading}>上传 .jar</Button></Upload>
-          </Space>}>
-            <Paragraph type="secondary">运行时只读取本机或共享 jdbc-drivers 目录，不访问 Maven Central 或其他外部地址。</Paragraph>
-            <Table<LakeJdbcDriver>
-              rowKey={(record) => String(record.id || record.driverLocation)}
-              size="small"
-              pagination={false}
-              dataSource={drivers}
-              locale={{ emptyText: '暂无已校验驱动，请上传或注册预装驱动' }}
-              columns={[
-                { title: '适配器', dataIndex: 'adapter', width: 110, render: (value: string) => <Tag color="blue">{value}</Tag> },
-                { title: '文件', dataIndex: 'fileName', ellipsis: true },
-                { title: '驱动类', dataIndex: 'driverClass', ellipsis: true },
-                { title: '版本', dataIndex: 'version', width: 72, render: (value: number) => value ? `v${value}` : '-' },
-                { title: '状态', dataIndex: 'status', width: 110, render: (value: string, record) => <Tag color={record.verified ? 'success' : 'warning'}>{record.verified ? '已校验' : value || '待校验'}</Tag> },
-              ]}
-            />
-            <div className="lake-warehouse-next-step">
-              <Text strong>下一步</Text>
-              <Text type="secondary">保存后可回到数据源管理查看系统内置只读投影。</Text>
-              <Button type="link" onClick={() => history.push('/data-source')}>打开数据源管理</Button>
-            </div>
-          </Card>
+    <div className="lake-warehouse-overview">
+      <header className="lake-overview-header">
+        <div className="lake-overview-heading">
+          <div className="lake-overview-icon"><CloudServerOutlined /></div>
+          <div>
+            <h1>数据湖管理</h1>
+            <Paragraph>统一管理 Doris 数据湖连接、集群状态与 ODS 资源，让入湖链路始终可见。</Paragraph>
+          </div>
         </div>
-      </div>
-    </PageContainer>
+        <div className="lake-overview-actions">
+          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新状态</Button>
+          <Button type="primary" icon={<SettingOutlined />} onClick={() => history.push('/lake/warehouse/config')}>
+            配置 Doris
+          </Button>
+        </div>
+      </header>
+
+      <section className="lake-warehouse-shell">
+        <aside className="lake-warehouse-sidebar">
+          <div className="lake-sidebar-eyebrow">DATA LAKE</div>
+          <div className="lake-sidebar-title">数据湖列表</div>
+
+          <button type="button" className="lake-sidebar-item lake-sidebar-item--active">
+            <span className="lake-sidebar-item-icon"><DatabaseIcons dbType="DORIS" width="20" height="20" /></span>
+            <span className="lake-sidebar-item-copy">
+              <strong>Doris 数据湖</strong>
+              <small>ODS 主存储</small>
+            </span>
+            <span className={`lake-status-dot lake-status-dot--${clusterStatus.tone}`} />
+          </button>
+
+          <div className="lake-sidebar-summary">
+            <div className="lake-sidebar-summary-row"><span>连接状态</span><strong>{clusterStatus.label}</strong></div>
+            <div className="lake-sidebar-summary-row"><span>查询端口</span><strong>{displayValue(status?.queryPort || '9030')}</strong></div>
+            <div className="lake-sidebar-summary-row"><span>配置版本</span><strong>{config?.configVersion ? `v${config.configVersion}` : '--'}</strong></div>
+          </div>
+
+          <nav className="lake-warehouse-nav" aria-label="数据湖导航">
+            <div className="lake-warehouse-nav-label">管理入口</div>
+            <button type="button" className="lake-warehouse-nav-item lake-warehouse-nav-item--active">
+              <CloudServerOutlined /> 集群概览
+            </button>
+            <button type="button" className="lake-warehouse-nav-item" onClick={() => history.push('/lake/warehouse/config')}>
+              <SettingOutlined /> 连接配置
+            </button>
+            <button type="button" className="lake-warehouse-nav-item" onClick={() => history.push('/lake/resources')}>
+              <TableOutlined /> 物理入湖
+            </button>
+            <button type="button" className="lake-warehouse-nav-item" onClick={() => history.push('/lake/logical-access')}>
+              <LinkOutlined /> 逻辑入湖
+            </button>
+          </nav>
+
+          <div className="lake-sidebar-foot">
+            <span>最近检查</span>
+            <strong>{checkedAt}</strong>
+          </div>
+        </aside>
+
+        <main className="lake-warehouse-content">
+          <section className="lake-cluster-hero">
+            <div className="lake-cluster-hero-main">
+              <div className="lake-cluster-logo"><DatabaseIcons dbType="DORIS" width="30" height="30" /></div>
+              <div className="lake-cluster-hero-copy">
+                <div className="lake-cluster-title-row">
+                  <h2>Doris 数据湖</h2>
+                  <Tag className={`lake-status-tag lake-status-tag--${clusterStatus.tone}`}>
+                    <span className="lake-status-tag-dot" />
+                    {clusterStatus.label}
+                  </Tag>
+                </div>
+                <div className="lake-cluster-subtitle">Doris ODS Cluster</div>
+                <div className="lake-cluster-endpoints">
+                  <span><i /> FE HTTP {feEndpoint}</span>
+                  <span><i /> MySQL {mysqlEndpoint}</span>
+                </div>
+                <div className={`lake-cluster-description lake-cluster-description--${clusterStatus.tone}`}>
+                  {clusterStatus.tone === 'success' ? <CheckCircleOutlined /> : <WarningOutlined />}
+                  <span>{clusterStatus.description}</span>
+                </div>
+              </div>
+            </div>
+            <div className="lake-cluster-hero-actions">
+              <a href={consoleUrl} target="_blank" rel="noreferrer" className="lake-console-link">
+                打开 Doris 管理页 <ArrowRightOutlined />
+              </a>
+              <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新指标</Button>
+            </div>
+          </section>
+
+          {!configured ? (
+            <div className="lake-cluster-notice">
+              <div className="lake-cluster-notice-icon"><SettingOutlined /></div>
+              <div>
+                <strong>还没有配置数据湖连接</strong>
+                <p>先配置 Doris FE 节点、查询端口和本地 JDBC 驱动，保存后即可在这里查看集群健康状态。</p>
+              </div>
+              <Button type="primary" onClick={() => history.push('/lake/warehouse/config')}>开始配置</Button>
+            </div>
+          ) : null}
+
+          <section className="lake-cluster-section">
+            <div className="lake-section-heading">
+              <div>
+                <h3>集群状态</h3>
+                <p>从 Doris 集群只读元数据提取的实时概览</p>
+              </div>
+              <span className="lake-section-caption">{checkedAt}</span>
+            </div>
+            <div className="lake-cluster-metrics">
+              <MetricCard
+                label="FE 节点"
+                value={status ? `${displayValue(status.aliveFrontendCount)} / ${displayValue(status.frontendCount)}` : '--'}
+                description="在线 / 总数"
+                icon={<CloudServerOutlined />}
+                tone={status && status.frontendCount !== status.aliveFrontendCount ? 'error' : clusterStatus.tone}
+              />
+              <MetricCard
+                label="BE 节点"
+                value={status ? `${displayValue(status.aliveBackendCount)} / ${displayValue(status.backendCount)}` : '--'}
+                description="在线 / 总数"
+                icon={<DatabaseOutlined />}
+                tone={status && status.backendCount !== status.aliveBackendCount ? 'error' : clusterStatus.tone}
+              />
+              <MetricCard
+                label="数据库"
+                value={displayValue(status?.databaseCount)}
+                description="可发现的数据库数量"
+                icon={<TableOutlined />}
+                tone={clusterStatus.tone}
+              />
+              <MetricCard
+                label="Doris 版本"
+                value={displayValue(status?.version)}
+                description="当前集群版本"
+                icon={<LinkOutlined />}
+                tone={clusterStatus.tone}
+              />
+            </div>
+          </section>
+
+          <section className="lake-node-section-grid">
+            <div className="lake-node-panel">
+              <div className="lake-node-panel-heading">
+                <div><h3>FE 节点</h3><p>Frontend · 负责元数据与查询协调</p></div>
+                <span>{displayValue(status?.aliveFrontendCount)} 在线</span>
+              </div>
+              {loading ? <div className="lake-loading"><Spin size="small" /> 正在同步节点状态</div> : <NodeRows nodes={status?.frontends} kind="FE" />}
+            </div>
+            <div className="lake-node-panel">
+              <div className="lake-node-panel-heading">
+                <div><h3>BE 节点</h3><p>Backend · 负责数据存储与计算</p></div>
+                <span>{displayValue(status?.aliveBackendCount)} 在线</span>
+              </div>
+              {loading ? <div className="lake-loading"><Spin size="small" /> 正在同步节点状态</div> : <NodeRows nodes={status?.backends} kind="BE" />}
+            </div>
+          </section>
+
+          <section className="lake-quick-links">
+            <div>
+              <div className="lake-sidebar-eyebrow">NEXT STEP</div>
+              <h3>继续管理数据湖资源</h3>
+              <p>连接状态稳定后，可以进入物理入湖或逻辑入湖继续配置数据资产。</p>
+            </div>
+            <div className="lake-quick-link-actions">
+              <Button onClick={() => history.push('/lake/resources')}>物理入湖 <ArrowRightOutlined /></Button>
+              <Button onClick={() => history.push('/lake/logical-access')}>逻辑入湖 <ArrowRightOutlined /></Button>
+            </div>
+          </section>
+        </main>
+      </section>
+    </div>
   );
 };
 

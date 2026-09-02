@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "Doris ODS 数仓配置")
+@Schema(description = "Doris ODS 数据湖配置")
 public class LakeWarehouseConfigDTO {
 
     private String name;

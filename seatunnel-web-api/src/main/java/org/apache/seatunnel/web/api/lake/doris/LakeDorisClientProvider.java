@@ -74,6 +74,6 @@ public class LakeDorisClientProvider {
 
     private static LakeServiceException unavailable() {
         return new LakeServiceException(LakeErrorCode.LAKE_DORIS_UNAVAILABLE,
-                "湖 ODS 数仓不可用，请先完成数仓配置并检查连接");
+                "湖 ODS 数据湖不可用，请先完成数据湖配置并检查连接");
     }
 }

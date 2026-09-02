@@ -447,7 +447,7 @@ const DataSourcePage: React.FC = () => {
       width: 220,
       render: (_value, record) => {
         if (record.systemManaged) {
-          return <Button type="link" size="small" onClick={handleOpenWarehouse}>湖 ODS 投影 · 数仓配置</Button>;
+          return <Button type="link" size="small" onClick={handleOpenWarehouse}>湖 ODS 投影 · 数据湖管理</Button>;
         }
         const ready = record.metadataSyncStatus === 'READY';
         const disabled = !ready || record.status === 'REVOKED';
@@ -473,7 +473,7 @@ const DataSourcePage: React.FC = () => {
           return <Space size={0}>
             <Tooltip title="查看探查结果"><Button type="link" size="small" icon={<ApartmentOutlined />} disabled={isDeleting} onClick={() => handleViewExploration(record)} /></Tooltip>
             <Tooltip title="测试连接"><Button type="link" size="small" icon={<ApiOutlined />} disabled={isDeleting} onClick={() => void handleTestConnection(record)} /></Tooltip>
-            <Button type="link" size="small" onClick={handleOpenWarehouse}>数仓配置</Button>
+            <Button type="link" size="small" onClick={handleOpenWarehouse}>数据湖管理</Button>
           </Space>;
         }
         return (
