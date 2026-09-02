@@ -1,11 +1,9 @@
 import { Form, Input, Radio } from 'antd';
-import DataSourceSelect, {
-  generateDataSourceOptions,
-  generateSourceDataSourceOptions,
-} from '../../DataSourceSelect';
-import IconRightArrow from '../../IconRightArrow';
-import type { SyncMode } from '../types';
-import ModeCard from './ModeCard';
+import DataSourceSelect from '@/pages/batch-link-up/DataSourceSelect';
+import IconRightArrow from '@/pages/batch-link-up/IconRightArrow';
+import ModeCard from '@/pages/batch-link-up/detail/components/ModeCard';
+import type { SyncMode } from '@/pages/batch-link-up/detail/types';
+import { generateFileTypeSourceOptions, generateFileTypeTargetOptions } from '../options';
 
 const { TextArea } = Input;
 
@@ -15,22 +13,21 @@ interface Props {
   handleSourceChange: (value: string, option: any) => void;
   handleTargetChange: (value: string, option: any) => void;
   mode?: SyncMode;
-  setMode: (value: SyncMode) => void;
+  setMode?: (value: SyncMode) => void;
 }
 
-const BaseConfigSection: React.FC<Props> = ({
+const FileTypeBaseInfoSection: React.FC<Props> = ({
   sourceType,
   targetType,
   handleSourceChange,
   handleTargetChange,
-  mode,
+  mode = 'FILE_SYNC',
   setMode,
 }) => {
   return (
     <div className="p-6">
-      {/* 整体卡片 */}
       <div className="rounded-[24px] bg-white shadow-sm space-y-6">
-        {/* ① 数据同步方式（主视觉块） */}
+        {/* ① 数据同步方式 */}
         <div className="rounded-2xl border border-[#E4E7EC] bg-[#FAFBFC] p-5">
           <div className="mb-3 text-[14px] font-medium text-[#344054]">数据同步方式</div>
 
@@ -38,8 +35,8 @@ const BaseConfigSection: React.FC<Props> = ({
             <DataSourceSelect
               value={sourceType}
               onChange={handleSourceChange}
-              dataSourceOptions={generateSourceDataSourceOptions()}
-              placeholder="请选择来源"
+              dataSourceOptions={generateFileTypeSourceOptions()}
+              placeholder="本地上传或远程文件"
               prefix="来源"
               width="48%"
             />
@@ -51,11 +48,16 @@ const BaseConfigSection: React.FC<Props> = ({
             <DataSourceSelect
               value={targetType}
               onChange={handleTargetChange}
-              dataSourceOptions={generateDataSourceOptions()}
+              dataSourceOptions={generateFileTypeTargetOptions()}
               placeholder="请选择去向"
               prefix="去向"
               width="48%"
             />
+          </div>
+
+          <div className="mt-3 text-[12px] leading-5 text-[#667085]">
+            来源支持本地上传（LocalFile）与 FTP/SFTP/S3/MinIO 远程文件，按目录或 Prefix
+            传输二进制流，不涉及表、字段或 SQL 映射。
           </div>
         </div>
 
@@ -70,7 +72,7 @@ const BaseConfigSection: React.FC<Props> = ({
               rules={[{ required: true, message: '请输入任务名称' }]}
               className="mb-0"
             >
-              <Input placeholder="例如：MySQL → Oracle 用户表同步" className="!h-[36px] !rounded-[12px]" />
+              <Input placeholder="例如：本地上传 → S3 影像归档" className="!h-[36px] !rounded-[12px]" />
             </Form.Item>
 
             <Form.Item label="任务描述" name="jobDesc" className="mb-0">
@@ -79,56 +81,20 @@ const BaseConfigSection: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* ③ 配置模式 */}
+        {/* ③ 配置模式：文件引接固定为文件向导（二进制流） */}
         <div>
           <div className="mb-3 text-[14px] font-medium text-[#344054]">配置模式</div>
 
-          <Form.Item name="mode" initialValue="GUIDE_SINGLE" className="mb-0">
+          <Form.Item name="mode" initialValue="FILE_SYNC" className="mb-0">
             <Radio.Group className="w-full">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <ModeCard
-                  value="GUIDE_SINGLE"
-                  current={mode}
-                  title="单表向导"
-                  desc="适合快速创建单表同步任务，配置路径更清晰。"
-                  tag="推荐"
-                  onSelect={setMode}
-                />
-
-                <ModeCard
-                  value="GUIDE_SINGLE_INCREMENTAL"
-                  current={mode}
-                  title="单表增量微批"
-                  desc="按调度周期接入新增或变更数据。"
-                  tag="增量"
-                  onSelect={setMode}
-                />
-
-                <ModeCard
-                  value="GUIDE_MULTI"
-                  current={mode}
-                  title="多表向导"
-                  desc="适合批量配置多张表，统一管理同步关系。"
-                  tag="批量"
-                  onSelect={setMode}
-                />
-
-                <ModeCard
-                  value="SCRIPT"
-                  current={mode}
-                  title="脚本模式"
-                  desc="适合更复杂的同步场景，灵活度更高。"
-                  tag="高级"
-                  onSelect={setMode}
-                />
-
                 <ModeCard
                   value="FILE_SYNC"
                   current={mode}
                   title="文件向导"
                   desc="按目录或 Prefix 同步二进制文件，来源支持本地上传与远程文件。"
                   tag="二进制流"
-                  onSelect={setMode}
+                  onSelect={(value) => setMode?.(value)}
                 />
               </div>
             </Radio.Group>
@@ -139,4 +105,4 @@ const BaseConfigSection: React.FC<Props> = ({
   );
 };
 
-export default BaseConfigSection;
+export default FileTypeBaseInfoSection;

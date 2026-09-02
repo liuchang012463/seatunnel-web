@@ -36,7 +36,7 @@ export type ConnectivityStatus = "idle" | "loading" | "success" | "error";
 export type LinkScene = "offline" | "realtime";
 
 interface SelectOption {
-  label: string;
+  label: React.ReactNode;
   value: string;
 }
 
@@ -89,6 +89,10 @@ interface CommonClientLinkSectionProps {
     side: "source" | "target";
     triggerMode: "AUTO" | "MANUAL";
   }) => Record<string, any>;
+
+  /** Overrides the 数据源类型 dropdown options, e.g. file-only task flows. */
+  sourceDataSourceTypeOptions?: SelectOption[];
+  targetDataSourceTypeOptions?: SelectOption[];
 }
 
 const statusMap: Record<
@@ -461,6 +465,9 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   targetCreateText = "新建去向数据源",
 
   getVerifyExtraParams,
+
+  sourceDataSourceTypeOptions: customSourceTypeOptions,
+  targetDataSourceTypeOptions: customTargetTypeOptions,
 }) => {
   const [form] = Form.useForm();
   const [clientForm] = Form.useForm();
@@ -473,12 +480,12 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   }>({});
 
   const sourceDataSourceTypeOptions = useMemo(
-    () => generateSourceDataSourceOptions(),
-    [],
+    () => customSourceTypeOptions ?? generateSourceDataSourceOptions(),
+    [customSourceTypeOptions],
   );
   const targetDataSourceTypeOptions = useMemo(
-    () => generateDataSourceOptions(),
-    [],
+    () => customTargetTypeOptions ?? generateDataSourceOptions(),
+    [customTargetTypeOptions],
   );
 
   const [sourceDataSources, setSourceDataSources] = useState<any[]>([]);
