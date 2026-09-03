@@ -437,9 +437,6 @@ export const dataSourceCatalogApi = {
     files: File[],
   ): Promise<{ code: number; data: any[]; message?: string }> => {
     const formData = new FormData();
-    if (path) {
-      formData.append('path', path);
-    }
     files.forEach((file) => formData.append('files', file));
     const query = path ? `?path=${encodeURIComponent(path)}` : '';
     return HttpUtils.postForm(`${apiPrefixCatalog}/files/${id}/upload${query}`, formData);

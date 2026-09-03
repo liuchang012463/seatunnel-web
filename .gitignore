@@ -74,4 +74,11 @@ AGENTS.md
 .mavenrc
 tmp/
 
+.zcode/.playwright-mcp/
 .zcode/
+batch-*.png
+file-*.png
+datasource-*.png
+ftp-*.png
+preview-request.json
+.playwright-mcp/

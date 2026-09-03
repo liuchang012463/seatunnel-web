@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import ReactFlow, { Background, MiniMap } from 'reactflow';
+import ReactFlow, { Background, MiniMap, ReactFlowProvider, useReactFlow } from 'reactflow';
 import 'reactflow/dist/style.css';
 import CustomNode from '../../workflow/nodes';
 import CustomEdge from '../../workflow/edge';
@@ -14,11 +14,8 @@ interface FileSyncCanvasProps {
   datasourceOptions: Array<{ label: string; value: string; dbType: string }>;
 }
 
-/**
- * 文件引接固定为 来源 → 去向 的两节点链路，节点不可增删；
- * 点击节点在画布右侧弹出配置面板。
- */
-const FileSyncCanvas: React.FC<FileSyncCanvasProps> = ({
+/** 内部画布：使用 ReactFlowProvider 让 fitView 在容器渲染后稳定地触发。 */
+const FileSyncCanvasInner: React.FC<FileSyncCanvasProps> = ({
   nodes,
   edges,
   onNodesChange,
@@ -26,6 +23,7 @@ const FileSyncCanvas: React.FC<FileSyncCanvasProps> = ({
   datasourceOptions,
 }) => {
   const [selectedNode, setSelectedNode] = useState<any>(null);
+  const { fitView } = useReactFlow();
 
   useEffect(() => {
     if (!selectedNode) return;
@@ -35,6 +33,13 @@ const FileSyncCanvas: React.FC<FileSyncCanvasProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes]);
+
+  // 节点初次加载后等容器布局稳定再 fitView，确保节点落在画布可视区内。
+  useEffect(() => {
+    const timer = setTimeout(() => fitView({ padding: 0.4, duration: 0 }), 100);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes.length]);
 
   const nodeTypes = useMemo(() => ({ custom: CustomNode }), []);
   const edgeTypes = useMemo(() => ({ custom: CustomEdge }), []);
@@ -58,7 +63,7 @@ const FileSyncCanvas: React.FC<FileSyncCanvasProps> = ({
   );
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full min-h-[420px] w-full">
       <ReactFlow
         nodes={nodes}
         edges={wrappedEdges}
@@ -70,11 +75,9 @@ const FileSyncCanvas: React.FC<FileSyncCanvasProps> = ({
         nodesDraggable
         nodesConnectable={false}
         deleteKeyCode={null}
-        minZoom={0.25}
-        maxZoom={1}
-        fitView
-        fitViewOptions={{ padding: 0.3, minZoom: 0.25, maxZoom: 0.75 }}
-        className="reactflow-wrapper pointer-mode"
+        minZoom={0.1}
+        maxZoom={1.5}
+        className="react-flow-wrapper pointer-mode"
       >
         <Background gap={[14, 14]} size={2} color="#8585ad26" />
         <MiniMap
@@ -106,5 +109,11 @@ const FileSyncCanvas: React.FC<FileSyncCanvasProps> = ({
     </div>
   );
 };
+
+const FileSyncCanvas: React.FC<FileSyncCanvasProps> = (props) => (
+  <ReactFlowProvider>
+    <FileSyncCanvasInner {...props} />
+  </ReactFlowProvider>
+);
 
 export default FileSyncCanvas;

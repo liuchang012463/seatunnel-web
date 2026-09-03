@@ -30,6 +30,9 @@ public final class LocalPathUtils {
     /**
      * Resolves {@code relativePath} ("" or "/" means the base directory itself) under
      * {@code basePath}, guaranteeing the result stays inside the base directory.
+     * Absolute paths that point inside the base directory (as returned by
+     * {@link org.apache.seatunnel.plugin.datasource.api.datasource.FileDataSourceCatalog
+     * listEntries}) are accepted as-is.
      */
     public static Path resolveWithin(Path basePath, String relativePath) {
         String cleaned = StringUtils.trimToEmpty(relativePath);
@@ -37,11 +40,12 @@ public final class LocalPathUtils {
         if (cleaned.isEmpty() || "/".equals(cleaned)) {
             resolved = basePath;
         } else {
-            Path relative = Paths.get(cleaned);
-            if (relative.isAbsolute()) {
-                relative = relative.getRoot().relativize(relative);
+            Path candidate = Paths.get(cleaned);
+            if (candidate.isAbsolute()) {
+                resolved = candidate.normalize();
+            } else {
+                resolved = basePath.resolve(candidate).normalize();
             }
-            resolved = basePath.resolve(relative).normalize();
         }
         if (!resolved.startsWith(basePath)) {
             throw new IllegalArgumentException("Path escapes the datasource base directory: " + relativePath);

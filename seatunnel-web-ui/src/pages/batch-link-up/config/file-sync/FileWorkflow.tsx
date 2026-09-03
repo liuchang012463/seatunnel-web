@@ -28,6 +28,7 @@ import {
   generateFileSyncCheckList,
   groupFileSyncCheckListByNode,
 } from './checks';
+import { connectorForFileType } from './support';
 import FileSyncCanvas from './FileSyncCanvas';
 
 type PageScene = 'create' | 'edit';
@@ -57,8 +58,14 @@ interface FileWorkflowProps {
 const buildInitialGraph = (params?: any) => {
   const workflow = params?.workflow || {};
   if (Array.isArray(workflow?.nodes) && workflow.nodes.length > 0) {
+    // 兜底补齐 position（历史数据可能缺省），type 统一归一为 'custom'。
+    const nodes = workflow.nodes.map((node: any, index: number) => ({
+      ...node,
+      type: 'custom',
+      position: node?.position || { x: index === 0 ? 80 : 480, y: 160 },
+    }));
     return {
-      nodes: workflow.nodes,
+      nodes,
       edges: workflow.edges,
     };
   }
@@ -287,7 +294,7 @@ export default function FileWorkflow({
           label: item.name,
           value: String(item.id),
           dbType: item.dbType,
-          connectorType: item.connectorType,
+          connectorType: connectorForFileType(item.dbType),
         })),
       );
     });
@@ -404,6 +411,31 @@ export default function FileWorkflow({
     const sourceConfig = sourceNode?.data?.config || {};
     const sinkConfig = sinkNode?.data?.config || {};
 
+    // 数据源列表记录不带 connectorType，按 dbType 兜底推导，保证后端可路由到插件 builder。
+    const withConnector = (config: Record<string, any>) => ({
+      ...config,
+      pluginName: config.pluginName || connectorForFileType(config.dbType),
+      connectorType: config.connectorType || connectorForFileType(config.dbType),
+    });
+
+    // 后端 builder 从节点 data 顶层读取 dbType/connectorType，与 config 内容保持一致。
+    // type 固定为 'custom'（ReactFlow nodeTypes 注册键），来源/去向由 data.nodeType 区分。
+    // position 必须保留，编辑回显时 ReactFlow 需要它。
+    const toNode = (node: any, nodeType: 'source' | 'sink', config: Record<string, any>) => ({
+      id: node?.id || `file-${nodeType}`,
+      type: 'custom',
+      position: node?.position || (nodeType === 'source' ? { x: 80, y: 160 } : { x: 480, y: 160 }),
+      data: {
+        nodeType,
+        title: config.dbType,
+        description: nodeType === 'source' ? '读取来源文件' : '写入目标端文件',
+        dbType: config.dbType,
+        pluginName: config.pluginName,
+        connectorType: config.connectorType,
+        config,
+      },
+    });
+
     return {
       id: jobDefinitionId,
       basic: {
@@ -415,16 +447,8 @@ export default function FileWorkflow({
       },
       workflow: {
         nodes: [
-          {
-            id: sourceNode?.id || 'file-source',
-            type: 'source',
-            data: { nodeType: 'source', config: sourceConfig },
-          },
-          {
-            id: sinkNode?.id || 'file-sink',
-            type: 'sink',
-            data: { nodeType: 'sink', config: sinkConfig },
-          },
+          toNode(sourceNode, 'source', withConnector(sourceConfig)),
+          toNode(sinkNode, 'sink', withConnector(sinkConfig)),
         ],
         edges: [
           {
