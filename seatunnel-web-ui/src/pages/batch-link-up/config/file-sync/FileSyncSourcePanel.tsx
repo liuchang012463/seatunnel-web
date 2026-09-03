@@ -1,8 +1,9 @@
-import { FolderOpenOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Button, Input, InputNumber, Radio, Segmented, Select, Switch, Tooltip, Upload, message } from 'antd';
-import { Cloud, FolderUp } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { FolderOpenOutlined, UploadOutlined } from '@ant-design/icons';
+import { Button, Input, InputNumber, Radio, Select, Switch, message } from 'antd';
+import { Cloud, FileUp, FolderUp, Trash2, UploadCloud } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 import PanelShell from '../../workflow/panel/components/PanelShell';
+import { fileUploadApi } from '../../api';
 import { dataSourceCatalogApi } from '@/pages/data-source/service';
 import { canUseIncrementalFileSync, fileDataSourceLabel } from './support';
 import DirectoryPickerModal from './DirectoryPickerModal';
@@ -10,9 +11,18 @@ import type { FileDataSourceType } from './support';
 import '@/pages/batch-link-up/workflow/panel/components/PanelShell/index.less';
 import '@/pages/batch-link-up/workflow/panel/components/SourcePanel/index.less';
 
-interface UploadFileRecord {
-  name: string;
+interface UploadAsset {
+  id?: string | number;
+  relativePath: string;
+  originalName?: string;
   size?: number;
+  contentType?: string;
+  status?: string;
+}
+
+interface PickedFile {
+  file: File;
+  relativePath: string;
 }
 
 interface FileSyncSourcePanelProps {
@@ -25,6 +35,7 @@ interface FileSyncSourcePanelProps {
     dbType: string;
     connectorType?: string;
   }>;
+  jobDefinitionId?: string | number;
 }
 
 const formatSize = (size?: number) => {
@@ -34,27 +45,80 @@ const formatSize = (size?: number) => {
   return `${size} B`;
 };
 
+const fileRelativePath = (file: File) =>
+  String((file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name);
+
+const readEntry = (entry: any): Promise<any[]> =>
+  new Promise((resolve, reject) => {
+    entry.createReader().readEntries(resolve, reject);
+  });
+
+const readEntryFile = (entry: any): Promise<File> =>
+  new Promise((resolve, reject) => entry.file(resolve, reject));
+
+const collectEntry = async (entry: any, prefix = ''): Promise<PickedFile[]> => {
+  if (entry.isFile) {
+    const file = await readEntryFile(entry);
+    return [{ file, relativePath: `${prefix}${file.name}` }];
+  }
+
+  if (!entry.isDirectory) return [];
+  const nextPrefix = `${prefix}${entry.name}/`;
+  const children: any[] = [];
+  let page: any[] = [];
+  do {
+    page = await readEntry(entry);
+    children.push(...page);
+  } while (page.length > 0);
+
+  const result: PickedFile[] = [];
+  for (const child of children) {
+    result.push(...(await collectEntry(child, nextPrefix)));
+  }
+  return result;
+};
+
+const collectDroppedFiles = async (dataTransfer: DataTransfer): Promise<PickedFile[]> => {
+  const items = Array.from(dataTransfer.items || []);
+  const entries = items
+    .map((item) => (item as any).webkitGetAsEntry?.())
+    .filter(Boolean);
+  if (entries.length > 0) {
+    const result: PickedFile[] = [];
+    for (const entry of entries) {
+      result.push(...(await collectEntry(entry)));
+    }
+    return result;
+  }
+
+  return Array.from(dataTransfer.files || []).map((file) => ({
+    file,
+    relativePath: fileRelativePath(file),
+  }));
+};
+
 const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
   selectedNode,
   onClose,
   onNodeDataChange,
   datasourceOptions,
+  jobDefinitionId,
 }) => {
   const config = selectedNode?.data?.config || {};
-  const readMode = String(config.readMode || 'upload');
-  const isUpload = readMode === 'upload';
+  const isWebUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
+  const isRemote = !isWebUpload;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [refreshToken, setRefreshToken] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const assets: UploadAsset[] = Array.isArray(config.uploadedAssets)
+    ? config.uploadedAssets
+    : [];
 
   const filteredOptions = useMemo(
-    () =>
-      datasourceOptions.filter((item) =>
-        isUpload
-          ? item.dbType === 'LOCAL_FILE'
-          : item.dbType !== 'LOCAL_FILE',
-      ),
-    [datasourceOptions, isUpload],
+    () => datasourceOptions.filter((item) => ['FTP', 'SFTP', 'S3', 'MINIO'].includes(item.dbType)),
+    [datasourceOptions],
   );
 
   const updateConfig = (patch: Record<string, any>) => {
@@ -64,89 +128,114 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
     });
   };
 
-  const handleReadModeChange = (value: string | number) => {
-    const nextMode = String(value);
-    if (nextMode === readMode) return;
-
-    // 切换本地上传/远程文件时，数据源类型与实例需要重新选择。
-    onNodeDataChange(selectedNode.id, {
-      ...selectedNode.data,
-      config: {
-        ...config,
-        readMode: nextMode,
-        dbType: nextMode === 'upload' ? 'LOCAL_FILE' : '',
-        pluginName: nextMode === 'upload' ? 'LocalFile' : '',
-        connectorType: nextMode === 'upload' ? 'LocalFile' : '',
-        dataSourceId: undefined,
-        path: undefined,
-      },
-    });
-  };
-
   const handleDataSourceChange = (value: string) => {
     const meta = datasourceOptions.find((item) => String(item.value) === String(value));
     updateConfig({
       dataSourceId: value,
       dbType: meta?.dbType,
-      pluginName: meta?.dbType === 'LOCAL_FILE' ? 'LocalFile' : meta?.connectorType,
+      pluginName: meta?.connectorType,
       connectorType: meta?.connectorType,
       path: undefined,
     });
   };
 
-  const handleUpload = async (file: File) => {
-    if (!config.dataSourceId) {
-      message.warning('请先选择本地文件数据源');
-      return false;
-    }
-    if (!config.path) {
-      message.warning('请先选择上传目录');
-      return false;
-    }
+  const uploadPickedFiles = async (pickedFiles: PickedFile[]) => {
+    if (!pickedFiles.length) return;
+    let sessionId = config.uploadSessionId;
+
     setUploading(true);
     try {
-      const res = await dataSourceCatalogApi.uploadFiles(
-        config.dataSourceId,
-        config.path,
-        [file],
-      );
-      if (res?.code !== 0) {
-        throw new Error(res?.message || '上传失败');
+      if (!sessionId && jobDefinitionId) {
+        const sessionResponse = await fileUploadApi.ensureSession(jobDefinitionId);
+        const session = sessionResponse?.data as any;
+        if (sessionResponse?.code !== 0 || !session?.id) {
+          throw new Error(sessionResponse?.message || '创建上传会话失败');
+        }
+        sessionId = session.id;
+        updateConfig({ uploadSessionId: sessionId });
       }
-      const stored = (res?.data || []).map((item: any) => ({
-        name: item.name,
-        size: item.size,
-      }));
-      const merged: UploadFileRecord[] = [
-        ...((config.uploadedFiles as UploadFileRecord[]) || []),
-        ...stored,
-      ];
-      updateConfig({ uploadedFiles: merged });
-      setRefreshToken((token) => token + 1);
-      message.success(`${file.name} 上传成功`);
+      if (!sessionId) {
+        throw new Error('上传会话未准备好，请刷新页面后重试');
+      }
+
+      const response = await fileUploadApi.upload(
+        sessionId,
+        pickedFiles.map((item) => item.file),
+        pickedFiles.map((item) => item.relativePath),
+      );
+      if (response?.code !== 0) {
+        throw new Error(response?.message || '上传失败');
+      }
+
+      const nextAssets = Array.isArray(response?.data) ? response.data : [];
+      const byPath = new Map<string, UploadAsset>(
+        assets.map((asset) => [asset.relativePath, asset]),
+      );
+      nextAssets.forEach((asset: UploadAsset) => byPath.set(asset.relativePath, asset));
+      updateConfig({
+        sourceMode: 'WEB_UPLOAD',
+        dbType: 'MINIO',
+        pluginName: 'S3File',
+        connectorType: 'S3File',
+        readMode: 'upload',
+        syncType: 'FULL',
+        uploadSessionId: sessionId,
+        uploadedAssets: Array.from(byPath.values()),
+      });
+      message.success(`已上传 ${nextAssets.length || pickedFiles.length} 个文件`);
     } catch (error: any) {
       message.error(error?.message || '上传失败');
     } finally {
       setUploading(false);
     }
-    return false;
   };
 
-  const incrementalSupported = canUseIncrementalFileSync(
-    config.dbType as FileDataSourceType,
-    config.targetDbType as FileDataSourceType,
-  );
+  const handleInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).map((file) => ({
+      file,
+      relativePath: fileRelativePath(file),
+    }));
+    event.target.value = '';
+    await uploadPickedFiles(files);
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    await uploadPickedFiles(await collectDroppedFiles(event.dataTransfer));
+  };
+
+  const removeAsset = async (asset: UploadAsset) => {
+    if (!config.uploadSessionId || !asset.id) return;
+    try {
+      const response = await fileUploadApi.deleteAsset(config.uploadSessionId, asset.id);
+      if (response?.code !== 0) throw new Error(response?.message || '删除文件失败');
+      updateConfig({
+        uploadedAssets: assets.filter((item) => item.id !== asset.id),
+      });
+      message.success('文件已移除');
+    } catch (error: any) {
+      message.error(error?.message || '删除文件失败');
+    }
+  };
+
+  const incrementalSupported = isWebUpload
+    ? false
+    : canUseIncrementalFileSync(
+        config.dbType as FileDataSourceType,
+        config.targetDbType as FileDataSourceType,
+      );
 
   return (
     <PanelShell
       eyebrow="Source Config"
       title="来源配置（文件）"
       badge="输入节点"
-      desc="选择本地上传或远程文件读取，修改后实时同步到画布节点"
-      heroTitle={fileDataSourceLabel(config.dbType) || '来源'}
-      heroDesc={config.path || '未选择目录'}
+      desc={isWebUpload ? '从浏览器上传文件或文件夹，任务运行时读取内置 MinIO' : '配置远程文件来源目录'}
+      heroTitle={isWebUpload ? '本地文件（Web 上传）' : fileDataSourceLabel(config.dbType) || '来源'}
+      heroDesc={isWebUpload ? `${assets.length} 个文件已准备` : config.path || '未选择目录'}
       heroTag="SOURCE"
-      dbType={config.dbType}
+      dbType={isWebUpload ? 'MINIO' : config.dbType}
       onClose={onClose}
       footer={
         <button
@@ -159,137 +248,166 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
       }
     >
       <section className="workflow-panel__section">
-        <div className="workflow-panel__group">
-          <div className="workflow-panel__group-head">
-            <div className="workflow-panel__group-kicker">读取方式</div>
-          </div>
-          <Segmented
-            block
-            value={readMode}
-            onChange={(value) => handleReadModeChange(value as string)}
-            options={[
-              {
-                label: (
-                  <div className="workflow-panel__segmented-item">
-                    <FolderUp size={14} />
-                    <span>本地上传</span>
-                  </div>
-                ),
-                value: 'upload',
-              },
-              {
-                label: (
-                  <div className="workflow-panel__segmented-item">
-                    <Cloud size={14} />
-                    <span>远程文件</span>
-                  </div>
-                ),
-                value: 'remote',
-              },
-            ]}
-          />
-          <div className="mt-2 text-xs leading-5 text-slate-500">
-            {isUpload
-              ? '文件通过浏览器上传到所选本地文件数据源的目录，任务运行时由 SeaTunnel LocalFile 连接器读取。'
-              : '从 FTP/SFTP/S3/MinIO 数据源的远程目录读取文件。'}
-          </div>
-        </div>
-
-        <div className="workflow-panel__divider" />
-
-        <div className="workflow-panel__group">
-          <div className="workflow-panel__group-head">
-            <div className="workflow-panel__group-kicker">
-              {isUpload ? '本地文件数据源' : '远程数据源'}
-            </div>
-          </div>
-          <div className="workflow-panel__field workflow-panel__field--full">
-            <Select
-              value={config.dataSourceId || undefined}
-              onChange={handleDataSourceChange}
-              options={filteredOptions.map((item) => ({
-                label: `${item.label} · ${fileDataSourceLabel(item.dbType)}`,
-                value: item.value,
-              }))}
-              placeholder={isUpload ? '请选择本地文件数据源' : '请选择 FTP/SFTP/S3/MinIO 数据源'}
-              showSearch
-              optionFilterProp="label"
-              className="workflow-panel__antd-select"
-              style={{ width: '100%' }}
-              popupClassName="workflow-panel__dropdown"
-            />
-          </div>
-          <div className="workflow-panel__field workflow-panel__field--full mt-3">
-            <div className="mb-1 text-xs text-slate-500">
-              {isUpload ? '上传目录' : '同步目录'}
-            </div>
-            <Input
-              value={config.path}
-              placeholder="/incoming/files 或 /bucket-prefix"
-              onChange={(event) => updateConfig({ path: event.target.value })}
-              addonAfter={
-                <Button
-                  type="text"
-                  icon={<FolderOpenOutlined />}
-                  onClick={() => {
-                    if (!config.dataSourceId) {
-                      message.warning('请先选择数据源');
-                      return;
-                    }
-                    setPickerOpen(true);
-                  }}
-                >
-                  浏览
-                </Button>
-              }
-            />
-          </div>
-        </div>
-
-        {isUpload && (
+        {isWebUpload ? (
           <>
-            <div className="workflow-panel__divider" />
-            <div className="workflow-panel__group">
-              <div className="workflow-panel__group-head" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div className="workflow-panel__group-kicker">上传文件</div>
-                <Tooltip title="刷新目录内容">
-                  <Button
-                    size="small"
-                    type="text"
-                    icon={<ReloadOutlined />}
-                    onClick={() => setRefreshToken((token) => token + 1)}
-                  />
-                </Tooltip>
+            <div className="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-sky-600 shadow-sm">
+                  <Cloud size={18} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-sky-900">浏览器直接上传</div>
+                  <div className="mt-1 text-xs leading-5 text-sky-700">
+                    文件会保存到系统内置 MinIO。支持单个/多个文件、文件夹选择和拖拽，文件夹层级会原样保留。
+                  </div>
+                </div>
               </div>
-              <Upload.Dragger
-                multiple
-                showUploadList={false}
-                beforeUpload={handleUpload}
-                disabled={uploading || !config.dataSourceId || !config.path}
-              >
-                <div className="py-2">
-                  <p className="text-[13px] font-medium text-slate-700">
-                    {uploading ? '上传中…' : '点击或拖拽文件到此处上传'}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    文件将上传到 {config.path || '所选目录'}
-                  </p>
-                </div>
-              </Upload.Dragger>
-              {Array.isArray(config.uploadedFiles) && config.uploadedFiles.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  {config.uploadedFiles.map((file: UploadFileRecord, index: number) => (
-                    <div
-                      key={`${file.name}-${index}`}
-                      className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 text-xs text-slate-600"
-                    >
-                      <span className="truncate">{file.name}</span>
-                      <span className="ml-2 shrink-0 text-slate-400">{formatSize(file.size)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                type="primary"
+                icon={<FileUp size={15} />}
+                loading={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                选择文件
+              </Button>
+              <Button
+                icon={<FolderUp size={15} />}
+                loading={uploading}
+                onClick={() => folderInputRef.current?.click()}
+              >
+                选择文件夹
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleInputChange}
+              />
+              <input
+                ref={folderInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleInputChange}
+                {...({ webkitdirectory: '', directory: '' } as any)}
+              />
+            </div>
+
+            <div
+              className="mt-3 flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-sky-200 bg-white px-4 py-6 text-center transition-colors hover:border-sky-400 hover:bg-sky-50/40"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'copy';
+              }}
+              onDrop={handleDrop}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') fileInputRef.current?.click();
+              }}
+            >
+              <UploadCloud className="text-sky-500" size={26} />
+              <div className="mt-2 text-sm font-medium text-slate-700">
+                {uploading ? '正在上传…' : '拖拽文件或文件夹到这里'}
+              </div>
+              <div className="mt-1 text-xs text-slate-400">也可以点击选择文件，或使用上方的文件夹按钮</div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                已上传文件（{assets.length}）
+              </div>
+              {assets.length > 0 ? (
+                <span className="text-xs text-emerald-600">已准备好发布</span>
+              ) : null}
+            </div>
+
+            {assets.length > 0 ? (
+              <div className="mt-2 max-h-[190px] space-y-1 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/70 p-2">
+                {assets.map((asset) => (
+                  <div
+                    key={`${asset.id || asset.relativePath}`}
+                    className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs text-slate-600 shadow-sm"
+                  >
+                    <UploadOutlined className="shrink-0 text-sky-500" />
+                    <span className="min-w-0 flex-1 truncate" title={asset.relativePath}>
+                      {asset.relativePath}
+                    </span>
+                    <span className="shrink-0 text-slate-400">{formatSize(asset.size)}</span>
+                    {asset.id ? (
+                      <Button
+                        type="text"
+                        size="small"
+                        danger
+                        icon={<Trash2 size={14} />}
+                        aria-label={`移除 ${asset.relativePath}`}
+                        onClick={() => removeAsset(asset)}
+                      />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <div className="workflow-panel__group">
+              <div className="workflow-panel__group-head">
+                <div className="workflow-panel__group-kicker">远程数据源</div>
+              </div>
+              <div className="workflow-panel__field workflow-panel__field--full">
+                <Select
+                  value={config.dataSourceId || undefined}
+                  onChange={handleDataSourceChange}
+                  options={filteredOptions.map((item) => ({
+                    label: `${item.label} · ${fileDataSourceLabel(item.dbType)}`,
+                    value: item.value,
+                  }))}
+                  placeholder="请选择 FTP/SFTP/S3/MinIO 数据源"
+                  showSearch
+                  optionFilterProp="label"
+                  className="workflow-panel__antd-select"
+                  style={{ width: '100%' }}
+                  popupClassName="workflow-panel__dropdown"
+                />
+              </div>
+              <div className="workflow-panel__field workflow-panel__field--full mt-3">
+                <div className="mb-1 text-xs text-slate-500">同步目录</div>
+                <Input
+                  value={config.path}
+                  placeholder="/incoming/files 或 /bucket-prefix"
+                  onChange={(event) => updateConfig({ path: event.target.value })}
+                  addonAfter={
+                    <Button
+                      type="text"
+                      icon={<FolderOpenOutlined />}
+                      onClick={() => {
+                        if (!config.dataSourceId) {
+                          message.warning('请先选择数据源');
+                          return;
+                        }
+                        setPickerOpen(true);
+                      }}
+                    >
+                      浏览
+                    </Button>
+                  }
+                />
+              </div>
+            </div>
+
+            <DirectoryPickerModal
+              open={pickerOpen}
+              datasourceId={config.dataSourceId}
+              title="选择同步目录"
+              onCancel={() => setPickerOpen(false)}
+              onSelect={(path) => updateConfig({ path })}
+            />
           </>
         )}
 
@@ -302,8 +420,10 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
           <div className="workflow-panel__field workflow-panel__field--full">
             <div className="mb-1 text-xs text-slate-500">同步方式</div>
             <Radio.Group
-              value={config.syncType || 'FULL'}
-              onChange={(event) => updateConfig({ syncType: event.target.value })}
+              value={isWebUpload ? 'FULL' : config.syncType || 'FULL'}
+              onChange={(event) => {
+                if (!isWebUpload) updateConfig({ syncType: event.target.value });
+              }}
               optionType="button"
               options={[
                 { label: '全量复制', value: 'FULL' },
@@ -349,22 +469,13 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
               />
             </div>
           </div>
-          {config.syncType === 'INCREMENTAL' && (
+          {isRemote && config.syncType === 'INCREMENTAL' && (
             <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-600">
               增量模式要求来源与去向为同一数据源；比较方式固定为文件长度 + 修改时间。
             </div>
           )}
         </div>
       </section>
-
-      <DirectoryPickerModal
-        open={pickerOpen}
-        datasourceId={config.dataSourceId}
-        title={isUpload ? '选择上传目录' : '选择同步目录'}
-        refreshToken={refreshToken}
-        onCancel={() => setPickerOpen(false)}
-        onSelect={(path) => updateConfig({ path })}
-      />
     </PanelShell>
   );
 };

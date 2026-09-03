@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { Button, Col, Form, message, Popover, Row, Space, Tooltip } from 'antd';
+import { Button, Form, message, Popover, Space, Tooltip } from 'antd';
 import { Blocks, Eye, FolderSync, PlayCircle, Upload } from 'lucide-react';
 import {
   useCallback,
@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { applyNodeChanges } from 'reactflow';
 import { fetchDataSourceAll } from '@/pages/data-source/service';
-import { seatunnelJobDefinitionApi } from '../../api';
+import { fileUploadApi, seatunnelJobDefinitionApi } from '../../api';
 import RightConfigPanel from '../../workflow/RightConfigPanel';
 import { CheckListPopover } from '../../workflow/components/CheckListPopover';
 import {
@@ -58,11 +58,29 @@ interface FileWorkflowProps {
 const buildInitialGraph = (params?: any) => {
   const workflow = params?.workflow || {};
   if (Array.isArray(workflow?.nodes) && workflow.nodes.length > 0) {
-    // 兜底补齐 position（历史数据可能缺省），type 统一归一为 'custom'。
+    // 兜底补齐 position，type 统一归一为 'custom'，并归一化 Web 上传来源。
     const nodes = workflow.nodes.map((node: any, index: number) => ({
       ...node,
       type: 'custom',
       position: node?.position || { x: index === 0 ? 80 : 480, y: 160 },
+      data: node?.data?.nodeType === 'source'
+        ? {
+            ...node.data,
+            config: {
+              ...(node.data?.config || {}),
+              ...(String(node.data?.config?.sourceMode || '').toUpperCase() === 'WEB_UPLOAD'
+                ? {
+                    sourceMode: 'WEB_UPLOAD',
+                    dbType: 'MINIO',
+                    pluginName: 'S3File',
+                    connectorType: 'S3File',
+                    readMode: 'upload',
+                    syncType: 'FULL',
+                  }
+                : {}),
+            },
+          }
+        : node.data,
     }));
     return {
       nodes,
@@ -72,12 +90,20 @@ const buildInitialGraph = (params?: any) => {
   return { nodes: [], edges: [] };
 };
 
-const defaultFileSourceConfig = (sourceType: any, sourceDataSourceId?: string) => ({
-  dataSourceId: sourceDataSourceId || undefined,
-  dbType: sourceType?.dbType || 'LOCAL_FILE',
-  pluginName: sourceType?.pluginName || 'LocalFile',
-  connectorType: sourceType?.connectorType || 'LocalFile',
-  readMode: sourceType?.dbType === 'LOCAL_FILE' ? 'upload' : 'remote',
+const defaultFileSourceConfig = (
+  sourceType: any,
+  sourceDataSourceId?: string,
+  jobDefinitionId?: string | number,
+) => {
+  const isWebUpload = sourceType?.dbType === 'WEB_UPLOAD';
+  return {
+  ...(isWebUpload ? {} : { dataSourceId: sourceDataSourceId || undefined }),
+  sourceMode: isWebUpload ? 'WEB_UPLOAD' : undefined,
+  jobDefinitionId: isWebUpload ? jobDefinitionId : undefined,
+  dbType: isWebUpload ? 'MINIO' : sourceType?.dbType || 'FTP',
+  pluginName: isWebUpload ? 'S3File' : sourceType?.pluginName || 'FtpFile',
+  connectorType: isWebUpload ? 'S3File' : sourceType?.connectorType || 'FtpFile',
+  readMode: isWebUpload ? 'upload' : 'remote',
   path: undefined,
   targetPath: undefined,
   syncType: 'FULL',
@@ -87,7 +113,9 @@ const defaultFileSourceConfig = (sourceType: any, sourceDataSourceId?: string) =
   binaryCompleteFileMode: true,
   updateStrategy: 'only_add',
   compareMode: 'len_mtime',
-});
+  uploadedAssets: [],
+  };
+};
 
 const defaultFileSinkConfig = (targetType: any, targetDataSourceId?: string) => ({
   dataSourceId: targetDataSourceId || undefined,
@@ -101,11 +129,10 @@ const buildGraph = (params: any) => {
   const existing = buildInitialGraph(params);
   if (existing.nodes.length > 0) return existing;
 
-  const timestamp = Date.now();
   const sourceId = 'file-source';
   const sinkId = 'file-sink';
 
-  const sourceDbType = params?.sourceType?.dbType || 'LOCAL_FILE';
+  const sourceDbType = params?.sourceType?.dbType || 'WEB_UPLOAD';
   const sinkDbType = params?.targetType?.dbType || 'FTP';
 
   const nodes = [
@@ -118,10 +145,7 @@ const buildGraph = (params: any) => {
         title: sourceDbType,
         description: '读取来源文件',
         dbType: sourceDbType,
-        config: defaultFileSourceConfig(
-          params?.sourceType,
-          params?.sourceDataSourceId,
-        ),
+        config: defaultFileSourceConfig(params?.sourceType, params?.sourceDataSourceId, params?.id),
       },
     },
     {
@@ -295,10 +319,66 @@ export default function FileWorkflow({
           value: String(item.id),
           dbType: item.dbType,
           connectorType: connectorForFileType(item.dbType),
-        })),
+        })).filter((item: any) => ['FTP', 'SFTP', 'S3', 'MINIO'].includes(item.dbType)),
       );
     });
   }, []);
+
+  const sourceNode = graph.nodes.find((node) => node?.data?.nodeType === 'source');
+  const sourceConfig = sourceNode?.data?.config || {};
+  const isWebUploadSource =
+    String(sourceConfig.sourceMode || '').toUpperCase() === 'WEB_UPLOAD'
+    || params?.sourceType?.dbType === 'WEB_UPLOAD';
+
+  useEffect(() => {
+    if (!jobDefinitionId || !isWebUploadSource) return;
+
+    let cancelled = false;
+    const loadUploadSession = async () => {
+      try {
+        const response = await fileUploadApi.ensureSession(jobDefinitionId);
+        const session = response?.data as any;
+        if (cancelled || response?.code !== 0 || !session?.id) return;
+        setGraph((previous) => ({
+          ...previous,
+          nodes: previous.nodes.map((node) => {
+            if (node?.data?.nodeType !== 'source') return node;
+            const config = node.data?.config || {};
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                title: '本地文件（Web 上传）',
+                dbType: 'MINIO',
+                pluginName: 'S3File',
+                connectorType: 'S3File',
+                config: {
+                  ...config,
+                  sourceMode: 'WEB_UPLOAD',
+                  jobDefinitionId,
+                  uploadSessionId: session.id,
+                  uploadedAssets: session.assets || config.uploadedAssets || [],
+                  dbType: 'MINIO',
+                  pluginName: 'S3File',
+                  connectorType: 'S3File',
+                  readMode: 'upload',
+                  syncType: 'FULL',
+                },
+              },
+            };
+          }),
+        }));
+      } catch (error) {
+        // The source panel can retry when the user starts an upload.
+        console.warn('加载文件上传会话失败', error);
+      }
+    };
+
+    loadUploadSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [jobDefinitionId, isWebUploadSource, contextKey]);
 
   const hasPersistedDefinition =
     !!jobDefinitionId && definitionState?.editorSyncState === 'SYNCED';
@@ -393,8 +473,8 @@ export default function FileWorkflow({
   }, []);
 
   const validateBeforeAction = () => {
-    if (checkStat.total !== 0) {
-      message.warning('请先完成检验项检查后，再进行预览或发布');
+    if (checkStat.errors.length !== 0) {
+      message.warning(`请先修复 ${checkStat.errors.length} 项配置问题，再进行预览或发布`);
       return false;
     }
     const scheduleWarning = getScheduleValidationMessage(scheduleConfig);
@@ -406,9 +486,9 @@ export default function FileWorkflow({
   };
 
   const buildSavePayload = () => {
-    const sourceNode = graph.nodes.find((node) => node?.data?.nodeType === 'source');
+    const currentSourceNode = graph.nodes.find((node) => node?.data?.nodeType === 'source');
     const sinkNode = graph.nodes.find((node) => node?.data?.nodeType === 'sink');
-    const sourceConfig = sourceNode?.data?.config || {};
+    const sourceConfig = currentSourceNode?.data?.config || {};
     const sinkConfig = sinkNode?.data?.config || {};
 
     // 数据源列表记录不带 connectorType，按 dbType 兜底推导，保证后端可路由到插件 builder。
@@ -427,7 +507,9 @@ export default function FileWorkflow({
       position: node?.position || (nodeType === 'source' ? { x: 80, y: 160 } : { x: 480, y: 160 }),
       data: {
         nodeType,
-        title: config.dbType,
+        title: nodeType === 'source' && config.sourceMode === 'WEB_UPLOAD'
+          ? '本地文件（Web 上传）'
+          : config.dbType,
         description: nodeType === 'source' ? '读取来源文件' : '写入目标端文件',
         dbType: config.dbType,
         pluginName: config.pluginName,
@@ -446,14 +528,30 @@ export default function FileWorkflow({
         clientId: basicConfig?.clientId,
       },
       workflow: {
+        sourceType: sourceConfig.sourceMode === 'WEB_UPLOAD'
+          ? { dbType: 'WEB_UPLOAD', connectorType: 'S3File', pluginName: 'S3File', sourceManaged: true }
+          : { dbType: sourceConfig.dbType, connectorType: sourceConfig.connectorType, pluginName: sourceConfig.pluginName },
+        targetType: { dbType: sinkConfig.dbType, connectorType: sinkConfig.connectorType, pluginName: sinkConfig.pluginName },
         nodes: [
-          toNode(sourceNode, 'source', withConnector(sourceConfig)),
+          toNode(currentSourceNode, 'source', withConnector({
+            ...sourceConfig,
+            ...(sourceConfig.sourceMode === 'WEB_UPLOAD'
+              ? {
+                  sourceMode: 'WEB_UPLOAD',
+                  jobDefinitionId,
+                  dbType: 'MINIO',
+                  pluginName: 'S3File',
+                  connectorType: 'S3File',
+                  syncType: 'FULL',
+                }
+              : {}),
+          })),
           toNode(sinkNode, 'sink', withConnector(sinkConfig)),
         ],
         edges: [
           {
             id: 'file-transfer',
-            source: sourceNode?.id || 'file-source',
+            source: currentSourceNode?.id || 'file-source',
             target: sinkNode?.id || 'file-sink',
           },
         ],
@@ -510,7 +608,7 @@ export default function FileWorkflow({
     'inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[13px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0';
 
   return (
-    <div className="workflow-editor-page flex h-screen flex-col overflow-hidden bg-white">
+    <div className="workflow-editor-page flex h-full min-h-0 flex-col overflow-hidden bg-white">
       <div className="shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3.5">
@@ -545,7 +643,7 @@ export default function FileWorkflow({
         <div className="h-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-white via-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
           <div className="flex h-full min-w-0 items-stretch">
             <div className="flex h-full min-w-0 flex-1 overflow-hidden">
-              <div className="flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-[0_4px_18px_rgba(15,23,42,0.03)]">
+              <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-white shadow-[0_4px_18px_rgba(15,23,42,0.03)]">
                 <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
                   <div className="text-[15px] font-semibold text-slate-800">同步编排</div>
 
@@ -630,10 +728,10 @@ export default function FileWorkflow({
                   </Space>
                 </div>
 
-                <div className="min-h-0 flex-1 bg-white p-[18px] [background:radial-gradient(circle_at_top_left,rgba(78,116,248,0.04),transparent_22%),#ffffff]">
-                  <Row gutter={24} style={{ height: '100%' }}>
-                    <Col span={4}>
-                      <div className="flex h-full flex-col gap-3 overflow-auto border-r border-slate-100 p-3">
+                <div className="min-h-0 flex-1 overflow-hidden bg-white p-[18px] [background:radial-gradient(circle_at_top_left,rgba(78,116,248,0.04),transparent_22%),#ffffff]">
+                  <div className="grid h-full min-w-0 grid-cols-[minmax(150px,18%)_minmax(0,1fr)] gap-4">
+                    <div className="min-w-0 overflow-auto border-r border-slate-100 pr-4">
+                      <div className="flex h-full flex-col gap-3 p-1">
                         <div className="px-0.5 pb-2 pt-1 text-[13px] font-semibold text-slate-700">
                           节点组件
                         </div>
@@ -648,25 +746,24 @@ export default function FileWorkflow({
                             </div>
                             <div className="mt-1 text-[12px] leading-[1.4] text-slate-500">
                               文件引接任务为固定的 来源 → 去向
-                              链路。点击画布节点配置本地上传或远程读取，不支持插入转换节点。
+                              链路。点击画布节点配置浏览器上传或远程读取，不支持插入转换节点。
                             </div>
                           </div>
                         </div>
                       </div>
-                    </Col>
+                    </div>
 
-                    <Col span={20}>
-                      <div className="h-full overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-[14px] text-slate-400">
+                    <div className="min-w-0 overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-[14px] text-slate-400">
                         <FileSyncCanvas
                           nodes={graph.nodes}
                           edges={graph.edges}
                           onNodesChange={handleNodesChange}
                           onNodeDataChange={handleNodeDataChange}
                           datasourceOptions={datasourceOptions}
+                          jobDefinitionId={jobDefinitionId}
                         />
-                      </div>
-                    </Col>
-                  </Row>
+                    </div>
+                  </div>
                 </div>
               </div>
 

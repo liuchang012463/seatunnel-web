@@ -12,6 +12,7 @@ interface FileSyncCanvasProps {
   onNodesChange: (nodes: any) => void;
   onNodeDataChange: (nodeId: string, data: any) => void;
   datasourceOptions: Array<{ label: string; value: string; dbType: string }>;
+  jobDefinitionId?: string | number;
 }
 
 /** 内部画布：使用 ReactFlowProvider 让 fitView 在容器渲染后稳定地触发。 */
@@ -21,6 +22,7 @@ const FileSyncCanvasInner: React.FC<FileSyncCanvasProps> = ({
   onNodesChange,
   onNodeDataChange,
   datasourceOptions,
+  jobDefinitionId,
 }) => {
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const { fitView } = useReactFlow();
@@ -95,6 +97,7 @@ const FileSyncCanvasInner: React.FC<FileSyncCanvasProps> = ({
           onClose={() => setSelectedNode(null)}
           onNodeDataChange={onNodeDataChange}
           datasourceOptions={datasourceOptions}
+          jobDefinitionId={jobDefinitionId}
         />
       )}
 

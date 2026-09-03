@@ -1,4 +1,4 @@
-import { Database, FolderOpen } from "lucide-react";
+import { Database } from "lucide-react";
 
 import SimpleIcon, { type SimpleIconSlug } from "./SimpleIcon";
 
@@ -24,8 +24,6 @@ const iconMap: Record<
   s3file: { slug: "amazonaws", color: "#ff9900" },
   minio: { slug: "minio", color: "#c72e49" },
   http: { slug: "httpie", color: "#73dc8c" },
-  local_file: { icon: FolderOpen, color: "#0ea5e9" },
-  localfile: { icon: FolderOpen, color: "#0ea5e9" },
   h2: { icon: Database, color: "#2563eb" },
 };
 

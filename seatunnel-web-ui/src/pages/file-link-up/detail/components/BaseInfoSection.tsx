@@ -56,7 +56,7 @@ const FileTypeBaseInfoSection: React.FC<Props> = ({
           </div>
 
           <div className="mt-3 text-[12px] leading-5 text-[#667085]">
-            来源支持本地上传（LocalFile）与 FTP/SFTP/S3/MinIO 远程文件，按目录或 Prefix
+            来源支持浏览器直接上传文件/文件夹（系统内置 MinIO）与 FTP/SFTP/S3/MinIO 远程文件，按目录或 Prefix
             传输二进制流，不涉及表、字段或 SQL 映射。
           </div>
         </div>

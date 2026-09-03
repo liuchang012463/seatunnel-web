@@ -31,7 +31,6 @@ import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -102,52 +101,6 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
             log.error("Failed to list remote files, datasourceId={}, path={}", datasourceId, path, e);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
         }
-    }
-
-    @Override
-    public List<FileEntryVO> uploadFiles(Long datasourceId, String path, MultipartFile[] files) {
-        validateDatasourceId(datasourceId);
-        DataSource dataSource = getDataSourceOrThrow(datasourceId);
-        if (dataSource.getDbType() != DbType.LOCAL_FILE) {
-            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
-                    dataSource.getDbType() + " does not support local file uploads");
-        }
-        if (files == null || files.length == 0) {
-            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "uploaded files are required");
-        }
-        DataSourceCatalog catalog = getCatalog(dataSource, buildConnectionParam(dataSource));
-        if (!(catalog instanceof FileDataSourceCatalog)) {
-            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
-                    dataSource.getDbType() + " does not support file catalog operations");
-        }
-        List<FileEntryVO> stored = new ArrayList<>();
-        try {
-            for (MultipartFile file : files) {
-                if (file == null || file.isEmpty()) {
-                    continue;
-                }
-                String fileName = StringUtils.defaultIfBlank(file.getOriginalFilename(), "upload.bin");
-                long modifiedTime = System.currentTimeMillis();
-                String storedPath;
-                try (java.io.InputStream in = file.getInputStream()) {
-                    storedPath = ((FileDataSourceCatalog) catalog)
-                            .uploadEntry(path, fileName, in, file.getSize());
-                }
-                FileEntryVO entry = new FileEntryVO();
-                entry.setName(fileName);
-                entry.setPath(storedPath);
-                entry.setType("FILE");
-                entry.setSize(file.getSize());
-                entry.setModifiedTime(modifiedTime);
-                stored.add(entry);
-            }
-        } catch (ServiceException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to upload files, datasourceId={}, path={}", datasourceId, path, e);
-            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
-        }
-        return stored;
     }
 
     @Override

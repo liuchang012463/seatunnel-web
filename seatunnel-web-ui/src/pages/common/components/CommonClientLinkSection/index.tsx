@@ -93,6 +93,9 @@ interface CommonClientLinkSectionProps {
   /** Overrides the 数据源类型 dropdown options, e.g. file-only task flows. */
   sourceDataSourceTypeOptions?: SelectOption[];
   targetDataSourceTypeOptions?: SelectOption[];
+
+  /** Source is supplied by the Web upload session instead of a registered datasource. */
+  sourceManaged?: boolean;
 }
 
 const statusMap: Record<
@@ -468,6 +471,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
 
   sourceDataSourceTypeOptions: customSourceTypeOptions,
   targetDataSourceTypeOptions: customTargetTypeOptions,
+  sourceManaged = false,
 }) => {
   const [form] = Form.useForm();
   const [clientForm] = Form.useForm();
@@ -536,6 +540,14 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
 
   const loadSourceOptions = useCallback(
     async (dbType?: string) => {
+      if (sourceManaged) {
+        setSourceDataSources([]);
+        setSourceDataSourceId(undefined);
+        form.setFieldValue("sourceId", undefined);
+        resetSourceTestStatus();
+        autoTestKeyRef.current.source = undefined;
+        return [];
+      }
       if (!dbType) {
         setSourceDataSources([]);
         setSourceDataSourceId(undefined);
@@ -562,7 +574,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
         setSourceLoading(false);
       }
     },
-    [form, resetSourceTestStatus, setSourceDataSourceId]
+    [form, resetSourceTestStatus, setSourceDataSourceId, sourceManaged]
   );
 
   const loadTargetOptions = useCallback(
@@ -645,6 +657,10 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
           message.warning("请先选择客户端节点");
         }
         return false;
+      }
+
+      if (type === "source" && sourceManaged) {
+        return true;
       }
 
       if (
@@ -790,6 +806,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
       getVerifyExtraParams,
       setSourceTestStatus,
       setTargetTestStatus,
+      sourceManaged,
     ]
   );
 
@@ -829,14 +846,23 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   ]);
 
   useEffect(() => {
+    if (sourceManaged) {
+      setSourceDataSources([]);
+      setSourceDataSourceId(undefined);
+      form.setFieldValue("sourceId", undefined);
+      resetSourceTestStatus();
+      autoTestKeyRef.current.source = undefined;
+      return;
+    }
     loadSourceOptions(sourceType?.dbType);
-  }, [sourceType?.dbType, loadSourceOptions]);
+  }, [sourceType?.dbType, loadSourceOptions, sourceManaged, form, resetSourceTestStatus, setSourceDataSourceId]);
 
   useEffect(() => {
     loadTargetOptions(targetType?.dbType);
   }, [targetType?.dbType, loadTargetOptions]);
 
   useEffect(() => {
+    if (sourceManaged) return;
     if (!sourceOptions.length) {
       if (sourceDataSourceId) {
         setSourceDataSourceId(undefined);
@@ -865,6 +891,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
     form,
     setSourceDataSourceId,
     resetSourceTestStatus,
+    sourceManaged,
   ]);
 
   useEffect(() => {
@@ -918,10 +945,10 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   useEffect(() => {
     if (activeStep !== "client") return;
     if (!clientId) return;
-    if (!sourceDataSourceId && !targetDataSourceId) return;
+    if (!sourceManaged && !sourceDataSourceId && !targetDataSourceId) return;
 
     const runAutoTest = async () => {
-      if (sourceDataSourceId) {
+      if (!sourceManaged && sourceDataSourceId) {
         const sourceKey = getConnectivityTestKey("source", sourceDataSourceId);
 
         if (autoTestKeyRef.current.source !== sourceKey) {
@@ -956,6 +983,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
     targetDataSourceId,
     getConnectivityTestKey,
     runConnectivityTest,
+    sourceManaged,
   ]);
 
   const handleCreateClient = async () => {
@@ -1013,6 +1041,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   };
 
   const handleCreateDataSource = (side: "source" | "target") => {
+    if (side === "source" && sourceManaged) return;
     const dbType = side === "source" ? sourceType?.dbType : targetType?.dbType;
 
     if (!dbType) {
@@ -1117,15 +1146,21 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
 
                 <div className="flex items-center gap-3">
                   <div className="h-px w-8 bg-slate-300 md:w-10" />
-                  <LinkStatusAction
-                    status={sourceTestStatus}
-                    onTest={() =>
-                      runConnectivityTest("source", sourceDataSourceId, {
-                        triggerMode: "MANUAL",
-                        forceRefresh: true,
-                      })
-                    }
-                  />
+                  {sourceManaged ? (
+                    <div className="inline-flex h-9 items-center rounded-full border border-teal-100 bg-teal-50 px-3 text-xs font-medium text-teal-700">
+                      平台托管上传
+                    </div>
+                  ) : (
+                    <LinkStatusAction
+                      status={sourceTestStatus}
+                      onTest={() =>
+                        runConnectivityTest("source", sourceDataSourceId, {
+                          triggerMode: "MANUAL",
+                          forceRefresh: true,
+                        })
+                      }
+                    />
+                  )}
                   <div className="h-px w-8 bg-slate-300 md:w-10" />
                 </div>
 
@@ -1158,9 +1193,9 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 xl:gap-6">
             <SectionCard
               title={sourceTitle}
-              status={sourceTestStatus}
+              status={sourceManaged ? undefined : sourceTestStatus}
               verifyItems={sourceVerifyItems}
-              footer={
+              footer={!sourceManaged ? (
                 <Button
                   className="w-full !rounded-full"
                   onClick={() =>
@@ -1175,7 +1210,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                 >
                   测试连通性
                 </Button>
-              }
+              ) : undefined}
             >
               <Form form={form} layout="vertical">
                 <div className="space-y-4">
@@ -1196,7 +1231,17 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                     />
                   </Form.Item>
 
-                  {renderDataSourceSelect("source")}
+                  {sourceManaged ? (
+                    <div className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-4">
+                      <div className="text-sm font-semibold text-teal-900">
+                        本地文件（Web 上传）
+                      </div>
+                      <div className="mt-2 text-xs leading-5 text-teal-700">
+                        文件会在下一步配置页从浏览器直接上传到系统内置 MinIO，任务运行时由
+                        S3File 二进制来源读取。这里不需要创建或选择本地数据源。
+                      </div>
+                    </div>
+                  ) : renderDataSourceSelect("source")}
                 </div>
               </Form>
             </SectionCard>

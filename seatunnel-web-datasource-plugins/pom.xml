@@ -30,7 +30,6 @@
         <module>seatunnel-web-datasource-http</module>
         <module>seatunnel-web-datasource-ftp</module>
         <module>seatunnel-web-datasource-s3</module>
-        <module>seatunnel-web-datasource-localfile</module>
         <module>seatunnel-web-datasource-kingbase</module>
         <module>seatunnel-web-datasource-dameng</module>
     </modules>

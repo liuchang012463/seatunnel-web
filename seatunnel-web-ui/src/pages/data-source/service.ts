@@ -431,17 +431,6 @@ export const dataSourceCatalogApi = {
     return HttpUtils.get(`${apiPrefixCatalog}/files/${id}${query}`);
   },
 
-  uploadFiles: (
-    id: string,
-    path: string | undefined,
-    files: File[],
-  ): Promise<{ code: number; data: any[]; message?: string }> => {
-    const formData = new FormData();
-    files.forEach((file) => formData.append('files', file));
-    const query = path ? `?path=${encodeURIComponent(path)}` : '';
-    return HttpUtils.postForm(`${apiPrefixCatalog}/files/${id}/upload${query}`, formData);
-  },
-
   listTable: (id: string): Promise<{ code: number; data: any; message?: string }> => {
     return HttpUtils.get(`${apiPrefixCatalog}/list/${id}`);
   },

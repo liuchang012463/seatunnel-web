@@ -86,8 +86,6 @@ const DatabaseIcons = ({
     case 's3':
     case 's3file':
     case 'minio':
-    case 'local_file':
-    case 'localfile':
     case 'http':
     case 'h2':
       return <ConnectorIcon dbType={normalizedType} width={width} height={height} />;

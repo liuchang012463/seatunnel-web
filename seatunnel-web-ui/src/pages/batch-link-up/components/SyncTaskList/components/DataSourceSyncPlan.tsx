@@ -31,8 +31,9 @@ const jsonPopoverContentStyle: CSSProperties = {
 };
 
 const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
-  console.log(record);
   const isFileSync = record?.mode === "FILE_SYNC";
+  const isManagedFileSource =
+    isFileSync && String(record?.sourceType || "").toUpperCase() === "WEB_UPLOAD";
   const animatedIconStyle: CSSProperties = {
     fontSize: 10,
     animation: "float 2s ease-in-out infinite",
@@ -407,7 +408,23 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
       <div style={{ margin: "4px 0" }}>
         {/* SOURCE */}
         <div style={{ display: "flex", alignItems: "center" }}>
-          {record?.sourceType ? (
+          {isManagedFileSource ? (
+            <>
+              <DatabaseIcons dbType="MINIO" width="24" height="24" />
+              <span
+                style={{
+                  marginLeft: 8,
+                  maxWidth: 112,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title="平台托管上传（内置 MinIO）"
+              >
+                平台托管上传
+              </span>
+            </>
+          ) : record?.sourceType ? (
             <>
               <DatabaseIcons
                 dbType={record.sourceType}

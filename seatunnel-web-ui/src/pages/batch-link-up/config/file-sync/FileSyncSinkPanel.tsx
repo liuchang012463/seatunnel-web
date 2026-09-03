@@ -24,7 +24,7 @@ const FileSyncSinkPanel: React.FC<FileSyncSinkPanelProps> = ({
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const filteredOptions = useMemo(
-    () => datasourceOptions.filter((item) => item.dbType !== 'LOCAL_FILE'),
+    () => datasourceOptions.filter((item) => ['FTP', 'SFTP', 'S3', 'MINIO'].includes(item.dbType)),
     [datasourceOptions],
   );
 

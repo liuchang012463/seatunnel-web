@@ -39,7 +39,6 @@ export const DATA_SOURCE_REGISTRY: DataSourceRegistryItem[] = [
   { dbType: 'SFTP', label: 'SFTP', category: 'FILE_TRANSFER', connectorType: 'SftpFile' },
   { dbType: 'S3', label: 'Amazon S3', category: 'FILE_TRANSFER', connectorType: 'S3File' },
   { dbType: 'MINIO', label: 'MinIO', category: 'FILE_TRANSFER', connectorType: 'S3File' },
-  { dbType: 'LOCAL_FILE', label: '本地文件', category: 'FILE_TRANSFER', connectorType: 'LocalFile' },
   { dbType: 'HTTP', label: 'HTTP / API', category: 'API', connectorType: 'Http', pluginName: 'HTTP', source: true, sink: false, realtime: true, taskSelector: true },
   { dbType: 'H2', label: 'H2', category: 'OTHER', connectorType: 'Jdbc', creatable: false },
 ];

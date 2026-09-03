@@ -31,6 +31,10 @@ const getConfig = (node: any) => node?.data?.config || {};
 const sourceRules: ((node: any) => CheckItem | null)[] = [
   (node) => {
     const config = getConfig(node);
+    const webUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
+    if (webUpload) {
+      return null;
+    }
     if (!config.dataSourceId) {
       return buildError(node, 'dataSourceId', '请选择来源数据源');
     }
@@ -38,9 +42,18 @@ const sourceRules: ((node: any) => CheckItem | null)[] = [
   },
   (node) => {
     const config = getConfig(node);
-    if (String(config.readMode || 'remote') === 'upload') {
-      if (!String(config.path || '').trim()) {
-        return buildError(node, 'path', '本地上传模式请先选择上传目录并上传文件');
+    const webUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
+    if (webUpload) {
+      const assets = Array.isArray(config.uploadedAssets)
+        ? config.uploadedAssets
+        : Array.isArray(config.uploadedFiles)
+          ? config.uploadedFiles
+          : [];
+      if (!String(config.uploadSessionId || '').trim()) {
+        return buildError(node, 'uploadSessionId', '请先打开上传区域并上传文件或文件夹');
+      }
+      if (!assets.length) {
+        return buildError(node, 'uploadedAssets', '请至少上传一个文件');
       }
       return null;
     }
@@ -54,9 +67,9 @@ const sourceRules: ((node: any) => CheckItem | null)[] = [
     const dbType = String(config.dbType || '').toUpperCase();
     if (
       String(config.syncType || 'FULL') === 'INCREMENTAL' &&
-      (dbType === 'S3' || dbType === 'MINIO' || dbType === 'LOCAL_FILE')
+      (dbType === 'S3' || dbType === 'MINIO' || dbType === 'WEB_UPLOAD')
     ) {
-      return buildWarning(node, 'syncType', 'SeaTunnel 2.3.13 的该连接器不支持增量 update，请改用全量复制');
+      return buildError(node, 'syncType', '该文件来源不支持增量 update，请改用全量复制');
     }
     return null;
   },

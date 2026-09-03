@@ -14,7 +14,6 @@ import org.apache.seatunnel.web.spi.bean.vo.ColumnOptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.FileEntryVO;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -51,16 +50,6 @@ public class DataSourceCatalogController {
             @PathVariable("id") Long id,
             @RequestParam(value = "path", required = false) String path) {
         return Result.buildSuc(dataSourceCatalogService.listFiles(id, path));
-    }
-
-    @PostMapping("/files/{id}/upload")
-    @Operation(summary = "uploadLocalFiles",
-            description = "Upload files into a local-file datasource directory")
-    public Result<List<FileEntryVO>> uploadLocalFiles(
-            @PathVariable("id") Long id,
-            @RequestParam(value = "path", required = false) String path,
-            @RequestParam("files") MultipartFile[] files) {
-        return Result.buildSuc(dataSourceCatalogService.uploadFiles(id, path, files));
     }
 
     /**

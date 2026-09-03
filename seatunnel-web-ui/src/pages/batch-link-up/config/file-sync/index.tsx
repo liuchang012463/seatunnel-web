@@ -60,7 +60,7 @@ const defaultBasicConfig = {
   jobDesc: '',
   clientId: '',
   mode: 'FILE_SYNC',
-  sourceType: 'LOCAL_FILE',
+  sourceType: 'WEB_UPLOAD',
   targetType: 'FTP',
   sourceDataSourceId: '',
   targetDataSourceId: '',
@@ -106,27 +106,43 @@ const buildPageParamsForCreate = (rawData: any, routeId?: string) => ({
   } as JobDefinitionState,
 });
 
-const buildPageParamsForEdit = (editData?: any) => ({
-  id: editData?.id,
-  mode: editData?.mode,
-  runtimeType: editData?.runtimeType,
-  jobName: editData?.basic?.jobName || '',
-  jobDesc: editData?.basic?.jobDesc || '',
-  clientId: editData?.basic?.clientId || '',
-  sourceType: editData?.workflow?.sourceType || null,
-  targetType: editData?.workflow?.targetType || null,
-  workflow: editData?.workflow || {},
-  basic: editData?.basic || {},
-  schedule: editData?.schedule || {},
-  env: editData?.env || {},
-  __pageScene: 'edit',
-  state: {
-    editorSyncState: 'SYNCED',
-    releaseState: editData?.releaseState || 'OFFLINE',
-    jobVersion: editData?.jobVersion ?? null,
-    contentVersion: editData?.contentVersion ?? null,
-  } as JobDefinitionState,
-});
+const buildPageParamsForEdit = (editData?: any) => {
+  const sourceNode = editData?.workflow?.nodes?.find((node: any) => node?.data?.nodeType === 'source');
+  const sinkNode = editData?.workflow?.nodes?.find((node: any) => node?.data?.nodeType === 'sink');
+  const sourceConfig = sourceNode?.data?.config || {};
+  const sinkConfig = sinkNode?.data?.config || {};
+
+  return {
+    id: editData?.id,
+    mode: editData?.mode,
+    runtimeType: editData?.runtimeType,
+    jobName: editData?.basic?.jobName || '',
+    jobDesc: editData?.basic?.jobDesc || '',
+    clientId: editData?.basic?.clientId || '',
+    sourceType: editData?.workflow?.sourceType || {
+      dbType: sourceConfig?.sourceMode === 'WEB_UPLOAD' ? 'WEB_UPLOAD' : sourceConfig?.dbType,
+      connectorType: sourceConfig?.sourceMode === 'WEB_UPLOAD' ? 'S3File' : sourceConfig?.connectorType,
+      pluginName: sourceConfig?.sourceMode === 'WEB_UPLOAD' ? 'S3File' : sourceConfig?.pluginName,
+      sourceManaged: sourceConfig?.sourceMode === 'WEB_UPLOAD',
+    },
+    targetType: editData?.workflow?.targetType || {
+      dbType: sinkConfig?.dbType,
+      connectorType: sinkConfig?.connectorType,
+      pluginName: sinkConfig?.pluginName,
+    },
+    workflow: editData?.workflow || {},
+    basic: editData?.basic || {},
+    schedule: editData?.schedule || {},
+    env: editData?.env || {},
+    __pageScene: 'edit',
+    state: {
+      editorSyncState: 'SYNCED',
+      releaseState: editData?.releaseState || 'OFFLINE',
+      jobVersion: editData?.jobVersion ?? null,
+      contentVersion: editData?.contentVersion ?? null,
+    } as JobDefinitionState,
+  };
+};
 
 const FileSyncWorkflowPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -157,7 +173,7 @@ const FileSyncWorkflowPage: React.FC = () => {
           jobDesc: data?.jobDesc || '',
           clientId: data?.clientId ? String(data.clientId) : '',
           mode: 'FILE_SYNC',
-          sourceType: data?.sourceType?.dbType || 'LOCAL_FILE',
+          sourceType: data?.sourceType?.dbType || 'WEB_UPLOAD',
           targetType: data?.targetType?.dbType || 'FTP',
           sourceDataSourceId: data?.sourceDataSourceId || '',
           targetDataSourceId: data?.targetDataSourceId || '',
@@ -171,15 +187,16 @@ const FileSyncWorkflowPage: React.FC = () => {
     };
 
     const applyEdit = (data: any) => {
-      setParams(buildPageParamsForEdit(data));
+      const editParams = buildPageParamsForEdit(data);
+      setParams(editParams);
       setBasicConfig({
         ...defaultBasicConfig,
         jobName: data?.basic?.jobName || '',
         jobDesc: data?.basic?.jobDesc || '',
         clientId: data?.basic?.clientId ? String(data.basic.clientId) : '',
         mode: 'FILE_SYNC',
-        sourceType: data?.workflow?.sourceType || 'SOURCE',
-        targetType: data?.workflow?.targetType || 'SINK',
+        sourceType: editParams?.sourceType?.dbType || 'WEB_UPLOAD',
+        targetType: editParams?.targetType?.dbType || 'FTP',
       });
       setScheduleConfig(buildInitialScheduleConfig(data?.schedule));
       setEnvConfig({ ...defaultEnvConfig, ...(data?.env || {}) });
@@ -276,7 +293,7 @@ const FileSyncWorkflowPage: React.FC = () => {
   ].join('-');
 
   return (
-    <div className="min-h-screen bg-[#ffffff]">
+    <div className="h-[calc(100vh-64px)] min-h-0 bg-[#ffffff]">
       <FileWorkflow
         pageScene={actualPageScene}
         contextKey={workflowContextKey}

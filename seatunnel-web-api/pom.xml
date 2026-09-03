@@ -49,6 +49,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-s3</artifactId>
+            <version>${aws-java-sdk-s3.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.seatunnel.web</groupId>
             <artifactId>seatunnel-web-alarm-api</artifactId>
         </dependency>

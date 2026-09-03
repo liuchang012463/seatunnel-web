@@ -71,12 +71,14 @@ const FileDetailPage = () => {
     ? '先完成基础配置，再进入客户端链接配置'
     : '确认客户端链接关系后，将进入文件同步配置';
 
-  const canGoNextFromClient =
-    sourceTestStatus === 'success' && targetTestStatus === 'success';
+  const sourceManaged = sourceType?.dbType === 'WEB_UPLOAD';
+  const canGoNextFromClient = sourceManaged
+    ? targetTestStatus === 'success'
+    : sourceTestStatus === 'success' && targetTestStatus === 'success';
 
   const handleNextWithGuard = async () => {
     if (activeStep === 'client' && !canGoNextFromClient) {
-      if (sourceTestStatus !== 'success' && targetTestStatus !== 'success') {
+      if (!sourceManaged && sourceTestStatus !== 'success' && targetTestStatus !== 'success') {
         openPrettyNotification({
           type: 'warning',
           title: '操作警告',
@@ -85,7 +87,7 @@ const FileDetailPage = () => {
         return;
       }
 
-      if (sourceTestStatus !== 'success') {
+      if (!sourceManaged && sourceTestStatus !== 'success') {
         openPrettyNotification({
           type: 'warning',
           title: '操作警告',
@@ -202,6 +204,7 @@ const FileDetailPage = () => {
                   targetTestStatus={targetTestStatus}
                   setSourceTestStatus={setSourceTestStatus}
                   setTargetTestStatus={setTargetTestStatus}
+                  sourceManaged={sourceManaged}
                 />
               )}
             </div>

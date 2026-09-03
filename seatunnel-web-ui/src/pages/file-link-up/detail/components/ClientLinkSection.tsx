@@ -23,6 +23,7 @@ interface Props {
   targetTestStatus: ConnectivityStatus;
   setSourceTestStatus: (status: ConnectivityStatus) => void;
   setTargetTestStatus: (status: ConnectivityStatus) => void;
+  sourceManaged?: boolean;
 
   sectionRef?: React.RefObject<HTMLDivElement>;
 }
@@ -40,6 +41,7 @@ const FileTypeClientLinkSection: React.FC<Props> = (props) => {
       targetCreateText="新建去向数据源"
       sourceDataSourceTypeOptions={generateFileTypeSourceOptions()}
       targetDataSourceTypeOptions={generateFileTypeTargetOptions()}
+      sourceManaged={props.sourceManaged}
     />
   );
 };

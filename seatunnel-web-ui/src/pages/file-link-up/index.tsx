@@ -17,7 +17,12 @@ const FileLinkUpPage: React.FC = () => {
         `batch-link-up-detail-${returnId}`,
         JSON.stringify({
           id: returnId,
-          sourceType: { dbType: 'LOCAL_FILE', connectorType: 'LocalFile', pluginName: 'LocalFile' },
+          sourceType: {
+            dbType: 'WEB_UPLOAD',
+            connectorType: 'S3File',
+            pluginName: 'S3File',
+            sourceManaged: true,
+          },
           targetType: { dbType: 'FTP', connectorType: 'FtpFile', pluginName: 'FtpFile' },
         }),
       );

@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SourceTargetType, StepKey, SyncMode } from '@/pages/batch-link-up/detail/types';
 
 const defaultSourceType: SourceTargetType = {
-  dbType: 'LOCAL_FILE',
-  connectorType: 'LocalFile',
-  pluginName: 'LocalFile',
+  dbType: 'WEB_UPLOAD',
+  connectorType: 'S3File',
+  pluginName: 'S3File',
+  sourceManaged: true,
 };
 
 const defaultTargetType: SourceTargetType = {
@@ -75,7 +76,10 @@ export default function useDetailPage() {
       dbType: value,
       connectorType: option?.connectorType,
       pluginName: option?.pluginName,
+      sourceManaged: option?.sourceManaged,
     });
+    setSourceDataSourceId(undefined);
+    setSourceTestStatus('idle');
   };
 
   const handleTargetChange = (value: string, option: any) => {

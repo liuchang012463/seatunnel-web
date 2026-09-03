@@ -18,6 +18,8 @@ public final class HoconSensitiveMaskUtil {
             "passwd",
             "pwd",
             "secret",
+            "secretkey",
+            "accesskey",
             "accesskeysecret",
             "token"
     ));

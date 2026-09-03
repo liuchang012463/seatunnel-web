@@ -14,6 +14,7 @@ export type SourceTargetType = {
   dbType: string;
   connectorType?: string;
   pluginName?: string;
+  sourceManaged?: boolean;
 };
 
 interface DataSourceOptionItem {

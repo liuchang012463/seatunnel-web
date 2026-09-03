@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Verifies file-style datasources (FTP/SFTP/S3/MINIO/LOCAL_FILE) directly from
+ * Verifies file-style datasources (FTP/SFTP/S3/MINIO) directly from
  * the web server via the datasource plugin connectivity verifiers.
  *
  * <p>File connectors do not run a SeaTunnel test job: the engine reads files from
@@ -28,7 +28,7 @@ public class FileDatasourceConnectivityVerificationStrategy
         implements DatasourceConnectivityVerificationStrategy {
 
     private static final List<String> SUPPORTED_DB_TYPES = Arrays.asList(
-            "FTP", "SFTP", "S3", "MINIO", "LOCAL_FILE");
+            "FTP", "SFTP", "S3", "MINIO");
 
     @Override
     public boolean supports(DatasourceVerifyContext context) {
@@ -58,7 +58,7 @@ public class FileDatasourceConnectivityVerificationStrategy
                 vo.setMessage(dbType + " 数据源连接成功");
                 vo.addItem(ClientDatasourceVerifyItemVO.success(
                         "FILE_CONNECTIVITY", dbType + " 连通性",
-                        "数据源可达" + (context.getDbType() == DbType.LOCAL_FILE ? "，本机目录可读取" : ""),
+                        "数据源可达",
                         "数据源可访问",
                         target + " 连接成功"));
             } else {
