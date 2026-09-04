@@ -56,14 +56,6 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
               onSelect={setMode}
             />
 
-            <ModeCard
-              value="FILE_SYNC"
-              current={mode}
-              title="文件向导"
-              desc="按目录或 Prefix 同步二进制文件，来源支持本地上传与远程文件。"
-              tag="二进制流"
-              onSelect={setMode}
-            />
           </div>
         </Radio.Group>
       </Form.Item>
