@@ -7,6 +7,7 @@ server:
 security:
   authentication:
     mode: ${SEATUNNEL_WEB_AUTH_MODE:DEV_BYPASS}
+    type: PASSWORD
   dev-user-id: ${SEATUNNEL_WEB_DEV_USER_ID:1}
 
 springdoc:
@@ -54,12 +55,12 @@ spring:
   main:
     allow-bean-definition-overriding: true
   ai:
-    minimax:
-      api-key: ${SPRING_AI_API_KEY}
-      base-url: ${SPRING_AI_BASE_URL}
+    llm:
+      api-key: ${SPRING_AI_API_KEY:}
+      base-url: ${SPRING_AI_BASE_URL:}
       chat:
         options:
-          model: ${SPRING_AI_LLM_MODEL}
+          model: ${SPRING_AI_LLM_MODEL:}
       embedding:
         enabled: false
 
@@ -117,10 +118,14 @@ seatunnel:
     max-empty-times: 30
     max-error-times: 30
     no-progress-warn-ms: 300000
+  result:
+    poll-interval-ms: 2000
+    poll-timeout-ms: 0
 
   streaming:
     metrics:
       interval-ms: 5000
+      snapshot-interval-ms: 60000
       max-empty-times: 30
       max-error-times: 30
       log-every-times: 10

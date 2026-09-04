@@ -26,10 +26,10 @@ public class StreamingJobResultWatcher {
     @Resource
     private SeaTunnelRestClient seatunnelRestClient;
 
-    @Value("${seatunnel.result.poll-interval-ms:2000}")
+    @Value("${seatunnel.result.poll-interval-ms}")
     private long pollIntervalMs;
 
-    @Value("${seatunnel.result.poll-timeout-ms:0}")
+    @Value("${seatunnel.result.poll-timeout-ms}")
     private long pollTimeoutMs;
 
     public void registerByRest(JobRuntimeContext context) {
