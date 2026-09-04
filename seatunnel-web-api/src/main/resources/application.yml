@@ -147,6 +147,17 @@ seatunnel:
   web:
     database:
       type: ${SEATUNNEL_WEB_DATABASE_TYPE:mysql}
+    file-upload:
+      minio:
+        endpoint: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ENDPOINT:}
+        runtime-endpoint: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ENDPOINT:}
+        bucket: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_BUCKET:seatunnel-web-upload}
+        access-key: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ACCESS_KEY:}
+        secret-key: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SECRET_KEY:}
+        runtime-access-key: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ACCESS_KEY:}
+        runtime-secret-key: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_SECRET_KEY:}
+        root-prefix: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX:seatunnel-web-upload}
+        session-ttl-hours: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS:24}
 
 # OpenMetadata integration is intentionally opt-in. The base URL must be the
 # OpenMetadata Server /api endpoint; this application never calls Airflow.

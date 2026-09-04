@@ -1,7 +1,7 @@
 package org.apache.seatunnel.web.core.fileupload;
 
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
@@ -10,69 +10,97 @@ import org.springframework.stereotype.Component;
  * requires them when a WEB_UPLOAD source is used.
  */
 @Component
+@ConfigurationProperties(prefix = "seatunnel.web.file-upload.minio")
 public class BuiltInMinioProperties {
 
-    @Value("${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ENDPOINT:}")
     private String endpoint;
 
-    @Value("${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ENDPOINT:}")
     private String runtimeEndpoint;
 
-    @Value("${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_BUCKET:seatunnel-web-upload}")
-    private String bucket;
+    private String bucket = "seatunnel-web-upload";
 
-    @Value("${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ACCESS_KEY:}")
     private String accessKey;
 
-    @Value("${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SECRET_KEY:}")
     private String secretKey;
 
-    @Value("${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ACCESS_KEY:}")
     private String runtimeAccessKey;
 
-    @Value("${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_SECRET_KEY:}")
     private String runtimeSecretKey;
 
-    @Value("${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX:seatunnel-web-upload}")
-    private String rootPrefix;
+    private String rootPrefix = "seatunnel-web-upload";
 
-    @Value("${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS:24}")
-    private int sessionTtlHours;
+    private int sessionTtlHours = 24;
 
     public String getEndpoint() {
         return endpoint;
+    }
+
+    public void setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
     }
 
     public String getRuntimeEndpoint() {
         return StringUtils.defaultIfBlank(runtimeEndpoint, endpoint);
     }
 
+    public void setRuntimeEndpoint(String runtimeEndpoint) {
+        this.runtimeEndpoint = runtimeEndpoint;
+    }
+
     public String getBucket() {
         return bucket;
+    }
+
+    public void setBucket(String bucket) {
+        this.bucket = bucket;
     }
 
     public String getAccessKey() {
         return accessKey;
     }
 
+    public void setAccessKey(String accessKey) {
+        this.accessKey = accessKey;
+    }
+
     public String getSecretKey() {
         return secretKey;
+    }
+
+    public void setSecretKey(String secretKey) {
+        this.secretKey = secretKey;
     }
 
     public String getRuntimeAccessKey() {
         return StringUtils.defaultIfBlank(runtimeAccessKey, accessKey);
     }
 
+    public void setRuntimeAccessKey(String runtimeAccessKey) {
+        this.runtimeAccessKey = runtimeAccessKey;
+    }
+
     public String getRuntimeSecretKey() {
         return StringUtils.defaultIfBlank(runtimeSecretKey, secretKey);
+    }
+
+    public void setRuntimeSecretKey(String runtimeSecretKey) {
+        this.runtimeSecretKey = runtimeSecretKey;
     }
 
     public String getRootPrefix() {
         return normalizeSegment(rootPrefix, "seatunnel-web-upload");
     }
 
+    public void setRootPrefix(String rootPrefix) {
+        this.rootPrefix = rootPrefix;
+    }
+
     public int getSessionTtlHours() {
         return sessionTtlHours > 0 ? sessionTtlHours : 24;
+    }
+
+    public void setSessionTtlHours(int sessionTtlHours) {
+        this.sessionTtlHours = sessionTtlHours;
     }
 
     public String objectKeyPrefix(Long jobDefinitionId, String sessionId) {
