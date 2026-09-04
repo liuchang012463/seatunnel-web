@@ -8,6 +8,7 @@ import com.amazonaws.auth.InstanceProfileCredentialsProvider;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.CopyObjectRequest;
 import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.DeleteObjectsRequest;
@@ -21,8 +22,8 @@ import org.apache.seatunnel.plugin.datasource.s3.param.ObjectStorageCredentialMo
 import org.apache.seatunnel.web.spi.bean.vo.FileEntryVO;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 
-import java.util.ArrayList;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -121,6 +122,25 @@ public class S3ObjectStorageClient implements ObjectStorageClient {
             PutObjectResult result = client.putObject(
                     new PutObjectRequest(param.getBucket(), objectKey, input, metadata));
             return result == null ? null : result.getETag();
+        } finally {
+            client.shutdown();
+        }
+    }
+
+    /** Copies one object within the configured bucket without exposing storage details to callers. */
+    public void copyObject(
+            ObjectStorageConnectionParam connectionParam,
+            String sourceKey,
+            String targetKey) {
+        ObjectStorageConnectionParam param = requireParam(connectionParam);
+        if (sourceKey == null || sourceKey.isBlank() || targetKey == null || targetKey.isBlank()) {
+            throw new IllegalArgumentException("S3 object keys cannot be empty");
+        }
+
+        AmazonS3 client = clientFactory.create(param);
+        try {
+            client.copyObject(new CopyObjectRequest(
+                    param.getBucket(), sourceKey, param.getBucket(), targetKey));
         } finally {
             client.shutdown();
         }

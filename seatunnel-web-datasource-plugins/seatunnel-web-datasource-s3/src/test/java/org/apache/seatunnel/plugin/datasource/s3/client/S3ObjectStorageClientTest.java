@@ -2,6 +2,7 @@ package org.apache.seatunnel.plugin.datasource.s3.client;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
+import com.amazonaws.services.s3.model.CopyObjectRequest;
 import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
@@ -105,6 +106,22 @@ class S3ObjectStorageClientTest {
         });
         assertThrows(IllegalArgumentException.class,
                 () -> client.listEntries(param(), "/outside"));
+    }
+
+    @Test
+    void copiesObjectWithinConfiguredBucket() {
+        AmazonS3 amazonS3 = mock(AmazonS3.class);
+        S3ObjectStorageClient client = new S3ObjectStorageClient(param -> amazonS3);
+
+        client.copyObject(param(), "legacy/job/session/file.bin", "job/session/file.bin");
+
+        ArgumentCaptor<CopyObjectRequest> captor = ArgumentCaptor.forClass(CopyObjectRequest.class);
+        verify(amazonS3).copyObject(captor.capture());
+        assertEquals("archive", captor.getValue().getSourceBucketName());
+        assertEquals("legacy/job/session/file.bin", captor.getValue().getSourceKey());
+        assertEquals("archive", captor.getValue().getDestinationBucketName());
+        assertEquals("job/session/file.bin", captor.getValue().getDestinationKey());
+        verify(amazonS3).shutdown();
     }
 
     private MinioConnectionParam param() {

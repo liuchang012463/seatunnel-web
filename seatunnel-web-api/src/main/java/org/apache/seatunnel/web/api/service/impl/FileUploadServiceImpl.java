@@ -201,6 +201,7 @@ public class FileUploadServiceImpl implements FileUploadService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void validateWorkflow(Long jobDefinitionId, Map<String, Object> workflow) {
         Map<String, Object> source = findNodeConfig(workflow, SOURCE_NODE_TYPE);
         if (source.isEmpty() || !WEB_UPLOAD.equalsIgnoreCase(value(source, "sourceMode"))) {
@@ -219,17 +220,89 @@ public class FileUploadServiceImpl implements FileUploadService {
             throw invalid("上传会话与当前任务不匹配");
         }
         validateUploadSession(session);
-        boolean hasAsset = fileUploadAssetDao.queryBySessionId(sessionId).stream()
+        List<FileUploadAsset> assets = fileUploadAssetDao.queryBySessionId(sessionId);
+        boolean hasAsset = assets.stream()
                 .anyMatch(asset -> READY.equalsIgnoreCase(asset.getStatus()));
         if (!hasAsset) {
             throw invalid("请先上传至少一个文件");
         }
+        migrateSessionPrefixIfNecessary(session, assets);
         source.put("dbType", "MINIO");
         source.put("pluginName", "S3File");
         source.put("connectorType", "S3File");
         source.put("syncType", "FULL");
         source.put("binaryChunkSize", 1048576);
         source.put("binaryCompleteFileMode", false);
+    }
+
+    private void migrateSessionPrefixIfNecessary(
+            FileUploadSession session,
+            List<FileUploadAsset> assets) {
+        String targetPrefix = builtInMinioProperties.objectKeyPrefix(
+                session.getJobDefinitionId(), session.getId());
+        String sourcePrefix = StringUtils.trimToEmpty(session.getObjectPrefix());
+        if (sourcePrefix.equals(targetPrefix)) {
+            return;
+        }
+        if (sourcePrefix.isBlank()) {
+            session.setObjectPrefix(targetPrefix);
+            fileUploadSessionDao.updateById(session);
+            return;
+        }
+
+        List<FileUploadAsset> readyAssets = assets.stream()
+                .filter(asset -> READY.equalsIgnoreCase(asset.getStatus()))
+                .toList();
+        if (readyAssets.isEmpty()) {
+            session.setObjectPrefix(targetPrefix);
+            fileUploadSessionDao.updateById(session);
+            return;
+        }
+
+        MinioConnectionParam connectionParam = writeConnectionParam();
+        objectStorageClient.ensureBucket(connectionParam);
+        List<String> copiedKeys = new ArrayList<>();
+        try {
+            for (FileUploadAsset asset : readyAssets) {
+                String relativePath = normalizeRelativePath(asset.getRelativePath());
+                String expectedSourceKey = sourcePrefix + "/" + relativePath;
+                if (!expectedSourceKey.equals(asset.getObjectKey())) {
+                    throw invalid("文件资产路径与上传会话不匹配");
+                }
+
+                String targetKey = targetPrefix + "/" + relativePath;
+                objectStorageClient.copyObject(connectionParam, expectedSourceKey, targetKey);
+                copiedKeys.add(targetKey);
+                asset.setObjectKey(targetKey);
+                asset.setUpdateTime(new Date());
+                fileUploadAssetDao.updateById(asset);
+            }
+            session.setObjectPrefix(targetPrefix);
+            fileUploadSessionDao.updateById(session);
+        } catch (ServiceException e) {
+            cleanupMigratedObjects(connectionParam, copiedKeys, session.getId());
+            throw e;
+        } catch (Exception e) {
+            cleanupMigratedObjects(connectionParam, copiedKeys, session.getId());
+            log.error("Failed to migrate uploaded file prefix, sessionId={}", session.getId(), e);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
+                    "文件上传路径迁移失败: "
+                            + StringUtils.defaultIfBlank(e.getMessage(), "对象存储不可用"));
+        }
+    }
+
+    private void cleanupMigratedObjects(
+            MinioConnectionParam connectionParam,
+            List<String> copiedKeys,
+            String sessionId) {
+        if (copiedKeys.isEmpty()) {
+            return;
+        }
+        try {
+            objectStorageClient.deleteObjects(connectionParam, copiedKeys);
+        } catch (Exception cleanupError) {
+            log.warn("Failed to clean up migrated objects, sessionId={}", sessionId, cleanupError);
+        }
     }
 
     @Override
