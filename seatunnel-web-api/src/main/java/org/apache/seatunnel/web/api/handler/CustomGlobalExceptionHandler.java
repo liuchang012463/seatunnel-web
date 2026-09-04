@@ -10,6 +10,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MultipartException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -69,6 +70,18 @@ public class CustomGlobalExceptionHandler {
     public Result<Void> handleNullPointerException(Exception e) {
         LOGGER.error("method=handleNullPointerException || errMsg=exception", e);
         return Result.buildFromRSAndMsg(ResultStatus.FAIL, "Service encountered a null pointer exception");
+    }
+
+    /**
+     * Return an actionable message when multipart parsing fails before a controller is invoked.
+     * This commonly happens when a folder selection exceeds the request-size limit.
+     */
+    @ExceptionHandler(MultipartException.class)
+    public Result<Void> handleMultipartException(MultipartException e) {
+        LOGGER.warn("method=handleMultipartException || errMsg=exception", e);
+        return Result.buildFromRSAndMsg(
+                ResultStatus.PARAM_ILLEGAL,
+                "上传文件失败，请检查单个文件大小或分批上传");
     }
 
     /**

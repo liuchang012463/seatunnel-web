@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.common.config.ConfigValidator;
 import org.apache.seatunnel.web.common.config.ReadonlyConfig;
 import org.apache.seatunnel.web.common.enums.HoconBuildStage;
 import org.apache.seatunnel.web.core.builder.context.DagBuildContext;
+import org.apache.seatunnel.web.core.fileupload.BuiltInMinioProperties;
 import org.apache.seatunnel.web.core.time.TimeVariableJdbcSqlRenderService;
 import org.apache.seatunnel.web.core.time.IncrementalSqlRenderer;
 import org.apache.seatunnel.web.dao.entity.DataSource;
@@ -32,6 +33,8 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     private static final String KEY_DB_TYPE = "dbType";
     private static final String KEY_PLUGIN_NAME = "pluginName";
     private static final String KEY_CONNECTOR_TYPE = "connectorType";
+    private static final String KEY_SOURCE_MODE = "sourceMode";
+    private static final String WEB_UPLOAD = "WEB_UPLOAD";
 
     private static final String KEY_SQL = "sql";
     private static final String KEY_WHERE_CONDITION = "where_condition";
@@ -41,6 +44,9 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
     @Resource
     private TimeVariableJdbcSqlRenderService timeVariableJdbcSqlRenderService;
+
+    @Resource
+    private BuiltInMinioProperties builtInMinioProperties;
 
     @Override
     public String nodeType() {
@@ -56,6 +62,10 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     public Config build(Config data, DagBuildContext dagContext) {
         Config nodeConfig = resolveNodeConfig(data);
         nodeConfig = appendPluginOutputIfNecessary(data, nodeConfig, dagContext);
+
+        if (WEB_UPLOAD.equalsIgnoreCase(getTrimmedString(nodeConfig, KEY_SOURCE_MODE))) {
+            return buildWebUploadSource(nodeConfig, dagContext);
+        }
 
         Long dataSourceId = parseDataSourceId(nodeConfig);
         DataSource dataSource = getRequiredDataSource(dataSourceId);
@@ -158,6 +168,10 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
     @Override
     public String connectorName(Config data) {
+        if (WEB_UPLOAD.equalsIgnoreCase(getTrimmedString(data, KEY_SOURCE_MODE))) {
+            return "S3File";
+        }
+
         String dbTypeValue = getTrimmedString(data, KEY_DB_TYPE);
         if ("DORIS".equalsIgnoreCase(dbTypeValue)) {
             return "Doris";
@@ -185,6 +199,84 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
             throw new IllegalArgumentException(
                     "Invalid '" + KEY_DATA_SOURCE_ID + "': " + value + ", expected numeric value", e);
         }
+    }
+
+    private Config buildWebUploadSource(Config nodeConfig, DagBuildContext dagContext) {
+        String jobDefinitionIdText = getTrimmedString(nodeConfig, "jobDefinitionId");
+        String sessionId = getTrimmedString(nodeConfig, "uploadSessionId");
+        if (StringUtils.isBlank(jobDefinitionIdText) || StringUtils.isBlank(sessionId)) {
+            throw new IllegalArgumentException(
+                    "WEB_UPLOAD source requires jobDefinitionId and uploadSessionId");
+        }
+
+        final Long jobDefinitionId;
+        try {
+            jobDefinitionId = Long.valueOf(jobDefinitionIdText);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid jobDefinitionId for WEB_UPLOAD source", e);
+        }
+
+        Map<String, Object> connection = new HashMap<>();
+        connection.put("dbType", "MINIO");
+        connection.put("endpoint", requireProperty(
+                builtInMinioProperties.getRuntimeEndpoint(),
+                "SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ENDPOINT"));
+        connection.put("region", "us-east-1");
+        connection.put("bucket", requireProperty(
+                builtInMinioProperties.getBucket(),
+                "SEATUNNEL_WEB_FILE_UPLOAD_MINIO_BUCKET"));
+        connection.put("basePath", "/");
+        connection.put("credentialMode", "STATIC");
+        connection.put("accessKey", requireProperty(
+                builtInMinioProperties.getRuntimeAccessKey(),
+                "SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ACCESS_KEY"));
+        connection.put("secretKey", requireProperty(
+                builtInMinioProperties.getRuntimeSecretKey(),
+                "SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_SECRET_KEY"));
+        connection.put("pathStyleAccess", true);
+
+        Map<String, Object> node = new HashMap<>();
+        node.put("path", builtInMinioProperties.objectPath(jobDefinitionId, sessionId));
+        node.put("binaryChunkSize", 1048576);
+        node.put("binaryCompleteFileMode", false);
+        Config effectiveNodeConfig = ConfigFactory.parseMap(node)
+                .withFallback(nodeConfig)
+                .resolve();
+        Config connectionConfig = ConfigFactory.parseMap(connection).resolve();
+
+        DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(DbType.MINIO);
+        if (processor == null) {
+            throw new IllegalArgumentException("MINIO datasource processor is unavailable");
+        }
+        DataSourceHoconBuilder hoconBuilder = processor.getQueryBuilder("S3File");
+        if (hoconBuilder == null || !hoconBuilder.supportsSource()) {
+            throw new IllegalArgumentException("S3File does not support source side");
+        }
+
+        effectiveNodeConfig = IncrementalSqlRenderer.render(
+                effectiveNodeConfig, dagContext == null ? null : dagContext.getScheduleConfig());
+        effectiveNodeConfig = renderTimeVariablesIfNecessary(
+                effectiveNodeConfig, hoconBuilder,
+                dagContext == null ? null : dagContext.getScheduleConfig());
+
+        HoconBuildContext buildContext = HoconBuildContext.builder()
+                .connectionParam(connectionConfig.root().render())
+                .connectionConfig(connectionConfig)
+                .nodeConfig(effectiveNodeConfig)
+                .scheduleConfig(dagContext == null ? null : dagContext.getScheduleConfig())
+                .stage(HoconBuildStage.INSTANCE)
+                .build();
+
+        Config sourceConfig = hoconBuilder.buildSourceHocon(buildContext);
+        validateSourceConfig(processor, "S3File", sourceConfig);
+        return sourceConfig;
+    }
+
+    private String requireProperty(String value, String propertyName) {
+        if (StringUtils.isBlank(value)) {
+            throw new IllegalArgumentException("Missing required property: " + propertyName);
+        }
+        return value.trim();
     }
 
     private DataSource getRequiredDataSource(Long dataSourceId) {

@@ -50,4 +50,3 @@ public enum DbType {
         return null;
     }
 }
-

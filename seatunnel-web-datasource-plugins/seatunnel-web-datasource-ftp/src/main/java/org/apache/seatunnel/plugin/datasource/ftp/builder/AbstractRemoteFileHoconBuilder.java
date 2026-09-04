@@ -47,7 +47,6 @@ public abstract class AbstractRemoteFileHoconBuilder implements DataSourceHoconB
         result.put("tmp_path", defaultString(node.get("tmpPath"), stripTrailingSlash(target) + "-seatunnel-tmp"));
         result.put("file_format_type", "binary");
         result.put("is_enable_transaction", true);
-        result.put("sink_columns", Arrays.asList("path", "content"));
         appendExtras(result, node);
         require(result, "path");
         return ConfigFactory.parseMap(result);

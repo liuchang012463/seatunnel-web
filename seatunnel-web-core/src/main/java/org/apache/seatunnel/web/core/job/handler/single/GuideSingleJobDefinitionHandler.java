@@ -107,7 +107,17 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         if (source == null || sink == null) {
             throw new IllegalArgumentException("FILE_SYNC requires exactly one source and one sink");
         }
-        requireFileDbType(source, "source");
+        boolean webUpload = "WEB_UPLOAD".equalsIgnoreCase(String.valueOf(source.get("sourceMode")));
+        if (webUpload) {
+            if (!"MINIO".equalsIgnoreCase(String.valueOf(source.get("dbType")))) {
+                throw new IllegalArgumentException("FILE_SYNC Web 上传来源必须使用内置 MINIO");
+            }
+            if ("INCREMENTAL".equalsIgnoreCase(String.valueOf(source.get("syncType")))) {
+                throw new IllegalArgumentException("Web 上传文件引接只支持全量同步");
+            }
+        } else {
+            requireFileDbType(source, "source");
+        }
         requireFileDbType(sink, "sink");
         if ("INCREMENTAL".equalsIgnoreCase(String.valueOf(source.get("syncType")))) {
             requireIncrementalDbType(source, "source");

@@ -93,7 +93,7 @@ public class StreamingJobMetricsServiceImpl implements StreamingJobMetricsServic
      * current 表每次采集都会 upsert。
      * snapshot 历史表按这个间隔 insert。
      */
-    @Value("${seatunnel.streaming.metrics.snapshot-interval-ms:60000}")
+    @Value("${seatunnel.streaming.metrics.snapshot-interval-ms}")
     private long snapshotIntervalMs;
 
     private final Map<Long, Long> lastSnapshotTimeMap = new ConcurrentHashMap<>();

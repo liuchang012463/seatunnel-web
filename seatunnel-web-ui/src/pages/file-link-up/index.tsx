@@ -12,9 +12,21 @@ const FileLinkUpPage: React.FC = () => {
       if (response?.code !== 0 || !response?.data) {
         throw new Error(response?.message || '申请任务定义 ID 失败');
       }
-      history.push(
-        `/sync/file-link-up/${response.data}/config/file-sync?scene=create`,
+      const returnId = response.data;
+      sessionStorage.setItem(
+        `batch-link-up-detail-${returnId}`,
+        JSON.stringify({
+          id: returnId,
+          sourceType: {
+            dbType: 'WEB_UPLOAD',
+            connectorType: 'S3File',
+            pluginName: 'S3File',
+            sourceManaged: true,
+          },
+          targetType: { dbType: 'FTP', connectorType: 'FtpFile', pluginName: 'FtpFile' },
+        }),
       );
+      history.push(`/sync/file-link-up/${returnId}/detail`);
     } catch (error: any) {
       message.error(error?.message || '新建文件引接任务失败');
     }
@@ -35,7 +47,7 @@ const FileLinkUpPage: React.FC = () => {
         title="文件引接任务管理"
         subtitle={
           <>
-            独立管理 FTP、SFTP、S3 和 MinIO 的目录或对象前缀同步，不使用表、字段或 SQL 映射。
+            独立管理本地文件与 FTP、SFTP、S3、MinIO 的目录或对象前缀同步，不使用表、字段或 SQL 映射。
           </>
         }
         actions={

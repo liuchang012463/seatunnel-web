@@ -18,6 +18,8 @@ const getModeLabel = (mode?: string) => {
       return "多表同步";
     case "SCRIPT":
       return "脚本模式";
+    case "FILE_SYNC":
+      return "文件同步";
     default:
       return mode || "-";
   }

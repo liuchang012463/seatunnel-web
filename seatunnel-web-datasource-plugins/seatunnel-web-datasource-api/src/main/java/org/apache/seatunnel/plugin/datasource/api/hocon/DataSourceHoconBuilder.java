@@ -6,7 +6,7 @@ public interface DataSourceHoconBuilder {
 
     /**
      * Unique plugin name, for example:
-     * Jdbc, MySQL-CDC, Kafka, Hive, LocalFile
+     * Jdbc, MySQL-CDC, Kafka, Hive, S3File
      */
     String pluginName();
 

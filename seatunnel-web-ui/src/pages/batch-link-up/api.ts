@@ -130,6 +130,29 @@ export const seatunnelJobDefinitionApi = {
   },
 };
 
+export const fileUploadApi = {
+  ensureSession: (jobDefinitionId: string | number) =>
+    HttpUtils.post(`/api/v1/file-upload/sessions/${jobDefinitionId}`, {}),
+
+  getSession: (sessionId: string) =>
+    HttpUtils.get(`/api/v1/file-upload/sessions/${encodeURIComponent(sessionId)}`),
+
+  upload: (sessionId: string, files: File[], relativePaths: string[]) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    relativePaths.forEach((path) => formData.append('relativePaths', path));
+    return HttpUtils.postForm(
+      `/api/v1/file-upload/sessions/${encodeURIComponent(sessionId)}/assets`,
+      formData,
+    );
+  },
+
+  deleteAsset: (sessionId: string, assetId: string | number) =>
+    HttpUtils.delete(
+      `/api/v1/file-upload/sessions/${encodeURIComponent(sessionId)}/assets/${assetId}`,
+    ),
+};
+
 export const executeApiPrefix = '/api/v1/executor';
 
 export const seatunnelJobExecuteApi = {

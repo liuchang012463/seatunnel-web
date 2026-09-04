@@ -1,5 +1,5 @@
 import { selectDataSourceById } from "@/pages/data-source/service";
-import { DoubleRightOutlined } from "@ant-design/icons";
+import { DoubleRightOutlined, FileOutlined } from "@ant-design/icons";
 import { Empty, Popover } from "antd";
 import { CSSProperties, useState } from "react";
 import DatabaseIcons from "../../../../data-source/icon/DatabaseIcons";
@@ -31,8 +31,9 @@ const jsonPopoverContentStyle: CSSProperties = {
 };
 
 const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
-  console.log(record);
   const isFileSync = record?.mode === "FILE_SYNC";
+  const isManagedFileSource =
+    isFileSync && String(record?.sourceType || "").toUpperCase() === "WEB_UPLOAD";
   const animatedIconStyle: CSSProperties = {
     fontSize: 10,
     animation: "float 2s ease-in-out infinite",
@@ -407,7 +408,23 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
       <div style={{ margin: "4px 0" }}>
         {/* SOURCE */}
         <div style={{ display: "flex", alignItems: "center" }}>
-          {record?.sourceType ? (
+          {isManagedFileSource ? (
+            <>
+              <FileOutlined style={{ color: "#315EFB", fontSize: 24 }} />
+              <span
+                style={{
+                  marginLeft: 8,
+                  maxWidth: 112,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title="本地文件"
+              >
+                本地文件
+              </span>
+            </>
+          ) : record?.sourceType ? (
             <>
               <DatabaseIcons
                 dbType={record.sourceType}

@@ -1,18 +1,37 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-
-      {
-        "type": "java",
-        "name": "SeaTunnelWebApplication",
-        "request": "launch",
-        "mainClass": "org.apache.seatunnel.web.api.SeaTunnelWebApplication",
-        "projectName": "seatunnel-web-api",
-        "console": "integratedTerminal",
-        "envFile": "${workspaceFolder}/.env",
-        "env": {
-          "SPRING_FLYWAY_REPAIR_ON_MIGRATE": "false"
-        }
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "SeaTunnelWebApplication",
+      "request": "launch",
+      "mainClass": "org.apache.seatunnel.web.api.SeaTunnelWebApplication",
+      "projectName": "seatunnel-web-api",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "SPRING_FLYWAY_REPAIR_ON_MIGRATE": "false"
       }
-    ]
-  }
+    },
+    {
+      "type": "node-terminal",
+      "name": "SeaTunnel Web UI",
+      "request": "launch",
+      "command": "CHECK_TIMEOUT=300 REACT_APP_ENV=dev MOCK=none UMI_ENV=dev yarn exec max dev",
+      "cwd": "${workspaceFolder}/seatunnel-web-ui",
+      "env": {
+        "PORT": "8000"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "SeaTunnel Web Full Stack",
+      "configurations": [
+        "SeaTunnelWebApplication",
+        "SeaTunnel Web UI"
+      ],
+      "stopAll": true
+    }
+  ]
+}

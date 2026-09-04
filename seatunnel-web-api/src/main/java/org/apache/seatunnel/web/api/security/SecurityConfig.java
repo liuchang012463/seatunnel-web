@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
 public class SecurityConfig {
     private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
-    @Value("${security.authentication.type:PASSWORD}")
+    @Value("${security.authentication.type}")
     private String type;
 
     private AutowireCapableBeanFactory beanFactory;

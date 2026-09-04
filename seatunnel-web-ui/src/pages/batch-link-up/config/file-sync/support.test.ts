@@ -1,6 +1,7 @@
 import {
   canUseIncrementalFileSync,
   connectorForFileType,
+  fileDataSourceLabel,
   isFileDataSourceType,
 } from './support'
 
@@ -17,6 +18,10 @@ describe('file sync datasource support', () => {
 
   it('rejects non-file datasource types', () => {
     expect(isFileDataSourceType('MYSQL')).toBe(false)
+  })
+
+  it('uses a user-facing label for local files', () => {
+    expect(fileDataSourceLabel('WEB_UPLOAD')).toBe('本地文件')
   })
 
   it.each([

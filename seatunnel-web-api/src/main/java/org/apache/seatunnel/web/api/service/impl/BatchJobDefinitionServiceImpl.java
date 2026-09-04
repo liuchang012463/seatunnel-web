@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.service.BatchJobDefinitionService;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.IncrementalBatchService;
+import org.apache.seatunnel.web.api.service.FileUploadService;
 import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.api.service.application.JobScheduleApplicationService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
@@ -20,6 +21,7 @@ import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.core.job.assembler.BatchJobDefinitionAssembler;
 import org.apache.seatunnel.web.core.job.handler.JobDefinitionModeHandler;
 import org.apache.seatunnel.web.core.job.registry.JobDefinitionModeHandlerRegistry;
@@ -37,6 +39,7 @@ import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.BatchJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionBatchCreateCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.command.GuideSingleJobContentCommand;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
@@ -94,6 +97,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     @Resource
     private IncrementalBatchService incrementalBatchService;
 
+    @Resource
+    private FileUploadService fileUploadService;
+
     /**
      * Save or update batch job definition.
      */
@@ -105,6 +111,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             Date now = new Date();
             Integer currentUserId = currentUserProvider.getCurrentUserId();
 
+            validateFileUpload(command);
             JobDefinitionModeHandler handler = getAndValidateHandler(command);
             JobDefinitionAnalysisResult analysis = handler.analyze(command);
 
@@ -148,6 +155,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             jobDefinitionContentDao.save(contentEntity);
 
             scheduleApplicationService.saveOrUpdateSchedule(entity.getId(), command);
+            fileUploadService.attach(entity.getId());
 
             return buildSaveResult(entity, nextVersion);
         } catch (ServiceException e) {
@@ -190,7 +198,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         validateBase(command);
 
         try {
-            return buildHoconConfigInternal(command);
+            return HoconSensitiveMaskUtil.maskSensitiveInfo(buildHoconConfigInternal(command));
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -268,7 +276,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             incrementalBatchService.removeByDefinitionId(jobDefinitionId);
             jobInstanceService.removeAllByDefinitionId(jobDefinitionId);
             jobDefinitionContentDao.deleteByJobDefinitionId(jobDefinitionId);
-            return jobDefinitionDao.deleteById(jobDefinitionId);
+            boolean deleted = jobDefinitionDao.deleteById(jobDefinitionId);
+            fileUploadService.deleteByJobDefinitionId(jobDefinitionId);
+            return deleted;
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -338,6 +348,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
                     latestContent,
                     buildScheduleConfig(templateId)
             );
+            rejectWebUploadTemplate(template);
 
             for (int copyIndex = 1; copyIndex <= copiesPerTemplate; copyIndex++) {
                 Long newId = CodeGenerateUtils.getInstance().genCode();
@@ -597,6 +608,39 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         return copy;
     }
 
+    private void rejectWebUploadTemplate(JobDefinitionSaveCommand template) {
+        if (!(template instanceof GuideSingleJobContentCommand contentCommand)
+                || contentCommand.getWorkflow() == null) {
+            return;
+        }
+
+        Object rawNodes = contentCommand.getWorkflow().get("nodes");
+        if (!(rawNodes instanceof List<?> nodes)) {
+            return;
+        }
+
+        for (Object rawNode : nodes) {
+            if (!(rawNode instanceof java.util.Map<?, ?> node)) {
+                continue;
+            }
+            Object rawData = node.get("data");
+            if (!(rawData instanceof java.util.Map<?, ?> data)) {
+                continue;
+            }
+            Object rawConfig = data.get("config");
+            java.util.Map<?, ?> config = rawConfig instanceof java.util.Map<?, ?> map
+                    ? map
+                    : data;
+            Object sourceMode = config.get("sourceMode");
+            if ("WEB_UPLOAD".equalsIgnoreCase(String.valueOf(sourceMode))) {
+                throw new ServiceException(
+                        Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                        "包含浏览器上传文件的文件引接任务不能批量复制，请重新上传文件"
+                );
+            }
+        }
+    }
+
     private String buildCopyName(String sourceName, String requestedPrefix, int copyIndex) {
         String baseName = StringUtils.isBlank(requestedPrefix)
                 ? sourceName
@@ -680,6 +724,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
      * Build hocon config internally.
      */
     private String buildHoconConfigInternal(JobDefinitionSaveCommand command) {
+        validateFileUpload(command);
         JobDefinitionModeHandler handler = getAndValidateHandler(command);
         String hocon = handler.buildHoconConfig(command);
 
@@ -691,6 +736,15 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         }
 
         return hocon;
+    }
+
+    private void validateFileUpload(JobDefinitionSaveCommand command) {
+        if (command == null
+                || command.getMode() != JobDefinitionMode.FILE_SYNC
+                || !(command instanceof GuideSingleJobContentCommand contentCommand)) {
+            return;
+        }
+        fileUploadService.validateWorkflow(command.getId(), contentCommand.getWorkflow());
     }
 
     /**

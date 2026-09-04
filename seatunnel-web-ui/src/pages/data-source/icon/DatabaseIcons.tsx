@@ -1,4 +1,4 @@
-import { DatabaseOutlined } from '@ant-design/icons';
+import { DatabaseOutlined, FileOutlined } from '@ant-design/icons';
 import type { CSSProperties } from 'react';
 
 import CacheIcon from './CacheIcon';
@@ -77,6 +77,8 @@ const DatabaseIcons = ({
       return <ClickhouseIcon width={width} height={height} />;
     case 'tidb':
       return <TiDBIcon width={width} height={height} />;
+    case 'web_upload':
+      return <FileOutlined style={{ ...fallbackStyle, color: '#315EFB' }} />;
     case 'kafka':
     case 'kafka_source':
     case 'ftp':
