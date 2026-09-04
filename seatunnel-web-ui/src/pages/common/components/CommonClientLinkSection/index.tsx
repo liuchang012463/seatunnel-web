@@ -1148,7 +1148,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                   <div className="h-px w-8 bg-slate-300 md:w-10" />
                   {sourceManaged ? (
                     <div className="inline-flex h-9 items-center rounded-full border border-teal-100 bg-teal-50 px-3 text-xs font-medium text-teal-700">
-                      平台托管上传
+                      本地文件
                     </div>
                   ) : (
                     <LinkStatusAction
@@ -1234,11 +1234,10 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                   {sourceManaged ? (
                     <div className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-4">
                       <div className="text-sm font-semibold text-teal-900">
-                        本地文件（Web 上传）
+                        本地文件
                       </div>
                       <div className="mt-2 text-xs leading-5 text-teal-700">
-                        文件会在下一步配置页从浏览器直接上传到系统内置 MinIO，任务运行时由
-                        S3File 二进制来源读取。这里不需要创建或选择本地数据源。
+                        下一步选择需要同步的本地文件或文件夹，这里无需创建或选择本地数据源。
                       </div>
                     </div>
                   ) : renderDataSourceSelect("source")}

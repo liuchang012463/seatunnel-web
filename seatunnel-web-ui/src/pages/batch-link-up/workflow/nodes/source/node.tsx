@@ -1,3 +1,4 @@
+import { FileOutlined } from "@ant-design/icons";
 import DatabaseIcons from "@/pages/data-source/icon/DatabaseIcons";
 import type { FC } from "react";
 import React, { useMemo, useState } from "react";
@@ -7,11 +8,14 @@ interface SourceNodeData {
   title?: string;
   dbType?: string;
   description?: string;
+  sourceMode?: string;
 }
 
 const SourceNode: FC<NodeProps<SourceNodeData>> = ({ data, selected }) => {
   const [hovered, setHovered] = useState(false);
-
+  const isLocalFileSource =
+    String(data?.sourceMode || "").toUpperCase() === "WEB_UPLOAD" ||
+    String(data?.title || "").startsWith("本地文件");
 
   const displayTitle = useMemo(() => {
     return data?.title || "输入端";
@@ -98,7 +102,11 @@ const SourceNode: FC<NodeProps<SourceNodeData>> = ({ data, selected }) => {
               border: "1px solid rgba(49, 94, 251, 0.08)",
             }}
           >
-            <DatabaseIcons dbType={data?.dbType || "mysql"} width="18" height="18" />
+            {isLocalFileSource ? (
+              <FileOutlined style={{ color: "#315EFB", fontSize: 18 }} />
+            ) : (
+              <DatabaseIcons dbType={data?.dbType || "mysql"} width="18" height="18" />
+            )}
           </div>
 
           <div style={{ minWidth: 0, flex: 1 }}>

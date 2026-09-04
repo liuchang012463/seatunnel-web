@@ -1,3 +1,4 @@
+import { FileOutlined } from '@ant-design/icons';
 import { DATA_SOURCE_REGISTRY } from '@/pages/data-source/dataSourceRegistry';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 
@@ -27,18 +28,18 @@ const WEB_UPLOAD_OPTION: FileSourceTypeOption = {
   value: 'WEB_UPLOAD',
   connectorType: 'S3File',
   pluginName: 'S3File',
-  rawLabel: '本地文件（Web 上传）',
+  rawLabel: '本地文件',
   sourceManaged: true,
   label: (
     <div style={{ display: 'flex', alignItems: 'center' }}>
-      <DatabaseIcons dbType="MINIO" width="24px" height="24px" />
-      <span style={{ marginLeft: 8 }}>本地文件（Web 上传）</span>
+      <FileOutlined style={{ fontSize: 24, color: '#315EFB' }} />
+      <span style={{ marginLeft: 8 }}>本地文件</span>
     </div>
   ),
 };
 
 /**
- * 文件引接来源类型：浏览器本地上传（平台内置 MinIO）+ 远程文件。
+ * 文件引接来源类型：本地文件与远程文件。
  */
 export const generateFileTypeSourceOptions = (): FileSourceTypeOption[] =>
   [WEB_UPLOAD_OPTION, ...DATA_SOURCE_REGISTRY

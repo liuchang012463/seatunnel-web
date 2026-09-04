@@ -47,7 +47,7 @@ const FileLinkUpPage: React.FC = () => {
         title="文件引接任务管理"
         subtitle={
           <>
-            独立管理 FTP、SFTP、S3 和 MinIO 的目录或对象前缀同步，不使用表、字段或 SQL 映射。
+            独立管理本地文件与 FTP、SFTP、S3、MinIO 的目录或对象前缀同步，不使用表、字段或 SQL 映射。
           </>
         }
         actions={

@@ -16,7 +16,7 @@ export const REMOTE_FILE_DATASOURCE_TYPES: FileDataSourceType[] = [
   'MINIO',
 ];
 
-/** Browser uploads are represented by a platform-owned MinIO source. */
+/** 本地文件来源在任务运行时使用平台内部存储。 */
 export const LOCAL_UPLOAD_SOURCE_TYPE: FileDataSourceType = 'WEB_UPLOAD';
 
 export const isFileDataSourceType = (value?: string): value is FileDataSourceType =>
@@ -55,7 +55,7 @@ export const fileDataSourceLabel = (type?: string): string => {
     case 'MINIO':
       return 'MinIO';
     case 'WEB_UPLOAD':
-      return '本地文件（Web 上传）';
+      return '本地文件';
     default:
       return type || '';
   }

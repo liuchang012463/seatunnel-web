@@ -58,30 +58,40 @@ interface FileWorkflowProps {
 const buildInitialGraph = (params?: any) => {
   const workflow = params?.workflow || {};
   if (Array.isArray(workflow?.nodes) && workflow.nodes.length > 0) {
-    // 兜底补齐 position，type 统一归一为 'custom'，并归一化 Web 上传来源。
-    const nodes = workflow.nodes.map((node: any, index: number) => ({
-      ...node,
-      type: 'custom',
-      position: node?.position || { x: index === 0 ? 80 : 480, y: 160 },
-      data: node?.data?.nodeType === 'source'
-        ? {
-            ...node.data,
-            config: {
-              ...(node.data?.config || {}),
-              ...(String(node.data?.config?.sourceMode || '').toUpperCase() === 'WEB_UPLOAD'
-                ? {
-                    sourceMode: 'WEB_UPLOAD',
-                    dbType: 'MINIO',
-                    pluginName: 'S3File',
-                    connectorType: 'S3File',
-                    readMode: 'upload',
-                    syncType: 'FULL',
-                  }
-                : {}),
-            },
-          }
-        : node.data,
-    }));
+    // 兜底补齐 position，type 统一归一为 'custom'，并归一化本地文件来源。
+    const nodes = workflow.nodes.map((node: any, index: number) => {
+      const isWebUpload =
+        node?.data?.nodeType === 'source' &&
+        (String(node.data?.sourceMode || '').toUpperCase() === 'WEB_UPLOAD' ||
+          String(node.data?.config?.sourceMode || '').toUpperCase() === 'WEB_UPLOAD');
+
+      return {
+        ...node,
+        type: 'custom',
+        position: node?.position || { x: index === 0 ? 80 : 480, y: 160 },
+        data: isWebUpload
+          ? {
+              ...node.data,
+              title: '本地文件',
+              sourceMode: 'WEB_UPLOAD',
+              dbType: 'MINIO',
+              pluginName: 'S3File',
+              connectorType: 'S3File',
+              config: {
+                ...(node.data?.config || {}),
+                sourceMode: 'WEB_UPLOAD',
+                dbType: 'MINIO',
+                pluginName: 'S3File',
+                connectorType: 'S3File',
+                readMode: 'upload',
+                syncType: 'FULL',
+                binaryChunkSize: 1048576,
+                binaryCompleteFileMode: false,
+              },
+            }
+          : node.data,
+      };
+    });
     return {
       nodes,
       edges: workflow.edges,
@@ -97,23 +107,23 @@ const defaultFileSourceConfig = (
 ) => {
   const isWebUpload = sourceType?.dbType === 'WEB_UPLOAD';
   return {
-  ...(isWebUpload ? {} : { dataSourceId: sourceDataSourceId || undefined }),
-  sourceMode: isWebUpload ? 'WEB_UPLOAD' : undefined,
-  jobDefinitionId: isWebUpload ? jobDefinitionId : undefined,
-  dbType: isWebUpload ? 'MINIO' : sourceType?.dbType || 'FTP',
-  pluginName: isWebUpload ? 'S3File' : sourceType?.pluginName || 'FtpFile',
-  connectorType: isWebUpload ? 'S3File' : sourceType?.connectorType || 'FtpFile',
-  readMode: isWebUpload ? 'upload' : 'remote',
-  path: undefined,
-  targetPath: undefined,
-  syncType: 'FULL',
-  fileFilterPattern: '.*',
-  filenameExtension: undefined,
-  binaryChunkSize: 1048576,
-  binaryCompleteFileMode: true,
-  updateStrategy: 'only_add',
-  compareMode: 'len_mtime',
-  uploadedAssets: [],
+    ...(isWebUpload ? {} : { dataSourceId: sourceDataSourceId || undefined }),
+    sourceMode: isWebUpload ? 'WEB_UPLOAD' : undefined,
+    jobDefinitionId: isWebUpload ? jobDefinitionId : undefined,
+    dbType: isWebUpload ? 'MINIO' : sourceType?.dbType || 'FTP',
+    pluginName: isWebUpload ? 'S3File' : sourceType?.pluginName || 'FtpFile',
+    connectorType: isWebUpload ? 'S3File' : sourceType?.connectorType || 'FtpFile',
+    readMode: isWebUpload ? 'upload' : 'remote',
+    path: undefined,
+    targetPath: undefined,
+    syncType: 'FULL',
+    fileFilterPattern: '.*',
+    filenameExtension: undefined,
+    binaryChunkSize: 1048576,
+    binaryCompleteFileMode: false,
+    updateStrategy: 'only_add',
+    compareMode: 'len_mtime',
+    uploadedAssets: [],
   };
 };
 
@@ -134,6 +144,7 @@ const buildGraph = (params: any) => {
 
   const sourceDbType = params?.sourceType?.dbType || 'WEB_UPLOAD';
   const sinkDbType = params?.targetType?.dbType || 'FTP';
+  const isWebUpload = sourceDbType === 'WEB_UPLOAD';
 
   const nodes = [
     {
@@ -142,9 +153,10 @@ const buildGraph = (params: any) => {
       position: { x: 80, y: 160 },
       data: {
         nodeType: 'source',
-        title: sourceDbType,
+        title: isWebUpload ? '本地文件' : sourceDbType,
         description: '读取来源文件',
-        dbType: sourceDbType,
+        sourceMode: isWebUpload ? 'WEB_UPLOAD' : undefined,
+        dbType: isWebUpload ? 'MINIO' : sourceDbType,
         config: defaultFileSourceConfig(params?.sourceType, params?.sourceDataSourceId, params?.id),
       },
     },
@@ -348,7 +360,8 @@ export default function FileWorkflow({
               ...node,
               data: {
                 ...node.data,
-                title: '本地文件（Web 上传）',
+                title: '本地文件',
+                sourceMode: 'WEB_UPLOAD',
                 dbType: 'MINIO',
                 pluginName: 'S3File',
                 connectorType: 'S3File',
@@ -363,6 +376,8 @@ export default function FileWorkflow({
                   connectorType: 'S3File',
                   readMode: 'upload',
                   syncType: 'FULL',
+                  binaryChunkSize: 1048576,
+                  binaryCompleteFileMode: false,
                 },
               },
             };
@@ -508,9 +523,10 @@ export default function FileWorkflow({
       data: {
         nodeType,
         title: nodeType === 'source' && config.sourceMode === 'WEB_UPLOAD'
-          ? '本地文件（Web 上传）'
+          ? '本地文件'
           : config.dbType,
         description: nodeType === 'source' ? '读取来源文件' : '写入目标端文件',
+        sourceMode: nodeType === 'source' ? config.sourceMode : undefined,
         dbType: config.dbType,
         pluginName: config.pluginName,
         connectorType: config.connectorType,
@@ -543,6 +559,8 @@ export default function FileWorkflow({
                   pluginName: 'S3File',
                   connectorType: 'S3File',
                   syncType: 'FULL',
+                  binaryChunkSize: 1048576,
+                  binaryCompleteFileMode: false,
                 }
               : {}),
           })),

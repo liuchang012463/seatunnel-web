@@ -1,6 +1,6 @@
-import { FolderOpenOutlined, UploadOutlined } from '@ant-design/icons';
+import { FileOutlined, FolderOpenOutlined, UploadOutlined } from '@ant-design/icons';
 import { Button, Input, InputNumber, Radio, Select, Switch, message } from 'antd';
-import { Cloud, FileUp, FolderUp, Trash2, UploadCloud } from 'lucide-react';
+import { FileUp, FolderUp, Trash2, UploadCloud } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import PanelShell from '../../workflow/panel/components/PanelShell';
 import { fileUploadApi } from '../../api';
@@ -8,6 +8,7 @@ import { dataSourceCatalogApi } from '@/pages/data-source/service';
 import { canUseIncrementalFileSync, fileDataSourceLabel } from './support';
 import DirectoryPickerModal from './DirectoryPickerModal';
 import type { FileDataSourceType } from './support';
+import { splitUploadBatches, type PickedFile } from './uploadUtils';
 import '@/pages/batch-link-up/workflow/panel/components/PanelShell/index.less';
 import '@/pages/batch-link-up/workflow/panel/components/SourcePanel/index.less';
 
@@ -18,11 +19,6 @@ interface UploadAsset {
   size?: number;
   contentType?: string;
   status?: string;
-}
-
-interface PickedFile {
-  file: File;
-  relativePath: string;
 }
 
 interface FileSyncSourcePanelProps {
@@ -50,7 +46,26 @@ const fileRelativePath = (file: File) =>
 
 const readEntry = (entry: any): Promise<any[]> =>
   new Promise((resolve, reject) => {
-    entry.createReader().readEntries(resolve, reject);
+    let reader: any;
+    try {
+      reader = entry.createReader();
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const entries: any[] = [];
+    const readPage = () => {
+      reader.readEntries((page: any[]) => {
+        if (!page.length) {
+          resolve(entries);
+          return;
+        }
+        entries.push(...page);
+        readPage();
+      }, reject);
+    };
+    readPage();
   });
 
 const readEntryFile = (entry: any): Promise<File> =>
@@ -64,12 +79,7 @@ const collectEntry = async (entry: any, prefix = ''): Promise<PickedFile[]> => {
 
   if (!entry.isDirectory) return [];
   const nextPrefix = `${prefix}${entry.name}/`;
-  const children: any[] = [];
-  let page: any[] = [];
-  do {
-    page = await readEntry(entry);
-    children.push(...page);
-  } while (page.length > 0);
+  const children = await readEntry(entry);
 
   const result: PickedFile[] = [];
   for (const child of children) {
@@ -158,31 +168,37 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
         throw new Error('上传会话未准备好，请刷新页面后重试');
       }
 
-      const response = await fileUploadApi.upload(
-        sessionId,
-        pickedFiles.map((item) => item.file),
-        pickedFiles.map((item) => item.relativePath),
-      );
-      if (response?.code !== 0) {
-        throw new Error(response?.message || '上传失败');
-      }
-
-      const nextAssets = Array.isArray(response?.data) ? response.data : [];
       const byPath = new Map<string, UploadAsset>(
         assets.map((asset) => [asset.relativePath, asset]),
       );
-      nextAssets.forEach((asset: UploadAsset) => byPath.set(asset.relativePath, asset));
-      updateConfig({
-        sourceMode: 'WEB_UPLOAD',
-        dbType: 'MINIO',
-        pluginName: 'S3File',
-        connectorType: 'S3File',
-        readMode: 'upload',
-        syncType: 'FULL',
-        uploadSessionId: sessionId,
-        uploadedAssets: Array.from(byPath.values()),
-      });
-      message.success(`已上传 ${nextAssets.length || pickedFiles.length} 个文件`);
+      let uploadedCount = 0;
+      for (const batch of splitUploadBatches(pickedFiles)) {
+        const response = await fileUploadApi.upload(
+          sessionId,
+          batch.map((item) => item.file),
+          batch.map((item) => item.relativePath),
+        );
+        if (response?.code !== 0) {
+          throw new Error(response?.message || '上传失败');
+        }
+
+        const nextAssets = Array.isArray(response?.data) ? response.data : [];
+        nextAssets.forEach((asset: UploadAsset) => byPath.set(asset.relativePath, asset));
+        uploadedCount += nextAssets.length || batch.length;
+        updateConfig({
+          sourceMode: 'WEB_UPLOAD',
+          dbType: 'MINIO',
+          pluginName: 'S3File',
+          connectorType: 'S3File',
+          readMode: 'upload',
+          syncType: 'FULL',
+          binaryChunkSize: 1048576,
+          binaryCompleteFileMode: false,
+          uploadSessionId: sessionId,
+          uploadedAssets: Array.from(byPath.values()),
+        });
+      }
+      message.success(`已上传 ${uploadedCount || pickedFiles.length} 个文件`);
     } catch (error: any) {
       message.error(error?.message || '上传失败');
     } finally {
@@ -231,11 +247,12 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
       eyebrow="Source Config"
       title="来源配置（文件）"
       badge="输入节点"
-      desc={isWebUpload ? '从浏览器上传文件或文件夹，任务运行时读取内置 MinIO' : '配置远程文件来源目录'}
-      heroTitle={isWebUpload ? '本地文件（Web 上传）' : fileDataSourceLabel(config.dbType) || '来源'}
+      desc={isWebUpload ? '选择本地文件或文件夹，作为同步来源' : '配置远程文件来源目录'}
+      heroTitle={isWebUpload ? '本地文件' : fileDataSourceLabel(config.dbType) || '来源'}
       heroDesc={isWebUpload ? `${assets.length} 个文件已准备` : config.path || '未选择目录'}
       heroTag="SOURCE"
-      dbType={isWebUpload ? 'MINIO' : config.dbType}
+      dbType={isWebUpload ? undefined : config.dbType}
+      icon={isWebUpload ? <FileOutlined /> : undefined}
       onClose={onClose}
       footer={
         <button
@@ -253,12 +270,12 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
             <div className="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-4">
               <div className="flex items-start gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-sky-600 shadow-sm">
-                  <Cloud size={18} />
+                  <FileOutlined className="text-sky-600" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-sky-900">浏览器直接上传</div>
+                  <div className="text-sm font-semibold text-sky-900">选择本地文件</div>
                   <div className="mt-1 text-xs leading-5 text-sky-700">
-                    文件会保存到系统内置 MinIO。支持单个/多个文件、文件夹选择和拖拽，文件夹层级会原样保留。
+                    支持单个/多个文件、文件夹选择和拖拽，文件夹层级会原样保留。
                   </div>
                 </div>
               </div>
@@ -464,8 +481,11 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
             <div>
               <div className="mb-1 text-xs text-slate-500">完整文件模式</div>
               <Switch
-                checked={config.binaryCompleteFileMode !== false}
-                onChange={(checked) => updateConfig({ binaryCompleteFileMode: checked })}
+                checked={isWebUpload ? false : config.binaryCompleteFileMode !== false}
+                onChange={(checked) => {
+                  if (!isWebUpload) updateConfig({ binaryCompleteFileMode: checked });
+                }}
+                disabled={isWebUpload}
               />
             </div>
           </div>

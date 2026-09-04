@@ -37,5 +37,6 @@ class RemoteFileHoconBuilderTest {
         assertEquals("/archive", result.getString("path"));
         assertEquals("/archive-seatunnel-tmp", result.getString("tmp_path"));
         assertTrue(result.getBoolean("is_enable_transaction"));
+        assertFalse(result.hasPath("sink_columns"));
     }
 }

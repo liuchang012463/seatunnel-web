@@ -63,6 +63,24 @@ class S3FileHoconBuilderTest {
     }
 
     @Test
+    void buildsChunkedBinarySourceWithoutCompleteFileMode() {
+        Config result = new S3FileHoconBuilder().buildSourceHocon(context(
+                Map.of(
+                        "dbType", "MINIO",
+                        "endpoint", "http://minio:9000",
+                        "bucket", "archive",
+                        "accessKey", "minio",
+                        "secretKey", "minio-secret"),
+                Map.of(
+                        "path", "/22922596990880/session",
+                        "binaryChunkSize", 1048576,
+                        "binaryCompleteFileMode", false)));
+
+        assertEquals(1048576, result.getInt("binary_chunk_size"));
+        assertFalse(result.getBoolean("binary_complete_file_mode"));
+    }
+
+    @Test
     void buildsMinioTransactionalSinkWithPathStyle() {
         Config result = new S3FileHoconBuilder().buildSinkHocon(context(
                 Map.of(
@@ -76,6 +94,7 @@ class S3FileHoconBuilderTest {
 
         assertEquals("/data/output-seatunnel-tmp", result.getString("tmp_path"));
         assertTrue(result.getBoolean("is_enable_transaction"));
+        assertFalse(result.hasPath("sink_columns"));
         assertEquals("true",
                 result.getConfig("hadoop_s3_properties")
                         .getString("\"fs.s3a.path.style.access\""));

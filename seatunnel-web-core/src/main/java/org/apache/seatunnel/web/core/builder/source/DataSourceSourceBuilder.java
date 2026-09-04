@@ -237,6 +237,8 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
         Map<String, Object> node = new HashMap<>();
         node.put("path", builtInMinioProperties.objectPath(jobDefinitionId, sessionId));
+        node.put("binaryChunkSize", 1048576);
+        node.put("binaryCompleteFileMode", false);
         Config effectiveNodeConfig = ConfigFactory.parseMap(node)
                 .withFallback(nodeConfig)
                 .resolve();

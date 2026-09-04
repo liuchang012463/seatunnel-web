@@ -44,5 +44,6 @@ export const getStatusTag = (status?: ClientItem["status"]) => {
 
 export const getDbLabel = (item: any) => {
   if (!item) return "-";
+  if (String(item?.dbType || "").toUpperCase() === "WEB_UPLOAD") return "本地文件";
   return item?.dbType || item?.pluginName || item?.connectorType || "-";
 };

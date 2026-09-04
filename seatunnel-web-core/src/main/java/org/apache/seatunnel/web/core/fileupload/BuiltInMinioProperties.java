@@ -88,7 +88,13 @@ public class BuiltInMinioProperties {
     }
 
     public String getRootPrefix() {
-        return normalizeSegment(rootPrefix, "seatunnel-web-upload");
+        String normalized = normalizeSegment(rootPrefix, "");
+        // The bucket already scopes object names. Treating its name as another
+        // root segment would expose the same namespace in both bucket and path.
+        if (StringUtils.equalsIgnoreCase(normalized, StringUtils.trimToEmpty(bucket))) {
+            return "";
+        }
+        return normalized;
     }
 
     public void setRootPrefix(String rootPrefix) {
@@ -110,7 +116,9 @@ public class BuiltInMinioProperties {
         if (StringUtils.isBlank(sessionId)) {
             throw new IllegalArgumentException("uploadSessionId is required for WEB_UPLOAD");
         }
-        return getRootPrefix() + "/" + jobDefinitionId + "/" + sessionId.trim();
+        String sessionPath = jobDefinitionId + "/" + sessionId.trim();
+        String prefix = getRootPrefix();
+        return StringUtils.isBlank(prefix) ? sessionPath : prefix + "/" + sessionPath;
     }
 
     public String objectPath(Long jobDefinitionId, String sessionId) {

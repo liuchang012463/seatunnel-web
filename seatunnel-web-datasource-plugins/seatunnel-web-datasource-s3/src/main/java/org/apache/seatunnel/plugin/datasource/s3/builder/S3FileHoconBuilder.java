@@ -8,7 +8,6 @@ import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.apache.seatunnel.plugin.datasource.s3.client.ObjectStoragePathUtils;
 
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -50,7 +49,6 @@ public class S3FileHoconBuilder implements DataSourceHoconBuilder {
         result.put("tmp_path", defaultString(node.get("tmpPath"), temporaryPath(targetPath)));
         result.put("file_format_type", "binary");
         result.put("is_enable_transaction", true);
-        result.put("sink_columns", Arrays.asList("path", "content"));
         return toConfig(result);
     }
 

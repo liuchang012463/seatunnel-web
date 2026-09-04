@@ -36,7 +36,7 @@ const FileTypeBaseInfoSection: React.FC<Props> = ({
               value={sourceType}
               onChange={handleSourceChange}
               dataSourceOptions={generateFileTypeSourceOptions()}
-              placeholder="本地上传或远程文件"
+              placeholder="本地文件或远程文件"
               prefix="来源"
               width="48%"
             />
@@ -56,7 +56,7 @@ const FileTypeBaseInfoSection: React.FC<Props> = ({
           </div>
 
           <div className="mt-3 text-[12px] leading-5 text-[#667085]">
-            来源支持浏览器直接上传文件/文件夹（系统内置 MinIO）与 FTP/SFTP/S3/MinIO 远程文件，按目录或 Prefix
+            来源支持选择本地文件/文件夹与 FTP/SFTP/S3/MinIO 远程文件，按目录或 Prefix
             传输二进制流，不涉及表、字段或 SQL 映射。
           </div>
         </div>

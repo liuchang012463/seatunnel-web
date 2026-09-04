@@ -1,5 +1,5 @@
 import { selectDataSourceById } from "@/pages/data-source/service";
-import { DoubleRightOutlined } from "@ant-design/icons";
+import { DoubleRightOutlined, FileOutlined } from "@ant-design/icons";
 import { Empty, Popover } from "antd";
 import { CSSProperties, useState } from "react";
 import DatabaseIcons from "../../../../data-source/icon/DatabaseIcons";
@@ -410,7 +410,7 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
         <div style={{ display: "flex", alignItems: "center" }}>
           {isManagedFileSource ? (
             <>
-              <DatabaseIcons dbType="MINIO" width="24" height="24" />
+              <FileOutlined style={{ color: "#315EFB", fontSize: 24 }} />
               <span
                 style={{
                   marginLeft: 8,
@@ -419,9 +419,9 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
                 }}
-                title="平台托管上传（内置 MinIO）"
+                title="本地文件"
               >
-                平台托管上传
+                本地文件
               </span>
             </>
           ) : record?.sourceType ? (

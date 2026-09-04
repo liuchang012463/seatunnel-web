@@ -228,6 +228,8 @@ public class FileUploadServiceImpl implements FileUploadService {
         source.put("pluginName", "S3File");
         source.put("connectorType", "S3File");
         source.put("syncType", "FULL");
+        source.put("binaryChunkSize", 1048576);
+        source.put("binaryCompleteFileMode", false);
     }
 
     @Override
