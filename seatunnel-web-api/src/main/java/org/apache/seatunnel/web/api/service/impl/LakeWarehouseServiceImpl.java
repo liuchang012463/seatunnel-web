@@ -119,9 +119,11 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
             throw new LakeServiceException(LakeErrorCode.LAKE_DORIS_UNAVAILABLE,
                     "无法连接 Doris ODS，请检查地址、账号、密码和本地驱动");
         }
-        String encryptedPassword = current == null || StringUtils.isBlank(request.getPassword())
-                ? current == null ? null : current.getPassword()
-                : PasswordUtils.encodePassword(request.getPassword());
+        // A first-time configuration has no stored password to reuse.  Only
+        // an empty password on an existing configuration means "keep the
+        // current encrypted password"; otherwise encrypt the password from
+        // this request, including on the first save.
+        String encryptedPassword = resolveEncryptedPassword(current, request.getPassword());
         if (StringUtils.isBlank(encryptedPassword)) {
             throw invalid("password");
         }
@@ -623,6 +625,12 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
     private static LakeServiceException invalid(String field) {
         return new LakeServiceException(LakeErrorCode.LAKE_REQUEST_INVALID,
                 "数据湖配置参数无效：" + field);
+    }
+
+    static String resolveEncryptedPassword(LakeWarehouseConfig current, String requestedPassword) {
+        return StringUtils.isBlank(requestedPassword)
+                ? current == null ? null : current.getPassword()
+                : PasswordUtils.encodePassword(requestedPassword);
     }
 
     private static LakeWarehouseConfigVO toVO(LakeWarehouseConfig config) {

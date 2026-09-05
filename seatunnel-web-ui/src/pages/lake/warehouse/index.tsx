@@ -1,5 +1,4 @@
 import {
-  ArrowRightOutlined,
   CheckCircleOutlined,
   CloudServerOutlined,
   DatabaseOutlined,
@@ -150,7 +149,6 @@ const WarehousePage: React.FC = () => {
 
   const clusterStatus = useMemo(() => statusMeta(status?.status), [status?.status]);
   const configured = Boolean(config?.configured || status?.configured);
-  const consoleUrl = `http://${hostFromJdbcUrl(config?.jdbcUrl)}:8030/home`;
   const checkedAt = formatTime(status?.checkedAt);
   const feEndpoint = status?.masterHost
     ? `${status.masterHost}:${status.httpPort || '8030'}`
@@ -166,7 +164,7 @@ const WarehousePage: React.FC = () => {
           <div className="lake-overview-icon"><CloudServerOutlined /></div>
           <div>
             <h1>数据湖管理</h1>
-            <Paragraph>统一管理 Doris 数据湖连接、集群状态与 ODS 资源，让入湖链路始终可见。</Paragraph>
+            <Paragraph>统一管理 Doris 数据湖连接与集群运行指标，持续掌握 FE/BE 健康状态。</Paragraph>
           </div>
         </div>
         <div className="lake-overview-actions">
@@ -205,12 +203,6 @@ const WarehousePage: React.FC = () => {
             <button type="button" className="lake-warehouse-nav-item" onClick={() => history.push('/lake/warehouse/config')}>
               <SettingOutlined /> 连接配置
             </button>
-            <button type="button" className="lake-warehouse-nav-item" onClick={() => history.push('/lake/resources')}>
-              <TableOutlined /> 物理入湖
-            </button>
-            <button type="button" className="lake-warehouse-nav-item" onClick={() => history.push('/lake/logical-access')}>
-              <LinkOutlined /> 逻辑入湖
-            </button>
           </nav>
 
           <div className="lake-sidebar-foot">
@@ -243,9 +235,6 @@ const WarehousePage: React.FC = () => {
               </div>
             </div>
             <div className="lake-cluster-hero-actions">
-              <a href={consoleUrl} target="_blank" rel="noreferrer" className="lake-console-link">
-                打开 Doris 管理页 <ArrowRightOutlined />
-              </a>
               <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新指标</Button>
             </div>
           </section>
@@ -315,18 +304,6 @@ const WarehousePage: React.FC = () => {
                 <span>{displayValue(status?.aliveBackendCount)} 在线</span>
               </div>
               {loading ? <div className="lake-loading"><Spin size="small" /> 正在同步节点状态</div> : <NodeRows nodes={status?.backends} kind="BE" />}
-            </div>
-          </section>
-
-          <section className="lake-quick-links">
-            <div>
-              <div className="lake-sidebar-eyebrow">NEXT STEP</div>
-              <h3>继续管理数据湖资源</h3>
-              <p>连接状态稳定后，可以进入物理入湖或逻辑入湖继续配置数据资产。</p>
-            </div>
-            <div className="lake-quick-link-actions">
-              <Button onClick={() => history.push('/lake/resources')}>物理入湖 <ArrowRightOutlined /></Button>
-              <Button onClick={() => history.push('/lake/logical-access')}>逻辑入湖 <ArrowRightOutlined /></Button>
             </div>
           </section>
         </main>

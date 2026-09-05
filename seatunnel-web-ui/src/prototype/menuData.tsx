@@ -67,6 +67,7 @@ export const prototypeMenuData: MenuDataItem[] = [
     icon: <MonitorOutlined />,
     children: [
       { path: '/client', name: '引擎管理', icon: <ApiOutlined /> },
+      { path: '/lake/warehouse', name: '数据湖管理', icon: <SettingOutlined /> },
       { path: '/alarm', name: '告警管理', icon: <SettingOutlined /> },
       { path: '/operations/protocol', name: '协议管理', icon: <ApiOutlined /> },
       { path: '/operations/diagnostics', name: '安全加密', icon: <SafetyCertificateOutlined /> },
@@ -77,7 +78,6 @@ export const prototypeMenuData: MenuDataItem[] = [
     name: '入湖管理',
     icon: <CloudServerOutlined />,
     children: [
-      { path: '/lake/warehouse', name: '数据湖管理', icon: <SettingOutlined /> },
       { path: '/lake/resources', name: '物理入湖管理', icon: <DatabaseOutlined /> },
       { path: '/lake/logical-access', name: '逻辑入湖管理', icon: <LinkOutlined /> },
       { path: '/lake/lifecycle', name: '数据生命周期管理', icon: <FolderOpenOutlined /> },

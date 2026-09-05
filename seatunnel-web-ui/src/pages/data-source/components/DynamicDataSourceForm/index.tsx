@@ -62,6 +62,13 @@ const isCreateOperateType = (operateType?: DataSourceOperateType) => {
   return operateType === ('CREATE' as DataSourceOperateType) || operateType === (DataSourceOperateType as any)?.Create;
 };
 
+const getFormFieldValue = (valueOrEvent: any) => {
+  if (valueOrEvent?.target && typeof valueOrEvent.target === 'object' && 'value' in valueOrEvent.target) {
+    return valueOrEvent.target.value;
+  }
+  return valueOrEvent;
+};
+
 const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   dbType,
   form,
@@ -263,12 +270,25 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   };
 
   const renderFormItem = (field: any): React.ReactNode => {
+    const syncFieldValue = (valueOrEvent: any) => {
+      configForm.setFieldValue(field.key, getFormFieldValue(valueOrEvent));
+    };
+
     const commonProps = {
       placeholder: field.placeholder,
-      onChange: () => {
+      onChange: (valueOrEvent: any) => {
+        syncFieldValue(valueOrEvent);
         setTimeout(() => {
           configForm.validateFields([field.key]).catch(() => {});
         }, 0);
+      },
+      onBlur: (event: any) => {
+        // Browser password managers may update the visible input without
+        // dispatching an input/change event.  Sync the DOM value when the
+        // field loses focus so Form.getFieldsValue() sees what the user sees.
+        if (['INPUT', 'PASSWORD', 'TEXTAREA'].includes(field.type)) {
+          syncFieldValue(event);
+        }
       },
     };
 
@@ -281,7 +301,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         return <Input {...commonProps} />;
 
       case 'PASSWORD':
-        return <Input.Password {...commonProps} />;
+        return <Input.Password {...commonProps} autoComplete="new-password" />;
 
       case 'SELECT':
         return (

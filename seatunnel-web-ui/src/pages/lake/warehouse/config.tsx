@@ -1,28 +1,18 @@
 import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
-  CloudUploadOutlined,
-  DatabaseOutlined,
   LinkOutlined,
   SafetyCertificateOutlined,
-  UploadOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Form, Input, Space, Table, Tag, Typography, Upload, message } from 'antd';
-import type { UploadProps } from 'antd';
+import { Button, Form, Input, Space, Tag, Typography, message } from 'antd';
 import { history } from '@umijs/max';
 import React, { useEffect, useMemo, useState } from 'react';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import DynamicDataSourceForm from '@/pages/data-source/components/DynamicDataSourceForm';
 import type { DataSourceFormValues, DataSourceOperateType } from '@/pages/data-source/types';
-import {
-  fetchLakeJdbcDrivers,
-  fetchLakeWarehouse,
-  registerLakeJdbcDriver,
-  saveLakeWarehouse,
-  testLakeWarehouse,
-} from '@/services/lake';
-import type { LakeApiResponse, LakeJdbcDriver, LakeWarehouseConfig } from '@/services/lake';
-import HttpUtils from '@/utils/HttpUtils';
+import { fetchLakeWarehouse, saveLakeWarehouse, testLakeWarehouse } from '@/services/lake';
+import type { LakeApiResponse, LakeWarehouseConfig } from '@/services/lake';
+import { INITIAL_DORIS_PASSWORD_MESSAGE, isInitialDorisPasswordMissing } from './configUtils';
 import './index.less';
 
 const { Paragraph, Text, Title } = Typography;
@@ -107,16 +97,15 @@ const toWarehousePayload = (
   driverSha256: currentConfig?.driverSha256,
 });
 
+class InitialDorisPasswordError extends Error {}
+
 const DorisConfigPage: React.FC = () => {
   const [baseForm] = Form.useForm<DataSourceFormValues>();
   const [connectionForm] = Form.useForm();
   const [config, setConfig] = useState<LakeWarehouseConfig>();
-  const [drivers, setDrivers] = useState<LakeJdbcDriver[]>([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [registering, setRegistering] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [testMessage, setTestMessage] = useState<string>();
 
   useEffect(() => {
@@ -124,10 +113,7 @@ const DorisConfigPage: React.FC = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const [configResponse, driverResponse] = await Promise.all([
-          fetchLakeWarehouse(),
-          fetchLakeJdbcDrivers(),
-        ]);
+        const configResponse = await fetchLakeWarehouse();
         if (!active) return;
 
         if (configResponse.code === 0) {
@@ -139,12 +125,6 @@ const DorisConfigPage: React.FC = () => {
           }
         } else {
           message.error(responseError(configResponse, '读取数据湖配置失败'));
-        }
-
-        if (driverResponse.code === 0) {
-          setDrivers(Array.isArray(driverResponse.data) ? driverResponse.data : []);
-        } else {
-          message.error(responseError(driverResponse, '读取 JDBC 驱动列表失败'));
         }
       } catch (error) {
         if (active) message.error(error instanceof Error ? error.message : '读取数据湖配置失败');
@@ -161,14 +141,19 @@ const DorisConfigPage: React.FC = () => {
 
   const initialConnection = useMemo(() => parseExistingConnection(config), [config]);
 
-  const refreshDrivers = async () => {
-    const response = await fetchLakeJdbcDrivers();
-    if (response.code === 0) setDrivers(Array.isArray(response.data) ? response.data : []);
-  };
-
   const readForms = async () => {
     const base = await baseForm.validateFields();
-    const connection = await connectionForm.validateFields() as DorisConnectionValues;
+    const rawConnection = connectionForm.getFieldsValue(true) as DorisConnectionValues;
+    if (isInitialDorisPasswordMissing(config, rawConnection.password)) {
+      connectionForm.setFields([{ name: 'password', errors: [INITIAL_DORIS_PASSWORD_MESSAGE] }]);
+      message.error(INITIAL_DORIS_PASSWORD_MESSAGE);
+      throw new InitialDorisPasswordError(INITIAL_DORIS_PASSWORD_MESSAGE);
+    }
+    await connectionForm.validateFields();
+    // Read the store after validation.  This keeps the submitted payload in
+    // sync with the field value captured by the dynamic form, including a
+    // value synchronized from a browser-managed password input on blur.
+    const connection = connectionForm.getFieldsValue(true) as DorisConnectionValues;
     return { base, connection };
   };
 
@@ -188,7 +173,7 @@ const DorisConfigPage: React.FC = () => {
         message.error('Doris 连接测试失败');
       }
     } catch (error) {
-      if ((error as { errorFields?: unknown })?.errorFields) return;
+      if (error instanceof InitialDorisPasswordError || (error as { errorFields?: unknown })?.errorFields) return;
       message.error(error instanceof Error ? error.message : 'Doris 连接测试失败');
     } finally {
       setTesting(false);
@@ -206,71 +191,11 @@ const DorisConfigPage: React.FC = () => {
       message.success('Doris 数据湖配置已保存');
       history.push('/lake/warehouse');
     } catch (error) {
-      if ((error as { errorFields?: unknown })?.errorFields) return;
+      if (error instanceof InitialDorisPasswordError || (error as { errorFields?: unknown })?.errorFields) return;
       message.error(error instanceof Error ? error.message : '保存数据湖配置失败');
     } finally {
       setSaving(false);
     }
-  };
-
-  const registerCurrentDriver = async () => {
-    const driverLocation = String(connectionForm.getFieldValue('driverLocation') || '').trim();
-    if (!driverLocation) {
-      message.warning('请先填写或上传 Doris JDBC 驱动');
-      return;
-    }
-
-    setRegistering(true);
-    try {
-      const response = await registerLakeJdbcDriver({
-        adapter: 'MYSQL',
-        fileName: driverLocation.split('/').pop(),
-        driverLocation,
-        driverClass: config?.driverClass || DEFAULT_DRIVER_CLASS,
-      });
-      if (response.code !== 0 || !response.data) {
-        throw new Error(responseError(response, '驱动注册失败'));
-      }
-      message.success('Doris JDBC 驱动已校验');
-      await refreshDrivers();
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '驱动注册失败');
-    } finally {
-      setRegistering(false);
-    }
-  };
-
-  const uploadProps: UploadProps = {
-    accept: '.jar',
-    showUploadList: false,
-    beforeUpload: (file) => {
-      if (!file.name.toLowerCase().endsWith('.jar')) {
-        message.error('只允许上传 .jar 驱动文件');
-        return Upload.LIST_IGNORE;
-      }
-      return true;
-    },
-    customRequest: async ({ file, onSuccess, onError }) => {
-      const formData = new FormData();
-      formData.append('file', file as File);
-      formData.append('adapter', 'MYSQL');
-      setUploading(true);
-      try {
-        const response = await HttpUtils.postForm<LakeJdbcDriver>('/api/v1/lake/warehouse/drivers/upload', formData);
-        if (response.code !== 0) throw new Error(responseError(response, '驱动上传失败'));
-        if (response.data?.driverLocation) {
-          connectionForm.setFieldValue('driverLocation', response.data.driverLocation);
-        }
-        message.success('Doris JDBC 驱动上传并校验成功');
-        onSuccess?.(response.data);
-        await refreshDrivers();
-      } catch (error) {
-        onError?.(error as Error);
-        message.error(error instanceof Error ? error.message : '驱动上传失败');
-      } finally {
-        setUploading(false);
-      }
-    },
   };
 
   return (
@@ -345,57 +270,6 @@ const DorisConfigPage: React.FC = () => {
             </Space>
           </div>
         </main>
-
-        <aside className="lake-config-aside">
-          <Card className="lake-config-info-card" variant="borderless">
-            <div className="lake-config-aside-title">
-              <span className="lake-config-aside-icon"><DatabaseOutlined /></span>
-              <div>
-                <Title level={3}>配置范围</Title>
-                <Text type="secondary">湖侧连接的唯一入口</Text>
-              </div>
-            </div>
-            <ul className="lake-config-check-list">
-              <li><span className="lake-config-check-dot" />FE 节点地址用于识别 Doris 集群</li>
-              <li><span className="lake-config-check-dot" />查询端口使用 MySQL 协议，默认 9030</li>
-              <li><span className="lake-config-check-dot" />保存后自动生成湖侧只读投影</li>
-            </ul>
-          </Card>
-
-          <Card
-            className="lake-config-driver-card"
-            variant="borderless"
-            title={<span className="lake-config-card-title"><CloudUploadOutlined /> JDBC 驱动</span>}
-            extra={
-              <Upload {...uploadProps}>
-                <Button size="small" icon={<UploadOutlined />} loading={uploading}>上传</Button>
-              </Upload>
-            }
-          >
-            <Paragraph type="secondary">只读取本机 `jdbc-drivers` 目录中的已校验 jar。</Paragraph>
-            <Table<LakeJdbcDriver>
-              rowKey={(record) => String(record.id || record.driverLocation)}
-              size="small"
-              pagination={false}
-              dataSource={drivers}
-              locale={{ emptyText: '暂无已校验驱动' }}
-              columns={[
-                { title: '文件', dataIndex: 'fileName', ellipsis: true },
-                {
-                  title: '状态',
-                  dataIndex: 'status',
-                  width: 82,
-                  render: (value: string, record) => (
-                    <Tag color={record.verified ? 'success' : 'warning'}>{record.verified ? '已校验' : value || '待校验'}</Tag>
-                  ),
-                },
-              ]}
-            />
-            <Button block className="lake-register-driver-button" loading={registering} onClick={() => void registerCurrentDriver()}>
-              注册当前表单中的驱动
-            </Button>
-          </Card>
-        </aside>
       </div>
     </div>
   );
