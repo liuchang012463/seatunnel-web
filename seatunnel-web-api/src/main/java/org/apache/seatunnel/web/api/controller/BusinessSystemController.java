@@ -38,7 +38,7 @@ public class BusinessSystemController {
 
     @GetMapping("/{id}")
     @Operation(summary = "getBusinessSystem")
-    public Result<BusinessSystemVO> getById(@PathVariable Long id) {
+    public Result<BusinessSystemVO> getById(@PathVariable("id") Long id) {
         return Result.buildSuc(businessSystemService.getById(id));
     }
 
@@ -50,13 +50,13 @@ public class BusinessSystemController {
 
     @PutMapping("/{id}")
     @Operation(summary = "updateBusinessSystem")
-    public Result<Boolean> update(@PathVariable Long id, @RequestBody BusinessSystemDTO dto) {
+    public Result<Boolean> update(@PathVariable("id") Long id, @RequestBody BusinessSystemDTO dto) {
         return Result.buildSuc(businessSystemService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "deleteBusinessSystem")
-    public Result<Boolean> delete(@PathVariable Long id) {
+    public Result<Boolean> delete(@PathVariable("id") Long id) {
         businessSystemService.delete(id);
         return Result.buildSuc(true);
     }

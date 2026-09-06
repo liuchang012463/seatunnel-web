@@ -37,7 +37,7 @@ public class DataSourceUnitController {
 
     @GetMapping("/{id}")
     @Operation(summary = "getDataSourceUnit")
-    public Result<DataSourceUnitVO> getById(@PathVariable Long id) {
+    public Result<DataSourceUnitVO> getById(@PathVariable("id") Long id) {
         return Result.buildSuc(dataSourceUnitService.getById(id));
     }
 
@@ -49,13 +49,13 @@ public class DataSourceUnitController {
 
     @PutMapping("/{id}")
     @Operation(summary = "updateDataSourceUnit")
-    public Result<Boolean> update(@PathVariable Long id, @RequestBody DataSourceUnitDTO dto) {
+    public Result<Boolean> update(@PathVariable("id") Long id, @RequestBody DataSourceUnitDTO dto) {
         return Result.buildSuc(dataSourceUnitService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "deleteDataSourceUnit")
-    public Result<Boolean> delete(@PathVariable Long id) {
+    public Result<Boolean> delete(@PathVariable("id") Long id) {
         dataSourceUnitService.delete(id);
         return Result.buildSuc(true);
     }
