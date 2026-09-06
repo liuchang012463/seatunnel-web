@@ -98,7 +98,11 @@ const App = () => {
       />
 
       <div>
-        <SyncTaskList goDetail={goEdit} excludeMode="FILE_SYNC" />
+        <SyncTaskList
+          goDetail={goEdit}
+          onCreate={goDetail}
+          excludeMode="FILE_SYNC"
+        />
       </div>
     </div>
   );

@@ -26,7 +26,7 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
         <span style={{ marginRight: 16, fontWeight: 700, color: "#333" }}>
           {intl.formatMessage({
             id: "pages.job.execution.runMode",
-            defaultMessage: "Run Mode:",
+            defaultMessage: "运行模式：",
           })}{" "}
         </span>
 
@@ -58,14 +58,14 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
         <span style={{ marginRight: 42, fontWeight: 700 }}>
           {intl.formatMessage({
             id: "pages.job.execution.time",
-            defaultMessage: "Time:",
+            defaultMessage: "耗时：",
           })}{" "}
         </span>
         <span style={{ color: "gray" }}>
           {record?.duration || "-"}{" "}
           {intl.formatMessage({
             id: "pages.job.execution.unit.seconds",
-            defaultMessage: "s",
+            defaultMessage: "秒",
           })}
         </span>
       </div>
@@ -76,14 +76,14 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
         <span style={{ marginRight: 30, fontWeight: 700 }}>
           {intl.formatMessage({
             id: "pages.job.execution.amount",
-            defaultMessage: "Amount:",
+            defaultMessage: "数据量：",
           })}{" "}
         </span>
         <span style={{ color: "gray" }}>
           {record?.readRowCount ?? 0}{" "}
           {intl.formatMessage({
             id: "pages.job.execution.unit.rows",
-            defaultMessage: "r",
+            defaultMessage: "行",
           })}
         </span>
       </div>
@@ -94,14 +94,14 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
         <span style={{ marginRight: 43, fontWeight: 700 }}>
           {intl.formatMessage({
             id: "pages.job.execution.qps",
-            defaultMessage: "QPS:",
+            defaultMessage: "Qps：",
           })}{" "}
         </span>
         <span style={{ color: "gray" }}>
           {record?.qps ?? 0}{" "}
           {intl.formatMessage({
             id: "pages.job.execution.unit.rowsPerSecond",
-            defaultMessage: "r/s",
+            defaultMessage: "行/秒",
           })}
         </span>
       </div>
@@ -112,7 +112,7 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
         <span style={{ marginRight: 43, fontWeight: 700 }}>
           {intl.formatMessage({
             id: "pages.job.execution.size",
-            defaultMessage: "Size:",
+            defaultMessage: "大小：",
           })}{" "}
         </span>
         <span style={{ color: "gray" }}>{record?.syncSize || "-"}</span>

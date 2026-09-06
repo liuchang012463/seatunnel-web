@@ -120,10 +120,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
       label: (
         <span className="inline-flex items-center gap-2">
           <SyncOutlined spin className="text-blue-500" />
-          {intl.formatMessage({
-            id: "pages.job.status.running",
-            defaultMessage: "RUNNING",
-          })}
+          运行中
         </span>
       ),
       value: "RUNNING",
@@ -132,10 +129,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
       label: (
         <span className="inline-flex items-center gap-2">
           <CheckSquareOutlined className="text-emerald-500" />
-          {intl.formatMessage({
-            id: "pages.job.status.completed",
-            defaultMessage: "COMPLETED",
-          })}
+          已完成
         </span>
       ),
       value: "COMPLETED",
@@ -144,10 +138,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
       label: (
         <span className="inline-flex items-center gap-2">
           <CloseOutlined className="text-rose-500" />
-          {intl.formatMessage({
-            id: "pages.job.status.failed",
-            defaultMessage: "FAILED",
-          })}
+          失败
         </span>
       ),
       value: "FAILED",
@@ -168,10 +159,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
     },
   };
 
-  const selectPlaceholder = intl.formatMessage({
-    id: "pages.job.search.selectPlaceholder",
-    defaultMessage: "Select...",
-  });
+  const selectPlaceholder = "请选择";
 
   return (
     <div className="task-search-panel">
@@ -186,39 +174,13 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
             <Form.Item
               {...commonFormItemProps}
               name="jobName"
-              label={fieldLabel(
-                intl.formatMessage({
-                  id: "pages.job.search.jobName",
-                  defaultMessage: "Job Name",
-                }),
-              )}
+              label={fieldLabel("任务名称")}
             >
               <Input
                 allowClear
                 prefix={<SearchOutlined className="text-slate-400" />}
-                placeholder={intl.formatMessage({
-                  id: "pages.job.search.jobName.placeholder",
-                  defaultMessage: "Enter job name",
-                })}
+                placeholder="请输入"
                 className="h-8"
-                style={{ borderRadius: 16 }}
-              />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} md={12} xl={7}>
-            <Form.Item
-              {...commonFormItemProps}
-              name="createTime"
-              label={fieldLabel(
-                intl.formatMessage({
-                  id: "pages.job.search.createTime",
-                  defaultMessage: "Create Time",
-                }),
-              )}
-            >
-              <RangePicker
-                className="h-8 w-full"
                 style={{ borderRadius: 16 }}
               />
             </Form.Item>
@@ -228,12 +190,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
             <Form.Item
               {...commonFormItemProps}
               name="status"
-              label={fieldLabel(
-                intl.formatMessage({
-                  id: "pages.job.search.status",
-                  defaultMessage: "Status",
-                }),
-              )}
+              label={fieldLabel("状态")}
             >
               <Select
                 allowClear
@@ -241,6 +198,20 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                 placeholder={selectPlaceholder}
                 options={statusOptions}
                 className="w-full"
+              />
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} md={12} xl={7}>
+            <Form.Item
+              {...commonFormItemProps}
+              name="createTime"
+              label={fieldLabel("创建时间")}
+            >
+              <RangePicker
+                className="h-8 w-full"
+                placeholder={["开始时间", "结束时间"]}
+                style={{ borderRadius: 16 }}
               />
             </Form.Item>
           </Col>
@@ -253,20 +224,14 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                   htmlType="submit"
                   className="h-8 rounded-full border-none px-5 font-medium shadow-none"
                 >
-                  {intl.formatMessage({
-                    id: "pages.job.search.button.search",
-                    defaultMessage: "Search",
-                  })}
+                  查询
                 </Button>
 
                 <Button
                   onClick={handleReset}
                   className="h-8 rounded-full border-slate-200 px-5 text-slate-600 hover:!border-slate-300 hover:!text-slate-900"
                 >
-                  {intl.formatMessage({
-                    id: "pages.job.search.button.reset",
-                    defaultMessage: "Reset",
-                  })}
+                  重置
                 </Button>
 
                 <button
@@ -275,14 +240,8 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                   onClick={() => setExpand((prev) => !prev)}
                 >
                   {expand
-                    ? intl.formatMessage({
-                        id: "pages.job.search.collapse",
-                        defaultMessage: "Collapse",
-                      })
-                    : intl.formatMessage({
-                        id: "pages.job.search.expand",
-                        defaultMessage: "Expand",
-                      })}
+                    ? "收起"
+                    : "展开"}
 
                   <DownOutlined
                     className={[
@@ -423,7 +382,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
           </Row>
         )}
 
-        {!expand ? (
+        {!expand && sortControls ? (
           <div className="mt-4 flex justify-end">
             {sortControls}
           </div>
