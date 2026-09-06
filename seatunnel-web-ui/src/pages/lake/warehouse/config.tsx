@@ -1,6 +1,7 @@
 import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
+  CloseCircleOutlined,
   LinkOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
@@ -99,6 +100,11 @@ const toWarehousePayload = (
 
 class InitialDorisPasswordError extends Error {}
 
+type TestResult = {
+  status: 'success' | 'error';
+  message: string;
+};
+
 const DorisConfigPage: React.FC = () => {
   const [baseForm] = Form.useForm<DataSourceFormValues>();
   const [connectionForm] = Form.useForm();
@@ -106,7 +112,7 @@ const DorisConfigPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [testMessage, setTestMessage] = useState<string>();
+  const [testResult, setTestResult] = useState<TestResult>();
 
   useEffect(() => {
     let active = true;
@@ -161,20 +167,25 @@ const DorisConfigPage: React.FC = () => {
     try {
       const { base, connection } = await readForms();
       setTesting(true);
-      setTestMessage(undefined);
+      setTestResult(undefined);
       const response = await testLakeWarehouse(toWarehousePayload(base, connection, config));
       if (response.code !== 0) throw new Error(responseError(response, 'Doris 连接测试失败'));
 
       if (response.data?.connStatus === 'CONNECTED_SUCCESS') {
-        setTestMessage('连接成功：Doris FE 已接受 JDBC 连接。');
+        setTestResult({ status: 'success', message: '连接成功：Doris FE 已接受 JDBC 连接。' });
         message.success('Doris 连接测试成功');
       } else {
-        setTestMessage(response.data?.lastError || '连接失败，请检查 FE 地址、查询端口、账号和驱动。');
+        setTestResult({
+          status: 'error',
+          message: response.data?.lastError || '连接失败，请检查 FE 地址、查询端口、账号和驱动。',
+        });
         message.error('Doris 连接测试失败');
       }
     } catch (error) {
       if (error instanceof InitialDorisPasswordError || (error as { errorFields?: unknown })?.errorFields) return;
-      message.error(error instanceof Error ? error.message : 'Doris 连接测试失败');
+      const errorMessage = error instanceof Error ? error.message : 'Doris 连接测试失败';
+      setTestResult({ status: 'error', message: errorMessage });
+      message.error(errorMessage);
     } finally {
       setTesting(false);
     }
@@ -251,10 +262,13 @@ const DorisConfigPage: React.FC = () => {
             />
           </div>
 
-          {testMessage ? (
-            <div className="lake-config-test-result">
-              <CheckCircleOutlined />
-              <span>{testMessage}</span>
+          {testResult ? (
+            <div
+              className={`lake-config-test-result lake-config-test-result--${testResult.status}`}
+              role={testResult.status === 'error' ? 'alert' : 'status'}
+            >
+              {testResult.status === 'success' ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+              <span>{testResult.message}</span>
             </div>
           ) : null}
 
@@ -265,7 +279,7 @@ const DorisConfigPage: React.FC = () => {
                 连接测试
               </Button>
               <Button type="primary" icon={<SafetyCertificateOutlined />} loading={saving} onClick={() => void handleSave()}>
-                测试并保存
+                保存
               </Button>
             </Space>
           </div>

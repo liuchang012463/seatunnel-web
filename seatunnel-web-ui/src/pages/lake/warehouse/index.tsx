@@ -169,9 +169,6 @@ const WarehousePage: React.FC = () => {
         </div>
         <div className="lake-overview-actions">
           <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新状态</Button>
-          <Button type="primary" icon={<SettingOutlined />} onClick={() => history.push('/lake/warehouse/config')}>
-            配置 Doris
-          </Button>
         </div>
       </header>
 
