@@ -69,11 +69,6 @@ const getFormFieldValue = (valueOrEvent: any) => {
   return valueOrEvent;
 };
 
-const withLabelColon = (label: unknown) => {
-  const text = String(label ?? '');
-  return /[：:]$/.test(text) ? text : `${text}：`;
-};
-
 const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   dbType,
   form,
@@ -83,7 +78,6 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   initialConfig,
   hideBaseFields = false,
   allowExistingPassword = false,
-  showBusinessSystem = false,
 }) => {
   const intl = useIntl();
 
@@ -336,12 +330,12 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
 
 const renderFieldLabel = (field: any): React.ReactNode => {
     if (!field.description) {
-      return withLabelColon(field.label);
+      return field.label;
     }
 
     return (
       <span className="inline-flex items-center">
-        {withLabelColon(field.label)}
+        {field.label}
         <Tooltip title={field.description}>
           <InfoCircleOutlined className="ml-1 text-slate-400" />
         </Tooltip>
@@ -371,20 +365,20 @@ const renderFieldLabel = (field: any): React.ReactNode => {
   }
 
   return (
-    <div className="datasource-form-panel datasource-editor-form-panel p-5">
+    <div className="datasource-form-panel p-5">
       {!hideBaseFields ? (
         <>
-          <div className="datasource-form-section-heading mb-5">
+          <div className="mb-5">
             <h3 className={sectionTitleClass}>数据源信息</h3>
             <p className={sectionDescClass}>先填写基础信息，再补充当前数据源类型对应的连接参数。</p>
           </div>
 
-          <Form form={form} layout="vertical" className="datasource-base-form">
-            <div className="datasource-base-form-grid grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Form form={form} layout="vertical">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Form.Item
                 label={intl.formatMessage({
                   id: 'pages.datasource.form.dsName',
-                  defaultMessage: '数据源名称：',
+                  defaultMessage: 'DS Name',
                 })}
                 name="name"
                 rules={[
@@ -411,7 +405,7 @@ const renderFieldLabel = (field: any): React.ReactNode => {
                   <span className="inline-flex items-center">
                     {intl.formatMessage({
                       id: 'pages.datasource.form.env',
-                      defaultMessage: '环境：',
+                      defaultMessage: 'Env',
                     })}
                     <Tooltip title="Deployment environment of the datasource">
                       <InfoCircleOutlined className="ml-1 text-slate-400" />
@@ -439,17 +433,12 @@ const renderFieldLabel = (field: any): React.ReactNode => {
               </Form.Item>
             </div>
 
-            <DataSourceUnitSelect
-              form={form}
-              onManageMasterData={onManageMasterData}
-              showBusinessSystem={showBusinessSystem}
-            />
+            <DataSourceUnitSelect form={form} onManageMasterData={onManageMasterData} />
 
             <Form.Item
-              className="datasource-description-field"
               label={intl.formatMessage({
                 id: 'pages.datasource.form.description',
-                defaultMessage: '描述：',
+                defaultMessage: 'Description',
               })}
               name="remark"
             >
@@ -500,49 +489,47 @@ const renderFieldLabel = (field: any): React.ReactNode => {
         </div>
       )}
 
-      <div className={hideBaseFields ? '' : 'datasource-connection-section mt-2 border-t border-[var(--st-color-divider)] pt-[18px]'}>
-        <div className="datasource-form-section-heading mb-4">
+      <div className={hideBaseFields ? '' : 'mt-2 border-t border-[var(--st-color-divider)] pt-[18px]'}>
+        <div className="mb-4">
           <h3 className={sectionTitleClass}>连接参数</h3>
           <p className={sectionDescClass}>根据当前数据源类型自动渲染配置项，建议优先填写必填字段。</p>
         </div>
 
-        <div className="datasource-connection-form">
-          <Form
-            form={configForm}
-            component={false}
-            labelCol={{ flex: '110px' }}
-            wrapperCol={{ flex: '1' }}
-            labelAlign="left"
-          >
-            {formConfig.map((field) => {
-              if (!isFieldVisible(field, { authenticationType })) {
-                return null;
-              }
+        <Form
+          form={configForm}
+          component={false}
+          labelCol={{ flex: '110px' }}
+          wrapperCol={{ flex: '1' }}
+          labelAlign="left"
+        >
+          {formConfig.map((field) => {
+            if (!isFieldVisible(field, { authenticationType })) {
+              return null;
+            }
 
-              if (field.type === 'CUSTOM_SELECT') {
-                return <CustomKVList key={field.key} intl={intl} field={field} />;
-              }
+            if (field.type === 'CUSTOM_SELECT') {
+              return <CustomKVList key={field.key} intl={intl} field={field} />;
+            }
 
-              return (
-                <Form.Item
-                  key={field.key}
-                  label={renderFieldLabel(field)}
-                  name={field.key}
-                  preserve={false}
-                  rules={
-                    field.key === 'password' && allowExistingPassword
-                      ? fieldRules(field).filter((rule) => !rule.required)
-                      : fieldRules(field)
-                  }
-                  validateTrigger={['onChange', 'onBlur']}
-                  className="!mb-[18px]"
-                >
-                  {renderFormItem(field)}
-                </Form.Item>
-              );
-            })}
-          </Form>
-        </div>
+            return (
+              <Form.Item
+                key={field.key}
+                label={renderFieldLabel(field)}
+                name={field.key}
+                preserve={false}
+                rules={
+                  field.key === 'password' && allowExistingPassword
+                    ? fieldRules(field).filter((rule) => !rule.required)
+                    : fieldRules(field)
+                }
+                validateTrigger={['onChange', 'onBlur']}
+                className="!mb-[18px]"
+              >
+                {renderFormItem(field)}
+              </Form.Item>
+            );
+          })}
+        </Form>
       </div>
     </div>
   );

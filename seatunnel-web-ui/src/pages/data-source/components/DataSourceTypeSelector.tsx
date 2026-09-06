@@ -71,10 +71,18 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
   return (
     <div className="datasource-type-selector flex flex-col gap-5">
       <div>
-        <div className="datasource-type-filter-row">
-          <div className="datasource-type-filter-controls">
+        <Input
+          allowClear
+          prefix={<SearchOutlined className="datasource-type-search-icon" />}
+          placeholder="搜索数据源类型，例如 MySQL、PostgreSQL、Oracle..."
+          value={query}
+          className="datasource-type-search"
+          onChange={(event) => setQuery(event.target.value)}
+        />
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="datasource-type-filter-label">
-            类型
+            类型：
           </span>
 
           <Button
@@ -83,7 +91,12 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
             className="datasource-type-filter-button"
             onClick={() => setSelectedGroupName(null)}
           >
-            全部（{totalDatasourceCount}）
+            全部
+            <span
+              className={`datasource-type-filter-count${selectedGroupName === null ? ' is-active' : ''}`}
+            >
+              {totalDatasourceCount}
+            </span>
           </Button>
 
           {dataSourceGroups.map((group) => {
@@ -101,20 +114,15 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
                   )
                 }
               >
-                {group.groupName}（{group.datasourceList.length}）
+                {group.groupName}
+                <span
+                  className={`datasource-type-filter-count${active ? ' is-active' : ''}`}
+                >
+                  {group.datasourceList.length}
+                </span>
               </Button>
             );
           })}
-          </div>
-
-          <Input
-            allowClear
-            prefix={<SearchOutlined className="datasource-type-search-icon" />}
-            placeholder="请输入数据源"
-            value={query}
-            className="datasource-type-search"
-            onChange={(event) => setQuery(event.target.value)}
-          />
         </div>
       </div>
 
@@ -140,7 +148,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
                 <div
                   className="datasource-type-option-icon"
                 >
-                  <DatabaseIcons dbType={item.dbType} width="22px" height="22px" />
+                  <DatabaseIcons dbType={item.dbType} width="18px" height="18px" />
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -187,7 +195,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
                   <div
                     className="datasource-type-option-icon"
                   >
-                    <DatabaseIcons dbType={item.dbType} width="22px" height="22px" />
+                    <DatabaseIcons dbType={item.dbType} width="17px" height="17px" />
                   </div>
 
                   <div className="min-w-0 flex-1">

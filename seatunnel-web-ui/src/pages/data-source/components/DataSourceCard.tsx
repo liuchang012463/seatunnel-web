@@ -1,14 +1,15 @@
 import {
   ApiOutlined,
+  ApartmentOutlined,
+  CloseCircleOutlined,
   DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  PauseCircleFilled,
-  PlayCircleFilled,
-  PoweroffOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import { Button, Card, Tag, Tooltip } from 'antd';
 import React from 'react';
+import { environmentTagConfigMap } from '../constants';
+import { getDataSourceCategory } from '../dataSourceRegistry';
 import DatabaseIcons from '../icon/DatabaseIcons';
 import type { DataSourceLifecycleStatus, DataSourceRecord } from '../types';
 import DataSourceLifecycleStatusTag from './DataSourceLifecycleStatus';
@@ -34,8 +35,18 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   onTestConnection,
   onViewExploration,
   onStatusChange,
+  onLakePhysical,
+  onLakeLogical,
+  onLakeRecommend,
   onOpenWarehouse,
 }) => {
+  const environmentConfig = environmentTagConfigMap[record.environment || ''] || {
+    text: record.environmentName || '-',
+    color: 'var(--st-color-text-muted)',
+    backgroundColor: 'rgba(102, 111, 117, 0.14)',
+    icon: null,
+  };
+  const category = getDataSourceCategory(record.dbType);
   const currentStatus = record.status || 'ENABLED';
   const isRevoked = currentStatus === 'REVOKED';
   const isDeleting = isRevoked || record.metadataSyncStatus === 'DELETING';
@@ -43,90 +54,201 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
   const unitName = record.unitName || record.dataSourceUnit || '待归属';
   const businessSystemName = record.businessSystemName || record.systemName || '待归属';
+  const metadataReady = record.metadataSyncStatus === 'READY';
+  const lakeDisabledReason = metadataReady ? undefined : 'Metadata 尚未 READY，请先完成数据源探查';
   const isSystemManaged = Boolean(record.systemManaged);
-  const profileLabel = record.profileStatus === 'SUCCESS' ? '已探查' : '未探查';
 
   return (
-    <Card bodyStyle={{ padding: 0 }} className="datasource-card">
+    <Card
+      bodyStyle={{ padding: 0 }}
+      className={[
+        'datasource-card group relative',
+        'transition-colors duration-200 ease-out',
+        'hover:!translate-y-0 hover:!transform-none',
+      ].join(' ')}
+    >
       <div className="datasource-card-cover">
         <div className="datasource-card-logo">
-          <DatabaseIcons dbType={record.dbType} width="34" height="34" />
+          <DatabaseIcons dbType={record.dbType} width="28" height="28" />
         </div>
-        <div className="datasource-card-cover-info">
-          <div className="datasource-card-title" title={record.name}>
-            {record.name || '-'}
-          </div>
-          <div className="datasource-card-jdbc-url" title={record.jdbcUrl}>
-            {record.jdbcUrl || '-'}
-          </div>
+
+        <div className="datasource-card-env-tag">
+          <span
+            className="datasource-card-env-tag-inner"
+            style={{
+              background: environmentConfig.backgroundColor,
+              color: environmentConfig.color,
+            }}
+          >
+            {environmentConfig.icon}
+            {record.environmentName || environmentConfig.text}
+          </span>
         </div>
-        <div className="datasource-card-profile-ribbon">未探查数据</div>
+
+        <div
+          className={[
+            'datasource-card-hover-actions',
+            'opacity-0 translate-y-[-6px] pointer-events-none',
+            'transition-all duration-200 ease-out',
+            'group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto',
+          ].join(' ')}
+        >
+          <Tooltip title="测试连接" placement="top">
+            <button
+              type="button"
+              disabled={isDeleting}
+              className="datasource-card-hover-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onTestConnection(record);
+              }}
+            >
+              <ApiOutlined />
+            </button>
+          </Tooltip>
+
+          <Tooltip title="查看探查结果" placement="top">
+            <button
+              type="button"
+              disabled={isDeleting}
+              className="datasource-card-hover-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onViewExploration(record);
+              }}
+            >
+              <ApartmentOutlined />
+            </button>
+          </Tooltip>
+
+          {!isSystemManaged ? <>
+            <Tooltip title={statusActionLabel} placement="top">
+              <button
+                type="button"
+                disabled={isDeleting}
+                className="datasource-card-hover-action"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onStatusChange(record, nextStatus);
+                }}
+              >
+                {currentStatus === 'DISABLED' ? <PlayCircleOutlined /> : <PauseCircleOutlined />}
+              </button>
+            </Tooltip>
+            <Tooltip title={isRevoked ? '已注销' : '注销'} placement="top">
+              <button
+                type="button"
+                disabled={isDeleting}
+                className="datasource-card-hover-action datasource-card-hover-action--danger"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onStatusChange(record, 'REVOKED');
+                }}
+              >
+                <CloseCircleOutlined />
+              </button>
+            </Tooltip>
+            <Tooltip title="删除" placement="top">
+              <button
+                type="button"
+                disabled={isDeleting}
+                className="datasource-card-hover-action datasource-card-hover-action--danger"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(record);
+                }}
+              >
+                <DeleteOutlined />
+              </button>
+            </Tooltip>
+          </> : null}
+        </div>
       </div>
 
       <div className="datasource-card-content">
+        <div className="datasource-card-title truncate" title={record.name}>
+          {record.name || '-'}
+        </div>
+
+        <div className="datasource-card-jdbc-url" title={record.jdbcUrl}>
+          {record.jdbcUrl || '-'}
+        </div>
+
         <div className="datasource-card-status">
           <DataSourceStatus status={record.connStatus} />
           <DataSourceLifecycleStatusTag status={record.status} />
-          <Tag className="datasource-profile-tag">{profileLabel}</Tag>
+          {isSystemManaged ? <Tag color="cyan" style={{ marginInlineEnd: 0, borderRadius: 999 }}>系统内置 · 只读</Tag> : null}
+          <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
+            {category.label}
+          </Tag>
         </div>
-        <div className="datasource-card-owner-grid">
-          <span>单位：{unitName}</span>
-          <span>系统：{businessSystemName}</span>
-        </div>
-        <div className="datasource-card-update-time">
-          发布时间：{record.createTime || record.updateTime || '-'}
-        </div>
-      </div>
 
-      <div className="datasource-card-actions">
-        <Tooltip title="查看探查结果">
-          <Button type="text" icon={<EyeOutlined />} disabled={isDeleting} onClick={() => onViewExploration(record)}>
-            查看探查结果
-          </Button>
-        </Tooltip>
-        {!isSystemManaged ? (
-          <Tooltip title="编辑">
-            <Button type="text" icon={<EditOutlined />} disabled={isDeleting} onClick={() => onEdit(record)}>
-              编辑
-            </Button>
-          </Tooltip>
-        ) : null}
-        <Tooltip title="测试连接">
-          <Button type="text" icon={<ApiOutlined />} disabled={isDeleting} onClick={() => onTestConnection(record)}>
-            测试连接
-          </Button>
-        </Tooltip>
-        {!isSystemManaged ? (
-          <>
-            <Tooltip title={statusActionLabel}>
-              <Button
-                type="text"
-                icon={currentStatus === 'DISABLED' ? <PlayCircleFilled /> : <PauseCircleFilled />}
-                disabled={isDeleting}
-                onClick={() => onStatusChange(record, nextStatus)}
-              >
-                {statusActionLabel}
-              </Button>
-            </Tooltip>
-            <Tooltip title={isRevoked ? '已注销' : '注销'}>
-              <Button
-                type="text"
-                icon={<PoweroffOutlined />}
-                disabled={isDeleting}
-                onClick={() => onStatusChange(record, 'REVOKED')}
-              >
-                注销
-              </Button>
-            </Tooltip>
-            <Tooltip title="删除">
-              <Button type="text" danger icon={<DeleteOutlined />} disabled={isDeleting} onClick={() => onDelete(record)}>
-                删除
-              </Button>
-            </Tooltip>
-          </>
+        <div className="datasource-card-exploration-row">
+          <span className="datasource-card-label">探查状态</span>
+          <Tag
+            color={record.profileStatus === 'SUCCESS' ? 'success' : record.profileStatus === 'FAILED' ? 'error' : 'default'}
+            style={{ marginInlineEnd: 0, borderRadius: 999 }}
+          >
+            {record.profileStatus === 'SUCCESS'
+              ? '已完成'
+              : record.profileStatus === 'FAILED'
+                ? '异常'
+                : record.profileStatus === 'RUNNING' || record.profileStatus === 'QUEUED'
+                  ? '处理中'
+                  : '未探查'}
+          </Tag>
+        </div>
+
+        <div className="datasource-card-owner-grid">
+          <div className="datasource-card-owner-row" title={unitName}>
+            <span className="datasource-card-label">单位</span>
+            <span className="datasource-card-value">{unitName}</span>
+          </div>
+          <div className="datasource-card-owner-row" title={businessSystemName}>
+            <span className="datasource-card-label">业务系统</span>
+            <span className="datasource-card-value">{businessSystemName}</span>
+          </div>
+        </div>
+
+        <div className="datasource-card-update-time">
+          <span className="datasource-card-label">最近更新</span>
+          <span className="datasource-card-update-time-value">{record.updateTime || '-'}</span>
+        </div>
+
+        {isSystemManaged ? (
+          <div className="datasource-card-lake-actions">
+            <span className="datasource-card-label">湖 ODS 投影</span>
+            <Button type="link" size="small" onClick={onOpenWarehouse}>管理数据湖</Button>
+          </div>
         ) : (
-          <Button type="text" onClick={onOpenWarehouse}>数据湖管理</Button>
+          <div className="datasource-card-lake-actions">
+            <span className="datasource-card-label">双模入湖</span>
+            <div className="datasource-card-lake-buttons">
+              <Tooltip title={lakeDisabledReason || '打开物理入湖资源'}>
+                <Button size="small" disabled={isDeleting || !metadataReady} onClick={() => onLakePhysical(record)}>物理</Button>
+              </Tooltip>
+              <Tooltip title={lakeDisabledReason || '检查推荐并进入逻辑入湖'}>
+                <Button size="small" disabled={isDeleting || !metadataReady} onClick={() => onLakeRecommend(record)}>推荐</Button>
+              </Tooltip>
+              <Tooltip title={lakeDisabledReason || '打开逻辑入湖能力检查'}>
+                <Button size="small" disabled={isDeleting || !metadataReady} onClick={() => onLakeLogical(record)}>逻辑</Button>
+              </Tooltip>
+            </div>
+          </div>
         )}
+
+        <Button
+          block
+          type="primary"
+          disabled={isDeleting}
+          className={[
+            'datasource-card-detail-button group/detail relative overflow-hidden p-0',
+            'transition-all duration-300 ease-out',
+          ].join(' ')}
+          onClick={() => isSystemManaged ? onOpenWarehouse() : onEdit(record)}
+        >
+          {isSystemManaged ? '前往数据湖管理' : '查看详情'}
+        </Button>
       </div>
     </Card>
   );

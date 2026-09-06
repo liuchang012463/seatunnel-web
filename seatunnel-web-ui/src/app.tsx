@@ -1,7 +1,6 @@
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import { SettingDrawer } from '@ant-design/pro-components';
 import { Footer } from '@/components';
-import { UserOutlined } from '@ant-design/icons';
 import '@ant-design/v5-patch-for-react-19';
 import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
 import 'd3-transition';
@@ -95,10 +94,6 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
       isPrototypeMode
         ? []
         : [<Knowledge key="knowledge" />, <ThemeSwitch key="theme-switch" />],
-    avatarProps: {
-      icon: <UserOutlined />,
-      title: initialState?.currentUser?.name || '张飞鸿',
-    },
     waterMarkProps: showWatermark ? { content: initialState?.currentUser?.name } : undefined,
     footerRender: () => <Footer />,
     bgLayoutImgList: isPrototypeMode

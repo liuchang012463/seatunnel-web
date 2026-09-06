@@ -2,6 +2,7 @@ import { useIntl } from '@umijs/max';
 import { Button, Form, message, Modal } from 'antd';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { dataSourceGroupList } from '../constants';
+import DatabaseIcons from '../icon/DatabaseIcons';
 import { createDataSource, testDataSourceConnectionWithParams, updateDataSource } from '../service';
 import type {
   DataSourceFormValues,
@@ -123,7 +124,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
     configForm.resetFields();
 
     setSelectedDbType(dbType);
-    setShowFormStep(false);
+    setShowFormStep(true);
     setHideBackButton(false);
   };
 
@@ -206,14 +207,23 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
     }
   };
 
-  const modalTitle = isEditMode ? '编辑数据源' : '新增数据源';
+  const modalActionText =
+    operateType === ('EDIT' as DataSourceOperateType)
+      ? intl.formatMessage({
+          id: 'pages.datasource.modal.title.edit',
+          defaultMessage: 'Edit',
+        })
+      : intl.formatMessage({
+          id: 'pages.datasource.modal.title.add',
+          defaultMessage: 'Add',
+        });
 
   return (
     <Modal
-      className={`datasource-editor-modal ${showFormStep ? 'datasource-editor-modal--form' : 'datasource-editor-modal--selector'}`}
-      width="min(1196px, calc(100vw - 40px))"
+      className="datasource-editor-modal"
+      width="min(920px, 92vw)"
       open={open}
-      style={{ top: 111 }}
+      centered
       maskClosable={false}
       onCancel={handleClose}
       destroyOnClose
@@ -241,58 +251,125 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
           overflow: 'hidden',
         },
       }}
-      title={<div className="datasource-modal-heading">{modalTitle}</div>}
-      footer={
-        <div className="datasource-modal-footer">
-          {showFormStep && isCreateMode && !hideBackButton ? (
-            <Button onClick={handleBackToTypeSelection}>上一步</Button>
-          ) : null}
-          {showFormStep ? <Button onClick={handleTestConnection}>连接测试</Button> : null}
-          {showFormStep ? (
-            <Button type="primary" onClick={handleSubmit}>
-              完成
-            </Button>
-          ) : (
-            <Button
-              type="primary"
-              onClick={() => {
-                if (selectedDbType) {
-                  setShowFormStep(true);
-                }
+      title={
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            paddingRight: 24,
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                minWidth: 0,
               }}
             >
-              下一步
-            </Button>
-          )}
-          <Button onClick={handleClose}>取消</Button>
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 4,
+                  background: 'var(--st-color-hover)',
+                  border: '1px solid var(--st-color-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <DatabaseIcons dbType={selectedDbType} width="18" height="18" />
+              </div>
+
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 400,
+                    color: 'var(--st-color-text-primary)',
+                    lineHeight: '24px',
+                  }}
+                >
+                  {modalActionText}
+                  {intl.formatMessage({
+                    id: 'pages.datasource.common.title',
+                    defaultMessage: ' Data Source',
+                  })}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 2,
+                    fontSize: 13,
+                    color: 'var(--st-color-text-secondary)',
+                    lineHeight: '20px',
+                  }}
+                >
+                  {selectedDbType ? `当前类型：${selectedDbType}` : '请选择数据源类型'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+      footer={
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <div>
+            {showFormStep ? (
+              isCreateMode && !hideBackButton ? (
+                <Button onClick={handleBackToTypeSelection} style={{ height: 34, borderRadius: 6 }}>
+                  上一步
+                </Button>
+              ) : (
+                <Button onClick={handleClose} style={{ height: 34, borderRadius: 6 }}>
+                  取消
+                </Button>
+              )
+            ) : (
+                <Button onClick={handleClose} style={{ height: 34, borderRadius: 6 }}>
+                取消
+              </Button>
+            )}
+          </div>
+
+          {showFormStep ? (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Button onClick={handleTestConnection} style={{ height: 34, borderRadius: 6 }}>
+                连接测试
+              </Button>
+
+              <Button type="primary" onClick={handleSubmit} style={{ height: 34, borderRadius: 6, paddingInline: 18 }}>
+                完成
+              </Button>
+            </div>
+          ) : null}
         </div>
       }
     >
-      <div className="datasource-modal-steps" aria-label="数据源创建步骤">
-        <span className={!showFormStep ? 'is-active' : ''}>
-          <b>1</b>
-          选择数据源类型
-        </span>
-        <i />
-        <span className={showFormStep ? 'is-active' : ''}>
-          <b>2</b>
-          信息配置
-        </span>
-      </div>
       {showFormStep ? (
-        <div className="datasource-form-step">
-          <DynamicDataSourceForm
-            key={`${operateType}-${selectedDbType}-${currentRecord?.id || 'create'}`}
-            dbType={selectedDbType}
-            form={basicForm}
-            configForm={configForm}
-            operateType={operateType}
-            onManageMasterData={onManageMasterData}
-            initialConfig={isEditMode ? parseOriginalJson(currentRecord?.originalJson) : undefined}
-          />
-        </div>
+        <DynamicDataSourceForm
+          key={`${operateType}-${selectedDbType}-${currentRecord?.id || 'create'}`}
+          dbType={selectedDbType}
+          form={basicForm}
+          configForm={configForm}
+          operateType={operateType}
+          onManageMasterData={onManageMasterData}
+          initialConfig={isEditMode ? parseOriginalJson(currentRecord?.originalJson) : undefined}
+        />
       ) : (
-        <div className="datasource-type-selector-wrap">
+        <div style={{ padding: '4px 0 8px' }}>
           <DataSourceTypeSelector dataSourceGroups={dataSourceGroupList} onSelect={handleSelectDbType} />
         </div>
       )}

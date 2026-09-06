@@ -1,5 +1,5 @@
 import { SettingOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Select, Spin } from 'antd';
+import { Button, Form, Select, Spin } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchBusinessSystemOptions, fetchDataSourceUnitOptions, unwrapMasterDataList } from '../service';
 import type { BusinessSystemOption, DataSourceEntityId, DataSourceFormValues, DataSourceUnitOption } from '../types';
@@ -7,7 +7,6 @@ import type { BusinessSystemOption, DataSourceEntityId, DataSourceFormValues, Da
 interface DataSourceUnitSelectProps {
   form: ReturnType<typeof Form.useForm<DataSourceFormValues>>[0];
   onManageMasterData?: () => void;
-  showBusinessSystem?: boolean;
 }
 
 const normalizeId = (value?: DataSourceEntityId | null) =>
@@ -27,11 +26,7 @@ const uniqueById = <T extends { id: DataSourceEntityId }>(items: T[]) => {
  * Renders the owning-unit and business-system fields used by the data-source
  * form. Business systems are loaded only after a unit has been selected.
  */
-const DataSourceUnitSelect: React.FC<DataSourceUnitSelectProps> = ({
-  form,
-  onManageMasterData,
-  showBusinessSystem = true,
-}) => {
+const DataSourceUnitSelect: React.FC<DataSourceUnitSelectProps> = ({ form, onManageMasterData }) => {
   const [units, setUnits] = useState<DataSourceUnitOption[]>([]);
   const [businessSystems, setBusinessSystems] = useState<BusinessSystemOption[]>([]);
   const [unitLoading, setUnitLoading] = useState(false);
@@ -117,19 +112,17 @@ const DataSourceUnitSelect: React.FC<DataSourceUnitSelectProps> = ({
   );
 
   return (
-    <div className={`datasource-unit-select ${showBusinessSystem ? '' : 'datasource-unit-select--single'}`}>
-      {showBusinessSystem ? (
-        <div className="mb-2 flex items-center justify-between text-xs text-[var(--st-color-text-muted)]">
-          <span>归属信息</span>
-          {onManageMasterData && (
-            <Button type="link" size="small" icon={<SettingOutlined />} onClick={onManageMasterData}>
-              维护单位与业务系统
-            </Button>
-          )}
-        </div>
-      ) : null}
-      <div className={showBusinessSystem ? 'grid grid-cols-1 gap-4 md:grid-cols-2' : undefined}>
-        <Form.Item label="数据源单位：" name="unitId" rules={[{ required: true, message: '请选择数据源单位' }]}>
+    <div>
+      <div className="mb-2 flex items-center justify-between text-xs text-[var(--st-color-text-muted)]">
+        <span>归属信息</span>
+        {onManageMasterData && (
+          <Button type="link" size="small" icon={<SettingOutlined />} onClick={onManageMasterData}>
+            维护单位与业务系统
+          </Button>
+        )}
+      </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Form.Item label="数据源单位" name="unitId" rules={[{ required: true, message: '请选择数据源单位' }]}>
           <Select
             allowClear
             showSearch
@@ -141,24 +134,18 @@ const DataSourceUnitSelect: React.FC<DataSourceUnitSelectProps> = ({
           />
         </Form.Item>
 
-        {showBusinessSystem ? (
-          <Form.Item label="业务系统" name="businessSystemId" rules={[{ required: true, message: '请选择业务系统' }]}>
-            <Select
-              allowClear
-              showSearch
-              optionFilterProp="label"
-              options={businessSystemOptions}
-              loading={businessSystemLoading}
-              disabled={!normalizeId(unitId)}
-              placeholder={normalizeId(unitId) ? '请选择业务系统' : '请先选择数据源单位'}
-              notFoundContent={businessSystemLoading ? <Spin size="small" /> : '暂无可用业务系统'}
-            />
-          </Form.Item>
-        ) : (
-          <Form.Item name="businessSystemId" hidden>
-            <Input type="hidden" />
-          </Form.Item>
-        )}
+        <Form.Item label="业务系统" name="businessSystemId" rules={[{ required: true, message: '请选择业务系统' }]}>
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            options={businessSystemOptions}
+            loading={businessSystemLoading}
+            disabled={!normalizeId(unitId)}
+            placeholder={normalizeId(unitId) ? '请选择业务系统' : '请先选择数据源单位'}
+            notFoundContent={businessSystemLoading ? <Spin size="small" /> : '暂无可用业务系统'}
+          />
+        </Form.Item>
       </div>
     </div>
   );

@@ -1,14 +1,6 @@
-import {
-  CloudDownloadOutlined,
-  CloudUploadOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-  PlayCircleOutlined,
-  PlusOutlined,
-  StopOutlined,
-} from "@ant-design/icons";
-import { history } from "@umijs/max";
-import { Button, Empty, Modal, Table, Tooltip, message } from "antd";
+import { CopyOutlined } from "@ant-design/icons";
+import { history, useIntl } from "@umijs/max";
+import { Divider, Empty, Modal, Table, Tooltip, message } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
 import moment from "moment";
 import { useEffect, useState } from "react";
@@ -21,7 +13,6 @@ import BatchCreateJobModal, {
   BatchCreateValues,
 } from "@/pages/common/components/BatchCreateJobModal";
 import { batchJobExecutorApi } from "../../type";
-import CustomPagination from "../../CustomPagination";
 import ActionColumn from "./components/ActionColumn";
 import AdvancedSearchForm from "./components/AdvancedSearchForm";
 import BottomActionBar from "./components/BottomActionBar";
@@ -34,7 +25,6 @@ import './index.less';
 
 interface Props {
   goDetail: (value: any, item?: any) => void;
-  onCreate?: () => void;
   mode?: string;
   excludeMode?: string;
   emptyDescription?: string;
@@ -102,11 +92,12 @@ const parseSortFromUrl = () => {
 
 const App: React.FC<Props> = ({
   goDetail,
-  onCreate,
   mode,
   excludeMode,
   emptyDescription = "暂无引接链路（离线）",
 }) => {
+  const intl = useIntl();
+
   const [taskList, setTaskList] = useState<any[]>([]);
   const [searchParams, setSearchParams] = useState<any>(() =>
     parseSearchParamsFromUrl()
@@ -233,23 +224,32 @@ const App: React.FC<Props> = ({
 
   const baseColumns = [
     {
-      title: "链路名称",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.name",
+        defaultMessage: "Name",
+      }),
       dataIndex: "jobName",
-      width: 316,
+      width: "12%",
       ellipsis: true,
       render: (_content: any, record: any) => (
         <div className="sync-task-name-cell">
           <div className="sync-task-name-cell__title">
             <em>
-              任务名
+              {intl.formatMessage({
+                id: "pages.job.table.label.jobName",
+                defaultMessage: "JobName",
+              })}
             </em>
             : {record?.jobName}
           </div>
           <div className="sync-task-name-cell__id">
             <em>
-              任务定义ID
+              {intl.formatMessage({
+                id: "pages.job.table.label.jobId",
+                defaultMessage: "Job Definition ID",
+              })}
             </em>
-            :
+            :{" "}
             <span>{record?.id}</span>{" "}
             <Tooltip title="复制任务定义ID">
               <button
@@ -268,9 +268,12 @@ const App: React.FC<Props> = ({
       ),
     },
     {
-      title: "数据源同步方案",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.syncPlan",
+        defaultMessage: "Sync Plan",
+      }),
       dataIndex: "",
-      width: 359,
+      width: "21%",
       render: (_content: any, record: any) => (
         <div className="sync-task-plan-cell">
           <DataSourceSyncPlan record={record} />
@@ -278,11 +281,14 @@ const App: React.FC<Props> = ({
       ),
     },
     {
-      title: "健康状态",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.status",
+        defaultMessage: "Status",
+      }),
       dataIndex: "taskParams",
-      width: 124,
+      width: "7%",
       render: (_content: any, record: any) => (
-        <div className="sync-task-status-cell flex w-full justify-start">
+        <div className="sync-task-status-cell flex w-full justify-center">
           <TaskStatus
             status={record?.lastJobStatus}
             errorMessage={record?.lastErrorMessage}
@@ -291,9 +297,12 @@ const App: React.FC<Props> = ({
       ),
     },
     {
-      title: "执行概况",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.execution",
+        defaultMessage: "Execution",
+      }),
       dataIndex: "执行概况",
-      width: 185,
+      width: "15%",
       render: (_content: any, record: any) => (
         <div className="sync-task-info-list">
           <ExecutionStatus record={record} />
@@ -301,9 +310,12 @@ const App: React.FC<Props> = ({
       ),
     },
     {
-      title: "链路动态调整",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.schedule",
+        defaultMessage: "Schedule",
+      }),
       dataIndex: "taskName",
-      width: 323,
+      width: "20%",
       render: (_content: any, record: any) => (
         <div className="sync-task-info-list sync-task-schedule-list">
           <ScheduleInfo record={record} />
@@ -311,9 +323,23 @@ const App: React.FC<Props> = ({
       ),
     },
     {
-      title: "操作",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.createTime",
+        defaultMessage: "CreateTime",
+      }),
+      dataIndex: "createTime",
+      width: "10%",
+      render: (createTime: string) => (
+        <span className="sync-task-time">{createTime || "-"}</span>
+      ),
+    },
+    {
+      title: intl.formatMessage({
+        id: "pages.job.table.col.operate",
+        defaultMessage: "Operate",
+      }),
       dataIndex: "",
-      width: 322,
+      width: "14%",
       fixed: "right" as const,
       render: (record: any) => (
         <ActionColumn record={record} cbk={fetchTaskList} goDetail={goDetail} />
@@ -766,102 +792,43 @@ const App: React.FC<Props> = ({
         <div className="config-manage-page">
           <div className="operate-bar task-search-wrap">
             <div className="left">
-              <div className="task-action-toolbar">
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={onCreate}
-                  className="task-action-toolbar__create"
-                >
-                  创建离线任务
-                </Button>
-                <Button
-                  icon={<CopyOutlined />}
-                  onClick={openBatchCreate}
-                >
-                  批量创建
-                </Button>
-                <Button
-                  icon={<CloudDownloadOutlined />}
-                  onClick={onOfflineAll}
-                >
-                  下线
-                </Button>
-                <Button
-                  icon={<CloudUploadOutlined />}
-                  onClick={onOnlineAll}
-                >
-                  上线
-                </Button>
-                <Button
-                  icon={<PlayCircleOutlined />}
-                  onClick={onStartAll}
-                >
-                  启动
-                </Button>
-                <Button
-                  icon={<StopOutlined />}
-                  onClick={onTerminateAll}
-                >
-                  终止
-                </Button>
-                <Button
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={onDeleteAll}
-                >
-                  删除
-                </Button>
-              </div>
               <AdvancedSearchForm
                 onSearch={handleSearch}
                 onReset={handleReset}
                 initialValues={searchParams}
                 fileMode={mode === "FILE_SYNC"}
+                sortControls={
+                  <TaskSortControls
+                    field={sort.field}
+                    order={sort.order}
+                    onChange={handleSortChange}
+                  />
+                }
               />
             </div>
           </div>
 
-          <div className="task-list-summary">
-            <span>共 {pagination.total || 0} 条</span>
-            <TaskSortControls
-              field={sort.field}
-              order={sort.order}
-              onChange={handleSortChange}
-            />
-          </div>
+          <Divider style={{ margin: "16px 0" }} />
 
           <div className="task-table-shell">
-            <Table
-              columns={baseColumns as any}
-              dataSource={taskList}
-              rowKey="id"
-              pagination={false}
-              loading={loading}
-      rowSelection={{
-        type: "checkbox",
-        columnWidth: 44,
-        ...rowSelection,
-      }}
-              scroll={{ x: "max-content" }}
-              className="task-table"
-              locale={{
-                emptyText: (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={emptyDescription}
-                  />
-                ),
-              }}
-            />
-          </div>
-          <div className="task-list-pagination">
-            <CustomPagination
-              total={pagination.total}
-              current={pagination.current}
-              pageSize={pagination.pageSize}
-              onChange={handlePaginationChange}
-            />
+          <Table
+            columns={baseColumns as any}
+            dataSource={taskList}
+            rowKey="id"
+            pagination={false}
+            loading={loading}
+            rowSelection={{ type: "checkbox", ...rowSelection }}
+            scroll={{ x: "max-content", y: "calc(100vh - 380px)" }}
+            className="task-table"
+            locale={{
+              emptyText: (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={emptyDescription}
+                />
+              ),
+            }}
+          />
           </div>
         </div>
       </div>

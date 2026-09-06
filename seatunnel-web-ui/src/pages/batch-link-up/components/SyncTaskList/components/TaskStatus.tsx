@@ -15,11 +15,11 @@ const statusConfig: Record<
   }
 > = {
   FINISHED: {
-    color: "#27ff27",
+    color: "#16a34a",
     label: "已完成",
   },
   SUCCESS: {
-    color: "#27ff27",
+    color: "#16a34a",
     label: "已完成",
   },
   RUNNING: {
@@ -119,11 +119,8 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
 
   const content = (
     <span
-      className="sync-task-status-badge"
-      style={{
-        color: config.color,
-        background: `${config.color}33`,
-      }}
+      className="inline-flex min-w-[56px] items-center justify-center px-2 text-xs font-medium leading-none"
+      style={{ color: config.color }}
       title={config.label}
       aria-label={config.label}
     >

@@ -577,7 +577,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
             loading={unitLoading}
             columns={unitColumns}
             dataSource={unitPage.records}
-            scroll={embedded ? undefined : { x: 1000 }}
+            scroll={{ x: 1000 }}
             pagination={{
               current: unitPage.pagination.pageNo,
               pageSize: unitPage.pagination.pageSize,
@@ -663,7 +663,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
             loading={businessSystemLoading}
             columns={businessSystemColumns}
             dataSource={businessSystemPage.records}
-            scroll={embedded ? undefined : { x: 1260 }}
+            scroll={{ x: 1260 }}
             pagination={{
               current: businessSystemPage.pagination.pageNo,
               pageSize: businessSystemPage.pagination.pageSize,

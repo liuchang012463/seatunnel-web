@@ -32,7 +32,7 @@ const ScheduleInfo: React.FC<ExecutionStatusProps> = ({ record }) => {
       <>
         <div style={{ display: "flex", alignItems: "center" }}>
           <span style={{ fontWeight: 700, fontSize: 19, marginRight: 8 }}>·</span>
-          <span style={{ marginRight: 24, fontWeight: 700 }}>执行方式：</span>
+          <span style={{ marginRight: 24, fontWeight: 700 }}>执行方式</span>
           <span style={{ color: "#1677ff" }}>手动触发</span>
         </div>
         <div style={{ display: "flex", alignItems: "center" }}>
@@ -50,7 +50,7 @@ const ScheduleInfo: React.FC<ExecutionStatusProps> = ({ record }) => {
           <span style={{ marginRight: 12, fontWeight: 700 }}>
             {intl.formatMessage({
               id: "pages.job.schedule.lastRunTime",
-              defaultMessage: "上次运行时间：",
+              defaultMessage: "Last Run Time:",
             })}
           </span>
           <span style={{ color: "gray" }}>{record?.lastScheduleTime || "-"}</span>
@@ -60,7 +60,7 @@ const ScheduleInfo: React.FC<ExecutionStatusProps> = ({ record }) => {
           <span style={{ marginRight: 12, fontWeight: 700 }}>
             {intl.formatMessage({
               id: "pages.job.schedule.nextRunTime",
-              defaultMessage: "下次运行时间：",
+              defaultMessage: "Next Run Time:",
             })}
           </span>
           <span style={{ color: "gray" }}>-</span>
@@ -73,12 +73,17 @@ const ScheduleInfo: React.FC<ExecutionStatusProps> = ({ record }) => {
     <>
       <div style={{ display: "flex", alignItems: "center" }}>
         <span style={{ fontWeight: 700, fontSize: 19, marginRight: 8 }}>·</span>
-        <span style={{ marginRight: 24, fontWeight: 700 }}>执行方式：</span>
+        <span style={{ marginRight: 24, fontWeight: 700 }}>执行方式</span>
         <span style={{ color: "#1677ff" }}>自动调度</span>
       </div>
       <div style={{ display: "flex", alignItems: "center" }}>
         <span style={{ fontWeight: 700, fontSize: 19, marginRight: 8 }}>·</span>
-        <span style={{ marginRight: 45, fontWeight: 700 }}>Crom：</span>
+        <span style={{ marginRight: 45, fontWeight: 700 }}>
+          {intl.formatMessage({
+            id: "pages.job.schedule.cron",
+            defaultMessage: "Cron:",
+          })}{" "}
+        </span>
 
         <Popover
           content={
@@ -140,7 +145,7 @@ const ScheduleInfo: React.FC<ExecutionStatusProps> = ({ record }) => {
       <div style={{ display: "flex", alignItems: "center" }}>
         <span style={{ fontWeight: 700, fontSize: 19, marginRight: 8 }}>·</span>
         <span style={{ marginRight: 66, fontWeight: 700 }}>
-          状态：
+          状态
         </span>
         <span style={{ color: "gray" }}>{renderStatus(record?.scheduleStatus)}</span>
       </div>
@@ -150,7 +155,7 @@ const ScheduleInfo: React.FC<ExecutionStatusProps> = ({ record }) => {
         <span style={{ marginRight: 12, fontWeight: 700 }}>
           {intl.formatMessage({
             id: "pages.job.schedule.lastRunTime",
-            defaultMessage: "上次运行时间：",
+            defaultMessage: "Last Run Time:",
           })}{" "}
         </span>
         <span style={{ color: "gray" }}>{record?.lastScheduleTime || "-"}</span>
@@ -161,7 +166,7 @@ const ScheduleInfo: React.FC<ExecutionStatusProps> = ({ record }) => {
         <span style={{ marginRight: 12, fontWeight: 700 }}>
           {intl.formatMessage({
             id: "pages.job.schedule.nextRunTime",
-            defaultMessage: "下次运行时间：",
+            defaultMessage: "Next Run Time:",
           })}{" "}
         </span>
         <span style={{ color: "gray" }}>{record?.nextScheduleTime || "-"}</span>

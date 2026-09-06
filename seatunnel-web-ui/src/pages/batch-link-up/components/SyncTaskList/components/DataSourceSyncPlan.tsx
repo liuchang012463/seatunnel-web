@@ -34,6 +34,11 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   const isFileSync = record?.mode === "FILE_SYNC";
   const isManagedFileSource =
     isFileSync && String(record?.sourceType || "").toUpperCase() === "WEB_UPLOAD";
+  const animatedIconStyle: CSSProperties = {
+    fontSize: 10,
+    animation: "float 2s ease-in-out infinite",
+  };
+
   const [sourcePopoverVisible, setSourcePopoverVisible] = useState(false);
   const [sinkPopoverVisible, setSinkPopoverVisible] = useState(false);
   const [jsonData, setJsonData] = useState<any>(null); // Store the JSON data
@@ -371,89 +376,246 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
     );
   };
 
-  const planRowCount = Math.max(sourceTableCount, sinkTableCount, 1);
-  const sourceName = isManagedFileSource
-    ? "本地文件"
-    : record?.sourceDatasourceName || "-";
-  const sinkName = record?.sinkDatasourceName || "-";
-
-  const renderSourceName = () => (
-    <Popover
-      open={sourcePopoverVisible}
-      onVisibleChange={(visible) => setSourcePopoverVisible(visible)}
-      title="数据源信息"
-      content={renderJsonPopoverContent()}
-      trigger="click"
-      placement="rightTop"
-      autoAdjustOverflow
-      overlayInnerStyle={dataSourcePopoverInnerStyle}
-    >
-      <a
-        href="#"
-        className="sync-task-plan-source-link"
-        title={String(sourceTableText)}
-        onClick={(event) => {
-          event.preventDefault();
-          selectDataSourceById(record?.sourceDatasourceId).then((data) => {
-            if (data?.code === 0) {
-              setJsonData(safeParse(data?.data?.connectionParams || {}));
-              setSourcePopoverVisible(true);
-            }
-          });
-        }}
-      >
-        {sourceName}
-      </a>
-    </Popover>
-  );
-
-  const renderSinkName = () => (
-    <Popover
-      open={sinkPopoverVisible}
-      onVisibleChange={(visible) => setSinkPopoverVisible(visible)}
-      title="数据源信息"
-      content={renderJsonPopoverContent()}
-      trigger="click"
-      placement="rightTop"
-      autoAdjustOverflow
-      overlayInnerStyle={dataSourcePopoverInnerStyle}
-    >
-      <span className="sync-task-plan-sink-link" title={String(sinkTableText)}>
-        {sinkName}
-      </span>
-    </Popover>
-  );
-
   return (
-    <div className="sync-task-plan">
-      <div className="sync-task-plan__badge-wrap">
-        <span className="sync-task-plan__badge">
-          <span className="sync-task-plan__badge-dot" />
+    <div style={{ color: "rgba(0,0,0,0.74)", fontWeight: 500 }}>
+      <style>
+        {`
+          @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(90deg); }
+            50% { transform: translateY(-8px) rotate(90deg); }
+          }
+        `}
+      </style>
+
+      <div style={{ marginBottom: 12 }}>
+        <span
+          className="
+            inline-flex items-center gap-1.5 rounded-full
+            border border-white/10 bg-[rgba(255,255,255,0.05)]
+            px-3 py-1 text-[11px] font-medium
+            shadow-none backdrop-blur-sm
+          "
+          style={{ color: "rgba(176, 196, 255, 0.92)" }}
+        >
+          <span
+            className="h-1 w-1 rounded-full "
+            style={{ backgroundColor: "rgba(176, 196, 255, 0.92)" }}
+          />
           {getPlanTitle()}
         </span>
       </div>
 
-      <div className="sync-task-plan__rows">
-        {Array.from({ length: planRowCount }).map((_, index) => (
-          <div key={`sync-plan-row-${index}`}>
-            <div className="sync-task-plan__pair">
-              <div className="sync-task-plan__source">
-                {isManagedFileSource ? (
-                  <FileOutlined className="sync-task-plan__source-icon" />
-                ) : (
-                  <DatabaseIcons dbType={record?.sourceType} width="20" height="20" />
-                )}
-                {renderSourceName()}
-              </div>
-              <div className="sync-task-plan__sink">{renderSinkName()}</div>
-            </div>
-            {index < planRowCount - 1 && (
-              <div className="sync-task-plan__arrow" aria-hidden="true">
-                <DoubleRightOutlined />
-              </div>
-            )}
-          </div>
-        ))}
+      <div style={{ margin: "4px 0" }}>
+        {/* SOURCE */}
+        <div style={{ display: "flex", alignItems: "center" }}>
+          {isManagedFileSource ? (
+            <>
+              <FileOutlined style={{ color: "#315EFB", fontSize: 24 }} />
+              <span
+                style={{
+                  marginLeft: 8,
+                  maxWidth: 112,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title="本地文件"
+              >
+                本地文件
+              </span>
+            </>
+          ) : record?.sourceType ? (
+            <>
+              <DatabaseIcons
+                dbType={record.sourceType}
+                width="24"
+                height="24"
+              />
+              <Popover
+                open={sourcePopoverVisible}
+                onVisibleChange={(visible) => setSourcePopoverVisible(visible)}
+                title="数据源信息"
+                content={renderJsonPopoverContent()}
+                trigger="click"
+                placement="rightTop"
+                autoAdjustOverflow
+                overlayInnerStyle={dataSourcePopoverInnerStyle}
+              >
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    selectDataSourceById(record?.sourceDatasourceId).then(
+                      (data) => {
+                        if (data?.code === 0) {
+                          setJsonData(
+                            safeParse(data?.data?.connectionParams || {})
+                          );
+                          setSourcePopoverVisible(true);
+                        }
+                      }
+                    );
+                  }}
+                  style={{
+                    marginLeft: 8,
+                    cursor: "pointer",
+                    color: "hsl(231 48% 48%)",
+                  }}
+                >
+                  {record.sourceDatasourceName}
+                </a>
+              </Popover>
+            </>
+          ) : (
+            <span>-</span>
+          )}
+
+          {!isFileSync && (
+            <>
+              <span
+                style={{ margin: "0 6px", color: "green" }}
+              >
+                ·
+              </span>
+              {record?.mode === "GUIDE_MULTI" ? (
+                <Popover
+                  placement="rightTop"
+                  trigger="hover"
+                  title="来源表清单"
+                  content={renderTablePopoverContent(sourceTableList)}
+                >
+                  <span
+                    style={{
+                      maxWidth: 180,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      display: "inline-block",
+                      cursor: "pointer",
+                      color:
+                        sourceTableCount > 0
+                          ? "hsl(231 48% 48%)"
+                          : "rgba(0,0,0,0.45)",
+                    }}
+                  >
+                    {sourceTableCount > 0
+                      ? `共 ${sourceTableCount} 张表`
+                      : "暂未选择表"}
+                  </span>
+                </Popover>
+              ) : (
+                <span
+                  style={{
+                    maxWidth: 180,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    display: "inline-block",
+                  }}
+                  title={String(sourceTableText)}
+                >
+                  {sourceTableText}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ARROW */}
+        <div style={{ margin: "8px 0", paddingLeft: 7 }}>
+          <DoubleRightOutlined style={animatedIconStyle} />
+        </div>
+
+        {/* SINK */}
+        <div style={{ display: "flex", alignItems: "center" }}>
+          {record?.sinkType ? (
+            <>
+              <DatabaseIcons dbType={record.sinkType} width="24" height="24" />
+              <Popover
+                open={sinkPopoverVisible}
+                onVisibleChange={(visible) => setSinkPopoverVisible(visible)}
+                title="数据源信息"
+                content={renderJsonPopoverContent()}
+                trigger="click"
+                placement="rightTop"
+                autoAdjustOverflow
+                overlayInnerStyle={dataSourcePopoverInnerStyle}
+              >
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    selectDataSourceById(record?.sinkDatasourceId).then(
+                      (data) => {
+                        if (data?.code === 0) {
+                          setJsonData(
+                            safeParse(data?.data?.connectionParams || {})
+                          );
+                          setSinkPopoverVisible(true);
+                        }
+                      }
+                    );
+                  }}
+                  style={{
+                    marginLeft: 8,
+                    cursor: "pointer",
+                    color: "hsl(231 48% 48%)",
+                  }}
+                >
+                  {record.sinkDatasourceName}
+                </a>
+              </Popover>
+            </>
+          ) : (
+            <span>-</span>
+          )}
+
+          {!isFileSync && (
+            <>
+              <span style={{ margin: "0 6px" }}>·</span>
+              {record?.mode === "GUIDE_MULTI" ? (
+                <Popover
+                  placement="rightTop"
+                  trigger="hover"
+                  title="目标表清单"
+                  content={renderTablePopoverContent(sinkTableList)}
+                >
+                  <span
+                    style={{
+                      maxWidth: 180,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      display: "inline-block",
+                      cursor: "pointer",
+                      color:
+                        sinkTableCount > 0
+                          ? "hsl(231 48% 48%)"
+                          : "rgba(0,0,0,0.45)",
+                    }}
+                  >
+                    {sinkTableCount > 0
+                      ? `共 ${sinkTableCount} 张表`
+                      : "暂未选择表"}
+                  </span>
+                </Popover>
+              ) : (
+                <span
+                  style={{
+                    maxWidth: 180,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    display: "inline-block",
+                  }}
+                  title={String(sinkTableText)}
+                >
+                  {sinkTableText}
+                </span>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

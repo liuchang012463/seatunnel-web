@@ -9,7 +9,7 @@
 :root {
   color-scheme: dark;
 
-  --st-font-family: "Microsoft YaHei", "微软雅黑", "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --st-font-family: "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
   --st-font-digital: "DS-Digital", "Microsoft YaHei", sans-serif;
 
   --st-type-large-title-size: 28px;
@@ -37,17 +37,13 @@
   --st-color-bg-interactive: #0a526a;
   --st-color-text-primary: #ffffff;
   --st-color-text-secondary: #d5d5d5;
-  --st-color-text-supporting: #8799a3;
   --st-color-text-muted: #666f75;
   --st-color-accent: #4dd2ff;
   --st-color-primary: #2187a8;
   --st-color-primary-active: #117da0;
-  --st-color-border-strong: #2187a8;
-  --st-color-border: var(--st-color-border-strong);
+  --st-color-border: #2187a8;
   --st-color-divider: rgba(17, 125, 160, 0.24);
   --st-color-divider-subtle: rgba(17, 125, 160, 0.1137);
-  --st-color-divider-soft: rgba(17, 125, 160, 0.12);
-  --st-color-divider-strong: rgba(17, 125, 160, 0.42);
   --st-color-hover: rgba(33, 135, 168, 0.24);
   --st-color-selected: rgba(33, 135, 168, 0.42);
   --st-color-focus: rgba(77, 210, 255, 0.2);
@@ -181,18 +177,11 @@ a:hover {
   border-bottom: var(--st-border-width) solid var(--st-color-divider);
 }
 
-.ant-pro-sider-logo h1 {
+.ant-pro-sider-logo h1,
+.ant-pro-global-header-logo h1 {
   color: var(--st-color-text-primary) !important;
   font-family: var(--st-font-family) !important;
   font-size: var(--st-type-content-md-size) !important;
-}
-
-.ant-pro-global-header-logo h1 {
-  color: var(--st-color-text-primary) !important;
-  font-family: 'Microsoft YaHei', '微软雅黑', Arial, sans-serif !important;
-  font-size: 30px !important;
-  font-weight: 400 !important;
-  line-height: 50px !important;
 }
 
 .ant-pro-base-menu-inline-item-title .ant-pro-base-menu-inline-item-text {
@@ -1842,50 +1831,4 @@ html[data-st-theme="dark"] {
   .run-log-drawer [class~="hover:bg-slate-400"]:hover {
     background: var(--st-color-accent) !important;
   }
-}
-
-/* 0904 UI 对齐：全局顶栏和品牌标识 */
-.ant-pro-layout .ant-layout-header.ant-pro-layout-header {
-  height: 80px !important;
-  min-height: 80px !important;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(108, 202, 226, 0.14) 0,
-      rgba(108, 202, 226, 0.14) 1px,
-      transparent 1px,
-      transparent 4px
-    ),
-    linear-gradient(180deg, #043347 0%, #07526b 100%) !important;
-  border-bottom: 2px solid #148eaf !important;
-}
-
-.ant-pro-global-header-logo h1 {
-  width: 225px !important;
-  max-width: 250px !important;
-  color: #fff !important;
-  font-family: 'Microsoft YaHei', '微软雅黑', Arial, sans-serif !important;
-  font-size: 30px !important;
-  font-weight: 400 !important;
-  line-height: 50px !important;
-}
-
-.ant-pro-global-header-logo img {
-  width: 46px !important;
-  height: 46px !important;
-  margin-left: 39.5px !important;
-  padding-right: 11px !important;
-  object-fit: contain;
-}
-
-.ant-pro-global-header-logo a {
-  height: 50px !important;
-  min-height: 50px !important;
-  overflow: visible !important;
-}
-
-.ant-pro-global-header-logo h1 {
-  height: 50px !important;
-  margin-left: 11px !important;
-  overflow: visible !important;
 }
