@@ -122,9 +122,14 @@ const DataExplorationTasksPage: React.FC = () => {
       setBusinessSystemOptions([]);
       return;
     }
+    setBusinessSystemOptions([]);
     try {
       const response = await fetchBusinessSystemOptions(nextUnitId);
-      if (response.code === 0) setBusinessSystemOptions(unwrapMasterDataList(response));
+      if (response.code === 0) {
+        setBusinessSystemOptions(unwrapMasterDataList(response));
+      } else {
+        setBusinessSystemOptions([]);
+      }
     } catch (_) {
       setBusinessSystemOptions([]);
     }
@@ -257,11 +262,14 @@ const DataExplorationTasksPage: React.FC = () => {
     setExploreRecord(record);
     setExploreOpen(true);
     setExploreLoading(true);
+    setDatabases([]);
+    setDatabaseFqn(undefined);
     try {
       const response = await fetchDataSourceMetadataDatabases(record.id);
       if (response.code !== 0) {
         message.error(response.message || '无法读取可探查的 Database');
         setDatabases([]);
+        setDatabaseFqn(undefined);
         return;
       }
       const nextDatabases = response.data || [];
@@ -270,6 +278,7 @@ const DataExplorationTasksPage: React.FC = () => {
     } catch (error: any) {
       message.error(errorMessage(error, '无法读取可探查的 Database'));
       setDatabases([]);
+      setDatabaseFqn(undefined);
     } finally {
       setExploreLoading(false);
     }
@@ -504,7 +513,7 @@ const DataExplorationTasksPage: React.FC = () => {
         />
       )}
 
-      <Card className="exploration-panel exploration-table-panel mt-3" bodyStyle={{ padding: 0 }}>
+      <Card className="exploration-panel exploration-table-panel mt-3" styles={{ body: { padding: 0 } }}>
         <Spin spinning={loading}>
           <Table<DataSourceRecord>
             rowKey={(record) => String(record.id || record.name)}
