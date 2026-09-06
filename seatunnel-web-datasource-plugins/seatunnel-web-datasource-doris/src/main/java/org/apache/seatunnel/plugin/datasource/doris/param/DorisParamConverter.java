@@ -34,9 +34,15 @@ public class DorisParamConverter implements JdbcParamConverter {
 
         param.setDbType(DbType.DORIS);
 
-        // JDBC URL: 从 fenodes 提取 host，端口替换为 queryPort
-        // 用于元数据查询（SHOW TABLES、INFORMATION_SCHEMA 等）
-        param.setUrl(buildJdbcUrl(param));
+        // A lake warehouse projection stores its canonical JDBC URL directly.
+        // Ordinary Doris data sources still derive it from FE nodes.
+        if (StringUtils.isBlank(param.getUrl())) {
+            // JDBC URL: 从 fenodes 提取 host，端口替换为 queryPort
+            // 用于元数据查询（SHOW TABLES、INFORMATION_SCHEMA 等）
+            param.setUrl(buildJdbcUrl(param));
+        } else {
+            param.setUrl(param.getUrl().trim());
+        }
 
         if (StringUtils.isBlank(param.getDriver())) {
             param.setDriver(DataSourceConstants.COM_MYSQL_CJ_JDBC_DRIVER);

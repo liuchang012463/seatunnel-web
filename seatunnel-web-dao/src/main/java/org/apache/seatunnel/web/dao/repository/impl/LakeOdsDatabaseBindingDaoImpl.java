@@ -1,0 +1,114 @@
+package org.apache.seatunnel.web.dao.repository.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import lombok.NonNull;
+import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
+import org.apache.seatunnel.web.dao.mapper.LakeOdsDatabaseBindingMapper;
+import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBinding, LakeOdsDatabaseBindingMapper>
+        implements LakeOdsDatabaseBindingDao {
+
+    private final LakeOdsDatabaseBindingMapper mapper;
+
+    public LakeOdsDatabaseBindingDaoImpl(@NonNull LakeOdsDatabaseBindingMapper mapper) {
+        super(mapper);
+        this.mapper = mapper;
+    }
+
+    @Override
+    public LakeOdsDatabaseBinding queryActiveById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
+                .eq(LakeOdsDatabaseBinding::getId, id)
+                .eq(LakeOdsDatabaseBinding::getDeleted, false));
+    }
+
+    @Override
+    public LakeOdsDatabaseBinding queryByIdIncludingDeleted(Long id) {
+        return id == null ? null : mapper.selectById(id);
+    }
+
+    @Override
+    public LakeOdsDatabaseBinding queryBySourceDataSourceId(Long sourceDataSourceId) {
+        return mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
+                .eq(LakeOdsDatabaseBinding::getSourceDataSourceId, sourceDataSourceId)
+                .eq(LakeOdsDatabaseBinding::getDeleted, false));
+    }
+
+    @Override
+    public LakeOdsDatabaseBinding queryBySourceDataSourceIdIncludingDeleted(Long sourceDataSourceId) {
+        return sourceDataSourceId == null ? null : mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
+                .eq(LakeOdsDatabaseBinding::getSourceDataSourceId, sourceDataSourceId));
+    }
+
+    @Override
+    public LakeOdsDatabaseBinding queryByLakeDataSourceIdAndDatabaseName(
+            Long lakeDataSourceId, String databaseName) {
+        return mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
+                .eq(LakeOdsDatabaseBinding::getLakeDataSourceId, lakeDataSourceId)
+                .eq(LakeOdsDatabaseBinding::getDatabaseName, databaseName)
+                .eq(LakeOdsDatabaseBinding::getDeleted, false));
+    }
+
+    @Override
+    public LakeOdsDatabaseBinding queryByLakeDataSourceIdAndDatabaseNameIncludingDeleted(
+            Long lakeDataSourceId, String databaseName) {
+        return lakeDataSourceId == null || databaseName == null ? null : mapper.selectOne(
+                new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
+                        .eq(LakeOdsDatabaseBinding::getLakeDataSourceId, lakeDataSourceId)
+                        .eq(LakeOdsDatabaseBinding::getDatabaseName, databaseName));
+    }
+
+    @Override
+    public boolean existsActiveBySourceDataSourceId(Long sourceDataSourceId) {
+        return sourceDataSourceId != null && mapper.selectCount(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
+                .eq(LakeOdsDatabaseBinding::getSourceDataSourceId, sourceDataSourceId)
+                .eq(LakeOdsDatabaseBinding::getDeleted, false)) > 0;
+    }
+
+    @Override
+    public boolean existsActiveByLakeDataSourceId(Long lakeDataSourceId) {
+        return lakeDataSourceId != null && mapper.selectCount(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
+                .eq(LakeOdsDatabaseBinding::getLakeDataSourceId, lakeDataSourceId)
+                .eq(LakeOdsDatabaseBinding::getDeleted, false)) > 0;
+    }
+
+    @Override
+    public boolean updateIfTokenAndVersion(
+            LakeOdsDatabaseBinding entity, String operationToken, Integer lockVersion) {
+        return updateIfTokenAndVersion(entity, operationToken, lockVersion, true);
+    }
+
+    @Override
+    public boolean updateIfTokenAndVersionIncludingDeleted(
+            LakeOdsDatabaseBinding entity, String operationToken, Integer lockVersion) {
+        return updateIfTokenAndVersion(entity, operationToken, lockVersion, false);
+    }
+
+    private boolean updateIfTokenAndVersion(
+            LakeOdsDatabaseBinding entity, String operationToken, Integer lockVersion, boolean activeOnly) {
+        if (entity == null || entity.getId() == null || lockVersion == null) {
+            return false;
+        }
+        entity.setLockVersion(lockVersion + 1);
+        LambdaUpdateWrapper<LakeOdsDatabaseBinding> wrapper = new LambdaUpdateWrapper<LakeOdsDatabaseBinding>()
+                .eq(LakeOdsDatabaseBinding::getId, entity.getId())
+                .eq(LakeOdsDatabaseBinding::getLockVersion, lockVersion);
+        if (activeOnly) {
+            wrapper.eq(LakeOdsDatabaseBinding::getDeleted, false);
+        }
+        if (operationToken == null) {
+            wrapper.isNull(LakeOdsDatabaseBinding::getOperationToken);
+        } else {
+            wrapper.eq(LakeOdsDatabaseBinding::getOperationToken, operationToken);
+        }
+        return mapper.update(entity, wrapper) > 0;
+    }
+}

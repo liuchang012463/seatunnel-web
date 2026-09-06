@@ -66,6 +66,14 @@ export default function useDetailPage() {
     setSourceClientId(data?.sourceClientId);
     setTargetClientId(data?.targetClientId);
     setClientId(data?.clientId);
+    // Lake table detail navigation already knows both endpoint ids. Keep them
+    // in the normal wizard state so the client-link step opens with the
+    // correct source/target selected; connectivity still has to be tested by
+    // the operator before continuing.
+    setSourceDataSourceId(data?.sourceDataSourceId || data?.sourceId
+      ? String(data?.sourceDataSourceId || data?.sourceId) : undefined);
+    setTargetDataSourceId(data?.targetDataSourceId || data?.targetId
+      ? String(data?.targetDataSourceId || data?.targetId) : undefined);
   }, [id, form]);
 
   const sourceLabel = useMemo(() => getDbLabel(sourceType), [sourceType]);

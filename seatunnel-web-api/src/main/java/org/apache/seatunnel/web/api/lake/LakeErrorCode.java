@@ -1,0 +1,75 @@
+package org.apache.seatunnel.web.api.lake;
+
+/** Stable error identities exposed by the v1.4 lake control plane. */
+public final class LakeErrorCode {
+
+    public static final String LAKE_MASTER_DATA_INCOMPLETE = "LAKE_MASTER_DATA_INCOMPLETE";
+    public static final String LAKE_MASTER_DATA_CODE_INVALID = "LAKE_MASTER_DATA_CODE_INVALID";
+    public static final String LAKE_SOURCE_OBJECT_MISSING = "LAKE_SOURCE_OBJECT_MISSING";
+    public static final String LAKE_SOURCE_OBJECT_UNKNOWN = "LAKE_SOURCE_OBJECT_UNKNOWN";
+    public static final String LAKE_DATABASE_NAME_CONFLICT = "LAKE_DATABASE_NAME_CONFLICT";
+    public static final String LAKE_DATABASE_MISSING = "LAKE_DATABASE_MISSING";
+    public static final String LAKE_DATABASE_IN_USE = "LAKE_DATABASE_IN_USE";
+    public static final String LAKE_RESOURCE_CONFLICT = "LAKE_RESOURCE_CONFLICT";
+    public static final String LAKE_OPERATION_STALE = "LAKE_OPERATION_STALE";
+    public static final String LAKE_DORIS_UNAVAILABLE = "LAKE_DORIS_UNAVAILABLE";
+    public static final String LAKE_WAREHOUSE_NOT_CONFIGURED = "LAKE_WAREHOUSE_NOT_CONFIGURED";
+    public static final String LAKE_SYSTEM_DATASOURCE_READ_ONLY = "LAKE_SYSTEM_DATASOURCE_READ_ONLY";
+    public static final String LAKE_REQUEST_INVALID = "LAKE_REQUEST_INVALID";
+    public static final String LAKE_LIFECYCLE_REQUIRES_PREPARTITIONED_TABLE =
+            "LAKE_LIFECYCLE_REQUIRES_PREPARTITIONED_TABLE";
+    public static final String LAKE_CATALOG_NOT_FOUND = "LAKE_CATALOG_NOT_FOUND";
+    public static final String LAKE_CATALOG_CONFLICT = "LAKE_CATALOG_CONFLICT";
+    public static final String LAKE_CATALOG_CAS_FAILED = "LAKE_CATALOG_CAS_FAILED";
+    public static final String LAKE_CATALOG_REQUEST_INVALID = "LAKE_CATALOG_REQUEST_INVALID";
+    public static final String LAKE_CATALOG_VALIDATION_FAILED =
+            "LAKE_CATALOG_VALIDATION_FAILED";
+    public static final String LAKE_QUERY_TIMEOUT = "LAKE_QUERY_TIMEOUT";
+    public static final String LAKE_QUERY_CANCELLED = "LAKE_QUERY_CANCELLED";
+    public static final String LAKE_QUERY_EXECUTION_FAILED = "LAKE_QUERY_EXECUTION_FAILED";
+    public static final String LAKE_QUERY_DATASOURCE_UNAVAILABLE =
+            "LAKE_QUERY_DATASOURCE_UNAVAILABLE";
+    public static final String LAKE_QUERY_READONLY_REJECTED = "LAKE_QUERY_READONLY_REJECTED";
+    public static final String LAKE_QUERY_CONFIG_INVALID = "LAKE_QUERY_CONFIG_INVALID";
+    public static final String LAKE_QUERY_RESULT_LIMIT_INVALID =
+            "LAKE_QUERY_RESULT_LIMIT_INVALID";
+    public static final String LAKE_QUERY_RESULT_BYTES_INVALID =
+            "LAKE_QUERY_RESULT_BYTES_INVALID";
+
+    private LakeErrorCode() {
+    }
+
+    /** Numeric values are stable for the existing Result envelope. */
+    public static int httpCode(String code) {
+        return switch (code) {
+            case LAKE_MASTER_DATA_INCOMPLETE -> 11901;
+            case LAKE_MASTER_DATA_CODE_INVALID -> 11902;
+            case LAKE_SOURCE_OBJECT_MISSING -> 11903;
+            case LAKE_SOURCE_OBJECT_UNKNOWN -> 11904;
+            case LAKE_DATABASE_NAME_CONFLICT -> 11905;
+            case LAKE_DATABASE_MISSING -> 11906;
+            case LAKE_DATABASE_IN_USE -> 11907;
+            case LAKE_RESOURCE_CONFLICT -> 11908;
+            case LAKE_OPERATION_STALE -> 11909;
+            case LAKE_DORIS_UNAVAILABLE -> 11910;
+            case LAKE_WAREHOUSE_NOT_CONFIGURED -> 11926;
+            case LAKE_SYSTEM_DATASOURCE_READ_ONLY -> 11927;
+            case LAKE_REQUEST_INVALID -> 11911;
+            case LAKE_LIFECYCLE_REQUIRES_PREPARTITIONED_TABLE -> 11912;
+            case LAKE_CATALOG_NOT_FOUND -> 11913;
+            case LAKE_CATALOG_CONFLICT -> 11914;
+            case LAKE_CATALOG_CAS_FAILED -> 11915;
+            case LAKE_CATALOG_REQUEST_INVALID -> 11916;
+            case LAKE_CATALOG_VALIDATION_FAILED -> 11917;
+            case LAKE_QUERY_TIMEOUT -> 11918;
+            case LAKE_QUERY_CANCELLED -> 11919;
+            case LAKE_QUERY_EXECUTION_FAILED -> 11920;
+            case LAKE_QUERY_DATASOURCE_UNAVAILABLE -> 11921;
+            case LAKE_QUERY_READONLY_REJECTED -> 11922;
+            case LAKE_QUERY_CONFIG_INVALID -> 11923;
+            case LAKE_QUERY_RESULT_LIMIT_INVALID -> 11924;
+            case LAKE_QUERY_RESULT_BYTES_INVALID -> 11925;
+            default -> 11900;
+        };
+    }
+}

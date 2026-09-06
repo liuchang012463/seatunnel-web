@@ -1,0 +1,405 @@
+import type { ApiResponse } from '@/utils/request';
+
+export type LakeResourceStatus =
+  | 'PENDING_CREATE'
+  | 'CREATING'
+  | 'READY'
+  | 'ERROR'
+  | 'CREATE_FAILED'
+  | 'MISSING'
+  | 'UNKNOWN'
+  | 'DELETING'
+  | 'DELETED';
+export type LakeConsistencyStatus = 'CONSISTENT' | 'DRIFT' | 'MISSING' | 'UNKNOWN' | 'UNBOUND';
+export type LakeManagementLevel = 'MANAGED' | 'AUTO_CREATED' | 'UNMANAGED';
+export type LakePolicyStatus = 'DRAFT' | 'ACTIVE' | 'DISABLED';
+export type LakePartitionGranularity = 'DAY' | 'MONTH' | 'YEAR';
+export type LakeCatalogScope = 'ALL' | 'DATABASE' | 'TABLE';
+export type LakeJdbcAdapter = 'MYSQL' | 'POSTGRESQL' | 'ORACLE';
+export type LakeRecommendationMode = 'PHYSICAL' | 'LOGICAL' | 'UNSUPPORTED';
+
+export interface LakePagination {
+  pageNo: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface LakePage<T> {
+  bizData?: T[];
+  pagination?: Partial<LakePagination>;
+}
+
+export type LakeApiResponse<T> = ApiResponse<T>;
+
+export interface LakeOdsDatabase {
+  id: number;
+  lakeDataSourceId?: number;
+  sourceDataSourceId?: number;
+  unitCode?: string;
+  systemCode?: string;
+  databaseName?: string;
+  resourceStatus?: LakeResourceStatus;
+  generation?: number;
+  lockVersion?: number;
+  errorCode?: string;
+  errorMessage?: string;
+  lastReconcileAt?: string;
+  deleted?: boolean;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface LakePhysicalDataSource {
+  sourceDataSourceId: number;
+  sourceDataSourceName?: string;
+  dbType?: string;
+  businessSystemId?: number;
+  unitId?: number;
+  unitCode?: string;
+  systemCode?: string;
+  odsDatabaseBindingId?: number;
+  odsDatabase?: LakeOdsDatabase;
+}
+
+export interface LakeInventoryTable {
+  mappingId?: number;
+  sourceObjectRefId?: number;
+  sourceTableName?: string;
+  targetTableName?: string;
+  managementLevel?: LakeManagementLevel;
+  resourceStatus?: LakeResourceStatus;
+  sourceBound?: boolean;
+  actualExists?: boolean;
+  actualTableExists?: boolean;
+  [key: string]: unknown;
+}
+
+export interface LakeInventoryRelation {
+  relationId?: number;
+  jobId?: number;
+  jobRuntimeType?: string;
+  jobVersion?: number;
+  relationStatus?: string;
+  relationScope?: string;
+  tableMappingId?: number;
+  [key: string]: unknown;
+}
+
+export interface LakePhysicalInventory {
+  odsDatabaseBindingId: number;
+  databaseName?: string;
+  actualTableNames?: string[];
+  registeredTables?: LakeInventoryTable[];
+  discoveredTables?: LakeInventoryTable[];
+  tableRelations?: LakeInventoryRelation[];
+  namespaceRelations?: LakeInventoryRelation[];
+}
+
+export interface LakeTableColumn {
+  sourceField?: string;
+  sourceFieldName?: string;
+  sourceType?: string;
+  sourceNullable?: boolean;
+  targetField?: string;
+  targetFieldName?: string;
+  targetType?: string;
+  targetNullable?: boolean;
+  key?: boolean;
+}
+
+export interface LakeTargetContract {
+  tableModel?: 'DUPLICATE' | 'UNIQUE';
+  columns?: LakeTableColumn[];
+  keyColumns?: string[];
+  partition?: { enabled?: boolean; column?: string; granularity?: string };
+  distribution?: { type?: string; columns?: string[]; buckets?: string };
+  [key: string]: unknown;
+}
+
+export interface LakeManagedTable {
+  id: number;
+  sourceObjectRefId?: number;
+  sourceDataSourceId?: number;
+  omEntityId?: string;
+  omFqn?: string;
+  odsDatabaseBindingId?: number;
+  lakeDataSourceId?: number;
+  databaseName?: string;
+  targetTableName?: string;
+  managementLevel?: LakeManagementLevel;
+  tableModel?: 'DUPLICATE' | 'UNIQUE';
+  resourceStatus?: LakeResourceStatus;
+  generation?: number;
+  lockVersion?: number;
+  sourceSchemaHash?: string;
+  targetContractHash?: string;
+  targetContract?: LakeTargetContract;
+  actualContract?: LakeTargetContract;
+  fieldMappings?: LakeTableColumn[];
+  sourceConsistencyStatus?: LakeConsistencyStatus;
+  targetConsistencyStatus?: LakeConsistencyStatus;
+  taskConsistencyStatus?: LakeConsistencyStatus;
+  actualTableExists?: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  lastReconcileAt?: string;
+  deleted?: boolean;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface LakeManagedTablePreview {
+  valid?: boolean;
+  planFingerprint?: string;
+  sourceDataSourceId?: number;
+  omEntityId?: string;
+  odsDatabaseBindingId?: number;
+  targetTableName?: string;
+  sourceSchemaHash?: string;
+  targetContractHash?: string;
+  targetContract?: LakeTargetContract;
+  fieldMappings?: LakeTableColumn[];
+  ddl?: string;
+  warnings?: string[];
+  errors?: string[];
+}
+
+export interface LakeDeleteImpact {
+  mappingId?: number;
+  targetTableName?: string;
+  actualTableExists?: boolean;
+  lifecycleBound?: boolean;
+  allowed?: boolean;
+  impactHash?: string;
+  relations?: Array<Record<string, unknown>>;
+  blockers?: string[];
+}
+
+export interface LakeLifecyclePolicy {
+  id?: number;
+  policyName?: string;
+  version?: number;
+  status?: LakePolicyStatus;
+  granularity?: LakePartitionGranularity;
+  retentionCount?: number;
+  description?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface LakeLifecycleValidation {
+  valid?: boolean;
+  mappingId?: number;
+  policyId?: number;
+  status?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  warnings?: string[];
+  errors?: string[];
+  [key: string]: unknown;
+}
+
+export interface LakeCatalog {
+  id?: number;
+  lakeDataSourceId?: number;
+  sourceDataSourceId?: number;
+  targetCatalogName?: string;
+  adapter?: string;
+  scope?: LakeCatalogScope;
+  databaseInclude?: string[];
+  tableInclude?: string[];
+  desiredSpecHash?: string;
+  /** Historical field; new clients do not send or display it. */
+  driverChecksum?: string;
+  validationStatus?: string;
+  resourceStatus?: LakeResourceStatus;
+  generation?: number;
+  lockVersion?: number;
+  errorCode?: string;
+  errorMessage?: string;
+  actualSnapshot?: Record<string, unknown>;
+  lastObservedAt?: string;
+  lastReconcileAt?: string;
+  deleted?: boolean;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface LakeWarehouseConfig {
+  name?: string;
+  jdbcUrl?: string;
+  username?: string;
+  passwordConfigured?: boolean;
+  driverClass?: string;
+  driverLocation?: string;
+  driverSha256?: string;
+  systemDataSourceId?: number;
+  configVersion?: number;
+  connStatus?: string;
+  lastError?: string;
+  configured?: boolean;
+}
+
+export interface LakeDorisNode {
+  id?: string;
+  host?: string;
+  port?: string;
+  role?: string;
+  status?: string;
+  version?: string;
+  lastHeartbeat?: string;
+  usedPct?: string;
+}
+
+export interface LakeDorisStatus {
+  configured?: boolean;
+  status?: string;
+  message?: string;
+  version?: string;
+  frontendCount?: number;
+  aliveFrontendCount?: number;
+  backendCount?: number;
+  aliveBackendCount?: number;
+  databaseCount?: number;
+  masterHost?: string;
+  queryPort?: string;
+  httpPort?: string;
+  checkedAt?: string;
+  frontends?: LakeDorisNode[];
+  backends?: LakeDorisNode[];
+}
+
+export interface LakeDorisHardware {
+  status?: string;
+  message?: string;
+  checkedAt?: string;
+  version?: string;
+  buildInfo?: string;
+  buildTime?: string;
+  hostName?: string;
+  ipv4?: string;
+  os?: string;
+  uptime?: string;
+  cpuModel?: string;
+  cpuCores?: number;
+  cpuLoad?: string;
+  memoryUsed?: string;
+  memoryTotal?: string;
+  memoryUsedPercent?: string;
+  swapUsed?: string;
+  swapTotal?: string;
+  filesystemFree?: string;
+  filesystemTotal?: string;
+  filesystemFreePercent?: string;
+  processCount?: number;
+  threadCount?: number;
+  diskSummary?: string;
+  networkReceive?: string;
+  networkTransmit?: string;
+}
+
+export interface LakeJdbcDriver {
+  id?: number;
+  adapter?: LakeJdbcAdapter | string;
+  fileName?: string;
+  driverLocation?: string;
+  driverClass?: string;
+  sha256?: string;
+  dorisMd5?: string;
+  enabled?: boolean;
+  verified?: boolean;
+  status?: string;
+  version?: number;
+  lastError?: string;
+  updateTime?: string;
+}
+
+export interface LakeCapability {
+  adapter?: LakeJdbcAdapter | string;
+  enabled?: boolean;
+  supported?: boolean;
+  reasonCodes?: string[];
+  disabledReasons?: string[];
+}
+
+/** Exact payload returned by LakeLogicalCatalogController.capability. */
+export interface LakeLogicalCapability extends LakeCapability {
+  sourceDataSourceId?: number;
+  scope?: LakeCatalogScope;
+  logicalSupported?: boolean;
+  sourceNetworkReachabilityKnown?: boolean;
+  sourceNetworkReachable?: boolean;
+  lakeDorisReachable?: boolean;
+}
+
+export interface LakeRecommendation {
+  mode: LakeRecommendationMode;
+  recommendation?: LakeRecommendationMode;
+  reason: string;
+  reasonCode?: string;
+  disabledReasons?: string[];
+  physicalCapability: LakeCapability;
+  logicalCapability: LakeCapability;
+  targetScope?: LakeCatalogScope;
+  adapter?: LakeJdbcAdapter;
+}
+
+export interface LakeQueryTableIdentity {
+  catalog: string;
+  database: string;
+  table: string;
+}
+
+export interface LakeQueryColumnIdentity {
+  table: LakeQueryTableIdentity;
+  column: string;
+}
+
+export interface LakeReadOnlyQueryResult {
+  columns: string[];
+  rows: Array<Record<string, unknown>>;
+  rowCount: number;
+  byteCount: number;
+  truncated: boolean;
+  elapsedMillis: number;
+  explain: boolean;
+  /** Echoed opaque id used to cancel an in-flight request. */
+  queryId?: string;
+}
+
+export interface LakeReadOnlyQueryPreview {
+  sql: string;
+  outputColumns: string[];
+  effectiveLimit: number;
+  explain: boolean;
+  joinType?: 'INNER' | 'LEFT';
+}
+
+export interface LakeQueryColumnOption {
+  name: string;
+  type?: string;
+  nullable?: boolean;
+  selectable?: boolean;
+  reason?: string;
+}
+
+export interface LakeErrorPayload {
+  code?: string;
+  message?: string;
+}
+
+export type LakeOperationStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'IGNORED';
+
+export interface LakeResourceOperation {
+  id?: number;
+  resourceType?: string;
+  resourceId?: number;
+  generation?: number;
+  operationType?: string;
+  status?: LakeOperationStatus | string;
+  startedAt?: string;
+  finishedAt?: string;
+  errorCode?: string;
+  errorSummary?: string;
+  operatorId?: number;
+}

@@ -38,7 +38,15 @@ public class HoconConfigBuilder {
     private EnvConfigBuilder envConfigBuilder;
 
     public String build(DagGraph dagGraph, JobEnvConfig envConfig) {
-        DagBuildContext context = DagBuildContext.from(dagGraph);
+        return build(dagGraph, envConfig, null, null);
+    }
+
+    public String build(DagGraph dagGraph,
+                        JobEnvConfig envConfig,
+                        JobScheduleConfig scheduleConfig,
+                        Long odsDatabaseBindingId) {
+        DagBuildContext context = DagBuildContext.from(
+                dagGraph, scheduleConfig, odsDatabaseBindingId);
 
         NodeGroup group = groupNodes(dagGraph.getNodesAsConfig(), context);
 
@@ -110,16 +118,7 @@ public class HoconConfigBuilder {
     }
 
     public String build(DagGraph dagGraph, JobEnvConfig envConfig, JobScheduleConfig scheduleConfig) {
-        DagBuildContext context = DagBuildContext.from(dagGraph, scheduleConfig);
-
-        NodeGroup group = groupNodes(dagGraph.getNodesAsConfig(), context);
-
-        return SeaTunnelConfigUtil.generateConfig(
-                envConfigBuilder.build(envConfig),
-                render(group.sources()),
-                render(group.transforms()),
-                render(group.sinks())
-        );
+        return build(dagGraph, envConfig, scheduleConfig, null);
     }
 
     private String render(List<RenderedItem> items) {

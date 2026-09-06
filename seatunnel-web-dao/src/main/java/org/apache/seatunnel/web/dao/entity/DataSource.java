@@ -75,4 +75,10 @@ public class DataSource extends BaseEntity {
      * 环境
      */
     private EnvironmentEnum environment;
+
+    /** True when the row is maintained by a system capability instead of a user. */
+    private Boolean systemManaged;
+
+    /** Stable owner key for system-managed projections, e.g. LAKE_ODS_DORIS. */
+    private String systemKey;
 }

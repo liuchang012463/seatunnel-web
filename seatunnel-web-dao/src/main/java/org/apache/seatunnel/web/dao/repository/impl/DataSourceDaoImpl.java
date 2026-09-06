@@ -7,6 +7,7 @@ import jakarta.annotation.Resource;
 import lombok.NonNull;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
+import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.mapper.DataSourceMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
@@ -55,6 +56,14 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
         return dataSourceMapper.selectPage(page, wrapper);
     }
 
+    @Override
+    public IPage<DataSource> queryPageByLakeResourceStatus(
+            DataSourceDTO dto, LakeResourceStatus resourceStatus) {
+        IPage<DataSource> page = new Page<>(dto.getPageNo(), dto.getPageSize());
+        return dataSourceMapper.selectPageByLakeResourceStatus(
+                page, dto.getName(), resourceStatus == null ? null : resourceStatus.getCode());
+    }
+
     static LambdaQueryWrapper<DataSource> buildQueryWrapper(DataSourceDTO dto) {
         return buildQueryWrapper(dto, null);
     }
@@ -62,7 +71,7 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
     static LambdaQueryWrapper<DataSource> buildQueryWrapper(
             DataSourceDTO dto, Collection<Long> businessSystemIds) {
         boolean hasSystemIds = businessSystemIds != null;
-        return new LambdaQueryWrapper<DataSource>()
+        LambdaQueryWrapper<DataSource> wrapper = new LambdaQueryWrapper<DataSource>()
                 .like(StringUtils.isNotBlank(dto.getName()), DataSource::getName,
                         StringUtils.trimToEmpty(dto.getName()))
                 .in(dto.getDbTypes() != null && !dto.getDbTypes().isEmpty(),
@@ -80,6 +89,11 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
                 .eq(dto.getStatus() != null, DataSource::getStatus, dto.getStatus())
                 .eq(dto.getEnvironment() != null, DataSource::getEnvironment, dto.getEnvironment())
                 .orderByDesc(DataSource::getCreateTime);
+        if (Boolean.TRUE.equals(dto.getExcludeSystemManaged())) {
+            wrapper.and(query -> query.eq(DataSource::getSystemManaged, false)
+                    .or().isNull(DataSource::getSystemManaged));
+        }
+        return wrapper;
     }
 
     @Override
@@ -87,6 +101,13 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
         LambdaQueryWrapper<DataSource> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(StringUtils.isNotBlank(dbType), DataSource::getDbType, dbType);
         return dataSourceMapper.selectList(wrapper);
+    }
+
+    @Override
+    public DataSource queryBySystemKey(String systemKey) {
+        return systemKey == null ? null : dataSourceMapper.selectOne(
+                new LambdaQueryWrapper<DataSource>()
+                        .eq(DataSource::getSystemKey, systemKey));
     }
 
     @Override

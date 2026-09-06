@@ -75,4 +75,5 @@ class DataSourceDaoImplTest {
         assertTrue(sql.contains("DATA_SOURCE_UNIT ="));
         assertTrue(sql.contains("STATUS ="));
     }
+
 }

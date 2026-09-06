@@ -11,10 +11,14 @@ import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.service.FileUploadService;
 import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.api.service.application.JobScheduleApplicationService;
+import org.apache.seatunnel.web.api.service.application.LakeExactSingleProjectionApplicationService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
+import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
+import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
+import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
 import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
@@ -100,12 +104,26 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     @Resource
     private FileUploadService fileUploadService;
 
+    @Resource
+    private LakeJobRelationBridgeService lakeJobRelationBridgeService;
+
+    @Resource
+    private LakeJobGuard lakeJobGuard;
+
+    @Resource
+    private LakeExactSingleProjectionApplicationService lakeProjectionApplicationService;
+
     /**
      * Save or update batch job definition.
      */
-    @Transactional(rollbackFor = Exception.class)
     protected JobDefinitionSaveResultVO doSaveOrUpdate(BatchJobSaveCommand command) {
         validateBase(command);
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeSave(command);
+        }
+        LakeExactSingleProjectionApplicationService.PreparedProjection preparedProjection =
+                lakeProjectionApplicationService == null
+                        ? null : lakeProjectionApplicationService.prepare(command);
 
         try {
             Date now = new Date();
@@ -154,8 +172,18 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
             jobDefinitionContentDao.save(contentEntity);
 
+            if (preparedProjection != null) {
+                lakeProjectionApplicationService.applyPrepared(
+                        preparedProjection, currentUserId);
+            }
+
             scheduleApplicationService.saveOrUpdateSchedule(entity.getId(), command);
             fileUploadService.attach(entity.getId());
+
+            if (lakeJobRelationBridgeService != null) {
+                lakeJobRelationBridgeService.syncRelationAfterJobSave(
+                        command, entity.getId(), nextVersion, LakeJobRuntimeType.BATCH);
+            }
 
             return buildSaveResult(entity, nextVersion);
         } catch (ServiceException e) {
@@ -167,26 +195,31 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(BatchScriptJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(BatchGuideSingleJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(BatchGuideSingleIncrementalJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(BatchFileSyncJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public JobDefinitionSaveResultVO saveOrUpdate(BatchGuideMultiJobSaveCommand command) {
         return doSaveOrUpdate(command);
     }
@@ -196,6 +229,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
      */
     protected String doBuildHoconConfig(JobDefinitionSaveCommand command) {
         validateBase(command);
+        if (lakeJobGuard != null) {
+            lakeJobGuard.validateBeforeSave(command);
+        }
 
         try {
             return HoconSensitiveMaskUtil.maskSensitiveInfo(buildHoconConfigInternal(command));
@@ -275,6 +311,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             scheduleApplicationService.removeSchedule(jobDefinitionId);
             incrementalBatchService.removeByDefinitionId(jobDefinitionId);
             jobInstanceService.removeAllByDefinitionId(jobDefinitionId);
+            if (lakeJobRelationBridgeService != null) {
+                lakeJobRelationBridgeService.markRelationsAfterJobDelete(jobDefinitionId);
+            }
             jobDefinitionContentDao.deleteByJobDefinitionId(jobDefinitionId);
             boolean deleted = jobDefinitionDao.deleteById(jobDefinitionId);
             fileUploadService.deleteByJobDefinitionId(jobDefinitionId);
@@ -395,6 +434,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         }
 
         if (releaseState.isOnline()) {
+            if (lakeJobGuard != null) {
+                lakeJobGuard.validateBeforeOnline(id, LakeJobRuntimeType.BATCH);
+            }
             updateJobReleaseState(id, ReleaseState.ONLINE);
             syncScheduleState(id, ReleaseState.ONLINE);
 

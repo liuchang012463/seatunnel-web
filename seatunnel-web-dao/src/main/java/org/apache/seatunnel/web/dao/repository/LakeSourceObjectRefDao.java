@@ -1,0 +1,21 @@
+package org.apache.seatunnel.web.dao.repository;
+
+import org.apache.seatunnel.web.dao.entity.LakeSourceObjectRef;
+
+public interface LakeSourceObjectRefDao extends IDao<LakeSourceObjectRef> {
+
+    LakeSourceObjectRef queryActiveById(Long id);
+
+    LakeSourceObjectRef queryByIdIncludingDeleted(Long id);
+
+    LakeSourceObjectRef queryByOmEntityId(String omEntityId);
+
+    LakeSourceObjectRef queryByOmEntityIdIncludingDeleted(String omEntityId);
+
+    LakeSourceObjectRef queryBySourceDataSourceIdAndOmEntityId(Long sourceDataSourceId, String omEntityId);
+
+    boolean updateIfTokenAndVersion(LakeSourceObjectRef entity, String operationToken, Integer lockVersion);
+
+    boolean updateIfTokenAndVersionIncludingDeleted(
+            LakeSourceObjectRef entity, String operationToken, Integer lockVersion);
+}

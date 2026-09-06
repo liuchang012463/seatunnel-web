@@ -24,6 +24,8 @@ public class BatchGuideMultiJobSaveCommand implements BatchJobSaveCommand, Guide
 
     private BatchJobEnvConfig env;
 
+    private Long odsDatabaseBindingId;
+
     @Override
     public JobDefinitionMode getMode() {
         return JobDefinitionMode.GUIDE_MULTI;

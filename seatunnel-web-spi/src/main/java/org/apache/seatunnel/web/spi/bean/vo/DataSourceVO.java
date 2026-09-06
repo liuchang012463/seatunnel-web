@@ -57,6 +57,10 @@ public class DataSourceVO {
 
     private EnvironmentEnum environment;
 
+    private Boolean systemManaged;
+
+    private String systemKey;
+
     private String environmentName;
 
     /** READY/PENDING/...; historical rows without a Binding return NOT_INITIALIZED. */

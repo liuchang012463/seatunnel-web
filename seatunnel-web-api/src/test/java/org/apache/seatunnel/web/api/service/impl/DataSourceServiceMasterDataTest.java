@@ -2,6 +2,8 @@ package org.apache.seatunnel.web.api.service.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
+import org.apache.seatunnel.web.api.lake.LakeErrorCode;
+import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.dao.entity.BusinessSystem;
@@ -11,6 +13,7 @@ import org.apache.seatunnel.web.dao.repository.BusinessSystemDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
 import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
@@ -58,6 +61,9 @@ class DataSourceServiceMasterDataTest {
 
     @Mock
     private StreamingJobDefinitionDao streamingJobDefinitionDao;
+
+    @Mock
+    private LakeOdsDatabaseBindingDao lakeOdsDatabaseBindingDao;
 
     @Mock
     private CurrentUserProvider currentUserProvider;
@@ -137,6 +143,24 @@ class DataSourceServiceMasterDataTest {
         ArgumentCaptor<DataSource> update = ArgumentCaptor.forClass(DataSource.class);
         verify(dataSourceDao).updateById(update.capture());
         assertEquals(DataSourceLifecycleStatus.REVOKED, update.getValue().getStatus());
+    }
+
+    @Test
+    void deletionIsBlockedWhileSourceIsBoundToAnActiveLakeDatabase() {
+        DataSource source = new DataSource();
+        source.setId(42L);
+        source.setStatus(DataSourceLifecycleStatus.ENABLED);
+        when(dataSourceDao.queryById(42L)).thenReturn(source);
+        when(jobDefinitionDao.selectReferencedDatasourceIds(List.of(42L))).thenReturn(List.of());
+        when(streamingJobDefinitionDao.selectReferencedDatasourceIds(List.of(42L))).thenReturn(List.of());
+        when(lakeOdsDatabaseBindingDao.existsActiveBySourceDataSourceId(42L)).thenReturn(true);
+
+        LakeServiceException exception = assertThrows(LakeServiceException.class,
+                () -> service.delete(42L));
+
+        assertEquals(LakeErrorCode.LAKE_RESOURCE_CONFLICT, exception.getLakeErrorCode());
+        verify(metadataBindingCommandService, never()).markDeleted(42L);
+        verify(dataSourceDao, never()).updateById(any(DataSource.class));
     }
 
     @Test

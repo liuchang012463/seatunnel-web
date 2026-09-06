@@ -6,9 +6,12 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
+import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcDriverDirectoryResolver;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
 import org.apache.seatunnel.web.api.service.DataSourceService;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
+import org.apache.seatunnel.web.api.lake.LakeErrorCode;
+import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
@@ -23,6 +26,7 @@ import org.apache.seatunnel.web.dao.repository.BusinessSystemDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
 import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
@@ -55,7 +59,6 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     private static final String UNASSIGNED_LABEL = "待归属";
 
     private static final long MAX_JDBC_DRIVER_SIZE = 200L * 1024 * 1024;
-    private static final String JDBC_DRIVER_DIR = "jdbc-drivers";
     private static final String JDBC_JAR_SUFFIX = ".jar";
 
     @Resource
@@ -78,6 +81,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
     @Resource
     private StreamingJobDefinitionDao streamingJobDefinitionDao;
+
+    @Resource
+    private LakeOdsDatabaseBindingDao lakeOdsDatabaseBindingDao;
 
     @Resource
     private CurrentUserProvider currentUserProvider;
@@ -106,6 +112,8 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
             entity.setConnStatus(ConnStatus.CONNECTED_SUCCESS);
             entity.setStatus(DataSourceLifecycleStatus.ENABLED);
+            entity.setSystemManaged(false);
+            entity.setSystemKey(null);
 
             Integer currentUserId = currentUserProvider.getCurrentUserId();
             entity.setCreateUserId(currentUserId);
@@ -133,6 +141,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         validateId(id);
 
         DataSource existing = getDataSourceOrThrow(id);
+        ensureUserManaged(existing);
         if (existing.getStatus() == DataSourceLifecycleStatus.REVOKED) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
                     "A data source pending metadata deletion cannot be updated.");
@@ -185,6 +194,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         validateId(id);
 
         DataSource existing = getDataSourceOrThrow(id);
+        ensureUserManaged(existing);
         if (existing.getStatus() == DataSourceLifecycleStatus.REVOKED) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
                     "A revoked data source cannot be assigned.");
@@ -236,6 +246,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             records.forEach(record -> {
                 fillDerivedFields(record, systems, units);
                 fillMetadataFields(record, bindings.get(record.getId()));
+                redactSystemProjection(record);
             });
 
             return PaginationResult.buildSuc(records, pageResult);
@@ -258,10 +269,11 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long datasourceId) {
         validateId(datasourceId);
-        getDataSourceOrThrow(datasourceId);
+        ensureUserManaged(getDataSourceOrThrow(datasourceId));
 
         try {
             checkDataSourceNotUsedByAnyJob(datasourceId);
+            checkDataSourceNotUsedByLake(datasourceId);
             metadataBindingCommandService.markDeleted(datasourceId);
             markDataSourcePendingDeletion(datasourceId);
         } catch (ServiceException e) {
@@ -288,6 +300,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         }
 
         DataSource existing = getDataSourceOrThrow(id);
+        ensureUserManaged(existing);
         DataSourceLifecycleStatus currentStatus = existing.getStatus() == null
                 ? DataSourceLifecycleStatus.ENABLED
                 : existing.getStatus();
@@ -308,6 +321,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
                 checkDataSourceNotUsed(id, status == DataSourceLifecycleStatus.REVOKED
                         ? "revoked"
                         : "disabled");
+                if (status == DataSourceLifecycleStatus.REVOKED) {
+                    checkDataSourceNotUsedByLake(id);
+                }
             }
 
             DataSource entity = new DataSource();
@@ -341,12 +357,13 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             }
 
             for (Long id : distinctIds) {
-                getDataSourceOrThrow(id);
+                ensureUserManaged(getDataSourceOrThrow(id));
             }
 
             checkDataSourcesNotUsed(distinctIds);
 
             for (Long id : distinctIds) {
+                checkDataSourceNotUsedByLake(id);
                 metadataBindingCommandService.markDeleted(id);
                 markDataSourcePendingDeletion(id);
             }
@@ -404,6 +421,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             result.forEach(record -> {
                 fillDerivedFields(record, systems, units);
                 fillMetadataFields(record, bindings.get(record.getId()));
+                redactSystemProjection(record);
             });
             return result;
         } catch (Exception e) {
@@ -429,7 +447,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         String originalFilename = file.getOriginalFilename();
         assert originalFilename != null;
         String filename = Paths.get(originalFilename).getFileName().toString();
-        Path targetDir = Paths.get(System.getProperty("user.dir"), JDBC_DRIVER_DIR);
+        Path targetDir = JdbcDriverDirectoryResolver.resolveDirectory();
 
         try {
             Files.createDirectories(targetDir);
@@ -498,6 +516,15 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     private void checkDataSourceNotUsedByAnyJob(Long datasourceId) {
         if (isReferencedByAnyJob(datasourceId)) {
             throw new ServiceException("The data source is currently used by a job and cannot be deleted.");
+        }
+    }
+
+    private void checkDataSourceNotUsedByLake(Long datasourceId) {
+        if (lakeOdsDatabaseBindingDao != null
+                && (lakeOdsDatabaseBindingDao.existsActiveBySourceDataSourceId(datasourceId)
+                || lakeOdsDatabaseBindingDao.existsActiveByLakeDataSourceId(datasourceId))) {
+            throw new LakeServiceException(LakeErrorCode.LAKE_RESOURCE_CONFLICT,
+                    "The data source is referenced by an active lake ODS database");
         }
     }
 
@@ -669,6 +696,15 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         return entity;
     }
 
+    /** System projections are task compatibility records and cannot be changed by users. */
+    private void ensureUserManaged(DataSource entity) {
+        if (entity != null && (Boolean.TRUE.equals(entity.getSystemManaged())
+                || StringUtils.isNotBlank(entity.getSystemKey()))) {
+            throw new LakeServiceException(LakeErrorCode.LAKE_SYSTEM_DATASOURCE_READ_ONLY,
+                    "系统内置数据源为只读，请前往数据湖管理页面修改 Doris ODS 连接");
+        }
+    }
+
     private void markDataSourcePendingDeletion(Long id) {
         DataSource entity = new DataSource();
         entity.setId(id);
@@ -777,6 +813,14 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         vo.setProfileStatus(binding.getProfileStatus());
         vo.setProfileLastRunTime(binding.getProfileLastRunTime());
         vo.setProfileLastSuccessTime(binding.getProfileLastSuccessTime());
+    }
+
+    /** Never expose the encrypted ODS password through ordinary datasource APIs. */
+    private static void redactSystemProjection(DataSourceVO vo) {
+        if (vo != null && Boolean.TRUE.equals(vo.getSystemManaged())) {
+            vo.setConnectionParams(null);
+            vo.setOriginalJson(null);
+        }
     }
 
     private DBOptionVO toOptionVO(DataSource entity) {

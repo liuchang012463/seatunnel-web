@@ -38,6 +38,7 @@ describe('prototype navigation menu', () => {
         name: '运行运维',
         children: [
           { path: '/client', name: '引擎管理' },
+          { path: '/lake/warehouse', name: '数据湖管理' },
           { path: '/alarm', name: '告警管理' },
           { path: '/operations/protocol', name: '协议管理' },
           { path: '/operations/diagnostics', name: '安全加密' },

@@ -61,6 +61,8 @@ public class GuideMultiJobContent {
         private String connectorType;
         private String datasourceId;
         private String pluginName;
+        /** Server-selected ODS binding; never a client-supplied database name. */
+        private Long odsDatabaseBindingId;
         private String dataSaveMode;
         private Integer batchSize;
         private String schemaSaveMode;

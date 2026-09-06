@@ -9,6 +9,7 @@ import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.AbstractJdbcHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConfigReaders;
+import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -223,7 +224,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
 
         String password = JdbcConfigReaders.getString(conn, "password", "");
         if (!password.isEmpty()) {
-            map.put("password", password);
+            map.put("password", PasswordUtils.decodePassword(password));
         }
     }
 

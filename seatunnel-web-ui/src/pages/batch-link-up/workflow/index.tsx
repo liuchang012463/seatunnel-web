@@ -400,6 +400,7 @@ export default function Workflow({
        * 新建场景下也可能存在预生成 id，后端用它保存任务。
        */
       id: jobDefinitionId,
+      odsDatabaseBindingId: params?.odsDatabaseBindingId,
       basic: buildBasicData(),
       workflow: buildWorkflowData(),
       schedule: buildScheduleData(),
@@ -447,6 +448,7 @@ export default function Workflow({
 
       const finalPayload = {
         id: jobDefinitionId,
+        odsDatabaseBindingId: params?.odsDatabaseBindingId,
         basic: nextBasic,
         workflow: nextWorkflow,
         schedule: nextSchedule,

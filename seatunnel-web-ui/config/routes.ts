@@ -37,9 +37,10 @@ const businessRoutes = [
   ['/alarm', component('./alarm')],
   ['/operations/protocol', './prototype/ProtocolPlaceholderPage'],
   ['/operations/diagnostics', prototypePage],
-  ['/lake/resources', prototypePage],
-  ['/lake/lifecycle', prototypePage],
-  ['/lake/logical-access', prototypePage],
+  ['/lake/resources', component('./lake/physical')],
+  ['/lake/warehouse', component('./lake/warehouse')],
+  ['/lake/lifecycle', component('./lake/lifecycle')],
+  ['/lake/logical-access', component('./lake/logical')],
   ['/knowledge-management', component('./knowledge-management')],
   ['/open-api', component('./open-api')],
 ].map(([path, routeComponent]) => ({
@@ -49,6 +50,11 @@ const businessRoutes = [
 }));
 
 const hiddenRoutes = [
+  ['/lake/warehouse/config', './lake/warehouse/config', '/lake/warehouse'],
+  ['/lake/resources/table/create', './lake/physical/wizard', '/lake/resources'],
+  ['/lake/resources/table/:mappingId', './lake/physical/table-detail', '/lake/resources'],
+  ['/lake/resources/:sourceDataSourceId', './lake/physical/detail', '/lake/resources'],
+  ['/lake/logical-access/:catalogId', './lake/logical/detail', '/lake/logical-access'],
   ['/sync/batch-link-up/:id/detail', './batch-link-up/detail', '/sync/batch-link-up'],
   ['/sync/batch-link-up/:id/config/single', './batch-link-up/config/single', '/sync/batch-link-up'],
   [

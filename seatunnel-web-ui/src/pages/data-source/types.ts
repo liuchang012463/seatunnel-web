@@ -63,6 +63,9 @@ export interface DataSourceRecord {
   profileLastRunTime?: string;
   profileLastSuccessTime?: string;
   status?: DataSourceLifecycleStatus;
+  /** System projection rows are maintained by lake warehouse configuration. */
+  systemManaged?: boolean;
+  systemKey?: string;
   remark?: string;
   originalJson?: string;
   createTime?: string;
@@ -165,6 +168,10 @@ export interface DynamicDataSourceFormProps {
   onManageMasterData?: () => void;
   /** 编辑模式下的初始配置数据 */
   initialConfig?: Record<string, unknown>;
+  /** Render only connector fields when a page owns the base metadata. */
+  hideBaseFields?: boolean;
+  /** Keep an existing server-side password when the input is empty. */
+  allowExistingPassword?: boolean;
 }
 
 export interface DataSourceOptionItem {
