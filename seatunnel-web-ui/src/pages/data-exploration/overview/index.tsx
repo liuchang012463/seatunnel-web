@@ -95,9 +95,14 @@ const DataExplorationOverviewPage: React.FC = () => {
       setBusinessSystemOptions([]);
       return;
     }
+    setBusinessSystemOptions([]);
     try {
       const response = await fetchBusinessSystemOptions(unitId);
-      if (response.code === 0) setBusinessSystemOptions(unwrapMasterDataList(response));
+      if (response.code === 0) {
+        setBusinessSystemOptions(unwrapMasterDataList(response));
+      } else {
+        setBusinessSystemOptions([]);
+      }
     } catch (_) {
       setBusinessSystemOptions([]);
     }

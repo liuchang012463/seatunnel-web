@@ -269,14 +269,19 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
   const catalogReadFailed = Boolean(catalogError);
   const pathParts = path.split('/').filter(Boolean);
   const rootPath = path.startsWith('/') ? '/' : '';
+  const navigateToPath = (nextPath: string) => {
+    setSelectedKey(undefined);
+    setSearch('');
+    setPath(nextPath);
+  };
   const breadcrumbItems = [
     {
-      title: <button type="button" className="generic-exploration__breadcrumb-button" onClick={() => setPath(rootPath)}>根目录</button>,
+      title: <button type="button" className="generic-exploration__breadcrumb-button" onClick={() => navigateToPath(rootPath)}>根目录</button>,
     },
     ...pathParts.map((part, index) => {
       const nextPath = `${rootPath}${pathParts.slice(0, index + 1).join('/')}`;
       return {
-        title: <button type="button" className="generic-exploration__breadcrumb-button" onClick={() => setPath(nextPath)}>{part}</button>,
+        title: <button type="button" className="generic-exploration__breadcrumb-button" onClick={() => navigateToPath(nextPath)}>{part}</button>,
       };
     }),
   ];
@@ -313,7 +318,7 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
               className="generic-exploration__back"
               onClick={() => {
                 const parent = path.replace(/\/$/, '').split('/').slice(0, -1).join('/');
-                setPath(path.startsWith('/') ? (parent ? `/${parent}` : '/') : parent);
+                navigateToPath(path.startsWith('/') ? (parent ? `/${parent}` : '/') : parent);
               }}
             >
               返回上级目录
@@ -351,8 +356,7 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
                     key={key}
                     onClick={() => {
                       if (directory) {
-                        setPath(entry.path || entry.name || '');
-                        setSearch('');
+                        navigateToPath(entry.path || entry.name || '');
                       } else {
                         setSelectedKey(key);
                       }

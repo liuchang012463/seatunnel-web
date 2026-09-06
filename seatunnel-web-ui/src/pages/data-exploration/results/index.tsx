@@ -214,10 +214,15 @@ const DataExplorationResultsPage: React.FC = () => {
       setBusinessSystemOptions([]);
       return;
     }
+    setBusinessSystemOptions([]);
     setBusinessSystemLoading(true);
     try {
       const response = await fetchBusinessSystemOptions(unitId);
-      if (response.code === 0) setBusinessSystemOptions(unwrapMasterDataList(response));
+      if (response.code === 0) {
+        setBusinessSystemOptions(unwrapMasterDataList(response));
+      } else {
+        setBusinessSystemOptions([]);
+      }
     } catch (_) {
       setBusinessSystemOptions([]);
       message.warning('业务系统列表暂不可用');
@@ -271,13 +276,10 @@ const DataExplorationResultsPage: React.FC = () => {
   useEffect(() => {
     if (!filters.unitId) {
       setBusinessSystemOptions([]);
-      if (filters.businessSystemId) {
-        setFilters((current) => ({ ...current, businessSystemId: undefined }));
-      }
       return;
     }
     void loadBusinessSystems(filters.unitId);
-  }, [filters.businessSystemId, filters.unitId, loadBusinessSystems]);
+  }, [filters.unitId, loadBusinessSystems]);
 
   useEffect(() => {
     void loadSummary();
