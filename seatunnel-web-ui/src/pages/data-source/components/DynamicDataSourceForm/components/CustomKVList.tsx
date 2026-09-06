@@ -3,13 +3,15 @@ import { Button, Form, Input } from "antd";
 
 export default function CustomKVList(props: { intl: any; field: any }) {
   const { intl, field } = props;
+  const label = /[：:]$/.test(String(field.label ?? '')) ? field.label : `${field.label}：`;
 
   return (
-    <Form.Item label={field.label} style={{ marginBottom: 18 }}>
+    <Form.Item label={label} className="datasource-custom-kv-field" style={{ marginBottom: 18 }}>
       <Form.List name={field.key}>
         {(fields, { add, remove }) => (
-          <div style={{ width: "100%" }}>
+          <div className="datasource-custom-kv-list" style={{ width: "100%" }}>
             <div
+              className="datasource-custom-kv-rows"
               style={{
                 display: "flex",
                 flexDirection: "column",
@@ -19,6 +21,7 @@ export default function CustomKVList(props: { intl: any; field: any }) {
               {fields.map(({ key, name, ...restField }) => (
                 <div
                   key={key}
+                  className="datasource-custom-kv-row"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr 28px",
@@ -87,7 +90,7 @@ export default function CustomKVList(props: { intl: any; field: any }) {
               ))}
             </div>
 
-            <Form.Item style={{ marginBottom: 0, marginTop: 12 }}>
+            <Form.Item className="datasource-custom-kv-add" style={{ marginBottom: 0, marginTop: 12 }}>
               <Button
                 type="dashed"
                 onClick={() => add({ key: "", value: "" })}

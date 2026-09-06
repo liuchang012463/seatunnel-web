@@ -1,7 +1,9 @@
-import { Select } from 'antd';
-import React, { useEffect, useRef, useState } from 'react';
+import { SearchOutlined } from '@ant-design/icons';
+import { Button, Select } from 'antd';
+import React from 'react';
 import { DATA_SOURCE_STATUS_OPTIONS } from '../constants';
-import type { BusinessSystemOption, DataSourceEntityId, DataSourceUnitOption } from '../types';
+import { DATA_SOURCE_CATEGORIES } from '../dataSourceRegistry';
+import type { DataSourceEntityId, DataSourceUnitOption } from '../types';
 
 interface SearchBarProps {
   value: string;
@@ -9,11 +11,12 @@ interface SearchBarProps {
   unitOptions: DataSourceUnitOption[];
   selectedUnit?: DataSourceEntityId;
   onUnitChange: (value?: string) => void;
-  businessSystemOptions: BusinessSystemOption[];
-  selectedBusinessSystem?: DataSourceEntityId;
-  onBusinessSystemChange: (value?: string) => void;
   selectedStatus?: string;
   onStatusChange: (value?: string) => void;
+  selectedCategory: string;
+  onCategoryChange: (value: string) => void;
+  onSearch?: () => void;
+  onReset?: () => void;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
@@ -22,108 +25,73 @@ const SearchBar: React.FC<SearchBarProps> = ({
   unitOptions,
   selectedUnit,
   onUnitChange,
-  businessSystemOptions,
-  selectedBusinessSystem,
-  onBusinessSystemChange,
   selectedStatus,
   onStatusChange,
-}) => {
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  selectedCategory,
+  onCategoryChange,
+  onSearch,
+  onReset,
+}) => (
+  <div className="datasource-search-bar">
+    <div className="datasource-search-filter-row">
+      <label className="datasource-filter-item datasource-search-control">
+        <span className="datasource-filter-label">数据源名称：</span>
+        <span className="datasource-search-control-field">
+          <SearchOutlined className="datasource-search-control-icon" />
+          <input
+            className="datasource-search-control-input"
+            placeholder="请输入"
+            type="text"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </span>
+      </label>
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!wrapperRef.current) return;
-      if (!wrapperRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-  return (
-    <div className="datasource-search-bar" ref={wrapperRef}>
-      <div className="datasource-search-filter-row">
-        <div className={`datasource-search-control${open ? ' is-open' : ''}`}>
-          <div className="relative rounded-full">
-            <input
-              className="datasource-search-control-input"
-              placeholder="根据数据源名称搜索"
-              type="text"
-              value={value}
-              onFocus={() => setOpen(true)}
-              onChange={(e) => {
-                onChange(e.target.value);
-                if (!open) setOpen(true);
-              }}
-              style={{
-                border: 'none',
-                boxShadow: 'none',
-                background: 'transparent',
-              }}
-            />
-
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="datasource-search-control-icon"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-          </div>
-        </div>
-
+      <label className="datasource-filter-item">
+        <span className="datasource-filter-label">数据源单位：</span>
         <Select
           allowClear
           showSearch
           value={selectedUnit === undefined ? undefined : String(selectedUnit)}
-          options={unitOptions.map((unit) => ({
-            label: unit.unitName,
-            value: String(unit.id),
-          }))}
-          placeholder="按数据源单位筛选"
+          options={unitOptions.map((unit) => ({ label: unit.unitName, value: String(unit.id) }))}
+          placeholder="请选择"
           className="datasource-filter-select"
           optionFilterProp="label"
           onChange={onUnitChange}
         />
+      </label>
 
-        <Select
-          allowClear
-          showSearch
-          value={selectedBusinessSystem === undefined ? undefined : String(selectedBusinessSystem)}
-          options={businessSystemOptions.map((system) => ({
-            label: system.systemName,
-            value: String(system.id),
-          }))}
-          placeholder="按业务系统筛选"
-          className="datasource-filter-select"
-          optionFilterProp="label"
-          disabled={selectedUnit === undefined}
-          onChange={onBusinessSystemChange}
-        />
-
+      <label className="datasource-filter-item">
+        <span className="datasource-filter-label">生命周期状态：</span>
         <Select
           allowClear
           value={selectedStatus}
           options={DATA_SOURCE_STATUS_OPTIONS}
-          placeholder="按生命周期状态筛选"
+          placeholder="请选择"
           className="datasource-filter-select"
           onChange={onStatusChange}
         />
+      </label>
+
+      <label className="datasource-filter-item">
+        <span className="datasource-filter-label">数据源类型：</span>
+        <Select
+          allowClear={selectedCategory !== 'ALL'}
+          value={selectedCategory === 'ALL' ? undefined : selectedCategory}
+          options={DATA_SOURCE_CATEGORIES.map((category) => ({ label: category.label, value: category.key }))}
+          placeholder="请选择"
+          className="datasource-filter-select"
+          onChange={(value) => onCategoryChange(value || 'ALL')}
+        />
+      </label>
+
+      <div className="datasource-search-buttons">
+        <Button type="primary" onClick={onSearch}>查询</Button>
+        <Button onClick={onReset}>重置</Button>
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default SearchBar;

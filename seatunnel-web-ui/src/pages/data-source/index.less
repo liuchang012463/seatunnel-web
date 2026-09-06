@@ -531,6 +531,278 @@
   .datasource-form-panel .ant-select-selection-placeholder {
     color: var(--st-color-text-muted) !important;
   }
+
+  .ant-modal-content {
+    background: #001c26;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .ant-modal-header {
+    height: 43px !important;
+    padding: 0 24px !important;
+    background: #238eae !important;
+    border: 0 !important;
+  }
+
+  .ant-modal-title {
+    height: 43px;
+    color: #fff !important;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 43px;
+  }
+
+  .ant-modal-close {
+    top: 7px;
+    right: 14px;
+    color: #fff;
+  }
+
+  .ant-modal-body {
+    max-height: calc(100vh - 170px) !important;
+    padding: 30px 30px 24px !important;
+    overflow-y: auto;
+    color: rgba(255, 255, 255, 0.84);
+    background: #001c26 !important;
+  }
+
+  .ant-modal-footer {
+    margin-top: 0 !important;
+    padding: 14px 24px !important;
+    background: #075a75 !important;
+    border: 0 !important;
+  }
+
+  .datasource-modal-heading {
+    padding-right: 24px;
+  }
+
+  .datasource-modal-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 0 auto 34px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+  }
+
+  .datasource-modal-steps span {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(255, 255, 255, 0.72);
+    white-space: nowrap;
+  }
+
+  .datasource-modal-steps span.is-active {
+    color: #29c5ee;
+  }
+
+  .datasource-modal-steps b {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: #fff;
+    background: #218eae;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .datasource-modal-steps i {
+    display: block;
+    width: 174px;
+    height: 1px;
+    background: #238eae;
+  }
+
+  .datasource-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .datasource-modal-footer .ant-btn {
+    min-width: 96px;
+    height: 36px;
+    color: rgba(255, 255, 255, 0.9);
+    background: transparent;
+    border-color: #1a9ac0;
+    border-radius: 4px;
+  }
+
+  .datasource-modal-footer .ant-btn-primary {
+    color: #fff;
+    background: #218eae;
+    border-color: #218eae;
+  }
+
+  .datasource-modal-footer .ant-btn:hover,
+  .datasource-modal-footer .ant-btn:focus {
+    color: #fff;
+    border-color: #63dbf4;
+  }
+}
+
+.datasource-master-data-drawer {
+  .ant-drawer-content,
+  .ant-drawer-body {
+    color: rgba(255, 255, 255, 0.86);
+    background: #001824 !important;
+  }
+
+  .ant-drawer-header {
+    padding: 15px 24px;
+    background: #238eae !important;
+    border-bottom: 0;
+  }
+
+  .ant-drawer-title {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 400;
+  }
+
+  .ant-drawer-close {
+    color: #fff;
+  }
+
+  .ant-drawer-body {
+    padding: 8px 20px 24px !important;
+  }
+}
+
+.datasource-editor-modal .datasource-type-selector {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.datasource-editor-modal .datasource-type-search {
+  flex: 0 0 236px;
+  height: 36px;
+  color: rgba(255, 255, 255, 0.9);
+  background: #00151d;
+  border-color: #1585a5;
+  border-radius: 4px;
+}
+
+.datasource-editor-modal .datasource-type-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.datasource-editor-modal .datasource-type-filter-controls {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.datasource-editor-modal .datasource-type-search::placeholder,
+.datasource-editor-modal .datasource-type-search .ant-input::placeholder {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.datasource-editor-modal .datasource-type-search .ant-input {
+  color: #fff;
+  background: transparent;
+}
+
+.datasource-editor-modal .datasource-type-filter-label,
+.datasource-editor-modal .datasource-type-section-title {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+
+.datasource-editor-modal .datasource-type-filter-button {
+  height: 36px;
+  padding: 0 14px;
+  color: rgba(255, 255, 255, 0.9);
+  background: transparent;
+  border-color: #1585a5;
+  border-radius: 4px;
+}
+
+.datasource-editor-modal .datasource-type-filter-button.ant-btn-primary {
+  color: #fff;
+  background: #218eae;
+  border-color: #218eae;
+}
+
+.datasource-editor-modal .datasource-type-filter-count {
+  margin-left: 2px;
+  color: inherit;
+  background: transparent;
+}
+
+.datasource-editor-modal .datasource-type-suggested {
+  padding: 14px 20px;
+  background: #00384c;
+  border: 0;
+  border-radius: 0;
+}
+
+.datasource-editor-modal .datasource-type-option {
+  min-height: 72px;
+  color: rgba(255, 255, 255, 0.9);
+  background: #07516a;
+  border-color: #1688a8;
+  border-radius: 4px;
+}
+
+.datasource-editor-modal .datasource-type-option:hover,
+.datasource-editor-modal .datasource-type-option:focus-visible {
+  background: #0b6682;
+  border-color: #40d2ef;
+}
+
+.datasource-editor-modal .datasource-type-option-icon {
+  width: 40px;
+  height: 40px;
+  background: #002c3b;
+  border-color: #0d7898;
+  border-radius: 4px;
+}
+
+.datasource-editor-modal .datasource-type-option-title {
+  color: #fff;
+  font-size: 16px;
+}
+
+.datasource-editor-modal .datasource-type-option-meta,
+.datasource-editor-modal .datasource-type-section-meta {
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.datasource-editor-modal .datasource-type-option-group {
+  color: #a3e6f5;
+  background: rgba(27, 162, 195, 0.3);
+}
+
+.datasource-editor-modal .datasource-type-selector > section:last-child > .grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.datasource-editor-modal .datasource-type-selector > section:last-child {
+  padding-bottom: 4px;
+}
+
+@media (max-width: 860px) {
+  .datasource-editor-modal .datasource-type-filter-row {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .datasource-editor-modal .datasource-type-search {
+    flex-basis: auto;
+    width: 100%;
+  }
 }
 
 .datasource-page-container {
@@ -1094,6 +1366,1184 @@
   box-shadow: none;
 }
 
+/* 0904 UI 对齐：最终页面坐标与卡片样式覆盖 */
+.datasource-page-container {
+  min-height: calc(100vh - 80px);
+  height: calc(100vh - 80px);
+  padding: 19px 20px 24px 7px;
+  background: #001824;
+  border-radius: 0;
+}
+
+.datasource-page-content {
+  max-width: none;
+  padding: 0;
+}
+
+.datasource-page-titlebar {
+  height: 38px;
+  margin-bottom: 20px;
+  padding: 0 12px;
+  line-height: 38px;
+}
+
+.datasource-search-panel {
+  box-sizing: border-box;
+  height: 130px;
+  margin-bottom: 20px;
+  padding: 20px;
+}
+
+.datasource-page-count {
+  margin: 0 0 12px;
+  line-height: 20px;
+}
+
+.datasource-card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 23px 30px;
+}
+
+.datasource-card-grid > .datasource-card {
+  height: 258px;
+}
+
+.datasource-page-container .datasource-card {
+  height: 258px;
+  overflow: hidden;
+  background: #032a3b;
+  border: 0;
+  border-radius: 0;
+}
+
+.datasource-page-container .datasource-card-cover {
+  height: 74px;
+  background: linear-gradient(90deg, rgba(0, 184, 255, 0.74) 0%, rgba(0, 104, 144, 0.61) 100%);
+}
+
+.datasource-page-container .datasource-card-logo {
+  left: 20px;
+  bottom: 12px;
+  width: 58px;
+  height: 58px;
+  background: #001c26;
+  border: 1px solid #a7e8f8;
+}
+
+.datasource-page-container .datasource-card-content {
+  height: 136px;
+  padding: 19px 20px 14px;
+  background: #032a3b;
+}
+
+.datasource-page-container .datasource-card-actions {
+  height: 48px;
+  background: #05617a;
+}
+
+.datasource-page-container .datasource-card-actions .ant-btn {
+  height: 48px;
+}
+
+.datasource-page-container .datasource-empty-state {
+  min-height: calc(100vh - 370px);
+}
+
+/* 0904 UI 对齐：数据源信息配置页的横向表单布局 */
+.datasource-editor-modal .datasource-form-step {
+  width: 1072px;
+  margin-left: 10px;
+}
+
+.datasource-editor-modal .datasource-editor-form-panel {
+  box-sizing: border-box;
+  width: 1072px;
+  padding: 0 !important;
+  color: rgba(255, 255, 255, 0.84);
+  background: transparent;
+  border: 0;
+}
+
+.datasource-editor-modal .datasource-editor-form-panel .datasource-form-section-heading {
+  margin: 0 0 16px !important;
+}
+
+.datasource-editor-modal .datasource-editor-form-panel .datasource-form-section-heading h3 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.92) !important;
+  font-size: 16px;
+  line-height: 19px;
+}
+
+.datasource-editor-modal .datasource-editor-form-panel .datasource-form-section-heading p {
+  margin: 9px 0 0 !important;
+  color: rgba(255, 255, 255, 0.58) !important;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.datasource-editor-modal .datasource-base-form {
+  width: 1066px;
+}
+
+.datasource-editor-modal .datasource-base-form-grid {
+  display: grid !important;
+  grid-template-columns: 403px 361px !important;
+  gap: 0 39px !important;
+  margin: 0 0 20px !important;
+}
+
+.datasource-editor-modal .datasource-base-form-grid .ant-form-item,
+.datasource-editor-modal .datasource-unit-select--single > div > .ant-form-item:first-child,
+.datasource-editor-modal .datasource-description-field {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 34px;
+  margin: 0 !important;
+}
+
+.datasource-editor-modal .datasource-base-form-grid .ant-form-item-label,
+.datasource-editor-modal .datasource-unit-select--single > div > .ant-form-item:first-child .ant-form-item-label,
+.datasource-editor-modal .datasource-description-field .ant-form-item-label,
+.datasource-editor-modal .datasource-connection-form .ant-form-item-label {
+  flex: 0 0 103px !important;
+  width: 103px !important;
+  max-width: 103px !important;
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+.datasource-editor-modal .datasource-base-form-grid .ant-form-item:nth-child(2) .ant-form-item-label {
+  flex-basis: 61px !important;
+  width: 61px !important;
+  max-width: 61px !important;
+}
+
+.datasource-editor-modal .datasource-base-form-grid .ant-form-item-control {
+  flex: 0 0 300px !important;
+  max-width: 300px !important;
+}
+
+.datasource-editor-modal .datasource-unit-select--single {
+  width: 1064px;
+  margin: 0 0 20px;
+}
+
+.datasource-editor-modal .datasource-unit-select--single > div {
+  width: 1064px;
+}
+
+.datasource-editor-modal .datasource-unit-select--single > div > .ant-form-item:first-child .ant-form-item-control {
+  flex: 0 0 961px !important;
+  max-width: 961px !important;
+}
+
+.datasource-editor-modal .datasource-description-field {
+  width: 1066px;
+  align-items: flex-start;
+}
+
+.datasource-editor-modal .datasource-description-field .ant-form-item-label {
+  height: 73px;
+  line-height: 34px;
+}
+
+.datasource-editor-modal .datasource-description-field .ant-form-item-control {
+  flex: 0 0 963px !important;
+  max-width: 963px !important;
+}
+
+.datasource-editor-modal .datasource-description-field textarea.ant-input {
+  height: 73px !important;
+  min-height: 73px !important;
+  resize: none;
+}
+
+.datasource-editor-modal .datasource-base-form-grid .ant-form-item-label > label,
+.datasource-editor-modal .datasource-unit-select--single .ant-form-item-label > label,
+.datasource-editor-modal .datasource-description-field .ant-form-item-label > label,
+.datasource-editor-modal .datasource-connection-form .ant-form-item-label > label {
+  height: 34px;
+  color: rgba(255, 255, 255, 0.86) !important;
+  font-size: 14px;
+  line-height: 34px;
+  white-space: nowrap;
+}
+
+.datasource-editor-modal .datasource-connection-section {
+  width: 1113px;
+  margin-top: 20px !important;
+  padding-top: 18px !important;
+  border-top-color: #147d9c !important;
+}
+
+.datasource-editor-modal .datasource-connection-section .datasource-form-section-heading {
+  margin-bottom: 15px !important;
+}
+
+.datasource-editor-modal .datasource-connection-form {
+  width: 1072px;
+}
+
+.datasource-editor-modal .datasource-connection-form .ant-form-item {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  box-sizing: border-box;
+  width: 1072px;
+  min-height: 34px;
+  margin: 0 0 19px !important;
+}
+
+.datasource-editor-modal .datasource-connection-form .ant-form-item-control {
+  flex: 0 0 969px !important;
+  max-width: 969px !important;
+}
+
+.datasource-editor-modal .datasource-base-form .ant-input,
+.datasource-editor-modal .datasource-base-form .ant-input-affix-wrapper,
+.datasource-editor-modal .datasource-base-form .ant-select-selector,
+.datasource-editor-modal .datasource-connection-form .ant-input,
+.datasource-editor-modal .datasource-connection-form .ant-input-affix-wrapper,
+.datasource-editor-modal .datasource-connection-form .ant-select-selector,
+.datasource-editor-modal .datasource-connection-form .ant-input-number,
+.datasource-editor-modal .datasource-connection-form textarea.ant-input {
+  min-height: 34px;
+  height: 34px;
+  border-radius: 4px !important;
+}
+
+.datasource-editor-modal .datasource-connection-form .ant-input-number {
+  width: 100%;
+}
+
+.datasource-editor-modal .datasource-connection-form .ant-form-item-label > label {
+  overflow: visible;
+}
+
+.datasource-editor-modal .datasource-connection-form .ant-form-item-control-input,
+.datasource-editor-modal .datasource-base-form .ant-form-item-control-input {
+  min-height: 34px;
+}
+
+@media (max-width: 1199px) {
+  .datasource-editor-modal .datasource-form-step,
+  .datasource-editor-modal .datasource-editor-form-panel,
+  .datasource-editor-modal .datasource-base-form,
+  .datasource-editor-modal .datasource-base-form-grid,
+  .datasource-editor-modal .datasource-unit-select--single,
+  .datasource-editor-modal .datasource-unit-select--single > div,
+  .datasource-editor-modal .datasource-description-field,
+  .datasource-editor-modal .datasource-connection-section,
+  .datasource-editor-modal .datasource-connection-form,
+  .datasource-editor-modal .datasource-connection-form .ant-form-item {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .datasource-editor-modal .datasource-base-form-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+  }
+
+  .datasource-editor-modal .datasource-base-form-grid .ant-form-item-control,
+  .datasource-editor-modal .datasource-unit-select--single > div > .ant-form-item:first-child .ant-form-item-control,
+  .datasource-editor-modal .datasource-description-field .ant-form-item-control,
+  .datasource-editor-modal .datasource-connection-form .ant-form-item-control {
+    flex: 1 1 auto !important;
+    max-width: none !important;
+  }
+}
+
+/* Ant Form places the label and control inside .ant-form-item-row. */
+.datasource-editor-modal .datasource-base-form-grid .ant-form-item,
+.datasource-editor-modal .datasource-unit-select--single > div > .ant-form-item:first-child,
+.datasource-editor-modal .datasource-description-field,
+.datasource-editor-modal .datasource-connection-form .ant-form-item {
+  display: block !important;
+  flex-direction: initial !important;
+}
+
+.datasource-editor-modal .datasource-base-form-grid .ant-form-item-row,
+.datasource-editor-modal .datasource-unit-select--single > div > .ant-form-item:first-child .ant-form-item-row,
+.datasource-editor-modal .datasource-description-field .ant-form-item-row,
+.datasource-editor-modal .datasource-connection-form .ant-form-item-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+}
+
+.datasource-editor-modal .datasource-description-field .ant-form-item-row {
+  align-items: flex-start;
+}
+
+/* Keep nested Form.List items inside the connection-parameter row from
+ * inheriting the width of the outer dynamic field. */
+.datasource-editor-modal .datasource-connection-form > .ant-form-item {
+  display: block !important;
+  flex-direction: initial !important;
+  width: 1072px !important;
+  min-height: 34px;
+  margin: 0 0 19px !important;
+}
+
+.datasource-editor-modal .datasource-connection-form > .ant-form-item > .ant-form-item-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+}
+
+.datasource-editor-modal .datasource-connection-form > .ant-form-item > .ant-form-item-row > .ant-form-item-label {
+  flex: 0 0 103px !important;
+  width: 103px !important;
+  max-width: 103px !important;
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+.datasource-editor-modal .datasource-connection-form > .ant-form-item > .ant-form-item-row > .ant-form-item-control {
+  flex: 0 0 969px !important;
+  max-width: 969px !important;
+  min-width: 0;
+}
+
+.datasource-editor-modal .datasource-custom-kv-list {
+  box-sizing: border-box;
+  width: 969px;
+  padding: 2px 0 0 3px;
+}
+
+.datasource-editor-modal .datasource-custom-kv-rows {
+  gap: 19px !important;
+}
+
+.datasource-editor-modal .datasource-custom-kv-row {
+  box-sizing: border-box;
+  width: 969px;
+  min-height: 34px;
+  height: 34px;
+  grid-template-columns: 473px 381px 30px !important;
+  column-gap: 20px !important;
+}
+
+.datasource-editor-modal .datasource-custom-kv-row > .ant-form-item,
+.datasource-editor-modal .datasource-custom-kv-add {
+  display: block !important;
+  flex-direction: initial !important;
+  box-sizing: border-box;
+  min-height: 34px;
+  margin: 0 !important;
+}
+
+.datasource-editor-modal .datasource-custom-kv-row > .ant-form-item {
+  width: auto !important;
+}
+
+.datasource-editor-modal .datasource-custom-kv-row > .ant-form-item > .ant-form-item-row,
+.datasource-editor-modal .datasource-custom-kv-add > .ant-form-item-row {
+  display: block !important;
+  width: 100%;
+  min-height: 34px;
+}
+
+.datasource-editor-modal .datasource-custom-kv-row > .ant-form-item .ant-form-item-control,
+.datasource-editor-modal .datasource-custom-kv-add .ant-form-item-control {
+  display: block;
+  flex: none !important;
+  width: 100%;
+  max-width: none !important;
+  min-width: 0;
+}
+
+.datasource-editor-modal .datasource-custom-kv-row > :last-child {
+  margin-left: 15px;
+  color: #00c3ff;
+  font-size: 20px;
+  line-height: 30px;
+}
+
+.datasource-editor-modal .datasource-custom-kv-add {
+  width: 874px !important;
+  margin-top: 19px !important;
+}
+
+.datasource-editor-modal .datasource-custom-kv-add .datasource-form-add-setting,
+.datasource-editor-modal .datasource-custom-kv-add button {
+  box-sizing: border-box;
+  width: 874px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 10px;
+  border-radius: 4px !important;
+}
+
+/* 0904 UI 对齐：新增数据源弹窗与单位维护抽屉 */
+@media (min-width: 1200px) {
+  .datasource-editor-modal.ant-modal {
+    top: 111px !important;
+    margin: 0 0 0 255px !important;
+  }
+}
+
+@media (max-width: 1199px) {
+  .datasource-editor-modal.ant-modal {
+    top: 24px !important;
+    margin: 0 auto !important;
+  }
+}
+
+.datasource-editor-modal .ant-modal-header {
+  box-sizing: border-box;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 24px !important;
+}
+
+.datasource-editor-modal .ant-modal-title {
+  height: 40px;
+  line-height: 40px;
+}
+
+.datasource-editor-modal .ant-modal-body {
+  box-sizing: border-box;
+  min-height: 728px !important;
+  max-height: 898px !important;
+  padding: 31px 19px 0 20px !important;
+}
+
+/* The configuration screen uses the taller 998px design artboard; the type
+ * selector keeps the compact 828px modal above. */
+.datasource-editor-modal--form .ant-modal-body {
+  height: 898px !important;
+  min-height: 898px !important;
+  max-height: 898px !important;
+}
+
+.datasource-editor-modal .ant-modal-footer {
+  box-sizing: border-box;
+  height: 60px !important;
+  min-height: 60px !important;
+  padding: 13px 20px !important;
+}
+
+.datasource-modal-steps {
+  box-sizing: border-box;
+  width: 442px;
+  height: 30px;
+  margin: 0 0 27px 270px !important;
+  gap: 16px;
+  justify-content: flex-start;
+}
+
+.datasource-modal-steps b {
+  width: 30px;
+  height: 30px;
+}
+
+.datasource-modal-steps i {
+  width: 163px;
+}
+
+.datasource-type-selector-wrap {
+  padding: 4px 0 8px;
+}
+
+.datasource-editor-modal .datasource-type-selector {
+  gap: 20px;
+}
+
+.datasource-editor-modal .datasource-type-filter-row,
+.datasource-editor-modal .datasource-type-search,
+.datasource-editor-modal .datasource-type-filter-button {
+  height: 34px;
+}
+
+.datasource-editor-modal .datasource-type-filter-label {
+  margin-right: 10px;
+}
+
+.datasource-editor-modal .datasource-type-search {
+  flex-basis: 220px;
+}
+
+.datasource-editor-modal .datasource-type-suggested {
+  box-sizing: border-box;
+  width: 100%;
+  height: 143px;
+  padding: 20px !important;
+}
+
+.datasource-editor-modal .datasource-type-suggested .mb-3 {
+  margin-bottom: 14px !important;
+}
+
+.datasource-editor-modal .datasource-type-suggested .grid {
+  grid-template-columns: repeat(3, 270px) !important;
+  gap: 0 19px !important;
+}
+
+.datasource-editor-modal .datasource-type-suggested .datasource-type-option {
+  width: 270px;
+  min-height: 67px;
+  height: 67px;
+}
+
+.datasource-editor-modal .datasource-type-selector > section:last-child {
+  box-sizing: border-box;
+  padding-left: 4px;
+}
+
+.datasource-editor-modal .datasource-type-selector > section:last-child > .grid {
+  grid-template-columns: repeat(4, 270px) !important;
+  column-gap: 0 !important;
+  row-gap: 20px !important;
+  width: calc(100% + 1px);
+  justify-content: space-between !important;
+}
+
+.datasource-editor-modal .datasource-type-option {
+  gap: 10px !important;
+  padding-right: 14px !important;
+  padding-left: 14px !important;
+}
+
+.datasource-editor-modal .datasource-type-option-icon {
+  width: 43px;
+  height: 43px;
+}
+
+.datasource-editor-modal .datasource-type-selector > section:last-child .datasource-type-option {
+  width: 270px;
+  min-height: 67px;
+  height: 67px;
+}
+
+.datasource-modal-footer .ant-btn {
+  width: 100px;
+  min-width: 100px;
+}
+
+.datasource-master-data-drawer .ant-drawer-header {
+  box-sizing: border-box;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 24px !important;
+  line-height: 40px;
+}
+
+.datasource-master-data-drawer .ant-drawer-title {
+  line-height: 40px;
+}
+
+.datasource-master-data-drawer .ant-drawer-header {
+  position: relative;
+}
+
+.datasource-master-data-drawer .ant-drawer-close {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  margin: 0;
+  color: #fff;
+}
+
+.datasource-master-data-drawer .ant-drawer-body {
+  padding: 0 !important;
+}
+
+.datasource-master-data-drawer .master-data-page--embedded {
+  box-sizing: border-box;
+  min-height: 0;
+  padding: 30px 17px 16px 31px !important;
+}
+
+.datasource-master-data-drawer .master-data-page__intro {
+  display: none;
+}
+
+.datasource-master-data-drawer .master-data-page__toolbar {
+  display: flex !important;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  margin-bottom: 20px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.datasource-master-data-drawer .master-data-page__actions {
+  order: -1;
+  flex: 0 0 auto;
+  margin: 0 !important;
+}
+
+.datasource-master-data-drawer .master-data-page__filters {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0 !important;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.datasource-master-data-drawer .master-data-page__filters .ant-form-item {
+  margin-bottom: 0;
+}
+
+.datasource-master-data-drawer .master-data-page__panel.ant-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.datasource-master-data-drawer .master-data-page__panel .ant-card-body {
+  padding: 0;
+}
+
+.datasource-master-data-drawer .master-data-page__panel .ant-table-thead > tr > th {
+  height: 38px;
+  padding: 0 16px;
+  color: rgba(255, 255, 255, 0.9);
+  background: #238eae;
+  border-bottom: 0;
+  line-height: 38px;
+}
+
+.datasource-master-data-drawer .master-data-page__panel .ant-table-tbody > tr > td {
+  height: 38px;
+  padding: 0 16px;
+  color: rgba(255, 255, 255, 0.82);
+  background: #003449;
+  border-bottom: 1px solid rgba(35, 142, 174, 0.35);
+}
+
+@media (max-width: 1199px) {
+  .datasource-modal-steps {
+    width: auto;
+    margin-left: 0 !important;
+    justify-content: center;
+  }
+
+  .datasource-editor-modal .datasource-type-suggested .grid,
+  .datasource-editor-modal .datasource-type-selector > section:last-child > .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .datasource-editor-modal .datasource-type-suggested .datasource-type-option,
+  .datasource-editor-modal .datasource-type-selector > section:last-child .datasource-type-option {
+    width: auto;
+  }
+
+  .datasource-master-data-drawer .master-data-page--embedded {
+    padding: 20px !important;
+  }
+
+  .datasource-master-data-drawer .master-data-page__toolbar {
+    flex-wrap: wrap;
+  }
+
+  .datasource-master-data-drawer .master-data-page__filters {
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* 0904 UI 对齐：数据源卡片内容、操作栏及精确网格 */
+@media (min-width: 1200px) {
+  .datasource-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 537px)) !important;
+    column-gap: 30px !important;
+    justify-content: start !important;
+  }
+}
+
+.datasource-page-count {
+  margin-bottom: 12.344px !important;
+}
+
+.datasource-page-container .datasource-card-cover-info {
+  padding-left: 85px !important;
+}
+
+.datasource-page-container .datasource-card-logo {
+  left: 20px !important;
+  bottom: 7px !important;
+  width: 55px !important;
+  height: 55px !important;
+}
+
+.datasource-page-container .datasource-card-content {
+  box-sizing: border-box;
+  height: 143px !important;
+  padding: 20px 20px 14px !important;
+}
+
+.datasource-page-container .datasource-card-owner-grid {
+  height: 22px !important;
+  margin-top: 15px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  line-height: 22px !important;
+}
+
+.datasource-page-container .datasource-card-actions {
+  position: static;
+  box-sizing: border-box;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 10px !important;
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+}
+
+.datasource-page-container .datasource-card-actions .ant-btn {
+  height: 40px !important;
+  font-size: 14px !important;
+}
+
+/* 0904 UI 对齐：数据源管理主页面 */
+.datasource-page-container {
+  min-height: calc(100vh - 80px);
+  height: calc(100vh - 80px);
+  padding: 0 22px 24px;
+  background: #001824;
+  border-radius: 0;
+}
+
+.datasource-page-content {
+  max-width: none;
+  padding: 25px 0 0;
+}
+
+.datasource-page-titlebar {
+  height: 41px;
+  margin-bottom: 20px;
+  padding: 0 14px;
+  color: rgba(255, 255, 255, 0.9);
+  background: #00364a;
+  font-size: 14px;
+  line-height: 41px;
+}
+
+.datasource-search-panel {
+  margin-bottom: 21px;
+  padding: 20px 20px 22px;
+  background: #00384c;
+}
+
+.datasource-page-header {
+  display: block;
+  margin: 0 0 20px;
+}
+
+.datasource-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.datasource-page-actions .ant-btn {
+  height: 36px;
+  padding-inline: 14px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.datasource-create-button {
+  height: 36px;
+  color: #fff;
+  background: #168eaf;
+  border-color: #168eaf;
+}
+
+.datasource-master-data-button {
+  color: rgba(255, 255, 255, 0.9);
+  background: transparent;
+  border-color: #168eaf;
+}
+
+.datasource-search-bar {
+  margin: 0;
+}
+
+.datasource-search-filter-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 20px;
+  align-items: center;
+}
+
+.datasource-filter-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.datasource-filter-label {
+  flex: 0 0 auto;
+}
+
+.datasource-search-control {
+  min-width: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+}
+
+.datasource-search-control-field {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  height: 36px;
+  background: #001c26;
+  border: 1px solid #147d9c;
+  border-radius: 4px;
+}
+
+.datasource-search-control-input {
+  width: 100%;
+  height: 34px;
+  padding: 4px 10px 4px 30px;
+  color: #fff;
+  font-size: 14px;
+  background: transparent;
+  border: 0;
+  outline: none;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.72);
+  }
+}
+
+.datasource-search-control-icon {
+  position: absolute;
+  left: 9px;
+  z-index: 1;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 15px;
+}
+
+.datasource-filter-select {
+  min-width: 0;
+  flex: 1;
+
+  .ant-select-selector {
+    height: 36px !important;
+    color: #fff !important;
+    background: #001c26 !important;
+    border: 1px solid #147d9c !important;
+    border-radius: 4px !important;
+  }
+
+  .ant-select-selection-placeholder,
+  .ant-select-selection-item,
+  .ant-select-arrow {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+}
+
+.datasource-search-buttons {
+  display: flex;
+  gap: 10px;
+
+  .ant-btn {
+    min-width: 78px;
+    height: 36px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  .ant-btn-default {
+    color: rgba(255, 255, 255, 0.9);
+    background: transparent;
+    border-color: #147d9c;
+  }
+}
+
+.datasource-page-count {
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.datasource-catalog-panel {
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.datasource-catalog-panel__heading {
+  display: none;
+}
+
+.datasource-card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 25px 30px;
+  padding: 0;
+}
+
+.datasource-card-grid > .datasource-card {
+  min-width: 0;
+  height: 275px;
+}
+
+.datasource-page-container .datasource-card {
+  overflow: hidden;
+  background: #00384c;
+  border: 0;
+  border-radius: 0;
+}
+
+.datasource-page-container .datasource-card:hover {
+  border: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.datasource-page-container .datasource-card-cover {
+  height: 75px;
+  background: linear-gradient(90deg, #078cae 0%, #076b88 100%);
+  border: 0;
+}
+
+.datasource-card-cover-info {
+  min-width: 0;
+  padding: 15px 48px 0 92px;
+}
+
+.datasource-page-container .datasource-card-logo {
+  left: 21px;
+  bottom: 13px;
+  width: 58px;
+  height: 58px;
+  background: #001c26;
+  border: 1px solid #a7e8f8;
+  box-shadow: none;
+}
+
+.datasource-page-container .datasource-card-title {
+  overflow: hidden;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 27px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.datasource-page-container .datasource-card-jdbc-url {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.datasource-card-profile-ribbon {
+  position: absolute;
+  top: 14px;
+  right: -42px;
+  width: 150px;
+  padding: 3px 0;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(74, 177, 205, 0.82);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  transform: rotate(45deg);
+}
+
+.datasource-page-container .datasource-card-content {
+  display: block;
+  height: 152px;
+  padding: 21px 20px 14px;
+  background: #00384c;
+}
+
+.datasource-page-container .datasource-card-status {
+  display: flex;
+  min-height: 25px;
+  gap: 14px;
+  align-items: center;
+}
+
+.datasource-page-container .datasource-card-status .ant-tag {
+  margin: 0;
+  padding-inline: 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.datasource-page-container .datasource-card-status .datasource-profile-tag {
+  color: #52c5e0;
+  background: rgba(29, 135, 166, 0.24);
+  border-color: rgba(53, 180, 216, 0.6);
+}
+
+.datasource-page-container .datasource-card-owner-grid {
+  display: flex;
+  gap: 72px;
+  margin-top: 15px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.82);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.datasource-page-container .datasource-card-update-time {
+  margin-top: 7px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.datasource-page-container .datasource-card-actions {
+  position: static;
+  display: flex;
+  height: 48px;
+  gap: 0;
+  align-items: stretch;
+  padding: 0 10px;
+  background: #05617a;
+}
+
+.datasource-page-container .datasource-card-actions .ant-tooltip-open,
+.datasource-page-container .datasource-card-actions > .ant-btn,
+.datasource-page-container .datasource-card-actions > span {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.datasource-page-container .datasource-card-actions .ant-btn {
+  height: 48px;
+  padding: 0 7px;
+  overflow: hidden;
+  color: #fff;
+  border: 0;
+  border-left: 1px solid rgba(162, 230, 245, 0.24);
+  border-radius: 0;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.datasource-page-container .datasource-card-actions > :first-child .ant-btn {
+  border-left: 0;
+}
+
+.datasource-page-container .datasource-card-actions .ant-btn .anticon {
+  font-size: 15px;
+}
+
+.datasource-page-container .datasource-card-actions .ant-btn:hover {
+  color: #fff;
+  background: rgba(1, 40, 52, 0.26);
+}
+
+.datasource-page-container .datasource-card-actions .ant-btn-dangerous {
+  color: #fff;
+}
+
+.datasource-page-container .mt-8.flex.justify-end {
+  justify-content: flex-start;
+  margin-top: 18px;
+}
+
+.datasource-page-container .ant-pagination {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.datasource-page-container .ant-pagination .ant-pagination-item,
+.datasource-page-container .ant-pagination .ant-pagination-prev,
+.datasource-page-container .ant-pagination .ant-pagination-next {
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+  border-color: #147d9c;
+  border-radius: 4px;
+}
+
+@media (max-width: 1500px) {
+  .datasource-search-filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  }
+
+  .datasource-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .datasource-search-filter-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .datasource-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .datasource-search-buttons {
+    justify-content: flex-end;
+  }
+}
+
+.datasource-page-container .datasource-empty-state {
+  box-sizing: border-box;
+  min-height: calc(100vh - 370px);
+  margin: 0;
+  padding: 80px 24px 0 !important;
+  color: rgba(255, 255, 255, 0.82);
+  text-align: center;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.datasource-page-container .datasource-empty-state .ant-empty {
+  margin: 0 0 8px;
+}
+
+.datasource-page-container .datasource-empty-state .ant-empty-image {
+  height: 72px;
+}
+
+.datasource-page-container .datasource-empty-state__message {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.datasource-page-container .datasource-empty-state__message button {
+  padding: 0;
+  color: #30b6dc;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.datasource-page-container .datasource-empty-state__message button:hover {
+  color: #72e1fa;
+  text-decoration: underline;
+}
+
 .datasource-type-search {
   height: 44px;
   padding-inline: 12px;
@@ -1336,4 +2786,87 @@
   border-color: var(--st-color-divider);
   border-radius: 10px;
   box-shadow: none;
+}
+
+/* 0904 UI 对齐：最终页面坐标与卡片样式覆盖 */
+.datasource-page-container {
+  min-height: calc(100vh - 80px);
+  height: calc(100vh - 80px);
+  padding: 19px 20px 24px 7px;
+  background: #001824;
+  border-radius: 0;
+}
+
+.datasource-page-content {
+  max-width: none;
+  padding: 0;
+}
+
+.datasource-page-titlebar {
+  height: 38px;
+  margin-bottom: 20px;
+  padding: 0 12px;
+  line-height: 38px;
+}
+
+.datasource-search-panel {
+  box-sizing: border-box;
+  height: 130px;
+  margin-bottom: 20px;
+  padding: 20px;
+}
+
+.datasource-page-count {
+  margin: 0 0 12px;
+  line-height: 20px;
+}
+
+.datasource-card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 23px 30px;
+}
+
+.datasource-card-grid > .datasource-card {
+  height: 258px;
+}
+
+.datasource-page-container .datasource-card {
+  height: 258px;
+  overflow: hidden;
+  background: #032a3b;
+  border: 0;
+  border-radius: 0;
+}
+
+.datasource-page-container .datasource-card-cover {
+  height: 74px;
+  background: linear-gradient(90deg, rgba(0, 184, 255, 0.74) 0%, rgba(0, 104, 144, 0.61) 100%);
+}
+
+.datasource-page-container .datasource-card-logo {
+  left: 20px;
+  bottom: 12px;
+  width: 58px;
+  height: 58px;
+  background: #001c26;
+  border: 1px solid #a7e8f8;
+}
+
+.datasource-page-container .datasource-card-content {
+  height: 136px;
+  padding: 19px 20px 14px;
+  background: #032a3b;
+}
+
+.datasource-page-container .datasource-card-actions {
+  height: 48px;
+  background: #05617a;
+}
+
+.datasource-page-container .datasource-card-actions .ant-btn {
+  height: 48px;
+}
+
+.datasource-page-container .datasource-empty-state {
+  min-height: calc(100vh - 370px);
 }

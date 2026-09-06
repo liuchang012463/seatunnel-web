@@ -172,6 +172,8 @@ export interface DynamicDataSourceFormProps {
   hideBaseFields?: boolean;
   /** Keep an existing server-side password when the input is empty. */
   allowExistingPassword?: boolean;
+  /** Follow the redesigned editor, which keeps ownership at unit level. */
+  showBusinessSystem?: boolean;
 }
 
 export interface DataSourceOptionItem {

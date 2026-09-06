@@ -181,11 +181,18 @@ a:hover {
   border-bottom: var(--st-border-width) solid var(--st-color-divider);
 }
 
-.ant-pro-sider-logo h1,
-.ant-pro-global-header-logo h1 {
+.ant-pro-sider-logo h1 {
   color: var(--st-color-text-primary) !important;
   font-family: var(--st-font-family) !important;
   font-size: var(--st-type-content-md-size) !important;
+}
+
+.ant-pro-global-header-logo h1 {
+  color: var(--st-color-text-primary) !important;
+  font-family: 'Microsoft YaHei', '微软雅黑', Arial, sans-serif !important;
+  font-size: 30px !important;
+  font-weight: 400 !important;
+  line-height: 50px !important;
 }
 
 .ant-pro-base-menu-inline-item-title .ant-pro-base-menu-inline-item-text {
@@ -1835,4 +1842,50 @@ html[data-st-theme="dark"] {
   .run-log-drawer [class~="hover:bg-slate-400"]:hover {
     background: var(--st-color-accent) !important;
   }
+}
+
+/* 0904 UI 对齐：全局顶栏和品牌标识 */
+.ant-pro-layout .ant-layout-header.ant-pro-layout-header {
+  height: 80px !important;
+  min-height: 80px !important;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(108, 202, 226, 0.14) 0,
+      rgba(108, 202, 226, 0.14) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    linear-gradient(180deg, #043347 0%, #07526b 100%) !important;
+  border-bottom: 2px solid #148eaf !important;
+}
+
+.ant-pro-global-header-logo h1 {
+  width: 225px !important;
+  max-width: 250px !important;
+  color: #fff !important;
+  font-family: 'Microsoft YaHei', '微软雅黑', Arial, sans-serif !important;
+  font-size: 30px !important;
+  font-weight: 400 !important;
+  line-height: 50px !important;
+}
+
+.ant-pro-global-header-logo img {
+  width: 46px !important;
+  height: 46px !important;
+  margin-left: 39.5px !important;
+  padding-right: 11px !important;
+  object-fit: contain;
+}
+
+.ant-pro-global-header-logo a {
+  height: 50px !important;
+  min-height: 50px !important;
+  overflow: visible !important;
+}
+
+.ant-pro-global-header-logo h1 {
+  height: 50px !important;
+  margin-left: 11px !important;
+  overflow: visible !important;
 }

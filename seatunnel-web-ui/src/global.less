@@ -740,9 +740,9 @@ ol {
    ========================= */
 
 :root {
-  --pro-sider-collapsed-width: 64px;
-  --pro-sider-expanded-width: 256px;
-  --pro-sider-current-width: var(--pro-sider-collapsed-width);
+  --pro-sider-collapsed-width: 220px;
+  --pro-sider-expanded-width: 220px;
+  --pro-sider-current-width: var(--pro-sider-expanded-width);
   --pro-sider-transition-duration: 0.32s;
   --bottom-action-bar-height: 64px;
 }
@@ -755,8 +755,8 @@ html[data-hide-sidebar='true'] .ant-pro-layout {
   --pro-sider-current-width: 0px !important;
 }
 
-@pro-sider-collapsed-width: 64px;
-@pro-sider-expanded-width: 256px;
+@pro-sider-collapsed-width: 220px;
+@pro-sider-expanded-width: 220px;
 @pro-sider-transition-duration: 0.32s;
 @pro-sider-text-gap: 10px;
 @pro-sider-icon-width: 16px;
@@ -841,8 +841,8 @@ html[data-hide-sidebar='true'] .ant-pro-layout {
       max-width: 160px !important;
       margin-inline-start: 10px !important;
 
-      opacity: 0 !important;
-      transform: translateX(-8px);
+      opacity: 1 !important;
+      transform: translateX(0);
       overflow: hidden !important;
       white-space: nowrap !important;
       display: inline-block !important;
@@ -859,7 +859,7 @@ html[data-hide-sidebar='true'] .ant-pro-layout {
     }
 
     .ant-menu-submenu-arrow {
-      opacity: 0 !important;
+      opacity: 1 !important;
       transition: opacity 0.12s ease !important;
     }
   }
@@ -991,10 +991,10 @@ html[data-hide-sidebar='true'] .ant-pro-layout {
 }
 
 .ant-pro-global-header-logo h1 {
-  width: 0 !important;
-  max-width: 0 !important;
-  margin: 0 !important;
-  opacity: 0 !important;
+  width: auto !important;
+  max-width: 220px !important;
+  margin: 0 0 0 8px !important;
+  opacity: 1 !important;
   overflow: hidden !important;
   white-space: nowrap !important;
   font-weight: 500 !important;
@@ -1050,4 +1050,134 @@ html[data-hide-sidebar='true'] .ant-pro-layout {
 
 .ant-splitter .ant-splitter-panel {
   padding: 0px !important;
+}
+
+/* 0904 UI 对齐：固定顶栏和带留白的侧栏框架 */
+.ant-pro-layout .ant-layout-header.ant-pro-layout-header {
+  height: 80px !important;
+  min-height: 80px !important;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(108, 202, 226, 0.14) 0,
+      rgba(108, 202, 226, 0.14) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    linear-gradient(180deg, #043347 0%, #07526b 100%) !important;
+  border-bottom: 2px solid #148eaf !important;
+}
+
+.ant-pro-global-header-logo {
+  width: 360px !important;
+  min-width: 360px !important;
+  max-width: 360px !important;
+  overflow: visible !important;
+}
+
+.ant-pro-global-header-logo img {
+  width: 46px !important;
+  height: 46px !important;
+  margin-left: 39px !important;
+  padding-right: 11px !important;
+  object-fit: contain;
+}
+
+.ant-pro-global-header-logo h1 {
+  max-width: 250px !important;
+  width: 225px !important;
+  font-family: 'Microsoft YaHei', '微软雅黑', Arial, sans-serif !important;
+  font-size: 30px !important;
+  font-weight: 400 !important;
+  line-height: 50px !important;
+}
+
+.ant-pro-layout .ant-pro-layout-content {
+  height: calc(100vh - 80px) !important;
+  background: #001824 !important;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed {
+  top: 99px !important;
+  right: auto !important;
+  bottom: 31px !important;
+  left: 18px !important;
+  width: 190px !important;
+  min-width: 190px !important;
+  max-width: 190px !important;
+  height: auto !important;
+  background: #022633 !important;
+  border: 1px solid #087b9d !important;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed::before,
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed::after {
+  position: absolute;
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  content: '';
+  pointer-events: none;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed::before {
+  top: -1px;
+  left: -1px;
+  border-top: 3px solid #43d7ff;
+  border-left: 3px solid #43d7ff;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed::after {
+  right: -1px;
+  bottom: -1px;
+  border-right: 3px solid #43d7ff;
+  border-bottom: 3px solid #43d7ff;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-pro-sider-menu {
+  padding-top: 3px !important;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-layout-sider-children {
+  padding-right: 3px !important;
+  padding-left: 3px !important;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-menu-item,
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-menu-submenu-title {
+  height: 36px !important;
+  margin: 0 !important;
+  line-height: 36px !important;
+  border-bottom: 1px solid rgba(34, 132, 157, 0.32);
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-menu-item {
+  padding-inline-start: 14px !important;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-menu-submenu-title {
+  padding-inline-start: 14px !important;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-menu-item,
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-menu-submenu-title {
+  width: 100% !important;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-menu-item-selected,
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  color: #fff !important;
+  background: #05647e !important;
+}
+
+.ant-layout > aside.ant-layout-sider.ant-pro-sider.ant-pro-sider-fixed .ant-menu-item-selected::after {
+  display: none;
+}
+
+/* 分组标题在非 hover 状态也保持完整宽度，避免被旧的折叠动画规则裁切。 */
+.ant-layout > aside.ant-layout-sider.ant-pro-sider .ant-menu-submenu-title > .ant-menu-title-content,
+.ant-layout > aside.ant-layout-sider.ant-pro-sider .ant-menu-submenu-title .ant-pro-base-menu-inline-item-title {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
 }

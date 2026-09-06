@@ -182,6 +182,16 @@ const DataSourcePage: React.FC = () => {
     refreshUnitOptions();
   };
 
+  const handleReset = () => {
+    setSearchKeyword('');
+    setSelectedCategory('ALL');
+    setSelectedUnit(undefined);
+    setSelectedBusinessSystem(undefined);
+    setSelectedStatus(undefined);
+    setPagination(PAGE_DEFAULT_PAGINATION);
+    refreshUnitOptions();
+  };
+
   const handleCreate = () => {
     modalRef.current?.open({
       operateType: 'CREATE' as DataSourceOperateType,
@@ -504,110 +514,54 @@ const DataSourcePage: React.FC = () => {
         <div className="datasource-page-container">
           <div className="datasource-page-content">
             <motion.div initial="hidden" animate="visible" variants={PAGE_ANIMATION.sectionStagger}>
-              <motion.div variants={PAGE_ANIMATION.fadeUp}>
-                <PageHeader
-                  onCreate={handleCreate}
-                  onManageMasterData={() => setMasterDataOpen(true)}
-                />
-              </motion.div>
+              <div className="datasource-page-titlebar">数据源管理</div>
 
-              <motion.div variants={PAGE_ANIMATION.fadeUp}>
-                <SearchBar
-                  value={searchKeyword}
-                  onChange={(value) => {
-                    setSearchKeyword(value);
-                    setPagination((current) => ({ ...current, pageNo: 1 }));
-                  }}
-                  unitOptions={unitOptions}
-                  selectedUnit={selectedUnit}
-                  onUnitChange={(value) => {
-                    setSelectedUnit(value);
-                    setSelectedBusinessSystem(undefined);
-                    setPagination((current) => ({ ...current, pageNo: 1 }));
-                  }}
-                  businessSystemOptions={businessSystemOptions}
-                  selectedBusinessSystem={selectedBusinessSystem}
-                  onBusinessSystemChange={(value) => {
-                    setSelectedBusinessSystem(value);
-                    setPagination((current) => ({ ...current, pageNo: 1 }));
-                  }}
-                  selectedStatus={selectedStatus}
-                  onStatusChange={(value) => {
-                    setSelectedStatus(value as DataSourceLifecycleStatus | undefined);
-                    setPagination((current) => ({ ...current, pageNo: 1 }));
-                  }}
-                />
-              </motion.div>
+              <div className="datasource-search-panel">
+                <motion.div variants={PAGE_ANIMATION.fadeUp}>
+                  <PageHeader
+                    onCreate={handleCreate}
+                    onManageMasterData={() => setMasterDataOpen(true)}
+                  />
+                </motion.div>
 
-              <motion.div variants={PAGE_ANIMATION.fadeUp} className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  type={selectedCategory === 'ALL' ? 'primary' : 'default'}
-                  shape="round"
-                  onClick={() => {
-                    setSelectedCategory('ALL');
-                    setPagination((current) => ({ ...current, pageNo: 1 }));
-                  }}
-                >
-                  全部
-                </Button>
-                {DATA_SOURCE_CATEGORIES.map((category) => (
-                  <Button
-                    key={category.key}
-                    type={selectedCategory === category.key ? 'primary' : 'default'}
-                    shape="round"
-                    onClick={() => {
-                      setSelectedCategory(category.key);
+                <motion.div variants={PAGE_ANIMATION.fadeUp}>
+                  <SearchBar
+                    value={searchKeyword}
+                    onChange={(value) => {
+                      setSearchKeyword(value);
                       setPagination((current) => ({ ...current, pageNo: 1 }));
                     }}
-                  >
-                    {category.label}
-                  </Button>
-                ))}
-              </motion.div>
+                    unitOptions={unitOptions}
+                    selectedUnit={selectedUnit}
+                    onUnitChange={(value) => {
+                      setSelectedUnit(value);
+                      setSelectedBusinessSystem(undefined);
+                      setPagination((current) => ({ ...current, pageNo: 1 }));
+                    }}
+                    selectedStatus={selectedStatus}
+                    onStatusChange={(value) => {
+                      setSelectedStatus(value as DataSourceLifecycleStatus | undefined);
+                      setPagination((current) => ({ ...current, pageNo: 1 }));
+                    }}
+                    selectedCategory={selectedCategory}
+                    onCategoryChange={(value) => {
+                      setSelectedCategory(value);
+                      setPagination((current) => ({ ...current, pageNo: 1 }));
+                    }}
+                    onSearch={() => fetchList({ pageNo: 1 })}
+                    onReset={handleReset}
+                  />
+                </motion.div>
+              </div>
 
               <motion.p variants={PAGE_ANIMATION.fadeUp} className="datasource-page-count">
-                发现 {pagination.total} 个数据源
+                共 {pagination.total} 个数据源
               </motion.p>
 
               <Spin spinning={loading}>
                 <motion.div variants={PAGE_ANIMATION.cardStagger} initial="hidden" animate="visible">
                   {dataSourceList.length > 0 ? (
                     <section className="datasource-catalog-panel">
-                      <div className="datasource-catalog-panel__heading">
-                        <div>
-                          <h2 className="datasource-category-title">数据源清单</h2>
-                          <p>集中查看连接、归属和探查状态；支持在卡片和列表视图之间切换。</p>
-                        </div>
-                        <div className="datasource-catalog-panel__controls">
-                          <span className="datasource-category-count">{pagination.total}</span>
-                          <Segmented
-                            aria-label="数据源视图"
-                            className="datasource-view-switcher"
-                            value={viewMode}
-                            onChange={(value) => setViewMode(value as DataSourceViewMode)}
-                            options={[
-                              {
-                                label: (
-                                  <span className="datasource-view-option">
-                                    <AppstoreOutlined />
-                                    卡片
-                                  </span>
-                                ),
-                                value: 'card',
-                              },
-                              {
-                                label: (
-                                  <span className="datasource-view-option">
-                                    <UnorderedListOutlined />
-                                    列表
-                                  </span>
-                                ),
-                                value: 'list',
-                              },
-                            ]}
-                          />
-                        </div>
-                      </div>
                       {viewMode === 'card' ? (
                         <div className="datasource-card-grid">
                           {dataSourceList.map((record, index) => (
@@ -682,9 +636,10 @@ const DataSourcePage: React.FC = () => {
 
       <AddOrEditDataSourceModal ref={modalRef} onManageMasterData={() => setMasterDataOpen(true)} />
       <Drawer
+        className="datasource-master-data-drawer"
         title="单位与业务系统维护"
         placement="right"
-        width={1120}
+        width={1022}
         open={masterDataOpen}
         destroyOnClose
         onClose={() => setMasterDataOpen(false)}
