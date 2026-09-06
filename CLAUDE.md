@@ -1,20 +1,59 @@
-# 代码编写规则
+# CLAUDE.md
 
-本文档保存项目通用的代码编写规则，适用于 Claude Code、Codex 及其他代码助手。
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-## 编码前
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+## 1. Think Before Coding
 
-- 明确关键假设、歧义和成功标准；存在不确定性时先确认，不要静默猜测。
-- 复杂任务先列出简短计划，并为每一步定义验证方式。
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
 
-## 实现原则
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+## 2. Simplicity First
 
-- 优先采用能解决问题的最简单实现，不增加未被要求的功能、抽象或可配置项。
-- 只修改与需求直接相关的代码，遵循现有风格；不顺手重构、格式化或清理无关代码。
-- 只清理由本次改动产生的无用 import、变量或函数；不要删除原有的无关死代码。
+**Minimum code that solves the problem. Nothing speculative.**
 
-## 验证
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
 
-- 修复缺陷时先补充能够复现问题的测试，再实现修复。
-- 新增行为补充针对性测试，并运行与变更范围匹配的检查。
-- 完成后检查 diff，确认每一处改动都能对应需求，并如实报告未执行的验证。
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+The test: Every changed line should trace directly to the user's request.
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
