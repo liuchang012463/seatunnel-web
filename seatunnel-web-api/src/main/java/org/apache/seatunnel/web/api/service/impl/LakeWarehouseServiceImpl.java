@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ import org.apache.seatunnel.web.dao.repository.LakeDataSourceAliasDao;
 import org.apache.seatunnel.web.dao.repository.LakeJdbcDriverDao;
 import org.apache.seatunnel.web.dao.repository.LakeWarehouseConfigDao;
 import org.apache.seatunnel.web.spi.bean.dto.LakeWarehouseConfigDTO;
+import org.apache.seatunnel.web.spi.bean.vo.LakeDorisHardwareVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakeJdbcDriverVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakeDorisNodeVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakeDorisStatusVO;
@@ -35,6 +37,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,8 +51,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -62,6 +71,8 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
     public static final String SYSTEM_KEY = "LAKE_ODS_DORIS";
     private static final String DEFAULT_NAME = "Doris 数据湖";
     private static final String DEFAULT_DRIVER = "com.mysql.cj.jdbc.Driver";
+    private static final String DEFAULT_FE_HTTP_PORT = "8030";
+    private static final String DORIS_HARDWARE_PATH = "/rest/v1/hardware_info/fe/";
     private static final Pattern DRIVER_CLASS = Pattern.compile(
             "[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*");
 
@@ -313,6 +324,67 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
             log.warn("Unable to read Doris cluster status: {}", exception.getMessage());
             result.setStatus("CONNECTED_FAILED");
             result.setMessage("Doris 集群状态暂不可用，请检查连接配置");
+            return result;
+        }
+    }
+
+    @Override
+    public LakeDorisHardwareVO getDorisHardware() {
+        LakeDorisHardwareVO result = new LakeDorisHardwareVO();
+        result.setCheckedAt(Instant.now().toString());
+        LakeWarehouseConfig config = configDao.querySingleton();
+        boolean configured = config != null && StringUtils.isNotBlank(config.getJdbcUrl())
+                && StringUtils.isNotBlank(config.getUsername())
+                && StringUtils.isNotBlank(config.getPassword());
+        if (!configured) {
+            result.setStatus("NOT_CONFIGURED");
+            result.setMessage("请先完成 Doris 数据湖连接配置");
+            return result;
+        }
+
+        String password = PasswordUtils.decodePassword(config.getPassword());
+        if (StringUtils.isBlank(password)) {
+            result.setStatus("NOT_CONFIGURED");
+            result.setMessage("Doris 连接凭据不可用，请重新保存数据湖配置");
+            return result;
+        }
+
+        try {
+            String host = jdbcHost(config.getJdbcUrl(), "localhost");
+            URI endpoint = URI.create("http://" + host + ":" + DEFAULT_FE_HTTP_PORT + DORIS_HARDWARE_PATH);
+            String credentials = config.getUsername() + ":" + password;
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(endpoint)
+                    .timeout(Duration.ofSeconds(5))
+                    .header("Accept", "application/json")
+                    .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(
+                            credentials.getBytes(StandardCharsets.UTF_8)))
+                    .GET()
+                    .build();
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(3))
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .build();
+            HttpResponse<String> response = client.send(
+                    request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new IOException("Doris hardware endpoint returned HTTP " + response.statusCode());
+            }
+            LakeDorisHardwareVO parsed = parseHardwarePayload(response.body());
+            parsed.setStatus("CONNECTED_SUCCESS");
+            parsed.setMessage("Doris FE 主机硬件信息已同步");
+            parsed.setCheckedAt(result.getCheckedAt());
+            return parsed;
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            log.warn("Interrupted while reading Doris hardware status");
+            result.setStatus("CONNECTED_FAILED");
+            result.setMessage("Doris FE 主机硬件信息读取被中断");
+            return result;
+        } catch (Exception exception) {
+            log.warn("Unable to read Doris hardware status: {}", exception.getMessage());
+            result.setStatus("CONNECTED_FAILED");
+            result.setMessage("Doris FE 主机硬件信息暂不可用");
             return result;
         }
     }
@@ -730,6 +802,139 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         String authority = slash >= 0 ? normalized.substring(0, slash) : normalized;
         int colon = authority.lastIndexOf(':');
         return colon > 0 && colon < authority.length() - 1 ? authority.substring(colon + 1) : fallback;
+    }
+
+    static LakeDorisHardwareVO parseHardwarePayload(String payload) {
+        JsonNode root = JSONUtils.parseObject(payload, JsonNode.class);
+        JsonNode data = root.path("data");
+        JsonNode version = data.path("VersionInfo");
+        JsonNode hardware = data.path("HardwareInfo");
+        LakeDorisHardwareVO result = new LakeDorisHardwareVO();
+        result.setVersion(text(version, "Version"));
+        result.setBuildInfo(text(version, "BuildInfo"));
+        result.setBuildTime(text(version, "BuildTime"));
+
+        String network = normalizeHardwareText(text(hardware, "NetworkParameter"));
+        String processor = normalizeHardwareText(text(hardware, "Processor"));
+        String operatingSystem = normalizeHardwareText(text(hardware, "OS"));
+        String memory = normalizeHardwareText(text(hardware, "Memory"));
+        String filesystem = normalizeHardwareText(text(hardware, "FileSystem"));
+        String networkInterface = normalizeHardwareText(text(hardware, "NetworkInterface"));
+        String processes = normalizeHardwareText(text(hardware, "Processes"));
+        String disk = normalizeHardwareText(text(hardware, "Disk"));
+
+        result.setHostName(firstMatch(network,
+                "Host\\s+name\\s*:\\s*(.*?)(?=\\s+Domain\\s+name\\s*:|\\s+DNS\\s+servers\\s*:|\\s+IPv4\\s+Gateway\\s*:|$)"));
+        result.setIpv4(firstMatch(networkInterface, "IPv4\\s*\\[([^]]+)]"));
+        result.setIpv4(firstNonBlank(result.getIpv4(), firstMatch(network, "IPv4[^:]*:\\s*([0-9a-fA-F:.]+)")));
+        result.setOs(firstMatch(operatingSystem, "^(.*?)(?=\\s+Uptime\\s*:|$)"));
+        result.setUptime(firstMatch(operatingSystem, "Uptime\\s*:\\s*(.*)$"));
+        result.setCpuModel(firstMatch(processor,
+                "^(.*?)(?=\\s+\\d[\\d,]*\\s+physical CPU package|\\s+\\d[\\d,]*\\s+physical CPU core|$)"));
+        result.setCpuCores(parseInteger(firstMatch(processor, "([\\d,]+)\\s+physical CPU core")));
+        result.setCpuLoad(firstMatch(processor, "CPU load\\s*:\\s*([\\d.]+%?)"));
+
+        String[] memoryValues = firstPair(memory, "Memory\\s*:\\s*([\\d.]+\\s*\\w+)\\s*/\\s*([\\d.]+\\s*\\w+)");
+        result.setMemoryUsed(valueAt(memoryValues, 0));
+        result.setMemoryTotal(valueAt(memoryValues, 1));
+        result.setMemoryUsedPercent(percent(valueAt(memoryValues, 0), valueAt(memoryValues, 1)));
+        String[] swapValues = firstPair(memory, "Swap used\\s*:\\s*([\\d.]+\\s*\\w+)\\s*/\\s*([\\d.]+\\s*\\w+)");
+        result.setSwapUsed(valueAt(swapValues, 0));
+        result.setSwapTotal(valueAt(swapValues, 1));
+
+        String[] filesystemValues = firstPair(filesystem,
+                "([\\d.]+\\s*\\w+)\\s+of\\s+([\\d.]+\\s*\\w+)\\s+free\\s*\\(([^)]+)\\)");
+        result.setFilesystemFree(valueAt(filesystemValues, 0));
+        result.setFilesystemTotal(valueAt(filesystemValues, 1));
+        result.setFilesystemFreePercent(valueAt(filesystemValues, 2));
+        result.setProcessCount(parseInteger(firstMatch(processes, "Processes\\s*:\\s*([\\d,]+)")));
+        result.setThreadCount(parseInteger(firstMatch(processes, "Threads\\s*:\\s*([\\d,]+)")));
+        result.setNetworkReceive(firstMatch(networkInterface, "Traffic received\\s*:\\s*([^,;]+)"));
+        result.setNetworkTransmit(firstMatch(networkInterface, "Traffic transmitted\\s*:\\s*([^,;]+)"));
+        result.setDiskSummary(StringUtils.abbreviate(disk, 180));
+        return result;
+    }
+
+    private static String text(JsonNode parent, String field) {
+        JsonNode value = parent == null ? null : parent.get(field);
+        return value == null || value.isNull() ? null : value.asText();
+    }
+
+    private static String normalizeHardwareText(String value) {
+        return StringUtils.normalizeSpace(StringUtils.defaultString(value)
+                .replace("&nbsp;", " ")
+                .replaceAll("(?i)<br\\s*/?>", " ")
+                .replaceAll("<[^>]+>", " "));
+    }
+
+    private static String firstMatch(String value, String expression) {
+        if (StringUtils.isBlank(value)) {
+            return null;
+        }
+        var matcher = Pattern.compile(expression, Pattern.CASE_INSENSITIVE).matcher(value);
+        return matcher.find() ? StringUtils.trimToNull(matcher.group(1)) : null;
+    }
+
+    private static String[] firstPair(String value, String expression) {
+        if (StringUtils.isBlank(value)) {
+            return new String[0];
+        }
+        var matcher = Pattern.compile(expression, Pattern.CASE_INSENSITIVE).matcher(value);
+        if (!matcher.find()) {
+            return new String[0];
+        }
+        String[] values = new String[matcher.groupCount()];
+        for (int index = 0; index < matcher.groupCount(); index++) {
+            values[index] = StringUtils.trimToNull(matcher.group(index + 1));
+        }
+        return values;
+    }
+
+    private static String valueAt(String[] values, int index) {
+        return values != null && index < values.length ? values[index] : null;
+    }
+
+    private static Integer parseInteger(String value) {
+        if (StringUtils.isBlank(value)) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.replace(",", "").trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private static String percent(String used, String total) {
+        if (StringUtils.isBlank(used) || StringUtils.isBlank(total)) {
+            return null;
+        }
+        try {
+            double usedValue = Double.parseDouble(used.replaceAll("[^0-9.]", ""));
+            double totalValue = Double.parseDouble(total.replaceAll("[^0-9.]", ""));
+            return totalValue <= 0 ? null : String.format(Locale.ROOT, "%.1f%%", usedValue * 100 / totalValue);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private static String jdbcHost(String jdbcUrl, String fallback) {
+        if (StringUtils.isBlank(jdbcUrl)) {
+            return fallback;
+        }
+        String normalized = jdbcUrl.replaceFirst("^jdbc:[^:]+://", "");
+        int slash = normalized.indexOf('/');
+        String authority = slash >= 0 ? normalized.substring(0, slash) : normalized;
+        int at = authority.lastIndexOf('@');
+        if (at >= 0) {
+            authority = authority.substring(at + 1);
+        }
+        if (authority.startsWith("[")) {
+            int closing = authority.indexOf(']');
+            return closing > 0 ? authority.substring(0, closing + 1) : fallback;
+        }
+        int colon = authority.lastIndexOf(':');
+        return colon > 0 ? authority.substring(0, colon) : authority;
     }
 
     private static LakeJdbcDriverVO toDriverVO(LakeJdbcDriver driver) {

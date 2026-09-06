@@ -269,6 +269,35 @@ export interface LakeDorisStatus {
   backends?: LakeDorisNode[];
 }
 
+export interface LakeDorisHardware {
+  status?: string;
+  message?: string;
+  checkedAt?: string;
+  version?: string;
+  buildInfo?: string;
+  buildTime?: string;
+  hostName?: string;
+  ipv4?: string;
+  os?: string;
+  uptime?: string;
+  cpuModel?: string;
+  cpuCores?: number;
+  cpuLoad?: string;
+  memoryUsed?: string;
+  memoryTotal?: string;
+  memoryUsedPercent?: string;
+  swapUsed?: string;
+  swapTotal?: string;
+  filesystemFree?: string;
+  filesystemTotal?: string;
+  filesystemFreePercent?: string;
+  processCount?: number;
+  threadCount?: number;
+  diskSummary?: string;
+  networkReceive?: string;
+  networkTransmit?: string;
+}
+
 export interface LakeJdbcDriver {
   id?: number;
   adapter?: LakeJdbcAdapter | string;

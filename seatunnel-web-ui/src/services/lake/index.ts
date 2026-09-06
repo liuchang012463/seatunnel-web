@@ -3,6 +3,7 @@ import type {
   LakeApiResponse,
   LakeCatalog,
   LakeDorisStatus,
+  LakeDorisHardware,
   LakeDeleteImpact,
   LakeInventoryTable,
   LakeLifecyclePolicy,
@@ -200,6 +201,10 @@ export async function testLakeWarehouse(
 
 export async function fetchLakeDorisStatus(): Promise<LakeApiResponse<LakeDorisStatus>> {
   return HttpUtils.get(`${WAREHOUSE}/status`);
+}
+
+export async function fetchLakeDorisHardware(): Promise<LakeApiResponse<LakeDorisHardware>> {
+  return HttpUtils.get(`${WAREHOUSE}/hardware`);
 }
 
 export async function fetchLakeJdbcDrivers(): Promise<LakeApiResponse<LakeJdbcDriver[]>> {

@@ -263,7 +263,7 @@
 .lake-warehouse-content {
   min-width: 0;
   padding: 28px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .lake-cluster-hero {
@@ -473,6 +473,9 @@
 }
 
 .lake-section-caption {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--st-color-text-muted);
   font-size: 12px;
   white-space: nowrap;
@@ -480,7 +483,7 @@
 
 .lake-cluster-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
   margin-top: 14px;
 }
@@ -517,12 +520,17 @@
   background: rgba(255, 116, 116, 0.13);
 }
 
+.lake-cluster-metric-icon--muted {
+  color: var(--st-color-text-secondary);
+  background: var(--st-color-hover);
+}
+
 .lake-cluster-metric-value {
   margin-top: 18px;
   overflow: hidden;
   color: var(--st-color-accent);
   font-family: var(--st-font-digital);
-  font-size: 27px;
+  font-size: 25px;
   line-height: 32px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -543,11 +551,162 @@
   line-height: 18px;
 }
 
-.lake-node-section-grid {
+.lake-hardware-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(250px, 0.85fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.lake-hardware-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
-  margin-top: 24px;
+}
+
+.lake-hardware-metric,
+.lake-hardware-details {
+  min-width: 0;
+  padding: 19px 20px;
+  background: var(--st-color-bg-panel);
+  border: 1px solid var(--st-color-border);
+  border-radius: 16px;
+}
+
+.lake-hardware-metric-value {
+  margin-top: 18px;
+  overflow: hidden;
+  color: var(--st-color-accent);
+  font-family: var(--st-font-digital);
+  font-size: 18px;
+  line-height: 28px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lake-hardware-metric-value--error {
+  color: #ff8d8d;
+}
+
+.lake-hardware-metric-value--muted {
+  color: var(--st-color-text-secondary);
+}
+
+.lake-hardware-progress {
+  height: 4px;
+  margin-top: 9px;
+  overflow: hidden;
+  background: var(--st-color-hover);
+  border-radius: 999px;
+}
+
+.lake-hardware-progress span {
+  display: block;
+  height: 100%;
+  background: #42d392;
+  border-radius: inherit;
+}
+
+.lake-hardware-details-title {
+  color: var(--st-color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.lake-hardware-details-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.lake-hardware-detail-row {
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  color: var(--st-color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.lake-hardware-detail-row strong {
+  overflow: hidden;
+  color: var(--st-color-text-secondary);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lake-hardware-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 132px;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 20px;
+  color: var(--st-color-text-muted);
+  font-size: 12px;
+  text-align: center;
+  background: var(--st-color-bg-panel);
+  border: 1px solid var(--st-color-border);
+  border-radius: 16px;
+}
+
+.lake-hardware-empty--muted .anticon {
+  color: var(--st-color-text-muted);
+}
+
+.lake-node-section-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.lake-nodes-section {
+  margin-top: 26px;
+}
+
+.lake-section-health {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 7px;
+  padding: 5px 9px;
+  color: var(--st-color-text-secondary);
+  font-size: 12px;
+  background: var(--st-color-hover);
+  border: 1px solid var(--st-color-divider);
+  border-radius: 999px;
+}
+
+.lake-section-health > span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: var(--st-color-text-muted);
+  border-radius: 50%;
+}
+
+.lake-section-health--success {
+  color: #72f0bd;
+  background: rgba(44, 180, 125, 0.12);
+  border-color: rgba(66, 211, 146, 0.36);
+}
+
+.lake-section-health--success > span {
+  background: #42d392;
+}
+
+.lake-section-health--error {
+  color: #ff9a9a;
+  background: rgba(255, 85, 85, 0.12);
+  border-color: rgba(255, 116, 116, 0.36);
+}
+
+.lake-section-health--error > span {
+  background: #ff7474;
 }
 
 .lake-node-panel {
@@ -574,7 +733,7 @@
 }
 
 .lake-node-table-wrap {
-  overflow: auto;
+  overflow-x: auto;
 }
 
 .lake-node-table {
@@ -586,10 +745,11 @@
 
 .lake-node-table th,
 .lake-node-table td {
-  padding: 10px 12px;
+  padding: 11px 12px;
   text-align: left;
   border-bottom: 1px solid var(--st-color-divider-subtle);
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .lake-node-table th {
@@ -619,6 +779,44 @@
   color: var(--st-color-text-muted);
   font-size: 10px;
   text-overflow: ellipsis;
+}
+
+.lake-node-usage {
+  display: inline-flex;
+  align-items: center;
+  min-width: 104px;
+  gap: 8px;
+  color: var(--st-color-text-secondary);
+}
+
+.lake-node-usage-track {
+  display: inline-block;
+  width: 52px;
+  height: 5px;
+  overflow: hidden;
+  background: var(--st-color-hover);
+  border-radius: 999px;
+}
+
+.lake-node-usage-fill {
+  display: block;
+  height: 100%;
+  background: #42d392;
+  border-radius: inherit;
+}
+
+.lake-node-usage-fill--high {
+  background: #ff7474;
+}
+
+.lake-node-usage strong {
+  color: var(--st-color-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.lake-node-usage-empty {
+  color: var(--st-color-text-muted);
 }
 
 .lake-inline-status {
@@ -661,6 +859,20 @@
   .lake-cluster-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .lake-hardware-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lake-hardware-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1680px) {
+  .lake-node-section-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 820px) {
@@ -700,6 +912,10 @@
   .lake-node-section-grid {
     grid-template-columns: 1fr;
   }
+
+  .lake-section-heading {
+    align-items: flex-start;
+  }
 }
 
 @media (max-width: 520px) {
@@ -726,6 +942,10 @@
   }
 
   .lake-cluster-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .lake-hardware-grid {
     grid-template-columns: 1fr;
   }
 
