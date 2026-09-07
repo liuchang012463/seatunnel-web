@@ -6,7 +6,6 @@ import com.zaxxer.hikari.HikariDataSource;
 import jakarta.annotation.PreDestroy;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
-import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.LakeWarehouseConfig;
@@ -143,7 +142,7 @@ public class LakeDataSourceResolver implements AutoCloseable {
         ObjectNode node = org.apache.seatunnel.web.common.utils.JSONUtils.createObjectNode();
         node.put("url", config.getJdbcUrl());
         node.put("user", config.getUsername());
-        node.put("password", PasswordUtils.decodePassword(config.getPassword()));
+        node.put("password", config.getPassword());
         node.put("driver", StringUtils.defaultIfBlank(config.getDriverClass(), "com.mysql.cj.jdbc.Driver"));
         if (StringUtils.isNotBlank(config.getDriverLocation())) {
             node.put("driverLocation", config.getDriverLocation());

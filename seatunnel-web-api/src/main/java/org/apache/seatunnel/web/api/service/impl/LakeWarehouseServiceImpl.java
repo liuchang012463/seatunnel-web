@@ -6,7 +6,6 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeJdbcDriverLoader;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
@@ -130,12 +129,11 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
             throw new LakeServiceException(LakeErrorCode.LAKE_DORIS_UNAVAILABLE,
                     "无法连接 Doris ODS，请检查地址、账号、密码和本地驱动");
         }
-        // A first-time configuration has no stored password to reuse.  Only
+        // A first-time configuration has no stored password to reuse. Only
         // an empty password on an existing configuration means "keep the
-        // current encrypted password"; otherwise encrypt the password from
-        // this request, including on the first save.
-        String encryptedPassword = resolveEncryptedPassword(current, request.getPassword());
-        if (StringUtils.isBlank(encryptedPassword)) {
+        // current password"; otherwise use the password from this request.
+        String password = resolvePassword(current, request.getPassword());
+        if (StringUtils.isBlank(password)) {
             throw invalid("password");
         }
 
@@ -154,7 +152,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         Long oldProjectionId = current == null ? null : current.getSystemDataSourceId();
         projection.setName(StringUtils.defaultIfBlank(request.getName(), DEFAULT_NAME).trim());
         projection.setDbType(DbType.DORIS);
-        projection.setConnectionParams(connectionJson(effective, encryptedPassword, effective.driverLocation()));
+        projection.setConnectionParams(connectionJson(effective, password, effective.driverLocation()));
         projection.setOriginalJson(projection.getConnectionParams());
         projection.setSystemManaged(true);
         projection.setSystemKey(SYSTEM_KEY);
@@ -187,7 +185,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         target.setName(StringUtils.defaultIfBlank(request.getName(), DEFAULT_NAME).trim());
         target.setJdbcUrl(effective.jdbcUrl());
         target.setUsername(effective.username());
-        target.setPassword(encryptedPassword);
+        target.setPassword(password);
         target.setDriverClass(effective.driverClass());
         target.setDriverLocation(effective.driverLocation());
         target.setDriverSha256(effective.driverSha256());
@@ -216,7 +214,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         String password = StringUtils.defaultString(request.getPassword());
         LakeWarehouseConfig existing = configDao.querySingleton();
         if (password.isBlank() && existing != null) {
-            password = PasswordUtils.decodePassword(existing.getPassword());
+            password = existing.getPassword();
         }
         if (password.isBlank()) {
             throw invalid("password");
@@ -277,7 +275,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
             return result;
         }
 
-        String password = PasswordUtils.decodePassword(config.getPassword());
+        String password = config.getPassword();
         if (StringUtils.isBlank(password)) {
             result.setConfigured(false);
             result.setStatus("NOT_CONFIGURED");
@@ -342,7 +340,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
             return result;
         }
 
-        String password = PasswordUtils.decodePassword(config.getPassword());
+        String password = config.getPassword();
         if (StringUtils.isBlank(password)) {
             result.setStatus("NOT_CONFIGURED");
             result.setMessage("Doris 连接凭据不可用，请重新保存数据湖配置");
@@ -616,11 +614,11 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         return copy;
     }
 
-    private String connectionJson(ValidConfig config, String encryptedPassword, String requestedLocation) {
+    private String connectionJson(ValidConfig config, String password, String requestedLocation) {
         ObjectNode node = JSONUtils.createObjectNode();
         node.put("url", config.jdbcUrl());
         node.put("user", config.username());
-        node.put("password", encryptedPassword);
+        node.put("password", password);
         node.put("driver", config.driverClass());
         String location = StringUtils.defaultIfBlank(requestedLocation, config.driverLocation());
         if (StringUtils.isNotBlank(location)) {
@@ -699,10 +697,10 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
                 "数据湖配置参数无效：" + field);
     }
 
-    static String resolveEncryptedPassword(LakeWarehouseConfig current, String requestedPassword) {
+    static String resolvePassword(LakeWarehouseConfig current, String requestedPassword) {
         return StringUtils.isBlank(requestedPassword)
                 ? current == null ? null : current.getPassword()
-                : PasswordUtils.encodePassword(requestedPassword);
+                : requestedPassword;
     }
 
     private static LakeWarehouseConfigVO toVO(LakeWarehouseConfig config) {
