@@ -33,16 +33,31 @@ port_listening() {
   ss -ltn "( sport = :${port} )" 2>/dev/null | grep -q LISTEN
 }
 
+# Parse KEY=VALUE without bash interpreting &, $, #, spaces in values.
+# VS Code envFile does the same; `source .env` breaks JDBC URLs that contain `&`.
 load_dotenv() {
   local env_file="$ROOT/.env"
   if [[ ! -f "$env_file" ]]; then
     echo "error: missing $env_file (required for local API; copy from .env.example)" >&2
     exit 1
   fi
-  set -a
-  # shellcheck disable=SC1090
-  source "$env_file"
-  set +a
+  local line key val
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    [[ -z "${line//[[:space:]]/}" || "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" == *"="* ]] || continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    if [[ "$val" =~ ^\"(.*)\"$ ]]; then
+      val="${BASH_REMATCH[1]}"
+    elif [[ "$val" =~ ^\'(.*)\'$ ]]; then
+      val="${BASH_REMATCH[1]}"
+    fi
+    export "$key=$val"
+  done <"$env_file"
   export SPRING_FLYWAY_REPAIR_ON_MIGRATE="${SPRING_FLYWAY_REPAIR_ON_MIGRATE:-false}"
   BACKEND_PORT="${SERVER_PORT:-$BACKEND_PORT}"
 }

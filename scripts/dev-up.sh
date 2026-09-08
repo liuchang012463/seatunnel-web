@@ -39,18 +39,14 @@ fi
 
 echo "starting backend (java -jar $BACKEND_JAR, port=$BACKEND_PORT)"
 echo "==== runtime ====" >>"$BACKEND_LOG"
-setsid bash -c "
-  cd \"$ROOT\"
-  export JAVA_HOME=\"$JAVA_HOME\"
-  export PATH=\"\$JAVA_HOME/bin:\$PATH\"
-  set -a
-  # shellcheck disable=SC1090
-  source \"$ROOT/.env\"
-  set +a
-  export SPRING_FLYWAY_REPAIR_ON_MIGRATE=\"\${SPRING_FLYWAY_REPAIR_ON_MIGRATE:-false}\"
-  # shellcheck disable=SC2086
-  exec java \${JAVA_OPTS:-} -jar \"$BACKEND_JAR\"
-" >>"$BACKEND_LOG" 2>&1 &
+# Env already loaded by load_dotenv in this process; inherit it (do not `source .env`
+# again — bash treats `&` in JDBC URLs as background operators).
+setsid env \
+  JAVA_HOME="$JAVA_HOME" \
+  PATH="$JAVA_HOME/bin:$PATH" \
+  SPRING_FLYWAY_REPAIR_ON_MIGRATE="${SPRING_FLYWAY_REPAIR_ON_MIGRATE:-false}" \
+  bash -c 'exec java ${JAVA_OPTS:-} -jar "$0"' "$BACKEND_JAR" \
+  >>"$BACKEND_LOG" 2>&1 &
 echo $! >"$BACKEND_PID_FILE"
 
 echo "starting frontend (port=$FRONTEND_PORT)"
