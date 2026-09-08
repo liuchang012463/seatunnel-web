@@ -625,7 +625,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                 <button
                   type="button"
                   className="exploration-drawer__er-link"
-                  disabled={!databaseFqn}
+                  disabled={!databaseFqn || !schemaFqn}
                   onClick={() => setErOpen(true)}
                 >
                   <span><ApartmentOutlined /> ER 图</span>
@@ -978,6 +978,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
         open={erOpen}
         dataSourceId={dataSourceId}
         databaseFqn={databaseFqn}
+        schemaFqn={schemaFqn}
         onClose={() => setErOpen(false)}
       />
       <Modal
