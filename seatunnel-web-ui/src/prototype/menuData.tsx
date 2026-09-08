@@ -67,6 +67,7 @@ export const prototypeMenuData: MenuDataItem[] = [
     icon: <MonitorOutlined />,
     children: [
       { path: '/client', name: '引擎管理', icon: <ApiOutlined /> },
+      { path: '/operations/metadata-engine', name: '探查引擎管理', icon: <ReadOutlined /> },
       { path: '/lake/warehouse', name: '数据湖管理', icon: <SettingOutlined /> },
       { path: '/alarm', name: '告警管理', icon: <SettingOutlined /> },
       { path: '/operations/protocol', name: '协议管理', icon: <ApiOutlined /> },
