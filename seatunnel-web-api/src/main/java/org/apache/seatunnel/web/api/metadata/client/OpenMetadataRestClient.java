@@ -24,6 +24,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -51,6 +52,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * singleton after seed). When {@code config_version} changes, the SDK client
  * is rebuilt without restarting the process.</p>
  */
+@Slf4j
 @Component
 public class OpenMetadataRestClient implements OpenMetadataClient {
 
@@ -128,14 +130,28 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         return new org.openmetadata.sdk.client.OpenMetadataClient(config);
     }
 
+    /**
+     * Verifies the fixed OpenMetadata 1.12.10 server and managed ingestion patch.
+     * Throws {@link MetadataIntegrationException} with {@code OM_CONNECTION_ERROR}
+     * when the remote version or PipelineServiceClient health does not match.
+     */
     @Override
     public void assertFixedVersion() {
         if (versionVerified.get()) {
             return;
         }
+        OpenMetadataRuntimeConfig runtime = current();
+        log.info("OpenMetadata version check starting: baseUrl={}, expectedServer={}, expectedIngestion={}",
+                sanitizeBaseUrl(runtime.getBaseUrl()),
+                runtime.getExpectedServerVersion(),
+                runtime.getExpectedIngestionPatch());
         JsonNode response = sdkRequest("GET", "/v1/system/version", null, false);
         String actualVersion = response.path("version").asText();
-        if (!current().getExpectedServerVersion().equals(actualVersion)) {
+        if (!runtime.getExpectedServerVersion().equals(actualVersion)) {
+            log.warn("OpenMetadata server version mismatch: baseUrl={}, expected={}, actual={}",
+                    sanitizeBaseUrl(runtime.getBaseUrl()),
+                    runtime.getExpectedServerVersion(),
+                    actualVersion);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata Server version does not match the fixed 1.12.10 contract");
@@ -144,19 +160,31 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 "GET", "/v1/services/ingestionPipelines/status", null, false);
         int managedStatusCode = ingestionServiceStatus.path("code").asInt(-1);
         if (managedStatusCode < 200 || managedStatusCode >= 300) {
+            log.warn("OpenMetadata PipelineServiceClient unhealthy: baseUrl={}, statusCode={}",
+                    sanitizeBaseUrl(runtime.getBaseUrl()), managedStatusCode);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata PipelineServiceClient is not healthy");
         }
         String actualIngestionVersion = ingestionServiceStatus.path("version").asText();
-        if (!current().getExpectedIngestionPatch().equals(actualIngestionVersion)) {
+        if (!runtime.getExpectedIngestionPatch().equals(actualIngestionVersion)) {
+            log.warn("OpenMetadata ingestion patch mismatch: baseUrl={}, expected={}, actual={}",
+                    sanitizeBaseUrl(runtime.getBaseUrl()),
+                    runtime.getExpectedIngestionPatch(),
+                    actualIngestionVersion);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata IngestionPipeline managed build does not match the fixed 1.12.10.0 contract");
         }
         versionVerified.set(true);
+        log.info("OpenMetadata version check passed: server={}, ingestion={}",
+                actualVersion, actualIngestionVersion);
     }
 
+    /**
+     * Best-effort health probe used by ops pages. Never throws; DOWN states are
+     * returned instead so callers can render a stable operator response.
+     */
     @Override
     public OpenMetadataHealth health() {
         String serverVersion = null;
@@ -165,19 +193,32 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             JsonNode versionResponse = sdkRequest("GET", "/v1/system/version", null, false);
             serverVersion = versionResponse.path("version").asText(null);
             openMetadataUp = true;
-        } catch (Exception ignored) {
+        } catch (Exception error) {
+            log.warn("OpenMetadata health version probe failed: baseUrl={}, type={}, message={}",
+                    sanitizeBaseUrl(current().getBaseUrl()),
+                    error.getClass().getSimpleName(),
+                    error.getMessage());
             return new OpenMetadataHealth(false, false, null, null);
         }
         try {
             JsonNode status = sdkRequest(
                     "GET", "/v1/services/ingestionPipelines/status", null, false);
             int code = status.path("code").asInt(-1);
+            boolean orchestratorUp = code >= 200 && code < 300;
+            if (!orchestratorUp) {
+                log.warn("OpenMetadata orchestrator health DOWN: baseUrl={}, statusCode={}",
+                        sanitizeBaseUrl(current().getBaseUrl()), code);
+            }
             return new OpenMetadataHealth(
                     openMetadataUp,
-                    code >= 200 && code < 300,
+                    orchestratorUp,
                     serverVersion,
                     status.path("version").asText(null));
-        } catch (Exception ignored) {
+        } catch (Exception error) {
+            log.warn("OpenMetadata orchestrator health probe failed: baseUrl={}, type={}, message={}",
+                    sanitizeBaseUrl(current().getBaseUrl()),
+                    error.getClass().getSimpleName(),
+                    error.getMessage());
             return new OpenMetadataHealth(openMetadataUp, false, serverVersion, null);
         }
     }
@@ -686,22 +727,48 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         }
     }
 
-    /** Execute an unsupported-by-1.12.10 operation through the SDK network client. */
+    /**
+     * Execute an unsupported-by-1.12.10 operation through the SDK network client.
+     * Logs method, path, duration and failure type; never logs tokens or auth headers.
+     */
     private JsonNode sdkRequest(String method, String path, Object body, boolean absentOn404) {
         validateBaseUrl();
+        long started = System.currentTimeMillis();
+        String safeBase = sanitizeBaseUrl(current().getBaseUrl());
+        log.debug("OpenMetadata SDK request start: method={}, path={}, baseUrl={}",
+                method, path, safeBase);
         try {
             String response = sdk().getHttpClient().executeForString(
                     HttpMethod.valueOf(method), path, body);
+            log.debug("OpenMetadata SDK request ok: method={}, path={}, elapsedMs={}",
+                    method, path, System.currentTimeMillis() - started);
             return response == null || response.isBlank()
                     ? OBJECT_MAPPER.createObjectNode()
                     : OBJECT_MAPPER.readTree(response);
         } catch (OpenMetadataException error) {
             if (absentOn404 && isNotFound(error)) {
+                log.debug("OpenMetadata SDK request absent: method={}, path={}, status=404, elapsedMs={}",
+                        method, path, System.currentTimeMillis() - started);
                 return null;
             }
+            log.warn("OpenMetadata SDK request failed: method={}, path={}, baseUrl={}, status={}, type={}, message={}, elapsedMs={}",
+                    method,
+                    path,
+                    safeBase,
+                    error.getStatusCode(),
+                    error.getClass().getSimpleName(),
+                    error.getMessage(),
+                    System.currentTimeMillis() - started);
             throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata SDK request failed", error);
         } catch (Exception error) {
+            log.warn("OpenMetadata SDK response unreadable: method={}, path={}, baseUrl={}, type={}, message={}, elapsedMs={}",
+                    method,
+                    path,
+                    safeBase,
+                    error.getClass().getSimpleName(),
+                    error.getMessage(),
+                    System.currentTimeMillis() - started);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata SDK response could not be read", error);
@@ -712,12 +779,26 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         OpenMetadataConfigResolver.validateBaseUrl(current().getBaseUrl());
     }
 
+    /** Host + path only; strips query strings that might carry secrets. */
+    static String sanitizeBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "";
+        }
+        int query = baseUrl.indexOf('?');
+        return query < 0 ? baseUrl : baseUrl.substring(0, query);
+    }
+
     private static boolean isNotFound(OpenMetadataException error) {
         return error.getStatusCode() == 404;
     }
 
     private static MetadataIntegrationException sdkFailure(
             MetadataErrorCode code, String message, OpenMetadataException cause) {
+        log.warn("OpenMetadata typed SDK call failed: code={}, status={}, type={}, message={}",
+                code,
+                cause == null ? -1 : cause.getStatusCode(),
+                cause == null ? "null" : cause.getClass().getSimpleName(),
+                cause == null ? null : cause.getMessage());
         return new MetadataIntegrationException(code, message, cause);
     }
 

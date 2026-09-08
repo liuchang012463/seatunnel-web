@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.metadata;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
@@ -21,7 +22,11 @@ import java.util.Map;
  * the official 1.12.10 SDK in {@link DataExplorationService}, while this
  * client only submits and observes the extension's asynchronous description
  * generation task.
+ *
+ * <p>Failures are logged with operation name, base URL and HTTP status. Tokens
+ * are never present on this client and must not be introduced here.</p>
  */
+@Slf4j
 @Component
 public class MetadataExtensionClient {
 
@@ -40,6 +45,7 @@ public class MetadataExtensionClient {
                 .build();
     }
 
+    /** Starts an async description-completion job for one table FQN. */
     public JsonNode startGenerate(String fullyQualifiedName) {
         requireConfigured();
         if (fullyQualifiedName == null || fullyQualifiedName.isBlank()) {
@@ -56,9 +62,11 @@ public class MetadataExtensionClient {
                                 "sample_rows", 50,
                                 "max_concurrency", 3))
                         .exchangeToMono(this::readResponse),
-                "generate");
+                "generate",
+                fullyQualifiedName);
     }
 
+    /** Reads completion job status by extension job id. */
     public JsonNode getJob(String jobId) {
         requireConfigured();
         if (jobId == null || jobId.isBlank()) {
@@ -70,7 +78,8 @@ public class MetadataExtensionClient {
                 webClient.get()
                         .uri(endpoint("jobs", jobId))
                         .exchangeToMono(this::readResponse),
-                "job status");
+                "job status",
+                jobId);
     }
 
     private Mono<JsonNode> readResponse(
@@ -97,9 +106,14 @@ public class MetadataExtensionClient {
                 });
     }
 
-    private JsonNode await(Mono<JsonNode> request, String operation) {
+    private JsonNode await(Mono<JsonNode> request, String operation, String resource) {
+        long started = System.currentTimeMillis();
+        String baseUrl = sanitizeBaseUrl(
+                properties == null ? null : properties.getBaseUrl());
+        log.debug("Metadata extension request start: operation={}, resource={}, baseUrl={}",
+                operation, resource, baseUrl);
         try {
-            return request
+            JsonNode result = request
                     .onErrorMap(error -> error instanceof MetadataIntegrationException
                             ? error
                             : new MetadataIntegrationException(
@@ -110,9 +124,26 @@ public class MetadataExtensionClient {
                                             : ": " + error.getMessage()),
                                     error))
                     .block(timeout());
+            log.debug("Metadata extension request ok: operation={}, resource={}, elapsedMs={}",
+                    operation, resource, System.currentTimeMillis() - started);
+            return result;
         } catch (MetadataIntegrationException error) {
+            log.warn("Metadata extension request failed: operation={}, resource={}, baseUrl={}, code={}, message={}, elapsedMs={}",
+                    operation,
+                    resource,
+                    baseUrl,
+                    error.getErrorCode(),
+                    error.getMessage(),
+                    System.currentTimeMillis() - started);
             throw error;
         } catch (RuntimeException error) {
+            log.warn("Metadata extension request failed: operation={}, resource={}, baseUrl={}, type={}, message={}, elapsedMs={}",
+                    operation,
+                    resource,
+                    baseUrl,
+                    error.getClass().getSimpleName(),
+                    error.getMessage(),
+                    System.currentTimeMillis() - started);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.METADATA_EXTENSION_ERROR,
                     "Metadata completion service " + operation + " request failed"
@@ -159,5 +190,13 @@ public class MetadataExtensionClient {
                     MetadataErrorCode.METADATA_EXTENSION_NOT_CONFIGURED,
                     "Metadata completion service is not configured");
         }
+    }
+
+    private static String sanitizeBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "";
+        }
+        int query = baseUrl.indexOf('?');
+        return query < 0 ? baseUrl : baseUrl.substring(0, query);
     }
 }
