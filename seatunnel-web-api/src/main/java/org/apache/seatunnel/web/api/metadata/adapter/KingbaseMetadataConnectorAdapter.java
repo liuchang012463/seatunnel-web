@@ -1,6 +1,8 @@
 package org.apache.seatunnel.web.api.metadata.adapter;
 
+import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
+import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -9,16 +11,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class KingbaseMetadataConnectorAdapter extends CustomDatabaseMetadataConnectorAdapter {
 
-    private final OpenMetadataProperties openMetadataProperties;
+    private final OpenMetadataConfigResolver configResolver;
 
-    /** Kept for the registry unit tests; production wiring uses the properties constructor. */
+    /** Kept for the registry unit tests; production wiring uses the resolver constructor. */
     public KingbaseMetadataConnectorAdapter() {
-        this.openMetadataProperties = null;
+        this.configResolver = null;
     }
 
     @Autowired
+    public KingbaseMetadataConnectorAdapter(OpenMetadataConfigResolver configResolver) {
+        this.configResolver = configResolver;
+    }
+
+    /** Backward-compatible constructor for older unit tests. */
     public KingbaseMetadataConnectorAdapter(OpenMetadataProperties openMetadataProperties) {
-        this.openMetadataProperties = openMetadataProperties;
+        this.configResolver = OpenMetadataConfigResolver.fixed(openMetadataProperties);
     }
 
     @Override
@@ -34,15 +41,16 @@ public class KingbaseMetadataConnectorAdapter extends CustomDatabaseMetadataConn
     @Override
     protected ConnectionValues connectionValues(org.apache.seatunnel.web.dao.entity.DataSource dataSource) {
         ConnectionValues source = super.connectionValues(dataSource);
-        if (openMetadataProperties == null
-                || openMetadataProperties.getKingbaseTunnelHost() == null
-                || openMetadataProperties.getKingbaseTunnelHost().isBlank()
-                || openMetadataProperties.getKingbaseTunnelPort() <= 0) {
+        OpenMetadataRuntimeConfig runtime =
+                configResolver == null ? null : configResolver.resolve();
+        if (runtime == null
+                || runtime.getKingbaseTunnelHost() == null
+                || runtime.getKingbaseTunnelHost().isBlank()
+                || runtime.getKingbaseTunnelPort() <= 0) {
             return source;
         }
         return new ConnectionValues(
-                openMetadataProperties.getKingbaseTunnelHost() + ":"
-                        + openMetadataProperties.getKingbaseTunnelPort(),
+                runtime.getKingbaseTunnelHost() + ":" + runtime.getKingbaseTunnelPort(),
                 source.database(),
                 source.username(),
                 source.password());

@@ -8,18 +8,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class MetadataReconcileScheduler {
 
-    private final OpenMetadataProperties openMetadataProperties;
+    private final OpenMetadataConfigResolver configResolver;
     private final MetadataSourceReconciler reconciler;
 
     public MetadataReconcileScheduler(
-            OpenMetadataProperties openMetadataProperties, MetadataSourceReconciler reconciler) {
-        this.openMetadataProperties = openMetadataProperties;
+            OpenMetadataConfigResolver configResolver, MetadataSourceReconciler reconciler) {
+        this.configResolver = configResolver;
         this.reconciler = reconciler;
     }
 
     @Scheduled(fixedDelayString = "${metadata.reconcile.interval-ms:20000}")
     public void run() {
-        if (!openMetadataProperties.isEnabled()) {
+        if (!configResolver.isEnabled()) {
             return;
         }
         try {

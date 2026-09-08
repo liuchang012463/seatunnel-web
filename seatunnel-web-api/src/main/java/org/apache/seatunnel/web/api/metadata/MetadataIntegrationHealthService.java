@@ -15,24 +15,31 @@ public class MetadataIntegrationHealthService {
 
     private static final String EXPECTED_INGESTION_LINE = "1.12.10.x";
 
-    private final OpenMetadataProperties properties;
+    private final OpenMetadataConfigResolver configResolver;
     private final OpenMetadataClient openMetadataClient;
 
     public MetadataIntegrationHealthService(
-            OpenMetadataProperties properties, OpenMetadataClient openMetadataClient) {
-        this.properties = properties;
+            OpenMetadataConfigResolver configResolver, OpenMetadataClient openMetadataClient) {
+        this.configResolver = configResolver;
         this.openMetadataClient = openMetadataClient;
     }
 
+    /** Backward-compatible constructor for older unit tests. */
+    public MetadataIntegrationHealthService(
+            OpenMetadataProperties properties, OpenMetadataClient openMetadataClient) {
+        this(OpenMetadataConfigResolver.fixed(properties), openMetadataClient);
+    }
+
     public MetadataIntegrationHealthVO health() {
+        OpenMetadataRuntimeConfig runtime = configResolver.resolve();
         MetadataIntegrationHealthVO result = new MetadataIntegrationHealthVO();
-        result.setExpectedVersion(properties.getExpectedServerVersion());
+        result.setExpectedVersion(runtime.getExpectedServerVersion());
         result.setExpectedVersionLine(EXPECTED_INGESTION_LINE);
-        if (!properties.isEnabled()) {
+        if (!runtime.isEnabled()) {
             result.setOpenMetadata("DISABLED");
             result.setOrchestrator("DISABLED");
-            result.setVersion(properties.getExpectedServerVersion());
-            result.setIngestionVersion(properties.getExpectedIngestionPatch());
+            result.setVersion(runtime.getExpectedServerVersion());
+            result.setIngestionVersion(runtime.getExpectedIngestionPatch());
             result.setVersionCompatible(false);
             return result;
         }
@@ -51,8 +58,8 @@ public class MetadataIntegrationHealthService {
         result.setVersionCompatible(
                 health.openMetadataUp()
                         && health.orchestratorUp()
-                        && properties.getExpectedServerVersion().equals(health.serverVersion())
-                        && properties.getExpectedIngestionPatch().equals(health.ingestionVersion()));
+                        && runtime.getExpectedServerVersion().equals(health.serverVersion())
+                        && runtime.getExpectedIngestionPatch().equals(health.ingestionVersion()));
         return result;
     }
 }
