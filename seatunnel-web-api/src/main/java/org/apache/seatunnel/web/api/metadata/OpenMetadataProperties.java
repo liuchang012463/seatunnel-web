@@ -3,18 +3,25 @@ package org.apache.seatunnel.web.api.metadata;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/** Runtime boundary for the fixed OpenMetadata 1.12.10 server. */
+/**
+ * Bootstrap-only OpenMetadata connection properties.
+ *
+ * <p>Runtime calls resolve through {@link OpenMetadataConfigResolver} from
+ * {@code t_seatunnel_web_openmetadata_config}. These env-backed fields are used
+ * only to seed that singleton row when the table is empty, and as a fixed
+ * fallback for unit tests.</p>
+ */
 @Data
 @ConfigurationProperties(prefix = "metadata.openmetadata")
 public class OpenMetadataProperties {
 
-    /** Explicit opt-in prevents an existing installation from being called after upgrade. */
+    /** Explicit opt-in used when seeding an empty config table. */
     private boolean enabled = false;
 
     /** Must include the OpenMetadata /api base path, never an Airflow endpoint. */
     private String baseUrl;
 
-    /** Kept in an environment variable; never log this value. */
+    /** Bootstrap Bot JWT for first-time seed only; never log this value. */
     private String token;
 
     private int connectTimeoutMs = 2000;

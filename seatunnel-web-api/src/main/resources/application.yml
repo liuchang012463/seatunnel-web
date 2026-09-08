@@ -164,8 +164,10 @@ seatunnel:
         root-prefix: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX:seatunnel-web-upload}
         session-ttl-hours: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS:24}
 
-# OpenMetadata integration is intentionally opt-in. The base URL must be the
-# OpenMetadata Server /api endpoint; this application never calls Airflow.
+# OpenMetadata connection is managed in 运行运维 → 探查引擎管理 (DB singleton).
+# The METADATA_OPENMETADATA_* values below are bootstrap-only: they seed
+# t_seatunnel_web_openmetadata_config when that table is empty. After seed,
+# the ops UI / DB row is the source of truth. Never call Airflow from here.
 metadata:
   openmetadata:
     enabled: ${METADATA_OPENMETADATA_ENABLED:false}
