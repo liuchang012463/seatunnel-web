@@ -5,8 +5,6 @@ import lombok.Data;
 @Data
 public class OpenMetadataServerConfigVO {
 
-    private boolean enabled;
-
     private String baseUrl;
 
     private boolean tokenConfigured;
@@ -18,10 +16,6 @@ public class OpenMetadataServerConfigVO {
     private String expectedServerVersion;
 
     private String expectedIngestionPatch;
-
-    private String kingbaseTunnelHost;
-
-    private Integer kingbaseTunnelPort;
 
     private Long configVersion;
 

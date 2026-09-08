@@ -169,15 +169,12 @@ seatunnel:
 # retained for unit-test helpers). Extension and schedulers still use env.
 metadata:
   openmetadata:
-    enabled: false
     base-url:
     token:
     connect-timeout-ms: 2000
     read-timeout-ms: 10000
     expected-server-version: 1.12.10
     expected-ingestion-patch: 1.12.10.0
-    kingbase-tunnel-host:
-    kingbase-tunnel-port: 0
   # Optional server-side adapter for /mnt/lc/open_metadata_extension/project.
   # Set the base URL to the extension's /omext route, not its OpenMetadata URL.
   extension:

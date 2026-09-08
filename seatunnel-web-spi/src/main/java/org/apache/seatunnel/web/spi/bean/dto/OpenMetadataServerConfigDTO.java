@@ -7,8 +7,6 @@ import lombok.Data;
 @Schema(description = "OpenMetadata 探查引擎连接配置")
 public class OpenMetadataServerConfigDTO {
 
-    private Boolean enabled;
-
     /** Must end with /api; never an Airflow endpoint. */
     private String baseUrl;
 
@@ -18,10 +16,4 @@ public class OpenMetadataServerConfigDTO {
     private Integer connectTimeoutMs;
 
     private Integer readTimeoutMs;
-
-    /** Optional Kingbase SSH tunnel host. */
-    private String kingbaseTunnelHost;
-
-    /** Optional Kingbase SSH tunnel port; 0 means unused. */
-    private Integer kingbaseTunnelPort;
 }

@@ -1,5 +1,12 @@
-import { ApiOutlined, ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
-import { Button, Form, Input, InputNumber, Space, Switch, Typography, message } from 'antd';
+import {
+  ApiOutlined,
+  ArrowLeftOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  LinkOutlined,
+  SafetyCertificateOutlined,
+} from '@ant-design/icons';
+import { Button, Form, Input, InputNumber, Space, Tag, Typography, message } from 'antd';
 import { history } from '@umijs/max';
 import React, { useEffect, useState } from 'react';
 import {
@@ -15,13 +22,10 @@ import './index.less';
 const { Paragraph, Text, Title } = Typography;
 
 type FormValues = {
-  enabled: boolean;
   baseUrl: string;
   token?: string;
   connectTimeoutMs: number;
   readTimeoutMs: number;
-  kingbaseTunnelHost?: string;
-  kingbaseTunnelPort?: number;
 };
 
 type TestResult = {
@@ -33,13 +37,10 @@ const responseError = (response: MetadataApiResponse<unknown>, fallback: string)
   response.msg || response.message || fallback;
 
 const toPayload = (values: FormValues): OpenMetadataServerPayload => ({
-  enabled: values.enabled,
   baseUrl: values.baseUrl?.trim(),
   token: values.token?.trim() || undefined,
   connectTimeoutMs: values.connectTimeoutMs,
   readTimeoutMs: values.readTimeoutMs,
-  kingbaseTunnelHost: values.kingbaseTunnelHost?.trim() || undefined,
-  kingbaseTunnelPort: values.kingbaseTunnelPort ?? 0,
 });
 
 const MetadataEngineConfigPage: React.FC = () => {
@@ -64,13 +65,10 @@ const MetadataEngineConfigPage: React.FC = () => {
         const data = response.data;
         setConfig(data || undefined);
         form.setFieldsValue({
-          enabled: Boolean(data?.enabled),
           baseUrl: data?.baseUrl || '',
           token: undefined,
           connectTimeoutMs: data?.connectTimeoutMs || 2000,
           readTimeoutMs: data?.readTimeoutMs || 10000,
-          kingbaseTunnelHost: data?.kingbaseTunnelHost || undefined,
-          kingbaseTunnelPort: data?.kingbaseTunnelPort || 0,
         });
       } catch (error) {
         if (active) message.error(error instanceof Error ? error.message : '读取探查引擎配置失败');
@@ -84,13 +82,18 @@ const MetadataEngineConfigPage: React.FC = () => {
     };
   }, [form]);
 
+  const ensureToken = (values: FormValues) => {
+    if (!config?.tokenConfigured && !values.token?.trim()) {
+      message.error('首次配置必须填写 Token');
+      return false;
+    }
+    return true;
+  };
+
   const handleTest = async () => {
     try {
       const values = await form.validateFields();
-      if (!config?.tokenConfigured && !values.token?.trim()) {
-        message.error('首次配置必须填写 Token');
-        return;
-      }
+      if (!ensureToken(values)) return;
       setTesting(true);
       setTestResult(undefined);
       const response = await testOpenMetadataServer(toPayload(values));
@@ -118,10 +121,7 @@ const MetadataEngineConfigPage: React.FC = () => {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      if (!config?.tokenConfigured && !values.token?.trim()) {
-        message.error('首次配置必须填写 Token');
-        return;
-      }
+      if (!ensureToken(values)) return;
       setSaving(true);
       const response = await saveOpenMetadataServer(toPayload(values));
       if (response.code !== 0 || !response.data) {
@@ -139,43 +139,53 @@ const MetadataEngineConfigPage: React.FC = () => {
     }
   };
 
+  const expectedServer = config?.expectedServerVersion || '1.12.10';
+  const expectedIngestion = config?.expectedIngestionPatch || '1.12.10.0';
+
   return (
-    <div className="metadata-engine-page">
-      <div className="metadata-engine-shell">
-        <div className="metadata-engine-header">
-          <div className="metadata-engine-heading">
-            <div className="metadata-engine-icon">
-              <ApiOutlined />
-            </div>
+    <div className="meta-engine-config-page">
+      <header className="meta-engine-config-page-header">
+        <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/operations/metadata-engine')}>
+          返回探查引擎管理
+        </Button>
+        <div className="meta-engine-config-page-heading">
+          <div className="meta-engine-config-page-icon">
+            <ApiOutlined />
+          </div>
+          <div>
+            <Title level={1}>OpenMetadata 配置</Title>
+            <Paragraph>
+              Base URL 必须以 /api 结尾。Token 不会回显；已配置时留空表示保持原 Token。
+            </Paragraph>
+          </div>
+        </div>
+      </header>
+
+      <div className="meta-engine-config-layout">
+        <main className="meta-engine-config-main">
+          <div className="meta-engine-config-section-heading">
             <div>
-              <Title level={3} className="metadata-engine-title">
-                探查引擎连接配置
-              </Title>
-              <Paragraph className="metadata-engine-subtitle">
-                Base URL 必须以 /api 结尾。Token 不会回显；已配置时留空表示保持原 Token。
+              <Text className="meta-engine-kicker">OPENMETADATA CONNECTION</Text>
+              <Title level={2}>连接参数</Title>
+              <Paragraph>
+                配置探查控制面唯一连接。保存成功后集成自动生效，无需额外启用开关。
               </Paragraph>
             </div>
+            <Tag color={config?.configured ? 'success' : 'default'}>
+              {config?.configured ? '已配置' : '待配置'}
+            </Tag>
           </div>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/operations/metadata-engine')}>
-            返回
-          </Button>
-        </div>
 
-        <div className="metadata-engine-panel">
           <Form
             form={form}
             layout="vertical"
             disabled={loading}
+            className="meta-engine-config-form"
             initialValues={{
-              enabled: false,
               connectTimeoutMs: 2000,
               readTimeoutMs: 10000,
-              kingbaseTunnelPort: 0,
             }}
           >
-            <Form.Item name="enabled" label="启用 OpenMetadata 集成" valuePropName="checked">
-              <Switch checkedChildren="启用" unCheckedChildren="禁用" />
-            </Form.Item>
             <Form.Item
               name="baseUrl"
               label="Base URL"
@@ -212,52 +222,55 @@ const MetadataEngineConfigPage: React.FC = () => {
                 autoComplete="new-password"
               />
             </Form.Item>
-            <Space size={16} style={{ display: 'flex' }} wrap>
+            <div className="meta-engine-timeout-row">
               <Form.Item
                 name="connectTimeoutMs"
                 label="连接超时 (ms)"
                 rules={[{ required: true, message: '请输入连接超时' }]}
               >
-                <InputNumber min={200} max={120000} style={{ width: 180 }} />
+                <InputNumber min={200} max={120000} style={{ width: '100%' }} />
               </Form.Item>
               <Form.Item
                 name="readTimeoutMs"
                 label="读超时 (ms)"
                 rules={[{ required: true, message: '请输入读超时' }]}
               >
-                <InputNumber min={500} max={300000} style={{ width: 180 }} />
+                <InputNumber min={500} max={300000} style={{ width: '100%' }} />
               </Form.Item>
-            </Space>
-            <Form.Item name="kingbaseTunnelHost" label="Kingbase SSH 隧道主机（可选）">
-              <Input placeholder="留空表示不使用隧道" />
-            </Form.Item>
-            <Form.Item name="kingbaseTunnelPort" label="Kingbase SSH 隧道端口（可选）">
-              <InputNumber min={0} max={65535} style={{ width: 180 }} />
-            </Form.Item>
-            <Text type="secondary">
-              期望版本固定为 Server {config?.expectedServerVersion || '1.12.10'} / Ingestion{' '}
-              {config?.expectedIngestionPatch || '1.12.10.0'}，不可在此修改。
+            </div>
+            <Text type="secondary" className="meta-engine-version-note">
+              期望版本固定为 Server {expectedServer} / Ingestion {expectedIngestion}，不可在此修改。
             </Text>
           </Form>
 
           {testResult ? (
             <div
-              className={`metadata-engine-test-result metadata-engine-test-result--${testResult.status}`}
+              className={`meta-engine-config-test-result meta-engine-config-test-result--${testResult.status}`}
+              role={testResult.status === 'error' ? 'alert' : 'status'}
             >
-              {testResult.status === 'success' ? <CheckCircleOutlined /> : <CloseCircleOutlined />}{' '}
-              {testResult.message}
+              {testResult.status === 'success' ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+              <span>{testResult.message}</span>
             </div>
           ) : null}
 
-          <div className="metadata-engine-actions">
-            <Button onClick={() => void handleTest()} loading={testing} disabled={saving || loading}>
-              连接测试
-            </Button>
-            <Button type="primary" onClick={() => void handleSave()} loading={saving} disabled={testing || loading}>
-              保存配置
-            </Button>
+          <div className="meta-engine-config-action-bar">
+            <Text type="secondary">Token 仅用于服务端连接测试与保存，不会回显到页面。</Text>
+            <Space>
+              <Button icon={<LinkOutlined />} loading={testing} disabled={saving || loading} onClick={() => void handleTest()}>
+                连接测试
+              </Button>
+              <Button
+                type="primary"
+                icon={<SafetyCertificateOutlined />}
+                loading={saving}
+                disabled={testing || loading}
+                onClick={() => void handleSave()}
+              >
+                保存
+              </Button>
+            </Space>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

@@ -4,9 +4,8 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Legacy env-shaped OpenMetadata fields retained only for unit-test helpers
- * ({@code OpenMetadataConfigResolver.fixed(properties)}). Production runtime
- * never reads these values — configure OM under 运行运维 → 探查引擎管理.
+ * Legacy env-shaped OpenMetadata fields retained only for unit-test helpers.
+ * Production runtime never reads these values.
  */
 @Data
 @ConfigurationProperties(prefix = "metadata.openmetadata")
@@ -26,8 +25,4 @@ public class OpenMetadataProperties {
     private String expectedServerVersion = "1.12.10";
 
     private String expectedIngestionPatch = "1.12.10.0";
-
-    private String kingbaseTunnelHost;
-
-    private int kingbaseTunnelPort;
 }

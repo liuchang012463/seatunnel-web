@@ -68,10 +68,9 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         }
 
         OpenMetadataRuntimeConfig probeConfig = toRuntime(valid, token, current);
-        OpenMetadataServerConfigVO connectionTest = probe(probeConfig, valid.enabled());
-        if (valid.enabled()
-                && (!connectionTest.isConfigured()
-                        || !ConnStatus.CONNECTED_SUCCESS.getCode().equals(connectionTest.getConnStatus()))) {
+        OpenMetadataServerConfigVO connectionTest = probe(probeConfig);
+        if (!connectionTest.isConfigured()
+                || !ConnStatus.CONNECTED_SUCCESS.getCode().equals(connectionTest.getConnStatus())) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "无法连接 OpenMetadata，请检查 Base URL、Token 与版本契约");
@@ -89,17 +88,14 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
             target.setConfigVersion(Math.max(1L,
                     target.getConfigVersion() == null ? 1L : target.getConfigVersion() + 1L));
         }
-        target.setEnabled(valid.enabled());
+        // Configured rows are always-on; no operator enable toggle.
+        target.setEnabled(true);
         target.setBaseUrl(valid.baseUrl());
         target.setToken(token);
         target.setConnectTimeoutMs(valid.connectTimeoutMs());
         target.setReadTimeoutMs(valid.readTimeoutMs());
-        target.setKingbaseTunnelHost(valid.kingbaseTunnelHost());
-        target.setKingbaseTunnelPort(valid.kingbaseTunnelPort());
-        target.setConnStatus(valid.enabled()
-                ? ConnStatus.CONNECTED_SUCCESS
-                : ConnStatus.CONNECTED_NONE);
-        target.setLastError(valid.enabled() ? null : connectionTest.getLastError());
+        target.setConnStatus(ConnStatus.CONNECTED_SUCCESS);
+        target.setLastError(null);
         target.setUpdateUserId(currentUserId());
         if (current == null) {
             configDao.insert(target);
@@ -108,8 +104,8 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
             configDao.updateSingleton(target);
         }
         configResolver.invalidate();
-        log.info("OpenMetadata server config saved: enabled={}, baseUrl={}, configVersion={}",
-                target.getEnabled(), sanitizeUrl(target.getBaseUrl()), target.getConfigVersion());
+        log.info("OpenMetadata server config saved: baseUrl={}, configVersion={}",
+                sanitizeUrl(target.getBaseUrl()), target.getConfigVersion());
         OpenMetadataServerConfigVO vo = toVO(target);
         vo.setHealth(healthService.health());
         return vo;
@@ -126,16 +122,14 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         if (token.isBlank()) {
             throw invalid("token");
         }
-        OpenMetadataRuntimeConfig probeConfig = toRuntime(valid, token, existing);
-        return probe(probeConfig, true);
+        return probe(toRuntime(valid, token, existing));
     }
 
-    private OpenMetadataServerConfigVO probe(OpenMetadataRuntimeConfig config, boolean requireLive) {
+    private OpenMetadataServerConfigVO probe(OpenMetadataRuntimeConfig config) {
         OpenMetadataServerConfigVO result = toVO(configDao.querySingleton());
         if (result == null) {
             result = emptyVo();
         }
-        result.setEnabled(config.isEnabled());
         result.setBaseUrl(config.getBaseUrl());
         result.setTokenConfigured(StringUtils.isNotBlank(config.getToken()));
         result.setConnectTimeoutMs(config.getConnectTimeoutMs());
@@ -152,9 +146,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
                 result.setLastError("OpenMetadata 不可达，请检查 Base URL 与网络");
                 return result;
             }
-            if (requireLive) {
-                probeClient.assertFixedVersion();
-            }
+            probeClient.assertFixedVersion();
             result.setConfigured(true);
             result.setConnStatus(ConnStatus.CONNECTED_SUCCESS.getCode());
             result.setLastError(null);
@@ -191,9 +183,6 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         }
         OpenMetadataConfigResolver.validateBaseUrl(baseUrl);
 
-        boolean enabled = request.getEnabled() == null
-                ? existing != null && Boolean.TRUE.equals(existing.getEnabled())
-                : Boolean.TRUE.equals(request.getEnabled());
         if (!allowExistingToken && StringUtils.isBlank(request.getToken()) && existing == null) {
             throw invalid("token");
         }
@@ -214,20 +203,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         if (readTimeoutMs <= 0 || readTimeoutMs > 300_000) {
             throw invalid("readTimeoutMs");
         }
-
-        String tunnelHost = StringUtils.trimToNull(request.getKingbaseTunnelHost());
-        if (tunnelHost == null && request.getKingbaseTunnelHost() == null && existing != null) {
-            tunnelHost = existing.getKingbaseTunnelHost();
-        }
-        int tunnelPort = request.getKingbaseTunnelPort() == null
-                ? (existing == null || existing.getKingbaseTunnelPort() == null
-                        ? 0
-                        : existing.getKingbaseTunnelPort())
-                : request.getKingbaseTunnelPort();
-        if (tunnelPort < 0 || tunnelPort > 65535) {
-            throw invalid("kingbaseTunnelPort");
-        }
-        return new ValidConfig(enabled, baseUrl, connectTimeoutMs, readTimeoutMs, tunnelHost, tunnelPort);
+        return new ValidConfig(baseUrl, connectTimeoutMs, readTimeoutMs);
     }
 
     private static OpenMetadataRuntimeConfig toRuntime(
@@ -236,15 +212,12 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
                 ? 0L
                 : current.getConfigVersion();
         return new OpenMetadataRuntimeConfig(
-                valid.enabled(),
                 valid.baseUrl(),
                 token,
                 valid.connectTimeoutMs(),
                 valid.readTimeoutMs(),
                 OpenMetadataRuntimeConfig.DEFAULT_SERVER_VERSION,
                 OpenMetadataRuntimeConfig.DEFAULT_INGESTION_PATCH,
-                valid.kingbaseTunnelHost(),
-                valid.kingbaseTunnelPort(),
                 version);
     }
 
@@ -259,15 +232,12 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
             return null;
         }
         OpenMetadataServerConfigVO result = new OpenMetadataServerConfigVO();
-        result.setEnabled(Boolean.TRUE.equals(config.getEnabled()));
         result.setBaseUrl(config.getBaseUrl());
         result.setTokenConfigured(StringUtils.isNotBlank(config.getToken()));
         result.setConnectTimeoutMs(config.getConnectTimeoutMs());
         result.setReadTimeoutMs(config.getReadTimeoutMs());
         result.setExpectedServerVersion(config.getExpectedServerVersion());
         result.setExpectedIngestionPatch(config.getExpectedIngestionPatch());
-        result.setKingbaseTunnelHost(config.getKingbaseTunnelHost());
-        result.setKingbaseTunnelPort(config.getKingbaseTunnelPort());
         result.setConfigVersion(config.getConfigVersion());
         result.setConnStatus(config.getConnStatus() == null ? null : config.getConnStatus().getCode());
         result.setLastError(config.getLastError());
@@ -278,7 +248,6 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
 
     private static OpenMetadataServerConfigVO emptyVo() {
         OpenMetadataServerConfigVO result = new OpenMetadataServerConfigVO();
-        result.setEnabled(false);
         result.setTokenConfigured(false);
         result.setConfigured(false);
         result.setExpectedServerVersion(OpenMetadataRuntimeConfig.DEFAULT_SERVER_VERSION);
@@ -318,12 +287,6 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         }
     }
 
-    private record ValidConfig(
-            boolean enabled,
-            String baseUrl,
-            int connectTimeoutMs,
-            int readTimeoutMs,
-            String kingbaseTunnelHost,
-            int kingbaseTunnelPort) {
+    private record ValidConfig(String baseUrl, int connectTimeoutMs, int readTimeoutMs) {
     }
 }

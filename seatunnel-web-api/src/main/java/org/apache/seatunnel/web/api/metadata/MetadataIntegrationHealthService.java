@@ -18,6 +18,7 @@ public class MetadataIntegrationHealthService {
     private final OpenMetadataConfigResolver configResolver;
     private final OpenMetadataClient openMetadataClient;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public MetadataIntegrationHealthService(
             OpenMetadataConfigResolver configResolver, OpenMetadataClient openMetadataClient) {
         this.configResolver = configResolver;

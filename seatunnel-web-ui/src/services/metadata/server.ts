@@ -18,15 +18,12 @@ export interface MetadataIntegrationHealth {
 }
 
 export interface OpenMetadataServerConfig {
-  enabled?: boolean;
   baseUrl?: string;
   tokenConfigured?: boolean;
   connectTimeoutMs?: number;
   readTimeoutMs?: number;
   expectedServerVersion?: string;
   expectedIngestionPatch?: string;
-  kingbaseTunnelHost?: string;
-  kingbaseTunnelPort?: number;
   configVersion?: number;
   connStatus?: string;
   lastError?: string;
@@ -35,13 +32,10 @@ export interface OpenMetadataServerConfig {
 }
 
 export type OpenMetadataServerPayload = {
-  enabled?: boolean;
   baseUrl?: string;
   token?: string;
   connectTimeoutMs?: number;
   readTimeoutMs?: number;
-  kingbaseTunnelHost?: string;
-  kingbaseTunnelPort?: number;
 };
 
 const SERVER = '/api/v1/metadata/server';

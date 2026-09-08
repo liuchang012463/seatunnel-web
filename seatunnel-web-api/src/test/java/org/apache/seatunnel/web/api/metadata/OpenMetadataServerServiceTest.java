@@ -1,12 +1,11 @@
 package org.apache.seatunnel.web.api.metadata;
 
-import org.apache.seatunnel.web.api.service.impl.OpenMetadataServerServiceImpl;
-
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationHealthService;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
+import org.apache.seatunnel.web.api.service.impl.OpenMetadataServerServiceImpl;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
 import org.apache.seatunnel.web.dao.entity.OpenMetadataServerConfig;
 import org.apache.seatunnel.web.dao.repository.OpenMetadataServerConfigDao;
@@ -61,7 +60,6 @@ class OpenMetadataServerServiceTest {
         when(dao.querySingleton()).thenReturn(null);
         MetadataIntegrationHealthService health = mock(MetadataIntegrationHealthService.class);
         OpenMetadataServerConfigDTO request = new OpenMetadataServerConfigDTO();
-        request.setEnabled(true);
         request.setBaseUrl("http://localhost:8082/api");
         request.setToken("token");
 
@@ -73,7 +71,7 @@ class OpenMetadataServerServiceTest {
     private static OpenMetadataServerServiceImpl service(
             OpenMetadataServerConfigDao dao, MetadataIntegrationHealthService health) {
         OpenMetadataConfigResolver resolver = OpenMetadataConfigResolver.fixed(
-                OpenMetadataRuntimeConfig.disabledPlaceholder());
+                OpenMetadataRuntimeConfig.notConfigured());
         CurrentUserProvider users = mock(CurrentUserProvider.class);
         when(users.getCurrentUserId()).thenReturn(1);
         return new OpenMetadataServerServiceImpl(dao, resolver, health, users);

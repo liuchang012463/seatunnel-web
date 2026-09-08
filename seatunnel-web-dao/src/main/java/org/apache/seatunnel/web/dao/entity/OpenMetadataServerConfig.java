@@ -14,6 +14,10 @@ public class OpenMetadataServerConfig extends BaseEntity {
     /** Singleton key; always OPENMETADATA. */
     private String configKey;
 
+    /**
+     * Legacy column; runtime always treats a configured row as enabled.
+     * Kept so existing Flyway schema remains readable.
+     */
     private Boolean enabled;
 
     /** Must include the OpenMetadata /api base path. */
@@ -29,10 +33,6 @@ public class OpenMetadataServerConfig extends BaseEntity {
     private String expectedServerVersion;
 
     private String expectedIngestionPatch;
-
-    private String kingbaseTunnelHost;
-
-    private Integer kingbaseTunnelPort;
 
     private Long configVersion;
 

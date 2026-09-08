@@ -9,8 +9,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Resolves the effective OpenMetadata connection from the singleton DB row only.
- * An empty table means disabled / not configured — operators must set it under
- * 运行运维 → 探查引擎管理. Cache key is {@code config_version}.
+ * An empty / incomplete row means not configured — operators must set it under
+ * 运行运维 → 探查引擎管理. Once configured, integration is always enabled.
  */
 @Component
 public class OpenMetadataConfigResolver {
@@ -29,7 +29,7 @@ public class OpenMetadataConfigResolver {
             @Override
             public OpenMetadataRuntimeConfig resolve() {
                 return config == null
-                        ? OpenMetadataRuntimeConfig.disabledPlaceholder()
+                        ? OpenMetadataRuntimeConfig.notConfigured()
                         : config;
             }
 
@@ -46,13 +46,13 @@ public class OpenMetadataConfigResolver {
 
     public OpenMetadataRuntimeConfig resolve() {
         if (configDao == null) {
-            return OpenMetadataRuntimeConfig.disabledPlaceholder();
+            return OpenMetadataRuntimeConfig.notConfigured();
         }
         OpenMetadataServerConfig row = configDao.querySingleton();
         if (row == null) {
-            OpenMetadataRuntimeConfig disabled = OpenMetadataRuntimeConfig.disabledPlaceholder();
-            cache.set(new Cached(0L, disabled));
-            return disabled;
+            OpenMetadataRuntimeConfig empty = OpenMetadataRuntimeConfig.notConfigured();
+            cache.set(new Cached(0L, empty));
+            return empty;
         }
         long version = row.getConfigVersion() == null ? 1L : row.getConfigVersion();
         Cached cached = cache.get();
@@ -96,15 +96,12 @@ public class OpenMetadataConfigResolver {
 
     private static OpenMetadataRuntimeConfig fromRow(OpenMetadataServerConfig row, long version) {
         return new OpenMetadataRuntimeConfig(
-                Boolean.TRUE.equals(row.getEnabled()),
                 row.getBaseUrl(),
                 row.getToken(),
                 row.getConnectTimeoutMs() == null ? 2000 : row.getConnectTimeoutMs(),
                 row.getReadTimeoutMs() == null ? 10000 : row.getReadTimeoutMs(),
                 row.getExpectedServerVersion(),
                 row.getExpectedIngestionPatch(),
-                row.getKingbaseTunnelHost(),
-                row.getKingbaseTunnelPort() == null ? 0 : row.getKingbaseTunnelPort(),
                 version);
     }
 
