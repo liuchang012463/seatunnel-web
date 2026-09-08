@@ -24,6 +24,7 @@ const businessRoutes = [
   ['/data-exploration/tasks', component('./data-exploration/tasks')],
   ['/data-exploration/results', component('./data-exploration/results')],
   ['/client', component('./client')],
+  ['/operations/metadata-engine', component('./operations/metadata-engine')],
   ['/resources/data-discovery', prototypePage],
   ['/sync/batch-link-up', component('./batch-link-up')],
   ['/sync/file-link-up', component('./file-link-up')],
@@ -50,6 +51,7 @@ const businessRoutes = [
 }));
 
 const hiddenRoutes = [
+  ['/operations/metadata-engine/config', './operations/metadata-engine/config', '/operations/metadata-engine'],
   ['/lake/warehouse/config', './lake/warehouse/config', '/lake/warehouse'],
   ['/lake/resources/table/create', './lake/physical/wizard', '/lake/resources'],
   ['/lake/resources/table/:mappingId', './lake/physical/table-detail', '/lake/resources'],

@@ -4,6 +4,7 @@ import lombok.NonNull;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
+import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTable;
@@ -30,18 +31,28 @@ public class LakeSourceObjectResolver {
     private final DataSourceDao dataSourceDao;
     private final MetadataBindingDao metadataBindingDao;
     private final OpenMetadataClient openMetadataClient;
-    private final OpenMetadataProperties openMetadataProperties;
+    private final OpenMetadataConfigResolver configResolver;
 
     @Autowired
     public LakeSourceObjectResolver(
             @NonNull DataSourceDao dataSourceDao,
             @NonNull MetadataBindingDao metadataBindingDao,
             @NonNull OpenMetadataClient openMetadataClient,
-            @NonNull OpenMetadataProperties openMetadataProperties) {
+            @NonNull OpenMetadataConfigResolver configResolver) {
         this.dataSourceDao = dataSourceDao;
         this.metadataBindingDao = metadataBindingDao;
         this.openMetadataClient = openMetadataClient;
-        this.openMetadataProperties = openMetadataProperties;
+        this.configResolver = configResolver;
+    }
+
+    /** Backward-compatible 4-arg constructor for older unit tests. */
+    public LakeSourceObjectResolver(
+            @NonNull DataSourceDao dataSourceDao,
+            @NonNull MetadataBindingDao metadataBindingDao,
+            @NonNull OpenMetadataClient openMetadataClient,
+            @NonNull OpenMetadataProperties openMetadataProperties) {
+        this(dataSourceDao, metadataBindingDao, openMetadataClient,
+                OpenMetadataConfigResolver.fixed(openMetadataProperties));
     }
 
     /**
@@ -50,11 +61,18 @@ public class LakeSourceObjectResolver {
      */
     public LakeSourceObjectResolver(
             @NonNull OpenMetadataClient openMetadataClient,
-            @NonNull OpenMetadataProperties openMetadataProperties) {
+            @NonNull OpenMetadataConfigResolver configResolver) {
         this.dataSourceDao = null;
         this.metadataBindingDao = null;
         this.openMetadataClient = openMetadataClient;
-        this.openMetadataProperties = openMetadataProperties;
+        this.configResolver = configResolver;
+    }
+
+    /** Backward-compatible constructor for older unit tests. */
+    public LakeSourceObjectResolver(
+            @NonNull OpenMetadataClient openMetadataClient,
+            @NonNull OpenMetadataProperties openMetadataProperties) {
+        this(openMetadataClient, OpenMetadataConfigResolver.fixed(openMetadataProperties));
     }
 
     /** Reads a fresh source table and produces a stable structural baseline. */
@@ -77,10 +95,10 @@ public class LakeSourceObjectResolver {
         if (expectedServiceFqn == null || expectedServiceFqn.isBlank()) {
             throw unknown("OpenMetadata ownership service is unavailable");
         }
-        if (openMetadataProperties != null && !openMetadataProperties.isEnabled()) {
+        if (configResolver != null && !configResolver.isEnabled()) {
             throw unknown("OpenMetadata integration is disabled");
         }
-        if (openMetadataProperties != null) {
+        if (configResolver != null) {
             // Version verification is deliberately done immediately before a
             // user-triggered source read, matching the exploration boundary.
             try {

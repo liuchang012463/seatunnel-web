@@ -164,19 +164,17 @@ seatunnel:
         root-prefix: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX:seatunnel-web-upload}
         session-ttl-hours: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS:24}
 
-# OpenMetadata integration is intentionally opt-in. The base URL must be the
-# OpenMetadata Server /api endpoint; this application never calls Airflow.
+# OpenMetadata Server connection is managed only in 运行运维 → 探查引擎管理.
+# The metadata.openmetadata.* fields below are unused at runtime (legacy shape
+# retained for unit-test helpers). Extension and schedulers still use env.
 metadata:
   openmetadata:
-    enabled: ${METADATA_OPENMETADATA_ENABLED:false}
-    base-url: ${METADATA_OPENMETADATA_BASE_URL:}
-    token: ${METADATA_OPENMETADATA_TOKEN:}
-    connect-timeout-ms: ${METADATA_OPENMETADATA_CONNECT_TIMEOUT_MS:2000}
-    read-timeout-ms: ${METADATA_OPENMETADATA_READ_TIMEOUT_MS:10000}
+    base-url:
+    token:
+    connect-timeout-ms: 2000
+    read-timeout-ms: 10000
     expected-server-version: 1.12.10
     expected-ingestion-patch: 1.12.10.0
-    kingbase-tunnel-host: ${METADATA_OPENMETADATA_KINGBASE_TUNNEL_HOST:}
-    kingbase-tunnel-port: ${METADATA_OPENMETADATA_KINGBASE_TUNNEL_PORT:0}
   # Optional server-side adapter for /mnt/lc/open_metadata_extension/project.
   # Set the base URL to the extension's /omext route, not its OpenMetadata URL.
   extension:

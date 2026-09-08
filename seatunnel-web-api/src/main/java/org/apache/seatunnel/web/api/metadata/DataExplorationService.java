@@ -74,7 +74,7 @@ public class DataExplorationService {
     private final MetadataBindingDao metadataBindingDao;
     private final OpenMetadataClient openMetadataClient;
     private final DataSourceCatalogService dataSourceCatalogService;
-    private final OpenMetadataProperties openMetadataProperties;
+    private final OpenMetadataConfigResolver configResolver;
     private final MetadataExtensionClient metadataExtensionClient;
 
     /** Constructor used by the Spring application. */
@@ -84,13 +84,13 @@ public class DataExplorationService {
             MetadataBindingDao metadataBindingDao,
             OpenMetadataClient openMetadataClient,
             DataSourceCatalogService dataSourceCatalogService,
-            OpenMetadataProperties openMetadataProperties,
+            OpenMetadataConfigResolver configResolver,
             MetadataExtensionClient metadataExtensionClient) {
         this.dataSourceDao = dataSourceDao;
         this.metadataBindingDao = metadataBindingDao;
         this.openMetadataClient = openMetadataClient;
         this.dataSourceCatalogService = dataSourceCatalogService;
-        this.openMetadataProperties = openMetadataProperties;
+        this.configResolver = configResolver;
         this.metadataExtensionClient = metadataExtensionClient;
     }
 
@@ -100,9 +100,20 @@ public class DataExplorationService {
             MetadataBindingDao metadataBindingDao,
             OpenMetadataClient openMetadataClient,
             DataSourceCatalogService dataSourceCatalogService,
+            OpenMetadataConfigResolver configResolver) {
+        this(dataSourceDao, metadataBindingDao, openMetadataClient, dataSourceCatalogService,
+                configResolver, null);
+    }
+
+    /** Backward-compatible constructor that accepts env-style properties. */
+    public DataExplorationService(
+            DataSourceDao dataSourceDao,
+            MetadataBindingDao metadataBindingDao,
+            OpenMetadataClient openMetadataClient,
+            DataSourceCatalogService dataSourceCatalogService,
             OpenMetadataProperties openMetadataProperties) {
         this(dataSourceDao, metadataBindingDao, openMetadataClient, dataSourceCatalogService,
-                openMetadataProperties, null);
+                OpenMetadataConfigResolver.fixed(openMetadataProperties), null);
     }
 
     /** Test-friendly constructor that enables the explicitly requested facade. */
@@ -111,7 +122,8 @@ public class DataExplorationService {
             MetadataBindingDao metadataBindingDao,
             OpenMetadataClient openMetadataClient,
             DataSourceCatalogService dataSourceCatalogService) {
-        this(dataSourceDao, metadataBindingDao, openMetadataClient, dataSourceCatalogService, enabledProperties());
+        this(dataSourceDao, metadataBindingDao, openMetadataClient, dataSourceCatalogService,
+                OpenMetadataConfigResolver.fixed(enabledProperties()), null);
     }
 
     public List<DataExplorationDatabaseVO> listDatabases(Long dataSourceId) {
@@ -719,7 +731,7 @@ public class DataExplorationService {
     }
 
     private ExplorationContext context(Long dataSourceId) {
-        if (!openMetadataProperties.isEnabled()) {
+        if (!configResolver.isEnabled()) {
             throw invalid("OpenMetadata integration is disabled");
         }
         if (dataSourceId == null || dataSourceId <= 0) {

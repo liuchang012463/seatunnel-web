@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
+import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
+import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -22,6 +24,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -31,6 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * OpenMetadata 1.12.10 boundary backed exclusively by the official
@@ -42,32 +47,74 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * typed methods by that SDK release; those calls still use the SDK's official
  * {@link org.openmetadata.sdk.network.HttpClient}, never a second HTTP client
  * and never an Airflow endpoint.</p>
+ *
+ * <p>Connection settings come from {@link OpenMetadataConfigResolver} (DB
+ * singleton after seed). When {@code config_version} changes, the SDK client
+ * is rebuilt without restarting the process.</p>
  */
+@Slf4j
 @Component
 public class OpenMetadataRestClient implements OpenMetadataClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    private final OpenMetadataProperties properties;
-    private final org.openmetadata.sdk.client.OpenMetadataClient sdkClient;
+    private final OpenMetadataConfigResolver configResolver;
+    private final AtomicReference<org.openmetadata.sdk.client.OpenMetadataClient> sdkHolder;
+    private final AtomicLong cachedConfigVersion = new AtomicLong(Long.MIN_VALUE);
     private final AtomicBoolean versionVerified = new AtomicBoolean(false);
+    private final boolean pinnedSdk;
 
+    /** Production wiring: resolve connection from DB-backed config. */
     @Autowired
-    public OpenMetadataRestClient(OpenMetadataProperties properties) {
-        this(properties, createSdkClient(properties));
+    public OpenMetadataRestClient(OpenMetadataConfigResolver configResolver) {
+        this.configResolver = configResolver;
+        this.pinnedSdk = false;
+        OpenMetadataRuntimeConfig initial = configResolver.resolve();
+        this.sdkHolder = new AtomicReference<>(createSdkClient(initial));
+        this.cachedConfigVersion.set(initial.getConfigVersion());
     }
 
+    /** Unit-test helper that pins env-style properties as a fixed resolver. */
+    public OpenMetadataRestClient(OpenMetadataProperties properties) {
+        this(OpenMetadataConfigResolver.fixed(properties));
+    }
+
+    /** Unit-test helper that injects a pre-built SDK client. */
     OpenMetadataRestClient(
             OpenMetadataProperties properties,
             org.openmetadata.sdk.client.OpenMetadataClient sdkClient) {
-        this.properties = properties;
-        this.sdkClient = sdkClient;
+        this.configResolver = OpenMetadataConfigResolver.fixed(properties);
+        this.pinnedSdk = true;
+        this.sdkHolder = new AtomicReference<>(sdkClient);
+        this.cachedConfigVersion.set(configResolver.resolve().getConfigVersion());
+    }
+
+    private OpenMetadataRuntimeConfig current() {
+        return configResolver.resolve();
+    }
+
+    private org.openmetadata.sdk.client.OpenMetadataClient sdk() {
+        if (pinnedSdk) {
+            return sdkHolder.get();
+        }
+        OpenMetadataRuntimeConfig config = current();
+        long version = config.getConfigVersion();
+        if (cachedConfigVersion.get() != version) {
+            synchronized (this) {
+                if (cachedConfigVersion.get() != version) {
+                    sdkHolder.set(createSdkClient(config));
+                    versionVerified.set(false);
+                    cachedConfigVersion.set(version);
+                }
+            }
+        }
+        return sdkHolder.get();
     }
 
     private static org.openmetadata.sdk.client.OpenMetadataClient createSdkClient(
-            OpenMetadataProperties properties) {
-        String baseUrl = properties == null ? null : properties.getBaseUrl();
+            OpenMetadataRuntimeConfig runtime) {
+        String baseUrl = runtime == null ? null : runtime.getBaseUrl();
         if (baseUrl == null || baseUrl.isBlank()) {
             // Disabled installations must still be able to start. Calls fail
             // through validateBaseUrl() until an /api endpoint is configured.
@@ -75,22 +122,36 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         }
         OpenMetadataConfig config = OpenMetadataConfig.builder()
                 .baseUrl(baseUrl)
-                .accessToken(properties == null ? null : properties.getToken())
-                .connectTimeout(properties == null ? 2000 : properties.getConnectTimeoutMs())
-                .readTimeout(properties == null ? 10000 : properties.getReadTimeoutMs())
-                .writeTimeout(properties == null ? 10000 : properties.getReadTimeoutMs())
+                .accessToken(runtime == null ? null : runtime.getToken())
+                .connectTimeout(runtime == null ? 2000 : runtime.getConnectTimeoutMs())
+                .readTimeout(runtime == null ? 10000 : runtime.getReadTimeoutMs())
+                .writeTimeout(runtime == null ? 10000 : runtime.getReadTimeoutMs())
                 .build();
         return new org.openmetadata.sdk.client.OpenMetadataClient(config);
     }
 
+    /**
+     * Verifies the fixed OpenMetadata 1.12.10 server and managed ingestion patch.
+     * Throws {@link MetadataIntegrationException} with {@code OM_CONNECTION_ERROR}
+     * when the remote version or PipelineServiceClient health does not match.
+     */
     @Override
     public void assertFixedVersion() {
         if (versionVerified.get()) {
             return;
         }
+        OpenMetadataRuntimeConfig runtime = current();
+        log.info("OpenMetadata version check starting: baseUrl={}, expectedServer={}, expectedIngestion={}",
+                sanitizeBaseUrl(runtime.getBaseUrl()),
+                runtime.getExpectedServerVersion(),
+                runtime.getExpectedIngestionPatch());
         JsonNode response = sdkRequest("GET", "/v1/system/version", null, false);
         String actualVersion = response.path("version").asText();
-        if (!properties.getExpectedServerVersion().equals(actualVersion)) {
+        if (!runtime.getExpectedServerVersion().equals(actualVersion)) {
+            log.warn("OpenMetadata server version mismatch: baseUrl={}, expected={}, actual={}",
+                    sanitizeBaseUrl(runtime.getBaseUrl()),
+                    runtime.getExpectedServerVersion(),
+                    actualVersion);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata Server version does not match the fixed 1.12.10 contract");
@@ -99,19 +160,31 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 "GET", "/v1/services/ingestionPipelines/status", null, false);
         int managedStatusCode = ingestionServiceStatus.path("code").asInt(-1);
         if (managedStatusCode < 200 || managedStatusCode >= 300) {
+            log.warn("OpenMetadata PipelineServiceClient unhealthy: baseUrl={}, statusCode={}",
+                    sanitizeBaseUrl(runtime.getBaseUrl()), managedStatusCode);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata PipelineServiceClient is not healthy");
         }
         String actualIngestionVersion = ingestionServiceStatus.path("version").asText();
-        if (!properties.getExpectedIngestionPatch().equals(actualIngestionVersion)) {
+        if (!runtime.getExpectedIngestionPatch().equals(actualIngestionVersion)) {
+            log.warn("OpenMetadata ingestion patch mismatch: baseUrl={}, expected={}, actual={}",
+                    sanitizeBaseUrl(runtime.getBaseUrl()),
+                    runtime.getExpectedIngestionPatch(),
+                    actualIngestionVersion);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata IngestionPipeline managed build does not match the fixed 1.12.10.0 contract");
         }
         versionVerified.set(true);
+        log.info("OpenMetadata version check passed: server={}, ingestion={}",
+                actualVersion, actualIngestionVersion);
     }
 
+    /**
+     * Best-effort health probe used by ops pages. Never throws; DOWN states are
+     * returned instead so callers can render a stable operator response.
+     */
     @Override
     public OpenMetadataHealth health() {
         String serverVersion = null;
@@ -120,19 +193,32 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             JsonNode versionResponse = sdkRequest("GET", "/v1/system/version", null, false);
             serverVersion = versionResponse.path("version").asText(null);
             openMetadataUp = true;
-        } catch (Exception ignored) {
+        } catch (Exception error) {
+            log.warn("OpenMetadata health version probe failed: baseUrl={}, type={}, message={}",
+                    sanitizeBaseUrl(current().getBaseUrl()),
+                    error.getClass().getSimpleName(),
+                    error.getMessage());
             return new OpenMetadataHealth(false, false, null, null);
         }
         try {
             JsonNode status = sdkRequest(
                     "GET", "/v1/services/ingestionPipelines/status", null, false);
             int code = status.path("code").asInt(-1);
+            boolean orchestratorUp = code >= 200 && code < 300;
+            if (!orchestratorUp) {
+                log.warn("OpenMetadata orchestrator health DOWN: baseUrl={}, statusCode={}",
+                        sanitizeBaseUrl(current().getBaseUrl()), code);
+            }
             return new OpenMetadataHealth(
                     openMetadataUp,
-                    code >= 200 && code < 300,
+                    orchestratorUp,
                     serverVersion,
                     status.path("version").asText(null));
-        } catch (Exception ignored) {
+        } catch (Exception error) {
+            log.warn("OpenMetadata orchestrator health probe failed: baseUrl={}, type={}, message={}",
+                    sanitizeBaseUrl(current().getBaseUrl()),
+                    error.getClass().getSimpleName(),
+                    error.getMessage());
             return new OpenMetadataHealth(openMetadataUp, false, serverVersion, null);
         }
     }
@@ -142,7 +228,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         validateBaseUrl();
         try {
             org.openmetadata.schema.entity.services.DatabaseService service =
-                    sdkClient.databaseServices().getByName(fullyQualifiedName);
+                    sdk().databaseServices().getByName(fullyQualifiedName);
             return Optional.of(entity(service));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
@@ -157,7 +243,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public Optional<OpenMetadataDatabase> findDatabase(String fullyQualifiedName) {
         validateBaseUrl();
         try {
-            Database database = sdkClient.databases().getByName(fullyQualifiedName);
+            Database database = sdk().databases().getByName(fullyQualifiedName);
             return Optional.ofNullable(toDatabase(database));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
@@ -186,7 +272,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             params.setAfter(after);
         }
         try {
-            ListResponse<Database> response = sdkClient.databases().list(params);
+            ListResponse<Database> response = sdk().databases().list(params);
             List<OpenMetadataDatabase> data = new ArrayList<>();
             for (Database database : safeList(response == null ? null : response.getData())) {
                 OpenMetadataDatabase parsed = toDatabase(database);
@@ -219,7 +305,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             params.setAfter(after);
         }
         try {
-            ListResponse<DatabaseSchema> response = sdkClient.databaseSchemas().list(params);
+            ListResponse<DatabaseSchema> response = sdk().databaseSchemas().list(params);
             List<OpenMetadataDatabaseSchema> data = new ArrayList<>();
             for (DatabaseSchema schema : safeList(response == null ? null : response.getData())) {
                 OpenMetadataDatabaseSchema parsed = toSchema(schema);
@@ -275,7 +361,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     private OpenMetadataPage<OpenMetadataTable> listTables(
             ListParams params, String failureMessage) {
         try {
-            ListResponse<org.openmetadata.schema.entity.data.Table> response = sdkClient.tables().list(params);
+            ListResponse<org.openmetadata.schema.entity.data.Table> response = sdk().tables().list(params);
             List<OpenMetadataTable> data = new ArrayList<>();
             for (org.openmetadata.schema.entity.data.Table table
                     : safeList(response == null ? null : response.getData())) {
@@ -294,7 +380,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public OpenMetadataTable getTable(String tableId) {
         validateBaseUrl();
         try {
-            return toTable(sdkClient.tables().get(
+            return toTable(sdk().tables().get(
                     tableId, "columns,tableConstraints,tags,domains", "non-deleted"));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
@@ -314,7 +400,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     "OpenMetadata table patch must be a JSON array");
         }
         try {
-            return toTable(sdkClient.tables().patch(tableId, patchDocument));
+            return toTable(sdk().tables().patch(tableId, patchDocument));
         } catch (OpenMetadataException error) {
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
                     "OpenMetadata table metadata update failed", error);
@@ -385,11 +471,11 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             org.openmetadata.schema.entity.services.DatabaseService existing =
                     findDatabaseServiceEntity(createRequest.getName());
             if (existing == null) {
-                return entity(sdkClient.databaseServices().create(createRequest));
+                return entity(sdk().databaseServices().create(createRequest));
             }
             org.openmetadata.schema.entity.services.DatabaseService desired =
                     mergeDatabaseService(existing, createRequest);
-            return entity(sdkClient.databaseServices().update(existing.getId().toString(), desired));
+            return entity(sdk().databaseServices().update(existing.getId().toString(), desired));
         } catch (OpenMetadataException error) {
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
                     "OpenMetadata database service upsert failed", error);
@@ -405,7 +491,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         validateBaseUrl();
         try {
             org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline pipeline =
-                    sdkClient.ingestionPipelines().getByName(fullyQualifiedName);
+                    sdk().ingestionPipelines().getByName(fullyQualifiedName);
             return Optional.of(entity(pipeline));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
@@ -428,11 +514,11 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline existing =
                     findIngestionPipelineEntity(createRequest);
             if (existing == null) {
-                return entity(sdkClient.ingestionPipelines().create(createRequest));
+                return entity(sdk().ingestionPipelines().create(createRequest));
             }
             org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline desired =
                     mergeIngestionPipeline(existing, createRequest);
-            return entity(sdkClient.ingestionPipelines().update(existing.getId().toString(), desired));
+            return entity(sdk().ingestionPipelines().update(existing.getId().toString(), desired));
         } catch (OpenMetadataException error) {
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
                     "OpenMetadata ingestion pipeline upsert failed", error);
@@ -446,7 +532,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     private org.openmetadata.schema.entity.services.DatabaseService findDatabaseServiceEntity(
             String name) {
         try {
-            return sdkClient.databaseServices().getByName(name);
+            return sdk().databaseServices().getByName(name);
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
@@ -485,7 +571,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             name = desired.getService().getFullyQualifiedName() + "." + name;
         }
         try {
-            return sdkClient.ingestionPipelines().getByName(name);
+            return sdk().ingestionPipelines().getByName(name);
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
@@ -525,7 +611,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         validateBaseUrl();
         try {
             org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline pipeline =
-                    sdkClient.ingestionPipelines().get(id);
+                    sdk().ingestionPipelines().get(id);
             // OpenMetadata 1.12.10's managed deploy creates a DAG with the
             // requested pause-on-creation value, but it does not unpause an
             // already existing DagModel. Toggle through the OM resource so
@@ -535,7 +621,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             // back as enabled=true after the managed call succeeds.
             if (!Boolean.FALSE.equals(pipeline.getEnabled())) {
                 pipeline.setEnabled(false);
-                sdkClient.ingestionPipelines().update(id, pipeline);
+                sdk().ingestionPipelines().update(id, pipeline);
             }
             sdkRequest(
                     "POST",
@@ -597,7 +683,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public void deleteIngestionPipeline(String id) {
         validateBaseUrl();
         try {
-            sdkClient.ingestionPipelines().delete(id, Map.of("hardDelete", "true"));
+            sdk().ingestionPipelines().delete(id, Map.of("hardDelete", "true"));
         } catch (OpenMetadataException error) {
             if (!isNotFound(error)) {
                 throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
@@ -610,7 +696,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public void deleteDatabaseServiceRecursively(String id) {
         validateBaseUrl();
         try {
-            sdkClient.databaseServices().delete(id,
+            sdk().databaseServices().delete(id,
                     Map.of("recursive", "true", "hardDelete", "true"));
         } catch (OpenMetadataException error) {
             if (!isNotFound(error)) {
@@ -634,29 +720,55 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         // reconciliation or user operation.  If a response does echo a
         // version, still reject a mismatched patch explicitly.
         String version = response.path("version").asText("");
-        if (!version.isBlank() && !properties.getExpectedIngestionPatch().equals(version)) {
+        if (!version.isBlank() && !current().getExpectedIngestionPatch().equals(version)) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata IngestionPipeline managed build does not match the fixed 1.12.10.0 contract");
         }
     }
 
-    /** Execute an unsupported-by-1.12.10 operation through the SDK network client. */
+    /**
+     * Execute an unsupported-by-1.12.10 operation through the SDK network client.
+     * Logs method, path, duration and failure type; never logs tokens or auth headers.
+     */
     private JsonNode sdkRequest(String method, String path, Object body, boolean absentOn404) {
         validateBaseUrl();
+        long started = System.currentTimeMillis();
+        String safeBase = sanitizeBaseUrl(current().getBaseUrl());
+        log.debug("OpenMetadata SDK request start: method={}, path={}, baseUrl={}",
+                method, path, safeBase);
         try {
-            String response = sdkClient.getHttpClient().executeForString(
+            String response = sdk().getHttpClient().executeForString(
                     HttpMethod.valueOf(method), path, body);
+            log.debug("OpenMetadata SDK request ok: method={}, path={}, elapsedMs={}",
+                    method, path, System.currentTimeMillis() - started);
             return response == null || response.isBlank()
                     ? OBJECT_MAPPER.createObjectNode()
                     : OBJECT_MAPPER.readTree(response);
         } catch (OpenMetadataException error) {
             if (absentOn404 && isNotFound(error)) {
+                log.debug("OpenMetadata SDK request absent: method={}, path={}, status=404, elapsedMs={}",
+                        method, path, System.currentTimeMillis() - started);
                 return null;
             }
+            log.warn("OpenMetadata SDK request failed: method={}, path={}, baseUrl={}, status={}, type={}, message={}, elapsedMs={}",
+                    method,
+                    path,
+                    safeBase,
+                    error.getStatusCode(),
+                    error.getClass().getSimpleName(),
+                    error.getMessage(),
+                    System.currentTimeMillis() - started);
             throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata SDK request failed", error);
         } catch (Exception error) {
+            log.warn("OpenMetadata SDK response unreadable: method={}, path={}, baseUrl={}, type={}, message={}, elapsedMs={}",
+                    method,
+                    path,
+                    safeBase,
+                    error.getClass().getSimpleName(),
+                    error.getMessage(),
+                    System.currentTimeMillis() - started);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata SDK response could not be read", error);
@@ -664,22 +776,16 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     private void validateBaseUrl() {
-        String baseUrl = properties.getBaseUrl();
-        if (baseUrl == null || baseUrl.isBlank()
-                || baseUrl.contains(":8082")
-                || baseUrl.contains("/airflow")) {
-            throw new MetadataIntegrationException(
-                    MetadataErrorCode.OM_CONNECTION_ERROR,
-                    "OpenMetadata base URL is not configured as a safe /api endpoint");
+        OpenMetadataConfigResolver.validateBaseUrl(current().getBaseUrl());
+    }
+
+    /** Host + path only; strips query strings that might carry secrets. */
+    static String sanitizeBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "";
         }
-        String normalized = baseUrl.endsWith("/")
-                ? baseUrl.substring(0, baseUrl.length() - 1)
-                : baseUrl;
-        if (!normalized.endsWith("/api")) {
-            throw new MetadataIntegrationException(
-                    MetadataErrorCode.OM_CONNECTION_ERROR,
-                    "OpenMetadata base URL must end in /api");
-        }
+        int query = baseUrl.indexOf('?');
+        return query < 0 ? baseUrl : baseUrl.substring(0, query);
     }
 
     private static boolean isNotFound(OpenMetadataException error) {
@@ -688,6 +794,11 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     private static MetadataIntegrationException sdkFailure(
             MetadataErrorCode code, String message, OpenMetadataException cause) {
+        log.warn("OpenMetadata typed SDK call failed: code={}, status={}, type={}, message={}",
+                code,
+                cause == null ? -1 : cause.getStatusCode(),
+                cause == null ? "null" : cause.getClass().getSimpleName(),
+                cause == null ? null : cause.getMessage());
         return new MetadataIntegrationException(code, message, cause);
     }
 

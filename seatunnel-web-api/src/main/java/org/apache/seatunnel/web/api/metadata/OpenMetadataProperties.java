@@ -3,18 +3,19 @@ package org.apache.seatunnel.web.api.metadata;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/** Runtime boundary for the fixed OpenMetadata 1.12.10 server. */
+/**
+ * Legacy env-shaped OpenMetadata fields retained only for unit-test helpers.
+ * Production runtime never reads these values.
+ */
 @Data
 @ConfigurationProperties(prefix = "metadata.openmetadata")
 public class OpenMetadataProperties {
 
-    /** Explicit opt-in prevents an existing installation from being called after upgrade. */
     private boolean enabled = false;
 
-    /** Must include the OpenMetadata /api base path, never an Airflow endpoint. */
     private String baseUrl;
 
-    /** Kept in an environment variable; never log this value. */
+    /** Never log this value. */
     private String token;
 
     private int connectTimeoutMs = 2000;
@@ -23,12 +24,5 @@ public class OpenMetadataProperties {
 
     private String expectedServerVersion = "1.12.10";
 
-    /** Proven Sprint 0 patch range, recorded so deployment cannot silently drift. */
     private String expectedIngestionPatch = "1.12.10.0";
-
-    /** Optional host used only by the Kingbase metadata connector over an SSH tunnel. */
-    private String kingbaseTunnelHost;
-
-    /** Optional port used only by the Kingbase metadata connector over an SSH tunnel. */
-    private int kingbaseTunnelPort;
 }

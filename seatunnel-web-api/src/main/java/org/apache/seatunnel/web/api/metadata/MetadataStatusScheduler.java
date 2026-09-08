@@ -9,18 +9,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class MetadataStatusScheduler {
 
-    private final OpenMetadataProperties openMetadataProperties;
+    private final OpenMetadataConfigResolver configResolver;
     private final MetadataStatusSynchronizer synchronizer;
 
     public MetadataStatusScheduler(
-            OpenMetadataProperties openMetadataProperties, MetadataStatusSynchronizer synchronizer) {
-        this.openMetadataProperties = openMetadataProperties;
+            OpenMetadataConfigResolver configResolver, MetadataStatusSynchronizer synchronizer) {
+        this.configResolver = configResolver;
         this.synchronizer = synchronizer;
     }
 
     @Scheduled(fixedDelayString = "${metadata.status.interval-ms:10000}")
     public void run() {
-        if (!openMetadataProperties.isEnabled()) {
+        if (!configResolver.isEnabled()) {
             return;
         }
         try {

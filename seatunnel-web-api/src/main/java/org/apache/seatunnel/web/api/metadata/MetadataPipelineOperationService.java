@@ -58,7 +58,7 @@ public class MetadataPipelineOperationService {
             Date reservedAt) {
     }
 
-    private final OpenMetadataProperties openMetadataProperties;
+    private final OpenMetadataConfigResolver configResolver;
     private final MetadataBindingDao metadataBindingDao;
     private final DataSourceDao dataSourceDao;
     private final MetadataConnectorRegistry connectorRegistry;
@@ -67,18 +67,34 @@ public class MetadataPipelineOperationService {
 
     @Autowired
     public MetadataPipelineOperationService(
+            OpenMetadataConfigResolver configResolver,
+            MetadataBindingDao metadataBindingDao,
+            DataSourceDao dataSourceDao,
+            MetadataConnectorRegistry connectorRegistry,
+            OpenMetadataClient openMetadataClient,
+            MetadataBindingCommandService metadataBindingCommandService) {
+        this.configResolver = configResolver;
+        this.metadataBindingDao = metadataBindingDao;
+        this.dataSourceDao = dataSourceDao;
+        this.connectorRegistry = connectorRegistry;
+        this.openMetadataClient = openMetadataClient;
+        this.metadataBindingCommandService = metadataBindingCommandService;
+    }
+
+    /** Backward-compatible constructor for unit tests that still pass properties. */
+    public MetadataPipelineOperationService(
             OpenMetadataProperties openMetadataProperties,
             MetadataBindingDao metadataBindingDao,
             DataSourceDao dataSourceDao,
             MetadataConnectorRegistry connectorRegistry,
             OpenMetadataClient openMetadataClient,
             MetadataBindingCommandService metadataBindingCommandService) {
-        this.openMetadataProperties = openMetadataProperties;
-        this.metadataBindingDao = metadataBindingDao;
-        this.dataSourceDao = dataSourceDao;
-        this.connectorRegistry = connectorRegistry;
-        this.openMetadataClient = openMetadataClient;
-        this.metadataBindingCommandService = metadataBindingCommandService;
+        this(OpenMetadataConfigResolver.fixed(openMetadataProperties),
+                metadataBindingDao,
+                dataSourceDao,
+                connectorRegistry,
+                openMetadataClient,
+                metadataBindingCommandService);
     }
 
     /**
@@ -504,7 +520,7 @@ public class MetadataPipelineOperationService {
     }
 
     private void requireEnabled() {
-        if (!openMetadataProperties.isEnabled()) {
+        if (!configResolver.isEnabled()) {
             throw invalid("OpenMetadata integration is disabled");
         }
     }
