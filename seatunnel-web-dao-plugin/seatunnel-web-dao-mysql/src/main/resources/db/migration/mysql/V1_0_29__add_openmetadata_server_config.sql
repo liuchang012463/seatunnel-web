@@ -1,5 +1,5 @@
 -- Singleton OpenMetadata control-plane connection. UI under 运行运维 → 探查引擎管理
--- is the source of truth; METADATA_OPENMETADATA_* env vars only seed an empty table.
+-- is the only source of truth; an empty table means OM is not configured.
 CREATE TABLE `t_seatunnel_web_openmetadata_config`
 (
     `id`                         bigint        NOT NULL COMMENT '主键',

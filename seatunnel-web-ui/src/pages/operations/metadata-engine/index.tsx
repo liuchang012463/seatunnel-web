@@ -75,7 +75,7 @@ const MetadataEngineOverviewPage: React.FC = () => {
                 探查引擎管理
               </Title>
               <Paragraph className="metadata-engine-subtitle">
-                配置 OpenMetadata 控制面连接。连接参数保存在本系统，不再依赖进程环境变量作为运行时来源。
+                配置 OpenMetadata 控制面连接。连接参数仅保存在本系统数据库，须在本页手动配置后才能启用探查能力。
               </Paragraph>
             </div>
           </div>

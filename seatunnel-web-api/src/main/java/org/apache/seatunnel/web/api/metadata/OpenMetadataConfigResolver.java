@@ -8,27 +8,24 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Resolves the effective OpenMetadata connection from the singleton DB row.
- * Env-backed {@link OpenMetadataProperties} are only used when the table is empty
- * (bootstrap / unit tests). Cache key is {@code config_version}.
+ * Resolves the effective OpenMetadata connection from the singleton DB row only.
+ * An empty table means disabled / not configured — operators must set it under
+ * 运行运维 → 探查引擎管理. Cache key is {@code config_version}.
  */
 @Component
 public class OpenMetadataConfigResolver {
 
     private final OpenMetadataServerConfigDao configDao;
-    private final OpenMetadataProperties bootstrapProperties;
     private final AtomicReference<Cached> cache = new AtomicReference<>();
 
     @Autowired
-    public OpenMetadataConfigResolver(
-            OpenMetadataServerConfigDao configDao, OpenMetadataProperties bootstrapProperties) {
+    public OpenMetadataConfigResolver(OpenMetadataServerConfigDao configDao) {
         this.configDao = configDao;
-        this.bootstrapProperties = bootstrapProperties;
     }
 
     /** Fixed snapshot used by unit tests and one-shot connect probes. */
     public static OpenMetadataConfigResolver fixed(OpenMetadataRuntimeConfig config) {
-        return new OpenMetadataConfigResolver(null, null) {
+        return new OpenMetadataConfigResolver(null) {
             @Override
             public OpenMetadataRuntimeConfig resolve() {
                 return config == null
@@ -49,14 +46,13 @@ public class OpenMetadataConfigResolver {
 
     public OpenMetadataRuntimeConfig resolve() {
         if (configDao == null) {
-            return OpenMetadataRuntimeConfig.fromProperties(bootstrapProperties);
+            return OpenMetadataRuntimeConfig.disabledPlaceholder();
         }
         OpenMetadataServerConfig row = configDao.querySingleton();
         if (row == null) {
-            OpenMetadataRuntimeConfig fromEnv =
-                    OpenMetadataRuntimeConfig.fromProperties(bootstrapProperties);
-            cache.set(new Cached(-1L, fromEnv));
-            return fromEnv;
+            OpenMetadataRuntimeConfig disabled = OpenMetadataRuntimeConfig.disabledPlaceholder();
+            cache.set(new Cached(0L, disabled));
+            return disabled;
         }
         long version = row.getConfigVersion() == null ? 1L : row.getConfigVersion();
         Cached cached = cache.get();

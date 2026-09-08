@@ -2,7 +2,7 @@ package org.apache.seatunnel.web.api.metadata;
 
 /**
  * Immutable effective OpenMetadata connection snapshot.
- * Sourced from {@code t_seatunnel_web_openmetadata_config} after seed; never logs token.
+ * Sourced only from {@code t_seatunnel_web_openmetadata_config}; never logs token.
  */
 public final class OpenMetadataRuntimeConfig {
 
@@ -49,6 +49,7 @@ public final class OpenMetadataRuntimeConfig {
         this.configVersion = configVersion;
     }
 
+    /** Test helper: map legacy property objects into a fixed runtime snapshot. */
     public static OpenMetadataRuntimeConfig fromProperties(OpenMetadataProperties properties) {
         if (properties == null) {
             return disabledPlaceholder();
@@ -69,7 +70,7 @@ public final class OpenMetadataRuntimeConfig {
     public static OpenMetadataRuntimeConfig disabledPlaceholder() {
         return new OpenMetadataRuntimeConfig(
                 false,
-                "http://127.0.0.1:8585/api",
+                null,
                 null,
                 2000,
                 10000,
