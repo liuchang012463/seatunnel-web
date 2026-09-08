@@ -16,10 +16,10 @@
 
 ## 启动与测试
 
-- 后端和前端使用 `.vscode/launch.json` 启动，完整启动使用 `SeaTunnel Web Full Stack`。
-- 后端从根目录 `.env` 读取变量并连接测试库，不得连接生产库。
-- SeaTunnel、MySQL、SeaTunnel Web 等容器及 Compose 文件位于 `/mnt/lc`；需要使用外部测试资源时，必须先获得明确授权，不得直接执行 Compose、部署或重启容器。
-- 构建、测试、部署彼此独立；按变更范围运行最小必要验证，并如实报告结果。
+- Agent 启停前后端用 `scripts/dev-{up,down,restart,status}.sh`。
+- 后端读根目录 `.env` 连接测试库。
+- SeaTunnel / MySQL / Open Metadata 等 Compose 在 `/mnt/lc`；未获授权不得 Compose / 部署 / 重启容器。
+- 构建、测试、部署彼此独立；按变更范围做最小必要验证并如实报告。
 
 ## 代码探索与文档
 
