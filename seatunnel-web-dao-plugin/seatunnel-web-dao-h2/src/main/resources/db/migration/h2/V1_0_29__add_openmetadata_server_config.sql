@@ -1,0 +1,22 @@
+CREATE TABLE `t_seatunnel_web_openmetadata_config` (
+    `id` bigint NOT NULL,
+    `config_key` varchar(64) NOT NULL,
+    `enabled` boolean NOT NULL DEFAULT FALSE,
+    `base_url` varchar(1024) NOT NULL,
+    `token` varchar(4096) NOT NULL,
+    `connect_timeout_ms` int NOT NULL DEFAULT 2000,
+    `read_timeout_ms` int NOT NULL DEFAULT 10000,
+    `expected_server_version` varchar(32) NOT NULL DEFAULT '1.12.10',
+    `expected_ingestion_patch` varchar(32) NOT NULL DEFAULT '1.12.10.0',
+    `kingbase_tunnel_host` varchar(255),
+    `kingbase_tunnel_port` int NOT NULL DEFAULT 0,
+    `config_version` bigint NOT NULL DEFAULT 1,
+    `conn_status` varchar(24) NOT NULL DEFAULT 'CONNECTED_NONE',
+    `last_error` varchar(4096),
+    `create_user_id` int,
+    `update_user_id` int,
+    `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE (`config_key`)
+);
