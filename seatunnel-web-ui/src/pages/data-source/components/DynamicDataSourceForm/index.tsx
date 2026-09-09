@@ -1,7 +1,7 @@
 import HttpUtils from '@/utils/HttpUtils';
 import { InfoCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useIntl } from '@umijs/max';
-import { Button, Form, Input, InputNumber, message, Select, Switch, Tooltip } from 'antd';
+import { Alert, Button, Form, Input, InputNumber, message, Select, Switch, Tooltip } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import DatabaseIcons from '../../icon/DatabaseIcons';
@@ -428,6 +428,13 @@ const renderFieldLabel = (field: any): React.ReactNode => {
           <h3 className={sectionTitleClass}>连接参数</h3>
           <p className={sectionDescClass}>根据当前数据源类型自动渲染配置项，建议优先填写必填字段。</p>
         </div>
+
+        <Alert
+          className="mb-4"
+          type="info"
+          showIcon
+          message="连接测试通过仅表示网络与认证成功；账号若不具备读取库表元数据等相应权限，后续元数据扫描与探查可能失败。"
+        />
 
         <Form
           form={configForm}
