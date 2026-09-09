@@ -102,10 +102,8 @@ function runStatusLabel(status?: string) {
   return status || '-';
 }
 
-function schemaPlaceholder(dbType?: string) {
-  return String(dbType || '').trim().toUpperCase() === 'KINGBASE'
-    ? '请选择 Schema（必选）'
-    : '请选择 Schema（可选）';
+function schemaPlaceholder() {
+  return '请选择 Schema';
 }
 
 const DataExplorationTasksPage: React.FC = () => {
@@ -352,11 +350,6 @@ const DataExplorationTasksPage: React.FC = () => {
   const submitExplore = async () => {
     if (!exploreRecord?.id || !databaseFqn) {
       message.error('请选择 Database');
-      return;
-    }
-    const kingbase = String(exploreRecord.dbType || '').trim().toUpperCase() === 'KINGBASE';
-    if (kingbase && !schemaFqn) {
-      message.error('请选择 Schema');
       return;
     }
     if (exploreLoading) return;
@@ -658,9 +651,10 @@ const DataExplorationTasksPage: React.FC = () => {
           />
           <Select
             className="mt-3 w-full"
+            allowClear
             showSearch
             optionFilterProp="label"
-            placeholder={schemaPlaceholder(exploreRecord?.dbType)}
+            placeholder={schemaPlaceholder()}
             loading={schemaLoading}
             disabled={!databaseFqn}
             value={schemaFqn}

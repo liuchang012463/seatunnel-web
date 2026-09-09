@@ -28,7 +28,7 @@ public class DamengConnectionParam extends BaseConnectionParam {
     /**
      * Schema Name
      */
-    @FormField(label = "模式", order = 4, required = true, defaultValue = "SYSDBA", placeholder = "Please enter the schema name")
+    @FormField(label = "模式", order = 4, required = false, defaultValue = "SYSDBA", placeholder = "Please enter the schema name")
     protected String schemaName;
 
     @FormField(

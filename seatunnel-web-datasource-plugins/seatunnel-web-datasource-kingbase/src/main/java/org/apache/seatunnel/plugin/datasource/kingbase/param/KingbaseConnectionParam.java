@@ -28,7 +28,7 @@ public class KingbaseConnectionParam extends BaseConnectionParam {
     /**
      * Schema Name
      */
-    @FormField(label = "模式", order = 4, required = true, defaultValue = "public", placeholder = "Please enter the schema name")
+    @FormField(label = "模式", order = 4, required = false, defaultValue = "public", placeholder = "Please enter the schema name")
     protected String schemaName;
 
     @FormField(
