@@ -98,8 +98,8 @@ public class OpenMetadataConfigResolver {
         return new OpenMetadataRuntimeConfig(
                 row.getBaseUrl(),
                 row.getToken(),
-                row.getConnectTimeoutMs() == null ? 2000 : row.getConnectTimeoutMs(),
-                row.getReadTimeoutMs() == null ? 10000 : row.getReadTimeoutMs(),
+                row.getConnectTimeoutMs() == null ? 10_000 : row.getConnectTimeoutMs(),
+                row.getReadTimeoutMs() == null ? 60_000 : row.getReadTimeoutMs(),
                 row.getExpectedServerVersion(),
                 row.getExpectedIngestionPatch(),
                 version);

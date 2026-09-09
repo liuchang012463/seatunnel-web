@@ -67,8 +67,8 @@ const MetadataEngineConfigPage: React.FC = () => {
         form.setFieldsValue({
           baseUrl: data?.baseUrl || '',
           token: undefined,
-          connectTimeoutMs: data?.connectTimeoutMs || 2000,
-          readTimeoutMs: data?.readTimeoutMs || 10000,
+          connectTimeoutMs: data?.connectTimeoutMs || 10000,
+          readTimeoutMs: data?.readTimeoutMs || 60000,
         });
       } catch (error) {
         if (active) message.error(error instanceof Error ? error.message : '读取探查引擎配置失败');
@@ -182,8 +182,8 @@ const MetadataEngineConfigPage: React.FC = () => {
             disabled={loading}
             className="meta-engine-config-form"
             initialValues={{
-              connectTimeoutMs: 2000,
-              readTimeoutMs: 10000,
+              connectTimeoutMs: 10000,
+              readTimeoutMs: 60000,
             }}
           >
             <Form.Item

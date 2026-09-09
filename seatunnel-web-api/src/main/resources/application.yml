@@ -171,8 +171,8 @@ metadata:
   openmetadata:
     base-url:
     token:
-    connect-timeout-ms: 2000
-    read-timeout-ms: 10000
+    connect-timeout-ms: 10000
+    read-timeout-ms: 60000
     expected-server-version: 1.12.10
     expected-ingestion-patch: 1.12.10.0
   # Optional server-side adapter for /mnt/lc/open_metadata_extension/project.
@@ -180,7 +180,7 @@ metadata:
   extension:
     enabled: ${METADATA_OPENMETADATA_EXTENSION_ENABLED:false}
     base-url: ${METADATA_OPENMETADATA_EXTENSION_BASE_URL:}
-    connect-timeout-ms: ${METADATA_OPENMETADATA_EXTENSION_CONNECT_TIMEOUT_MS:2000}
+    connect-timeout-ms: ${METADATA_OPENMETADATA_EXTENSION_CONNECT_TIMEOUT_MS:10000}
     read-timeout-ms: ${METADATA_OPENMETADATA_EXTENSION_READ_TIMEOUT_MS:60000}
   reconcile:
     interval-ms: ${METADATA_RECONCILE_INTERVAL_MS:20000}

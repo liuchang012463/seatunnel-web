@@ -18,9 +18,9 @@ public class OpenMetadataProperties {
     /** Never log this value. */
     private String token;
 
-    private int connectTimeoutMs = 2000;
+    private int connectTimeoutMs = 10_000;
 
-    private int readTimeoutMs = 10000;
+    private int readTimeoutMs = 60_000;
 
     private String expectedServerVersion = "1.12.10";
 

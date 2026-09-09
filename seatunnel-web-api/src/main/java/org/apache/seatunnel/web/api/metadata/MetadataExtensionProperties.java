@@ -17,7 +17,7 @@ public class MetadataExtensionProperties {
     /** Base URL of the extension's /omext route, for example http://om-ext:8000/omext. */
     private String baseUrl;
 
-    private int connectTimeoutMs = 2000;
+    private int connectTimeoutMs = 10_000;
 
     private int readTimeoutMs = 60000;
 }

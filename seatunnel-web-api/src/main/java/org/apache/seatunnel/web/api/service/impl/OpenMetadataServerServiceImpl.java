@@ -28,8 +28,8 @@ import java.util.Objects;
 @Service
 public class OpenMetadataServerServiceImpl implements OpenMetadataServerService {
 
-    private static final int DEFAULT_CONNECT_TIMEOUT_MS = 2000;
-    private static final int DEFAULT_READ_TIMEOUT_MS = 10000;
+    private static final int DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
+    private static final int DEFAULT_READ_TIMEOUT_MS = 60_000;
 
     private final OpenMetadataServerConfigDao configDao;
     private final OpenMetadataConfigResolver configResolver;
