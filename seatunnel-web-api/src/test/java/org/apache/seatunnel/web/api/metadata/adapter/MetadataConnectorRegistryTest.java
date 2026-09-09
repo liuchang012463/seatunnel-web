@@ -123,6 +123,23 @@ class MetadataConnectorRegistryTest {
     }
 
     @Test
+    void buildsFixed11210DorisRequestWithQueryPort() {
+        DataSource dataSource = source(12L, DbType.DORIS,
+                "{\"fenodes\":\"192.168.100.95:8030\",\"queryPort\":\"9030\","
+                        + "\"host\":\"192.168.100.95\","
+                        + "\"url\":\"jdbc:mysql://192.168.100.95:9030/ods\","
+                        + "\"user\":\"root\",\"password\":\"secret\",\"database\":\"ods\"}");
+
+        JsonNode service = registry.require(DbType.DORIS)
+                .databaseServiceRequest(dataSource, "st_ds_12");
+
+        assertEquals("Doris", service.at("/connection/config/type").asText());
+        assertEquals("192.168.100.95:9030", service.at("/connection/config/hostPort").asText());
+        assertEquals("ods", service.at("/connection/config/databaseName").asText());
+        assertEquals("secret", service.at("/connection/config/password").asText());
+    }
+
+    @Test
     void profilerUsesAnExactFqnFilterForTheSelectedDatabase() {
         MetadataConnectorAdapter adapter = registry.require(DbType.DORIS);
         JsonNode pipeline = adapter.profilerPipelineRequest(

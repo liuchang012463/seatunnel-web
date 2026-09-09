@@ -32,6 +32,11 @@ public class DorisParamConverter implements JdbcParamConverter {
             param.setHost(param.getFeHost());
         }
 
+        // Doris 使用 queryPort 作为 JDBC/MySQL 协议端口，供通用 host+port 消费方（如 OM）拼接 hostPort。
+        if (StringUtils.isBlank(param.getPort())) {
+            param.setPort(String.valueOf(param.getQueryPortAsInt()));
+        }
+
         param.setDbType(DbType.DORIS);
 
         // A lake warehouse projection stores its canonical JDBC URL directly.

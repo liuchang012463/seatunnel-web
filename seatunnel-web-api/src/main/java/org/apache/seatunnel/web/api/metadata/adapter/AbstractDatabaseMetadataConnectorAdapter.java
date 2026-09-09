@@ -94,7 +94,8 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
                 password = PasswordUtils.decodePassword(password);
             }
             String host = text(source, "host");
-            String port = text(source, "port");
+            // Doris persists queryPort instead of the generic port field.
+            String port = firstNonBlank(text(source, "port"), text(source, "queryPort"));
             String database = firstNonBlank(text(source, "database"), text(source, "databaseName"));
             if (jdbcUrl != null) {
                 JdbcLocation jdbc = JdbcLocation.parse(jdbcUrl);
