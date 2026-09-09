@@ -97,14 +97,13 @@ function qualityTag(status?: ExplorationQualityStatus, reason?: string) {
 }
 
 function completionTerminal(status?: string) {
-  return ['completed', 'failed', 'cancelled', 'unknown', 'success', 'failure'].includes(
-    (status || '').toLowerCase(),
-  );
+  return ['completed', 'failed', 'cancelled', 'unknown'].includes(normalizeCompletionStatus(status));
 }
 
 function normalizeCompletionStatus(status?: string) {
   const normalized = (status || '').toLowerCase();
   if (normalized === 'success') return 'completed';
+  if (normalized === 'succeeded' || normalized === 'done') return 'completed';
   if (normalized === 'failure') return 'failed';
   if (normalized === 'revoked') return 'cancelled';
   if (normalized === 'progress') return 'running';
@@ -490,9 +489,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
             } else {
               message.success(summary || '元数据补全已完成，正在刷新表详情');
             }
-            fetchDataExplorationTable(dataSourceId, selectedTableId).then((detailResponse) => {
-              if (!disposed && detailResponse.code === 0) setTableDetail(detailResponse.data);
-            });
           } else if ((status === 'failed' || status === 'cancelled')
             && completionNoticeRef.current !== noticeKey) {
             completionNoticeRef.current = noticeKey;
@@ -523,6 +519,55 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       window.clearTimeout(timer);
     };
   }, [completionJob, dataSourceId, open, selectedTableId]);
+
+  useEffect(() => {
+    const status = normalizeCompletionStatus(completionJob?.status);
+    if (!open || !dataSourceId || !selectedTableId
+      || !completionJob?.jobId || status !== 'completed') {
+      return;
+    }
+
+    let disposed = false;
+    let retryTimer: number | undefined;
+    let attempts = 0;
+
+    const refreshTableDetail = async () => {
+      attempts += 1;
+      setDetailLoading(true);
+      try {
+        const response = await fetchDataExplorationTable(dataSourceId, selectedTableId);
+        if (disposed) return;
+        if (response.code === 0 && response.data) {
+          setTableDetail(response.data);
+          const hasDescription = Boolean(response.data.description?.trim())
+            || (response.data.columns || []).some((column) => Boolean(column.description?.trim()));
+          if (!hasDescription && attempts < 5) {
+            retryTimer = window.setTimeout(() => void refreshTableDetail(), 1_000);
+          }
+        } else if (attempts < 5) {
+          retryTimer = window.setTimeout(() => void refreshTableDetail(), 1_000);
+        } else {
+          message.warning(response.message || '补全已完成，但最新字段描述暂不可用');
+        }
+      } catch (error: any) {
+        if (!disposed) {
+          if (attempts < 5) {
+            retryTimer = window.setTimeout(() => void refreshTableDetail(), 1_000);
+          } else {
+            message.warning(error?.response?.data?.message || '补全已完成，但最新字段描述暂不可用');
+          }
+        }
+      } finally {
+        if (!disposed) setDetailLoading(false);
+      }
+    };
+
+    void refreshTableDetail();
+    return () => {
+      disposed = true;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+    };
+  }, [completionJob?.jobId, completionJob?.status, dataSourceId, open, selectedTableId]);
 
   useEffect(() => {
     if (!tableDetail) return;
