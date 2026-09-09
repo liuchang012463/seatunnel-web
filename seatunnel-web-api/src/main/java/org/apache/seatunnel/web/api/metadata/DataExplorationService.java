@@ -560,7 +560,7 @@ public class DataExplorationService {
     private DataExplorationMetadataJobVO toMetadataJob(JsonNode node) {
         DataExplorationMetadataJobVO result = new DataExplorationMetadataJobVO();
         result.setJobId(text(node, "job_id", "jobId"));
-        result.setStatus(text(node, "status"));
+        result.setStatus(normalizeJobStatus(text(node, "status")));
         result.setType(text(node, "type"));
         result.setFullyQualifiedName(text(node, "fqn", "fullyQualifiedName"));
         result.setLevel(text(node, "level"));
@@ -571,17 +571,64 @@ public class DataExplorationService {
         }
         JsonNode progress = node == null ? null : node.get("progress");
         if (progress != null && progress.isObject()) {
-            Map<String, Object> values = new LinkedHashMap<>();
-            progress.fields().forEachRemaining(entry -> values.put(entry.getKey(), entry.getValue()));
-            result.setProgress(values);
+            result.setProgress(toPlainMap(progress));
         }
         if (node != null && node.has("result") && !node.get("result").isNull()) {
-            result.setResult(node.get("result"));
+            JsonNode resultNode = node.get("result");
+            result.setResult(resultNode.isObject() || resultNode.isArray()
+                    ? toPlainValue(resultNode)
+                    : resultNode.asText());
         }
         result.setError(text(node, "error"));
         result.setCreatedAt(text(node, "created_at", "createdAt"));
         result.setUpdatedAt(text(node, "updated_at", "updatedAt"));
         return result;
+    }
+
+    private static String normalizeJobStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return status;
+        }
+        return switch (status.trim().toLowerCase(Locale.ROOT)) {
+            case "success" -> "completed";
+            case "failure" -> "failed";
+            case "revoked" -> "cancelled";
+            case "progress" -> "running";
+            default -> status.trim().toLowerCase(Locale.ROOT);
+        };
+    }
+
+    private static Map<String, Object> toPlainMap(JsonNode node) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        node.fields().forEachRemaining(entry -> values.put(entry.getKey(), toPlainValue(entry.getValue())));
+        return values;
+    }
+
+    private static Object toPlainValue(JsonNode value) {
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (value.isBoolean()) {
+            return value.booleanValue();
+        }
+        if (value.isInt() || value.isLong()) {
+            return value.longValue();
+        }
+        if (value.isNumber()) {
+            return value.numberValue();
+        }
+        if (value.isTextual()) {
+            return value.asText();
+        }
+        if (value.isArray()) {
+            List<Object> items = new ArrayList<>();
+            value.forEach(item -> items.add(toPlainValue(item)));
+            return items;
+        }
+        if (value.isObject()) {
+            return toPlainMap(value);
+        }
+        return value.asText();
     }
 
     private static String text(JsonNode node, String... names) {

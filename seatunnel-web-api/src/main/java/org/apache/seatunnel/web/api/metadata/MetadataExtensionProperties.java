@@ -19,5 +19,5 @@ public class MetadataExtensionProperties {
 
     private int connectTimeoutMs = 2000;
 
-    private int readTimeoutMs = 15000;
+    private int readTimeoutMs = 60000;
 }
