@@ -11,45 +11,8 @@ import CustomKVList from './components/CustomKVList';
 import DriverLocationField from './components/DriverLocationField';
 import { getConfigInitialValues, isFieldVisible, transformRules } from './utils/formUtils';
 
-import { Code2, FlaskConical, ShieldCheck } from 'lucide-react';
-
+/** Hidden from UI; always sent on create / preserved on edit. */
 const DEFAULT_ENVIRONMENT = 'DEVELOP';
-
-const ENV_OPTIONS = [
-  {
-    value: 'DEVELOP',
-    label: (
-      <div className="flex items-center gap-2">
-        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-          <Code2 size={13} />
-        </span>
-        <span className="text-[13px] font-medium text-slate-700">开发环境</span>
-      </div>
-    ),
-  },
-  {
-    value: 'TEST',
-    label: (
-      <div className="flex items-center gap-2">
-        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-          <FlaskConical size={13} />
-        </span>
-        <span className="text-[13px] font-medium text-slate-700">测试环境</span>
-      </div>
-    ),
-  },
-  {
-    value: 'PROD',
-    label: (
-      <div className="flex items-center gap-2">
-        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-          <ShieldCheck size={13} />
-        </span>
-        <span className="text-[13px] font-medium text-slate-700">生产环境</span>
-      </div>
-    ),
-  },
-];
 
 const sectionTitleClass = 'm-0 text-[15px] font-semibold text-slate-800';
 const sectionDescClass = 'mt-1 mb-0 text-[13px] leading-[22px] text-slate-500';
@@ -374,64 +337,35 @@ const renderFieldLabel = (field: any): React.ReactNode => {
           </div>
 
           <Form form={form} layout="vertical">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Form.Item
-                label={intl.formatMessage({
-                  id: 'pages.datasource.form.dsName',
-                  defaultMessage: 'DS Name',
+            <Form.Item
+              label={intl.formatMessage({
+                id: 'pages.datasource.form.dsName',
+                defaultMessage: 'DS Name',
+              })}
+              name="name"
+              rules={[
+                {
+                  required: true,
+                  message: intl.formatMessage({
+                    id: 'pages.datasource.form.dsNameRequired',
+                    defaultMessage: 'DS Name is required',
+                  }),
+                },
+              ]}
+            >
+              <Input
+                placeholder={intl.formatMessage({
+                  id: 'pages.datasource.form.inputPlaceholder',
+                  defaultMessage: 'Input...',
                 })}
-                name="name"
-                rules={[
-                  {
-                    required: true,
-                    message: intl.formatMessage({
-                      id: 'pages.datasource.form.dsNameRequired',
-                      defaultMessage: 'DS Name is required',
-                    }),
-                  },
-                ]}
-              >
-                <Input
-                  placeholder={intl.formatMessage({
-                    id: 'pages.datasource.form.inputPlaceholder',
-                    defaultMessage: 'Input...',
-                  })}
-                  maxLength={100}
-                />
-              </Form.Item>
+                maxLength={100}
+              />
+            </Form.Item>
 
-              <Form.Item
-                label={
-                  <span className="inline-flex items-center">
-                    {intl.formatMessage({
-                      id: 'pages.datasource.form.env',
-                      defaultMessage: 'Env',
-                    })}
-                    <Tooltip title="Deployment environment of the datasource">
-                      <InfoCircleOutlined className="ml-1 text-slate-400" />
-                    </Tooltip>
-                  </span>
-                }
-                name="environment"
-                rules={[
-                  {
-                    required: true,
-                    message: intl.formatMessage({
-                      id: 'pages.datasource.form.envRequired',
-                      defaultMessage: 'Env is required',
-                    }),
-                  },
-                ]}
-              >
-                <Select
-                  placeholder={intl.formatMessage({
-                    id: 'pages.datasource.form.selectPlaceholder',
-                    defaultMessage: 'Select...',
-                  })}
-                  options={ENV_OPTIONS}
-                />
-              </Form.Item>
-            </div>
+            {/* Environment is not shown; create defaults to DEVELOP, edit keeps existing. */}
+            <Form.Item name="environment" hidden>
+              <Input type="hidden" />
+            </Form.Item>
 
             <DataSourceUnitSelect form={form} onManageMasterData={onManageMasterData} />
 

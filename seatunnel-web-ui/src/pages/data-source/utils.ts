@@ -47,6 +47,9 @@ export function buildSubmitPayload(
   return {
     dbType,
     ...canonicalBasicValues,
+    // Soft metadata: UI no longer collects env; default DEVELOP when missing.
+    // Edit forms hydrate record.environment so PROD/TEST are preserved.
+    environment: canonicalBasicValues.environment || 'DEVELOP',
     connectionParams: JSON.stringify({
       ...connectionValues,
       dbType,

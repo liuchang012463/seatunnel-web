@@ -144,10 +144,6 @@ function sourceOwner(record: DataSourceRecord): { unit: string; system: string }
   };
 }
 
-function sourceEnvironment(record: DataSourceRecord): string {
-  return record.environmentName || record.environment || '未标注环境';
-}
-
 function formatMetric(value?: number): string {
   return Number(value || 0).toLocaleString('zh-CN');
 }
@@ -322,7 +318,6 @@ const DataExplorationResultsPage: React.FC = () => {
         source.name,
         source.dbType,
         source.jdbcUrl,
-        sourceEnvironment(source),
         owner.unit,
         owner.system,
       ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch));
@@ -575,8 +570,6 @@ const DataExplorationResultsPage: React.FC = () => {
                       </span>
                       <span className="results-source-row__meta">
                         <span>{sourceTypeLabel(source.dbType)}</span>
-                        <i>·</i>
-                        <span>{sourceEnvironment(source)}</span>
                         {source.jdbcUrl && <><i>·</i><span title={source.jdbcUrl}>{source.jdbcUrl}</span></>}
                       </span>
                       <span className="results-source-row__footer">

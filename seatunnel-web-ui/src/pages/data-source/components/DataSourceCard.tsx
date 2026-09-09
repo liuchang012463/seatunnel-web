@@ -8,7 +8,6 @@ import {
 } from '@ant-design/icons';
 import { Button, Card, Tag, Tooltip } from 'antd';
 import React from 'react';
-import { environmentTagConfigMap } from '../constants';
 import { getDataSourceCategory } from '../dataSourceRegistry';
 import DatabaseIcons from '../icon/DatabaseIcons';
 import type { DataSourceLifecycleStatus, DataSourceRecord } from '../types';
@@ -34,12 +33,6 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   onStatusChange,
   onOpenWarehouse,
 }) => {
-  const environmentConfig = environmentTagConfigMap[record.environment || ''] || {
-    text: record.environmentName || '-',
-    color: 'var(--st-color-text-muted)',
-    backgroundColor: 'rgba(102, 111, 117, 0.14)',
-    icon: null,
-  };
   const category = getDataSourceCategory(record.dbType);
   const currentStatus = record.status || 'ENABLED';
   const isRevoked = currentStatus === 'REVOKED';
@@ -62,19 +55,6 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
       <div className="datasource-card-cover">
         <div className="datasource-card-logo">
           <DatabaseIcons dbType={record.dbType} width="28" height="28" />
-        </div>
-
-        <div className="datasource-card-env-tag">
-          <span
-            className="datasource-card-env-tag-inner"
-            style={{
-              background: environmentConfig.backgroundColor,
-              color: environmentConfig.color,
-            }}
-          >
-            {environmentConfig.icon}
-            {record.environmentName || environmentConfig.text}
-          </span>
         </div>
 
         <div

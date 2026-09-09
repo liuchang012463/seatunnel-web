@@ -23,4 +23,30 @@ describe('data-source submit payload', () => {
     expect(payload).not.toHaveProperty('unitId');
     expect(payload).not.toHaveProperty('dataSourceUnit');
   });
+
+  it('defaults missing environment to DEVELOP while preserving PROD/TEST', () => {
+    const missing = buildSubmitPayload(
+      'MYSQL',
+      {
+        name: 'new-ds',
+        businessSystemId: '20',
+        environment: '',
+        remark: '',
+      },
+      { host: 'localhost' },
+    );
+    expect(missing.environment).toBe('DEVELOP');
+
+    const prod = buildSubmitPayload(
+      'MYSQL',
+      {
+        name: 'prod-ds',
+        businessSystemId: '20',
+        environment: 'PROD',
+        remark: '',
+      },
+      { host: 'localhost' },
+    );
+    expect(prod.environment).toBe('PROD');
+  });
 });
