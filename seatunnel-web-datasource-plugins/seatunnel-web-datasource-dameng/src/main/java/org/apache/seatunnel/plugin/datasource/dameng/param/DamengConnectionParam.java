@@ -34,7 +34,7 @@ public class DamengConnectionParam extends BaseConnectionParam {
     @FormField(
             label = "驱动Jar包",
             order = 6,
-            defaultValue = "DmJdbcDriver18.jar"
+            defaultValue = "DmJdbcDriver18-8.1.2.141.jar"
     )
     protected String driverLocation;
 

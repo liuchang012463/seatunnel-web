@@ -2,8 +2,12 @@ package org.apache.seatunnel.plugin.datasource.dameng.builder;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import org.apache.seatunnel.plugin.datasource.dameng.param.DamengDataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
+import org.apache.seatunnel.web.spi.form.FormFieldConfig;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,6 +37,19 @@ class DamengBatchBuilderTest {
                                         + "extraParams = [{ key = \"dialect\", value = \"KingBase\" }]"));
 
         assertEquals("KingBase", config.getString("dialect"));
+    }
+
+    @Test
+    void usesBundledDamengDriverJarByDefault() {
+        List<FormFieldConfig> fields = new DamengDataSourceProcessor().generateFormFields();
+
+        assertEquals(
+                "DmJdbcDriver18-8.1.2.141.jar",
+                fields.stream()
+                        .filter(field -> "driverLocation".equals(field.getKey()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getDefaultValue());
     }
 
     private HoconBuildContext context(String nodeConfig) {
