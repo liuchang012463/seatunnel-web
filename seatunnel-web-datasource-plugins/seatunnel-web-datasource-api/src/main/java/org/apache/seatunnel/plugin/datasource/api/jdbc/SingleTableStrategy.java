@@ -22,7 +22,9 @@ public class SingleTableStrategy implements QueryStrategy {
             throw new IllegalArgumentException("table is null");
         }
 
-        return catalog.buildCountQuery(tablePath.getTableName());
+        // Must use buildTableReference (same as buildTopSql) so schema/owner
+        // is preserved for multi-schema databases like Oracle.
+        return "SELECT COUNT(*) FROM " + catalog.buildTableReference(tablePath);
     }
 
     @Override

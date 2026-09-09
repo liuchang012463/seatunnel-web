@@ -1,6 +1,7 @@
 package org.apache.seatunnel.plugin.datasource.api.jdbc;
 
 import lombok.Data;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.enums.TaskExecutionTypeEnum;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 
@@ -27,9 +28,13 @@ public class QueryRequest {
                 break;
             case TABLE:
                 if (body.containsKey("table_path")) {
+                    // Prefer explicit schema_name from the caller (e.g. exploration OM
+                    // schema) over the datasource connection schema. Do not infer
+                    // schema from dotted table_path — MySQL uses database.table.
+                    String schemaName = resolveSchemaName(body, param);
                     req.tablePath = TablePath.of(
                             param.getDatabase(),
-                            param.getSchemaName(),
+                            schemaName,
                             body.get("table_path").toString()
                     );
                 } else {
@@ -41,5 +46,12 @@ public class QueryRequest {
         }
         return req;
     }
-}
 
+    private static String resolveSchemaName(Map<String, Object> body, BaseConnectionParam param) {
+        Object schemaFromBody = body.get("schema_name");
+        if (schemaFromBody != null && StringUtils.isNotBlank(schemaFromBody.toString())) {
+            return schemaFromBody.toString();
+        }
+        return param.getSchemaName();
+    }
+}

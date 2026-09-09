@@ -401,6 +401,13 @@ public class DataExplorationService {
                 ? new LinkedHashMap<>() : new LinkedHashMap<>(requestBody);
         request.put("read_mode", "TABLE");
         request.put("table_path", localTablePath(table));
+        // Oracle (and other multi-schema) connections often omit schemaName and
+        // only carry the login user. Pass OM schema explicitly so preview does
+        // not fall back to the JDBC user as owner (e.g. SYSTEM.TEST_USER).
+        String schemaName = localSchemaName(table);
+        if (!schemaName.isBlank()) {
+            request.put("schema_name", schemaName);
+        }
         return dataSourceCatalogService.getTop20Data(dataSourceId, request);
     }
 
@@ -814,11 +821,11 @@ public class DataExplorationService {
     }
 
     private static String localTablePath(OpenMetadataTable table) {
-        // QueryRequest combines table_path with the database/schema already
-        // present in the registered datasource connection. Passing an OM
-        // schema-qualified path here would be quoted as one literal table
-        // name (for example `schema.orders`) by the existing preview layer.
-        return table.getName();
+        return blankToDefault(table.getName(), lastPart(table.getFullyQualifiedName()));
+    }
+
+    private static String localSchemaName(OpenMetadataTable table) {
+        return lastPart(table.getSchemaFullyQualifiedName());
     }
 
     private static String firstPart(String value) {
