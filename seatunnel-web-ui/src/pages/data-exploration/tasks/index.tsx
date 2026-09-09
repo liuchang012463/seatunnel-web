@@ -29,6 +29,7 @@ import { DATA_SOURCE_STATUS_OPTIONS } from '@/pages/data-source/constants';
 import {
   fetchBusinessSystemOptions,
   fetchDataSourceMetadataDatabases,
+  fetchDataSourceMetadataSchemas,
   fetchDataSourceMetadataRuns,
   fetchDataSourceMetadataStatus,
   fetchDataSourcePage,
@@ -100,8 +101,11 @@ const DataExplorationTasksPage: React.FC = () => {
   const [exploreRecord, setExploreRecord] = useState<DataSourceRecord>();
   const [databases, setDatabases] = useState<Array<{ value: string; label: string }>>([]);
   const [databaseFqn, setDatabaseFqn] = useState<string>();
+  const [schemas, setSchemas] = useState<Array<{ value: string; label: string }>>([]);
+  const [schemaFqn, setSchemaFqn] = useState<string>();
   const [exploreOpen, setExploreOpen] = useState(false);
   const [exploreLoading, setExploreLoading] = useState(false);
+  const [schemaLoading, setSchemaLoading] = useState(false);
   const [runRecordOpen, setRunRecordOpen] = useState(false);
   const [runRecords, setRunRecords] = useState<RunRecord[]>([]);
   const [runRecordName, setRunRecordName] = useState('');
@@ -168,6 +172,45 @@ const DataExplorationTasksPage: React.FC = () => {
   useEffect(() => {
     void loadBusinessSystems(unitId);
   }, [loadBusinessSystems, unitId]);
+
+  useEffect(() => {
+    if (!exploreOpen || !exploreRecord?.id || !databaseFqn) {
+      setSchemas([]);
+      setSchemaFqn(undefined);
+      setSchemaLoading(false);
+      return;
+    }
+
+    let disposed = false;
+    setSchemas([]);
+    setSchemaFqn(undefined);
+    setSchemaLoading(true);
+    fetchDataSourceMetadataSchemas(exploreRecord.id, databaseFqn)
+      .then((response) => {
+        if (disposed) return;
+        if (response.code !== 0) {
+          message.error(response.message || '无法读取可探查的 Schema');
+          setSchemas([]);
+          return;
+        }
+        const nextSchemas = response.data || [];
+        setSchemas(nextSchemas);
+        setSchemaFqn(nextSchemas.length === 1 ? nextSchemas[0].value : undefined);
+      })
+      .catch((error: any) => {
+        if (!disposed) {
+          message.error(errorMessage(error, '无法读取可探查的 Schema'));
+          setSchemas([]);
+        }
+      })
+      .finally(() => {
+        if (!disposed) setSchemaLoading(false);
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [databaseFqn, exploreOpen, exploreRecord?.id]);
 
   useEffect(() => {
     void load();
@@ -264,6 +307,8 @@ const DataExplorationTasksPage: React.FC = () => {
     setExploreLoading(true);
     setDatabases([]);
     setDatabaseFqn(undefined);
+    setSchemas([]);
+    setSchemaFqn(undefined);
     try {
       const response = await fetchDataSourceMetadataDatabases(record.id);
       if (response.code !== 0) {
@@ -289,6 +334,11 @@ const DataExplorationTasksPage: React.FC = () => {
       message.error('请选择 Database');
       return;
     }
+    const kingbase = String(exploreRecord.dbType || '').trim().toUpperCase() === 'KINGBASE';
+    if (kingbase && !schemaFqn) {
+      message.error('请选择 Schema');
+      return;
+    }
     if (exploreLoading) return;
 
     const dataSourceId = exploreRecord.id;
@@ -296,7 +346,7 @@ const DataExplorationTasksPage: React.FC = () => {
     const submittedAt = Date.now();
     setExploreLoading(true);
     try {
-      const response = await triggerDataSourceExploration(dataSourceId, databaseFqn);
+      const response = await triggerDataSourceExploration(dataSourceId, databaseFqn, schemaFqn);
       if (response.code !== 0) {
         message.error(response.message || '数据源探查暂不可触发');
         return;
@@ -554,7 +604,7 @@ const DataExplorationTasksPage: React.FC = () => {
       >
         <div className="py-3">
           <div className="mb-2 text-sm text-[var(--st-color-text-muted)]">
-            一次探查一个 Database。任务提交后不会在此页面自动调度。
+            一次探查一个 Database，可进一步限定 Schema。任务提交后不会在此页面自动调度。
           </div>
           <Select
             className="w-full"
@@ -566,6 +616,18 @@ const DataExplorationTasksPage: React.FC = () => {
             options={databases}
             onChange={setDatabaseFqn}
             notFoundContent="暂无可探查的 Database，请先完成元数据扫描"
+          />
+          <Select
+            className="mt-3 w-full"
+            showSearch
+            optionFilterProp="label"
+            placeholder="请选择 Schema（Kingbase 必选）"
+            loading={schemaLoading}
+            disabled={!databaseFqn}
+            value={schemaFqn}
+            options={schemas}
+            onChange={setSchemaFqn}
+            notFoundContent={databaseFqn ? '暂无可探查的 Schema，请先完成元数据扫描' : '请先选择 Database'}
           />
         </div>
       </Modal>

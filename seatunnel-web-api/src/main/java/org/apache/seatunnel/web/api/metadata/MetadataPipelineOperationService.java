@@ -1,11 +1,13 @@
 package org.apache.seatunnel.web.api.metadata;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
+import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabaseSchema;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPage;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPipelineRun;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
@@ -54,8 +56,19 @@ public class MetadataPipelineOperationService {
             Long bindingId,
             Long dataSourceId,
             String databaseFqn,
+            String schemaFqn,
             long reservedVersion,
             Date reservedAt) {
+
+        /** Keeps callers that do not select a schema source-compatible. */
+        public ExplorationReservation(
+                Long bindingId,
+                Long dataSourceId,
+                String databaseFqn,
+                long reservedVersion,
+                Date reservedAt) {
+            this(bindingId, dataSourceId, databaseFqn, null, reservedVersion, reservedAt);
+        }
     }
 
     private final OpenMetadataConfigResolver configResolver;
@@ -115,6 +128,10 @@ public class MetadataPipelineOperationService {
     }
 
     public boolean triggerExploration(Long dataSourceId, String databaseFqn) {
+        return triggerExploration(dataSourceId, databaseFqn, null);
+    }
+
+    public boolean triggerExploration(Long dataSourceId, String databaseFqn, String schemaFqn) {
         if (databaseFqn == null || databaseFqn.isBlank()) {
             throw invalid("databaseFqn");
         }
@@ -126,6 +143,7 @@ public class MetadataPipelineOperationService {
         if (!serviceFqn.equals(database.serviceFullyQualifiedName())) {
             throw invalid("databaseFqn does not belong to this data source");
         }
+        requireOwnedSchema(serviceFqn, databaseFqn, schemaFqn);
         openMetadataClient.assertFixedVersion();
         ensureNoRunningPipeline(binding);
         long initialVersion = requireVersion(binding);
@@ -137,11 +155,13 @@ public class MetadataPipelineOperationService {
         try {
             MetadataConnectorAdapter adapter = connectorRegistry.require(dataSource.getDbType());
             OpenMetadataEntity pipeline = openMetadataClient.upsertIngestionPipeline(
-                    adapter.profilerPipelineRequest(
+                    profilerPipelineRequest(
+                            adapter,
                             MetadataStableName.profilerPipelineName(dataSourceId),
                             requireProfilerServiceId(binding, dataSourceId),
                             serviceFqn,
-                            databaseFqn));
+                            databaseFqn,
+                            schemaFqn));
             openMetadataClient.deployIngestionPipeline(pipeline.id());
             openMetadataClient.enableIngestionPipeline(pipeline.id());
             openMetadataClient.triggerIngestionPipeline(pipeline.id());
@@ -161,6 +181,11 @@ public class MetadataPipelineOperationService {
      * OpenMetadata to deploy and trigger the profiler pipeline.
      */
     public ExplorationReservation reserveExploration(Long dataSourceId, String databaseFqn) {
+        return reserveExploration(dataSourceId, databaseFqn, null);
+    }
+
+    public ExplorationReservation reserveExploration(
+            Long dataSourceId, String databaseFqn, String schemaFqn) {
         if (databaseFqn == null || databaseFqn.isBlank()) {
             throw invalid("databaseFqn");
         }
@@ -173,7 +198,7 @@ public class MetadataPipelineOperationService {
             throw invalid("a scan or exploration is already running");
         }
         return new ExplorationReservation(
-                binding.getId(), dataSourceId, databaseFqn, initialVersion + 1L, now);
+                binding.getId(), dataSourceId, databaseFqn, schemaFqn, initialVersion + 1L, now);
     }
 
     /**
@@ -198,22 +223,25 @@ public class MetadataPipelineOperationService {
             if (!serviceFqn.equals(database.serviceFullyQualifiedName())) {
                 throw invalid("databaseFqn does not belong to this data source");
             }
+            requireOwnedSchema(serviceFqn, reservation.databaseFqn(), reservation.schemaFqn());
             openMetadataClient.assertFixedVersion();
             ensureNoRunningPipelineForReservedExploration(binding);
 
             MetadataConnectorAdapter adapter = connectorRegistry.require(dataSource.getDbType());
             OpenMetadataEntity pipeline = openMetadataClient.upsertIngestionPipeline(
-                    adapter.profilerPipelineRequest(
+                    profilerPipelineRequest(
+                            adapter,
                             MetadataStableName.profilerPipelineName(reservation.dataSourceId()),
                             requireProfilerServiceId(binding, reservation.dataSourceId()),
                             serviceFqn,
-                            reservation.databaseFqn()));
+                            reservation.databaseFqn(),
+                            reservation.schemaFqn()));
             openMetadataClient.deployIngestionPipeline(pipeline.id());
             openMetadataClient.enableIngestionPipeline(pipeline.id());
             openMetadataClient.triggerIngestionPipeline(pipeline.id());
             completeExplorationReservation(reservation);
-            log.info("Data-source exploration triggered: dataSourceId={}, databaseFqn={}",
-                    reservation.dataSourceId(), reservation.databaseFqn());
+            log.info("Data-source exploration triggered: dataSourceId={}, databaseFqn={}, schemaFqn={}",
+                    reservation.dataSourceId(), reservation.databaseFqn(), reservation.schemaFqn());
         } catch (MetadataIntegrationException e) {
             MetadataErrorCode errorCode = e.getErrorCode() == null
                     ? MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR
@@ -306,6 +334,34 @@ public class MetadataPipelineOperationService {
             OptionVO option = new OptionVO();
             option.setValue(database.fullyQualifiedName());
             option.setLabel(database.fullyQualifiedName());
+            options.add(option);
+        }
+        return options;
+    }
+
+    public List<OptionVO> listSchemas(Long dataSourceId, String databaseFqn) {
+        if (databaseFqn == null || databaseFqn.isBlank()) {
+            throw invalid("databaseFqn");
+        }
+        requireEnabled();
+        MetadataSourceBinding binding = requireReadyBinding(dataSourceId);
+        String serviceFqn = requireServiceFqn(binding, dataSourceId);
+        OpenMetadataDatabase database = openMetadataClient.findDatabase(databaseFqn)
+                .orElseThrow(() -> invalid("databaseFqn does not exist"));
+        if (!serviceFqn.equals(database.serviceFullyQualifiedName())) {
+            throw invalid("databaseFqn does not belong to this data source");
+        }
+        openMetadataClient.assertFixedVersion();
+        List<OptionVO> options = new ArrayList<>();
+        for (OpenMetadataDatabaseSchema schema : collectPages(
+                after -> openMetadataClient.listSchemasPage(databaseFqn, MAX_OM_PAGE_SIZE, after))) {
+            if (!isOwnedSchema(schema, serviceFqn, databaseFqn)) {
+                continue;
+            }
+            OptionVO option = new OptionVO();
+            option.setValue(schema.getFullyQualifiedName());
+            option.setLabel(schema.getName() == null || schema.getName().isBlank()
+                    ? lastPart(schema.getFullyQualifiedName()) : schema.getName());
             options.add(option);
         }
         return options;
@@ -544,6 +600,52 @@ public class MetadataPipelineOperationService {
             return MetadataStableName.serviceFqn(dataSourceId);
         }
         return binding.getOmServiceFqn();
+    }
+
+    private void requireOwnedSchema(String serviceFqn, String databaseFqn, String schemaFqn) {
+        if (schemaFqn == null || schemaFqn.isBlank()) {
+            return;
+        }
+        boolean owned = collectPages(
+                after -> openMetadataClient.listSchemasPage(databaseFqn, MAX_OM_PAGE_SIZE, after))
+                .stream()
+                .anyMatch(schema -> schemaFqn.equals(schema == null ? null : schema.getFullyQualifiedName())
+                        && isOwnedSchema(schema, serviceFqn, databaseFqn));
+        if (!owned) {
+            throw invalid("schemaFqn does not belong to this data source database");
+        }
+    }
+
+    private static boolean isOwnedSchema(
+            OpenMetadataDatabaseSchema schema, String serviceFqn, String databaseFqn) {
+        if (schema == null || schema.getFullyQualifiedName() == null
+                || !databaseFqn.equals(schema.getDatabaseFullyQualifiedName())) {
+            return false;
+        }
+        String schemaServiceFqn = schema.getServiceFullyQualifiedName();
+        return schemaServiceFqn == null || schemaServiceFqn.isBlank() || serviceFqn.equals(schemaServiceFqn);
+    }
+
+    private static JsonNode profilerPipelineRequest(
+            MetadataConnectorAdapter adapter,
+            String pipelineName,
+            String serviceId,
+            String serviceFqn,
+            String databaseFqn,
+            String schemaFqn) {
+        if (schemaFqn == null || schemaFqn.isBlank()) {
+            return adapter.profilerPipelineRequest(pipelineName, serviceId, serviceFqn, databaseFqn);
+        }
+        return adapter.profilerPipelineRequest(
+                pipelineName, serviceId, serviceFqn, databaseFqn, schemaFqn);
+    }
+
+    private static String lastPart(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        int separator = value.lastIndexOf('.');
+        return separator < 0 ? value : value.substring(separator + 1);
     }
 
     static boolean isRunning(MetadataRunStatus status) {

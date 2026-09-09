@@ -139,8 +139,12 @@ export async function triggerDataSourceScan(id: string): Promise<CommonApiRespon
 export async function triggerDataSourceExploration(
   id: string,
   databaseFqn: string,
+  schemaFqn?: string,
 ): Promise<CommonApiResponse<boolean>> {
-  return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/${id}/explore`, { databaseFqn });
+  return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/${id}/explore`, {
+    databaseFqn,
+    ...(schemaFqn ? { schemaFqn } : {}),
+  });
 }
 
 export async function fetchDataSourceMetadataStatus(
@@ -153,6 +157,15 @@ export async function fetchDataSourceMetadataDatabases(
   id: string,
 ): Promise<CommonApiResponse<Array<{ value: string; label: string }>>> {
   return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/metadata-databases`);
+}
+
+export async function fetchDataSourceMetadataSchemas(
+  id: string,
+  databaseFqn: string,
+): Promise<CommonApiResponse<Array<{ value: string; label: string }>>> {
+  return HttpUtils.get(
+    `${DATA_SOURCE_API_PREFIX}/${id}/metadata-schemas?databaseFqn=${encodeURIComponent(databaseFqn)}`,
+  );
 }
 
 export async function fetchDataSourceMetadataRuns(

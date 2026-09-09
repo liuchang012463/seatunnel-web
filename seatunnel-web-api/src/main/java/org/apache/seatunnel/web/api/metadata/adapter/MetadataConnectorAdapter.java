@@ -34,4 +34,21 @@ public interface MetadataConnectorAdapter {
         }
         throw new UnsupportedOperationException("Database-scoped profiler is not implemented by this connector");
     }
+
+    /**
+     * Builds a profiler request scoped to one Database and, optionally, one Schema.
+     * Existing connectors keep the database-only behavior unless they opt into the
+     * schema-aware overload.
+     */
+    default JsonNode profilerPipelineRequest(
+            String pipelineName,
+            String serviceId,
+            String serviceFqn,
+            String databaseFqn,
+            String schemaFqn) {
+        if (schemaFqn == null || schemaFqn.isBlank()) {
+            return profilerPipelineRequest(pipelineName, serviceId, serviceFqn, databaseFqn);
+        }
+        throw new UnsupportedOperationException("Schema-scoped profiler is not implemented by this connector");
+    }
 }

@@ -275,7 +275,10 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             ListResponse<Database> response = sdk().databases().list(params);
             List<OpenMetadataDatabase> data = new ArrayList<>();
             for (Database database : safeList(response == null ? null : response.getData())) {
-                OpenMetadataDatabase parsed = toDatabase(database);
+                // The collection response in some OpenMetadata 1.12.10 deployments
+                // omits the service reference even though the request is filtered
+                // by service. Keep the requested service as the ownership context.
+                OpenMetadataDatabase parsed = toDatabase(database, serviceFullyQualifiedName);
                 if (parsed != null) {
                     data.add(parsed);
                 }
@@ -308,7 +311,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             ListResponse<DatabaseSchema> response = sdk().databaseSchemas().list(params);
             List<OpenMetadataDatabaseSchema> data = new ArrayList<>();
             for (DatabaseSchema schema : safeList(response == null ? null : response.getData())) {
-                OpenMetadataDatabaseSchema parsed = toSchema(schema);
+                // The collection response is already filtered by database. Some
+                // OpenMetadata 1.12.10 deployments omit the database reference.
+                OpenMetadataDatabaseSchema parsed = toSchema(schema, databaseFullyQualifiedName);
                 if (parsed != null) {
                     data.add(parsed);
                 }
@@ -815,11 +820,18 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     private static OpenMetadataDatabase toDatabase(Database database) {
+        return toDatabase(database, null);
+    }
+
+    private static OpenMetadataDatabase toDatabase(Database database, String fallbackServiceFqn) {
         if (database == null || database.getId() == null
                 || blank(database.getFullyQualifiedName())) {
             return null;
         }
         String serviceFqn = referenceFqn(database.getService());
+        if (serviceFqn.isBlank() && !blank(fallbackServiceFqn)) {
+            serviceFqn = fallbackServiceFqn;
+        }
         if (serviceFqn.isBlank()) {
             return null;
         }
@@ -828,6 +840,11 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     private static OpenMetadataDatabaseSchema toSchema(DatabaseSchema schema) {
+        return toSchema(schema, null);
+    }
+
+    private static OpenMetadataDatabaseSchema toSchema(
+            DatabaseSchema schema, String fallbackDatabaseFqn) {
         if (schema == null || schema.getId() == null
                 || blank(schema.getFullyQualifiedName())) {
             return null;
@@ -836,7 +853,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         result.setId(schema.getId().toString());
         result.setName(schema.getName());
         result.setFullyQualifiedName(schema.getFullyQualifiedName());
-        result.setDatabaseFullyQualifiedName(referenceFqn(schema.getDatabase()));
+        String databaseFqn = referenceFqn(schema.getDatabase());
+        result.setDatabaseFullyQualifiedName(databaseFqn.isBlank()
+                ? fallbackDatabaseFqn : databaseFqn);
         result.setServiceFullyQualifiedName(referenceFqn(schema.getService()));
         return result;
     }

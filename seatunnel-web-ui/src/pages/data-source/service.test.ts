@@ -5,6 +5,7 @@ import {
   fetchDataSourceAll,
   fetchDataSourceUnitOptions,
   fetchDataSourceMetadataRuns,
+  fetchDataSourceMetadataSchemas,
   fetchDataExplorationDatabases,
   fetchDataExplorationSchemas,
   fetchDataExplorationTables,
@@ -87,12 +88,24 @@ describe('data source service', () => {
     (HttpUtils.post as jest.Mock).mockResolvedValue(response);
 
     await expect(triggerDataSourceScan('42')).resolves.toBe(response);
-    await expect(triggerDataSourceExploration('42', 'st_ds_42.orders')).resolves.toBe(response);
+    await expect(triggerDataSourceExploration('42', 'st_ds_42.orders', 'st_ds_42.orders.public')).resolves.toBe(response);
 
     expect(HttpUtils.post).toHaveBeenNthCalledWith(1, '/api/v1/data-source/42/scan');
     expect(HttpUtils.post).toHaveBeenNthCalledWith(2, '/api/v1/data-source/42/explore', {
       databaseFqn: 'st_ds_42.orders',
+      schemaFqn: 'st_ds_42.orders.public',
     });
+  });
+
+  it('loads schemas for the selected exploration database', async () => {
+    const response = { code: 0, data: [] };
+    (HttpUtils.get as jest.Mock).mockResolvedValue(response);
+
+    await expect(fetchDataSourceMetadataSchemas('42', 'st_ds_42.orders')).resolves.toBe(response);
+
+    expect(HttpUtils.get).toHaveBeenCalledWith(
+      '/api/v1/data-source/42/metadata-schemas?databaseFqn=st_ds_42.orders',
+    );
   });
 
   it('reads the cached metadata status used by exploration feedback polling', async () => {

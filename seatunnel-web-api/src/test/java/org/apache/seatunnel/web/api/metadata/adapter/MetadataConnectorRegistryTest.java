@@ -133,6 +133,19 @@ class MetadataConnectorRegistryTest {
                 pipeline.at("/sourceConfig/config/databaseFilterPattern/includes/0").asText());
     }
 
+    @Test
+    void profilerUsesAnExactSchemaFqnFilterForKingbase() {
+        JsonNode pipeline = registry.require(DbType.KINGBASE).profilerPipelineRequest(
+                "st_ds_10_profiler",
+                "uuid-1",
+                "st_ds_10",
+                "st_ds_10.kingbase",
+                "st_ds_10.kingbase.public");
+
+        assertEquals("^st_ds_10\\.kingbase\\.public$",
+                pipeline.at("/sourceConfig/config/schemaFilterPattern/includes/0").asText());
+    }
+
     private static DataSource source(Long id, DbType dbType, String connectionParams) {
         DataSource dataSource = new DataSource();
         dataSource.setId(id);

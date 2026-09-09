@@ -274,6 +274,27 @@ class OpenMetadataRestClientTest {
     }
 
     @Test
+    void keepsCollectionOwnershipContextWhenOpenMetadataOmitsDatabaseReferences() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/databases", exchange -> respond(exchange, 200,
+                "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000001\","
+                        + "\"fullyQualifiedName\":\"st_ds_42.orders\"}]}"));
+        server.createContext("/api/v1/databaseSchemas", exchange -> respond(exchange, 200,
+                "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000003\","
+                        + "\"name\":\"public\",\"fullyQualifiedName\":\"st_ds_42.orders.public\"}]}"));
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        List<OpenMetadataDatabase> databases = client.listDatabases("st_ds_42", 20);
+        List<OpenMetadataDatabaseSchema> schemas = client.listSchemas("st_ds_42.orders", 20);
+
+        assertEquals("st_ds_42", databases.get(0).serviceFullyQualifiedName());
+        assertEquals("st_ds_42.orders", schemas.get(0).getDatabaseFullyQualifiedName());
+    }
+
+    @Test
     void readsDatabasesSchemasTablesAndTableDetailsUsingThe11210Paths() throws Exception {
         AtomicReference<String> databasesUri = new AtomicReference<>();
         AtomicReference<String> schemasUri = new AtomicReference<>();
@@ -389,6 +410,23 @@ class OpenMetadataRestClientTest {
                 "service=st_ds_42", "include=non-deleted", "limit=1000");
         assertQuery("/api/v1/databases", secondUri.get(),
                 "service=st_ds_42", "include=non-deleted", "limit=1000", "after=next token");
+    }
+
+    @Test
+    void usesTheServiceFilterWhenDatabaseListOmitsTheServiceReference() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/databases", exchange -> respond(exchange, 200,
+                "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000001\","
+                        + "\"fullyQualifiedName\":\"st_ds_42.orders\"}]}"));
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        List<OpenMetadataDatabase> databases = client.listDatabases("st_ds_42", 20);
+
+        assertEquals(1, databases.size());
+        assertEquals("st_ds_42", databases.get(0).serviceFullyQualifiedName());
     }
 
     @Test

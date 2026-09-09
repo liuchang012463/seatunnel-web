@@ -45,9 +45,22 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
     @Override
     public JsonNode profilerPipelineRequest(
             String pipelineName, String serviceId, String serviceFqn, String databaseFqn) {
+        return profilerPipelineRequest(pipelineName, serviceId, serviceFqn, databaseFqn, null);
+    }
+
+    @Override
+    public JsonNode profilerPipelineRequest(
+            String pipelineName,
+            String serviceId,
+            String serviceFqn,
+            String databaseFqn,
+            String schemaFqn) {
         ObjectNode config = OBJECT_MAPPER.createObjectNode();
         config.put("type", "Profiler");
         config.set("databaseFilterPattern", filterPattern(databaseFqn));
+        if (!isBlank(schemaFqn)) {
+            config.set("schemaFilterPattern", filterPattern(schemaFqn));
+        }
         config.put("useFqnForFiltering", true);
         config.put("includeViews", false);
         config.put("computeMetrics", true);

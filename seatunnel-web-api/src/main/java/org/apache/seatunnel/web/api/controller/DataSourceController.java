@@ -190,13 +190,16 @@ public class DataSourceController {
     }
 
     @PostMapping("/{id}/explore")
-    @Operation(summary = "triggerDataSourceExploration", description = "Trigger one database-scoped data-source exploration")
+    @Operation(summary = "triggerDataSourceExploration",
+            description = "Trigger one database- or schema-scoped data-source exploration")
     public Result<Boolean> triggerExploration(
             @PathVariable("id") Long id,
             @RequestBody DataSourceExploreDTO dto) {
         MetadataPipelineOperationService.ExplorationReservation reservation =
                 metadataPipelineOperationService.reserveExploration(
-                        id, dto == null ? null : dto.getDatabaseFqn());
+                        id,
+                        dto == null ? null : dto.getDatabaseFqn(),
+                        dto == null ? null : dto.getSchemaFqn());
         metadataPipelineOperationService.executeExploration(reservation);
         return Result.buildSuc(true);
     }
@@ -211,6 +214,15 @@ public class DataSourceController {
     @Operation(summary = "listDataSourceMetadataDatabases", description = "List discovered OpenMetadata databases for exploration")
     public Result<List<OptionVO>> metadataDatabases(@PathVariable("id") Long id) {
         return Result.buildSuc(metadataPipelineOperationService.listDatabases(id));
+    }
+
+    @GetMapping("/{id}/metadata-schemas")
+    @Operation(summary = "listDataSourceMetadataSchemas",
+            description = "List discovered OpenMetadata schemas for the selected exploration database")
+    public Result<List<OptionVO>> metadataSchemas(
+            @PathVariable("id") Long id,
+            @RequestParam("databaseFqn") String databaseFqn) {
+        return Result.buildSuc(metadataPipelineOperationService.listSchemas(id, databaseFqn));
     }
 
     @GetMapping("/{id}/runs")

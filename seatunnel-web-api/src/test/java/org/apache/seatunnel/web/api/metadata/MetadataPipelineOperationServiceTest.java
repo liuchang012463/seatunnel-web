@@ -6,6 +6,8 @@ import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
+import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabaseSchema;
+import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPage;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
@@ -35,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -123,6 +126,40 @@ class MetadataPipelineOperationServiceTest {
     }
 
     @Test
+    void explorationUsesTheSelectedSchemaAndListsSchemasForTheOwnedDatabase() {
+        MetadataSourceBinding binding = binding(0L);
+        MetadataSourceBinding reserved = binding(1L);
+        reserved.setProfileStatus(MetadataRunStatus.QUEUED);
+        stubReady(binding, reserved);
+        String databaseFqn = "st_ds_42.kingbase";
+        String schemaFqn = databaseFqn + ".public";
+        when(openMetadataClient.findDatabase(databaseFqn))
+                .thenReturn(Optional.of(new OpenMetadataDatabase("database-id", databaseFqn, "st_ds_42")));
+        OpenMetadataDatabaseSchema schema = new OpenMetadataDatabaseSchema();
+        schema.setId("schema-id");
+        schema.setName("public");
+        schema.setFullyQualifiedName(schemaFqn);
+        schema.setDatabaseFullyQualifiedName(databaseFqn);
+        schema.setServiceFullyQualifiedName("st_ds_42");
+        doReturn(new OpenMetadataPage<>(List.of(schema), 1L, null))
+                .when(openMetadataClient).listSchemasPage(databaseFqn, 1000, null);
+        when(bindingDao.reserveRun(eq(1L), eq(0L), eq(false), isNull(), any())).thenReturn(true);
+        when(connectorRegistry.require(DbType.DORIS)).thenReturn(connectorAdapter);
+        when(connectorAdapter.profilerPipelineRequest(
+                anyString(), anyString(), anyString(), eq(databaseFqn), eq(schemaFqn)))
+                .thenReturn(JSON.createObjectNode());
+        when(openMetadataClient.upsertIngestionPipeline(any()))
+                .thenReturn(new OpenMetadataEntity("profile-updated", "st_ds_42.st_ds_42_profiler"));
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(1L))).thenReturn(true);
+
+        assertEquals("public", service().listSchemas(42L, databaseFqn).get(0).getLabel());
+        service().triggerExploration(42L, databaseFqn, schemaFqn);
+
+        verify(connectorAdapter).profilerPipelineRequest(
+                anyString(), anyString(), anyString(), eq(databaseFqn), eq(schemaFqn));
+    }
+
+    @Test
     void explorationReservationReturnsBeforeOpenMetadataPipelineOperations() {
         MetadataSourceBinding binding = binding(0L);
         when(dataSourceDao.queryById(42L)).thenReturn(source());
@@ -201,6 +238,8 @@ class MetadataPipelineOperationServiceTest {
     private MetadataPipelineOperationService service() {
         OpenMetadataProperties properties = new OpenMetadataProperties();
         properties.setEnabled(true);
+        properties.setBaseUrl("http://127.0.0.1:8585/api");
+        properties.setToken("test-token");
         return new MetadataPipelineOperationService(
                 properties,
                 bindingDao,
