@@ -8,7 +8,10 @@ export const explorationStatus = (status?: string) => {
   return { label: '未探查', color: 'default' as const };
 };
 
-export const metadataStatus = (status?: string) => {
+export const metadataStatus = (status?: string, scanStatus?: string) => {
+  if (status === 'READY' && scanStatus === 'FAILED') {
+    return { label: '扫描异常', color: 'error' as const };
+  }
   if (status === 'READY') return { label: '已就绪', color: 'success' as const };
   if (status === 'SYNCING' || status === 'WAITING' || status === 'PENDING') {
     return { label: '同步中', color: 'processing' as const };

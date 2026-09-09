@@ -53,7 +53,13 @@ import '../index.less';
 
 const DEFAULT_PAGINATION: PaginationInfo = { pageNo: 1, pageSize: 10, total: 0 };
 
-type RunRecord = { runId: string; status: string; startTime?: string; endTime?: string };
+type RunRecord = {
+  runId: string;
+  status: string;
+  startTime?: string;
+  endTime?: string;
+  errorMessage?: string;
+};
 type ExplorationTracking = { id: string; name: string; submittedAt: number };
 type ExplorationFeedback = { type: 'info' | 'success' | 'error'; message: string; description?: string };
 
@@ -81,11 +87,25 @@ function explorationErrorText(status?: DataSourceMetadataStatus['exploration']) 
   const code = status?.lastError;
   if (!code) return '探查任务执行失败，请查看运行记录。';
   const labels: Record<string, string> = {
+    OM_SERVICE_SYNC_ERROR: 'OpenMetadata 探查管道同步失败（常见于网络超时）',
     OM_PIPELINE_TRIGGER_ERROR: 'OpenMetadata 探查管道触发失败',
     OM_PIPELINE_STATUS_ERROR: '无法同步 OpenMetadata 探查状态',
     PIPELINE_EXECUTION_ERROR: '探查管道执行失败',
   };
   return labels[code] || `探查任务执行失败（${code}）`;
+}
+
+function runStatusLabel(status?: string) {
+  if (status === 'SUCCESS') return '成功';
+  if (status === 'FAILED') return '失败';
+  if (status === 'RUNNING' || status === 'QUEUED') return '执行中';
+  return status || '-';
+}
+
+function schemaPlaceholder(dbType?: string) {
+  return String(dbType || '').trim().toUpperCase() === 'KINGBASE'
+    ? '请选择 Schema（必选）'
+    : '请选择 Schema（可选）';
 }
 
 const DataExplorationTasksPage: React.FC = () => {
@@ -374,13 +394,24 @@ const DataExplorationTasksPage: React.FC = () => {
   const showRuns = async (record: DataSourceRecord) => {
     if (!record.id) return;
     try {
-      const response = await fetchDataSourceMetadataRuns(record.id, 'EXPLORATION');
-      if (response.code !== 0) {
-        message.error(response.message || '无法读取探查运行记录');
+      const [explorationResponse, scanResponse] = await Promise.all([
+        fetchDataSourceMetadataRuns(record.id, 'EXPLORATION'),
+        record.scanStatus === 'FAILED'
+          ? fetchDataSourceMetadataRuns(record.id, 'SCAN')
+          : Promise.resolve(undefined),
+      ]);
+      if (explorationResponse.code !== 0) {
+        message.error(explorationResponse.message || '无法读取探查运行记录');
         return;
       }
+      const explorationRuns = explorationResponse.data || [];
+      const scanRuns = scanResponse?.code === 0 ? (scanResponse.data || []) : [];
+      const merged: RunRecord[] = [
+        ...scanRuns.map((run) => ({ ...run, runId: run.runId?.startsWith('local-') ? run.runId : `scan:${run.runId}` })),
+        ...explorationRuns,
+      ];
       setRunRecordName(record.name || '数据源');
-      setRunRecords(response.data || []);
+      setRunRecords(merged);
       setRunRecordOpen(true);
     } catch (error: any) {
       message.error(errorMessage(error, '无法读取探查运行记录'));
@@ -422,9 +453,13 @@ const DataExplorationTasksPage: React.FC = () => {
       dataIndex: 'metadataSyncStatus',
       key: 'metadataSyncStatus',
       width: 120,
-      render: (value: string) => {
-        const item = metadataStatus(value);
-        return <Tag color={item.color}>{item.label}</Tag>;
+      render: (value: string, record) => {
+        const item = metadataStatus(value, record.scanStatus);
+        return (
+          <Tag color={item.color} title={record.scanLastError || undefined}>
+            {item.label}
+          </Tag>
+        );
       },
     },
     {
@@ -432,9 +467,13 @@ const DataExplorationTasksPage: React.FC = () => {
       dataIndex: 'profileStatus',
       key: 'profileStatus',
       width: 110,
-      render: (value: string) => {
+      render: (value: string, record) => {
         const item = explorationStatus(value);
-        return <Tag color={item.color}>{item.label}</Tag>;
+        return (
+          <Tag color={item.color} title={record.profileLastError || undefined}>
+            {item.label}
+          </Tag>
+        );
       },
     },
     {
@@ -621,7 +660,7 @@ const DataExplorationTasksPage: React.FC = () => {
             className="mt-3 w-full"
             showSearch
             optionFilterProp="label"
-            placeholder="请选择 Schema（Kingbase 必选）"
+            placeholder={schemaPlaceholder(exploreRecord?.dbType)}
             loading={schemaLoading}
             disabled={!databaseFqn}
             value={schemaFqn}
@@ -648,12 +687,17 @@ const DataExplorationTasksPage: React.FC = () => {
             {runRecords.map((run) => (
               <div key={run.runId} className="exploration-run-item mb-2 rounded-md px-3 py-2 text-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium">{run.status}</span>
+                  <span className="font-medium">{runStatusLabel(run.status)}</span>
                   <span className="text-xs text-[var(--st-color-text-muted)]">{run.runId}</span>
                 </div>
                 <div className="mt-1 text-xs text-[var(--st-color-text-muted)]">
                   {run.startTime || '-'} → {run.endTime || '-'}
                 </div>
+                {run.errorMessage && (
+                  <div className="mt-2 whitespace-pre-wrap break-all text-xs text-[var(--st-color-error)]">
+                    {run.errorMessage}
+                  </div>
+                )}
               </div>
             ))}
           </div>

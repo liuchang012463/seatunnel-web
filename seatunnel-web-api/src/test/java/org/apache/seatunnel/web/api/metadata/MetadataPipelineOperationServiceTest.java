@@ -228,6 +228,41 @@ class MetadataPipelineOperationServiceTest {
         assertEquals(MetadataErrorCode.OM_PIPELINE_DEPLOY_ERROR.name(), saved.getValue().getProfileLastError());
     }
 
+    @Test
+    void listRunsPrependsLocalExplorationFailureWhenOpenMetadataHasNoRuns() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setProfileStatus(MetadataRunStatus.FAILED);
+        binding.setProfileLastError(MetadataErrorCode.OM_SERVICE_SYNC_ERROR.name());
+        binding.setProfileLastRunTime(new Date(1_700_001_000_000L));
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 5)).thenReturn(List.of());
+
+        var runs = service().listRuns(42L, "EXPLORATION", 5);
+
+        assertEquals(1, runs.size());
+        assertEquals("local-exploration-failure", runs.get(0).getRunId());
+        assertEquals(MetadataRunStatus.FAILED, runs.get(0).getStatus());
+        assertEquals(MetadataErrorCode.OM_SERVICE_SYNC_ERROR.name(), runs.get(0).getErrorMessage());
+    }
+
+    @Test
+    void listRunsSurfacesNeverWithLocalErrorAsFailureLog() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setProfileStatus(MetadataRunStatus.NEVER);
+        binding.setProfileLastError(MetadataErrorCode.OM_SERVICE_SYNC_ERROR.name());
+        binding.setProfileLastRunTime(new Date(1_700_001_000_000L));
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 5)).thenReturn(List.of());
+
+        var runs = service().listRuns(42L, "EXPLORATION", 5);
+
+        assertEquals(1, runs.size());
+        assertEquals(MetadataRunStatus.FAILED, runs.get(0).getStatus());
+        assertEquals(MetadataErrorCode.OM_SERVICE_SYNC_ERROR.name(), runs.get(0).getErrorMessage());
+    }
+
     private void stubReady(MetadataSourceBinding binding, MetadataSourceBinding reserved) {
         when(dataSourceDao.queryById(42L)).thenReturn(source());
         when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);

@@ -148,6 +148,21 @@ public class MetadataStatusSynchronizer {
                 && now.getTime() - currentLastRunTime.getTime() < properties.getTriggerGraceSeconds() * 1000L) {
             return;
         }
+        if (run == null
+                && (currentStatus == MetadataRunStatus.FAILED || currentStatus == MetadataRunStatus.SUCCESS)) {
+            // Local terminal outcomes (for example exploration upsert timeout) must not be
+            // wiped to NEVER just because OpenMetadata never recorded a pipeline run.
+            return;
+        }
+        if (run == null && currentStatus == MetadataRunStatus.NEVER && hasLocalFailureEvidence(binding, scan)) {
+            // Recover rows that an older synchronizer wiped to NEVER while leaving lastError set.
+            if (scan) {
+                binding.setScanStatus(MetadataRunStatus.FAILED);
+            } else {
+                binding.setProfileStatus(MetadataRunStatus.FAILED);
+            }
+            return;
+        }
         if (scan
                 && run == null
                 && currentStatus == MetadataRunStatus.QUEUED
@@ -158,9 +173,18 @@ public class MetadataStatusSynchronizer {
             // the process crashed before trigger). Re-open exactly this synced version.
             binding.setMetadataTriggeredVersion(Math.max(0L, binding.getSyncedConfigVersion() - 1L));
         }
-        MetadataRunStatus status = run == null
-                ? MetadataRunStatus.NEVER
-                : OpenMetadataRunStatusMapper.fromPipelineState(run.pipelineState());
+        MetadataRunStatus status;
+        if (run == null) {
+            if (!scan && MetadataPipelineOperationService.isRunning(currentStatus)) {
+                // Exploration was reserved locally but never appeared in OM after the grace window.
+                status = MetadataRunStatus.FAILED;
+            } else {
+                // Metadata scan keeps NEVER so the reconciler can reopen and retry.
+                status = MetadataRunStatus.NEVER;
+            }
+        } else {
+            status = OpenMetadataRunStatusMapper.fromPipelineState(run.pipelineState());
+        }
         Date runTime = run == null
                 ? null
                 : MetadataPipelineOperationService.fromOmTimestamp(
@@ -189,7 +213,11 @@ public class MetadataStatusSynchronizer {
                 binding.setProfileLastSuccessTime(successTime);
                 binding.setProfileLastError(null);
             } else if (status == MetadataRunStatus.FAILED) {
-                binding.setProfileLastError(MetadataErrorCode.PIPELINE_EXECUTION_ERROR.name());
+                if (run == null) {
+                    binding.setProfileLastError(MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR.name());
+                } else {
+                    binding.setProfileLastError(MetadataErrorCode.PIPELINE_EXECUTION_ERROR.name());
+                }
             }
         }
     }
@@ -203,5 +231,11 @@ public class MetadataStatusSynchronizer {
         Date runTime = MetadataPipelineOperationService.fromOmTimestamp(timestamp);
         // OM timestamps are commonly second-precision; allow a small clock/precision skew.
         return runTime != null && runTime.getTime() + 5_000L < currentLastRunTime.getTime();
+    }
+
+    private static boolean hasLocalFailureEvidence(MetadataSourceBinding binding, boolean scan) {
+        String error = scan ? binding.getScanLastError() : binding.getProfileLastError();
+        Date lastRunTime = scan ? binding.getScanLastRunTime() : binding.getProfileLastRunTime();
+        return error != null && !error.isBlank() && lastRunTime != null;
     }
 }

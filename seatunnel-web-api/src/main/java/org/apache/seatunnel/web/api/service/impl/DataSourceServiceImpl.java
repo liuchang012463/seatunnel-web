@@ -807,12 +807,31 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             return;
         }
         vo.setMetadataSyncStatus(binding.getSyncStatus() == null ? "NOT_INITIALIZED" : binding.getSyncStatus().name());
-        vo.setScanStatus(binding.getScanStatus());
+        vo.setScanStatus(effectiveRunStatus(binding.getScanStatus(), binding.getScanLastError(), binding.getScanLastRunTime()));
+        vo.setScanLastError(binding.getScanLastError());
         vo.setScanLastRunTime(binding.getScanLastRunTime());
         vo.setScanLastSuccessTime(binding.getScanLastSuccessTime());
-        vo.setProfileStatus(binding.getProfileStatus());
+        vo.setProfileStatus(effectiveRunStatus(
+                binding.getProfileStatus(), binding.getProfileLastError(), binding.getProfileLastRunTime()));
+        vo.setProfileLastError(binding.getProfileLastError());
         vo.setProfileLastRunTime(binding.getProfileLastRunTime());
         vo.setProfileLastSuccessTime(binding.getProfileLastSuccessTime());
+    }
+
+    /**
+     * Older status sync could wipe FAILED to NEVER while leaving lastError set.
+     * Present that combination as FAILED so list/status UIs stay honest.
+     */
+    private static org.apache.seatunnel.web.common.enums.MetadataRunStatus effectiveRunStatus(
+            org.apache.seatunnel.web.common.enums.MetadataRunStatus status,
+            String lastError,
+            java.util.Date lastRunTime) {
+        if (status == org.apache.seatunnel.web.common.enums.MetadataRunStatus.NEVER
+                && lastError != null && !lastError.isBlank()
+                && lastRunTime != null) {
+            return org.apache.seatunnel.web.common.enums.MetadataRunStatus.FAILED;
+        }
+        return status;
     }
 
     /** Never expose the encrypted ODS password through ordinary datasource APIs. */

@@ -68,6 +68,8 @@ public class DataSourceVO {
 
     private MetadataRunStatus scanStatus;
 
+    private String scanLastError;
+
     @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
     private Date scanLastRunTime;
 
@@ -75,6 +77,8 @@ public class DataSourceVO {
     private Date scanLastSuccessTime;
 
     private MetadataRunStatus profileStatus;
+
+    private String profileLastError;
 
     @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
     private Date profileLastRunTime;

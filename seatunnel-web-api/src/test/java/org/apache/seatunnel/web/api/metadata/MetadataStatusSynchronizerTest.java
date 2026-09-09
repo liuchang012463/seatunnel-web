@@ -154,6 +154,57 @@ class MetadataStatusSynchronizerTest {
         assertEquals(reservationTime, saved.getValue().getProfileLastRunTime());
     }
 
+    @Test
+    void restoresNeverWithLocalErrorToFailedWhenOpenMetadataHasNoRuns() {
+        Date reservationTime = new Date(1_700_001_000_000L);
+        MetadataSourceBinding candidate = binding(0L);
+        candidate.setProfileStatus(MetadataRunStatus.NEVER);
+        candidate.setProfileLastRunTime(reservationTime);
+        candidate.setProfileLastError(MetadataErrorCode.OM_SERVICE_SYNC_ERROR.name());
+        MetadataSourceBinding live = binding(0L);
+        live.setProfileStatus(MetadataRunStatus.NEVER);
+        live.setProfileLastRunTime(reservationTime);
+        live.setProfileLastError(MetadataErrorCode.OM_SERVICE_SYNC_ERROR.name());
+        when(bindingDao.queryStatusRefreshCandidates(any(Date.class), eq(50))).thenReturn(List.of(candidate));
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1)).thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1)).thenReturn(List.of());
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
+
+        synchronizer().refreshStatuses();
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateIfVersion(saved.capture(), eq(0L));
+        assertEquals(MetadataRunStatus.FAILED, saved.getValue().getProfileStatus());
+        assertEquals(MetadataErrorCode.OM_SERVICE_SYNC_ERROR.name(), saved.getValue().getProfileLastError());
+    }
+
+    @Test
+    void marksQueuedExplorationFailedWhenOpenMetadataNeverRegistersARun() {
+        Date reservationTime = new Date(0);
+        MetadataSourceBinding candidate = binding(0L);
+        candidate.setProfileStatus(MetadataRunStatus.QUEUED);
+        candidate.setProfileLastRunTime(reservationTime);
+        MetadataSourceBinding live = binding(0L);
+        live.setProfileStatus(MetadataRunStatus.QUEUED);
+        live.setProfileLastRunTime(reservationTime);
+        when(bindingDao.queryStatusRefreshCandidates(any(Date.class), eq(50))).thenReturn(List.of(candidate));
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1)).thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1)).thenReturn(List.of());
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
+
+        MetadataStatusProperties properties = new MetadataStatusProperties();
+        properties.setBatchSize(50);
+        properties.setTriggerGraceSeconds(0);
+        new MetadataStatusSynchronizer(bindingDao, openMetadataClient, properties, operationService).refreshStatuses();
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateIfVersion(saved.capture(), eq(0L));
+        assertEquals(MetadataRunStatus.FAILED, saved.getValue().getProfileStatus());
+        assertEquals(MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR.name(), saved.getValue().getProfileLastError());
+    }
+
     private MetadataStatusSynchronizer synchronizer() {
         MetadataStatusProperties properties = new MetadataStatusProperties();
         properties.setBatchSize(50);

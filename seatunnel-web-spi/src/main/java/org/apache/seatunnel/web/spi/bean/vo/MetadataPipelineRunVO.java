@@ -21,4 +21,7 @@ public class MetadataPipelineRunVO {
     private Date endTime;
 
     private Integer warningsCount;
+
+    /** Optional sanitized error code/message for local or OM-backed failures. */
+    private String errorMessage;
 }

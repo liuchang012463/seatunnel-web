@@ -286,12 +286,26 @@ public class MetadataPipelineOperationService {
         }
         status.setSyncStatus(binding.getSyncStatus() == null ? "NOT_INITIALIZED" : binding.getSyncStatus().name());
         status.setScan(runState(
-                binding.getScanStatus(), binding.getScanLastRunTime(), binding.getScanLastSuccessTime(), binding.getScanLastError()));
+                effectiveRunStatus(binding.getScanStatus(), binding.getScanLastError(), binding.getScanLastRunTime()),
+                binding.getScanLastRunTime(),
+                binding.getScanLastSuccessTime(),
+                binding.getScanLastError()));
         status.setExploration(runState(
-                binding.getProfileStatus(),
+                effectiveRunStatus(
+                        binding.getProfileStatus(), binding.getProfileLastError(), binding.getProfileLastRunTime()),
                 binding.getProfileLastRunTime(),
                 binding.getProfileLastSuccessTime(),
                 binding.getProfileLastError()));
+        return status;
+    }
+
+    private static MetadataRunStatus effectiveRunStatus(
+            MetadataRunStatus status, String lastError, Date lastRunTime) {
+        if (status == MetadataRunStatus.NEVER
+                && lastError != null && !lastError.isBlank()
+                && lastRunTime != null) {
+            return MetadataRunStatus.FAILED;
+        }
         return status;
     }
 
@@ -307,8 +321,9 @@ public class MetadataPipelineOperationService {
             throw invalid("pipeline has not been synchronized");
         }
         openMetadataClient.assertFixedVersion();
+        int safeLimit = Math.max(1, limit);
         List<MetadataPipelineRunVO> result = new ArrayList<>();
-        for (OpenMetadataPipelineRun run : openMetadataClient.listIngestionPipelineRuns(fqn, limit)) {
+        for (OpenMetadataPipelineRun run : openMetadataClient.listIngestionPipelineRuns(fqn, safeLimit)) {
             MetadataPipelineRunVO item = new MetadataPipelineRunVO();
             item.setRunId(run.runId());
             item.setStatus(OpenMetadataRunStatusMapper.fromPipelineState(run.pipelineState()));
@@ -317,7 +332,56 @@ public class MetadataPipelineOperationService {
             item.setWarningsCount(run.warningsCount());
             result.add(item);
         }
+        MetadataPipelineRunVO localFailure = localFailureRun(binding, exploration);
+        if (localFailure != null && !hasMatchingOmFailure(result, localFailure)) {
+            result.add(0, localFailure);
+            if (result.size() > safeLimit) {
+                result = new ArrayList<>(result.subList(0, safeLimit));
+            }
+        }
         return result;
+    }
+
+    /**
+     * Surfaces control-plane failures that never produced an OpenMetadata pipeline run
+     * (for example exploration upsert timeout) so the UI run history is not empty.
+     */
+    private static MetadataPipelineRunVO localFailureRun(MetadataSourceBinding binding, boolean exploration) {
+        MetadataRunStatus status = exploration ? binding.getProfileStatus() : binding.getScanStatus();
+        String error = exploration ? binding.getProfileLastError() : binding.getScanLastError();
+        Date lastRunTime = exploration ? binding.getProfileLastRunTime() : binding.getScanLastRunTime();
+        if (error == null || error.isBlank() || lastRunTime == null) {
+            return null;
+        }
+        // FAILED is the normal path; NEVER+error covers rows wiped by older status sync.
+        if (status != MetadataRunStatus.FAILED && status != MetadataRunStatus.NEVER) {
+            return null;
+        }
+        MetadataPipelineRunVO item = new MetadataPipelineRunVO();
+        item.setRunId(exploration ? "local-exploration-failure" : "local-scan-failure");
+        item.setStatus(MetadataRunStatus.FAILED);
+        item.setStartTime(lastRunTime);
+        item.setEndTime(lastRunTime);
+        item.setErrorMessage(error);
+        item.setWarningsCount(0);
+        return item;
+    }
+
+    private static boolean hasMatchingOmFailure(List<MetadataPipelineRunVO> runs, MetadataPipelineRunVO localFailure) {
+        if (runs.isEmpty() || localFailure.getStartTime() == null) {
+            return false;
+        }
+        Date localStart = localFailure.getStartTime();
+        for (MetadataPipelineRunVO run : runs) {
+            if (run.getStatus() != MetadataRunStatus.FAILED || run.getStartTime() == null) {
+                continue;
+            }
+            // Same second-precision window used elsewhere for OM vs local clocks.
+            if (Math.abs(run.getStartTime().getTime() - localStart.getTime()) <= 5_000L) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public List<OptionVO> listDatabases(Long dataSourceId) {

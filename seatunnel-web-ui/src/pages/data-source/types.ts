@@ -57,9 +57,11 @@ export interface DataSourceRecord {
   connStatus?: string;
   metadataSyncStatus?: string;
   scanStatus?: string;
+  scanLastError?: string;
   scanLastRunTime?: string;
   scanLastSuccessTime?: string;
   profileStatus?: string;
+  profileLastError?: string;
   profileLastRunTime?: string;
   profileLastSuccessTime?: string;
   status?: DataSourceLifecycleStatus;
