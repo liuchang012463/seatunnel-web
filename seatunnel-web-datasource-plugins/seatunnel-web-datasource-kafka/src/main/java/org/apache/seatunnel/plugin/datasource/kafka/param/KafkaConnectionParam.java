@@ -42,7 +42,7 @@ public class KafkaConnectionParam implements ConnectionParam {
 
     @FormField(label = "Schema Registry 地址", order = 9,
             placeholder = "http://localhost:8081",
-            description = "可选。用于需要 Schema Registry 的 Kafka 数据格式配置。")
+            description = "未配置 Schema Registry 时，无法进行元数据扫描。")
     private String schemaRegistryUrl;
 
     private DbType dbType = DbType.KAFKA;
