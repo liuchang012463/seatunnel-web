@@ -393,7 +393,7 @@ const DataSourcePage: React.FC = () => {
       ),
     },
     {
-      title: '连接状态',
+      title: '连通检测',
       key: 'connStatus',
       align: 'center',
       width: 120,
