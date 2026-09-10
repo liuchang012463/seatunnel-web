@@ -623,6 +623,7 @@
 }
 
 .datasource-search-bar {
+  width: fit-content;
   max-width: 100%;
   margin-bottom: 12px;
 }
@@ -635,8 +636,8 @@
 }
 
 .datasource-search-control {
-  min-width: 300px;
-  flex: 1 1 300px;
+  width: 520px;
+  flex: 0 0 520px;
   overflow: hidden;
   background: var(--st-color-bg-control);
   border: 1px solid var(--st-color-border);
@@ -656,8 +657,8 @@
 }
 
 .datasource-filter-select {
-  min-width: 190px;
-  flex: 0 1 220px;
+  width: 200px;
+  flex: 0 0 200px;
 }
 
 .datasource-search-control-input {
@@ -974,11 +975,15 @@
     padding: 12px;
   }
 
+  .datasource-search-bar {
+    width: 100%;
+  }
+
   .datasource-search-control,
   .datasource-filter-select {
     width: 100%;
     min-width: 100%;
-    flex-basis: 100%;
+    flex: 1 1 100%;
   }
 }
 
