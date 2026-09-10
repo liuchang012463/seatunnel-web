@@ -667,7 +667,7 @@ const DataSourcePage: React.FC = () => {
                   )}
 
                   {pagination.total > 0 && (
-                    <div className="mt-8 flex justify-end">
+                    <div className="datasource-page-pagination mt-8 flex justify-end">
                       <Pagination
                         current={pagination.pageNo}
                         pageSize={pagination.pageSize}
