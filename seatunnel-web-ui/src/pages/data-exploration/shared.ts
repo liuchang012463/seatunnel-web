@@ -93,3 +93,73 @@ export function sourceMatches(
   if (filters.dataSourceId && String(record.id ?? '') !== filters.dataSourceId) return false;
   return true;
 }
+
+export type ExplorationTaskCategoryKey =
+  | 'DATABASE'
+  | 'MESSAGE'
+  | 'SEARCH'
+  | 'OBJECT_STORAGE'
+  | 'API'
+  | 'FILE';
+
+export interface ExplorationTaskCategory {
+  key: ExplorationTaskCategoryKey;
+  label: string;
+  dbTypes: readonly string[];
+  supportsExploration: boolean;
+}
+
+/** Category tabs for the probe-task configuration page. */
+export const EXPLORATION_TASK_CATEGORIES: readonly ExplorationTaskCategory[] = [
+  {
+    key: 'DATABASE',
+    label: '数据库',
+    dbTypes: ['MYSQL', 'POSTGRE_SQL', 'ORACLE', 'DORIS', 'DAMENG', 'KINGBASE', 'JDBC', 'H2'],
+    supportsExploration: true,
+  },
+  {
+    key: 'MESSAGE',
+    label: '消息',
+    dbTypes: ['KAFKA'],
+    supportsExploration: false,
+  },
+  {
+    key: 'SEARCH',
+    label: '搜索',
+    dbTypes: ['ELASTICSEARCH'],
+    supportsExploration: false,
+  },
+  {
+    key: 'OBJECT_STORAGE',
+    label: '对象存储',
+    dbTypes: ['S3', 'MINIO'],
+    supportsExploration: false,
+  },
+  {
+    key: 'API',
+    label: 'API',
+    dbTypes: ['HTTP'],
+    supportsExploration: false,
+  },
+  {
+    key: 'FILE',
+    label: '文件',
+    dbTypes: ['SFTP'],
+    supportsExploration: false,
+  },
+];
+
+export const DEFAULT_EXPLORATION_TASK_CATEGORY: ExplorationTaskCategoryKey = 'DATABASE';
+
+export function getExplorationTaskCategory(
+  key: ExplorationTaskCategoryKey = DEFAULT_EXPLORATION_TASK_CATEGORY,
+): ExplorationTaskCategory {
+  return EXPLORATION_TASK_CATEGORIES.find((category) => category.key === key)
+    ?? EXPLORATION_TASK_CATEGORIES[0];
+}
+
+export function explorationTaskCategorySupportsExploration(
+  key: ExplorationTaskCategoryKey = DEFAULT_EXPLORATION_TASK_CATEGORY,
+): boolean {
+  return getExplorationTaskCategory(key).supportsExploration;
+}

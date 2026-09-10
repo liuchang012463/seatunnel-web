@@ -15,6 +15,7 @@ import {
   Input,
   Modal,
   Pagination,
+  Segmented,
   Select,
   Space,
   Spin,
@@ -23,7 +24,7 @@ import {
   message,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import TaskListPageHeader from '@/components/TaskListPageHeader';
 import { DATA_SOURCE_STATUS_OPTIONS } from '@/pages/data-source/constants';
 import {
@@ -48,7 +49,16 @@ import type {
   DataSourceMetadataStatus,
   PaginationInfo,
 } from '@/pages/data-source/types';
-import { displayOwner, explorationStatus, metadataStatus } from '../shared';
+import {
+  DEFAULT_EXPLORATION_TASK_CATEGORY,
+  EXPLORATION_TASK_CATEGORIES,
+  type ExplorationTaskCategoryKey,
+  displayOwner,
+  explorationStatus,
+  explorationTaskCategorySupportsExploration,
+  getExplorationTaskCategory,
+  metadataStatus,
+} from '../shared';
 import '../index.less';
 
 const DEFAULT_PAGINATION: PaginationInfo = { pageNo: 1, pageSize: 10, total: 0 };
@@ -129,6 +139,9 @@ const DataExplorationTasksPage: React.FC = () => {
   const [runRecordName, setRunRecordName] = useState('');
   const [trackingExploration, setTrackingExploration] = useState<ExplorationTracking>();
   const [explorationFeedback, setExplorationFeedback] = useState<ExplorationFeedback>();
+  const [category, setCategory] = useState<ExplorationTaskCategoryKey>(DEFAULT_EXPLORATION_TASK_CATEGORY);
+  const selectedCategory = getExplorationTaskCategory(category);
+  const supportsExploration = explorationTaskCategorySupportsExploration(category);
 
   const loadUnits = useCallback(async () => {
     try {
@@ -166,6 +179,7 @@ const DataExplorationTasksPage: React.FC = () => {
       unitId: unitId || undefined,
       businessSystemId: businessSystemId || undefined,
       status,
+      dbTypes: [...selectedCategory.dbTypes],
     };
     try {
       const response = await fetchDataSourcePage(params);
@@ -181,7 +195,7 @@ const DataExplorationTasksPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [businessSystemId, keyword, pagination.pageNo, pagination.pageSize, status, unitId]);
+  }, [businessSystemId, category, keyword, pagination.pageNo, pagination.pageSize, selectedCategory.dbTypes, status, unitId]);
 
   useEffect(() => {
     void loadUnits();
@@ -426,7 +440,7 @@ const DataExplorationTasksPage: React.FC = () => {
     }
   };
 
-  const columns: TableColumnsType<DataSourceRecord> = [
+  const columns = useMemo<TableColumnsType<DataSourceRecord>>(() => [
     {
       title: '数据源',
       key: 'name',
@@ -479,20 +493,22 @@ const DataExplorationTasksPage: React.FC = () => {
       title: '操作',
       key: 'actions',
       fixed: 'right',
-      width: 340,
+      width: supportsExploration ? 340 : 240,
       render: (_, record) => (
         <Space size="small">
           <Button type="link" icon={<SyncOutlined />} onClick={() => void triggerScan(record)}>
             重新扫描
           </Button>
-          <Button
-            type="link"
-            icon={<PlayCircleOutlined />}
-            disabled={record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING'}
-            onClick={() => void openExplore(record)}
-          >
-            {record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING' ? '探查中' : '开始探查'}
-          </Button>
+          {supportsExploration && (
+            <Button
+              type="link"
+              icon={<PlayCircleOutlined />}
+              disabled={record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING'}
+              onClick={() => void openExplore(record)}
+            >
+              {record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING' ? '探查中' : '开始探查'}
+            </Button>
+          )}
           <Button type="link" icon={<ClockCircleOutlined />} onClick={() => void showRuns(record)}>
             运行记录
           </Button>
@@ -510,7 +526,7 @@ const DataExplorationTasksPage: React.FC = () => {
         </Space>
       ),
     },
-  ];
+  ], [supportsExploration]);
 
   return (
     <div className="data-exploration-page data-exploration-tasks min-h-full px-6 py-5">
@@ -522,6 +538,18 @@ const DataExplorationTasksPage: React.FC = () => {
       />
 
       <Card className="exploration-panel exploration-filter-panel mt-5" size="small">
+        <Segmented
+          className="mb-3"
+          value={category}
+          options={EXPLORATION_TASK_CATEGORIES.map((item) => ({
+            label: item.label,
+            value: item.key,
+          }))}
+          onChange={(value) => {
+            setCategory(value as ExplorationTaskCategoryKey);
+            resetPage();
+          }}
+        />
         <div className="flex flex-wrap items-center gap-3">
           <Input
             allowClear
