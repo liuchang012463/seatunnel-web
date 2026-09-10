@@ -57,7 +57,7 @@ const WeekScheduleFields: React.FC<Props> = ({ weeklyValue, onChange }) => {
               time: normalizeTime(weeklyValue.time),
             })
           }
-          suffix={<ClockCircleOutlined className="text-[#98A2B3]" />}
+          suffix={<ClockCircleOutlined className="text-[color:var(--st-color-text-muted)]" />}
           placeholder="00:17"
         />
       </Form.Item>

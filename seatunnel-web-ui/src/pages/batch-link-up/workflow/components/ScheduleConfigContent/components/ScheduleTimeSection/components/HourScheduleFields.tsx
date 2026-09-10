@@ -92,7 +92,7 @@ const HourScheduleFields: React.FC<Props> = ({
                   },
                 })
               }
-              suffix={<ClockCircleOutlined className="text-[#98A2B3]" />}
+              suffix={<ClockCircleOutlined className="text-[color:var(--st-color-text-muted)]" />}
               placeholder="00:00"
             />
           </Form.Item>
@@ -117,7 +117,7 @@ const HourScheduleFields: React.FC<Props> = ({
                 }
                 options={intervalOptions}
               />
-              <span className="text-[13px] text-[#667085]">小时</span>
+              <span className="text-[13px] text-[color:var(--st-color-text-secondary)]">小时</span>
             </Space>
           </Form.Item>
 
@@ -146,7 +146,7 @@ const HourScheduleFields: React.FC<Props> = ({
                   },
                 })
               }
-              suffix={<ClockCircleOutlined className="text-[#98A2B3]" />}
+              suffix={<ClockCircleOutlined className="text-[color:var(--st-color-text-muted)]" />}
               placeholder="23:59"
             />
           </Form.Item>
@@ -204,7 +204,7 @@ const HourScheduleFields: React.FC<Props> = ({
                   },
                 })
               }
-              suffix={<ClockCircleOutlined className="text-[#98A2B3]" />}
+              suffix={<ClockCircleOutlined className="text-[color:var(--st-color-text-muted)]" />}
               placeholder="00"
             />
           </Form.Item>

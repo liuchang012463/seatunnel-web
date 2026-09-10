@@ -32,7 +32,7 @@ const BaseConfigSection: React.FC<Props> = ({
       <div className="rounded-[24px] bg-white shadow-sm space-y-6">
         {/* ① 数据同步方式（主视觉块） */}
         <div className="rounded-2xl border border-[#E4E7EC] bg-[#FAFBFC] p-5">
-          <div className="mb-3 text-[14px] font-medium text-[#344054]">数据同步方式</div>
+          <div className="mb-3 text-[14px] font-medium text-[color:var(--st-color-text-primary)]">数据同步方式</div>
 
           <div className="flex items-center gap-3">
             <DataSourceSelect
@@ -44,7 +44,7 @@ const BaseConfigSection: React.FC<Props> = ({
               width="48%"
             />
 
-            <div className="text-[#98A2B3]">
+            <div className="text-[color:var(--st-color-text-muted)]">
               <IconRightArrow />
             </div>
 
@@ -61,7 +61,7 @@ const BaseConfigSection: React.FC<Props> = ({
 
         {/* ② 任务信息 */}
         <div className="space-y-4">
-          <div className="text-[14px] font-medium text-[#344054]">任务信息</div>
+          <div className="text-[14px] font-medium text-[color:var(--st-color-text-primary)]">任务信息</div>
 
           <div className="grid grid-cols-1 gap-4">
             <Form.Item
@@ -81,7 +81,7 @@ const BaseConfigSection: React.FC<Props> = ({
 
         {/* ③ 配置模式 */}
         <div>
-          <div className="mb-3 text-[14px] font-medium text-[#344054]">配置模式</div>
+          <div className="mb-3 text-[14px] font-medium text-[color:var(--st-color-text-primary)]">配置模式</div>
 
           <Form.Item name="mode" initialValue="GUIDE_SINGLE" className="mb-0">
             <Radio.Group className="w-full">

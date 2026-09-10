@@ -31,11 +31,11 @@ const statusConfig: Record<
     label: "失败",
   },
   CANCELED: {
-    color: "#64748b",
+    color: "var(--st-color-text-muted)",
     label: "已取消",
   },
   CANCELLED: {
-    color: "#64748b",
+    color: "var(--st-color-text-muted)",
     label: "已取消",
   },
   PAUSED: {
@@ -43,19 +43,19 @@ const statusConfig: Record<
     label: "已暂停",
   },
   INITIALIZING: {
-    color: "#64748b",
+    color: "var(--st-color-text-muted)",
     label: "初始化中",
   },
   CREATED: {
-    color: "#64748b",
+    color: "var(--st-color-text-muted)",
     label: "已创建",
   },
   PENDING: {
-    color: "#64748b",
+    color: "var(--st-color-text-muted)",
     label: "等待中",
   },
   SCHEDULED: {
-    color: "#64748b",
+    color: "var(--st-color-text-muted)",
     label: "已调度",
   },
   FAILING: {
@@ -67,7 +67,7 @@ const statusConfig: Record<
     label: "保存点中",
   },
   CANCELING: {
-    color: "#64748b",
+    color: "var(--st-color-text-muted)",
     label: "取消中",
   },
 };
@@ -168,7 +168,7 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
             <div className="max-h-[240px] min-h-[120px] overflow-auto px-3 py-3">
               {lines.map((line, index) => (
                 <div key={index} className="flex items-start">
-                  <span className="w-9 shrink-0 select-none pr-3 text-right text-[#64748b]">
+                  <span className="w-9 shrink-0 select-none pr-3 text-right text-[color:var(--st-color-text-muted)]">
                     {index + 1}
                   </span>
 

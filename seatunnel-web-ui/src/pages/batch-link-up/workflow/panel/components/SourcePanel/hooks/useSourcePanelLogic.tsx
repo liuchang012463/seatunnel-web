@@ -157,13 +157,13 @@ export function useSourcePanelLogic({
                     height: 20,
                     borderRadius: 6,
                     background: "rgba(148, 163, 184, 0.12)",
-                    color: "#64748B",
+                    color: 'var(--st-color-text-muted)',
                     flexShrink: 0,
                   }}
                 >
                   <Table2 size={12} />
                 </span>
-                <span style={{ color: "#344054" }}>{text}</span>
+                <span style={{ color: 'var(--st-color-text-primary)' }}>{text}</span>
               </div>
             ),
             value: String(item?.value ?? ""),

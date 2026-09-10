@@ -12,15 +12,15 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   RUNNING: { color: "#1677ff", label: "运行中" },
   FAILED: { color: "#ef4444", label: "失败" },
   FAILING: { color: "#ef4444", label: "失败中" },
-  CANCELED: { color: "#64748b", label: "已取消" },
-  CANCELLED: { color: "#64748b", label: "已取消" },
+  CANCELED: { color: "var(--st-color-text-muted)", label: "已取消" },
+  CANCELLED: { color: "var(--st-color-text-muted)", label: "已取消" },
   PAUSED: { color: "#f59e0b", label: "已暂停" },
-  INITIALIZING: { color: "#64748b", label: "初始化中" },
-  CREATED: { color: "#64748b", label: "已创建" },
-  PENDING: { color: "#64748b", label: "等待中" },
-  SCHEDULED: { color: "#64748b", label: "已调度" },
+  INITIALIZING: { color: "var(--st-color-text-muted)", label: "初始化中" },
+  CREATED: { color: "var(--st-color-text-muted)", label: "已创建" },
+  PENDING: { color: "var(--st-color-text-muted)", label: "等待中" },
+  SCHEDULED: { color: "var(--st-color-text-muted)", label: "已调度" },
   DOING_SAVEPOINT: { color: "#f59e0b", label: "保存点中" },
-  CANCELING: { color: "#64748b", label: "取消中" },
+  CANCELING: { color: "var(--st-color-text-muted)", label: "取消中" },
 };
 
 const getStatusConfig = (status?: string) => {
@@ -28,7 +28,7 @@ const getStatusConfig = (status?: string) => {
 
   return (
     statusConfig[normalizedStatus] || {
-      color: "#64748b",
+      color: "var(--st-color-text-muted)",
       label: status ? "未识别" : "未开始",
     }
   );

@@ -278,7 +278,7 @@ const ExtraParamsConfig: FC<ExtraParamsConfigProps> = ({
                   suffix={
                     <DeleteOutlined
                       onClick={() => handleRemoveParam(idx)}
-                      style={{ cursor: "pointer", color: "#98A2B3" }}
+                      style={{ cursor: "pointer", color: 'var(--st-color-text-muted)' }}
                     />
                   }
                 />

@@ -53,7 +53,7 @@ const themeMap: Record<
     labelColor: "#8A63D2",
   },
   DEFAULT: {
-    dot: "#98A2B3",
+    dot: "var(--st-color-text-muted)",
     dotShadow: "rgba(152, 162, 179, 0.14)",
     iconColor: "#5B6B8A",
     iconBg: "#EEF2FF",
@@ -188,7 +188,7 @@ const TransformNode: FC<NodeProps<TransformNodeData>> = ({ data, selected }) => 
                 fontSize: 16,
                 fontWeight: 700,
                 lineHeight: "22px",
-                color: "#182230",
+                color: "var(--st-color-text-primary)",
                 marginBottom: 2,
               }}
             >
@@ -200,7 +200,7 @@ const TransformNode: FC<NodeProps<TransformNodeData>> = ({ data, selected }) => 
               style={{
                 fontSize: 13,
                 lineHeight: "18px",
-                color: "#8A94A6",
+                color: "var(--st-color-text-muted)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",

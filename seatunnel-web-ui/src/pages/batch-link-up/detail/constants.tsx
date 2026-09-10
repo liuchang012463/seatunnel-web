@@ -9,15 +9,15 @@ export const STEP_THEME = {
     pillDone: "bg-[#F5F8FF] text-[#175CD3]",
     dotDone: "bg-[#5B8DEF] text-white",
 
-    pillInactive: "bg-[#F9FAFB] text-[#98A2B3]",
-    dotInactive: "bg-[#EAECF0] text-[#98A2B3]",
+    pillInactive: "bg-[#F9FAFB] text-[color:var(--st-color-text-muted)]",
+    dotInactive: "bg-[#EAECF0] text-[color:var(--st-color-text-muted)]",
   },
   client: {
     pill: "bg-[#EEF4FF] text-[#175CD3]",
     dot: "bg-[#175CD3] text-white",
 
-    pillInactive: "bg-[#F9FAFB] text-[#98A2B3]",
-    dotInactive: "bg-[#EAECF0] text-[#98A2B3]",
+    pillInactive: "bg-[#F9FAFB] text-[color:var(--st-color-text-muted)]",
+    dotInactive: "bg-[#EAECF0] text-[color:var(--st-color-text-muted)]",
   },
 };
 

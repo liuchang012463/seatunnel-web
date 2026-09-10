@@ -29,7 +29,7 @@ const ModalIcon: React.FC<RemixIconProps> = ({ className = '', style = {}, onCli
         data-icon="Group"
         aria-hidden="true"
         style={{
-          color: '#676f83',
+          color: "var(--st-color-text-muted)",
           width: '0.75rem',
           height: '0.75rem',
         }}

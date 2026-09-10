@@ -43,11 +43,11 @@ const PixelEmptyMan: React.FC = () => {
         <rect x="64" y="20" width="4" height="8" fill="#CBD5E1" />
 
         {/* eyes */}
-        <rect x="40" y="22" width="4" height="4" fill="#94A3B8" />
-        <rect x="52" y="22" width="4" height="4" fill="#94A3B8" />
+        <rect x="40" y="22" width="4" height="4" fill="var(--st-color-text-muted)" />
+        <rect x="52" y="22" width="4" height="4" fill="var(--st-color-text-muted)" />
 
         {/* empty mouth */}
-        <rect x="44" y="30" width="8" height="2" fill="#94A3B8" />
+        <rect x="44" y="30" width="8" height="2" fill="var(--st-color-text-muted)" />
 
         {/* arms */}
         <rect x="26" y="34" width="8" height="4" fill="#CBD5E1" />

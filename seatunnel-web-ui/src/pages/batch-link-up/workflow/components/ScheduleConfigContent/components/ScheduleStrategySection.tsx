@@ -79,7 +79,7 @@ const ScheduleStrategySection: React.FC<Props> = ({
           </Form.Item>
 
           {forceAuto ? (
-            <div style={{ margin: "-4px 0 16px 118px", color: "#64748b", fontSize: 12 }}>
+            <div style={{ margin: "-4px 0 16px 118px", color: "var(--st-color-text-muted)", fontSize: 12 }}>
               单表增量微批依赖调度窗口和水位推进，必须使用自动调度。
             </div>
           ) : null}
@@ -213,7 +213,7 @@ const ScheduleStrategySection: React.FC<Props> = ({
                       <Form.Item name="retryTimes" noStyle>
                         <StepNumberInput min={1} width={48} />
                       </Form.Item>
-                      <span style={{ color: "#000000", fontSize: 12 }}>次</span>
+                      <span style={{ color: "var(--st-color-text-primary)", fontSize: 12 }}>次</span>
                     </Space>
                   </Form.Item>
 
@@ -225,7 +225,7 @@ const ScheduleStrategySection: React.FC<Props> = ({
                       <Form.Item name="retryInterval" noStyle>
                         <StepNumberInput min={1} width={48} />
                       </Form.Item>
-                      <span style={{ color: "#000000", fontSize: 12 }}>
+                      <span style={{ color: "var(--st-color-text-primary)", fontSize: 12 }}>
                         分钟
                       </span>
                     </Space>

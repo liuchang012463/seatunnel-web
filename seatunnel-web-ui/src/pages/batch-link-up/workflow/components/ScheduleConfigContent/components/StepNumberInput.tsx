@@ -53,7 +53,7 @@ const StepNumberInput: React.FC<StepNumberInputProps> = ({
           width: 24,
           height: 24,
           borderRadius: 0,
-          color: "#667085",
+          color: "var(--st-color-text-secondary)",
           borderInlineEnd: "1px solid #EAECF0",
         }}
       />
@@ -81,7 +81,7 @@ const StepNumberInput: React.FC<StepNumberInputProps> = ({
           width: 24,
           height: 24,
           borderRadius: 0,
-          color: "#667085",
+          color: "var(--st-color-text-secondary)",
           borderInlineStart: "1px solid #EAECF0",
         }}
       />

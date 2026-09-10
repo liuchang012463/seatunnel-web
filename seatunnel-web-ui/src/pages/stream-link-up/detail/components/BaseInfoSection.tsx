@@ -34,7 +34,7 @@ const BaseConfigSection: React.FC<Props> = ({
 
         {/* ① 数据同步方式（主视觉块） */}
         <div className="rounded-2xl border border-[#E4E7EC] bg-[#FAFBFC] p-5">
-          <div className="mb-3 text-[14px] font-medium text-[#344054]">
+          <div className="mb-3 text-[14px] font-medium text-[color:var(--st-color-text-primary)]">
             数据同步方式
           </div>
 
@@ -48,7 +48,7 @@ const BaseConfigSection: React.FC<Props> = ({
               width="48%"
             />
 
-            <div className="text-[#98A2B3]">
+            <div className="text-[color:var(--st-color-text-muted)]">
               <IconRightArrow />
             </div>
 
@@ -65,7 +65,7 @@ const BaseConfigSection: React.FC<Props> = ({
 
         {/* ② 任务信息 */}
         <div className="space-y-4">
-          <div className="text-[14px] font-medium text-[#344054]">
+          <div className="text-[14px] font-medium text-[color:var(--st-color-text-primary)]">
             任务信息
           </div>
 
@@ -94,7 +94,7 @@ const BaseConfigSection: React.FC<Props> = ({
 
         {/* ③ 配置模式 */}
         <div>
-          <div className="mb-3 text-[14px] font-medium text-[#344054]">
+          <div className="mb-3 text-[14px] font-medium text-[color:var(--st-color-text-primary)]">
             配置模式
           </div>
 

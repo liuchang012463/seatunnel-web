@@ -45,7 +45,7 @@ const DetailPage = () => {
   } = useDetailPage();
 
   if (!params) {
-    return <div className="p-6 text-[#667085]">暂无数据</div>;
+    return <div className="p-6 text-[color:var(--st-color-text-secondary)]">暂无数据</div>;
   }
 
   const isBaseStep = activeStep === "base";

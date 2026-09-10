@@ -31,7 +31,7 @@ export const modeBtnBase =
     "!h-7 !rounded-md !px-3 !text-[12px] !border-0 !shadow-none transition-all duration-200";
 export const modeBtnActive = "!bg-white !text-[#245BDB]";
 export const modeBtnInactive =
-    "!bg-transparent !text-[#667085] hover:!text-[#245BDB]";
+    "!bg-transparent !text-[color:var(--st-color-text-secondary)] hover:!text-[#245BDB]";
 
 export const formItemStyle: CSSProperties = {
     marginBottom: 14,
@@ -42,6 +42,6 @@ export const labelNodeStyle: CSSProperties = {
   alignItems: "center",
   gap: 4,
   fontSize: 13,
-  color: "#475467",
+  color: "var(--st-color-text-secondary)",
   lineHeight: "20px",
 };

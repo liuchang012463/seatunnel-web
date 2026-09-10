@@ -37,7 +37,8 @@
   --st-color-bg-interactive: #0a526a;
   --st-color-text-primary: #ffffff;
   --st-color-text-secondary: #d5d5d5;
-  --st-color-text-muted: #666f75;
+  /* Keep muted readable on dark teal surfaces (placeholders / empty hints). */
+  --st-color-text-muted: #9aa5ab;
   --st-color-accent: #4dd2ff;
   --st-color-primary: #2187a8;
   --st-color-primary-active: #117da0;
@@ -995,15 +996,51 @@ html[data-st-theme="dark"] [style*="color: rgb(23, 32, 51)"],
 html[data-st-theme="dark"] [style*="color: rgb(52, 64, 84)"],
 html[data-st-theme="dark"] [style*="color: rgb(71, 84, 103)"],
 html[data-st-theme="dark"] [style*="color: rgb(91, 107, 138)"],
+html[data-st-theme="dark"] [style*="color: rgb(100, 116, 139)"],
 html[data-st-theme="dark"] [style*="color: rgb(102, 112, 133)"],
+html[data-st-theme="dark"] [style*="color: rgb(103, 111, 131)"],
 html[data-st-theme="dark"] [style*="color: rgb(107, 114, 128)"],
+html[data-st-theme="dark"] [style*="color: rgb(138, 148, 166)"],
+html[data-st-theme="dark"] [style*="color: rgb(148, 163, 184)"],
 html[data-st-theme="dark"] [style*="color: rgb(152, 162, 179)"],
-html[data-st-theme="dark"] [style*="color: rgb(154, 171, 178)"] {
+html[data-st-theme="dark"] [style*="color: rgb(154, 171, 178)"],
+html[data-st-theme="dark"] [style*="color: #667085"],
+html[data-st-theme="dark"] [style*="color:#667085"],
+html[data-st-theme="dark"] [style*="color: #98a2b3"],
+html[data-st-theme="dark"] [style*="color:#98a2b3"],
+html[data-st-theme="dark"] [style*="color: #98A2B3"],
+html[data-st-theme="dark"] [style*="color:#98A2B3"],
+html[data-st-theme="dark"] [style*="color: #8a94a6"],
+html[data-st-theme="dark"] [style*="color:#8a94a6"],
+html[data-st-theme="dark"] [style*="color: #8A94A6"],
+html[data-st-theme="dark"] [style*="color:#8A94A6"],
+html[data-st-theme="dark"] [style*="color: #475467"],
+html[data-st-theme="dark"] [style*="color:#475467"],
+html[data-st-theme="dark"] [style*="color: #64748b"],
+html[data-st-theme="dark"] [style*="color:#64748b"],
+html[data-st-theme="dark"] [style*="color: #64748B"],
+html[data-st-theme="dark"] [style*="color:#64748B"],
+html[data-st-theme="dark"] [style*="color: #94a3b8"],
+html[data-st-theme="dark"] [style*="color:#94a3b8"],
+html[data-st-theme="dark"] [style*="color: #94A3B8"],
+html[data-st-theme="dark"] [style*="color:#94A3B8"],
+html[data-st-theme="dark"] [style*="color: #676f83"],
+html[data-st-theme="dark"] [style*="color:#676f83"],
+html[data-st-theme="dark"] [style*="color: #354052"],
+html[data-st-theme="dark"] [style*="color:#354052"],
+html[data-st-theme="dark"] [style*="color: #999"],
+html[data-st-theme="dark"] [style*="color:#999"],
+html[data-st-theme="dark"] [style*="color: #999999"],
+html[data-st-theme="dark"] [style*="color:#999999"] {
   color: var(--st-color-text-secondary) !important;
 }
 
 html[data-st-theme="dark"] [style*="color: rgb(16, 24, 40)"],
-html[data-st-theme="dark"] [style*="color: rgb(23, 32, 51)"] {
+html[data-st-theme="dark"] [style*="color: rgb(23, 32, 51)"],
+html[data-st-theme="dark"] [style*="color: #344054"],
+html[data-st-theme="dark"] [style*="color:#344054"],
+html[data-st-theme="dark"] [style*="color: #182230"],
+html[data-st-theme="dark"] [style*="color:#182230"] {
   color: var(--st-color-text-primary) !important;
 }
 
@@ -1573,6 +1610,8 @@ html[data-st-theme="dark"] {
   .workflow-panel__mini-meta-desc,
   .workflow-panel__meta-desc,
   .workflow-panel__label,
+  .workflow-panel__group-kicker,
+  .workflow-panel__empty,
   .workflow-panel__param-popover,
   .workflow-panel__param-popover span {
     color: var(--st-color-text-secondary) !important;
@@ -1586,6 +1625,22 @@ html[data-st-theme="dark"] {
   .workflow-panel .ant-segmented {
     background: var(--st-color-bg-elevated) !important;
     border-color: var(--st-color-border) !important;
+  }
+
+  .workflow-panel .ant-segmented-item {
+    color: var(--st-color-text-secondary) !important;
+  }
+
+  .workflow-panel .ant-segmented-item:hover {
+    color: var(--st-color-text-primary) !important;
+  }
+
+  .workflow-panel .ant-segmented-item-selected {
+    color: var(--st-color-text-primary) !important;
+  }
+
+  .workflow-panel .ant-segmented-thumb {
+    background: var(--st-color-primary) !important;
   }
 
   .workflow-panel__body {

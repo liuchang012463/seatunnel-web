@@ -34,12 +34,12 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
           <span
             style={{
               fontSize: "12px",
-              color: "#475569",
+              color: "var(--st-color-text-secondary)",
               fontWeight: 500,
             }}
           >
             实例ID：
-            <span style={{ color: "#0f172a", fontWeight: 600 }}>
+            <span style={{ color: "var(--st-color-text-primary)", fontWeight: 600 }}>
               {data.instanceId}
             </span>
           </span>
@@ -49,12 +49,12 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
           <span
             style={{
               fontSize: "12px",
-              color: "#475569",
+              color: "var(--st-color-text-secondary)",
               fontWeight: 500,
             }}
           >
             引擎ID：
-            <span style={{ color: "#0f172a", fontWeight: 600 }}>
+            <span style={{ color: "var(--st-color-text-primary)", fontWeight: 600 }}>
               {data.engineId}
             </span>
           </span>
@@ -106,7 +106,7 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
                   style={{
                     fontSize: "12px",
                     fontWeight: 600,
-                    color: "#0f172a",
+                    color: "var(--st-color-text-primary)",
                     marginBottom: "6px",
                   }}
                 >
@@ -119,18 +119,18 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
                     gap: "12px",
                     flexWrap: "wrap",
                     fontSize: "12px",
-                    color: "#64748b",
+                    color: "var(--st-color-text-muted)",
                   }}
                 >
                   <span>
                     读{" "}
-                    <span style={{ color: "#0f172a", fontWeight: 600 }}>
+                    <span style={{ color: "var(--st-color-text-primary)", fontWeight: 600 }}>
                       {v.readRowCount ?? 0}
                     </span>
                   </span>
                   <span>
                     写{" "}
-                    <span style={{ color: "#0f172a", fontWeight: 600 }}>
+                    <span style={{ color: "var(--st-color-text-primary)", fontWeight: 600 }}>
                       {v.writeRowCount ?? 0}
                     </span>
                   </span>

@@ -173,7 +173,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
                 alignItems: 'center',
                 gap: 8,
                 fontSize: 12,
-                color: '#667085',
+                color: 'var(--st-color-text-secondary)',
               }}
             >
               <span>自动建表</span>

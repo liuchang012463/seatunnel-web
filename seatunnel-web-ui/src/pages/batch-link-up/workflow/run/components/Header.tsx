@@ -49,7 +49,7 @@ export const Header = ({ connectionStatus, latestMetrics, onClose }: HeaderProps
       </div>
 
       <span
-        style={{ fontSize: "16px", color: "#999", cursor: "pointer" }}
+        style={{ fontSize: "16px", color: "var(--st-color-text-muted)", cursor: "pointer" }}
         onClick={onClose}
       >
         <CloseIcon />

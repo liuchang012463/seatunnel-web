@@ -39,7 +39,7 @@ export const CheckListPopover = ({ checkStat, checkGroups }: any) => {
             style={{
               fontSize: "0.75rem",
               lineHeight: "1rem",
-              color: "#676f83",
+              color: "var(--st-color-text-muted)",
               marginBottom: 8,
             }}
           >
@@ -102,7 +102,7 @@ export const CheckListPopover = ({ checkStat, checkGroups }: any) => {
                   >
                     <div style={{ padding: "0.375rem 0.75rem" }}>
                       <WarningOutlined style={{ color: "rgb(247 144 9)" }} />
-                      <span style={{ color: "#676f83" }}> {item.message} </span>
+                      <span style={{ color: "var(--st-color-text-muted)" }}> {item.message} </span>
                     </div>
                   </div>
                 ))}

@@ -18,7 +18,7 @@ const PageHeader: React.FC<Props> = ({ onBack }) => {
             <div className="text-[22px] font-semibold leading-8 text-[#101828]">
               物理路由配置
             </div>
-            <div className="mt-1 text-[14px] leading-6 text-[#667085]">
+            <div className="mt-1 text-[14px] leading-6 text-[color:var(--st-color-text-secondary)]">
               配置引接链路的物理路由：数据源、目标端与执行客户端等接入路径。
             </div>
           </div>

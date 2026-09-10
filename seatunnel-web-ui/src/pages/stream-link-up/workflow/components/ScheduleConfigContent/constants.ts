@@ -14,7 +14,7 @@ export const labelNodeStyle: CSSProperties = {
   alignItems: "center",
   gap: 4,
   fontSize: 13,
-  color: "#475467",
+  color: "var(--st-color-text-secondary)",
   lineHeight: "20px",
 };
 

@@ -44,7 +44,7 @@ export default function SqlEditorSection(props: Props) {
   const sqlPopoverContent = (
     <div style={{ width: 320 }}>
       <Space direction="vertical" style={{ width: '100%' }} size={12}>
-        <div style={{ fontSize: 13, color: '#667085' }}>选择一张表，自动生成查询 SQL</div>
+        <div style={{ fontSize: 13, color: 'var(--st-color-text-secondary)' }}>选择一张表，自动生成查询 SQL</div>
 
         <Select
           size="small"
@@ -78,7 +78,7 @@ export default function SqlEditorSection(props: Props) {
   const resolvePopoverContent = (
     <div style={{ width: 460 }}>
       <Space direction="vertical" style={{ width: '100%' }} size={12}>
-        <div style={{ fontSize: 13, color: '#667085' }}>
+        <div style={{ fontSize: 13, color: 'var(--st-color-text-secondary)' }}>
           这里展示的是当前 SQL 模板解析后的预览结果，不会替换原始 SQL。
         </div>
 
@@ -90,7 +90,7 @@ export default function SqlEditorSection(props: Props) {
             borderRadius: 10,
             background: '#F8FAFC',
             border: '1px solid #E5E7EB',
-            color: '#344054',
+            color: 'var(--st-color-text-primary)',
             fontSize: 12,
             lineHeight: 1.7,
             whiteSpace: 'pre-wrap',
@@ -125,7 +125,7 @@ export default function SqlEditorSection(props: Props) {
             alignItems: 'center',
             gap: 8,
             fontSize: 13,
-            color: '#667085',
+            color: 'var(--st-color-text-secondary)',
           }}
         >
           <span
@@ -137,7 +137,7 @@ export default function SqlEditorSection(props: Props) {
               height: 22,
               borderRadius: 7,
               background: 'rgba(99, 102, 241, 0.08)',
-              color: '#667085',
+              color: 'var(--st-color-text-secondary)',
             }}
           >
             <Sparkles size={13} />

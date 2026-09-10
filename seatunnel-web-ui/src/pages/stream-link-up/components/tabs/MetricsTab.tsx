@@ -233,7 +233,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
           axisPointer: {
             type: "line",
             lineStyle: {
-              color: "#94a3b8",
+              color: "var(--st-color-text-muted)",
               width: 1,
               type: "dashed",
             },
@@ -253,7 +253,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
                 return `
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:6px;">
                     <span>${item.marker}${item.seriesName}</span>
-                    <span style="font-weight:600;color:#0f172a;">${value} ${unit}</span>
+                    <span style="font-weight:600;color:var(--st-color-text-primary);">${value} ${unit}</span>
                   </div>
                 `;
               })
@@ -261,7 +261,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
 
             return `
               <div>
-                <div style="font-weight:600;color:#0f172a;margin-bottom:4px;">${title}</div>
+                <div style="font-weight:600;color:var(--st-color-text-primary);margin-bottom:4px;">${title}</div>
                 ${rows}
               </div>
             `;
@@ -274,7 +274,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
           itemHeight: 6,
           icon: "roundRect",
           textStyle: {
-            color: "#64748b",
+            color: "var(--st-color-text-muted)",
             fontSize: 12,
           },
         },
@@ -297,7 +297,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
             show: false,
           },
           axisLabel: {
-            color: "#94a3b8",
+            color: "var(--st-color-text-muted)",
             fontSize: 11,
           },
         },
@@ -307,11 +307,11 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
             name: "QPS",
             min: 0,
             nameTextStyle: {
-              color: "#94a3b8",
+              color: "var(--st-color-text-muted)",
               fontSize: 11,
             },
             axisLabel: {
-              color: "#94a3b8",
+              color: "var(--st-color-text-muted)",
               formatter: (value: number) => formatCompactNumber(value),
             },
             splitLine: {
@@ -325,11 +325,11 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
             name: "行数",
             min: 0,
             nameTextStyle: {
-              color: "#94a3b8",
+              color: "var(--st-color-text-muted)",
               fontSize: 11,
             },
             axisLabel: {
-              color: "#94a3b8",
+              color: "var(--st-color-text-muted)",
               formatter: (value: number) => formatCompactNumber(value),
             },
             splitLine: {

@@ -14,7 +14,7 @@ const HistoryPanelHeader: React.FC<HistoryPanelHeaderProps> = ({
   return (
     <div className="mb-2.5 flex items-center justify-between">
       <div>
-        <div className="text-[13px] font-medium leading-5 text-[#344054]">
+        <div className="text-[13px] font-medium leading-5 text-[color:var(--st-color-text-primary)]">
           执行记录
         </div>
       </div>
@@ -28,7 +28,7 @@ const HistoryPanelHeader: React.FC<HistoryPanelHeaderProps> = ({
         })}
         className="
           inline-flex h-[30px] w-[30px] items-center justify-center
-          rounded-lg border border-[#E4E7EC] bg-white text-[#667085]
+          rounded-lg border border-[#E4E7EC] bg-white text-[color:var(--st-color-text-secondary)]
           transition-all duration-200 ease-out
           hover:border-[#B2DDFF] hover:bg-[#F5FAFF] hover:text-[#1570EF]
           active:scale-[0.96]

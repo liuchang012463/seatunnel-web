@@ -181,7 +181,7 @@ const ScheduleStrategySection: React.FC<Props> = ({ value, onChange }) => {
                       <Form.Item name="retryTimes" noStyle>
                         <StepNumberInput min={1} width={48} />
                       </Form.Item>
-                      <span style={{ color: "#000000", fontSize: 12 }}>次</span>
+                      <span style={{ color: "var(--st-color-text-primary)", fontSize: 12 }}>次</span>
                     </Space>
                   </Form.Item>
 
@@ -193,7 +193,7 @@ const ScheduleStrategySection: React.FC<Props> = ({ value, onChange }) => {
                       <Form.Item name="retryInterval" noStyle>
                         <StepNumberInput min={1} width={48} />
                       </Form.Item>
-                      <span style={{ color: "#000000", fontSize: 12 }}>
+                      <span style={{ color: "var(--st-color-text-primary)", fontSize: 12 }}>
                         分钟
                       </span>
                     </Space>

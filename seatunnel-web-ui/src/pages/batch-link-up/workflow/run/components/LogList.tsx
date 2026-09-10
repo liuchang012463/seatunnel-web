@@ -28,7 +28,7 @@ export const LogList = ({ logs, containerRef }: Props) => {
             justifyContent: "center",
             alignItems: "center",
             height: "100%",
-            color: "#888",
+            color: "var(--st-color-text-muted)",
           }}
         >
           No logs yet, waiting for connection...

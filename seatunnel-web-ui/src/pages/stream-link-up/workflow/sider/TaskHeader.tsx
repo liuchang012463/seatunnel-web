@@ -96,7 +96,7 @@ const TaskHeader = () => {
                     justifyContent: "space-between",
                     alignItems: "center",
                     display: "flex",
-                    color: "#354052",
+                    color: "var(--st-color-text-secondary)",
                   }}
                 >
                   <div

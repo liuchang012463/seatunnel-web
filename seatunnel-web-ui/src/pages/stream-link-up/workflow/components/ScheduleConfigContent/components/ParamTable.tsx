@@ -79,7 +79,7 @@ const ParamTable: React.FC<ParamTableProps> = ({
         <span style={{ fontSize: 13, fontWeight: 500 }}>
           参数值{" "}
           <Tooltip title="支持使用时间表达式，例如 ${add_months(yyyymmdd,-1)}">
-            <InfoCircleOutlined className="text-[12px] text-[#98A2B3]" />
+            <InfoCircleOutlined className="text-[12px] text-[color:var(--st-color-text-muted)]" />
           </Tooltip>
         </span>
       ),

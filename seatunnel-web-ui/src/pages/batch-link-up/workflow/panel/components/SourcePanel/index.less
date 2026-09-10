@@ -24,14 +24,14 @@
     font-size: 14px;
     line-height: 22px;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--st-color-text-primary);
   }
 
   &__group-kicker {
   font-size: 13px;
     line-height: 18px;
     font-weight: 600;
-    color: #98a2b3;
+    color: var(--st-color-text-secondary);
     letter-spacing: 0.02em;
   }
 
@@ -72,7 +72,7 @@
     font-size: 12px;
     line-height: 18px;
     font-weight: 600;
-    color: #667085;
+    color: var(--st-color-text-secondary);
   }
 
   &__segmented-item {
@@ -119,7 +119,7 @@
     font-size: 14px;
     line-height: 20px;
     font-weight: 700;
-    color: #182230;
+    color: var(--st-color-text-primary);
     word-break: break-word;
   }
 
@@ -127,7 +127,7 @@
     margin-top: 2px;
     font-size: 12px;
     line-height: 18px;
-    color: #8b95a7;
+    color: var(--st-color-text-secondary);
   }
 
   &__action-grid {
@@ -146,9 +146,9 @@
     box-shadow: none !important;
 
     &:hover {
-      border-color: #cdd8ff !important;
-      color: #315efb !important;
-      background: #f8faff !important;
+      border-color: var(--st-color-accent) !important;
+      color: var(--st-color-accent) !important;
+      background: var(--st-color-hover) !important;
     }
   }
 
@@ -167,7 +167,7 @@
   &__params-title {
     font-size: 13px;
     font-weight: 700;
-    color: #344054;
+    color: var(--st-color-text-primary);
   }
 
   &__params-toolbar {
@@ -188,13 +188,13 @@
   }
 
   &__empty {
-    border: 1px dashed #e4e7ec;
+    border: 1px dashed var(--st-color-border);
     border-radius: 14px;
     padding: 14px;
     text-align: center;
     font-size: 13px;
-    color: #98a2b3;
-    background: #fcfcfd;
+    color: var(--st-color-text-secondary);
+    background: var(--st-color-bg-elevated);
   }
 
   &__icon-btn {
@@ -211,9 +211,9 @@
     transition: all 0.2s ease;
 
     &:hover {
-      border-color: #cdd8ff;
-      color: #315efb;
-      background: #f8faff;
+      border-color: var(--st-color-accent);
+      color: var(--st-color-accent);
+      background: var(--st-color-hover);
     }
   }
 
@@ -223,10 +223,10 @@
     gap: 6px;
     font-size: 12px;
     line-height: 18px;
-    color: #475467;
+    color: var(--st-color-text-secondary);
 
     span {
-      color: #101828;
+      color: var(--st-color-text-primary);
       font-weight: 600;
     }
   }
@@ -234,7 +234,7 @@
   .ant-segmented {
     padding: 4px;
     border-radius: 14px;
-    background: #f5f7fa;
+    background: var(--st-color-bg-elevated);
   }
 
   .ant-segmented-group {
@@ -244,8 +244,20 @@
   .ant-segmented-item {
     min-height: 26px;
     border-radius: 10px;
-    color: #667085;
+    color: var(--st-color-text-secondary);
     transition: all 0.2s ease;
+  }
+
+  .ant-segmented-item:hover {
+    color: var(--st-color-text-primary);
+  }
+
+  .ant-segmented-item-selected {
+    color: var(--st-color-text-primary);
+  }
+
+  .ant-segmented-thumb {
+    background: var(--st-color-primary);
   }
 }
 

@@ -119,7 +119,7 @@ const SinkNode: FC<NodeProps<SinkNodeData>> = ({ data, selected }) => {
                 fontSize: 16,
                 fontWeight: 700,
                 lineHeight: "22px",
-                color: "#182230",
+                color: "var(--st-color-text-primary)",
                 marginBottom: 2,
               }}
             >
@@ -131,7 +131,7 @@ const SinkNode: FC<NodeProps<SinkNodeData>> = ({ data, selected }) => {
               style={{
                 fontSize: 13,
                 lineHeight: "18px",
-                color: "#8A94A6",
+                color: "var(--st-color-text-muted)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",

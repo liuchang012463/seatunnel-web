@@ -562,7 +562,7 @@ export default function FlowCanvas({
             allowClear
             autoFocus
             className="edge-insert-search"
-            prefix={<SearchOutlined style={{ color: '#98a2b3' }} />}
+            prefix={<SearchOutlined style={{ color: "var(--st-color-text-muted)" }} />}
             placeholder="搜索节点"
             value={edgeInsertSearchText}
             onChange={(event) => setEdgeInsertSearchText(event.target.value)}
@@ -610,7 +610,7 @@ export default function FlowCanvas({
                 style={{
                   padding: '16px 0',
                   textAlign: 'center',
-                  color: '#98a2b3',
+                  color: "var(--st-color-text-muted)",
                   fontSize: 13,
                 }}
               >

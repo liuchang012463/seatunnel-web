@@ -56,21 +56,21 @@ export const getHistoryStatusMeta = (status: string, intl: IntlShape) => {
           id: "pages.job.status.canceled",
           defaultMessage: "已取消",
         }),
-        color: "#64748b",
-        tagColor: "#64748b",
-        dotColor: "#94a3b8",
+        color: "var(--st-color-text-muted)",
+        tagColor: "var(--st-color-text-muted)",
+        dotColor: "var(--st-color-text-muted)",
         lightBg: "rgba(148, 163, 184, 0.16)",
-        icon: <StopFilled style={{ color: "#94a3b8" }} />,
+        icon: <StopFilled style={{ color: "var(--st-color-text-muted)" }} />,
       };
 
     default:
       return {
         text: status || "-",
-        color: "#64748b",
-        tagColor: "#64748b",
-        dotColor: "#94a3b8",
+        color: "var(--st-color-text-muted)",
+        tagColor: "var(--st-color-text-muted)",
+        dotColor: "var(--st-color-text-muted)",
         lightBg: "rgba(148, 163, 184, 0.16)",
-        icon: <StopFilled style={{ color: "#94a3b8" }} />,
+        icon: <StopFilled style={{ color: "var(--st-color-text-muted)" }} />,
       };
   }
 };

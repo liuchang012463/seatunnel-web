@@ -28,7 +28,7 @@ const BottomActionBar: React.FC<Props> = ({
       }}
     >
       <div className="mx-auto flex max-w-[1120px] items-center justify-between gap-4">
-        <Text className="text-[14px] text-[#667085]">{hintText}</Text>
+        <Text className="text-[14px] text-[color:var(--st-color-text-secondary)]">{hintText}</Text>
 
         <div className="flex items-center gap-3">
           <Button className="!h-10 !rounded-full !px-5" onClick={onCancel}>

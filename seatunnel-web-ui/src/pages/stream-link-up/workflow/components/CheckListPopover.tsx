@@ -54,7 +54,7 @@ export const CheckListPopover = ({
             </div>
           </div>
 
-          <div className="mb-2 mt-1 text-xs leading-4 text-[#676f83]">
+          <div className="mb-2 mt-1 text-xs leading-4 text-[color:var(--st-color-text-muted)]">
             {intl.formatMessage({
               id: "pages.checklist.subtitle",
               defaultMessage:
@@ -82,7 +82,7 @@ export const CheckListPopover = ({
                         </span>
                       </div>
 
-                      <div className="shrink-0 text-xs text-[#667085]">
+                      <div className="shrink-0 text-xs text-[color:var(--st-color-text-secondary)]">
                         {group.nodeType}&nbsp;&nbsp;
                         {intl.formatMessage({
                           id: "pages.checklist.nodeSuffix",
@@ -99,7 +99,7 @@ export const CheckListPopover = ({
                     >
                       <div className="px-3 py-1.5">
                         <WarningOutlined className="text-[rgb(247,144,9)]" />
-                        <span className="ml-1 text-xs text-[#676f83]">
+                        <span className="ml-1 text-xs text-[color:var(--st-color-text-muted)]">
                           {item.message}
                         </span>
                       </div>

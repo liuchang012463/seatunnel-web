@@ -40,7 +40,7 @@ const ModeCard: React.FC<Props> = ({
         <span className="text-[14px] font-semibold text-[#101828]">{title}</span>
       </Radio>
 
-      <div className="pl-6 text-[12px] leading-5 text-[#667085]">{desc}</div>
+      <div className="pl-6 text-[12px] leading-5 text-[color:var(--st-color-text-secondary)]">{desc}</div>
     </div>
   );
 };

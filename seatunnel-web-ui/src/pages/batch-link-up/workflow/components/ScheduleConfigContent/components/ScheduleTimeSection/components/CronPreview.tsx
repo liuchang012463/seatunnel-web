@@ -51,7 +51,7 @@ const CronPreview: React.FC<Props> = ({ cronExpression }) => {
     >
       <div className="flex items-center justify-between gap-3">
         <div className="inline-flex min-h-8 items-center gap-3 rounded-md bg-[#F8FAFC] px-3 py-1.5">
-          <Text className="text-[13px] font-medium text-[#344054]">
+          <Text className="text-[13px] font-medium text-[color:var(--st-color-text-primary)]">
             {cronExpression}
           </Text>
           <a
@@ -72,7 +72,7 @@ const CronPreview: React.FC<Props> = ({ cronExpression }) => {
           content={
             <div style={{ minWidth: 240, padding: "2px 0 0 2px" }}>
               {previewLoading ? (
-                <Text className="text-[12px] text-[#98A2B3]">加载中...</Text>
+                <Text className="text-[12px] text-[color:var(--st-color-text-muted)]">加载中...</Text>
               ) : nextExecutionTimes.length ? (
                 nextExecutionTimes.map((item, index) => (
                   <div
@@ -88,7 +88,7 @@ const CronPreview: React.FC<Props> = ({ cronExpression }) => {
                   </div>
                 ))
               ) : (
-                <Text className="text-[12px] text-[#98A2B3]">
+                <Text className="text-[12px] text-[color:var(--st-color-text-muted)]">
                   暂无执行时间
                 </Text>
               )}
@@ -99,7 +99,7 @@ const CronPreview: React.FC<Props> = ({ cronExpression }) => {
             onClick={handlePreviewNextRuns}
             style={{
               cursor: "pointer",
-              color: "#475467",
+              color: "var(--st-color-text-secondary)",
               fontSize: 16,
             }}
           />

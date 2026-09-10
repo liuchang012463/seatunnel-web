@@ -17,7 +17,7 @@ const HistoryIcon: React.FC<RemixIconProps> = ({ className = '', style = {}, onC
       style={{
         width: '1rem',
         height: '1rem',
-        color: '#354052',
+        color: "var(--st-color-text-secondary)",
       }}
       data-icon="ClockPlay"
       aria-hidden="true"
