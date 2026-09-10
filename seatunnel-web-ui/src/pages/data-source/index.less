@@ -253,19 +253,22 @@
 }
 
 .datasource-catalog-panel {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 340px);
+  min-height: 480px;
   overflow: hidden;
   background: #001922;
   border: 1px solid var(--st-color-divider);
-  // border-radius: 10px;
 }
 
 .datasource-catalog-panel__heading {
   display: flex;
+  flex: 0 0 auto;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 16px 18px 14px;
-  // border-bottom: 1px solid var(--st-color-divider);
 
   p {
     margin: 4px 0 0;
@@ -279,6 +282,12 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 12px;
+}
+
+.datasource-catalog-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 .datasource-view-switcher {

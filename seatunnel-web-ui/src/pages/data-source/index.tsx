@@ -629,36 +629,38 @@ const DataSourcePage: React.FC = () => {
                           />
                         </div>
                       </div>
-                      {viewMode === 'card' ? (
-                        <div className="datasource-card-grid">
-                          {dataSourceList.map((record, index) => (
-                            <DataSourceCard
-                              key={String(record.id || record.name || `data-source-${index}`)}
-                              record={record}
-                              onEdit={handleEdit}
-                              onDelete={(currentRecord) => {
-                                void handleDelete(currentRecord);
-                              }}
-                              onTestConnection={(currentRecord) => {
-                                void handleTestConnection(currentRecord);
-                              }}
-                              onViewExploration={handleViewExploration}
-                              onStatusChange={handleStatusChange}
-                              onOpenWarehouse={handleOpenWarehouse}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <Table<DataSourceRecord>
-                          rowKey={(record) => String(record.id || record.name)}
-                          className="datasource-catalog-table"
-                          columns={dataSourceColumns}
-                          dataSource={dataSourceList}
-                          pagination={false}
-                          scroll={{ x: 1312 }}
-                          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
-                        />
-                      )}
+                      <div className="datasource-catalog-panel__body">
+                        {viewMode === 'card' ? (
+                          <div className="datasource-card-grid">
+                            {dataSourceList.map((record, index) => (
+                              <DataSourceCard
+                                key={String(record.id || record.name || `data-source-${index}`)}
+                                record={record}
+                                onEdit={handleEdit}
+                                onDelete={(currentRecord) => {
+                                  void handleDelete(currentRecord);
+                                }}
+                                onTestConnection={(currentRecord) => {
+                                  void handleTestConnection(currentRecord);
+                                }}
+                                onViewExploration={handleViewExploration}
+                                onStatusChange={handleStatusChange}
+                                onOpenWarehouse={handleOpenWarehouse}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <Table<DataSourceRecord>
+                            rowKey={(record) => String(record.id || record.name)}
+                            className="datasource-catalog-table"
+                            columns={dataSourceColumns}
+                            dataSource={dataSourceList}
+                            pagination={false}
+                            scroll={{ x: 1312 }}
+                            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
+                          />
+                        )}
+                      </div>
                     </section>
                   ) : (
                     !loading && <EmptyState onCreate={handleCreate} />
