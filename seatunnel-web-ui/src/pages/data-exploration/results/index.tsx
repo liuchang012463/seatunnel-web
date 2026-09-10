@@ -2,7 +2,6 @@ import {
   ApiOutlined,
   ApartmentOutlined,
   DatabaseOutlined,
-  DownloadOutlined,
   FolderOpenOutlined,
   MessageOutlined,
   PlayCircleOutlined,
@@ -14,7 +13,6 @@ import { Button, Empty, Input, Select, Spin, Tag, message } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import DataExplorationDrawer from '../components/DataExplorationDrawer';
 import {
-  downloadDataExplorationExport,
   fetchBusinessSystemOptions,
   fetchDataInventoryOverview,
   fetchDataSourceAll,
@@ -150,37 +148,12 @@ function formatMetric(value?: number): string {
   return Number(value || 0).toLocaleString('zh-CN');
 }
 
-function extractBlob(value: unknown, depth = 0): Blob | undefined {
-  if (depth > 4 || value === undefined || value === null) return undefined;
-  if (typeof Blob !== 'undefined' && value instanceof Blob) return value;
-  if (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) return new Blob([value]);
-  if (typeof value !== 'object') return undefined;
-  const response = value as { data?: unknown; response?: unknown };
-  return extractBlob(response.data, depth + 1) || extractBlob(response.response, depth + 1);
-}
-
-function saveBlob(result: unknown, filename: string): boolean {
-  const blob = extractBlob(result);
-  if (!blob || blob.size === 0 || typeof document === 'undefined') return false;
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.style.display = 'none';
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
-  return true;
-}
-
 const DataExplorationResultsPage: React.FC = () => {
   const [route] = useState<InitialRouteState>(readInitialRouteState);
   const [sourcesLoading, setSourcesLoading] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [unitLoading, setUnitLoading] = useState(false);
   const [businessSystemLoading, setBusinessSystemLoading] = useState(false);
-  const [exportLoading, setExportLoading] = useState(false);
   const [summary, setSummary] = useState<DataInventorySummary>(EMPTY_SUMMARY);
   const [dataSources, setDataSources] = useState<DataSourceRecord[]>([]);
   const [unitOptions, setUnitOptions] = useState<DataSourceUnitOption[]>([]);
@@ -372,25 +345,6 @@ const DataExplorationResultsPage: React.FC = () => {
     syncRoute(filters, source);
   };
 
-  const exportAllResults = async () => {
-    setExportLoading(true);
-    try {
-      const result = await downloadDataExplorationExport({
-        unitId: filters.unitId,
-        businessSystemId: filters.businessSystemId,
-      });
-      if (saveBlob(result, `data-exploration-results-${Date.now()}.xlsx`)) {
-        message.success('探查结果已导出');
-      } else {
-        message.error('导出响应不是有效文件');
-      }
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || '探查结果导出失败');
-    } finally {
-      setExportLoading(false);
-    }
-  };
-
   const selectedUnit = unitOptions.find((item) => String(item.id) === filters.unitId);
   const selectedBusinessSystem = businessSystemOptions.find(
     (item) => String(item.id) === filters.businessSystemId,
@@ -456,14 +410,7 @@ const DataExplorationResultsPage: React.FC = () => {
             <Button icon={<ReloadOutlined />} loading={pageLoading} onClick={() => void load()}>
               刷新
             </Button>
-            <Button
-              className="results-export-button"
-              icon={<DownloadOutlined />}
-              loading={exportLoading}
-              onClick={() => void exportAllResults()}
-            >
-              导出探查结果
-            </Button>
+            {/* XLSX export hidden until inventory snapshot; see DATA_EXPLORATION_EXPORT_ENABLED. */}
           </div>
         </div>
       </header>

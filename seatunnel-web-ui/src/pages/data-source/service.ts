@@ -350,6 +350,7 @@ async function fetchInventoryDistribution(
   return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/distribution/${dimension}${suffix}`);
 }
 
+/** Kept for reopen after DATA_EXPLORATION_EXPORT_ENABLED; UI entry points are temporarily hidden. */
 export async function downloadDataExplorationExport(filter: DataInventoryFilter = {}): Promise<any> {
   return HttpUtils.downloadPost(`${DATA_EXPLORATION_API_PREFIX}/export`, filter);
 }

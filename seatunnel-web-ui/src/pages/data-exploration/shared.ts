@@ -1,6 +1,22 @@
 import type { DataSourceRecord, DataSourceTopologyNode } from '@/pages/data-source/types';
 import type { TreeDataNode } from 'antd';
 
+/**
+ * Temporarily hide exploration XLSX export until a non-OM-N+1 strategy lands.
+ *
+ * Findings for follow-up:
+ * - Export/overview walk service→database→schema→table, then call
+ *   GET /v1/tables/{fqn}/tableProfile/latest?includeColumnProfile=true per table.
+ * - OpenMetadata 1.13 (and current TableResource) has no service/database-FQN
+ *   bulk profile API; list tables `fields` cannot include `profile`.
+ * - Preferred fix: materialize an inventory snapshot after Metadata/Profiler
+ *   SUCCESS and serve export/overview from that local read model.
+ *
+ * Flip to true (and restore UI handlers) when that path is ready.
+ * Backend POST /api/v1/data-exploration/export remains available.
+ */
+export const DATA_EXPLORATION_EXPORT_ENABLED = false;
+
 export const explorationStatus = (status?: string) => {
   if (status === 'SUCCESS') return { label: '已完成', color: 'success' as const };
   if (status === 'FAILED') return { label: '异常', color: 'error' as const };

@@ -1,8 +1,7 @@
-import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Progress, Row, Spin, Statistic, Tag, message } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  downloadDataExplorationExport,
   fetchDataInventoryBusinessSystems,
   fetchDataInventoryProfileCoverage,
   fetchDataInventorySourceTypes,
@@ -15,6 +14,8 @@ import type {
   DataInventorySummary,
 } from '../types';
 import { formatDataSize } from '../metricFormat';
+
+/** XLSX export UI removed for now; see DATA_EXPLORATION_EXPORT_ENABLED in data-exploration/shared. */
 
 const EMPTY_SUMMARY: DataInventorySummary = {
   unitCount: 0,
@@ -74,25 +75,6 @@ const DataInventoryDashboard: React.FC = () => {
     load();
   }, [load]);
 
-  const exportWorkbook = async () => {
-    try {
-      const result: any = await downloadDataExplorationExport();
-      const blob = result instanceof Blob ? result : result?.data instanceof Blob ? result.data : result?.response?.data;
-      if (!(blob instanceof Blob)) {
-        message.error('导出响应不可用');
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = 'data-exploration.xlsx';
-      anchor.click();
-      URL.revokeObjectURL(url);
-    } catch (_) {
-      message.error('数据清查导出失败');
-    }
-  };
-
   const bucketList = (items: DataInventoryDistributionItem[]) => (
     <div className="space-y-2">
       {items.slice(0, 6).map((item) => (
@@ -112,7 +94,6 @@ const DataInventoryDashboard: React.FC = () => {
       extra={
         <div className="flex gap-2">
           <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>刷新</Button>
-          <Button icon={<DownloadOutlined />} onClick={exportWorkbook}>导出 XLSX</Button>
         </div>
       }
     >
