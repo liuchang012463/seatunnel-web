@@ -93,7 +93,14 @@ public class MetadataSourceReconciler {
             return;
         }
         openMetadataClient.assertFixedVersion();
-        MetadataConnectorAdapter adapter = connectorRegistry.require(dataSource.getDbType());
+        Optional<MetadataConnectorAdapter> resolved = connectorRegistry.find(dataSource.getDbType());
+        if (resolved.isEmpty()) {
+            // FTP and other types without a verified OM connector stay terminal and
+            // must not keep retrying into a user-visible sync failure loop.
+            saveUnsupported(claimed, claimedVersion);
+            return;
+        }
+        MetadataConnectorAdapter adapter = resolved.get();
         String serviceName = MetadataStableName.serviceName(dataSource.getId());
 
         // PUT is the documented 1.12.10 upsert, so this also converges changed source configuration.
@@ -189,6 +196,10 @@ public class MetadataSourceReconciler {
     }
 
     private void saveFailure(MetadataSourceBinding claimed, long claimedVersion, MetadataErrorCode errorCode) {
+        if (errorCode == MetadataErrorCode.CONNECTOR_NOT_SUPPORTED) {
+            saveUnsupported(claimed, claimedVersion);
+            return;
+        }
         MetadataSourceBinding latest = metadataBindingDao.queryById(claimed.getId());
         if (!owned(latest, claimedVersion)) {
             return;
@@ -201,6 +212,19 @@ public class MetadataSourceReconciler {
         latest.setNextRetryTime(retryCount > properties.getMaxRetryCount()
                 ? null
                 : Date.from(Instant.now().plusSeconds(retryDelaySeconds(retryCount))));
+        complete(latest, claimedVersion);
+    }
+
+    private void saveUnsupported(MetadataSourceBinding claimed, long claimedVersion) {
+        MetadataSourceBinding latest = metadataBindingDao.queryById(claimed.getId());
+        if (!owned(latest, claimedVersion)) {
+            return;
+        }
+        latest.setRetryCount(properties.getMaxRetryCount() + 1);
+        latest.setSyncStatus(MetadataSyncStatus.ERROR);
+        latest.setLastSyncErrorCode(MetadataErrorCode.CONNECTOR_NOT_SUPPORTED.name());
+        latest.setLastSyncError("OpenMetadata connector is not enabled for this data source type.");
+        latest.setNextRetryTime(null);
         complete(latest, claimedVersion);
     }
 

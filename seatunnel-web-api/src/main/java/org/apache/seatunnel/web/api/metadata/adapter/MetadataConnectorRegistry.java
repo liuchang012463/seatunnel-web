@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class MetadataConnectorRegistry {
@@ -20,13 +21,17 @@ public class MetadataConnectorRegistry {
         }
     }
 
+    public Optional<MetadataConnectorAdapter> find(DbType dbType) {
+        return Optional.ofNullable(adapters.get(dbType));
+    }
+
+    public boolean supports(DbType dbType) {
+        return adapters.containsKey(dbType);
+    }
+
     public MetadataConnectorAdapter require(DbType dbType) {
-        MetadataConnectorAdapter adapter = adapters.get(dbType);
-        if (adapter == null) {
-            throw new MetadataIntegrationException(
-                    MetadataErrorCode.CONNECTOR_NOT_SUPPORTED,
-                    "OpenMetadata 1.12.10 connector is not enabled for this data source type");
-        }
-        return adapter;
+        return find(dbType).orElseThrow(() -> new MetadataIntegrationException(
+                MetadataErrorCode.CONNECTOR_NOT_SUPPORTED,
+                "OpenMetadata 1.12.10 connector is not enabled for this data source type"));
     }
 }

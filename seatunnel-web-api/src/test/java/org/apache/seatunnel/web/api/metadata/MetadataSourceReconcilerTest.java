@@ -49,7 +49,7 @@ class MetadataSourceReconcilerTest {
         DataSource source = source();
         stubCandidate(candidate, live);
         when(dataSourceDao.queryById(42L)).thenReturn(source);
-        when(registry.require(DbType.MYSQL)).thenReturn(adapter);
+        when(registry.find(DbType.MYSQL)).thenReturn(Optional.of(adapter));
         when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.DATABASE);
         when(adapter.supportsProfiler()).thenReturn(true);
         when(adapter.metadataPipelineRequest(eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42")))
@@ -84,7 +84,7 @@ class MetadataSourceReconcilerTest {
         DataSource source = source();
         stubCandidate(candidate, live);
         when(dataSourceDao.queryById(42L)).thenReturn(source);
-        when(registry.require(DbType.MYSQL)).thenReturn(adapter);
+        when(registry.find(DbType.MYSQL)).thenReturn(Optional.of(adapter));
         when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.DATABASE);
         when(adapter.supportsProfiler()).thenReturn(true);
         when(adapter.metadataPipelineRequest(eq(source), any(), any(), any())).thenReturn(JSON.createObjectNode());
@@ -105,13 +105,12 @@ class MetadataSourceReconcilerTest {
     }
 
     @Test
-    void recordsSanitizedRetryStateWhenAConnectorIsDeferred() {
+    void freezesUnsupportedConnectorsWithoutRetry() {
         MetadataSourceBinding candidate = binding(1L, MetadataDesiredState.ACTIVE, 1L, 0L);
         MetadataSourceBinding live = binding(1L, MetadataDesiredState.ACTIVE, 1L, 1L);
         stubCandidate(candidate, live);
         when(dataSourceDao.queryById(42L)).thenReturn(source());
-        doThrow(new MetadataIntegrationException(MetadataErrorCode.CONNECTOR_NOT_SUPPORTED, "not supported"))
-                .when(registry).require(DbType.MYSQL);
+        when(registry.find(DbType.MYSQL)).thenReturn(Optional.empty());
 
         reconciler().reconcilePendingBindings();
 
@@ -119,6 +118,27 @@ class MetadataSourceReconcilerTest {
         verify(bindingDao).updateClaimed(saved.capture(), eq(1L));
         assertEquals(MetadataSyncStatus.ERROR, saved.getValue().getSyncStatus());
         assertEquals("CONNECTOR_NOT_SUPPORTED", saved.getValue().getLastSyncErrorCode());
+        assertEquals(null, saved.getValue().getNextRetryTime());
+        verify(openMetadataClient, never()).upsertService(any(), any());
+    }
+
+    @Test
+    void recordsSanitizedRetryStateWhenAConnectorIsDeferred() {
+        MetadataSourceBinding candidate = binding(1L, MetadataDesiredState.ACTIVE, 1L, 0L);
+        MetadataSourceBinding live = binding(1L, MetadataDesiredState.ACTIVE, 1L, 1L);
+        stubCandidate(candidate, live);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(registry.find(DbType.MYSQL)).thenReturn(Optional.of(adapter));
+        doThrow(new MetadataIntegrationException(MetadataErrorCode.SOURCE_CONNECTION_ERROR, "bad connection"))
+                .when(adapter).serviceRequest(any(), any());
+        when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.DATABASE);
+
+        reconciler().reconcilePendingBindings();
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateClaimed(saved.capture(), eq(1L));
+        assertEquals(MetadataSyncStatus.ERROR, saved.getValue().getSyncStatus());
+        assertEquals("SOURCE_CONNECTION_ERROR", saved.getValue().getLastSyncErrorCode());
         assertEquals(1, saved.getValue().getRetryCount());
     }
 
@@ -129,7 +149,7 @@ class MetadataSourceReconcilerTest {
         DataSource source = source();
         stubCandidate(candidate, live);
         when(dataSourceDao.queryById(42L)).thenReturn(source);
-        when(registry.require(DbType.MYSQL)).thenReturn(adapter);
+        when(registry.find(DbType.MYSQL)).thenReturn(Optional.of(adapter));
         when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.MESSAGING);
         when(adapter.supportsProfiler()).thenReturn(false);
         when(adapter.serviceRequest(eq(source), eq("st_ds_42"))).thenReturn(JSON.createObjectNode());

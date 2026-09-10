@@ -806,7 +806,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             vo.setProfileStatus(org.apache.seatunnel.web.common.enums.MetadataRunStatus.NEVER);
             return;
         }
-        vo.setMetadataSyncStatus(binding.getSyncStatus() == null ? "NOT_INITIALIZED" : binding.getSyncStatus().name());
+        vo.setMetadataSyncStatus(effectiveMetadataSyncStatus(binding));
         vo.setScanStatus(effectiveRunStatus(binding.getScanStatus(), binding.getScanLastError(), binding.getScanLastRunTime()));
         vo.setScanLastError(binding.getScanLastError());
         vo.setScanLastRunTime(binding.getScanLastRunTime());
@@ -816,6 +816,22 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         vo.setProfileLastError(binding.getProfileLastError());
         vo.setProfileLastRunTime(binding.getProfileLastRunTime());
         vo.setProfileLastSuccessTime(binding.getProfileLastSuccessTime());
+    }
+
+    /**
+     * Unsupported connectors (for example FTP) stay ERROR locally so the
+     * reconciler stops retrying, but the list API projects them as UNSUPPORTED
+     * so operators do not see a false "同步异常".
+     */
+    private static String effectiveMetadataSyncStatus(MetadataSourceBinding binding) {
+        if (binding.getSyncStatus() == null) {
+            return "NOT_INITIALIZED";
+        }
+        if (binding.getSyncStatus() == org.apache.seatunnel.web.common.enums.MetadataSyncStatus.ERROR
+                && "CONNECTOR_NOT_SUPPORTED".equals(binding.getLastSyncErrorCode())) {
+            return "UNSUPPORTED";
+        }
+        return binding.getSyncStatus().name();
     }
 
     /**
