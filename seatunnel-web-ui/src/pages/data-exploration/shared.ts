@@ -115,7 +115,7 @@ export const EXPLORATION_TASK_CATEGORIES: readonly ExplorationTaskCategory[] = [
   {
     key: 'DATABASE',
     label: '数据库',
-    dbTypes: ['MYSQL', 'POSTGRE_SQL', 'ORACLE', 'DORIS', 'DAMENG', 'KINGBASE', 'JDBC', 'H2'],
+    dbTypes: ['MYSQL', 'POSTGRE_SQL', 'ORACLE', 'DORIS', 'DAMENG', 'KINGBASE', 'JDBC'],
     supportsExploration: true,
   },
   {
