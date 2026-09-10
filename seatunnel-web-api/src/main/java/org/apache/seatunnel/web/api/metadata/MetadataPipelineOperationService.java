@@ -284,7 +284,7 @@ public class MetadataPipelineOperationService {
             status.setExploration(runState(MetadataRunStatus.NEVER, null, null, null));
             return status;
         }
-        status.setSyncStatus(binding.getSyncStatus() == null ? "NOT_INITIALIZED" : binding.getSyncStatus().name());
+        status.setSyncStatus(MetadataSyncStatusView.project(binding));
         status.setScan(runState(
                 effectiveRunStatus(binding.getScanStatus(), binding.getScanLastError(), binding.getScanLastRunTime()),
                 binding.getScanLastRunTime(),

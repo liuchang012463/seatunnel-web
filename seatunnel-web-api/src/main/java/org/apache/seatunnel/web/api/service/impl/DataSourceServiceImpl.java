@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcDriverDirectoryResolver;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
+import org.apache.seatunnel.web.api.metadata.MetadataSyncStatusView;
 import org.apache.seatunnel.web.api.service.DataSourceService;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
@@ -806,7 +807,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             vo.setProfileStatus(org.apache.seatunnel.web.common.enums.MetadataRunStatus.NEVER);
             return;
         }
-        vo.setMetadataSyncStatus(effectiveMetadataSyncStatus(binding));
+        vo.setMetadataSyncStatus(MetadataSyncStatusView.project(binding));
         vo.setScanStatus(effectiveRunStatus(binding.getScanStatus(), binding.getScanLastError(), binding.getScanLastRunTime()));
         vo.setScanLastError(binding.getScanLastError());
         vo.setScanLastRunTime(binding.getScanLastRunTime());
@@ -816,22 +817,6 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         vo.setProfileLastError(binding.getProfileLastError());
         vo.setProfileLastRunTime(binding.getProfileLastRunTime());
         vo.setProfileLastSuccessTime(binding.getProfileLastSuccessTime());
-    }
-
-    /**
-     * Unsupported connectors (for example FTP) stay ERROR locally so the
-     * reconciler stops retrying, but the list API projects them as UNSUPPORTED
-     * so operators do not see a false "同步异常".
-     */
-    private static String effectiveMetadataSyncStatus(MetadataSourceBinding binding) {
-        if (binding.getSyncStatus() == null) {
-            return "NOT_INITIALIZED";
-        }
-        if (binding.getSyncStatus() == org.apache.seatunnel.web.common.enums.MetadataSyncStatus.ERROR
-                && "CONNECTOR_NOT_SUPPORTED".equals(binding.getLastSyncErrorCode())) {
-            return "UNSUPPORTED";
-        }
-        return binding.getSyncStatus().name();
     }
 
     /**
