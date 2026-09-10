@@ -1,16 +1,17 @@
 package org.apache.seatunnel.plugin.datasource.dameng.metadata;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.AbstractJdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.TablePath;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
-import org.apache.commons.lang3.StringUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -18,10 +19,12 @@ import java.util.stream.Collectors;
 public class DamengCatalog extends AbstractJdbcCatalog {
 
     private static final String SELECT_COLUMNS_SQL_TEMPLATE =
-            "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME ='%s' ORDER BY ORDINAL_POSITION ASC";
+            "SELECT COLUMN_NAME, DATA_TYPE, NULLABLE, COLUMN_ID FROM ALL_TAB_COLUMNS "
+                    + "WHERE OWNER = '%s' AND TABLE_NAME = '%s' ORDER BY COLUMN_ID ASC";
 
     private static final String SELECT_SPECIFIED_COLUMNS_SQL_TEMPLATE =
-            "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s' AND COLUMN_NAME IN (%s) ORDER BY ORDINAL_POSITION ASC";
+            "SELECT COLUMN_NAME, DATA_TYPE, NULLABLE, COLUMN_ID FROM ALL_TAB_COLUMNS "
+                    + "WHERE OWNER = '%s' AND TABLE_NAME = '%s' AND COLUMN_NAME IN (%s) ORDER BY COLUMN_ID ASC";
 
     private final String schemaName;
 
@@ -42,29 +45,29 @@ public class DamengCatalog extends AbstractJdbcCatalog {
 
     @Override
     protected String getListTableSql(String databaseName) {
-        return "SELECT table_schema || '.' || table_name AS table_path " +
-                "FROM information_schema.tables " +
-                "WHERE table_catalog = '" + databaseName + "' " +
-                "AND table_schema NOT IN ('INFORMATION_SCHEMA', 'SYS', 'CTISYS') " +
-                "AND table_type = 'BASE TABLE' " +
-                "ORDER BY table_schema, table_name";
+        // Dameng is Oracle-compatible and does not expose INFORMATION_SCHEMA as a usable schema.
+        // List accessible user tables via ALL_TABLES, excluding Dameng system owners.
+        return "SELECT OWNER || '.' || TABLE_NAME AS table_path "
+                + "FROM ALL_TABLES "
+                + "WHERE OWNER NOT IN ('SYS', 'SYSAUDITOR', 'SYSSSO', 'CTISYS') "
+                + "ORDER BY OWNER, TABLE_NAME";
     }
 
     @Override
     protected DataSourceTableColumn buildColumn(Map<String, Object> item) {
-        String columnName = item.get("column_name").toString();
-        String dataType = item.get("data_type").toString();
-        String isNullable = item.get("is_nullable").toString();
-        String columnComment = item.get("column_comment") != null ? item.get("column_comment").toString() : null;
-        String columnKey = item.get("column_key") != null ? item.get("column_key").toString() : null;
-        int ordinalPosition = Integer.parseInt(item.get("ordinal_position").toString());
+        String columnName = item.get("COLUMN_NAME").toString();
+        String dataType = item.get("DATA_TYPE").toString();
+        String isNullable = item.get("NULLABLE").toString();
+        String columnComment = item.getOrDefault("COMMENTS", "").toString();
+        String columnKey = item.getOrDefault("COLUMN_KEY", "").toString();
+        int ordinalPosition = Integer.parseInt(item.get("COLUMN_ID").toString());
 
         return DataSourceTableColumn.builder()
                 .isNullable(isNullable)
                 .columnComment(columnComment)
                 .columnKey(columnKey)
                 .columnName(columnName)
-                .sourceType(dataType.toUpperCase())
+                .sourceType(dataType.toUpperCase(Locale.ROOT))
                 .ordinalPosition(ordinalPosition)
                 .build();
     }
@@ -81,6 +84,21 @@ public class DamengCatalog extends AbstractJdbcCatalog {
         return value == null ? null : value.replace("'", "''");
     }
 
+    private String resolveOwnerForTablePath(TablePath tablePath) {
+        String owner = resolveSchemaName(tablePath);
+        if (StringUtils.isBlank(owner)) {
+            throw new IllegalArgumentException("Dameng owner/schema must not be blank");
+        }
+        return escapeSql(owner.toUpperCase(Locale.ROOT));
+    }
+
+    private String resolveTableName(TablePath tablePath) {
+        if (tablePath == null || StringUtils.isBlank(tablePath.getTableName())) {
+            throw new IllegalArgumentException("table is null");
+        }
+        return escapeSql(tablePath.getTableName().toUpperCase(Locale.ROOT));
+    }
+
     @Override
     public String buildTableReference(TablePath tablePath) {
         if (tablePath == null || StringUtils.isBlank(tablePath.getTableName())) {
@@ -95,8 +113,8 @@ public class DamengCatalog extends AbstractJdbcCatalog {
     protected String getSelectColumnsSql(TablePath tablePath) {
         return String.format(
                 SELECT_COLUMNS_SQL_TEMPLATE,
-                escapeSql(resolveSchemaName(tablePath)),
-                escapeSql(tablePath.getTableName()));
+                resolveOwnerForTablePath(tablePath),
+                resolveTableName(tablePath));
     }
 
     @Override
@@ -106,13 +124,13 @@ public class DamengCatalog extends AbstractJdbcCatalog {
                 .collect(Collectors.toList());
 
         String quotedColumnNames = columnNames.stream()
-                .map(name -> "'" + escapeSql(name) + "'")
+                .map(name -> "'" + escapeSql(name.toUpperCase(Locale.ROOT)) + "'")
                 .collect(Collectors.joining(", "));
 
         return String.format(
                 SELECT_SPECIFIED_COLUMNS_SQL_TEMPLATE,
-                escapeSql(resolveSchemaName(tablePath)),
-                escapeSql(tablePath.getTableName()),
+                resolveOwnerForTablePath(tablePath),
+                resolveTableName(tablePath),
                 quotedColumnNames);
     }
 }

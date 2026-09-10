@@ -18,4 +18,15 @@ class JdbcDatasourceConnectivityVerificationStrategyTest {
 
         assertTrue(new JdbcDatasourceConnectivityVerificationStrategy().supports(context));
     }
+
+    @Test
+    void shouldSupportDamengJdbcPlugin() {
+        DatasourceVerifyContext context = DatasourceVerifyContext.builder()
+                .dbType(DbType.DAMENG)
+                .pluginName("JDBC-DAMENG")
+                .role("SOURCE")
+                .build();
+
+        assertTrue(new JdbcDatasourceConnectivityVerificationStrategy().supports(context));
+    }
 }
