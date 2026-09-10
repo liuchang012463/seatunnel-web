@@ -35,7 +35,7 @@ public class HttpConnectionParam implements ConnectionParam {
 
     @FormField(label = "OpenAPI 文档地址", order = 12,
             placeholder = "https://api.example.com/openapi.json",
-            description = "可选。填写 OpenAPI 3 或 Swagger 2 JSON 文档地址后，可在目录中浏览接口。")
+            description = "未配置 OpenAPI 文档地址时，无法通过 OpenMetadata 获取接口元数据，元数据扫描不可用。")
     private String openApiSpecUrl;
 
     @FormField(label = "认证方式", required = true, type = FieldType.SELECT, order = 3, defaultValue = "NONE")
