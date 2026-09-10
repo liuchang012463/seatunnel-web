@@ -1,16 +1,6 @@
 import ClickSpark from '@/components/ClickSpark';
 import { history, useIntl } from '@umijs/max';
-import {
-  ApiOutlined,
-  ApartmentOutlined,
-  AppstoreOutlined,
-  CloseCircleOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  PauseCircleOutlined,
-  PlayCircleOutlined,
-  UnorderedListOutlined,
-} from '@ant-design/icons';
+import { AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import {
   Button,
   Drawer,
@@ -19,11 +9,8 @@ import {
   Modal,
   Pagination,
   Segmented,
-  Space,
   Spin,
   Table,
-  Tag,
-  Tooltip,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { motion } from 'framer-motion';
@@ -35,7 +22,7 @@ import PageHeader from './components/PageHeader';
 import SearchBar from './components/SearchBar';
 import MasterDataPage from '../master-data';
 import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from './constants';
-import { DATA_SOURCE_CATEGORIES } from './dataSourceRegistry';
+import { DATA_SOURCE_CATEGORIES, getDataSourceCategory } from './dataSourceRegistry';
 import './index.less';
 import {
   checkDataSourceUsage,
@@ -372,93 +359,159 @@ const DataSourcePage: React.FC = () => {
     {
       title: '数据源',
       key: 'name',
-      fixed: 'left',
+      align: 'left',
+      className: 'datasource-catalog-col--left',
       width: 220,
+      ellipsis: true,
       render: (_value, record) => (
-        <div className="datasource-catalog-name">
-          <div className="datasource-catalog-name__title" title={record.name}>{record.name || '-'}</div>
-          <div className="datasource-catalog-name__type">{record.dbType || '-'}</div>
-        </div>
+        <button
+          type="button"
+          className="datasource-catalog-name-link"
+          title={record.name}
+          disabled={
+            !record.systemManaged &&
+            (record.status === 'REVOKED' || record.metadataSyncStatus === 'DELETING')
+          }
+          onClick={() => (record.systemManaged ? handleOpenWarehouse() : handleEdit(record))}
+        >
+          {record.name || '-'}
+        </button>
       ),
     },
     {
       title: '连接地址',
       key: 'jdbcUrl',
-      width: 260,
+      align: 'left',
+      className: 'datasource-catalog-col--left',
+      width: 280,
       ellipsis: true,
-      render: (_value, record) => <span title={record.jdbcUrl}>{record.jdbcUrl || '-'}</span>,
-    },
-    {
-      title: '归属',
-      key: 'owner',
-      width: 220,
       render: (_value, record) => (
-        <div className="datasource-catalog-owner">
-          <div><span>单位</span>{record.unitName || record.dataSourceUnit || '待归属'}</div>
-          <div><span>系统</span>{record.businessSystemName || record.systemName || '待归属'}</div>
-        </div>
+        <span className="datasource-catalog-address" title={record.jdbcUrl}>
+          {record.jdbcUrl || '-'}
+        </span>
       ),
     },
     {
-      title: '状态',
+      title: '连接状态',
+      key: 'connStatus',
+      align: 'center',
+      width: 120,
+      render: (_value, record) => <DataSourceStatus status={record.connStatus} />,
+    },
+    {
+      title: '是否启用',
       key: 'status',
-      width: 190,
-      render: (_value, record) => (
-        <Space wrap size={[4, 4]}>
-          <DataSourceStatus status={record.connStatus} />
-          <DataSourceLifecycleStatusTag status={record.status} />
-          {record.systemManaged ? <Tag color="cyan">系统内置 · 只读</Tag> : null}
-        </Space>
-      ),
+      align: 'center',
+      width: 120,
+      render: (_value, record) => <DataSourceLifecycleStatusTag status={record.status} />,
     },
     {
-      title: '探查',
-      key: 'exploration',
-      width: 150,
-      render: (_value, record) => {
-        const status = record.profileStatus;
-        const color = status === 'SUCCESS' ? 'success' : status === 'FAILED' ? 'error' : status === 'RUNNING' || status === 'QUEUED' ? 'processing' : 'default';
-        const label = status === 'SUCCESS' ? '已完成' : status === 'FAILED' ? '异常' : status === 'RUNNING' || status === 'QUEUED' ? '处理中' : '未探查';
-        return <Tag color={color}>{label}</Tag>;
-      },
-    },
-    {
-      title: '最近更新',
-      dataIndex: 'updateTime',
-      key: 'updateTime',
-      width: 170,
-      render: (value) => value || '-',
+      title: '数据库类型',
+      key: 'dbType',
+      align: 'center',
+      width: 140,
+      ellipsis: true,
+      render: (_value, record) => getDataSourceCategory(record.dbType).label,
     },
     {
       title: '操作',
       key: 'actions',
+      align: 'center',
       fixed: 'right',
-      width: 210,
+      width: 360,
       render: (_value, record) => {
         const currentStatus = record.status || 'ENABLED';
         const isRevoked = currentStatus === 'REVOKED';
         const isDeleting = isRevoked || record.metadataSyncStatus === 'DELETING';
         const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
+        const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
+
         if (record.systemManaged) {
-          return <Space size={0}>
-            <Tooltip title="查看探查结果"><Button type="link" size="small" icon={<ApartmentOutlined />} disabled={isDeleting} onClick={() => handleViewExploration(record)} /></Tooltip>
-            <Tooltip title="测试连接"><Button type="link" size="small" icon={<ApiOutlined />} disabled={isDeleting} onClick={() => void handleTestConnection(record)} /></Tooltip>
-            <Button type="link" size="small" onClick={handleOpenWarehouse}>数据湖管理</Button>
-          </Space>;
+          return (
+            <div className="datasource-catalog-actions">
+              <button
+                type="button"
+                className="datasource-catalog-action datasource-catalog-action--test"
+                disabled={isDeleting}
+                onClick={() => void handleTestConnection(record)}
+              >
+                测试连接
+              </button>
+              <button
+                type="button"
+                className="datasource-catalog-action datasource-catalog-action--primary"
+                disabled={isDeleting}
+                onClick={() => handleViewExploration(record)}
+              >
+                探查结果
+              </button>
+              <button
+                type="button"
+                className="datasource-catalog-action datasource-catalog-action--neutral"
+                onClick={handleOpenWarehouse}
+              >
+                数据湖管理
+              </button>
+            </div>
+          );
         }
+
         return (
-          <Space size={0}>
-            <Tooltip title="查看探查结果"><Button type="link" size="small" icon={<ApartmentOutlined />} disabled={isDeleting} onClick={() => handleViewExploration(record)} /></Tooltip>
-            <Tooltip title="测试连接"><Button type="link" size="small" icon={<ApiOutlined />} disabled={isDeleting} onClick={() => void handleTestConnection(record)} /></Tooltip>
-            <Tooltip title="编辑"><Button type="link" size="small" icon={<EditOutlined />} disabled={isDeleting} onClick={() => handleEdit(record)} /></Tooltip>
-            <Tooltip title={currentStatus === 'DISABLED' ? '启用' : '停用'}><Button type="link" size="small" icon={currentStatus === 'DISABLED' ? <PlayCircleOutlined /> : <PauseCircleOutlined />} disabled={isDeleting} onClick={() => handleStatusChange(record, nextStatus)} /></Tooltip>
-            <Tooltip title={isRevoked ? '已注销' : '注销'}><Button type="link" danger size="small" icon={<CloseCircleOutlined />} disabled={isDeleting} onClick={() => handleStatusChange(record, 'REVOKED')} /></Tooltip>
-            <Tooltip title="删除"><Button type="link" danger size="small" icon={<DeleteOutlined />} disabled={isDeleting} onClick={() => void handleDelete(record)} /></Tooltip>
-          </Space>
+          <div className="datasource-catalog-actions">
+            <button
+              type="button"
+              className="datasource-catalog-action datasource-catalog-action--test"
+              disabled={isDeleting}
+              onClick={() => void handleTestConnection(record)}
+            >
+              测试连接
+            </button>
+            <button
+              type="button"
+              className="datasource-catalog-action datasource-catalog-action--primary"
+              disabled={isDeleting}
+              onClick={() => handleViewExploration(record)}
+            >
+              探查结果
+            </button>
+            <button
+              type="button"
+              className="datasource-catalog-action datasource-catalog-action--warn"
+              disabled={isDeleting}
+              onClick={() => handleStatusChange(record, nextStatus)}
+            >
+              {statusActionLabel}
+            </button>
+            <button
+              type="button"
+              className="datasource-catalog-action datasource-catalog-action--neutral"
+              disabled={isDeleting}
+              onClick={() => handleStatusChange(record, 'REVOKED')}
+            >
+              {isRevoked ? '已注销' : '注销'}
+            </button>
+            <button
+              type="button"
+              className="datasource-catalog-action datasource-catalog-action--danger"
+              disabled={isDeleting}
+              onClick={() => void handleDelete(record)}
+            >
+              删除
+            </button>
+          </div>
         );
       },
     },
-  ], [handleDelete, handleEdit, handleOpenWarehouse, handleStatusChange, handleTestConnection, handleViewExploration]);
+  ], [
+    handleDelete,
+    handleEdit,
+    handleOpenWarehouse,
+    handleStatusChange,
+    handleTestConnection,
+    handleViewExploration,
+    pagination.pageNo,
+    pagination.pageSize,
+  ]);
 
   return (
     <>
@@ -602,7 +655,7 @@ const DataSourcePage: React.FC = () => {
                           columns={dataSourceColumns}
                           dataSource={dataSourceList}
                           pagination={false}
-                          scroll={{ x: 1320 }}
+                          scroll={{ x: 1312 }}
                           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
                         />
                       )}
