@@ -1,4 +1,8 @@
 import type { DataSourceRecord, DataSourceTopologyNode } from '@/pages/data-source/types';
+import {
+  DATA_SOURCE_CATEGORIES,
+  type DataSourceCategoryKey,
+} from '@/pages/data-source/dataSourceRegistry';
 import type { TreeDataNode } from 'antd';
 
 /**
@@ -96,71 +100,47 @@ export function sourceMatches(
 }
 
 export type ExplorationTaskCategoryKey =
-  | 'DATABASE'
-  | 'MESSAGE'
-  | 'SEARCH'
-  | 'OBJECT_STORAGE'
-  | 'API'
-  | 'FILE';
+  | 'ALL'
+  | DataSourceCategoryKey;
 
 export interface ExplorationTaskCategory {
   key: ExplorationTaskCategoryKey;
   label: string;
   dbTypes: readonly string[];
-  supportsExploration: boolean;
 }
 
-/** Category tabs for the probe-task configuration page. */
+/** Same taxonomy as data-source management, plus an "全部" option for the probe task filter. */
 export const EXPLORATION_TASK_CATEGORIES: readonly ExplorationTaskCategory[] = [
-  {
-    key: 'DATABASE',
-    label: '数据库',
-    dbTypes: ['MYSQL', 'POSTGRE_SQL', 'ORACLE', 'DORIS', 'DAMENG', 'KINGBASE', 'JDBC'],
-    supportsExploration: true,
-  },
-  {
-    key: 'MESSAGE',
-    label: '消息',
-    dbTypes: ['KAFKA'],
-    supportsExploration: false,
-  },
-  {
-    key: 'SEARCH',
-    label: '搜索',
-    dbTypes: ['ELASTICSEARCH'],
-    supportsExploration: false,
-  },
-  {
-    key: 'OBJECT_STORAGE',
-    label: '对象存储',
-    dbTypes: ['S3', 'MINIO'],
-    supportsExploration: false,
-  },
-  {
-    key: 'API',
-    label: 'API',
-    dbTypes: ['HTTP'],
-    supportsExploration: false,
-  },
-  {
-    key: 'FILE',
-    label: '文件',
-    dbTypes: ['SFTP'],
-    supportsExploration: false,
-  },
+  { key: 'ALL', label: '全部类型', dbTypes: [] },
+  ...DATA_SOURCE_CATEGORIES.map((category) => ({
+    key: category.key as ExplorationTaskCategoryKey,
+    label: category.label,
+    dbTypes: category.dbTypes,
+  })),
 ];
 
-export const DEFAULT_EXPLORATION_TASK_CATEGORY: ExplorationTaskCategoryKey = 'DATABASE';
+/** Default matches the probe page's database-first workflow. */
+export const DEFAULT_EXPLORATION_TASK_CATEGORY: ExplorationTaskCategoryKey = 'RELATIONAL';
+
+/** DbTypes that OpenMetadata profiler / DataExplorationService.context accept. */
+export const OM_PROFILER_DB_TYPES = [
+  'MYSQL',
+  'POSTGRE_SQL',
+  'JDBC',
+  'DORIS',
+  'ORACLE',
+  'DAMENG',
+  'KINGBASE',
+] as const;
 
 export function getExplorationTaskCategory(
   key: ExplorationTaskCategoryKey = DEFAULT_EXPLORATION_TASK_CATEGORY,
 ): ExplorationTaskCategory {
   return EXPLORATION_TASK_CATEGORIES.find((category) => category.key === key)
-    ?? EXPLORATION_TASK_CATEGORIES[0];
+    ?? EXPLORATION_TASK_CATEGORIES.find((category) => category.key === DEFAULT_EXPLORATION_TASK_CATEGORY)!;
 }
 
-export function explorationTaskCategorySupportsExploration(
-  key: ExplorationTaskCategoryKey = DEFAULT_EXPLORATION_TASK_CATEGORY,
-): boolean {
-  return getExplorationTaskCategory(key).supportsExploration;
+export function supportsOmProfiler(dbType?: string): boolean {
+  const normalized = String(dbType || '').trim().toUpperCase();
+  return (OM_PROFILER_DB_TYPES as readonly string[]).includes(normalized);
 }

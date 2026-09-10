@@ -15,7 +15,6 @@ import {
   Input,
   Modal,
   Pagination,
-  Segmented,
   Select,
   Space,
   Spin,
@@ -55,9 +54,9 @@ import {
   type ExplorationTaskCategoryKey,
   displayOwner,
   explorationStatus,
-  explorationTaskCategorySupportsExploration,
   getExplorationTaskCategory,
   metadataStatus,
+  supportsOmProfiler,
 } from '../shared';
 import '../index.less';
 
@@ -141,7 +140,6 @@ const DataExplorationTasksPage: React.FC = () => {
   const [explorationFeedback, setExplorationFeedback] = useState<ExplorationFeedback>();
   const [category, setCategory] = useState<ExplorationTaskCategoryKey>(DEFAULT_EXPLORATION_TASK_CATEGORY);
   const selectedCategory = getExplorationTaskCategory(category);
-  const supportsExploration = explorationTaskCategorySupportsExploration(category);
 
   const loadUnits = useCallback(async () => {
     try {
@@ -179,7 +177,7 @@ const DataExplorationTasksPage: React.FC = () => {
       unitId: unitId || undefined,
       businessSystemId: businessSystemId || undefined,
       status,
-      dbTypes: [...selectedCategory.dbTypes],
+      dbTypes: category === 'ALL' ? undefined : [...selectedCategory.dbTypes],
     };
     try {
       const response = await fetchDataSourcePage(params);
@@ -401,7 +399,7 @@ const DataExplorationTasksPage: React.FC = () => {
   const showRuns = async (record: DataSourceRecord) => {
     if (!record.id) return;
     try {
-      if (!supportsExploration) {
+      if (!supportsOmProfiler(record.dbType)) {
         const scanResponse = await fetchDataSourceMetadataRuns(record.id, 'SCAN');
         if (scanResponse.code !== 0) {
           message.error(scanResponse.message || '无法读取扫描运行记录');
@@ -505,13 +503,13 @@ const DataExplorationTasksPage: React.FC = () => {
       title: '操作',
       key: 'actions',
       fixed: 'right',
-      width: supportsExploration ? 340 : 240,
+      width: 340,
       render: (_, record) => (
         <Space size="small">
           <Button type="link" icon={<SyncOutlined />} onClick={() => void triggerScan(record)}>
             重新扫描
           </Button>
-          {supportsExploration && (
+          {supportsOmProfiler(record.dbType) && (
             <Button
               type="link"
               icon={<PlayCircleOutlined />}
@@ -538,7 +536,7 @@ const DataExplorationTasksPage: React.FC = () => {
         </Space>
       ),
     },
-  ], [supportsExploration]);
+  ], []);
 
   return (
     <div className="data-exploration-page data-exploration-tasks min-h-full px-6 py-5">
@@ -550,18 +548,6 @@ const DataExplorationTasksPage: React.FC = () => {
       />
 
       <Card className="exploration-panel exploration-filter-panel mt-5" size="small">
-        <Segmented
-          className="mb-3"
-          value={category}
-          options={EXPLORATION_TASK_CATEGORIES.map((item) => ({
-            label: item.label,
-            value: item.key,
-          }))}
-          onChange={(value) => {
-            setCategory(value as ExplorationTaskCategoryKey);
-            resetPage();
-          }}
-        />
         <div className="flex flex-wrap items-center gap-3">
           <Input
             allowClear
@@ -571,6 +557,18 @@ const DataExplorationTasksPage: React.FC = () => {
             className="w-[240px]"
             onChange={(event) => {
               setKeyword(event.target.value);
+              resetPage();
+            }}
+          />
+          <Select
+            className="w-[190px]"
+            value={category}
+            options={EXPLORATION_TASK_CATEGORIES.map((item) => ({
+              label: item.label,
+              value: item.key,
+            }))}
+            onChange={(value) => {
+              setCategory(value as ExplorationTaskCategoryKey);
               resetPage();
             }}
           />
