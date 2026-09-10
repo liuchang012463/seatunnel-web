@@ -11,6 +11,7 @@ import {
   Segmented,
   Spin,
   Table,
+  Tag,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { motion } from 'framer-motion';
@@ -406,6 +407,32 @@ const DataSourcePage: React.FC = () => {
       render: (_value, record) => <DataSourceLifecycleStatusTag status={record.status} />,
     },
     {
+      title: '探查状态',
+      key: 'profileStatus',
+      align: 'center',
+      width: 110,
+      render: (_value, record) => {
+        const status = record.profileStatus;
+        const color =
+          status === 'SUCCESS'
+            ? 'success'
+            : status === 'FAILED'
+              ? 'error'
+              : status === 'RUNNING' || status === 'QUEUED'
+                ? 'processing'
+                : 'default';
+        const label =
+          status === 'SUCCESS'
+            ? '已探查'
+            : status === 'FAILED'
+              ? '探查异常'
+              : status === 'RUNNING' || status === 'QUEUED'
+                ? '探查中'
+                : '未探查';
+        return <Tag color={color} style={{ marginInlineEnd: 0, borderRadius: 999 }}>{label}</Tag>;
+      },
+    },
+    {
       title: '数据库类型',
       key: 'dbType',
       align: 'center',
@@ -656,7 +683,7 @@ const DataSourcePage: React.FC = () => {
                             columns={dataSourceColumns}
                             dataSource={dataSourceList}
                             pagination={false}
-                            scroll={{ x: 1312 }}
+                            scroll={{ x: 1422 }}
                             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
                           />
                         )}

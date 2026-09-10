@@ -69,6 +69,26 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
         <div className="datasource-card-status">
           <DataSourceStatus status={record.connStatus} />
           <DataSourceLifecycleStatusTag status={record.status} />
+          <Tag
+            color={
+              record.profileStatus === 'SUCCESS'
+                ? 'success'
+                : record.profileStatus === 'FAILED'
+                  ? 'error'
+                  : record.profileStatus === 'RUNNING' || record.profileStatus === 'QUEUED'
+                    ? 'processing'
+                    : 'default'
+            }
+            style={{ marginInlineEnd: 0, borderRadius: 999 }}
+          >
+            {record.profileStatus === 'SUCCESS'
+              ? '已探查'
+              : record.profileStatus === 'FAILED'
+                ? '探查异常'
+                : record.profileStatus === 'RUNNING' || record.profileStatus === 'QUEUED'
+                  ? '探查中'
+                  : '未探查'}
+          </Tag>
           {isSystemManaged ? (
             <Tag color="cyan" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
               系统内置 · 只读
