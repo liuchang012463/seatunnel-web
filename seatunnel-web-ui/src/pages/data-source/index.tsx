@@ -475,13 +475,6 @@ const DataSourcePage: React.FC = () => {
           <div className="datasource-page-content">
             <motion.div initial="hidden" animate="visible" variants={PAGE_ANIMATION.sectionStagger}>
               <motion.div variants={PAGE_ANIMATION.fadeUp}>
-                <PageHeader
-                  onCreate={handleCreate}
-                  onManageMasterData={() => setMasterDataOpen(true)}
-                />
-              </motion.div>
-
-              <motion.div variants={PAGE_ANIMATION.fadeUp}>
                 <SearchBar
                   value={searchKeyword}
                   onChange={(value) => {
@@ -509,30 +502,36 @@ const DataSourcePage: React.FC = () => {
                 />
               </motion.div>
 
-              <motion.div variants={PAGE_ANIMATION.fadeUp} className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  type={selectedCategory === 'ALL' ? 'primary' : 'default'}
-                  shape="round"
-                  onClick={() => {
-                    setSelectedCategory('ALL');
-                    setPagination((current) => ({ ...current, pageNo: 1 }));
-                  }}
-                >
-                  全部
-                </Button>
-                {DATA_SOURCE_CATEGORIES.map((category) => (
+              <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-header">
+                <div className="flex min-w-0 flex-1 flex-wrap gap-2">
                   <Button
-                    key={category.key}
-                    type={selectedCategory === category.key ? 'primary' : 'default'}
+                    type={selectedCategory === 'ALL' ? 'primary' : 'default'}
                     shape="round"
                     onClick={() => {
-                      setSelectedCategory(category.key);
+                      setSelectedCategory('ALL');
                       setPagination((current) => ({ ...current, pageNo: 1 }));
                     }}
                   >
-                    {category.label}
+                    全部
                   </Button>
-                ))}
+                  {DATA_SOURCE_CATEGORIES.map((category) => (
+                    <Button
+                      key={category.key}
+                      type={selectedCategory === category.key ? 'primary' : 'default'}
+                      shape="round"
+                      onClick={() => {
+                        setSelectedCategory(category.key);
+                        setPagination((current) => ({ ...current, pageNo: 1 }));
+                      }}
+                    >
+                      {category.label}
+                    </Button>
+                  ))}
+                </div>
+                <PageHeader
+                  onCreate={handleCreate}
+                  onManageMasterData={() => setMasterDataOpen(true)}
+                />
               </motion.div>
 
               <motion.p variants={PAGE_ANIMATION.fadeUp} className="datasource-page-count">
