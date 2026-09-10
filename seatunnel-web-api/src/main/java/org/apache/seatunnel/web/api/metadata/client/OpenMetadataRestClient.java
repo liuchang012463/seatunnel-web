@@ -6,12 +6,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
+import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.CreateDriveService;
+import org.openmetadata.schema.api.services.CreateMessagingService;
+import org.openmetadata.schema.api.services.CreateSearchService;
+import org.openmetadata.schema.api.services.CreateStorageService;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
@@ -225,17 +231,21 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public Optional<OpenMetadataEntity> findDatabaseService(String fullyQualifiedName) {
+        return findService(MetadataServiceCategory.DATABASE, fullyQualifiedName);
+    }
+
+    @Override
+    public Optional<OpenMetadataEntity> findService(MetadataServiceCategory category, String fullyQualifiedName) {
         validateBaseUrl();
         try {
-            org.openmetadata.schema.entity.services.DatabaseService service =
-                    sdk().databaseServices().getByName(fullyQualifiedName);
-            return Optional.of(entity(service));
+            org.openmetadata.schema.EntityInterface service = findServiceEntity(category, fullyQualifiedName);
+            return service == null ? Optional.empty() : Optional.of(entity(service));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return Optional.empty();
             }
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
-                    "OpenMetadata database service lookup failed", error);
+                    "OpenMetadata service lookup failed", error);
         }
     }
 
@@ -464,30 +474,35 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public OpenMetadataEntity upsertDatabaseService(JsonNode request) {
+        return upsertService(MetadataServiceCategory.DATABASE, request);
+    }
+
+    @Override
+    public OpenMetadataEntity upsertService(MetadataServiceCategory category, JsonNode request) {
         validateBaseUrl();
         try {
             // SDK 1.12.10's generic upsert accepts an entity, whose generated
             // defaults include read-only fields (version/deleted/entityStatus).
-            // The Server PUT contract deserializes CreateDatabaseService and
-            // rejects those fields. Resolve by name, then use the SDK's typed
-            // create/update methods so no hand-built HTTP request is needed.
-            CreateDatabaseService createRequest =
-                    OBJECT_MAPPER.treeToValue(request, CreateDatabaseService.class);
-            org.openmetadata.schema.entity.services.DatabaseService existing =
-                    findDatabaseServiceEntity(createRequest.getName());
-            if (existing == null) {
-                return entity(sdk().databaseServices().create(createRequest));
-            }
-            org.openmetadata.schema.entity.services.DatabaseService desired =
-                    mergeDatabaseService(existing, createRequest);
-            return entity(sdk().databaseServices().update(existing.getId().toString(), desired));
+            // The Server PUT contract deserializes Create*Service and rejects
+            // those fields. Resolve by name, then use the SDK's typed create/
+            // update methods so no hand-built HTTP request is needed.
+            return switch (category) {
+                case DATABASE -> upsertDatabaseServiceInternal(request);
+                case MESSAGING -> upsertMessagingServiceInternal(request);
+                case SEARCH -> upsertSearchServiceInternal(request);
+                case STORAGE -> upsertStorageServiceInternal(request);
+                case API -> upsertApiServiceInternal(request);
+                case DRIVE -> upsertDriveServiceInternal(request);
+            };
         } catch (OpenMetadataException error) {
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
-                    "OpenMetadata database service upsert failed", error);
+                    "OpenMetadata service upsert failed", error);
+        } catch (MetadataIntegrationException error) {
+            throw error;
         } catch (Exception error) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
-                    "OpenMetadata database service request is invalid", error);
+                    "OpenMetadata service request is invalid", error);
         }
     }
 
@@ -536,8 +551,21 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     private org.openmetadata.schema.entity.services.DatabaseService findDatabaseServiceEntity(
             String name) {
+        return (org.openmetadata.schema.entity.services.DatabaseService)
+                findServiceEntity(MetadataServiceCategory.DATABASE, name);
+    }
+
+    private org.openmetadata.schema.EntityInterface findServiceEntity(
+            MetadataServiceCategory category, String name) {
         try {
-            return sdk().databaseServices().getByName(name);
+            return switch (category) {
+                case DATABASE -> sdk().databaseServices().getByName(name);
+                case MESSAGING -> sdk().messagingServices().getByName(name);
+                case SEARCH -> sdk().searchServices().getByName(name);
+                case STORAGE -> sdk().storageServices().getByName(name);
+                case API -> sdk().apiServices().getByName(name);
+                case DRIVE -> sdk().driveServices().getByName(name);
+            };
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
@@ -546,9 +574,157 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         }
     }
 
+    private OpenMetadataEntity upsertDatabaseServiceInternal(JsonNode request) throws Exception {
+        CreateDatabaseService createRequest =
+                OBJECT_MAPPER.treeToValue(request, CreateDatabaseService.class);
+        org.openmetadata.schema.entity.services.DatabaseService existing =
+                findDatabaseServiceEntity(createRequest.getName());
+        if (existing == null) {
+            return entity(sdk().databaseServices().create(createRequest));
+        }
+        org.openmetadata.schema.entity.services.DatabaseService desired =
+                mergeDatabaseService(existing, createRequest);
+        return entity(sdk().databaseServices().update(existing.getId().toString(), desired));
+    }
+
+    private OpenMetadataEntity upsertMessagingServiceInternal(JsonNode request) throws Exception {
+        CreateMessagingService createRequest =
+                OBJECT_MAPPER.treeToValue(request, CreateMessagingService.class);
+        org.openmetadata.schema.entity.services.MessagingService existing =
+                (org.openmetadata.schema.entity.services.MessagingService)
+                        findServiceEntity(MetadataServiceCategory.MESSAGING, createRequest.getName());
+        if (existing == null) {
+            return entity(sdk().messagingServices().create(createRequest));
+        }
+        org.openmetadata.schema.entity.services.MessagingService desired =
+                mergeMessagingService(existing, createRequest);
+        return entity(sdk().messagingServices().update(existing.getId().toString(), desired));
+    }
+
+    private OpenMetadataEntity upsertSearchServiceInternal(JsonNode request) throws Exception {
+        CreateSearchService createRequest =
+                OBJECT_MAPPER.treeToValue(request, CreateSearchService.class);
+        org.openmetadata.schema.entity.services.SearchService existing =
+                (org.openmetadata.schema.entity.services.SearchService)
+                        findServiceEntity(MetadataServiceCategory.SEARCH, createRequest.getName());
+        if (existing == null) {
+            return entity(sdk().searchServices().create(createRequest));
+        }
+        org.openmetadata.schema.entity.services.SearchService desired =
+                mergeSearchService(existing, createRequest);
+        return entity(sdk().searchServices().update(existing.getId().toString(), desired));
+    }
+
+    private OpenMetadataEntity upsertStorageServiceInternal(JsonNode request) throws Exception {
+        CreateStorageService createRequest =
+                OBJECT_MAPPER.treeToValue(request, CreateStorageService.class);
+        org.openmetadata.schema.entity.services.StorageService existing =
+                (org.openmetadata.schema.entity.services.StorageService)
+                        findServiceEntity(MetadataServiceCategory.STORAGE, createRequest.getName());
+        if (existing == null) {
+            return entity(sdk().storageServices().create(createRequest));
+        }
+        org.openmetadata.schema.entity.services.StorageService desired =
+                mergeStorageService(existing, createRequest);
+        return entity(sdk().storageServices().update(existing.getId().toString(), desired));
+    }
+
+    private OpenMetadataEntity upsertApiServiceInternal(JsonNode request) throws Exception {
+        CreateApiService createRequest =
+                OBJECT_MAPPER.treeToValue(request, CreateApiService.class);
+        org.openmetadata.schema.entity.services.ApiService existing =
+                (org.openmetadata.schema.entity.services.ApiService)
+                        findServiceEntity(MetadataServiceCategory.API, createRequest.getName());
+        if (existing == null) {
+            return entity(sdk().apiServices().create(createRequest));
+        }
+        org.openmetadata.schema.entity.services.ApiService desired =
+                mergeApiService(existing, createRequest);
+        return entity(sdk().apiServices().update(existing.getId().toString(), desired));
+    }
+
+    private OpenMetadataEntity upsertDriveServiceInternal(JsonNode request) throws Exception {
+        CreateDriveService createRequest =
+                OBJECT_MAPPER.treeToValue(request, CreateDriveService.class);
+        org.openmetadata.schema.entity.services.DriveService existing =
+                (org.openmetadata.schema.entity.services.DriveService)
+                        findServiceEntity(MetadataServiceCategory.DRIVE, createRequest.getName());
+        if (existing == null) {
+            return entity(sdk().driveServices().create(createRequest));
+        }
+        org.openmetadata.schema.entity.services.DriveService desired =
+                mergeDriveService(existing, createRequest);
+        return entity(sdk().driveServices().update(existing.getId().toString(), desired));
+    }
+
     private static org.openmetadata.schema.entity.services.DatabaseService mergeDatabaseService(
             org.openmetadata.schema.entity.services.DatabaseService existing,
             CreateDatabaseService desired) {
+        existing.setName(desired.getName());
+        existing.setDisplayName(desired.getDisplayName());
+        existing.setDescription(desired.getDescription());
+        existing.setServiceType(desired.getServiceType());
+        existing.setConnection(desired.getConnection());
+        existing.setOwners(desired.getOwners());
+        existing.setIngestionRunner(desired.getIngestionRunner());
+        return existing;
+    }
+
+    private static org.openmetadata.schema.entity.services.MessagingService mergeMessagingService(
+            org.openmetadata.schema.entity.services.MessagingService existing,
+            CreateMessagingService desired) {
+        existing.setName(desired.getName());
+        existing.setDisplayName(desired.getDisplayName());
+        existing.setDescription(desired.getDescription());
+        existing.setServiceType(desired.getServiceType());
+        existing.setConnection(desired.getConnection());
+        existing.setOwners(desired.getOwners());
+        existing.setIngestionRunner(desired.getIngestionRunner());
+        return existing;
+    }
+
+    private static org.openmetadata.schema.entity.services.SearchService mergeSearchService(
+            org.openmetadata.schema.entity.services.SearchService existing,
+            CreateSearchService desired) {
+        existing.setName(desired.getName());
+        existing.setDisplayName(desired.getDisplayName());
+        existing.setDescription(desired.getDescription());
+        existing.setServiceType(desired.getServiceType());
+        existing.setConnection(desired.getConnection());
+        existing.setOwners(desired.getOwners());
+        existing.setIngestionRunner(desired.getIngestionRunner());
+        return existing;
+    }
+
+    private static org.openmetadata.schema.entity.services.StorageService mergeStorageService(
+            org.openmetadata.schema.entity.services.StorageService existing,
+            CreateStorageService desired) {
+        existing.setName(desired.getName());
+        existing.setDisplayName(desired.getDisplayName());
+        existing.setDescription(desired.getDescription());
+        existing.setServiceType(desired.getServiceType());
+        existing.setConnection(desired.getConnection());
+        existing.setOwners(desired.getOwners());
+        existing.setIngestionRunner(desired.getIngestionRunner());
+        return existing;
+    }
+
+    private static org.openmetadata.schema.entity.services.ApiService mergeApiService(
+            org.openmetadata.schema.entity.services.ApiService existing,
+            CreateApiService desired) {
+        existing.setName(desired.getName());
+        existing.setDisplayName(desired.getDisplayName());
+        existing.setDescription(desired.getDescription());
+        existing.setServiceType(desired.getServiceType());
+        existing.setConnection(desired.getConnection());
+        existing.setOwners(desired.getOwners());
+        existing.setIngestionRunner(desired.getIngestionRunner());
+        return existing;
+    }
+
+    private static org.openmetadata.schema.entity.services.DriveService mergeDriveService(
+            org.openmetadata.schema.entity.services.DriveService existing,
+            CreateDriveService desired) {
         existing.setName(desired.getName());
         existing.setDisplayName(desired.getDisplayName());
         existing.setDescription(desired.getDescription());
@@ -699,14 +875,34 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public void deleteDatabaseServiceRecursively(String id) {
+        deleteServiceRecursively(MetadataServiceCategory.DATABASE, id);
+    }
+
+    @Override
+    public void deleteServiceRecursively(MetadataServiceCategory category, String id) {
         validateBaseUrl();
         try {
-            sdk().databaseServices().delete(id,
-                    Map.of("recursive", "true", "hardDelete", "true"));
+            switch (category) {
+                case DATABASE -> sdk().databaseServices().delete(id,
+                        Map.of("recursive", "true", "hardDelete", "true"));
+                case MESSAGING -> sdk().messagingServices().delete(id,
+                        Map.of("recursive", "true", "hardDelete", "true"));
+                case SEARCH -> sdk().searchServices().delete(id,
+                        Map.of("recursive", "true", "hardDelete", "true"));
+                case STORAGE -> sdk().storageServices().delete(id,
+                        Map.of("recursive", "true", "hardDelete", "true"));
+                case API -> sdk().apiServices().delete(id,
+                        Map.of("recursive", "true", "hardDelete", "true"));
+                case DRIVE -> sdk().driveServices().delete(id,
+                        Map.of("recursive", "true", "hardDelete", "true"));
+                default -> throw new MetadataIntegrationException(
+                        MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                        "Unsupported OpenMetadata service category: " + category);
+            }
         } catch (OpenMetadataException error) {
             if (!isNotFound(error)) {
                 throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
-                        "OpenMetadata database service deletion failed", error);
+                        "OpenMetadata service deletion failed", error);
             }
         }
     }

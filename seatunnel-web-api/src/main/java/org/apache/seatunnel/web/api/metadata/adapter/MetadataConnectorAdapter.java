@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.metadata.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
@@ -10,6 +11,19 @@ public interface MetadataConnectorAdapter {
     DbType dataSourceType();
 
     String openMetadataServiceType();
+
+    default MetadataServiceCategory serviceCategory() {
+        return MetadataServiceCategory.DATABASE;
+    }
+
+    default boolean supportsProfiler() {
+        return serviceCategory() == MetadataServiceCategory.DATABASE;
+    }
+
+    /** Preferred entry; default delegates to databaseServiceRequest for DB adapters. */
+    default JsonNode serviceRequest(DataSource dataSource, String stableServiceName) {
+        return databaseServiceRequest(dataSource, stableServiceName);
+    }
 
     JsonNode databaseServiceRequest(DataSource dataSource, String stableServiceName);
 

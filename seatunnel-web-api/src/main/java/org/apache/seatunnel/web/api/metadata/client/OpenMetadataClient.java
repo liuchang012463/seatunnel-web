@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.metadata.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +15,8 @@ public interface OpenMetadataClient {
     OpenMetadataHealth health();
 
     Optional<OpenMetadataEntity> findDatabaseService(String fullyQualifiedName);
+
+    Optional<OpenMetadataEntity> findService(MetadataServiceCategory category, String fullyQualifiedName);
 
     Optional<OpenMetadataDatabase> findDatabase(String fullyQualifiedName);
 
@@ -107,6 +110,8 @@ public interface OpenMetadataClient {
 
     OpenMetadataEntity upsertDatabaseService(JsonNode request);
 
+    OpenMetadataEntity upsertService(MetadataServiceCategory category, JsonNode request);
+
     Optional<OpenMetadataEntity> findIngestionPipeline(String fullyQualifiedName);
 
     OpenMetadataEntity upsertIngestionPipeline(JsonNode request);
@@ -133,4 +138,7 @@ public interface OpenMetadataClient {
 
     /** OM 404 is already the desired state and returns normally. */
     void deleteDatabaseServiceRecursively(String id);
+
+    /** OM 404 is already the desired state and returns normally. */
+    void deleteServiceRecursively(MetadataServiceCategory category, String id);
 }

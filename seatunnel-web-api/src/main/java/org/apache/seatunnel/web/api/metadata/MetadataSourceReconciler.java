@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Desired-state reconciler. No local transaction spans an OpenMetadata request.
@@ -96,22 +97,27 @@ public class MetadataSourceReconciler {
         String serviceName = MetadataStableName.serviceName(dataSource.getId());
 
         // PUT is the documented 1.12.10 upsert, so this also converges changed source configuration.
-        OpenMetadataEntity service = openMetadataClient.upsertDatabaseService(
-                adapter.databaseServiceRequest(dataSource, serviceName));
+        OpenMetadataEntity service = openMetadataClient.upsertService(
+                adapter.serviceCategory(), adapter.serviceRequest(dataSource, serviceName));
         OpenMetadataEntity metadataPipeline = openMetadataClient.upsertIngestionPipeline(
                 adapter.metadataPipelineRequest(
                         dataSource,
                         MetadataStableName.metadataPipelineName(dataSource.getId()),
                         service.id(), service.fullyQualifiedName()));
-        OpenMetadataEntity profilerPipeline = openMetadataClient.upsertIngestionPipeline(
-                adapter.profilerPipelineRequest(
-                        MetadataStableName.profilerPipelineName(dataSource.getId()),
-                        service.id(), service.fullyQualifiedName()));
+        OpenMetadataEntity profilerPipeline = null;
+        if (adapter.supportsProfiler()) {
+            profilerPipeline = openMetadataClient.upsertIngestionPipeline(
+                    adapter.profilerPipelineRequest(
+                            MetadataStableName.profilerPipelineName(dataSource.getId()),
+                            service.id(), service.fullyQualifiedName()));
+        }
         // The 1.12.10 deploy endpoints deliberately have no request body.
         openMetadataClient.deployIngestionPipeline(metadataPipeline.id());
         openMetadataClient.enableIngestionPipeline(metadataPipeline.id());
-        openMetadataClient.deployIngestionPipeline(profilerPipeline.id());
-        openMetadataClient.enableIngestionPipeline(profilerPipeline.id());
+        if (profilerPipeline != null) {
+            openMetadataClient.deployIngestionPipeline(profilerPipeline.id());
+            openMetadataClient.enableIngestionPipeline(profilerPipeline.id());
+        }
 
         MetadataSourceBinding latest = metadataBindingDao.queryById(claimed.getId());
         if (!owned(latest, claimedVersion)) {
@@ -141,13 +147,14 @@ public class MetadataSourceReconciler {
                 MetadataStableName.profilerPipelineFqn(claimed.getDataSourceId()));
         deletePipeline(claimed.getOmMetadataPipelineId(), metadataFqn);
         deletePipeline(claimed.getOmProfilerPipelineId(), profilerFqn);
+        MetadataServiceCategory category = resolveServiceCategory(claimed);
         String serviceId = claimed.getOmServiceId();
+        String serviceFqn = defaultIfBlank(
+                claimed.getOmServiceFqn(), MetadataStableName.serviceFqn(claimed.getDataSourceId()));
         if (serviceId != null && !serviceId.isBlank()) {
-            openMetadataClient.deleteDatabaseServiceRecursively(serviceId);
+            deleteServiceRecursively(category, serviceId);
         } else {
-            openMetadataClient.findDatabaseService(defaultIfBlank(
-                            claimed.getOmServiceFqn(), MetadataStableName.serviceFqn(claimed.getDataSourceId())))
-                    .ifPresent(service -> openMetadataClient.deleteDatabaseServiceRecursively(service.id()));
+            findService(category, serviceFqn).ifPresent(service -> deleteServiceRecursively(category, service.id()));
         }
         if (metadataBindingDao.deleteClaimed(claimed.getId(), claimedVersion)) {
             // The local source stayed available until external cleanup completed.
@@ -221,8 +228,40 @@ public class MetadataSourceReconciler {
         binding.setOmServiceFqn(service.fullyQualifiedName());
         binding.setOmMetadataPipelineId(metadataPipeline.id());
         binding.setOmMetadataPipelineFqn(metadataPipeline.fullyQualifiedName());
-        binding.setOmProfilerPipelineId(profilerPipeline.id());
-        binding.setOmProfilerPipelineFqn(profilerPipeline.fullyQualifiedName());
+        if (profilerPipeline != null) {
+            binding.setOmProfilerPipelineId(profilerPipeline.id());
+            binding.setOmProfilerPipelineFqn(profilerPipeline.fullyQualifiedName());
+        } else {
+            binding.setOmProfilerPipelineId(null);
+            binding.setOmProfilerPipelineFqn(null);
+        }
+    }
+
+    private MetadataServiceCategory resolveServiceCategory(MetadataSourceBinding binding) {
+        DataSource dataSource = dataSourceDao.queryById(binding.getDataSourceId());
+        if (dataSource == null) {
+            return MetadataServiceCategory.DATABASE;
+        }
+        try {
+            return connectorRegistry.require(dataSource.getDbType()).serviceCategory();
+        } catch (MetadataIntegrationException error) {
+            return MetadataServiceCategory.DATABASE;
+        }
+    }
+
+    private Optional<OpenMetadataEntity> findService(MetadataServiceCategory category, String fqn) {
+        if (category == MetadataServiceCategory.DATABASE) {
+            return openMetadataClient.findDatabaseService(fqn);
+        }
+        return openMetadataClient.findService(category, fqn);
+    }
+
+    private void deleteServiceRecursively(MetadataServiceCategory category, String id) {
+        if (category == MetadataServiceCategory.DATABASE) {
+            openMetadataClient.deleteDatabaseServiceRecursively(id);
+        } else {
+            openMetadataClient.deleteServiceRecursively(category, id);
+        }
     }
 
     private static long retryDelaySeconds(int retryCount) {

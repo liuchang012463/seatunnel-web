@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
+import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 
 import java.net.URI;
@@ -13,6 +14,16 @@ import java.net.URI;
 abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConnectorAdapter {
 
     protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    @Override
+    public MetadataServiceCategory serviceCategory() {
+        return MetadataServiceCategory.DATABASE;
+    }
+
+    @Override
+    public boolean supportsProfiler() {
+        return true;
+    }
 
     @Override
     public JsonNode metadataPipelineRequest(String pipelineName, String serviceId, String serviceFqn) {
@@ -28,7 +39,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
     private JsonNode metadataPipelineRequestInternal(
             String pipelineName, String serviceId, String serviceFqn, String scheduleInterval) {
         ObjectNode config = OBJECT_MAPPER.createObjectNode();
-        config.put("type", "DatabaseMetadata");
+        config.put("type", serviceCategory().metadataConfigType());
         config.put("markDeletedTables", true);
         config.put("markDeletedSchemas", true);
         config.put("markDeletedDatabases", true);
@@ -39,12 +50,14 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
 
     @Override
     public JsonNode profilerPipelineRequest(String pipelineName, String serviceId, String serviceFqn) {
+        ensureProfilerSupported();
         return profilerPipelineRequest(pipelineName, serviceId, serviceFqn, null);
     }
 
     @Override
     public JsonNode profilerPipelineRequest(
             String pipelineName, String serviceId, String serviceFqn, String databaseFqn) {
+        ensureProfilerSupported();
         return profilerPipelineRequest(pipelineName, serviceId, serviceFqn, databaseFqn, null);
     }
 
@@ -55,6 +68,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
             String serviceFqn,
             String databaseFqn,
             String schemaFqn) {
+        ensureProfilerSupported();
         ObjectNode config = OBJECT_MAPPER.createObjectNode();
         config.put("type", "Profiler");
         config.set("databaseFilterPattern", filterPattern(databaseFqn));
@@ -128,7 +142,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         root.put("displayName", pipelineName);
         ObjectNode service = root.putObject("service");
         service.put("id", serviceId);
-        service.put("type", "databaseService");
+        service.put("type", serviceCategory().entityType());
         service.put("name", serviceFqn);
         service.put("fullyQualifiedName", serviceFqn);
         root.put("pipelineType", pipelineType);
@@ -209,6 +223,13 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         return new MetadataIntegrationException(
                 MetadataErrorCode.SOURCE_CONNECTION_ERROR,
                 "Data source connection cannot be converted to the OpenMetadata 1.12.10 schema");
+    }
+
+    private void ensureProfilerSupported() {
+        if (!supportsProfiler()) {
+            throw new UnsupportedOperationException(
+                    "Profiler pipelines are not supported for " + serviceCategory().name() + " services");
+        }
     }
 
     /** Returns the persisted SeaTunnel connection JSON for connector-specific options. */

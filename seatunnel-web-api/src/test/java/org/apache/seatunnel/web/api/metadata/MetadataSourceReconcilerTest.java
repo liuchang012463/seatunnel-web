@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,12 +50,15 @@ class MetadataSourceReconcilerTest {
         stubCandidate(candidate, live);
         when(dataSourceDao.queryById(42L)).thenReturn(source);
         when(registry.require(DbType.MYSQL)).thenReturn(adapter);
+        when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.DATABASE);
+        when(adapter.supportsProfiler()).thenReturn(true);
         when(adapter.metadataPipelineRequest(eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42")))
                 .thenReturn(JSON.createObjectNode());
-        when(adapter.databaseServiceRequest(eq(source), eq("st_ds_42"))).thenReturn(JSON.createObjectNode());
+        when(adapter.serviceRequest(eq(source), eq("st_ds_42"))).thenReturn(JSON.createObjectNode());
         when(adapter.profilerPipelineRequest(eq("st_ds_42_profiler"), eq("svc"), eq("st_ds_42")))
                 .thenReturn(JSON.createObjectNode());
-        when(openMetadataClient.upsertDatabaseService(any())).thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
+        when(openMetadataClient.upsertService(eq(MetadataServiceCategory.DATABASE), any()))
+                .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
         when(openMetadataClient.upsertIngestionPipeline(any()))
                 .thenReturn(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata"))
                 .thenReturn(new OpenMetadataEntity("prof", "st_ds_42.st_ds_42_profiler"));
@@ -81,10 +85,13 @@ class MetadataSourceReconcilerTest {
         stubCandidate(candidate, live);
         when(dataSourceDao.queryById(42L)).thenReturn(source);
         when(registry.require(DbType.MYSQL)).thenReturn(adapter);
+        when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.DATABASE);
+        when(adapter.supportsProfiler()).thenReturn(true);
         when(adapter.metadataPipelineRequest(eq(source), any(), any(), any())).thenReturn(JSON.createObjectNode());
-        when(adapter.databaseServiceRequest(any(), any())).thenReturn(JSON.createObjectNode());
+        when(adapter.serviceRequest(any(), any())).thenReturn(JSON.createObjectNode());
         when(adapter.profilerPipelineRequest(any(), any(), any())).thenReturn(JSON.createObjectNode());
-        when(openMetadataClient.upsertDatabaseService(any())).thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
+        when(openMetadataClient.upsertService(eq(MetadataServiceCategory.DATABASE), any()))
+                .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
         when(openMetadataClient.upsertIngestionPipeline(any()))
                 .thenReturn(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata"))
                 .thenReturn(new OpenMetadataEntity("prof", "st_ds_42.st_ds_42_profiler"));
@@ -113,6 +120,36 @@ class MetadataSourceReconcilerTest {
         assertEquals(MetadataSyncStatus.ERROR, saved.getValue().getSyncStatus());
         assertEquals("CONNECTOR_NOT_SUPPORTED", saved.getValue().getLastSyncErrorCode());
         assertEquals(1, saved.getValue().getRetryCount());
+    }
+
+    @Test
+    void skipsProfilerPipelineWhenConnectorDoesNotSupportIt() {
+        MetadataSourceBinding candidate = binding(1L, MetadataDesiredState.ACTIVE, 1L, 0L);
+        MetadataSourceBinding live = binding(1L, MetadataDesiredState.ACTIVE, 1L, 1L);
+        DataSource source = source();
+        stubCandidate(candidate, live);
+        when(dataSourceDao.queryById(42L)).thenReturn(source);
+        when(registry.require(DbType.MYSQL)).thenReturn(adapter);
+        when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.MESSAGING);
+        when(adapter.supportsProfiler()).thenReturn(false);
+        when(adapter.serviceRequest(eq(source), eq("st_ds_42"))).thenReturn(JSON.createObjectNode());
+        when(adapter.metadataPipelineRequest(eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42")))
+                .thenReturn(JSON.createObjectNode());
+        when(openMetadataClient.upsertService(eq(MetadataServiceCategory.MESSAGING), any()))
+                .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
+        when(openMetadataClient.upsertIngestionPipeline(any()))
+                .thenReturn(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata"));
+
+        reconciler().reconcilePendingBindings();
+
+        verify(openMetadataClient).upsertIngestionPipeline(any());
+        verify(openMetadataClient).deployIngestionPipeline("meta");
+        verify(openMetadataClient).enableIngestionPipeline("meta");
+        verify(openMetadataClient, never()).deployIngestionPipeline("prof");
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateClaimed(saved.capture(), eq(1L));
+        assertEquals(null, saved.getValue().getOmProfilerPipelineId());
+        assertEquals(null, saved.getValue().getOmProfilerPipelineFqn());
     }
 
     @Test
