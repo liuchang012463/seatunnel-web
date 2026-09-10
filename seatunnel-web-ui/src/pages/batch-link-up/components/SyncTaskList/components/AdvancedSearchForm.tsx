@@ -182,7 +182,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
         initialValues={mergedInitialValues}
       >
         <Row gutter={[16, 14]} align="bottom">
-          <Col xs={24} md={12} xl={7}>
+          <Col xs={24} md={12} xl={6}>
             <Form.Item
               {...commonFormItemProps}
               name="jobName"
@@ -206,7 +206,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12} xl={7}>
+          <Col xs={24} md={12} xl={6}>
             <Form.Item
               {...commonFormItemProps}
               name="createTime"
@@ -224,7 +224,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12} xl={6}>
+          <Col xs={24} md={12} xl={5}>
             <Form.Item
               {...commonFormItemProps}
               name="status"
@@ -245,7 +245,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12} xl={4}>
+          <Col xs={24} md={12} xl={7}>
             <div className="flex h-8 items-center justify-start md:justify-end">
               <Space size={8}>
                 <Button
@@ -291,6 +291,8 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                     ].join(" ")}
                   />
                 </button>
+
+                {sortControls}
               </Space>
             </div>
           </Col>
@@ -414,20 +416,8 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                 </Col>
               </>
             )}
-
-            <Col xs={24} md={24} xl={10}>
-              <div className="flex h-8 items-center justify-end">
-                {sortControls}
-              </div>
-            </Col>
           </Row>
         )}
-
-        {!expand ? (
-          <div className="mt-4 flex justify-end">
-            {sortControls}
-          </div>
-        ) : null}
       </Form>
     </div>
   );
