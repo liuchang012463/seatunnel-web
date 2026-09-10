@@ -439,7 +439,7 @@ const renderFieldLabel = (field: any): React.ReactNode => {
         <Form
           form={configForm}
           component={false}
-          labelCol={{ flex: '110px' }}
+          labelCol={{ flex: '200px' }}
           wrapperCol={{ flex: '1' }}
           labelAlign="left"
         >
@@ -458,6 +458,7 @@ const renderFieldLabel = (field: any): React.ReactNode => {
                 label={renderFieldLabel(field)}
                 name={field.key}
                 preserve={false}
+                extra={field.description || undefined}
                 rules={
                   field.key === 'password' && allowExistingPassword
                     ? fieldRules(field).filter((rule) => !rule.required)
