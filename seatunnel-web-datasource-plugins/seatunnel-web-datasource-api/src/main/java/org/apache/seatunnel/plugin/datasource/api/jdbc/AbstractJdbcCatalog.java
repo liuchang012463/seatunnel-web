@@ -55,6 +55,14 @@ public abstract class AbstractJdbcCatalog implements JdbcCatalog {
         if (StringUtils.isNotBlank(request.getQuery())) {
             request.setQuery(resolveSqlVariables(request.getQuery()));
         }
+        // QueryRequest keeps dotted table_path as a single tableName to avoid
+        // breaking MySQL database.table. Re-split here via catalog-specific
+        // resolveTablePath so Oracle/PgSQL/Kingbase/Dameng schema.table works.
+        TablePath tablePath = request.getTablePath();
+        if (tablePath != null && StringUtils.isNotBlank(tablePath.getTableName())
+                && tablePath.getTableName().contains(".")) {
+            request.setTablePath(resolveTablePath(tablePath.getTableName()));
+        }
         return request;
     }
 

@@ -42,12 +42,12 @@ public class KingbaseCatalog extends AbstractJdbcCatalog {
 
     @Override
     protected String getListTableSql(String databaseName) {
-        return "SELECT table_name AS table_path " +
+        return "SELECT table_schema || '.' || table_name AS table_path " +
                 "FROM information_schema.tables " +
                 "WHERE table_catalog = '" + databaseName + "' " +
-                "AND table_schema = '" + schemaName + "' " +
+                "AND table_schema NOT IN ('pg_catalog', 'information_schema') " +
                 "AND table_type = 'BASE TABLE' " +
-                "ORDER BY table_name";
+                "ORDER BY table_schema, table_name";
     }
 
     @Override
@@ -69,10 +69,34 @@ public class KingbaseCatalog extends AbstractJdbcCatalog {
                 .build();
     }
 
+    private String resolveSchemaName(TablePath tablePath) {
+        String resolved = tablePath == null ? null : tablePath.getSchemaName();
+        if (StringUtils.isBlank(resolved)) {
+            resolved = schemaName;
+        }
+        return resolved;
+    }
+
+    private String escapeSql(String value) {
+        return value == null ? null : value.replace("'", "''");
+    }
+
+    @Override
+    public String buildTableReference(TablePath tablePath) {
+        if (tablePath == null || StringUtils.isBlank(tablePath.getTableName())) {
+            throw new IllegalArgumentException("table is null");
+        }
+        return quoteIdentifier(resolveSchemaName(tablePath))
+                + "."
+                + quoteIdentifier(tablePath.getTableName());
+    }
+
     @Override
     protected String getSelectColumnsSql(TablePath tablePath) {
         return String.format(
-                SELECT_COLUMNS_SQL_TEMPLATE, tablePath.getSchemaName(), tablePath.getTableName());
+                SELECT_COLUMNS_SQL_TEMPLATE,
+                escapeSql(resolveSchemaName(tablePath)),
+                escapeSql(tablePath.getTableName()));
     }
 
     @Override
@@ -82,12 +106,13 @@ public class KingbaseCatalog extends AbstractJdbcCatalog {
                 .collect(Collectors.toList());
 
         String quotedColumnNames = columnNames.stream()
-                .map(name -> "'" + name + "'")
+                .map(name -> "'" + escapeSql(name) + "'")
                 .collect(Collectors.joining(", "));
 
-        return String.format(SELECT_SPECIFIED_COLUMNS_SQL_TEMPLATE,
-                tablePath.getSchemaName(),
-                tablePath.getTableName(),
+        return String.format(
+                SELECT_SPECIFIED_COLUMNS_SQL_TEMPLATE,
+                escapeSql(resolveSchemaName(tablePath)),
+                escapeSql(tablePath.getTableName()),
                 quotedColumnNames);
     }
 }

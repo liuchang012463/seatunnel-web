@@ -180,6 +180,45 @@ class LakeExactSingleProjectionPlannerTest {
     }
 
     @Test
+    void oracleToPostgresWithSchemaQualifiedTableIsNotApplicable() {
+        BatchGuideSingleJobSaveCommand command = new BatchGuideSingleJobSaveCommand();
+        Map<String, Object> source = new HashMap<>(Map.of(
+                "dataSourceId", String.valueOf(SOURCE_DATA_SOURCE_ID),
+                "dbType", "ORACLE",
+                "pluginName", "Oracle",
+                "readMode", "table",
+                "table", "ORACLE_APP.TEST_USER"));
+        Map<String, Object> sink = new HashMap<>(Map.of(
+                "dataSourceId", "55",
+                "dbType", "POSTGRE_SQL",
+                "pluginName", "Jdbc",
+                "autoCreateTable", true,
+                "targetTableName", "testuser",
+                "schemaSaveMode", "CREATE_SCHEMA_WHEN_NOT_EXIST"));
+        // Match FlowCanvas: React Flow type is "custom", role is data.nodeType.
+        Map<String, Object> sourceNode = new HashMap<>(Map.of(
+                "id", "source",
+                "type", "custom",
+                "data", new HashMap<>(Map.of(
+                        "nodeType", "source",
+                        "dbType", "ORACLE",
+                        "pluginName", "Oracle",
+                        "config", source))));
+        Map<String, Object> sinkNode = new HashMap<>(Map.of(
+                "id", "sink",
+                "type", "custom",
+                "data", new HashMap<>(Map.of(
+                        "nodeType", "sink",
+                        "dbType", "POSTGRE_SQL",
+                        "pluginName", "Jdbc",
+                        "config", sink))));
+        command.setWorkflow(new HashMap<>(Map.of("nodes", List.of(sourceNode, sinkNode))));
+
+        LakeExactSingleProjectionPlanner.ProjectionPlan plan = planner.plan(command);
+        assertEquals(LakeExactSingleProjectionPlanner.Decision.NOT_APPLICABLE, plan.decision());
+    }
+
+    @Test
     void ordinaryAndMultiJobsAreNotApplicable() {
         BatchScriptJobSaveCommand script = new BatchScriptJobSaveCommand();
         assertEquals(

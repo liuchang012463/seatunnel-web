@@ -56,16 +56,19 @@ public class OracleCatalog extends AbstractJdbcCatalog {
 
     @Override
     protected String getListTableSql(String databaseName) {
-        String owner = resolveOwner();
-
-        if (StringUtils.isBlank(owner)) {
-            return "SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME";
-        }
-
-        return String.format(
-                "SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER = '%s' ORDER BY TABLE_NAME",
-                escapeSql(owner.toUpperCase(Locale.ROOT))
-        );
+        // Align with PostgreSQL: return schema.table across accessible owners.
+        // Do not use ORACLE_MAINTAINED — it is missing on older Oracle (ORA-00904).
+        return "SELECT OWNER || '.' || TABLE_NAME AS table_path "
+                + "FROM ALL_TABLES "
+                + "WHERE OWNER NOT IN ("
+                + "'ANONYMOUS','APPQOSSYS','AUDSYS','CTXSYS','DBSFWUSER','DBSNMP',"
+                + "'DIP','DVF','DVSYS','GGSYS','GSMADMIN_INTERNAL','GSMCATUSER',"
+                + "'GSMUSER','LBACSYS','MDDATA','MDSYS','OJVMSYS','OLAPSYS',"
+                + "'ORACLE_OCM','ORDDATA','ORDPLUGINS','ORDSYS','OUTLN',"
+                + "'REMOTE_SCHEDULER_AGENT','SI_INFORMTN_SCHEMA','SYS','SYS$UMF',"
+                + "'SYSBACKUP','SYSDG','SYSKM','SYSMAN','SYSRAC','SYSTEM','WMSYS','XDB'"
+                + ") "
+                + "ORDER BY OWNER, TABLE_NAME";
     }
 
     private String resolveOwner() {

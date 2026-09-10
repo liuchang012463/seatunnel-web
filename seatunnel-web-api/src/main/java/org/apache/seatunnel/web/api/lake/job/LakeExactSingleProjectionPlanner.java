@@ -915,27 +915,35 @@ public final class LakeExactSingleProjectionPlanner {
             }
             values.add(node);
 
-            String type = null;
-            for (Map<String, Object> value : List.of(data, node)) {
-                for (String key : List.of(KEY_NODE_TYPE, KEY_TYPE)) {
-                    if (!value.containsKey(key) || value.get(key) == null) {
-                        continue;
-                    }
-                    Object rawType = value.get(key);
-                    if (!(rawType instanceof String)) {
-                        throw invalidStatic();
-                    }
-                    String candidate = StringUtils.trimToNull((String) rawType);
-                    if (candidate == null) {
-                        continue;
-                    }
-                    if (type != null && !type.equalsIgnoreCase(candidate)) {
-                        throw invalidStatic();
-                    }
-                    type = candidate;
+            // Prefer data.nodeType over React Flow render type ("custom"), matching
+            // LakeJobDetector.  Do not require equality across those fields.
+            String type = firstEndpointType(data, node);
+            return new NodeValues(values, type);
+        }
+
+        private static String firstEndpointType(Map<String, Object> data, Map<String, Object> node) {
+            Object[] candidates = {
+                    data.get(KEY_NODE_TYPE),
+                    node.get(KEY_NODE_TYPE),
+                    data.get(KEY_TYPE),
+                    node.get(KEY_TYPE)
+            };
+            for (Object raw : candidates) {
+                if (raw == null) {
+                    continue;
+                }
+                if (!(raw instanceof String)) {
+                    throw invalidStatic();
+                }
+                String candidate = StringUtils.trimToNull((String) raw);
+                if (candidate == null) {
+                    continue;
+                }
+                if (KEY_SOURCE.equalsIgnoreCase(candidate) || KEY_SINK.equalsIgnoreCase(candidate)) {
+                    return candidate;
                 }
             }
-            return new NodeValues(values, type);
+            return null;
         }
 
         private List<Map<String, Object>> values() {
