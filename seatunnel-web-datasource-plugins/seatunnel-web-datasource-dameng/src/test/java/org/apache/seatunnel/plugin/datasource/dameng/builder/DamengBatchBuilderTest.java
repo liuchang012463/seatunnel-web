@@ -17,14 +17,37 @@ class DamengBatchBuilderTest {
     private final DamengBatchBuilder builder = new DamengBatchBuilder();
 
     @Test
-    void sinkHoconAddsPostgresDialectByDefault() {
+    void sinkHoconAddsDamengDialectByDefault() {
         Config config = builder.buildSinkHocon(context("targetTableName = sys_user\nautoCreateTable = true"));
 
-        assertEquals("Postgres", config.getString("dialect"));
-        assertEquals("test", config.getString("database"));
+        assertEquals("Dameng", config.getString("dialect"));
+        // Without a live Dameng, falls back to uppercased form database for v$database match.
+        assertEquals("TEST", config.getString("database"));
         assertEquals("SYSDBA.sys_user", config.getString("table"));
         assertTrue(config.getBoolean("generate_sink_sql"));
         assertEquals("CREATE_SCHEMA_WHEN_NOT_EXIST", config.getString("schema_save_mode"));
+    }
+
+    @Test
+    void sinkHoconUppercasesAlreadyUpperDatabaseUnchanged() {
+        Config config =
+                builder.buildSinkHocon(
+                        HoconBuildContext.builder()
+                                .connectionConfig(
+                                        ConfigFactory.parseString(
+                                                "url = \"jdbc:dm://localhost:5236/DAMENG\"\n"
+                                                        + "driver = \"dm.jdbc.driver.DmDriver\"\n"
+                                                        + "user = test\n"
+                                                        + "password = test\n"
+                                                        + "database = DAMENG\n"
+                                                        + "schemaName = SYSDBA"))
+                                .nodeConfig(
+                                        ConfigFactory.parseString(
+                                                "targetTableName = sys_user\nautoCreateTable = true"))
+                                .build());
+
+        assertEquals("Dameng", config.getString("dialect"));
+        assertEquals("DAMENG", config.getString("database"));
     }
 
     @Test
