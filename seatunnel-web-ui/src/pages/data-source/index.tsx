@@ -545,7 +545,6 @@ const DataSourcePage: React.FC = () => {
                       <div className="datasource-catalog-panel__heading">
                         <div>
                           <h2 className="datasource-category-title">数据源清单</h2>
-                          <p>集中查看连接、归属和探查状态；支持在卡片和列表视图之间切换。</p>
                         </div>
                         <div className="datasource-catalog-panel__controls">
                           <span className="datasource-category-count">{pagination.total}</span>

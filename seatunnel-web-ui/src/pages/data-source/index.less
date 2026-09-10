@@ -241,125 +241,7 @@
   }
 }
 
-.datasource-card {
-  position: relative;
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease;
-
-  &:hover {
-    transform: translateY(0px);
-    box-shadow: 0 12px 18px rgba(0, 0, 0, 0.08);
-  }
-
-  .datasource-card-actions {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    display: flex;
-    gap: 8px;
-    opacity: 0;
-    transform: translateY(-6px);
-    transition:
-      opacity 0.22s ease,
-      transform 0.22s ease;
-    z-index: 3;
-    pointer-events: none;
-  }
-
-  &:hover .datasource-card-actions {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
-  .datasource-card-action-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 999px;
-    background: var(--st-color-bg-control);
-    color: var(--st-color-text-secondary);
-    border: 1px solid var(--st-color-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-    transition:
-      transform 0.2s ease,
-      background 0.2s ease,
-      color 0.2s ease,
-      border-color 0.2s ease;
-
-    &:hover {
-      transform: scale(1.06);
-      background: var(--st-color-bg-elevated);
-    }
-  }
-
-  .datasource-card-action-btn-danger {
-    &:hover {
-      background: rgba(255, 77, 79, 0.12);
-      border-color: #ffccc7;
-      color: #ff4d4f;
-    }
-  }
-}
-
-/* Data-source catalog uses the same dense asset-list language as the
-   exploration pages; keep the existing component API but remove the oversized
-   marketing-card treatment. */
-.datasource-page-container {
-  .datasource-card {
-    border-radius: 10px;
-    border-color: var(--st-color-divider);
-    box-shadow: none;
-  }
-
-  .datasource-card-cover {
-    height: 68px;
-    background: var(--st-color-bg-elevated);
-    border-bottom-color: var(--st-color-divider);
-  }
-
-  .datasource-card-logo {
-    left: 18px;
-    bottom: -20px;
-    width: 52px;
-    height: 52px;
-    border-width: 2px;
-    background: var(--st-color-bg-panel);
-  }
-
-  .datasource-card-env-tag {
-    top: 14px;
-    right: 16px;
-  }
-
-  .datasource-card-content {
-    gap: 9px;
-    padding: 18px 18px 16px;
-  }
-
-  .datasource-card-title {
-    font-size: 15px;
-  }
-
-  .datasource-card-exploration-row,
-  .datasource-card-owner-grid {
-    padding: 8px 10px;
-    background: var(--st-color-bg-control);
-    border-color: var(--st-color-divider);
-    border-radius: 6px;
-  }
-
-  .datasource-card-detail-button {
-    height: 34px;
-    border-radius: 6px;
-  }
-}
+/* Compact horizontal datasource cards (catalog grid). */
 
 .datasource-page-container .datasource-empty-state {
   margin-top: 18px;
@@ -372,9 +254,9 @@
 
 .datasource-catalog-panel {
   overflow: hidden;
-  background: var(--st-color-bg-panel);
+  background: #001922;
   border: 1px solid var(--st-color-divider);
-  border-radius: 10px;
+  // border-radius: 10px;
 }
 
 .datasource-catalog-panel__heading {
@@ -383,7 +265,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 18px 14px;
-  border-bottom: 1px solid var(--st-color-divider);
+  // border-bottom: 1px solid var(--st-color-divider);
 
   p {
     margin: 4px 0 0;
@@ -409,7 +291,7 @@
 
 .datasource-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 16px;
   padding: 16px;
 
@@ -699,155 +581,87 @@
 }
 
 .datasource-card {
-  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
   color: var(--st-color-text-secondary);
   background: var(--st-color-bg-panel);
-  border: 1px solid var(--st-color-border);
-  border-radius: var(--st-radius-md);
+  border: 1px solid transparent;
+  border-radius: 12px;
   box-shadow: none;
+  transition: border-color 0.2s ease;
 
   &:hover {
     border-color: var(--st-color-accent);
   }
-}
-
-.datasource-card-cover {
-  position: relative;
-  height: 88px;
-  background: var(--st-color-bg-elevated);
-  border-bottom: 1px solid var(--st-color-divider);
 }
 
 .datasource-card-logo {
-  position: absolute;
-  left: 24px;
-  bottom: -24px;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   background: var(--st-color-bg-app);
-  border: 3px solid var(--st-color-accent);
+  border: 2px solid var(--st-color-accent);
   border-radius: 50%;
-  box-shadow: none;
 }
 
-.datasource-card-env-tag {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-}
-
-.datasource-card-env-tag-inner {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1;
-  border: 1px solid currentColor;
-}
-
-.datasource-card-hover-actions {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 3;
+.datasource-card-body {
   display: flex;
-  gap: 8px;
-  transition: all 0.2s ease;
-}
-
-.datasource-card-hover-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  color: var(--st-color-text-secondary);
-  font-size: 12px;
-  background: var(--st-color-bg-control);
-  border: 1px solid var(--st-color-border);
-  border-radius: 50%;
-  box-shadow: none;
-  transition: all 0.2s ease;
-
-  &:hover {
-    color: var(--st-color-accent);
-    background: var(--st-color-hover);
-    border-color: var(--st-color-accent);
-    transform: scale(1.06);
-  }
-
-  &:disabled {
-    color: var(--st-color-text-muted);
-    cursor: not-allowed;
-    opacity: 0.45;
-    transform: none;
-  }
-
-  &--danger:hover {
-    color: #ff7875;
-    background: rgba(194, 59, 59, 0.18);
-    border-color: #ff7875;
-  }
-}
-
-.datasource-card-actions {
-  position: absolute;
-  right: 20px;
-  bottom: 10px;
-  display: flex;
-  gap: 8px;
-}
-
-.datasource-card-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  color: var(--st-color-text-secondary);
-  background: var(--st-color-bg-control);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.datasource-card-action-btn:hover {
-  color: var(--st-color-accent);
-  transform: translateY(-1px);
-}
-
-.datasource-card-action-btn-danger:hover {
-  color: #ff4d4f;
-}
-
-.datasource-card-content {
-  display: flex;
+  flex: 1;
+  min-width: 0;
   flex-direction: column;
+  gap: 10px;
+}
+
+.datasource-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
-  padding: 22px 22px 20px;
-  background: var(--st-color-bg-panel);
 }
 
 .datasource-card-title {
+  min-width: 0;
   margin: 0;
-  color: var(--st-color-text-primary);
-  font-size: 16px;
+  overflow: hidden;
+  color: #33beeb;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 24px;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.datasource-card-detail-link {
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--st-color-accent);
+  font-size: 13px;
+  line-height: 22px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
 }
 
 .datasource-card-jdbc-url {
-  height: 18px;
   overflow: hidden;
-  color: var(--st-color-text-secondary);
-  font-size: 12px;
-  line-height: 18px;
+  color: var(--st-color-text-primary);
+  font-size: 14px;
+  line-height: 22px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -855,87 +669,75 @@
 .datasource-card-status {
   display: flex;
   min-height: 24px;
-  align-items: center;
-  gap: 6px;
   flex-wrap: wrap;
-}
-
-.datasource-card-exploration-row {
-  display: flex;
-  min-height: 24px;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  color: var(--st-color-text-secondary);
-  font-size: 12px;
-  line-height: 18px;
-  background: color-mix(in srgb, var(--st-color-bg-control) 76%, transparent);
-  border: 1px solid var(--st-color-border);
-  border-radius: 8px;
-}
-
-.datasource-card-owner-grid {
-  display: grid;
   gap: 6px;
-  padding: 10px 12px;
-  background: color-mix(in srgb, var(--st-color-bg-control) 54%, transparent);
-  border: 1px solid var(--st-color-border);
-  border-radius: 8px;
 }
 
-.datasource-card-owner-row {
+.datasource-card-actions {
   display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.datasource-card-label {
-  flex: 0 0 auto;
-  color: var(--st-color-text-muted);
-  font-size: 11px;
-  line-height: 18px;
-}
-
-.datasource-card-value {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--st-color-text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.datasource-card-update-time {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  color: var(--st-color-text-secondary);
-  font-size: 11px;
-  line-height: 18px;
-}
-
-.datasource-card-update-time-value {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--st-color-text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.datasource-card-detail-button {
-  height: 38px;
+  flex-wrap: wrap;
+  gap: 16px 20px;
   margin-top: 2px;
-  color: var(--st-color-text-primary);
-  background: transparent;
-  border-color: var(--st-color-border);
-  border-radius: var(--st-radius-md);
-  font-weight: 400;
+}
 
-  &:hover {
-    border-color: var(--st-color-accent);
+.datasource-card-action {
+  padding: 0;
+  font-size: 14px;
+  line-height: 20px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &--primary {
+    color: var(--st-color-accent);
+  }
+
+  &--test {
+    color: #00faff;
+  }
+
+  &--warn {
+    color: #fa8c16;
+  }
+
+  &--neutral {
+    color: var(--st-color-text-primary);
+  }
+
+  &--danger {
+    color: #ff4d4f;
+  }
+}
+
+.datasource-card {
+  .ant-tag-success {
+    color: #73d13d;
+    background: rgba(56, 178, 74, 0.18);
+    border-color: rgba(115, 209, 61, 0.5);
+  }
+
+  .ant-tag-error {
+    color: #ff7875;
+    background: rgba(194, 59, 59, 0.18);
+    border-color: rgba(255, 120, 117, 0.5);
+  }
+
+  .ant-tag-blue,
+  .ant-tag-processing {
+    color: var(--st-color-accent);
+    background: var(--st-color-hover);
+    border-color: var(--st-color-border);
   }
 }
 
@@ -967,39 +769,6 @@
   }
 }
 
-.datasource-card-detail-default {
-  color: var(--st-color-text-primary);
-  background: var(--st-color-bg-control);
-  border-radius: var(--st-radius-md);
-}
-
-.datasource-card-detail-hover {
-  color: var(--st-color-bg-app);
-  background: #2187a8;
-  border-radius: var(--st-radius-md);
-}
-
-.datasource-card {
-  .ant-tag-success {
-    color: #73d13d;
-    background: rgba(56, 178, 74, 0.18);
-    border-color: rgba(115, 209, 61, 0.5);
-  }
-
-  .ant-tag-error {
-    color: #ff7875;
-    background: rgba(194, 59, 59, 0.18);
-    border-color: rgba(255, 120, 117, 0.5);
-  }
-
-  .ant-tag-blue,
-  .ant-tag-processing {
-    color: var(--st-color-accent);
-    background: var(--st-color-hover);
-    border-color: var(--st-color-border);
-  }
-}
-
 .datasource-empty-state {
   margin-top: 24px;
   padding: 48px 24px;
@@ -1008,66 +777,6 @@
   background: var(--st-color-bg-panel);
   border: 1px dashed var(--st-color-border);
   border-radius: var(--st-radius-md);
-}
-
-/* Final catalog overrides intentionally sit after the legacy card rules. */
-.datasource-page-container .datasource-card {
-  border-color: var(--st-color-divider);
-  border-radius: 10px;
-  box-shadow: none;
-}
-
-.datasource-page-container .datasource-card:hover {
-  box-shadow: none;
-}
-
-.datasource-page-container .datasource-card-cover {
-  height: 68px;
-  background: var(--st-color-bg-elevated);
-  border-bottom-color: var(--st-color-divider);
-}
-
-.datasource-page-container .datasource-card-logo {
-  left: 18px;
-  bottom: -20px;
-  width: 52px;
-  height: 52px;
-  border-width: 2px;
-  background: var(--st-color-bg-panel);
-}
-
-.datasource-page-container .datasource-card-content {
-  gap: 9px;
-  padding: 18px 18px 16px;
-}
-
-.datasource-page-container .datasource-card-exploration-row,
-.datasource-page-container .datasource-card-owner-grid {
-  padding: 8px 10px;
-  background: var(--st-color-bg-control);
-  border-color: var(--st-color-divider);
-  border-radius: 6px;
-}
-
-.datasource-page-container .datasource-card-detail-button {
-  height: 34px;
-  border-radius: 6px;
-}
-
-.datasource-page-container .datasource-card-lake-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--st-color-bg-control);
-  border: 1px solid var(--st-color-divider);
-  border-radius: 6px;
-}
-
-.datasource-page-container .datasource-card-lake-buttons {
-  display: flex;
-  gap: 4px;
 }
 
 .datasource-page-container .datasource-empty-state {
@@ -1268,56 +977,4 @@
 
 .datasource-selector-item-col {
   padding: 0 4px;
-}
-
-/* Final catalog overrides intentionally sit after the legacy card rules. */
-.datasource-page-container .datasource-card {
-  border-color: var(--st-color-divider);
-  border-radius: 10px;
-  box-shadow: none;
-}
-
-.datasource-page-container .datasource-card:hover {
-  box-shadow: none;
-}
-
-.datasource-page-container .datasource-card-cover {
-  height: 68px;
-  background: var(--st-color-bg-elevated);
-  border-bottom-color: var(--st-color-divider);
-}
-
-.datasource-page-container .datasource-card-logo {
-  left: 18px;
-  bottom: -20px;
-  width: 52px;
-  height: 52px;
-  border-width: 2px;
-  background: var(--st-color-bg-panel);
-}
-
-.datasource-page-container .datasource-card-content {
-  gap: 9px;
-  padding: 18px 18px 16px;
-}
-
-.datasource-page-container .datasource-card-exploration-row,
-.datasource-page-container .datasource-card-owner-grid {
-  padding: 8px 10px;
-  background: var(--st-color-bg-control);
-  border-color: var(--st-color-divider);
-  border-radius: 6px;
-}
-
-.datasource-page-container .datasource-card-detail-button {
-  height: 34px;
-  border-radius: 6px;
-}
-
-.datasource-page-container .datasource-empty-state {
-  padding: 44px 24px 36px;
-  background: var(--st-color-bg-panel);
-  border-color: var(--st-color-divider);
-  border-radius: 10px;
-  box-shadow: none;
 }
