@@ -16,4 +16,5 @@ public class DataInventorySummaryVO {
     private long profiledDatabaseCount;
     private long profiledTableCount;
     private long knownRowCount;
+    private long knownSizeInByte;
 }

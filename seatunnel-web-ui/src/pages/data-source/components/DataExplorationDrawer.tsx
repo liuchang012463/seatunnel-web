@@ -35,6 +35,7 @@ import {
   fetchDataExplorationSchemas,
   fetchDataExplorationTable,
   fetchDataExplorationTables,
+  fetchDataInventorySummary,
   previewDataExplorationTable,
   startDataExplorationMetadataCompletion,
   updateDataExplorationMetadata,
@@ -51,8 +52,10 @@ import type {
   DataExplorationTable,
   DataExplorationTableDetail,
   DataExplorationTablePage,
+  DataInventorySummary,
   ExplorationQualityStatus,
 } from '../types';
+import { formatDataSize } from '../metricFormat';
 import DataExplorationErDiagram from '@/pages/data-exploration/components/DataExplorationErDiagram';
 import GenericDataExplorationDrawer, {
   isGenericExplorationDbType,
@@ -90,6 +93,27 @@ function displayValue(value: unknown) {
   }
   return String(value);
 }
+
+function formatCount(value?: number | null) {
+  if (value === undefined || value === null || Number.isNaN(Number(value))) {
+    return '-';
+  }
+  return Number(value).toLocaleString('zh-CN');
+}
+
+const EMPTY_SCOPE_SUMMARY: DataInventorySummary = {
+  unitCount: 0,
+  businessSystemCount: 0,
+  dataSourceCount: 0,
+  databaseCount: 0,
+  schemaCount: 0,
+  tableCount: 0,
+  columnCount: 0,
+  profiledDatabaseCount: 0,
+  profiledTableCount: 0,
+  knownRowCount: 0,
+  knownSizeInByte: 0,
+};
 
 function qualityTag(status?: ExplorationQualityStatus, reason?: string) {
   const config = qualityConfig[status || 'NO_PROFILE'];
@@ -222,6 +246,9 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     domainId: '',
     retentionPeriod: '',
   });
+  const [scopeSummary, setScopeSummary] = useState<DataInventorySummary>();
+  const [scopeSummaryLoading, setScopeSummaryLoading] = useState(false);
+  const [scopeSummaryError, setScopeSummaryError] = useState<string>();
 
   useEffect(() => {
     if (!open || !dataSourceId) {
@@ -240,6 +267,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setTableDetail(undefined);
     setProfile(undefined);
     setProfileLoading(false);
+    setScopeSummary(undefined);
+    setScopeSummaryError(undefined);
     setPreview(undefined);
     setTableSearch('');
     setActiveTab('columns');
@@ -417,10 +446,12 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   }, [open, dataSourceId, selectedTableId]);
 
   useEffect(() => {
-    if (!open || !dataSourceId || !selectedTableId || activeTab !== 'metrics') {
+    if (!open || !dataSourceId || !selectedTableId) {
+      setProfile(undefined);
       return;
     }
     let disposed = false;
+    setProfile(undefined);
     setProfileLoading(true);
     fetchDataExplorationProfile(dataSourceId, selectedTableId)
       .then((response) => {
@@ -444,7 +475,47 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     return () => {
       disposed = true;
     };
-  }, [activeTab, dataSourceId, open, selectedTableId]);
+  }, [dataSourceId, open, selectedTableId]);
+
+  useEffect(() => {
+    if (!open || !dataSourceId || !databaseFqn || selectedTableId) {
+      if (selectedTableId) {
+        setScopeSummary(undefined);
+        setScopeSummaryError(undefined);
+        setScopeSummaryLoading(false);
+      }
+      return;
+    }
+    let disposed = false;
+    setScopeSummaryLoading(true);
+    setScopeSummaryError(undefined);
+    fetchDataInventorySummary({
+      dataSourceId,
+      databaseFqn,
+      schemaFqn: schemaFqn || undefined,
+    })
+      .then((response) => {
+        if (disposed) return;
+        if (response.code === 0) {
+          setScopeSummary(response.data || EMPTY_SCOPE_SUMMARY);
+        } else {
+          setScopeSummary(undefined);
+          setScopeSummaryError(response.message || '数据量暂不可用');
+        }
+      })
+      .catch((error: any) => {
+        if (!disposed) {
+          setScopeSummary(undefined);
+          setScopeSummaryError(error?.response?.data?.message || '数据量暂不可用');
+        }
+      })
+      .finally(() => {
+        if (!disposed) setScopeSummaryLoading(false);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [open, dataSourceId, databaseFqn, schemaFqn, selectedTableId]);
 
   useEffect(() => {
     const jobId = completionJob?.jobId;
@@ -998,7 +1069,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                                 <div className="exploration-drawer__metric-strip">
                                   <div><span>数据行数</span><strong>{displayValue(profile.table?.rowCount)}</strong></div>
                                   <div><span>字段数量</span><strong>{displayValue(profile.table?.columnCount ?? profile.columns?.length)}</strong></div>
-                                  <div><span>数据体积</span><strong>{displayValue(profile.table?.sizeInByte)}</strong></div>
+                                  <div><span>数据体积</span><strong>{formatDataSize(profile.table?.sizeInByte)}</strong></div>
                                   <div><span>指标字段</span><strong>{profile.columns?.length || 0}</strong></div>
                                 </div>
                                 <div className="exploration-drawer__subheading">列级指标</div>
@@ -1036,6 +1107,23 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
               </div>
               {tableDetail ? (
                 <div className="exploration-drawer__inspector-scroll">
+                  <section className="exploration-drawer__inspector-section">
+                    <div className="exploration-drawer__property-label">数据量</div>
+                    {profileLoading && !profile ? (
+                      <Spin size="small" />
+                    ) : (
+                      <>
+                        <div className="exploration-drawer__property">
+                          <span>数据行数</span>
+                          <strong>{displayValue(profile?.table?.rowCount)}</strong>
+                        </div>
+                        <div className="exploration-drawer__property">
+                          <span>数据体积</span>
+                          <strong>{formatDataSize(profile?.table?.sizeInByte)}</strong>
+                        </div>
+                      </>
+                    )}
+                  </section>
                   <section className="exploration-drawer__inspector-section">
                     <div className="exploration-drawer__property-label">描述</div>
                     <p className={tableDetail.description ? '' : 'is-empty'}>
@@ -1129,6 +1217,41 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                       <span className="exploration-drawer__agent-status-copy">当前元数据来自 OpenMetadata 缓存</span>
                     )}
                   </section>
+                </div>
+              ) : databaseFqn ? (
+                <div className="exploration-drawer__inspector-scroll">
+                  <section className="exploration-drawer__inspector-section">
+                    <div className="exploration-drawer__property-label">
+                      {schemaFqn ? 'Schema 数据量' : '库数据量'}
+                    </div>
+                    {scopeSummaryLoading ? (
+                      <Spin size="small" />
+                    ) : scopeSummaryError ? (
+                      <p className="is-empty">{scopeSummaryError}</p>
+                    ) : (
+                      <>
+                        <div className="exploration-drawer__property">
+                          <span>数据表</span>
+                          <strong>{formatCount(scopeSummary?.tableCount)}</strong>
+                        </div>
+                        <div className="exploration-drawer__property">
+                          <span>已探查表</span>
+                          <strong>{formatCount(scopeSummary?.profiledTableCount)}</strong>
+                        </div>
+                        <div className="exploration-drawer__property">
+                          <span>已统计行数</span>
+                          <strong>{formatCount(scopeSummary?.knownRowCount)}</strong>
+                        </div>
+                        <div className="exploration-drawer__property">
+                          <span>已统计体积</span>
+                          <strong>{formatDataSize(scopeSummary?.knownSizeInByte)}</strong>
+                        </div>
+                      </>
+                    )}
+                  </section>
+                  <div className="exploration-drawer__inspector-empty">
+                    选择表后查看描述、标签和约束。
+                  </div>
                 </div>
               ) : (
                 <div className="exploration-drawer__inspector-empty">选择表后查看描述、标签和约束。</div>

@@ -14,6 +14,7 @@ import type {
   DataInventoryProfileCoverage,
   DataInventorySummary,
 } from '../types';
+import { formatDataSize } from '../metricFormat';
 
 const EMPTY_SUMMARY: DataInventorySummary = {
   unitCount: 0,
@@ -26,6 +27,7 @@ const EMPTY_SUMMARY: DataInventorySummary = {
   profiledDatabaseCount: 0,
   profiledTableCount: 0,
   knownRowCount: 0,
+  knownSizeInByte: 0,
 };
 
 const EMPTY_COVERAGE: DataInventoryProfileCoverage = {
@@ -34,6 +36,7 @@ const EMPTY_COVERAGE: DataInventoryProfileCoverage = {
   tableCount: 0,
   profiledTableCount: 0,
   knownRowCount: 0,
+  knownSizeInByte: 0,
   tableCoveragePercent: 0,
 };
 
@@ -145,7 +148,10 @@ const DataInventoryDashboard: React.FC = () => {
                 已探查表 {coverage.profiledTableCount} / {coverage.tableCount}
               </div>
               <div className="text-sm text-[var(--st-color-text-muted)]">
-                已探查数据量：{coverage.knownRowCount}
+                已统计行数：{coverage.knownRowCount}
+              </div>
+              <div className="text-sm text-[var(--st-color-text-muted)]">
+                已统计体积：{formatDataSize(coverage.knownSizeInByte)}
               </div>
             </Card>
           </Col>

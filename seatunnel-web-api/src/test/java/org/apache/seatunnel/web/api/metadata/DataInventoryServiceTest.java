@@ -62,6 +62,7 @@ class DataInventoryServiceTest {
         OpenMetadataTableProfile profile = new OpenMetadataTableProfile();
         profile.setTimestamp(1700000000000L);
         profile.setRowCount(100L);
+        profile.setSizeInByte(2048L);
         table.setProfile(profile);
 
         when(dataSourceDao.queryAll()).thenReturn(List.of(source));
@@ -87,6 +88,61 @@ class DataInventoryServiceTest {
         assertEquals(1L, result.getProfiledDatabaseCount());
         assertEquals(1L, result.getProfiledTableCount());
         assertEquals(100L, result.getKnownRowCount());
+        assertEquals(2048L, result.getKnownSizeInByte());
+    }
+
+    @Test
+    void filtersBySchemaFqnAndSumsKnownSizeAcrossMatchedTables() {
+        DataSource source = source(42L, org.apache.seatunnel.web.spi.enums.DbType.MYSQL);
+        MetadataSourceBinding binding = binding(42L);
+        OpenMetadataDatabase database = new OpenMetadataDatabase("db", "st_ds_42.orders", "st_ds_42");
+        OpenMetadataDatabaseSchema publicSchema = schema("st_ds_42.orders.public");
+        OpenMetadataDatabaseSchema otherSchema = schema("st_ds_42.orders.other");
+        otherSchema.setName("other");
+        otherSchema.setId("schema-other");
+
+        OpenMetadataTable publicTable = table();
+        OpenMetadataTableProfile publicProfile = new OpenMetadataTableProfile();
+        publicProfile.setTimestamp(1700000000000L);
+        publicProfile.setRowCount(10L);
+        publicProfile.setSizeInByte(1024L);
+        publicTable.setProfile(publicProfile);
+
+        OpenMetadataTable otherTable = table();
+        otherTable.setId("table-other");
+        otherTable.setName("other_orders");
+        otherTable.setFullyQualifiedName("st_ds_42.orders.other.other_orders");
+        otherTable.setSchemaFullyQualifiedName("st_ds_42.orders.other");
+        OpenMetadataTableProfile otherProfile = new OpenMetadataTableProfile();
+        otherProfile.setTimestamp(1700000000000L);
+        otherProfile.setRowCount(90L);
+        otherProfile.setSizeInByte(4096L);
+        otherTable.setProfile(otherProfile);
+
+        when(dataSourceDao.queryAll()).thenReturn(List.of(source));
+        when(dataSourceUnitDao.queryAll()).thenReturn(List.of());
+        when(businessSystemDao.queryAll()).thenReturn(List.of());
+        when(metadataBindingDao.queryAll()).thenReturn(List.of(binding));
+        when(openMetadataClient.listDatabasesPage(eq("st_ds_42"), any(Integer.class), eq(null)))
+                .thenReturn(new OpenMetadataPage<>(List.of(database), 1L, null));
+        when(openMetadataClient.listSchemasPage(eq("st_ds_42.orders"), any(Integer.class), eq(null)))
+                .thenReturn(new OpenMetadataPage<>(List.of(publicSchema, otherSchema), 2L, null));
+        when(openMetadataClient.listTablesPage(eq("st_ds_42.orders.public"), eq(true), any(Integer.class), eq(null)))
+                .thenReturn(new OpenMetadataPage<>(List.of(publicTable), 1L, null));
+
+        DataInventoryFilterDTO filter = new DataInventoryFilterDTO();
+        filter.setDataSourceId(42L);
+        filter.setDatabaseFqn("st_ds_42.orders");
+        filter.setSchemaFqn("st_ds_42.orders.public");
+
+        DataInventorySummaryVO result = service().summary(filter);
+
+        assertEquals(1L, result.getDatabaseCount());
+        assertEquals(1L, result.getSchemaCount());
+        assertEquals(1L, result.getTableCount());
+        assertEquals(1L, result.getProfiledTableCount());
+        assertEquals(10L, result.getKnownRowCount());
+        assertEquals(1024L, result.getKnownSizeInByte());
     }
 
     @Test

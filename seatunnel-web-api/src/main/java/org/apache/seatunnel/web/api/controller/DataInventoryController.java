@@ -32,8 +32,10 @@ public class DataInventoryController {
             @RequestParam(value = "unitId", required = false) Long unitId,
             @RequestParam(value = "businessSystemId", required = false) Long businessSystemId,
             @RequestParam(value = "dataSourceId", required = false) Long dataSourceId,
-            @RequestParam(value = "databaseFqn", required = false) String databaseFqn) {
-        return Result.buildSuc(dataInventoryService.summary(filter(unitId, businessSystemId, dataSourceId, databaseFqn)));
+            @RequestParam(value = "databaseFqn", required = false) String databaseFqn,
+            @RequestParam(value = "schemaFqn", required = false) String schemaFqn) {
+        return Result.buildSuc(dataInventoryService.summary(
+                filter(unitId, businessSystemId, dataSourceId, databaseFqn, schemaFqn)));
     }
 
     @GetMapping("/overview")
@@ -42,9 +44,10 @@ public class DataInventoryController {
             @RequestParam(value = "unitId", required = false) Long unitId,
             @RequestParam(value = "businessSystemId", required = false) Long businessSystemId,
             @RequestParam(value = "dataSourceId", required = false) Long dataSourceId,
-            @RequestParam(value = "databaseFqn", required = false) String databaseFqn) {
+            @RequestParam(value = "databaseFqn", required = false) String databaseFqn,
+            @RequestParam(value = "schemaFqn", required = false) String schemaFqn) {
         return Result.buildSuc(dataInventoryService.overview(
-                filter(unitId, businessSystemId, dataSourceId, databaseFqn)));
+                filter(unitId, businessSystemId, dataSourceId, databaseFqn, schemaFqn)));
     }
 
     @GetMapping("/distribution/source-type")
@@ -53,9 +56,10 @@ public class DataInventoryController {
             @RequestParam(value = "unitId", required = false) Long unitId,
             @RequestParam(value = "businessSystemId", required = false) Long businessSystemId,
             @RequestParam(value = "dataSourceId", required = false) Long dataSourceId,
-            @RequestParam(value = "databaseFqn", required = false) String databaseFqn) {
+            @RequestParam(value = "databaseFqn", required = false) String databaseFqn,
+            @RequestParam(value = "schemaFqn", required = false) String schemaFqn) {
         return Result.buildSuc(dataInventoryService.sourceTypeDistribution(
-                filter(unitId, businessSystemId, dataSourceId, databaseFqn)));
+                filter(unitId, businessSystemId, dataSourceId, databaseFqn, schemaFqn)));
     }
 
     @GetMapping("/distribution/unit")
@@ -64,9 +68,10 @@ public class DataInventoryController {
             @RequestParam(value = "unitId", required = false) Long unitId,
             @RequestParam(value = "businessSystemId", required = false) Long businessSystemId,
             @RequestParam(value = "dataSourceId", required = false) Long dataSourceId,
-            @RequestParam(value = "databaseFqn", required = false) String databaseFqn) {
+            @RequestParam(value = "databaseFqn", required = false) String databaseFqn,
+            @RequestParam(value = "schemaFqn", required = false) String schemaFqn) {
         return Result.buildSuc(dataInventoryService.unitDistribution(
-                filter(unitId, businessSystemId, dataSourceId, databaseFqn)));
+                filter(unitId, businessSystemId, dataSourceId, databaseFqn, schemaFqn)));
     }
 
     @GetMapping("/distribution/business-system")
@@ -75,9 +80,10 @@ public class DataInventoryController {
             @RequestParam(value = "unitId", required = false) Long unitId,
             @RequestParam(value = "businessSystemId", required = false) Long businessSystemId,
             @RequestParam(value = "dataSourceId", required = false) Long dataSourceId,
-            @RequestParam(value = "databaseFqn", required = false) String databaseFqn) {
+            @RequestParam(value = "databaseFqn", required = false) String databaseFqn,
+            @RequestParam(value = "schemaFqn", required = false) String schemaFqn) {
         return Result.buildSuc(dataInventoryService.businessSystemDistribution(
-                filter(unitId, businessSystemId, dataSourceId, databaseFqn)));
+                filter(unitId, businessSystemId, dataSourceId, databaseFqn, schemaFqn)));
     }
 
     @GetMapping("/profile-coverage")
@@ -86,18 +92,20 @@ public class DataInventoryController {
             @RequestParam(value = "unitId", required = false) Long unitId,
             @RequestParam(value = "businessSystemId", required = false) Long businessSystemId,
             @RequestParam(value = "dataSourceId", required = false) Long dataSourceId,
-            @RequestParam(value = "databaseFqn", required = false) String databaseFqn) {
+            @RequestParam(value = "databaseFqn", required = false) String databaseFqn,
+            @RequestParam(value = "schemaFqn", required = false) String schemaFqn) {
         return Result.buildSuc(dataInventoryService.profileCoverage(
-                filter(unitId, businessSystemId, dataSourceId, databaseFqn)));
+                filter(unitId, businessSystemId, dataSourceId, databaseFqn, schemaFqn)));
     }
 
     private static DataInventoryFilterDTO filter(
-            Long unitId, Long businessSystemId, Long dataSourceId, String databaseFqn) {
+            Long unitId, Long businessSystemId, Long dataSourceId, String databaseFqn, String schemaFqn) {
         DataInventoryFilterDTO filter = new DataInventoryFilterDTO();
         filter.setUnitId(unitId);
         filter.setBusinessSystemId(businessSystemId);
         filter.setDataSourceId(dataSourceId);
         filter.setDatabaseFqn(databaseFqn);
+        filter.setSchemaFqn(schemaFqn);
         return filter;
     }
 }

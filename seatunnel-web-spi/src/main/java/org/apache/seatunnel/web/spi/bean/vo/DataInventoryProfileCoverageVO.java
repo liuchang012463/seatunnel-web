@@ -11,5 +11,6 @@ public class DataInventoryProfileCoverageVO {
     private long tableCount;
     private long profiledTableCount;
     private long knownRowCount;
+    private long knownSizeInByte;
     private double tableCoveragePercent;
 }

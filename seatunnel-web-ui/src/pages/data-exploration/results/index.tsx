@@ -29,6 +29,7 @@ import type {
   DataSourceUnitOption,
 } from '@/pages/data-source/types';
 import { getDataSourceCategory } from '@/pages/data-source/dataSourceRegistry';
+import { formatDataSize } from '@/pages/data-source/metricFormat';
 import { explorationStatus, normalizeDataSourceList } from '../shared';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import '../index.less';
@@ -45,6 +46,7 @@ const EMPTY_SUMMARY: DataInventorySummary = {
   profiledDatabaseCount: 0,
   profiledTableCount: 0,
   knownRowCount: 0,
+  knownSizeInByte: 0,
 };
 
 const EXPLORATION_GROUPS = [
@@ -630,8 +632,9 @@ const DataExplorationResultsPage: React.FC = () => {
               <div className="results-inspector__stats">
                 <span><small>数据源</small><b>{formatMetric(scopedSources.length)}</b></span>
                 <span><small>数据表</small><b>{formatMetric(summary.tableCount)}</b></span>
-                <span><small>字段</small><b>{formatMetric(summary.columnCount)}</b></span>
+                <span><small>已探查表</small><b>{formatMetric(summary.profiledTableCount)}</b></span>
                 <span><small>已统计行数</small><b>{formatMetric(summary.knownRowCount)}</b></span>
+                <span><small>已统计体积</small><b>{formatDataSize(summary.knownSizeInByte)}</b></span>
               </div>
             </section>
 

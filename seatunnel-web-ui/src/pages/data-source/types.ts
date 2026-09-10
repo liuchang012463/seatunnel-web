@@ -413,6 +413,7 @@ export interface DataInventorySummary {
   profiledDatabaseCount: number;
   profiledTableCount: number;
   knownRowCount: number;
+  knownSizeInByte: number;
 }
 
 export interface DataInventoryFilter {
@@ -420,6 +421,7 @@ export interface DataInventoryFilter {
   businessSystemId?: DataSourceEntityId;
   dataSourceId?: DataSourceEntityId;
   databaseFqn?: string;
+  schemaFqn?: string;
 }
 
 export interface DataInventoryDistributionItem {
@@ -434,6 +436,7 @@ export interface DataInventoryProfileCoverage {
   tableCount: number;
   profiledTableCount: number;
   knownRowCount: number;
+  knownSizeInByte: number;
   tableCoveragePercent: number;
 }
 

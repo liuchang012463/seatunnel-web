@@ -196,7 +196,12 @@ public class DataInventoryService {
                             walkPages(
                                     after -> openMetadataClient.listSchemasPage(
                                             database.fullyQualifiedName(), PAGE_SIZE, after),
-                                    schema -> streamTables(source, schema, writer));
+                                    schema -> {
+                                        if (!matchesSchema(filter, schema)) {
+                                            return;
+                                        }
+                                        streamTables(source, schema, writer);
+                                    });
                         });
             } catch (Exception error) {
                 log.warn("Inventory export skipped OpenMetadata source {}", source.source().getId(), error);
@@ -228,15 +233,22 @@ public class DataInventoryService {
                                 return;
                             }
                             matchedDatabases[0]++;
+                            long[] matchedSchemas = {0L};
                             long schemaTotal = walkPages(
                                     after -> openMetadataClient.listSchemasPage(
                                             database.fullyQualifiedName(), PAGE_SIZE, after),
                                     schema -> {
+                                        if (!matchesSchema(filter, schema)) {
+                                            return;
+                                        }
+                                        matchedSchemas[0]++;
                                         long tableTotal = walkTablesWithProfiles(
                                                 source, database, schema, aggregate);
                                         aggregate.tableCount = add(aggregate.tableCount, tableTotal);
                                     });
-                            aggregate.schemaCount = add(aggregate.schemaCount, schemaTotal);
+                            aggregate.schemaCount = add(
+                                    aggregate.schemaCount,
+                                    filter.schemaFqn() == null ? schemaTotal : matchedSchemas[0]);
                         });
                 aggregate.databaseCount = add(
                         aggregate.databaseCount,
@@ -526,6 +538,12 @@ public class DataInventoryService {
                 || filter.databaseFqn().equals(database.fullyQualifiedName()));
     }
 
+    private static boolean matchesSchema(InventoryFilter filter, OpenMetadataDatabaseSchema schema) {
+        return schema != null && schema.getFullyQualifiedName() != null
+                && (filter.schemaFqn() == null
+                || filter.schemaFqn().equals(schema.getFullyQualifiedName()));
+    }
+
     private static String databaseName(OpenMetadataDatabaseSchema schema, OpenMetadataTable table) {
         String database = table == null ? null : table.getDatabaseFullyQualifiedName();
         if (database == null || database.isBlank()) {
@@ -580,12 +598,15 @@ public class DataInventoryService {
 
     private static InventoryFilter normalize(DataInventoryFilterDTO request) {
         if (request == null) {
-            return new InventoryFilter(null, null, null, null);
+            return new InventoryFilter(null, null, null, null, null);
         }
         String databaseFqn = request.getDatabaseFqn();
         databaseFqn = databaseFqn == null || databaseFqn.isBlank() ? null : databaseFqn.trim();
+        String schemaFqn = request.getSchemaFqn();
+        schemaFqn = schemaFqn == null || schemaFqn.isBlank() ? null : schemaFqn.trim();
         return new InventoryFilter(
-                request.getUnitId(), request.getBusinessSystemId(), request.getDataSourceId(), databaseFqn);
+                request.getUnitId(), request.getBusinessSystemId(), request.getDataSourceId(),
+                databaseFqn, schemaFqn);
     }
 
     private static <T> long walkPages(
@@ -613,10 +634,12 @@ public class DataInventoryService {
         return total == 0L ? local : total;
     }
 
-    private record InventoryFilter(Long unitId, Long businessSystemId, Long dataSourceId, String databaseFqn) {
+    private record InventoryFilter(
+            Long unitId, Long businessSystemId, Long dataSourceId, String databaseFqn, String schemaFqn) {
         String cacheKey() {
             return "inventory:" + String.valueOf(unitId) + ':' + String.valueOf(businessSystemId)
-                    + ':' + String.valueOf(dataSourceId) + ':' + String.valueOf(databaseFqn);
+                    + ':' + String.valueOf(dataSourceId) + ':' + String.valueOf(databaseFqn)
+                    + ':' + String.valueOf(schemaFqn);
         }
 
         boolean matches(DataSource source, BusinessSystem system, DataSourceUnit unit) {
@@ -657,6 +680,7 @@ public class DataInventoryService {
         private long columnCount;
         private long profiledTableCount;
         private long knownRowCount;
+        private long knownSizeInByte;
 
         void addSource(SourceContext source) {
             dataSourceCount++;
@@ -701,6 +725,9 @@ public class DataInventoryService {
                 if (profile.getRowCount() != null && profile.getRowCount() >= 0) {
                     knownRowCount = add(knownRowCount, profile.getRowCount());
                 }
+                if (profile.getSizeInByte() != null && profile.getSizeInByte() >= 0) {
+                    knownSizeInByte = add(knownSizeInByte, profile.getSizeInByte());
+                }
             }
         }
 
@@ -716,12 +743,14 @@ public class DataInventoryService {
             summary.setProfiledDatabaseCount(profiledDatabases.size());
             summary.setProfiledTableCount(profiledTableCount);
             summary.setKnownRowCount(knownRowCount);
+            summary.setKnownSizeInByte(knownSizeInByte);
             DataInventoryProfileCoverageVO coverage = new DataInventoryProfileCoverageVO();
             coverage.setDatabaseCount(databaseCount);
             coverage.setProfiledDatabaseCount(profiledDatabases.size());
             coverage.setTableCount(tableCount);
             coverage.setProfiledTableCount(profiledTableCount);
             coverage.setKnownRowCount(knownRowCount);
+            coverage.setKnownSizeInByte(knownSizeInByte);
             coverage.setTableCoveragePercent(tableCount == 0 ? 0D : profiledTableCount * 100D / tableCount);
             return new AggregateSnapshot(
                     summary,

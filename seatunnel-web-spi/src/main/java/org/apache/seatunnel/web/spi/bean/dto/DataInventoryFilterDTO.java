@@ -13,4 +13,6 @@ public class DataInventoryFilterDTO {
     private Long dataSourceId;
 
     private String databaseFqn;
+
+    private String schemaFqn;
 }

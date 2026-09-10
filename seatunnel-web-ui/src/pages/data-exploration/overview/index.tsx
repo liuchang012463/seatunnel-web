@@ -33,6 +33,7 @@ import type {
   DataSourceRecord,
   DataSourceUnitOption,
 } from '@/pages/data-source/types';
+import { formatDataSize } from '@/pages/data-source/metricFormat';
 import { displayOwner, explorationStatus, normalizeDataSourceList, sourceMatches } from '../shared';
 import '../index.less';
 import './overview.less';
@@ -48,6 +49,7 @@ const EMPTY_SUMMARY: DataInventorySummary = {
   profiledDatabaseCount: 0,
   profiledTableCount: 0,
   knownRowCount: 0,
+  knownSizeInByte: 0,
 };
 
 const EMPTY_COVERAGE: DataInventoryProfileCoverage = {
@@ -56,6 +58,7 @@ const EMPTY_COVERAGE: DataInventoryProfileCoverage = {
   tableCount: 0,
   profiledTableCount: 0,
   knownRowCount: 0,
+  knownSizeInByte: 0,
   tableCoveragePercent: 0,
 };
 
@@ -317,11 +320,15 @@ const DataExplorationOverviewPage: React.FC = () => {
             </div>
             <div className="overview-primary-metric">
               <TableOutlined />
-              <Statistic title="字段" value={summary.columnCount} />
+              <Statistic title="已探查表" value={summary.profiledTableCount} />
             </div>
             <div className="overview-primary-metric overview-primary-metric--rows">
               <TableOutlined />
               <Statistic title="已统计行数" value={summary.knownRowCount} />
+            </div>
+            <div className="overview-primary-metric overview-primary-metric--size">
+              <TableOutlined />
+              <Statistic title="已统计体积" value={formatDataSize(summary.knownSizeInByte)} />
             </div>
           </div>
           <div className="overview-secondary-metrics" aria-label="次级元数据指标">
@@ -355,6 +362,7 @@ const DataExplorationOverviewPage: React.FC = () => {
                 <div className="overview-coverage-details">
                   <span>Database <b>{coverage.profiledDatabaseCount} / {coverage.databaseCount}</b></span>
                   <span>已统计行数 <b>{coverage.knownRowCount}</b></span>
+                  <span>已统计体积 <b>{formatDataSize(coverage.knownSizeInByte)}</b></span>
                 </div>
               </div>
             </div>
