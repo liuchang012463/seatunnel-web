@@ -318,6 +318,11 @@ public class MetadataPipelineOperationService {
         }
         String fqn = exploration ? binding.getOmProfilerPipelineFqn() : binding.getOmMetadataPipelineFqn();
         if (fqn == null || fqn.isBlank()) {
+            // Non-database connectors never create a profiler pipeline. Return an empty
+            // exploration history instead of failing callers that still ask for it.
+            if (exploration) {
+                return List.of();
+            }
             throw invalid("pipeline has not been synchronized");
         }
         openMetadataClient.assertFixedVersion();

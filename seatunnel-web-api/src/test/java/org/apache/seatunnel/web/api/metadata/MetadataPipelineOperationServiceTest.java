@@ -32,12 +32,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -226,6 +228,20 @@ class MetadataPipelineOperationServiceTest {
         verify(bindingDao).updateIfVersion(saved.capture(), eq(2L));
         assertEquals(MetadataRunStatus.FAILED, saved.getValue().getProfileStatus());
         assertEquals(MetadataErrorCode.OM_PIPELINE_DEPLOY_ERROR.name(), saved.getValue().getProfileLastError());
+    }
+
+    @Test
+    void listRunsReturnsEmptyExplorationHistoryWhenProfilerPipelineIsAbsent() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setOmProfilerPipelineId(null);
+        binding.setOmProfilerPipelineFqn(null);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+
+        var runs = service().listRuns(42L, "EXPLORATION", 5);
+
+        assertEquals(List.of(), runs);
+        verify(openMetadataClient, never()).listIngestionPipelineRuns(anyString(), anyInt());
     }
 
     @Test

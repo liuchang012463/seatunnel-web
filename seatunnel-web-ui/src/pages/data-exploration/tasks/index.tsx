@@ -401,6 +401,18 @@ const DataExplorationTasksPage: React.FC = () => {
   const showRuns = async (record: DataSourceRecord) => {
     if (!record.id) return;
     try {
+      if (!supportsExploration) {
+        const scanResponse = await fetchDataSourceMetadataRuns(record.id, 'SCAN');
+        if (scanResponse.code !== 0) {
+          message.error(scanResponse.message || '无法读取扫描运行记录');
+          return;
+        }
+        setRunRecordName(record.name || '数据源');
+        setRunRecords(scanResponse.data || []);
+        setRunRecordOpen(true);
+        return;
+      }
+
       const [explorationResponse, scanResponse] = await Promise.all([
         fetchDataSourceMetadataRuns(record.id, 'EXPLORATION'),
         record.scanStatus === 'FAILED'
