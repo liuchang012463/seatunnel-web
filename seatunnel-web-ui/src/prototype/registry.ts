@@ -76,7 +76,7 @@ export const prototypePageRegistry: PrototypePageMeta[] = [
   {
     id: 'client',
     firstMenu: '运行运维',
-    secondMenu: '引擎管理',
+    secondMenu: '引接引擎管理',
     route: '/client',
     technicalModules: ['MOD-004', 'MOD-005'],
     implementationStatus: 'ADAPT',

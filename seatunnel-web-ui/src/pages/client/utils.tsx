@@ -198,24 +198,24 @@ export const buildResourceUsageData = (
   );
 
   const getCpuTip = (value: number) => {
-    if (value < 20) return "今天很轻松，处理器几乎在散步 🌿";
-    if (value < 55) return "节奏刚刚好，整体运行很顺";
-    if (value < 80) return "开始有点忙啦，建议看看高峰任务";
-    return "CPU 压力偏高，可能有热点任务在冲刺 ⚠️";
+    if (value < 20) return "负载较低";
+    if (value < 55) return "负载适中";
+    if (value < 80) return "负载偏高";
+    return "CPU 压力较高";
   };
 
   const getMemoryTip = (value: number) => {
-    if (value < 35) return "内存状态很松弛，像在慢慢呼吸 ☁️";
-    if (value < 70) return "整体还稳，物理内存和 Heap 都比较温和";
-    if (value < 85) return "有一点点挤，建议留意对象堆积和缓存";
-    return "内存压力明显上来了，GC 可能会更忙一些 ✨";
+    if (value < 35) return "内存充足";
+    if (value < 70) return "内存正常";
+    if (value < 85) return "内存偏紧";
+    return "内存压力较高";
   };
 
   const getDiskTip = (value: number) => {
-    if (value < 30) return "存储空间还很从容，留白感不错";
-    if (value < 70) return "整体可控，日志和任务增长都还正常";
-    if (value < 85) return "磁盘开始热闹起来啦，建议看看缓存和日志";
-    return "磁盘估算偏高，最好排查一下堆积数据 ⚠️";
+    if (value < 30) return "空间充足";
+    if (value < 70) return "空间正常";
+    if (value < 85) return "空间趋紧";
+    return "磁盘估算偏高";
   };
 
   const cpuTone: ResourceUsageTone =

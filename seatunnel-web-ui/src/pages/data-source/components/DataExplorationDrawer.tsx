@@ -3,7 +3,6 @@ import {
   BulbOutlined,
   CheckCircleOutlined,
   DatabaseOutlined,
-  EditOutlined,
   EyeOutlined,
   InfoCircleOutlined,
   ProfileOutlined,
@@ -38,7 +37,6 @@ import {
   fetchDataInventorySummary,
   previewDataExplorationTable,
   startDataExplorationMetadataCompletion,
-  updateDataExplorationMetadata,
 } from '../service';
 import type {
   DataExplorationColumn,
@@ -237,15 +235,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const [completionJob, setCompletionJob] = useState<DataExplorationMetadataJob>();
   const [completionLoading, setCompletionLoading] = useState(false);
   const completionNoticeRef = useRef<string>();
-  const [metadataEditorOpen, setMetadataEditorOpen] = useState(false);
-  const [metadataSaving, setMetadataSaving] = useState(false);
-  const [metadataDraft, setMetadataDraft] = useState({
-    displayName: '',
-    description: '',
-    tags: '',
-    domainId: '',
-    retentionPeriod: '',
-  });
   const [scopeSummary, setScopeSummary] = useState<DataInventorySummary>();
   const [scopeSummaryLoading, setScopeSummaryLoading] = useState(false);
   const [scopeSummaryError, setScopeSummaryError] = useState<string>();
@@ -275,7 +264,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setPendingSchemaFqn(undefined);
     setErOpen(false);
     setCompletionJob(undefined);
-    setMetadataEditorOpen(false);
 
     fetchDataExplorationDatabases(dataSourceId)
       .then((response) => {
@@ -640,17 +628,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     };
   }, [completionJob?.jobId, completionJob?.status, dataSourceId, open, selectedTableId]);
 
-  useEffect(() => {
-    if (!tableDetail) return;
-    setMetadataDraft({
-      displayName: tableDetail.displayName || '',
-      description: tableDetail.description || '',
-      tags: (tableDetail.tags || []).join(', '),
-      domainId: tableDetail.domains?.[0] || '',
-      retentionPeriod: tableDetail.retentionPeriod || '',
-    });
-  }, [tableDetail]);
-
   const startCompletion = async () => {
     if (!dataSourceId || !selectedTableId) return;
     setCompletionLoading(true);
@@ -680,43 +657,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const completionBusy = completionInFlight(completionJob, completionLoading);
   const completionSummary = completionResultCopy(completionJob);
   const completionResult = asCompletionResult(completionJob?.result);
-
-  const openMetadataEditor = () => {
-    if (!tableDetail) return;
-    setMetadataDraft({
-      displayName: tableDetail.displayName || '',
-      description: tableDetail.description || '',
-      tags: (tableDetail.tags || []).join(', '),
-      domainId: tableDetail.domains?.[0] || '',
-      retentionPeriod: tableDetail.retentionPeriod || '',
-    });
-    setMetadataEditorOpen(true);
-  };
-
-  const saveMetadata = async () => {
-    if (!dataSourceId || !selectedTableId) return;
-    setMetadataSaving(true);
-    try {
-      const response = await updateDataExplorationMetadata(dataSourceId, selectedTableId, {
-        displayName: metadataDraft.displayName,
-        description: metadataDraft.description,
-        tags: metadataDraft.tags.split(',').map((item) => item.trim()).filter(Boolean),
-        domainId: metadataDraft.domainId,
-        retentionPeriod: metadataDraft.retentionPeriod,
-      });
-      if (response.code !== 0 || !response.data) {
-        message.error(response.message || '元数据保存失败');
-        return;
-      }
-      setTableDetail(response.data);
-      setMetadataEditorOpen(false);
-      message.success('元数据已保存');
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || '元数据保存失败');
-    } finally {
-      setMetadataSaving(false);
-    }
-  };
 
   const loadPreview = async () => {
     if (!dataSourceId || !selectedTableId) {
@@ -1131,18 +1071,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                     </p>
                   </section>
                   <section className="exploration-drawer__inspector-section">
-                    <div className="exploration-drawer__property">
-                      <span>标签</span>
-                      <div className="exploration-drawer__tag-list">
-                        {(tableDetail.tags || []).length > 0
-                          ? tableDetail.tags?.map((tag) => <Tag key={tag}>{tag}</Tag>)
-                          : <em>未设置</em>}
-                      </div>
-                    </div>
-                    <div className="exploration-drawer__property"><span>域</span><strong>{(tableDetail.domains || []).join(', ') || '未分配'}</strong></div>
-                    <div className="exploration-drawer__property"><span>保留周期</span><strong>{tableDetail.retentionPeriod || '未设置'}</strong></div>
-                  </section>
-                  <section className="exploration-drawer__inspector-section">
                     <div className="exploration-drawer__property-label">约束</div>
                     <div className="exploration-drawer__constraint-list">
                       {constraints.length > 0 ? constraints.map((item: DataExplorationConstraint, index) => (
@@ -1164,7 +1092,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                     >
                       {completionBusy ? '补全中…' : '补全元数据'}
                     </Button>
-                    <Button block icon={<EditOutlined />} disabled={completionBusy} onClick={openMetadataEditor}>编辑元数据</Button>
                   </section>
                   <section className="exploration-drawer__agent-status">
                     <div className="exploration-drawer__agent-status-head">
@@ -1250,11 +1177,11 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                     )}
                   </section>
                   <div className="exploration-drawer__inspector-empty">
-                    选择表后查看描述、标签和约束。
+                    选择表后查看描述和约束。
                   </div>
                 </div>
               ) : (
-                <div className="exploration-drawer__inspector-empty">选择表后查看描述、标签和约束。</div>
+                <div className="exploration-drawer__inspector-empty">选择表后查看描述和约束。</div>
               )}
             </aside>
           </div>
@@ -1291,63 +1218,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
         schemaFqn={schemaFqn}
         onClose={() => setErOpen(false)}
       />
-      <Modal
-        className="exploration-action-modal"
-        open={metadataEditorOpen}
-        title="编辑表元数据"
-        okText="保存到 OpenMetadata"
-        cancelText="取消"
-        confirmLoading={metadataSaving}
-        onCancel={() => setMetadataEditorOpen(false)}
-        onOk={() => void saveMetadata()}
-        destroyOnHidden
-      >
-        <div className="exploration-modal-form">
-          <label>
-            <span>显示名称</span>
-            <Input
-              value={metadataDraft.displayName}
-              placeholder="例如：订单明细"
-              onChange={(event) => setMetadataDraft((current) => ({ ...current, displayName: event.target.value }))}
-            />
-          </label>
-          <label>
-            <span>描述</span>
-            <Input.TextArea
-              rows={4}
-              value={metadataDraft.description}
-              placeholder="补充表的业务含义"
-              onChange={(event) => setMetadataDraft((current) => ({ ...current, description: event.target.value }))}
-            />
-          </label>
-          <label>
-            <span>标签</span>
-            <Input
-              value={metadataDraft.tags}
-              placeholder="多个标签用逗号分隔"
-              onChange={(event) => setMetadataDraft((current) => ({ ...current, tags: event.target.value }))}
-            />
-          </label>
-          <div className="exploration-modal-form__row">
-            <label>
-              <span>域 ID</span>
-              <Input
-                value={metadataDraft.domainId}
-                placeholder="可选"
-                onChange={(event) => setMetadataDraft((current) => ({ ...current, domainId: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>保留周期</span>
-              <Input
-                value={metadataDraft.retentionPeriod}
-                placeholder="例如：30d"
-                onChange={(event) => setMetadataDraft((current) => ({ ...current, retentionPeriod: event.target.value }))}
-              />
-            </label>
-          </div>
-        </div>
-      </Modal>
       <Modal
         className="exploration-completion-modal"
         open={completionBusy}

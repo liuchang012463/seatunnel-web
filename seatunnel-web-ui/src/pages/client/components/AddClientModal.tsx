@@ -17,7 +17,7 @@ import {
   Select,
   Switch,
 } from "antd";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import "./index.less";
 const { TextArea } = Input;
 
@@ -107,40 +107,6 @@ const deployModeOptions = [
   },
 ];
 
-const remarkPresets = [
-  "客户端已就绪，今天也要稳定发挥呀。",
-  "已完成基础连接配置，可用于后续任务绑定与调度。",
-  "新的客户端已接入，期待它接下来的表现。",
-  "连接成功只是开始，真正的表现还在后面。",
-];
-
-const clientNamePresets = [
-  "九阴真经",
-  "九阳神功",
-  "太玄经",
-  "易筋经",
-  "北冥神功",
-  "凌波微步",
-  "乾坤大挪移",
-  "降龙十八掌",
-  "独孤九剑",
-  "六脉神剑",
-  "黯然销魂掌",
-  "龙象般若功",
-  "吸星大法",
-  "三分归元气",
-  "一阳指",
-  "乾坤大挪移",
-  "葵花宝典",
-  "辟邪剑谱",
-  "蛤蟆功",
-  "小无相功",
-  "玄冥神掌",
-  "七伤拳",
-  "睡梦罗汉拳",
-  "天山折梅手"
-];
-
 const createDefaultMasterEndpoint = (
   priority = 1
 ): SeaTunnelClientEndpointDTO => ({
@@ -151,26 +117,6 @@ const createDefaultMasterEndpoint = (
   priority,
 });
 
-const getRandomItem = (list: string[], lastValue?: string) => {
-  if (!list.length) return "";
-  if (list.length === 1) return list[0];
-
-  let next = list[Math.floor(Math.random() * list.length)];
-  while (next === lastValue) {
-    next = list[Math.floor(Math.random() * list.length)];
-  }
-
-  return next;
-};
-
-const getRandomRemark = (lastValue?: string) => {
-  return getRandomItem(remarkPresets, lastValue);
-};
-
-const getRandomClientName = (lastValue?: string) => {
-  return `ZETA-${getRandomItem(clientNamePresets, lastValue)}`;
-};
-
 const AddClientModal: React.FC<AddClientModalProps> = ({
   open,
   form,
@@ -180,9 +126,6 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
   onCancel,
   onSubmit,
 }) => {
-  const lastRemarkRef = useRef<string>();
-  const lastClientNameRef = useRef<string>();
-
   const isEdit = mode === "edit";
 
   useEffect(() => {
@@ -223,17 +166,9 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
       return;
     }
 
-    const nextRemark = getRandomRemark(lastRemarkRef.current);
-    const nextClientName = getRandomClientName(
-      lastClientNameRef.current?.replace(/^ZETA-/, "")
-    );
-
-    lastRemarkRef.current = nextRemark;
-    lastClientNameRef.current = nextClientName;
-
     form.resetFields();
     form.setFieldsValue({
-      clientName: nextClientName,
+      clientName: undefined,
       engineType: "ZETA",
       deployMode: "SINGLE",
       protocol: "http",
@@ -241,7 +176,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
       clientPort: 8080,
       masterEndpoints: [createDefaultMasterEndpoint()],
       authEnabled: false,
-      remark: nextRemark,
+      remark: undefined,
     });
   }, [open, isEdit, initialValues, form]);
 
@@ -264,7 +199,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
               {isEdit ? "编辑 Client" : "新增 Client"}
             </div>
             <div className="mt-0.5 text-[13px] text-[#667085]">
-              配置 Aircas Zeta REST 连接信息。
+              配置 SeaTunnel Zeta REST 连接信息。
             </div>
           </div>
         </div>
@@ -332,7 +267,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
                 label="客户端名称"
                 rules={[{ required: true, message: "请输入客户端名称" }]}
               >
-                <Input placeholder="例如：ZETA-独孤九剑" style={inputStyle} />
+                <Input placeholder="例如：ZETA-prod-01" style={inputStyle} />
               </Form.Item>
             </Col>
 

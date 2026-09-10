@@ -37,7 +37,7 @@ describe('prototype navigation menu', () => {
         path: '/menu/operations',
         name: '运行运维',
         children: [
-          { path: '/client', name: '引擎管理' },
+          { path: '/client', name: '引接引擎管理' },
           { path: '/operations/metadata-engine', name: '探查引擎管理' },
           { path: '/lake/warehouse', name: '数据湖管理' },
           { path: '/alarm', name: '告警管理' },
