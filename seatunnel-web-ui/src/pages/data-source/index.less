@@ -241,125 +241,7 @@
   }
 }
 
-.datasource-card {
-  position: relative;
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease;
-
-  &:hover {
-    transform: translateY(0px);
-    box-shadow: 0 12px 18px rgba(0, 0, 0, 0.08);
-  }
-
-  .datasource-card-actions {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    display: flex;
-    gap: 8px;
-    opacity: 0;
-    transform: translateY(-6px);
-    transition:
-      opacity 0.22s ease,
-      transform 0.22s ease;
-    z-index: 3;
-    pointer-events: none;
-  }
-
-  &:hover .datasource-card-actions {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
-  .datasource-card-action-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 999px;
-    background: var(--st-color-bg-control);
-    color: var(--st-color-text-secondary);
-    border: 1px solid var(--st-color-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-    transition:
-      transform 0.2s ease,
-      background 0.2s ease,
-      color 0.2s ease,
-      border-color 0.2s ease;
-
-    &:hover {
-      transform: scale(1.06);
-      background: var(--st-color-bg-elevated);
-    }
-  }
-
-  .datasource-card-action-btn-danger {
-    &:hover {
-      background: rgba(255, 77, 79, 0.12);
-      border-color: #ffccc7;
-      color: #ff4d4f;
-    }
-  }
-}
-
-/* Data-source catalog uses the same dense asset-list language as the
-   exploration pages; keep the existing component API but remove the oversized
-   marketing-card treatment. */
-.datasource-page-container {
-  .datasource-card {
-    border-radius: 10px;
-    border-color: var(--st-color-divider);
-    box-shadow: none;
-  }
-
-  .datasource-card-cover {
-    height: 68px;
-    background: var(--st-color-bg-elevated);
-    border-bottom-color: var(--st-color-divider);
-  }
-
-  .datasource-card-logo {
-    left: 18px;
-    bottom: -20px;
-    width: 52px;
-    height: 52px;
-    border-width: 2px;
-    background: var(--st-color-bg-panel);
-  }
-
-  .datasource-card-env-tag {
-    top: 14px;
-    right: 16px;
-  }
-
-  .datasource-card-content {
-    gap: 9px;
-    padding: 18px 18px 16px;
-  }
-
-  .datasource-card-title {
-    font-size: 15px;
-  }
-
-  .datasource-card-exploration-row,
-  .datasource-card-owner-grid {
-    padding: 8px 10px;
-    background: var(--st-color-bg-control);
-    border-color: var(--st-color-divider);
-    border-radius: 6px;
-  }
-
-  .datasource-card-detail-button {
-    height: 34px;
-    border-radius: 6px;
-  }
-}
+/* Compact horizontal datasource cards (catalog grid). */
 
 .datasource-page-container .datasource-empty-state {
   margin-top: 18px;
@@ -371,19 +253,22 @@
 }
 
 .datasource-catalog-panel {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 340px);
+  min-height: 480px;
   overflow: hidden;
-  background: var(--st-color-bg-panel);
+  background: #001922;
   border: 1px solid var(--st-color-divider);
-  border-radius: 10px;
 }
 
 .datasource-catalog-panel__heading {
   display: flex;
+  flex: 0 0 auto;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 16px 18px 14px;
-  border-bottom: 1px solid var(--st-color-divider);
 
   p {
     margin: 4px 0 0;
@@ -399,6 +284,12 @@
   gap: 12px;
 }
 
+.datasource-catalog-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
 .datasource-view-switcher {
   .datasource-view-option {
     display: inline-flex;
@@ -409,7 +300,7 @@
 
 .datasource-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 16px;
   padding: 16px;
 
@@ -419,31 +310,183 @@
 }
 
 .datasource-catalog-table {
+  padding: 25px;
+
   .ant-table,
-  .ant-table-container {
+  .ant-table-container,
+  .ant-table-content {
     color: var(--st-color-text-secondary);
-    background: transparent;
+    background: transparent !important;
   }
 
   .ant-table-thead > tr > th {
-    color: var(--st-color-text-muted);
-    font-size: 12px;
+    color: #fff !important;
+    font-size: 14px;
     font-weight: 500;
-    background: var(--st-color-bg-control);
-    border-bottom-color: var(--st-color-divider);
+    text-align: center !important;
+    background: linear-gradient(90deg, #0a5366 0%, #0d7a8f 50%, #0a5366 100%) !important;
+    border-bottom: none !important;
+  }
+
+  .ant-table-thead > tr > th::before {
+    display: none !important;
   }
 
   .ant-table-tbody > tr > td {
-    border-bottom-color: var(--st-color-divider-subtle);
+    height: 38px;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    color: #fff;
+    font-size: 14px;
+    line-height: 22px;
+    text-align: center !important;
+    vertical-align: middle !important;
+    border-top: 1px solid transparent !important;
+    border-bottom: 1px solid transparent !important;
+    border-inline: 0 !important;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+  }
+
+  .ant-table-tbody > tr:nth-child(odd) > td {
+    background: #0c2430 !important;
+  }
+
+  .ant-table-tbody > tr:nth-child(even) > td {
+    background: #002e41 !important;
+  }
+
+  .ant-table-thead > tr > th.ant-table-cell-fix-left,
+  .ant-table-tbody > tr > td.ant-table-cell-fix-left,
+  .ant-table-thead > tr > th.datasource-catalog-col--left,
+  .ant-table-tbody > tr > td.datasource-catalog-col--left {
+    text-align: left !important;
+  }
+
+  .ant-table-tbody > tr > td:first-child {
+    border-left: 1px solid transparent !important;
+  }
+
+  .ant-table-tbody > tr > td:last-child {
+    border-right: 1px solid transparent !important;
   }
 
   .ant-table-tbody > tr:hover > td {
-    background: var(--st-color-hover) !important;
+    border-top-color: var(--st-color-accent) !important;
+    border-bottom-color: var(--st-color-accent) !important;
+  }
+
+  .ant-table-tbody > tr:nth-child(odd):hover > td {
+    background: #0c2430 !important;
+  }
+
+  .ant-table-tbody > tr:nth-child(even):hover > td {
+    background: #002e41 !important;
+  }
+
+  .ant-table-tbody > tr:hover > td:first-child {
+    border-left-color: var(--st-color-accent) !important;
+  }
+
+  .ant-table-tbody > tr:hover > td:last-child {
+    border-right-color: var(--st-color-accent) !important;
+  }
+
+  .ant-table-tbody > tr:nth-child(odd) .ant-table-cell-fix-left,
+  .ant-table-tbody > tr:nth-child(odd) .ant-table-cell-fix-right {
+    background: #0c2430 !important;
+  }
+
+  .ant-table-tbody > tr:nth-child(even) .ant-table-cell-fix-left,
+  .ant-table-tbody > tr:nth-child(even) .ant-table-cell-fix-right {
+    background: #002e41 !important;
+  }
+
+  .ant-tag {
+    margin-inline-end: 0;
+    line-height: 20px;
+  }
+}
+
+.datasource-catalog-name-link {
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  color: #33beeb;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: default;
+  }
+}
+
+.datasource-catalog-address {
+  color: #fff;
+  font-size: 14px;
+}
+
+.datasource-catalog-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 16px;
+  height: 38px;
+}
+
+.datasource-catalog-action {
+  padding: 0;
+  font-size: 14px;
+  line-height: 20px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &--test {
+    color: #00faff;
+  }
+
+  &--primary {
+    color: var(--st-color-accent);
+  }
+
+  &--warn {
+    color: #fa8c16;
+  }
+
+  &--neutral {
+    color: #fff;
+  }
+
+  &--danger {
+    color: #ff4d4f;
   }
 }
 
 .datasource-catalog-name__title {
-  color: var(--st-color-text-primary);
+  color: #33beeb;
   font-weight: 600;
 }
 
@@ -536,7 +579,7 @@
 .datasource-page-container {
   min-height: calc(100vh - 56px);
   height: calc(100vh - 56px);
-  padding: 16px 24px;
+  padding: 12px 16px;
   overflow: auto;
   color: var(--st-color-text-secondary);
   background: var(--st-color-bg-page);
@@ -544,20 +587,19 @@
 }
 
 .datasource-page-content {
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 32px 0;
+  width: 100%;
+  padding: 16px 0;
 }
 
 .datasource-page-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
 
   @media (max-width: 768px) {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
   }
 }
@@ -624,6 +666,7 @@
 }
 
 .datasource-search-bar {
+  width: fit-content;
   max-width: 100%;
   margin-bottom: 12px;
 }
@@ -636,55 +679,35 @@
 }
 
 .datasource-search-control {
-  min-width: 300px;
-  flex: 1 1 300px;
-  overflow: hidden;
+  width: 520px;
+  flex: 0 0 520px;
+  color: var(--st-color-text-primary);
   background: var(--st-color-bg-control);
-  border: 1px solid var(--st-color-border);
+  border-color: var(--st-color-border);
   border-radius: var(--st-radius-md);
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
 
   &:hover,
-  &.is-open {
+  &:focus,
+  &.ant-input-affix-wrapper-focused {
     border-color: var(--st-color-accent);
   }
 
-  &.is-open {
+  &.ant-input-affix-wrapper-focused {
     box-shadow: 0 0 0 2px var(--st-color-focus);
   }
-}
 
-.datasource-filter-select {
-  min-width: 190px;
-  flex: 0 1 220px;
-}
-
-.datasource-search-control-input {
-  width: 100%;
-  height: 38px;
-  padding: 6px 36px;
-  color: var(--st-color-text-primary);
-  font-size: var(--st-type-content-sm-size);
-  line-height: var(--st-type-content-sm-line);
-  background: transparent;
-  border: 0;
-  outline: none;
-
-  &::placeholder {
+  input::placeholder {
     color: var(--st-color-text-muted);
   }
 }
 
+.datasource-filter-select {
+  width: 200px;
+  flex: 0 0 200px;
+}
+
 .datasource-search-control-icon {
-  position: absolute;
-  top: 50%;
-  left: 12px;
-  width: 16px;
-  height: 16px;
   color: var(--st-color-text-muted);
-  transform: translateY(-50%);
 }
 
 .datasource-search-input {
@@ -698,6 +721,77 @@
   color: rgb(240, 230, 230);
   font-size: var(--st-type-caption-size);
   line-height: var(--st-type-caption-line);
+}
+
+.datasource-page-pagination {
+  .ant-pagination-item,
+  .ant-pagination-prev,
+  .ant-pagination-next,
+  .ant-pagination-jump-prev,
+  .ant-pagination-jump-next {
+    background-color: #001922;
+    border: 1px solid #000000;
+    border-radius: 4px;
+
+    a,
+    .ant-pagination-item-link {
+      color: #fff;
+    }
+
+    &:hover {
+      background-color: rgba(33, 135, 168, 0.4);
+      border-color: rgba(77, 232, 255, 0.5);
+
+      a,
+      .ant-pagination-item-link {
+        color: #fff;
+      }
+    }
+  }
+
+  .ant-pagination-item-active {
+    background-color: rgba(33, 135, 168, 0.4);
+    border: 1px solid rgba(77, 232, 255, 0.5);
+
+    a {
+      color: #fff;
+    }
+
+    &:hover {
+      background-color: rgba(33, 135, 168, 0.4);
+      border-color: rgba(77, 232, 255, 0.5);
+    }
+  }
+
+  .ant-pagination-disabled {
+    background-color: #001922;
+    border: 1px solid #000000;
+    opacity: 0.55;
+
+    &:hover {
+      background-color: #001922;
+      border-color: #000000;
+    }
+  }
+
+  .ant-pagination-options-size-changer.ant-select .ant-select-selector,
+  .ant-pagination-options-quick-jumper input {
+    color: #fff;
+    background-color: #001922;
+    border: 1px solid #000000;
+  }
+
+  .ant-pagination-options-size-changer.ant-select:hover .ant-select-selector,
+  .ant-pagination-options-size-changer.ant-select-focused .ant-select-selector,
+  .ant-pagination-options-quick-jumper input:hover,
+  .ant-pagination-options-quick-jumper input:focus {
+    background-color: rgba(33, 135, 168, 0.4);
+    border-color: rgba(77, 232, 255, 0.5);
+  }
+
+  .ant-pagination-total-text {
+    color: var(--st-color-text-secondary);
+  }
 }
 
 .datasource-category-title {
@@ -719,155 +813,87 @@
 }
 
 .datasource-card {
-  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
   color: var(--st-color-text-secondary);
   background: var(--st-color-bg-panel);
-  border: 1px solid var(--st-color-border);
-  border-radius: var(--st-radius-md);
+  border: 1px solid transparent;
+  border-radius: 12px;
   box-shadow: none;
+  transition: border-color 0.2s ease;
 
   &:hover {
     border-color: var(--st-color-accent);
   }
-}
-
-.datasource-card-cover {
-  position: relative;
-  height: 88px;
-  background: var(--st-color-bg-elevated);
-  border-bottom: 1px solid var(--st-color-divider);
 }
 
 .datasource-card-logo {
-  position: absolute;
-  left: 24px;
-  bottom: -24px;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   background: var(--st-color-bg-app);
-  border: 3px solid var(--st-color-accent);
+  border: 2px solid var(--st-color-accent);
   border-radius: 50%;
-  box-shadow: none;
 }
 
-.datasource-card-env-tag {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-}
-
-.datasource-card-env-tag-inner {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1;
-  border: 1px solid currentColor;
-}
-
-.datasource-card-hover-actions {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 3;
+.datasource-card-body {
   display: flex;
-  gap: 8px;
-  transition: all 0.2s ease;
-}
-
-.datasource-card-hover-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  color: var(--st-color-text-secondary);
-  font-size: 12px;
-  background: var(--st-color-bg-control);
-  border: 1px solid var(--st-color-border);
-  border-radius: 50%;
-  box-shadow: none;
-  transition: all 0.2s ease;
-
-  &:hover {
-    color: var(--st-color-accent);
-    background: var(--st-color-hover);
-    border-color: var(--st-color-accent);
-    transform: scale(1.06);
-  }
-
-  &:disabled {
-    color: var(--st-color-text-muted);
-    cursor: not-allowed;
-    opacity: 0.45;
-    transform: none;
-  }
-
-  &--danger:hover {
-    color: #ff7875;
-    background: rgba(194, 59, 59, 0.18);
-    border-color: #ff7875;
-  }
-}
-
-.datasource-card-actions {
-  position: absolute;
-  right: 20px;
-  bottom: 10px;
-  display: flex;
-  gap: 8px;
-}
-
-.datasource-card-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  color: var(--st-color-text-secondary);
-  background: var(--st-color-bg-control);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.datasource-card-action-btn:hover {
-  color: var(--st-color-accent);
-  transform: translateY(-1px);
-}
-
-.datasource-card-action-btn-danger:hover {
-  color: #ff4d4f;
-}
-
-.datasource-card-content {
-  display: flex;
+  flex: 1;
+  min-width: 0;
   flex-direction: column;
+  gap: 10px;
+}
+
+.datasource-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
-  padding: 22px 22px 20px;
-  background: var(--st-color-bg-panel);
 }
 
 .datasource-card-title {
+  min-width: 0;
   margin: 0;
-  color: var(--st-color-text-primary);
-  font-size: 16px;
+  overflow: hidden;
+  color: #33beeb;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 24px;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.datasource-card-detail-link {
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--st-color-accent);
+  font-size: 13px;
+  line-height: 22px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
 }
 
 .datasource-card-jdbc-url {
-  height: 18px;
   overflow: hidden;
-  color: var(--st-color-text-secondary);
-  font-size: 12px;
-  line-height: 18px;
+  color: var(--st-color-text-primary);
+  font-size: 14px;
+  line-height: 22px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -875,124 +901,55 @@
 .datasource-card-status {
   display: flex;
   min-height: 24px;
-  align-items: center;
-  gap: 6px;
   flex-wrap: wrap;
-}
-
-.datasource-card-exploration-row {
-  display: flex;
-  min-height: 24px;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  color: var(--st-color-text-secondary);
-  font-size: 12px;
-  line-height: 18px;
-  background: color-mix(in srgb, var(--st-color-bg-control) 76%, transparent);
-  border: 1px solid var(--st-color-border);
-  border-radius: 8px;
-}
-
-.datasource-card-owner-grid {
-  display: grid;
   gap: 6px;
-  padding: 10px 12px;
-  background: color-mix(in srgb, var(--st-color-bg-control) 54%, transparent);
-  border: 1px solid var(--st-color-border);
-  border-radius: 8px;
 }
 
-.datasource-card-owner-row {
+.datasource-card-actions {
   display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.datasource-card-label {
-  flex: 0 0 auto;
-  color: var(--st-color-text-muted);
-  font-size: 11px;
-  line-height: 18px;
-}
-
-.datasource-card-value {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--st-color-text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.datasource-card-update-time {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  color: var(--st-color-text-secondary);
-  font-size: 11px;
-  line-height: 18px;
-}
-
-.datasource-card-update-time-value {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--st-color-text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.datasource-card-detail-button {
-  height: 38px;
+  flex-wrap: wrap;
+  gap: 16px 20px;
   margin-top: 2px;
-  color: var(--st-color-text-primary);
+}
+
+.datasource-card-action {
+  padding: 0;
+  font-size: 14px;
+  line-height: 20px;
   background: transparent;
-  border-color: var(--st-color-border);
-  border-radius: var(--st-radius-md);
-  font-weight: 400;
+  border: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
 
-  &:hover {
-    border-color: var(--st-color-accent);
-  }
-}
-
-@media (max-width: 768px) {
-  .datasource-catalog-panel__heading {
-    flex-direction: column;
+  &:hover:not(:disabled) {
+    opacity: 0.85;
   }
 
-  .datasource-catalog-panel__controls {
-    justify-content: space-between;
-    width: 100%;
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
-  .datasource-card-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px;
+  &--primary {
+    color: var(--st-color-accent);
   }
 
-  .datasource-search-control,
-  .datasource-filter-select {
-    width: 100%;
-    min-width: 100%;
-    flex-basis: 100%;
+  &--test {
+    color: #00faff;
   }
-}
 
-.datasource-card-detail-default {
-  color: var(--st-color-text-primary);
-  background: var(--st-color-bg-control);
-  border-radius: var(--st-radius-md);
-}
+  &--warn {
+    color: #fa8c16;
+  }
 
-.datasource-card-detail-hover {
-  color: var(--st-color-bg-app);
-  background: #2187a8;
-  border-radius: var(--st-radius-md);
+  &--neutral {
+    color: var(--st-color-text-primary);
+  }
+
+  &--danger {
+    color: #ff4d4f;
+  }
 }
 
 .datasource-card {
@@ -1016,6 +973,34 @@
   }
 }
 
+@media (max-width: 768px) {
+  .datasource-catalog-panel__heading {
+    flex-direction: column;
+  }
+
+  .datasource-catalog-panel__controls {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .datasource-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .datasource-search-bar {
+    width: 100%;
+  }
+
+  .datasource-search-control,
+  .datasource-filter-select {
+    width: 100%;
+    min-width: 100%;
+    flex: 1 1 100%;
+  }
+}
+
 .datasource-empty-state {
   margin-top: 24px;
   padding: 48px 24px;
@@ -1024,66 +1009,6 @@
   background: var(--st-color-bg-panel);
   border: 1px dashed var(--st-color-border);
   border-radius: var(--st-radius-md);
-}
-
-/* Final catalog overrides intentionally sit after the legacy card rules. */
-.datasource-page-container .datasource-card {
-  border-color: var(--st-color-divider);
-  border-radius: 10px;
-  box-shadow: none;
-}
-
-.datasource-page-container .datasource-card:hover {
-  box-shadow: none;
-}
-
-.datasource-page-container .datasource-card-cover {
-  height: 68px;
-  background: var(--st-color-bg-elevated);
-  border-bottom-color: var(--st-color-divider);
-}
-
-.datasource-page-container .datasource-card-logo {
-  left: 18px;
-  bottom: -20px;
-  width: 52px;
-  height: 52px;
-  border-width: 2px;
-  background: var(--st-color-bg-panel);
-}
-
-.datasource-page-container .datasource-card-content {
-  gap: 9px;
-  padding: 18px 18px 16px;
-}
-
-.datasource-page-container .datasource-card-exploration-row,
-.datasource-page-container .datasource-card-owner-grid {
-  padding: 8px 10px;
-  background: var(--st-color-bg-control);
-  border-color: var(--st-color-divider);
-  border-radius: 6px;
-}
-
-.datasource-page-container .datasource-card-detail-button {
-  height: 34px;
-  border-radius: 6px;
-}
-
-.datasource-page-container .datasource-card-lake-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--st-color-bg-control);
-  border: 1px solid var(--st-color-divider);
-  border-radius: 6px;
-}
-
-.datasource-page-container .datasource-card-lake-buttons {
-  display: flex;
-  gap: 4px;
 }
 
 .datasource-page-container .datasource-empty-state {
@@ -1284,56 +1209,4 @@
 
 .datasource-selector-item-col {
   padding: 0 4px;
-}
-
-/* Final catalog overrides intentionally sit after the legacy card rules. */
-.datasource-page-container .datasource-card {
-  border-color: var(--st-color-divider);
-  border-radius: 10px;
-  box-shadow: none;
-}
-
-.datasource-page-container .datasource-card:hover {
-  box-shadow: none;
-}
-
-.datasource-page-container .datasource-card-cover {
-  height: 68px;
-  background: var(--st-color-bg-elevated);
-  border-bottom-color: var(--st-color-divider);
-}
-
-.datasource-page-container .datasource-card-logo {
-  left: 18px;
-  bottom: -20px;
-  width: 52px;
-  height: 52px;
-  border-width: 2px;
-  background: var(--st-color-bg-panel);
-}
-
-.datasource-page-container .datasource-card-content {
-  gap: 9px;
-  padding: 18px 18px 16px;
-}
-
-.datasource-page-container .datasource-card-exploration-row,
-.datasource-page-container .datasource-card-owner-grid {
-  padding: 8px 10px;
-  background: var(--st-color-bg-control);
-  border-color: var(--st-color-divider);
-  border-radius: 6px;
-}
-
-.datasource-page-container .datasource-card-detail-button {
-  height: 34px;
-  border-radius: 6px;
-}
-
-.datasource-page-container .datasource-empty-state {
-  padding: 44px 24px 36px;
-  background: var(--st-color-bg-panel);
-  border-color: var(--st-color-divider);
-  border-radius: 10px;
-  box-shadow: none;
 }

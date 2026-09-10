@@ -1,12 +1,4 @@
-import {
-  ApiOutlined,
-  ApartmentOutlined,
-  CloseCircleOutlined,
-  DeleteOutlined,
-  PauseCircleOutlined,
-  PlayCircleOutlined,
-} from '@ant-design/icons';
-import { Button, Card, Tag, Tooltip } from 'antd';
+import { Tag } from 'antd';
 import React from 'react';
 import { getDataSourceCategory } from '../dataSourceRegistry';
 import DatabaseIcons from '../icon/DatabaseIcons';
@@ -39,107 +31,35 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   const isDeleting = isRevoked || record.metadataSyncStatus === 'DELETING';
   const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
   const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
-  const unitName = record.unitName || record.dataSourceUnit || '待归属';
-  const businessSystemName = record.businessSystemName || record.systemName || '待归属';
   const isSystemManaged = Boolean(record.systemManaged);
 
+  const handleDetail = () => {
+    if (isSystemManaged) {
+      onOpenWarehouse();
+      return;
+    }
+    onEdit(record);
+  };
+
   return (
-    <Card
-      bodyStyle={{ padding: 0 }}
-      className={[
-        'datasource-card group relative',
-        'transition-colors duration-200 ease-out',
-        'hover:!translate-y-0 hover:!transform-none',
-      ].join(' ')}
-    >
-      <div className="datasource-card-cover">
-        <div className="datasource-card-logo">
-          <DatabaseIcons dbType={record.dbType} width="28" height="28" />
-        </div>
-
-        <div
-          className={[
-            'datasource-card-hover-actions',
-            'opacity-0 translate-y-[-6px] pointer-events-none',
-            'transition-all duration-200 ease-out',
-            'group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto',
-          ].join(' ')}
-        >
-          <Tooltip title="测试连接" placement="top">
-            <button
-              type="button"
-              disabled={isDeleting}
-              className="datasource-card-hover-action"
-              onClick={(event) => {
-                event.stopPropagation();
-                onTestConnection(record);
-              }}
-            >
-              <ApiOutlined />
-            </button>
-          </Tooltip>
-
-          <Tooltip title="查看探查结果" placement="top">
-            <button
-              type="button"
-              disabled={isDeleting}
-              className="datasource-card-hover-action"
-              onClick={(event) => {
-                event.stopPropagation();
-                onViewExploration(record);
-              }}
-            >
-              <ApartmentOutlined />
-            </button>
-          </Tooltip>
-
-          {!isSystemManaged ? <>
-            <Tooltip title={statusActionLabel} placement="top">
-              <button
-                type="button"
-                disabled={isDeleting}
-                className="datasource-card-hover-action"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onStatusChange(record, nextStatus);
-                }}
-              >
-                {currentStatus === 'DISABLED' ? <PlayCircleOutlined /> : <PauseCircleOutlined />}
-              </button>
-            </Tooltip>
-            <Tooltip title={isRevoked ? '已注销' : '注销'} placement="top">
-              <button
-                type="button"
-                disabled={isDeleting}
-                className="datasource-card-hover-action datasource-card-hover-action--danger"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onStatusChange(record, 'REVOKED');
-                }}
-              >
-                <CloseCircleOutlined />
-              </button>
-            </Tooltip>
-            <Tooltip title="删除" placement="top">
-              <button
-                type="button"
-                disabled={isDeleting}
-                className="datasource-card-hover-action datasource-card-hover-action--danger"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDelete(record);
-                }}
-              >
-                <DeleteOutlined />
-              </button>
-            </Tooltip>
-          </> : null}
-        </div>
+    <div className="datasource-card">
+      <div className="datasource-card-logo" aria-hidden>
+        <DatabaseIcons dbType={record.dbType} width="28" height="28" />
       </div>
 
-      <div className="datasource-card-content">
-        <div className="datasource-card-title truncate" title={record.name}>
-          {record.name || '-'}
+      <div className="datasource-card-body">
+        <div className="datasource-card-header">
+          <div className="datasource-card-title" title={record.name}>
+            {record.name || '-'}
+          </div>
+          <button
+            type="button"
+            className="datasource-card-detail-link"
+            disabled={isDeleting && !isSystemManaged}
+            onClick={handleDetail}
+          >
+            {isSystemManaged ? '数据湖管理 >' : '查看详情 >'}
+          </button>
         </div>
 
         <div className="datasource-card-jdbc-url" title={record.jdbcUrl}>
@@ -149,58 +69,93 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
         <div className="datasource-card-status">
           <DataSourceStatus status={record.connStatus} />
           <DataSourceLifecycleStatusTag status={record.status} />
-          {isSystemManaged ? <Tag color="cyan" style={{ marginInlineEnd: 0, borderRadius: 999 }}>系统内置 · 只读</Tag> : null}
+          <Tag
+            color={
+              record.profileStatus === 'SUCCESS'
+                ? 'success'
+                : record.profileStatus === 'FAILED'
+                  ? 'error'
+                  : record.profileStatus === 'RUNNING' || record.profileStatus === 'QUEUED'
+                    ? 'processing'
+                    : 'default'
+            }
+            style={{ marginInlineEnd: 0, borderRadius: 999 }}
+          >
+            {record.profileStatus === 'SUCCESS'
+              ? '已探查'
+              : record.profileStatus === 'FAILED'
+                ? '探查异常'
+                : record.profileStatus === 'RUNNING' || record.profileStatus === 'QUEUED'
+                  ? '探查中'
+                  : '未探查'}
+          </Tag>
+          {isSystemManaged ? (
+            <Tag color="cyan" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
+              系统内置 · 只读
+            </Tag>
+          ) : null}
           <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
             {category.label}
           </Tag>
         </div>
 
-        <div className="datasource-card-exploration-row">
-          <span className="datasource-card-label">探查状态</span>
-          <Tag
-            color={record.profileStatus === 'SUCCESS' ? 'success' : record.profileStatus === 'FAILED' ? 'error' : 'default'}
-            style={{ marginInlineEnd: 0, borderRadius: 999 }}
+        <div className="datasource-card-actions">
+          <button
+            type="button"
+            className="datasource-card-action datasource-card-action--test"
+            disabled={isDeleting}
+            onClick={() => onTestConnection(record)}
           >
-            {record.profileStatus === 'SUCCESS'
-              ? '已完成'
-              : record.profileStatus === 'FAILED'
-                ? '异常'
-                : record.profileStatus === 'RUNNING' || record.profileStatus === 'QUEUED'
-                  ? '处理中'
-                  : '未探查'}
-          </Tag>
-        </div>
+            测试连接
+          </button>
+          <button
+            type="button"
+            className="datasource-card-action datasource-card-action--primary"
+            disabled={isDeleting}
+            onClick={() => onViewExploration(record)}
+          >
+            探查结果
+          </button>
 
-        <div className="datasource-card-owner-grid">
-          <div className="datasource-card-owner-row" title={unitName}>
-            <span className="datasource-card-label">单位</span>
-            <span className="datasource-card-value">{unitName}</span>
-          </div>
-          <div className="datasource-card-owner-row" title={businessSystemName}>
-            <span className="datasource-card-label">业务系统</span>
-            <span className="datasource-card-value">{businessSystemName}</span>
-          </div>
+          {isSystemManaged ? (
+            <button
+              type="button"
+              className="datasource-card-action datasource-card-action--neutral"
+              onClick={onOpenWarehouse}
+            >
+              数据湖管理
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="datasource-card-action datasource-card-action--warn"
+                disabled={isDeleting}
+                onClick={() => onStatusChange(record, nextStatus)}
+              >
+                {statusActionLabel}
+              </button>
+              <button
+                type="button"
+                className="datasource-card-action datasource-card-action--neutral"
+                disabled={isDeleting}
+                onClick={() => onStatusChange(record, 'REVOKED')}
+              >
+                {isRevoked ? '已注销' : '注销'}
+              </button>
+              <button
+                type="button"
+                className="datasource-card-action datasource-card-action--danger"
+                disabled={isDeleting}
+                onClick={() => onDelete(record)}
+              >
+                删除
+              </button>
+            </>
+          )}
         </div>
-
-        <div className="datasource-card-update-time">
-          <span className="datasource-card-label">最近更新</span>
-          <span className="datasource-card-update-time-value">{record.updateTime || '-'}</span>
-        </div>
-
-        <Button
-          block
-          type="primary"
-          disabled={isDeleting}
-          className={[
-            'datasource-card-detail-button group/detail relative overflow-hidden p-0',
-            'transition-all duration-300 ease-out',
-          ].join(' ')}
-          onClick={() => isSystemManaged ? onOpenWarehouse() : onEdit(record)}
-        >
-          {isSystemManaged ? '前往数据湖管理' : '查看详情'}
-        </Button>
       </div>
-    </Card>
+    </div>
   );
 };
 

@@ -1,5 +1,6 @@
-import { Select } from 'antd';
-import React, { useEffect, useRef, useState } from 'react';
+import { SearchOutlined } from '@ant-design/icons';
+import { Input, Select } from 'antd';
+import React from 'react';
 import { DATA_SOURCE_STATUS_OPTIONS } from '../constants';
 import type { BusinessSystemOption, DataSourceEntityId, DataSourceUnitOption } from '../types';
 
@@ -28,61 +29,17 @@ const SearchBar: React.FC<SearchBarProps> = ({
   selectedStatus,
   onStatusChange,
 }) => {
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!wrapperRef.current) return;
-      if (!wrapperRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
   return (
-    <div className="datasource-search-bar" ref={wrapperRef}>
+    <div className="datasource-search-bar">
       <div className="datasource-search-filter-row">
-        <div className={`datasource-search-control${open ? ' is-open' : ''}`}>
-          <div className="relative rounded-full">
-            <input
-              className="datasource-search-control-input"
-              placeholder="根据数据源名称搜索"
-              type="text"
-              value={value}
-              onFocus={() => setOpen(true)}
-              onChange={(e) => {
-                onChange(e.target.value);
-                if (!open) setOpen(true);
-              }}
-              style={{
-                border: 'none',
-                boxShadow: 'none',
-                background: 'transparent',
-              }}
-            />
-
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="datasource-search-control-icon"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-          </div>
-        </div>
+        <Input
+          allowClear
+          prefix={<SearchOutlined className="datasource-search-control-icon" />}
+          placeholder="根据数据源名称搜索"
+          value={value}
+          className="datasource-search-control"
+          onChange={(e) => onChange(e.target.value)}
+        />
 
         <Select
           allowClear

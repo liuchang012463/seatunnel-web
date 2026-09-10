@@ -1,16 +1,6 @@
 import ClickSpark from '@/components/ClickSpark';
 import { history, useIntl } from '@umijs/max';
-import {
-  ApiOutlined,
-  ApartmentOutlined,
-  AppstoreOutlined,
-  CloseCircleOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  PauseCircleOutlined,
-  PlayCircleOutlined,
-  UnorderedListOutlined,
-} from '@ant-design/icons';
+import { AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import {
   Button,
   Drawer,
@@ -19,11 +9,9 @@ import {
   Modal,
   Pagination,
   Segmented,
-  Space,
   Spin,
   Table,
   Tag,
-  Tooltip,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { motion } from 'framer-motion';
@@ -35,7 +23,7 @@ import PageHeader from './components/PageHeader';
 import SearchBar from './components/SearchBar';
 import MasterDataPage from '../master-data';
 import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from './constants';
-import { DATA_SOURCE_CATEGORIES } from './dataSourceRegistry';
+import { DATA_SOURCE_CATEGORIES, getDataSourceCategory } from './dataSourceRegistry';
 import './index.less';
 import {
   checkDataSourceUsage,
@@ -372,93 +360,185 @@ const DataSourcePage: React.FC = () => {
     {
       title: '数据源',
       key: 'name',
-      fixed: 'left',
+      align: 'left',
+      className: 'datasource-catalog-col--left',
       width: 220,
+      ellipsis: true,
       render: (_value, record) => (
-        <div className="datasource-catalog-name">
-          <div className="datasource-catalog-name__title" title={record.name}>{record.name || '-'}</div>
-          <div className="datasource-catalog-name__type">{record.dbType || '-'}</div>
-        </div>
+        <button
+          type="button"
+          className="datasource-catalog-name-link"
+          title={record.name}
+          disabled={
+            !record.systemManaged &&
+            (record.status === 'REVOKED' || record.metadataSyncStatus === 'DELETING')
+          }
+          onClick={() => (record.systemManaged ? handleOpenWarehouse() : handleEdit(record))}
+        >
+          {record.name || '-'}
+        </button>
       ),
     },
     {
       title: '连接地址',
       key: 'jdbcUrl',
-      width: 260,
+      align: 'left',
+      className: 'datasource-catalog-col--left',
+      width: 280,
       ellipsis: true,
-      render: (_value, record) => <span title={record.jdbcUrl}>{record.jdbcUrl || '-'}</span>,
-    },
-    {
-      title: '归属',
-      key: 'owner',
-      width: 220,
       render: (_value, record) => (
-        <div className="datasource-catalog-owner">
-          <div><span>单位</span>{record.unitName || record.dataSourceUnit || '待归属'}</div>
-          <div><span>系统</span>{record.businessSystemName || record.systemName || '待归属'}</div>
-        </div>
+        <span className="datasource-catalog-address" title={record.jdbcUrl}>
+          {record.jdbcUrl || '-'}
+        </span>
       ),
     },
     {
-      title: '状态',
+      title: '连通检测',
+      key: 'connStatus',
+      align: 'center',
+      width: 120,
+      render: (_value, record) => <DataSourceStatus status={record.connStatus} />,
+    },
+    {
+      title: '是否启用',
       key: 'status',
-      width: 190,
-      render: (_value, record) => (
-        <Space wrap size={[4, 4]}>
-          <DataSourceStatus status={record.connStatus} />
-          <DataSourceLifecycleStatusTag status={record.status} />
-          {record.systemManaged ? <Tag color="cyan">系统内置 · 只读</Tag> : null}
-        </Space>
-      ),
+      align: 'center',
+      width: 120,
+      render: (_value, record) => <DataSourceLifecycleStatusTag status={record.status} />,
     },
     {
-      title: '探查',
-      key: 'exploration',
-      width: 150,
+      title: '探查状态',
+      key: 'profileStatus',
+      align: 'center',
+      width: 110,
       render: (_value, record) => {
         const status = record.profileStatus;
-        const color = status === 'SUCCESS' ? 'success' : status === 'FAILED' ? 'error' : status === 'RUNNING' || status === 'QUEUED' ? 'processing' : 'default';
-        const label = status === 'SUCCESS' ? '已完成' : status === 'FAILED' ? '异常' : status === 'RUNNING' || status === 'QUEUED' ? '处理中' : '未探查';
-        return <Tag color={color}>{label}</Tag>;
+        const color =
+          status === 'SUCCESS'
+            ? 'success'
+            : status === 'FAILED'
+              ? 'error'
+              : status === 'RUNNING' || status === 'QUEUED'
+                ? 'processing'
+                : 'default';
+        const label =
+          status === 'SUCCESS'
+            ? '已探查'
+            : status === 'FAILED'
+              ? '探查异常'
+              : status === 'RUNNING' || status === 'QUEUED'
+                ? '探查中'
+                : '未探查';
+        return <Tag color={color} style={{ marginInlineEnd: 0, borderRadius: 999 }}>{label}</Tag>;
       },
     },
     {
-      title: '最近更新',
-      dataIndex: 'updateTime',
-      key: 'updateTime',
-      width: 170,
-      render: (value) => value || '-',
+      title: '数据库类型',
+      key: 'dbType',
+      align: 'center',
+      width: 140,
+      ellipsis: true,
+      render: (_value, record) => getDataSourceCategory(record.dbType).label,
     },
     {
       title: '操作',
       key: 'actions',
+      align: 'center',
       fixed: 'right',
-      width: 210,
+      width: 360,
       render: (_value, record) => {
         const currentStatus = record.status || 'ENABLED';
         const isRevoked = currentStatus === 'REVOKED';
         const isDeleting = isRevoked || record.metadataSyncStatus === 'DELETING';
         const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
+        const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
+
         if (record.systemManaged) {
-          return <Space size={0}>
-            <Tooltip title="查看探查结果"><Button type="link" size="small" icon={<ApartmentOutlined />} disabled={isDeleting} onClick={() => handleViewExploration(record)} /></Tooltip>
-            <Tooltip title="测试连接"><Button type="link" size="small" icon={<ApiOutlined />} disabled={isDeleting} onClick={() => void handleTestConnection(record)} /></Tooltip>
-            <Button type="link" size="small" onClick={handleOpenWarehouse}>数据湖管理</Button>
-          </Space>;
+          return (
+            <div className="datasource-catalog-actions">
+              <button
+                type="button"
+                className="datasource-catalog-action datasource-catalog-action--test"
+                disabled={isDeleting}
+                onClick={() => void handleTestConnection(record)}
+              >
+                测试连接
+              </button>
+              <button
+                type="button"
+                className="datasource-catalog-action datasource-catalog-action--primary"
+                disabled={isDeleting}
+                onClick={() => handleViewExploration(record)}
+              >
+                探查结果
+              </button>
+              <button
+                type="button"
+                className="datasource-catalog-action datasource-catalog-action--neutral"
+                onClick={handleOpenWarehouse}
+              >
+                数据湖管理
+              </button>
+            </div>
+          );
         }
+
         return (
-          <Space size={0}>
-            <Tooltip title="查看探查结果"><Button type="link" size="small" icon={<ApartmentOutlined />} disabled={isDeleting} onClick={() => handleViewExploration(record)} /></Tooltip>
-            <Tooltip title="测试连接"><Button type="link" size="small" icon={<ApiOutlined />} disabled={isDeleting} onClick={() => void handleTestConnection(record)} /></Tooltip>
-            <Tooltip title="编辑"><Button type="link" size="small" icon={<EditOutlined />} disabled={isDeleting} onClick={() => handleEdit(record)} /></Tooltip>
-            <Tooltip title={currentStatus === 'DISABLED' ? '启用' : '停用'}><Button type="link" size="small" icon={currentStatus === 'DISABLED' ? <PlayCircleOutlined /> : <PauseCircleOutlined />} disabled={isDeleting} onClick={() => handleStatusChange(record, nextStatus)} /></Tooltip>
-            <Tooltip title={isRevoked ? '已注销' : '注销'}><Button type="link" danger size="small" icon={<CloseCircleOutlined />} disabled={isDeleting} onClick={() => handleStatusChange(record, 'REVOKED')} /></Tooltip>
-            <Tooltip title="删除"><Button type="link" danger size="small" icon={<DeleteOutlined />} disabled={isDeleting} onClick={() => void handleDelete(record)} /></Tooltip>
-          </Space>
+          <div className="datasource-catalog-actions">
+            <button
+              type="button"
+              className="datasource-catalog-action datasource-catalog-action--test"
+              disabled={isDeleting}
+              onClick={() => void handleTestConnection(record)}
+            >
+              测试连接
+            </button>
+            <button
+              type="button"
+              className="datasource-catalog-action datasource-catalog-action--primary"
+              disabled={isDeleting}
+              onClick={() => handleViewExploration(record)}
+            >
+              探查结果
+            </button>
+            <button
+              type="button"
+              className="datasource-catalog-action datasource-catalog-action--warn"
+              disabled={isDeleting}
+              onClick={() => handleStatusChange(record, nextStatus)}
+            >
+              {statusActionLabel}
+            </button>
+            <button
+              type="button"
+              className="datasource-catalog-action datasource-catalog-action--neutral"
+              disabled={isDeleting}
+              onClick={() => handleStatusChange(record, 'REVOKED')}
+            >
+              {isRevoked ? '已注销' : '注销'}
+            </button>
+            <button
+              type="button"
+              className="datasource-catalog-action datasource-catalog-action--danger"
+              disabled={isDeleting}
+              onClick={() => void handleDelete(record)}
+            >
+              删除
+            </button>
+          </div>
         );
       },
     },
-  ], [handleDelete, handleEdit, handleOpenWarehouse, handleStatusChange, handleTestConnection, handleViewExploration]);
+  ], [
+    handleDelete,
+    handleEdit,
+    handleOpenWarehouse,
+    handleStatusChange,
+    handleTestConnection,
+    handleViewExploration,
+    pagination.pageNo,
+    pagination.pageSize,
+  ]);
 
   return (
     <>
@@ -474,13 +554,6 @@ const DataSourcePage: React.FC = () => {
         <div className="datasource-page-container">
           <div className="datasource-page-content">
             <motion.div initial="hidden" animate="visible" variants={PAGE_ANIMATION.sectionStagger}>
-              <motion.div variants={PAGE_ANIMATION.fadeUp}>
-                <PageHeader
-                  onCreate={handleCreate}
-                  onManageMasterData={() => setMasterDataOpen(true)}
-                />
-              </motion.div>
-
               <motion.div variants={PAGE_ANIMATION.fadeUp}>
                 <SearchBar
                   value={searchKeyword}
@@ -509,30 +582,36 @@ const DataSourcePage: React.FC = () => {
                 />
               </motion.div>
 
-              <motion.div variants={PAGE_ANIMATION.fadeUp} className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  type={selectedCategory === 'ALL' ? 'primary' : 'default'}
-                  shape="round"
-                  onClick={() => {
-                    setSelectedCategory('ALL');
-                    setPagination((current) => ({ ...current, pageNo: 1 }));
-                  }}
-                >
-                  全部
-                </Button>
-                {DATA_SOURCE_CATEGORIES.map((category) => (
+              <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-header">
+                <div className="flex min-w-0 flex-1 flex-wrap gap-2">
                   <Button
-                    key={category.key}
-                    type={selectedCategory === category.key ? 'primary' : 'default'}
+                    type={selectedCategory === 'ALL' ? 'primary' : 'default'}
                     shape="round"
                     onClick={() => {
-                      setSelectedCategory(category.key);
+                      setSelectedCategory('ALL');
                       setPagination((current) => ({ ...current, pageNo: 1 }));
                     }}
                   >
-                    {category.label}
+                    全部
                   </Button>
-                ))}
+                  {DATA_SOURCE_CATEGORIES.map((category) => (
+                    <Button
+                      key={category.key}
+                      type={selectedCategory === category.key ? 'primary' : 'default'}
+                      shape="round"
+                      onClick={() => {
+                        setSelectedCategory(category.key);
+                        setPagination((current) => ({ ...current, pageNo: 1 }));
+                      }}
+                    >
+                      {category.label}
+                    </Button>
+                  ))}
+                </div>
+                <PageHeader
+                  onCreate={handleCreate}
+                  onManageMasterData={() => setMasterDataOpen(true)}
+                />
               </motion.div>
 
               <motion.p variants={PAGE_ANIMATION.fadeUp} className="datasource-page-count">
@@ -546,7 +625,6 @@ const DataSourcePage: React.FC = () => {
                       <div className="datasource-catalog-panel__heading">
                         <div>
                           <h2 className="datasource-category-title">数据源清单</h2>
-                          <p>集中查看连接、归属和探查状态；支持在卡片和列表视图之间切换。</p>
                         </div>
                         <div className="datasource-catalog-panel__controls">
                           <span className="datasource-category-count">{pagination.total}</span>
@@ -578,43 +656,45 @@ const DataSourcePage: React.FC = () => {
                           />
                         </div>
                       </div>
-                      {viewMode === 'card' ? (
-                        <div className="datasource-card-grid">
-                          {dataSourceList.map((record, index) => (
-                            <DataSourceCard
-                              key={String(record.id || record.name || `data-source-${index}`)}
-                              record={record}
-                              onEdit={handleEdit}
-                              onDelete={(currentRecord) => {
-                                void handleDelete(currentRecord);
-                              }}
-                              onTestConnection={(currentRecord) => {
-                                void handleTestConnection(currentRecord);
-                              }}
-                              onViewExploration={handleViewExploration}
-                              onStatusChange={handleStatusChange}
-                              onOpenWarehouse={handleOpenWarehouse}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <Table<DataSourceRecord>
-                          rowKey={(record) => String(record.id || record.name)}
-                          className="datasource-catalog-table"
-                          columns={dataSourceColumns}
-                          dataSource={dataSourceList}
-                          pagination={false}
-                          scroll={{ x: 1320 }}
-                          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
-                        />
-                      )}
+                      <div className="datasource-catalog-panel__body">
+                        {viewMode === 'card' ? (
+                          <div className="datasource-card-grid">
+                            {dataSourceList.map((record, index) => (
+                              <DataSourceCard
+                                key={String(record.id || record.name || `data-source-${index}`)}
+                                record={record}
+                                onEdit={handleEdit}
+                                onDelete={(currentRecord) => {
+                                  void handleDelete(currentRecord);
+                                }}
+                                onTestConnection={(currentRecord) => {
+                                  void handleTestConnection(currentRecord);
+                                }}
+                                onViewExploration={handleViewExploration}
+                                onStatusChange={handleStatusChange}
+                                onOpenWarehouse={handleOpenWarehouse}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <Table<DataSourceRecord>
+                            rowKey={(record) => String(record.id || record.name)}
+                            className="datasource-catalog-table"
+                            columns={dataSourceColumns}
+                            dataSource={dataSourceList}
+                            pagination={false}
+                            scroll={{ x: 1422 }}
+                            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
+                          />
+                        )}
+                      </div>
                     </section>
                   ) : (
                     !loading && <EmptyState onCreate={handleCreate} />
                   )}
 
                   {pagination.total > 0 && (
-                    <div className="mt-8 flex justify-end">
+                    <div className="datasource-page-pagination mt-8 flex justify-end">
                       <Pagination
                         current={pagination.pageNo}
                         pageSize={pagination.pageSize}
