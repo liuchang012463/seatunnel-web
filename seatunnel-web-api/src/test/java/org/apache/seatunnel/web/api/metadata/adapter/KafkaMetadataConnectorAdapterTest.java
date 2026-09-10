@@ -47,15 +47,26 @@ class KafkaMetadataConnectorAdapterTest {
     }
 
     @Test
-    void rejectsMissingSchemaRegistryUrl() {
+    void buildsKafkaServiceRequestWithoutSchemaRegistry() {
         DataSource dataSource = source("{\"bootstrapServers\":\"kafka.example:9092\"}");
+
+        JsonNode service = adapter.serviceRequest(dataSource, "st_ds_21");
+
+        assertEquals("Kafka", service.at("/connection/config/type").asText());
+        assertEquals("kafka.example:9092", service.at("/connection/config/bootstrapServers").asText());
+        assertTrue(service.at("/connection/config/schemaRegistryURL").isMissingNode());
+        assertEquals(true, service.at("/connection/config/supportsMetadataExtraction").asBoolean());
+    }
+
+    @Test
+    void rejectsMissingBootstrapServers() {
+        DataSource dataSource = source("{\"schemaRegistryUrl\":\"http://schema.example:8081\"}");
 
         MetadataIntegrationException error = assertThrows(
                 MetadataIntegrationException.class,
-                () -> adapter.serviceRequest(dataSource, "st_ds_21"));
+                () -> adapter.serviceRequest(dataSource, "st_ds_22"));
 
         assertEquals(MetadataErrorCode.SOURCE_CONNECTION_ERROR, error.getErrorCode());
-        assertTrue(error.getMessage().contains("schemaRegistryUrl"));
     }
 
     private static DataSource source(String connectionParams) {

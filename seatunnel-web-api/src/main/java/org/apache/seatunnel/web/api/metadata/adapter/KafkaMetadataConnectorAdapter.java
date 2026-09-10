@@ -2,8 +2,6 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
-import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
@@ -31,12 +29,6 @@ public class KafkaMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCo
     @Override
     public JsonNode serviceRequest(DataSource dataSource, String stableServiceName) {
         JsonNode source = rawConnection(dataSource);
-        String schemaRegistryUrl = connectionText(source, "schemaRegistryUrl");
-        if (isBlank(schemaRegistryUrl)) {
-            throw new MetadataIntegrationException(
-                    MetadataErrorCode.SOURCE_CONNECTION_ERROR,
-                    "Kafka metadata extraction requires schemaRegistryUrl");
-        }
         String bootstrapServers = connectionText(source, "bootstrapServers");
         if (isBlank(bootstrapServers)) {
             throw invalidConnectionFailure();
@@ -46,7 +38,11 @@ public class KafkaMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCo
         ObjectNode config = root.putObject("connection").putObject("config");
         config.put("type", "Kafka");
         config.put("bootstrapServers", bootstrapServers);
-        config.put("schemaRegistryURL", schemaRegistryUrl);
+
+        String schemaRegistryUrl = connectionText(source, "schemaRegistryUrl");
+        if (!isBlank(schemaRegistryUrl)) {
+            config.put("schemaRegistryURL", schemaRegistryUrl);
+        }
 
         String securityProtocol = connectionText(source, "securityProtocol");
         if (!isBlank(securityProtocol)) {
