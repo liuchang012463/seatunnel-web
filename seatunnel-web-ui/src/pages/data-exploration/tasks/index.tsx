@@ -437,13 +437,18 @@ const DataExplorationTasksPage: React.FC = () => {
 
   const triggerScan = async (record: DataSourceRecord) => {
     if (!record.id) return;
+    const recoveringSync = record.metadataSyncStatus === 'ERROR';
     try {
       const response = await triggerDataSourceScan(record.id);
       if (response.code !== 0) {
         message.error(response.message || '元数据扫描暂不可触发');
         return;
       }
-      message.success('已提交元数据扫描');
+      message.success(
+        recoveringSync
+          ? '已重新发起元数据同步，就绪后将自动扫描'
+          : '已提交元数据扫描',
+      );
       void load();
     } catch (error: any) {
       message.error(errorMessage(error, '元数据扫描暂不可触发'));

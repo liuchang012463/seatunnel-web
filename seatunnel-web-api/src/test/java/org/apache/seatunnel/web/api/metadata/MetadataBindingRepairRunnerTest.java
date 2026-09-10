@@ -68,6 +68,25 @@ class MetadataBindingRepairRunnerTest {
         assertTrue(saved.getValue().getRetryCount() >= 5);
     }
 
+    @Test
+    void reopensLegacyKafkaSchemaRegistryGateFailures() {
+        MetadataSourceBinding binding = binding(9L, 90L, MetadataSyncStatus.ERROR);
+        binding.setLastSyncErrorCode(MetadataErrorCode.SOURCE_CONNECTION_ERROR.name());
+        binding.setLastSyncError("Kafka metadata extraction requires schemaRegistryUrl");
+        DataSource source = source(90L, DbType.KAFKA);
+        when(metadataBindingDao.queryAll()).thenReturn(List.of(binding));
+        when(dataSourceDao.queryById(90L)).thenReturn(source);
+        when(connectorRegistry.supports(DbType.KAFKA)).thenReturn(true);
+        when(metadataBindingDao.updateIfVersion(binding, 3L)).thenReturn(true);
+
+        runner().repairLegacyBindings();
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(metadataBindingDao).updateIfVersion(saved.capture(), eq(3L));
+        assertEquals(MetadataSyncStatus.PENDING, saved.getValue().getSyncStatus());
+        assertNull(saved.getValue().getLastSyncErrorCode());
+    }
+
     private MetadataBindingRepairRunner runner() {
         return new MetadataBindingRepairRunner(dataSourceDao, metadataBindingDao, connectorRegistry);
     }

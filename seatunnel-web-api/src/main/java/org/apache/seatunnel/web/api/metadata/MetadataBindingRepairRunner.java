@@ -76,7 +76,13 @@ public class MetadataBindingRepairRunner {
         if (binding.getSyncStatus() != MetadataSyncStatus.ERROR) {
             return false;
         }
-        if (!MetadataErrorCode.CONNECTOR_NOT_SUPPORTED.name().equals(binding.getLastSyncErrorCode())) {
+        String errorCode = binding.getLastSyncErrorCode();
+        boolean connectorGap = MetadataErrorCode.CONNECTOR_NOT_SUPPORTED.name().equals(errorCode);
+        // Legacy Kafka gate failed with SOURCE_CONNECTION_ERROR before schema registry became optional.
+        boolean legacySchemaRegistryGate = MetadataErrorCode.SOURCE_CONNECTION_ERROR.name().equals(errorCode)
+                && binding.getLastSyncError() != null
+                && binding.getLastSyncError().contains("schemaRegistryUrl");
+        if (!connectorGap && !legacySchemaRegistryGate) {
             return false;
         }
         long version = binding.getVersion() == null ? 0L : binding.getVersion();

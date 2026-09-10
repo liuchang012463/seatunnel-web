@@ -29,7 +29,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -277,6 +279,38 @@ class MetadataPipelineOperationServiceTest {
         assertEquals(1, runs.size());
         assertEquals(MetadataRunStatus.FAILED, runs.get(0).getStatus());
         assertEquals(MetadataErrorCode.OM_SERVICE_SYNC_ERROR.name(), runs.get(0).getErrorMessage());
+    }
+
+    @Test
+    void manualScanReopensRetryableErrorBindingsInsteadOfRequiringReady() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setSyncStatus(MetadataSyncStatus.ERROR);
+        binding.setLastSyncErrorCode(MetadataErrorCode.SOURCE_CONNECTION_ERROR.name());
+        binding.setLastSyncError("Kafka metadata extraction requires schemaRegistryUrl");
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
+
+        assertTrue(service().triggerScan(42L));
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateIfVersion(saved.capture(), eq(0L));
+        assertEquals(MetadataSyncStatus.PENDING, saved.getValue().getSyncStatus());
+        assertNull(saved.getValue().getLastSyncErrorCode());
+        verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
+    }
+
+    @Test
+    void manualScanRejectsUnsupportedConnectorErrors() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setSyncStatus(MetadataSyncStatus.ERROR);
+        binding.setLastSyncErrorCode(MetadataErrorCode.CONNECTOR_NOT_SUPPORTED.name());
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+
+        assertThrows(RuntimeException.class, () -> service().triggerScan(42L));
+        verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
+        verify(bindingDao, never()).updateIfVersion(any(MetadataSourceBinding.class), anyLong());
     }
 
     private void stubReady(MetadataSourceBinding binding, MetadataSourceBinding reserved) {

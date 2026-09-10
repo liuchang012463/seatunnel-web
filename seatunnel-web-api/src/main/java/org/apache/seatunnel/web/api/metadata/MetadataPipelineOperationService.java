@@ -122,7 +122,22 @@ public class MetadataPipelineOperationService {
     }
 
     public boolean triggerScan(Long dataSourceId) {
-        MetadataSourceBinding binding = requireReadyBinding(dataSourceId);
+        requireActiveDataSource(dataSourceId);
+        MetadataSourceBinding binding = requireBinding(dataSourceId);
+        if (binding.getDesiredState() != MetadataDesiredState.ACTIVE) {
+            throw invalid("metadata synchronization is not ready");
+        }
+        // Operator "重新扫描" on a failed control-plane sync should reopen the
+        // binding instead of requiring a separate retry endpoint.
+        if (binding.getSyncStatus() == MetadataSyncStatus.ERROR) {
+            if (MetadataErrorCode.CONNECTOR_NOT_SUPPORTED.name().equals(binding.getLastSyncErrorCode())) {
+                throw invalid("metadata connector is not supported for this data source type");
+            }
+            return retryMetadataSync(dataSourceId);
+        }
+        if (binding.getSyncStatus() != MetadataSyncStatus.READY) {
+            throw invalid("metadata synchronization is not ready");
+        }
         triggerMetadata(binding, true);
         return true;
     }
