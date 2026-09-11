@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>离线引接任务 · Redesign 原型</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><rect width=%2216%22 height=%2216%22 fill=%22%2301151d%22/><path d=%22M3 13V8M7 13V4M11 13V6%22 stroke=%22%233fc6ff%22 stroke-width=%222%22/></svg>" />
+<link rel="stylesheet" href="st.css" />
+<style>
+  /* link column */
+  .link-flow { display: flex; align-items: center; gap: 6px; font-family: var(--st-mono); font-size: 11.5px; color: var(--st-text-secondary); }
+  .link-flow .node { display: inline-flex; align-items: center; gap: 6px; }
+  .link-flow .node i {
+    width: 18px; height: 18px; border-radius: 3px; font-style: normal;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--st-bg-elevated); color: var(--st-accent);
+    font-size: 10px; font-weight: 600; font-family: var(--st-font);
+  }
+  .link-flow .arrow { color: var(--st-text-muted); }
+  .link-flow .db { color: var(--st-text-muted); }
+  .link-flow .tb { color: var(--st-text-primary); }
+  .cell-mode { font-size: 11px; color: var(--st-text-muted); margin-top: 2px; }
+
+  tr.expand-row > td { background: var(--st-bg-control); padding: 0; border-bottom: 1px solid var(--st-line-strong); }
+  .err-detail { display: flex; gap: 14px; padding: 12px 16px 14px 52px; align-items: flex-start; }
+  .err-detail .msg {
+    flex: 1; font-family: var(--st-mono); font-size: 12px; color: var(--st-error);
+    background: rgba(255, 107, 94, 0.07);
+    border: 1px solid rgba(255, 107, 94, 0.25);
+    border-radius: var(--st-radius-control);
+    padding: 8px 12px; white-space: normal;
+  }
+  .err-detail .side { display: flex; flex-direction: column; gap: 6px; }
+
+  .metrics { display: inline-flex; gap: 14px; }
+  .metrics span b { font-weight: 500; color: var(--st-text-primary); }
+  .metrics span em { font-style: normal; color: var(--st-text-muted); font-size: 11px; margin-left: 1px; }
+  .metrics span.zero b { color: var(--st-text-muted); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <nav class="sidebar">
+    <div class="nav-group-label">总览</div>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14V9M6.5 14V4M11 14v-7M15 14H1"/></svg>
+      引接态势
+    </a>
+    <a class="nav-item" href="./datasource.html">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><ellipse cx="8" cy="3.5" rx="5.5" ry="2"/><path d="M2.5 3.5v9c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2v-9M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2"/></svg>
+      数据源管理 <span class="badge">10</span>
+    </a>
+    <div class="nav-group-label">数据探查</div>
+    <a class="nav-item" href="./exploration.html">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
+      探查概览
+    </a>
+    <a class="nav-item" href="./exploration.html">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12M2 8h12M2 12h8"/></svg>
+      探查结果展示
+    </a>
+    <div class="nav-group-label">数据引接</div>
+    <a class="nav-item" href="./ingestion.html">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 5h9M9 2.5L11.5 5 9 7.5M14 11H5M7 8.5L4.5 11 7 13.5"/></svg>
+      任务概览 <span class="badge">8</span>
+    </a>
+    <a class="nav-item active" href="./ingestion.html">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 5h9M9 2.5L11.5 5 9 7.5M14 11H5M7 8.5L4.5 11 7 13.5"/></svg>
+      离线引接任务 <span class="badge">7</span>
+    </a>
+    <a class="nav-item" href="./ingestion.html">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 1.5L4 9h3.5L7 14.5l5-7.5H8.5z"/></svg>
+      实时引接任务
+    </a>
+    <a class="nav-item" href="./ingestion.html">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 4.5A1.5 1.5 0 013 3h3l1.5 1.5H13A1.5 1.5 0 0114.5 6v5A1.5 1.5 0 0113 12.5H3A1.5 1.5 0 011.5 11z"/></svg>
+      文件引接任务
+    </a>
+    <div class="nav-group-label">运行运维</div>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="9" rx="1"/><path d="M5.5 14h5M8 11.5V14"/></svg>
+      引接引擎管理 <span class="badge">1</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2l5.5 2.5v4c0 3-2.5 5.5-5.5 6-3-.5-5.5-3-5.5-6v-4z"/></svg>
+      告警管理 <span class="badge">2</span>
+    </a>
+    <div class="nav-group-label">入湖管理</div>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2c3 0 5.5 1 5.5 2.5S11 7 8 7 2.5 6 2.5 4.5 5 2 8 2zM2.5 4.5v7C2.5 13 5 14 8 14s5.5-1 5.5-2.5v-7"/></svg>
+      物理入湖管理
+    </a>
+  </nav>
+
+  <header class="topbar">
+    <span class="brand"><span class="brand-mark"></span>Aircas · 引接分系统</span>
+    <span class="env-badge">测试环境</span>
+    <span class="topbar-crumb">数据引接 / 离线引接任务</span>
+    <div class="topbar-health">
+      <span class="ok">运行中 <b>1</b></span>
+      <span class="bad">失败 <b>2</b></span>
+      <span>今日完成 <b>4</b></span>
+      <button class="topbar-icon" title="主题"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11A5.5 5.5 0 008 2.5z" fill="currentColor" stroke="none"/></svg></button>
+      <span class="avatar">值</span>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>离线引接任务</h1>
+        <div class="sub">批量与单表离线同步，链路健康与失败原因行内直达。</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-sm" style="align-self:center">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+        导入任务定义
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3v10M3 8h10"/></svg>
+        创建离线任务
+      </button>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <input class="input" type="search" placeholder="搜索任务名或 ID" />
+        <select class="select"><option>全部健康状态</option><option>失败 2</option><option>运行中 1</option><option>已完成 4</option><option>已下线 1</option></select>
+        <select class="select"><option>全部单位</option><option>测试单位</option></select>
+        <div class="seg">
+          <button class="on">全部 <span class="n">8</span></button>
+          <button>单表 <span class="n">5</span></button>
+          <button>多表 <span class="n">2</span></button>
+          <button>脚本 <span class="n">1</span></button>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost btn-sm">筛选</button>
+      </div>
+
+      <table class="grid">
+        <thead>
+          <tr>
+            <th style="width:36px"><input type="checkbox" class="row-check" id="checkAll" /></th>
+            <th class="sorted">任务 <span class="sort">▼</span></th>
+            <th>链路</th>
+            <th>健康</th>
+            <th class="num">行数</th>
+            <th class="num">耗时</th>
+            <th class="num">QPS</th>
+            <th class="num" style="font-size:12px">配置时间</th>
+            <th class="act-col" style="width:140px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" class="row-check batch-check" checked /></td>
+            <td>
+              <div class="cell-main">mysql2dameng_test_单表</div>
+              <div class="cell-sub mono">ID 22990834764320 · 单表同步 · 全量</div>
+            </td>
+            <td>
+              <div class="link-flow">
+                <span class="node"><i>M</i><span class="db">seatunnel_web.</span><span class="tb">alarm_c…</span></span>
+                <span class="arrow">→</span>
+                <span class="node"><i>DM</i><span class="db">TEST.</span><span class="tb">alarm_mysql_sync</span></span>
+              </div>
+              <div class="cell-mode">手动触发 · 覆盖写入</div>
+            </td>
+            <td><span class="chip err">失败<div class="extra">2 次</div></span></td>
+            <td class="num zero">0</td>
+            <td class="num">2.4<span class="unit">s</span></td>
+            <td class="num zero">0</td>
+            <td class="num">09-11 20:18</td>
+            <td class="act-col">
+              <div class="actions">
+                <button class="act">日志</button>
+                <button class="act">启动</button>
+                <button class="act more" title="编辑 / 复制 / 上线 / 删除">⋯</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="expand-row" id="errRow">
+            <td></td>
+            <td colspan="8">
+              <div class="err-detail">
+                <div class="msg">Connect failed: jdbc:dm://192.168.100.95:5236/TEST — 达梦返回 -70021（用户名或密码错误）。最近成功 09-10 23:58。</div>
+                <div class="side">
+                  <button class="btn btn-ghost btn-sm">查看完整日志</button>
+                  <button class="btn btn-primary btn-sm">重新检测数据源</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="row-check batch-check" checked /></td>
+            <td>
+              <div class="cell-main">oracle2doris_用户域_多表</div>
+              <div class="cell-sub mono">ID 22990834994102 · 多表同步 · 增量</div>
+            </td>
+            <td>
+              <div class="link-flow">
+                <span class="node"><i>O</i><span class="db">ORACLE_APP.</span><span class="tb">12 张表</span></span>
+                <span class="arrow">→</span>
+                <span class="node"><i>D</i><span class="db">ods.</span><span class="tb">oracle_user</span></span>
+              </div>
+              <div class="cell-mode">周期 02:00 · 追加写入 · 上线</div>
+            </td>
+            <td><span class="chip run">运行中<div class="extra">12m</div></span></td>
+            <td class="num">84,216</td>
+            <td class="num">12m<span class="unit">06s</span></td>
+            <td class="num">1,240</td>
+            <td class="num">09-11 02:00</td>
+            <td class="act-col">
+              <div class="actions">
+                <button class="act">日志</button>
+                <button class="act">终止</button>
+                <button class="act more">⋯</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="row-check batch-check" /></td>
+            <td>
+              <div class="cell-main">pg2kingbase_test_单表</div>
+              <div class="cell-sub mono">ID 22990814941728 · 单表同步 · 全量</div>
+            </td>
+            <td>
+              <div class="link-flow">
+                <span class="node"><i>P</i><span class="db">public.</span><span class="tb">equipment</span></span>
+                <span class="arrow">→</span>
+                <span class="node"><i>K</i><span class="db">public.</span><span class="tb">equipment_pg_sync</span></span>
+              </div>
+              <div class="cell-mode">手动触发 · 覆盖写入</div>
+            </td>
+            <td><span class="chip ok">已完成</span></td>
+            <td class="num">22</td>
+            <td class="num">2.1<span class="unit">s</span></td>
+            <td class="num">10</td>
+            <td class="num">09-11 09:30</td>
+            <td class="act-col">
+              <div class="actions">
+                <button class="act">日志</button>
+                <button class="act">启动</button>
+                <button class="act more">⋯</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="row-check batch-check" /></td>
+            <td>
+              <div class="cell-main">kingbase2doris_设备台账_单表</div>
+              <div class="cell-sub mono">ID 22990722110044 · 单表同步 · 全量</div>
+            </td>
+            <td>
+              <div class="link-flow">
+                <span class="node"><i>K</i><span class="db">public.</span><span class="tb">device_ledger</span></span>
+                <span class="arrow">→</span>
+                <span class="node"><i>D</i><span class="db">ods.</span><span class="tb">device_ledger</span></span>
+              </div>
+              <div class="cell-mode">每日 01:30 · 覆盖写入 · 上线</div>
+            </td>
+            <td><span class="chip ok">已完成</span></td>
+            <td class="num">3,082</td>
+            <td class="num">6.8<span class="unit">s</span></td>
+            <td class="num">453</td>
+            <td class="num">09-11 01:30</td>
+            <td class="act-col">
+              <div class="actions">
+                <button class="act">日志</button>
+                <button class="act">启动</button>
+                <button class="act more">⋯</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="row-check batch-check" /></td>
+            <td>
+              <div class="cell-main">mysql2doris_日聚合_脚本</div>
+              <div class="cell-sub mono">ID 22990652311988 · 脚本 · 全量</div>
+            </td>
+            <td>
+              <div class="link-flow">
+                <span class="node"><i>M</i><span class="db">seatunnel_web.</span><span class="tb">4 张表</span></span>
+                <span class="arrow">→</span>
+                <span class="node"><i>D</i><span class="db">dws.</span><span class="tb">alarm_daily</span></span>
+              </div>
+              <div class="cell-mode">每日 03:00 · SQL 脚本 · 上线</div>
+            </td>
+            <td><span class="chip ok">已完成</span></td>
+            <td class="num">9,417</td>
+            <td class="num">18.2<span class="unit">s</span></td>
+            <td class="num">517</td>
+            <td class="num">09-11 03:00</td>
+            <td class="act-col">
+              <div class="actions">
+                <button class="act">日志</button>
+                <button class="act">启动</button>
+                <button class="act more">⋯</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="row-check batch-check" /></td>
+            <td>
+              <div class="cell-main">doris2pg_test_单表</div>
+              <div class="cell-sub mono">ID 22990537021344 · 单表同步 · 全量</div>
+            </td>
+            <td>
+              <div class="link-flow">
+                <span class="node"><i>D</i><span class="db">ods.</span><span class="tb">metric_data</span></span>
+                <span class="arrow">→</span>
+                <span class="node"><i>P</i><span class="db">public.</span><span class="tb">metric_data</span></span>
+              </div>
+              <div class="cell-mode">手动触发 · 覆盖写入</div>
+            </td>
+            <td><span class="chip err">失败<div class="extra">1 次</div></span></td>
+            <td class="num zero">0</td>
+            <td class="num">374<span class="unit">s</span></td>
+            <td class="num zero">0</td>
+            <td class="num">09-10 22:41</td>
+            <td class="act-col">
+              <div class="actions">
+                <button class="act">日志</button>
+                <button class="act">启动</button>
+                <button class="act more">⋯</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="row-check batch-check" /></td>
+            <td>
+              <div class="cell-main">mysql2oracle_test_单表</div>
+              <div class="cell-sub mono">ID 22990652311968 · 单表同步 · 全量</div>
+            </td>
+            <td>
+              <div class="link-flow">
+                <span class="node"><i>M</i><span class="db">seatunnel_web.</span><span class="tb">alarm_c…</span></span>
+                <span class="arrow">→</span>
+                <span class="node"><i>O</i><span class="db">ORACLE_APP.</span><span class="tb">alarm_mysql</span></span>
+              </div>
+              <div class="cell-mode">手动触发 · 覆盖写入</div>
+            </td>
+            <td><span class="chip ok">已完成</span></td>
+            <td class="num">1</td>
+            <td class="num">2.0<span class="unit">s</span></td>
+            <td class="num zero">0</td>
+            <td class="num">09-10 19:22</td>
+            <td class="act-col">
+              <div class="actions">
+                <button class="act">日志</button>
+                <button class="act">启动</button>
+                <button class="act more">⋯</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="row-check batch-check" /></td>
+            <td>
+              <div class="cell-main">stg_alarm_history_回灌</div>
+              <div class="cell-sub mono">ID 22990110440672 · 单表同步 · 全量</div>
+            </td>
+            <td>
+              <div class="link-flow">
+                <span class="node"><i>M</i><span class="db">alarm.</span><span class="tb">history</span></span>
+                <span class="arrow">→</span>
+                <span class="node"><i>D</i><span class="db">ods.</span><span class="tb">alarm_history</span></span>
+              </div>
+              <div class="cell-mode">手动触发 · 追加写入 · 已下线</div>
+            </td>
+            <td><span class="chip muted">已下线</span></td>
+            <td class="num">128,335</td>
+            <td class="num">41<span class="unit">m</span></td>
+            <td class="num">52</td>
+            <td class="num">09-06 11:15</td>
+            <td class="act-col">
+              <div class="actions">
+                <button class="act">日志</button>
+                <button class="act">上线</button>
+                <button class="act more">⋯</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="footbar">
+        <span>失败任务会保留最近一次错误摘要，点击「日志」查看逐行执行记录</span>
+        <span class="total">共 8 个任务 · 每页 20</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 批量操作条：选中 >0 时显示 -->
+<div class="batchbar" id="batchbar">
+  <span class="sel-count">已选 <b id="selCount">2</b> 项</span>
+  <span class="sep"></span>
+  <button class="btn btn-ghost btn-sm">上线</button>
+  <button class="btn btn-primary btn-sm">启动</button>
+  <button class="btn btn-ghost btn-sm">更多 ▾</button>
+  <span class="sep"></span>
+  <button class="linklike" id="clearSel" style="font-size:12.5px">取消选择</button>
+</div>
+
+<div class="proto-note">Redesign 参考原型 · 非正式 UI · docs/redesign/prototype</div>
+
+<script>
+  const checks = [...document.querySelectorAll('.batch-check')];
+  const batchbar = document.getElementById('batchbar');
+  const selCount = document.getElementById('selCount');
+  function sync() {
+    const n = checks.filter((c) => c.checked).length;
+    selCount.textContent = n;
+    batchbar.style.display = n > 0 ? 'flex' : 'none';
+  }
+  checks.forEach((c) => c.addEventListener('change', sync));
+  document.getElementById('checkAll').addEventListener('change', (e) => {
+    checks.forEach((c) => (c.checked = e.target.checked));
+    sync();
+  });
+  document.getElementById('clearSel').addEventListener('click', () => {
+    checks.forEach((c) => (c.checked = false));
+    document.getElementById('checkAll').checked = false;
+    sync();
+  });
+  // 失败行：点击该行健康 chip 或「日志」切换错误摘要展开
+  const errRow = document.getElementById('errRow');
+  errRow.style.display = 'none';
+  document.querySelectorAll('tr').forEach((tr) => {
+    const failed = tr.querySelector('.chip.err');
+    if (failed && !errRow.contains(failed)) {
+      const logBtn = [...tr.querySelectorAll('.act')].find((a) => a.textContent === '日志');
+      if (logBtn) logBtn.addEventListener('click', () => {
+        errRow.style.display = errRow.style.display === 'none' ? '' : 'none';
+      });
+    }
+  });
+  sync();
+</script>
+</body>
+</html>
