@@ -1,75 +1,28 @@
 import { message, Popover } from "antd";
 import type { MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import StatusChip, { type StatusChipTone } from "@/components/StatusChip";
 
 interface TaskStatusProps {
   status?: string;
   errorMessage?: string;
 }
 
-const statusConfig: Record<
-  string,
-  {
-    color: string;
-    label: string;
-  }
-> = {
-  FINISHED: {
-    color: "#16a34a",
-    label: "已完成",
-  },
-  SUCCESS: {
-    color: "#16a34a",
-    label: "已完成",
-  },
-  RUNNING: {
-    color: "#1677ff",
-    label: "运行中",
-  },
-  FAILED: {
-    color: "#ef4444",
-    label: "失败",
-  },
-  CANCELED: {
-    color: "var(--st-color-text-muted)",
-    label: "已取消",
-  },
-  CANCELLED: {
-    color: "var(--st-color-text-muted)",
-    label: "已取消",
-  },
-  PAUSED: {
-    color: "#f59e0b",
-    label: "已暂停",
-  },
-  INITIALIZING: {
-    color: "var(--st-color-text-muted)",
-    label: "初始化中",
-  },
-  CREATED: {
-    color: "var(--st-color-text-muted)",
-    label: "已创建",
-  },
-  PENDING: {
-    color: "var(--st-color-text-muted)",
-    label: "等待中",
-  },
-  SCHEDULED: {
-    color: "var(--st-color-text-muted)",
-    label: "已调度",
-  },
-  FAILING: {
-    color: "#ef4444",
-    label: "失败中",
-  },
-  DOING_SAVEPOINT: {
-    color: "#f59e0b",
-    label: "保存点中",
-  },
-  CANCELING: {
-    color: "var(--st-color-text-muted)",
-    label: "取消中",
-  },
+const statusConfig: Record<string, { tone: StatusChipTone; label: string }> = {
+  FINISHED: { tone: "success", label: "已完成" },
+  SUCCESS: { tone: "success", label: "已完成" },
+  RUNNING: { tone: "processing", label: "运行中" },
+  FAILED: { tone: "error", label: "失败" },
+  FAILING: { tone: "error", label: "失败中" },
+  PAUSED: { tone: "warning", label: "已暂停" },
+  DOING_SAVEPOINT: { tone: "warning", label: "保存点中" },
+  CANCELED: { tone: "neutral", label: "已取消" },
+  CANCELLED: { tone: "neutral", label: "已取消" },
+  INITIALIZING: { tone: "neutral", label: "初始化中" },
+  CREATED: { tone: "neutral", label: "已创建" },
+  PENDING: { tone: "neutral", label: "等待中" },
+  SCHEDULED: { tone: "neutral", label: "已调度" },
+  CANCELING: { tone: "neutral", label: "取消中" },
 };
 
 const getStatusConfig = (status?: string) => {
@@ -77,7 +30,7 @@ const getStatusConfig = (status?: string) => {
 
   return (
     statusConfig[normalizedStatus] || {
-      color: "#c0ccdc",
+      tone: "neutral" as StatusChipTone,
       label: status ? "未识别" : "未开始",
     }
   );
@@ -85,6 +38,7 @@ const getStatusConfig = (status?: string) => {
 
 const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
   const config = getStatusConfig(status);
+  const [logOpen, setLogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<number | null>(null);
 
@@ -117,16 +71,7 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
     }
   };
 
-  const content = (
-    <span
-      className="inline-flex min-w-[56px] items-center justify-center px-2 text-xs font-medium leading-none"
-      style={{ color: config.color }}
-      title={config.label}
-      aria-label={config.label}
-    >
-      {config.label}
-    </span>
-  );
+  const content = <StatusChip tone={config.tone} label={config.label} />;
 
   if (String(status || "").toUpperCase() === "FAILED" && errorMessage) {
     const lines = errorMessage.split("\n");
@@ -135,6 +80,8 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
       <Popover
         placement="right"
         trigger="hover"
+        open={logOpen}
+        onOpenChange={setLogOpen}
         title={null}
         overlayInnerStyle={{
           padding: 0,
@@ -181,7 +128,27 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
           </div>
         }
       >
-        <span className="inline-flex cursor-pointer">{content}</span>
+        <span
+          className="inline-flex cursor-pointer items-center gap-1.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {content}
+          <a
+            style={{
+              fontSize: 12,
+              lineHeight: '20px',
+              color: 'var(--st-color-accent)',
+            }}
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              setLogOpen(true);
+            }}
+          >
+            日志
+          </a>
+        </span>
       </Popover>
     );
   }

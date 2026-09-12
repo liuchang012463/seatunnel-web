@@ -45,7 +45,7 @@
     }
 
     .ant-table-tbody > tr > td {
-      padding: 18px 16px;
+      padding: 12px 16px;
       color: rgba(238, 251, 255, 0.92);
       background: rgba(0, 52, 70) !important;
       border-bottom: 1px solid rgba(77, 210, 255, 0.08);
@@ -64,9 +64,25 @@
       background: rgba(0, 47, 63, 0.92) !important;
     }
 
-    .ant-table-cell-fix-right {
-      background: rgba(0, 58, 76, 0.96) !important;
-      box-shadow: -12px 0 22px rgba(0, 20, 28, 0.22);
+    /* 固定列必须不透明，否则下层列头文字透出（审计 audit-08「执: 操作」） */
+    .ant-table-cell-fix-right,
+    .ant-table-cell-fix-right-first,
+    .ant-table-cell-fix-left,
+    .ant-table-cell-fix-left-first,
+    .ant-table-cell-fix-left-last {
+      background: #003a4c !important;
+      border-left: 0;
+      box-shadow: none;
+    }
+
+    .ant-table-cell-fix-right-first::after {
+      box-shadow: none;
+    }
+
+    th.ant-table-cell-fix-right,
+    th.ant-table-cell-fix-left {
+      background: #002e41 !important;
+      border-left: 1px solid var(--st-color-divider-subtle);
     }
 
     .ant-table-selection-column {
@@ -97,24 +113,23 @@
   }
 
   .sync-task-name-cell__title {
-    color: #fff;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--st-color-text-primary);
     font-size: 14px;
-    font-weight: bolder;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .sync-task-name-cell__id {
     margin-top: 2px;
-    color: rgba(220, 238, 245, 0.7);
+    color: var(--st-color-text-muted);
+    font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
     font-size: 12px;
 
-    em {
-      color: rgba(238, 251, 255, 0.94);
-      font-style: normal;
-      font-weight: 600;
-    }
-
     span {
-      color: rgba(220, 238, 245, 0.78);
+      color: var(--st-color-text-muted);
     }
   }
 

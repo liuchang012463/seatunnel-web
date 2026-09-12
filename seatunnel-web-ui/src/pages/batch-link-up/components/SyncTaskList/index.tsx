@@ -233,23 +233,10 @@ const App: React.FC<Props> = ({
       sortOrder: sort.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (_content: any, record: any) => (
         <div className="sync-task-name-cell">
-          <div className="sync-task-name-cell__title">
-            <em>
-              {intl.formatMessage({
-                id: "pages.job.table.label.jobName",
-                defaultMessage: "JobName",
-              })}
-            </em>
-            : {record?.jobName}
+          <div className="sync-task-name-cell__title" title={record?.jobName}>
+            {record?.jobName}
           </div>
           <div className="sync-task-name-cell__id">
-            <em>
-              {intl.formatMessage({
-                id: "pages.job.table.label.jobId",
-                defaultMessage: "Job Definition ID",
-              })}
-            </em>
-            :{" "}
             <span>{record?.id}</span>{" "}
             <Tooltip title="复制任务定义ID">
               <button
