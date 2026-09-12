@@ -50,8 +50,14 @@
 .stream-link-task-table .ant-table-tbody > tr:hover > td,
 .stream-link-task-table .ant-table-tbody > tr.ant-table-row-selected > td { background: var(--st-color-hover); }
 
+/* 固定列必须不透明，否则下层列头文字透出（审计 audit-08「执: 操作」） */
 .stream-link-task-table .ant-table-cell-fix-right {
-  background: var(--st-color-bg-panel);
+  background: var(--st-color-bg-panel) !important;
+  border-left: 1px solid var(--st-color-divider-subtle);
+  box-shadow: none;
+}
+
+.stream-link-task-table .ant-table-cell-fix-right-first::after {
   box-shadow: none;
 }
 

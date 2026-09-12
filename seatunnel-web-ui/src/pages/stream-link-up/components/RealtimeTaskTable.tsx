@@ -107,40 +107,21 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       render: (_content, record) => (
         <div className="stream-link-task-name-cell">
           <div className="sync-task-name-cell__title">
-            <em>
-              <span style={{ fontWeight: "bold", color: "#fff" }}>
-                {intl.formatMessage({
-                  id: "pages.job.table.label.jobName",
-                  defaultMessage: "任务名",
-                })}
-              </span>
-            </em>
-            <span>&nbsp;:&nbsp;</span>
-
             <Tooltip title={record.jobName || record.id}>
-              <span className="min-w-0 max-w-[150px] truncate text-slate-950">
+              <span className="min-w-0 max-w-[240px] truncate text-[color:var(--st-color-text-primary)]">
                 {record.jobName || "未命名实时任务"}
               </span>
             </Tooltip>
           </div>
           <div className="stream-link-task-name-cell__line">
-            <em className="shrink-0 font-medium not-italic text-slate-700">
-              {intl.formatMessage({
-                id: "pages.job.table.label.jobId",
-                defaultMessage: "任务定义ID",
-              })}
-            </em>
-            <span className="text-slate-400">:</span>
             <Tooltip title={record.id}>
-              <span className="">
-                {record.id}
-              </span>
+              <span className="sync-task-name-cell__id">{record.id}</span>
             </Tooltip>
 
             <Tooltip title="复制任务定义 ID">
               <button
                 type="button"
-                className="ml-1 inline-flex h-[18px] w-[18px] items-center justify-center rounded border-none bg-transparent text-slate-400 transition hover:bg-slate-100 hover:text-blue-600"
+                className="ml-1 inline-flex h-[18px] w-[18px] items-center justify-center rounded border-none bg-transparent text-[color:var(--st-color-text-muted)] transition hover:bg-[rgba(77,210,255,0.08)] hover:text-[color:var(--st-color-accent)]"
                 aria-label="复制任务定义 ID"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -152,14 +133,9 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
             </Tooltip>
           </div>
           <div className="stream-link-task-name-cell__line">
-            <em className="shrink-0 font-medium not-italic text-slate-700">
-              zetaId
-            </em>
-            <span className="text-slate-400">:</span>
-
             <Tooltip title={record.engineJobId || "未启动"}>
-              <span className="min-w-0 max-w-[150px] truncate text-slate-950">
-                {record.engineJobId || "未启动"}
+              <span className="min-w-0 max-w-[150px] truncate text-[color:var(--st-color-text-muted)]">
+                zetaId {record.engineJobId || "未启动"}
               </span>
             </Tooltip>
           </div>
