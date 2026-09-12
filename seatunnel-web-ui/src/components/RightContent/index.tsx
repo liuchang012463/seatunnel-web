@@ -56,6 +56,8 @@ export const OpenAPI: React.FC = () => {
   );
 };
 
+export { default as HeaderPageInfo } from './HeaderPageInfo';
+
 type SearchTarget = {
   pathname: string;
   query?: Record<string, string>;

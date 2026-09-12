@@ -5,7 +5,7 @@ import '@ant-design/v5-patch-for-react-19';
 import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
-import { Knowledge } from './components/RightContent';
+import { HeaderPageInfo, Knowledge } from './components/RightContent';
 import { prototypeMenuData } from './prototype/menuData';
 import { isPrototypeMode } from './prototype/mode';
 import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
@@ -91,6 +91,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
         ? ['/menu/exploration', '/menu/ingestion', '/menu/operations', '/menu/lake', '/menu/system']
         : ['/menu/ingestion'],
     },
+    headerContentRender: () => (isPrototypeMode ? undefined : <HeaderPageInfo />),
     actionsRender: () => (isPrototypeMode ? [] : [<Knowledge key="knowledge" />]),
     waterMarkProps: showWatermark ? { content: initialState?.currentUser?.name } : undefined,
     footerRender: () => <Footer />,

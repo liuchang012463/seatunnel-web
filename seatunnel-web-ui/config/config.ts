@@ -23,6 +23,7 @@ export default defineConfig({
   define: {
     "process.env.REACT_APP_PROTOTYPE": IS_PROTOTYPE ? "1" : "0",
     "process.env.UMI_APP_PROTOTYPE": IS_PROTOTYPE ? "1" : "0",
+    "process.env.REACT_APP_ENV": REACT_APP_ENV,
   },
   /**
    * @name 开启 hash 模式
