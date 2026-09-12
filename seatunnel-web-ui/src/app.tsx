@@ -86,11 +86,6 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
 
   return {
     menuDataRender: () => prototypeMenuData,
-    menuProps: {
-      defaultOpenKeys: isPrototypeMode
-        ? ['/menu/exploration', '/menu/ingestion', '/menu/operations', '/menu/lake', '/menu/system']
-        : ['/menu/ingestion'],
-    },
     headerContentRender: () => (isPrototypeMode ? undefined : <HeaderPageInfo />),
     actionsRender: () => (isPrototypeMode ? [] : [<Knowledge key="knowledge" />]),
     waterMarkProps: showWatermark
