@@ -55,8 +55,8 @@ const ClientMetricsSection: React.FC<Props> = ({ metricsLoading, metrics }) => {
   return (
     <div className="mb-5">
       <div className="mb-4">
-        <div className="text-[16px] font-semibold text-[#172033]">核心指标</div>
-        <div className="mt-1 text-[13px] text-[#8A94A6]">
+        <div className="text-[16px] font-semibold text-[color:var(--st-color-text-primary)]">核心指标</div>
+        <div className="mt-1 text-[13px] text-[color:var(--st-color-text-muted)]">
           当前优先展示 CPU、内存、线程数与运行中任务 4 个核心指标
         </div>
       </div>
@@ -71,42 +71,42 @@ const ClientMetricsSection: React.FC<Props> = ({ metricsLoading, metrics }) => {
           return (
             <div
               key={item.key}
-              className="rounded-[22px] border border-[#E9EDF3] bg-white p-5"
+              className="rounded-[22px] border border-[#E9EDF3] bg-[color:var(--st-color-bg-panel)] p-5"
             >
               <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="text-[13px] font-semibold tracking-[0.02em] text-[#667085]">
+                <div className="text-[13px] font-semibold tracking-[0.02em] text-[color:var(--st-color-text-muted)]">
                   {item.label}
                 </div>
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F3F6FB] text-[16px] text-[#44546F]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--st-color-bg-control)] text-[16px] text-[color:var(--st-color-text-secondary)]">
                   {item.icon}
                 </div>
               </div>
 
               {item.type === "progress" ? (
                 <>
-                  <div className="mb-3 text-[28px] font-bold tracking-[-0.03em] text-[#172033]">
+                  <div className="mb-3 text-[28px] font-bold tracking-[-0.03em] text-[color:var(--st-color-text-primary)]">
                     {metricsLoading ? "--" : formatPercent(item.value)}
                   </div>
 
                   <Progress
                     percent={metricsLoading ? 0 : progressValue}
                     showInfo={false}
-                    strokeColor="#4F5BD5"
-                    trailColor="#EEF2F7"
+                    strokeColor="#4dd2ff"
+                    trailColor="rgba(143, 173, 186, 0.25)"
                     size="small"
                   />
 
-                  <div className="mt-3 text-[12px] leading-6 text-[#8A94A6]">
+                  <div className="mt-3 text-[12px] leading-6 text-[color:var(--st-color-text-muted)]">
                     {item.desc}
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="mb-3 break-words text-[28px] font-bold tracking-[-0.03em] text-[#172033]">
+                  <div className="mb-3 break-words text-[28px] font-bold tracking-[-0.03em] text-[color:var(--st-color-text-primary)]">
                     {metricsLoading ? "--" : formatText(item.value)}
                   </div>
 
-                  <div className="text-[12px] leading-6 text-[#8A94A6]">
+                  <div className="text-[12px] leading-6 text-[color:var(--st-color-text-muted)]">
                     {item.desc}
                   </div>
                 </>

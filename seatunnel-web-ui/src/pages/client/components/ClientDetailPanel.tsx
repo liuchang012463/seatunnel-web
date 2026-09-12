@@ -2,6 +2,7 @@ import { ApiOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Button, Empty } from "antd";
 import { AnimatePresence } from "framer-motion";
 import React, { useMemo } from "react";
+import StatusChip from "@/components/StatusChip";
 import { BLUE, MotionDiv, contentSwapVariants } from "../constants";
 import ClientMetricsSection from "./ClientMetricsSection";
 
@@ -16,26 +17,23 @@ interface Props {
 const getHealthMeta = (healthStatus?: number) => {
   if (healthStatus === 1) {
     return {
-      dot: "bg-emerald-500",
-      badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      label: "Healthy",
+      tone: "success" as const,
+      label: "健康",
       desc: "节点运行正常，可用于任务提交与监控。",
     };
   }
 
   if (healthStatus === 2) {
     return {
-      dot: "bg-amber-500",
-      badge: "border-amber-200 bg-amber-50 text-amber-700",
-      label: "Warning",
+      tone: "warning" as const,
+      label: "注意",
       desc: "节点当前存在轻微异常，建议关注运行状态。",
     };
   }
 
   return {
-    dot: "bg-rose-500",
-    badge: "border-rose-200 bg-rose-50 text-rose-700",
-    label: "Down",
+    tone: "error" as const,
+    label: "离线",
     desc: "节点当前不可用，请检查地址、进程或网络连接。",
   };
 };
@@ -63,7 +61,7 @@ const ClientDetailPanel: React.FC<Props> = ({
 
   if (!selectedClient) {
     return (
-      <div className="flex min-h-full items-center justify-center rounded-2xl border border-dashed border-[#D0D5DD] bg-[#FCFCFD]">
+      <div className="flex min-h-full items-center justify-center rounded-2xl border border-dashed border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-panel)]">
         <Empty description="请选择左侧 Client 查看详情" />
       </div>
     );
@@ -79,15 +77,14 @@ const ClientDetailPanel: React.FC<Props> = ({
         variants={contentSwapVariants}
         className="min-h-full"
       >
-        <section className="mb-6 rounded-2xl border border-[#EAECF0] bg-white px-6 py-6 shadow-[0_8px_24px_rgba(16,24,40,0.045)]">
+        <section className="mb-6 rounded-2xl border border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-panel)] px-6 py-6 shadow-[0_8px_24px_rgba(16,24,40,0.045)]">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="min-w-0 flex-1">
               <div className="flex items-start gap-4">
                 <div
                   className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
                   style={{
-                    background:
-                      "linear-gradient(135deg, #EEF4FF 0%, #F8FAFF 100%)",
+                    background: "var(--st-color-selected)",
                     color: BLUE,
                   }}
                 >
@@ -96,27 +93,20 @@ const ClientDetailPanel: React.FC<Props> = ({
 
                 <div className="min-w-0 flex-1 pt-0.5">
                   <div className="flex flex-wrap items-center gap-2.5">
-                    <h1 className="m-0 max-w-[420px] truncate text-[21px] font-semibold leading-8 text-[#101828]">
+                    <h1 className="m-0 max-w-[420px] truncate text-[21px] font-semibold leading-8 text-[color:var(--st-color-text-primary)]">
                       {clientName}
                     </h1>
 
                     {clientVersion && (
-                      <span className="inline-flex h-6 items-center rounded-full border border-[#DFE7F3] bg-[#F7FAFF] px-2.5 text-[12px] font-medium text-[#4F5BD5]">
+                      <span className="inline-flex h-6 items-center rounded-full border border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-panel)] px-2.5 text-[12px] font-medium text-[color:var(--st-color-accent)]">
                         v{clientVersion}
                       </span>
                     )}
 
-                    <span
-                      className={`inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium ${healthMeta.badge}`}
-                    >
-                      <span
-                        className={`inline-block h-1.5 w-1.5 rounded-full ${healthMeta.dot}`}
-                      />
-                      {healthMeta.label}
-                    </span>
+                    <StatusChip tone={healthMeta.tone} label={healthMeta.label} detail={healthMeta.desc} />
                   </div>
 
-                  <div className="mt-1.5 text-[13px] text-[#98A2B3]">
+                  <div className="mt-1.5 text-[13px] text-[color:var(--st-color-text-muted)]">
                     {engineType} Engine Client
                   </div>
 
@@ -124,22 +114,18 @@ const ClientDetailPanel: React.FC<Props> = ({
                     <div
                       className="
                 inline-flex max-w-full items-center gap-2 rounded-full
-                border border-[#E7EDF4]
+                border border-[color:var(--st-color-divider)]
                 px-3 py-1.5
-                text-[13px] font-medium text-[#344054]
+                text-[13px] font-medium text-[color:var(--st-color-text-secondary)]
               "
-                      style={{ backgroundColor: "#FAFBFC" }}
+                      style={{ backgroundColor: "var(--st-color-bg-panel)" }}
                     >
-                      <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${healthMeta.dot}`} />
                       <span className="break-all">{displayBaseUrl}</span>
                     </div>
                   </div>
 
-                  <div className="mt-2.5 flex items-center gap-2 text-[13px] leading-5 text-[#667085]">
-                    <span
-                      className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${healthMeta.dot}`}
-                    />
-                    <span className="text-[#667085]">{healthMeta.desc}</span>
+                  <div className="mt-2.5 flex items-center gap-2 text-[13px] leading-5 text-[color:var(--st-color-text-muted)]">
+                    <span>{healthMeta.desc}</span>
                   </div>
                 </div>
               </div>
@@ -150,11 +136,11 @@ const ClientDetailPanel: React.FC<Props> = ({
               loading={metricsLoading}
               onClick={() => onRefresh(selectedClientId)}
               className="
-        h-10 rounded-full border-[#E4E7EC] px-4
-        text-[13px] font-medium text-[#475467]
+        h-10 rounded-full border-[color:var(--st-color-divider)] px-4
+        text-[13px] font-medium text-[color:var(--st-color-text-secondary)]
         shadow-[0_2px_8px_rgba(16,24,40,0.04)]
         transition-all duration-200
-        hover:!border-[#CBD5E1] hover:!text-[#344054]
+        hover:!border-[color:var(--st-color-accent)] hover:!text-[color:var(--st-color-text-secondary)]
       "
             >
               刷新指标

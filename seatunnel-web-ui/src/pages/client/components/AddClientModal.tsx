@@ -195,10 +195,10 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
           </div>
 
           <div>
-            <div className="text-[18px] font-semibold text-[#101828]">
+            <div className="text-[18px] font-semibold text-[color:var(--st-color-text-primary)]">
               {isEdit ? "编辑 Client" : "新增 Client"}
             </div>
-            <div className="mt-0.5 text-[13px] text-[#667085]">
+            <div className="mt-0.5 text-[13px] text-[color:var(--st-color-text-muted)]">
               配置 SeaTunnel Zeta REST 连接信息。
             </div>
           </div>
@@ -242,7 +242,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
         </div>
       }
     >
-      <div className="rounded-2xl border border-[#EAF0F6] bg-white p-5">
+      <div className="rounded-2xl border border-[#EAF0F6] bg-[color:var(--st-color-bg-panel)] p-5">
         <Form
           form={form}
           layout="vertical"
@@ -333,13 +333,13 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
                       {(fields, { add, remove }) => (
                         <>
                           <div className="mb-2 flex items-center justify-between">
-                            <div className="text-[13px] font-medium text-[#667085]">
+                            <div className="text-[13px] font-medium text-[color:var(--st-color-text-muted)]">
                               Master REST 地址
                             </div>
 
                             <button
                               type="button"
-                              className="inline-flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-[10px] border border-[#e6ebf5] bg-white text-[#667085] transition-all duration-200 ease-in-out hover:border-[#93c5fd] hover:bg-[#f8fbff] hover:text-[#3b82f6]"
+                              className="inline-flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-[10px] border border-[#e6ebf5] bg-[color:var(--st-color-bg-panel)] text-[color:var(--st-color-text-muted)] transition-all duration-200 ease-in-out hover:border-[#93c5fd] hover:bg-[#f8fbff] hover:text-[#3b82f6]"
                               onClick={() =>
                                 add(
                                   createDefaultMasterEndpoint(fields.length + 1)
@@ -487,7 +487,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
               <Switch />
             </Form.Item>
 
-            <span className="text-[13px] text-[#344054]">开启 Basic Auth</span>
+            <span className="text-[13px] text-[color:var(--st-color-text-secondary)]">开启 Basic Auth</span>
           </div>
 
           <Form.Item noStyle shouldUpdate>

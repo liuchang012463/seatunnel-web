@@ -32,7 +32,7 @@ export const getHealthInfo = (client: ClientMonitoring): HealthInfo => {
   ) {
     return {
       level: "warning",
-      title: "Warning",
+      title: "注意",
       subtitle: "存在需要关注的运行指标",
       score: 68,
       color: "#faad14",
@@ -41,7 +41,7 @@ export const getHealthInfo = (client: ClientMonitoring): HealthInfo => {
 
   return {
     level: "healthy",
-    title: "Healthy",
+    title: "健康",
     subtitle: "系统整体运行平稳",
     score: 92,
     color: "#52c41a",
@@ -361,7 +361,7 @@ export const getHealthMeta = (healthStatus?: number) => {
     return {
       dot: "bg-emerald-500",
       badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      label: "Healthy",
+      label: "健康",
       desc: "节点运行正常，可用于任务提交与监控。",
     };
   }
@@ -370,7 +370,7 @@ export const getHealthMeta = (healthStatus?: number) => {
     return {
       dot: "bg-amber-500",
       badge: "border-amber-200 bg-amber-50 text-amber-700",
-      label: "Warning",
+      label: "注意",
       desc: "节点当前存在轻微异常，建议关注运行状态。",
     };
   }
@@ -378,7 +378,7 @@ export const getHealthMeta = (healthStatus?: number) => {
   return {
     dot: "bg-rose-500",
     badge: "border-rose-200 bg-rose-50 text-rose-700",
-    label: "Down",
+    label: "离线",
     desc: "节点当前不可用，请检查地址、进程或网络连接。",
   };
 };
