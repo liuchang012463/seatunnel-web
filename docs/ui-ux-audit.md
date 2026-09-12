@@ -139,3 +139,25 @@ IA 本身清晰，主要问题在**导航呈现**与**页面内部的信息设�
 问题的**根因**集中在三层：① 双主题双语言没有统一的令牌与算法底座（G1/G2）；② 缺一套强制共享的"表格/状态/工具条/动作"组件语义（G4-G8）；③ 全局壳层（导航/页头）没有承担信息架构职责（G3/G10）。视觉方向（军工暗蓝）本身成立，不需要换方向，需要**提纯与制度化**。
 
 对应的方向与系统方案见 [`DESIGN.md`](./DESIGN.md)；三个代表性页面的隔离参考原型见 `docs/redesign/prototype/`（原型仅作评审，不含入正式 UI）。
+
+## 7. 修复记录（2026-09-13，分支 `redesign`）
+
+按「只修审计点名问题 + 页面微调、不搬原型布局」的口径完成第一轮修复，20 个 commit（`628389b4..2ceb2fed`），全站 20 页截图回归通过、控制台 intl 刷屏清零、`tsc --noEmit` 通过。逐项对应：
+
+| 审计项 | 修复 | commit |
+| --- | --- | --- |
+| G1 双主题分裂 | 浅色主题冻结（隐藏切换入口、强制暗色；浅色补丁代码保留待 v2）；新建数据源弹层等亮色碎片随主题冻结消除 | `25cf310d` |
+| G2 架构（部分） | 本轮只移除有害规则（棕 hover/斑马纹/饱和表头断言 ×4），antd 算法正规化留待下一里程碑 | `367d6ef3` 等 |
+| G3 导航 | 两个根因修复：defaultOpenKeys 强制展开的悬空弹层（`755e61f8`）+ ProLayout 展开态被 64px 夹紧产生的空方块（`7ef90f1c`，collapsed:true）；收起态叶子项 Tooltip 为 antd 原生；顶栏补环境徽标（REACT_APP_ENV 注入）+ 与菜单同词的页面标题（`99ada579`） | `755e61f8` `7ef90f1c` `99ada579` |
+| G4 表格语言 | 全局表头改低饱和深底 + muted 500 字重、删斑马纹、棕 hover→令牌、网格线降发丝线；SyncTaskList 渐变表头/stream 色带/数据源横向渐变对齐；列头 `Resource Status`/`ODS Database` 中文化 | `367d6ef3` `163ea68b` `229fad67` |
+| G5 动作过载 | 数据源卡片 5-6 动作→2+更多（删除/注销/停用进菜单，删除红字+既有确认）；列表操作列 360→230px；批量栏空列表不渲染、选中才出现「已选 n｜启动｜终止｜更多▾｜取消」 | `cfd6f82d` `e2afa59f` |
+| G6 标签噪声 | 新增共享 StatusChip（●+文双通道+Tooltip）；数据源卡 4-5 标签→3 个状态 chip；健康列纯彩字→StatusChip；Client 页 Healthy→「健康」 | `cfd6f82d` `4ec5040b` `a6f750cd` |
+| G7 图表跑色 | echarts 注册青色主题（无紫）；柱图靛蓝/折线默认色→accent；KPI 图标四色→accent 单色；bg-slate-50 亮面板移除；进度条 #4F5BD5→accent；版本号/节点数等数值不再染红（valueTone） | `d91d2d75` `23d529b8` `a6f750cd` |
+| G8 筛选混乱 | 排序按钮组移除、排序归列头（URL 语义不变）；「展开」按钮 indigo→令牌 | `a9f24c78` |
+| G9 术语 | Client 管理→引接引擎管理；连接器副标题 Jdbc/S3File→协议说明；弹层「当前类型：代码」→展示名；UNIT_xxx/SYSTEM_xxx→主数据名称（useMasterDataNames 映射） | `bbaa6b81` `229fad67` `a6f750cd` |
+| G10 状态断裂 | 任务详情（离线/实时/文件）裸「暂无数据」→页壳+返回+引导；失败行内「日志」直达（受控 Popover）；告警空态/工具条 CTA 去重；探查 0 值环补引导；水印降噪 | `eb9f3fc5` `4ec5040b` `efe23584` `2ceb2fed` `52cc84a9` |
+| G11 控制台噪声 | menu.* 缺失 2 词条补齐，Missing message 42+42/页→0；本项目 destroyOnClose→destroyOnHidden、onVisibleChange→onOpenChange；剩余 findDOMNode/styles.* 为依赖内部警告（1-3 条/页），留待 G2 根治 | `1020ca3c` |
+| G12 密度 | 任务行 td padding 18→12px；名称列 KV 冒号排版→主文本+mono muted 副行；数据源列表补类型/归属/更新时间列（更新时间并入名称副行），1440 下零横向滚动 | `4ec5040b` `cfd6f82d` |
+| 页面要点 | 附带修复：sticky 固定列半透明底导致的「执: 操作」/「操作动态调度」列头穿透（全局固定列改不透明）；Inspector 统计奇数末格空色块；探查结果资源卡去 card-in-card 改行式；告警 tab 盒子通栏；主数据操作列宽 | `4ec5040b` `2ceb2fed` `efe23584` `229fad67` |
+
+**未做（按计划留待下一里程碑）**：G2 根治（antd darkAlgorithm 正规化与 !important 清除）、任务列表 FilterToolbar 单行化重排、浅色主题 v2、`--st-*` 令牌值升级、探查 Inspector 列画像。回归截图：`tmp/ui-fix/regress-*.png`（gitignored）。
