@@ -93,7 +93,13 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     },
     headerContentRender: () => (isPrototypeMode ? undefined : <HeaderPageInfo />),
     actionsRender: () => (isPrototypeMode ? [] : [<Knowledge key="knowledge" />]),
-    waterMarkProps: showWatermark ? { content: initialState?.currentUser?.name } : undefined,
+    waterMarkProps: showWatermark
+      ? {
+          content: initialState?.currentUser?.name,
+          fontSize: 13,
+          fontColor: 'rgba(143, 173, 186, 0.10)',
+        }
+      : undefined,
     footerRender: () => <Footer />,
     bgLayoutImgList: isPrototypeMode
       ? []
