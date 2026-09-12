@@ -226,7 +226,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       centered
       maskClosable={false}
       onCancel={handleClose}
-      destroyOnClose
+      destroyOnHidden
       styles={{
         header: {
           padding: '20px 24px 16px',

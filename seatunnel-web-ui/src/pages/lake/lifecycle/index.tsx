@@ -167,7 +167,7 @@ const PolicyEditorDrawer: React.FC<{
       open={open}
       width={520}
       title={policy ? '编辑生命周期策略' : '新建生命周期策略'}
-      destroyOnClose
+      destroyOnHidden
       onClose={onClose}
     >
       <Alert
@@ -383,7 +383,7 @@ const ApplyPolicyDrawer: React.FC<{
       width={860}
       title={`应用策略${policy?.policyName ? `：${policy.policyName}` : ''}`}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       extra={policy ? <Tag color="blue">v{policy.version}</Tag> : null}
     >
       <Card size="small" className="lake-policy-snapshot" title="Policy Snapshot">
@@ -546,7 +546,7 @@ const LifecycleTableDetail: React.FC<{
       width={760}
       title="表生命周期详情"
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       extra={<Button icon={<ReloadOutlined />} onClick={() => void explicitValidate()} disabled={!selectedPolicyId}>重新校验</Button>}
     >
       <Spin spinning={loading}>

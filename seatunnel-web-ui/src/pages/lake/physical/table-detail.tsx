@@ -242,7 +242,7 @@ const TableDeleteModal: React.FC<{
   };
 
   return (
-    <Modal open={open} title="删除 MANAGED 表" onCancel={onClose} destroyOnClose width={620} footer={[
+    <Modal open={open} title="删除 MANAGED 表" onCancel={onClose} destroyOnHidden width={620} footer={[
       <Button key="cancel" onClick={onClose}>取消</Button>,
       <Button key="delete" danger type="primary" loading={deleteLoading} disabled={impactLoading || !impact?.allowed || confirmation.trim() !== table?.targetTableName} onClick={() => void submit()}>确认删除</Button>,
     ]}>

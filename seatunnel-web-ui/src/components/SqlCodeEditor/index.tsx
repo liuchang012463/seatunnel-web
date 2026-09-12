@@ -692,7 +692,7 @@ export default function SqlCodeEditor({
           centered
           width="min(920px, calc(100vw - 48px))"
           className="sql-code-editor-modal"
-          destroyOnClose
+          destroyOnHidden
           maskClosable={false}
           onCancel={handleCancelFullscreen}
           footer={

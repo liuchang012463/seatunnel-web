@@ -307,7 +307,7 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
       open={open}
       title="创建逻辑挂载"
       width={520}
-      destroyOnClose
+      destroyOnHidden
       onClose={onClose}
       footer={<Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={loading} disabled={capabilityLoading || !canAttempt} onClick={() => form.submit()}>创建并验证</Button></Space>}
     >

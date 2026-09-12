@@ -186,7 +186,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
       open={open}
       centered
       maskClosable={false}
-      destroyOnClose
+      destroyOnHidden
       onCancel={onCancel}
       title={
         <div className="flex items-center gap-3">

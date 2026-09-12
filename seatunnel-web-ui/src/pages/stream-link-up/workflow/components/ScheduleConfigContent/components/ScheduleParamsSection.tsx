@@ -136,7 +136,7 @@ const ScheduleParamsSection: React.FC<Props> = ({ value, onChange }) => {
             title="参数预览"
             trigger="click"
             visible={isPopoverVisible} 
-            onVisibleChange={(visible) => setPopoverVisible(visible)} 
+            onOpenChange={(visible) => setPopoverVisible(visible)} 
           >
             <Link
               className="inline-flex h-7 items-center justify-center gap-1 rounded-[10px] border px-2.5 text-[13px] font-medium"

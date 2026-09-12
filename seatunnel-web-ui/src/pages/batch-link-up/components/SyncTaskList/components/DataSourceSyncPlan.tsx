@@ -433,7 +433,7 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
               />
               <Popover
                 open={sourcePopoverVisible}
-                onVisibleChange={(visible) => setSourcePopoverVisible(visible)}
+                onOpenChange={(visible) => setSourcePopoverVisible(visible)}
                 title="数据源信息"
                 content={renderJsonPopoverContent()}
                 trigger="click"
@@ -533,7 +533,7 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
               <DatabaseIcons dbType={record.sinkType} width="24" height="24" />
               <Popover
                 open={sinkPopoverVisible}
-                onVisibleChange={(visible) => setSinkPopoverVisible(visible)}
+                onOpenChange={(visible) => setSinkPopoverVisible(visible)}
                 title="数据源信息"
                 content={renderJsonPopoverContent()}
                 trigger="click"

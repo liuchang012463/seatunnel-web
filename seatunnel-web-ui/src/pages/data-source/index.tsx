@@ -733,7 +733,7 @@ const DataSourcePage: React.FC = () => {
         placement="right"
         width={1120}
         open={masterDataOpen}
-        destroyOnClose
+        destroyOnHidden
         onClose={() => setMasterDataOpen(false)}
         styles={{ body: { padding: '8px 20px 24px' } }}
       >

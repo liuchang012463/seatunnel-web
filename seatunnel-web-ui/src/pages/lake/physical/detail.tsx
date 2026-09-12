@@ -125,7 +125,7 @@ const OdsDatabaseDrawer: React.FC<{
   };
 
   return (
-    <Drawer open={open} width={520} title="创建 ODS Database" destroyOnClose onClose={onClose}>
+    <Drawer open={open} width={520} title="创建 ODS Database" destroyOnHidden onClose={onClose}>
       <Alert
         type="info"
         showIcon
@@ -229,7 +229,7 @@ const BindUnmanagedDrawer: React.FC<{
   };
 
   return (
-    <Drawer open={open} width={520} title="关联未纳管表" destroyOnClose onClose={onClose}>
+    <Drawer open={open} width={520} title="关联未纳管表" destroyOnHidden onClose={onClose}>
       <Alert type="warning" showIcon message="显式关联仍保持 UNMANAGED" description="不会自动生成合同、生命周期或删除权限；这里只记录用户明确选择的源表。" className="lake-detail-alert" />
       <Descriptions bordered size="small" column={1}>
         <Descriptions.Item label="Doris 表">{table?.targetTableName || '-'}</Descriptions.Item>

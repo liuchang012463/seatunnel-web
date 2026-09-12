@@ -38,7 +38,7 @@ const ConnectorParamModal: React.FC<Props> = ({
       onCancel={onCancel}
       onOk={onSubmit}
       confirmLoading={submitting}
-      destroyOnClose
+      destroyOnHidden
       okText="保存"
       cancelText="取消"
       styles={{

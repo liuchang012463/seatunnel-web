@@ -430,7 +430,7 @@ const AddOrEditRuleModal = forwardRef<
       closable={false}
       maskClosable={!confirmLoading}
       keyboard={!confirmLoading}
-      destroyOnClose
+      destroyOnHidden
       styles={{
         body: {
           padding: 0,

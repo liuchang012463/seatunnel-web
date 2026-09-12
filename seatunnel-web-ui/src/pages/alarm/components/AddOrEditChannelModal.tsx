@@ -693,7 +693,7 @@ const AddOrEditChannelModal =
         keyboard={
           !confirmLoading && !testing
         }
-        destroyOnClose
+        destroyOnHidden
         styles={{
           body: {
             padding: 0,

@@ -54,7 +54,7 @@ const BatchCreateJobModal: React.FC<BatchCreateJobModalProps> = ({
       confirmLoading={loading}
       onCancel={onCancel}
       onOk={handleOk}
-      destroyOnClose
+      destroyOnHidden
     >
       <div className="mb-4 rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">
         基于选中的任务配置创建副本。新任务默认为下线状态，创建后可在列表中统一审核、上线和启动。
