@@ -74,13 +74,15 @@ const MetricCard: React.FC<{
   description: string;
   icon: React.ReactNode;
   tone?: StatusTone;
-}> = ({ label, value, description, icon, tone = 'success' }) => (
+  /** 数值本体默认不随状态染色（版本号等不是状态词），仅 UP/DOWN/兼容等状态词取 tone。 */
+  valueTone?: StatusTone;
+}> = ({ label, value, description, icon, tone = 'success', valueTone }) => (
   <div className="meta-engine-metric">
     <div className="meta-engine-metric-topline">
       <span>{label}</span>
       <span className={`meta-engine-metric-icon meta-engine-metric-icon--${tone}`}>{icon}</span>
     </div>
-    <div className={`meta-engine-metric-value meta-engine-metric-value--${tone}`}>{value}</div>
+    <div className={`meta-engine-metric-value meta-engine-metric-value--${valueTone ?? tone}`}>{value}</div>
     <div className="meta-engine-metric-description">{description}</div>
   </div>
 );
@@ -271,16 +273,18 @@ const MetadataEngineOverviewPage: React.FC = () => {
                 <MetricCard
                   label="Server 版本"
                   value={displayValue(health?.version)}
-                  description={`期望 ${expectedServer}`}
+                  description={`期望 ${expectedServer}${versionTone === 'error' ? ' · 不兼容' : ''}`}
                   icon={<InfoCircleOutlined />}
                   tone={versionTone}
+                  valueTone="muted"
                 />
                 <MetricCard
                   label="Ingestion 版本"
                   value={displayValue(health?.ingestionVersion)}
-                  description={`期望 ${expectedIngestion}`}
+                  description={`期望 ${expectedIngestion}${versionTone === 'error' ? ' · 不兼容' : ''}`}
                   icon={<SafetyCertificateOutlined />}
                   tone={versionTone}
+                  valueTone="muted"
                 />
                 <MetricCard
                   label="版本兼容"

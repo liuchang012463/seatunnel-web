@@ -152,13 +152,15 @@ const MetricCard: React.FC<{
   description: string;
   icon: React.ReactNode;
   tone?: StatusTone;
-}> = ({ label, value, description, icon, tone = 'success' }) => (
+  /** 数值本体默认不随状态染色，仅状态词（UP/不兼容等）取 tone。 */
+  valueTone?: StatusTone;
+}> = ({ label, value, description, icon, tone = 'success', valueTone }) => (
   <div className="lake-cluster-metric">
     <div className="lake-cluster-metric-topline">
       <span>{label}</span>
       <span className={`lake-cluster-metric-icon lake-cluster-metric-icon--${tone}`}>{icon}</span>
     </div>
-    <div className={`lake-cluster-metric-value lake-cluster-metric-value--${tone}`}>{value}</div>
+    <div className={`lake-cluster-metric-value lake-cluster-metric-value--${valueTone ?? tone}`}>{value}</div>
     <div className="lake-cluster-metric-description">{description}</div>
   </div>
 );
@@ -235,6 +237,8 @@ const WarehousePage: React.FC = () => {
   const totalNodes = (status?.frontendCount || 0) + (status?.backendCount || 0);
   const aliveNodes = (status?.aliveFrontendCount || 0) + (status?.aliveBackendCount || 0);
   const nodeHealthTone: StatusTone = totalNodes && aliveNodes < totalNodes ? 'error' : clusterStatus.tone;
+  const feOffline = Math.max(0, (status?.frontendCount || 0) - (status?.aliveFrontendCount || 0));
+  const beOffline = Math.max(0, (status?.backendCount || 0) - (status?.aliveBackendCount || 0));
   const hardwareCheckedAt = formatTime(hardware?.checkedAt || status?.checkedAt);
   const feEndpoint = status?.masterHost
     ? `${status.masterHost}:${status.httpPort || '8030'}`
@@ -347,16 +351,18 @@ const WarehousePage: React.FC = () => {
               <MetricCard
                 label="FE 节点"
                 value={status ? `${displayValue(status.aliveFrontendCount)} / ${displayValue(status.frontendCount)}` : '--'}
-                description="在线 / 总数"
+                description={feOffline > 0 ? `${feOffline} 台 FE 离线，检查 Doris 节点` : '在线 / 总数'}
                 icon={<CloudServerOutlined />}
                 tone={status && status.frontendCount !== status.aliveFrontendCount ? 'error' : clusterStatus.tone}
+                valueTone="muted"
               />
               <MetricCard
                 label="BE 节点"
                 value={status ? `${displayValue(status.aliveBackendCount)} / ${displayValue(status.backendCount)}` : '--'}
-                description="在线 / 总数"
+                description={beOffline > 0 ? `${beOffline} 台 BE 离线，检查 Doris 节点` : '在线 / 总数'}
                 icon={<DatabaseOutlined />}
                 tone={status && status.backendCount !== status.aliveBackendCount ? 'error' : clusterStatus.tone}
+                valueTone="muted"
               />
               <MetricCard
                 label="数据库"
