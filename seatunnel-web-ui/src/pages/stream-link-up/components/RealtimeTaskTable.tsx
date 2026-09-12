@@ -5,6 +5,8 @@ import React from "react";
 
 import { CopyOutlined } from "@ant-design/icons";
 
+import type { TaskSortField, TaskSortOrder } from "@/pages/common/components/TaskSortControls";
+
 import ExecutionStatus from "./ExecutionStatus";
 import RealtimeMetricsTrend from "./RealtimeMetricsTrend";
 import RealtimeSyncPlan from "./RealtimeSyncPlan";
@@ -18,6 +20,8 @@ interface RealtimeTaskTableProps {
   dataSource: StreamingJobDefinitionVO[];
   selectedRowKeys: React.Key[];
   onSelectedRowKeysChange: (keys: React.Key[]) => void;
+  sort?: { field: TaskSortField; order: TaskSortOrder };
+  onSortChange?: (field: TaskSortField, order: TaskSortOrder) => void;
   pagination?: false | TablePaginationConfig;
   onDetail?: (record: StreamingJobDefinitionVO) => void;
   onView?: (record: StreamingJobDefinitionVO) => void;
@@ -61,7 +65,8 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
   onDelete,
   onLog,
   onCheckpoint,
-}) => {
+  sort,
+  onSortChange,}) => {
   const intl = useIntl();
   const copyToClipboard = async (text: string | number) => {
     const value = String(text);
@@ -97,6 +102,8 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       dataIndex: "jobName",
       width: 260,
       ellipsis: true,
+      sorter: true,
+      sortOrder: sort?.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (_content, record) => (
         <div className="stream-link-task-name-cell">
           <div className="sync-task-name-cell__title">
@@ -226,6 +233,8 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "最近更新时间",
       }),
       dataIndex: "updateTime",
+      sorter: true,
+      sortOrder: sort?.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       width: 160,
       ellipsis: true,
       render: (value: string | undefined) => (
@@ -265,6 +274,14 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       rowKey="id"
       loading={loading}
       columns={columns}
+      onChange={(_pagination, _filters, sorter) => {
+        const active = Array.isArray(sorter) ? sorter[0] : sorter;
+        if (!active?.order) return;
+        onSortChange?.(
+          active.field === "createTime" || active.field === "updateTime" ? "createTime" : "name",
+          active.order === "ascend" ? "asc" : "desc",
+        );
+      }}
       dataSource={dataSource}
       pagination={false}
       rowSelection={{

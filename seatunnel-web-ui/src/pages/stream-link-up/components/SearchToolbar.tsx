@@ -8,14 +8,13 @@ import {
 } from "@ant-design/icons";
 import { Button, Col, DatePicker, Form, Input, Row, Select, Space } from "antd";
 import moment from "moment";
-import React, { type ReactNode, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 
 interface SearchToolbarProps {
   initialValues?: any;
   onSearch: (values: any) => void;
   onReset: () => void;
-  sortControls?: ReactNode;
 }
 
 const { RangePicker } = DatePicker;
@@ -24,7 +23,6 @@ const SearchToolbar: React.FC<SearchToolbarProps> = ({
   initialValues,
   onSearch,
   onReset,
-  sortControls,
 }) => {
   const [form] = Form.useForm();
   const [expand, setExpand] = useState(false);
@@ -238,7 +236,6 @@ const SearchToolbar: React.FC<SearchToolbarProps> = ({
                   />
                 </button>
 
-                {sortControls}
               </Space>
             </div>
           </Col>

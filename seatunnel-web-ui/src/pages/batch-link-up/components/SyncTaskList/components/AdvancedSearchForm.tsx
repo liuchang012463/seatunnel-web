@@ -8,7 +8,7 @@ import {
 import { useIntl } from "@umijs/max";
 import { Button, Col, DatePicker, Form, Input, Row, Select, Space } from "antd";
 import moment from "moment";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DatabaseIcons from "../../../../data-source/icon/DatabaseIcons";
 
 interface AdvancedSearchFormProps {
@@ -16,7 +16,6 @@ interface AdvancedSearchFormProps {
   onReset: () => void;
   initialValues?: any;
   fileMode?: boolean;
-  sortControls?: ReactNode;
 }
 
 const { RangePicker } = DatePicker;
@@ -26,7 +25,6 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   onReset,
   initialValues,
   fileMode = false,
-  sortControls,
 }) => {
   const intl = useIntl();
   const [form] = Form.useForm();
@@ -271,7 +269,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
 
                 <button
                   type="button"
-                  className="inline-flex h-8 items-center gap-1 rounded-full px-2 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50"
+                  className="inline-flex h-8 items-center gap-1 rounded-full px-2 text-xs font-medium text-[color:var(--st-color-accent)] transition hover:bg-[rgba(77,210,255,0.08)]"
                   onClick={() => setExpand((prev) => !prev)}
                 >
                   {expand
@@ -292,7 +290,6 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                   />
                 </button>
 
-                {sortControls}
               </Space>
             </div>
           </Col>

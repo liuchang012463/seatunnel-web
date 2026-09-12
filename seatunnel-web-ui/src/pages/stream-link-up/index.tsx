@@ -19,10 +19,7 @@ import TaskViewModal from './components/TaskViewModal';
 import BatchCreateJobModal, {
   BatchCreateValues,
 } from '@/pages/common/components/BatchCreateJobModal';
-import TaskSortControls, {
-  type TaskSortField,
-  type TaskSortOrder,
-} from '@/pages/common/components/TaskSortControls';
+import type { TaskSortField, TaskSortOrder } from '@/pages/common/components/TaskSortControls';
 import './index.less';
 
 const REALTIME_DETAIL_CACHE_PREFIX = 'stream-link-up-detail';
@@ -1023,13 +1020,6 @@ const RealtimeSyncPage: React.FC = () => {
           initialValues={searchValues}
           onSearch={handleSearch}
           onReset={handleReset}
-          sortControls={
-            <TaskSortControls
-              field={sort.field}
-              order={sort.order}
-              onChange={handleSortChange}
-            />
-          }
         />
         <Divider style={{ margin: "16px 0" }} />
 
@@ -1038,6 +1028,8 @@ const RealtimeSyncPage: React.FC = () => {
           dataSource={dataSource}
           selectedRowKeys={selectedRowKeys}
           onSelectedRowKeysChange={setSelectedRowKeys}
+          sort={sort}
+          onSortChange={handleSortChange}
           pagination={false}
           onView={handleView}
           onDetail={handleDetail}

@@ -4,14 +4,12 @@ import { Divider, Empty, Modal, Table, Tooltip, message } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
 import moment from "moment";
 import { useEffect, useState } from "react";
-import TaskSortControls, {
-  type TaskSortField,
-  type TaskSortOrder,
-} from "@/pages/common/components/TaskSortControls";
+
 import { seatunnelJobDefinitionApi } from "../../api";
 import BatchCreateJobModal, {
   BatchCreateValues,
 } from "@/pages/common/components/BatchCreateJobModal";
+import type { TaskSortField, TaskSortOrder } from "@/pages/common/components/TaskSortControls";
 import { batchJobExecutorApi } from "../../type";
 import ActionColumn from "./components/ActionColumn";
 import AdvancedSearchForm from "./components/AdvancedSearchForm";
@@ -231,6 +229,8 @@ const App: React.FC<Props> = ({
       dataIndex: "jobName",
       width: "12%",
       ellipsis: true,
+      sorter: true,
+      sortOrder: sort.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (_content: any, record: any) => (
         <div className="sync-task-name-cell">
           <div className="sync-task-name-cell__title">
@@ -329,6 +329,8 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "createTime",
       width: "10%",
+      sorter: true,
+      sortOrder: sort.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (createTime: string) => (
         <span className="sync-task-time">{createTime || "-"}</span>
       ),
@@ -797,13 +799,6 @@ const App: React.FC<Props> = ({
                 onReset={handleReset}
                 initialValues={searchParams}
                 fileMode={mode === "FILE_SYNC"}
-                sortControls={
-                  <TaskSortControls
-                    field={sort.field}
-                    order={sort.order}
-                    onChange={handleSortChange}
-                  />
-                }
               />
             </div>
           </div>
@@ -818,6 +813,14 @@ const App: React.FC<Props> = ({
             pagination={false}
             loading={loading}
             rowSelection={{ type: "checkbox", ...rowSelection }}
+            onChange={(_pagination, _filters, sorter) => {
+              const active = Array.isArray(sorter) ? sorter[0] : sorter;
+              if (!active?.order) return;
+              handleSortChange(
+                active.field === "createTime" ? "createTime" : "name",
+                active.order === "ascend" ? "asc" : "desc",
+              );
+            }}
             scroll={{ x: "max-content", y: "calc(100vh - 380px)" }}
             className="task-table"
             locale={{
