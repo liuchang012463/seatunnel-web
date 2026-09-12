@@ -21,6 +21,7 @@ import {
 } from '@/services/lake';
 import type { LakeApiResponse, LakeCatalog, LakeCatalogScope, LakeLogicalCapability, LakePhysicalDataSource } from '@/services/lake';
 import { CapabilityReason } from '../components/LakeStatus';
+import { useMasterDataNames, type MasterDataNames } from '../useMasterDataNames';
 import './index.less';
 
 const adapterOptions = [
@@ -80,9 +81,9 @@ interface CatalogFormValues {
   tableInclude?: string[];
 }
 
-const sourceOption = (source: LakePhysicalDataSource) => ({
+const sourceOption = (source: LakePhysicalDataSource, names?: MasterDataNames) => ({
   value: source.sourceDataSourceId,
-  label: `${source.sourceDataSourceName || `DataSource #${source.sourceDataSourceId}`} · ${source.dbType || '未知类型'} · ${source.unitCode || '未归属'}/${source.systemCode || '未归属'}`,
+  label: `${source.sourceDataSourceName || `DataSource #${source.sourceDataSourceId}`} · ${source.dbType || '未知类型'} · ${names?.unitNameByCode(source.unitCode) || '未归属'}/${names?.systemNameByCode(source.systemCode) || '未归属'}`,
 });
 
 const adapterForDbType = (dbType?: string): string | undefined => {
@@ -97,7 +98,8 @@ const CapabilityCard: React.FC<{
   sources: LakePhysicalDataSource[];
   initialSourceId?: number;
   onSourceChange?: (sourceDataSourceId?: number) => void;
-}> = ({ sources, initialSourceId, onSourceChange }) => {
+  masterNames: MasterDataNames;
+}> = ({ sources, initialSourceId, onSourceChange, masterNames }) => {
   const [form] = Form.useForm<CapabilityFormValues>();
   const [loading, setLoading] = useState(false);
   const [probeLoading, setProbeLoading] = useState(false);
@@ -167,7 +169,7 @@ const CapabilityCard: React.FC<{
           <Select
             showSearch
             allowClear
-            options={sources.map(sourceOption)}
+            options={sources.map((source) => sourceOption(source, masterNames))}
             placeholder="选择已有数据源"
             optionFilterProp="label"
             style={{ width: 360, minWidth: 0 }}
@@ -207,12 +209,13 @@ const CapabilityCard: React.FC<{
   );
 };
 
-const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCreated: () => void; sources: LakePhysicalDataSource[]; initialSourceId?: number }> = ({
+const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCreated: () => void; sources: LakePhysicalDataSource[]; initialSourceId?: number; masterNames: MasterDataNames }> = ({
   open,
   onClose,
   onCreated,
   sources,
   initialSourceId,
+  masterNames,
 }) => {
   const [form] = Form.useForm<CatalogFormValues>();
   const [loading, setLoading] = useState(false);
@@ -325,7 +328,7 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
       /> : null}
       <Form form={form} layout="vertical" onFinish={submit} initialValues={{ adapter: 'MYSQL', scope: 'ALL', sourceDataSourceId: initialSourceId }}>
         <Form.Item name="sourceDataSourceId" label="数据源" rules={[{ required: true, message: '请选择数据源' }]}>
-          <Select showSearch options={sources.map(sourceOption)} placeholder="选择已有数据源" optionFilterProp="label" />
+          <Select showSearch options={sources.map((source) => sourceOption(source, masterNames))} placeholder="选择已有数据源" optionFilterProp="label" />
         </Form.Item>
         <Form.Item name="targetCatalogName" label="挂载名称" rules={[{ required: true, max: 128, message: '请输入 128 字符以内的名称' }]}>
           <Input maxLength={128} />
@@ -346,6 +349,7 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
 };
 
 const LogicalAccessPage: React.FC = () => {
+  const masterNames = useMasterDataNames();
   const location = useLocation();
   const initialSourceId = useMemo(() => {
     const value = new URLSearchParams(location.search).get('sourceDataSourceId');
@@ -367,7 +371,7 @@ const LogicalAccessPage: React.FC = () => {
     }).catch(() => undefined).finally(() => setSourcesLoading(false));
   }, []);
   const sourceLabelById = useMemo(
-    () => new Map(sources.map((source) => [source.sourceDataSourceId, sourceOption(source).label])),
+    () => new Map(sources.map((source) => [source.sourceDataSourceId, sourceOption(source, masterNames).label])),
     [sources],
   );
   const columns: ProColumns<LakeCatalog>[] = [
@@ -391,7 +395,7 @@ const LogicalAccessPage: React.FC = () => {
   ];
   return (
     <PageContainer title="逻辑入湖" subTitle="选择已有数据源，按步骤完成 Doris 逻辑挂载">
-      <CapabilityCard sources={sources} initialSourceId={initialSourceId} onSourceChange={setSelectedSourceId} />
+      <CapabilityCard sources={sources} initialSourceId={initialSourceId} onSourceChange={setSelectedSourceId} masterNames={masterNames} />
       <ProTable<LakeCatalog>
         className="lake-catalog-table"
         rowKey={(row) => String(row.id || `${row.sourceDataSourceId}-${row.targetCatalogName}`)}
@@ -419,7 +423,7 @@ const LogicalAccessPage: React.FC = () => {
         }}
         />
       {!sourcesLoading && !sources.length ? <Card className="lake-logical-empty"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可用业务数据源" /><Typography.Text type="secondary">请先在数据源管理中完成连接和 Metadata 探查。</Typography.Text></Card> : null}
-      <CreateCatalogDrawer open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => actionRef.current?.reloadAndRest?.()} sources={sources} initialSourceId={selectedSourceId} />
+      <CreateCatalogDrawer open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => actionRef.current?.reloadAndRest?.()} sources={sources} initialSourceId={selectedSourceId} masterNames={masterNames} />
     </PageContainer>
   );
 };

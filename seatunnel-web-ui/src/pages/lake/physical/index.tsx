@@ -40,6 +40,7 @@ import {
 } from './service';
 import type { LakeRecommendation } from './service';
 import type { LakePage, LakeResourceStatus, OdsDatabase, PhysicalDataSource } from './types';
+import { useMasterDataNames } from '../useMasterDataNames';
 import './index.less';
 
 const { Paragraph, Text, Title } = Typography;
@@ -342,6 +343,7 @@ const OdsDatabaseDrawer: React.FC<{
 const PhysicalResourcesPage: React.FC = () => {
   const location = useLocation();
   const actionRef = useRef<ActionType>();
+  const { unitNameByCode, systemNameByCode } = useMasterDataNames();
   const [createSource, setCreateSource] = useState<PhysicalDataSource>();
   const [recommendSource, setRecommendSource] = useState<PhysicalDataSource>();
   const [operationId, setOperationId] = useState<number>();
@@ -405,8 +407,8 @@ const PhysicalResourcesPage: React.FC = () => {
         width: 190,
         render: (_, record) => (
           <div>
-            <div>{record.unitCode || '待归属'}</div>
-            <Text type="secondary">{record.systemCode || '待归属'}</Text>
+            <div>{unitNameByCode(record.unitCode) || '待归属'}</div>
+            <Text type="secondary">{systemNameByCode(record.systemCode) || '待归属'}</Text>
           </div>
         ),
       },
@@ -423,13 +425,13 @@ const PhysicalResourcesPage: React.FC = () => {
         ),
       },
       {
-        title: 'ODS Database',
+        title: 'ODS 库',
         key: 'databaseName',
         width: 230,
         render: (_, record) => record.odsDatabase?.databaseName || <Text type="secondary">未创建</Text>,
       },
       {
-        title: 'Resource Status',
+        title: '资源状态',
         key: 'resourceStatus',
         width: 130,
         render: (_, record) => resourceTag(record.odsDatabase?.resourceStatus),
@@ -479,7 +481,7 @@ const PhysicalResourcesPage: React.FC = () => {
         },
       },
     ],
-    [operationId, operationLoading],
+    [operationId, operationLoading, unitNameByCode, systemNameByCode],
   );
 
   return (
