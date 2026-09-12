@@ -515,17 +515,22 @@
     padding: 12px 13px;
     color: var(--st-color-text-secondary);
     text-align: left;
-    background: var(--st-color-bg-control);
-    border: 1px solid var(--st-color-divider-soft, var(--st-color-divider));
-    border-radius: 8px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--st-color-divider-subtle);
+    border-radius: 0;
     cursor: pointer;
-    transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+    transition: color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 
-    &:hover,
-    &.is-selected {
+    &:hover {
       color: var(--st-color-text-primary);
       background: var(--st-color-hover);
-      border-color: var(--st-color-accent);
+    }
+
+    &.is-selected {
+      color: var(--st-color-text-primary);
+      background: var(--st-color-selected);
+      box-shadow: inset 2px 0 0 var(--st-color-accent);
     }
 
     &:focus-visible {
@@ -776,9 +781,14 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1px;
       overflow: hidden;
-      background: var(--st-color-divider);
-      border: 1px solid var(--st-color-divider);
+      background: var(--st-color-divider-subtle);
+      border: 1px solid var(--st-color-divider-subtle);
       border-radius: 6px;
+
+      /* 奇数个指标时末格跨满双列，避免露出空色块（audit-05） */
+      span:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+      }
 
       span {
         display: flex;

@@ -128,6 +128,11 @@ const DataInventoryDashboard: React.FC = () => {
               <div className="mt-2 text-sm text-[var(--st-color-text-muted)]">
                 已探查表 {coverage.profiledTableCount} / {coverage.tableCount}
               </div>
+              {coverage.profiledTableCount === 0 ? (
+                <div className="text-xs text-[var(--st-color-text-muted)]">
+                  尚无已探查表，可在「探查任务配置」中发起探查
+                </div>
+              ) : null}
               <div className="text-sm text-[var(--st-color-text-muted)]">
                 已统计行数：{coverage.knownRowCount}
               </div>
