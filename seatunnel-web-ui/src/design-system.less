@@ -368,18 +368,20 @@ a:hover {
 .ant-table-wrapper .ant-table-tbody > tr > td {
   color: var(--st-color-text-primary);
   background: var(--st-color-bg-secondary);
-  border-color: var(--st-color-divider) !important;
+  border-color: var(--st-color-divider-subtle) !important;
 }
 
+/* Low-saturation header band instead of the loud #2187a8 solid fill (audit G4). */
 .ant-table-wrapper .ant-table-thead > tr > th {
   height: 38px;
   padding: 8px 12px;
-  color: var(--st-color-text-primary) !important;
+  color: var(--st-color-text-muted) !important;
   font-size: var(--st-type-content-sm-size);
-  font-weight: 400;
+  font-weight: 500;
   line-height: var(--st-type-content-sm-line);
-  background: #2187a8 !important;
+  background: var(--st-color-bg-control) !important;
   border-color: var(--st-color-divider) !important;
+  border-bottom: 1px solid var(--st-color-divider) !important;
 }
 
 .ant-table-wrapper .ant-table-tbody > tr > td {
@@ -389,12 +391,8 @@ a:hover {
   line-height: var(--st-type-content-sm-line);
 }
 
-.ant-table-wrapper .ant-table-tbody > tr:nth-child(even) > td {
-  background: var(--st-color-bg-control);
-}
-
 .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td {
-  background: #824c22 !important;
+  background: var(--st-color-hover) !important;
 }
 
 .ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
@@ -1048,8 +1046,9 @@ html[data-st-theme="dark"] [style*="color:#182230"] {
  * shared Ant table theme. Keep fixed headers readable in dark mode. */
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th,
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > td {
-  color: var(--st-color-text-primary) !important;
-  background: #2187a8 !important;
+  color: var(--st-color-text-muted) !important;
+  font-weight: 500;
+  background: var(--st-color-bg-control) !important;
   border-color: var(--st-color-divider) !important;
 }
 
@@ -1705,8 +1704,9 @@ html[data-st-theme="dark"] {
   }
 
   .workflow-config-side-panel .schedule-config-collapse .ant-table-thead > tr > th {
-    color: var(--st-color-text-primary) !important;
-    background: #2187a8 !important;
+    color: var(--st-color-text-muted) !important;
+    font-weight: 500;
+    background: var(--st-color-bg-control) !important;
     border-color: var(--st-color-divider) !important;
   }
 
@@ -1773,8 +1773,9 @@ html[data-st-theme="dark"] {
   }
 
   .quality-detail-drawer__table-wrap .ant-table-thead > tr > th {
-    color: var(--st-color-text-primary) !important;
-    background: #2187a8 !important;
+    color: var(--st-color-text-muted) !important;
+    font-weight: 500;
+    background: var(--st-color-bg-control) !important;
     border-color: var(--st-color-divider) !important;
   }
 
