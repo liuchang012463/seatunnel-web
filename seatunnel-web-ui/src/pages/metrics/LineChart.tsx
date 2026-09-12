@@ -1,5 +1,6 @@
 import * as echarts from 'echarts';
 import React, { useEffect, useRef } from 'react';
+import { ST_CHART_ACCENT } from '@/utils/echarts-theme-st';
 
 interface LineChartProps {
   data: number[];
@@ -14,7 +15,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
   useEffect(() => {
     if (!chartRef.current) return;
 
-    const chart = echarts.init(chartRef.current);
+    const chart = echarts.init(chartRef.current, 'st');
 
     const option: echarts.EChartsOption = {
       // title: {
@@ -103,6 +104,13 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
           type: 'line',
           data: data,
           symbol: 'none',
+          lineStyle: {
+            color: ST_CHART_ACCENT,
+            width: 2,
+          },
+          itemStyle: {
+            color: ST_CHART_ACCENT,
+          },
         },
       ],
       grid: {

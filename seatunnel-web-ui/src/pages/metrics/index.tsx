@@ -120,33 +120,33 @@ const App: React.FC = () => {
     {
       title: "同步总量",
       value: summaryData.totalRecords || 0,
-      subText: `单位：${summaryData.totalRecordsUnit || "-"}`,
-      iconBg: "bg-blue-500/10",
-      iconColor: "text-blue-500",
+      subText: `累计同步记录${summaryData.totalRecordsUnit ? `（${summaryData.totalRecordsUnit}）` : ""}`,
+      iconBg: "bg-[rgba(77,210,255,0.12)]",
+      iconColor: "text-[#4dd2ff]",
       icon: <BarChart3 size={18} strokeWidth={2} />,
     },
     {
       title: "同步数据量",
       value: summaryData.totalBytes || 0,
-      subText: `单位：${summaryData.totalBytesUnit || "-"}`,
-      iconBg: "bg-emerald-500/10",
-      iconColor: "text-emerald-500",
+      subText: `累计引接数据${summaryData.totalBytesUnit ? `（${summaryData.totalBytesUnit}）` : ""}`,
+      iconBg: "bg-[rgba(77,210,255,0.12)]",
+      iconColor: "text-[#4dd2ff]",
       icon: <Database size={18} strokeWidth={2} />,
     },
     {
       title: "执行任务数",
       value: summaryData.totalTasks || 0,
-      subText: "单位：次",
-      iconBg: "bg-amber-500/10",
-      iconColor: "text-amber-500",
+      subText: "统计范围内执行合计",
+      iconBg: "bg-[rgba(77,210,255,0.12)]",
+      iconColor: "text-[#4dd2ff]",
       icon: <Clock3 size={18} strokeWidth={2} />,
     },
     {
       title: "成功率",
       value: `${successRate}%`,
       subText: `成功任务 ${summaryData.successTasks || 0} 个`,
-      iconBg: "bg-violet-500/10",
-      iconColor: "text-violet-500",
+      iconBg: "bg-[rgba(77,210,255,0.12)]",
+      iconColor: "text-[#4dd2ff]",
       icon: <Target size={18} strokeWidth={2} />,
     },
   ];
@@ -179,7 +179,7 @@ const App: React.FC = () => {
       }}
     >
       <main className="h-full overflow-auto p-4 md:p-6">
-        <div className="min-h-full rounded-3xl bg-slate-50/60 p-6 md:p-8">
+        <div className="min-h-full rounded-3xl bg-transparent p-6 md:p-8">
           <div className="mx-auto max-w-[1600px]">
             <motion.div
               initial="hidden"
@@ -203,7 +203,7 @@ const App: React.FC = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       className="h-7 w-7"
-                      style={{ color: "hsl(231 48% 48%)" }}
+                      style={{ color: "var(--st-color-accent)" }}
                     >
                       <path d="M3 3v16a2 2 0 0 0 2 2h16" />
                       <path d="M18 17V9" />
@@ -212,7 +212,7 @@ const App: React.FC = () => {
                     </svg>
                     任务洞察
                   </h1>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-[color:var(--st-color-text-muted)]">
                     关注同步规模、执行表现与趋势变化
                   </p>
                 </div>
@@ -300,7 +300,7 @@ const App: React.FC = () => {
 
                 <motion.section variants={fadeUp} className="mb-8">
                   <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-slate-900">
+                    <h2 className="text-lg font-semibold text-[color:var(--st-color-text-primary)]">
                       同步概览
                     </h2>
                   </div>
@@ -333,7 +333,7 @@ const App: React.FC = () => {
 
                 <motion.section variants={fadeUp} className="mb-8">
                   <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-slate-900">
+                    <h2 className="text-lg font-semibold text-[color:var(--st-color-text-primary)]">
                       性能趋势
                     </h2>
                   </div>
@@ -366,7 +366,7 @@ const App: React.FC = () => {
 
                 <motion.section variants={fadeUp}>
                   <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-slate-900">
+                    <h2 className="text-lg font-semibold text-[color:var(--st-color-text-primary)]">
                       摘要分析
                     </h2>
                   </div>
