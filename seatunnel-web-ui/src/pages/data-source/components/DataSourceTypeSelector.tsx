@@ -4,6 +4,7 @@ import { SearchOutlined } from '@ant-design/icons';
 
 import DatabaseIcons from '../icon/DatabaseIcons';
 import { COMMON_DB_OPTIONS } from '../constants';
+import { getConnectorTypeLabel } from '../dataSourceRegistry';
 import type { DataSourceGroup } from '../types';
 
 interface DataSourceTypeSelectorProps {
@@ -37,16 +38,6 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
     );
   }, [dataSourceGroups]);
 
-  const filteredDatasourceList = useMemo(() => {
-    return flatDatasourceList.filter((item) => {
-      const matchGroup =
-        selectedGroupName === null || item.groupName === selectedGroupName;
-      const matchKeyword = !keyword || item.searchText.includes(keyword);
-
-      return matchGroup && matchKeyword;
-    });
-  }, [flatDatasourceList, keyword, selectedGroupName]);
-
   const suggestedDatasourceList = useMemo(() => {
     return COMMON_DB_OPTIONS.map((common) => {
       const matched = flatDatasourceList.find(
@@ -67,6 +58,22 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
   }, [flatDatasourceList]);
 
   const showSuggested = !keyword && suggestedDatasourceList.length > 0;
+
+  const filteredDatasourceList = useMemo(() => {
+    // 默认浏览态下隐藏已在「常用数据源」中的项，避免同屏重复（审计 audit-22）。
+    const hideSuggested = showSuggested && selectedGroupName === null;
+    const suggestedDbTypes = hideSuggested
+      ? new Set(suggestedDatasourceList.map((item) => item.dbType))
+      : null;
+    return flatDatasourceList.filter((item) => {
+      const matchGroup =
+        selectedGroupName === null || item.groupName === selectedGroupName;
+      const matchKeyword = !keyword || item.searchText.includes(keyword);
+      const notSuggested = !suggestedDbTypes || !suggestedDbTypes.has(item.dbType);
+
+      return matchGroup && matchKeyword && notSuggested;
+    });
+  }, [flatDatasourceList, keyword, selectedGroupName, showSuggested, suggestedDatasourceList]);
 
   return (
     <div className="datasource-type-selector flex flex-col gap-5">
@@ -156,7 +163,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
                     {item.label}
                   </div>
                   <div className="datasource-type-option-meta mt-1 truncate">
-                    {item.connectorType || item.groupName || '快速选择'}
+                    {getConnectorTypeLabel(item.connectorType, item.groupName || '快速选择')}
                   </div>
                 </div>
               </button>
@@ -207,7 +214,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
                     </div>
 
                     <div className="datasource-type-option-meta mt-1 truncate">
-                      {item.connectorType || item.type || '数据源连接器'}
+                      {getConnectorTypeLabel(item.connectorType, item.type || '数据源连接器')}
                     </div>
                   </div>
                 </div>

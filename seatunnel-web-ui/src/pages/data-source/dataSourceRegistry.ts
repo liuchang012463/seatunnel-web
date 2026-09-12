@@ -52,6 +52,25 @@ const CATEGORY_LABELS: Record<DataSourceCategoryKey, string> = {
   OTHER: '其他',
 };
 
+/** 连接器副标题用协议说明，不暴露内部代码（DESIGN.md §4.8）。 */
+const CONNECTOR_TYPE_LABELS: Record<string, string> = {
+  Jdbc: 'JDBC 通用连接',
+  FtpFile: 'FTP 文件传输',
+  SftpFile: 'SFTP 文件传输',
+  S3File: 'S3 协议对象存储',
+  Kafka: 'Kafka 消息队列',
+  Http: 'HTTP 接口',
+  Elasticsearch: 'Elasticsearch 引擎',
+  Doris: 'Doris OLAP',
+};
+
+export function getConnectorTypeLabel(connectorType?: string, fallback = '数据源连接器'): string {
+  if (!connectorType) {
+    return fallback;
+  }
+  return CONNECTOR_TYPE_LABELS[connectorType] || connectorType;
+}
+
 export const DATA_SOURCE_CATEGORIES: DataSourceCategory[] = (
   Object.keys(CATEGORY_LABELS) as DataSourceCategoryKey[]
 ).map((key) => ({
