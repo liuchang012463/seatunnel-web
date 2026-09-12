@@ -431,13 +431,53 @@
   font-size: 14px;
 }
 
+.datasource-catalog-datatype {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--st-color-text-secondary);
+  font-size: 13px;
+}
+
+.datasource-catalog-owner {
+  color: var(--st-color-text-secondary);
+  font-size: 13px;
+}
+
+.datasource-catalog-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  .datasource-catalog-name-link {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.datasource-catalog-name-sub {
+  overflow: hidden;
+  color: var(--st-color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .datasource-catalog-actions {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: 12px 16px;
+  gap: 10px;
   height: 38px;
+
+  .datasource-catalog-action {
+    white-space: nowrap;
+  }
 }
 
 .datasource-catalog-action {

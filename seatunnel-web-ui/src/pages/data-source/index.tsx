@@ -1,9 +1,11 @@
 import ClickSpark from '@/components/ClickSpark';
+import StatusChip from '@/components/StatusChip';
 import { history, useIntl } from '@umijs/max';
 import { AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import {
   Button,
   Drawer,
+  Dropdown,
   Empty,
   message,
   Modal,
@@ -11,9 +13,9 @@ import {
   Segmented,
   Spin,
   Table,
-  Tag,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
+import dayjs from 'dayjs';
 import { motion } from 'framer-motion';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AddOrEditDataSourceModal from './components/AddOrEditDataSourceModal';
@@ -24,6 +26,7 @@ import SearchBar from './components/SearchBar';
 import MasterDataPage from '../master-data';
 import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from './constants';
 import { DATA_SOURCE_CATEGORIES, getDataSourceCategory } from './dataSourceRegistry';
+import DatabaseIcons from './icon/DatabaseIcons';
 import './index.less';
 import {
   checkDataSourceUsage,
@@ -48,8 +51,11 @@ import type {
 } from './types';
 import DataSourceLifecycleStatusTag from './components/DataSourceLifecycleStatus';
 import DataSourceStatus from './components/DataSourceStatus';
+import { profileStatusConfig } from './components/profileStatus';
 
 const { confirm } = Modal;
+
+const formatDateTime = (value?: string) => (value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-');
 
 type DataSourceViewMode = 'card' | 'list';
 
@@ -362,29 +368,49 @@ const DataSourcePage: React.FC = () => {
       key: 'name',
       align: 'left',
       className: 'datasource-catalog-col--left',
-      width: 220,
+      width: 190,
       ellipsis: true,
       render: (_value, record) => (
-        <button
-          type="button"
-          className="datasource-catalog-name-link"
-          title={record.name}
-          disabled={
-            !record.systemManaged &&
-            (record.status === 'REVOKED' || record.metadataSyncStatus === 'DELETING')
-          }
-          onClick={() => (record.systemManaged ? handleOpenWarehouse() : handleEdit(record))}
-        >
-          {record.name || '-'}
-        </button>
+        <div className="datasource-catalog-name-cell">
+          <button
+            type="button"
+            className="datasource-catalog-name-link"
+            title={record.name}
+            disabled={
+              !record.systemManaged &&
+              (record.status === 'REVOKED' || record.metadataSyncStatus === 'DELETING')
+            }
+            onClick={() => (record.systemManaged ? handleOpenWarehouse() : handleEdit(record))}
+          >
+            {record.name || '-'}
+          </button>
+          <span className="datasource-catalog-name-sub">更新于 {formatDateTime(record.updateTime)}</span>
+        </div>
       ),
+    },
+    {
+      title: '类型',
+      key: 'dbType',
+      align: 'left',
+      className: 'datasource-catalog-col--left',
+      width: 110,
+      ellipsis: true,
+      render: (_value, record) => {
+        const category = getDataSourceCategory(record.dbType);
+        return (
+          <span className="datasource-catalog-datatype" title={record.dbType}>
+            <DatabaseIcons dbType={record.dbType} width="16" height="16" />
+            {category.label}
+          </span>
+        );
+      },
     },
     {
       title: '连接地址',
       key: 'jdbcUrl',
       align: 'left',
       className: 'datasource-catalog-col--left',
-      width: 280,
+      width: 200,
       ellipsis: true,
       render: (_value, record) => (
         <span className="datasource-catalog-address" title={record.jdbcUrl}>
@@ -393,59 +419,53 @@ const DataSourcePage: React.FC = () => {
       ),
     },
     {
+      title: '归属',
+      key: 'owner',
+      align: 'left',
+      className: 'datasource-catalog-col--left',
+      width: 140,
+      ellipsis: true,
+      render: (_value, record) => {
+        const owner = [record.unitName, record.businessSystemName || record.systemName]
+          .filter(Boolean)
+          .join(' / ');
+        return (
+          <span className="datasource-catalog-owner" title={owner || undefined}>
+            {owner || '-'}
+          </span>
+        );
+      },
+    },
+    {
       title: '连通检测',
       key: 'connStatus',
       align: 'center',
-      width: 120,
+      width: 104,
       render: (_value, record) => <DataSourceStatus status={record.connStatus} />,
     },
     {
       title: '是否启用',
       key: 'status',
       align: 'center',
-      width: 120,
+      width: 100,
       render: (_value, record) => <DataSourceLifecycleStatusTag status={record.status} />,
     },
     {
       title: '探查状态',
       key: 'profileStatus',
       align: 'center',
-      width: 110,
+      width: 104,
       render: (_value, record) => {
-        const status = record.profileStatus;
-        const color =
-          status === 'SUCCESS'
-            ? 'success'
-            : status === 'FAILED'
-              ? 'error'
-              : status === 'RUNNING' || status === 'QUEUED'
-                ? 'processing'
-                : 'default';
-        const label =
-          status === 'SUCCESS'
-            ? '已探查'
-            : status === 'FAILED'
-              ? '探查异常'
-              : status === 'RUNNING' || status === 'QUEUED'
-                ? '探查中'
-                : '未探查';
-        return <Tag color={color} style={{ marginInlineEnd: 0, borderRadius: 999 }}>{label}</Tag>;
+        const status = profileStatusConfig(record.profileStatus);
+        return <StatusChip tone={status.tone} label={status.text} detail={status.detail} />;
       },
-    },
-    {
-      title: '数据库类型',
-      key: 'dbType',
-      align: 'center',
-      width: 140,
-      ellipsis: true,
-      render: (_value, record) => getDataSourceCategory(record.dbType).label,
     },
     {
       title: '操作',
       key: 'actions',
       align: 'center',
       fixed: 'right',
-      width: 360,
+      width: 230,
       render: (_value, record) => {
         const currentStatus = record.status || 'ENABLED';
         const isRevoked = currentStatus === 'REVOKED';
@@ -453,35 +473,31 @@ const DataSourcePage: React.FC = () => {
         const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
         const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
 
-        if (record.systemManaged) {
-          return (
-            <div className="datasource-catalog-actions">
-              <button
-                type="button"
-                className="datasource-catalog-action datasource-catalog-action--test"
-                disabled={isDeleting}
-                onClick={() => void handleTestConnection(record)}
-              >
-                测试连接
-              </button>
-              <button
-                type="button"
-                className="datasource-catalog-action datasource-catalog-action--primary"
-                disabled={isDeleting}
-                onClick={() => handleViewExploration(record)}
-              >
-                探查结果
-              </button>
-              <button
-                type="button"
-                className="datasource-catalog-action datasource-catalog-action--neutral"
-                onClick={handleOpenWarehouse}
-              >
-                数据湖管理
-              </button>
-            </div>
-          );
-        }
+        const moreItems =
+          record.systemManaged && !isDeleting
+            ? undefined
+            : [
+                {
+                  key: 'lifecycle',
+                  label: statusActionLabel,
+                  disabled: isDeleting,
+                  onClick: () => handleStatusChange(record, nextStatus),
+                },
+                {
+                  key: 'revoke',
+                  label: '注销',
+                  disabled: isDeleting || isRevoked,
+                  onClick: () => handleStatusChange(record, 'REVOKED'),
+                },
+                { type: 'divider' as const },
+                {
+                  key: 'delete',
+                  label: '删除',
+                  danger: true,
+                  disabled: isDeleting,
+                  onClick: () => handleDelete(record),
+                },
+              ];
 
         return (
           <div className="datasource-catalog-actions">
@@ -493,38 +509,35 @@ const DataSourcePage: React.FC = () => {
             >
               测试连接
             </button>
-            <button
-              type="button"
-              className="datasource-catalog-action datasource-catalog-action--primary"
-              disabled={isDeleting}
-              onClick={() => handleViewExploration(record)}
-            >
-              探查结果
-            </button>
-            <button
-              type="button"
-              className="datasource-catalog-action datasource-catalog-action--warn"
-              disabled={isDeleting}
-              onClick={() => handleStatusChange(record, nextStatus)}
-            >
-              {statusActionLabel}
-            </button>
-            <button
-              type="button"
-              className="datasource-catalog-action datasource-catalog-action--neutral"
-              disabled={isDeleting}
-              onClick={() => handleStatusChange(record, 'REVOKED')}
-            >
-              {isRevoked ? '已注销' : '注销'}
-            </button>
-            <button
-              type="button"
-              className="datasource-catalog-action datasource-catalog-action--danger"
-              disabled={isDeleting}
-              onClick={() => void handleDelete(record)}
-            >
-              删除
-            </button>
+            {record.systemManaged ? (
+              <button
+                type="button"
+                className="datasource-catalog-action datasource-catalog-action--neutral"
+                onClick={handleOpenWarehouse}
+              >
+                数据湖管理
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="datasource-catalog-action datasource-catalog-action--primary"
+                  disabled={isDeleting}
+                  onClick={() => handleViewExploration(record)}
+                >
+                  探查结果
+                </button>
+                <Dropdown trigger={['click']} menu={{ items: moreItems }}>
+                  <button
+                    type="button"
+                    className="datasource-catalog-action datasource-catalog-action--neutral"
+                    disabled={isDeleting}
+                  >
+                    更多
+                  </button>
+                </Dropdown>
+              </>
+            )}
           </div>
         );
       },
@@ -683,7 +696,7 @@ const DataSourcePage: React.FC = () => {
                             columns={dataSourceColumns}
                             dataSource={dataSourceList}
                             pagination={false}
-                            scroll={{ x: 1422 }}
+                            scroll={{ x: 1180 }}
                             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
                           />
                         )}
