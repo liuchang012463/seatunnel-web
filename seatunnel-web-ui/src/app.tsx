@@ -86,6 +86,9 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
 
   return {
     menuDataRender: () => prototypeMenuData,
+    // 侧栏按纯图标栏设计（global.less 强制 64px）：菜单固定收起态，
+    // 避免 ProLayout 以展开态渲染把子菜单挤成空方块（审计 G3）。
+    collapsed: true,
     headerContentRender: () => (isPrototypeMode ? undefined : <HeaderPageInfo />),
     actionsRender: () => (isPrototypeMode ? [] : [<Knowledge key="knowledge" />]),
     waterMarkProps: showWatermark
