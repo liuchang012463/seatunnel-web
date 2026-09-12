@@ -1057,6 +1057,7 @@ const RealtimeSyncPage: React.FC = () => {
           onPause={handleBatchPause}
           onResume={handleBatchResume}
           onDelete={handleBatchDelete}
+          onClearSelection={() => setSelectedRowKeys([])}
           onlineDisabled={batchActionState.onlineDisabled}
           offlineDisabled={batchActionState.offlineDisabled}
           startDisabled={batchActionState.startDisabled}
