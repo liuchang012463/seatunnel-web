@@ -889,8 +889,9 @@ html[data-st-theme="light"] {
 }
 
 /* Umi's static ConfigProvider emits CSS variables for the dark baseline.
- * Override the semantic variables at runtime so Ant Design primitives follow
- * the same switch as the application shell. */
+ * Override the semantic variables at the root so every subtree — including
+ * portals rendered outside .ant-app — follows the light switch. */
+html[data-st-theme="light"],
 html[data-st-theme="light"] .ant-app,
 html[data-st-theme="light"] .ant-app * {
   --ant-color-bg-base: #f7f9fc !important;

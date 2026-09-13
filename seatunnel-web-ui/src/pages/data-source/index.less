@@ -258,7 +258,7 @@
   height: calc(100vh - 300px);
   min-height: 480px;
   overflow: hidden;
-  background: #001922;
+  background: var(--st-color-bg-page);
   border: 1px solid var(--st-color-divider);
 }
 
@@ -333,11 +333,11 @@
   }
 
   .ant-table-tbody > tr:nth-child(odd) > td {
-    background: #002e41 !important;
+    background: var(--st-color-bg-panel) !important;
   }
 
   .ant-table-tbody > tr:nth-child(even) > td {
-    background: #002e41 !important;
+    background: var(--st-color-bg-panel) !important;
   }
 
   .ant-table-thead > tr > th.ant-table-cell-fix-left,
@@ -377,7 +377,7 @@
   .ant-table-tbody > tr:nth-child(odd) .ant-table-cell-fix-right,
   .ant-table-tbody > tr:nth-child(even) .ant-table-cell-fix-left,
   .ant-table-tbody > tr:nth-child(even) .ant-table-cell-fix-right {
-    background: #002e41 !important;
+    background: var(--st-color-bg-panel) !important;
   }
 
   .ant-tag {
@@ -762,64 +762,64 @@
   .ant-pagination-next,
   .ant-pagination-jump-prev,
   .ant-pagination-jump-next {
-    background-color: #001922;
-    border: 1px solid #000000;
+    background-color: var(--st-color-bg-page);
+    border: 1px solid var(--st-color-border);
     border-radius: 4px;
 
     a,
     .ant-pagination-item-link {
-      color: #fff;
+      color: var(--st-color-text-primary);
     }
 
     &:hover {
-      background-color: rgba(33, 135, 168, 0.4);
-      border-color: rgba(77, 232, 255, 0.5);
+      background-color: var(--st-color-selected);
+      border-color: var(--st-color-accent);
 
       a,
       .ant-pagination-item-link {
-        color: #fff;
+        color: var(--st-color-text-primary);
       }
     }
   }
 
   .ant-pagination-item-active {
-    background-color: rgba(33, 135, 168, 0.4);
+    background-color: var(--st-color-selected);
     border: 1px solid rgba(77, 232, 255, 0.5);
 
     a {
-      color: #fff;
+      color: var(--st-color-text-primary);
     }
 
     &:hover {
-      background-color: rgba(33, 135, 168, 0.4);
-      border-color: rgba(77, 232, 255, 0.5);
+      background-color: var(--st-color-selected);
+      border-color: var(--st-color-accent);
     }
   }
 
   .ant-pagination-disabled {
-    background-color: #001922;
-    border: 1px solid #000000;
+    background-color: var(--st-color-bg-page);
+    border: 1px solid var(--st-color-border);
     opacity: 0.55;
 
     &:hover {
-      background-color: #001922;
-      border-color: #000000;
+      background-color: var(--st-color-bg-page);
+      border-color: var(--st-color-border);
     }
   }
 
   .ant-pagination-options-size-changer.ant-select .ant-select-selector,
   .ant-pagination-options-quick-jumper input {
-    color: #fff;
-    background-color: #001922;
-    border: 1px solid #000000;
+    color: var(--st-color-text-primary);
+    background-color: var(--st-color-bg-page);
+    border: 1px solid var(--st-color-border);
   }
 
   .ant-pagination-options-size-changer.ant-select:hover .ant-select-selector,
   .ant-pagination-options-size-changer.ant-select-focused .ant-select-selector,
   .ant-pagination-options-quick-jumper input:hover,
   .ant-pagination-options-quick-jumper input:focus {
-    background-color: rgba(33, 135, 168, 0.4);
-    border-color: rgba(77, 232, 255, 0.5);
+    background-color: var(--st-color-selected);
+    border-color: var(--st-color-accent);
   }
 
   .ant-pagination-total-text {
@@ -1092,7 +1092,7 @@
 
   &.is-active {
     color: var(--st-color-text-primary);
-    background: rgba(0, 25, 34, 0.28);
+    background: var(--st-color-selected);
   }
 }
 

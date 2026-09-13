@@ -508,7 +508,7 @@ const DataExplorationTasksPage: React.FC = () => {
       title: '操作',
       key: 'actions',
       fixed: 'right',
-      width: 340,
+      width: 400,
       render: (_, record) => (
         <Space size="small">
           <Button type="link" icon={<SyncOutlined />} onClick={() => void triggerScan(record)}>
