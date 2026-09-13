@@ -1,0 +1,3973 @@
+{
+  "name": "1",
+  "stampModified": 1782201243389,
+  "generatedGuid": "6922e346-b50d-3662-7d38-aad610329342",
+  "cacheMarks": [],
+  "width": 1200,
+  "artboardId": "1e1d0dab-3b28-4af8-a47e-79ce6e8b0303",
+  "elements": [
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "4b9151ba-b6f6-469d-88c8-35af8039e517",
+        "name": "矩形",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 0,
+        "height": 1184,
+        "y": 0,
+        "width": 1200
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 0,
+        "fontAlignments": [],
+        "fillColored": true,
+        "fillColor": 4278196514,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": false,
+        "isText": false,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": true,
+        "fill": {
+          "colors": [
+            {
+              "version": 1,
+              "gradientColor": {
+                "type": "",
+                "alignLayer": true,
+                "colors": [],
+                "scale": 100,
+                "angle": 90,
+                "colorPos": [],
+                "version": 1
+              },
+              "type": 1,
+              "blendMode": "normal",
+              "solidColor": {
+                "color": 4278196514,
+                "version": 1
+              }
+            }
+          ],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "7455a51c-2914-4290-ad47-1c2d4d044a30",
+        "name": "文字规范",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 65,
+        "height": 47,
+        "y": 100,
+        "width": 144
+      },
+      "oldInfo": {
+        "fontColors": [
+          4283290367
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          36
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "文字规范",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "文字规范",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4283290367,
+            "lineHeight": 47,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 36,
+            "alignment": "center",
+            "end": 4,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "313aabbe-0c39-4d78-9a9c-1c78403f5f0d",
+        "name": "Fonts",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 219,
+        "height": 19,
+        "y": 123,
+        "width": 36
+      },
+      "oldInfo": {
+        "fontColors": [
+          4283290367
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          14
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "Fonts",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "Fonts",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4283290367,
+            "lineHeight": 19,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 14,
+            "alignment": "center",
+            "end": 5,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "a9d5d18a-e799-4bb2-9e44-0eecd0b99ea6",
+        "name": "常用于大标题文字",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 545,
+        "height": 37,
+        "y": 624,
+        "width": 224
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          28
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常用于大标题文字",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常用于大标题文字",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 37,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 28,
+            "alignment": "left",
+            "end": 8,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "2f78d53d-e564-443b-bcc6-983f2150848f",
+        "name": "常用于标题文字",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 545,
+        "height": 31,
+        "y": 679,
+        "width": 168
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          24
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常用于标题文字",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常用于标题文字",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 31,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 24,
+            "alignment": "left",
+            "end": 7,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "8e4f98a1-8447-4fa9-9aff-a2426c05bb66",
+        "name": "常用于标题/内容文字",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 545,
+        "height": 26,
+        "y": 726,
+        "width": 189
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          20
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常用于标题/内容文字",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常用于标题/内容文字",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 26,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 20,
+            "alignment": "left",
+            "end": 10,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "4d031012-df4f-439d-8144-5b93b5e1eb35",
+        "name": "常用于内容文字",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 545,
+        "height": 24,
+        "y": 766,
+        "width": 126
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          18
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常用于内容文字",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常用于内容文字",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 24,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 18,
+            "alignment": "left",
+            "end": 7,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "0c5167f7-ef51-46f6-a571-223aabc84cec",
+        "name": "常用于内容文字备份",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 545,
+        "height": 21,
+        "y": 803,
+        "width": 112
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          16
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常用于内容文字",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常用于内容文字",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 21,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 16,
+            "alignment": "left",
+            "end": 7,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "9041b4c8-1c88-4912-9597-a6ca0c978409",
+        "name": "常用于内容文字备份 2",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 545,
+        "height": 19,
+        "y": 837,
+        "width": 98
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          14
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常用于内容文字",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常用于内容文字",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 19,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 14,
+            "alignment": "left",
+            "end": 7,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "52fa1129-7b67-4a20-ba6d-cda1b88d0777",
+        "name": "常规体字体Regular font-si",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 66,
+        "height": 37,
+        "y": 624,
+        "width": 440
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          28
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常规体字体Regular font-size:28px",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常规体字体Regular font-size:28px",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 37,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 28,
+            "alignment": "left",
+            "end": 27,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "8a22a082-e195-4893-a254-02300b8ee8f1",
+        "name": "常规体字体Regular font-si",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 66,
+        "height": 31,
+        "y": 679,
+        "width": 377
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          24
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常规体字体Regular font-size:24px",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常规体字体Regular font-size:24px",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 31,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 24,
+            "alignment": "left",
+            "end": 27,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "576b2b99-93aa-4df0-802d-863395ef6f42",
+        "name": "常规体字体Regular font-si",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 66,
+        "height": 26,
+        "y": 726,
+        "width": 314
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          20
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常规体字体Regular font-size:20px",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常规体字体Regular font-size:20px",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 26,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 20,
+            "alignment": "left",
+            "end": 27,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "7a677dc4-82b9-4fab-a4ab-50f345d10f36",
+        "name": "常规体字体Regular font-si",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 66,
+        "height": 24,
+        "y": 766,
+        "width": 283
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          18
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常规体字体Regular font-size:18px",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常规体字体Regular font-size:18px",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 24,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 18,
+            "alignment": "left",
+            "end": 27,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "9636f10c-203e-484f-a6c0-4a78b64e9144",
+        "name": "常规体字体Regular font-si",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 66,
+        "height": 21,
+        "y": 803,
+        "width": 252
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          16
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常规体字体Regular font-size:16px",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常规体字体Regular font-size:16px",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 21,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 16,
+            "alignment": "left",
+            "end": 27,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "ebc65bd7-9ed3-4a76-ad87-f09029284ae9",
+        "name": "常规体字体Regular font-si",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 66,
+        "height": 19,
+        "y": 837,
+        "width": 220
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          14
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常规体字体Regular font-size:14px",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常规体字体Regular font-size:14px",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 19,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 14,
+            "alignment": "left",
+            "end": 27,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "f3380800-839c-462c-8adf-c583d7b8fbde",
+        "name": "矩形",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 65,
+        "height": 89,
+        "y": 252,
+        "width": 89
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4280387496,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4280387496,
+                  "version": 1
+                }
+              },
+              "position": "inside",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "6bea0404-562b-4c47-bd26-4bc5f8de4a32",
+        "name": "矩形备份 7",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 65,
+        "height": 89,
+        "y": 437,
+        "width": 89
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4280387496,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4280387496,
+                  "version": 1
+                }
+              },
+              "position": "inside",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "bed913f7-4bb7-45f9-bba1-0fe932b63a5e",
+        "name": "矩形备份 8",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 193,
+        "height": 89,
+        "y": 437,
+        "width": 89
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4280387496,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4280387496,
+                  "version": 1
+                }
+              },
+              "position": "inside",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "bf57e531-3a21-4d7c-baeb-e9d07bee99b2",
+        "name": "矩形备份 9",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 318,
+        "height": 89,
+        "y": 437,
+        "width": 89
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4280387496,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4280387496,
+                  "version": 1
+                }
+              },
+              "position": "inside",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "7f05fbb2-71ae-4245-af54-27d12ee08a1d",
+        "name": "天备份",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 97,
+        "height": 31,
+        "y": 452,
+        "width": 24
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          24
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "天",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "天",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 31,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 24,
+            "alignment": "center",
+            "end": 1,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "c872d8d2-bbfb-4f1a-b898-c7de6d1ae717",
+        "name": "天备份 2",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 225,
+        "height": 31,
+        "y": 452,
+        "width": 24
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          24
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "天",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "天",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 31,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 24,
+            "alignment": "center",
+            "end": 1,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "999bcfec-49c7-4ccd-9a32-c6423c183fac",
+        "name": "天备份 3",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 349,
+        "height": 31,
+        "y": 452,
+        "width": 24
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          24
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "天",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "天",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 31,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 24,
+            "alignment": "center",
+            "end": 1,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "e7c7b11d-0181-4ec4-88ce-7f55099074ae",
+        "name": "自重",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 65,
+        "height": 26,
+        "y": 389,
+        "width": 40
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          20
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "自重",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "自重",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 26,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 20,
+            "alignment": "center",
+            "end": 2,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "fdeb21d8-d8a8-4467-b428-470caa673da1",
+        "name": "字体适用范围",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 65,
+        "height": 26,
+        "y": 576,
+        "width": 120
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          20
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "字体适用范围",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "字体适用范围",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 26,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 20,
+            "alignment": "center",
+            "end": 6,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "f3afabf7-bbf8-4289-ac16-29b3896d1cdf",
+        "name": "常规体",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 91,
+        "height": 16,
+        "y": 498,
+        "width": 36
+      },
+      "oldInfo": {
+        "fontColors": [
+          4284903285
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          12
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "常规体",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "常规体",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4284903285,
+            "lineHeight": 16,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 12,
+            "alignment": "left",
+            "end": 3,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "c340c97a-ac38-4ba0-907e-3dd1bce11256",
+        "name": "中黑体",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 219,
+        "height": 16,
+        "y": 498,
+        "width": 36
+      },
+      "oldInfo": {
+        "fontColors": [
+          4284903285
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          12
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "中黑体",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "中黑体",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4284903285,
+            "lineHeight": 16,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 12,
+            "alignment": "left",
+            "end": 3,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "5ca027ac-f4ff-4ad7-8684-7d6807856992",
+        "name": "中粗体",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 343,
+        "height": 16,
+        "y": 498,
+        "width": 36
+      },
+      "oldInfo": {
+        "fontColors": [
+          4284903285
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          12
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "中粗体",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "中粗体",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4284903285,
+            "lineHeight": 16,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 12,
+            "alignment": "left",
+            "end": 3,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "2c85d1ec-8d61-47ac-a5de-7054f089a1d6",
+        "name": "矩形备份 5",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 193,
+        "height": 89,
+        "y": 252,
+        "width": 89
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4280387496,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4280387496,
+                  "version": 1
+                }
+              },
+              "position": "inside",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "e6e4f136-70a6-40e2-b787-5522c2177777",
+        "name": "矩形备份 6",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 318,
+        "height": 89,
+        "y": 252,
+        "width": 89
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4280387496,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4280387496,
+                  "version": 1
+                }
+              },
+              "position": "inside",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "c1157e90-5051-4c26-981f-fad2a1c9d72c",
+        "name": "天",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 97,
+        "height": 31,
+        "y": 267,
+        "width": 24
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          24
+        ],
+        "fontFamily": [
+          "MicrosoftYaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "天",
+        "fonts": [
+          {
+            "name": "MicrosoftYaHei",
+            "text": "天",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 31,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 24,
+            "alignment": "center",
+            "end": 1,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "0711afbe-0b1a-46bf-ad8c-d99c4887b5c4",
+        "name": "天",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 225,
+        "height": 32,
+        "y": 266,
+        "width": 24
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          24
+        ],
+        "fontFamily": [
+          "STSongti-SC-Black"
+        ]
+      },
+      "fontInfo": {
+        "text": "天",
+        "fonts": [
+          {
+            "name": "STSongti-SC-Black",
+            "text": "天",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 32,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 24,
+            "alignment": "center",
+            "end": 1,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "bff86bf1-f401-4c7d-bd49-b4e0ad11a4ab",
+        "name": "123",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 347,
+        "height": 24,
+        "y": 272,
+        "width": 30
+      },
+      "oldInfo": {
+        "fontColors": [
+          4294967295
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          24
+        ],
+        "fontFamily": [
+          "DS-Digital"
+        ]
+      },
+      "fontInfo": {
+        "text": "123",
+        "fonts": [
+          {
+            "name": "DS-Digital",
+            "text": "123",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4294967295,
+            "lineHeight": 24,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 24,
+            "alignment": "center",
+            "end": 3,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "80779ceb-ff04-4781-a19a-3c5bed6a2fe6",
+        "name": "中文",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 65,
+        "height": 21,
+        "y": 210,
+        "width": 32
+      },
+      "oldInfo": {
+        "fontColors": [
+          4292203989
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          16
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "中文",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "中文",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4292203989,
+            "lineHeight": 21,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 16,
+            "alignment": "center",
+            "end": 2,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "03d3af23-7457-4c1e-8c6d-31f69a8b7b48",
+        "name": "中文",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 193,
+        "height": 21,
+        "y": 210,
+        "width": 32
+      },
+      "oldInfo": {
+        "fontColors": [
+          4292203989
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          16
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "中文",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "中文",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4292203989,
+            "lineHeight": 21,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 16,
+            "alignment": "center",
+            "end": 2,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "4ca41d1c-4a33-4e39-a976-f5a2694d18cb",
+        "name": "数字",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 318,
+        "height": 21,
+        "y": 210,
+        "width": 32
+      },
+      "oldInfo": {
+        "fontColors": [
+          4292203989
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "center"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          16
+        ],
+        "fontFamily": [
+          "Microsoft YaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "数字",
+        "fonts": [
+          {
+            "name": "Microsoft YaHei",
+            "text": "数字",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4292203989,
+            "lineHeight": 21,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 16,
+            "alignment": "center",
+            "end": 2,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "ae0eb714-8392-4dfa-93e7-21398b0d06a0",
+        "name": "直线 4",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 74,
+        "height": 0,
+        "y": 308,
+        "width": 70
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4278201921,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4278201921,
+                  "version": 1
+                }
+              },
+              "position": "center",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "77994078-c6c3-4221-bae3-ab357c311689",
+        "name": "微软雅黑",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 85,
+        "height": 16,
+        "y": 311,
+        "width": 48
+      },
+      "oldInfo": {
+        "fontColors": [
+          4284903285
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          12
+        ],
+        "fontFamily": [
+          "MicrosoftYaHei"
+        ]
+      },
+      "fontInfo": {
+        "text": "微软雅黑",
+        "fonts": [
+          {
+            "name": "MicrosoftYaHei",
+            "text": "微软雅黑",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4284903285,
+            "lineHeight": 16,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 12,
+            "alignment": "left",
+            "end": 4,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "2dc64779-6649-4871-98a7-041cd7aef4f3",
+        "name": "直线 4备份",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 202,
+        "height": 0,
+        "y": 308,
+        "width": 70
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4278201921,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4278201921,
+                  "version": 1
+                }
+              },
+              "position": "center",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "7704a11a-1736-42c9-b2c3-8e995bf05abd",
+        "name": "华文宋体",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 213,
+        "height": 16,
+        "y": 311,
+        "width": 48
+      },
+      "oldInfo": {
+        "fontColors": [
+          4284903285
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          12
+        ],
+        "fontFamily": [
+          "STSongti-SC-Black"
+        ]
+      },
+      "fontInfo": {
+        "text": "华文宋体",
+        "fonts": [
+          {
+            "name": "STSongti-SC-Black",
+            "text": "华文宋体",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4284903285,
+            "lineHeight": 16,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 12,
+            "alignment": "left",
+            "end": 4,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "458642ae-ba75-4980-b3b3-c6dd396bbefc",
+        "name": "直线 4备份 2",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 327,
+        "height": 0,
+        "y": 308,
+        "width": 70
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4278201921,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4278201921,
+                  "version": 1
+                }
+              },
+              "position": "center",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "ec57f4b2-af6e-4700-b803-f87a93f639a2",
+        "name": "DS-Digital",
+        "root": false,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 334,
+        "height": 14,
+        "y": 313,
+        "width": 54
+      },
+      "oldInfo": {
+        "fontColors": [
+          4284903285
+        ],
+        "strokeColor": 0,
+        "fontAlignments": [
+          "left"
+        ],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": true,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [
+          12
+        ],
+        "fontFamily": [
+          "ArialMT"
+        ]
+      },
+      "fontInfo": {
+        "text": "DS-Digital",
+        "fonts": [
+          {
+            "name": "ArialMT",
+            "text": "DS-Digital",
+            "underline": false,
+            "bold": false,
+            "start": 0,
+            "color": 4284903285,
+            "lineHeight": 14,
+            "italic": false,
+            "letterSpacing": 0,
+            "size": 12,
+            "alignment": "left",
+            "end": 10,
+            "version": 2
+          }
+        ],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": true,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "33101d39-8d1c-4ca1-a0e1-4af7de86fb2f",
+        "name": "直线 4备份 3",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 74,
+        "height": 0,
+        "y": 493,
+        "width": 70
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4278201921,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4278201921,
+                  "version": 1
+                }
+              },
+              "position": "center",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "3dba5bd8-c70a-4d19-a934-c51a1c6b55dc",
+        "name": "直线 4备份 4",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 202,
+        "height": 0,
+        "y": 493,
+        "width": 70
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4278201921,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4278201921,
+                  "version": 1
+                }
+              },
+              "position": "center",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "921333bf-2957-4026-9dde-5b94b17d8321",
+        "name": "直线 4备份 5",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 327,
+        "height": 0,
+        "y": 493,
+        "width": 70
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 4278201921,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 4278201921,
+                  "version": 1
+                }
+              },
+              "position": "center",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "b08b3209-b513-4151-a9d9-38c3877e2cfd",
+        "name": "直线备份 6",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 64,
+        "height": 0,
+        "y": 365,
+        "width": 1069
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 487685536,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 487685536,
+                  "version": 1
+                }
+              },
+              "position": "center",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "6fafccce-c932-42f9-bd74-cc27bbe9eef6",
+        "name": "直线备份 8",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 64,
+        "height": 0,
+        "y": 882,
+        "width": 1069
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 487685536,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 487685536,
+                  "version": 1
+                }
+              },
+              "position": "center",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "29704fd5-b97f-4a8f-ab91-ab0ce410d597",
+        "name": "直线备份 7",
+        "root": false,
+        "version": 1
+      },
+      "vectored": true,
+      "rectInfo": {
+        "version": 1,
+        "x": 64,
+        "height": 0,
+        "y": 550,
+        "width": 1069
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 487685536,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": true,
+        "strokeColored": true,
+        "isText": false,
+        "vectorStrokeWidth": 1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [
+            {
+              "color": {
+                "version": 1,
+                "gradientColor": {
+                  "type": "",
+                  "alignLayer": true,
+                  "colors": [],
+                  "scale": 100,
+                  "angle": 90,
+                  "colorPos": [],
+                  "version": 1
+                },
+                "type": 1,
+                "blendMode": "",
+                "solidColor": {
+                  "color": 487685536,
+                  "version": 1
+                }
+              },
+              "position": "center",
+              "thickness": 1,
+              "version": 1
+            }
+          ],
+          "version": 1
+        },
+        "stroked": true,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    },
+    {
+      "baseInfo": {
+        "opacity": 1,
+        "id": "1e1d0dab-3b28-4af8-a47e-79ce6e8b0303",
+        "name": "",
+        "root": true,
+        "version": 1
+      },
+      "vectored": false,
+      "rectInfo": {
+        "version": 1,
+        "x": 0,
+        "height": 1184,
+        "y": 0,
+        "width": 1200
+      },
+      "oldInfo": {
+        "fontColors": [],
+        "strokeColor": 0,
+        "fontAlignments": [],
+        "fillColored": false,
+        "fillColor": 0,
+        "version": 1,
+        "radiu": 0,
+        "isVectorRect": false,
+        "strokeColored": false,
+        "isText": false,
+        "vectorStrokeWidth": -1,
+        "fontSizes": [],
+        "fontFamily": []
+      },
+      "fontInfo": {
+        "text": "",
+        "fonts": [],
+        "version": 1
+      },
+      "vectorInfo": {
+        "stroke": {
+          "dashSet": [],
+          "styles": [],
+          "version": 1
+        },
+        "stroked": false,
+        "filled": false,
+        "fill": {
+          "colors": [],
+          "version": 1
+        },
+        "radius": [],
+        "version": 1
+      },
+      "fonted": false,
+      "effected": false,
+      "effectInfo": {
+        "shadows": [],
+        "version": 1
+      },
+      "version": 1
+    }
+  ],
+  "sourceGuid": "1e1d0dab-3b28-4af8-a47e-79ce6e8b0303",
+  "filePath": "E:/（个人非M）-素材包/他用-设计素材（汇总）.xd",
+  "height": 1184,
+  "stampRelativeFile": null,
+  "retinaScale": 2,
+  "version": 3,
+  "marks": [],
+  "stampCreated": 1782201243389
+}

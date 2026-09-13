@@ -1,0 +1,2538 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "fileName": "设计样式.pxcp",
+    "format": "PXCP",
+    "embeddedJsonByteRange": {
+      "start": 199,
+      "endExclusive": 46927,
+      "length": 46728
+    },
+    "note": "Normalized from the first complete embedded JSON artboard object in the PXCP file."
+  },
+  "artboard": {
+    "name": "1",
+    "width": 1200,
+    "height": 1184,
+    "retinaScale": 2,
+    "version": 3,
+    "elementCount": 48
+  },
+  "codexGuidance": {
+    "purpose": "Use as a visual/style reference for an existing frontend; do not recreate this documentation board literally.",
+    "important": [
+      "Element x/y positions describe the design-spec documentation board, not the target product page layout.",
+      "Apply typography, color, border, and font-family values semantically to the existing UI rather than copying absolute coordinates.",
+      "The large full-artboard fill #001922 is the background of this specification board; do not assume it must replace the application background unless the current product context supports that interpretation.",
+      "Labels such as 常规体/中黑体/中粗体 are present, but the embedded font metadata does not encode distinct weights for those three samples; do not invent weight values from the labels alone.",
+      "Microsoft YaHei appears both as \"Microsoft YaHei\" and \"MicrosoftYaHei\" in source metadata; treat them as the same family when mapping CSS fallbacks."
+    ]
+  },
+  "designTokens": {
+    "semanticTypography": [
+      {
+        "role": "large-title",
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 28,
+        "lineHeight": 37,
+        "fontWeight": 400,
+        "color": "#FFFFFF",
+        "exampleText": "常用于大标题文字"
+      },
+      {
+        "role": "title",
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 24,
+        "lineHeight": 31,
+        "fontWeight": 400,
+        "color": "#FFFFFF",
+        "exampleText": "常用于标题文字"
+      },
+      {
+        "role": "title-or-content",
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 20,
+        "lineHeight": 26,
+        "fontWeight": 400,
+        "color": "#FFFFFF",
+        "exampleText": "常用于标题/内容文字"
+      },
+      {
+        "role": "content-lg",
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 18,
+        "lineHeight": 24,
+        "fontWeight": 400,
+        "color": "#FFFFFF",
+        "exampleText": "常用于内容文字"
+      },
+      {
+        "role": "content-md",
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 16,
+        "lineHeight": 21,
+        "fontWeight": 400,
+        "color": "#FFFFFF",
+        "exampleText": "常用于内容文字"
+      },
+      {
+        "role": "content-sm",
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 14,
+        "lineHeight": 19,
+        "fontWeight": 400,
+        "color": "#FFFFFF",
+        "exampleText": "常用于内容文字"
+      }
+    ],
+    "observedTypography": [
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 36,
+        "lineHeight": 47,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "color": {
+          "argb_int": 4283290367,
+          "argb_hex": "#FF4DD2FF",
+          "hex": "#4DD2FF",
+          "alpha": 1.0,
+          "rgba": "rgba(77, 210, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 1,
+          "name": "文字规范",
+          "text": "文字规范"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 14,
+        "lineHeight": 19,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "color": {
+          "argb_int": 4283290367,
+          "argb_hex": "#FF4DD2FF",
+          "hex": "#4DD2FF",
+          "alpha": 1.0,
+          "rgba": "rgba(77, 210, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 2,
+          "name": "Fonts",
+          "text": "Fonts"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 28,
+        "lineHeight": 37,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 3,
+          "name": "常用于大标题文字",
+          "text": "常用于大标题文字"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 24,
+        "lineHeight": 31,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 4,
+          "name": "常用于标题文字",
+          "text": "常用于标题文字"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 20,
+        "lineHeight": 26,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 5,
+          "name": "常用于标题/内容文字",
+          "text": "常用于标题/内容文字"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 18,
+        "lineHeight": 24,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 6,
+          "name": "常用于内容文字",
+          "text": "常用于内容文字"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 16,
+        "lineHeight": 21,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 7,
+          "name": "常用于内容文字备份",
+          "text": "常用于内容文字"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 14,
+        "lineHeight": 19,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 8,
+          "name": "常用于内容文字备份 2",
+          "text": "常用于内容文字"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 24,
+        "lineHeight": 31,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 19,
+          "name": "天备份",
+          "text": "天"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 20,
+        "lineHeight": 26,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 22,
+          "name": "自重",
+          "text": "自重"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 12,
+        "lineHeight": 16,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "color": {
+          "argb_int": 4284903285,
+          "argb_hex": "#FF666F75",
+          "hex": "#666F75",
+          "alpha": 1.0,
+          "rgba": "rgba(102, 111, 117, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 24,
+          "name": "常规体",
+          "text": "常规体"
+        }
+      },
+      {
+        "fontFamily": "MicrosoftYaHei",
+        "fontSize": 24,
+        "lineHeight": 31,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 29,
+          "name": "天",
+          "text": "天"
+        }
+      },
+      {
+        "fontFamily": "STSongti-SC-Black",
+        "fontSize": 24,
+        "lineHeight": 32,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 30,
+          "name": "天",
+          "text": "天"
+        }
+      },
+      {
+        "fontFamily": "DS-Digital",
+        "fontSize": 24,
+        "lineHeight": 24,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 31,
+          "name": "123",
+          "text": "123"
+        }
+      },
+      {
+        "fontFamily": "Microsoft YaHei",
+        "fontSize": 16,
+        "lineHeight": 21,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "color": {
+          "argb_int": 4292203989,
+          "argb_hex": "#FFD5D5D5",
+          "hex": "#D5D5D5",
+          "alpha": 1.0,
+          "rgba": "rgba(213, 213, 213, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 32,
+          "name": "中文",
+          "text": "中文"
+        }
+      },
+      {
+        "fontFamily": "MicrosoftYaHei",
+        "fontSize": 12,
+        "lineHeight": 16,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "color": {
+          "argb_int": 4284903285,
+          "argb_hex": "#FF666F75",
+          "hex": "#666F75",
+          "alpha": 1.0,
+          "rgba": "rgba(102, 111, 117, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 36,
+          "name": "微软雅黑",
+          "text": "微软雅黑"
+        }
+      },
+      {
+        "fontFamily": "STSongti-SC-Black",
+        "fontSize": 12,
+        "lineHeight": 16,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "color": {
+          "argb_int": 4284903285,
+          "argb_hex": "#FF666F75",
+          "hex": "#666F75",
+          "alpha": 1.0,
+          "rgba": "rgba(102, 111, 117, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 38,
+          "name": "华文宋体",
+          "text": "华文宋体"
+        }
+      },
+      {
+        "fontFamily": "ArialMT",
+        "fontSize": 12,
+        "lineHeight": 14,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "color": {
+          "argb_int": 4284903285,
+          "argb_hex": "#FF666F75",
+          "hex": "#666F75",
+          "alpha": 1.0,
+          "rgba": "rgba(102, 111, 117, 1.0)"
+        },
+        "firstExample": {
+          "elementIndex": 40,
+          "name": "DS-Digital",
+          "text": "DS-Digital"
+        }
+      }
+    ],
+    "observedFontFamilies": [
+      {
+        "sourceName": "Microsoft YaHei",
+        "normalizedName": "Microsoft YaHei",
+        "usageCount": 25
+      },
+      {
+        "sourceName": "MicrosoftYaHei",
+        "normalizedName": "Microsoft YaHei",
+        "usageCount": 2
+      },
+      {
+        "sourceName": "STSongti-SC-Black",
+        "normalizedName": "STSongti-SC-Black",
+        "usageCount": 2
+      },
+      {
+        "sourceName": "ArialMT",
+        "normalizedName": "ArialMT",
+        "usageCount": 1
+      },
+      {
+        "sourceName": "DS-Digital",
+        "normalizedName": "DS-Digital",
+        "usageCount": 1
+      }
+    ],
+    "colors": [
+      {
+        "color": {
+          "argb_int": 4294967295,
+          "argb_hex": "#FFFFFFFF",
+          "hex": "#FFFFFF",
+          "alpha": 1.0,
+          "rgba": "rgba(255, 255, 255, 1.0)"
+        },
+        "usageCount": 20,
+        "usages": [
+          {
+            "elementIndex": 3,
+            "role": "text",
+            "name": "常用于大标题文字"
+          },
+          {
+            "elementIndex": 4,
+            "role": "text",
+            "name": "常用于标题文字"
+          },
+          {
+            "elementIndex": 5,
+            "role": "text",
+            "name": "常用于标题/内容文字"
+          },
+          {
+            "elementIndex": 6,
+            "role": "text",
+            "name": "常用于内容文字"
+          },
+          {
+            "elementIndex": 7,
+            "role": "text",
+            "name": "常用于内容文字备份"
+          },
+          {
+            "elementIndex": 8,
+            "role": "text",
+            "name": "常用于内容文字备份 2"
+          },
+          {
+            "elementIndex": 9,
+            "role": "text",
+            "name": "常规体字体Regular font-si"
+          },
+          {
+            "elementIndex": 10,
+            "role": "text",
+            "name": "常规体字体Regular font-si"
+          },
+          {
+            "elementIndex": 11,
+            "role": "text",
+            "name": "常规体字体Regular font-si"
+          },
+          {
+            "elementIndex": 12,
+            "role": "text",
+            "name": "常规体字体Regular font-si"
+          },
+          {
+            "elementIndex": 13,
+            "role": "text",
+            "name": "常规体字体Regular font-si"
+          },
+          {
+            "elementIndex": 14,
+            "role": "text",
+            "name": "常规体字体Regular font-si"
+          },
+          {
+            "elementIndex": 19,
+            "role": "text",
+            "name": "天备份"
+          },
+          {
+            "elementIndex": 20,
+            "role": "text",
+            "name": "天备份 2"
+          },
+          {
+            "elementIndex": 21,
+            "role": "text",
+            "name": "天备份 3"
+          },
+          {
+            "elementIndex": 22,
+            "role": "text",
+            "name": "自重"
+          },
+          {
+            "elementIndex": 23,
+            "role": "text",
+            "name": "字体适用范围"
+          },
+          {
+            "elementIndex": 29,
+            "role": "text",
+            "name": "天"
+          },
+          {
+            "elementIndex": 30,
+            "role": "text",
+            "name": "天"
+          },
+          {
+            "elementIndex": 31,
+            "role": "text",
+            "name": "123"
+          }
+        ]
+      },
+      {
+        "color": {
+          "argb_int": 4278201921,
+          "argb_hex": "#FF002E41",
+          "hex": "#002E41",
+          "alpha": 1.0,
+          "rgba": "rgba(0, 46, 65, 1.0)"
+        },
+        "usageCount": 6,
+        "usages": [
+          {
+            "elementIndex": 35,
+            "role": "stroke",
+            "name": "直线 4"
+          },
+          {
+            "elementIndex": 37,
+            "role": "stroke",
+            "name": "直线 4备份"
+          },
+          {
+            "elementIndex": 39,
+            "role": "stroke",
+            "name": "直线 4备份 2"
+          },
+          {
+            "elementIndex": 41,
+            "role": "stroke",
+            "name": "直线 4备份 3"
+          },
+          {
+            "elementIndex": 42,
+            "role": "stroke",
+            "name": "直线 4备份 4"
+          },
+          {
+            "elementIndex": 43,
+            "role": "stroke",
+            "name": "直线 4备份 5"
+          }
+        ]
+      },
+      {
+        "color": {
+          "argb_int": 4280387496,
+          "argb_hex": "#FF2187A8",
+          "hex": "#2187A8",
+          "alpha": 1.0,
+          "rgba": "rgba(33, 135, 168, 1.0)"
+        },
+        "usageCount": 6,
+        "usages": [
+          {
+            "elementIndex": 15,
+            "role": "stroke",
+            "name": "矩形"
+          },
+          {
+            "elementIndex": 16,
+            "role": "stroke",
+            "name": "矩形备份 7"
+          },
+          {
+            "elementIndex": 17,
+            "role": "stroke",
+            "name": "矩形备份 8"
+          },
+          {
+            "elementIndex": 18,
+            "role": "stroke",
+            "name": "矩形备份 9"
+          },
+          {
+            "elementIndex": 27,
+            "role": "stroke",
+            "name": "矩形备份 5"
+          },
+          {
+            "elementIndex": 28,
+            "role": "stroke",
+            "name": "矩形备份 6"
+          }
+        ]
+      },
+      {
+        "color": {
+          "argb_int": 4284903285,
+          "argb_hex": "#FF666F75",
+          "hex": "#666F75",
+          "alpha": 1.0,
+          "rgba": "rgba(102, 111, 117, 1.0)"
+        },
+        "usageCount": 6,
+        "usages": [
+          {
+            "elementIndex": 24,
+            "role": "text",
+            "name": "常规体"
+          },
+          {
+            "elementIndex": 25,
+            "role": "text",
+            "name": "中黑体"
+          },
+          {
+            "elementIndex": 26,
+            "role": "text",
+            "name": "中粗体"
+          },
+          {
+            "elementIndex": 36,
+            "role": "text",
+            "name": "微软雅黑"
+          },
+          {
+            "elementIndex": 38,
+            "role": "text",
+            "name": "华文宋体"
+          },
+          {
+            "elementIndex": 40,
+            "role": "text",
+            "name": "DS-Digital"
+          }
+        ]
+      },
+      {
+        "color": {
+          "argb_int": 487685536,
+          "argb_hex": "#1D117DA0",
+          "hex": "#117DA0",
+          "alpha": 0.1137,
+          "rgba": "rgba(17, 125, 160, 0.1137)"
+        },
+        "usageCount": 3,
+        "usages": [
+          {
+            "elementIndex": 44,
+            "role": "stroke",
+            "name": "直线备份 6"
+          },
+          {
+            "elementIndex": 45,
+            "role": "stroke",
+            "name": "直线备份 8"
+          },
+          {
+            "elementIndex": 46,
+            "role": "stroke",
+            "name": "直线备份 7"
+          }
+        ]
+      },
+      {
+        "color": {
+          "argb_int": 4292203989,
+          "argb_hex": "#FFD5D5D5",
+          "hex": "#D5D5D5",
+          "alpha": 1.0,
+          "rgba": "rgba(213, 213, 213, 1.0)"
+        },
+        "usageCount": 3,
+        "usages": [
+          {
+            "elementIndex": 32,
+            "role": "text",
+            "name": "中文"
+          },
+          {
+            "elementIndex": 33,
+            "role": "text",
+            "name": "中文"
+          },
+          {
+            "elementIndex": 34,
+            "role": "text",
+            "name": "数字"
+          }
+        ]
+      },
+      {
+        "color": {
+          "argb_int": 4283290367,
+          "argb_hex": "#FF4DD2FF",
+          "hex": "#4DD2FF",
+          "alpha": 1.0,
+          "rgba": "rgba(77, 210, 255, 1.0)"
+        },
+        "usageCount": 2,
+        "usages": [
+          {
+            "elementIndex": 1,
+            "role": "text",
+            "name": "文字规范"
+          },
+          {
+            "elementIndex": 2,
+            "role": "text",
+            "name": "Fonts"
+          }
+        ]
+      },
+      {
+        "color": {
+          "argb_int": 4278196514,
+          "argb_hex": "#FF001922",
+          "hex": "#001922",
+          "alpha": 1.0,
+          "rgba": "rgba(0, 25, 34, 1.0)"
+        },
+        "usageCount": 1,
+        "usages": [
+          {
+            "elementIndex": 0,
+            "role": "fill",
+            "name": "矩形"
+          }
+        ]
+      }
+    ],
+    "observedFontSizes": [
+      12,
+      14,
+      16,
+      18,
+      20,
+      24,
+      28,
+      36
+    ],
+    "observedLineHeights": [
+      14,
+      16,
+      19,
+      21,
+      24,
+      26,
+      31,
+      32,
+      37,
+      47
+    ],
+    "observedBorderWidths": [
+      1
+    ],
+    "observedBorderRadii": [],
+    "observedShadows": []
+  },
+  "elements": [
+    {
+      "index": 0,
+      "id": "4b9151ba-b6f6-469d-88c8-35af8039e517",
+      "name": "矩形",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "width": 1200,
+        "height": 1184
+      },
+      "fills": [
+        {
+          "type": 1,
+          "blendMode": "normal",
+          "solidColor": {
+            "argb_int": 4278196514,
+            "argb_hex": "#FF001922",
+            "hex": "#001922",
+            "alpha": 1.0,
+            "rgba": "rgba(0, 25, 34, 1.0)"
+          }
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "id": "7455a51c-2914-4290-ad47-1c2d4d044a30",
+      "name": "文字规范",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 65,
+        "y": 100,
+        "width": 144,
+        "height": 47
+      },
+      "text": "文字规范",
+      "textStyleRuns": [
+        {
+          "text": "文字规范",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 36,
+          "lineHeight": 47,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4283290367,
+            "argb_hex": "#FF4DD2FF",
+            "hex": "#4DD2FF",
+            "alpha": 1.0,
+            "rgba": "rgba(77, 210, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 4
+          }
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "id": "313aabbe-0c39-4d78-9a9c-1c78403f5f0d",
+      "name": "Fonts",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 219,
+        "y": 123,
+        "width": 36,
+        "height": 19
+      },
+      "text": "Fonts",
+      "textStyleRuns": [
+        {
+          "text": "Fonts",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 14,
+          "lineHeight": 19,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4283290367,
+            "argb_hex": "#FF4DD2FF",
+            "hex": "#4DD2FF",
+            "alpha": 1.0,
+            "rgba": "rgba(77, 210, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 5
+          }
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "id": "a9d5d18a-e799-4bb2-9e44-0eecd0b99ea6",
+      "name": "常用于大标题文字",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 545,
+        "y": 624,
+        "width": 224,
+        "height": 37
+      },
+      "text": "常用于大标题文字",
+      "textStyleRuns": [
+        {
+          "text": "常用于大标题文字",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 28,
+          "lineHeight": 37,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 8
+          }
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "id": "2f78d53d-e564-443b-bcc6-983f2150848f",
+      "name": "常用于标题文字",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 545,
+        "y": 679,
+        "width": 168,
+        "height": 31
+      },
+      "text": "常用于标题文字",
+      "textStyleRuns": [
+        {
+          "text": "常用于标题文字",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 24,
+          "lineHeight": 31,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 7
+          }
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "id": "8e4f98a1-8447-4fa9-9aff-a2426c05bb66",
+      "name": "常用于标题/内容文字",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 545,
+        "y": 726,
+        "width": 189,
+        "height": 26
+      },
+      "text": "常用于标题/内容文字",
+      "textStyleRuns": [
+        {
+          "text": "常用于标题/内容文字",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 20,
+          "lineHeight": 26,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 10
+          }
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "id": "4d031012-df4f-439d-8144-5b93b5e1eb35",
+      "name": "常用于内容文字",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 545,
+        "y": 766,
+        "width": 126,
+        "height": 24
+      },
+      "text": "常用于内容文字",
+      "textStyleRuns": [
+        {
+          "text": "常用于内容文字",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 18,
+          "lineHeight": 24,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 7
+          }
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "id": "0c5167f7-ef51-46f6-a571-223aabc84cec",
+      "name": "常用于内容文字备份",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 545,
+        "y": 803,
+        "width": 112,
+        "height": 21
+      },
+      "text": "常用于内容文字",
+      "textStyleRuns": [
+        {
+          "text": "常用于内容文字",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 16,
+          "lineHeight": 21,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 7
+          }
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "id": "9041b4c8-1c88-4912-9597-a6ca0c978409",
+      "name": "常用于内容文字备份 2",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 545,
+        "y": 837,
+        "width": 98,
+        "height": 19
+      },
+      "text": "常用于内容文字",
+      "textStyleRuns": [
+        {
+          "text": "常用于内容文字",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 14,
+          "lineHeight": 19,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 7
+          }
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "id": "52fa1129-7b67-4a20-ba6d-cda1b88d0777",
+      "name": "常规体字体Regular font-si",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 66,
+        "y": 624,
+        "width": 440,
+        "height": 37
+      },
+      "text": "常规体字体Regular font-size:28px",
+      "textStyleRuns": [
+        {
+          "text": "常规体字体Regular font-size:28px",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 28,
+          "lineHeight": 37,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 27
+          }
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "id": "8a22a082-e195-4893-a254-02300b8ee8f1",
+      "name": "常规体字体Regular font-si",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 66,
+        "y": 679,
+        "width": 377,
+        "height": 31
+      },
+      "text": "常规体字体Regular font-size:24px",
+      "textStyleRuns": [
+        {
+          "text": "常规体字体Regular font-size:24px",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 24,
+          "lineHeight": 31,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 27
+          }
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "id": "576b2b99-93aa-4df0-802d-863395ef6f42",
+      "name": "常规体字体Regular font-si",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 66,
+        "y": 726,
+        "width": 314,
+        "height": 26
+      },
+      "text": "常规体字体Regular font-size:20px",
+      "textStyleRuns": [
+        {
+          "text": "常规体字体Regular font-size:20px",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 20,
+          "lineHeight": 26,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 27
+          }
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "id": "7a677dc4-82b9-4fab-a4ab-50f345d10f36",
+      "name": "常规体字体Regular font-si",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 66,
+        "y": 766,
+        "width": 283,
+        "height": 24
+      },
+      "text": "常规体字体Regular font-size:18px",
+      "textStyleRuns": [
+        {
+          "text": "常规体字体Regular font-size:18px",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 18,
+          "lineHeight": 24,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 27
+          }
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "id": "9636f10c-203e-484f-a6c0-4a78b64e9144",
+      "name": "常规体字体Regular font-si",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 66,
+        "y": 803,
+        "width": 252,
+        "height": 21
+      },
+      "text": "常规体字体Regular font-size:16px",
+      "textStyleRuns": [
+        {
+          "text": "常规体字体Regular font-size:16px",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 16,
+          "lineHeight": 21,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 27
+          }
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "id": "ebc65bd7-9ed3-4a76-ad87-f09029284ae9",
+      "name": "常规体字体Regular font-si",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 66,
+        "y": 837,
+        "width": 220,
+        "height": 19
+      },
+      "text": "常规体字体Regular font-size:14px",
+      "textStyleRuns": [
+        {
+          "text": "常规体字体Regular font-size:14px",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 14,
+          "lineHeight": 19,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 27
+          }
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "id": "f3380800-839c-462c-8adf-c583d7b8fbde",
+      "name": "矩形",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 65,
+        "y": 252,
+        "width": 89,
+        "height": 89
+      },
+      "strokes": [
+        {
+          "position": "inside",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4280387496,
+              "argb_hex": "#FF2187A8",
+              "hex": "#2187A8",
+              "alpha": 1.0,
+              "rgba": "rgba(33, 135, 168, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "id": "6bea0404-562b-4c47-bd26-4bc5f8de4a32",
+      "name": "矩形备份 7",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 65,
+        "y": 437,
+        "width": 89,
+        "height": 89
+      },
+      "strokes": [
+        {
+          "position": "inside",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4280387496,
+              "argb_hex": "#FF2187A8",
+              "hex": "#2187A8",
+              "alpha": 1.0,
+              "rgba": "rgba(33, 135, 168, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "id": "bed913f7-4bb7-45f9-bba1-0fe932b63a5e",
+      "name": "矩形备份 8",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 193,
+        "y": 437,
+        "width": 89,
+        "height": 89
+      },
+      "strokes": [
+        {
+          "position": "inside",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4280387496,
+              "argb_hex": "#FF2187A8",
+              "hex": "#2187A8",
+              "alpha": 1.0,
+              "rgba": "rgba(33, 135, 168, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "id": "bf57e531-3a21-4d7c-baeb-e9d07bee99b2",
+      "name": "矩形备份 9",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 318,
+        "y": 437,
+        "width": 89,
+        "height": 89
+      },
+      "strokes": [
+        {
+          "position": "inside",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4280387496,
+              "argb_hex": "#FF2187A8",
+              "hex": "#2187A8",
+              "alpha": 1.0,
+              "rgba": "rgba(33, 135, 168, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "id": "7f05fbb2-71ae-4245-af54-27d12ee08a1d",
+      "name": "天备份",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 97,
+        "y": 452,
+        "width": 24,
+        "height": 31
+      },
+      "text": "天",
+      "textStyleRuns": [
+        {
+          "text": "天",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 24,
+          "lineHeight": 31,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 1
+          }
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "id": "c872d8d2-bbfb-4f1a-b898-c7de6d1ae717",
+      "name": "天备份 2",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 225,
+        "y": 452,
+        "width": 24,
+        "height": 31
+      },
+      "text": "天",
+      "textStyleRuns": [
+        {
+          "text": "天",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 24,
+          "lineHeight": 31,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 1
+          }
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "id": "999bcfec-49c7-4ccd-9a32-c6423c183fac",
+      "name": "天备份 3",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 349,
+        "y": 452,
+        "width": 24,
+        "height": 31
+      },
+      "text": "天",
+      "textStyleRuns": [
+        {
+          "text": "天",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 24,
+          "lineHeight": 31,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 1
+          }
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "id": "e7c7b11d-0181-4ec4-88ce-7f55099074ae",
+      "name": "自重",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 65,
+        "y": 389,
+        "width": 40,
+        "height": 26
+      },
+      "text": "自重",
+      "textStyleRuns": [
+        {
+          "text": "自重",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 20,
+          "lineHeight": 26,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 2
+          }
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "id": "fdeb21d8-d8a8-4467-b428-470caa673da1",
+      "name": "字体适用范围",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 65,
+        "y": 576,
+        "width": 120,
+        "height": 26
+      },
+      "text": "字体适用范围",
+      "textStyleRuns": [
+        {
+          "text": "字体适用范围",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 20,
+          "lineHeight": 26,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 6
+          }
+        }
+      ]
+    },
+    {
+      "index": 24,
+      "id": "f3afabf7-bbf8-4289-ac16-29b3896d1cdf",
+      "name": "常规体",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 91,
+        "y": 498,
+        "width": 36,
+        "height": 16
+      },
+      "text": "常规体",
+      "textStyleRuns": [
+        {
+          "text": "常规体",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4284903285,
+            "argb_hex": "#FF666F75",
+            "hex": "#666F75",
+            "alpha": 1.0,
+            "rgba": "rgba(102, 111, 117, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 3
+          }
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "id": "c340c97a-ac38-4ba0-907e-3dd1bce11256",
+      "name": "中黑体",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 219,
+        "y": 498,
+        "width": 36,
+        "height": 16
+      },
+      "text": "中黑体",
+      "textStyleRuns": [
+        {
+          "text": "中黑体",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4284903285,
+            "argb_hex": "#FF666F75",
+            "hex": "#666F75",
+            "alpha": 1.0,
+            "rgba": "rgba(102, 111, 117, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 3
+          }
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "id": "5ca027ac-f4ff-4ad7-8684-7d6807856992",
+      "name": "中粗体",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 343,
+        "y": 498,
+        "width": 36,
+        "height": 16
+      },
+      "text": "中粗体",
+      "textStyleRuns": [
+        {
+          "text": "中粗体",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4284903285,
+            "argb_hex": "#FF666F75",
+            "hex": "#666F75",
+            "alpha": 1.0,
+            "rgba": "rgba(102, 111, 117, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 3
+          }
+        }
+      ]
+    },
+    {
+      "index": 27,
+      "id": "2c85d1ec-8d61-47ac-a5de-7054f089a1d6",
+      "name": "矩形备份 5",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 193,
+        "y": 252,
+        "width": 89,
+        "height": 89
+      },
+      "strokes": [
+        {
+          "position": "inside",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4280387496,
+              "argb_hex": "#FF2187A8",
+              "hex": "#2187A8",
+              "alpha": 1.0,
+              "rgba": "rgba(33, 135, 168, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "id": "e6e4f136-70a6-40e2-b787-5522c2177777",
+      "name": "矩形备份 6",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 318,
+        "y": 252,
+        "width": 89,
+        "height": 89
+      },
+      "strokes": [
+        {
+          "position": "inside",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4280387496,
+              "argb_hex": "#FF2187A8",
+              "hex": "#2187A8",
+              "alpha": 1.0,
+              "rgba": "rgba(33, 135, 168, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 29,
+      "id": "c1157e90-5051-4c26-981f-fad2a1c9d72c",
+      "name": "天",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 97,
+        "y": 267,
+        "width": 24,
+        "height": 31
+      },
+      "text": "天",
+      "textStyleRuns": [
+        {
+          "text": "天",
+          "fontFamily": "MicrosoftYaHei",
+          "fontSize": 24,
+          "lineHeight": 31,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 1
+          }
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "id": "0711afbe-0b1a-46bf-ad8c-d99c4887b5c4",
+      "name": "天",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 225,
+        "y": 266,
+        "width": 24,
+        "height": 32
+      },
+      "text": "天",
+      "textStyleRuns": [
+        {
+          "text": "天",
+          "fontFamily": "STSongti-SC-Black",
+          "fontSize": 24,
+          "lineHeight": 32,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 1
+          }
+        }
+      ]
+    },
+    {
+      "index": 31,
+      "id": "bff86bf1-f401-4c7d-bd49-b4e0ad11a4ab",
+      "name": "123",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 347,
+        "y": 272,
+        "width": 30,
+        "height": 24
+      },
+      "text": "123",
+      "textStyleRuns": [
+        {
+          "text": "123",
+          "fontFamily": "DS-Digital",
+          "fontSize": 24,
+          "lineHeight": 24,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4294967295,
+            "argb_hex": "#FFFFFFFF",
+            "hex": "#FFFFFF",
+            "alpha": 1.0,
+            "rgba": "rgba(255, 255, 255, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 3
+          }
+        }
+      ]
+    },
+    {
+      "index": 32,
+      "id": "80779ceb-ff04-4781-a19a-3c5bed6a2fe6",
+      "name": "中文",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 65,
+        "y": 210,
+        "width": 32,
+        "height": 21
+      },
+      "text": "中文",
+      "textStyleRuns": [
+        {
+          "text": "中文",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 16,
+          "lineHeight": 21,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4292203989,
+            "argb_hex": "#FFD5D5D5",
+            "hex": "#D5D5D5",
+            "alpha": 1.0,
+            "rgba": "rgba(213, 213, 213, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 2
+          }
+        }
+      ]
+    },
+    {
+      "index": 33,
+      "id": "03d3af23-7457-4c1e-8c6d-31f69a8b7b48",
+      "name": "中文",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 193,
+        "y": 210,
+        "width": 32,
+        "height": 21
+      },
+      "text": "中文",
+      "textStyleRuns": [
+        {
+          "text": "中文",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 16,
+          "lineHeight": 21,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4292203989,
+            "argb_hex": "#FFD5D5D5",
+            "hex": "#D5D5D5",
+            "alpha": 1.0,
+            "rgba": "rgba(213, 213, 213, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 2
+          }
+        }
+      ]
+    },
+    {
+      "index": 34,
+      "id": "4ca41d1c-4a33-4e39-a976-f5a2694d18cb",
+      "name": "数字",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 318,
+        "y": 210,
+        "width": 32,
+        "height": 21
+      },
+      "text": "数字",
+      "textStyleRuns": [
+        {
+          "text": "数字",
+          "fontFamily": "Microsoft YaHei",
+          "fontSize": 16,
+          "lineHeight": 21,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "center",
+          "color": {
+            "argb_int": 4292203989,
+            "argb_hex": "#FFD5D5D5",
+            "hex": "#D5D5D5",
+            "alpha": 1.0,
+            "rgba": "rgba(213, 213, 213, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 2
+          }
+        }
+      ]
+    },
+    {
+      "index": 35,
+      "id": "ae0eb714-8392-4dfa-93e7-21398b0d06a0",
+      "name": "直线 4",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 74,
+        "y": 308,
+        "width": 70,
+        "height": 0
+      },
+      "strokes": [
+        {
+          "position": "center",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4278201921,
+              "argb_hex": "#FF002E41",
+              "hex": "#002E41",
+              "alpha": 1.0,
+              "rgba": "rgba(0, 46, 65, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 36,
+      "id": "77994078-c6c3-4221-bae3-ab357c311689",
+      "name": "微软雅黑",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 85,
+        "y": 311,
+        "width": 48,
+        "height": 16
+      },
+      "text": "微软雅黑",
+      "textStyleRuns": [
+        {
+          "text": "微软雅黑",
+          "fontFamily": "MicrosoftYaHei",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4284903285,
+            "argb_hex": "#FF666F75",
+            "hex": "#666F75",
+            "alpha": 1.0,
+            "rgba": "rgba(102, 111, 117, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 4
+          }
+        }
+      ]
+    },
+    {
+      "index": 37,
+      "id": "2dc64779-6649-4871-98a7-041cd7aef4f3",
+      "name": "直线 4备份",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 202,
+        "y": 308,
+        "width": 70,
+        "height": 0
+      },
+      "strokes": [
+        {
+          "position": "center",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4278201921,
+              "argb_hex": "#FF002E41",
+              "hex": "#002E41",
+              "alpha": 1.0,
+              "rgba": "rgba(0, 46, 65, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 38,
+      "id": "7704a11a-1736-42c9-b2c3-8e995bf05abd",
+      "name": "华文宋体",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 213,
+        "y": 311,
+        "width": 48,
+        "height": 16
+      },
+      "text": "华文宋体",
+      "textStyleRuns": [
+        {
+          "text": "华文宋体",
+          "fontFamily": "STSongti-SC-Black",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4284903285,
+            "argb_hex": "#FF666F75",
+            "hex": "#666F75",
+            "alpha": 1.0,
+            "rgba": "rgba(102, 111, 117, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 4
+          }
+        }
+      ]
+    },
+    {
+      "index": 39,
+      "id": "458642ae-ba75-4980-b3b3-c6dd396bbefc",
+      "name": "直线 4备份 2",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 327,
+        "y": 308,
+        "width": 70,
+        "height": 0
+      },
+      "strokes": [
+        {
+          "position": "center",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4278201921,
+              "argb_hex": "#FF002E41",
+              "hex": "#002E41",
+              "alpha": 1.0,
+              "rgba": "rgba(0, 46, 65, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "id": "ec57f4b2-af6e-4700-b803-f87a93f639a2",
+      "name": "DS-Digital",
+      "kind": "text",
+      "opacity": 1,
+      "frame": {
+        "x": 334,
+        "y": 313,
+        "width": 54,
+        "height": 14
+      },
+      "text": "DS-Digital",
+      "textStyleRuns": [
+        {
+          "text": "DS-Digital",
+          "fontFamily": "ArialMT",
+          "fontSize": 12,
+          "lineHeight": 14,
+          "fontWeight": 400,
+          "boldFlag": false,
+          "italic": false,
+          "underline": false,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "color": {
+            "argb_int": 4284903285,
+            "argb_hex": "#FF666F75",
+            "hex": "#666F75",
+            "alpha": 1.0,
+            "rgba": "rgba(102, 111, 117, 1.0)"
+          },
+          "range": {
+            "start": 0,
+            "end": 10
+          }
+        }
+      ]
+    },
+    {
+      "index": 41,
+      "id": "33101d39-8d1c-4ca1-a0e1-4af7de86fb2f",
+      "name": "直线 4备份 3",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 74,
+        "y": 493,
+        "width": 70,
+        "height": 0
+      },
+      "strokes": [
+        {
+          "position": "center",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4278201921,
+              "argb_hex": "#FF002E41",
+              "hex": "#002E41",
+              "alpha": 1.0,
+              "rgba": "rgba(0, 46, 65, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 42,
+      "id": "3dba5bd8-c70a-4d19-a934-c51a1c6b55dc",
+      "name": "直线 4备份 4",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 202,
+        "y": 493,
+        "width": 70,
+        "height": 0
+      },
+      "strokes": [
+        {
+          "position": "center",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4278201921,
+              "argb_hex": "#FF002E41",
+              "hex": "#002E41",
+              "alpha": 1.0,
+              "rgba": "rgba(0, 46, 65, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 43,
+      "id": "921333bf-2957-4026-9dde-5b94b17d8321",
+      "name": "直线 4备份 5",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 327,
+        "y": 493,
+        "width": 70,
+        "height": 0
+      },
+      "strokes": [
+        {
+          "position": "center",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 4278201921,
+              "argb_hex": "#FF002E41",
+              "hex": "#002E41",
+              "alpha": 1.0,
+              "rgba": "rgba(0, 46, 65, 1.0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 44,
+      "id": "b08b3209-b513-4151-a9d9-38c3877e2cfd",
+      "name": "直线备份 6",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 64,
+        "y": 365,
+        "width": 1069,
+        "height": 0
+      },
+      "strokes": [
+        {
+          "position": "center",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 487685536,
+              "argb_hex": "#1D117DA0",
+              "hex": "#117DA0",
+              "alpha": 0.1137,
+              "rgba": "rgba(17, 125, 160, 0.1137)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 45,
+      "id": "6fafccce-c932-42f9-bd74-cc27bbe9eef6",
+      "name": "直线备份 8",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 64,
+        "y": 882,
+        "width": 1069,
+        "height": 0
+      },
+      "strokes": [
+        {
+          "position": "center",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 487685536,
+              "argb_hex": "#1D117DA0",
+              "hex": "#117DA0",
+              "alpha": 0.1137,
+              "rgba": "rgba(17, 125, 160, 0.1137)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 46,
+      "id": "29704fd5-b97f-4a8f-ab91-ab0ce410d597",
+      "name": "直线备份 7",
+      "kind": "shape",
+      "opacity": 1,
+      "frame": {
+        "x": 64,
+        "y": 550,
+        "width": 1069,
+        "height": 0
+      },
+      "strokes": [
+        {
+          "position": "center",
+          "width": 1,
+          "paint": {
+            "type": 1,
+            "blendMode": "normal",
+            "solidColor": {
+              "argb_int": 487685536,
+              "argb_hex": "#1D117DA0",
+              "hex": "#117DA0",
+              "alpha": 0.1137,
+              "rgba": "rgba(17, 125, 160, 0.1137)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 47,
+      "id": "1e1d0dab-3b28-4af8-a47e-79ce6e8b0303",
+      "name": "",
+      "kind": "unknown",
+      "opacity": 1,
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "width": 1200,
+        "height": 1184
+      }
+    }
+  ]
+}
