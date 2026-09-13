@@ -256,24 +256,11 @@ const App: React.FC<Props> = ({
     },
     {
       title: intl.formatMessage({
-        id: "pages.job.table.col.syncPlan",
-        defaultMessage: "Sync Plan",
-      }),
-      dataIndex: "",
-      width: "15%",
-      render: (_content: any, record: any) => (
-        <div className="sync-task-plan-cell">
-          <DataSourceSyncPlan record={record} />
-        </div>
-      ),
-    },
-    {
-      title: intl.formatMessage({
         id: "pages.job.table.col.status",
         defaultMessage: "Status",
       }),
       dataIndex: "taskParams",
-      width: "7%",
+      width: "8%",
       render: (_content: any, record: any) => (
         <div className="sync-task-status-cell flex w-full justify-center">
           <TaskStatus
@@ -285,16 +272,25 @@ const App: React.FC<Props> = ({
     },
     {
       title: intl.formatMessage({
+        id: "pages.job.table.col.syncPlan",
+        defaultMessage: "Sync Plan",
+      }),
+      dataIndex: "",
+      width: "17%",
+      render: (_content: any, record: any) => (
+        <div className="sync-task-plan-cell">
+          <DataSourceSyncPlan record={record} />
+        </div>
+      ),
+    },
+    {
+      title: intl.formatMessage({
         id: "pages.job.table.col.execution",
         defaultMessage: "Execution",
       }),
       dataIndex: "执行概况",
-      width: "15%",
-      render: (_content: any, record: any) => (
-        <div className="sync-task-info-list">
-          <ExecutionStatus record={record} />
-        </div>
-      ),
+      width: "14%",
+      render: (_content: any, record: any) => <ExecutionStatus record={record} />,
     },
     {
       title: intl.formatMessage({
@@ -302,12 +298,8 @@ const App: React.FC<Props> = ({
         defaultMessage: "Schedule",
       }),
       dataIndex: "taskName",
-      width: "18%",
-      render: (_content: any, record: any) => (
-        <div className="sync-task-info-list sync-task-schedule-list">
-          <ScheduleInfo record={record} />
-        </div>
-      ),
+      width: "15%",
+      render: (_content: any, record: any) => <ScheduleInfo record={record} />,
     },
     {
       title: intl.formatMessage({
@@ -315,7 +307,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "CreateTime",
       }),
       dataIndex: "createTime",
-      width: "10%",
+      width: "12%",
       sorter: true,
       sortOrder: sort.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (createTime: string) => (
@@ -799,7 +791,7 @@ const App: React.FC<Props> = ({
             rowKey="id"
             pagination={false}
             loading={loading}
-            rowSelection={{ type: "checkbox", ...rowSelection }}
+            rowSelection={{ ...rowSelection, type: "checkbox", columnWidth: 44 }}
             onChange={(_pagination, _filters, sorter) => {
               const active = Array.isArray(sorter) ? sorter[0] : sorter;
               if (!active?.order) return;
@@ -808,7 +800,7 @@ const App: React.FC<Props> = ({
                 active.order === "ascend" ? "asc" : "desc",
               );
             }}
-            scroll={{ x: "max-content", y: "calc(100vh - 380px)" }}
+            scroll={{ x: 1500, y: "calc(100vh - 380px)" }}
             className="task-table"
             locale={{
               emptyText: (

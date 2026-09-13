@@ -134,21 +134,21 @@ export default {
   'pages.job.batch.stop.success': '全部停止成功',
   'pages.job.batch.stop.fail': '全部停止失败',
 
-  'pages.job.execution.runMode': '运行模式：',
-  'pages.job.execution.time': '耗时：',
-  'pages.job.execution.amount': '数据量：',
-  'pages.job.execution.qps': 'QPS：',
-  'pages.job.execution.size': '大小：',
+  'pages.job.execution.runMode': '运行模式',
+  'pages.job.execution.time': '耗时',
+  'pages.job.execution.amount': '行数',
+  'pages.job.execution.qps': 'QPS',
+  'pages.job.execution.size': '大小',
 
   // units
   'pages.job.execution.unit.seconds': '秒',
   'pages.job.execution.unit.rows': '行',
   'pages.job.execution.unit.rowsPerSecond': '行/秒',
 
-  'pages.job.schedule.cron': 'Cron：',
-  'pages.job.schedule.status': '状态：',
-  'pages.job.schedule.lastRunTime': '上次运行时间：',
-  'pages.job.schedule.nextRunTime': '下次运行时间：',
+  'pages.job.schedule.cron': 'Cron',
+  'pages.job.schedule.status': '状态',
+  'pages.job.schedule.lastRunTime': '上次运行',
+  'pages.job.schedule.nextRunTime': '下次运行',
   'pages.job.schedule.last5RunsTitle': '⏰ 最近 5 次运行时间',
 
   'pages.job.schedule.status.active': '启用',

@@ -4,120 +4,66 @@ interface ExecutionStatusProps {
   record: any;
 }
 
+/** 执行概况内联指标组（DESIGN.md §5.3）：去掉逐行 label 冒号，等宽数字。 */
 const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
   const intl = useIntl();
   const isManual = record?.runMode === "MANUAL";
 
   return (
-    <>
-      {/* Execution */}
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <span
-          style={{
-            fontWeight: 700,
-            fontSize: 19,
-            marginRight: 8,
-            color: "#1890ff",
-          }}
-        >
-          ·
-        </span>
-
-        <span style={{ marginRight: 16, fontWeight: 700, color: "#333" }}>
-          {intl.formatMessage({
-            id: "pages.job.execution.runMode",
-            defaultMessage: "Run Mode:",
-          })}{" "}
-        </span>
-
-        <div
-          style={{
-            minWidth: 42,
-            padding: "2px 8px",
-            color: isManual ? "#ffd591" : "#b7eb8f",
-            fontSize: 12,
-            fontWeight: 700,
-            lineHeight: "18px",
-            textAlign: "center",
-            background: isManual
-              ? "rgba(250, 140, 22, 0.16)"
-              : "rgba(82, 196, 26, 0.14)",
-            border: `1px solid ${
-              isManual ? "rgba(250, 140, 22, 0.34)" : "rgba(82, 196, 26, 0.32)"
-            }`,
-            borderRadius: 999,
-          }}
-        >
-          {isManual ? "手动" : "自动"}
-        </div>
-      </div>
-
-      {/* Time */}
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <span style={{ fontWeight: 700, fontSize: 19, marginRight: 8 }}>·</span>
-        <span style={{ marginRight: 42, fontWeight: 700 }}>
+    <div className="task-metric-group">
+      <span
+        className={`task-metric-group__badge ${
+          isManual ? "is-manual" : "is-auto"
+        }`}
+      >
+        {isManual ? "手动" : "自动"}
+      </span>
+      <span className="task-metric">
+        <span className="task-metric__label">
           {intl.formatMessage({
             id: "pages.job.execution.time",
-            defaultMessage: "Time:",
-          })}{" "}
+            defaultMessage: "耗时",
+          })}
         </span>
-        <span style={{ color: "gray" }}>
-          {record?.duration || "-"}{" "}
+        <span className="task-metric__value">
+          {record?.duration || "-"}
           {intl.formatMessage({
             id: "pages.job.execution.unit.seconds",
             defaultMessage: "s",
           })}
         </span>
-      </div>
-
-      {/* Amount */}
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <span style={{ fontWeight: 700, fontSize: 19, marginRight: 8 }}>·</span>
-        <span style={{ marginRight: 30, fontWeight: 700 }}>
+      </span>
+      <span className="task-metric">
+        <span className="task-metric__label">
           {intl.formatMessage({
             id: "pages.job.execution.amount",
-            defaultMessage: "Amount:",
-          })}{" "}
-        </span>
-        <span style={{ color: "gray" }}>
-          {record?.readRowCount ?? 0}{" "}
-          {intl.formatMessage({
-            id: "pages.job.execution.unit.rows",
-            defaultMessage: "r",
+            defaultMessage: "行数",
           })}
         </span>
-      </div>
-
-      {/* QPS */}
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <span style={{ fontWeight: 700, fontSize: 19, marginRight: 8 }}>·</span>
-        <span style={{ marginRight: 43, fontWeight: 700 }}>
-          {intl.formatMessage({
-            id: "pages.job.execution.qps",
-            defaultMessage: "QPS:",
-          })}{" "}
+        <span className="task-metric__value">
+          {record?.readRowCount ?? 0}
         </span>
-        <span style={{ color: "gray" }}>
-          {record?.qps ?? 0}{" "}
+      </span>
+      <span className="task-metric">
+        <span className="task-metric__label">QPS</span>
+        <span className="task-metric__value">
+          {record?.qps ?? 0}
           {intl.formatMessage({
             id: "pages.job.execution.unit.rowsPerSecond",
-            defaultMessage: "r/s",
+            defaultMessage: "行/秒",
           })}
         </span>
-      </div>
-
-      {/* Size */}
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <span style={{ fontWeight: 700, fontSize: 19, marginRight: 8 }}>·</span>
-        <span style={{ marginRight: 43, fontWeight: 700 }}>
+      </span>
+      <span className="task-metric">
+        <span className="task-metric__label">
           {intl.formatMessage({
             id: "pages.job.execution.size",
-            defaultMessage: "Size:",
-          })}{" "}
+            defaultMessage: "大小",
+          })}
         </span>
-        <span style={{ color: "gray" }}>{record?.syncSize || "-"}</span>
-      </div>
-    </>
+        <span className="task-metric__value">{record?.syncSize || "-"}</span>
+      </span>
+    </div>
   );
 };
 

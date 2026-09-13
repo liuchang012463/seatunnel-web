@@ -53,7 +53,11 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
       (item) => item.dbType.toUpperCase() === normalized
     );
 
-    return registryItem?.label || String(dbType);
+    // 「达梦（Dameng）」→「达梦」，括号别名放悬浮提示里
+    const label = registryItem?.label || String(dbType);
+    const parenIndex = label.indexOf("（");
+
+    return parenIndex > 0 ? label.slice(0, parenIndex) : label;
   };
 
   const getTableCount = (tableValue: any) => {

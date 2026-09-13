@@ -86,7 +86,14 @@
     }
 
     .ant-table-selection-column {
-      padding-inline: 18px 10px;
+      width: 44px;
+      min-width: 44px;
+      padding-inline: 12px 8px;
+    }
+
+    /* antd 会把 scroll.x 剩余宽度全部塞给勾选列（inline col 宽），此处强制收窄 */
+    colgroup col.ant-table-selection-col {
+      width: 44px !important;
     }
 
     .ant-checkbox-inner {
@@ -210,59 +217,68 @@
     word-break: break-all;
   }
 
-  .sync-task-info-list {
-    min-width: 180px;
+  /* 内联指标组（DESIGN.md §5.3）：label 弱化、数值等宽右读，行高减半 */
+  .task-metric-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    min-width: 140px;
+    line-height: 20px;
+  }
 
-    > div {
-      display: flex !important;
-      align-items: center;
-      min-height: 22px;
-      line-height: 22px;
+  .task-metric-group__badge {
+    flex: 0 0 auto;
+    padding: 1px 8px;
+    font-size: 12px;
+    line-height: 18px;
+    border-radius: 2px;
+
+    &.is-manual {
+      color: #ffd591;
+      background: rgba(250, 140, 22, 0.16);
+      border: 1px solid rgba(250, 140, 22, 0.34);
     }
 
-    > div + div {
-      margin-top: 4px;
-    }
-
-    > div > span:first-child {
-      width: 10px;
-      margin-right: 6px !important;
-      color: var(--st-color-accent, #4dd2ff) !important;
-      font-size: 15px !important;
-      line-height: 1;
-    }
-
-    > div > span:nth-child(2) {
-      flex: 0 0 66px;
-      margin-right: 8px !important;
-      color: rgba(238, 251, 255, 0.96) !important;
-      font-size: 12px;
-      font-weight: 600 !important;
-    }
-
-    > div > span:last-child {
-      color: rgba(220, 238, 245, 0.72) !important;
-      font-size: 12px;
-    }
-
-    a {
-      display: inline-block;
-      max-width: 200px;
-      overflow: hidden;
-      color: #6ea8ff !important;
-      font-weight: 600;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      vertical-align: bottom;
+    &.is-auto {
+      color: #b7eb8f;
+      background: rgba(82, 196, 26, 0.14);
+      border: 1px solid rgba(82, 196, 26, 0.32);
     }
   }
 
-  .sync-task-schedule-list {
-    min-width: 260px;
+  .task-metric {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
 
-    > div > span:nth-child(2) {
-      flex-basis: 92px;
+  .task-metric__label {
+    color: var(--st-color-text-muted);
+    font-size: 12px;
+  }
+
+  .task-metric__value {
+    color: var(--st-color-text-primary);
+    font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+
+    &.is-success {
+      color: var(--st-color-success);
+      font-family: inherit;
     }
+
+    &.is-error {
+      color: var(--st-color-error);
+      font-family: inherit;
+    }
+  }
+
+  .task-metric__link {
+    color: var(--st-color-accent);
+    font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
   }
 
   .sync-task-status-cell {

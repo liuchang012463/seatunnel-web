@@ -143,21 +143,6 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       ),
     },
     {
-      key: "syncPlan",
-      title: intl.formatMessage({
-        id: "pages.job.table.col.syncPlan",
-        defaultMessage: "数据源同步方案",
-      }),
-      dataIndex: "",
-      width: 320,
-      ellipsis: true,
-      render: (_content, record) => (
-        <div className="min-w-[280px]">
-          <RealtimeSyncPlan record={record} />
-        </div>
-      ),
-    },
-    {
       key: "status",
       title: intl.formatMessage({
         id: "pages.job.table.col.status",
@@ -171,6 +156,21 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
             status={record?.lastJobStatus}
             errorMessage={record?.lastErrorMessage}
           />
+        </div>
+      ),
+    },
+    {
+      key: "syncPlan",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.syncPlan",
+        defaultMessage: "数据源同步方案",
+      }),
+      dataIndex: "",
+      width: 230,
+      ellipsis: true,
+      render: (_content, record) => (
+        <div className="min-w-[190px]">
+          <RealtimeSyncPlan record={record} />
         </div>
       ),
     },
