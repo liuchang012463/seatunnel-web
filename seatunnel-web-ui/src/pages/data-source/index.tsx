@@ -629,43 +629,41 @@ const DataSourcePage: React.FC = () => {
                     </Button>
                   ))}
                 </div>
+                <div className="datasource-catalog-panel__controls">
+                  <span className="datasource-category-count">{pagination.total}</span>
+                  <Segmented
+                    aria-label="数据源视图"
+                    className="datasource-view-switcher"
+                    value={viewMode}
+                    onChange={(value) => setViewMode(value as DataSourceViewMode)}
+                    options={[
+                      {
+                        label: (
+                          <span className="datasource-view-option">
+                            <AppstoreOutlined />
+                            卡片
+                          </span>
+                        ),
+                        value: 'card',
+                      },
+                      {
+                        label: (
+                          <span className="datasource-view-option">
+                            <UnorderedListOutlined />
+                            列表
+                          </span>
+                        ),
+                        value: 'list',
+                      },
+                    ]}
+                  />
+                </div>
               </motion.div>
 
               <Spin spinning={loading}>
                 <motion.div variants={PAGE_ANIMATION.cardStagger} initial="hidden" animate="visible">
                   {dataSourceList.length > 0 ? (
                     <section className="datasource-catalog-panel">
-                      <div className="datasource-catalog-panel__heading">
-                        <div className="datasource-catalog-panel__controls">
-                          <span className="datasource-category-count">{pagination.total}</span>
-                          <Segmented
-                            aria-label="数据源视图"
-                            className="datasource-view-switcher"
-                            value={viewMode}
-                            onChange={(value) => setViewMode(value as DataSourceViewMode)}
-                            options={[
-                              {
-                                label: (
-                                  <span className="datasource-view-option">
-                                    <AppstoreOutlined />
-                                    卡片
-                                  </span>
-                                ),
-                                value: 'card',
-                              },
-                              {
-                                label: (
-                                  <span className="datasource-view-option">
-                                    <UnorderedListOutlined />
-                                    列表
-                                  </span>
-                                ),
-                                value: 'list',
-                              },
-                            ]}
-                          />
-                        </div>
-                      </div>
                       <div className="datasource-catalog-panel__body">
                         {viewMode === 'card' ? (
                           <div className="datasource-card-grid">
