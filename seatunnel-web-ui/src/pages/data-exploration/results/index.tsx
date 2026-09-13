@@ -520,16 +520,15 @@ const DataExplorationResultsPage: React.FC = () => {
                       <span className="results-source-row__meta">
                         <span>{sourceTypeLabel(source.dbType)}</span>
                         {source.jdbcUrl && <><i>·</i><span title={source.jdbcUrl}>{source.jdbcUrl}</span></>}
-                      </span>
-                      <span className="results-source-row__footer">
-                        <span className="results-source-row__owners">
+                        <i>·</i>
+                        <span className="results-source-row__owners" title={`${owner.unit} / ${owner.system}`}>
                           <span><ApartmentOutlined /> {owner.unit}</span>
+                          <i>·</i>
                           <span><ApartmentOutlined /> {owner.system}</span>
                         </span>
-                        <Tag color={status.color}>{status.label}</Tag>
                       </span>
                     </span>
-                    <span className="results-source-row__arrow" aria-hidden="true">→</span>
+                    <Tag className="results-source-row__status" color={status.color}>{status.label}</Tag>
                   </button>
                 );
               })

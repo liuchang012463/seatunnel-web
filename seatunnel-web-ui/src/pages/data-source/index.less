@@ -255,7 +255,7 @@
 .datasource-catalog-panel {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 340px);
+  height: calc(100vh - 300px);
   min-height: 480px;
   overflow: hidden;
   background: #001922;
@@ -265,10 +265,10 @@
 .datasource-catalog-panel__heading {
   display: flex;
   flex: 0 0 auto;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-end;
   gap: 16px;
-  padding: 16px 18px 14px;
+  padding: 10px 18px;
 
   p {
     margin: 4px 0 0;
@@ -300,8 +300,8 @@
 
 .datasource-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 14px;
   padding: 16px;
 
   > .datasource-card {
@@ -324,8 +324,13 @@
     font-size: 14px;
     font-weight: 500;
     text-align: center !important;
-    background: var(--st-color-bg-control) !important;
+    background: var(--st-color-bg-panel) !important;
     border-bottom: 1px solid var(--st-color-divider) !important;
+  }
+
+  /* 全局暗色主题给表头用了更深的 bg-control 底带，这里与表体统一为面板底色。 */
+  html[data-st-theme='dark'] &.ant-table-wrapper .ant-table-thead > tr > th {
+    background: var(--st-color-bg-panel) !important;
   }
 
   .ant-table-thead > tr > th::before {
@@ -625,6 +630,27 @@
   padding: 16px 0;
 }
 
+.datasource-page-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+
+  .datasource-search-bar {
+    margin-bottom: 0;
+  }
+
+  .datasource-create-button {
+    align-self: center;
+  }
+
+  @media (max-width: 768px) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .datasource-page-header {
   display: flex;
   align-items: center;
@@ -750,13 +776,6 @@
   padding-inline: 16px;
 }
 
-.datasource-page-count {
-  margin-bottom: 16px;
-  color: rgb(240, 230, 230);
-  font-size: var(--st-type-caption-size);
-  line-height: var(--st-type-caption-line);
-}
-
 .datasource-page-pagination {
   .ant-pagination-item,
   .ant-pagination-prev,
@@ -828,14 +847,6 @@
   }
 }
 
-.datasource-category-title {
-  margin: 0;
-  color: var(--st-color-text-primary);
-  font-size: var(--st-type-content-md-size);
-  font-weight: 400;
-  line-height: var(--st-type-content-md-line);
-}
-
 .datasource-category-count {
   padding: 2px 8px;
   color: var(--st-color-accent);
@@ -849,8 +860,8 @@
 .datasource-card {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  padding: 18px 20px;
+  gap: 12px;
+  padding: 12px 16px;
   color: var(--st-color-text-secondary);
   background: var(--st-color-bg-panel);
   border: 1px solid transparent;
@@ -868,8 +879,8 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   background: var(--st-color-bg-app);
   border: 2px solid var(--st-color-accent);
   border-radius: 50%;
@@ -880,7 +891,7 @@
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .datasource-card-header {

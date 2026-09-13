@@ -91,8 +91,14 @@
     color: var(--st-color-text-muted);
     font-size: 12px;
     font-weight: 500;
-    background: var(--st-color-bg-control);
+    background: var(--st-color-bg-panel);
     border-bottom-color: var(--st-color-divider);
+  }
+
+  /* 全局暗色主题给表头用了更深的 bg-control 底带，这里与表体统一为面板底色。 */
+  html[data-st-theme='dark'] .exploration-table-panel .ant-table-thead > tr > th,
+  html[data-st-theme='dark'] .exploration-source-card .ant-table-thead > tr > th {
+    background: var(--st-color-bg-panel) !important;
   }
 
   .exploration-table-panel .ant-table-tbody > tr > td,

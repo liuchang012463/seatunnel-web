@@ -1,7 +1,7 @@
 import ClickSpark from '@/components/ClickSpark';
 import StatusChip from '@/components/StatusChip';
 import { history, useIntl } from '@umijs/max';
-import { AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import {
   Button,
   Drawer,
@@ -21,7 +21,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AddOrEditDataSourceModal from './components/AddOrEditDataSourceModal';
 import DataSourceCard from './components/DataSourceCard';
 import EmptyState from './components/EmptyState';
-import PageHeader from './components/PageHeader';
 import SearchBar from './components/SearchBar';
 import MasterDataPage from '../master-data';
 import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from './constants';
@@ -567,7 +566,7 @@ const DataSourcePage: React.FC = () => {
         <div className="datasource-page-container">
           <div className="datasource-page-content">
             <motion.div initial="hidden" animate="visible" variants={PAGE_ANIMATION.sectionStagger}>
-              <motion.div variants={PAGE_ANIMATION.fadeUp}>
+              <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
                 <SearchBar
                   value={searchKeyword}
                   onChange={(value) => {
@@ -593,6 +592,15 @@ const DataSourcePage: React.FC = () => {
                     setPagination((current) => ({ ...current, pageNo: 1 }));
                   }}
                 />
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  size="large"
+                  onClick={handleCreate}
+                  className="datasource-create-button"
+                >
+                  新建数据源
+                </Button>
               </motion.div>
 
               <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-header">
@@ -621,24 +629,13 @@ const DataSourcePage: React.FC = () => {
                     </Button>
                   ))}
                 </div>
-                <PageHeader
-                  onCreate={handleCreate}
-                  onManageMasterData={() => setMasterDataOpen(true)}
-                />
               </motion.div>
-
-              <motion.p variants={PAGE_ANIMATION.fadeUp} className="datasource-page-count">
-                发现 {pagination.total} 个数据源
-              </motion.p>
 
               <Spin spinning={loading}>
                 <motion.div variants={PAGE_ANIMATION.cardStagger} initial="hidden" animate="visible">
                   {dataSourceList.length > 0 ? (
                     <section className="datasource-catalog-panel">
                       <div className="datasource-catalog-panel__heading">
-                        <div>
-                          <h2 className="datasource-category-title">数据源清单</h2>
-                        </div>
                         <div className="datasource-catalog-panel__controls">
                           <span className="datasource-category-count">{pagination.total}</span>
                           <Segmented
@@ -714,7 +711,7 @@ const DataSourcePage: React.FC = () => {
                         total={pagination.total}
                         showSizeChanger
                         showQuickJumper
-                        pageSizeOptions={[10, 20, 50, 100]}
+                        pageSizeOptions={[12, 24, 48, 96]}
                         showTotal={(total) => `共 ${total} 条`}
                         onChange={(pageNo, pageSize) =>
                           setPagination((current) => ({
