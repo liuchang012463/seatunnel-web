@@ -67,7 +67,6 @@ spark-warehouse
 
 profile/
 jdbc-drivers/
-docs
 
 .vscode/
 .mavenrc
