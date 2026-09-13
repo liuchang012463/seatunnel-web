@@ -260,7 +260,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Sync Plan",
       }),
       dataIndex: "",
-      width: "13%",
+      width: "15%",
       render: (_content: any, record: any) => (
         <div className="sync-task-plan-cell">
           <DataSourceSyncPlan record={record} />
@@ -302,7 +302,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Schedule",
       }),
       dataIndex: "taskName",
-      width: "20%",
+      width: "18%",
       render: (_content: any, record: any) => (
         <div className="sync-task-info-list sync-task-schedule-list">
           <ScheduleInfo record={record} />
