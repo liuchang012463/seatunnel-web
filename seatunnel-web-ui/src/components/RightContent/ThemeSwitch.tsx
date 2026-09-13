@@ -1,36 +1,30 @@
 import { MoonOutlined, SunOutlined } from "@ant-design/icons";
-import { useModel } from "@umijs/max";
 import { Tooltip } from "antd";
-import React, { useEffect } from "react";
+import React, { useSyncExternalStore } from "react";
 import {
   applyNavTheme,
+  getNavThemeSnapshot,
   isDarkNavTheme,
   persistNavTheme,
+  setNavTheme,
+  subscribeNavTheme,
   type NavTheme,
 } from "@/theme";
 
 const ThemeSwitch: React.FC = () => {
-  const { initialState, setInitialState } = useModel("@@initialState");
+  const navTheme = useSyncExternalStore(
+    subscribeNavTheme,
+    getNavThemeSnapshot,
+    getNavThemeSnapshot
+  );
+  const isDark = isDarkNavTheme(navTheme);
 
-  const isDark = isDarkNavTheme(initialState?.settings?.navTheme);
-
-  useEffect(() => {
-    applyNavTheme(isDark ? "realDark" : "light");
-  }, [isDark]);
-
-  const toggleTheme = async () => {
+  const toggleTheme = () => {
     const nextTheme: NavTheme = isDark ? "light" : "realDark";
 
+    setNavTheme(nextTheme);
     applyNavTheme(nextTheme);
     persistNavTheme(nextTheme);
-
-    await setInitialState((prev) => ({
-      ...prev,
-      settings: {
-        ...prev?.settings,
-        navTheme: nextTheme,
-      },
-    }));
   };
 
   return (

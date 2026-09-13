@@ -45,3 +45,28 @@ export const persistNavTheme = (navTheme: NavTheme): void => {
     // Theme state still applies for the current session when storage is unavailable.
   }
 };
+
+/**
+ * 主题的外部 store：rootContainer 位于 umi ModelProvider 之外，
+ * ThemeConfigProvider / ThemeSwitch 通过 useSyncExternalStore 消费，
+ * 由 getInitialState 初始化、ThemeSwitch 写入。
+ */
+let currentNavTheme: NavTheme = "realDark";
+const navThemeSubscribers = new Set<() => void>();
+
+export const subscribeNavTheme = (listener: () => void): (() => void) => {
+  navThemeSubscribers.add(listener);
+
+  return () => {
+    navThemeSubscribers.delete(listener);
+  };
+};
+
+export const getNavThemeSnapshot = (): NavTheme => currentNavTheme;
+
+export const setNavTheme = (navTheme?: string): NavTheme => {
+  currentNavTheme = normalizeNavTheme(navTheme);
+  navThemeSubscribers.forEach((listener) => listener());
+
+  return currentNavTheme;
+};

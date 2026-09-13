@@ -1,5 +1,6 @@
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import { Footer } from '@/components';
+import ThemeConfigProvider from '@/components/ThemeConfigProvider';
 import '@ant-design/v5-patch-for-react-19';
 import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
 import 'd3-transition';
@@ -9,7 +10,7 @@ import { prototypeMenuData } from './prototype/menuData';
 import { isPrototypeMode } from './prototype/mode';
 import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
 import { errorConfig } from './requestErrorConfig';
-import { applyNavTheme } from './theme';
+import { applyNavTheme, setNavTheme } from './theme';
 import HttpUtils from './utils/HttpUtils';
 import { applyLayoutVisibility, shouldHideLayout } from './utils/iframeLayout';
 
@@ -26,7 +27,7 @@ const prototypeUser = {
 const getThemeSettings = (navTheme: 'light' | 'realDark') => ({
   ...defaultSettings,
   navTheme,
-  colorPrimary: navTheme === 'light' ? 'hsl(231 48% 48%)' : '#2187A8',
+  colorPrimary: navTheme === 'light' ? '#1B87A8' : '#1B87A8',
 });
 
 /**
@@ -54,6 +55,7 @@ export async function getInitialState(): Promise<{
   };
   if (isPrototypeMode) {
     const navTheme = FROZEN_NAV_THEME;
+    setNavTheme(navTheme);
     applyNavTheme(navTheme);
     return {
       fetchUserInfo,
@@ -66,6 +68,7 @@ export async function getInitialState(): Promise<{
   }
   const currentUser = await fetchUserInfo();
   const navTheme = FROZEN_NAV_THEME;
+  setNavTheme(navTheme);
   applyNavTheme(navTheme);
   return {
     fetchUserInfo,
@@ -140,3 +143,11 @@ export const request: RequestConfig = {
   baseURL: 'https://proapi.azurewebsites.net',
   ...errorConfig,
 };
+
+/**
+ * DESIGN.md §6.2 antd 算法正规化：运行时统一走 ThemeConfigProvider 的
+ * theme.algorithm 派生映射令牌（浅色 v2 也在该 Provider 内切换算法）。
+ */
+export const rootContainer = (container: React.ReactNode) => (
+  <ThemeConfigProvider>{container}</ThemeConfigProvider>
+);
