@@ -3,11 +3,10 @@ import {
   CloudUploadOutlined,
   CopyOutlined,
   DeleteOutlined,
-  MoreOutlined,
   PlayCircleOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import { Button, Dropdown, Tooltip } from "antd";
+import { Button, Divider, Tooltip } from "antd";
 import React from "react";
 import CustomPagination from "../../../CustomPagination";
 
@@ -18,7 +17,6 @@ interface BottomActionBarProps {
   onOffline: () => void;
   onDelete: () => void;
   onCreate: () => void;
-  onClearSelection: () => void;
   pagination: {
     total: number;
     current?: number;
@@ -59,10 +57,6 @@ interface BottomActionBarProps {
   deleteTooltip?: string;
 }
 
-/**
- * 底部批量栏（DESIGN.md §4.6）：空列表不渲染；未选中仅保留批量创建与分页；
- * 选中后「已选 n ｜ 启动 ｜ 终止 ｜ 更多▾ ｜ 取消」，低频与危险动作收进菜单。
- */
 const BottomActionBar: React.FC<BottomActionBarProps> = ({
   onStart,
   onStop,
@@ -70,7 +64,6 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   onOffline,
   onDelete,
   onCreate,
-  onClearSelection,
   pagination,
   selectedCount = 0,
   disabled = false,
@@ -94,38 +87,6 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   const defaultDisabledTooltip =
     selectedCount <= 0 ? "请先选择任务" : undefined;
 
-  if (!pagination.total) {
-    return null;
-  }
-
-  const hasSelection = selectedCount > 0;
-
-  const moreItems = [
-    {
-      key: "online",
-      label: "上线",
-      disabled: finalOnlineDisabled,
-      title: onlineTooltip,
-      onClick: onOnline,
-    },
-    {
-      key: "offline",
-      label: "下线",
-      disabled: finalOfflineDisabled,
-      title: offlineTooltip,
-      onClick: onOffline,
-    },
-    { type: "divider" as const },
-    {
-      key: "delete",
-      label: "删除",
-      danger: true,
-      disabled: finalDeleteDisabled,
-      title: deleteTooltip,
-      onClick: onDelete,
-    },
-  ];
-
   return (
     <div className="task-bottom-action-bar">
       <div
@@ -136,7 +97,7 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
           gap: 16,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center" }}>
           <Tooltip title={defaultDisabledTooltip}>
             <span style={{ display: "inline-flex" }}>
               <Button
@@ -151,57 +112,103 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
             </span>
           </Tooltip>
 
-          {hasSelection ? (
-            <>
-              <span className="text-xs text-slate-500">
-                已选 <span className="font-semibold text-slate-900">{selectedCount}</span> 条
-              </span>
+          <Divider type="vertical" />
 
-              <Tooltip title={startTooltip}>
-                <span style={{ display: "inline-flex" }}>
-                  <Button
-                    size="small"
-                    type="primary"
-                    onClick={onStart}
-                    disabled={finalStartDisabled}
-                    className="h-8 rounded-full border-none font-bold"
-                    icon={<PlayCircleOutlined />}
-                  >
-                    启动
-                  </Button>
-                </span>
-              </Tooltip>
-
-              <Tooltip title={stopTooltip}>
-                <span style={{ display: "inline-flex" }}>
-                  <Button
-                    size="small"
-                    danger
-                    onClick={onStop}
-                    disabled={finalStopDisabled}
-                    className="h-8 rounded-full font-bold"
-                    icon={<StopOutlined />}
-                  >
-                    终止
-                  </Button>
-                </span>
-              </Tooltip>
-
-              <Dropdown
-                trigger={["click"]}
-                menu={{ items: moreItems }}
-                disabled={disabled}
+          <Tooltip title={onlineTooltip || defaultDisabledTooltip}>
+            <span style={{ display: "inline-flex" }}>
+              <Button
+                size="small"
+                onClick={onOnline}
+                disabled={finalOnlineDisabled}
+                className="h-8 min-w-[82px] rounded-full border-slate-200 font-bold"
+                icon={<CloudUploadOutlined />}
               >
-                <Button size="small" className="h-8 rounded-full" icon={<MoreOutlined />}>
-                  更多
-                </Button>
-              </Dropdown>
-
-              <Button size="small" type="text" className="h-8" onClick={onClearSelection}>
-                取消
+                上线
               </Button>
+            </span>
+          </Tooltip>
+
+          <Divider type="vertical" />
+
+          <Tooltip title={offlineTooltip || defaultDisabledTooltip}>
+            <span style={{ display: "inline-flex" }}>
+              <Button
+                size="small"
+                onClick={onOffline}
+                disabled={finalOfflineDisabled}
+                className="h-8 min-w-[82px] rounded-full border-slate-200 font-bold"
+                icon={<CloudDownloadOutlined />}
+              >
+                下线
+              </Button>
+            </span>
+          </Tooltip>
+
+          <Divider type="vertical" />
+
+          <Tooltip title={startTooltip || defaultDisabledTooltip}>
+            <span style={{ display: "inline-flex" }}>
+              <Button
+                size="small"
+                type="primary"
+                onClick={onStart}
+                disabled={finalStartDisabled}
+                className="h-8 min-w-[88px] rounded-full border-none font-bold shadow-[0_12px_26px_rgba(53,84,209,0.23)]"
+                icon={<PlayCircleOutlined />}
+              >
+                启动
+              </Button>
+            </span>
+          </Tooltip>
+
+          <Divider type="vertical" />
+
+          <Tooltip title={stopTooltip || defaultDisabledTooltip}>
+            <span style={{ display: "inline-flex" }}>
+              <Button
+                size="small"
+                onClick={onStop}
+                danger
+                type="primary"
+                disabled={finalStopDisabled}
+                className="h-8 min-w-[88px] rounded-full border-none font-bold shadow-[0_12px_26px_rgba(244,63,94,0.18)]"
+                icon={<StopOutlined />}
+              >
+                终止
+              </Button>
+            </span>
+          </Tooltip>
+
+          {selectedCount > 0 ? (
+            <>
+              <Divider type="vertical" />
+
+              <span className="text-xs text-slate-500">
+                已选择{" "}
+                <span className="font-semibold text-slate-900">
+                  {selectedCount}
+                </span>{" "}
+                条
+              </span>
             </>
           ) : null}
+
+          <Divider type="vertical" />
+
+          <Tooltip title={deleteTooltip || defaultDisabledTooltip}>
+            <span style={{ display: "inline-flex" }}>
+              <Button
+                size="small"
+                danger
+                onClick={onDelete}
+                disabled={finalDeleteDisabled}
+                className="h-8 min-w-[82px] rounded-full font-bold"
+                icon={<DeleteOutlined />}
+              >
+                删除
+              </Button>
+            </span>
+          </Tooltip>
         </div>
 
         <div style={{ marginRight: 8 }}>

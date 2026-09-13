@@ -830,7 +830,6 @@ const App: React.FC<Props> = ({
         onOffline={onOfflineAll}
         onDelete={onDeleteAll}
         onCreate={openBatchCreate}
-        onClearSelection={() => setSelectedRowKeys([])}
         pagination={{
           ...pagination,
           onChange: handlePaginationChange,
