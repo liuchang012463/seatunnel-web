@@ -198,11 +198,12 @@ a:hover {
   fill: currentColor;
 }
 
+/* 菜单选中态：深黑色块 + accent 左边条，保证与侧栏底强对比（用户验收反馈）。 */
 .ant-menu-dark .ant-menu-item-selected,
 .ant-menu-dark .ant-menu-submenu-selected > .ant-menu-submenu-title {
   color: var(--st-color-accent) !important;
-  background: var(--st-color-selected) !important;
-  border-left: var(--st-border-width) solid var(--st-color-accent);
+  background: rgba(0, 0, 0, 0.55) !important;
+  border-left: 3px solid var(--st-color-accent);
   border-radius: var(--st-radius-sm);
 }
 

@@ -1,5 +1,4 @@
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
-import { SettingDrawer } from '@ant-design/pro-components';
 import { Footer } from '@/components';
 import '@ant-design/v5-patch-for-react-19';
 import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
@@ -78,7 +77,7 @@ export async function getInitialState(): Promise<{
 }
 
 // ProLayout 支持的api https://procomponents.ant.design/components/layout
-export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => {
+export const layout: RunTimeLayoutConfig = ({ initialState }) => {
   const hideLayout = shouldHideLayout();
   applyLayoutVisibility(hideLayout);
   const pathname = typeof window === 'undefined' ? '' : window.location.pathname;
@@ -122,26 +121,8 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     // unAccessible: <div>unAccessible</div>,
     // 增加一个 loading 的状态
     childrenRender: (children) => {
-      // if (initialState?.loading) return <PageLoading />;
       const content = isPrototypeMode ? <PrototypeAnnotationBar>{children}</PrototypeAnnotationBar> : children;
-      return (
-        <>
-          {content}
-          {isDev && !isPrototypeMode && (
-            <SettingDrawer
-              disableUrlParams
-              enableDarkTheme
-              settings={initialState?.settings}
-              onSettingChange={(settings) => {
-                setInitialState((preInitialState) => ({
-                  ...preInitialState,
-                  settings,
-                }));
-              }}
-            />
-          )}
-        </>
-      );
+      return content;
     },
     ...initialState?.settings,
     menuRender: hideLayout ? false : initialState?.settings?.menuRender,
