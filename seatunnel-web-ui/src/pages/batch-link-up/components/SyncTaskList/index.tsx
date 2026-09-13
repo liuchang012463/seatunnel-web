@@ -227,7 +227,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Name",
       }),
       dataIndex: "jobName",
-      width: "12%",
+      width: "10%",
       ellipsis: true,
       sorter: true,
       sortOrder: sort.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
@@ -260,7 +260,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Sync Plan",
       }),
       dataIndex: "",
-      width: "21%",
+      width: "13%",
       render: (_content: any, record: any) => (
         <div className="sync-task-plan-cell">
           <DataSourceSyncPlan record={record} />

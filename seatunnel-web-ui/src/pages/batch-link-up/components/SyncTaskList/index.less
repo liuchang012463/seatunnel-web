@@ -101,7 +101,7 @@
   }
 
   .sync-task-name-cell {
-    min-width: 220px;
+    min-width: 160px;
     line-height: 1.6;
   }
 
@@ -153,15 +153,61 @@
 
   .sync-task-plan-cell {
     color: rgba(238, 251, 255, 0.88);
+  }
 
-    > div {
-      color: rgba(238, 251, 255, 0.88) !important;
-    }
+  /* 同步方案紧凑单元格：只到「源类型 → 目标类型」，细节进 Tooltip */
+  .sync-plan-compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    cursor: default;
+  }
 
-    a {
-      color: #6ea8ff !important;
-      font-weight: 600;
-    }
+  .sync-plan-compact__badge {
+    flex: 0 0 auto;
+    padding: 1px 8px;
+    color: var(--st-color-accent, #4dd2ff);
+    font-size: 12px;
+    line-height: 18px;
+    background: rgba(77, 210, 255, 0.1);
+    border: 1px solid rgba(77, 210, 255, 0.28);
+    border-radius: 2px;
+  }
+
+  .sync-plan-compact__flow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .sync-plan-compact__icon {
+    color: #315efb;
+    font-size: 16px;
+  }
+
+  .sync-plan-compact__type {
+    overflow: hidden;
+    color: rgba(238, 251, 255, 0.92);
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sync-plan-compact__arrow {
+    flex: 0 0 auto;
+    color: var(--st-color-accent, #4dd2ff);
+    font-size: 11px;
+  }
+
+  .sync-plan-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 360px;
+    word-break: break-all;
   }
 
   .sync-task-info-list {
