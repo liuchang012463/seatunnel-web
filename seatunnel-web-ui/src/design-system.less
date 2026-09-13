@@ -9,49 +9,66 @@
 :root {
   color-scheme: dark;
 
-  --st-font-family: "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  --st-font-family: "MiSans", "HarmonyOS Sans SC", "Source Han Sans SC",
+    "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
   --st-font-digital: "DS-Digital", "Microsoft YaHei", sans-serif;
 
+  /* §3.4 字号（v2：display 28 / title 20 / heading 16 / body 14 / body-sm 13 / caption 12） */
   --st-type-large-title-size: 28px;
-  --st-type-large-title-line: 37px;
-  --st-type-title-size: 24px;
-  --st-type-title-line: 31px;
-  --st-type-title-content-size: 20px;
-  --st-type-title-content-line: 26px;
-  --st-type-content-lg-size: 18px;
+  --st-type-large-title-line: 36px;
+  --st-type-title-size: 20px;
+  --st-type-title-line: 28px;
+  --st-type-title-content-size: 16px;
+  --st-type-title-content-line: 24px;
+  --st-type-content-lg-size: 16px;
   --st-type-content-lg-line: 24px;
-  --st-type-content-md-size: 16px;
-  --st-type-content-md-line: 21px;
-  --st-type-content-sm-size: 14px;
-  --st-type-content-sm-line: 19px;
+  --st-type-content-md-size: 14px;
+  --st-type-content-md-line: 22px;
+  --st-type-content-sm-size: 13px;
+  --st-type-content-sm-line: 20px;
   --st-type-caption-size: 12px;
-  --st-type-caption-line: 16px;
+  --st-type-caption-line: 18px;
 
-  --st-color-bg-app: #001922;
-  --st-color-bg-page: #001922;
-  --st-color-bg-panel: #002e41;
-  --st-color-bg-elevated: #07394a;
-  --st-color-bg-control: rgba(0, 25, 34, 0.72);
+  /* §3.1 表面阶梯（由深到浅，替代"到处描边"） */
+  --st-color-bg-app: #01151d;
+  --st-color-bg-page: #02222d;
+  --st-color-bg-panel: #052f3f;
+  --st-color-bg-elevated: #0a3d52;
+  --st-color-bg-control: #012530;
   --st-color-bg-primary: var(--st-color-bg-app);
   --st-color-bg-secondary: var(--st-color-bg-panel);
-  --st-color-bg-interactive: #0a526a;
-  --st-color-text-primary: #ffffff;
-  --st-color-text-secondary: #d5d5d5;
-  /* Keep muted readable on dark teal surfaces (placeholders / empty hints). */
-  --st-color-text-muted: #9aa5ab;
-  --st-color-accent: #4dd2ff;
-  --st-color-primary: #2187a8;
-  --st-color-primary-active: #117da0;
-  --st-color-border: #2187a8;
-  --st-color-divider: #2187a8;
-  --st-color-divider-subtle: rgba(17, 125, 160, 0.1137);
-  --st-color-hover: rgba(33, 135, 168, 0.24);
-  --st-color-selected: rgba(33, 135, 168, 0.42);
-  --st-color-focus: rgba(77, 210, 255, 0.2);
-  --st-color-modal-mask: rgba(0, 25, 34, 0.88);
-  --st-panel-shadow: 0 10px 30px rgba(0, 25, 34, 0.12);
+  --st-color-bg-interactive: #0a3d52;
+  --st-color-bg-hover: rgba(63, 198, 255, 0.08);
+  --st-color-bg-selected: rgba(63, 198, 255, 0.14);
 
-  --st-control-height: 34px;
+  /* §3.2 文字 */
+  --st-color-text-primary: #edf4f7;
+  --st-color-text-secondary: #afc4cd;
+  --st-color-text-muted: #6c8792;
+
+  /* §3.3 强调与语义（状态五色全局唯一） */
+  --st-color-accent: #3fc6ff;
+  --st-color-accent-strong: #7fd8ff;
+  --st-color-primary: #1b87a8;
+  --st-color-primary-active: #117da0;
+  --st-color-success: #3dd68c;
+  --st-color-warning: #f5b83d;
+  --st-color-error: #ff6b5e;
+  --st-color-neutral: #6c8792;
+  --st-color-line: rgba(126, 183, 208, 0.14);
+  --st-color-line-strong: rgba(126, 183, 208, 0.3);
+
+  /* 旧名桥接：存量页面继续引用 border/divider/hover/selected，不换名逐步变色 */
+  --st-color-border: var(--st-color-line-strong);
+  --st-color-divider: var(--st-color-line);
+  --st-color-divider-subtle: rgba(126, 183, 208, 0.08);
+  --st-color-hover: var(--st-color-bg-hover);
+  --st-color-selected: var(--st-color-bg-selected);
+  --st-color-focus: rgba(63, 198, 255, 0.35);
+  --st-color-modal-mask: rgba(1, 21, 29, 0.88);
+  --st-panel-shadow: 0 10px 30px rgba(0, 15, 21, 0.35);
+
+  --st-control-height: 32px;
   --st-control-height-lg: 38px;
   --st-radius-sm: 2px;
   --st-radius-md: 4px;
