@@ -262,21 +262,6 @@
   border: 1px solid var(--st-color-divider);
 }
 
-.datasource-catalog-panel__heading {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-  padding: 10px 18px;
-
-  p {
-    margin: 4px 0 0;
-    color: var(--st-color-text-muted);
-    font-size: 12px;
-  }
-}
-
 .datasource-catalog-panel__controls {
   display: flex;
   flex: 0 0 auto;
@@ -320,17 +305,12 @@
   }
 
   .ant-table-thead > tr > th {
-    color: var(--st-color-text-muted) !important;
+    color: #fff !important;
     font-size: 14px;
     font-weight: 500;
     text-align: center !important;
-    background: var(--st-color-bg-panel) !important;
-    border-bottom: 1px solid var(--st-color-divider) !important;
-  }
-
-  /* 全局暗色主题给表头用了更深的 bg-control 底带，这里与表体统一为面板底色。 */
-  html[data-st-theme='dark'] &.ant-table-wrapper .ant-table-thead > tr > th {
-    background: var(--st-color-bg-panel) !important;
+    background: linear-gradient(90deg, #0a5366 0%, #0d7a8f 50%, #0a5366 100%) !important;
+    border-bottom: none !important;
   }
 
   .ant-table-thead > tr > th::before {
@@ -1019,10 +999,6 @@
 }
 
 @media (max-width: 768px) {
-  .datasource-catalog-panel__heading {
-    flex-direction: column;
-  }
-
   .datasource-catalog-panel__controls {
     justify-content: space-between;
     width: 100%;

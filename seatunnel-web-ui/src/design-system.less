@@ -372,17 +372,15 @@ a:hover {
   border-color: var(--st-color-divider-subtle) !important;
 }
 
-/* Low-saturation header band instead of the loud #2187a8 solid fill (audit G4). */
 .ant-table-wrapper .ant-table-thead > tr > th {
   height: 38px;
   padding: 8px 12px;
-  color: var(--st-color-text-muted) !important;
+  color: var(--st-color-text-primary) !important;
   font-size: var(--st-type-content-sm-size);
-  font-weight: 500;
+  font-weight: 400;
   line-height: var(--st-type-content-sm-line);
-  background: var(--st-color-bg-control) !important;
+  background: #2187a8 !important;
   border-color: var(--st-color-divider) !important;
-  border-bottom: 1px solid var(--st-color-divider) !important;
 }
 
 .ant-table-wrapper .ant-table-tbody > tr > td {
@@ -1047,16 +1045,18 @@ html[data-st-theme="dark"] [style*="color:#182230"] {
  * shared Ant table theme. Keep fixed headers readable in dark mode. */
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th,
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > td {
-  color: var(--st-color-text-muted) !important;
-  font-weight: 500;
-  background: var(--st-color-bg-control) !important;
+  color: var(--st-color-text-primary) !important;
+  background: #2187a8 !important;
   border-color: var(--st-color-divider) !important;
 }
 
 /* 固定列背景必须不透明：sticky 单元格若用半透明底，下层列头/单元格文字会透出
- * （审计 audit-08「执: 操作」渲染异常）。 */
+ * （审计 audit-08「执: 操作」渲染异常）。表头固定列与饱和头带同色。 */
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-right,
-html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-left,
+html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-left {
+  background: #2187a8 !important;
+}
+
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-right,
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-left {
   background: var(--st-color-bg-panel) !important;
@@ -1714,9 +1714,8 @@ html[data-st-theme="dark"] {
   }
 
   .workflow-config-side-panel .schedule-config-collapse .ant-table-thead > tr > th {
-    color: var(--st-color-text-muted) !important;
-    font-weight: 500;
-    background: var(--st-color-bg-control) !important;
+    color: var(--st-color-text-primary) !important;
+    background: #2187a8 !important;
     border-color: var(--st-color-divider) !important;
   }
 
@@ -1783,9 +1782,8 @@ html[data-st-theme="dark"] {
   }
 
   .quality-detail-drawer__table-wrap .ant-table-thead > tr > th {
-    color: var(--st-color-text-muted) !important;
-    font-weight: 500;
-    background: var(--st-color-bg-control) !important;
+    color: var(--st-color-text-primary) !important;
+    background: #2187a8 !important;
     border-color: var(--st-color-divider) !important;
   }
 
