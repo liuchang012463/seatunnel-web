@@ -47,26 +47,16 @@ export const persistNavTheme = (navTheme: NavTheme): void => {
 };
 
 /**
- * 主题的外部 store：rootContainer 位于 umi ModelProvider 之外，
- * ThemeConfigProvider / ThemeSwitch 通过 useSyncExternalStore 消费，
- * 由 getInitialState 初始化、ThemeSwitch 写入。
+ * 主题初始值中转：getInitialState（rootContainer 之外）写入，
+ * ThemeConfigProvider 挂载时读取一次作为 React 状态初值；
+ * 运行时切换经 ThemeConfigProvider 的 Context，避免分包产生多份模块实例。
  */
 let currentNavTheme: NavTheme = "realDark";
-const navThemeSubscribers = new Set<() => void>();
-
-export const subscribeNavTheme = (listener: () => void): (() => void) => {
-  navThemeSubscribers.add(listener);
-
-  return () => {
-    navThemeSubscribers.delete(listener);
-  };
-};
 
 export const getNavThemeSnapshot = (): NavTheme => currentNavTheme;
 
 export const setNavTheme = (navTheme?: string): NavTheme => {
   currentNavTheme = normalizeNavTheme(navTheme);
-  navThemeSubscribers.forEach((listener) => listener());
 
   return currentNavTheme;
 };

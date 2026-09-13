@@ -1,17 +1,24 @@
 import { ConfigProvider, theme as antdTheme } from "antd";
-import { useSyncExternalStore } from "react";
-import React from "react";
 import {
+  createContext,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  applyNavTheme,
   getNavThemeSnapshot,
   isDarkNavTheme,
-  subscribeNavTheme,
+  persistNavTheme,
+  setNavTheme,
+  type NavTheme,
 } from "@/theme";
 
 /**
- * DESIGN.md §6.2 antd 算法正规化：
- * 运行时 ConfigProvider 统一走 theme.algorithm 派生映射令牌，
- * 种子值与 config.ts 静态主题、design-system.less §3 v2 保持一致。
- * 主题状态来自 theme.ts 的外部 store（rootContainer 在 ModelProvider 外）。
+ * DESIGN.md §6.2 antd 算法正规化 + §6.4 浅色 v2：
+ * 运行时 ConfigProvider 统一走 theme.algorithm 派生映射令牌；
+ * 主题状态挂在 rootContainer 顶部的 Context 上（getInitialState 只负责
+ * 写入初始值，避免打包分包导致模块级 store 出现多份实例）。
  */
 
 const ST_FONT_FAMILY =
@@ -65,30 +72,103 @@ const DARK_COMPONENTS = {
   },
 };
 
+const LIGHT_TOKEN = {
+  colorPrimary: "#1B87A8",
+  colorInfo: "#0E7FA6",
+  colorLink: "#0E7FA6",
+  colorSuccess: "#2F9E44",
+  colorWarning: "#B88700",
+  colorError: "#C23B3B",
+  colorBgBase: "#F7F9FC",
+  colorBgLayout: "#F7F9FC",
+  colorBgContainer: "#FFFFFF",
+  colorBgElevated: "#FFFFFF",
+  colorText: "#1F2329",
+  colorTextSecondary: "#5B6B82",
+  colorTextTertiary: "#8A94A6",
+  colorBorder: "rgba(31, 35, 41, 0.16)",
+  colorBorderSecondary: "rgba(31, 35, 41, 0.08)",
+  colorSplit: "rgba(31, 35, 41, 0.06)",
+  borderRadius: 3,
+  controlHeight: 32,
+  fontFamily: ST_FONT_FAMILY,
+  fontSize: 14,
+};
+
+const LIGHT_COMPONENTS = {
+  Layout: {
+    bodyBg: "#F7F9FC",
+    headerBg: "#FFFFFF",
+    siderBg: "#FFFFFF",
+  },
+  Table: {
+    colorBgContainer: "#FFFFFF",
+    headerBg: "#F8FAFC",
+    headerColor: "#344054",
+    headerSplitColor: "transparent",
+    rowHoverBg: "rgba(27, 135, 168, 0.06)",
+    rowSelectedBg: "rgba(27, 135, 168, 0.10)",
+  },
+  Menu: {
+    itemBg: "#FFFFFF",
+    subMenuItemBg: "#FFFFFF",
+    itemColor: "#5B6B82",
+    itemHoverColor: "#0E7FA6",
+    itemHoverBg: "rgba(27, 135, 168, 0.06)",
+    itemSelectedColor: "#0E7FA6",
+    itemSelectedBg: "rgba(27, 135, 168, 0.10)",
+  },
+};
+
+interface NavThemeContextValue {
+  navTheme: NavTheme;
+  toggleNavTheme: () => void;
+}
+
+const NavThemeContext = createContext<NavThemeContextValue>({
+  navTheme: "realDark",
+  toggleNavTheme: () => {},
+});
+
+export const useNavTheme = (): NavThemeContextValue =>
+  useContext(NavThemeContext);
+
 interface ThemeConfigProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 const ThemeConfigProvider: React.FC<ThemeConfigProviderProps> = ({
   children,
 }) => {
-  const navTheme = useSyncExternalStore(
-    subscribeNavTheme,
-    getNavThemeSnapshot,
-    getNavThemeSnapshot
+  const [navTheme, setNavThemeState] = useState<NavTheme>(
+    () => getNavThemeSnapshot()
   );
+
+  const toggleNavTheme = () => {
+    const next: NavTheme = isDarkNavTheme(navTheme) ? "light" : "realDark";
+
+    setNavThemeState(next);
+    setNavTheme(next);
+    applyNavTheme(next);
+    persistNavTheme(next);
+  };
+
   const isDark = isDarkNavTheme(navTheme);
 
   return (
-    <ConfigProvider
-      theme={{
-        algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
-        token: DARK_TOKEN,
-        components: DARK_COMPONENTS,
-      }}
-    >
-      {children}
-    </ConfigProvider>
+    <NavThemeContext.Provider value={{ navTheme, toggleNavTheme }}>
+      <ConfigProvider
+        theme={{
+          algorithm: isDark
+            ? antdTheme.darkAlgorithm
+            : antdTheme.defaultAlgorithm,
+          token: isDark ? DARK_TOKEN : LIGHT_TOKEN,
+          components: isDark ? DARK_COMPONENTS : LIGHT_COMPONENTS,
+        }}
+      >
+        {children}
+      </ConfigProvider>
+    </NavThemeContext.Provider>
   );
 };
 

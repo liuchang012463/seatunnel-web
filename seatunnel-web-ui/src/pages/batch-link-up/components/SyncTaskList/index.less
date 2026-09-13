@@ -13,16 +13,15 @@
   .task-table-shell {
     min-height: calc(100vh - 430px);
     overflow: hidden;
-    background:
-      linear-gradient(180deg, rgba(0, 59, 79, 0.96), rgba(0, 39, 54, 0.98));
-    border: 1px solid rgba(77, 210, 255, 0.16);
+    background: var(--st-color-bg-panel);
+    border: 1px solid var(--st-color-border);
     border-radius: 12px;
-    box-shadow: 0 14px 32px rgba(0, 18, 26, 0.18);
+    box-shadow: var(--st-panel-shadow);
   }
 
   .task-table {
     .ant-table {
-      color: var(--st-color-text-primary, #fff);
+      color: var(--st-color-text-primary);
       background: transparent;
     }
 
@@ -46,9 +45,9 @@
 
     .ant-table-tbody > tr > td {
       padding: 12px 16px;
-      color: rgba(238, 251, 255, 0.92);
-      background: rgba(0, 52, 70) !important;
-      border-bottom: 1px solid rgba(77, 210, 255, 0.08);
+      color: var(--st-color-text-primary);
+      background: var(--st-color-bg-panel) !important;
+      border-bottom: 1px solid var(--st-color-divider-subtle);
       vertical-align: middle;
     }
 
@@ -61,7 +60,7 @@
     }
 
     .ant-table-placeholder .ant-table-cell {
-      background: rgba(0, 47, 63, 0.92) !important;
+      background: var(--st-color-bg-elevated) !important;
     }
 
     /* 固定列必须不透明，否则下层列头文字透出（审计 audit-08「执: 操作」） */
@@ -70,7 +69,7 @@
     .ant-table-cell-fix-left,
     .ant-table-cell-fix-left-first,
     .ant-table-cell-fix-left-last {
-      background: #003a4c !important;
+      background: var(--st-color-bg-panel) !important;
       border-left: 0;
       box-shadow: none;
     }
@@ -97,13 +96,13 @@
     }
 
     .ant-checkbox-inner {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(77, 210, 255, 0.44);
+      background: var(--st-color-bg-control);
+      border-color: var(--st-color-border);
     }
 
     .ant-checkbox-checked .ant-checkbox-inner {
-      background: var(--st-color-accent, #4dd2ff);
-      border-color: var(--st-color-accent, #4dd2ff);
+      background: var(--st-color-accent);
+      border-color: var(--st-color-accent);
     }
   }
 
@@ -146,7 +145,7 @@
     justify-content: center;
     margin-left: 2px;
     padding: 0;
-    color: rgba(170, 218, 235, 0.82);
+    color: var(--st-color-text-muted);
     line-height: 1;
     background: transparent;
     border: 0;
@@ -159,7 +158,7 @@
   }
 
   .sync-task-plan-cell {
-    color: rgba(238, 251, 255, 0.88);
+    color: var(--st-color-text-secondary);
   }
 
   /* 同步方案紧凑单元格：只到「源类型 → 目标类型」，细节进 Tooltip */
@@ -197,7 +196,7 @@
 
   .sync-plan-compact__type {
     overflow: hidden;
-    color: rgba(238, 251, 255, 0.92);
+    color: var(--st-color-text-primary);
     font-weight: 500;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -288,9 +287,53 @@
   .sync-task-time {
     display: inline-block;
     min-width: 132px;
-    color: rgba(238, 251, 255, 0.86);
+    color: var(--st-color-text-secondary);
     font-size: 12px;
     line-height: 20px;
+  }
+
+  /* 行内动作按钮（令牌化，深浅主题自适应） */
+  .sync-action-btn {
+    color: var(--st-color-text-secondary);
+    background: transparent;
+    border-color: var(--st-color-border);
+
+    &:hover {
+      color: var(--st-color-accent);
+      background: var(--st-color-bg-hover);
+      border-color: var(--st-color-accent);
+    }
+
+    &.is-primary {
+      color: #ecfbff;
+      background: #217c9a;
+      border-color: rgba(77, 210, 255, 0.35);
+
+      &:hover {
+        color: #fff;
+        background: #2c90af;
+        border-color: rgba(77, 210, 255, 0.55);
+      }
+    }
+
+    &.is-danger {
+      color: var(--st-color-error);
+      background: transparent;
+      border-color: var(--st-color-error);
+
+      &:hover {
+        color: #fff;
+        background: var(--st-color-error);
+      }
+    }
+
+    &.is-disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+      color: var(--st-color-text-muted);
+      background: transparent;
+      border-color: var(--st-color-border);
+    }
   }
 }
 

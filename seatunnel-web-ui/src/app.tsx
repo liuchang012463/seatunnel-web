@@ -10,13 +10,12 @@ import { prototypeMenuData } from './prototype/menuData';
 import { isPrototypeMode } from './prototype/mode';
 import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
 import { errorConfig } from './requestErrorConfig';
-import { applyNavTheme, setNavTheme } from './theme';
+import ThemeSwitch from './components/RightContent/ThemeSwitch';
+import { applyNavTheme, getStoredNavTheme, setNavTheme } from './theme';
 import HttpUtils from './utils/HttpUtils';
 import { applyLayoutVisibility, shouldHideLayout } from './utils/iframeLayout';
 
 const isDev = process.env.NODE_ENV === 'development';
-// 浅色主题冻结（DESIGN.md §6.4）：浅色补丁修复完成前强制暗色，切换入口已下线。
-const FROZEN_NAV_THEME = 'realDark' as const;
 const prototypeUser = {
   name: '原型演示用户',
   avatar: '',
@@ -54,7 +53,7 @@ export async function getInitialState(): Promise<{
     return undefined;
   };
   if (isPrototypeMode) {
-    const navTheme = FROZEN_NAV_THEME;
+    const navTheme = getStoredNavTheme();
     setNavTheme(navTheme);
     applyNavTheme(navTheme);
     return {
@@ -67,7 +66,8 @@ export async function getInitialState(): Promise<{
     };
   }
   const currentUser = await fetchUserInfo();
-  const navTheme = FROZEN_NAV_THEME;
+  // 浅色 v2（DESIGN.md §6.4）：恢复读取持久化主题，切换入口回到顶栏。
+  const navTheme = getStoredNavTheme();
   setNavTheme(navTheme);
   applyNavTheme(navTheme);
   return {
@@ -88,7 +88,10 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
 
   return {
     menuDataRender: () => prototypeMenuData,
-    actionsRender: () => (isPrototypeMode ? [] : [<Knowledge key="knowledge" />]),
+    actionsRender: () =>
+      isPrototypeMode
+        ? []
+        : [<ThemeSwitch key="theme" />, <Knowledge key="knowledge" />],
     waterMarkProps: showWatermark
       ? {
           content: initialState?.currentUser?.name,
