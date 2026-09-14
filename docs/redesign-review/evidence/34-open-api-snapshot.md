@@ -1,0 +1,97 @@
+- generic [ref=f33e5] [box=0,0,1440,1000]:
+  - complementary [ref=f33e7] [box=0,56,256,944]:
+    - generic [ref=f33e8] [box=0,56,257,944]:
+      - menu [ref=f33e10] [box=8,56,240,944]:
+        - menuitem [ref=f33e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f33e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f33e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f33e16] [box=28,86,14,14]
+              - generic [ref=f33e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f33e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f33e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f33e23] [box=28,121,200,20]:
+              - img "database" [ref=f33e25] [box=28,124,14,14]
+              - generic [ref=f33e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f33e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f33e31] [box=28,161,182,20]:
+            - img "read" [ref=f33e33] [box=28,164,14,14]
+            - generic [ref=f33e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f33e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f33e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f33e40] [box=28,201,200,20]:
+              - img "form" [ref=f33e42] [box=28,204,14,14]
+              - generic [ref=f33e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f33e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f33e49] [box=28,241,182,20]:
+            - img "swap" [ref=f33e51] [box=28,244,14,14]
+            - generic [ref=f33e54] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [ref=f33e55] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f33e57] [box=28,283,182,20]:
+            - img "monitor" [ref=f33e59] [box=28,286,14,14]
+            - generic [ref=f33e62] [box=50,283,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [ref=f33e63] [cursor=pointer] [box=12,316,232,38]:
+          - generic [ref=f33e65] [box=28,325,182,20]:
+            - img "cloud-server" [ref=f33e67] [box=28,328,14,14]
+            - generic [ref=f33e72] [box=50,325,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [expanded] [ref=f33e73] [cursor=pointer] [box=12,358,232,38]:
+          - generic [ref=f33e75] [box=28,367,182,20]:
+            - img "setting" [ref=f33e77] [box=28,370,14,14]
+            - generic [ref=f33e80] [box=50,367,49,20]: 系统管理
+        - menu [ref=f33e81] [box=8,400,240,80]:
+          - menuitem [ref=f33e82] [cursor=pointer] [box=22,404,222,34]:
+            - link "参数与知识" [ref=f33e84] [box=54,411,174,20]:
+              - /url: /knowledge-management
+          - menuitem "开放接口" [ref=f33e87] [cursor=pointer] [box=22,442,222,34]
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f33e91] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f33e94] [box=256,0,1184,1000]:
+    - banner [ref=f33e95] [box=256,0,1184,56]
+    - banner [ref=f33e96] [box=0,0,1440,56]:
+      - generic [ref=f33e97] [box=0,0,1440,56]:
+        - generic [ref=f33e99] [cursor=pointer] [box=0,12,110,32]:
+          - img "logo" [ref=f33e100] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f33e101] [box=34,12,76,32]
+        - generic [ref=f33e105] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f33e107] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f33e108] [box=1384,19,16,16]
+          - img "read" [ref=f33e113] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f33e116] [box=256,56,1184,1000]:
+      - generic [ref=f33e117] [box=256,56,1184,1000]:
+        - generic [ref=f33e119] [box=256,56,1184,84]:
+          - generic [ref=f33e120] [box=277,74,247,49]:
+            - img "api" [ref=f33e122] [box=286,88,20,20]
+            - generic [ref=f33e125] [box=330,74,194,49]:
+              - generic [ref=f33e126] [box=330,74,194,28]: 接口管理
+              - generic [ref=f33e128] [box=330,102,194,21]: 统一查看 Controller 与接口定义
+          - button "arrow-left 返回" [ref=f33e129] [cursor=pointer] [box=1342,81,77,35]:
+            - img "arrow-left" [ref=f33e131] [box=1357,91,13,13]
+            - generic [ref=f33e134] [box=1378,88,26,20]: 返回
+        - generic [ref=f33e136] [box=277,162,1142,900]:
+          - generic [ref=f33e139] [box=296,181,125,52]:
+            - generic [ref=f33e140] [box=296,181,125,22]: Controller 列表
+            - generic [ref=f33e143] [box=296,206,125,22]: 共 0 个控制器
+          - generic [ref=f33e158] [box=637,181,764,85]:
+            - generic [ref=f33e160] [box=637,181,420,32]:
+              - img "search" [ref=f33e162] [box=649,189,14,14]
+              - textbox "搜索接口名称、路径、描述" [ref=f33e165] [box=667,186,362,22]
+            - radiogroup "segmented control" [ref=f33e167] [box=637,223,429,43]:
+              - generic [ref=f33e168] [box=642,228,419,33]:
+                - generic [ref=f33e169] [cursor=pointer] [box=642,228,76,33]:
+                  - radio "全部" [checked] [box=642,228,0,0]
+                  - generic [ref=f33e170] [box=642,228,76,33]: 全部
+                - generic [ref=f33e180] [cursor=pointer] [box=722,228,76,33]:
+                  - radio "GET" [box=722,228,0,0]
+                  - generic [ref=f33e181] [box=722,228,76,33]: GET
+                - generic [ref=f33e186] [cursor=pointer] [box=802,228,79,33]:
+                  - radio "POST" [box=802,228,0,0]
+                  - generic [ref=f33e187] [box=802,228,79,33]: POST
+                - generic [ref=f33e192] [cursor=pointer] [box=885,228,76,33]:
+                  - radio "PUT" [box=885,228,0,0]
+                  - generic [ref=f33e193] [box=885,228,76,33]: PUT
+                - generic [ref=f33e199] [cursor=pointer] [box=965,228,95,33]:
+                  - radio "DELETE" [box=965,228,0,0]
+                  - generic [ref=f33e200] [box=965,228,95,33]: DELETE

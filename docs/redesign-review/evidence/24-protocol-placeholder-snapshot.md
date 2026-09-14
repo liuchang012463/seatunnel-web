@@ -1,0 +1,81 @@
+- generic [ref=f23e5] [box=0,0,1440,1000]:
+  - complementary [ref=f23e7] [box=0,56,256,944]:
+    - generic [ref=f23e8] [box=0,56,257,944]:
+      - menu [ref=f23e10] [box=8,56,240,944]:
+        - menuitem [ref=f23e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f23e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f23e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f23e16] [box=28,86,14,14]
+              - generic [ref=f23e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f23e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f23e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f23e23] [box=28,121,200,20]:
+              - img "database" [ref=f23e25] [box=28,124,14,14]
+              - generic [ref=f23e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f23e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f23e31] [box=28,161,182,20]:
+            - img "read" [ref=f23e33] [box=28,164,14,14]
+            - generic [ref=f23e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f23e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f23e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f23e40] [box=28,201,200,20]:
+              - img "form" [ref=f23e42] [box=28,204,14,14]
+              - generic [ref=f23e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f23e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f23e49] [box=28,241,182,20]:
+            - img "swap" [ref=f23e51] [box=28,244,14,14]
+            - generic [ref=f23e54] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [expanded] [ref=f23e55] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f23e57] [box=31,283,179,20]:
+            - img "monitor" [ref=f23e59] [box=31,286,14,14]
+            - generic [ref=f23e62] [box=53,283,49,20]: 运行运维
+        - menu [ref=f23e63] [box=8,316,240,232]:
+          - menuitem [ref=f23e64] [cursor=pointer] [box=22,320,222,34]:
+            - link "引接引擎管理" [ref=f23e66] [box=54,327,174,20]:
+              - /url: /client
+          - menuitem [ref=f23e69] [cursor=pointer] [box=22,358,222,34]:
+            - link "探查引擎管理" [ref=f23e71] [box=54,365,174,20]:
+              - /url: /operations/metadata-engine
+          - menuitem [ref=f23e74] [cursor=pointer] [box=22,396,222,34]:
+            - link "数据湖管理" [ref=f23e76] [box=54,403,174,20]:
+              - /url: /lake/warehouse
+          - menuitem [ref=f23e79] [cursor=pointer] [box=22,434,222,34]:
+            - link "告警管理" [ref=f23e81] [box=54,441,174,20]:
+              - /url: /alarm
+          - menuitem "协议管理" [ref=f23e84] [cursor=pointer] [box=22,472,222,34]
+          - menuitem [ref=f23e88] [cursor=pointer] [box=22,510,222,34]:
+            - link "安全加密" [ref=f23e90] [box=54,517,174,20]:
+              - /url: /operations/diagnostics
+        - menuitem "cloud-server 入湖管理" [ref=f23e93] [cursor=pointer] [box=12,552,232,38]:
+          - generic [ref=f23e95] [box=28,561,182,20]:
+            - img "cloud-server" [ref=f23e97] [box=28,564,14,14]
+            - generic [ref=f23e102] [box=50,561,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f23e103] [cursor=pointer] [box=12,594,232,38]:
+          - generic [ref=f23e105] [box=28,603,182,20]:
+            - img "setting" [ref=f23e107] [box=28,606,14,14]
+            - generic [ref=f23e110] [box=50,603,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f23e111] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f23e114] [box=256,0,1184,1000]:
+    - banner [ref=f23e115] [box=256,0,1184,56]
+    - banner [ref=f23e116] [box=0,0,1440,56]:
+      - generic [ref=f23e117] [box=0,0,1440,56]:
+        - generic [ref=f23e119] [cursor=pointer] [box=0,12,105,32]:
+          - img "logo" [ref=f23e120] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f23e121] [box=34,12,71,32]
+        - generic [ref=f23e125] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f23e127] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f23e128] [box=1384,19,16,16]
+          - img "read" [ref=f23e133] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f23e136] [box=256,56,1184,1000]:
+      - generic [ref=f23e137] [box=256,56,1184,1000]:
+        - generic [ref=f23e140] [box=296,76,416,36]:
+          - generic "协议管理" [ref=f23e141] [box=296,76,112,36]
+          - generic "该菜单入口已保留，页面原型将在后续设计。" [ref=f23e142] [box=420,83,280,22]
+        - generic [ref=f23e147] [box=304,132,1088,122]:
+          - img "暂无数据" [ref=f23e149] [box=756,132,184,95]
+          - generic [ref=f23e161] [box=304,235,1088,19]: 原型设计中

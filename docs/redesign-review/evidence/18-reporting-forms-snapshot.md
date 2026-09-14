@@ -1,0 +1,156 @@
+- generic [ref=f17e5] [box=0,0,1440,1000]:
+  - complementary [ref=f17e7] [box=0,56,256,944]:
+    - generic [ref=f17e8] [box=0,56,257,944]:
+      - menu [ref=f17e10] [box=8,56,240,944]:
+        - menuitem [ref=f17e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f17e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f17e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f17e16] [box=28,86,14,14]
+              - generic [ref=f17e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f17e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f17e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f17e23] [box=28,121,200,20]:
+              - img "database" [ref=f17e25] [box=28,124,14,14]
+              - generic [ref=f17e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f17e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f17e31] [box=28,161,182,20]:
+            - img "read" [ref=f17e33] [box=28,164,14,14]
+            - generic [ref=f17e36] [box=50,161,49,20]: 数据探查
+        - menuitem "form 数据采报" [ref=f17e37] [cursor=pointer] [box=12,194,232,34]:
+          - generic [ref=f17e39] [box=31,201,197,20]:
+            - img "form" [ref=f17e41] [box=31,204,14,14]
+            - generic [ref=f17e45] [box=53,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f17e46] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f17e48] [box=28,241,182,20]:
+            - img "swap" [ref=f17e50] [box=28,244,14,14]
+            - generic [ref=f17e53] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [ref=f17e54] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f17e56] [box=28,283,182,20]:
+            - img "monitor" [ref=f17e58] [box=28,286,14,14]
+            - generic [ref=f17e61] [box=50,283,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [ref=f17e62] [cursor=pointer] [box=12,316,232,38]:
+          - generic [ref=f17e64] [box=28,325,182,20]:
+            - img "cloud-server" [ref=f17e66] [box=28,328,14,14]
+            - generic [ref=f17e71] [box=50,325,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f17e72] [cursor=pointer] [box=12,358,232,38]:
+          - generic [ref=f17e74] [box=28,367,182,20]:
+            - img "setting" [ref=f17e76] [box=28,370,14,14]
+            - generic [ref=f17e79] [box=50,367,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f17e80] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f17e83] [box=256,0,1184,1000]:
+    - banner [ref=f17e84] [box=256,0,1184,56]
+    - banner [ref=f17e85] [box=0,0,1440,56]:
+      - generic [ref=f17e86] [box=0,0,1440,56]:
+        - generic [ref=f17e88] [cursor=pointer] [box=0,12,105,32]:
+          - img "logo" [ref=f17e89] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f17e90] [box=34,12,71,32]
+        - generic [ref=f17e94] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f17e96] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f17e97] [box=1384,19,16,16]
+          - img "read" [ref=f17e102] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f17e105] [box=256,56,1184,1000]:
+      - generic [ref=f17e106] [box=256,56,1184,1000]:
+        - generic [ref=f17e108] [box=296,64,1104,52]:
+          - generic [ref=f17e109] [box=296,76,430,36]:
+            - generic "数据采报" [ref=f17e110] [box=296,76,112,36]
+            - generic "模板、发布、模拟填报、提交和批次状态闭环。" [ref=f17e111] [box=420,83,294,22]
+          - generic [ref=f17e113] [box=1134,76,266,32]:
+            - button "模拟填报并提交" [ref=f17e115] [cursor=pointer] [box=1134,76,125,32]
+            - button "plus 创建采报模板" [ref=f17e118] [cursor=pointer] [box=1267,76,133,32]:
+              - img "plus" [ref=f17e120] [box=1284,85,13,13]
+              - generic [ref=f17e124] [box=1305,82,78,20]: 创建采报模板
+        - generic [ref=f17e128] [box=256,132,1184,371]:
+          - generic [ref=f17e129] [box=288,144,1120,67]:
+            - generic [ref=f17e133] [box=304,152,248,51]:
+              - generic [ref=f17e134] [box=304,152,248,22]: 记录总数
+              - generic [ref=f17e135] [box=304,178,248,25]:
+                - img "database" [ref=f17e137] [box=304,182,16,16]
+                - generic [ref=f17e140] [box=324,178,9,25]: "3"
+            - generic [ref=f17e144] [box=584,152,248,51]:
+              - generic [ref=f17e145] [box=584,152,248,22]: 运行 / 发布
+              - generic [ref=f17e146] [box=584,178,248,25]:
+                - img "play-circle" [ref=f17e148] [box=584,182,16,16]
+                - generic [ref=f17e152] [box=604,178,9,25]: "1"
+            - generic [ref=f17e156] [box=864,152,248,51]:
+              - generic [ref=f17e157] [box=864,152,248,22]: 关联指标
+              - generic [ref=f17e158] [box=864,178,248,25]:
+                - img "file-search" [ref=f17e160] [box=864,182,16,16]
+                - generic [ref=f17e163] [box=884,178,9,25]: "7"
+            - generic [ref=f17e167] [box=1144,152,248,51]:
+              - generic [ref=f17e168] [box=1144,152,248,22]: 技术模块
+              - generic [ref=f17e169] [box=1144,178,248,25]:
+                - img "api" [ref=f17e171] [box=1144,182,16,16]
+                - generic [ref=f17e174] [box=1164,178,9,25]: "1"
+          - generic [ref=f17e175] [box=296,227,1104,244]:
+            - generic [ref=f17e177] [box=321,240,1054,32]:
+              - generic [ref=f17e178] [box=321,244,672,24]: 可交互业务清单
+              - generic [ref=f17e180] [box=993,240,382,32]:
+                - generic [ref=f17e182] [box=993,240,234,32]:
+                  - img "search" [ref=f17e184] [box=1005,249,14,14]
+                  - textbox "按名称筛选" [ref=f17e187] [box=1023,245,176,22]
+                - generic [ref=f17e192] [cursor=pointer] [box=1247,241,116,30]:
+                  - combobox [ref=f17e194] [box=1247,241,98,30]
+                  - generic [box=1247,241,116,30]: 状态筛选
+            - table [ref=f17e202] [box=304,290,1088,173]:
+              - rowgroup [ref=f17e211] [box=304,290,1088,38]:
+                - row [ref=f17e212] [box=304,290,1088,38]:
+                  - columnheader "名称" [ref=f17e213] [box=304,290,201,38]
+                  - columnheader "类型 / 协议" [ref=f17e214] [box=505,290,150,38]
+                  - columnheader "状态" [ref=f17e215] [box=655,290,110,38]
+                  - columnheader "进度" [ref=f17e216] [box=765,290,150,38]
+                  - columnheader "责任人" [ref=f17e217] [box=915,290,120,38]
+                  - columnheader "更新时间" [ref=f17e218] [box=1035,290,170,38]
+                  - columnheader "操作" [ref=f17e219] [box=1205,290,187,38]
+              - rowgroup [ref=f17e220] [box=304,328,1088,135]:
+                - row [ref=f17e221] [box=304,328,1088,45]:
+                  - cell [ref=f17e222] [box=304,328,201,45]:
+                    - button "装备台账采集表" [ref=f17e223] [cursor=pointer] [box=310,334,125,32]
+                  - cell "数据采报" [ref=f17e225] [box=505,328,150,45]
+                  - cell "运行中" [ref=f17e226] [box=655,328,110,45]
+                  - cell [ref=f17e228] [box=765,328,150,45]:
+                    - progressbar [ref=f17e229] [box=771,341,138,19]:
+                      - generic "86%" [ref=f17e233] [box=885,345,24,12]
+                  - cell "张工" [ref=f17e234] [box=915,328,120,45]
+                  - cell "2026-07-27 10:20" [ref=f17e235] [box=1035,328,170,45]
+                  - cell [ref=f17e236] [box=1205,328,187,45]:
+                    - generic [ref=f17e237] [box=1211,334,175,32]:
+                      - button "eye 详情" [ref=f17e239] [cursor=pointer] [box=1211,334,81,32]:
+                        - img "eye" [ref=f17e241] [box=1228,343,13,13]
+                        - generic [ref=f17e244] [box=1249,340,26,20]: 详情
+                      - button "状态切换" [ref=f17e246] [cursor=pointer] [box=1300,334,86,32]
+                - row [ref=f17e248] [box=304,373,1088,45]:
+                  - cell [ref=f17e249] [box=304,373,201,45]:
+                    - button "边缘节点巡检表" [ref=f17e250] [cursor=pointer] [box=310,379,125,32]
+                  - cell "数据采报" [ref=f17e252] [box=505,373,150,45]
+                  - cell "待发布" [ref=f17e253] [box=655,373,110,45]
+                  - cell [ref=f17e255] [box=765,373,150,45]:
+                    - progressbar [ref=f17e256] [box=771,386,138,19]:
+                      - generic "45%" [ref=f17e260] [box=885,390,24,12]
+                  - cell "李工" [ref=f17e261] [box=915,373,120,45]
+                  - cell "2026-07-26 11:21" [ref=f17e262] [box=1035,373,170,45]
+                  - cell [ref=f17e263] [box=1205,373,187,45]:
+                    - generic [ref=f17e264] [box=1211,379,175,32]:
+                      - button "eye 详情" [ref=f17e266] [cursor=pointer] [box=1211,379,81,32]:
+                        - img "eye" [ref=f17e268] [box=1228,388,13,13]
+                        - generic [ref=f17e271] [box=1249,385,26,20]: 详情
+                      - button "状态切换" [ref=f17e273] [cursor=pointer] [box=1300,379,86,32]
+                - row [ref=f17e275] [box=304,418,1088,45]:
+                  - cell [ref=f17e276] [box=304,418,201,45]:
+                    - button "基础数据补录表" [ref=f17e277] [cursor=pointer] [box=310,424,125,32]
+                  - cell "数据采报" [ref=f17e279] [box=505,418,150,45]
+                  - cell "已完成" [ref=f17e280] [box=655,418,110,45]
+                  - cell [ref=f17e282] [box=765,418,150,45]:
+                    - progressbar [ref=f17e283] [box=771,431,138,19]:
+                      - img "check-circle" [ref=f17e288] [box=897,435,12,12]
+                  - cell "王工" [ref=f17e291] [box=915,418,120,45]
+                  - cell "2026-07-25 12:22" [ref=f17e292] [box=1035,418,170,45]
+                  - cell [ref=f17e293] [box=1205,418,187,45]:
+                    - generic [ref=f17e294] [box=1211,424,175,32]:
+                      - button "eye 详情" [ref=f17e296] [cursor=pointer] [box=1211,424,81,32]:
+                        - img "eye" [ref=f17e298] [box=1228,433,13,13]
+                        - generic [ref=f17e301] [box=1249,430,26,20]: 详情
+                      - button "状态切换" [ref=f17e303] [cursor=pointer] [box=1300,424,86,32]

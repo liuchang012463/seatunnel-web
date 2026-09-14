@@ -1,0 +1,504 @@
+- generic [ref=f28e6] [box=0,0,390,844]:
+  - banner [ref=f28e7] [box=0,0,390,56]
+  - banner [ref=f28e8] [box=0,0,390,56]:
+    - generic [ref=f28e9] [box=0,0,390,56]:
+      - img "menu" [ref=f28e11] [box=0,18,18,18]
+      - img "logo" [ref=f28e16] [cursor=pointer] [box=34,14,26,28]
+      - generic [ref=f28e20] [box=324,0,66,54]:
+        - button "切换浅色模式" [ref=f28e22] [cursor=pointer] [box=326,11,32,32]:
+          - img "sun" [ref=f28e23] [box=334,19,16,16]
+        - img "read" [ref=f28e28] [cursor=pointer] [box=366,18,18,18]
+  - main [ref=f28e31] [box=0,56,390,844]:
+    - generic [ref=f28e32] [box=0,56,390,1540]:
+      - generic [ref=f28e34] [box=25,85,340,580]:
+        - generic [box=25,85,0,580]:
+          - img "sun" [ref=f28e36] [box=39,365,20,20]
+          - generic [box=87,85,0,580]:
+            - heading "链路管理（离线）" [level=1] [box=87,85,0,156]
+            - paragraph [box=87,245,0,420]: 统一管理采集引接链路：配置、调度与健康状态监测
+        - button "创建离线任务" [ref=f28e40] [cursor=pointer] [box=41,85,110,35]
+      - generic [ref=f28e42] [box=0,702,390,894]:
+        - generic [ref=f28e44] [box=8,702,374,806]:
+          - generic [ref=f28e49] [box=21,719,348,222]:
+            - generic [ref=f28e52] [box=29,719,332,40]:
+              - generic [ref=f28e53] [box=29,719,72,40]: 任务名
+              - generic [ref=f28e59] [box=101,721,260,28]:
+                - img "search" [ref=f28e61] [box=113,728,14,14]
+                - textbox "任务名" [ref=f28e64] [box=131,726,202,18]:
+                  - /placeholder: 请输入任务名
+            - generic [ref=f28e68] [box=29,773,332,72]:
+              - generic [ref=f28e69] [box=29,773,72,40]: 创建时间
+              - generic [ref=f28e75] [box=29,815,332,28]:
+                - textbox "创建时间" [ref=f28e77] [box=41,817,129,24]:
+                  - /placeholder: 开始日期
+                - generic "to" [ref=f28e79] [box=178,821,16,16]:
+                  - img "swap-right" [ref=f28e80] [box=178,821,16,16]
+                - textbox "结束日期" [ref=f28e84] [box=202,817,129,24]
+                - generic [box=335,822,14,14]:
+                  - img "calendar" [box=335,822,14,14]
+            - generic [ref=f28e87] [box=29,859,332,40]:
+              - generic [ref=f28e88] [box=29,859,72,40]: 状态
+              - generic [ref=f28e96] [box=113,860,236,30]:
+                - combobox "状态" [ref=f28e98] [box=113,860,218,30]
+                - generic [box=113,860,236,30]: 请选择...
+            - generic [ref=f28e101] [box=29,911,196,32]:
+              - button "搜 索" [ref=f28e103] [cursor=pointer] [box=29,911,65,32]
+              - button "重 置" [ref=f28e106] [cursor=pointer] [box=102,911,67,32]
+              - button [ref=f28e109] [cursor=pointer] [box=176,913,49,28]:
+                - text: 展开
+                - img "down" [ref=f28e110] [box=208,922,10,10]
+          - separator [ref=f28e113] [box=8,974,374,1]
+          - generic [ref=f28e119] [box=9,992,372,515]:
+            - table [ref=f28e121] [box=9,992,1500,51]:
+              - rowgroup [ref=f28e131] [box=9,992,1500,51]:
+                - row [ref=f28e132] [box=9,992,1500,51]:
+                  - columnheader "Select all" [ref=f28e133] [box=9,992,47,51]:
+                    - checkbox "Select all" [ref=f28e137] [cursor=pointer] [box=25,1009,16,16]
+                  - columnheader "链路名称/ID" [ref=f28e139] [cursor=pointer] [box=56,992,161,51]
+                  - columnheader "健康状态" [ref=f28e150] [box=218,992,129,51]
+                  - columnheader "数据源同步方案" [ref=f28e151] [box=347,992,274,51]
+                  - columnheader "执行概况" [ref=f28e152] [box=621,992,226,51]
+                  - columnheader "链路动态调度" [ref=f28e153] [box=847,992,242,51]
+                  - columnheader "创建时间" [ref=f28e154] [cursor=pointer] [box=1089,992,194,51]
+                  - columnheader "操作" [ref=f28e165] [box=155,992,226,51]
+            - table [ref=f28e167] [box=9,1043,1500,628]:
+              - rowgroup [ref=f28e177] [box=9,1043,1500,628]:
+                - generic [box=21,1043,16,22]:
+                  - generic [box=21,1043,16,22]:
+                    - generic [box=21,1046,16,16]:
+                      - checkbox [box=21,1046,16,16]
+                - generic [box=171,1043,126,20]: 链路名称/ID
+                - generic [box=1131,1043,156,20]: 创建时间
+                - row "mysql2dameng_test_单表 22990834764320 copy 失败 单表同步 MYSQL double-right 达梦 手动 耗时 1秒 行数 0 QPS 0行/秒 大小 - 执行方式 手动触发 上次运行 - 下次运行 - 2026/09/10 21:19:16 play-circle 启动 cloud-download 下线 更多 down" [ref=f28e178] [box=9,1043,1500,71]:
+                  - cell [ref=f28e179] [box=9,1043,150,71]:
+                    - checkbox [ref=f28e182] [cursor=pointer] [box=76,1070,16,16]
+                  - cell "mysql2dameng_test_单表 22990834764320 copy" [ref=f28e184] [box=159,1043,150,71]:
+                    - generic [ref=f28e185] [box=175,1056,160,44]:
+                      - generic "mysql2dameng_test_单表" [ref=f28e186] [box=175,1056,160,22]
+                      - generic [ref=f28e187] [box=175,1081,160,19]:
+                        - generic [ref=f28e188] [box=175,1081,84,19]: "22990834764320"
+                        - button [ref=f28e189] [cursor=pointer] [box=265,1084,12,12]:
+                          - img "copy" [ref=f28e190] [box=265,1084,12,12]
+                  - cell "失败" [ref=f28e193] [box=309,1043,120,71]
+                  - cell "单表同步 MYSQL double-right 达梦" [ref=f28e198] [box=429,1043,255,71]:
+                    - generic [ref=f28e200] [box=445,1067,213,22]:
+                      - generic [ref=f28e201] [box=445,1067,66,22]: 单表同步
+                      - generic [ref=f28e202] [box=519,1068,139,20]:
+                        - generic [ref=f28e205] [box=541,1068,46,20]: MYSQL
+                        - img "double-right" [ref=f28e206] [box=593,1073,11,11]
+                        - generic [ref=f28e215] [box=632,1068,26,20]: 达梦
+                  - cell "手动 耗时 1秒 行数 0 QPS 0行/秒 大小 -" [ref=f28e216] [box=684,1043,210,71]:
+                    - generic [ref=f28e217] [box=700,1055,178,46]:
+                      - generic [ref=f28e218] [box=700,1055,42,22]: 手动
+                      - generic [ref=f28e219] [box=754,1056,46,20]:
+                        - generic [ref=f28e220] [box=754,1056,24,20]: 耗时
+                        - generic [ref=f28e221] [box=782,1056,18,20]: 1秒
+                      - generic [ref=f28e222] [box=812,1056,34,20]:
+                        - generic [ref=f28e223] [box=812,1056,24,20]: 行数
+                        - generic [ref=f28e224] [box=840,1056,6,20]: "0"
+                      - generic [ref=f28e225] [box=700,1081,65,20]:
+                        - generic [ref=f28e226] [box=700,1081,25,20]: QPS
+                        - generic [ref=f28e227] [box=729,1081,36,20]: 0行/秒
+                      - generic [ref=f28e228] [box=777,1081,34,20]:
+                        - generic [ref=f28e229] [box=777,1081,24,20]: 大小
+                        - generic [ref=f28e230] [box=805,1081,6,20]: "-"
+                  - cell "执行方式 手动触发 上次运行 - 下次运行 -" [ref=f28e231] [box=894,1043,225,71]:
+                    - generic [ref=f28e232] [box=910,1056,193,44]:
+                      - generic [ref=f28e233] [box=910,1056,100,20]:
+                        - generic [ref=f28e234] [box=910,1056,48,20]: 执行方式
+                        - generic [ref=f28e235] [box=962,1056,48,20]: 手动触发
+                      - generic [ref=f28e236] [box=1022,1056,58,20]:
+                        - generic [ref=f28e237] [box=1022,1056,48,20]: 上次运行
+                        - generic [ref=f28e238] [box=1074,1056,6,20]: "-"
+                      - generic [ref=f28e239] [box=910,1080,58,20]:
+                        - generic [ref=f28e240] [box=910,1080,48,20]: 下次运行
+                        - generic [ref=f28e241] [box=962,1080,6,20]: "-"
+                  - cell "2026/09/10 21:19:16" [ref=f28e242] [box=1119,1043,180,71]
+                  - cell [ref=f28e244] [box=171,1043,210,71]:
+                    - generic [ref=f28e245] [box=187,1064,204,28]:
+                      - button [ref=f28e247] [cursor=pointer] [box=187,1064,64,28]:
+                        - img "play-circle" [ref=f28e248] [box=201,1073,11,11]
+                        - text: 启动
+                      - button [ref=f28e253] [cursor=pointer] [box=257,1064,64,28]:
+                        - img "cloud-download" [ref=f28e254] [box=271,1073,11,11]
+                        - text: 下线
+                      - button [ref=f28e259] [cursor=pointer] [box=327,1064,64,28]:
+                        - text: 更多
+                        - img "down" [ref=f28e260] [box=366,1073,10,10]
+                - row "pg2kingbase_test_单表 22990814941728 copy 已完成 单表同步 PostgreSQL double-right 人大金仓 手动 耗时 2秒 行数 22 QPS 0行/秒 大小 - 执行方式 手动触发 上次运行 2026/09/10 21:17:22 下次运行 - 2026/09/10 21:17:16 play-circle 启动 cloud-download 下线 更多 down" [ref=f28e263] [box=9,1114,1500,93]:
+                  - cell [ref=f28e264] [box=9,1114,150,93]:
+                    - checkbox [ref=f28e267] [cursor=pointer] [box=76,1152,16,16]
+                  - cell "pg2kingbase_test_单表 22990814941728 copy" [ref=f28e269] [box=159,1114,150,93]:
+                    - generic [ref=f28e270] [box=175,1138,160,44]:
+                      - generic "pg2kingbase_test_单表" [ref=f28e271] [box=175,1138,160,22]
+                      - generic [ref=f28e272] [box=175,1163,160,19]:
+                        - generic [ref=f28e273] [box=175,1163,84,19]: "22990814941728"
+                        - button [ref=f28e274] [cursor=pointer] [box=265,1166,12,12]:
+                          - img "copy" [ref=f28e275] [box=265,1166,12,12]
+                  - cell "已完成" [ref=f28e278] [box=309,1114,120,93]
+                  - cell "单表同步 PostgreSQL double-right 人大金仓" [ref=f28e283] [box=429,1114,255,93]:
+                    - generic [ref=f28e285] [box=445,1149,223,22]:
+                      - generic [ref=f28e286] [box=445,1149,66,22]: 单表同步
+                      - generic [ref=f28e287] [box=519,1150,149,20]:
+                        - generic [ref=f28e296] [box=537,1150,52,20]: PostgreSQL
+                        - img "double-right" [ref=f28e297] [box=595,1155,11,11]
+                        - generic [ref=f28e304] [box=630,1150,38,20]: 人大金仓
+                  - cell "手动 耗时 2秒 行数 22 QPS 0行/秒 大小 -" [ref=f28e305] [box=684,1114,210,93]:
+                    - generic [ref=f28e306] [box=700,1137,178,46]:
+                      - generic [ref=f28e307] [box=700,1137,42,22]: 手动
+                      - generic [ref=f28e308] [box=754,1138,46,20]:
+                        - generic [ref=f28e309] [box=754,1138,24,20]: 耗时
+                        - generic [ref=f28e310] [box=782,1138,18,20]: 2秒
+                      - generic [ref=f28e311] [box=812,1138,40,20]:
+                        - generic [ref=f28e312] [box=812,1138,24,20]: 行数
+                        - generic [ref=f28e313] [box=840,1138,12,20]: "22"
+                      - generic [ref=f28e314] [box=700,1163,65,20]:
+                        - generic [ref=f28e315] [box=700,1163,25,20]: QPS
+                        - generic [ref=f28e316] [box=729,1163,36,20]: 0行/秒
+                      - generic [ref=f28e317] [box=777,1163,34,20]:
+                        - generic [ref=f28e318] [box=777,1163,24,20]: 大小
+                        - generic [ref=f28e319] [box=805,1163,6,20]: "-"
+                  - cell "执行方式 手动触发 上次运行 2026/09/10 21:17:22 下次运行 -" [ref=f28e320] [box=894,1114,225,93]:
+                    - generic [ref=f28e321] [box=910,1126,193,68]:
+                      - generic [ref=f28e322] [box=910,1126,100,20]:
+                        - generic [ref=f28e323] [box=910,1126,48,20]: 执行方式
+                        - generic [ref=f28e324] [box=962,1126,48,20]: 手动触发
+                      - generic [ref=f28e325] [box=910,1150,166,20]:
+                        - generic [ref=f28e326] [box=910,1150,48,20]: 上次运行
+                        - generic [ref=f28e327] [box=962,1150,114,20]: 2026/09/10 21:17:22
+                      - generic [ref=f28e328] [box=910,1174,58,20]:
+                        - generic [ref=f28e329] [box=910,1174,48,20]: 下次运行
+                        - generic [ref=f28e330] [box=962,1174,6,20]: "-"
+                  - cell "2026/09/10 21:17:16" [ref=f28e331] [box=1119,1114,180,93]
+                  - cell [ref=f28e333] [box=171,1114,210,93]:
+                    - generic [ref=f28e334] [box=187,1146,204,28]:
+                      - button [ref=f28e336] [cursor=pointer] [box=187,1146,64,28]:
+                        - img "play-circle" [ref=f28e337] [box=201,1155,11,11]
+                        - text: 启动
+                      - button [ref=f28e342] [cursor=pointer] [box=257,1146,64,28]:
+                        - img "cloud-download" [ref=f28e343] [box=271,1155,11,11]
+                        - text: 下线
+                      - button [ref=f28e348] [cursor=pointer] [box=327,1146,64,28]:
+                        - text: 更多
+                        - img "down" [ref=f28e349] [box=366,1155,10,10]
+                - row "mysql2oracle_test单表 22990652311968 copy 已完成 单表同步 MYSQL double-right ORACLE 手动 耗时 2秒 行数 1 QPS 0行/秒 大小 - 执行方式 手动触发 上次运行 2026/09/10 21:02:54 下次运行 - 2026/09/10 20:56:05 play-circle 启动 cloud-download 下线 更多 down" [ref=f28e352] [box=9,1207,1500,93]:
+                  - cell [ref=f28e353] [box=9,1207,150,93]:
+                    - checkbox [ref=f28e356] [cursor=pointer] [box=76,1245,16,16]
+                  - cell "mysql2oracle_test单表 22990652311968 copy" [ref=f28e358] [box=159,1207,150,93]:
+                    - generic [ref=f28e359] [box=175,1231,160,44]:
+                      - generic "mysql2oracle_test单表" [ref=f28e360] [box=175,1231,160,22]
+                      - generic [ref=f28e361] [box=175,1256,160,19]:
+                        - generic [ref=f28e362] [box=175,1256,84,19]: "22990652311968"
+                        - button [ref=f28e363] [cursor=pointer] [box=265,1259,12,12]:
+                          - img "copy" [ref=f28e364] [box=265,1259,12,12]
+                  - cell "已完成" [ref=f28e367] [box=309,1207,120,93]
+                  - cell "单表同步 MYSQL double-right ORACLE" [ref=f28e372] [box=429,1207,255,93]:
+                    - generic [ref=f28e374] [box=445,1242,223,22]:
+                      - generic [ref=f28e375] [box=445,1242,66,22]: 单表同步
+                      - generic [ref=f28e376] [box=519,1243,149,20]:
+                        - generic [ref=f28e379] [box=539,1243,40,20]: MYSQL
+                        - img "double-right" [ref=f28e380] [box=585,1248,11,11]
+                        - generic [ref=f28e385] [box=621,1243,47,20]: ORACLE
+                  - cell "手动 耗时 2秒 行数 1 QPS 0行/秒 大小 -" [ref=f28e386] [box=684,1207,210,93]:
+                    - generic [ref=f28e387] [box=700,1230,178,46]:
+                      - generic [ref=f28e388] [box=700,1230,42,22]: 手动
+                      - generic [ref=f28e389] [box=754,1231,46,20]:
+                        - generic [ref=f28e390] [box=754,1231,24,20]: 耗时
+                        - generic [ref=f28e391] [box=782,1231,18,20]: 2秒
+                      - generic [ref=f28e392] [box=812,1231,34,20]:
+                        - generic [ref=f28e393] [box=812,1231,24,20]: 行数
+                        - generic [ref=f28e394] [box=840,1231,6,20]: "1"
+                      - generic [ref=f28e395] [box=700,1256,65,20]:
+                        - generic [ref=f28e396] [box=700,1256,25,20]: QPS
+                        - generic [ref=f28e397] [box=729,1256,36,20]: 0行/秒
+                      - generic [ref=f28e398] [box=777,1256,34,20]:
+                        - generic [ref=f28e399] [box=777,1256,24,20]: 大小
+                        - generic [ref=f28e400] [box=805,1256,6,20]: "-"
+                  - cell "执行方式 手动触发 上次运行 2026/09/10 21:02:54 下次运行 -" [ref=f28e401] [box=894,1207,225,93]:
+                    - generic [ref=f28e402] [box=910,1219,193,68]:
+                      - generic [ref=f28e403] [box=910,1219,100,20]:
+                        - generic [ref=f28e404] [box=910,1219,48,20]: 执行方式
+                        - generic [ref=f28e405] [box=962,1219,48,20]: 手动触发
+                      - generic [ref=f28e406] [box=910,1243,166,20]:
+                        - generic [ref=f28e407] [box=910,1243,48,20]: 上次运行
+                        - generic [ref=f28e408] [box=962,1243,114,20]: 2026/09/10 21:02:54
+                      - generic [ref=f28e409] [box=910,1267,58,20]:
+                        - generic [ref=f28e410] [box=910,1267,48,20]: 下次运行
+                        - generic [ref=f28e411] [box=962,1267,6,20]: "-"
+                  - cell "2026/09/10 20:56:05" [ref=f28e412] [box=1119,1207,180,93]
+                  - cell [ref=f28e414] [box=171,1207,210,93]:
+                    - generic [ref=f28e415] [box=187,1239,204,28]:
+                      - button [ref=f28e417] [cursor=pointer] [box=187,1239,64,28]:
+                        - img "play-circle" [ref=f28e418] [box=201,1248,11,11]
+                        - text: 启动
+                      - button [ref=f28e423] [cursor=pointer] [box=257,1239,64,28]:
+                        - img "cloud-download" [ref=f28e424] [box=271,1248,11,11]
+                        - text: 下线
+                      - button [ref=f28e429] [cursor=pointer] [box=327,1239,64,28]:
+                        - text: 更多
+                        - img "down" [ref=f28e430] [box=366,1248,10,10]
+                - row "doris2pg_test单表 22990537021344 copy 失败 单表同步 Doris double-right PostgreSQL 手动 耗时 374秒 行数 0 QPS 0行/秒 大小 - 执行方式 手动触发 上次运行 2026/09/11 00:13:41 下次运行 - 2026/09/10 20:41:19 play-circle 启动 cloud-download 下线 更多 down" [ref=f28e433] [box=9,1300,1500,93]:
+                  - cell [ref=f28e434] [box=9,1300,150,93]:
+                    - checkbox [ref=f28e437] [cursor=pointer] [box=76,1338,16,16]
+                  - cell "doris2pg_test单表 22990537021344 copy" [ref=f28e439] [box=159,1300,150,93]:
+                    - generic [ref=f28e440] [box=175,1324,160,44]:
+                      - generic "doris2pg_test单表" [ref=f28e441] [box=175,1324,160,22]
+                      - generic [ref=f28e442] [box=175,1349,160,19]:
+                        - generic [ref=f28e443] [box=175,1349,84,19]: "22990537021344"
+                        - button [ref=f28e444] [cursor=pointer] [box=265,1352,12,12]:
+                          - img "copy" [ref=f28e445] [box=265,1352,12,12]
+                  - cell "失败" [ref=f28e448] [box=309,1300,120,93]
+                  - cell "单表同步 Doris double-right PostgreSQL" [ref=f28e453] [box=429,1300,255,93]:
+                    - generic [ref=f28e455] [box=445,1335,223,22]:
+                      - generic [ref=f28e456] [box=445,1335,66,22]: 单表同步
+                      - generic [ref=f28e457] [box=519,1336,149,20]:
+                        - generic [ref=f28e462] [box=539,1336,26,20]: Doris
+                        - img "double-right" [ref=f28e463] [box=571,1341,11,11]
+                        - generic [ref=f28e474] [box=607,1336,61,20]: PostgreSQL
+                  - cell "手动 耗时 374秒 行数 0 QPS 0行/秒 大小 -" [ref=f28e475] [box=684,1300,210,93]:
+                    - generic [ref=f28e476] [box=700,1323,178,46]:
+                      - generic [ref=f28e477] [box=700,1323,42,22]: 手动
+                      - generic [ref=f28e478] [box=754,1324,58,20]:
+                        - generic [ref=f28e479] [box=754,1324,24,20]: 耗时
+                        - generic [ref=f28e480] [box=782,1324,30,20]: 374秒
+                      - generic [ref=f28e481] [box=824,1324,34,20]:
+                        - generic [ref=f28e482] [box=824,1324,24,20]: 行数
+                        - generic [ref=f28e483] [box=852,1324,6,20]: "0"
+                      - generic [ref=f28e484] [box=700,1349,65,20]:
+                        - generic [ref=f28e485] [box=700,1349,25,20]: QPS
+                        - generic [ref=f28e486] [box=729,1349,36,20]: 0行/秒
+                      - generic [ref=f28e487] [box=777,1349,34,20]:
+                        - generic [ref=f28e488] [box=777,1349,24,20]: 大小
+                        - generic [ref=f28e489] [box=805,1349,6,20]: "-"
+                  - cell "执行方式 手动触发 上次运行 2026/09/11 00:13:41 下次运行 -" [ref=f28e490] [box=894,1300,225,93]:
+                    - generic [ref=f28e491] [box=910,1312,193,68]:
+                      - generic [ref=f28e492] [box=910,1312,100,20]:
+                        - generic [ref=f28e493] [box=910,1312,48,20]: 执行方式
+                        - generic [ref=f28e494] [box=962,1312,48,20]: 手动触发
+                      - generic [ref=f28e495] [box=910,1336,166,20]:
+                        - generic [ref=f28e496] [box=910,1336,48,20]: 上次运行
+                        - generic [ref=f28e497] [box=962,1336,114,20]: 2026/09/11 00:13:41
+                      - generic [ref=f28e498] [box=910,1360,58,20]:
+                        - generic [ref=f28e499] [box=910,1360,48,20]: 下次运行
+                        - generic [ref=f28e500] [box=962,1360,6,20]: "-"
+                  - cell "2026/09/10 20:41:19" [ref=f28e501] [box=1119,1300,180,93]
+                  - cell [ref=f28e503] [box=171,1300,210,93]:
+                    - generic [ref=f28e504] [box=187,1332,204,28]:
+                      - button [ref=f28e506] [cursor=pointer] [box=187,1332,64,28]:
+                        - img "play-circle" [ref=f28e507] [box=201,1341,11,11]
+                        - text: 启动
+                      - button [ref=f28e512] [cursor=pointer] [box=257,1332,64,28]:
+                        - img "cloud-download" [ref=f28e513] [box=271,1341,11,11]
+                        - text: 下线
+                      - button [ref=f28e518] [cursor=pointer] [box=327,1332,64,28]:
+                        - text: 更多
+                        - img "down" [ref=f28e519] [box=366,1341,10,10]
+                - row "dameng2pg_test单表 22990408431008 copy 已完成 单表同步 达梦 double-right PostgreSQL 手动 耗时 2秒 行数 3 QPS 0行/秒 大小 - 执行方式 手动触发 上次运行 2026/09/10 20:36:49 下次运行 - 2026/09/10 20:36:35 play-circle 启动 cloud-download 下线 更多 down" [ref=f28e522] [box=9,1393,1500,93]:
+                  - cell [ref=f28e523] [box=9,1393,150,93]:
+                    - checkbox [ref=f28e526] [cursor=pointer] [box=76,1431,16,16]
+                  - cell "dameng2pg_test单表 22990408431008 copy" [ref=f28e528] [box=159,1393,150,93]:
+                    - generic [ref=f28e529] [box=175,1417,160,44]:
+                      - generic "dameng2pg_test单表" [ref=f28e530] [box=175,1417,160,22]
+                      - generic [ref=f28e531] [box=175,1442,160,19]:
+                        - generic [ref=f28e532] [box=175,1442,84,19]: "22990408431008"
+                        - button [ref=f28e533] [cursor=pointer] [box=265,1445,12,12]:
+                          - img "copy" [ref=f28e534] [box=265,1445,12,12]
+                  - cell "已完成" [ref=f28e537] [box=309,1393,120,93]
+                  - cell "单表同步 达梦 double-right PostgreSQL" [ref=f28e542] [box=429,1393,255,93]:
+                    - generic [ref=f28e544] [box=445,1428,223,22]:
+                      - generic [ref=f28e545] [box=445,1428,66,22]: 单表同步
+                      - generic [ref=f28e546] [box=519,1429,149,20]:
+                        - generic [ref=f28e553] [box=539,1429,23,20]: 达梦
+                        - img "double-right" [ref=f28e554] [box=568,1434,11,11]
+                        - generic [ref=f28e565] [box=605,1429,63,20]: PostgreSQL
+                  - cell "手动 耗时 2秒 行数 3 QPS 0行/秒 大小 -" [ref=f28e566] [box=684,1393,210,93]:
+                    - generic [ref=f28e567] [box=700,1416,178,46]:
+                      - generic [ref=f28e568] [box=700,1416,42,22]: 手动
+                      - generic [ref=f28e569] [box=754,1417,46,20]:
+                        - generic [ref=f28e570] [box=754,1417,24,20]: 耗时
+                        - generic [ref=f28e571] [box=782,1417,18,20]: 2秒
+                      - generic [ref=f28e572] [box=812,1417,34,20]:
+                        - generic [ref=f28e573] [box=812,1417,24,20]: 行数
+                        - generic [ref=f28e574] [box=840,1417,6,20]: "3"
+                      - generic [ref=f28e575] [box=700,1442,65,20]:
+                        - generic [ref=f28e576] [box=700,1442,25,20]: QPS
+                        - generic [ref=f28e577] [box=729,1442,36,20]: 0行/秒
+                      - generic [ref=f28e578] [box=777,1442,34,20]:
+                        - generic [ref=f28e579] [box=777,1442,24,20]: 大小
+                        - generic [ref=f28e580] [box=805,1442,6,20]: "-"
+                  - cell "执行方式 手动触发 上次运行 2026/09/10 20:36:49 下次运行 -" [ref=f28e581] [box=894,1393,225,93]:
+                    - generic [ref=f28e582] [box=910,1405,193,68]:
+                      - generic [ref=f28e583] [box=910,1405,100,20]:
+                        - generic [ref=f28e584] [box=910,1405,48,20]: 执行方式
+                        - generic [ref=f28e585] [box=962,1405,48,20]: 手动触发
+                      - generic [ref=f28e586] [box=910,1429,166,20]:
+                        - generic [ref=f28e587] [box=910,1429,48,20]: 上次运行
+                        - generic [ref=f28e588] [box=962,1429,114,20]: 2026/09/10 20:36:49
+                      - generic [ref=f28e589] [box=910,1453,58,20]:
+                        - generic [ref=f28e590] [box=910,1453,48,20]: 下次运行
+                        - generic [ref=f28e591] [box=962,1453,6,20]: "-"
+                  - cell "2026/09/10 20:36:35" [ref=f28e592] [box=1119,1393,180,93]
+                  - cell [ref=f28e594] [box=171,1393,210,93]:
+                    - generic [ref=f28e595] [box=187,1425,204,28]:
+                      - button [ref=f28e597] [cursor=pointer] [box=187,1425,64,28]:
+                        - img "play-circle" [ref=f28e598] [box=201,1434,11,11]
+                        - text: 启动
+                      - button [ref=f28e603] [cursor=pointer] [box=257,1425,64,28]:
+                        - img "cloud-download" [ref=f28e604] [box=271,1434,11,11]
+                        - text: 下线
+                      - button [ref=f28e609] [cursor=pointer] [box=327,1425,64,28]:
+                        - text: 更多
+                        - img "down" [ref=f28e610] [box=366,1434,10,10]
+                - row "kingbase2postgres_test单表 22990387891872 copy 已完成 单表同步 人大金仓 double-right PostgreSQL 手动 耗时 2秒 行数 22 QPS 0行/秒 大小 - 执行方式 手动触发 上次运行 2026/09/10 20:22:34 下次运行 - 2026/09/10 20:21:44 play-circle 启动 cloud-download 下线 更多 down" [ref=f28e613] [box=9,1486,1500,93]:
+                  - cell [ref=f28e614] [box=9,1486,150,93]:
+                    - checkbox [ref=f28e617] [cursor=pointer] [box=76,1524,16,16]
+                  - cell "kingbase2postgres_test单表 22990387891872 copy" [ref=f28e619] [box=159,1486,150,93]:
+                    - generic [ref=f28e620] [box=175,1510,160,44]:
+                      - generic "kingbase2postgres_test单表" [ref=f28e621] [box=175,1510,160,22]
+                      - generic [ref=f28e622] [box=175,1535,160,19]:
+                        - generic [ref=f28e623] [box=175,1535,84,19]: "22990387891872"
+                        - button [ref=f28e624] [cursor=pointer] [box=265,1538,12,12]:
+                          - img "copy" [ref=f28e625] [box=265,1538,12,12]
+                  - cell "已完成" [ref=f28e628] [box=309,1486,120,93]
+                  - cell "单表同步 人大金仓 double-right PostgreSQL" [ref=f28e633] [box=429,1486,255,93]:
+                    - generic [ref=f28e635] [box=445,1521,223,22]:
+                      - generic [ref=f28e636] [box=445,1521,66,22]: 单表同步
+                      - generic [ref=f28e637] [box=519,1522,149,20]:
+                        - generic [ref=f28e642] [box=537,1522,38,20]: 人大金仓
+                        - img "double-right" [ref=f28e643] [box=581,1527,11,11]
+                        - generic [ref=f28e654] [box=616,1522,52,20]: PostgreSQL
+                  - cell "手动 耗时 2秒 行数 22 QPS 0行/秒 大小 -" [ref=f28e655] [box=684,1486,210,93]:
+                    - generic [ref=f28e656] [box=700,1509,178,46]:
+                      - generic [ref=f28e657] [box=700,1509,42,22]: 手动
+                      - generic [ref=f28e658] [box=754,1510,46,20]:
+                        - generic [ref=f28e659] [box=754,1510,24,20]: 耗时
+                        - generic [ref=f28e660] [box=782,1510,18,20]: 2秒
+                      - generic [ref=f28e661] [box=812,1510,40,20]:
+                        - generic [ref=f28e662] [box=812,1510,24,20]: 行数
+                        - generic [ref=f28e663] [box=840,1510,12,20]: "22"
+                      - generic [ref=f28e664] [box=700,1535,65,20]:
+                        - generic [ref=f28e665] [box=700,1535,25,20]: QPS
+                        - generic [ref=f28e666] [box=729,1535,36,20]: 0行/秒
+                      - generic [ref=f28e667] [box=777,1535,34,20]:
+                        - generic [ref=f28e668] [box=777,1535,24,20]: 大小
+                        - generic [ref=f28e669] [box=805,1535,6,20]: "-"
+                  - cell "执行方式 手动触发 上次运行 2026/09/10 20:22:34 下次运行 -" [ref=f28e670] [box=894,1486,225,93]:
+                    - generic [ref=f28e671] [box=910,1498,193,68]:
+                      - generic [ref=f28e672] [box=910,1498,100,20]:
+                        - generic [ref=f28e673] [box=910,1498,48,20]: 执行方式
+                        - generic [ref=f28e674] [box=962,1498,48,20]: 手动触发
+                      - generic [ref=f28e675] [box=910,1522,166,20]:
+                        - generic [ref=f28e676] [box=910,1522,48,20]: 上次运行
+                        - generic [ref=f28e677] [box=962,1522,114,20]: 2026/09/10 20:22:34
+                      - generic [ref=f28e678] [box=910,1546,58,20]:
+                        - generic [ref=f28e679] [box=910,1546,48,20]: 下次运行
+                        - generic [ref=f28e680] [box=962,1546,6,20]: "-"
+                  - cell "2026/09/10 20:21:44" [ref=f28e681] [box=1119,1486,180,93]
+                  - cell [ref=f28e683] [box=171,1486,210,93]:
+                    - generic [ref=f28e684] [box=187,1518,204,28]:
+                      - button [ref=f28e686] [cursor=pointer] [box=187,1518,64,28]:
+                        - img "play-circle" [ref=f28e687] [box=201,1527,11,11]
+                        - text: 启动
+                      - button [ref=f28e692] [cursor=pointer] [box=257,1518,64,28]:
+                        - img "cloud-download" [ref=f28e693] [box=271,1527,11,11]
+                        - text: 下线
+                      - button [ref=f28e698] [cursor=pointer] [box=327,1518,64,28]:
+                        - text: 更多
+                        - img "down" [ref=f28e699] [box=366,1527,10,10]
+                - row "orcale2pg_test单表 22990089904416 copy 已完成 单表同步 ORACLE double-right PostgreSQL 手动 耗时 5秒 行数 2 QPS 0行/秒 大小 - 执行方式 手动触发 上次运行 2026/09/10 20:19:32 下次运行 - 2026/09/10 20:03:57 play-circle 启动 cloud-download 下线 更多 down" [ref=f28e702] [box=9,1579,1500,92]:
+                  - cell [ref=f28e703] [box=9,1579,150,92]:
+                    - checkbox [ref=f28e706] [cursor=pointer] [box=76,1617,16,16]
+                  - cell "orcale2pg_test单表 22990089904416 copy" [ref=f28e708] [box=159,1579,150,92]:
+                    - generic [ref=f28e709] [box=175,1603,160,44]:
+                      - generic "orcale2pg_test单表" [ref=f28e710] [box=175,1603,160,22]
+                      - generic [ref=f28e711] [box=175,1628,160,19]:
+                        - generic [ref=f28e712] [box=175,1628,84,19]: "22990089904416"
+                        - button [ref=f28e713] [cursor=pointer] [box=265,1631,12,12]:
+                          - img "copy" [ref=f28e714] [box=265,1631,12,12]
+                  - cell "已完成" [ref=f28e717] [box=309,1579,120,92]
+                  - cell "单表同步 ORACLE double-right PostgreSQL" [ref=f28e722] [box=429,1579,255,92]:
+                    - generic [ref=f28e724] [box=445,1614,223,22]:
+                      - generic [ref=f28e725] [box=445,1614,66,22]: 单表同步
+                      - generic [ref=f28e726] [box=519,1615,149,20]:
+                        - generic [ref=f28e729] [box=537,1615,39,20]: ORACLE
+                        - img "double-right" [ref=f28e730] [box=582,1620,11,11]
+                        - generic [ref=f28e741] [box=616,1615,52,20]: PostgreSQL
+                  - cell "手动 耗时 5秒 行数 2 QPS 0行/秒 大小 -" [ref=f28e742] [box=684,1579,210,92]:
+                    - generic [ref=f28e743] [box=700,1602,178,46]:
+                      - generic [ref=f28e744] [box=700,1602,42,22]: 手动
+                      - generic [ref=f28e745] [box=754,1603,46,20]:
+                        - generic [ref=f28e746] [box=754,1603,24,20]: 耗时
+                        - generic [ref=f28e747] [box=782,1603,18,20]: 5秒
+                      - generic [ref=f28e748] [box=812,1603,34,20]:
+                        - generic [ref=f28e749] [box=812,1603,24,20]: 行数
+                        - generic [ref=f28e750] [box=840,1603,6,20]: "2"
+                      - generic [ref=f28e751] [box=700,1628,65,20]:
+                        - generic [ref=f28e752] [box=700,1628,25,20]: QPS
+                        - generic [ref=f28e753] [box=729,1628,36,20]: 0行/秒
+                      - generic [ref=f28e754] [box=777,1628,34,20]:
+                        - generic [ref=f28e755] [box=777,1628,24,20]: 大小
+                        - generic [ref=f28e756] [box=805,1628,6,20]: "-"
+                  - cell "执行方式 手动触发 上次运行 2026/09/10 20:19:32 下次运行 -" [ref=f28e757] [box=894,1579,225,92]:
+                    - generic [ref=f28e758] [box=910,1591,193,68]:
+                      - generic [ref=f28e759] [box=910,1591,100,20]:
+                        - generic [ref=f28e760] [box=910,1591,48,20]: 执行方式
+                        - generic [ref=f28e761] [box=962,1591,48,20]: 手动触发
+                      - generic [ref=f28e762] [box=910,1615,166,20]:
+                        - generic [ref=f28e763] [box=910,1615,48,20]: 上次运行
+                        - generic [ref=f28e764] [box=962,1615,114,20]: 2026/09/10 20:19:32
+                      - generic [ref=f28e765] [box=910,1639,58,20]:
+                        - generic [ref=f28e766] [box=910,1639,48,20]: 下次运行
+                        - generic [ref=f28e767] [box=962,1639,6,20]: "-"
+                  - cell "2026/09/10 20:03:57" [ref=f28e768] [box=1119,1579,180,92]
+                  - cell [ref=f28e770] [box=171,1579,210,92]:
+                    - generic [ref=f28e771] [box=187,1611,204,28]:
+                      - button [ref=f28e773] [cursor=pointer] [box=187,1611,64,28]:
+                        - img "play-circle" [ref=f28e774] [box=201,1620,11,11]
+                        - text: 启动
+                      - button [ref=f28e779] [cursor=pointer] [box=257,1611,64,28]:
+                        - img "cloud-download" [ref=f28e780] [box=271,1620,11,11]
+                        - text: 下线
+                      - button [ref=f28e785] [cursor=pointer] [box=327,1611,64,28]:
+                        - text: 更多
+                        - img "down" [ref=f28e786] [box=366,1620,10,10]
+        - generic [ref=f28e790] [box=12,734,366,100]:
+          - generic [ref=f28e791] [box=12,768,614,32]:
+            - button "copy 批量创建" [disabled] [ref=f28e793] [box=12,768,107,32]:
+              - generic [box=29,774,13,20]:
+                - img "copy" [box=29,777,13,13]
+              - generic [box=50,774,52,20]: 批量创建
+            - separator [ref=f28e794] [box=127,777,1,13]
+            - button "cloud-upload 上线" [disabled] [ref=f28e796] [box=136,768,82,32]:
+              - generic [box=154,774,13,20]:
+                - img "cloud-upload" [box=154,777,13,13]
+              - generic [box=175,774,26,20]: 上线
+            - separator [ref=f28e797] [box=226,777,1,13]
+            - button "cloud-download 下线" [disabled] [ref=f28e799] [box=235,768,82,32]:
+              - generic [box=253,774,13,20]:
+                - img "cloud-download" [box=253,777,13,13]
+              - generic [box=274,774,26,20]: 下线
+            - separator [ref=f28e800] [box=325,777,1,13]
+            - button "play-circle 启动" [disabled] [ref=f28e802] [box=334,768,88,32]:
+              - generic [box=355,774,13,20]:
+                - img "play-circle" [box=355,777,13,13]
+              - generic [box=376,774,26,20]: 启动
+            - separator [ref=f28e803] [box=430,777,1,13]
+            - button "stop 终止" [disabled] [ref=f28e805] [box=439,768,88,32]:
+              - generic [box=460,774,13,20]:
+                - img "stop" [box=460,777,13,13]
+              - generic [box=481,774,26,20]: 终止
+            - separator [ref=f28e806] [box=535,777,1,13]
+            - button "delete 删除" [disabled] [ref=f28e808] [box=544,768,82,32]:
+              - generic [box=562,774,13,20]:
+                - img "delete" [box=562,777,13,13]
+              - generic [box=583,774,26,20]: 删除
+          - generic [ref=f28e810] [box=642,734,56,100]:
+            - generic [ref=f28e811] [box=642,751,14,66]: 共 7 条
+            - list [ref=f28e812] [box=670,734,28,100]:
+              - listitem "上一页" [ref=f28e813] [box=670,734,28,28]:
+                - button [disabled] [ref=f28e814] [box=670,734,28,28]:
+                  - img "left" [ref=f28e815] [box=678,743,12,12]
+              - listitem "1" [ref=f28e818] [cursor=pointer] [box=670,770,28,28]
+              - listitem "下一页" [ref=f28e820] [box=670,806,28,28]:
+                - button [disabled] [ref=f28e821] [box=670,806,28,28]:
+                  - img "right" [ref=f28e822] [box=678,815,12,12]

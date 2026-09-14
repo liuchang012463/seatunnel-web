@@ -1,0 +1,193 @@
+- generic [ref=f27e6] [box=0,0,390,844]:
+  - banner [ref=f27e7] [box=0,0,390,56]
+  - banner [ref=f27e8] [box=0,0,390,56]:
+    - generic [ref=f27e9] [box=0,0,390,56]:
+      - img "menu" [ref=f27e11] [box=0,18,18,18]
+      - img "logo" [ref=f27e16] [cursor=pointer] [box=34,14,26,28]
+      - generic [ref=f27e20] [box=324,0,66,54]:
+        - button "切换浅色模式" [ref=f27e22] [cursor=pointer] [box=326,11,32,32]:
+          - img "sun" [ref=f27e23] [box=334,19,16,16]
+        - img "read" [ref=f27e28] [cursor=pointer] [box=366,18,18,18]
+  - main [ref=f27e31] [box=0,56,390,844]:
+    - generic [ref=f27e35] [box=16,84,358,969]:
+      - generic [ref=f27e36] [box=16,84,358,216]:
+        - generic [ref=f27e38] [box=16,84,358,158]:
+          - generic [ref=f27e39] [box=16,84,358,32]:
+            - img "search" [ref=f27e41] [box=28,93,14,14]
+            - textbox "根据数据源名称搜索" [ref=f27e44] [box=46,89,300,22]
+          - generic [ref=f27e48] [box=28,127,334,30]:
+            - combobox [ref=f27e50] [box=28,127,316,30]
+            - generic [box=28,127,334,30]: 按数据源单位筛选
+          - generic [ref=f27e53] [box=28,169,334,30]:
+            - combobox [disabled] [ref=f27e55] [box=28,169,316,30]
+            - generic [box=28,169,334,30]: 按业务系统筛选
+          - generic [ref=f27e58] [cursor=pointer] [box=28,211,334,30]:
+            - combobox [ref=f27e60] [box=28,211,316,30]
+            - generic [box=28,211,334,30]: 按生命周期状态筛选
+        - button "plus 新建数据源" [ref=f27e61] [cursor=pointer] [box=133,258,124,42]:
+          - img "plus" [ref=f27e63] [box=152,272,13,13]
+          - generic [ref=f27e67] [box=173,269,65,20]: 新建数据源
+      - generic [ref=f27e68] [box=16,312,358,121]:
+        - generic [ref=f27e69] [box=16,312,358,71]:
+          - button "全 部" [ref=f27e70] [cursor=pointer] [box=16,312,62,32]
+          - button "关系型数据库" [ref=f27e72] [cursor=pointer] [box=85,312,110,32]
+          - button "OLAP 数据库" [ref=f27e74] [cursor=pointer] [box=202,312,109,32]
+          - button "消息队列" [ref=f27e76] [cursor=pointer] [box=16,351,84,32]
+          - button "文件传输" [ref=f27e78] [cursor=pointer] [box=107,351,84,32]
+          - button "API 服务" [ref=f27e80] [cursor=pointer] [box=198,351,83,32]
+          - button "其 他" [ref=f27e82] [cursor=pointer] [box=288,351,62,32]
+        - generic [ref=f27e84] [box=16,399,358,34]:
+          - generic [ref=f27e85] [box=16,404,31,24]: "10"
+          - radiogroup "数据源视图" [ref=f27e86] [box=242,399,132,34]:
+            - generic [ref=f27e87] [box=244,401,128,30]:
+              - generic [ref=f27e88] [cursor=pointer] [box=244,401,64,30]:
+                - radio "appstore 卡片" [checked] [box=244,401,0,0]
+                - generic [ref=f27e90] [box=255,401,42,28]:
+                  - img "appstore" [ref=f27e91] [box=255,409,12,12]
+                  - text: 卡片
+              - generic [ref=f27e94] [cursor=pointer] [box=308,401,64,30]:
+                - radio "unordered-list 列表" [box=308,401,0,0]
+                - generic [ref=f27e96] [box=319,401,42,28]:
+                  - img "unordered-list" [ref=f27e97] [box=319,409,12,12]
+                  - text: 列表
+      - generic [ref=f27e102] [box=16,449,358,604]:
+        - generic [ref=f27e105] [box=17,450,356,1532]:
+          - generic [ref=f27e110] [box=106,475,238,114]:
+            - generic [ref=f27e111] [box=106,475,238,24]:
+              - generic "192.168.100.95_38000_omext" [ref=f27e112] [box=106,475,163,24]
+              - button "查看详情 >" [ref=f27e113] [cursor=pointer] [box=281,475,63,22]
+            - generic "http://192.168.100.95:38000" [ref=f27e114] [box=106,507,238,20]
+            - generic [ref=f27e115] [box=106,535,238,24]:
+              - generic [ref=f27e116] [box=106,536,80,22]: 连通正常
+              - generic [ref=f27e119] [box=192,536,68,22]: 已启用
+              - generic [ref=f27e122] [box=266,536,68,22]: 未探查
+            - generic [ref=f27e125] [box=106,569,238,20]:
+              - button "测试连接" [ref=f27e126] [cursor=pointer] [box=106,569,56,20]
+              - button "探查结果" [ref=f27e127] [cursor=pointer] [box=182,569,56,20]
+              - button "更多" [ref=f27e128] [cursor=pointer] [box=258,569,28,20]
+          - generic [ref=f27e133] [box=106,627,238,114]:
+            - generic [ref=f27e134] [box=106,627,238,24]:
+              - generic "192.168.100.95_kafka" [ref=f27e135] [box=106,627,163,24]
+              - button "查看详情 >" [ref=f27e136] [cursor=pointer] [box=281,627,63,22]
+            - generic [ref=f27e137] [box=106,659,238,20]: "-"
+            - generic [ref=f27e138] [box=106,687,238,24]:
+              - generic [ref=f27e139] [box=106,688,80,22]: 连通正常
+              - generic [ref=f27e142] [box=192,688,68,22]: 已启用
+              - generic [ref=f27e145] [box=266,688,68,22]: 未探查
+            - generic [ref=f27e148] [box=106,721,238,20]:
+              - button "测试连接" [ref=f27e149] [cursor=pointer] [box=106,721,56,20]
+              - button "探查结果" [ref=f27e150] [cursor=pointer] [box=182,721,56,20]
+              - button "更多" [ref=f27e151] [cursor=pointer] [box=258,721,28,20]
+          - generic [ref=f27e156] [box=106,779,238,114]:
+            - generic [ref=f27e157] [box=106,779,238,24]:
+              - generic "192.168.100.95_9000_minio" [ref=f27e158] [box=106,779,163,24]
+              - button "查看详情 >" [ref=f27e159] [cursor=pointer] [box=281,779,63,22]
+            - generic [ref=f27e160] [box=106,811,238,20]: "-"
+            - generic [ref=f27e161] [box=106,839,238,24]:
+              - generic [ref=f27e162] [box=106,840,80,22]: 连通正常
+              - generic [ref=f27e165] [box=192,840,68,22]: 已启用
+              - generic [ref=f27e168] [box=266,840,68,22]: 未探查
+            - generic [ref=f27e171] [box=106,873,238,20]:
+              - button "测试连接" [ref=f27e172] [cursor=pointer] [box=106,873,56,20]
+              - button "探查结果" [ref=f27e173] [cursor=pointer] [box=182,873,56,20]
+              - button "更多" [ref=f27e174] [cursor=pointer] [box=258,873,28,20]
+          - generic [ref=f27e184] [box=106,931,238,114]:
+            - generic [ref=f27e185] [box=106,931,238,24]:
+              - generic "192.168.100.95_elasticsearch" [ref=f27e186] [box=106,931,163,24]
+              - button "查看详情 >" [ref=f27e187] [cursor=pointer] [box=281,931,63,22]
+            - generic "http://192.168.100.95:9201" [ref=f27e188] [box=106,963,238,20]
+            - generic [ref=f27e189] [box=106,991,238,24]:
+              - generic [ref=f27e190] [box=106,992,80,22]: 连通正常
+              - generic [ref=f27e193] [box=192,992,68,22]: 已启用
+              - generic [ref=f27e196] [box=266,992,68,22]: 未探查
+            - generic [ref=f27e199] [box=106,1025,238,20]:
+              - button "测试连接" [ref=f27e200] [cursor=pointer] [box=106,1025,56,20]
+              - button "探查结果" [ref=f27e201] [cursor=pointer] [box=182,1025,56,20]
+              - button "更多" [ref=f27e202] [cursor=pointer] [box=258,1025,28,20]
+          - generic [ref=f27e209] [box=106,1083,238,114]:
+            - generic [ref=f27e210] [box=106,1083,238,24]:
+              - generic "82.157.22.233_8030_doris" [ref=f27e211] [box=106,1083,163,24]
+              - button "查看详情 >" [ref=f27e212] [cursor=pointer] [box=281,1083,63,22]
+            - generic "jdbc:mysql://192.168.100.95:9030/ods?useSSL=false" [ref=f27e213] [box=106,1115,238,20]
+            - generic [ref=f27e214] [box=106,1143,238,24]:
+              - generic [ref=f27e215] [box=106,1144,80,22]: 连通正常
+              - generic [ref=f27e218] [box=192,1144,68,22]: 已启用
+              - generic [ref=f27e221] [box=266,1144,68,22]: 已探查
+            - generic [ref=f27e224] [box=106,1177,238,20]:
+              - button "测试连接" [ref=f27e225] [cursor=pointer] [box=106,1177,56,20]
+              - button "探查结果" [ref=f27e226] [cursor=pointer] [box=182,1177,56,20]
+              - button "更多" [ref=f27e227] [cursor=pointer] [box=258,1177,28,20]
+          - generic [ref=f27e236] [box=106,1235,238,114]:
+            - generic [ref=f27e237] [box=106,1235,238,24]:
+              - generic "192.168.100.95_5236_dameng" [ref=f27e238] [box=106,1235,163,24]
+              - button "查看详情 >" [ref=f27e239] [cursor=pointer] [box=281,1235,63,22]
+            - generic "jdbc:dm://192.168.100.95:5236/TEST?ssl=false" [ref=f27e240] [box=106,1267,238,20]
+            - generic [ref=f27e241] [box=106,1295,238,24]:
+              - generic [ref=f27e242] [box=106,1296,80,22]: 连通正常
+              - generic [ref=f27e245] [box=192,1296,68,22]: 已启用
+              - generic [ref=f27e248] [box=266,1296,68,22]: 已探查
+            - generic [ref=f27e251] [box=106,1329,238,20]:
+              - button "测试连接" [ref=f27e252] [cursor=pointer] [box=106,1329,56,20]
+              - button "探查结果" [ref=f27e253] [cursor=pointer] [box=182,1329,56,20]
+              - button "更多" [ref=f27e254] [cursor=pointer] [box=258,1329,28,20]
+          - generic [ref=f27e261] [box=106,1387,238,114]:
+            - generic [ref=f27e262] [box=106,1387,238,24]:
+              - generic "192.168.100.91_54321_kingbase" [ref=f27e263] [box=106,1387,163,24]
+              - button "查看详情 >" [ref=f27e264] [cursor=pointer] [box=281,1387,63,22]
+            - generic "jdbc:kingbase8://192.168.100.91:54321/kingbase?ssl=false" [ref=f27e265] [box=106,1419,238,20]
+            - generic [ref=f27e266] [box=106,1447,238,24]:
+              - generic [ref=f27e267] [box=106,1448,80,22]: 连通正常
+              - generic [ref=f27e270] [box=192,1448,68,22]: 已启用
+              - generic [ref=f27e273] [box=266,1448,68,22]: 已探查
+            - generic [ref=f27e276] [box=106,1481,238,20]:
+              - button "测试连接" [ref=f27e277] [cursor=pointer] [box=106,1481,56,20]
+              - button "探查结果" [ref=f27e278] [cursor=pointer] [box=182,1481,56,20]
+              - button "更多" [ref=f27e279] [cursor=pointer] [box=258,1481,28,20]
+          - generic [ref=f27e284] [box=106,1539,238,114]:
+            - generic [ref=f27e285] [box=106,1539,238,24]:
+              - generic "82.157.22.233_1521_ORACLE_APP" [ref=f27e286] [box=106,1539,163,24]
+              - button "查看详情 >" [ref=f27e287] [cursor=pointer] [box=281,1539,63,22]
+            - generic "jdbc:oracle:thin:@//192.168.100.95:1521/FREEPDB1" [ref=f27e288] [box=106,1571,238,20]
+            - generic [ref=f27e289] [box=106,1599,238,24]:
+              - generic [ref=f27e290] [box=106,1600,80,22]: 连通正常
+              - generic [ref=f27e293] [box=192,1600,68,22]: 已启用
+              - generic [ref=f27e296] [box=266,1600,68,22]: 已探查
+            - generic [ref=f27e299] [box=106,1633,238,20]:
+              - button "测试连接" [ref=f27e300] [cursor=pointer] [box=106,1633,56,20]
+              - button "探查结果" [ref=f27e301] [cursor=pointer] [box=182,1633,56,20]
+              - button "更多" [ref=f27e302] [cursor=pointer] [box=258,1633,28,20]
+          - generic [ref=f27e313] [box=106,1691,238,114]:
+            - generic [ref=f27e314] [box=106,1691,238,24]:
+              - generic "82.157.22.233_15432_test" [ref=f27e315] [box=106,1691,163,24]
+              - button "查看详情 >" [ref=f27e316] [cursor=pointer] [box=281,1691,63,22]
+            - generic "jdbc:postgresql://192.168.100.95:15432/test?ssl=false" [ref=f27e317] [box=106,1723,238,20]
+            - generic [ref=f27e318] [box=106,1751,238,24]:
+              - generic [ref=f27e319] [box=106,1752,80,22]: 连通正常
+              - generic [ref=f27e322] [box=192,1752,68,22]: 已启用
+              - generic [ref=f27e325] [box=266,1752,68,22]: 已探查
+            - generic [ref=f27e328] [box=106,1785,238,20]:
+              - button "测试连接" [ref=f27e329] [cursor=pointer] [box=106,1785,56,20]
+              - button "探查结果" [ref=f27e330] [cursor=pointer] [box=182,1785,56,20]
+              - button "更多" [ref=f27e331] [cursor=pointer] [box=258,1785,28,20]
+          - generic [ref=f27e336] [box=106,1843,238,114]:
+            - generic [ref=f27e337] [box=106,1843,238,24]:
+              - generic "82.157.22.233_33306_seatunnel_web" [ref=f27e338] [box=106,1843,163,24]
+              - button "查看详情 >" [ref=f27e339] [cursor=pointer] [box=281,1843,63,22]
+            - generic "jdbc:mysql://192.168.100.95:33306/seatunnel_web?allowPublicKeyRetrieval=true&useSSL=false" [ref=f27e340] [box=106,1875,238,20]
+            - generic [ref=f27e341] [box=106,1903,238,24]:
+              - generic [ref=f27e342] [box=106,1904,80,22]: 连通正常
+              - generic [ref=f27e345] [box=192,1904,68,22]: 已启用
+              - generic [ref=f27e348] [box=266,1904,68,22]: 已探查
+            - generic [ref=f27e351] [box=106,1937,238,20]:
+              - button "测试连接" [ref=f27e352] [cursor=pointer] [box=106,1937,56,20]
+              - button "探查结果" [ref=f27e353] [cursor=pointer] [box=182,1937,56,20]
+              - button "更多" [ref=f27e354] [cursor=pointer] [box=258,1937,28,20]
+        - list [ref=f27e356] [box=210,1021,164,32]:
+          - listitem [ref=f27e357] [box=210,1021,44,32]: 共 10 条
+          - listitem "上一页" [ref=f27e358] [box=262,1021,32,32]:
+            - button [disabled] [ref=f27e359] [box=263,1022,30,30]:
+              - img "left" [ref=f27e360] [box=272,1033,12,12]
+          - listitem "1" [ref=f27e363] [cursor=pointer] [box=302,1021,32,32]
+          - listitem "下一页" [ref=f27e365] [box=342,1021,32,32]:
+            - button [disabled] [ref=f27e366] [box=343,1022,30,30]:
+              - img "right" [ref=f27e367] [box=352,1033,12,12]

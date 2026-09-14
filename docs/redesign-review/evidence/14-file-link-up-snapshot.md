@@ -1,0 +1,197 @@
+- generic [ref=f14e5] [box=0,0,1440,1000]:
+  - complementary [ref=f14e7] [box=0,56,256,944]:
+    - generic [ref=f14e8] [box=0,56,257,944]:
+      - menu [ref=f14e10] [box=8,56,240,944]:
+        - menuitem [ref=f14e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f14e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f14e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f14e16] [box=28,86,14,14]
+              - generic [ref=f14e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f14e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f14e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f14e23] [box=28,121,200,20]:
+              - img "database" [ref=f14e25] [box=28,124,14,14]
+              - generic [ref=f14e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f14e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f14e31] [box=28,161,182,20]:
+            - img "read" [ref=f14e33] [box=28,164,14,14]
+            - generic [ref=f14e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f14e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f14e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f14e40] [box=28,201,200,20]:
+              - img "form" [ref=f14e42] [box=28,204,14,14]
+              - generic [ref=f14e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [expanded] [ref=f14e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f14e49] [box=31,241,179,20]:
+            - img "swap" [ref=f14e51] [box=31,244,14,14]
+            - generic [ref=f14e54] [box=53,241,49,20]: 数据引接
+        - menu [ref=f14e55] [box=8,274,240,270]:
+          - menuitem [ref=f14e56] [cursor=pointer] [box=22,278,222,34]:
+            - link "任务概览" [ref=f14e58] [box=54,285,174,20]:
+              - /url: /metrics
+          - menuitem [ref=f14e61] [cursor=pointer] [box=22,316,222,34]:
+            - link "离线引接任务" [ref=f14e63] [box=54,323,174,20]:
+              - /url: /sync/batch-link-up
+          - menuitem [ref=f14e66] [cursor=pointer] [box=22,354,222,34]:
+            - link "实时引接任务" [ref=f14e68] [box=54,361,174,20]:
+              - /url: /sync/stream-link-up
+          - menuitem "文件引接任务" [ref=f14e71] [cursor=pointer] [box=22,392,222,34]
+          - menuitem [ref=f14e75] [cursor=pointer] [box=22,430,222,34]:
+            - link "云边协同任务" [ref=f14e77] [box=54,437,174,20]:
+              - /url: /sync/cloud-edge-tasks
+          - menuitem [ref=f14e80] [cursor=pointer] [box=22,468,222,34]:
+            - link "边缘接入任务" [ref=f14e82] [box=54,475,174,20]:
+              - /url: /sync/edge-access-tasks
+          - menuitem [ref=f14e85] [cursor=pointer] [box=22,506,222,34]:
+            - link "数据拓扑" [ref=f14e87] [box=54,513,174,20]:
+              - /url: /sync/topology
+        - menuitem "monitor 运行运维" [ref=f14e90] [cursor=pointer] [box=12,548,232,38]:
+          - generic [ref=f14e92] [box=28,557,182,20]:
+            - img "monitor" [ref=f14e94] [box=28,560,14,14]
+            - generic [ref=f14e97] [box=50,557,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [ref=f14e98] [cursor=pointer] [box=12,590,232,38]:
+          - generic [ref=f14e100] [box=28,599,182,20]:
+            - img "cloud-server" [ref=f14e102] [box=28,602,14,14]
+            - generic [ref=f14e107] [box=50,599,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f14e108] [cursor=pointer] [box=12,632,232,38]:
+          - generic [ref=f14e110] [box=28,641,182,20]:
+            - img "setting" [ref=f14e112] [box=28,644,14,14]
+            - generic [ref=f14e115] [box=50,641,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f14e116] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f14e119] [box=256,0,1184,1000]:
+    - banner [ref=f14e120] [box=256,0,1184,56]
+    - banner [ref=f14e121] [box=0,0,1440,56]:
+      - generic [ref=f14e122] [box=0,0,1440,56]:
+        - generic [ref=f14e124] [cursor=pointer] [box=0,12,105,32]:
+          - img "logo" [ref=f14e125] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f14e126] [box=34,12,71,32]
+        - generic [ref=f14e130] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f14e132] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f14e133] [box=1384,19,16,16]
+          - img "read" [ref=f14e138] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f14e141] [box=256,56,1184,1000]:
+      - generic [ref=f14e142] [box=256,56,1184,980]:
+        - generic [ref=f14e144] [box=285,81,1126,50]:
+          - generic [ref=f14e145] [box=285,81,652,50]:
+            - img "file-sync" [ref=f14e147] [box=299,96,20,20]
+            - generic [ref=f14e150] [box=347,81,590,50]:
+              - heading "文件引接任务管理" [level=1] [ref=f14e151] [box=347,81,590,26]
+              - paragraph [ref=f14e152] [box=347,111,590,20]: 独立管理本地文件与 FTP、SFTP、S3、MinIO 的目录或对象前缀同步，不使用表、字段或 SQL 映射。
+          - button "plus 新建文件引接任务" [ref=f14e154] [cursor=pointer] [box=1249,89,162,35]:
+            - img "plus" [ref=f14e156] [box=1267,99,13,13]
+            - generic [ref=f14e160] [box=1288,96,104,20]: 新建文件引接任务
+        - generic [ref=f14e162] [box=256,168,1184,701]:
+          - generic [ref=f14e167] [box=269,185,1158,64]:
+            - generic [ref=f14e170] [box=277,185,274,64]:
+              - generic [ref=f14e172] [box=299,185,50,32]:
+                - generic [ref=f14e173] [box=299,191,36,20]: 任务名
+                - text: ":"
+              - generic [ref=f14e177] [box=277,219,274,28]:
+                - img "search" [ref=f14e179] [box=289,226,14,14]
+                - textbox "任务名 :" [ref=f14e182] [box=307,224,216,18]:
+                  - /placeholder: 请输入任务名
+            - generic [ref=f14e186] [box=567,185,274,64]:
+              - generic [ref=f14e188] [box=577,185,62,32]:
+                - generic [ref=f14e189] [box=577,191,48,20]: 创建时间
+                - text: ":"
+              - generic [ref=f14e193] [box=567,219,274,28]:
+                - textbox "创建时间 :" [ref=f14e195] [box=579,221,100,24]:
+                  - /placeholder: 开始日期
+                - generic "to" [ref=f14e197] [box=686,225,16,16]:
+                  - img "swap-right" [ref=f14e198] [box=686,225,16,16]
+                - textbox "结束日期" [ref=f14e202] [box=710,221,100,24]
+                - generic [box=814,226,14,14]:
+                  - img "calendar" [box=814,226,14,14]
+            - generic [ref=f14e205] [box=856,217,225,32]:
+              - generic [ref=f14e207] [box=890,217,38,32]:
+                - generic [ref=f14e208] [box=890,223,24,20]: 状态
+                - text: ":"
+              - generic [ref=f14e214] [box=940,218,129,30]:
+                - combobox "状态 :" [ref=f14e216] [box=940,218,111,30]
+                - generic [box=940,218,129,30]: 请选择...
+            - generic [ref=f14e219] [box=1223,219,196,32]:
+              - button "搜 索" [ref=f14e221] [cursor=pointer] [box=1223,219,65,32]
+              - button "重 置" [ref=f14e224] [cursor=pointer] [box=1296,219,67,32]
+              - button [ref=f14e227] [cursor=pointer] [box=1371,221,49,28]:
+                - text: 展开
+                - img "down" [ref=f14e228] [box=1402,230,10,10]
+          - separator [ref=f14e231] [box=256,282,1184,1]
+          - generic [ref=f14e237] [box=257,300,1182,204]:
+            - table [ref=f14e239] [box=257,300,1500,51]:
+              - rowgroup [ref=f14e249] [box=257,300,1500,51]:
+                - row [ref=f14e250] [box=257,300,1500,51]:
+                  - columnheader [ref=f14e251] [box=257,300,150,51]:
+                    - generic [ref=f14e253] [box=324,314,16,22]:
+                      - generic [box=324,317,16,16]:
+                        - checkbox "Select all" [disabled] [box=324,317,16,16]
+                  - columnheader "链路名称/ID" [ref=f14e254] [cursor=pointer] [box=407,300,150,51]
+                  - columnheader "健康状态" [ref=f14e265] [box=557,300,120,51]
+                  - columnheader "数据源同步方案" [ref=f14e266] [box=677,300,255,51]
+                  - columnheader "执行概况" [ref=f14e267] [box=932,300,210,51]
+                  - columnheader "链路动态调度" [ref=f14e268] [box=1142,300,225,51]
+                  - columnheader "创建时间" [ref=f14e269] [cursor=pointer] [box=1367,300,180,51]
+                  - columnheader "操作" [ref=f14e280] [box=1229,300,210,51]
+            - table [ref=f14e282] [box=257,351,1500,153]:
+              - rowgroup [ref=f14e292] [box=257,351,1500,153]:
+                - generic [box=269,351,16,22]:
+                  - generic [box=269,351,16,22]:
+                    - generic [box=269,354,16,16]:
+                      - checkbox [disabled] [box=269,354,16,16]
+                - generic [box=419,351,126,20]: 链路名称/ID
+                - generic [box=1379,351,156,20]: 创建时间
+                - row [ref=f14e293] [box=257,351,1500,153]:
+                  - cell "暂无数据 暂无文件引接任务" [ref=f14e294] [box=257,351,1500,153]:
+                    - generic [ref=f14e296] [box=281,395,1142,65]:
+                      - img "暂无数据" [ref=f14e298] [box=820,395,64,38]
+                      - generic [ref=f14e304] [box=281,441,1142,19]: 暂无文件引接任务
+        - generic [ref=f14e306] [box=276,958,1144,32]:
+          - generic [ref=f14e307] [box=276,958,614,32]:
+            - button "copy 批量创建" [disabled] [ref=f14e309] [box=276,958,107,32]:
+              - generic [box=293,964,13,20]:
+                - img "copy" [box=293,967,13,13]
+              - generic [box=314,964,52,20]: 批量创建
+            - separator [ref=f14e310] [box=391,967,1,13]
+            - button "cloud-upload 上线" [disabled] [ref=f14e312] [box=400,958,82,32]:
+              - generic [box=418,964,13,20]:
+                - img "cloud-upload" [box=418,967,13,13]
+              - generic [box=439,964,26,20]: 上线
+            - separator [ref=f14e313] [box=490,967,1,13]
+            - button "cloud-download 下线" [disabled] [ref=f14e315] [box=499,958,82,32]:
+              - generic [box=517,964,13,20]:
+                - img "cloud-download" [box=517,967,13,13]
+              - generic [box=538,964,26,20]: 下线
+            - separator [ref=f14e316] [box=589,967,1,13]
+            - button "play-circle 启动" [disabled] [ref=f14e318] [box=598,958,88,32]:
+              - generic [box=619,964,13,20]:
+                - img "play-circle" [box=619,967,13,13]
+              - generic [box=640,964,26,20]: 启动
+            - separator [ref=f14e319] [box=694,967,1,13]
+            - button "stop 终止" [disabled] [ref=f14e321] [box=703,958,88,32]:
+              - generic [box=724,964,13,20]:
+                - img "stop" [box=724,967,13,13]
+              - generic [box=745,964,26,20]: 终止
+            - separator [ref=f14e322] [box=799,967,1,13]
+            - button "delete 删除" [disabled] [ref=f14e324] [box=808,958,82,32]:
+              - generic [box=826,964,13,20]:
+                - img "delete" [box=826,967,13,13]
+              - generic [box=847,964,26,20]: 删除
+          - generic [ref=f14e326] [box=1187,960,225,28]:
+            - generic [ref=f14e327] [box=1187,963,44,22]: 共 0 条
+            - list [ref=f14e328] [box=1245,960,167,28]:
+              - listitem "上一页" [ref=f14e329] [box=1245,960,28,28]:
+                - button [disabled] [ref=f14e330] [box=1245,960,28,28]:
+                  - img "left" [ref=f14e331] [box=1253,969,12,12]
+              - listitem "1" [ref=f14e334] [cursor=pointer] [box=1273,960,28,28]
+              - listitem "下一页" [ref=f14e336] [box=1301,960,28,28]:
+                - button [disabled] [ref=f14e337] [box=1301,960,28,28]:
+                  - img "right" [ref=f14e338] [box=1309,969,12,12]
+              - listitem [ref=f14e341] [box=1331,960,81,28]:
+                - generic "页码" [ref=f14e342] [cursor=pointer] [box=1331,960,81,28]:
+                  - generic [ref=f14e344] [box=1339,961,65,26]:
+                    - combobox "页码" [ref=f14e346] [box=1339,961,47,26]
+                    - generic "10 条/页" [ref=f14e347] [box=1339,961,65,26]

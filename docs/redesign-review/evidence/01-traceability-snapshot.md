@@ -1,0 +1,219 @@
+- generic [ref=f3e5] [box=0,0,1440,1000]:
+  - complementary [ref=f3e7] [box=0,56,256,944]:
+    - generic [ref=f3e8] [box=0,56,257,944]:
+      - menu [ref=f3e10] [box=8,56,240,944]:
+        - menuitem [ref=f3e578] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f3e579] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f3e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f3e16] [box=28,86,14,14]
+              - generic [ref=f3e580] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f3e581] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f3e582] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f3e22] [box=28,121,200,20]:
+              - img "database" [ref=f3e24] [box=28,124,14,14]
+              - generic [ref=f3e583] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f3e584] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f3e29] [box=28,161,182,20]:
+            - img "read" [ref=f3e31] [box=28,164,14,14]
+            - generic [ref=f3e585] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f3e586] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f3e587] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f3e37] [box=28,201,200,20]:
+              - img "form" [ref=f3e39] [box=28,204,14,14]
+              - generic [ref=f3e588] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f3e589] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f3e45] [box=28,241,182,20]:
+            - img "swap" [ref=f3e47] [box=28,244,14,14]
+            - generic [ref=f3e590] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [ref=f3e591] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f3e52] [box=28,283,182,20]:
+            - img "monitor" [ref=f3e54] [box=28,286,14,14]
+            - generic [ref=f3e592] [box=50,283,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [ref=f3e593] [cursor=pointer] [box=12,316,232,38]:
+          - generic [ref=f3e59] [box=28,325,182,20]:
+            - img "cloud-server" [ref=f3e61] [box=28,328,14,14]
+            - generic [ref=f3e594] [box=50,325,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f3e595] [cursor=pointer] [box=12,358,232,38]:
+          - generic [ref=f3e68] [box=28,367,182,20]:
+            - img "setting" [ref=f3e70] [box=28,370,14,14]
+            - generic [ref=f3e596] [box=50,367,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f3e73] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f3e76] [box=256,0,1184,1000]:
+    - banner [ref=f3e77] [box=256,0,1184,56]
+    - banner [ref=f3e78] [box=0,0,1440,56]:
+      - generic [ref=f3e81] [cursor=pointer] [box=0,12,146,32]:
+        - img "logo" [ref=f3e82] [box=0,14,26,28]
+        - heading "数据采集引接软件" [level=1] [ref=f3e83] [box=34,12,112,32]
+    - main [ref=f3e87] [box=256,56,1184,1000]:
+      - generic [ref=f3e89] [box=297,81,792,32]:
+        - generic [ref=f3e91] [box=297,87,199,22]:
+          - img "safety-certificate" [ref=f3e92] [box=305,91,12,12]
+          - text: 纯前端可交互原型 · Mock SSO
+        - strong [ref=f3e96] [box=512,89,308,16]: 数据采集引接软件：合同指标—前端页面对应关系
+        - button "apartment 查看关系图" [ref=f3e98] [cursor=pointer] [box=828,81,120,32]:
+          - img "apartment" [ref=f3e100] [box=845,90,13,13]
+          - generic [ref=f3e103] [box=866,87,65,20]: 查看关系图
+        - button "reload 重置原型数据" [ref=f3e105] [cursor=pointer] [box=956,81,133,32]:
+          - img "reload" [ref=f3e107] [box=973,90,13,13]
+          - generic [ref=f3e110] [box=994,87,78,20]: 重置原型数据
+      - generic [ref=f3e111] [box=256,126,1184,1000]:
+        - generic [ref=f3e113] [box=296,134,1104,52]:
+          - generic [ref=f3e114] [box=296,146,971,36]:
+            - generic "数据采集引接软件：合同指标—前端页面对应关系" [ref=f3e115] [box=296,146,487,36]
+            - generic "默认聚合展示 F-01～F-15、P-01～P-06；点击父指标展开原子指标，点击页面节点进入原型。" [ref=f3e116] [box=795,153,460,22]
+          - button "expand 收起原子指标" [ref=f3e120] [cursor=pointer] [box=1267,146,133,32]:
+            - img "expand" [ref=f3e122] [box=1284,155,13,13]
+            - generic [ref=f3e125] [box=1305,152,78,20]: 收起原子指标
+        - generic [ref=f3e130] [box=288,202,1120,766]:
+          - generic [ref=f3e134] [box=304,210,1043,32]:
+            - img "filter" [ref=f3e136] [box=304,219,14,14]
+            - generic [ref=f3e142] [cursor=pointer] [box=342,211,136,30]:
+              - combobox [ref=f3e144] [box=342,211,118,30]
+              - generic [box=342,211,136,30]: 一级菜单
+            - generic [ref=f3e148] [cursor=pointer] [box=514,211,136,30]:
+              - combobox [ref=f3e150] [box=514,211,118,30]
+              - generic [box=514,211,136,30]: 技术模块
+            - generic [ref=f3e154] [cursor=pointer] [box=686,211,136,30]:
+              - combobox [ref=f3e156] [box=686,211,118,30]
+              - generic [box=686,211,136,30]: 实现方式
+            - generic [ref=f3e157] [box=846,215,48,23]: 复用
+            - generic [ref=f3e159] [box=906,215,48,23]: 改造
+            - generic [ref=f3e161] [box=966,215,48,23]: 集成
+            - generic [ref=f3e163] [box=1026,215,48,23]: 新增
+            - generic [ref=f3e165] [box=1086,215,72,23]: 有限实现
+            - generic [ref=f3e167] [box=1170,215,177,22]: 当前显示 20 / 20 个二级菜单
+          - generic [ref=f3e173] [box=297,267,1102,700]:
+            - generic [ref=f3e175] [box=297,267,1102,700]:
+              - generic [box=480,295,300,191]:
+                - img [box=480,295,300,191]:
+                  - generic [box=527,295,179,546]:
+                    - button "Edge from parent:F-01 to page:reporting-forms" [ref=f3e176] [cursor=pointer] [box=527,295,179,14]
+                    - button "Edge from parent:F-01 to page:reporting-forms" [ref=f3e179] [cursor=pointer] [box=527,295,179,14]
+                    - button "Edge from parent:F-01 to page:reporting-forms" [ref=f3e182] [cursor=pointer] [box=527,295,179,14]
+                    - button "Edge from parent:F-01 to page:reporting-forms" [ref=f3e185] [cursor=pointer] [box=527,295,179,14]
+                    - button "Edge from parent:F-01 to page:reporting-forms" [ref=f3e188] [cursor=pointer] [box=527,295,179,14]
+                    - button "Edge from parent:F-01 to page:reporting-forms" [ref=f3e191] [cursor=pointer] [box=527,295,179,14]
+                    - button "Edge from parent:F-01 to page:reporting-forms" [ref=f3e194] [cursor=pointer] [box=527,295,179,14]
+                    - button "Edge from parent:F-05 to page:reporting-reports" [ref=f3e197] [cursor=pointer] [box=527,322,179,85]
+                    - button "Edge from parent:F-05 to page:reporting-reports" [ref=f3e200] [cursor=pointer] [box=527,322,179,85]
+                    - button "Edge from parent:F-05 to page:reporting-reports" [ref=f3e203] [cursor=pointer] [box=527,322,179,85]
+                    - button "Edge from parent:F-04 to page:data-source" [ref=f3e206] [cursor=pointer] [box=527,352,179,30]
+                    - button "Edge from parent:P-03 to page:client" [ref=f3e209] [cursor=pointer] [box=527,378,179,343]
+                    - button "Edge from parent:F-02 to page:data-discovery" [ref=f3e212] [cursor=pointer] [box=527,331,179,81]
+                    - button "Edge from parent:F-04 to page:data-discovery" [ref=f3e215] [cursor=pointer] [box=527,379,179,33]
+                    - button "Edge from parent:F-13 to page:data-discovery" [ref=f3e218] [cursor=pointer] [box=527,407,179,193]
+                    - button "Edge from parent:F-02 to page:batch-link-up" [ref=f3e221] [cursor=pointer] [box=527,331,179,109]
+                    - button "Edge from parent:F-02 to page:batch-link-up" [ref=f3e224] [cursor=pointer] [box=527,331,179,109]
+                    - button "Edge from parent:F-03 to page:batch-link-up" [ref=f3e227] [cursor=pointer] [box=527,355,179,85]
+                    - button "Edge from parent:F-03 to page:batch-link-up" [ref=f3e230] [cursor=pointer] [box=527,355,179,85]
+                    - button "Edge from parent:F-03 to page:batch-link-up" [ref=f3e233] [cursor=pointer] [box=527,355,179,85]
+                    - button "Edge from parent:F-03 to page:batch-link-up" [ref=f3e236] [cursor=pointer] [box=527,355,179,85]
+                    - button "Edge from parent:F-03 to page:batch-link-up" [ref=f3e239] [cursor=pointer] [box=527,355,179,85]
+                    - button "Edge from parent:F-06 to page:batch-link-up" [ref=f3e242] [cursor=pointer] [box=527,427,179,13]
+                    - button "Edge from parent:P-01 to page:batch-link-up" [ref=f3e245] [cursor=pointer] [box=527,435,179,237]
+                    - button "Edge from parent:P-03 to page:batch-link-up" [ref=f3e248] [cursor=pointer] [box=527,435,179,285]
+                    - button "Edge from parent:P-04 to page:batch-link-up" [ref=f3e251] [cursor=pointer] [box=527,435,179,309]
+                    - button "Edge from parent:P-06 to page:batch-link-up" [ref=f3e254] [cursor=pointer] [box=527,435,179,357]
+                    - button "Edge from parent:F-02 to page:stream-link-up" [ref=f3e257] [cursor=pointer] [box=527,331,179,138]
+                    - button "Edge from parent:F-03 to page:stream-link-up" [ref=f3e260] [cursor=pointer] [box=527,355,179,114]
+                    - button "Edge from parent:F-03 to page:stream-link-up" [ref=f3e263] [cursor=pointer] [box=527,355,179,114]
+                    - button "Edge from parent:F-03 to page:stream-link-up" [ref=f3e266] [cursor=pointer] [box=527,355,179,114]
+                    - button "Edge from parent:F-03 to page:stream-link-up" [ref=f3e269] [cursor=pointer] [box=527,355,179,114]
+                    - button "Edge from parent:F-06 to page:stream-link-up" [ref=f3e272] [cursor=pointer] [box=527,427,179,42]
+                    - button "Edge from parent:P-01 to page:stream-link-up" [ref=f3e275] [cursor=pointer] [box=527,464,179,208]
+                    - button "Edge from parent:P-03 to page:stream-link-up" [ref=f3e278] [cursor=pointer] [box=527,464,179,256]
+                    - button "Edge from parent:P-04 to page:stream-link-up" [ref=f3e281] [cursor=pointer] [box=527,464,179,280]
+                    - button "Edge from parent:P-06 to page:stream-link-up" [ref=f3e284] [cursor=pointer] [box=527,464,179,329]
+                    - button "Edge from parent:F-08 to page:cloud-edge" [ref=f3e287] [cursor=pointer] [box=527,475,179,23]
+                    - button "Edge from parent:F-08 to page:cloud-edge" [ref=f3e290] [cursor=pointer] [box=527,475,179,23]
+                    - button "Edge from parent:F-08 to page:cloud-edge" [ref=f3e293] [cursor=pointer] [box=527,475,179,23]
+                    - button "Edge from parent:F-10 to page:edge-access" [ref=f3e296] [cursor=pointer] [box=527,523,179,3]
+                    - button "Edge from parent:F-10 to page:edge-access" [ref=f3e299] [cursor=pointer] [box=527,523,179,3]
+                    - button "Edge from parent:F-10 to page:edge-access" [ref=f3e302] [cursor=pointer] [box=527,523,179,3]
+                    - button "Edge from parent:F-14 to page:edge-access" [ref=f3e305] [cursor=pointer] [box=527,522,179,101]
+                    - button "Edge from parent:F-14 to page:edge-access" [ref=f3e308] [cursor=pointer] [box=527,522,179,101]
+                    - button "Edge from parent:F-14 to page:edge-access" [ref=f3e311] [cursor=pointer] [box=527,522,179,101]
+                    - button "Edge from parent:F-12 to page:links" [ref=f3e314] [cursor=pointer] [box=527,553,179,21]
+                    - button "Edge from parent:F-12 to page:links" [ref=f3e317] [cursor=pointer] [box=527,553,179,21]
+                    - button "Edge from parent:F-12 to page:links" [ref=f3e320] [cursor=pointer] [box=527,553,179,21]
+                    - button "Edge from parent:F-13 to page:topology" [ref=f3e323] [cursor=pointer] [box=527,581,179,16]
+                    - button "Edge from parent:F-13 to page:topology" [ref=f3e326] [cursor=pointer] [box=527,581,179,16]
+                    - button "Edge from parent:F-09 to page:bi" [ref=f3e329] [cursor=pointer] [box=527,499,179,113]
+                    - button "Edge from parent:F-09 to page:bi" [ref=f3e332] [cursor=pointer] [box=527,499,179,113]
+                    - button "Edge from parent:F-03 to page:metrics" [ref=f3e335] [cursor=pointer] [box=527,355,179,286]
+                    - button "Edge from parent:F-09 to page:metrics" [ref=f3e338] [cursor=pointer] [box=527,499,179,142]
+                    - button "Edge from parent:F-03 to page:alarm" [ref=f3e341] [cursor=pointer] [box=527,355,179,314]
+                    - button "Edge from parent:P-05 to page:alarm" [ref=f3e344] [cursor=pointer] [box=527,665,179,102]
+                    - button "Edge from parent:F-11 to page:diagnostics" [ref=f3e347] [cursor=pointer] [box=527,547,179,151]
+                    - button "Edge from parent:F-11 to page:diagnostics" [ref=f3e350] [cursor=pointer] [box=527,547,179,151]
+                    - button "Edge from parent:F-11 to page:diagnostics" [ref=f3e353] [cursor=pointer] [box=527,547,179,151]
+                    - button "Edge from parent:F-12 to page:diagnostics" [ref=f3e356] [cursor=pointer] [box=527,571,179,127]
+                    - button "Edge from parent:F-06 to page:lake-resources" [ref=f3e359] [cursor=pointer] [box=527,427,179,300]
+                    - button "Edge from parent:P-02 to page:lake-resources" [ref=f3e362] [cursor=pointer] [box=527,691,179,36]
+                    - button "Edge from parent:F-15 to page:lifecycle" [ref=f3e365] [cursor=pointer] [box=527,643,179,112]
+                    - button "Edge from parent:F-15 to page:lifecycle" [ref=f3e368] [cursor=pointer] [box=527,643,179,112]
+                    - button "Edge from parent:F-15 to page:lifecycle" [ref=f3e371] [cursor=pointer] [box=527,643,179,112]
+                    - button "Edge from parent:F-06 to page:logical-access" [ref=f3e374] [cursor=pointer] [box=527,427,179,357]
+                    - button "Edge from parent:F-03 to page:knowledge" [ref=f3e377] [cursor=pointer] [box=527,355,179,458]
+                    - button "Edge from parent:F-07 to page:knowledge" [ref=f3e380] [cursor=pointer] [box=527,451,179,362]
+                    - button "Edge from parent:F-07 to page:open-api" [ref=f3e383] [cursor=pointer] [box=527,451,179,390]
+                    - button "Edge from parent:F-07 to page:open-api" [ref=f3e386] [cursor=pointer] [box=527,451,179,390]
+                - generic [box=480,295,300,191]:
+                  - button "F-01 数据采集表单定制（7）" [ref=f3e389] [box=486,295,82,11]
+                  - button "F-02 全量与增量在线引接（3）" [ref=f3e392] [box=486,319,82,11]
+                  - button "F-03 引接任务配置管理（7）" [ref=f3e395] [box=486,343,82,11]
+                  - button "F-04 源业务系统清查摸底（2）" [ref=f3e398] [box=486,367,82,11]
+                  - button "F-05 采集报告与模板（3）" [ref=f3e401] [box=486,391,82,11]
+                  - button "F-06 物理与逻辑入湖（2）" [ref=f3e404] [box=486,415,82,11]
+                  - button "F-07 传输安全与统一认证（2）" [ref=f3e407] [box=486,439,82,11]
+                  - button "F-08 云边协同数据同步（3）" [ref=f3e410] [box=486,463,82,11]
+                  - button "F-09 可视化引接态势（2）" [ref=f3e413] [box=486,487,82,11]
+                  - button "F-10 异构协议解析（3）" [ref=f3e416] [box=486,511,82,11]
+                  - button "F-11 全链路轨迹与故障辅助（3）" [ref=f3e419] [box=486,535,82,11]
+                  - button "F-12 引接链路配置与优化（3）" [ref=f3e422] [box=486,559,82,11]
+                  - button "F-13 资产扫描与数据拓扑（3）" [ref=f3e425] [box=486,583,82,11]
+                  - button "F-14 边缘终端轻量接入（3）" [ref=f3e428] [box=486,607,82,11]
+                  - button "F-15 采集数据有效期（3）" [ref=f3e431] [box=486,631,82,11]
+                  - button "P-01 在线引接吞吐" [ref=f3e434] [box=486,655,82,11]
+                  - button "P-02 离线文件导入性能" [ref=f3e437] [box=486,679,82,11]
+                  - button "P-03 任务启动与管理容量" [ref=f3e440] [box=486,703,82,11]
+                  - button "P-04 增量发现时效" [ref=f3e443] [box=486,727,82,11]
+                  - button "P-05 异常告警时效" [ref=f3e446] [box=486,751,82,11]
+                  - button "P-06 结构化数据传输吞吐" [ref=f3e449] [box=486,775,82,11]
+                  - button "数据采报 / 数据采报 集成" [ref=f3e452] [box=669,298,74,17]
+                  - button "数据采报 / 采集报告管理 新增" [ref=f3e455] [box=669,327,74,17]
+                  - button "数据源管理 / 数据源管理 复用" [ref=f3e458] [box=669,355,74,17]
+                  - button "运行运维 / 引接引擎管理 改造" [ref=f3e461] [box=669,384,74,17]
+                  - button "数据探查 / 数据探查 集成" [ref=f3e464] [box=669,412,74,17]
+                  - button "数据引接 / 离线引接任务 复用" [ref=f3e467] [box=669,441,74,17]
+                  - button "数据引接 / 实时引接任务 改造" [ref=f3e470] [box=669,470,74,17]
+                  - button "数据引接 / 云边协同任务 有限实现" [ref=f3e473] [box=669,498,74,17]
+                  - button "数据引接 / 边缘接入任务管理 有限实现" [ref=f3e476] [box=669,527,74,17]
+                  - button "数据引接 / 数据协同任务 新增" [ref=f3e479] [box=669,556,74,17]
+                  - button "数据引接 / 数据拓扑 集成" [ref=f3e482] [box=669,584,74,17]
+                  - button "引接态势 / 引接态势 改造" [ref=f3e485] [box=669,613,74,17]
+                  - button "数据引接 / 任务概览 复用" [ref=f3e488] [box=669,641,74,17]
+                  - button "运行运维 / 告警管理 复用" [ref=f3e491] [box=669,670,74,17]
+                  - button "运行运维 / 安全加密 有限实现" [ref=f3e494] [box=669,699,74,17]
+                  - button "入湖管理 / 物理入湖管理 新增" [ref=f3e497] [box=669,727,74,17]
+                  - button "入湖管理 / 数据生命周期管理 新增" [ref=f3e500] [box=669,756,74,17]
+                  - button "入湖管理 / 逻辑入湖管理 有限实现" [ref=f3e503] [box=669,785,74,17]
+                  - button "系统管理 / 参数与知识 复用" [ref=f3e506] [box=669,813,74,17]
+                  - button "系统管理 / 开放接口 复用" [ref=f3e509] [box=669,842,74,17]
+            - img "React Flow mini map" [ref=f3e515] [box=1183,801,200,150]
+            - generic [ref=f3e557] [box=312,844,26,108]:
+              - button "zoom in" [ref=f3e558] [cursor=pointer] [box=312,844,26,27]
+              - button "zoom out" [ref=f3e561] [cursor=pointer] [box=312,871,26,27]
+              - button "fit view" [ref=f3e564] [cursor=pointer] [box=312,898,26,27]
+              - button "toggle interactivity" [ref=f3e567] [cursor=pointer] [box=312,925,26,27]
+            - generic [ref=f3e571] [box=312,283,296,22]:
+              - img "apartment" [ref=f3e572] [box=320,288,12,12]
+              - text: 点击指标展开 · 点击页面跳转 · 点击节点高亮连线
+            - link "React Flow attribution" [ref=f3e576] [cursor=pointer] [box=1346,951,50,11]:
+              - /url: https://reactflow.dev
+              - text: React Flow

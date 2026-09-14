@@ -1,0 +1,96 @@
+- generic [ref=f26e5] [box=0,0,1440,1000]:
+  - complementary [ref=f26e7] [box=0,56,256,944]:
+    - generic [ref=f26e8] [box=0,56,257,944]:
+      - menu [ref=f26e10] [box=8,56,240,944]:
+        - menuitem [ref=f26e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f26e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f26e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f26e16] [box=28,86,14,14]
+              - generic [ref=f26e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f26e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f26e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f26e23] [box=28,121,200,20]:
+              - img "database" [ref=f26e25] [box=28,124,14,14]
+              - generic [ref=f26e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f26e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f26e31] [box=28,161,182,20]:
+            - img "read" [ref=f26e33] [box=28,164,14,14]
+            - generic [ref=f26e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f26e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f26e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f26e40] [box=28,201,200,20]:
+              - img "form" [ref=f26e42] [box=28,204,14,14]
+              - generic [ref=f26e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f26e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f26e49] [box=28,241,182,20]:
+            - img "swap" [ref=f26e51] [box=28,244,14,14]
+            - generic [ref=f26e54] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [expanded] [ref=f26e55] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f26e57] [box=28,283,182,20]:
+            - img "monitor" [ref=f26e59] [box=28,286,14,14]
+            - generic [ref=f26e62] [box=50,283,49,20]: 运行运维
+        - menu [ref=f26e63] [box=8,316,240,232]:
+          - menuitem [ref=f26e64] [cursor=pointer] [box=22,320,222,34]:
+            - link "引接引擎管理" [ref=f26e66] [box=54,327,174,20]:
+              - /url: /client
+          - menuitem [ref=f26e69] [cursor=pointer] [box=22,358,222,34]:
+            - link "探查引擎管理" [ref=f26e71] [box=54,365,174,20]:
+              - /url: /operations/metadata-engine
+          - menuitem [ref=f26e74] [cursor=pointer] [box=22,396,222,34]:
+            - link "数据湖管理" [ref=f26e76] [box=54,403,174,20]:
+              - /url: /lake/warehouse
+          - menuitem "告警管理" [ref=f26e79] [cursor=pointer] [box=22,434,222,34]
+          - menuitem [ref=f26e83] [cursor=pointer] [box=22,472,222,34]:
+            - link "协议管理" [ref=f26e85] [box=54,479,174,20]:
+              - /url: /operations/protocol
+          - menuitem [ref=f26e88] [cursor=pointer] [box=22,510,222,34]:
+            - link "安全加密" [ref=f26e90] [box=54,517,174,20]:
+              - /url: /operations/diagnostics
+        - menuitem "cloud-server 入湖管理" [ref=f26e93] [cursor=pointer] [box=12,552,232,38]:
+          - generic [ref=f26e95] [box=28,561,182,20]:
+            - img "cloud-server" [ref=f26e97] [box=28,564,14,14]
+            - generic [ref=f26e102] [box=50,561,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f26e103] [cursor=pointer] [box=12,594,232,38]:
+          - generic [ref=f26e105] [box=28,603,182,20]:
+            - img "setting" [ref=f26e107] [box=28,606,14,14]
+            - generic [ref=f26e110] [box=50,603,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f26e111] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f26e114] [box=256,0,1184,1000]:
+    - banner [ref=f26e115] [box=256,0,1184,56]
+    - banner [ref=f26e116] [box=0,0,1440,56]:
+      - generic [ref=f26e117] [box=0,0,1440,56]:
+        - generic [ref=f26e119] [cursor=pointer] [box=0,12,110,32]:
+          - img "logo" [ref=f26e120] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f26e121] [box=34,12,76,32]
+        - generic [ref=f26e125] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f26e127] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f26e128] [box=1384,19,16,16]
+          - img "read" [ref=f26e133] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f26e136] [box=256,56,1184,1000]:
+      - generic [ref=f26e139] [box=256,86,1184,613]:
+        - generic [ref=f26e142] [box=256,86,392,67]:
+          - generic [ref=f26e143] [box=256,86,392,39]:
+            - img "bell" [ref=f26e145] [box=264,94,22,22]
+            - heading "告警管理" [level=1] [ref=f26e148] [box=305,87,110,36]
+          - paragraph [ref=f26e149] [box=256,132,392,21]: 统一管理告警通道、告警规则与投递记录，让任务异常第一时间被感知。
+        - generic [ref=f26e150] [box=256,185,1184,514]:
+          - generic [ref=f26e152] [box=269,198,1158,47]:
+            - button "向左查看更多筛选项" [ref=f26e153] [cursor=pointer] [box=273,205,32,32]
+            - button "向右查看更多筛选项" [ref=f26e156] [cursor=pointer] [box=1392,205,32,32]
+            - generic [ref=f26e160] [box=269,201,1158,40]:
+              - button "告警通道" [ref=f26e161] [cursor=pointer] [box=699,203,94,36]
+              - button "告警规则" [ref=f26e162] [cursor=pointer] [box=801,203,94,36]
+              - button "告警记录" [ref=f26e163] [cursor=pointer] [box=903,203,94,36]
+          - generic [ref=f26e166] [box=256,279,1184,377]:
+            - generic [ref=f26e168] [box=256,279,156,46]:
+              - paragraph [ref=f26e169] [box=256,279,156,24]: 共 0 个告警通道
+              - paragraph [ref=f26e170] [box=256,307,156,18]: 管理任务异常消息的投递方式
+            - generic [ref=f26e174] [box=264,441,1168,119]:
+              - img "暂无数据" [ref=f26e176] [box=816,441,64,38]
+              - generic [ref=f26e182] [box=264,487,1168,19]: 暂时还没有告警通道
+              - button "新建通道" [ref=f26e184] [cursor=pointer] [box=805,521,86,38]

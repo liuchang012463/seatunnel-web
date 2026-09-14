@@ -1,0 +1,91 @@
+- generic [ref=f15e5] [box=0,0,1440,1000]:
+  - complementary [ref=f15e7] [box=0,56,256,944]:
+    - generic [ref=f15e8] [box=0,56,257,944]:
+      - menu [ref=f15e10] [box=8,56,240,944]:
+        - menuitem [ref=f15e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f15e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f15e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f15e16] [box=28,86,14,14]
+              - generic [ref=f15e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f15e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f15e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f15e23] [box=28,121,200,20]:
+              - img "database" [ref=f15e25] [box=28,124,14,14]
+              - generic [ref=f15e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f15e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f15e31] [box=28,161,182,20]:
+            - img "read" [ref=f15e33] [box=28,164,14,14]
+            - generic [ref=f15e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f15e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f15e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f15e40] [box=28,201,200,20]:
+              - img "form" [ref=f15e42] [box=28,204,14,14]
+              - generic [ref=f15e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f15e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f15e49] [box=28,241,182,20]:
+            - img "swap" [ref=f15e51] [box=28,244,14,14]
+            - generic [ref=f15e54] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [expanded] [ref=f15e55] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f15e57] [box=31,283,179,20]:
+            - img "monitor" [ref=f15e59] [box=31,286,14,14]
+            - generic [ref=f15e62] [box=53,283,49,20]: 运行运维
+        - menu [ref=f15e63] [box=8,316,240,232]:
+          - menuitem "引接引擎管理" [ref=f15e64] [cursor=pointer] [box=22,320,222,34]
+          - menuitem [ref=f15e68] [cursor=pointer] [box=22,358,222,34]:
+            - link "探查引擎管理" [ref=f15e70] [box=54,365,174,20]:
+              - /url: /operations/metadata-engine
+          - menuitem [ref=f15e73] [cursor=pointer] [box=22,396,222,34]:
+            - link "数据湖管理" [ref=f15e75] [box=54,403,174,20]:
+              - /url: /lake/warehouse
+          - menuitem [ref=f15e78] [cursor=pointer] [box=22,434,222,34]:
+            - link "告警管理" [ref=f15e80] [box=54,441,174,20]:
+              - /url: /alarm
+          - menuitem [ref=f15e83] [cursor=pointer] [box=22,472,222,34]:
+            - link "协议管理" [ref=f15e85] [box=54,479,174,20]:
+              - /url: /operations/protocol
+          - menuitem [ref=f15e88] [cursor=pointer] [box=22,510,222,34]:
+            - link "安全加密" [ref=f15e90] [box=54,517,174,20]:
+              - /url: /operations/diagnostics
+        - menuitem "cloud-server 入湖管理" [ref=f15e93] [cursor=pointer] [box=12,552,232,38]:
+          - generic [ref=f15e95] [box=28,561,182,20]:
+            - img "cloud-server" [ref=f15e97] [box=28,564,14,14]
+            - generic [ref=f15e102] [box=50,561,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f15e103] [cursor=pointer] [box=12,594,232,38]:
+          - generic [ref=f15e105] [box=28,603,182,20]:
+            - img "setting" [ref=f15e107] [box=28,606,14,14]
+            - generic [ref=f15e110] [box=50,603,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f15e111] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f15e114] [box=256,0,1184,1000]:
+    - banner [ref=f15e115] [box=256,0,1184,56]
+    - banner [ref=f15e116] [box=0,0,1440,56]:
+      - generic [ref=f15e117] [box=0,0,1440,56]:
+        - generic [ref=f15e119] [cursor=pointer] [box=0,12,105,32]:
+          - img "logo" [ref=f15e120] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f15e121] [box=34,12,71,32]
+        - generic [ref=f15e125] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f15e127] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f15e128] [box=1384,19,16,16]
+          - img "read" [ref=f15e133] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f15e136] [box=256,56,1184,1000]:
+      - generic [ref=f15e139] [box=256,56,1184,1043]:
+        - generic [ref=f15e140] [box=277,77,1142,76]:
+          - generic [ref=f15e141] [box=277,77,627,62]:
+            - img "cloud-server" [ref=f15e143] [box=289,98,20,20]
+            - generic [ref=f15e148] [box=335,77,569,62]:
+              - heading "引接引擎管理" [level=1] [ref=f15e149] [box=335,77,569,36]
+              - paragraph [ref=f15e150] [box=335,117,569,22]: 管理 SeaTunnel / Zeta Client，查看节点健康状态与核心资源指标，让任务提交与运行监控更清晰。
+          - button "plus 新建 Client" [ref=f15e151] [cursor=pointer] [box=1298,77,121,35]:
+            - img "plus" [ref=f15e153] [box=1317,87,13,13]
+            - generic [ref=f15e157] [box=1338,85,63,20]: 新建 Client
+        - generic [ref=f15e159] [box=278,157,1140,920]:
+          - generic [ref=f15e160] [box=278,157,300,920]:
+            - generic [ref=f15e161] [box=298,177,259,22]: Client 列表
+            - generic [ref=f15e162] [box=298,210,259,58]: 还没有 Client，先新增一个地址吧。
+          - generic [ref=f15e166] [box=802,587,392,61]:
+            - generic [ref=f15e167] [box=802,587,392,22]: 选择一个 Client
+            - generic [ref=f15e168] [box=802,619,392,28]: 左侧选择节点后，可查看基础信息、健康状态与核心运行指标。

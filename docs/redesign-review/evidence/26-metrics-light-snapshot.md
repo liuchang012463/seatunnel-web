@@ -1,0 +1,128 @@
+- generic [ref=f25e5] [box=0,0,1440,1000]:
+  - complementary [ref=f25e7] [box=0,56,256,944]:
+    - generic [ref=f25e8] [box=0,56,257,944]:
+      - menu [ref=f25e10] [box=8,56,240,944]:
+        - menuitem [ref=f25e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f25e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f25e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f25e16] [box=28,86,14,14]
+              - generic [ref=f25e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f25e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f25e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f25e23] [box=28,121,200,20]:
+              - img "database" [ref=f25e25] [box=28,124,14,14]
+              - generic [ref=f25e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f25e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f25e31] [box=28,161,182,20]:
+            - img "read" [ref=f25e33] [box=28,164,14,14]
+            - generic [ref=f25e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f25e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f25e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f25e40] [box=28,201,200,20]:
+              - img "form" [ref=f25e42] [box=28,204,14,14]
+              - generic [ref=f25e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [expanded] [ref=f25e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f25e49] [box=28,241,182,20]:
+            - img "swap" [ref=f25e51] [box=28,244,14,14]
+            - generic [ref=f25e54] [box=50,241,49,20]: 数据引接
+        - menu [ref=f25e55] [box=8,274,240,270]:
+          - menuitem "任务概览" [ref=f25e56] [cursor=pointer] [box=22,278,222,34]
+          - menuitem [ref=f25e60] [cursor=pointer] [box=22,316,222,34]:
+            - link "离线引接任务" [ref=f25e62] [box=54,323,174,20]:
+              - /url: /sync/batch-link-up
+          - menuitem [ref=f25e65] [cursor=pointer] [box=22,354,222,34]:
+            - link "实时引接任务" [ref=f25e67] [box=54,361,174,20]:
+              - /url: /sync/stream-link-up
+          - menuitem [ref=f25e70] [cursor=pointer] [box=22,392,222,34]:
+            - link "文件引接任务" [ref=f25e72] [box=54,399,174,20]:
+              - /url: /sync/file-link-up
+          - menuitem [ref=f25e75] [cursor=pointer] [box=22,430,222,34]:
+            - link "云边协同任务" [ref=f25e77] [box=54,437,174,20]:
+              - /url: /sync/cloud-edge-tasks
+          - menuitem [ref=f25e80] [cursor=pointer] [box=22,468,222,34]:
+            - link "边缘接入任务" [ref=f25e82] [box=54,475,174,20]:
+              - /url: /sync/edge-access-tasks
+          - menuitem [ref=f25e85] [cursor=pointer] [box=22,506,222,34]:
+            - link "数据拓扑" [ref=f25e87] [box=54,513,174,20]:
+              - /url: /sync/topology
+        - menuitem "monitor 运行运维" [ref=f25e90] [cursor=pointer] [box=12,548,232,38]:
+          - generic [ref=f25e92] [box=28,557,182,20]:
+            - img "monitor" [ref=f25e94] [box=28,560,14,14]
+            - generic [ref=f25e97] [box=50,557,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [ref=f25e98] [cursor=pointer] [box=12,590,232,38]:
+          - generic [ref=f25e100] [box=28,599,182,20]:
+            - img "cloud-server" [ref=f25e102] [box=28,602,14,14]
+            - generic [ref=f25e107] [box=50,599,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f25e108] [cursor=pointer] [box=12,632,232,38]:
+          - generic [ref=f25e110] [box=28,641,182,20]:
+            - img "setting" [ref=f25e112] [box=28,644,14,14]
+            - generic [ref=f25e115] [box=50,641,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f25e116] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f25e119] [box=256,0,1184,1000]:
+    - banner [ref=f25e120] [box=256,0,1184,56]
+    - banner [ref=f25e121] [box=0,0,1440,56]:
+      - generic [ref=f25e122] [box=0,0,1440,56]:
+        - generic [ref=f25e124] [cursor=pointer] [box=0,12,110,32]:
+          - img "logo" [ref=f25e125] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f25e126] [box=34,12,76,32]
+        - generic [ref=f25e130] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f25e132] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f25e133] [box=1384,19,16,16]
+          - img "read" [ref=f25e138] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f25e141] [box=256,56,1184,1000]:
+      - main [ref=f25e143] [box=256,56,1184,944]:
+        - generic [ref=f25e146] [box=305,105,1086,1392]:
+          - generic [ref=f25e147] [box=305,105,1086,57]:
+            - generic [ref=f25e148] [box=305,105,196,57]:
+              - heading "任务洞察" [level=1] [ref=f25e149] [box=305,105,196,36]
+              - paragraph [ref=f25e152] [box=305,145,196,18]: 关注同步规模、执行表现与趋势变化
+            - generic [ref=f25e153] [box=1092,117,299,34]:
+              - generic [ref=f25e154] [box=1092,117,148,34]: 引接链路（离线）
+              - generic [ref=f25e161] [cursor=pointer] [box=1263,119,116,30]:
+                - combobox [ref=f25e163] [box=1263,119,98,30]
+                - generic "近 30 天" [ref=f25e164] [box=1263,119,116,30]
+          - generic [ref=f25e166] [box=305,190,1086,1307]:
+            - generic [ref=f25e168] [box=305,190,1086,170]:
+              - generic [ref=f25e170] [box=306,191,259,168]:
+                - paragraph [ref=f25e176] [box=327,255,217,25]: "51"
+                - paragraph [ref=f25e177] [box=327,283,217,14]: 同步总量
+                - paragraph [ref=f25e178] [box=327,301,217,14]: 累计同步记录
+              - generic [ref=f25e180] [box=581,191,259,168]:
+                - paragraph [ref=f25e188] [box=602,255,217,25]: "3"
+                - paragraph [ref=f25e189] [box=602,283,217,14]: 同步数据量
+                - paragraph [ref=f25e190] [box=602,301,217,14]: 累计引接数据（KB）
+              - generic [ref=f25e192] [box=856,191,259,168]:
+                - paragraph [ref=f25e199] [box=877,255,217,25]: "8"
+                - paragraph [ref=f25e200] [box=877,283,217,14]: 执行任务数
+                - paragraph [ref=f25e201] [box=877,301,217,14]: 统计范围内执行合计
+              - generic [ref=f25e203] [box=1131,191,259,168]:
+                - paragraph [ref=f25e211] [box=1152,255,217,25]: 100%
+                - paragraph [ref=f25e212] [box=1152,283,217,14]: 成功率
+                - paragraph [ref=f25e213] [box=1152,301,217,14]: 成功任务 8 个
+            - generic [ref=f25e214] [box=305,388,1086,458]:
+              - heading "同步概览" [level=2] [ref=f25e216] [box=305,388,80,28]
+              - generic [ref=f25e217] [box=305,427,1086,419]:
+                - heading "同步记录量趋势" [level=3] [ref=f25e221] [box=327,449,489,24]
+                - heading "同步数据量趋势" [level=3] [ref=f25e229] [box=881,449,489,24]
+            - generic [ref=f25e234] [box=305,875,1086,457]:
+              - heading "性能趋势" [level=2] [ref=f25e236] [box=305,875,80,28]
+              - generic [ref=f25e237] [box=305,914,1086,419]:
+                - heading "记录处理速率" [level=3] [ref=f25e241] [box=327,937,489,24]
+                - heading "数据处理速率" [level=3] [ref=f25e249] [box=881,937,489,24]
+            - generic [ref=f25e254] [box=305,1364,1086,138]:
+              - heading "摘要分析" [level=2] [ref=f25e256] [box=305,1364,80,28]
+              - generic [ref=f25e257] [box=305,1403,1086,100]:
+                - generic [ref=f25e259] [box=306,1404,351,98]:
+                  - heading "整体概览" [level=3] [ref=f25e260] [box=327,1425,309,24]
+                  - paragraph [ref=f25e261] [box=327,1459,309,21]: 所选时间范围内，共执行 8 个任务。
+                - generic [ref=f25e263] [box=673,1404,351,98]:
+                  - heading "数据规模" [level=3] [ref=f25e264] [box=694,1425,309,24]
+                  - paragraph [ref=f25e265] [box=694,1459,309,21]: 累计处理 3 KB 数据。
+                - generic [ref=f25e267] [box=1039,1404,351,98]:
+                  - heading "执行稳定性" [level=3] [ref=f25e268] [box=1060,1425,309,24]
+                  - paragraph [ref=f25e269] [box=1060,1459,309,21]: 当前任务成功率为 100%，成功任务 8 个。
