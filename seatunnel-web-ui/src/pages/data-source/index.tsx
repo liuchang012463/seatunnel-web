@@ -519,13 +519,23 @@ const DataSourcePage: React.FC = () => {
               测试连接
             </button>
             {record.systemManaged ? (
-              <button
-                type="button"
-                className="datasource-catalog-action datasource-catalog-action--neutral"
-                onClick={handleOpenWarehouse}
-              >
-                数据湖管理
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="datasource-catalog-action datasource-catalog-action--primary"
+                  disabled={isDeleting}
+                  onClick={() => handleViewExploration(record)}
+                >
+                  探查结果
+                </button>
+                <button
+                  type="button"
+                  className="datasource-catalog-action datasource-catalog-action--neutral"
+                  onClick={handleOpenWarehouse}
+                >
+                  数据湖管理
+                </button>
+              </>
             ) : (
               <>
                 <button

@@ -227,19 +227,26 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
   const sourceDataSourceId = Form.useWatch('sourceDataSourceId', form);
   const adapter = Form.useWatch('adapter', form);
   const scope = Form.useWatch('scope', form);
-  const selectedSource = sources.find((source) => source.sourceDataSourceId === sourceDataSourceId);
-  const sourceAdapter = adapterForDbType(selectedSource?.dbType);
+  const initialSource = sources.find((source) => source.sourceDataSourceId === initialSourceId);
+  const initialSourceAdapter = adapterForDbType(initialSource?.dbType);
+  const initializedSourceRef = useRef<string>();
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      initializedSourceRef.current = undefined;
+      return;
+    }
+    const sourceKey = `${initialSourceId ?? ''}:${initialSourceAdapter ?? ''}`;
+    if (initializedSourceRef.current === sourceKey) return;
+    initializedSourceRef.current = sourceKey;
     form.setFieldsValue({
       sourceDataSourceId: initialSourceId,
-      adapter: sourceAdapter || 'MYSQL',
+      adapter: initialSourceAdapter || 'MYSQL',
       scope: 'ALL',
     });
     setCapability(undefined);
     setCapabilityError(undefined);
-  }, [form, initialSourceId, open, sourceAdapter]);
+  }, [form, initialSourceAdapter, initialSourceId, open, sources]);
 
   useEffect(() => {
     if (!open || !sourceDataSourceId || !adapter || !scope) return;
@@ -329,7 +336,26 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
       /> : null}
       <Form form={form} layout="vertical" onFinish={submit} initialValues={{ adapter: 'MYSQL', scope: 'ALL', sourceDataSourceId: initialSourceId }}>
         <Form.Item name="sourceDataSourceId" label="数据源" rules={[{ required: true, message: '请选择数据源' }]}>
-          <Select showSearch options={sources.map((source) => sourceOption(source, masterNames))} placeholder="选择已有数据源" optionFilterProp="label" />
+          <Select
+            showSearch
+            options={sources.map((source) => sourceOption(source, masterNames))}
+            placeholder="选择已有数据源"
+            optionFilterProp="label"
+            onChange={(value) => {
+              const nextSource = sources.find((source) => source.sourceDataSourceId === value);
+              const nextAdapter = adapterForDbType(nextSource?.dbType);
+              const currentAdapter = form.getFieldValue('adapter');
+              form.setFieldsValue({
+                sourceDataSourceId: value,
+                scope: 'ALL',
+                databaseInclude: [],
+                tableInclude: [],
+                ...(nextAdapter && currentAdapter !== nextAdapter ? { adapter: nextAdapter } : {}),
+              });
+              setCapability(undefined);
+              setCapabilityError(undefined);
+            }}
+          />
         </Form.Item>
         <Form.Item name="targetCatalogName" label="挂载名称" rules={[{ required: true, max: 128, message: '请输入 128 字符以内的名称' }]}>
           <Input maxLength={128} />
@@ -396,7 +422,7 @@ const LogicalAccessPage: React.FC = () => {
   }, [sourcesReloadKey]);
   const sourceLabelById = useMemo(
     () => new Map(sources.map((source) => [source.sourceDataSourceId, sourceOption(source, masterNames).label])),
-    [sources],
+    [masterNames, sources],
   );
   const columns: ProColumns<LakeCatalog>[] = [
     { title: '挂载名称', dataIndex: 'targetCatalogName', ellipsis: true },

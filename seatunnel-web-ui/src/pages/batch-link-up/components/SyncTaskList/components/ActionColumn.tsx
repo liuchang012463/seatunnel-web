@@ -461,6 +461,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
           <button
             type="button"
             className={moreActionClass}
+            aria-haspopup="menu"
             onClick={stopPropagation}
           >
             更多

@@ -27,7 +27,7 @@ const REALTIME_DETAIL_CACHE_PREFIX = 'stream-link-up-detail';
 const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
 const getDefaultTimeRange = () => [];
-const DEFAULT_SORT_FIELD: TaskSortField = 'createTime';
+const DEFAULT_SORT_FIELD: TaskSortField = 'updateTime';
 const DEFAULT_SORT_ORDER: TaskSortOrder = 'desc';
 
 interface StreamingJobDefinitionVO {
@@ -48,6 +48,8 @@ interface StreamingJobDefinitionVO {
   sinkTable?: string;
   sourceDatasourceId?: string | number;
   sinkDatasourceId?: string | number;
+  sourceDatasourceName?: string;
+  sinkDatasourceName?: string;
   createTime?: string;
   updateTime?: string;
   savepointPath?: string;
@@ -164,7 +166,7 @@ const parseSortFromUrl = () => {
   const order = params.get('sortOrder');
 
   return {
-    field: field === 'name' || field === 'createTime' ? field : DEFAULT_SORT_FIELD,
+    field: field === 'name' || field === 'createTime' || field === 'updateTime' ? field : DEFAULT_SORT_FIELD,
     order: order === 'asc' || order === 'desc' ? order : DEFAULT_SORT_ORDER,
   } as { field: TaskSortField; order: TaskSortOrder };
 };

@@ -5,9 +5,10 @@ import { Tooltip } from "antd";
 import React from "react";
 
 import DatabaseIcons from "@/pages/data-source/icon/DatabaseIcons";
+import type { StreamingJobDefinitionVO } from "./RealtimeTaskActionColumn";
 
 interface RealtimeSyncPlanProps {
-  record: any;
+  record: StreamingJobDefinitionVO;
 }
 
 /** 单元格只展示「源数据源类型 → 目标数据源类型」，数据源名与表清单收敛进悬浮提示。 */
@@ -114,11 +115,15 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
     return `共 ${count} 张表`;
   };
 
-  const sourceSummary = `${record?.sourceDatasourceName || "-"} · ${getTableSummary(
+  const sourceName = record.sourceDatasourceName
+    || (record.sourceDatasourceId != null ? `数据源 #${record.sourceDatasourceId}` : getTypeLabel(record.sourceType));
+  const sinkName = record.sinkDatasourceName
+    || (record.sinkDatasourceId != null ? `数据源 #${record.sinkDatasourceId}` : getTypeLabel(record.sinkType));
+  const sourceSummary = `${sourceName} · ${getTableSummary(
     record?.sourceTable,
     "暂未配置来源表"
   )}`;
-  const sinkSummary = `${record?.sinkDatasourceName || "-"} · ${getTableSummary(
+  const sinkSummary = `${sinkName} · ${getTableSummary(
     record?.sinkTable,
     "暂未配置目标表"
   )}`;

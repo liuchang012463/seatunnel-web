@@ -23,7 +23,7 @@ import {
   message,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TaskListPageHeader from '@/components/TaskListPageHeader';
 import { DATA_SOURCE_STATUS_OPTIONS } from '@/pages/data-source/constants';
 import {
@@ -141,6 +141,7 @@ const DataExplorationTasksPage: React.FC = () => {
   const [runRecordName, setRunRecordName] = useState('');
   const [trackingExploration, setTrackingExploration] = useState<ExplorationTracking>();
   const [explorationFeedback, setExplorationFeedback] = useState<ExplorationFeedback>();
+  const exploreRequestRef = useRef(0);
   const [category, setCategory] = useState<ExplorationTaskCategoryKey>(DEFAULT_EXPLORATION_TASK_CATEGORY);
   const selectedCategory = getExplorationTaskCategory(category);
 
@@ -224,6 +225,7 @@ const DataExplorationTasksPage: React.FC = () => {
     setSchemas([]);
     setSchemaFqn(undefined);
     setSchemaLoading(true);
+    setExploreError(undefined);
     withTimeout(
       fetchDataSourceMetadataSchemas(exploreRecord.id, databaseFqn),
       10000,
@@ -239,6 +241,7 @@ const DataExplorationTasksPage: React.FC = () => {
         const nextSchemas = response.data || [];
         setSchemas(nextSchemas);
         setSchemaFqn(nextSchemas.length === 1 ? nextSchemas[0].value : undefined);
+        setExploreError(undefined);
       })
       .catch((error: any) => {
         if (!disposed) {
@@ -345,6 +348,8 @@ const DataExplorationTasksPage: React.FC = () => {
       });
       return;
     }
+    const requestId = exploreRequestRef.current + 1;
+    exploreRequestRef.current = requestId;
     setExploreRecord(record);
     setExploreOpen(true);
     setExploreError(undefined);
@@ -359,18 +364,22 @@ const DataExplorationTasksPage: React.FC = () => {
         10000,
         'Database 请求超时，请稍后重试',
       );
+      if (exploreRequestRef.current !== requestId) return;
       if (response.code !== 0) {
         throw new Error(response.message || '无法读取可探查的 Database');
       }
       const nextDatabases = response.data || [];
       setDatabases(nextDatabases);
       setDatabaseFqn(nextDatabases.length === 1 ? nextDatabases[0].value : undefined);
+      setExploreError(undefined);
     } catch (error: any) {
-      setExploreError(errorMessage(error, '无法读取可探查的 Database'));
-      setDatabases([]);
-      setDatabaseFqn(undefined);
+      if (exploreRequestRef.current === requestId) {
+        setExploreError(errorMessage(error, '无法读取可探查的 Database'));
+        setDatabases([]);
+        setDatabaseFqn(undefined);
+      }
     } finally {
-      setExploreLoading(false);
+      if (exploreRequestRef.current === requestId) setExploreLoading(false);
     }
   };
 
@@ -384,6 +393,8 @@ const DataExplorationTasksPage: React.FC = () => {
     const dataSourceId = exploreRecord.id;
     const dataSourceName = exploreRecord.name || '数据源';
     const submittedAt = Date.now();
+    const requestId = exploreRequestRef.current + 1;
+    exploreRequestRef.current = requestId;
     setExploreLoading(true);
     setExploreError(undefined);
     try {
@@ -392,6 +403,7 @@ const DataExplorationTasksPage: React.FC = () => {
         10000,
         '探查任务提交请求超时，请稍后重试',
       );
+      if (exploreRequestRef.current !== requestId) return;
       if (response.code !== 0) {
         message.error(response.message || '数据源探查暂不可触发');
         return;
@@ -410,10 +422,18 @@ const DataExplorationTasksPage: React.FC = () => {
       setExploreOpen(false);
       void load();
     } catch (error: any) {
-      message.error(errorMessage(error, '数据源探查暂不可触发'));
+      if (exploreRequestRef.current === requestId) {
+        message.error(errorMessage(error, '数据源探查暂不可触发'));
+      }
     } finally {
-      setExploreLoading(false);
+      if (exploreRequestRef.current === requestId) setExploreLoading(false);
     }
+  };
+
+  const closeExplore = () => {
+    exploreRequestRef.current += 1;
+    setExploreOpen(false);
+    setExploreLoading(false);
   };
 
   const showRuns = async (record: DataSourceRecord) => {
@@ -703,7 +723,7 @@ const DataExplorationTasksPage: React.FC = () => {
         okText="提交探查"
         cancelText="取消"
         confirmLoading={exploreLoading}
-        onCancel={() => setExploreOpen(false)}
+        onCancel={closeExplore}
         onOk={() => void submitExplore()}
       >
         <div className="py-3">

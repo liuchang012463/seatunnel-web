@@ -208,7 +208,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       }),
       dataIndex: "updateTime",
       sorter: true,
-      sortOrder: sort?.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
+      sortOrder: sort?.field === "updateTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       width: 160,
       ellipsis: true,
       render: (value: string | undefined) => (
@@ -251,7 +251,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         const active = Array.isArray(sorter) ? sorter[0] : sorter;
         if (!active?.order) return;
         onSortChange?.(
-          active.field === "createTime" || active.field === "updateTime" ? "createTime" : "name",
+          active.field === "updateTime" || active.field === "createTime" ? active.field : "name",
           active.order === "ascend" ? "asc" : "desc",
         );
       }}
