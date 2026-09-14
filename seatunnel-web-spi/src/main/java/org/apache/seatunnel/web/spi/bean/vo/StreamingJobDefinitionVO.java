@@ -45,6 +45,10 @@ public class StreamingJobDefinitionVO {
 
     private Long sinkDatasourceId;
 
+    private String sourceDatasourceName;
+
+    private String sinkDatasourceName;
+
     private Date createTime;
 
     private Date updateTime;

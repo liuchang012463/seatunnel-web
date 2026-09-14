@@ -29,7 +29,7 @@ const LogDrawer = forwardRef<LogDrawerRef>((_, ref) => {
       }}
       height="73vh"
       placement="bottom"
-      destroyOnClose
+      destroyOnHidden
     >
       {content ? (
         <pre

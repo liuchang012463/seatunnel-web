@@ -1,32 +1,18 @@
 // components/RealtimeSyncPlan.tsx
-import { selectDataSourceById } from "@/pages/data-source/service";
+import { DATA_SOURCE_REGISTRY } from "@/pages/data-source/dataSourceRegistry";
 import { DoubleRightOutlined } from "@ant-design/icons";
-import { Empty, Popover } from "antd";
-import React, { CSSProperties, useState } from "react";
+import { Tooltip } from "antd";
+import React from "react";
 
 import DatabaseIcons from "@/pages/data-source/icon/DatabaseIcons";
+import type { StreamingJobDefinitionVO } from "./RealtimeTaskActionColumn";
 
 interface RealtimeSyncPlanProps {
-  record: any;
+  record: StreamingJobDefinitionVO;
 }
 
-const dataSourcePopoverInnerStyle: CSSProperties = {
-  borderRadius: 10,
-  boxShadow: "0 14px 36px rgba(15, 23, 42, 0.16)",
-};
-
+/** 单元格只展示「源数据源类型 → 目标数据源类型」，数据源名与表清单收敛进悬浮提示。 */
 const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
-  const [sourcePopoverVisible, setSourcePopoverVisible] = useState(false);
-  const [sinkPopoverVisible, setSinkPopoverVisible] = useState(false);
-  const [sourceJsonData, setSourceJsonData] = useState<any>(null);
-  const [sinkJsonData, setSinkJsonData] = useState<any>(null);
-
-  const animatedIconStyle: CSSProperties = {
-    fontSize: 10,
-    animation: "realtime-plan-flow 2s ease-in-out infinite",
-    color: "white",
-  };
-
   const safeParse = (value: any) => {
     if (!value) return null;
 
@@ -52,430 +38,120 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
     return "引接链路（实时）";
   };
 
-  const formatTables = (tableValue: any, fallback = "-") => {
-    if (!tableValue) return fallback;
+  const getTypeLabel = (dbType: any) => {
+    const normalized = String(dbType || "").trim().toUpperCase();
 
-    if (typeof tableValue === "string") {
-      const trimmed = tableValue.trim();
+    if (!normalized) return "-";
 
-      if (!trimmed) return fallback;
+    const registryItem = DATA_SOURCE_REGISTRY.find(
+      (item) => item.dbType.toUpperCase() === normalized
+    );
 
-      if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-        return trimmed;
-      }
+    // 「达梦（Dameng）」→「达梦」，括号别名放悬浮提示里
+    const label = registryItem?.label || String(dbType);
+    const parenIndex = label.indexOf("（");
 
-      const parsed = safeParse(trimmed);
-      if (!parsed) return trimmed;
-
-      tableValue = parsed;
-    }
-
-    if (Array.isArray(tableValue)) {
-      if (!tableValue.length) return fallback;
-      if (tableValue.length === 1) return tableValue[0];
-      return `${tableValue[0]} +${tableValue.length - 1} more`;
-    }
-
-    if (typeof tableValue === "object") {
-      const tables: string[] = [];
-
-      Object.values(tableValue).forEach((item: any) => {
-        if (Array.isArray(item)) {
-          tables.push(...item);
-        } else if (typeof item === "string" && item.trim()) {
-          tables.push(item.trim());
-        }
-      });
-
-      if (!tables.length) return fallback;
-      if (tables.length === 1) return tables[0];
-      return `${tables[0]} +${tables.length - 1} more`;
-    }
-
-    return fallback;
+    return parenIndex > 0 ? label.slice(0, parenIndex) : label;
   };
 
-  const getTableList = (tableValue: any): string[] => {
-    if (!tableValue) return [];
+  const getTableCount = (tableValue: any) => {
+    if (!tableValue) return 0;
 
     let value = tableValue;
 
     if (typeof value === "string") {
       const trimmed = value.trim();
 
-      if (!trimmed) return [];
+      if (!trimmed) return 0;
 
       if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-        return [trimmed];
+        return 1;
       }
 
       const parsed = safeParse(trimmed);
-      if (!parsed) return [trimmed];
+      if (!parsed) return 1;
 
       value = parsed;
     }
 
     if (Array.isArray(value)) {
-      return value
-        .filter((item) => String(item || "").trim())
-        .map((item) => String(item).trim());
+      return value.filter((item) => String(item || "").trim()).length;
     }
 
     if (typeof value === "object") {
-      const tables: string[] = [];
-
-      Object.entries(value).forEach(([schemaName, item]: any) => {
+      return Object.values(value).reduce((total: number, item: any) => {
         if (Array.isArray(item)) {
-          item.forEach((tableName) => {
-            if (String(tableName || "").trim()) {
-              tables.push(
-                schemaName
-                  ? `${schemaName}.${String(tableName).trim()}`
-                  : String(tableName).trim()
-              );
-            }
-          });
+          return total + item.filter((v) => String(v || "").trim()).length;
         }
 
         if (typeof item === "string" && item.trim()) {
-          tables.push(schemaName ? `${schemaName}.${item.trim()}` : item.trim());
+          return total + 1;
         }
-      });
 
-      return tables;
+        return total;
+      }, 0);
     }
 
-    return [];
+    return 0;
   };
 
-  const sourceTableList = getTableList(record?.sourceTable);
-  const sinkTableList = getTableList(record?.sinkTable);
+  const getTableSummary = (tableValue: any, emptyText: string) => {
+    const count = getTableCount(tableValue);
 
-  const sourceTableText = formatTables(record?.sourceTable, "暂未配置来源表");
-  const sinkTableText = formatTables(record?.sinkTable, "暂未配置目标表");
+    if (!count) return emptyText;
 
-  const renderValue = (value: any): React.ReactNode => {
-    if (value === null) {
-      return (
-        <span className="stream-link-json-value stream-link-json-value--null">
-          null
-        </span>
-      );
+    if (count === 1) {
+      const value = safeParse(tableValue) ?? String(tableValue || "").trim();
+      const firstTable =
+        typeof value === "object"
+          ? Object.values(value)
+              .flat()
+              .find((item) => String(item || "").trim())
+          : value;
+
+      return String(firstTable || emptyText);
     }
 
-    if (typeof value === "string") {
-      return (
-        <span className="stream-link-json-value stream-link-json-value--string">
-          "{value}"
-        </span>
-      );
-    }
-
-    if (typeof value === "number") {
-      return (
-        <span className="stream-link-json-value stream-link-json-value--number">
-          {value}
-        </span>
-      );
-    }
-
-    if (typeof value === "boolean") {
-      return (
-        <span
-          className={`stream-link-json-value ${
-            value
-              ? "stream-link-json-value--boolean-true"
-              : "stream-link-json-value--boolean-false"
-          }`}
-        >
-          {String(value)}
-        </span>
-      );
-    }
-
-    return (
-      <span className="stream-link-json-value stream-link-json-value--default">
-        {String(value)}
-      </span>
-    );
+    return `共 ${count} 张表`;
   };
 
-  const renderObject = (obj: any, level = 0): React.ReactNode => {
-    if (typeof obj !== "object" || obj === null) {
-      return renderValue(obj);
-    }
-
-    const isArray = Array.isArray(obj);
-    const indent = level * 14;
-
-    return (
-      <div>
-        <div
-          style={{ paddingLeft: indent }}
-          className="stream-link-json-token"
-        >
-          {isArray ? "[" : "{"}
-        </div>
-
-        {Object.entries(obj).map(([key, value]) => (
-          <div
-            key={key}
-            style={{ paddingLeft: indent + 14 }}
-            className="stream-link-json-line"
-          >
-            {!isArray && (
-              <>
-                <span className="stream-link-json-key">"{key}"</span>
-                <span className="stream-link-json-separator">: </span>
-              </>
-            )}
-
-            {typeof value === "object" && value !== null
-              ? renderObject(value, level + 1)
-              : renderValue(value)}
-          </div>
-        ))}
-
-        <div
-          style={{ paddingLeft: indent }}
-          className="stream-link-json-token"
-        >
-          {isArray ? "]" : "}"}
-        </div>
-      </div>
-    );
-  };
-
-  const renderJsonPopoverContent = (data: any) => {
-    if (!data) {
-      return (
-        <div className="stream-link-empty-popover">
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
-        </div>
-      );
-    }
-
-    return (
-      <div className="stream-link-json-popover">
-        {renderObject(data)}
-      </div>
-    );
-  };
-
-  const renderTablePopoverContent = (tables: string[]) => {
-    if (!tables.length) {
-      return (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无表信息" />
-      );
-    }
-
-    return (
-      <div className="stream-link-table-popover">
-        <div className="stream-link-table-popover__count">共 {tables.length} 张表</div>
-
-        <div className="flex flex-col gap-1.5">
-          {tables.map((tableName, index) => (
-            <div
-              key={`${tableName}-${index}`}
-              className="stream-link-table-popover__item"
-            >
-              <span className="stream-link-table-popover__bullet" />
-              <span className="truncate" title={tableName}>
-                {tableName}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const handleOpenDatasource = async (
-    datasourceId: string | number | undefined,
-    type: "source" | "sink"
-  ) => {
-    if (!datasourceId) return;
-
-    const data = await selectDataSourceById(datasourceId);
-
-    if (data?.code === 0) {
-      const jsonData = safeParse(data?.data?.connectionParams || {});
-
-      if (type === "source") {
-        setSourceJsonData(jsonData);
-      } else {
-        setSinkJsonData(jsonData);
-      }
-
-      if (type === "source") {
-        setSourcePopoverVisible(true);
-      } else {
-        setSinkPopoverVisible(true);
-      }
-    }
-  };
-
-  const renderDatasourceName = (
-    type: "source" | "sink",
-    datasourceId?: string | number,
-    datasourceName?: string,
-    fallback?: string
-  ) => {
-    return (
-      <Popover
-        open={type === "source" ? sourcePopoverVisible : sinkPopoverVisible}
-        onOpenChange={(visible) => {
-          if (type === "source") {
-            setSourcePopoverVisible(visible);
-          } else {
-            setSinkPopoverVisible(visible);
-          }
-        }}
-        title="数据源信息"
-        content={renderJsonPopoverContent(
-          type === "source" ? sourceJsonData : sinkJsonData
-        )}
-        trigger="click"
-        placement="right"
-        overlayInnerStyle={dataSourcePopoverInnerStyle}
-      >
-        <a
-          href="#"
-          onClick={(event) => {
-            event.preventDefault();
-            handleOpenDatasource(datasourceId, type);
-          }}
-          className="ml-2 inline-block max-w-[150px] truncate text-[13px] font-medium"
-          style={{ color: "#6ea8ff", fontWeight: 600 }}
-          title={datasourceName || fallback}
-        >
-          {datasourceName || fallback || "-"}
-        </a>
-      </Popover>
-    );
-  };
-
-  const renderTableText = (
-    tables: string[],
-    text: string,
-    emptyText: string,
-    title: string
-  ) => {
-    if (record?.mode === "GUIDE_MULTI") {
-      return (
-        <Popover
-          placement="rightTop"
-          trigger="hover"
-          title={title}
-          content={renderTablePopoverContent(tables)}
-        >
-          <span
-            className={[
-              "inline-block max-w-[180px] cursor-pointer truncate text-[13px]",
-              tables.length ? "text-slate-700" : "text-slate-400",
-            ].join(" ")}
-          >
-            {tables.length ? `共 ${tables.length} 张表` : emptyText}
-          </span>
-        </Popover>
-      );
-    }
-
-    return (
-      <span
-        className="inline-block max-w-[180px] truncate text-[13px] text-slate-700"
-        title={text}
-      >
-        {text}
-      </span>
-    );
-  };
+  const sourceName = record.sourceDatasourceName
+    || (record.sourceDatasourceId != null ? `数据源 #${record.sourceDatasourceId}` : getTypeLabel(record.sourceType));
+  const sinkName = record.sinkDatasourceName
+    || (record.sinkDatasourceId != null ? `数据源 #${record.sinkDatasourceId}` : getTypeLabel(record.sinkType));
+  const sourceSummary = `${sourceName} · ${getTableSummary(
+    record?.sourceTable,
+    "暂未配置来源表"
+  )}`;
+  const sinkSummary = `${sinkName} · ${getTableSummary(
+    record?.sinkTable,
+    "暂未配置目标表"
+  )}`;
 
   return (
-    <div className="stream-link-sync-plan min-w-[280px] text-slate-700">
-      <style>
-        {`
-          @keyframes realtime-plan-flow {
-            0%, 100% { transform: translateY(0px) rotate(90deg); opacity: .55; }
-            50% { transform: translateY(-7px) rotate(90deg); opacity: 1; }
-          }
-        `}
-      </style>
-
-      <div style={{ marginBottom: 12 }}>
-        <span
-          className="
-            inline-flex items-center gap-1.5 rounded-full
-            border border-white/10 bg-[rgba(255,255,255,0.05)]
-            px-3 py-1 text-[11px] font-medium
-            shadow-none backdrop-blur-sm
-          "
-          style={{ color: "rgba(176, 196, 255, 0.92)" }}
-        >
-          <span
-            className="h-1 w-1 rounded-full "
-            style={{ backgroundColor: "rgba(176, 196, 255, 0.92)" }}
-          />
-          {getPlanTitle()}
+    <Tooltip
+      title={
+        <div className="sync-plan-tooltip">
+          <div>来源：{sourceSummary}</div>
+          <div>目标：{sinkSummary}</div>
+        </div>
+      }
+    >
+      <div className="sync-plan-compact">
+        <span className="sync-plan-compact__badge">{getPlanTitle()}</span>
+        <span className="sync-plan-compact__flow">
+          <DatabaseIcons dbType={record?.sourceType} width="16" height="16" />
+          <span className="sync-plan-compact__type">
+            {getTypeLabel(record?.sourceType)}
+          </span>
+          <DoubleRightOutlined className="sync-plan-compact__arrow" />
+          <DatabaseIcons dbType={record?.sinkType} width="16" height="16" />
+          <span className="sync-plan-compact__type">
+            {getTypeLabel(record?.sinkType)}
+          </span>
         </span>
       </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center">
-          {record?.sourceType ? (
-            <>
-              <DatabaseIcons dbType={record.sourceType} width="24" height="24" />
-              {renderDatasourceName(
-                "source",
-                record?.sourceDatasourceId,
-                record?.sourceDatasourceName,
-                record?.sourceType
-              )}
-            </>
-          ) : (
-            <span className="text-slate-400">-</span>
-          )}
-
-          <span className="mx-2 text-emerald-500">·</span>
-
-          {renderTableText(
-            sourceTableList,
-            sourceTableText,
-            "暂未选择表",
-            "来源表清单"
-          )}
-        </div>
-
-        <div className="pl-2">
-          <DoubleRightOutlined style={animatedIconStyle} />
-        </div>
-
-        <div className="flex items-center">
-          {record?.sinkType ? (
-            <>
-              <DatabaseIcons dbType={record.sinkType} width="24" height="24" />
-              {renderDatasourceName(
-                "sink",
-                record?.sinkDatasourceId,
-                record?.sinkDatasourceName,
-                record?.sinkType
-              )}
-            </>
-          ) : (
-            <span className="text-slate-400">-</span>
-          )}
-
-          <span className="mx-2 text-slate-300">·</span>
-
-          {renderTableText(
-            sinkTableList,
-            sinkTableText,
-            "暂未选择表",
-            "目标表清单"
-          )}
-        </div>
-      </div>
-    </div>
+    </Tooltip>
   );
 };
 

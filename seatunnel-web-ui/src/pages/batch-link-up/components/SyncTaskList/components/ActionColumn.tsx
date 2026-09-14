@@ -30,16 +30,17 @@ const { confirm } = Modal;
 const actionBaseClass =
   "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-all duration-150";
 
-const primaryActionClass = `${actionBaseClass} border-[#4dd2ff]/35 bg-[#0a4d66] text-[#b7f0ff] hover:border-[#73ddff]/55 hover:bg-[#0d5c78] hover:text-white`;
+/* 动作按钮配色走 SyncTaskList/index.less 的令牌类，深浅主题自适应 */
+const primaryActionClass = `${actionBaseClass} sync-action-btn is-primary`;
 
-const dangerActionClass = `${actionBaseClass} border-[#ff7875]/35 bg-[#5a252b]/70 text-[#ffd8d6] hover:border-[#ffa39e]/55 hover:bg-[#743038] hover:text-white`;
+const dangerActionClass = `${actionBaseClass} sync-action-btn is-danger`;
 
-const secondaryActionClass = `${actionBaseClass} border-white/10 bg-white/[0.03] text-[#dceef5] hover:border-[#4dd2ff]/35 hover:bg-white/[0.07] hover:text-white`;
+const secondaryActionClass = `${actionBaseClass} sync-action-btn is-secondary`;
 
-const disabledActionClass = `${actionBaseClass} cursor-not-allowed border-white/5 bg-white/[0.025] text-[#7da0ab] opacity-60`;
+const disabledActionClass = `${actionBaseClass} sync-action-btn is-disabled`;
 
 const moreActionClass =
-  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-2 text-xs font-medium text-[#dceef5] transition-all duration-150 hover:border-[#4dd2ff]/35 hover:bg-white/[0.07] hover:text-white";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 rounded-md border px-2 text-xs font-medium transition-all duration-150 sync-action-btn is-secondary";
 
 const isReleaseOnline = (releaseState?: string | number) => {
   return releaseState === "ONLINE" || releaseState === 1;
@@ -460,6 +461,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
           <button
             type="button"
             className={moreActionClass}
+            aria-haspopup="menu"
             onClick={stopPropagation}
           >
             更多

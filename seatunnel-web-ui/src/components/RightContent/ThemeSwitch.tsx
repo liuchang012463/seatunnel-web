@@ -1,30 +1,21 @@
 import { MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { useModel } from "@umijs/max";
 import { Tooltip } from "antd";
-import React, { useEffect } from "react";
-import {
-  applyNavTheme,
-  isDarkNavTheme,
-  persistNavTheme,
-  type NavTheme,
-} from "@/theme";
+import React from "react";
+import { useNavTheme } from "@/components/ThemeConfigProvider";
+import { isDarkNavTheme, type NavTheme } from "@/theme";
 
 const ThemeSwitch: React.FC = () => {
+  const { navTheme, toggleNavTheme } = useNavTheme();
   const { initialState, setInitialState } = useModel("@@initialState");
+  const isDark = isDarkNavTheme(navTheme);
 
-  const isDark = isDarkNavTheme(initialState?.settings?.navTheme);
+  const handleToggle = () => {
+    toggleNavTheme();
 
-  useEffect(() => {
-    applyNavTheme(isDark ? "realDark" : "light");
-  }, [isDark]);
-
-  const toggleTheme = async () => {
+    // ProLayout 侧栏（含折叠按钮）读 initialState.settings.navTheme，需同步
     const nextTheme: NavTheme = isDark ? "light" : "realDark";
-
-    applyNavTheme(nextTheme);
-    persistNavTheme(nextTheme);
-
-    await setInitialState((prev) => ({
+    void setInitialState((prev) => ({
       ...prev,
       settings: {
         ...prev?.settings,
@@ -38,7 +29,7 @@ const ThemeSwitch: React.FC = () => {
       <button
         type="button"
         aria-label={isDark ? "切换浅色模式" : "切换暗黑模式"}
-        onClick={toggleTheme}
+        onClick={handleToggle}
         className="theme-switch"
       >
         {isDark ? <SunOutlined /> : <MoonOutlined />}

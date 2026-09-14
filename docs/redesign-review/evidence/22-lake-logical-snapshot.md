@@ -1,0 +1,149 @@
+- generic [ref=f21e5] [box=0,0,1440,1000]:
+  - complementary [ref=f21e7] [box=0,56,256,944]:
+    - generic [ref=f21e8] [box=0,56,257,944]:
+      - menu [ref=f21e10] [box=8,56,240,944]:
+        - menuitem [ref=f21e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f21e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f21e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f21e16] [box=28,86,14,14]
+              - generic [ref=f21e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f21e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f21e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f21e23] [box=28,121,200,20]:
+              - img "database" [ref=f21e25] [box=28,124,14,14]
+              - generic [ref=f21e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f21e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f21e31] [box=28,161,182,20]:
+            - img "read" [ref=f21e33] [box=28,164,14,14]
+            - generic [ref=f21e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f21e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f21e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f21e40] [box=28,201,200,20]:
+              - img "form" [ref=f21e42] [box=28,204,14,14]
+              - generic [ref=f21e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f21e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f21e49] [box=28,241,182,20]:
+            - img "swap" [ref=f21e51] [box=28,244,14,14]
+            - generic [ref=f21e54] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [ref=f21e55] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f21e57] [box=28,283,182,20]:
+            - img "monitor" [ref=f21e59] [box=28,286,14,14]
+            - generic [ref=f21e62] [box=50,283,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [expanded] [ref=f21e63] [cursor=pointer] [box=12,316,232,38]:
+          - generic [ref=f21e65] [box=31,325,179,20]:
+            - img "cloud-server" [ref=f21e67] [box=31,328,14,14]
+            - generic [ref=f21e72] [box=53,325,49,20]: 入湖管理
+        - menu [ref=f21e73] [box=8,358,240,118]:
+          - menuitem [ref=f21e74] [cursor=pointer] [box=22,362,222,34]:
+            - link "物理入湖管理" [ref=f21e76] [box=54,369,174,20]:
+              - /url: /lake/resources
+          - menuitem "逻辑入湖管理" [ref=f21e79] [cursor=pointer] [box=22,400,222,34]
+          - menuitem [ref=f21e83] [cursor=pointer] [box=22,438,222,34]:
+            - link "数据生命周期管理" [ref=f21e85] [box=54,445,174,20]:
+              - /url: /lake/lifecycle
+        - menuitem "setting 系统管理" [ref=f21e88] [cursor=pointer] [box=12,480,232,38]:
+          - generic [ref=f21e90] [box=28,489,182,20]:
+            - img "setting" [ref=f21e92] [box=28,492,14,14]
+            - generic [ref=f21e95] [box=50,489,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f21e96] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f21e99] [box=256,0,1184,1000]:
+    - banner [ref=f21e100] [box=256,0,1184,56]
+    - banner [ref=f21e101] [box=0,0,1440,56]:
+      - generic [ref=f21e102] [box=0,0,1440,56]:
+        - generic [ref=f21e104] [cursor=pointer] [box=0,12,105,32]:
+          - img "logo" [ref=f21e105] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f21e106] [box=34,12,71,32]
+        - generic [ref=f21e110] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f21e112] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f21e113] [box=1384,19,16,16]
+          - img "read" [ref=f21e118] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f21e121] [box=256,56,1184,1000]:
+      - generic [ref=f21e122] [box=256,56,1184,1000]:
+        - generic [ref=f21e125] [box=296,76,414,36]:
+          - generic "逻辑入湖" [ref=f21e126] [box=296,76,112,36]
+          - generic "选择已有数据源，按步骤完成 Doris 逻辑挂载" [ref=f21e127] [box=420,83,278,22]
+        - generic [ref=f21e130] [box=256,132,1184,464]:
+          - generic [ref=f21e131] [box=296,132,1104,157]:
+            - generic [ref=f21e133] [box=321,149,1054,24]:
+              - generic [ref=f21e135] [box=321,149,104,24]:
+                - img "cloud-server" [ref=f21e137] [box=321,152,16,16]
+                - generic [ref=f21e142] [box=345,149,80,24]: 挂载前检查
+              - generic [ref=f21e143] [box=1165,150,210,22]: 先检查条件，需要时探查源端网络
+            - generic [ref=f21e144] [box=297,188,1102,100]:
+              - generic [ref=f21e145] [box=304,195,1088,64]:
+                - generic [ref=f21e147] [box=304,195,423,32]:
+                  - generic "数据源" [ref=f21e149] [box=304,195,63,32]: "* 数据源 :"
+                  - generic [ref=f21e155] [box=379,196,336,30]:
+                    - 'combobox "* 数据源 : 数据源 :" [ref=f21e157] [box=379,196,318,30]'
+                    - generic [box=379,196,336,30]: 选择已有数据源
+                - generic [ref=f21e159] [box=743,195,209,32]:
+                  - generic "数据库类型" [ref=f21e161] [box=743,195,79,32]: "数据库类型 :"
+                  - generic [ref=f21e167] [cursor=pointer] [box=834,196,106,30]:
+                    - 'combobox "数据库类型 : 数据库类型 :" [ref=f21e169] [box=834,196,88,30]'
+                    - generic "MySQL" [ref=f21e170] [box=834,196,106,30]
+                - generic [ref=f21e172] [box=968,195,196,32]:
+                  - generic "挂载范围" [ref=f21e174] [box=968,195,66,32]: "挂载范围 :"
+                  - generic [ref=f21e180] [cursor=pointer] [box=1046,196,106,30]:
+                    - 'combobox "挂载范围 : 挂载范围 :" [ref=f21e182] [box=1046,196,88,30]'
+                    - generic "全部库表" [ref=f21e183] [box=1046,196,106,30]
+                - generic [ref=f21e184] [box=304,227,219,32]:
+                  - button "检查条件" [ref=f21e186] [cursor=pointer] [box=304,227,86,32]
+                  - button "从湖侧探查源端" [disabled] [ref=f21e189] [box=398,227,125,32]
+              - text: 操作顺序：选择数据源 → 检查条件 →（需要时）探查源端 → 创建挂载。
+          - generic [ref=f21e190] [box=296,305,1104,259]:
+            - generic [ref=f21e194] [box=308,329,1080,32]:
+              - generic [ref=f21e197] [box=320,329,336,32]:
+                - generic "挂载名称" [ref=f21e199] [box=320,329,66,32]: "挂载名称 :"
+                - textbox "挂载名称 :" [ref=f21e204] [box=398,334,230,22]:
+                  - /placeholder: 请输入
+              - generic [ref=f21e208] [box=680,329,336,32]:
+                - generic "数据源" [ref=f21e210] [box=680,329,53,32]: "数据源 :"
+                - textbox "请输入" [ref=f21e215] [box=745,334,243,22]
+              - text: ": : : : :"
+              - generic [ref=f21e225] [box=1155,329,221,32]:
+                - generic [ref=f21e227] [box=1155,329,156,32]:
+                  - button "重 置" [ref=f21e228] [cursor=pointer] [box=1155,329,64,32]
+                  - button "loading 查 询" [ref=f21e230] [box=1226,329,85,32]:
+                    - img "loading" [ref=f21e232] [box=1241,335,18,18]
+                    - generic [ref=f21e235] [box=1264,335,30,20]: 查 询
+                - generic [ref=f21e237] [cursor=pointer] [box=1327,334,49,22]:
+                  - text: 展开
+                  - img "down" [ref=f21e238] [box=1362,338,14,14]
+            - generic [ref=f21e242] [box=296,401,1104,163]:
+              - generic [ref=f21e245] [box=320,417,1056,32]:
+                - generic [ref=f21e246] [box=1084,417,196,32]:
+                  - button "plus 创建挂载" [disabled] [ref=f21e247] [box=1084,417,107,32]:
+                    - generic [box=1101,423,13,20]:
+                      - img "plus" [box=1101,426,13,13]
+                    - generic [box=1122,423,52,20]: 创建挂载
+                  - button "reload 刷新" [ref=f21e248] [cursor=pointer] [box=1199,417,81,32]:
+                    - img "reload" [ref=f21e250] [box=1216,426,13,13]
+                    - generic [ref=f21e253] [box=1237,423,26,20]: 刷新
+                - generic [ref=f21e254] [box=1288,417,88,32]:
+                  - img "reload" [ref=f21e257] [cursor=pointer] [box=1292,424,16,16]
+                  - img "column-height" [ref=f21e262] [cursor=pointer] [box=1324,424,16,16]
+                  - img "setting" [ref=f21e266] [cursor=pointer] [box=1356,425,16,16]
+              - generic [ref=f21e270] [box=320,465,1056,83]:
+                - generic [box=320,465,1056,83]:
+                  - generic [box=320,465,1056,83]:
+                    - generic [box=320,465,1056,83]:
+                      - generic [box=320,465,1056,83]:
+                        - table [box=320,465,1056,83]:
+                          - rowgroup [box=320,465,1056,45]:
+                            - row "挂载名称 数据源 数据库类型 挂载范围 挂载状态 核验状态 最近验证 操作" [box=320,465,1056,45]:
+                              - columnheader "挂载名称" [box=320,465,26,45]
+                              - columnheader "数据源" [box=346,465,260,45]
+                              - columnheader "数据库类型" [box=606,465,120,45]
+                              - columnheader "挂载范围" [box=726,465,120,45]
+                              - columnheader "挂载状态" [box=846,465,120,45]
+                              - columnheader "核验状态" [box=966,465,130,45]
+                              - columnheader "最近验证" [box=1096,465,170,45]
+                              - columnheader "操作" [box=1266,465,110,45]
+                          - rowgroup [box=320,510,1056,38]:
+                            - row [box=320,510,1056,38]:
+                              - cell [box=320,510,1056,38]

@@ -153,16 +153,19 @@ export function useOpenApiData(url: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [spec, setSpec] = useState<OpenApiSpec | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 8000);
 
     async function fetchData() {
       try {
         setLoading(true);
         setError("");
 
-        const response = await fetch(url, { credentials: 'omit' });
+        const response = await fetch(url, { credentials: 'omit', signal: controller.signal });
         if (!response.ok) {
           throw new Error(`请求失败：${response.status}`);
         }
@@ -172,7 +175,11 @@ export function useOpenApiData(url: string) {
         setSpec(json);
       } catch (e: any) {
         if (!active) return;
-        setError(e?.message || "获取 OpenAPI 文档失败");
+        setError(
+          controller.signal.aborted
+            ? "OpenAPI 文档请求超时，请稍后重试"
+            : e?.message || "获取 OpenAPI 文档失败",
+        );
       } finally {
         if (active) setLoading(false);
       }
@@ -182,8 +189,10 @@ export function useOpenApiData(url: string) {
 
     return () => {
       active = false;
+      window.clearTimeout(timeoutId);
+      controller.abort();
     };
-  }, [url]);
+  }, [url, reloadKey]);
 
   const parsed = useMemo(() => {
     if (!spec) {
@@ -203,5 +212,6 @@ export function useOpenApiData(url: string) {
     error,
     rawSpec: spec,
     ...parsed,
+    reload: () => setReloadKey((value) => value + 1),
   };
 }

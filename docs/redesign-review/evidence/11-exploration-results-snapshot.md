@@ -1,0 +1,400 @@
+- generic [ref=f11e5] [box=0,0,1440,1000]:
+  - complementary [ref=f11e7] [box=0,56,256,944]:
+    - generic [ref=f11e8] [box=0,56,257,944]:
+      - menu [ref=f11e10] [box=8,56,240,944]:
+        - menuitem [ref=f11e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f11e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f11e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f11e16] [box=28,86,14,14]
+              - generic [ref=f11e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f11e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f11e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f11e23] [box=28,121,200,20]:
+              - img "database" [ref=f11e25] [box=28,124,14,14]
+              - generic [ref=f11e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [expanded] [ref=f11e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f11e31] [box=31,161,179,20]:
+            - img "read" [ref=f11e33] [box=31,164,14,14]
+            - generic [ref=f11e36] [box=53,161,49,20]: 数据探查
+        - menu [ref=f11e37] [box=8,194,240,118]:
+          - menuitem [ref=f11e38] [cursor=pointer] [box=22,198,222,34]:
+            - link "探查概览" [ref=f11e40] [box=54,205,174,20]:
+              - /url: /data-exploration/overview
+          - menuitem [ref=f11e43] [cursor=pointer] [box=22,236,222,34]:
+            - link "探查任务配置" [ref=f11e45] [box=54,243,174,20]:
+              - /url: /data-exploration/tasks
+          - menuitem "探查结果展示" [ref=f11e48] [cursor=pointer] [box=22,274,222,34]
+        - menuitem [ref=f11e52] [cursor=pointer] [box=12,316,232,34]:
+          - link "form 数据采报" [ref=f11e54] [box=28,323,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f11e55] [box=28,323,200,20]:
+              - img "form" [ref=f11e57] [box=28,326,14,14]
+              - generic [ref=f11e61] [box=50,323,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f11e62] [cursor=pointer] [box=12,354,232,38]:
+          - generic [ref=f11e64] [box=28,363,182,20]:
+            - img "swap" [ref=f11e66] [box=28,366,14,14]
+            - generic [ref=f11e69] [box=50,363,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [ref=f11e70] [cursor=pointer] [box=12,396,232,38]:
+          - generic [ref=f11e72] [box=28,405,182,20]:
+            - img "monitor" [ref=f11e74] [box=28,408,14,14]
+            - generic [ref=f11e77] [box=50,405,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [ref=f11e78] [cursor=pointer] [box=12,438,232,38]:
+          - generic [ref=f11e80] [box=28,447,182,20]:
+            - img "cloud-server" [ref=f11e82] [box=28,450,14,14]
+            - generic [ref=f11e87] [box=50,447,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f11e88] [cursor=pointer] [box=12,480,232,38]:
+          - generic [ref=f11e90] [box=28,489,182,20]:
+            - img "setting" [ref=f11e92] [box=28,492,14,14]
+            - generic [ref=f11e95] [box=50,489,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f11e96] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f11e99] [box=256,0,1184,1000]:
+    - banner [ref=f11e100] [box=256,0,1184,56]
+    - banner [ref=f11e101] [box=0,0,1440,56]:
+      - generic [ref=f11e102] [box=0,0,1440,56]:
+        - generic [ref=f11e104] [cursor=pointer] [box=0,12,105,32]:
+          - img "logo" [ref=f11e105] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f11e106] [box=34,12,71,32]
+        - generic [ref=f11e110] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f11e112] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f11e113] [box=1384,19,16,16]
+          - img "read" [ref=f11e118] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f11e121] [box=256,56,1184,1000]:
+      - generic [ref=f11e122] [box=256,56,1184,1000]:
+        - generic [ref=f11e123] [box=280,71,1136,86]:
+          - generic [ref=f11e124] [box=280,71,384,73]:
+            - generic [ref=f11e125] [box=280,76,124,16]: 数据探查 / EXPLORER
+            - heading "探查结果" [level=1] [ref=f11e126] [box=280,95,384,29]
+            - paragraph [ref=f11e127] [box=280,126,384,18]: 按数据源类型浏览元数据探查结果，进入数据源查看结构、样本与画像。
+          - generic [ref=f11e128] [box=921,93,495,51]:
+            - generic "探查范围筛选" [ref=f11e129] [box=921,93,316,51]:
+              - generic [ref=f11e130] [box=921,93,154,51]:
+                - generic [ref=f11e131] [box=921,93,154,15]: 单位
+                - generic [ref=f11e134] [box=932,114,132,30]:
+                  - combobox "单位 全部单位" [ref=f11e136] [box=932,114,114,30]
+                  - generic [box=932,114,132,30]: 全部单位
+              - generic [ref=f11e137] [box=1083,93,154,51]:
+                - generic [ref=f11e138] [box=1083,93,154,15]: 业务系统
+                - generic [ref=f11e141] [box=1094,114,132,30]:
+                  - combobox "业务系统 先选择单位" [disabled] [ref=f11e143] [box=1094,114,114,30]
+                  - generic [box=1094,114,132,30]: 先选择单位
+            - generic [ref=f11e144] [box=1249,110,167,34]:
+              - button "play-circle 任务配置" [ref=f11e145] [cursor=pointer] [box=1249,110,92,34]:
+                - img "play-circle" [ref=f11e147] [box=1261,121,12,12]
+                - generic [ref=f11e151] [box=1281,117,48,20]: 任务配置
+              - button "loading 刷新" [ref=f11e152] [box=1348,110,68,34]:
+                - img "loading" [ref=f11e154] [box=1360,120,12,12]
+                - generic [ref=f11e157] [box=1380,117,24,20]: 刷新
+        - generic [ref=f11e158] [box=280,168,1136,846]:
+          - complementary "探查类型导航" [ref=f11e159] [box=281,169,300,844]:
+            - generic [ref=f11e160] [box=293,185,275,57]:
+              - generic [ref=f11e161] [box=297,185,131,44]:
+                - generic [ref=f11e162] [box=297,190,131,16]: EXPLORATION TYPES
+                - heading "探查导航" [level=2] [ref=f11e163] [box=297,209,131,20]
+              - generic [ref=f11e164] [box=510,185,54,20]: 10 个数据源
+            - button "apartment 全部类型 查看当前范围的全部结果 10" [ref=f11e165] [cursor=pointer] [box=293,242,275,57]:
+              - img "apartment" [ref=f11e167] [box=311,263,15,15]
+              - generic [ref=f11e170] [box=343,253,194,35]:
+                - strong [ref=f11e171] [box=343,253,194,18]: 全部类型
+                - generic [ref=f11e172] [box=343,273,194,15]: 查看当前范围的全部结果
+              - generic [ref=f11e173] [box=546,253,12,25]: "10"
+            - navigation [ref=f11e175] [box=293,324,275,238]:
+              - button "database 数据库 关系型 / OLAP / ES 7" [ref=f11e176] [cursor=pointer] [box=293,324,275,55]:
+                - img "database" [ref=f11e178] [box=311,345,14,14]
+                - generic [ref=f11e181] [box=342,334,201,35]:
+                  - strong [ref=f11e182] [box=342,334,201,18]: 数据库
+                  - generic [ref=f11e183] [box=342,354,201,15]: 关系型 / OLAP / ES
+                - generic [ref=f11e184] [box=552,334,6,25]: "7"
+              - button "message 消息队列 Kafka 主题与消息 1" [ref=f11e185] [cursor=pointer] [box=293,385,275,55]:
+                - img "message" [ref=f11e187] [box=311,406,14,14]
+                - generic [ref=f11e190] [box=342,395,201,35]:
+                  - strong [ref=f11e191] [box=342,395,201,18]: 消息队列
+                  - generic [ref=f11e192] [box=342,415,201,15]: Kafka 主题与消息
+                - generic [ref=f11e193] [box=552,395,6,25]: "1"
+              - button "api API 服务 HTTP 接口目录 1" [ref=f11e194] [cursor=pointer] [box=293,446,275,55]:
+                - img "api" [ref=f11e196] [box=311,467,14,14]
+                - generic [ref=f11e199] [box=342,456,201,35]:
+                  - strong [ref=f11e200] [box=342,456,201,18]: API 服务
+                  - generic [ref=f11e201] [box=342,476,201,15]: HTTP 接口目录
+                - generic [ref=f11e202] [box=552,456,6,25]: "1"
+              - button "folder-open 文件传输 FTP / SFTP / 对象存储 1" [ref=f11e203] [cursor=pointer] [box=293,507,275,55]:
+                - img "folder-open" [ref=f11e205] [box=311,528,14,14]
+                - generic [ref=f11e208] [box=342,517,201,35]:
+                  - strong [ref=f11e209] [box=342,517,201,18]: 文件传输
+                  - generic [ref=f11e210] [box=342,537,201,15]: FTP / SFTP / 对象存储
+                - generic [ref=f11e211] [box=552,517,6,25]: "1"
+            - generic [ref=f11e212] [box=293,972,275,29]:
+              - img "database" [ref=f11e214] [box=297,986,13,13]
+              - generic [ref=f11e217] [box=318,985,230,16]: 类型导航固定展示，单位和业务系统在右上角筛选。
+          - main "探查结果列表" [ref=f11e218] [box=581,169,548,844]:
+            - generic [ref=f11e219] [box=581,169,548,94]:
+              - generic [ref=f11e220] [box=599,184,187,66]:
+                - generic [ref=f11e221] [box=599,189,125,16]: METADATA RESULTS
+                - heading "全部类型" [level=2] [ref=f11e222] [box=599,208,187,23]
+                - paragraph [ref=f11e223] [box=599,233,187,17]: 查看当前范围内的全部数据源探查结果
+              - generic [ref=f11e224] [box=812,216,299,34]:
+                - generic [ref=f11e225] [box=812,216,245,34]:
+                  - img "search" [ref=f11e227] [box=822,227,12,12]
+                  - textbox "搜索数据源、类型或环境" [ref=f11e230] [box=838,221,193,24]
+                - generic [ref=f11e232] [box=1067,225,44,17]: 10 个结果
+            - generic [ref=f11e233] [box=581,263,548,29]:
+              - generic [ref=f11e234] [box=599,273,64,17]:
+                - img "apartment" [ref=f11e235] [box=599,277,10,10]
+                - text: 单位：全部
+              - generic [ref=f11e238] [box=675,273,84,17]:
+                - img "apartment" [ref=f11e239] [box=675,277,10,10]
+                - text: 业务系统：全部
+            - generic [ref=f11e242] [box=581,292,548,686]:
+              - button "82.157.22.233_33306_seatunnel_web MYSQL 关系型数据库 · jdbc:mysql://192.168.100.95:33306/seatunnel_web?allowPublicKeyRetrieval=true&useSSL=false · apartment 测试单位 · apartment 测试系统 已完成" [ref=f11e243] [cursor=pointer] [box=599,303,512,130]:
+                - generic [ref=f11e247] [box=655,315,388,105]:
+                  - generic [ref=f11e248] [box=655,315,388,20]:
+                    - strong [ref=f11e249] [box=655,315,331,19]: 82.157.22.233_33306_seatunnel_web
+                    - generic [ref=f11e250] [box=994,315,49,20]: MYSQL
+                  - generic [ref=f11e251] [box=655,340,388,80]:
+                    - generic [ref=f11e252] [box=655,340,66,17]: 关系型数据库
+                    - generic [ref=f11e253] [box=726,340,4,17]: ·
+                    - generic "jdbc:mysql://192.168.100.95:33306/seatunnel_web?allowPublicKeyRetrieval=true&useSSL=false" [ref=f11e254] [box=655,362,388,34]
+                    - generic [ref=f11e255] [box=655,403,4,17]: ·
+                    - generic "测试单位 / 测试系统" [ref=f11e256] [box=664,401,132,19]:
+                      - generic [ref=f11e257] [box=664,401,59,17]:
+                        - img "apartment" [ref=f11e258] [box=664,404,11,11]
+                        - text: 测试单位
+                      - generic [ref=f11e261] [box=728,403,4,17]: ·
+                      - generic [ref=f11e262] [box=736,401,59,17]:
+                        - img "apartment" [ref=f11e263] [box=736,404,11,11]
+                        - text: 测试系统
+                - generic [ref=f11e266] [box=1054,358,44,20]: 已完成
+              - button "82.157.22.233_15432_test POSTGRE_SQL 关系型数据库 · jdbc:postgresql://192.168.100.95:15432/test?ssl=false · apartment 测试单位 · apartment 测试系统 已完成" [ref=f11e267] [cursor=pointer] [box=599,440,512,91]:
+                - generic [ref=f11e277] [box=655,452,388,66]:
+                  - generic [ref=f11e278] [box=655,452,388,20]:
+                    - strong [ref=f11e279] [box=655,452,292,19]: 82.157.22.233_15432_test
+                    - generic [ref=f11e280] [box=955,452,88,20]: POSTGRE_SQL
+                  - generic [ref=f11e281] [box=655,477,388,41]:
+                    - generic [ref=f11e282] [box=655,477,66,17]: 关系型数据库
+                    - generic [ref=f11e283] [box=726,477,4,17]: ·
+                    - generic "jdbc:postgresql://192.168.100.95:15432/test?ssl=false" [ref=f11e284] [box=735,477,263,17]
+                    - generic [ref=f11e285] [box=1003,477,4,17]: ·
+                    - generic "测试单位 / 测试系统" [ref=f11e286] [box=655,499,132,19]:
+                      - generic [ref=f11e287] [box=655,499,59,17]:
+                        - img "apartment" [ref=f11e288] [box=655,502,11,11]
+                        - text: 测试单位
+                      - generic [ref=f11e291] [box=719,501,4,17]: ·
+                      - generic [ref=f11e292] [box=728,499,59,17]:
+                        - img "apartment" [ref=f11e293] [box=728,502,11,11]
+                        - text: 测试系统
+                - generic [ref=f11e296] [box=1054,475,44,20]: 已完成
+              - button "82.157.22.233_1521_ORACLE_APP ORACLE 关系型数据库 · jdbc:oracle:thin:@//192.168.100.95:1521/FREEPDB1 · apartment 测试单位 · apartment 测试系统 已完成" [ref=f11e297] [cursor=pointer] [box=599,538,512,91]:
+                - generic [ref=f11e301] [box=655,550,388,66]:
+                  - generic [ref=f11e302] [box=655,550,388,20]:
+                    - strong [ref=f11e303] [box=655,550,325,19]: 82.157.22.233_1521_ORACLE_APP
+                    - generic [ref=f11e304] [box=988,550,55,20]: ORACLE
+                  - generic [ref=f11e305] [box=655,575,388,41]:
+                    - generic [ref=f11e306] [box=655,575,66,17]: 关系型数据库
+                    - generic [ref=f11e307] [box=726,575,4,17]: ·
+                    - generic "jdbc:oracle:thin:@//192.168.100.95:1521/FREEPDB1" [ref=f11e308] [box=735,575,259,17]
+                    - generic [ref=f11e309] [box=999,575,4,17]: ·
+                    - generic "测试单位 / 测试系统" [ref=f11e310] [box=655,597,132,19]:
+                      - generic [ref=f11e311] [box=655,597,59,17]:
+                        - img "apartment" [ref=f11e312] [box=655,600,11,11]
+                        - text: 测试单位
+                      - generic [ref=f11e315] [box=719,599,4,17]: ·
+                      - generic [ref=f11e316] [box=728,597,59,17]:
+                        - img "apartment" [ref=f11e317] [box=728,600,11,11]
+                        - text: 测试系统
+                - generic [ref=f11e320] [box=1054,573,44,20]: 已完成
+              - button "192.168.100.91_54321_kingbase KINGBASE 关系型数据库 · jdbc:kingbase8://192.168.100.91:54321/kingbase?ssl=false · apartment 测试单位 · apartment 测试系统 已完成" [ref=f11e321] [cursor=pointer] [box=599,636,512,91]:
+                - generic [ref=f11e327] [box=655,648,388,66]:
+                  - generic [ref=f11e328] [box=655,648,388,20]:
+                    - strong [ref=f11e329] [box=655,648,315,19]: 192.168.100.91_54321_kingbase
+                    - generic [ref=f11e330] [box=978,648,65,20]: KINGBASE
+                  - generic [ref=f11e331] [box=655,673,388,41]:
+                    - generic [ref=f11e332] [box=655,673,66,17]: 关系型数据库
+                    - generic [ref=f11e333] [box=726,673,4,17]: ·
+                    - generic "jdbc:kingbase8://192.168.100.91:54321/kingbase?ssl=false" [ref=f11e334] [box=735,673,289,17]
+                    - generic [ref=f11e335] [box=1029,673,4,17]: ·
+                    - generic "测试单位 / 测试系统" [ref=f11e336] [box=655,695,132,19]:
+                      - generic [ref=f11e337] [box=655,695,59,17]:
+                        - img "apartment" [ref=f11e338] [box=655,698,11,11]
+                        - text: 测试单位
+                      - generic [ref=f11e341] [box=719,697,4,17]: ·
+                      - generic [ref=f11e342] [box=728,695,59,17]:
+                        - img "apartment" [ref=f11e343] [box=728,698,11,11]
+                        - text: 测试系统
+                - generic [ref=f11e346] [box=1054,671,44,20]: 已完成
+              - button "192.168.100.95_5236_dameng DAMENG 关系型数据库 · jdbc:dm://192.168.100.95:5236/TEST?ssl=false · apartment 测试单位 · apartment 测试系统 已完成" [ref=f11e347] [cursor=pointer] [box=599,734,512,91]:
+                - generic [ref=f11e355] [box=655,746,388,66]:
+                  - generic [ref=f11e356] [box=655,746,388,20]:
+                    - strong [ref=f11e357] [box=655,746,322,19]: 192.168.100.95_5236_dameng
+                    - generic [ref=f11e358] [box=985,746,58,20]: DAMENG
+                  - generic [ref=f11e359] [box=655,771,388,41]:
+                    - generic [ref=f11e360] [box=655,771,66,17]: 关系型数据库
+                    - generic [ref=f11e361] [box=726,771,4,17]: ·
+                    - generic "jdbc:dm://192.168.100.95:5236/TEST?ssl=false" [ref=f11e362] [box=735,771,232,17]
+                    - generic [ref=f11e363] [box=972,771,4,17]: ·
+                    - generic "测试单位 / 测试系统" [ref=f11e364] [box=655,793,132,19]:
+                      - generic [ref=f11e365] [box=655,793,59,17]:
+                        - img "apartment" [ref=f11e366] [box=655,796,11,11]
+                        - text: 测试单位
+                      - generic [ref=f11e369] [box=719,795,4,17]: ·
+                      - generic [ref=f11e370] [box=728,793,59,17]:
+                        - img "apartment" [ref=f11e371] [box=728,796,11,11]
+                        - text: 测试系统
+                - generic [ref=f11e374] [box=1054,769,44,20]: 已完成
+              - button "82.157.22.233_8030_doris DORIS OLAP 数据库 · jdbc:mysql://192.168.100.95:9030/ods?useSSL=false · apartment 测试单位 · apartment 测试系统 已完成" [ref=f11e375] [cursor=pointer] [box=599,832,512,91]:
+                - generic [ref=f11e381] [box=655,844,388,66]:
+                  - generic [ref=f11e382] [box=655,844,388,20]:
+                    - strong [ref=f11e383] [box=655,844,334,19]: 82.157.22.233_8030_doris
+                    - generic [ref=f11e384] [box=997,844,46,20]: DORIS
+                  - generic [ref=f11e385] [box=655,869,388,41]:
+                    - generic [ref=f11e386] [box=655,869,65,17]: OLAP 数据库
+                    - generic [ref=f11e387] [box=725,869,4,17]: ·
+                    - generic "jdbc:mysql://192.168.100.95:9030/ods?useSSL=false" [ref=f11e388] [box=734,869,260,17]
+                    - generic [ref=f11e389] [box=999,869,4,17]: ·
+                    - generic "测试单位 / 测试系统" [ref=f11e390] [box=655,891,132,19]:
+                      - generic [ref=f11e391] [box=655,891,59,17]:
+                        - img "apartment" [ref=f11e392] [box=655,894,11,11]
+                        - text: 测试单位
+                      - generic [ref=f11e395] [box=719,893,4,17]: ·
+                      - generic [ref=f11e396] [box=728,891,59,17]:
+                        - img "apartment" [ref=f11e397] [box=728,894,11,11]
+                        - text: 测试系统
+                - generic [ref=f11e400] [box=1054,867,44,20]: 已完成
+              - button "192.168.100.95_elasticsearch ELASTICSEARCH OLAP 数据库 · http://192.168.100.95:9201 · apartment 测试单位 · apartment 测试系统 未探查" [ref=f11e401] [cursor=pointer] [box=599,930,512,69]:
+                - generic [ref=f11e410] [box=655,942,388,44]:
+                  - generic [ref=f11e411] [box=655,942,388,20]:
+                    - strong [ref=f11e412] [box=655,942,283,19]: 192.168.100.95_elasticsearch
+                    - generic [ref=f11e413] [box=946,942,97,20]: ELASTICSEARCH
+                  - generic [ref=f11e414] [box=655,967,388,19]:
+                    - generic [ref=f11e415] [box=655,969,65,17]: OLAP 数据库
+                    - generic [ref=f11e416] [box=725,969,4,17]: ·
+                    - generic "http://192.168.100.95:9201" [ref=f11e417] [box=734,969,132,17]
+                    - generic [ref=f11e418] [box=870,969,4,17]: ·
+                    - generic "测试单位 / 测试系统" [ref=f11e419] [box=879,967,132,19]:
+                      - generic [ref=f11e420] [box=879,967,59,17]:
+                        - img "apartment" [ref=f11e421] [box=879,970,11,11]
+                        - text: 测试单位
+                      - generic [ref=f11e424] [box=943,969,4,17]: ·
+                      - generic [ref=f11e425] [box=952,967,59,17]:
+                        - img "apartment" [ref=f11e426] [box=952,970,11,11]
+                        - text: 测试系统
+                - generic [ref=f11e429] [box=1054,954,44,20]: 未探查
+              - button "MinIO 192.168.100.95_9000_minio MINIO 文件传输 · apartment 测试单位 · apartment 测试系统 未探查" [ref=f11e430] [cursor=pointer] [box=599,1006,512,69]:
+                - img "MinIO" [ref=f11e432] [box=617,1029,23,23]
+                - generic [ref=f11e434] [box=655,1018,388,44]:
+                  - generic [ref=f11e435] [box=655,1018,388,20]:
+                    - strong [ref=f11e436] [box=655,1018,337,19]: 192.168.100.95_9000_minio
+                    - generic [ref=f11e437] [box=1000,1018,43,20]: MINIO
+                  - generic [ref=f11e438] [box=655,1043,388,19]:
+                    - generic [ref=f11e439] [box=655,1045,44,17]: 文件传输
+                    - generic [ref=f11e440] [box=704,1045,4,17]: ·
+                    - generic "测试单位 / 测试系统" [ref=f11e441] [box=713,1043,132,19]:
+                      - generic [ref=f11e442] [box=713,1043,59,17]:
+                        - img "apartment" [ref=f11e443] [box=713,1046,11,11]
+                        - text: 测试单位
+                      - generic [ref=f11e446] [box=777,1045,4,17]: ·
+                      - generic [ref=f11e447] [box=785,1043,59,17]:
+                        - img "apartment" [ref=f11e448] [box=785,1046,11,11]
+                        - text: 测试系统
+                - generic [ref=f11e451] [box=1054,1030,44,20]: 未探查
+              - button "Apache Kafka 192.168.100.95_kafka KAFKA 消息队列 · apartment 测试单位 · apartment 测试系统 未探查" [ref=f11e452] [cursor=pointer] [box=599,1082,512,69]:
+                - img "Apache Kafka" [ref=f11e454] [box=617,1105,23,23]
+                - generic [ref=f11e456] [box=655,1094,388,44]:
+                  - generic [ref=f11e457] [box=655,1094,388,20]:
+                    - strong [ref=f11e458] [box=655,1094,333,19]: 192.168.100.95_kafka
+                    - generic [ref=f11e459] [box=996,1094,47,20]: KAFKA
+                  - generic [ref=f11e460] [box=655,1119,388,19]:
+                    - generic [ref=f11e461] [box=655,1121,44,17]: 消息队列
+                    - generic [ref=f11e462] [box=704,1121,4,17]: ·
+                    - generic "测试单位 / 测试系统" [ref=f11e463] [box=713,1119,132,19]:
+                      - generic [ref=f11e464] [box=713,1119,59,17]:
+                        - img "apartment" [ref=f11e465] [box=713,1122,11,11]
+                        - text: 测试单位
+                      - generic [ref=f11e468] [box=777,1121,4,17]: ·
+                      - generic [ref=f11e469] [box=785,1119,59,17]:
+                        - img "apartment" [ref=f11e470] [box=785,1122,11,11]
+                        - text: 测试系统
+                - generic [ref=f11e473] [box=1054,1106,44,20]: 未探查
+              - button "HTTPie 192.168.100.95_38000_omext HTTP API 服务 · http://192.168.100.95:38000 · apartment 测试单位 · apartment 测试系统 未探查" [ref=f11e474] [cursor=pointer] [box=599,1158,512,69]:
+                - img "HTTPie" [ref=f11e476] [box=617,1181,23,23]
+                - generic [ref=f11e478] [box=655,1170,388,44]:
+                  - generic [ref=f11e479] [box=655,1170,388,20]:
+                    - strong [ref=f11e480] [box=655,1170,340,19]: 192.168.100.95_38000_omext
+                    - generic [ref=f11e481] [box=1003,1170,40,20]: HTTP
+                  - generic [ref=f11e482] [box=655,1195,388,19]:
+                    - generic [ref=f11e483] [box=655,1197,43,17]: API 服务
+                    - generic [ref=f11e484] [box=703,1197,4,17]: ·
+                    - generic "http://192.168.100.95:38000" [ref=f11e485] [box=711,1197,138,17]
+                    - generic [ref=f11e486] [box=854,1197,4,17]: ·
+                    - generic "测试单位 / 测试系统" [ref=f11e487] [box=863,1195,132,19]:
+                      - generic [ref=f11e488] [box=863,1195,59,17]:
+                        - img "apartment" [ref=f11e489] [box=863,1198,11,11]
+                        - text: 测试单位
+                      - generic [ref=f11e492] [box=927,1197,4,17]: ·
+                      - generic [ref=f11e493] [box=935,1195,59,17]:
+                        - img "apartment" [ref=f11e494] [box=935,1198,11,11]
+                        - text: 测试系统
+                - generic [ref=f11e497] [box=1054,1182,44,20]: 未探查
+            - generic [ref=f11e498] [box=581,978,548,35]:
+              - generic [ref=f11e499] [box=599,988,82,16]:
+                - img "database" [ref=f11e500] [box=599,991,10,10]
+                - text: 共 10 个数据源
+              - generic [ref=f11e503] [box=941,988,170,16]: 点击数据源进入结构、样本与画像探查
+          - complementary "当前结果摘要" [ref=f11e504] [box=1129,169,286,844]:
+            - generic [ref=f11e506] [box=1146,184,84,44]:
+              - generic [ref=f11e507] [box=1146,189,71,16]: INSPECTOR
+              - heading "当前结果摘要" [level=2] [ref=f11e508] [box=1146,208,84,20]
+            - generic [ref=f11e509] [box=1130,241,285,772]:
+              - generic [ref=f11e510] [box=1130,241,285,95]:
+                - img "database" [ref=f11e512] [box=1154,266,17,17]
+                - generic [ref=f11e515] [box=1188,258,170,62]:
+                  - generic [ref=f11e516] [box=1188,258,170,16]: 全部类型
+                  - heading "全部探查结果" [level=3] [ref=f11e517] [box=1188,276,170,24]
+                  - paragraph [ref=f11e518] [box=1188,304,170,16]: 查看当前范围内的全部数据源探查结果
+              - generic [ref=f11e519] [box=1130,336,285,129]:
+                - generic [ref=f11e520] [box=1146,351,253,18]: 当前范围
+                - generic [ref=f11e521] [box=1146,380,253,69]:
+                  - generic [ref=f11e522] [box=1146,380,253,17]:
+                    - text: 单位
+                    - generic [ref=f11e523] [box=1377,380,22,17]: 全部
+                  - generic [ref=f11e524] [box=1146,406,253,17]:
+                    - text: 业务系统
+                    - generic [ref=f11e525] [box=1377,406,22,17]: 全部
+                  - generic [ref=f11e526] [box=1146,432,253,17]:
+                    - text: 结果类型
+                    - generic [ref=f11e527] [box=1355,432,44,17]: 全部类型
+              - generic [ref=f11e528] [box=1130,465,285,232]:
+                - generic [ref=f11e529] [box=1146,480,253,18]: 结果统计
+                - generic [ref=f11e530] [box=1146,509,253,172]:
+                  - generic [ref=f11e531] [box=1147,510,125,56]:
+                    - generic [ref=f11e532] [box=1157,519,105,15]: 数据源
+                    - generic [ref=f11e533] [box=1157,537,105,20]: "10"
+                  - generic [ref=f11e534] [box=1273,510,125,56]:
+                    - generic [ref=f11e535] [box=1283,519,105,15]: 数据表
+                    - generic [ref=f11e536] [box=1283,537,105,20]: "0"
+                  - generic [ref=f11e537] [box=1147,567,125,56]:
+                    - generic [ref=f11e538] [box=1157,576,105,15]: 已探查表
+                    - generic [ref=f11e539] [box=1157,594,105,20]: "0"
+                  - generic [ref=f11e540] [box=1273,567,125,56]:
+                    - generic [ref=f11e541] [box=1283,576,105,15]: 已统计行数
+                    - generic [ref=f11e542] [box=1283,594,105,20]: "0"
+                  - generic [ref=f11e543] [box=1147,624,251,56]:
+                    - generic [ref=f11e544] [box=1157,633,231,15]: 已统计体积
+                    - generic [ref=f11e545] [box=1157,651,231,20]: 0 B
+              - generic [ref=f11e546] [box=1130,697,285,182]:
+                - generic [ref=f11e547] [box=1146,712,253,18]: 类型分布
+                - generic [ref=f11e548] [box=1146,741,253,122]:
+                  - button "数据库 7" [ref=f11e549] [cursor=pointer] [box=1146,741,253,26]:
+                    - generic [ref=f11e550] [box=1146,745,33,18]: 数据库
+                    - generic [ref=f11e551] [box=1393,745,6,18]: "7"
+                  - button "消息队列 1" [ref=f11e552] [cursor=pointer] [box=1146,773,253,26]:
+                    - generic [ref=f11e553] [box=1146,777,44,18]: 消息队列
+                    - generic [ref=f11e554] [box=1393,777,6,18]: "1"
+                  - button "API 服务 1" [ref=f11e555] [cursor=pointer] [box=1146,805,253,26]:
+                    - generic [ref=f11e556] [box=1146,809,43,18]: API 服务
+                    - generic [ref=f11e557] [box=1393,809,6,18]: "1"
+                  - button "文件传输 1" [ref=f11e558] [cursor=pointer] [box=1146,837,253,26]:
+                    - generic [ref=f11e559] [box=1146,841,44,18]: 文件传输
+                    - generic [ref=f11e560] [box=1393,841,6,18]: "1"

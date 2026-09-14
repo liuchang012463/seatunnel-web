@@ -1,9 +1,12 @@
 import ClickSpark from '@/components/ClickSpark';
+import StatusChip from '@/components/StatusChip';
 import { history, useIntl } from '@umijs/max';
-import { AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import {
+  Alert,
   Button,
   Drawer,
+  Dropdown,
   Empty,
   message,
   Modal,
@@ -11,19 +14,19 @@ import {
   Segmented,
   Spin,
   Table,
-  Tag,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
+import dayjs from 'dayjs';
 import { motion } from 'framer-motion';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AddOrEditDataSourceModal from './components/AddOrEditDataSourceModal';
 import DataSourceCard from './components/DataSourceCard';
 import EmptyState from './components/EmptyState';
-import PageHeader from './components/PageHeader';
 import SearchBar from './components/SearchBar';
 import MasterDataPage from '../master-data';
 import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from './constants';
 import { DATA_SOURCE_CATEGORIES, getDataSourceCategory } from './dataSourceRegistry';
+import DatabaseIcons from './icon/DatabaseIcons';
 import './index.less';
 import {
   checkDataSourceUsage,
@@ -48,8 +51,12 @@ import type {
 } from './types';
 import DataSourceLifecycleStatusTag from './components/DataSourceLifecycleStatus';
 import DataSourceStatus from './components/DataSourceStatus';
+import { profileStatusConfig } from './components/profileStatus';
+import { withTimeout } from '@/utils/withTimeout';
 
 const { confirm } = Modal;
+
+const formatDateTime = (value?: string) => (value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-');
 
 type DataSourceViewMode = 'card' | 'list';
 
@@ -58,6 +65,7 @@ const DataSourcePage: React.FC = () => {
   const modalRef = useRef<DataSourceModalRef>(null);
 
   const [loading, setLoading] = useState(false);
+  const [listError, setListError] = useState<string>();
   const [dataSourceList, setDataSourceList] = useState<DataSourceRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>(PAGE_DEFAULT_PAGINATION);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -67,7 +75,7 @@ const DataSourcePage: React.FC = () => {
   const [businessSystemOptions, setBusinessSystemOptions] = useState<BusinessSystemOption[]>([]);
   const [selectedBusinessSystem, setSelectedBusinessSystem] = useState<string>();
   const [selectedStatus, setSelectedStatus] = useState<DataSourceLifecycleStatus>();
-  const [viewMode, setViewMode] = useState<DataSourceViewMode>('card');
+  const [viewMode, setViewMode] = useState<DataSourceViewMode>('list');
   const [masterDataOpen, setMasterDataOpen] = useState(false);
 
   const refreshUnitOptions = async () => {
@@ -100,6 +108,7 @@ const DataSourcePage: React.FC = () => {
   const fetchList = async (params?: Partial<DataSourcePageParams>) => {
     try {
       setLoading(true);
+      setListError(undefined);
 
       const requestParams: DataSourcePageParams = {
         pageNo: pagination.pageNo,
@@ -112,16 +121,23 @@ const DataSourcePage: React.FC = () => {
         ...params,
       };
 
-      const response = await fetchDataSourcePage(requestParams);
+      const response = await withTimeout(
+        fetchDataSourcePage(requestParams),
+        10000,
+        '数据源列表请求超时，请稍后重试',
+      );
 
       if (response.code !== 0) {
-        return;
+        throw new Error(response.message || '数据源列表加载失败');
       }
 
       const page = normalizeDataSourcePageResult(response.data);
       setDataSourceList(page.bizData);
       setPagination(page.pagination);
     } catch (error: any) {
+      setDataSourceList([]);
+      setPagination((current) => ({ ...current, total: 0 }));
+      setListError(error?.message || '数据源列表加载失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -362,90 +378,93 @@ const DataSourcePage: React.FC = () => {
       key: 'name',
       align: 'left',
       className: 'datasource-catalog-col--left',
-      width: 220,
+      width: 250,
       ellipsis: true,
       render: (_value, record) => (
-        <button
-          type="button"
-          className="datasource-catalog-name-link"
-          title={record.name}
-          disabled={
-            !record.systemManaged &&
-            (record.status === 'REVOKED' || record.metadataSyncStatus === 'DELETING')
-          }
-          onClick={() => (record.systemManaged ? handleOpenWarehouse() : handleEdit(record))}
-        >
-          {record.name || '-'}
-        </button>
+        <div className="datasource-catalog-name-cell">
+          <button
+            type="button"
+            className="datasource-catalog-name-link"
+            title={record.name}
+            disabled={
+              !record.systemManaged &&
+              (record.status === 'REVOKED' || record.metadataSyncStatus === 'DELETING')
+            }
+            onClick={() => (record.systemManaged ? handleOpenWarehouse() : handleEdit(record))}
+          >
+            {record.name || '-'}
+          </button>
+          <span className="datasource-catalog-name-url" title={record.jdbcUrl}>
+            {record.jdbcUrl || '-'}
+          </span>
+          <span className="datasource-catalog-name-sub">更新于 {formatDateTime(record.updateTime)}</span>
+        </div>
       ),
     },
     {
-      title: '连接地址',
-      key: 'jdbcUrl',
+      title: '类型',
+      key: 'dbType',
       align: 'left',
       className: 'datasource-catalog-col--left',
-      width: 280,
+      width: 130,
       ellipsis: true,
-      render: (_value, record) => (
-        <span className="datasource-catalog-address" title={record.jdbcUrl}>
-          {record.jdbcUrl || '-'}
-        </span>
-      ),
+      render: (_value, record) => {
+        const category = getDataSourceCategory(record.dbType);
+        return (
+          <span className="datasource-catalog-datatype" title={record.dbType}>
+            <DatabaseIcons dbType={record.dbType} width="16" height="16" />
+            {category.label}
+          </span>
+        );
+      },
+    },
+    {
+      title: '归属',
+      key: 'owner',
+      align: 'left',
+      className: 'datasource-catalog-col--left',
+      width: 150,
+      ellipsis: true,
+      render: (_value, record) => {
+        const owner = [record.unitName, record.businessSystemName || record.systemName]
+          .filter(Boolean)
+          .join(' / ');
+        return (
+          <span className="datasource-catalog-owner" title={owner || undefined}>
+            {owner || '-'}
+          </span>
+        );
+      },
     },
     {
       title: '连通检测',
       key: 'connStatus',
       align: 'center',
-      width: 120,
+      width: 96,
       render: (_value, record) => <DataSourceStatus status={record.connStatus} />,
     },
     {
       title: '是否启用',
       key: 'status',
       align: 'center',
-      width: 120,
+      width: 96,
       render: (_value, record) => <DataSourceLifecycleStatusTag status={record.status} />,
     },
     {
       title: '探查状态',
       key: 'profileStatus',
       align: 'center',
-      width: 110,
+      width: 96,
       render: (_value, record) => {
-        const status = record.profileStatus;
-        const color =
-          status === 'SUCCESS'
-            ? 'success'
-            : status === 'FAILED'
-              ? 'error'
-              : status === 'RUNNING' || status === 'QUEUED'
-                ? 'processing'
-                : 'default';
-        const label =
-          status === 'SUCCESS'
-            ? '已探查'
-            : status === 'FAILED'
-              ? '探查异常'
-              : status === 'RUNNING' || status === 'QUEUED'
-                ? '探查中'
-                : '未探查';
-        return <Tag color={color} style={{ marginInlineEnd: 0, borderRadius: 999 }}>{label}</Tag>;
+        const status = profileStatusConfig(record.profileStatus);
+        return <StatusChip tone={status.tone} label={status.text} detail={status.detail} />;
       },
-    },
-    {
-      title: '数据库类型',
-      key: 'dbType',
-      align: 'center',
-      width: 140,
-      ellipsis: true,
-      render: (_value, record) => getDataSourceCategory(record.dbType).label,
     },
     {
       title: '操作',
       key: 'actions',
       align: 'center',
-      fixed: 'right',
-      width: 360,
+      width: 220,
       render: (_value, record) => {
         const currentStatus = record.status || 'ENABLED';
         const isRevoked = currentStatus === 'REVOKED';
@@ -453,35 +472,31 @@ const DataSourcePage: React.FC = () => {
         const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
         const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
 
-        if (record.systemManaged) {
-          return (
-            <div className="datasource-catalog-actions">
-              <button
-                type="button"
-                className="datasource-catalog-action datasource-catalog-action--test"
-                disabled={isDeleting}
-                onClick={() => void handleTestConnection(record)}
-              >
-                测试连接
-              </button>
-              <button
-                type="button"
-                className="datasource-catalog-action datasource-catalog-action--primary"
-                disabled={isDeleting}
-                onClick={() => handleViewExploration(record)}
-              >
-                探查结果
-              </button>
-              <button
-                type="button"
-                className="datasource-catalog-action datasource-catalog-action--neutral"
-                onClick={handleOpenWarehouse}
-              >
-                数据湖管理
-              </button>
-            </div>
-          );
-        }
+        const moreItems =
+          record.systemManaged && !isDeleting
+            ? undefined
+            : [
+                {
+                  key: 'lifecycle',
+                  label: statusActionLabel,
+                  disabled: isDeleting,
+                  onClick: () => handleStatusChange(record, nextStatus),
+                },
+                {
+                  key: 'revoke',
+                  label: '注销',
+                  disabled: isDeleting || isRevoked,
+                  onClick: () => handleStatusChange(record, 'REVOKED'),
+                },
+                { type: 'divider' as const },
+                {
+                  key: 'delete',
+                  label: '删除',
+                  danger: true,
+                  disabled: isDeleting,
+                  onClick: () => handleDelete(record),
+                },
+              ];
 
         return (
           <div className="datasource-catalog-actions">
@@ -493,38 +508,45 @@ const DataSourcePage: React.FC = () => {
             >
               测试连接
             </button>
-            <button
-              type="button"
-              className="datasource-catalog-action datasource-catalog-action--primary"
-              disabled={isDeleting}
-              onClick={() => handleViewExploration(record)}
-            >
-              探查结果
-            </button>
-            <button
-              type="button"
-              className="datasource-catalog-action datasource-catalog-action--warn"
-              disabled={isDeleting}
-              onClick={() => handleStatusChange(record, nextStatus)}
-            >
-              {statusActionLabel}
-            </button>
-            <button
-              type="button"
-              className="datasource-catalog-action datasource-catalog-action--neutral"
-              disabled={isDeleting}
-              onClick={() => handleStatusChange(record, 'REVOKED')}
-            >
-              {isRevoked ? '已注销' : '注销'}
-            </button>
-            <button
-              type="button"
-              className="datasource-catalog-action datasource-catalog-action--danger"
-              disabled={isDeleting}
-              onClick={() => void handleDelete(record)}
-            >
-              删除
-            </button>
+            {record.systemManaged ? (
+              <>
+                <button
+                  type="button"
+                  className="datasource-catalog-action datasource-catalog-action--primary"
+                  disabled={isDeleting}
+                  onClick={() => handleViewExploration(record)}
+                >
+                  探查结果
+                </button>
+                <button
+                  type="button"
+                  className="datasource-catalog-action datasource-catalog-action--neutral"
+                  onClick={handleOpenWarehouse}
+                >
+                  数据湖管理
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="datasource-catalog-action datasource-catalog-action--primary"
+                  disabled={isDeleting}
+                  onClick={() => handleViewExploration(record)}
+                >
+                  探查结果
+                </button>
+                <Dropdown trigger={['click']} menu={{ items: moreItems }}>
+                  <button
+                    type="button"
+                    className="datasource-catalog-action datasource-catalog-action--neutral"
+                    disabled={isDeleting}
+                  >
+                    更多
+                  </button>
+                </Dropdown>
+              </>
+            )}
           </div>
         );
       },
@@ -554,7 +576,7 @@ const DataSourcePage: React.FC = () => {
         <div className="datasource-page-container">
           <div className="datasource-page-content">
             <motion.div initial="hidden" animate="visible" variants={PAGE_ANIMATION.sectionStagger}>
-              <motion.div variants={PAGE_ANIMATION.fadeUp}>
+              <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
                 <SearchBar
                   value={searchKeyword}
                   onChange={(value) => {
@@ -580,6 +602,15 @@ const DataSourcePage: React.FC = () => {
                     setPagination((current) => ({ ...current, pageNo: 1 }));
                   }}
                 />
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  size="large"
+                  onClick={handleCreate}
+                  className="datasource-create-button"
+                >
+                  新建数据源
+                </Button>
               </motion.div>
 
               <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-header">
@@ -608,54 +639,52 @@ const DataSourcePage: React.FC = () => {
                     </Button>
                   ))}
                 </div>
-                <PageHeader
-                  onCreate={handleCreate}
-                  onManageMasterData={() => setMasterDataOpen(true)}
-                />
+                <div className="datasource-catalog-panel__controls">
+                  <span className="datasource-category-count">{pagination.total}</span>
+                  <Segmented
+                    aria-label="数据源视图"
+                    className="datasource-view-switcher"
+                    value={viewMode}
+                    onChange={(value) => setViewMode(value as DataSourceViewMode)}
+                    options={[
+                      {
+                        label: (
+                          <span className="datasource-view-option">
+                            <AppstoreOutlined />
+                            卡片
+                          </span>
+                        ),
+                        value: 'card',
+                      },
+                      {
+                        label: (
+                          <span className="datasource-view-option">
+                            <UnorderedListOutlined />
+                            列表
+                          </span>
+                        ),
+                        value: 'list',
+                      },
+                    ]}
+                  />
+                </div>
               </motion.div>
 
-              <motion.p variants={PAGE_ANIMATION.fadeUp} className="datasource-page-count">
-                发现 {pagination.total} 个数据源
-              </motion.p>
+              {listError ? (
+                <Alert
+                  className="datasource-list-error"
+                  type="error"
+                  showIcon
+                  message="数据源列表加载失败"
+                  description={listError}
+                  action={<Button type="link" onClick={handleRefresh}>重试</Button>}
+                />
+              ) : null}
 
               <Spin spinning={loading}>
                 <motion.div variants={PAGE_ANIMATION.cardStagger} initial="hidden" animate="visible">
                   {dataSourceList.length > 0 ? (
                     <section className="datasource-catalog-panel">
-                      <div className="datasource-catalog-panel__heading">
-                        <div>
-                          <h2 className="datasource-category-title">数据源清单</h2>
-                        </div>
-                        <div className="datasource-catalog-panel__controls">
-                          <span className="datasource-category-count">{pagination.total}</span>
-                          <Segmented
-                            aria-label="数据源视图"
-                            className="datasource-view-switcher"
-                            value={viewMode}
-                            onChange={(value) => setViewMode(value as DataSourceViewMode)}
-                            options={[
-                              {
-                                label: (
-                                  <span className="datasource-view-option">
-                                    <AppstoreOutlined />
-                                    卡片
-                                  </span>
-                                ),
-                                value: 'card',
-                              },
-                              {
-                                label: (
-                                  <span className="datasource-view-option">
-                                    <UnorderedListOutlined />
-                                    列表
-                                  </span>
-                                ),
-                                value: 'list',
-                              },
-                            ]}
-                          />
-                        </div>
-                      </div>
                       <div className="datasource-catalog-panel__body">
                         {viewMode === 'card' ? (
                           <div className="datasource-card-grid">
@@ -683,14 +712,15 @@ const DataSourcePage: React.FC = () => {
                             columns={dataSourceColumns}
                             dataSource={dataSourceList}
                             pagination={false}
-                            scroll={{ x: 1422 }}
+                            scroll={{ x: 1038 }}
+                            tableLayout="fixed"
                             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
                           />
                         )}
                       </div>
                     </section>
                   ) : (
-                    !loading && <EmptyState onCreate={handleCreate} />
+                    !loading && !listError && <EmptyState onCreate={handleCreate} />
                   )}
 
                   {pagination.total > 0 && (
@@ -701,7 +731,7 @@ const DataSourcePage: React.FC = () => {
                         total={pagination.total}
                         showSizeChanger
                         showQuickJumper
-                        pageSizeOptions={[10, 20, 50, 100]}
+                        pageSizeOptions={[12, 24, 48, 96]}
                         showTotal={(total) => `共 ${total} 条`}
                         onChange={(pageNo, pageSize) =>
                           setPagination((current) => ({
@@ -733,7 +763,7 @@ const DataSourcePage: React.FC = () => {
         placement="right"
         width={1120}
         open={masterDataOpen}
-        destroyOnClose
+        destroyOnHidden
         onClose={() => setMasterDataOpen(false)}
         styles={{ body: { padding: '8px 20px 24px' } }}
       >

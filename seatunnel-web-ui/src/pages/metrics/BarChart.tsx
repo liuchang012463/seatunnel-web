@@ -1,5 +1,6 @@
 import * as echarts from 'echarts';
 import React, { useEffect, useRef } from 'react';
+import { ST_CHART_ACCENT, ST_CHART_ACCENT_STRONG } from '@/utils/echarts-theme-st';
 
 interface BChartProps {
   data: number[];
@@ -15,7 +16,7 @@ const BarChart: React.FC<BChartProps> = ({ data, xAxisData, title, unit, loading
   useEffect(() => {
     if (!chartRef.current) return;
 
-    const chart = echarts.init(chartRef.current);
+    const chart = echarts.init(chartRef.current, 'st');
 
     // 根据数据量动态调整柱子宽度
     const dataLength = data.length;
@@ -113,12 +114,12 @@ const BarChart: React.FC<BChartProps> = ({ data, xAxisData, title, unit, loading
           barWidth: barWidth,
           // barMaxWidth: "5%",
           itemStyle: {
-            color: 'hsl(231 48% 48%)',
+            color: ST_CHART_ACCENT,
             borderRadius: [4, 4, 0, 0],
           },
           emphasis: {
             itemStyle: {
-              color: '#40a9ff',
+              color: ST_CHART_ACCENT_STRONG,
               shadowBlur: 10,
               shadowColor: 'rgba(0, 0, 0, 0.3)',
             },

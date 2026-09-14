@@ -471,16 +471,18 @@ const RuleTab: React.FC<RuleTabProps> = ({
           </p>
         </div>
 
-        <Button
-          type="primary"
-          onClick={handleCreate}
-          className="alarm-page__primary-action"
-        >
-          {intl.formatMessage({
-            id: 'pages.alarm.button.addRule',
-            defaultMessage: '新建规则',
-          })}
-        </Button>
+        {filteredList.length > 0 || keyword ? (
+          <Button
+            type="primary"
+            onClick={handleCreate}
+            className="alarm-page__primary-action"
+          >
+            {intl.formatMessage({
+              id: 'pages.alarm.button.addRule',
+              defaultMessage: '新建规则',
+            })}
+          </Button>
+        ) : null}
       </div>
 
       <Spin spinning={loading}>

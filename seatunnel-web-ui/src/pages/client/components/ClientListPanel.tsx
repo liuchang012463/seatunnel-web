@@ -29,12 +29,12 @@ const ClientListPanel: React.FC<Props> = ({
     <div
       style={{
         borderRight: `1px solid ${BORDER_COLOR}`,
-        background: "#FCFCFD",
+        background: "var(--st-color-bg-panel)",
         padding: 20,
         boxSizing: "border-box",
       }}
     >
-      <div className="mb-3 text-[13px] font-semibold text-[#344054]">
+      <div className="mb-3 text-[13px] font-semibold text-[color:var(--st-color-text-secondary)]">
         Client 列表
       </div>
 
@@ -53,7 +53,7 @@ const ClientListPanel: React.FC<Props> = ({
                 "cursor-pointer border transition-all duration-200 ease-out",
                 active
                   ? "border-[#C7D7FE] bg-[#EEF4FF]"
-                  : "border-[#EAECF0] bg-white hover:border-[#D7E1F2] hover:bg-[#FBFCFF]",
+                  : "border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-panel)] hover:border-[#D7E1F2] hover:bg-[#FBFCFF]",
               ].join(" ")}
             >
               <div className="flex items-start gap-2.5">
@@ -112,7 +112,7 @@ const ClientListPanel: React.FC<Props> = ({
                     size="small"
                     type="text"
                     icon={<EditOutlined />}
-                    className="!flex !h-7 !w-7 !items-center !justify-center !rounded-lg !text-[#667085] hover:!bg-white hover:!text-[#4F5BD5]"
+                    className="!flex !h-7 !w-7 !items-center !justify-center !rounded-lg !text-[color:var(--st-color-text-muted)] hover:!bg-[color:var(--st-color-bg-panel)] hover:!text-[color:var(--st-color-accent)]"
                     onClick={() => onEdit(client)}
                   />
                 </Tooltip>

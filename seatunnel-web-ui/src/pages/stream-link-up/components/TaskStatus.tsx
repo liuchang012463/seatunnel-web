@@ -1,26 +1,27 @@
 import { message, Popover } from "antd";
 import React, { useEffect, useRef, useState } from "react";
+import StatusChip, { type StatusChipTone } from "@/components/StatusChip";
 
 interface TaskStatusProps {
   status?: string;
   errorMessage?: string;
 }
 
-const statusConfig: Record<string, { color: string; label: string }> = {
-  FINISHED: { color: "#16a34a", label: "已完成" },
-  SUCCESS: { color: "#16a34a", label: "已完成" },
-  RUNNING: { color: "#1677ff", label: "运行中" },
-  FAILED: { color: "#ef4444", label: "失败" },
-  FAILING: { color: "#ef4444", label: "失败中" },
-  CANCELED: { color: "var(--st-color-text-muted)", label: "已取消" },
-  CANCELLED: { color: "var(--st-color-text-muted)", label: "已取消" },
-  PAUSED: { color: "#f59e0b", label: "已暂停" },
-  INITIALIZING: { color: "var(--st-color-text-muted)", label: "初始化中" },
-  CREATED: { color: "var(--st-color-text-muted)", label: "已创建" },
-  PENDING: { color: "var(--st-color-text-muted)", label: "等待中" },
-  SCHEDULED: { color: "var(--st-color-text-muted)", label: "已调度" },
-  DOING_SAVEPOINT: { color: "#f59e0b", label: "保存点中" },
-  CANCELING: { color: "var(--st-color-text-muted)", label: "取消中" },
+const statusConfig: Record<string, { tone: StatusChipTone; label: string }> = {
+  FINISHED: { tone: "success", label: "已完成" },
+  SUCCESS: { tone: "success", label: "已完成" },
+  RUNNING: { tone: "processing", label: "运行中" },
+  FAILED: { tone: "error", label: "失败" },
+  FAILING: { tone: "error", label: "失败中" },
+  CANCELED: { tone: "neutral", label: "已取消" },
+  CANCELLED: { tone: "neutral", label: "已取消" },
+  PAUSED: { tone: "warning", label: "已暂停" },
+  INITIALIZING: { tone: "neutral", label: "初始化中" },
+  CREATED: { tone: "neutral", label: "已创建" },
+  PENDING: { tone: "neutral", label: "等待中" },
+  SCHEDULED: { tone: "neutral", label: "已调度" },
+  DOING_SAVEPOINT: { tone: "warning", label: "保存点中" },
+  CANCELING: { tone: "neutral", label: "取消中" },
 };
 
 const getStatusConfig = (status?: string) => {
@@ -28,7 +29,7 @@ const getStatusConfig = (status?: string) => {
 
   return (
     statusConfig[normalizedStatus] || {
-      color: "var(--st-color-text-muted)",
+      tone: "neutral" as StatusChipTone,
       label: status ? "未识别" : "未开始",
     }
   );
@@ -66,16 +67,7 @@ const TaskStatus: React.FC<TaskStatusProps> = ({ status, errorMessage }) => {
     }
   };
 
-  const content = (
-    <span
-      className="stream-link-status-text"
-      style={{ color: config.color }}
-      title={config.label}
-      aria-label={config.label}
-    >
-      {config.label}
-    </span>
-  );
+  const content = <StatusChip tone={config.tone} label={config.label} />;
 
   if (String(status || "").toUpperCase() !== "FAILED" || !errorMessage) {
     return content;
@@ -113,7 +105,23 @@ const TaskStatus: React.FC<TaskStatusProps> = ({ status, errorMessage }) => {
         </div>
       }
     >
-      <span className="cursor-pointer">{content}</span>
+      <span
+        className="inline-flex cursor-pointer items-center gap-1.5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {content}
+        <a
+          style={{
+            fontSize: 12,
+            lineHeight: '20px',
+            color: 'var(--st-color-accent)',
+          }}
+          role="button"
+          tabIndex={0}
+        >
+          日志
+        </a>
+      </span>
     </Popover>
   );
 };

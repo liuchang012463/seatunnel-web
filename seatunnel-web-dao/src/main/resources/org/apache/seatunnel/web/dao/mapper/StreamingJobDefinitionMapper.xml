@@ -24,6 +24,8 @@
         <result property="sinkTable" column="sink_table"/>
         <result property="sourceDatasourceId" column="source_datasource_id"/>
         <result property="sinkDatasourceId" column="sink_datasource_id"/>
+        <result property="sourceDatasourceName" column="source_datasource_name"/>
+        <result property="sinkDatasourceName" column="sink_datasource_name"/>
 
         <result property="createTime" column="create_time"/>
         <result property="updateTime" column="update_time"/>
@@ -87,6 +89,8 @@
         d.sink_table,
         d.source_datasource_id,
         d.sink_datasource_id,
+        ds_source.name AS source_datasource_name,
+        ds_sink.name AS sink_datasource_name,
         d.create_user_id,
         d.update_user_id,
         d.create_time,
@@ -117,10 +121,21 @@
         ON latest.latest_instance_id = i.id
         ) ji
         ON ji.job_definition_id = d.id
+        LEFT JOIN t_seatunnel_web_datasource ds_source
+        ON d.source_datasource_id = ds_source.id
+        LEFT JOIN t_seatunnel_web_datasource ds_sink
+        ON d.sink_datasource_id = ds_sink.id
         <include refid="StreamingDefinitionWhere"/>
         <choose>
             <when test="dto.sortField == 'name'">
                 ORDER BY d.job_name
+                <choose>
+                    <when test="dto.sortOrder == 'asc' or dto.sortOrder == 'ASC'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>, d.id DESC
+            </when>
+            <when test="dto.sortField == 'updateTime'">
+                ORDER BY d.update_time
                 <choose>
                     <when test="dto.sortOrder == 'asc' or dto.sortOrder == 'ASC'">ASC</when>
                     <otherwise>DESC</otherwise>

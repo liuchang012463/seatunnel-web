@@ -17,6 +17,10 @@ export default {
       changeOrigin: true,
       pathRewrite: { '^/api': '/api' },
     },
+    '/v3/': {
+      target: 'http://localhost:9527',
+      changeOrigin: true,
+    },
     '/profile/avatar/': {
       changeOrigin: true,
       target: 'http://localhost:80',

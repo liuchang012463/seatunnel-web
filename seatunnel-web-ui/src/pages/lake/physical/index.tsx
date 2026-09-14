@@ -40,6 +40,8 @@ import {
 } from './service';
 import type { LakeRecommendation } from './service';
 import type { LakePage, LakeResourceStatus, OdsDatabase, PhysicalDataSource } from './types';
+import { useMasterDataNames } from '../useMasterDataNames';
+import { withTimeout } from '@/utils/withTimeout';
 import './index.less';
 
 const { Paragraph, Text, Title } = Typography;
@@ -342,6 +344,7 @@ const OdsDatabaseDrawer: React.FC<{
 const PhysicalResourcesPage: React.FC = () => {
   const location = useLocation();
   const actionRef = useRef<ActionType>();
+  const { unitNameByCode, systemNameByCode } = useMasterDataNames();
   const [createSource, setCreateSource] = useState<PhysicalDataSource>();
   const [recommendSource, setRecommendSource] = useState<PhysicalDataSource>();
   const [operationId, setOperationId] = useState<number>();
@@ -350,6 +353,8 @@ const PhysicalResourcesPage: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [resourceStatus, setResourceStatus] = useState<LakeResourceStatus>();
   const [loadedSources, setLoadedSources] = useState<PhysicalDataSource[]>([]);
+  const [listError, setListError] = useState<string>();
+  const [summaryError, setSummaryError] = useState<string>();
   const [summary, setSummary] = useState<{ boundDataSourceCount?: number; odsTableCount?: number; pendingExceptionCount?: number }>();
   const recommendationSourceId = useMemo(() => {
     const value = new URLSearchParams(location.search).get('recommendSourceDataSourceId');
@@ -357,9 +362,15 @@ const PhysicalResourcesPage: React.FC = () => {
   }, [location.search]);
 
   const loadSummary = () => {
-    void fetchPhysicalSummary().then((response) => {
-      if (response.code === 0) setSummary(response.data);
-    }).catch(() => undefined);
+    setSummaryError(undefined);
+    void withTimeout(fetchPhysicalSummary(), 10000, '物理入湖汇总请求超时，请稍后重试')
+      .then((response) => {
+        if (response.code !== 0) throw new Error(response.message || response.msg || '物理入湖汇总加载失败');
+        setSummary(response.data);
+      })
+      .catch((error) => {
+        setSummaryError(error instanceof Error ? error.message : '物理入湖汇总加载失败');
+      });
   };
 
   const reload = () => {
@@ -405,8 +416,8 @@ const PhysicalResourcesPage: React.FC = () => {
         width: 190,
         render: (_, record) => (
           <div>
-            <div>{record.unitCode || '待归属'}</div>
-            <Text type="secondary">{record.systemCode || '待归属'}</Text>
+            <div>{unitNameByCode(record.unitCode) || '待归属'}</div>
+            <Text type="secondary">{systemNameByCode(record.systemCode) || '待归属'}</Text>
           </div>
         ),
       },
@@ -423,13 +434,13 @@ const PhysicalResourcesPage: React.FC = () => {
         ),
       },
       {
-        title: 'ODS Database',
+        title: 'ODS 库',
         key: 'databaseName',
         width: 230,
         render: (_, record) => record.odsDatabase?.databaseName || <Text type="secondary">未创建</Text>,
       },
       {
-        title: 'Resource Status',
+        title: '资源状态',
         key: 'resourceStatus',
         width: 130,
         render: (_, record) => resourceTag(record.odsDatabase?.resourceStatus),
@@ -446,7 +457,6 @@ const PhysicalResourcesPage: React.FC = () => {
         title: '操作',
         key: 'option',
         valueType: 'option',
-        fixed: 'right',
         width: 280,
         render: (_, record) => {
           const database = record.odsDatabase;
@@ -479,7 +489,7 @@ const PhysicalResourcesPage: React.FC = () => {
         },
       },
     ],
-    [operationId, operationLoading],
+    [operationId, operationLoading, unitNameByCode, systemNameByCode],
   );
 
   return (
@@ -509,29 +519,54 @@ const PhysicalResourcesPage: React.FC = () => {
           <Card size="small" className="lake-physical-stat" data-warning={(summary?.pendingExceptionCount || 0) > 0}><Statistic title="待处理异常" value={summary?.pendingExceptionCount ?? 0} /></Card>
           <Text type="secondary" className="lake-physical-summary-note"><CheckCircleOutlined /> 页面 GET 只读取本地汇总；请使用行内“对账”按钮读取 Doris 实际状态。</Text>
         </div>
+        {summaryError ? (
+          <Alert
+            className="lake-table-alert"
+            type="warning"
+            showIcon
+            message="物理入湖汇总加载失败"
+            description={summaryError}
+            action={<Button type="link" onClick={loadSummary}>重试</Button>}
+          />
+        ) : null}
+        {listError ? (
+          <Alert
+            className="lake-table-alert"
+            type="error"
+            showIcon
+            message="物理入湖列表加载失败"
+            description={listError}
+            action={<Button type="link" onClick={reload}>重试</Button>}
+          />
+        ) : null}
         <ProTable<PhysicalDataSource>
           actionRef={actionRef}
           rowKey="sourceDataSourceId"
           cardBordered
           columns={columns}
-          scroll={{ x: 1180 }}
+          scroll={{ x: 'max-content' }}
           search={false}
           options={false}
           pagination={{ showSizeChanger: true, showTotal: (total) => `共 ${total} 个数据源` }}
           request={async (params) => {
+            setListError(undefined);
             try {
-              const response = await fetchPhysicalSources({
-                pageNo: params.current || 1,
-                pageSize: params.pageSize || 10,
-                keyword: keyword || undefined,
-                resourceStatus: resourceStatus || undefined,
-              });
+              const response = await withTimeout(
+                fetchPhysicalSources({
+                  pageNo: params.current || 1,
+                  pageSize: params.pageSize || 10,
+                  keyword: keyword || undefined,
+                  resourceStatus: resourceStatus || undefined,
+                }),
+                10000,
+                '物理入湖列表请求超时，请稍后重试',
+              );
               if (response.code !== 0) throw new Error(response.message || response.msg || '物理入湖列表加载失败');
               const page = unwrapPage(response.data);
               setLoadedSources(page.rows);
               return { data: page.rows, success: true, total: page.total };
             } catch (error) {
-              message.error(error instanceof Error ? error.message : '物理入湖列表加载失败');
+              setListError(error instanceof Error ? error.message : '物理入湖列表加载失败');
               return { data: [], success: false, total: 0 };
             }
           }}

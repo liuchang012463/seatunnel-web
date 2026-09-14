@@ -1,0 +1,158 @@
+- generic [ref=f15e1] [box=0,0,1440,1000]:
+  - generic [ref=f15e5] [box=0,0,1440,1000]:
+    - complementary [ref=f15e7] [box=0,56,256,944]:
+      - generic [ref=f15e8] [box=0,56,257,944]:
+        - menu [ref=f15e10] [box=8,56,240,944]:
+          - menuitem [ref=f15e11] [cursor=pointer] [box=12,76,232,34]:
+            - link "bar-chart 引接态势" [ref=f15e13] [box=28,83,200,20]:
+              - /url: /bi
+              - generic [ref=f15e14] [box=28,83,200,20]:
+                - img "bar-chart" [ref=f15e16] [box=28,86,14,14]
+                - generic [ref=f15e19] [box=50,83,49,20]: 引接态势
+          - menuitem [ref=f15e20] [cursor=pointer] [box=12,114,232,34]:
+            - link "database 数据源管理" [ref=f15e22] [box=28,121,200,20]:
+              - /url: /data-source
+              - generic [ref=f15e23] [box=28,121,200,20]:
+                - img "database" [ref=f15e25] [box=28,124,14,14]
+                - generic [ref=f15e28] [box=50,121,61,20]: 数据源管理
+          - menuitem "read 数据探查" [ref=f15e29] [cursor=pointer] [box=12,152,232,38]:
+            - generic [ref=f15e31] [box=28,161,182,20]:
+              - img "read" [ref=f15e33] [box=28,164,14,14]
+              - generic [ref=f15e36] [box=50,161,49,20]: 数据探查
+          - menuitem [ref=f15e37] [cursor=pointer] [box=12,194,232,34]:
+            - link "form 数据采报" [ref=f15e39] [box=28,201,200,20]:
+              - /url: /reporting/forms
+              - generic [ref=f15e40] [box=28,201,200,20]:
+                - img "form" [ref=f15e42] [box=28,204,14,14]
+                - generic [ref=f15e46] [box=50,201,49,20]: 数据采报
+          - menuitem "swap 数据引接" [ref=f15e47] [cursor=pointer] [box=12,232,232,38]:
+            - generic [ref=f15e49] [box=28,241,182,20]:
+              - img "swap" [ref=f15e51] [box=28,244,14,14]
+              - generic [ref=f15e54] [box=50,241,49,20]: 数据引接
+          - menuitem "monitor 运行运维" [expanded] [ref=f15e55] [cursor=pointer] [box=12,274,232,38]:
+            - generic [ref=f15e57] [box=31,283,179,20]:
+              - img "monitor" [ref=f15e59] [box=31,286,14,14]
+              - generic [ref=f15e62] [box=53,283,49,20]: 运行运维
+          - menu [ref=f15e63] [box=8,316,240,232]:
+            - menuitem "引接引擎管理" [ref=f15e64] [cursor=pointer] [box=22,320,222,34]
+            - menuitem [ref=f15e68] [cursor=pointer] [box=22,358,222,34]:
+              - link "探查引擎管理" [ref=f15e70] [box=54,365,174,20]:
+                - /url: /operations/metadata-engine
+            - menuitem [ref=f15e73] [cursor=pointer] [box=22,396,222,34]:
+              - link "数据湖管理" [ref=f15e75] [box=54,403,174,20]:
+                - /url: /lake/warehouse
+            - menuitem [ref=f15e78] [cursor=pointer] [box=22,434,222,34]:
+              - link "告警管理" [ref=f15e80] [box=54,441,174,20]:
+                - /url: /alarm
+            - menuitem [ref=f15e83] [cursor=pointer] [box=22,472,222,34]:
+              - link "协议管理" [ref=f15e85] [box=54,479,174,20]:
+                - /url: /operations/protocol
+            - menuitem [ref=f15e88] [cursor=pointer] [box=22,510,222,34]:
+              - link "安全加密" [ref=f15e90] [box=54,517,174,20]:
+                - /url: /operations/diagnostics
+          - menuitem "cloud-server 入湖管理" [ref=f15e93] [cursor=pointer] [box=12,552,232,38]:
+            - generic [ref=f15e95] [box=28,561,182,20]:
+              - img "cloud-server" [ref=f15e97] [box=28,564,14,14]
+              - generic [ref=f15e102] [box=50,561,49,20]: 入湖管理
+          - menuitem "setting 系统管理" [ref=f15e103] [cursor=pointer] [box=12,594,232,38]:
+            - generic [ref=f15e105] [box=28,603,182,20]:
+              - img "setting" [ref=f15e107] [box=28,606,14,14]
+              - generic [ref=f15e110] [box=50,603,49,20]: 系统管理
+        - generic [box=8,1000,240,0]:
+          - menu [box=8,1000,240,0]
+        - generic [ref=f15e111] [cursor=pointer] [box=245,74,24,24]
+    - generic [ref=f15e114] [box=256,0,1184,1000]:
+      - banner [ref=f15e115] [box=256,0,1184,56]
+      - banner [ref=f15e116] [box=0,0,1440,56]:
+        - generic [ref=f15e117] [box=0,0,1440,56]:
+          - generic [ref=f15e119] [cursor=pointer] [box=0,12,105,32]:
+            - img "logo" [ref=f15e120] [box=0,14,26,28]
+            - heading "Aircas Web" [level=1] [ref=f15e121] [box=34,12,71,32]
+          - generic [ref=f15e125] [box=1374,0,66,54]:
+            - button "切换浅色模式" [ref=f15e127] [cursor=pointer] [box=1376,11,32,32]:
+              - img "sun" [ref=f15e128] [box=1384,19,16,16]
+            - img "read" [ref=f15e133] [cursor=pointer] [box=1416,18,18,18]
+      - main [ref=f15e136] [box=256,56,1184,1000]:
+        - generic [ref=f15e139] [box=256,56,1184,1043]:
+          - generic [ref=f15e140] [box=277,77,1142,76]:
+            - generic [ref=f15e141] [box=277,77,627,62]:
+              - img "cloud-server" [ref=f15e143] [box=289,98,20,20]
+              - generic [ref=f15e148] [box=335,77,569,62]:
+                - heading "引接引擎管理" [level=1] [ref=f15e149] [box=335,77,569,36]
+                - paragraph [ref=f15e150] [box=335,117,569,22]: 管理 SeaTunnel / Zeta Client，查看节点健康状态与核心资源指标，让任务提交与运行监控更清晰。
+            - button "plus 新建 Client" [ref=f15e151] [cursor=pointer] [box=1298,77,121,35]:
+              - img "plus" [ref=f15e153] [box=1317,87,13,13]
+              - generic [ref=f15e157] [box=1338,85,63,20]: 新建 Client
+          - generic [ref=f15e159] [box=278,157,1140,920]:
+            - generic [ref=f15e160] [box=278,157,300,920]:
+              - generic [ref=f15e161] [box=298,177,259,22]: Client 列表
+              - generic [ref=f15e162] [box=298,210,259,58]: 还没有 Client，先新增一个地址吧。
+            - generic [ref=f15e166] [box=802,587,392,61]:
+              - generic [ref=f15e167] [box=802,587,392,22]: 选择一个 Client
+              - generic [ref=f15e168] [box=802,619,392,28]: 左侧选择节点后，可查看基础信息、健康状态与核心运行指标。
+  - generic [ref=f15e169] [box=0,0,1440,1000]:
+    - dialog "smile 新增 Client 配置 SeaTunnel Zeta REST 连接信息。" [box=310,162,820,675]:
+      - generic [ref=f15e170] [box=310,162,820,675]:
+        - button "Close" [ref=f15e171] [cursor=pointer] [box=1077,175,36,36]:
+          - generic "关闭" [ref=f15e172] [box=1077,187,36,13]:
+            - img "close" [ref=f15e173] [box=1089,187,13,13]
+        - generic [ref=f15e178] [box=335,183,770,39]:
+          - img "smile" [ref=f15e180] [box=342,194,18,18]
+          - generic [ref=f15e183] [box=377,183,228,39]:
+            - generic [ref=f15e184] [box=377,183,228,22]: 新增 Client
+            - generic [ref=f15e185] [box=377,207,228,16]: 配置 SeaTunnel Zeta REST 连接信息。
+        - generic [ref=f15e188] [box=354,276,733,456]:
+          - generic [ref=f15e189] [box=346,276,749,76]:
+            - generic [ref=f15e192] [box=354,276,359,64]:
+              - generic "客户端名称" [ref=f15e194] [box=354,276,89,20]: "* 客户端名称"
+              - textbox "* 客户端名称" [ref=f15e198] [box=354,306,359,34]:
+                - /placeholder: 例如：ZETA-prod-01
+            - generic [ref=f15e201] [box=728,276,359,62]:
+              - generic "引擎类型" [ref=f15e203] [box=728,276,76,20]: "* 引擎类型"
+              - generic [ref=f15e209] [cursor=pointer] [box=740,307,335,30]:
+                - combobox "* 引擎类型" [ref=f15e211] [box=740,307,317,30]
+                - generic [ref=f15e212] [box=740,307,335,30]: ZETA
+          - generic [ref=f15e332] [box=354,352,733,70]:
+            - generic "部署模式" [ref=f15e334] [box=354,352,76,20]: "* 部署模式"
+            - radiogroup "segmented control" [ref=f15e338] [box=354,382,733,40]:
+              - generic [ref=f15e339] [box=359,387,723,30]:
+                - generic [ref=f15e340] [cursor=pointer] [box=359,387,360,30]:
+                  - radio "api 单节点 / 单入口" [checked] [box=359,387,0,0]
+                  - generic [ref=f15e342] [box=474,387,128,26]:
+                    - img "api" [ref=f15e343] [box=484,393,13,13]
+                    - generic [ref=f15e346] [box=503,389,89,22]: 单节点 / 单入口
+                - generic [ref=f15e347] [cursor=pointer] [box=722,387,360,30]:
+                  - radio "cluster 分离模式集群" [box=722,387,0,0]
+                  - generic [ref=f15e349] [box=838,387,128,26]:
+                    - img "cluster" [ref=f15e350] [box=853,393,13,13]
+                    - generic [ref=f15e353] [box=872,389,78,22]: 分离模式集群
+          - generic [ref=f15e354] [box=346,433,749,76]:
+            - generic [ref=f15e357] [box=354,433,359,62]:
+              - generic "协议" [ref=f15e359] [box=354,433,50,20]: "* 协议"
+              - generic [ref=f15e365] [cursor=pointer] [box=366,464,335,30]:
+                - combobox "* 协议" [ref=f15e367] [box=366,464,317,30]
+                - generic "HTTP" [ref=f15e368] [box=366,464,335,30]
+            - generic [ref=f15e371] [box=728,433,359,64]:
+              - generic "上下文路径" [ref=f15e373] [box=728,435,79,20]
+              - textbox "上下文路径" [ref=f15e377] [box=728,463,359,34]:
+                - /placeholder: 例如：/
+          - generic [ref=f15e378] [box=342,509,757,76]:
+            - generic [ref=f15e381] [box=354,509,355,64]:
+              - generic "客户端地址" [ref=f15e383] [box=354,509,89,20]: "* 客户端地址"
+              - textbox "* 客户端地址" [ref=f15e387] [box=354,539,355,34]:
+                - /placeholder: 例如：192.168.1.10
+            - generic [ref=f15e390] [box=732,509,355,64]:
+              - generic "客户端端口" [ref=f15e392] [box=732,509,89,20]: "* 客户端端口"
+              - textbox "* 客户端端口" [ref=f15e396] [box=732,539,355,34]:
+                - /placeholder: "8080"
+                - text: "8080"
+          - generic [ref=f15e397] [box=354,585,733,32]:
+            - switch [ref=f15e403] [cursor=pointer] [box=354,590,44,22]
+            - generic [ref=f15e406] [box=408,591,91,20]: 开启 Basic Auth
+          - generic [ref=f15e408] [box=354,631,733,100]:
+            - generic "备注" [ref=f15e410] [box=354,633,40,20]
+            - textbox "备注" [ref=f15e414] [box=354,661,733,70]:
+              - /placeholder: 补充说明这个 Client 的用途、环境或备注信息
+        - generic [ref=f15e416] [box=335,785,770,34]:
+          - button "取 消" [ref=f15e417] [cursor=pointer] [box=934,785,64,34]
+          - button "创建 Client" [ref=f15e419] [cursor=pointer] [box=1004,785,101,34]

@@ -33,6 +33,8 @@ export interface StreamingJobDefinitionVO {
   sinkTable?: string;
   sourceDatasourceId?: string | number;
   sinkDatasourceId?: string | number;
+  sourceDatasourceName?: string;
+  sinkDatasourceName?: string;
   createTime?: string;
   updateTime?: string;
   checkpointConfig?: string;
@@ -492,6 +494,7 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
         <button
           type="button"
           className={moreActionClass}
+          aria-haspopup="menu"
           onClick={stopPropagation}
         >
           更多

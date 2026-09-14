@@ -1,0 +1,131 @@
+- generic [ref=f22e5] [box=0,0,1440,1000]:
+  - complementary [ref=f22e7] [box=0,56,256,944]:
+    - generic [ref=f22e8] [box=0,56,257,944]:
+      - menu [ref=f22e10] [box=8,56,240,944]:
+        - menuitem [ref=f22e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f22e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f22e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f22e16] [box=28,86,14,14]
+              - generic [ref=f22e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f22e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f22e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f22e23] [box=28,121,200,20]:
+              - img "database" [ref=f22e25] [box=28,124,14,14]
+              - generic [ref=f22e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f22e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f22e31] [box=28,161,182,20]:
+            - img "read" [ref=f22e33] [box=28,164,14,14]
+            - generic [ref=f22e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f22e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f22e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f22e40] [box=28,201,200,20]:
+              - img "form" [ref=f22e42] [box=28,204,14,14]
+              - generic [ref=f22e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f22e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f22e49] [box=28,241,182,20]:
+            - img "swap" [ref=f22e51] [box=28,244,14,14]
+            - generic [ref=f22e54] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [ref=f22e55] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f22e57] [box=28,283,182,20]:
+            - img "monitor" [ref=f22e59] [box=28,286,14,14]
+            - generic [ref=f22e62] [box=50,283,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [expanded] [ref=f22e63] [cursor=pointer] [box=12,316,232,38]:
+          - generic [ref=f22e65] [box=31,325,179,20]:
+            - img "cloud-server" [ref=f22e67] [box=31,328,14,14]
+            - generic [ref=f22e72] [box=53,325,49,20]: 入湖管理
+        - menu [ref=f22e73] [box=8,358,240,118]:
+          - menuitem [ref=f22e74] [cursor=pointer] [box=22,362,222,34]:
+            - link "物理入湖管理" [ref=f22e76] [box=54,369,174,20]:
+              - /url: /lake/resources
+          - menuitem [ref=f22e79] [cursor=pointer] [box=22,400,222,34]:
+            - link "逻辑入湖管理" [ref=f22e81] [box=54,407,174,20]:
+              - /url: /lake/logical-access
+          - menuitem "数据生命周期管理" [ref=f22e84] [cursor=pointer] [box=22,438,222,34]
+        - menuitem "setting 系统管理" [ref=f22e88] [cursor=pointer] [box=12,480,232,38]:
+          - generic [ref=f22e90] [box=28,489,182,20]:
+            - img "setting" [ref=f22e92] [box=28,492,14,14]
+            - generic [ref=f22e95] [box=50,489,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f22e96] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f22e99] [box=256,0,1184,1000]:
+    - banner [ref=f22e100] [box=256,0,1184,56]
+    - banner [ref=f22e101] [box=0,0,1440,56]:
+      - generic [ref=f22e102] [box=0,0,1440,56]:
+        - generic [ref=f22e104] [cursor=pointer] [box=0,12,105,32]:
+          - img "logo" [ref=f22e105] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f22e106] [box=34,12,71,32]
+        - generic [ref=f22e110] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f22e112] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f22e113] [box=1384,19,16,16]
+          - img "read" [ref=f22e118] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f22e121] [box=256,56,1184,1000]:
+      - generic [ref=f22e122] [box=256,56,1184,1000]:
+        - generic [ref=f22e124] [box=296,64,1104,52]:
+          - generic [ref=f22e125] [box=296,76,440,36]:
+            - generic "生命周期管理" [ref=f22e126] [box=296,76,168,36]
+            - generic "按历史分区数维护 ODS 表生命周期策略" [ref=f22e127] [box=476,83,248,22]
+          - button "reload 刷新" [ref=f22e131] [cursor=pointer] [box=1319,76,81,32]:
+            - img "reload" [ref=f22e133] [box=1336,85,13,13]
+            - generic [ref=f22e136] [box=1357,82,26,20]: 刷新
+        - generic [ref=f22e140] [box=296,132,1104,409]:
+          - generic [ref=f22e142] [box=297,133,518,128]:
+            - img "safety-certificate" [ref=f22e144] [box=313,149,22,22]
+            - generic [ref=f22e147] [box=304,180,504,42]:
+              - heading "策略模板" [level=5] [ref=f22e148] [box=304,180,504,20]
+              - generic [ref=f22e149] [box=304,200,504,22]: 策略是可复用模板，已应用表保留独立快照；所有远端校验都通过显式操作触发。
+            - button "plus 新建策略" [ref=f22e150] [cursor=pointer] [box=304,222,107,32]:
+              - img "plus" [ref=f22e152] [box=321,231,13,13]
+              - generic [ref=f22e156] [box=342,228,52,20]: 新建策略
+          - generic [ref=f22e157] [box=296,278,1104,263]:
+            - generic [ref=f22e161] [box=309,303,1078,32]:
+              - generic [ref=f22e164] [box=321,303,335,32]:
+                - generic "策略" [ref=f22e166] [box=321,303,40,32]: "策略 :"
+                - textbox "策略 :" [ref=f22e171] [box=373,308,256,22]:
+                  - /placeholder: 请输入
+              - generic [ref=f22e175] [box=680,303,335,32]:
+                - generic "粒度" [ref=f22e177] [box=680,303,40,32]: "粒度 :"
+                - generic [ref=f22e183] [cursor=pointer] [box=732,304,272,30]:
+                  - combobox "粒度 :" [ref=f22e185] [box=732,304,254,30]
+                  - generic [box=732,304,272,30]: 请选择
+              - text: ": : : : :"
+              - generic [ref=f22e194] [box=1154,303,221,32]:
+                - generic [ref=f22e196] [box=1154,303,156,32]:
+                  - button "重 置" [ref=f22e197] [cursor=pointer] [box=1154,303,64,32]
+                  - button "loading 查 询" [ref=f22e199] [box=1225,303,85,32]:
+                    - img "loading" [ref=f22e201] [box=1240,309,18,18]
+                    - generic [ref=f22e204] [box=1263,309,30,20]: 查 询
+                - generic [ref=f22e206] [cursor=pointer] [box=1326,308,49,22]:
+                  - text: 展开
+                  - img "down" [ref=f22e207] [box=1361,312,14,14]
+            - generic [ref=f22e211] [box=297,377,1102,163]:
+              - button "plus 新建策略" [ref=f22e216] [cursor=pointer] [box=1268,393,107,32]:
+                - img "plus" [ref=f22e218] [box=1285,402,13,13]
+                - generic [ref=f22e222] [box=1306,399,52,20]: 新建策略
+              - generic [ref=f22e224] [box=321,441,1054,83]:
+                - generic [box=321,441,1054,83]:
+                  - generic [box=321,441,1054,83]:
+                    - generic [box=321,441,1054,83]:
+                      - generic [box=321,441,1054,83]:
+                        - table [box=321,441,1230,83]:
+                          - rowgroup [box=321,441,1230,45]:
+                            - row "策略 粒度 历史分区保留数 约等时间 Scope 应用表 info-circle 状态 操作" [box=321,441,1230,45]:
+                              - columnheader "策略" [box=321,441,220,45]
+                              - columnheader "粒度" [box=541,441,110,45]
+                              - columnheader "历史分区保留数" [box=651,441,160,45]
+                              - columnheader "约等时间" [box=811,441,130,45]
+                              - columnheader "Scope" [box=941,441,150,45]
+                              - columnheader "应用表 info-circle" [box=1091,441,100,45]:
+                                - generic [box=1099,453,52,20]:
+                                  - generic [box=1099,453,36,20]: 应用表
+                                  - generic [box=1139,453,12,20]:
+                                    - img "info-circle" [box=1139,457,12,12]
+                              - columnheader "状态" [box=1191,441,100,45]
+                              - columnheader "操作" [box=1115,441,260,45]
+                          - rowgroup [box=321,486,1230,38]:
+                            - generic [box=1099,486,60,22]: 应用表
+                            - row [box=321,486,1230,38]:
+                              - cell [box=321,486,1230,38]

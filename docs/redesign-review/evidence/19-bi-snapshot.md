@@ -1,0 +1,124 @@
+- generic [ref=f18e5] [box=0,0,1440,1000]:
+  - complementary [ref=f18e7] [box=0,56,256,944]:
+    - generic [ref=f18e8] [box=0,56,257,944]:
+      - menu [ref=f18e10] [box=8,56,240,944]:
+        - menuitem "bar-chart 引接态势" [ref=f18e11] [cursor=pointer] [box=12,76,232,34]:
+          - generic [ref=f18e13] [box=31,83,197,20]:
+            - img "bar-chart" [ref=f18e15] [box=31,86,14,14]
+            - generic [ref=f18e18] [box=53,83,49,20]: 引接态势
+        - menuitem [ref=f18e19] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f18e21] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f18e22] [box=28,121,200,20]:
+              - img "database" [ref=f18e24] [box=28,124,14,14]
+              - generic [ref=f18e27] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f18e28] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f18e30] [box=28,161,182,20]:
+            - img "read" [ref=f18e32] [box=28,164,14,14]
+            - generic [ref=f18e35] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f18e36] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f18e38] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f18e39] [box=28,201,200,20]:
+              - img "form" [ref=f18e41] [box=28,204,14,14]
+              - generic [ref=f18e45] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f18e46] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f18e48] [box=28,241,182,20]:
+            - img "swap" [ref=f18e50] [box=28,244,14,14]
+            - generic [ref=f18e53] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [ref=f18e54] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f18e56] [box=28,283,182,20]:
+            - img "monitor" [ref=f18e58] [box=28,286,14,14]
+            - generic [ref=f18e61] [box=50,283,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [ref=f18e62] [cursor=pointer] [box=12,316,232,38]:
+          - generic [ref=f18e64] [box=28,325,182,20]:
+            - img "cloud-server" [ref=f18e66] [box=28,328,14,14]
+            - generic [ref=f18e71] [box=50,325,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f18e72] [cursor=pointer] [box=12,358,232,38]:
+          - generic [ref=f18e74] [box=28,367,182,20]:
+            - img "setting" [ref=f18e76] [box=28,370,14,14]
+            - generic [ref=f18e79] [box=50,367,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f18e80] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f18e83] [box=256,0,1184,1000]:
+    - banner [ref=f18e84] [box=256,0,1184,56]
+    - banner [ref=f18e85] [box=0,0,1440,56]:
+      - generic [ref=f18e86] [box=0,0,1440,56]:
+        - generic [ref=f18e88] [cursor=pointer] [box=0,12,105,32]:
+          - img "logo" [ref=f18e89] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f18e90] [box=34,12,71,32]
+        - generic [ref=f18e94] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f18e96] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f18e97] [box=1384,19,16,16]
+          - img "read" [ref=f18e102] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f18e105] [box=256,56,1184,1000]:
+      - generic [ref=f18e106] [box=256,56,1184,1000]:
+        - generic [ref=f18e108] [box=296,64,1104,52]:
+          - generic [ref=f18e109] [box=296,76,360,36]:
+            - generic "引接态势" [ref=f18e110] [box=296,76,112,36]
+            - generic "改造现有数据洞察页面的数据口径。" [ref=f18e111] [box=420,83,224,22]
+          - generic [ref=f18e113] [box=1134,76,266,32]:
+            - button "执行并切换状态" [ref=f18e115] [cursor=pointer] [box=1134,76,125,32]
+            - button "plus 新增演示记录" [ref=f18e118] [cursor=pointer] [box=1267,76,133,32]:
+              - img "plus" [ref=f18e120] [box=1284,85,13,13]
+              - generic [ref=f18e124] [box=1305,82,78,20]: 新增演示记录
+        - generic [ref=f18e128] [box=256,132,1184,281]:
+          - generic [ref=f18e129] [box=288,144,1120,67]:
+            - generic [ref=f18e133] [box=304,152,248,51]:
+              - generic [ref=f18e134] [box=304,152,248,22]: 记录总数
+              - generic [ref=f18e135] [box=304,178,248,25]:
+                - img "database" [ref=f18e137] [box=304,182,16,16]
+                - generic [ref=f18e140] [box=324,178,9,25]: "1"
+            - generic [ref=f18e144] [box=584,152,248,51]:
+              - generic [ref=f18e145] [box=584,152,248,22]: 运行 / 发布
+              - generic [ref=f18e146] [box=584,178,248,25]:
+                - img "play-circle" [ref=f18e148] [box=584,182,16,16]
+                - generic [ref=f18e152] [box=604,178,9,25]: "1"
+            - generic [ref=f18e156] [box=864,152,248,51]:
+              - generic [ref=f18e157] [box=864,152,248,22]: 关联指标
+              - generic [ref=f18e158] [box=864,178,248,25]:
+                - img "file-search" [ref=f18e160] [box=864,182,16,16]
+                - generic [ref=f18e163] [box=884,178,9,25]: "2"
+            - generic [ref=f18e167] [box=1144,152,248,51]:
+              - generic [ref=f18e168] [box=1144,152,248,22]: 技术模块
+              - generic [ref=f18e169] [box=1144,178,248,25]:
+                - img "api" [ref=f18e171] [box=1144,182,16,16]
+                - generic [ref=f18e174] [box=1164,178,9,25]: "1"
+          - generic [ref=f18e175] [box=296,227,1104,154]:
+            - generic [ref=f18e177] [box=321,240,1054,32]:
+              - generic [ref=f18e178] [box=321,244,672,24]: 可交互业务清单
+              - generic [ref=f18e180] [box=993,240,382,32]:
+                - generic [ref=f18e182] [box=993,240,234,32]:
+                  - img "search" [ref=f18e184] [box=1005,249,14,14]
+                  - textbox "按名称筛选" [ref=f18e187] [box=1023,245,176,22]
+                - generic [ref=f18e192] [cursor=pointer] [box=1247,241,116,30]:
+                  - combobox [ref=f18e194] [box=1247,241,98,30]
+                  - generic [box=1247,241,116,30]: 状态筛选
+            - table [ref=f18e202] [box=304,290,1088,83]:
+              - rowgroup [ref=f18e211] [box=304,290,1088,38]:
+                - row [ref=f18e212] [box=304,290,1088,38]:
+                  - columnheader "名称" [ref=f18e213] [box=304,290,201,38]
+                  - columnheader "类型 / 协议" [ref=f18e214] [box=505,290,150,38]
+                  - columnheader "状态" [ref=f18e215] [box=655,290,110,38]
+                  - columnheader "进度" [ref=f18e216] [box=765,290,150,38]
+                  - columnheader "责任人" [ref=f18e217] [box=915,290,120,38]
+                  - columnheader "更新时间" [ref=f18e218] [box=1035,290,170,38]
+                  - columnheader "操作" [ref=f18e219] [box=1205,290,187,38]
+              - rowgroup [ref=f18e220] [box=304,328,1088,45]:
+                - row [ref=f18e221] [box=304,328,1088,45]:
+                  - cell [ref=f18e222] [box=304,328,201,45]:
+                    - button "复用页面能力" [ref=f18e223] [cursor=pointer] [box=310,334,112,32]
+                  - cell "引接态势" [ref=f18e225] [box=505,328,150,45]
+                  - cell "运行中" [ref=f18e226] [box=655,328,110,45]
+                  - cell [ref=f18e228] [box=765,328,150,45]:
+                    - progressbar [ref=f18e229] [box=771,341,138,19]:
+                      - generic "86%" [ref=f18e233] [box=885,345,24,12]
+                  - cell "张工" [ref=f18e234] [box=915,328,120,45]
+                  - cell "2026-07-27 10:20" [ref=f18e235] [box=1035,328,170,45]
+                  - cell [ref=f18e236] [box=1205,328,187,45]:
+                    - generic [ref=f18e237] [box=1211,334,175,32]:
+                      - button "eye 详情" [ref=f18e239] [cursor=pointer] [box=1211,334,81,32]:
+                        - img "eye" [ref=f18e241] [box=1228,343,13,13]
+                        - generic [ref=f18e244] [box=1249,340,26,20]: 详情
+                      - button "状态切换" [ref=f18e246] [cursor=pointer] [box=1300,334,86,32]

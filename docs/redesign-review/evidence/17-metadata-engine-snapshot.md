@@ -1,0 +1,199 @@
+- generic [ref=f16e5] [box=0,0,1440,1000]:
+  - complementary [ref=f16e7] [box=0,56,256,944]:
+    - generic [ref=f16e8] [box=0,56,257,944]:
+      - menu [ref=f16e10] [box=8,56,240,944]:
+        - menuitem [ref=f16e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f16e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f16e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f16e16] [box=28,86,14,14]
+              - generic [ref=f16e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f16e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f16e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f16e23] [box=28,121,200,20]:
+              - img "database" [ref=f16e25] [box=28,124,14,14]
+              - generic [ref=f16e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f16e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f16e31] [box=28,161,182,20]:
+            - img "read" [ref=f16e33] [box=28,164,14,14]
+            - generic [ref=f16e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f16e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f16e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f16e40] [box=28,201,200,20]:
+              - img "form" [ref=f16e42] [box=28,204,14,14]
+              - generic [ref=f16e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f16e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f16e49] [box=28,241,182,20]:
+            - img "swap" [ref=f16e51] [box=28,244,14,14]
+            - generic [ref=f16e54] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [expanded] [ref=f16e55] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f16e57] [box=31,283,179,20]:
+            - img "monitor" [ref=f16e59] [box=31,286,14,14]
+            - generic [ref=f16e62] [box=53,283,49,20]: 运行运维
+        - menu [ref=f16e63] [box=8,316,240,232]:
+          - menuitem [ref=f16e64] [cursor=pointer] [box=22,320,222,34]:
+            - link "引接引擎管理" [ref=f16e66] [box=54,327,174,20]:
+              - /url: /client
+          - menuitem "探查引擎管理" [ref=f16e69] [cursor=pointer] [box=22,358,222,34]
+          - menuitem [ref=f16e73] [cursor=pointer] [box=22,396,222,34]:
+            - link "数据湖管理" [ref=f16e75] [box=54,403,174,20]:
+              - /url: /lake/warehouse
+          - menuitem [ref=f16e78] [cursor=pointer] [box=22,434,222,34]:
+            - link "告警管理" [ref=f16e80] [box=54,441,174,20]:
+              - /url: /alarm
+          - menuitem [ref=f16e83] [cursor=pointer] [box=22,472,222,34]:
+            - link "协议管理" [ref=f16e85] [box=54,479,174,20]:
+              - /url: /operations/protocol
+          - menuitem [ref=f16e88] [cursor=pointer] [box=22,510,222,34]:
+            - link "安全加密" [ref=f16e90] [box=54,517,174,20]:
+              - /url: /operations/diagnostics
+        - menuitem "cloud-server 入湖管理" [ref=f16e93] [cursor=pointer] [box=12,552,232,38]:
+          - generic [ref=f16e95] [box=28,561,182,20]:
+            - img "cloud-server" [ref=f16e97] [box=28,564,14,14]
+            - generic [ref=f16e102] [box=50,561,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f16e103] [cursor=pointer] [box=12,594,232,38]:
+          - generic [ref=f16e105] [box=28,603,182,20]:
+            - img "setting" [ref=f16e107] [box=28,606,14,14]
+            - generic [ref=f16e110] [box=50,603,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f16e111] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f16e114] [box=256,0,1184,1000]:
+    - banner [ref=f16e115] [box=256,0,1184,56]
+    - banner [ref=f16e116] [box=0,0,1440,56]:
+      - generic [ref=f16e117] [box=0,0,1440,56]:
+        - generic [ref=f16e119] [cursor=pointer] [box=0,12,105,32]:
+          - img "logo" [ref=f16e120] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f16e121] [box=34,12,71,32]
+        - generic [ref=f16e125] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f16e127] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f16e128] [box=1384,19,16,16]
+          - img "read" [ref=f16e133] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f16e136] [box=256,56,1184,1000]:
+      - generic [ref=f16e137] [box=256,56,1184,1000]:
+        - generic [ref=f16e138] [box=280,80,1136,72]:
+          - generic [ref=f16e139] [box=280,80,626,72]:
+            - img "api" [ref=f16e141] [box=293,105,22,22]
+            - generic [ref=f16e144] [box=344,80,562,72]:
+              - heading "探查引擎管理" [level=1] [ref=f16e145] [box=344,80,562,36]
+              - generic [ref=f16e146] [box=344,116,562,22]: 配置 OpenMetadata 控制面连接。参数保存在系统数据库；配置完成后探查能力自动可用。
+          - button "reload 刷新状态" [ref=f16e148] [cursor=pointer] [box=1309,80,107,32]:
+            - img "reload" [ref=f16e150] [box=1326,89,13,13]
+            - generic [ref=f16e153] [box=1347,86,52,20]: 刷新状态
+        - generic [ref=f16e154] [box=280,176,1136,914]:
+          - complementary [ref=f16e155] [box=281,177,282,912]:
+            - generic [ref=f16e156] [box=301,205,241,16]: EXPLORATION
+            - generic [ref=f16e157] [box=301,225,241,22]: 探查引擎
+            - button "api OpenMetadata 元数据控制面" [ref=f16e158] [cursor=pointer] [box=301,263,241,74]:
+              - img "api" [ref=f16e160] [box=326,293,14,14]
+              - generic [ref=f16e163] [box=362,277,150,46]:
+                - strong [ref=f16e164] [box=362,277,150,22]: OpenMetadata
+                - generic [ref=f16e165] [box=362,301,150,22]: 元数据控制面
+            - generic [ref=f16e167] [box=301,355,241,149]:
+              - generic [ref=f16e168] [box=313,372,217,22]:
+                - generic [ref=f16e169] [box=313,372,48,22]: 连接状态
+                - strong [ref=f16e170] [box=494,372,36,22]: 已连接
+              - generic [ref=f16e171] [box=313,403,217,22]:
+                - generic [ref=f16e172] [box=313,403,32,22]: Token
+                - strong [ref=f16e173] [box=494,403,36,22]: 已配置
+              - generic [ref=f16e174] [box=313,434,217,22]:
+                - generic [ref=f16e175] [box=313,434,48,22]: 配置版本
+                - strong [ref=f16e176] [box=517,434,13,22]: v3
+              - generic [ref=f16e177] [box=313,465,217,22]:
+                - generic [ref=f16e178] [box=313,465,48,22]: 版本契约
+                - strong [ref=f16e179] [box=490,465,40,22]: 1.12.10
+            - navigation "探查引擎导航" [ref=f16e180] [box=301,526,241,108]:
+              - generic [ref=f16e181] [box=301,526,241,16]: 管理入口
+              - button [ref=f16e182] [cursor=pointer] [box=301,550,241,40]:
+                - img "cloud-server" [ref=f16e183] [box=311,564,13,13]
+                - text: 引擎概览
+              - button [ref=f16e188] [cursor=pointer] [box=301,594,241,40]:
+                - img "setting" [ref=f16e189] [box=311,608,13,13]
+                - text: 连接配置
+            - generic [ref=f16e192] [box=301,1003,241,66]:
+              - generic [ref=f16e193] [box=313,1021,217,22]: 固定契约
+              - strong [ref=f16e194] [box=313,1047,217,22]: Server 1.12.10 / Ingestion 1.12.10.0
+          - main [ref=f16e195] [box=563,177,852,912]:
+            - generic [ref=f16e197] [box=591,205,796,856]:
+              - generic [ref=f16e198] [box=591,205,796,196]:
+                - generic [ref=f16e199] [box=620,232,379,142]:
+                  - img "api" [ref=f16e201] [box=636,248,26,26]
+                  - generic [ref=f16e204] [box=694,232,305,142]:
+                    - generic [ref=f16e205] [box=694,232,305,28]:
+                      - heading "OpenMetadata" [level=2] [ref=f16e206] [box=694,232,132,28]
+                      - generic [ref=f16e207] [box=836,232,72,28]: 已连接
+                    - generic [ref=f16e209] [box=694,263,305,22]: Exploration Control Plane
+                    - generic [ref=f16e210] [box=694,301,305,38]:
+                      - generic [ref=f16e211] [box=694,301,171,38]: 192.168.100.95:8585/api
+                      - generic [ref=f16e213] [box=873,301,109,38]: Token 已配置
+                    - generic [ref=f16e215] [box=694,352,305,22]:
+                      - img "check-circle" [ref=f16e216] [box=694,357,13,13]
+                      - generic [ref=f16e220] [box=714,352,285,22]: OpenMetadata 控制面可达，版本契约校验通过。
+                - generic [ref=f16e221] [box=1225,232,133,74]:
+                  - button "setting 编辑连接配置" [ref=f16e222] [cursor=pointer] [box=1225,232,133,32]:
+                    - img "setting" [ref=f16e224] [box=1242,241,13,13]
+                    - generic [ref=f16e227] [box=1263,238,78,20]: 编辑连接配置
+                  - button "reload 刷新指标" [ref=f16e228] [cursor=pointer] [box=1251,274,107,32]:
+                    - img "reload" [ref=f16e230] [box=1268,283,13,13]
+                    - generic [ref=f16e233] [box=1289,280,52,20]: 刷新指标
+              - generic [ref=f16e234] [box=591,427,796,370]:
+                - generic [ref=f16e235] [box=591,427,796,46]:
+                  - generic [ref=f16e236] [box=591,427,326,46]:
+                    - heading "健康摘要" [level=3] [ref=f16e237] [box=591,427,326,24]
+                    - paragraph [ref=f16e238] [box=591,455,326,18]: 同步 OpenMetadata 服务、编排器与固定版本契约的兼容情况
+                  - generic [ref=f16e239] [box=1253,427,134,22]:
+                    - img "info-circle" [ref=f16e240] [box=1253,432,12,12]
+                    - text: 只读采集 · 配置版本 3
+                - generic [ref=f16e244] [box=591,487,796,310]:
+                  - generic [ref=f16e245] [box=591,487,189,148]:
+                    - generic [ref=f16e246] [box=612,507,147,34]:
+                      - generic [ref=f16e247] [box=612,513,86,22]: OpenMetadata
+                      - img "cloud-server" [ref=f16e249] [box=735,518,13,13]
+                    - generic [ref=f16e254] [box=612,559,147,30]: UP
+                    - generic [ref=f16e255] [box=612,597,147,18]: 控制面可达性
+                  - generic [ref=f16e256] [box=794,487,189,148]:
+                    - generic [ref=f16e257] [box=815,507,147,34]:
+                      - generic [ref=f16e258] [box=815,513,72,22]: Orchestrator
+                      - img "link" [ref=f16e260] [box=938,518,13,13]
+                    - generic [ref=f16e263] [box=815,559,147,30]: UP
+                    - generic [ref=f16e264] [box=815,597,147,18]: 编排器状态
+                  - generic [ref=f16e265] [box=996,487,189,148]:
+                    - generic [ref=f16e266] [box=1017,507,147,34]:
+                      - generic [ref=f16e267] [box=1017,513,68,22]: Server 版本
+                      - img "info-circle" [ref=f16e269] [box=1140,518,13,13]
+                    - generic [ref=f16e273] [box=1017,559,147,30]: 1.12.10
+                    - generic [ref=f16e274] [box=1017,597,147,18]: 期望 1.12.10
+                  - generic [ref=f16e275] [box=1199,487,189,148]:
+                    - generic [ref=f16e276] [box=1220,507,147,34]:
+                      - generic [ref=f16e277] [box=1220,513,82,22]: Ingestion 版本
+                      - img "safety-certificate" [ref=f16e279] [box=1343,518,13,13]
+                    - generic [ref=f16e282] [box=1220,559,147,30]: 1.12.10.0
+                    - generic [ref=f16e283] [box=1220,597,147,18]: 期望 1.12.10.0
+                  - generic [ref=f16e284] [box=591,649,189,148]:
+                    - generic [ref=f16e285] [box=612,669,147,34]:
+                      - generic [ref=f16e286] [box=612,675,52,22]: 版本兼容
+                      - img "check-circle" [ref=f16e288] [box=735,680,13,13]
+                    - generic [ref=f16e292] [box=612,721,147,30]: 兼容
+                    - generic [ref=f16e293] [box=612,759,147,18]: 固定契约校验结果
+              - generic [ref=f16e294] [box=591,823,796,238]:
+                - generic [ref=f16e296] [box=591,823,317,46]:
+                  - heading "连接参数" [level=3] [ref=f16e297] [box=591,823,317,24]
+                  - paragraph [ref=f16e298] [box=591,851,317,18]: 当前生效的 OpenMetadata 连接摘要；敏感 Token 不会回显
+                - generic [ref=f16e299] [box=591,883,796,178]:
+                  - generic [ref=f16e300] [box=612,903,754,18]:
+                    - generic [ref=f16e301] [box=612,903,110,18]: Base URL
+                    - strong [ref=f16e302] [box=734,903,632,18]: http://192.168.100.95:8585/api
+                  - generic [ref=f16e303] [box=612,933,754,18]:
+                    - generic [ref=f16e304] [box=612,933,110,18]: 连接超时
+                    - strong [ref=f16e305] [box=734,933,632,18]: 2000 ms
+                  - generic [ref=f16e306] [box=612,963,754,18]:
+                    - generic [ref=f16e307] [box=612,963,110,18]: 读超时
+                    - strong [ref=f16e308] [box=734,963,632,18]: 60000 ms
+                  - generic [ref=f16e309] [box=612,993,754,18]:
+                    - generic [ref=f16e310] [box=612,993,110,18]: 期望 Server
+                    - strong [ref=f16e311] [box=734,993,632,18]: 1.12.10
+                  - generic [ref=f16e312] [box=612,1023,754,18]:
+                    - generic [ref=f16e313] [box=612,1023,110,18]: 期望 Ingestion
+                    - strong [ref=f16e314] [box=734,1023,632,18]: 1.12.10.0

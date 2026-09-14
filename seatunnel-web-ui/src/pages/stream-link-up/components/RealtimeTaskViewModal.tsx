@@ -365,7 +365,7 @@ const RealtimeGrafanaLightModal = forwardRef<
       open={open}
       footer={null}
       title={null}
-      destroyOnClose
+      destroyOnHidden
       maskClosable={false}
       centered={false}
       closeIcon={null}

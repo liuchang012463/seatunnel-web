@@ -1,0 +1,210 @@
+- generic [ref=f19e5] [box=0,0,1440,1000]:
+  - complementary [ref=f19e7] [box=0,56,256,944]:
+    - generic [ref=f19e8] [box=0,56,257,944]:
+      - menu [ref=f19e10] [box=8,56,240,944]:
+        - menuitem [ref=f19e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f19e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f19e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f19e16] [box=28,86,14,14]
+              - generic [ref=f19e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f19e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f19e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f19e23] [box=28,121,200,20]:
+              - img "database" [ref=f19e25] [box=28,124,14,14]
+              - generic [ref=f19e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f19e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f19e31] [box=28,161,182,20]:
+            - img "read" [ref=f19e33] [box=28,164,14,14]
+            - generic [ref=f19e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f19e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f19e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f19e40] [box=28,201,200,20]:
+              - img "form" [ref=f19e42] [box=28,204,14,14]
+              - generic [ref=f19e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f19e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f19e49] [box=28,241,182,20]:
+            - img "swap" [ref=f19e51] [box=28,244,14,14]
+            - generic [ref=f19e54] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [expanded] [ref=f19e55] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f19e57] [box=31,283,179,20]:
+            - img "monitor" [ref=f19e59] [box=31,286,14,14]
+            - generic [ref=f19e62] [box=53,283,49,20]: 运行运维
+        - menu [ref=f19e63] [box=8,316,240,232]:
+          - menuitem [ref=f19e64] [cursor=pointer] [box=22,320,222,34]:
+            - link "引接引擎管理" [ref=f19e66] [box=54,327,174,20]:
+              - /url: /client
+          - menuitem [ref=f19e69] [cursor=pointer] [box=22,358,222,34]:
+            - link "探查引擎管理" [ref=f19e71] [box=54,365,174,20]:
+              - /url: /operations/metadata-engine
+          - menuitem "数据湖管理" [ref=f19e74] [cursor=pointer] [box=22,396,222,34]
+          - menuitem [ref=f19e78] [cursor=pointer] [box=22,434,222,34]:
+            - link "告警管理" [ref=f19e80] [box=54,441,174,20]:
+              - /url: /alarm
+          - menuitem [ref=f19e83] [cursor=pointer] [box=22,472,222,34]:
+            - link "协议管理" [ref=f19e85] [box=54,479,174,20]:
+              - /url: /operations/protocol
+          - menuitem [ref=f19e88] [cursor=pointer] [box=22,510,222,34]:
+            - link "安全加密" [ref=f19e90] [box=54,517,174,20]:
+              - /url: /operations/diagnostics
+        - menuitem "cloud-server 入湖管理" [ref=f19e93] [cursor=pointer] [box=12,552,232,38]:
+          - generic [ref=f19e95] [box=28,561,182,20]:
+            - img "cloud-server" [ref=f19e97] [box=28,564,14,14]
+            - generic [ref=f19e102] [box=50,561,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f19e103] [cursor=pointer] [box=12,594,232,38]:
+          - generic [ref=f19e105] [box=28,603,182,20]:
+            - img "setting" [ref=f19e107] [box=28,606,14,14]
+            - generic [ref=f19e110] [box=50,603,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f19e111] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f19e114] [box=256,0,1184,1000]:
+    - banner [ref=f19e115] [box=256,0,1184,56]
+    - banner [ref=f19e116] [box=0,0,1440,56]:
+      - generic [ref=f19e117] [box=0,0,1440,56]:
+        - generic [ref=f19e119] [cursor=pointer] [box=0,12,105,32]:
+          - img "logo" [ref=f19e120] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f19e121] [box=34,12,71,32]
+        - generic [ref=f19e125] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f19e127] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f19e128] [box=1384,19,16,16]
+          - img "read" [ref=f19e133] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f19e136] [box=256,56,1184,1000]:
+      - generic [ref=f19e137] [box=256,56,1184,1000]:
+        - generic [ref=f19e138] [box=280,80,1136,72]:
+          - generic [ref=f19e139] [box=280,80,517,72]:
+            - img "cloud-server" [ref=f19e141] [box=293,105,22,22]
+            - generic [ref=f19e146] [box=344,80,453,72]:
+              - heading "数据湖管理" [level=1] [ref=f19e147] [box=344,80,453,36]
+              - generic [ref=f19e148] [box=344,116,453,22]: 统一管理 Doris 数据湖连接与集群运行指标，持续掌握 FE/BE 健康状态。
+          - button "loading 刷新状态" [ref=f19e150] [box=1309,80,107,32]:
+            - img "loading" [ref=f19e152] [box=1324,87,16,16]
+            - generic [ref=f19e155] [box=1347,86,52,20]: 刷新状态
+        - generic [ref=f19e156] [box=280,176,1136,1497]:
+          - complementary [ref=f19e157] [box=281,177,282,1495]:
+            - generic [ref=f19e158] [box=301,205,241,16]: DATA LAKE
+            - generic [ref=f19e159] [box=301,225,241,22]: 数据湖列表
+            - button "Doris 数据湖 ODS 主存储" [ref=f19e160] [cursor=pointer] [box=301,263,241,74]:
+              - generic [ref=f19e166] [box=362,277,150,46]:
+                - strong [ref=f19e167] [box=362,277,150,22]: Doris 数据湖
+                - generic [ref=f19e168] [box=362,301,150,22]: ODS 主存储
+            - generic [ref=f19e170] [box=301,355,241,180]:
+              - generic [ref=f19e171] [box=313,372,217,22]:
+                - generic [ref=f19e172] [box=313,372,48,22]: 连接状态
+                - strong [ref=f19e173] [box=494,372,36,22]: 待配置
+              - generic [ref=f19e174] [box=313,403,217,22]:
+                - generic [ref=f19e175] [box=313,403,48,22]: 查询端口
+                - strong [ref=f19e176] [box=503,403,27,22]: "9030"
+              - generic [ref=f19e177] [box=313,434,217,22]:
+                - generic [ref=f19e178] [box=313,434,48,22]: 在线节点
+                - strong [ref=f19e179] [box=522,434,8,22]: "--"
+              - generic [ref=f19e180] [box=313,465,217,22]:
+                - generic [ref=f19e181] [box=313,465,72,22]: 最高存储占用
+                - strong [ref=f19e182] [box=522,465,8,22]: "--"
+              - generic [ref=f19e183] [box=313,496,217,22]:
+                - generic [ref=f19e184] [box=313,496,48,22]: 配置版本
+                - strong [ref=f19e185] [box=522,496,8,22]: "--"
+            - navigation "数据湖导航" [ref=f19e186] [box=301,557,241,108]:
+              - generic [ref=f19e187] [box=301,557,241,16]: 管理入口
+              - button [ref=f19e188] [cursor=pointer] [box=301,581,241,40]:
+                - img "cloud-server" [ref=f19e189] [box=311,595,13,13]
+                - text: 集群概览
+              - button [ref=f19e194] [cursor=pointer] [box=301,625,241,40]:
+                - img "setting" [ref=f19e195] [box=311,639,13,13]
+                - text: 连接配置
+            - generic [ref=f19e198] [box=301,1586,241,66]:
+              - generic [ref=f19e199] [box=313,1604,217,22]: 最近检查
+              - strong [ref=f19e200] [box=313,1630,217,22]: 尚未检查
+          - main [ref=f19e201] [box=563,177,852,1495]:
+            - generic [ref=f19e202] [box=591,205,796,196]:
+              - generic [ref=f19e209] [box=694,232,318,142]:
+                - generic [ref=f19e210] [box=694,232,318,28]:
+                  - heading "Doris 数据湖" [level=2] [ref=f19e211] [box=694,232,112,28]
+                  - generic [ref=f19e212] [box=816,232,72,28]: 待配置
+                - generic [ref=f19e214] [box=694,263,318,22]: Doris ODS Cluster
+                - generic [ref=f19e215] [box=694,301,318,38]:
+                  - generic [ref=f19e216] [box=694,301,127,38]: FE HTTP 待配置
+                  - generic [ref=f19e218] [box=829,301,117,38]: MySQL 待配置
+                - generic [ref=f19e220] [box=694,352,318,22]:
+                  - img "warning" [ref=f19e221] [box=694,357,13,13]
+                  - generic [ref=f19e224] [box=714,352,298,22]: 完成 Doris 连接配置后，这里会展示真实集群状态。
+              - button "loading 刷新指标" [ref=f19e226] [box=1251,232,107,32]:
+                - img "loading" [ref=f19e228] [box=1266,239,16,16]
+                - generic [ref=f19e231] [box=1289,238,52,20]: 刷新指标
+            - generic [ref=f19e232] [box=591,419,796,75]:
+              - img "setting" [ref=f19e234] [box=619,450,14,14]
+              - generic [ref=f19e237] [box=656,435,614,43]:
+                - strong [ref=f19e238] [box=656,438,140,16]: 还没有配置数据湖连接
+                - paragraph [ref=f19e239] [box=656,459,614,19]: 先配置 Doris FE 节点、查询端口和本地 JDBC 驱动，保存后即可在这里查看集群健康状态。
+              - button "开始配置" [ref=f19e240] [cursor=pointer] [box=1283,441,86,32]
+            - generic [ref=f19e242] [box=591,520,796,374]:
+              - generic [ref=f19e243] [box=591,520,796,46]:
+                - generic [ref=f19e244] [box=591,520,322,46]:
+                  - heading "运行监控" [level=3] [ref=f19e245] [box=591,520,322,24]
+                  - paragraph [ref=f19e246] [box=591,548,322,18]: 同步 Doris Home 可见的集群版本、节点健康和存储使用概况
+                - generic [ref=f19e247] [box=1263,520,124,22]:
+                  - img "info-circle" [ref=f19e248] [box=1263,525,12,12]
+                  - text: 只读采集 · 尚未检查
+              - generic [ref=f19e252] [box=591,580,796,314]:
+                - generic [ref=f19e253] [box=591,580,189,150]:
+                  - generic [ref=f19e254] [box=612,600,147,34]:
+                    - generic [ref=f19e255] [box=612,606,46,22]: FE 节点
+                    - img "cloud-server" [ref=f19e257] [box=735,611,13,13]
+                  - generic [ref=f19e262] [box=612,652,147,32]: "--"
+                  - generic [ref=f19e263] [box=612,692,147,18]: 在线 / 总数
+                - generic [ref=f19e264] [box=794,580,189,150]:
+                  - generic [ref=f19e265] [box=815,600,147,34]:
+                    - generic [ref=f19e266] [box=815,606,47,22]: BE 节点
+                    - img "database" [ref=f19e268] [box=938,611,13,13]
+                  - generic [ref=f19e271] [box=815,652,147,32]: "--"
+                  - generic [ref=f19e272] [box=815,692,147,18]: 在线 / 总数
+                - generic [ref=f19e273] [box=996,580,189,150]:
+                  - generic [ref=f19e274] [box=1017,600,147,34]:
+                    - generic [ref=f19e275] [box=1017,606,39,22]: 数据库
+                    - img "table" [ref=f19e277] [box=1140,611,13,13]
+                  - generic [ref=f19e280] [box=1017,652,147,32]: "--"
+                  - generic [ref=f19e281] [box=1017,692,147,18]: 可发现的数据库数量
+                - generic [ref=f19e282] [box=1199,580,189,150]:
+                  - generic [ref=f19e283] [box=1220,600,147,34]:
+                    - generic [ref=f19e284] [box=1220,606,60,22]: Doris 版本
+                    - img "info-circle" [ref=f19e286] [box=1343,611,13,13]
+                  - generic [ref=f19e290] [box=1220,652,147,32]: "--"
+                  - generic [ref=f19e291] [box=1220,692,147,18]: 当前集群版本
+                - generic [ref=f19e292] [box=591,744,189,150]:
+                  - generic [ref=f19e293] [box=612,764,147,34]:
+                    - generic [ref=f19e294] [box=612,770,52,22]: 存储占用
+                    - img "hdd" [ref=f19e296] [box=735,775,13,13]
+                  - generic [ref=f19e299] [box=612,816,147,32]: "--"
+                  - generic [ref=f19e300] [box=612,856,147,18]: BE 节点最高使用率
+            - generic [ref=f19e301] [box=591,920,796,192]:
+              - generic [ref=f19e302] [box=591,920,796,46]:
+                - generic [ref=f19e303] [box=591,920,426,46]:
+                  - heading "主机硬件" [level=3] [ref=f19e304] [box=591,920,426,24]
+                  - paragraph [ref=f19e305] [box=591,948,426,18]: 将 Doris Home 的 Hardware Info 归纳为可读指标，快速判断 FE 主机资源压力。
+                - generic [ref=f19e306] [box=1269,920,118,22]:
+                  - img "info-circle" [ref=f19e307] [box=1269,925,12,12]
+                  - text: FE 主机 · 尚未检查
+              - generic [ref=f19e311] [box=591,980,796,132]: 正在读取 Doris FE 主机信息
+            - generic [ref=f19e319] [box=591,1138,796,506]:
+              - generic [ref=f19e320] [box=591,1138,796,46]:
+                - generic [ref=f19e321] [box=591,1138,432,46]:
+                  - heading "节点监控" [level=3] [ref=f19e322] [box=591,1138,432,24]
+                  - paragraph [ref=f19e323] [box=591,1166,432,18]: 展示 FE / BE 节点的角色、版本、端口、心跳和存储占用，异常节点会优先标红。
+                - generic [ref=f19e324] [box=1281,1138,106,34]: 等待节点数据
+              - generic [ref=f19e326] [box=591,1198,796,446]:
+                - generic [ref=f19e327] [box=591,1198,796,216]:
+                  - generic [ref=f19e328] [box=592,1199,794,78]:
+                    - generic [ref=f19e329] [box=610,1216,155,46]:
+                      - heading "FE 节点" [level=3] [ref=f19e330] [box=610,1216,155,24]
+                      - paragraph [ref=f19e331] [box=610,1244,155,18]: Frontend · 元数据与查询协调
+                    - generic [ref=f19e332] [box=1299,1224,69,30]: "-- / -- 在线"
+                  - generic [ref=f19e333] [box=592,1277,794,136]: 正在同步节点状态
+                - generic [ref=f19e341] [box=591,1428,796,216]:
+                  - generic [ref=f19e342] [box=592,1429,794,78]:
+                    - generic [ref=f19e343] [box=610,1446,141,46]:
+                      - heading "BE 节点" [level=3] [ref=f19e344] [box=610,1446,141,24]
+                      - paragraph [ref=f19e345] [box=610,1474,141,18]: Backend · 数据存储与计算
+                    - generic [ref=f19e346] [box=1299,1454,69,30]: "-- / -- 在线"
+                  - generic [ref=f19e347] [box=592,1507,794,136]: 正在同步节点状态

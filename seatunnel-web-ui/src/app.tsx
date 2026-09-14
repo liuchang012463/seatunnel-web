@@ -1,32 +1,23 @@
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
-import { SettingDrawer } from '@ant-design/pro-components';
 import { Footer } from '@/components';
+import ThemeConfigProvider from '@/components/ThemeConfigProvider';
 import '@ant-design/v5-patch-for-react-19';
-import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
+import { Link, type RequestConfig, type RunTimeLayoutConfig } from '@umijs/max';
+import { Tooltip } from 'antd';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
 import { Knowledge } from './components/RightContent';
-import ThemeSwitch from './components/RightContent/ThemeSwitch';
-import { prototypeMenuData } from './prototype/menuData';
-import { isPrototypeMode } from './prototype/mode';
-import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
+import { menuData } from './menuData';
 import { errorConfig } from './requestErrorConfig';
-import { applyNavTheme, getStoredNavTheme } from './theme';
+import ThemeSwitch from './components/RightContent/ThemeSwitch';
+import { applyNavTheme, getStoredNavTheme, setNavTheme } from './theme';
 import HttpUtils from './utils/HttpUtils';
 import { applyLayoutVisibility, shouldHideLayout } from './utils/iframeLayout';
-
-const isDev = process.env.NODE_ENV === 'development';
-const prototypeUser = {
-  name: '原型演示用户',
-  avatar: '',
-  userid: 'prototype-sso-user',
-  access: 'admin',
-} as API.CurrentUser;
 
 const getThemeSettings = (navTheme: 'light' | 'realDark') => ({
   ...defaultSettings,
   navTheme,
-  colorPrimary: navTheme === 'light' ? 'hsl(231 48% 48%)' : '#2187A8',
+  colorPrimary: navTheme === 'light' ? '#1B87A8' : '#1B87A8',
 });
 
 /**
@@ -39,9 +30,6 @@ export async function getInitialState(): Promise<{
   fetchUserInfo?: () => Promise<API.CurrentUser | undefined>;
 }> {
   const fetchUserInfo = async () => {
-    if (isPrototypeMode) {
-      return prototypeUser;
-    }
     try {
       const msg = await HttpUtils.get<API.CurrentUser | undefined>('/api/v1/users/currentUser');
 
@@ -52,20 +40,10 @@ export async function getInitialState(): Promise<{
     }
     return undefined;
   };
-  if (isPrototypeMode) {
-    const navTheme = getStoredNavTheme(defaultSettings.navTheme === 'light' ? 'light' : 'realDark');
-    applyNavTheme(navTheme);
-    return {
-      fetchUserInfo,
-      currentUser: prototypeUser,
-      settings: {
-        ...getThemeSettings(navTheme),
-        title: '数据采集引接软件',
-      } as Partial<LayoutSettings>,
-    };
-  }
   const currentUser = await fetchUserInfo();
-  const navTheme = getStoredNavTheme(defaultSettings.navTheme === 'light' ? 'light' : 'realDark');
+  // 浅色 v2（DESIGN.md §6.4）：恢复读取持久化主题，切换入口回到顶栏。
+  const navTheme = getStoredNavTheme();
+  setNavTheme(navTheme);
   applyNavTheme(navTheme);
   return {
     fetchUserInfo,
@@ -77,73 +55,77 @@ export async function getInitialState(): Promise<{
 }
 
 // ProLayout 支持的api https://procomponents.ant.design/components/layout
-export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => {
+export const layout: RunTimeLayoutConfig = ({ initialState }) => {
   const hideLayout = shouldHideLayout();
   applyLayoutVisibility(hideLayout);
   const pathname = typeof window === 'undefined' ? '' : window.location.pathname;
   const showWatermark = !pathname.startsWith('/lake/') && pathname !== '/data-source/master-data';
 
   return {
-    menuDataRender: () => prototypeMenuData,
-    menuProps: {
-      defaultOpenKeys: isPrototypeMode
-        ? ['/menu/exploration', '/menu/ingestion', '/menu/operations', '/menu/lake', '/menu/system']
-        : ['/menu/ingestion'],
+    menuDataRender: () => menuData,
+    menuItemRender: (menuItemProps, defaultDom, menuProps) => {
+      if (menuItemProps.isUrl || menuItemProps.children) {
+        return defaultDom;
+      }
+
+      const itemPath = menuItemProps.path;
+      const menuItem = itemPath && menuProps.location?.pathname !== itemPath ? (
+        <Link to={itemPath.replace('/*', '')} target={menuItemProps.target}>
+          {defaultDom}
+        </Link>
+      ) : (
+        defaultDom
+      );
+
+      if (!menuProps.collapsed || !menuItemProps.collapsedHoverPanel) {
+        return menuItem;
+      }
+
+      return (
+        <Tooltip
+          title={<span className="st-sidebar-leaf-hover-panel__item">{menuItemProps.name}</span>}
+          placement="right"
+          arrow={false}
+          overlayClassName="st-sidebar-leaf-hover-panel"
+        >
+          {menuItem}
+        </Tooltip>
+      );
     },
-    actionsRender: () =>
-      isPrototypeMode
-        ? []
-        : [<Knowledge key="knowledge" />, <ThemeSwitch key="theme-switch" />],
-    waterMarkProps: showWatermark ? { content: initialState?.currentUser?.name } : undefined,
+    actionsRender: () => [<ThemeSwitch key="theme" />, <Knowledge key="knowledge" />],
+    waterMarkProps: showWatermark
+      ? {
+          content: initialState?.currentUser?.name,
+          fontSize: 13,
+          fontColor: 'rgba(143, 173, 186, 0.10)',
+        }
+      : undefined,
     footerRender: () => <Footer />,
-    bgLayoutImgList: isPrototypeMode
-      ? []
-      : [
-          {
-            src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/D2LWSqNny4sAAAAAAAAAAAAAFl94AQBr',
-            left: 85,
-            bottom: 100,
-            height: '303px',
-          },
-          {
-            src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/C2TWRpJpiC0AAAAAAAAAAAAAFl94AQBr',
-            bottom: -68,
-            right: -45,
-            height: '303px',
-          },
-          {
-            src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/F6vSTbj8KpYAAAAAAAAAAAAAFl94AQBr',
-            bottom: 0,
-            left: 0,
-            width: '331px',
-          },
-        ],
+    bgLayoutImgList: [
+      {
+        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/D2LWSqNny4sAAAAAAAAAAAAAFl94AQBr',
+        left: 85,
+        bottom: 100,
+        height: '303px',
+      },
+      {
+        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/C2TWRpJpiC0AAAAAAAAAAAAAFl94AQBr',
+        bottom: -68,
+        right: -45,
+        height: '303px',
+      },
+      {
+        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/F6vSTbj8KpYAAAAAAAAAAAAAFl94AQBr',
+        bottom: 0,
+        left: 0,
+        width: '331px',
+      },
+    ],
     links: [],
     // 自定义 403 页面
     // unAccessible: <div>unAccessible</div>,
     // 增加一个 loading 的状态
-    childrenRender: (children) => {
-      // if (initialState?.loading) return <PageLoading />;
-      const content = isPrototypeMode ? <PrototypeAnnotationBar>{children}</PrototypeAnnotationBar> : children;
-      return (
-        <>
-          {content}
-          {isDev && !isPrototypeMode && (
-            <SettingDrawer
-              disableUrlParams
-              enableDarkTheme
-              settings={initialState?.settings}
-              onSettingChange={(settings) => {
-                setInitialState((preInitialState) => ({
-                  ...preInitialState,
-                  settings,
-                }));
-              }}
-            />
-          )}
-        </>
-      );
-    },
+    childrenRender: (children) => children,
     ...initialState?.settings,
     menuRender: hideLayout ? false : initialState?.settings?.menuRender,
     menuHeaderRender: hideLayout ? false : undefined,
@@ -160,3 +142,11 @@ export const request: RequestConfig = {
   baseURL: 'https://proapi.azurewebsites.net',
   ...errorConfig,
 };
+
+/**
+ * DESIGN.md §6.2 antd 算法正规化：运行时统一走 ThemeConfigProvider 的
+ * theme.algorithm 派生映射令牌（浅色 v2 也在该 Provider 内切换算法）。
+ */
+export const rootContainer = (container: React.ReactNode) => (
+  <ThemeConfigProvider>{container}</ThemeConfigProvider>
+);

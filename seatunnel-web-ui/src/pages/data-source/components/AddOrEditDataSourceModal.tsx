@@ -3,6 +3,7 @@ import { Button, Form, message, Modal } from 'antd';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { dataSourceGroupList } from '../constants';
 import DatabaseIcons from '../icon/DatabaseIcons';
+import { DATA_SOURCE_REGISTRY } from '../dataSourceRegistry';
 import { createDataSource, testDataSourceConnectionWithParams, updateDataSource } from '../service';
 import type {
   DataSourceFormValues,
@@ -226,7 +227,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       centered
       maskClosable={false}
       onCancel={handleClose}
-      destroyOnClose
+      destroyOnHidden
       styles={{
         header: {
           padding: '20px 24px 16px',
@@ -310,7 +311,12 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
                     lineHeight: '20px',
                   }}
                 >
-                  {selectedDbType ? `当前类型：${selectedDbType}` : '请选择数据源类型'}
+                  {selectedDbType
+                    ? `当前类型：${
+                        DATA_SOURCE_REGISTRY.find((item) => item.dbType === selectedDbType)?.label ||
+                        selectedDbType
+                      }`
+                    : '请选择数据源类型'}
                 </div>
               </div>
             </div>

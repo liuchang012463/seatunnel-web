@@ -359,6 +359,11 @@ const DataExplorationOverviewPage: React.FC = () => {
               <div className="overview-coverage-copy">
                 <strong>{coverage.profiledTableCount} <small>/ {coverage.tableCount}</small></strong>
                 <span>数据表已完成探查</span>
+                {coverage.profiledTableCount === 0 ? (
+                  <span className="overview-coverage-hint">
+                    尚无已探查表，可在「探查任务配置」中发起探查
+                  </span>
+                ) : null}
                 <div className="overview-coverage-details">
                   <span>Database <b>{coverage.profiledDatabaseCount} / {coverage.databaseCount}</b></span>
                   <span>已统计行数 <b>{coverage.knownRowCount}</b></span>

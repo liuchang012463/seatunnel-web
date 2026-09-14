@@ -5,11 +5,11 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { Alert, Button, Input, Skeleton, Tag } from "antd";
+import { history } from "@umijs/max";
 import React, { useMemo, useState } from "react";
 import MethodSegmented, { type FilterMethod } from "./MethodSegmented";
 import { HttpMethod, useOpenApiData } from "./openapi-parser";
 import "./index.less";
-import {history} from "umi";
 
 const methodColorMap: Record<HttpMethod, string> = {
   GET: "green",
@@ -21,10 +21,10 @@ const methodColorMap: Record<HttpMethod, string> = {
   HEAD: "default",
 };
 
-const OPEN_API_URL = "http://localhost:9527/v3/api-docs";
+const OPEN_API_URL = "/v3/api-docs";
 
 const ApiManagementPage: React.FC = () => {
-  const { loading, error, title, description, version, controllers, apis } =
+  const { loading, error, title, description, version, controllers, apis, reload } =
     useOpenApiData(OPEN_API_URL);
 
   const [activeController, setActiveController] = useState<string>("all");
@@ -106,6 +106,7 @@ const ApiManagementPage: React.FC = () => {
             className="mb-6 rounded-2xl"
             message="获取 OpenAPI 文档失败"
             description={error}
+            action={<Button type="link" onClick={reload}>重试</Button>}
           />
         ) : null}
 
@@ -148,7 +149,8 @@ const ApiManagementPage: React.FC = () => {
                   const active = item.key === activeController;
 
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={item.key}
                       onClick={() => setActiveController(item.key)}
                       className={[
@@ -197,7 +199,7 @@ const ApiManagementPage: React.FC = () => {
                           {item.count}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>

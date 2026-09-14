@@ -1,6 +1,4 @@
 import request, { ApiResponse } from "@/utils/request";
-import { isPrototypeMode } from "@/prototype/mode";
-import { handlePrototypeRequest } from "@/prototype/mockTransport";
 
 class HttpUtils {
   public static async post<T>(
@@ -8,11 +6,6 @@ class HttpUtils {
     body?: Record<string, any>,
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
-    if (isPrototypeMode) {
-      return handlePrototypeRequest({ url, method: "POST", body }) as Promise<
-        ApiResponse<T>
-      >;
-    }
     return request<ApiResponse<T>>(url, {
       method: "POST",
       data: body,
@@ -28,13 +21,6 @@ class HttpUtils {
     formData: FormData,
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
-    if (isPrototypeMode) {
-      return handlePrototypeRequest({
-        url,
-        method: "POST",
-        body: { formData },
-      }) as Promise<ApiResponse<T>>;
-    }
     return request<ApiResponse<T>>(url, {
       method: "POST",
       data: formData,
@@ -47,11 +33,6 @@ class HttpUtils {
     method: string,
     body?: Record<string, any>
   ): Promise<ApiResponse<T>> {
-    if (isPrototypeMode) {
-      return handlePrototypeRequest({ url, method, body }) as Promise<
-        ApiResponse<T>
-      >;
-    }
     return request<ApiResponse<T>>(url, {
       method,
       data: body,
@@ -65,11 +46,6 @@ class HttpUtils {
     url: string,
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
-    if (isPrototypeMode) {
-      return handlePrototypeRequest({ url, method: "GET" }) as Promise<
-        ApiResponse<T>
-      >;
-    }
     return request<ApiResponse<T>>(url, {
       method: "GET",
       headers: {
@@ -84,11 +60,6 @@ class HttpUtils {
     body?: Record<string, any>,
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
-    if (isPrototypeMode) {
-      return handlePrototypeRequest({ url, method: "PUT", body }) as Promise<
-        ApiResponse<T>
-      >;
-    }
     return request<ApiResponse<T>>(url, {
       method: "PUT",
       data: body,
@@ -104,11 +75,6 @@ class HttpUtils {
     data?: Record<string, any>,
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
-    if (isPrototypeMode) {
-      return handlePrototypeRequest({ url, method: "DELETE", body: data }) as Promise<
-        ApiResponse<T>
-      >;
-    }
     return request<ApiResponse<T>>(url, {
       method: "DELETE",
       data,
@@ -123,9 +89,6 @@ class HttpUtils {
     url: string,
     options?: Record<string, any>
   ): Promise<any> {
-    if (isPrototypeMode) {
-      return new Blob(["prototype export"], { type: "text/plain" });
-    }
     return request(url, {
       method: "GET",
       responseType: "blob",
@@ -141,9 +104,6 @@ class HttpUtils {
     url: string,
     body?: Record<string, any>
   ): Promise<any> {
-    if (isPrototypeMode) {
-      return new Blob(["prototype export"], { type: "text/plain" });
-    }
     return request(url, {
       method: "POST",
       data: body,

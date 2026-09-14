@@ -21,6 +21,8 @@ import {
 } from '@/services/lake';
 import type { LakeApiResponse, LakeCatalog, LakeCatalogScope, LakeLogicalCapability, LakePhysicalDataSource } from '@/services/lake';
 import { CapabilityReason } from '../components/LakeStatus';
+import { useMasterDataNames, type MasterDataNames } from '../useMasterDataNames';
+import { withTimeout } from '@/utils/withTimeout';
 import './index.less';
 
 const adapterOptions = [
@@ -80,9 +82,9 @@ interface CatalogFormValues {
   tableInclude?: string[];
 }
 
-const sourceOption = (source: LakePhysicalDataSource) => ({
+const sourceOption = (source: LakePhysicalDataSource, names?: MasterDataNames) => ({
   value: source.sourceDataSourceId,
-  label: `${source.sourceDataSourceName || `DataSource #${source.sourceDataSourceId}`} · ${source.dbType || '未知类型'} · ${source.unitCode || '未归属'}/${source.systemCode || '未归属'}`,
+  label: `${source.sourceDataSourceName || `DataSource #${source.sourceDataSourceId}`} · ${source.dbType || '未知类型'} · ${names?.unitNameByCode(source.unitCode) || '未归属'}/${names?.systemNameByCode(source.systemCode) || '未归属'}`,
 });
 
 const adapterForDbType = (dbType?: string): string | undefined => {
@@ -97,7 +99,8 @@ const CapabilityCard: React.FC<{
   sources: LakePhysicalDataSource[];
   initialSourceId?: number;
   onSourceChange?: (sourceDataSourceId?: number) => void;
-}> = ({ sources, initialSourceId, onSourceChange }) => {
+  masterNames: MasterDataNames;
+}> = ({ sources, initialSourceId, onSourceChange, masterNames }) => {
   const [form] = Form.useForm<CapabilityFormValues>();
   const [loading, setLoading] = useState(false);
   const [probeLoading, setProbeLoading] = useState(false);
@@ -167,7 +170,7 @@ const CapabilityCard: React.FC<{
           <Select
             showSearch
             allowClear
-            options={sources.map(sourceOption)}
+            options={sources.map((source) => sourceOption(source, masterNames))}
             placeholder="选择已有数据源"
             optionFilterProp="label"
             style={{ width: 360, minWidth: 0 }}
@@ -207,12 +210,13 @@ const CapabilityCard: React.FC<{
   );
 };
 
-const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCreated: () => void; sources: LakePhysicalDataSource[]; initialSourceId?: number }> = ({
+const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCreated: () => void; sources: LakePhysicalDataSource[]; initialSourceId?: number; masterNames: MasterDataNames }> = ({
   open,
   onClose,
   onCreated,
   sources,
   initialSourceId,
+  masterNames,
 }) => {
   const [form] = Form.useForm<CatalogFormValues>();
   const [loading, setLoading] = useState(false);
@@ -223,19 +227,26 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
   const sourceDataSourceId = Form.useWatch('sourceDataSourceId', form);
   const adapter = Form.useWatch('adapter', form);
   const scope = Form.useWatch('scope', form);
-  const selectedSource = sources.find((source) => source.sourceDataSourceId === sourceDataSourceId);
-  const sourceAdapter = adapterForDbType(selectedSource?.dbType);
+  const initialSource = sources.find((source) => source.sourceDataSourceId === initialSourceId);
+  const initialSourceAdapter = adapterForDbType(initialSource?.dbType);
+  const initializedSourceRef = useRef<string>();
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      initializedSourceRef.current = undefined;
+      return;
+    }
+    const sourceKey = `${initialSourceId ?? ''}:${initialSourceAdapter ?? ''}`;
+    if (initializedSourceRef.current === sourceKey) return;
+    initializedSourceRef.current = sourceKey;
     form.setFieldsValue({
       sourceDataSourceId: initialSourceId,
-      adapter: sourceAdapter || 'MYSQL',
+      adapter: initialSourceAdapter || 'MYSQL',
       scope: 'ALL',
     });
     setCapability(undefined);
     setCapabilityError(undefined);
-  }, [form, initialSourceId, open, sourceAdapter]);
+  }, [form, initialSourceAdapter, initialSourceId, open, sources]);
 
   useEffect(() => {
     if (!open || !sourceDataSourceId || !adapter || !scope) return;
@@ -307,7 +318,7 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
       open={open}
       title="创建逻辑挂载"
       width={520}
-      destroyOnClose
+      destroyOnHidden
       onClose={onClose}
       footer={<Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={loading} disabled={capabilityLoading || !canAttempt} onClick={() => form.submit()}>创建并验证</Button></Space>}
     >
@@ -325,7 +336,26 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
       /> : null}
       <Form form={form} layout="vertical" onFinish={submit} initialValues={{ adapter: 'MYSQL', scope: 'ALL', sourceDataSourceId: initialSourceId }}>
         <Form.Item name="sourceDataSourceId" label="数据源" rules={[{ required: true, message: '请选择数据源' }]}>
-          <Select showSearch options={sources.map(sourceOption)} placeholder="选择已有数据源" optionFilterProp="label" />
+          <Select
+            showSearch
+            options={sources.map((source) => sourceOption(source, masterNames))}
+            placeholder="选择已有数据源"
+            optionFilterProp="label"
+            onChange={(value) => {
+              const nextSource = sources.find((source) => source.sourceDataSourceId === value);
+              const nextAdapter = adapterForDbType(nextSource?.dbType);
+              const currentAdapter = form.getFieldValue('adapter');
+              form.setFieldsValue({
+                sourceDataSourceId: value,
+                scope: 'ALL',
+                databaseInclude: [],
+                tableInclude: [],
+                ...(nextAdapter && currentAdapter !== nextAdapter ? { adapter: nextAdapter } : {}),
+              });
+              setCapability(undefined);
+              setCapabilityError(undefined);
+            }}
+          />
         </Form.Item>
         <Form.Item name="targetCatalogName" label="挂载名称" rules={[{ required: true, max: 128, message: '请输入 128 字符以内的名称' }]}>
           <Input maxLength={128} />
@@ -346,6 +376,7 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
 };
 
 const LogicalAccessPage: React.FC = () => {
+  const masterNames = useMasterDataNames();
   const location = useLocation();
   const initialSourceId = useMemo(() => {
     const value = new URLSearchParams(location.search).get('sourceDataSourceId');
@@ -355,6 +386,9 @@ const LogicalAccessPage: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [sources, setSources] = useState<LakePhysicalDataSource[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(true);
+  const [sourcesError, setSourcesError] = useState<string>();
+  const [sourcesReloadKey, setSourcesReloadKey] = useState(0);
+  const [catalogError, setCatalogError] = useState<string>();
   const [selectedSourceId, setSelectedSourceId] = useState<number | undefined>(initialSourceId);
 
   useEffect(() => {
@@ -362,13 +396,33 @@ const LogicalAccessPage: React.FC = () => {
   }, [initialSourceId]);
 
   useEffect(() => {
-    void fetchPhysicalSources({ pageNo: 1, pageSize: 100 }).then((response) => {
-      if (response.code === 0) setSources(normalizeLakePage(response.data).data);
-    }).catch(() => undefined).finally(() => setSourcesLoading(false));
-  }, []);
+    let cancelled = false;
+    setSourcesLoading(true);
+    setSourcesError(undefined);
+    const loadSources = async () => {
+      try {
+        const response = await withTimeout(
+          fetchPhysicalSources({ pageNo: 1, pageSize: 100 }),
+          10000,
+          '业务数据源请求超时，请稍后重试',
+        );
+        if (response.code !== 0) throw new Error(responseMessage(response));
+        if (!cancelled) setSources(normalizeLakePage(response.data).data);
+      } catch (error) {
+        if (!cancelled) {
+          setSources([]);
+          setSourcesError(error instanceof Error ? error.message : '业务数据源加载失败');
+        }
+      } finally {
+        if (!cancelled) setSourcesLoading(false);
+      }
+    };
+    void loadSources();
+    return () => { cancelled = true; };
+  }, [sourcesReloadKey]);
   const sourceLabelById = useMemo(
-    () => new Map(sources.map((source) => [source.sourceDataSourceId, sourceOption(source).label])),
-    [sources],
+    () => new Map(sources.map((source) => [source.sourceDataSourceId, sourceOption(source, masterNames).label])),
+    [masterNames, sources],
   );
   const columns: ProColumns<LakeCatalog>[] = [
     { title: '挂载名称', dataIndex: 'targetCatalogName', ellipsis: true },
@@ -391,7 +445,27 @@ const LogicalAccessPage: React.FC = () => {
   ];
   return (
     <PageContainer title="逻辑入湖" subTitle="选择已有数据源，按步骤完成 Doris 逻辑挂载">
-      <CapabilityCard sources={sources} initialSourceId={initialSourceId} onSourceChange={setSelectedSourceId} />
+      <CapabilityCard sources={sources} initialSourceId={initialSourceId} onSourceChange={setSelectedSourceId} masterNames={masterNames} />
+      {sourcesError ? (
+        <Alert
+          className="lake-table-alert"
+          type="error"
+          showIcon
+          message="业务数据源加载失败"
+          description={sourcesError}
+          action={<Button type="link" onClick={() => setSourcesReloadKey((value) => value + 1)}>重试</Button>}
+        />
+      ) : null}
+      {catalogError ? (
+        <Alert
+          className="lake-table-alert"
+          type="error"
+          showIcon
+          message="逻辑入湖列表加载失败"
+          description={catalogError}
+          action={<Button type="link" onClick={() => actionRef.current?.reloadAndRest?.()}>重试</Button>}
+        />
+      ) : null}
       <ProTable<LakeCatalog>
         className="lake-catalog-table"
         rowKey={(row) => String(row.id || `${row.sourceDataSourceId}-${row.targetCatalogName}`)}
@@ -404,22 +478,32 @@ const LogicalAccessPage: React.FC = () => {
           <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reloadAndRest?.()}>刷新</Button>,
         ]}
         request={async (params) => {
-          const response = await fetchCatalogs({
-            pageNo: Number(params.current || 1),
-            pageSize: Number(params.pageSize || 10),
-            targetCatalogName: params.targetCatalogName,
-            sourceDataSourceId: params.sourceDataSourceId,
-            adapter: params.adapter,
-            resourceStatus: params.resourceStatus,
-            validationStatus: params.validationStatus,
-          });
-          if (response.code !== 0) throw new Error(responseMessage(response));
-          const page = normalizeLakePage(response.data);
-          return { data: page.data, success: true, total: page.total };
+          setCatalogError(undefined);
+          try {
+            const response = await withTimeout(
+              fetchCatalogs({
+                pageNo: Number(params.current || 1),
+                pageSize: Number(params.pageSize || 10),
+                targetCatalogName: params.targetCatalogName,
+                sourceDataSourceId: params.sourceDataSourceId,
+                adapter: params.adapter,
+                resourceStatus: params.resourceStatus,
+                validationStatus: params.validationStatus,
+              }),
+              10000,
+              '逻辑入湖列表请求超时，请稍后重试',
+            );
+            if (response.code !== 0) throw new Error(responseMessage(response));
+            const page = normalizeLakePage(response.data);
+            return { data: page.data, success: true, total: page.total };
+          } catch (error) {
+            setCatalogError(error instanceof Error ? error.message : '逻辑入湖列表加载失败');
+            return { data: [], success: false, total: 0 };
+          }
         }}
         />
       {!sourcesLoading && !sources.length ? <Card className="lake-logical-empty"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可用业务数据源" /><Typography.Text type="secondary">请先在数据源管理中完成连接和 Metadata 探查。</Typography.Text></Card> : null}
-      <CreateCatalogDrawer open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => actionRef.current?.reloadAndRest?.()} sources={sources} initialSourceId={selectedSourceId} />
+      <CreateCatalogDrawer open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => actionRef.current?.reloadAndRest?.()} sources={sources} initialSourceId={selectedSourceId} masterNames={masterNames} />
     </PageContainer>
   );
 };

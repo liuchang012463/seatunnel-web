@@ -85,7 +85,7 @@ const AlarmPage: React.FC = () => {
       easing="ease-out"
       extraScale={1}
     >
-      <div className="alarm-page mx-auto w-full max-w-7xl pb-12">
+      <div className="alarm-page w-full pb-12">
         <motion.div
           initial="hidden"
           animate="visible"

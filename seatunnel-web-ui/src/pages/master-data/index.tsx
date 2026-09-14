@@ -704,7 +704,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
               : '新增业务系统'
         }
         width={560}
-        destroyOnClose
+        destroyOnHidden
         confirmLoading={saving}
         okText="保存"
         cancelText="取消"

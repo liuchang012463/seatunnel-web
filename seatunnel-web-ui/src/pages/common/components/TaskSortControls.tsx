@@ -2,7 +2,7 @@ import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
 import React from 'react';
 
-export type TaskSortField = 'name' | 'createTime';
+export type TaskSortField = 'name' | 'createTime' | 'updateTime';
 export type TaskSortOrder = 'asc' | 'desc';
 
 interface TaskSortControlsProps {
@@ -38,6 +38,16 @@ const TaskSortControls: React.FC<TaskSortControlsProps> = ({ field, order, onCha
         onClick={() => onChange('createTime', nextOrder(field === 'createTime', order, 'desc'))}
       >
         配置时间
+      </Button>
+    </Tooltip>
+    <Tooltip title={`按最近更新时间${field === 'updateTime' ? (order === 'asc' ? '升序' : '降序') : '降序'}排列`}>
+      <Button
+        size="small"
+        type={field === 'updateTime' ? 'primary' : 'default'}
+        icon={<SortIndicator active={field === 'updateTime'} order={order} />}
+        onClick={() => onChange('updateTime', nextOrder(field === 'updateTime', order, 'desc'))}
+      >
+        更新时间
       </Button>
     </Tooltip>
   </div>

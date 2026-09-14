@@ -478,7 +478,7 @@ const RealtimeCheckpointModal: React.FC<RealtimeCheckpointModalProps> = ({
       open={open}
       centered
       maskClosable={false}
-      destroyOnClose
+      destroyOnHidden
       footer={null}
       onCancel={onClose}
       styles={{

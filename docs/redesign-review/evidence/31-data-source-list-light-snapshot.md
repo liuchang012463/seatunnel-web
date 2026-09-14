@@ -1,0 +1,299 @@
+- generic [ref=f30e5] [box=0,0,1440,1000]:
+  - complementary [ref=f30e7] [box=0,56,256,944]:
+    - generic [ref=f30e8] [box=0,56,257,944]:
+      - menu [ref=f30e10] [box=8,56,240,944]:
+        - menuitem [ref=f30e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f30e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f30e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f30e16] [box=28,86,14,14]
+              - generic [ref=f30e19] [box=50,83,49,20]: 引接态势
+        - menuitem "database 数据源管理" [ref=f30e20] [cursor=pointer] [box=12,114,232,34]:
+          - generic [ref=f30e22] [box=28,121,200,20]:
+            - img "database" [ref=f30e24] [box=28,124,14,14]
+            - generic [ref=f30e27] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f30e28] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f30e30] [box=28,161,182,20]:
+            - img "read" [ref=f30e32] [box=28,164,14,14]
+            - generic [ref=f30e35] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f30e36] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f30e38] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f30e39] [box=28,201,200,20]:
+              - img "form" [ref=f30e41] [box=28,204,14,14]
+              - generic [ref=f30e45] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [ref=f30e46] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f30e48] [box=28,241,182,20]:
+            - img "swap" [ref=f30e50] [box=28,244,14,14]
+            - generic [ref=f30e53] [box=50,241,49,20]: 数据引接
+        - menuitem "monitor 运行运维" [ref=f30e54] [cursor=pointer] [box=12,274,232,38]:
+          - generic [ref=f30e56] [box=28,283,182,20]:
+            - img "monitor" [ref=f30e58] [box=28,286,14,14]
+            - generic [ref=f30e61] [box=50,283,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [ref=f30e62] [cursor=pointer] [box=12,316,232,38]:
+          - generic [ref=f30e64] [box=28,325,182,20]:
+            - img "cloud-server" [ref=f30e66] [box=28,328,14,14]
+            - generic [ref=f30e71] [box=50,325,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f30e72] [cursor=pointer] [box=12,358,232,38]:
+          - generic [ref=f30e74] [box=28,367,182,20]:
+            - img "setting" [ref=f30e76] [box=28,370,14,14]
+            - generic [ref=f30e79] [box=50,367,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f30e80] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f30e83] [box=256,0,1184,1000]:
+    - banner [ref=f30e84] [box=256,0,1184,56]
+    - banner [ref=f30e85] [box=0,0,1440,56]:
+      - generic [ref=f30e86] [box=0,0,1440,56]:
+        - generic [ref=f30e88] [cursor=pointer] [box=0,12,110,32]:
+          - img "logo" [ref=f30e89] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f30e90] [box=34,12,76,32]
+        - generic [ref=f30e94] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f30e96] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f30e97] [box=1384,19,16,16]
+          - img "read" [ref=f30e102] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f30e105] [box=256,56,1184,1000]:
+      - generic [ref=f30e109] [box=272,84,1152,896]:
+        - generic [ref=f30e110] [box=272,84,1152,74]:
+          - generic [ref=f30e112] [box=272,84,1012,74]:
+            - generic [ref=f30e113] [box=272,84,520,32]:
+              - img "search" [ref=f30e115] [box=284,93,14,14]
+              - textbox "根据数据源名称搜索" [ref=f30e118] [box=302,89,462,22]
+            - generic [ref=f30e122] [box=814,85,176,30]:
+              - combobox [ref=f30e124] [box=814,85,158,30]
+              - generic [box=814,85,176,30]: 按数据源单位筛选
+            - generic [ref=f30e127] [box=1024,85,176,30]:
+              - combobox [disabled] [ref=f30e129] [box=1024,85,158,30]
+              - generic [box=1024,85,176,30]: 按业务系统筛选
+            - generic [ref=f30e132] [cursor=pointer] [box=284,127,176,30]:
+              - combobox [ref=f30e134] [box=284,127,158,30]
+              - generic [box=284,127,176,30]: 按生命周期状态筛选
+          - button "plus 新建数据源" [ref=f30e135] [cursor=pointer] [box=1300,100,124,42]:
+            - img "plus" [ref=f30e137] [box=1319,114,13,13]
+            - generic [ref=f30e141] [box=1340,111,65,20]: 新建数据源
+        - generic [ref=f30e142] [box=272,170,1152,34]:
+          - generic [ref=f30e143] [box=272,171,961,32]:
+            - button "全 部" [ref=f30e144] [cursor=pointer] [box=272,171,62,32]
+            - button "关系型数据库" [ref=f30e146] [cursor=pointer] [box=341,171,110,32]
+            - button "OLAP 数据库" [ref=f30e148] [cursor=pointer] [box=458,171,109,32]
+            - button "消息队列" [ref=f30e150] [cursor=pointer] [box=574,171,84,32]
+            - button "文件传输" [ref=f30e152] [cursor=pointer] [box=665,171,84,32]
+            - button "API 服务" [ref=f30e154] [cursor=pointer] [box=756,171,83,32]
+            - button "其 他" [ref=f30e156] [cursor=pointer] [box=845,171,62,32]
+          - generic [ref=f30e158] [box=1249,170,175,34]:
+            - generic [ref=f30e159] [box=1249,175,31,24]: "10"
+            - radiogroup "数据源视图" [ref=f30e160] [box=1292,170,132,34]:
+              - generic [ref=f30e161] [box=1294,172,128,30]:
+                - generic [ref=f30e162] [cursor=pointer] [box=1294,172,64,30]:
+                  - radio "appstore 卡片" [box=1294,172,0,0]
+                  - generic [ref=f30e164] [box=1305,172,42,28]:
+                    - img "appstore" [ref=f30e165] [box=1305,180,12,12]
+                    - text: 卡片
+                - generic [ref=f30e168] [cursor=pointer] [box=1358,172,64,30]:
+                  - radio "unordered-list 列表" [checked] [active] [box=1358,172,0,0]
+                  - generic [ref=f30e170] [box=1369,172,42,28]:
+                    - img "unordered-list" [ref=f30e171] [box=1369,180,12,12]
+                    - text: 列表
+        - generic [ref=f30e176] [box=272,220,1152,760]:
+          - table [ref=f30e457] [box=298,246,1180,478]:
+            - rowgroup [ref=f30e467] [box=298,246,1180,38]:
+              - row [ref=f30e468] [box=298,246,1180,38]:
+                - columnheader "数据源" [ref=f30e469] [box=298,246,190,38]
+                - columnheader "类型" [ref=f30e470] [box=488,246,110,38]
+                - columnheader "连接地址" [ref=f30e471] [box=598,246,200,38]
+                - columnheader "归属" [ref=f30e472] [box=799,246,140,38]
+                - columnheader "连通检测" [ref=f30e473] [box=939,246,104,38]
+                - columnheader "是否启用" [ref=f30e474] [box=1043,246,100,38]
+                - columnheader "探查状态" [ref=f30e475] [box=1143,246,104,38]
+                - columnheader "操作" [ref=f30e476] [box=1168,246,230,38]
+            - rowgroup [ref=f30e477] [box=298,284,1180,440]:
+              - row [ref=f30e478] [box=298,284,1180,44]:
+                - cell "192.168.100.95_38000_omext 更新于 2026-09-10 16:52" [ref=f30e479] [box=298,284,190,44]:
+                  - generic [ref=f30e480] [box=305,285,177,42]:
+                    - button "192.168.100.95_38000_omext" [ref=f30e481] [cursor=pointer] [box=305,285,177,22]
+                    - generic [ref=f30e482] [box=305,309,177,18]: 更新于 2026-09-10 16:52
+                - cell [ref=f30e483] [box=488,284,110,44]:
+                  - generic "HTTP" [ref=f30e484] [box=494,294,73,22]:
+                    - img "HTTPie" [ref=f30e485] [box=494,297,16,16]
+                    - text: API 服务
+                - cell "http://192.168.100.95:38000" [ref=f30e487] [box=598,284,200,44]
+                - cell "测试单位 / 测试系统" [ref=f30e488] [box=799,284,140,44]
+                - cell "连通正常" [ref=f30e490] [box=939,284,104,44]
+                - cell "已启用" [ref=f30e494] [box=1043,284,100,44]
+                - cell "未探查" [ref=f30e498] [box=1143,284,104,44]
+                - cell [ref=f30e502] [box=1168,284,230,44]:
+                  - generic [ref=f30e503] [box=1174,287,217,38]:
+                    - button "测试连接" [ref=f30e504] [cursor=pointer] [box=1202,296,56,20]
+                    - button "探查结果" [ref=f30e505] [cursor=pointer] [box=1268,296,56,20]
+                    - button "更多" [ref=f30e506] [cursor=pointer] [box=1334,296,28,20]
+              - row [ref=f30e507] [box=298,328,1180,44]:
+                - cell "192.168.100.95_kafka 更新于 2026-09-10 16:05" [ref=f30e508] [box=298,328,190,44]:
+                  - generic [ref=f30e509] [box=305,329,177,42]:
+                    - button "192.168.100.95_kafka" [ref=f30e510] [cursor=pointer] [box=305,329,177,22]
+                    - generic [ref=f30e511] [box=305,353,177,18]: 更新于 2026-09-10 16:05
+                - cell [ref=f30e512] [box=488,328,110,44]:
+                  - generic "KAFKA" [ref=f30e513] [box=494,338,74,22]:
+                    - img "Apache Kafka" [ref=f30e514] [box=494,341,16,16]
+                    - text: 消息队列
+                - cell "-" [ref=f30e516] [box=598,328,200,44]
+                - cell "测试单位 / 测试系统" [ref=f30e517] [box=799,328,140,44]
+                - cell "连通正常" [ref=f30e519] [box=939,328,104,44]
+                - cell "已启用" [ref=f30e523] [box=1043,328,100,44]
+                - cell "未探查" [ref=f30e527] [box=1143,328,104,44]
+                - cell [ref=f30e531] [box=1168,328,230,44]:
+                  - generic [ref=f30e532] [box=1174,331,217,38]:
+                    - button "测试连接" [ref=f30e533] [cursor=pointer] [box=1202,340,56,20]
+                    - button "探查结果" [ref=f30e534] [cursor=pointer] [box=1268,340,56,20]
+                    - button "更多" [ref=f30e535] [cursor=pointer] [box=1334,340,28,20]
+              - row [ref=f30e536] [box=298,372,1180,44]:
+                - cell "192.168.100.95_9000_minio 更新于 2026-09-10 16:02" [ref=f30e537] [box=298,372,190,44]:
+                  - generic [ref=f30e538] [box=305,373,177,42]:
+                    - button "192.168.100.95_9000_minio" [ref=f30e539] [cursor=pointer] [box=305,373,177,22]
+                    - generic [ref=f30e540] [box=305,397,177,18]: 更新于 2026-09-10 16:02
+                - cell [ref=f30e541] [box=488,372,110,44]:
+                  - generic "MINIO" [ref=f30e542] [box=494,382,74,22]:
+                    - img "MinIO" [ref=f30e543] [box=494,385,16,16]
+                    - text: 文件传输
+                - cell "-" [ref=f30e545] [box=598,372,200,44]
+                - cell "测试单位 / 测试系统" [ref=f30e546] [box=799,372,140,44]
+                - cell "连通正常" [ref=f30e548] [box=939,372,104,44]
+                - cell "已启用" [ref=f30e552] [box=1043,372,100,44]
+                - cell "未探查" [ref=f30e556] [box=1143,372,104,44]
+                - cell [ref=f30e560] [box=1168,372,230,44]:
+                  - generic [ref=f30e561] [box=1174,375,217,38]:
+                    - button "测试连接" [ref=f30e562] [cursor=pointer] [box=1202,384,56,20]
+                    - button "探查结果" [ref=f30e563] [cursor=pointer] [box=1268,384,56,20]
+                    - button "更多" [ref=f30e564] [cursor=pointer] [box=1334,384,28,20]
+              - row [ref=f30e565] [box=298,416,1180,44]:
+                - cell "192.168.100.95_elasticsearch 更新于 2026-09-10 15:36" [ref=f30e566] [box=298,416,190,44]:
+                  - generic [ref=f30e567] [box=305,417,177,42]:
+                    - button "192.168.100.95_elasticsearch" [ref=f30e568] [cursor=pointer] [box=305,417,177,22]
+                    - generic [ref=f30e569] [box=305,441,177,18]: 更新于 2026-09-10 15:36
+                - cell [ref=f30e570] [box=488,416,110,44]:
+                  - generic "ELASTICSEARCH" [ref=f30e571] [box=494,426,99,22]: OLAP 数据库
+                - cell "http://192.168.100.95:9201" [ref=f30e579] [box=598,416,200,44]
+                - cell "测试单位 / 测试系统" [ref=f30e580] [box=799,416,140,44]
+                - cell "连通正常" [ref=f30e582] [box=939,416,104,44]
+                - cell "已启用" [ref=f30e586] [box=1043,416,100,44]
+                - cell "未探查" [ref=f30e590] [box=1143,416,104,44]
+                - cell [ref=f30e594] [box=1168,416,230,44]:
+                  - generic [ref=f30e595] [box=1174,419,217,38]:
+                    - button "测试连接" [ref=f30e596] [cursor=pointer] [box=1202,428,56,20]
+                    - button "探查结果" [ref=f30e597] [cursor=pointer] [box=1268,428,56,20]
+                    - button "更多" [ref=f30e598] [cursor=pointer] [box=1334,428,28,20]
+              - row [ref=f30e599] [box=298,460,1180,44]:
+                - cell "82.157.22.233_8030_doris 更新于 2026-09-10 09:49" [ref=f30e600] [box=298,460,190,44]:
+                  - generic [ref=f30e601] [box=305,461,177,42]:
+                    - button "82.157.22.233_8030_doris" [ref=f30e602] [cursor=pointer] [box=305,461,177,22]
+                    - generic [ref=f30e603] [box=305,485,177,18]: 更新于 2026-09-10 09:49
+                - cell [ref=f30e604] [box=488,460,110,44]:
+                  - generic "DORIS" [ref=f30e605] [box=494,470,99,22]: OLAP 数据库
+                - cell "jdbc:mysql://192.168.100.95:9030/ods?useSSL=false" [ref=f30e610] [box=598,460,200,44]
+                - cell "测试单位 / 测试系统" [ref=f30e611] [box=799,460,140,44]
+                - cell "连通正常" [ref=f30e613] [box=939,460,104,44]
+                - cell "已启用" [ref=f30e617] [box=1043,460,100,44]
+                - cell "已探查" [ref=f30e621] [box=1143,460,104,44]
+                - cell [ref=f30e625] [box=1168,460,230,44]:
+                  - generic [ref=f30e626] [box=1174,463,217,38]:
+                    - button "测试连接" [ref=f30e627] [cursor=pointer] [box=1202,472,56,20]
+                    - button "探查结果" [ref=f30e628] [cursor=pointer] [box=1268,472,56,20]
+                    - button "更多" [ref=f30e629] [cursor=pointer] [box=1334,472,28,20]
+              - row [ref=f30e630] [box=298,504,1180,44]:
+                - cell "192.168.100.95_5236_dameng 更新于 2026-09-09 22:11" [ref=f30e631] [box=298,504,190,44]:
+                  - generic [ref=f30e632] [box=305,505,177,42]:
+                    - button "192.168.100.95_5236_dameng" [ref=f30e633] [cursor=pointer] [box=305,505,177,22]
+                    - generic [ref=f30e634] [box=305,529,177,18]: 更新于 2026-09-09 22:11
+                - cell [ref=f30e635] [box=488,504,110,44]:
+                  - generic "DAMENG" [ref=f30e636] [box=494,514,100,22]: 关系型数据库
+                - cell "jdbc:dm://192.168.100.95:5236/TEST?ssl=false" [ref=f30e643] [box=598,504,200,44]
+                - cell "测试单位 / 测试系统" [ref=f30e644] [box=799,504,140,44]
+                - cell "连通正常" [ref=f30e646] [box=939,504,104,44]
+                - cell "已启用" [ref=f30e650] [box=1043,504,100,44]
+                - cell "已探查" [ref=f30e654] [box=1143,504,104,44]
+                - cell [ref=f30e658] [box=1168,504,230,44]:
+                  - generic [ref=f30e659] [box=1174,507,217,38]:
+                    - button "测试连接" [ref=f30e660] [cursor=pointer] [box=1202,516,56,20]
+                    - button "探查结果" [ref=f30e661] [cursor=pointer] [box=1268,516,56,20]
+                    - button "更多" [ref=f30e662] [cursor=pointer] [box=1334,516,28,20]
+              - row [ref=f30e663] [box=298,548,1180,44]:
+                - cell "192.168.100.91_54321_kingbase 更新于 2026-09-09 20:16" [ref=f30e664] [box=298,548,190,44]:
+                  - generic [ref=f30e665] [box=305,549,177,42]:
+                    - button "192.168.100.91_54321_kingbase" [ref=f30e666] [cursor=pointer] [box=305,549,177,22]
+                    - generic [ref=f30e667] [box=305,573,177,18]: 更新于 2026-09-09 20:16
+                - cell [ref=f30e668] [box=488,548,110,44]:
+                  - generic "KINGBASE" [ref=f30e669] [box=494,558,100,22]: 关系型数据库
+                - cell "jdbc:kingbase8://192.168.100.91:54321/kingbase?ssl=false" [ref=f30e674] [box=598,548,200,44]
+                - cell "测试单位 / 测试系统" [ref=f30e675] [box=799,548,140,44]
+                - cell "连通正常" [ref=f30e677] [box=939,548,104,44]
+                - cell "已启用" [ref=f30e681] [box=1043,548,100,44]
+                - cell "已探查" [ref=f30e685] [box=1143,548,104,44]
+                - cell [ref=f30e689] [box=1168,548,230,44]:
+                  - generic [ref=f30e690] [box=1174,551,217,38]:
+                    - button "测试连接" [ref=f30e691] [cursor=pointer] [box=1202,560,56,20]
+                    - button "探查结果" [ref=f30e692] [cursor=pointer] [box=1268,560,56,20]
+                    - button "更多" [ref=f30e693] [cursor=pointer] [box=1334,560,28,20]
+              - row [ref=f30e694] [box=298,592,1180,44]:
+                - cell "82.157.22.233_1521_ORACLE_APP 更新于 2026-09-09 19:54" [ref=f30e695] [box=298,592,190,44]:
+                  - generic [ref=f30e696] [box=305,593,177,42]:
+                    - button "82.157.22.233_1521_ORACLE_APP" [ref=f30e697] [cursor=pointer] [box=305,593,177,22]
+                    - generic [ref=f30e698] [box=305,617,177,18]: 更新于 2026-09-09 19:54
+                - cell [ref=f30e699] [box=488,592,110,44]:
+                  - generic "ORACLE" [ref=f30e700] [box=494,602,100,22]: 关系型数据库
+                - cell "jdbc:oracle:thin:@//192.168.100.95:1521/FREEPDB1" [ref=f30e703] [box=598,592,200,44]
+                - cell "测试单位 / 测试系统" [ref=f30e704] [box=799,592,140,44]
+                - cell "连通正常" [ref=f30e706] [box=939,592,104,44]
+                - cell "已启用" [ref=f30e710] [box=1043,592,100,44]
+                - cell "已探查" [ref=f30e714] [box=1143,592,104,44]
+                - cell [ref=f30e718] [box=1168,592,230,44]:
+                  - generic [ref=f30e719] [box=1174,595,217,38]:
+                    - button "测试连接" [ref=f30e720] [cursor=pointer] [box=1202,604,56,20]
+                    - button "探查结果" [ref=f30e721] [cursor=pointer] [box=1268,604,56,20]
+                    - button "更多" [ref=f30e722] [cursor=pointer] [box=1334,604,28,20]
+              - row [ref=f30e723] [box=298,636,1180,44]:
+                - cell "82.157.22.233_15432_test 更新于 2026-09-09 17:35" [ref=f30e724] [box=298,636,190,44]:
+                  - generic [ref=f30e725] [box=305,637,177,42]:
+                    - button "82.157.22.233_15432_test" [ref=f30e726] [cursor=pointer] [box=305,637,177,22]
+                    - generic [ref=f30e727] [box=305,661,177,18]: 更新于 2026-09-09 17:35
+                - cell [ref=f30e728] [box=488,636,110,44]:
+                  - generic "POSTGRE_SQL" [ref=f30e729] [box=494,646,100,22]: 关系型数据库
+                - cell "jdbc:postgresql://192.168.100.95:15432/test?ssl=false" [ref=f30e738] [box=598,636,200,44]
+                - cell "测试单位 / 测试系统" [ref=f30e739] [box=799,636,140,44]
+                - cell "连通正常" [ref=f30e741] [box=939,636,104,44]
+                - cell "已启用" [ref=f30e745] [box=1043,636,100,44]
+                - cell "已探查" [ref=f30e749] [box=1143,636,104,44]
+                - cell [ref=f30e753] [box=1168,636,230,44]:
+                  - generic [ref=f30e754] [box=1174,639,217,38]:
+                    - button "测试连接" [ref=f30e755] [cursor=pointer] [box=1202,648,56,20]
+                    - button "探查结果" [ref=f30e756] [cursor=pointer] [box=1268,648,56,20]
+                    - button "更多" [ref=f30e757] [cursor=pointer] [box=1334,648,28,20]
+              - row [ref=f30e758] [box=298,680,1180,44]:
+                - cell "82.157.22.233_33306_seatunnel_web 更新于 2026-09-10 16:38" [ref=f30e759] [box=298,680,190,44]:
+                  - generic [ref=f30e760] [box=305,681,177,42]:
+                    - button "82.157.22.233_33306_seatunnel_web" [ref=f30e761] [cursor=pointer] [box=305,681,177,22]
+                    - generic [ref=f30e762] [box=305,705,177,18]: 更新于 2026-09-10 16:38
+                - cell [ref=f30e763] [box=488,680,110,44]:
+                  - generic "MYSQL" [ref=f30e764] [box=494,690,100,22]: 关系型数据库
+                - cell "jdbc:mysql://192.168.100.95:33306/seatunnel_web?allowPublicKeyRetrieval=true&useSSL=false" [ref=f30e767] [box=598,680,200,44]
+                - cell "测试单位 / 测试系统" [ref=f30e768] [box=799,680,140,44]
+                - cell "连通正常" [ref=f30e770] [box=939,680,104,44]
+                - cell "已启用" [ref=f30e774] [box=1043,680,100,44]
+                - cell "已探查" [ref=f30e778] [box=1143,680,104,44]
+                - cell [ref=f30e782] [box=1168,680,230,44]:
+                  - generic [ref=f30e783] [box=1174,683,217,38]:
+                    - button "测试连接" [ref=f30e784] [cursor=pointer] [box=1202,692,56,20]
+                    - button "探查结果" [ref=f30e785] [cursor=pointer] [box=1268,692,56,20]
+                    - button "更多" [ref=f30e786] [cursor=pointer] [box=1334,692,28,20]
+          - list [ref=f30e430] [box=1151,948,273,32]:
+            - listitem [ref=f30e431] [box=1151,948,44,32]: 共 10 条
+            - listitem "上一页" [ref=f30e432] [box=1203,948,32,32]:
+              - button [disabled] [ref=f30e433] [box=1204,949,30,30]:
+                - img "left" [ref=f30e434] [box=1213,960,12,12]
+            - listitem "1" [ref=f30e437] [cursor=pointer] [box=1243,948,32,32]
+            - listitem "下一页" [ref=f30e439] [box=1283,948,32,32]:
+              - button [disabled] [ref=f30e440] [box=1284,949,30,30]:
+                - img "right" [ref=f30e441] [box=1293,960,12,12]
+            - listitem [ref=f30e444] [box=1331,948,93,32]:
+              - generic "页码" [ref=f30e445] [cursor=pointer] [box=1331,948,93,32]:
+                - generic [ref=f30e447] [box=1343,949,69,30]:
+                  - combobox "页码" [ref=f30e449] [box=1343,949,51,30]
+                  - generic "12 条/页" [ref=f30e450] [box=1343,949,69,30]

@@ -1,0 +1,244 @@
+- generic [ref=f24e1] [box=0,0,1440,1000]:
+  - generic [ref=f24e5] [box=0,0,1440,1000]:
+    - complementary [ref=f24e7] [box=0,56,256,944]:
+      - generic [ref=f24e8] [box=0,56,257,944]:
+        - menu [ref=f24e10] [box=8,56,240,944]:
+          - menuitem [ref=f24e11] [cursor=pointer] [box=12,76,232,34]:
+            - link "bar-chart 引接态势" [ref=f24e13] [box=28,83,200,20]:
+              - /url: /bi
+              - generic [ref=f24e14] [box=28,83,200,20]:
+                - img "bar-chart" [ref=f24e16] [box=28,86,14,14]
+                - generic [ref=f24e19] [box=50,83,49,20]: 引接态势
+          - menuitem "database 数据源管理" [ref=f24e20] [cursor=pointer] [box=12,114,232,34]:
+            - generic [ref=f24e22] [box=28,121,200,20]:
+              - img "database" [ref=f24e24] [box=28,124,14,14]
+              - generic [ref=f24e27] [box=50,121,61,20]: 数据源管理
+          - menuitem "read 数据探查" [ref=f24e28] [cursor=pointer] [box=12,152,232,38]:
+            - generic [ref=f24e30] [box=28,161,182,20]:
+              - img "read" [ref=f24e32] [box=28,164,14,14]
+              - generic [ref=f24e35] [box=50,161,49,20]: 数据探查
+          - menuitem [ref=f24e36] [cursor=pointer] [box=12,194,232,34]:
+            - link "form 数据采报" [ref=f24e38] [box=28,201,200,20]:
+              - /url: /reporting/forms
+              - generic [ref=f24e39] [box=28,201,200,20]:
+                - img "form" [ref=f24e41] [box=28,204,14,14]
+                - generic [ref=f24e45] [box=50,201,49,20]: 数据采报
+          - menuitem "swap 数据引接" [ref=f24e46] [cursor=pointer] [box=12,232,232,38]:
+            - generic [ref=f24e48] [box=28,241,182,20]:
+              - img "swap" [ref=f24e50] [box=28,244,14,14]
+              - generic [ref=f24e53] [box=50,241,49,20]: 数据引接
+          - menuitem "monitor 运行运维" [ref=f24e54] [cursor=pointer] [box=12,274,232,38]:
+            - generic [ref=f24e56] [box=28,283,182,20]:
+              - img "monitor" [ref=f24e58] [box=28,286,14,14]
+              - generic [ref=f24e61] [box=50,283,49,20]: 运行运维
+          - menuitem "cloud-server 入湖管理" [ref=f24e62] [cursor=pointer] [box=12,316,232,38]:
+            - generic [ref=f24e64] [box=28,325,182,20]:
+              - img "cloud-server" [ref=f24e66] [box=28,328,14,14]
+              - generic [ref=f24e71] [box=50,325,49,20]: 入湖管理
+          - menuitem "setting 系统管理" [ref=f24e72] [cursor=pointer] [box=12,358,232,38]:
+            - generic [ref=f24e74] [box=28,367,182,20]:
+              - img "setting" [ref=f24e76] [box=28,370,14,14]
+              - generic [ref=f24e79] [box=50,367,49,20]: 系统管理
+        - generic [box=8,1000,240,0]:
+          - menu [box=8,1000,240,0]
+        - generic [ref=f24e80] [cursor=pointer] [box=245,74,24,24]
+    - generic [ref=f24e83] [box=256,0,1184,1000]:
+      - banner [ref=f24e84] [box=256,0,1184,56]
+      - banner [ref=f24e85] [box=0,0,1440,56]:
+        - generic [ref=f24e86] [box=0,0,1440,56]:
+          - generic [ref=f24e88] [cursor=pointer] [box=0,12,110,32]:
+            - img "logo" [ref=f24e89] [box=0,14,26,28]
+            - heading "Aircas Web" [level=1] [ref=f24e90] [box=34,12,76,32]
+          - generic [ref=f24e94] [box=1374,0,66,54]:
+            - button "切换暗黑模式" [active] [ref=f24e451] [cursor=pointer] [box=1376,11,32,32]:
+              - img "moon" [ref=f24e452] [box=1384,19,16,16]
+            - img "read" [ref=f24e102] [cursor=pointer] [box=1416,18,18,18]
+      - main [ref=f24e105] [box=256,56,1184,1000]:
+        - generic [ref=f24e109] [box=272,84,1152,896]:
+          - generic [ref=f24e110] [box=272,84,1152,74]:
+            - generic [ref=f24e112] [box=272,84,1012,74]:
+              - generic [ref=f24e113] [box=272,84,520,32]:
+                - img "search" [ref=f24e115] [box=284,93,14,14]
+                - textbox "根据数据源名称搜索" [ref=f24e118] [box=302,89,462,22]
+              - generic [ref=f24e122] [box=814,85,176,30]:
+                - combobox [ref=f24e124] [box=814,85,158,30]
+                - generic [box=814,85,176,30]: 按数据源单位筛选
+              - generic [ref=f24e127] [box=1024,85,176,30]:
+                - combobox [disabled] [ref=f24e129] [box=1024,85,158,30]
+                - generic [box=1024,85,176,30]: 按业务系统筛选
+              - generic [ref=f24e132] [cursor=pointer] [box=284,127,176,30]:
+                - combobox [ref=f24e134] [box=284,127,158,30]
+                - generic [box=284,127,176,30]: 按生命周期状态筛选
+            - button "plus 新建数据源" [ref=f24e135] [cursor=pointer] [box=1300,100,124,42]:
+              - img "plus" [ref=f24e137] [box=1319,114,13,13]
+              - generic [ref=f24e141] [box=1340,111,65,20]: 新建数据源
+          - generic [ref=f24e142] [box=272,170,1152,34]:
+            - generic [ref=f24e143] [box=272,171,961,32]:
+              - button "全 部" [ref=f24e144] [cursor=pointer] [box=272,171,62,32]
+              - button "关系型数据库" [ref=f24e146] [cursor=pointer] [box=341,171,110,32]
+              - button "OLAP 数据库" [ref=f24e148] [cursor=pointer] [box=458,171,109,32]
+              - button "消息队列" [ref=f24e150] [cursor=pointer] [box=574,171,84,32]
+              - button "文件传输" [ref=f24e152] [cursor=pointer] [box=665,171,84,32]
+              - button "API 服务" [ref=f24e154] [cursor=pointer] [box=756,171,83,32]
+              - button "其 他" [ref=f24e156] [cursor=pointer] [box=845,171,62,32]
+            - generic [ref=f24e158] [box=1249,170,175,34]:
+              - generic [ref=f24e159] [box=1249,175,31,24]: "10"
+              - radiogroup "数据源视图" [ref=f24e160] [box=1292,170,132,34]:
+                - generic [ref=f24e161] [box=1294,172,128,30]:
+                  - generic [ref=f24e162] [cursor=pointer] [box=1294,172,64,30]:
+                    - radio "appstore 卡片" [checked] [box=1294,172,0,0]
+                    - generic [ref=f24e164] [box=1305,172,42,28]:
+                      - img "appstore" [ref=f24e165] [box=1305,180,12,12]
+                      - text: 卡片
+                  - generic [ref=f24e168] [cursor=pointer] [box=1358,172,64,30]:
+                    - radio "unordered-list 列表" [box=1358,172,0,0]
+                    - generic [ref=f24e170] [box=1369,172,42,28]:
+                      - img "unordered-list" [ref=f24e171] [box=1369,180,12,12]
+                      - text: 列表
+          - generic [ref=f24e176] [box=272,220,1152,760]:
+            - generic [ref=f24e179] [box=273,221,1150,634]:
+              - generic [ref=f24e184] [box=366,250,269,114]:
+                - generic [ref=f24e185] [box=366,250,269,24]:
+                  - generic "192.168.100.95_38000_omext" [ref=f24e186] [box=366,250,194,24]
+                  - button "查看详情 >" [ref=f24e187] [cursor=pointer] [box=572,250,63,22]
+                - generic "http://192.168.100.95:38000" [ref=f24e188] [box=366,282,269,20]
+                - generic [ref=f24e189] [box=366,310,269,24]:
+                  - generic [ref=f24e190] [box=366,311,80,22]: 连通正常
+                  - generic [ref=f24e193] [box=452,311,68,22]: 已启用
+                  - generic [ref=f24e196] [box=526,311,68,22]: 未探查
+                - generic [ref=f24e199] [box=366,344,269,20]:
+                  - button "测试连接" [ref=f24e200] [cursor=pointer] [box=366,344,56,20]
+                  - button "探查结果" [ref=f24e201] [cursor=pointer] [box=442,344,56,20]
+                  - button "更多" [ref=f24e202] [cursor=pointer] [box=518,344,28,20]
+              - generic [ref=f24e207] [box=743,250,269,114]:
+                - generic [ref=f24e208] [box=743,250,269,24]:
+                  - generic "192.168.100.95_kafka" [ref=f24e209] [box=743,250,181,24]
+                  - button "查看详情 >" [ref=f24e210] [cursor=pointer] [box=949,250,63,22]
+                - generic [ref=f24e211] [box=743,282,269,20]: "-"
+                - generic [ref=f24e212] [box=743,310,269,24]:
+                  - generic [ref=f24e213] [box=743,311,80,22]: 连通正常
+                  - generic [ref=f24e216] [box=829,311,68,22]: 已启用
+                  - generic [ref=f24e219] [box=903,311,68,22]: 未探查
+                - generic [ref=f24e222] [box=743,344,269,20]:
+                  - button "测试连接" [ref=f24e223] [cursor=pointer] [box=743,344,56,20]
+                  - button "探查结果" [ref=f24e224] [cursor=pointer] [box=819,344,56,20]
+                  - button "更多" [ref=f24e225] [cursor=pointer] [box=895,344,28,20]
+              - generic [ref=f24e230] [box=1121,250,269,114]:
+                - generic [ref=f24e231] [box=1121,250,269,24]:
+                  - generic "192.168.100.95_9000_minio" [ref=f24e232] [box=1121,250,194,24]
+                  - button "查看详情 >" [ref=f24e233] [cursor=pointer] [box=1327,250,63,22]
+                - generic [ref=f24e234] [box=1121,282,269,20]: "-"
+                - generic [ref=f24e235] [box=1121,310,269,24]:
+                  - generic [ref=f24e236] [box=1121,311,80,22]: 连通正常
+                  - generic [ref=f24e239] [box=1207,311,68,22]: 已启用
+                  - generic [ref=f24e242] [box=1281,311,68,22]: 未探查
+                - generic [ref=f24e245] [box=1121,344,269,20]:
+                  - button "测试连接" [ref=f24e246] [cursor=pointer] [box=1121,344,56,20]
+                  - button "探查结果" [ref=f24e247] [cursor=pointer] [box=1197,344,56,20]
+                  - button "更多" [ref=f24e248] [cursor=pointer] [box=1273,344,28,20]
+              - generic [ref=f24e258] [box=366,404,269,114]:
+                - generic [ref=f24e259] [box=366,404,269,24]:
+                  - generic "192.168.100.95_elasticsearch" [ref=f24e260] [box=366,404,194,24]
+                  - button "查看详情 >" [ref=f24e261] [cursor=pointer] [box=572,404,63,22]
+                - generic "http://192.168.100.95:9201" [ref=f24e262] [box=366,436,269,20]
+                - generic [ref=f24e263] [box=366,464,269,24]:
+                  - generic [ref=f24e264] [box=366,465,80,22]: 连通正常
+                  - generic [ref=f24e267] [box=452,465,68,22]: 已启用
+                  - generic [ref=f24e270] [box=526,465,68,22]: 未探查
+                - generic [ref=f24e273] [box=366,498,269,20]:
+                  - button "测试连接" [ref=f24e274] [cursor=pointer] [box=366,498,56,20]
+                  - button "探查结果" [ref=f24e275] [cursor=pointer] [box=442,498,56,20]
+                  - button "更多" [ref=f24e276] [cursor=pointer] [box=518,498,28,20]
+              - generic [ref=f24e283] [box=743,404,269,114]:
+                - generic [ref=f24e284] [box=743,404,269,24]:
+                  - generic "82.157.22.233_8030_doris" [ref=f24e285] [box=743,404,194,24]
+                  - button "查看详情 >" [ref=f24e286] [cursor=pointer] [box=949,404,63,22]
+                - generic "jdbc:mysql://192.168.100.95:9030/ods?useSSL=false" [ref=f24e287] [box=743,436,269,20]
+                - generic [ref=f24e288] [box=743,464,269,24]:
+                  - generic [ref=f24e289] [box=743,465,80,22]: 连通正常
+                  - generic [ref=f24e292] [box=829,465,68,22]: 已启用
+                  - generic [ref=f24e295] [box=903,465,68,22]: 已探查
+                - generic [ref=f24e298] [box=743,498,269,20]:
+                  - button "测试连接" [ref=f24e299] [cursor=pointer] [box=743,498,56,20]
+                  - button "探查结果" [ref=f24e300] [cursor=pointer] [box=819,498,56,20]
+                  - button "更多" [ref=f24e301] [cursor=pointer] [box=895,498,28,20]
+              - generic [ref=f24e310] [box=1121,404,269,114]:
+                - generic [ref=f24e311] [box=1121,404,269,24]:
+                  - generic "192.168.100.95_5236_dameng" [ref=f24e312] [box=1121,404,194,24]
+                  - button "查看详情 >" [ref=f24e313] [cursor=pointer] [box=1327,404,63,22]
+                - generic "jdbc:dm://192.168.100.95:5236/TEST?ssl=false" [ref=f24e314] [box=1121,436,269,20]
+                - generic [ref=f24e315] [box=1121,464,269,24]:
+                  - generic [ref=f24e316] [box=1121,465,80,22]: 连通正常
+                  - generic [ref=f24e319] [box=1207,465,68,22]: 已启用
+                  - generic [ref=f24e322] [box=1281,465,68,22]: 已探查
+                - generic [ref=f24e325] [box=1121,498,269,20]:
+                  - button "测试连接" [ref=f24e326] [cursor=pointer] [box=1121,498,56,20]
+                  - button "探查结果" [ref=f24e327] [cursor=pointer] [box=1197,498,56,20]
+                  - button "更多" [ref=f24e328] [cursor=pointer] [box=1273,498,28,20]
+              - generic [ref=f24e335] [box=366,558,269,114]:
+                - generic [ref=f24e336] [box=366,558,269,24]:
+                  - generic "192.168.100.91_54321_kingbase" [ref=f24e337] [box=366,558,194,24]
+                  - button "查看详情 >" [ref=f24e338] [cursor=pointer] [box=572,558,63,22]
+                - generic "jdbc:kingbase8://192.168.100.91:54321/kingbase?ssl=false" [ref=f24e339] [box=366,590,269,20]
+                - generic [ref=f24e340] [box=366,618,269,24]:
+                  - generic [ref=f24e341] [box=366,619,80,22]: 连通正常
+                  - generic [ref=f24e344] [box=452,619,68,22]: 已启用
+                  - generic [ref=f24e347] [box=526,619,68,22]: 已探查
+                - generic [ref=f24e350] [box=366,652,269,20]:
+                  - button "测试连接" [ref=f24e351] [cursor=pointer] [box=366,652,56,20]
+                  - button "探查结果" [ref=f24e352] [cursor=pointer] [box=442,652,56,20]
+                  - button "更多" [ref=f24e353] [cursor=pointer] [box=518,652,28,20]
+              - generic [ref=f24e358] [box=743,558,269,114]:
+                - generic [ref=f24e359] [box=743,558,269,24]:
+                  - generic "82.157.22.233_1521_ORACLE_APP" [ref=f24e360] [box=743,558,194,24]
+                  - button "查看详情 >" [ref=f24e361] [cursor=pointer] [box=949,558,63,22]
+                - generic "jdbc:oracle:thin:@//192.168.100.95:1521/FREEPDB1" [ref=f24e362] [box=743,590,269,20]
+                - generic [ref=f24e363] [box=743,618,269,24]:
+                  - generic [ref=f24e364] [box=743,619,80,22]: 连通正常
+                  - generic [ref=f24e367] [box=829,619,68,22]: 已启用
+                  - generic [ref=f24e370] [box=903,619,68,22]: 已探查
+                - generic [ref=f24e373] [box=743,652,269,20]:
+                  - button "测试连接" [ref=f24e374] [cursor=pointer] [box=743,652,56,20]
+                  - button "探查结果" [ref=f24e375] [cursor=pointer] [box=819,652,56,20]
+                  - button "更多" [ref=f24e376] [cursor=pointer] [box=895,652,28,20]
+              - generic [ref=f24e387] [box=1121,558,269,114]:
+                - generic [ref=f24e388] [box=1121,558,269,24]:
+                  - generic "82.157.22.233_15432_test" [ref=f24e389] [box=1121,558,194,24]
+                  - button "查看详情 >" [ref=f24e390] [cursor=pointer] [box=1327,558,63,22]
+                - generic "jdbc:postgresql://192.168.100.95:15432/test?ssl=false" [ref=f24e391] [box=1121,590,269,20]
+                - generic [ref=f24e392] [box=1121,618,269,24]:
+                  - generic [ref=f24e393] [box=1121,619,80,22]: 连通正常
+                  - generic [ref=f24e396] [box=1207,619,68,22]: 已启用
+                  - generic [ref=f24e399] [box=1281,619,68,22]: 已探查
+                - generic [ref=f24e402] [box=1121,652,269,20]:
+                  - button "测试连接" [ref=f24e403] [cursor=pointer] [box=1121,652,56,20]
+                  - button "探查结果" [ref=f24e404] [cursor=pointer] [box=1197,652,56,20]
+                  - button "更多" [ref=f24e405] [cursor=pointer] [box=1273,652,28,20]
+              - generic [ref=f24e410] [box=366,712,269,114]:
+                - generic [ref=f24e411] [box=366,712,269,24]:
+                  - generic "82.157.22.233_33306_seatunnel_web" [ref=f24e412] [box=366,712,194,24]
+                  - button "查看详情 >" [ref=f24e413] [cursor=pointer] [box=572,712,63,22]
+                - generic "jdbc:mysql://192.168.100.95:33306/seatunnel_web?allowPublicKeyRetrieval=true&useSSL=false" [ref=f24e414] [box=366,744,269,20]
+                - generic [ref=f24e415] [box=366,772,269,24]:
+                  - generic [ref=f24e416] [box=366,773,80,22]: 连通正常
+                  - generic [ref=f24e419] [box=452,773,68,22]: 已启用
+                  - generic [ref=f24e422] [box=526,773,68,22]: 已探查
+                - generic [ref=f24e425] [box=366,806,269,20]:
+                  - button "测试连接" [ref=f24e426] [cursor=pointer] [box=366,806,56,20]
+                  - button "探查结果" [ref=f24e427] [cursor=pointer] [box=442,806,56,20]
+                  - button "更多" [ref=f24e428] [cursor=pointer] [box=518,806,28,20]
+            - list [ref=f24e430] [box=1151,948,273,32]:
+              - listitem [ref=f24e431] [box=1151,948,44,32]: 共 10 条
+              - listitem "上一页" [ref=f24e432] [box=1203,948,32,32]:
+                - button [disabled] [ref=f24e433] [box=1204,949,30,30]:
+                  - img "left" [ref=f24e434] [box=1213,960,12,12]
+              - listitem "1" [ref=f24e437] [cursor=pointer] [box=1243,948,32,32]
+              - listitem "下一页" [ref=f24e439] [box=1283,948,32,32]:
+                - button [disabled] [ref=f24e440] [box=1284,949,30,30]:
+                  - img "right" [ref=f24e441] [box=1293,960,12,12]
+              - listitem [ref=f24e444] [box=1331,948,93,32]:
+                - generic "页码" [ref=f24e445] [cursor=pointer] [box=1331,948,93,32]:
+                  - generic [ref=f24e447] [box=1343,949,69,30]:
+                    - combobox "页码" [ref=f24e449] [box=1343,949,51,30]
+                    - generic "12 条/页" [ref=f24e450] [box=1343,949,69,30]
+  - tooltip "切换暗黑模式" [ref=f24e457] [box=1341,55,98,36]

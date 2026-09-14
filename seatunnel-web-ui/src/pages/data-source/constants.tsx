@@ -8,7 +8,7 @@ import {
 
 export const PAGE_DEFAULT_PAGINATION = {
   pageNo: 1,
-  pageSize: 10,
+  pageSize: 12,
   total: 0,
 };
 

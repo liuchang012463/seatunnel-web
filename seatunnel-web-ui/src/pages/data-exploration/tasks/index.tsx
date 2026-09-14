@@ -23,7 +23,7 @@ import {
   message,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TaskListPageHeader from '@/components/TaskListPageHeader';
 import { DATA_SOURCE_STATUS_OPTIONS } from '@/pages/data-source/constants';
 import {
@@ -48,6 +48,7 @@ import type {
   DataSourceMetadataStatus,
   PaginationInfo,
 } from '@/pages/data-source/types';
+import { withTimeout } from '@/utils/withTimeout';
 import {
   DEFAULT_EXPLORATION_TASK_CATEGORY,
   EXPLORATION_TASK_CATEGORIES,
@@ -117,6 +118,7 @@ function schemaPlaceholder() {
 
 const DataExplorationTasksPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [listError, setListError] = useState<string>();
   const [records, setRecords] = useState<DataSourceRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>(DEFAULT_PAGINATION);
   const [keyword, setKeyword] = useState('');
@@ -132,12 +134,14 @@ const DataExplorationTasksPage: React.FC = () => {
   const [schemaFqn, setSchemaFqn] = useState<string>();
   const [exploreOpen, setExploreOpen] = useState(false);
   const [exploreLoading, setExploreLoading] = useState(false);
+  const [exploreError, setExploreError] = useState<string>();
   const [schemaLoading, setSchemaLoading] = useState(false);
   const [runRecordOpen, setRunRecordOpen] = useState(false);
   const [runRecords, setRunRecords] = useState<RunRecord[]>([]);
   const [runRecordName, setRunRecordName] = useState('');
   const [trackingExploration, setTrackingExploration] = useState<ExplorationTracking>();
   const [explorationFeedback, setExplorationFeedback] = useState<ExplorationFeedback>();
+  const exploreRequestRef = useRef(0);
   const [category, setCategory] = useState<ExplorationTaskCategoryKey>(DEFAULT_EXPLORATION_TASK_CATEGORY);
   const selectedCategory = getExplorationTaskCategory(category);
 
@@ -170,6 +174,7 @@ const DataExplorationTasksPage: React.FC = () => {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setListError(undefined);
     const params: DataSourcePageParams = {
       pageNo: pagination.pageNo,
       pageSize: pagination.pageSize,
@@ -180,16 +185,21 @@ const DataExplorationTasksPage: React.FC = () => {
       dbTypes: category === 'ALL' ? undefined : [...selectedCategory.dbTypes],
     };
     try {
-      const response = await fetchDataSourcePage(params);
+      const response = await withTimeout(
+        fetchDataSourcePage(params),
+        10000,
+        '探查任务列表请求超时，请稍后重试',
+      );
       if (response.code !== 0) {
-        message.warning(response.message || '探查任务列表暂不可用');
-        return;
+        throw new Error(response.message || '探查任务列表暂不可用');
       }
       const page = normalizeDataSourcePageResult(response.data);
       setRecords(page.bizData);
       setPagination(page.pagination);
-    } catch (_) {
-      message.warning('探查任务列表暂不可用，请稍后重试');
+    } catch (error: any) {
+      setRecords([]);
+      setPagination((current) => ({ ...current, total: 0 }));
+      setListError(errorMessage(error, '探查任务列表暂不可用，请稍后重试'));
     } finally {
       setLoading(false);
     }
@@ -215,21 +225,27 @@ const DataExplorationTasksPage: React.FC = () => {
     setSchemas([]);
     setSchemaFqn(undefined);
     setSchemaLoading(true);
-    fetchDataSourceMetadataSchemas(exploreRecord.id, databaseFqn)
+    setExploreError(undefined);
+    withTimeout(
+      fetchDataSourceMetadataSchemas(exploreRecord.id, databaseFqn),
+      10000,
+      'Schema 请求超时，请稍后重试',
+    )
       .then((response) => {
         if (disposed) return;
         if (response.code !== 0) {
-          message.error(response.message || '无法读取可探查的 Schema');
+          setExploreError(response.message || '无法读取可探查的 Schema');
           setSchemas([]);
           return;
         }
         const nextSchemas = response.data || [];
         setSchemas(nextSchemas);
         setSchemaFqn(nextSchemas.length === 1 ? nextSchemas[0].value : undefined);
+        setExploreError(undefined);
       })
       .catch((error: any) => {
         if (!disposed) {
-          message.error(errorMessage(error, '无法读取可探查的 Schema'));
+          setExploreError(errorMessage(error, '无法读取可探查的 Schema'));
           setSchemas([]);
         }
       })
@@ -332,30 +348,38 @@ const DataExplorationTasksPage: React.FC = () => {
       });
       return;
     }
+    const requestId = exploreRequestRef.current + 1;
+    exploreRequestRef.current = requestId;
     setExploreRecord(record);
     setExploreOpen(true);
+    setExploreError(undefined);
     setExploreLoading(true);
     setDatabases([]);
     setDatabaseFqn(undefined);
     setSchemas([]);
     setSchemaFqn(undefined);
     try {
-      const response = await fetchDataSourceMetadataDatabases(record.id);
+      const response = await withTimeout(
+        fetchDataSourceMetadataDatabases(record.id),
+        10000,
+        'Database 请求超时，请稍后重试',
+      );
+      if (exploreRequestRef.current !== requestId) return;
       if (response.code !== 0) {
-        message.error(response.message || '无法读取可探查的 Database');
-        setDatabases([]);
-        setDatabaseFqn(undefined);
-        return;
+        throw new Error(response.message || '无法读取可探查的 Database');
       }
       const nextDatabases = response.data || [];
       setDatabases(nextDatabases);
       setDatabaseFqn(nextDatabases.length === 1 ? nextDatabases[0].value : undefined);
+      setExploreError(undefined);
     } catch (error: any) {
-      message.error(errorMessage(error, '无法读取可探查的 Database'));
-      setDatabases([]);
-      setDatabaseFqn(undefined);
+      if (exploreRequestRef.current === requestId) {
+        setExploreError(errorMessage(error, '无法读取可探查的 Database'));
+        setDatabases([]);
+        setDatabaseFqn(undefined);
+      }
     } finally {
-      setExploreLoading(false);
+      if (exploreRequestRef.current === requestId) setExploreLoading(false);
     }
   };
 
@@ -369,9 +393,17 @@ const DataExplorationTasksPage: React.FC = () => {
     const dataSourceId = exploreRecord.id;
     const dataSourceName = exploreRecord.name || '数据源';
     const submittedAt = Date.now();
+    const requestId = exploreRequestRef.current + 1;
+    exploreRequestRef.current = requestId;
     setExploreLoading(true);
+    setExploreError(undefined);
     try {
-      const response = await triggerDataSourceExploration(dataSourceId, databaseFqn, schemaFqn);
+      const response = await withTimeout(
+        triggerDataSourceExploration(dataSourceId, databaseFqn, schemaFqn),
+        10000,
+        '探查任务提交请求超时，请稍后重试',
+      );
+      if (exploreRequestRef.current !== requestId) return;
       if (response.code !== 0) {
         message.error(response.message || '数据源探查暂不可触发');
         return;
@@ -390,10 +422,18 @@ const DataExplorationTasksPage: React.FC = () => {
       setExploreOpen(false);
       void load();
     } catch (error: any) {
-      message.error(errorMessage(error, '数据源探查暂不可触发'));
+      if (exploreRequestRef.current === requestId) {
+        message.error(errorMessage(error, '数据源探查暂不可触发'));
+      }
     } finally {
-      setExploreLoading(false);
+      if (exploreRequestRef.current === requestId) setExploreLoading(false);
     }
+  };
+
+  const closeExplore = () => {
+    exploreRequestRef.current += 1;
+    setExploreOpen(false);
+    setExploreLoading(false);
   };
 
   const showRuns = async (record: DataSourceRecord) => {
@@ -459,7 +499,6 @@ const DataExplorationTasksPage: React.FC = () => {
     {
       title: '数据源',
       key: 'name',
-      fixed: 'left',
       width: 220,
       render: (_, record) => (
         <div className="min-w-0">
@@ -507,8 +546,7 @@ const DataExplorationTasksPage: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      fixed: 'right',
-      width: 340,
+      width: 400,
       render: (_, record) => (
         <Space size="small">
           <Button type="link" icon={<SyncOutlined />} onClick={() => void triggerScan(record)}>
@@ -638,6 +676,17 @@ const DataExplorationTasksPage: React.FC = () => {
         />
       )}
 
+      {listError ? (
+        <Alert
+          className="exploration-task-feedback mt-3"
+          type="error"
+          showIcon
+          message="探查任务列表加载失败"
+          description={listError}
+          action={<Button type="link" onClick={() => void load()}>重试</Button>}
+        />
+      ) : null}
+
       <Card className="exploration-panel exploration-table-panel mt-3" styles={{ body: { padding: 0 } }}>
         <Spin spinning={loading}>
           <Table<DataSourceRecord>
@@ -645,8 +694,8 @@ const DataExplorationTasksPage: React.FC = () => {
             columns={columns}
             dataSource={records}
             pagination={false}
-            scroll={{ x: 1320 }}
-            locale={{ emptyText: '暂无符合条件的数据源' }}
+            scroll={{ x: 'max-content' }}
+            locale={{ emptyText: listError ? '请重试加载列表' : '暂无符合条件的数据源' }}
           />
         </Spin>
         {pagination.total > 0 && (
@@ -674,10 +723,20 @@ const DataExplorationTasksPage: React.FC = () => {
         okText="提交探查"
         cancelText="取消"
         confirmLoading={exploreLoading}
-        onCancel={() => setExploreOpen(false)}
+        onCancel={closeExplore}
         onOk={() => void submitExplore()}
       >
         <div className="py-3">
+          {exploreError ? (
+            <Alert
+              className="mb-3"
+              type="error"
+              showIcon
+              message="探查元数据读取失败"
+              description={exploreError}
+              action={exploreRecord ? <Button type="link" onClick={() => void openExplore(exploreRecord)}>重试</Button> : null}
+            />
+          ) : null}
           <div className="mb-2 text-sm text-[var(--st-color-text-muted)]">
             一次探查一个 Database，可进一步限定 Schema。任务提交后不会在此页面自动调度。
           </div>

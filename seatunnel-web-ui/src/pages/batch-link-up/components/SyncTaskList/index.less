@@ -1,6 +1,10 @@
 .sync-task-list {
   min-height: calc(100vh - 132px);
-  padding-bottom: 88px;
+  padding-bottom: 0;
+
+  &.has-selected-tasks {
+    padding-bottom: 112px;
+  }
 
   .config-manage-page {
     min-width: 0;
@@ -13,16 +17,15 @@
   .task-table-shell {
     min-height: calc(100vh - 430px);
     overflow: hidden;
-    background:
-      linear-gradient(180deg, rgba(0, 59, 79, 0.96), rgba(0, 39, 54, 0.98));
-    border: 1px solid rgba(77, 210, 255, 0.16);
+    background: var(--st-color-bg-panel);
+    border: 1px solid var(--st-color-border);
     border-radius: 12px;
-    box-shadow: 0 14px 32px rgba(0, 18, 26, 0.18);
+    box-shadow: var(--st-panel-shadow);
   }
 
   .task-table {
     .ant-table {
-      color: var(--st-color-text-primary, #fff);
+      color: var(--st-color-text-primary);
       background: transparent;
     }
 
@@ -32,12 +35,12 @@
 
     .ant-table-thead > tr > th {
       padding: 14px 16px;
-      color: #ecfbff;
+      color: var(--st-color-text-secondary);
       font-size: 14px;
       font-weight: 700;
-      background: linear-gradient(180deg, #2c90af, #217c9a) !important;
-      border-bottom: 1px solid rgba(77, 210, 255, 0.18) !important;
-      border-inline-end: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--st-color-bg-elevated);
+      border-bottom: 1px solid var(--st-color-divider);
+      border-inline-end: 1px solid var(--st-color-divider-subtle);
     }
 
     .ant-table-thead > tr > th::before {
@@ -45,19 +48,15 @@
     }
 
     .ant-table-tbody > tr > td {
-      padding: 18px 16px;
-      color: rgba(238, 251, 255, 0.92);
-      background: rgba(0, 52, 70) !important;
-      border-bottom: 1px solid rgba(77, 210, 255, 0.08);
+      padding: 12px 16px;
+      color: var(--st-color-text-primary);
+      background: var(--st-color-bg-panel) !important;
+      border-bottom: 1px solid var(--st-color-divider-subtle);
       vertical-align: middle;
     }
 
-    .ant-table-tbody > tr:nth-child(even) > td {
-      background: rgba(0, 47, 63) !important;
-    }
-
     .ant-table-tbody > tr:hover > td {
-      background: #824c22 !important;
+      background: var(--st-color-hover) !important;
     }
 
     .ant-table-tbody > tr:last-child > td {
@@ -65,31 +64,54 @@
     }
 
     .ant-table-placeholder .ant-table-cell {
-      background: rgba(0, 47, 63, 0.92) !important;
+      background: var(--st-color-bg-elevated) !important;
     }
 
-    .ant-table-cell-fix-right {
-      background: rgba(0, 58, 76, 0.96) !important;
-      box-shadow: -12px 0 22px rgba(0, 20, 28, 0.22);
+    /* 固定列必须不透明，否则下层列头文字透出（审计 audit-08「执: 操作」） */
+    .ant-table-cell-fix-right,
+    .ant-table-cell-fix-right-first,
+    .ant-table-cell-fix-left,
+    .ant-table-cell-fix-left-first,
+    .ant-table-cell-fix-left-last {
+      background: var(--st-color-bg-panel) !important;
+      border-left: 0;
+      box-shadow: none;
+    }
+
+    .ant-table-cell-fix-right-first::after {
+      box-shadow: none;
+    }
+
+    th.ant-table-cell-fix-right,
+    th.ant-table-cell-fix-left {
+      background: #217c9a !important;
+      border-left: 1px solid var(--st-color-divider-subtle);
     }
 
     .ant-table-selection-column {
-      padding-inline: 18px 10px;
+      width: 44px;
+      min-width: 44px;
+      padding-inline: 12px 8px;
+    }
+
+    /* antd 会把 scroll.x 剩余宽度全部塞给勾选列（inline col 宽），此处强制收窄 */
+    colgroup col.ant-table-selection-col {
+      width: 44px !important;
     }
 
     .ant-checkbox-inner {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(77, 210, 255, 0.44);
+      background: var(--st-color-bg-control);
+      border-color: var(--st-color-border);
     }
 
     .ant-checkbox-checked .ant-checkbox-inner {
-      background: var(--st-color-accent, #4dd2ff);
-      border-color: var(--st-color-accent, #4dd2ff);
+      background: var(--st-color-accent);
+      border-color: var(--st-color-accent);
     }
   }
 
   .sync-task-name-cell {
-    min-width: 220px;
+    min-width: 160px;
     line-height: 1.6;
   }
 
@@ -101,24 +123,23 @@
   }
 
   .sync-task-name-cell__title {
-    color: #fff;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--st-color-text-primary);
     font-size: 14px;
-    font-weight: bolder;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .sync-task-name-cell__id {
     margin-top: 2px;
-    color: rgba(220, 238, 245, 0.7);
+    color: var(--st-color-text-muted);
+    font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
     font-size: 12px;
 
-    em {
-      color: rgba(238, 251, 255, 0.94);
-      font-style: normal;
-      font-weight: 600;
-    }
-
     span {
-      color: rgba(220, 238, 245, 0.78);
+      color: var(--st-color-text-muted);
     }
   }
 
@@ -128,7 +149,7 @@
     justify-content: center;
     margin-left: 2px;
     padding: 0;
-    color: rgba(170, 218, 235, 0.82);
+    color: var(--st-color-text-muted);
     line-height: 1;
     background: transparent;
     border: 0;
@@ -141,71 +162,126 @@
   }
 
   .sync-task-plan-cell {
-    color: rgba(238, 251, 255, 0.88);
+    color: var(--st-color-text-secondary);
+  }
 
-    > div {
-      color: rgba(238, 251, 255, 0.88) !important;
+  /* 同步方案紧凑单元格：只到「源类型 → 目标类型」，细节进 Tooltip */
+  .sync-plan-compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    cursor: default;
+  }
+
+  .sync-plan-compact__badge {
+    flex: 0 0 auto;
+    padding: 1px 8px;
+    color: var(--st-color-accent, #4dd2ff);
+    font-size: 12px;
+    line-height: 18px;
+    background: rgba(77, 210, 255, 0.1);
+    border: 1px solid rgba(77, 210, 255, 0.28);
+    border-radius: 2px;
+  }
+
+  .sync-plan-compact__flow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .sync-plan-compact__icon {
+    color: #315efb;
+    font-size: 16px;
+  }
+
+  .sync-plan-compact__type {
+    overflow: hidden;
+    color: var(--st-color-text-primary);
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sync-plan-compact__arrow {
+    flex: 0 0 auto;
+    color: var(--st-color-accent, #4dd2ff);
+    font-size: 11px;
+  }
+
+  .sync-plan-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 360px;
+    word-break: break-all;
+  }
+
+  /* 内联指标组（DESIGN.md §5.3）：label 弱化、数值等宽右读，行高减半 */
+  .task-metric-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    min-width: 140px;
+    line-height: 20px;
+  }
+
+  .task-metric-group__badge {
+    flex: 0 0 auto;
+    padding: 1px 8px;
+    font-size: 12px;
+    line-height: 18px;
+    border-radius: 2px;
+
+    &.is-manual {
+      color: #ffd591;
+      background: rgba(250, 140, 22, 0.16);
+      border: 1px solid rgba(250, 140, 22, 0.34);
     }
 
-    a {
-      color: #6ea8ff !important;
-      font-weight: 600;
+    &.is-auto {
+      color: #b7eb8f;
+      background: rgba(82, 196, 26, 0.14);
+      border: 1px solid rgba(82, 196, 26, 0.32);
     }
   }
 
-  .sync-task-info-list {
-    min-width: 180px;
+  .task-metric {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
 
-    > div {
-      display: flex !important;
-      align-items: center;
-      min-height: 22px;
-      line-height: 22px;
+  .task-metric__label {
+    color: var(--st-color-text-muted);
+    font-size: 12px;
+  }
+
+  .task-metric__value {
+    color: var(--st-color-text-primary);
+    font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+
+    &.is-success {
+      color: var(--st-color-success);
+      font-family: inherit;
     }
 
-    > div + div {
-      margin-top: 4px;
-    }
-
-    > div > span:first-child {
-      width: 10px;
-      margin-right: 6px !important;
-      color: var(--st-color-accent, #4dd2ff) !important;
-      font-size: 15px !important;
-      line-height: 1;
-    }
-
-    > div > span:nth-child(2) {
-      flex: 0 0 66px;
-      margin-right: 8px !important;
-      color: rgba(238, 251, 255, 0.96) !important;
-      font-size: 12px;
-      font-weight: 600 !important;
-    }
-
-    > div > span:last-child {
-      color: rgba(220, 238, 245, 0.72) !important;
-      font-size: 12px;
-    }
-
-    a {
-      display: inline-block;
-      max-width: 200px;
-      overflow: hidden;
-      color: #6ea8ff !important;
-      font-weight: 600;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      vertical-align: bottom;
+    &.is-error {
+      color: var(--st-color-error);
+      font-family: inherit;
     }
   }
 
-  .sync-task-schedule-list {
-    min-width: 260px;
-
-    > div > span:nth-child(2) {
-      flex-basis: 92px;
-    }
+  .task-metric__link {
+    color: var(--st-color-accent);
+    font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
   }
 
   .sync-task-status-cell {
@@ -215,14 +291,62 @@
   .sync-task-time {
     display: inline-block;
     min-width: 132px;
-    color: rgba(238, 251, 255, 0.86);
+    color: var(--st-color-text-secondary);
     font-size: 12px;
     line-height: 20px;
+  }
+
+  /* 行内动作按钮（令牌化，深浅主题自适应） */
+  .sync-action-btn {
+    color: var(--st-color-text-secondary);
+    background: transparent;
+    border-color: var(--st-color-border);
+
+    &:hover {
+      color: var(--st-color-accent);
+      background: var(--st-color-bg-hover);
+      border-color: var(--st-color-accent);
+    }
+
+    &.is-primary {
+      color: #ecfbff;
+      background: #217c9a;
+      border-color: rgba(77, 210, 255, 0.35);
+
+      &:hover {
+        color: #fff;
+        background: #2c90af;
+        border-color: rgba(77, 210, 255, 0.55);
+      }
+    }
+
+    &.is-danger {
+      color: var(--st-color-error);
+      background: transparent;
+      border-color: var(--st-color-error);
+
+      &:hover {
+        color: #fff;
+        background: var(--st-color-error);
+      }
+    }
+
+    &.is-disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+      color: var(--st-color-text-muted);
+      background: transparent;
+      border-color: var(--st-color-border);
+    }
   }
 }
 
 @media (max-width: 768px) {
   .sync-task-list {
-    padding: 0 8px 88px;
+    padding: 0 8px 24px;
+
+    &.has-selected-tasks {
+      padding-bottom: 24px;
+    }
   }
 }

@@ -207,13 +207,15 @@ const ChannelTab: React.FC<ChannelTabProps> = ({ keyword = '' }) => {
           </p>
         </div>
 
-        <Button
-          type="primary"
-          onClick={handleCreate}
-          className="alarm-page__primary-action"
-        >
-          新建通道
-        </Button>
+        {filteredList.length > 0 || keyword ? (
+          <Button
+            type="primary"
+            onClick={handleCreate}
+            className="alarm-page__primary-action"
+          >
+            新建通道
+          </Button>
+        ) : null}
       </div>
 
       <Spin spinning={loading}>

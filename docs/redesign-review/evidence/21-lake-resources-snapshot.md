@@ -1,0 +1,124 @@
+- generic [active] [ref=f20e1] [box=0,0,1440,1000]:
+  - generic [ref=f20e5] [box=0,0,1440,1000]:
+    - complementary [ref=f20e7] [box=0,56,256,944]:
+      - generic [ref=f20e8] [box=0,56,257,944]:
+        - menu [ref=f20e10] [box=8,56,240,944]:
+          - menuitem [ref=f20e11] [cursor=pointer] [box=12,76,232,34]:
+            - link "bar-chart 引接态势" [ref=f20e13] [box=28,83,200,20]:
+              - /url: /bi
+              - generic [ref=f20e14] [box=28,83,200,20]:
+                - img "bar-chart" [ref=f20e16] [box=28,86,14,14]
+                - generic [ref=f20e19] [box=50,83,49,20]: 引接态势
+          - menuitem [ref=f20e20] [cursor=pointer] [box=12,114,232,34]:
+            - link "database 数据源管理" [ref=f20e22] [box=28,121,200,20]:
+              - /url: /data-source
+              - generic [ref=f20e23] [box=28,121,200,20]:
+                - img "database" [ref=f20e25] [box=28,124,14,14]
+                - generic [ref=f20e28] [box=50,121,61,20]: 数据源管理
+          - menuitem "read 数据探查" [ref=f20e29] [cursor=pointer] [box=12,152,232,38]:
+            - generic [ref=f20e31] [box=28,161,182,20]:
+              - img "read" [ref=f20e33] [box=28,164,14,14]
+              - generic [ref=f20e36] [box=50,161,49,20]: 数据探查
+          - menuitem [ref=f20e37] [cursor=pointer] [box=12,194,232,34]:
+            - link "form 数据采报" [ref=f20e39] [box=28,201,200,20]:
+              - /url: /reporting/forms
+              - generic [ref=f20e40] [box=28,201,200,20]:
+                - img "form" [ref=f20e42] [box=28,204,14,14]
+                - generic [ref=f20e46] [box=50,201,49,20]: 数据采报
+          - menuitem "swap 数据引接" [ref=f20e47] [cursor=pointer] [box=12,232,232,38]:
+            - generic [ref=f20e49] [box=28,241,182,20]:
+              - img "swap" [ref=f20e51] [box=28,244,14,14]
+              - generic [ref=f20e54] [box=50,241,49,20]: 数据引接
+          - menuitem "monitor 运行运维" [ref=f20e55] [cursor=pointer] [box=12,274,232,38]:
+            - generic [ref=f20e57] [box=28,283,182,20]:
+              - img "monitor" [ref=f20e59] [box=28,286,14,14]
+              - generic [ref=f20e62] [box=50,283,49,20]: 运行运维
+          - menuitem "cloud-server 入湖管理" [expanded] [ref=f20e63] [cursor=pointer] [box=12,316,232,38]:
+            - generic [ref=f20e65] [box=31,325,179,20]:
+              - img "cloud-server" [ref=f20e67] [box=31,328,14,14]
+              - generic [ref=f20e72] [box=53,325,49,20]: 入湖管理
+          - menu [ref=f20e73] [box=8,358,240,118]:
+            - menuitem "物理入湖管理" [ref=f20e74] [cursor=pointer] [box=22,362,222,34]
+            - menuitem [ref=f20e78] [cursor=pointer] [box=22,400,222,34]:
+              - link "逻辑入湖管理" [ref=f20e80] [box=54,407,174,20]:
+                - /url: /lake/logical-access
+            - menuitem [ref=f20e83] [cursor=pointer] [box=22,438,222,34]:
+              - link "数据生命周期管理" [ref=f20e85] [box=54,445,174,20]:
+                - /url: /lake/lifecycle
+          - menuitem "setting 系统管理" [ref=f20e88] [cursor=pointer] [box=12,480,232,38]:
+            - generic [ref=f20e90] [box=28,489,182,20]:
+              - img "setting" [ref=f20e92] [box=28,492,14,14]
+              - generic [ref=f20e95] [box=50,489,49,20]: 系统管理
+        - generic [box=8,1000,240,0]:
+          - menu [box=8,1000,240,0]
+        - generic [ref=f20e96] [cursor=pointer] [box=245,74,24,24]
+    - generic [ref=f20e99] [box=256,0,1184,1000]:
+      - banner [ref=f20e100] [box=256,0,1184,56]
+      - banner [ref=f20e101] [box=0,0,1440,56]:
+        - generic [ref=f20e102] [box=0,0,1440,56]:
+          - generic [ref=f20e104] [cursor=pointer] [box=0,12,105,32]:
+            - img "logo" [ref=f20e105] [box=0,14,26,28]
+            - heading "Aircas Web" [level=1] [ref=f20e106] [box=34,12,71,32]
+          - generic [ref=f20e110] [box=1374,0,66,54]:
+            - button "切换浅色模式" [ref=f20e112] [cursor=pointer] [box=1376,11,32,32]:
+              - img "sun" [ref=f20e113] [box=1384,19,16,16]
+            - img "read" [ref=f20e118] [cursor=pointer] [box=1416,18,18,18]
+      - main [ref=f20e121] [box=256,56,1184,1000]:
+        - generic [ref=f20e122] [box=256,56,1184,1000]:
+          - generic [ref=f20e124] [box=296,64,1104,52]:
+            - generic [ref=f20e125] [box=296,76,379,36]:
+              - generic "物理入湖" [ref=f20e126] [box=296,76,112,36]
+              - generic "管理业务数据源对应的 Doris ODS 资源" [ref=f20e127] [box=420,83,243,22]
+            - button "reload 刷新列表" [ref=f20e131] [cursor=pointer] [box=1293,76,107,32]:
+              - img "reload" [ref=f20e133] [box=1310,85,13,13]
+              - generic [ref=f20e136] [box=1331,82,52,20]: 刷新列表
+          - generic [ref=f20e140] [box=296,132,1104,416]:
+            - generic [ref=f20e142] [box=297,133,420,128]:
+              - img "database" [ref=f20e144] [box=313,149,22,22]
+              - generic [ref=f20e147] [box=304,180,406,42]:
+                - heading "ODS 资源工作台" [level=5] [ref=f20e148] [box=304,180,406,20]
+                - generic [ref=f20e149] [box=304,200,406,22]: 数据源列表只读加载；创建、重试和对账均由服务端控制面执行。
+              - button "link 查看数据源" [ref=f20e150] [cursor=pointer] [box=304,222,120,32]:
+                - img "link" [ref=f20e152] [box=321,231,13,13]
+                - generic [ref=f20e155] [box=342,228,65,20]: 查看数据源
+            - generic [ref=f20e156] [box=296,278,1104,105]:
+              - generic [ref=f20e159] [box=304,286,344,51]:
+                - generic [ref=f20e160] [box=304,286,344,22]: 已绑定数据源
+                - generic [ref=f20e161] [box=304,312,344,25]: "0"
+              - generic [ref=f20e165] [box=676,286,344,51]:
+                - generic [ref=f20e166] [box=676,286,344,22]: ODS 表总数
+                - generic [ref=f20e167] [box=676,312,344,25]: "0"
+              - generic [ref=f20e171] [box=1048,286,344,51]:
+                - generic [ref=f20e172] [box=1048,286,344,22]: 待处理异常
+                - generic [ref=f20e173] [box=1048,312,344,25]: "0"
+              - generic [ref=f20e175] [box=296,357,1104,26]:
+                - img "check-circle" [ref=f20e176] [box=300,363,14,14]
+                - text: 页面 GET 只读取本地汇总；请使用行内“对账”按钮读取 Doris 实际状态。
+            - generic [ref=f20e182] [box=297,384,1102,163]:
+              - generic [ref=f20e186] [box=1050,400,325,32]:
+                - generic [ref=f20e188] [box=1050,400,206,32]:
+                  - searchbox "搜索数据源名称" [ref=f20e190] [box=1062,405,135,22]
+                  - button [ref=f20e193] [cursor=pointer] [box=1224,400,32,32]:
+                    - img "search" [ref=f20e195] [box=1233,409,13,13]
+                - generic [ref=f20e200] [cursor=pointer] [box=1276,401,87,30]:
+                  - combobox [ref=f20e202] [box=1276,401,69,30]
+                  - generic [box=1276,401,87,30]: 状态
+              - generic [ref=f20e204] [box=321,448,1054,83]:
+                - generic [box=321,448,1054,83]:
+                  - generic [box=321,448,1054,83]:
+                    - generic [box=321,448,1054,83]:
+                      - generic [box=321,448,1054,83]:
+                        - table [box=321,448,1220,83]:
+                          - rowgroup [box=321,448,1220,45]:
+                            - row "单位 / 业务系统 数据源 ODS 库 资源状态 最近对账 操作" [box=321,448,1220,45]:
+                              - columnheader "单位 / 业务系统" [box=321,448,190,45]
+                              - columnheader "数据源" [box=511,448,220,45]
+                              - columnheader "ODS 库" [box=731,448,230,45]
+                              - columnheader "资源状态" [box=961,448,130,45]
+                              - columnheader "最近对账" [box=1091,448,170,45]
+                              - columnheader "操作" [box=1095,448,280,45]
+                          - rowgroup [box=321,493,1220,38]:
+                            - row [box=321,493,1220,38]:
+                              - cell [box=321,493,1220,38]
+  - generic [box=0,1000,1440,0]: "*"
+  - generic [box=0,1000,1440,0]: ": : : : * * * *"

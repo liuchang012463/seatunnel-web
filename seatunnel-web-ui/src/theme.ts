@@ -45,3 +45,18 @@ export const persistNavTheme = (navTheme: NavTheme): void => {
     // Theme state still applies for the current session when storage is unavailable.
   }
 };
+
+/**
+ * 主题初始值中转：getInitialState（rootContainer 之外）写入，
+ * ThemeConfigProvider 挂载时读取一次作为 React 状态初值；
+ * 运行时切换经 ThemeConfigProvider 的 Context，避免分包产生多份模块实例。
+ */
+let currentNavTheme: NavTheme = "realDark";
+
+export const getNavThemeSnapshot = (): NavTheme => currentNavTheme;
+
+export const setNavTheme = (navTheme?: string): NavTheme => {
+  currentNavTheme = normalizeNavTheme(navTheme);
+
+  return currentNavTheme;
+};

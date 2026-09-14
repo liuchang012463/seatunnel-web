@@ -1,10 +1,11 @@
-import { Tag } from 'antd';
+import { Dropdown } from 'antd';
 import React from 'react';
-import { getDataSourceCategory } from '../dataSourceRegistry';
+import StatusChip from '@/components/StatusChip';
 import DatabaseIcons from '../icon/DatabaseIcons';
 import type { DataSourceLifecycleStatus, DataSourceRecord } from '../types';
 import DataSourceLifecycleStatusTag from './DataSourceLifecycleStatus';
 import DataSourceStatus from './DataSourceStatus';
+import { profileStatusConfig } from './profileStatus';
 
 interface DataSourceCardProps {
   record: DataSourceRecord;
@@ -25,13 +26,13 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   onStatusChange,
   onOpenWarehouse,
 }) => {
-  const category = getDataSourceCategory(record.dbType);
   const currentStatus = record.status || 'ENABLED';
   const isRevoked = currentStatus === 'REVOKED';
   const isDeleting = isRevoked || record.metadataSyncStatus === 'DELETING';
   const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
   const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
   const isSystemManaged = Boolean(record.systemManaged);
+  const profileStatus = profileStatusConfig(record.profileStatus);
 
   const handleDetail = () => {
     if (isSystemManaged) {
@@ -52,6 +53,18 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           <div className="datasource-card-title" title={record.name}>
             {record.name || '-'}
           </div>
+          {isSystemManaged ? (
+            <span
+              style={{
+                flexShrink: 0,
+                fontSize: 12,
+                lineHeight: '20px',
+                color: 'var(--st-color-text-muted)',
+              }}
+            >
+              系统内置 · 只读
+            </span>
+          ) : null}
           <button
             type="button"
             className="datasource-card-detail-link"
@@ -69,34 +82,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
         <div className="datasource-card-status">
           <DataSourceStatus status={record.connStatus} />
           <DataSourceLifecycleStatusTag status={record.status} />
-          <Tag
-            color={
-              record.profileStatus === 'SUCCESS'
-                ? 'success'
-                : record.profileStatus === 'FAILED'
-                  ? 'error'
-                  : record.profileStatus === 'RUNNING' || record.profileStatus === 'QUEUED'
-                    ? 'processing'
-                    : 'default'
-            }
-            style={{ marginInlineEnd: 0, borderRadius: 999 }}
-          >
-            {record.profileStatus === 'SUCCESS'
-              ? '已探查'
-              : record.profileStatus === 'FAILED'
-                ? '探查异常'
-                : record.profileStatus === 'RUNNING' || record.profileStatus === 'QUEUED'
-                  ? '探查中'
-                  : '未探查'}
-          </Tag>
-          {isSystemManaged ? (
-            <Tag color="cyan" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
-              系统内置 · 只读
-            </Tag>
-          ) : null}
-          <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
-            {category.label}
-          </Tag>
+          <StatusChip tone={profileStatus.tone} label={profileStatus.text} detail={profileStatus.detail} />
         </div>
 
         <div className="datasource-card-actions">
@@ -126,32 +112,41 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
               数据湖管理
             </button>
           ) : (
-            <>
-              <button
-                type="button"
-                className="datasource-card-action datasource-card-action--warn"
-                disabled={isDeleting}
-                onClick={() => onStatusChange(record, nextStatus)}
-              >
-                {statusActionLabel}
-              </button>
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  {
+                    key: 'lifecycle',
+                    label: statusActionLabel,
+                    disabled: isDeleting,
+                    onClick: () => onStatusChange(record, nextStatus),
+                  },
+                  {
+                    key: 'revoke',
+                    label: '注销',
+                    disabled: isDeleting || isRevoked,
+                    onClick: () => onStatusChange(record, 'REVOKED'),
+                  },
+                  { type: 'divider' },
+                  {
+                    key: 'delete',
+                    label: '删除',
+                    danger: true,
+                    disabled: isDeleting,
+                    onClick: () => onDelete(record),
+                  },
+                ],
+              }}
+            >
               <button
                 type="button"
                 className="datasource-card-action datasource-card-action--neutral"
                 disabled={isDeleting}
-                onClick={() => onStatusChange(record, 'REVOKED')}
               >
-                {isRevoked ? '已注销' : '注销'}
+                更多
               </button>
-              <button
-                type="button"
-                className="datasource-card-action datasource-card-action--danger"
-                disabled={isDeleting}
-                onClick={() => onDelete(record)}
-              >
-                删除
-              </button>
-            </>
+            </Dropdown>
           )}
         </div>
       </div>

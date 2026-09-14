@@ -1,4 +1,4 @@
-import { Divider, message, Modal } from 'antd';
+import { Alert, Button, Divider, Pagination, message, Modal } from 'antd';
 import moment from 'moment';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { history } from 'umi';
@@ -19,17 +19,15 @@ import TaskViewModal from './components/TaskViewModal';
 import BatchCreateJobModal, {
   BatchCreateValues,
 } from '@/pages/common/components/BatchCreateJobModal';
-import TaskSortControls, {
-  type TaskSortField,
-  type TaskSortOrder,
-} from '@/pages/common/components/TaskSortControls';
+import type { TaskSortField, TaskSortOrder } from '@/pages/common/components/TaskSortControls';
 import './index.less';
+import { withTimeout } from '@/utils/withTimeout';
 
 const REALTIME_DETAIL_CACHE_PREFIX = 'stream-link-up-detail';
 const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
 const getDefaultTimeRange = () => [];
-const DEFAULT_SORT_FIELD: TaskSortField = 'createTime';
+const DEFAULT_SORT_FIELD: TaskSortField = 'updateTime';
 const DEFAULT_SORT_ORDER: TaskSortOrder = 'desc';
 
 interface StreamingJobDefinitionVO {
@@ -50,6 +48,8 @@ interface StreamingJobDefinitionVO {
   sinkTable?: string;
   sourceDatasourceId?: string | number;
   sinkDatasourceId?: string | number;
+  sourceDatasourceName?: string;
+  sinkDatasourceName?: string;
   createTime?: string;
   updateTime?: string;
   savepointPath?: string;
@@ -166,7 +166,7 @@ const parseSortFromUrl = () => {
   const order = params.get('sortOrder');
 
   return {
-    field: field === 'name' || field === 'createTime' ? field : DEFAULT_SORT_FIELD,
+    field: field === 'name' || field === 'createTime' || field === 'updateTime' ? field : DEFAULT_SORT_FIELD,
     order: order === 'asc' || order === 'desc' ? order : DEFAULT_SORT_ORDER,
   } as { field: TaskSortField; order: TaskSortOrder };
 };
@@ -240,6 +240,7 @@ const RealtimeSyncPage: React.FC = () => {
   const [logRecord, setLogRecord] = useState<StreamingJobDefinitionVO | null>(null);
 
   const [loading, setLoading] = useState(false);
+  const [listError, setListError] = useState<string>();
   const [creating, setCreating] = useState(false);
   const [batchCreateOpen, setBatchCreateOpen] = useState(false);
   const [batchCreateLoading, setBatchCreateLoading] = useState(false);
@@ -269,17 +270,20 @@ const RealtimeSyncPage: React.FC = () => {
 
     try {
       setLoading(true);
+      setListError(undefined);
 
-      const res = await seatunnelStremJobDefinitionApi.page(queryParams);
+      const res = await withTimeout(
+        seatunnelStremJobDefinitionApi.page(queryParams),
+        10000,
+        '实时任务列表请求超时，请稍后重试',
+      );
 
       if (latestListRequestRef.current !== requestId) {
         return;
       }
 
       if (!isSuccessResponse(res)) {
-        setDataSource([]);
-        setPagination((prev) => ({ ...prev, total: 0 }));
-        return;
+        throw new Error(getErrorMessage(res, '查询实时任务列表失败'));
       }
 
       const { records, total: nextTotal } = getPageRecords(res);
@@ -290,6 +294,7 @@ const RealtimeSyncPage: React.FC = () => {
       if (latestListRequestRef.current === requestId) {
         setDataSource([]);
         setPagination((prev) => ({ ...prev, total: 0 }));
+        setListError(getErrorMessage(error, '查询实时任务列表失败，请稍后重试'));
       }
     } finally {
       if (latestListRequestRef.current === requestId) {
@@ -1009,7 +1014,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   return (
     <>
-      <div className="stream-link-page min-h-screen pb-24 pt-5">
+      <div className={`stream-link-page min-h-screen pt-5${hasSelected ? ' has-selected-tasks' : ''}`}>
         <RealtimeHeader
           sourceType={sourceType}
           sinkType={sinkType}
@@ -1023,22 +1028,27 @@ const RealtimeSyncPage: React.FC = () => {
           initialValues={searchValues}
           onSearch={handleSearch}
           onReset={handleReset}
-          sortControls={
-            <TaskSortControls
-              field={sort.field}
-              order={sort.order}
-              onChange={handleSortChange}
-            />
-          }
         />
         <Divider style={{ margin: "16px 0" }} />
+
+        {listError ? (
+          <Alert
+            type="error"
+            showIcon
+            className="stream-link-list-error"
+            message="实时任务列表加载失败"
+            description={listError}
+            action={<Button type="link" onClick={() => void loadData()}>重试</Button>}
+          />
+        ) : null}
 
         <RealtimeTaskTable
           loading={loading}
           dataSource={dataSource}
           selectedRowKeys={selectedRowKeys}
           onSelectedRowKeysChange={setSelectedRowKeys}
-          pagination={false}
+          sort={sort}
+          onSortChange={handleSortChange}
           onView={handleView}
           onDetail={handleDetail}
           onEdit={handleEdit}
@@ -1053,8 +1063,22 @@ const RealtimeSyncPage: React.FC = () => {
           onCheckpoint={handleCheckpoint}
         />
 
+        {pagination.total > 0 ? (
+          <div className="stream-link-pagination">
+            <Pagination
+              size="small"
+              total={pagination.total}
+              current={pagination.current}
+              pageSize={pagination.pageSize}
+              showSizeChanger
+              pageSizeOptions={[10, 20, 50]}
+              onChange={handlePaginationChange}
+              onShowSizeChange={handlePaginationChange}
+            />
+          </div>
+        ) : null}
+
         <BottomActionBar
-          total={pagination.total}
           selectedCount={selectedRowKeys.length}
           disabled={!hasSelected}
           onCreate={openBatchCreate}
@@ -1079,9 +1103,6 @@ const RealtimeSyncPage: React.FC = () => {
           resumeTooltip={batchActionState.resumeTooltip}
           deleteDisabled={batchActionState.deleteDisabled}
           deleteTooltip={batchActionState.deleteTooltip}
-          current={pagination.current}
-          pageSize={pagination.pageSize}
-          onPageChange={handlePaginationChange}
         />
       </div>
 

@@ -64,6 +64,7 @@ import {
   relationSourceDataSource,
   relationTargetTable,
 } from '../components/LakeStatus';
+import { useMasterDataNames } from '../useMasterDataNames';
 import './detail.less';
 
 const { Paragraph, Text, Title } = Typography;
@@ -96,6 +97,7 @@ const OdsDatabaseDrawer: React.FC<{
   onClose: () => void;
   onSuccess: () => void;
 }> = ({ open, source, onClose, onSuccess }) => {
+  const { unitNameByCode, systemNameByCode } = useMasterDataNames();
   const [form] = Form.useForm<{ customName: string }>();
   const [loading, setLoading] = useState(false);
   const customName = Form.useWatch('customName', form) || '';
@@ -125,7 +127,7 @@ const OdsDatabaseDrawer: React.FC<{
   };
 
   return (
-    <Drawer open={open} width={520} title="创建 ODS Database" destroyOnClose onClose={onClose}>
+    <Drawer open={open} width={520} title="创建 ODS Database" destroyOnHidden onClose={onClose}>
       <Alert
         type="info"
         showIcon
@@ -135,7 +137,7 @@ const OdsDatabaseDrawer: React.FC<{
       />
       <Descriptions bordered size="small" column={1}>
         <Descriptions.Item label="数据源">{source?.sourceDataSourceName || '-'}</Descriptions.Item>
-        <Descriptions.Item label="单位 / 系统">{source?.unitCode || '-'} / {source?.systemCode || '-'}</Descriptions.Item>
+        <Descriptions.Item label="单位 / 系统">{unitNameByCode(source?.unitCode) || '-'} / {systemNameByCode(source?.systemCode) || '-'}</Descriptions.Item>
         <Descriptions.Item label="固定前缀">ods_{unit}_{system}_</Descriptions.Item>
       </Descriptions>
       {missingCode ? <Alert type="warning" showIcon message="单位或系统编码缺失" description="请先在数据源主数据中补齐归属编码。" className="lake-detail-alert" /> : null}
@@ -229,7 +231,7 @@ const BindUnmanagedDrawer: React.FC<{
   };
 
   return (
-    <Drawer open={open} width={520} title="关联未纳管表" destroyOnClose onClose={onClose}>
+    <Drawer open={open} width={520} title="关联未纳管表" destroyOnHidden onClose={onClose}>
       <Alert type="warning" showIcon message="显式关联仍保持 UNMANAGED" description="不会自动生成合同、生命周期或删除权限；这里只记录用户明确选择的源表。" className="lake-detail-alert" />
       <Descriptions bordered size="small" column={1}>
         <Descriptions.Item label="Doris 表">{table?.targetTableName || '-'}</Descriptions.Item>
@@ -255,6 +257,7 @@ const BindUnmanagedDrawer: React.FC<{
 };
 
 const PhysicalResourceDetailPage: React.FC = () => {
+  const { unitNameByCode, systemNameByCode } = useMasterDataNames();
   const { sourceDataSourceId } = useParams<{ sourceDataSourceId?: string }>();
   const sourceId = Number(sourceDataSourceId);
   const [source, setSource] = useState<PhysicalDataSource>();
@@ -391,7 +394,7 @@ const PhysicalResourceDetailPage: React.FC = () => {
           <div className="lake-detail-hero-copy">
             <div className="lake-detail-kicker">业务数据源</div>
             <Title level={3}>{sourceLabel}</Title>
-            <Paragraph type="secondary">{source.unitCode || '未归属单位'} / {source.systemCode || '未归属系统'} · 资源状态由 Doris 实际读取结果决定</Paragraph>
+            <Paragraph type="secondary">{unitNameByCode(source.unitCode) || '未归属单位'} / {systemNameByCode(source.systemCode) || '未归属系统'} · 资源状态由 Doris 实际读取结果决定</Paragraph>
           </div>
           <div className="lake-detail-hero-status"><LakeResourceStatusTag status={database?.resourceStatus} /></div>
         </Card>
@@ -404,8 +407,8 @@ const PhysicalResourceDetailPage: React.FC = () => {
         <LakeErrorAlert code={database?.errorCode} message={database?.errorMessage} action={database?.id ? <Button type="link" onClick={() => void reconcile()}>重新读取 Doris 状态</Button> : undefined} />
         <Card className="lake-detail-card" bordered={false}>
           <Descriptions column={{ xs: 1, sm: 2, md: 3 }} size="small">
-            <Descriptions.Item label="单位">{source.unitCode || '-'}</Descriptions.Item>
-            <Descriptions.Item label="业务系统">{source.systemCode || '-'}</Descriptions.Item>
+            <Descriptions.Item label="单位">{unitNameByCode(source.unitCode) || '-'}</Descriptions.Item>
+            <Descriptions.Item label="业务系统">{systemNameByCode(source.systemCode) || '-'}</Descriptions.Item>
             <Descriptions.Item label="源类型">{source.dbType || '未知'}</Descriptions.Item>
             <Descriptions.Item label="源 DataSource ID">{source.sourceDataSourceId}</Descriptions.Item>
             <Descriptions.Item label="ODS Database">{database?.databaseName || '未创建'}</Descriptions.Item>

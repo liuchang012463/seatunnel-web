@@ -1,0 +1,200 @@
+- generic [ref=f32e5] [box=0,0,1440,1000]:
+  - complementary [ref=f32e7] [box=0,56,256,944]:
+    - generic [ref=f32e8] [box=0,56,257,944]:
+      - menu [ref=f32e10] [box=8,56,240,944]:
+        - menuitem [ref=f32e11] [cursor=pointer] [box=12,76,232,34]:
+          - link "bar-chart 引接态势" [ref=f32e13] [box=28,83,200,20]:
+            - /url: /bi
+            - generic [ref=f32e14] [box=28,83,200,20]:
+              - img "bar-chart" [ref=f32e16] [box=28,86,14,14]
+              - generic [ref=f32e19] [box=50,83,49,20]: 引接态势
+        - menuitem [ref=f32e20] [cursor=pointer] [box=12,114,232,34]:
+          - link "database 数据源管理" [ref=f32e22] [box=28,121,200,20]:
+            - /url: /data-source
+            - generic [ref=f32e23] [box=28,121,200,20]:
+              - img "database" [ref=f32e25] [box=28,124,14,14]
+              - generic [ref=f32e28] [box=50,121,61,20]: 数据源管理
+        - menuitem "read 数据探查" [ref=f32e29] [cursor=pointer] [box=12,152,232,38]:
+          - generic [ref=f32e31] [box=28,161,182,20]:
+            - img "read" [ref=f32e33] [box=28,164,14,14]
+            - generic [ref=f32e36] [box=50,161,49,20]: 数据探查
+        - menuitem [ref=f32e37] [cursor=pointer] [box=12,194,232,34]:
+          - link "form 数据采报" [ref=f32e39] [box=28,201,200,20]:
+            - /url: /reporting/forms
+            - generic [ref=f32e40] [box=28,201,200,20]:
+              - img "form" [ref=f32e42] [box=28,204,14,14]
+              - generic [ref=f32e46] [box=50,201,49,20]: 数据采报
+        - menuitem "swap 数据引接" [expanded] [ref=f32e47] [cursor=pointer] [box=12,232,232,38]:
+          - generic [ref=f32e49] [box=28,241,182,20]:
+            - img "swap" [ref=f32e51] [box=28,244,14,14]
+            - generic [ref=f32e54] [box=50,241,49,20]: 数据引接
+        - menu [ref=f32e55] [box=8,274,240,270]:
+          - menuitem [ref=f32e56] [cursor=pointer] [box=22,278,222,34]:
+            - link "任务概览" [ref=f32e58] [box=54,285,174,20]:
+              - /url: /metrics
+          - menuitem [ref=f32e61] [cursor=pointer] [box=22,316,222,34]:
+            - link "离线引接任务" [ref=f32e63] [box=54,323,174,20]:
+              - /url: /sync/batch-link-up
+          - menuitem [ref=f32e66] [cursor=pointer] [box=22,354,222,34]:
+            - link "实时引接任务" [ref=f32e68] [box=54,361,174,20]:
+              - /url: /sync/stream-link-up
+          - menuitem [ref=f32e71] [cursor=pointer] [box=22,392,222,34]:
+            - link "文件引接任务" [ref=f32e73] [box=54,399,174,20]:
+              - /url: /sync/file-link-up
+          - menuitem [ref=f32e76] [cursor=pointer] [box=22,430,222,34]:
+            - link "云边协同任务" [ref=f32e78] [box=54,437,174,20]:
+              - /url: /sync/cloud-edge-tasks
+          - menuitem [ref=f32e81] [cursor=pointer] [box=22,468,222,34]:
+            - link "边缘接入任务" [ref=f32e83] [box=54,475,174,20]:
+              - /url: /sync/edge-access-tasks
+          - menuitem "数据拓扑" [ref=f32e86] [cursor=pointer] [box=22,506,222,34]
+        - menuitem "monitor 运行运维" [ref=f32e90] [cursor=pointer] [box=12,548,232,38]:
+          - generic [ref=f32e92] [box=28,557,182,20]:
+            - img "monitor" [ref=f32e94] [box=28,560,14,14]
+            - generic [ref=f32e97] [box=50,557,49,20]: 运行运维
+        - menuitem "cloud-server 入湖管理" [ref=f32e98] [cursor=pointer] [box=12,590,232,38]:
+          - generic [ref=f32e100] [box=28,599,182,20]:
+            - img "cloud-server" [ref=f32e102] [box=28,602,14,14]
+            - generic [ref=f32e107] [box=50,599,49,20]: 入湖管理
+        - menuitem "setting 系统管理" [ref=f32e108] [cursor=pointer] [box=12,632,232,38]:
+          - generic [ref=f32e110] [box=28,641,182,20]:
+            - img "setting" [ref=f32e112] [box=28,644,14,14]
+            - generic [ref=f32e115] [box=50,641,49,20]: 系统管理
+      - generic [box=8,1000,240,0]:
+        - menu [box=8,1000,240,0]
+      - generic [ref=f32e116] [cursor=pointer] [box=245,74,24,24]
+  - generic [ref=f32e119] [box=256,0,1184,1000]:
+    - banner [ref=f32e120] [box=256,0,1184,56]
+    - banner [ref=f32e121] [box=0,0,1440,56]:
+      - generic [ref=f32e122] [box=0,0,1440,56]:
+        - generic [ref=f32e124] [cursor=pointer] [box=0,12,110,32]:
+          - img "logo" [ref=f32e125] [box=0,14,26,28]
+          - heading "Aircas Web" [level=1] [ref=f32e126] [box=34,12,76,32]
+        - generic [ref=f32e130] [box=1374,0,66,54]:
+          - button "切换浅色模式" [ref=f32e132] [cursor=pointer] [box=1376,11,32,32]:
+            - img "sun" [ref=f32e133] [box=1384,19,16,16]
+          - img "read" [ref=f32e138] [cursor=pointer] [box=1416,18,18,18]
+    - main [ref=f32e141] [box=256,56,1184,1000]:
+      - generic [ref=f32e142] [box=256,56,1184,1000]:
+        - generic [ref=f32e144] [box=296,64,1104,52]:
+          - generic [ref=f32e145] [box=296,76,352,36]:
+            - generic "数据拓扑" [ref=f32e146] [box=296,76,112,36]
+            - generic "DAG 缩放、节点高亮和影响分析。" [ref=f32e147] [box=420,83,216,22]
+          - generic [ref=f32e149] [box=1173,76,227,32]:
+            - button "高亮影响链路" [ref=f32e151] [cursor=pointer] [box=1173,76,112,32]
+            - button "reload 刷新拓扑" [ref=f32e154] [cursor=pointer] [box=1293,76,107,32]:
+              - img "reload" [ref=f32e156] [box=1310,85,13,13]
+              - generic [ref=f32e159] [box=1331,82,52,20]: 刷新拓扑
+        - generic [ref=f32e163] [box=256,132,1184,718]:
+          - generic [ref=f32e164] [box=288,144,1120,67]:
+            - generic [ref=f32e168] [box=304,152,248,51]:
+              - generic [ref=f32e169] [box=304,152,248,22]: 记录总数
+              - generic [ref=f32e170] [box=304,178,248,25]:
+                - img "database" [ref=f32e172] [box=304,182,16,16]
+                - generic [ref=f32e175] [box=324,178,9,25]: "3"
+            - generic [ref=f32e179] [box=584,152,248,51]:
+              - generic [ref=f32e180] [box=584,152,248,22]: 运行 / 发布
+              - generic [ref=f32e181] [box=584,178,248,25]:
+                - img "play-circle" [ref=f32e183] [box=584,182,16,16]
+                - generic [ref=f32e187] [box=604,178,9,25]: "1"
+            - generic [ref=f32e191] [box=864,152,248,51]:
+              - generic [ref=f32e192] [box=864,152,248,22]: 关联指标
+              - generic [ref=f32e193] [box=864,178,248,25]:
+                - img "file-search" [ref=f32e195] [box=864,182,16,16]
+                - generic [ref=f32e198] [box=884,178,9,25]: "2"
+            - generic [ref=f32e202] [box=1144,152,248,51]:
+              - generic [ref=f32e203] [box=1144,152,248,22]: 技术模块
+              - generic [ref=f32e204] [box=1144,178,248,25]:
+                - img "api" [ref=f32e206] [box=1144,182,16,16]
+                - generic [ref=f32e209] [box=1164,178,9,25]: "1"
+          - generic [ref=f32e210] [box=296,227,1104,331]:
+            - generic [ref=f32e211] [box=297,228,1102,56]: Aircas DAG + OpenMetadata 血缘
+            - generic [ref=f32e216] [box=304,290,1088,260]:
+              - generic [ref=f32e218] [box=304,290,1088,260]:
+                - generic [box=293,267,1656,396]:
+                  - img [box=293,267,1656,396]:
+                    - generic [box=468,371,761,98]:
+                      - button "Edge from source to job" [ref=f32e219] [cursor=pointer] [box=468,371,365,98]
+                      - button "Edge from job to lake" [ref=f32e222] [cursor=pointer] [box=833,371,396,98]
+                  - generic [box=293,267,1656,396]:
+                    - button "装备主数据库" [ref=f32e225] [box=353,389,228,62]
+                    - button "Aircas 离线任务" [ref=f32e228] [box=719,389,228,62]
+                    - button "基础数据湖" [ref=f32e231] [box=1114,389,228,62]
+              - img "React Flow mini map" [ref=f32e237] [box=1177,385,200,150]
+              - generic [ref=f32e241] [box=319,427,26,108]:
+                - button "zoom in" [ref=f32e242] [cursor=pointer] [box=319,427,26,27]
+                - button "zoom out" [ref=f32e245] [cursor=pointer] [box=319,454,26,27]
+                - button "fit view" [ref=f32e248] [cursor=pointer] [box=319,481,26,27]
+                - button "toggle interactivity" [ref=f32e251] [cursor=pointer] [box=319,508,26,27]
+              - link "React Flow attribution" [ref=f32e255] [cursor=pointer] [box=1339,534,50,11]:
+                - /url: https://reactflow.dev
+                - text: React Flow
+          - generic [ref=f32e257] [box=296,574,1104,244]:
+            - generic [ref=f32e259] [box=321,587,1054,32]:
+              - generic [ref=f32e260] [box=321,591,672,24]: 可交互业务清单
+              - generic [ref=f32e262] [box=993,587,382,32]:
+                - generic [ref=f32e264] [box=993,587,234,32]:
+                  - img "search" [ref=f32e266] [box=1005,596,14,14]
+                  - textbox "按名称筛选" [ref=f32e269] [box=1023,592,176,22]
+                - generic [ref=f32e274] [cursor=pointer] [box=1247,588,116,30]:
+                  - combobox [ref=f32e276] [box=1247,588,98,30]
+                  - generic [box=1247,588,116,30]: 状态筛选
+            - table [ref=f32e284] [box=304,637,1088,173]:
+              - rowgroup [ref=f32e293] [box=304,637,1088,38]:
+                - row [ref=f32e294] [box=304,637,1088,38]:
+                  - columnheader "名称" [ref=f32e295] [box=304,637,201,38]
+                  - columnheader "类型 / 协议" [ref=f32e296] [box=505,637,150,38]
+                  - columnheader "状态" [ref=f32e297] [box=655,637,110,38]
+                  - columnheader "进度" [ref=f32e298] [box=765,637,150,38]
+                  - columnheader "责任人" [ref=f32e299] [box=915,637,120,38]
+                  - columnheader "更新时间" [ref=f32e300] [box=1035,637,170,38]
+                  - columnheader "操作" [ref=f32e301] [box=1205,637,187,38]
+              - rowgroup [ref=f32e302] [box=304,675,1088,135]:
+                - row [ref=f32e303] [box=304,675,1088,45]:
+                  - cell [ref=f32e304] [box=304,675,201,45]:
+                    - button "装备主数据拓扑" [ref=f32e305] [cursor=pointer] [box=310,681,125,32]
+                  - cell "数据拓扑" [ref=f32e307] [box=505,675,150,45]
+                  - cell "运行中" [ref=f32e308] [box=655,675,110,45]
+                  - cell [ref=f32e310] [box=765,675,150,45]:
+                    - progressbar [ref=f32e311] [box=771,688,138,19]:
+                      - generic "86%" [ref=f32e315] [box=885,692,24,12]
+                  - cell "张工" [ref=f32e316] [box=915,675,120,45]
+                  - cell "2026-07-27 10:20" [ref=f32e317] [box=1035,675,170,45]
+                  - cell [ref=f32e318] [box=1205,675,187,45]:
+                    - generic [ref=f32e319] [box=1211,681,175,32]:
+                      - button "eye 详情" [ref=f32e321] [cursor=pointer] [box=1211,681,81,32]:
+                        - img "eye" [ref=f32e323] [box=1228,690,13,13]
+                        - generic [ref=f32e326] [box=1249,687,26,20]: 详情
+                      - button "状态切换" [ref=f32e328] [cursor=pointer] [box=1300,681,86,32]
+                - row [ref=f32e330] [box=304,720,1088,45]:
+                  - cell [ref=f32e331] [box=304,720,201,45]:
+                    - button "遥测实时链路" [ref=f32e332] [cursor=pointer] [box=310,726,112,32]
+                  - cell "数据拓扑" [ref=f32e334] [box=505,720,150,45]
+                  - cell "待发布" [ref=f32e335] [box=655,720,110,45]
+                  - cell [ref=f32e337] [box=765,720,150,45]:
+                    - progressbar [ref=f32e338] [box=771,733,138,19]:
+                      - generic "45%" [ref=f32e342] [box=885,737,24,12]
+                  - cell "李工" [ref=f32e343] [box=915,720,120,45]
+                  - cell "2026-07-26 11:21" [ref=f32e344] [box=1035,720,170,45]
+                  - cell [ref=f32e345] [box=1205,720,187,45]:
+                    - generic [ref=f32e346] [box=1211,726,175,32]:
+                      - button "eye 详情" [ref=f32e348] [cursor=pointer] [box=1211,726,81,32]:
+                        - img "eye" [ref=f32e350] [box=1228,735,13,13]
+                        - generic [ref=f32e353] [box=1249,732,26,20]: 详情
+                      - button "状态切换" [ref=f32e355] [cursor=pointer] [box=1300,726,86,32]
+                - row [ref=f32e357] [box=304,765,1088,45]:
+                  - cell [ref=f32e358] [box=304,765,201,45]:
+                    - button "采报入湖链路" [ref=f32e359] [cursor=pointer] [box=310,771,112,32]
+                  - cell "数据拓扑" [ref=f32e361] [box=505,765,150,45]
+                  - cell "已完成" [ref=f32e362] [box=655,765,110,45]
+                  - cell [ref=f32e364] [box=765,765,150,45]:
+                    - progressbar [ref=f32e365] [box=771,778,138,19]:
+                      - img "check-circle" [ref=f32e370] [box=897,782,12,12]
+                  - cell "王工" [ref=f32e373] [box=915,765,120,45]
+                  - cell "2026-07-25 12:22" [ref=f32e374] [box=1035,765,170,45]
+                  - cell [ref=f32e375] [box=1205,765,187,45]:
+                    - generic [ref=f32e376] [box=1211,771,175,32]:
+                      - button "eye 详情" [ref=f32e378] [cursor=pointer] [box=1211,771,81,32]:
+                        - img "eye" [ref=f32e380] [box=1228,780,13,13]
+                        - generic [ref=f32e383] [box=1249,777,26,20]: 详情
+                      - button "状态切换" [ref=f32e385] [cursor=pointer] [box=1300,771,86,32]

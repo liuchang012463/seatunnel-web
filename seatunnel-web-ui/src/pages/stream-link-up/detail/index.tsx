@@ -1,5 +1,5 @@
 import { openPrettyNotification } from "@/utils/prettyNotification";
-import { Form } from "antd";
+import { Button, Form } from "antd";
 import BaseInfoSection from "./components/BaseInfoSection";
 import BottomActionBar from "./components/BottomActionBar";
 import ClientLinkSection from "./components/ClientLinkSection";
@@ -45,7 +45,28 @@ const DetailPage = () => {
   } = useDetailPage();
 
   if (!params) {
-    return <div className="p-6 text-[color:var(--st-color-text-secondary)]">暂无数据</div>;
+    // 深链兜底态：任务数据经列表页缓存进入，缺失时给页壳 + 返回 + 引导（审计 G10）。
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 12,
+          padding: "96px 24px",
+        }}
+      >
+        <strong style={{ fontSize: 16, color: "var(--st-color-text-primary)" }}>
+          未找到任务数据
+        </strong>
+        <span style={{ fontSize: 13, color: "var(--st-color-text-muted)" }}>
+          任务数据在从列表进入时缓存；请回到实时引接任务列表，从任务行「更多 → 查看详情」重新进入。
+        </span>
+        <Button type="primary" onClick={goBack}>
+          返回任务列表
+        </Button>
+      </div>
+    );
   }
 
   const isBaseStep = activeStep === "base";
