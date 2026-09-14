@@ -1081,19 +1081,19 @@ html[data-st-theme="dark"] [style*="color:#182230"] {
 }
 
 /* Tailwind utility variants on the workflow tables can otherwise outrank the
- * shared Ant table theme. Keep fixed headers readable in dark mode. */
+ * shared Ant table theme. Keep dark headers readable without a saturated band. */
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th,
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > td {
-  color: var(--st-color-text-primary) !important;
-  background: #2187a8 !important;
+  color: var(--st-color-text-secondary) !important;
+  background: var(--st-color-bg-elevated) !important;
   border-color: var(--st-color-divider) !important;
 }
 
 /* 固定列背景必须不透明：sticky 单元格若用半透明底，下层列头/单元格文字会透出
- * （审计 audit-08「执: 操作」渲染异常）。表头固定列与饱和头带同色。 */
+ * （审计 audit-08「执: 操作」渲染异常）。表头固定列沿用低饱和表头底色。 */
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-right,
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-left {
-  background: #2187a8 !important;
+  background: var(--st-color-bg-elevated) !important;
 }
 
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-right,

@@ -648,11 +648,11 @@ const RecordTab: React.FC = () => {
       {/* 顶部说明 */}
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
-          <p className="m-0 text-sm font-medium text-slate-700">
+          <p className="alarm-record-summary-title m-0 text-sm font-medium">
             共 {total} 条告警记录
           </p>
 
-          <p className="m-0 mt-1 text-xs text-slate-500">
+          <p className="alarm-record-summary-subtitle m-0 mt-1 text-xs">
             查看告警消息的触发状态与投递结果
           </p>
         </div>
@@ -673,7 +673,7 @@ const RecordTab: React.FC = () => {
       <div
         className={[
           'overflow-hidden rounded-xl',
-          'bg-white',
+          'alarm-record-table-shell',
         ].join(' ')}
       >
         <Table<AlarmRecordRecord>
@@ -740,16 +740,11 @@ const RecordTab: React.FC = () => {
             '[&_.ant-table]:bg-transparent',
             '[&_.ant-table-container]:border-0',
 
-            '[&_.ant-table-thead>tr>th]:border-[#2187a8]',
-            '[&_.ant-table-thead>tr>th]:bg-slate-50/95',
             '[&_.ant-table-thead>tr>th]:py-3.5',
             '[&_.ant-table-thead>tr>th]:text-xs',
             '[&_.ant-table-thead>tr>th]:font-medium',
-            '[&_.ant-table-thead>tr>th]:text-white',
 
-            '[&_.ant-table-tbody>tr>td]:border-[#2187a8]',
             '[&_.ant-table-tbody>tr>td]:py-3.5',
-            '[&_.ant-table-tbody>tr>td]:text-white',
             '[&_.ant-table-tbody>tr>td]:transition-colors',
 
             '[&_.ant-table-cell]:align-middle',
@@ -761,8 +756,8 @@ const RecordTab: React.FC = () => {
             '[&_.ant-table-body::-webkit-scrollbar]:w-2',
             '[&_.ant-table-body::-webkit-scrollbar-track]:bg-transparent',
             '[&_.ant-table-body::-webkit-scrollbar-thumb]:rounded-full',
-            '[&_.ant-table-body::-webkit-scrollbar-thumb]:bg-[#2187a8]',
-            '[&_.ant-table-body::-webkit-scrollbar-thumb:hover]:bg-[#4dd2ff]',
+            '[&_.ant-table-body::-webkit-scrollbar-thumb]:bg-[var(--st-color-primary)]',
+            '[&_.ant-table-body::-webkit-scrollbar-thumb:hover]:bg-[var(--st-color-accent)]',
           ].join(' ')}
         />
       </div>

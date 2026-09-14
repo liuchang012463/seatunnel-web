@@ -1,5 +1,5 @@
 import { Empty, message, Table, Tooltip } from "antd";
-import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
+import type { ColumnsType } from "antd/es/table";
 import { useIntl } from "@umijs/max";
 import React from "react";
 
@@ -22,7 +22,6 @@ interface RealtimeTaskTableProps {
   onSelectedRowKeysChange: (keys: React.Key[]) => void;
   sort?: { field: TaskSortField; order: TaskSortOrder };
   onSortChange?: (field: TaskSortField, order: TaskSortOrder) => void;
-  pagination?: false | TablePaginationConfig;
   onDetail?: (record: StreamingJobDefinitionVO) => void;
   onView?: (record: StreamingJobDefinitionVO) => void;
   onEdit?: (record: StreamingJobDefinitionVO) => void;
@@ -54,7 +53,6 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
   onSelectedRowKeysChange,
   onStopWithSavepoint,
   onResumeFromSavepoint,
-  pagination,
   onView,
   onDetail,
   onEdit,
@@ -225,7 +223,6 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       }),
       dataIndex: "",
       width: 250,
-      fixed: "right" as const,
       render: (_content, record) => (
         <RealtimeTaskActionColumn
           record={record}

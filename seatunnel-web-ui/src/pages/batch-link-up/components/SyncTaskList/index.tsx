@@ -1,6 +1,6 @@
 import { CopyOutlined } from "@ant-design/icons";
 import { history, useIntl } from "@umijs/max";
-import { Divider, Empty, Modal, Table, Tooltip, message } from "antd";
+import { Alert, Button, Divider, Empty, Modal, Table, Tooltip, message } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
 import moment from "moment";
 import { useEffect, useState } from "react";
@@ -19,6 +19,8 @@ import ExecutionStatus from "./components/ExecutionStatus";
 import Footer from "./components/Footer";
 import ScheduleInfo from "./components/ScheduleInfo";
 import TaskStatus from "./components/TaskStatus";
+import CustomPagination from "../../CustomPagination";
+import { withTimeout } from "@/utils/withTimeout";
 import './index.less';
 
 interface Props {
@@ -103,6 +105,7 @@ const App: React.FC<Props> = ({
   const [pagination, setPagination] = useState(() => parsePaginationFromUrl());
   const [sort, setSort] = useState(() => parseSortFromUrl());
   const [loading, setLoading] = useState(false);
+  const [listError, setListError] = useState<string>();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [batchCreateOpen, setBatchCreateOpen] = useState(false);
   const [batchCreateLoading, setBatchCreateLoading] = useState(false);
@@ -170,6 +173,7 @@ const App: React.FC<Props> = ({
 
   const fetchTaskList = async () => {
     setLoading(true);
+    setListError(undefined);
 
     const transformedParams = { ...searchParams };
 
@@ -184,15 +188,23 @@ const App: React.FC<Props> = ({
     }
 
     try {
-      const data = await seatunnelJobDefinitionApi.page({
-        ...transformedParams,
-        mode,
-        excludeMode,
-        sortField: sort.field,
-        sortOrder: sort.order,
-        pageNo: pagination.current,
-        pageSize: pagination.pageSize,
-      });
+      const data = await withTimeout(
+        seatunnelJobDefinitionApi.page({
+          ...transformedParams,
+          mode,
+          excludeMode,
+          sortField: sort.field,
+          sortOrder: sort.order,
+          pageNo: pagination.current,
+          pageSize: pagination.pageSize,
+        }),
+        10000,
+        "离线任务列表请求超时，请稍后重试",
+      );
+
+      if (data?.code !== undefined && data.code !== 0) {
+        throw new Error(data.message || "查询任务列表失败");
+      }
 
       const nextTaskList = data?.data?.bizData || [];
       setTaskList(nextTaskList);
@@ -206,7 +218,9 @@ const App: React.FC<Props> = ({
         total: data?.data?.pagination?.total || 0,
       }));
     } catch (error) {
-      message.error("查询任务列表失败");
+      setTaskList([]);
+      setPagination((prev) => ({ ...prev, total: 0 }));
+      setListError(getErrorMessage(error, "查询任务列表失败，请稍后重试"));
     } finally {
       setLoading(false);
     }
@@ -217,7 +231,7 @@ const App: React.FC<Props> = ({
   }, [searchParams, pagination.current, pagination.pageSize, sort]);
 
   useEffect(() => {
-    fetchTaskList();
+    void fetchTaskList();
   }, [searchParams, pagination.current, pagination.pageSize, sort]);
 
   const baseColumns = [
@@ -227,7 +241,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Name",
       }),
       dataIndex: "jobName",
-      width: "10%",
+      width: 220,
       ellipsis: true,
       sorter: true,
       sortOrder: sort.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
@@ -260,7 +274,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Status",
       }),
       dataIndex: "taskParams",
-      width: "8%",
+      width: 120,
       render: (_content: any, record: any) => (
         <div className="sync-task-status-cell flex w-full justify-center">
           <TaskStatus
@@ -276,7 +290,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Sync Plan",
       }),
       dataIndex: "",
-      width: "17%",
+      width: 260,
       render: (_content: any, record: any) => (
         <div className="sync-task-plan-cell">
           <DataSourceSyncPlan record={record} />
@@ -289,7 +303,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Execution",
       }),
       dataIndex: "执行概况",
-      width: "14%",
+      width: 210,
       render: (_content: any, record: any) => <ExecutionStatus record={record} />,
     },
     {
@@ -298,7 +312,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Schedule",
       }),
       dataIndex: "taskName",
-      width: "15%",
+      width: 220,
       render: (_content: any, record: any) => <ScheduleInfo record={record} />,
     },
     {
@@ -307,7 +321,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "CreateTime",
       }),
       dataIndex: "createTime",
-      width: "12%",
+      width: 170,
       sorter: true,
       sortOrder: sort.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (createTime: string) => (
@@ -320,9 +334,8 @@ const App: React.FC<Props> = ({
         defaultMessage: "Operate",
       }),
       dataIndex: "",
-      width: "14%",
-      fixed: "right" as const,
-      render: (record: any) => (
+      width: 260,
+      render: (_content: any, record: any) => (
         <ActionColumn record={record} cbk={fetchTaskList} goDetail={goDetail} />
       ),
     },
@@ -578,7 +591,7 @@ const App: React.FC<Props> = ({
         );
 
         setSelectedRowKeys([]);
-        fetchTaskList();
+        void fetchTaskList();
       } else {
         message.error(data?.message || data?.msg || "批量启动失败");
       }
@@ -769,7 +782,7 @@ const App: React.FC<Props> = ({
 
   return (
     <>
-      <div className="batch-link-up-page sync-task-list">
+      <div className={`batch-link-up-page sync-task-list${hasSelected ? " has-selected-tasks" : ""}`}>
         <div className="config-manage-page">
           <div className="operate-bar task-search-wrap">
             <div className="left">
@@ -783,6 +796,17 @@ const App: React.FC<Props> = ({
           </div>
 
           <Divider style={{ margin: "16px 0" }} />
+
+          {listError ? (
+            <Alert
+              type="error"
+              showIcon
+              className="task-list-error"
+              message="离线任务列表加载失败"
+              description={listError}
+              action={<Button type="link" onClick={() => void fetchTaskList()}>重试</Button>}
+            />
+          ) : null}
 
           <div className="task-table-shell">
           <Table
@@ -800,18 +824,28 @@ const App: React.FC<Props> = ({
                 active.order === "ascend" ? "asc" : "desc",
               );
             }}
-            scroll={{ x: 1500, y: "calc(100vh - 380px)" }}
+            scroll={{ x: "max-content", y: "calc(100vh - 380px)" }}
             className="task-table"
             locale={{
               emptyText: (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={emptyDescription}
+                  description={listError ? "请重试加载任务列表" : emptyDescription}
                 />
               ),
             }}
           />
           </div>
+          {pagination.total > 0 ? (
+            <div className="task-pagination">
+              <CustomPagination
+                total={pagination.total}
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                onChange={handlePaginationChange}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -822,10 +856,6 @@ const App: React.FC<Props> = ({
         onOffline={onOfflineAll}
         onDelete={onDeleteAll}
         onCreate={openBatchCreate}
-        pagination={{
-          ...pagination,
-          onChange: handlePaginationChange,
-        }}
         selectedCount={selectedRowKeys.length}
         disabled={!hasSelected}
         startDisabled={batchActionState.startDisabled}

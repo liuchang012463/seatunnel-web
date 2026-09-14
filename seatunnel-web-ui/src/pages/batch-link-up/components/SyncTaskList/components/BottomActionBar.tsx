@@ -3,12 +3,12 @@ import {
   CloudUploadOutlined,
   CopyOutlined,
   DeleteOutlined,
+  MoreOutlined,
   PlayCircleOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import { Button, Divider, Tooltip } from "antd";
+import { Button, Dropdown, Tooltip } from "antd";
 import React from "react";
-import CustomPagination from "../../../CustomPagination";
 
 interface BottomActionBarProps {
   onStart: () => void;
@@ -17,12 +17,6 @@ interface BottomActionBarProps {
   onOffline: () => void;
   onDelete: () => void;
   onCreate: () => void;
-  pagination: {
-    total: number;
-    current?: number;
-    pageSize?: number;
-    onChange?: (page: number, pageSize: number) => void;
-  };
   selectedCount?: number;
 
   /**
@@ -64,7 +58,6 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   onOffline,
   onDelete,
   onCreate,
-  pagination,
   selectedCount = 0,
   disabled = false,
   startDisabled = false,
@@ -73,10 +66,7 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   stopTooltip,
   onlineDisabled = false,
   offlineDisabled = false,
-  onlineTooltip,
-  offlineTooltip,
   deleteDisabled = false,
-  deleteTooltip,
 }) => {
   const finalStartDisabled = disabled || startDisabled;
   const finalStopDisabled = disabled || stopDisabled;
@@ -87,17 +77,19 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   const defaultDisabledTooltip =
     selectedCount <= 0 ? "请先选择任务" : undefined;
 
+  if (selectedCount <= 0) return null;
+
+  const moreItems = [
+    { key: "online", label: "上线", icon: <CloudUploadOutlined />, disabled: finalOnlineDisabled, onClick: onOnline },
+    { key: "offline", label: "下线", icon: <CloudDownloadOutlined />, disabled: finalOfflineDisabled, onClick: onOffline },
+    { type: "divider" as const },
+    { key: "delete", label: "删除", icon: <DeleteOutlined />, danger: true, disabled: finalDeleteDisabled, onClick: onDelete },
+  ];
+
   return (
     <div className="task-bottom-action-bar">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 16,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center" }}>
+      <div className="task-bottom-action-bar__content">
+        <div className="task-bottom-action-bar__actions">
           <Tooltip title={defaultDisabledTooltip}>
             <span style={{ display: "inline-flex" }}>
               <Button
@@ -111,40 +103,6 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
               </Button>
             </span>
           </Tooltip>
-
-          <Divider type="vertical" />
-
-          <Tooltip title={onlineTooltip || defaultDisabledTooltip}>
-            <span style={{ display: "inline-flex" }}>
-              <Button
-                size="small"
-                onClick={onOnline}
-                disabled={finalOnlineDisabled}
-                className="h-8 min-w-[82px] rounded-full border-slate-200 font-bold"
-                icon={<CloudUploadOutlined />}
-              >
-                上线
-              </Button>
-            </span>
-          </Tooltip>
-
-          <Divider type="vertical" />
-
-          <Tooltip title={offlineTooltip || defaultDisabledTooltip}>
-            <span style={{ display: "inline-flex" }}>
-              <Button
-                size="small"
-                onClick={onOffline}
-                disabled={finalOfflineDisabled}
-                className="h-8 min-w-[82px] rounded-full border-slate-200 font-bold"
-                icon={<CloudDownloadOutlined />}
-              >
-                下线
-              </Button>
-            </span>
-          </Tooltip>
-
-          <Divider type="vertical" />
 
           <Tooltip title={startTooltip || defaultDisabledTooltip}>
             <span style={{ display: "inline-flex" }}>
@@ -160,8 +118,6 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
               </Button>
             </span>
           </Tooltip>
-
-          <Divider type="vertical" />
 
           <Tooltip title={stopTooltip || defaultDisabledTooltip}>
             <span style={{ display: "inline-flex" }}>
@@ -179,45 +135,21 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
             </span>
           </Tooltip>
 
-          {selectedCount > 0 ? (
-            <>
-              <Divider type="vertical" />
-
-              <span className="text-xs text-slate-500">
-                已选择{" "}
-                <span className="font-semibold text-slate-900">
-                  {selectedCount}
-                </span>{" "}
-                条
-              </span>
-            </>
-          ) : null}
-
-          <Divider type="vertical" />
-
-          <Tooltip title={deleteTooltip || defaultDisabledTooltip}>
-            <span style={{ display: "inline-flex" }}>
+          <Tooltip title="更多批量操作">
+            <Dropdown trigger={["click"]} menu={{ items: moreItems }}>
               <Button
                 size="small"
-                danger
-                onClick={onDelete}
-                disabled={finalDeleteDisabled}
-                className="h-8 min-w-[82px] rounded-full font-bold"
-                icon={<DeleteOutlined />}
+                className="h-8 rounded-full border-slate-200 font-bold"
+                icon={<MoreOutlined />}
               >
-                删除
+                更多操作
               </Button>
-            </span>
+            </Dropdown>
           </Tooltip>
         </div>
 
-        <div style={{ marginRight: 8 }}>
-          <CustomPagination
-            total={pagination.total}
-            current={pagination.current}
-            pageSize={pagination.pageSize}
-            onChange={pagination.onChange}
-          />
+        <div className="task-bottom-action-bar__selection">
+          已选择 <strong>{selectedCount}</strong> 条
         </div>
       </div>
     </div>

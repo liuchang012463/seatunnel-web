@@ -20,7 +20,10 @@ export const SelectLang: React.FC = () => {
 
 export const Knowledge: React.FC = () => {
   return (
-    <div
+    <button
+      type="button"
+      aria-label="打开知识库"
+      className="border-0 bg-transparent"
       style={{
         display: 'inline-flex',
         padding: '4px',
@@ -33,13 +36,16 @@ export const Knowledge: React.FC = () => {
       }}
     >
       <ReadOutlined />
-    </div>
+    </button>
   );
 };
 
 export const OpenAPI: React.FC = () => {
   return (
-    <div
+    <button
+      type="button"
+      aria-label="打开 OpenAPI"
+      className="border-0 bg-transparent"
       style={{
         display: 'inline-flex',
         padding: '4px',
@@ -52,7 +58,7 @@ export const OpenAPI: React.FC = () => {
       }}
     >
       <ApiOutlined />
-    </div>
+    </button>
   );
 };
 

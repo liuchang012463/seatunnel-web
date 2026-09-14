@@ -7,6 +7,7 @@ import {
 } from "react";
 import {
   applyNavTheme,
+  getStoredNavTheme,
   getNavThemeSnapshot,
   isDarkNavTheme,
   persistNavTheme,
@@ -55,8 +56,8 @@ const DARK_COMPONENTS = {
   },
   Table: {
     colorBgContainer: "#052F3F",
-    headerBg: "#2187A8",
-    headerColor: "#FFFFFF",
+    headerBg: "#0A3D52",
+    headerColor: "#EDF4F7",
     headerSplitColor: "transparent",
     rowHoverBg: "rgba(63, 198, 255, 0.08)",
     rowSelectedBg: "rgba(63, 198, 255, 0.14)",
@@ -133,6 +134,13 @@ const NavThemeContext = createContext<NavThemeContextValue>({
 export const useNavTheme = (): NavThemeContextValue =>
   useContext(NavThemeContext);
 
+const getInitialNavTheme = (): NavTheme => {
+  const initialTheme = getStoredNavTheme(getNavThemeSnapshot());
+  setNavTheme(initialTheme);
+  applyNavTheme(initialTheme);
+  return initialTheme;
+};
+
 interface ThemeConfigProviderProps {
   children: ReactNode;
 }
@@ -140,9 +148,7 @@ interface ThemeConfigProviderProps {
 const ThemeConfigProvider: React.FC<ThemeConfigProviderProps> = ({
   children,
 }) => {
-  const [navTheme, setNavThemeState] = useState<NavTheme>(
-    () => getNavThemeSnapshot()
-  );
+  const [navTheme, setNavThemeState] = useState<NavTheme>(getInitialNavTheme);
 
   const toggleNavTheme = () => {
     const next: NavTheme = isDarkNavTheme(navTheme) ? "light" : "realDark";

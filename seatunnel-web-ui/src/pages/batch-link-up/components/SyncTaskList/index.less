@@ -1,6 +1,10 @@
 .sync-task-list {
   min-height: calc(100vh - 132px);
-  padding-bottom: 88px;
+  padding-bottom: 0;
+
+  &.has-selected-tasks {
+    padding-bottom: 112px;
+  }
 
   .config-manage-page {
     min-width: 0;
@@ -31,12 +35,12 @@
 
     .ant-table-thead > tr > th {
       padding: 14px 16px;
-      color: #ecfbff;
+      color: var(--st-color-text-secondary);
       font-size: 14px;
       font-weight: 700;
-      background: linear-gradient(180deg, #2c90af, #217c9a) !important;
-      border-bottom: 1px solid rgba(77, 210, 255, 0.18) !important;
-      border-inline-end: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--st-color-bg-elevated);
+      border-bottom: 1px solid var(--st-color-divider);
+      border-inline-end: 1px solid var(--st-color-divider-subtle);
     }
 
     .ant-table-thead > tr > th::before {
@@ -339,6 +343,10 @@
 
 @media (max-width: 768px) {
   .sync-task-list {
-    padding: 0 8px 88px;
+    padding: 0 8px 24px;
+
+    &.has-selected-tasks {
+      padding-bottom: 24px;
+    }
   }
 }
