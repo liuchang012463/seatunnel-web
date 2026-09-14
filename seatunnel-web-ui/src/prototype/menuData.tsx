@@ -94,3 +94,37 @@ export const prototypeMenuData: MenuDataItem[] = [
     ],
   },
 ];
+
+const IMPLEMENTED_MENU_PATHS = new Set([
+  '/data-source',
+  '/data-exploration/overview',
+  '/data-exploration/tasks',
+  '/data-exploration/results',
+  '/metrics',
+  '/sync/batch-link-up',
+  '/sync/stream-link-up',
+  '/sync/file-link-up',
+  '/client',
+  '/operations/metadata-engine',
+  '/lake/warehouse',
+  '/alarm',
+  '/lake/resources',
+  '/lake/logical-access',
+  '/lake/lifecycle',
+  '/knowledge-management',
+  '/open-api',
+]);
+
+const filterImplementedMenu = (items: MenuDataItem[]): MenuDataItem[] =>
+  items.reduce<MenuDataItem[]>((visibleItems, item) => {
+    const children = item.children ? filterImplementedMenu(item.children) : undefined;
+    if (children?.length) {
+      visibleItems.push({ ...item, children });
+    } else if (item.path && IMPLEMENTED_MENU_PATHS.has(item.path)) {
+      visibleItems.push(item);
+    }
+    return visibleItems;
+  }, []);
+
+/** Normal mode only exposes pages backed by a real implementation. */
+export const normalMenuData: MenuDataItem[] = filterImplementedMenu(prototypeMenuData);

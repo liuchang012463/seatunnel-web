@@ -29,7 +29,7 @@ describe('data ingestion prototype registry', () => {
     });
   });
 
-  it('registers twenty business routes and eleven hidden detail routes', () => {
+  it('registers twenty business routes and twelve hidden detail routes', () => {
     const businessPaths = new Set(prototypePageRegistry.map(({ route }) => route));
     const routeList = routes as any[];
     expect(routeList.filter(({ path }) => businessPaths.has(path))).toHaveLength(20);
@@ -40,7 +40,7 @@ describe('data ingestion prototype registry', () => {
       routeList.filter(
         ({ path }) => /:id\/(detail|config\/)/.test(path || '') && !String(path).startsWith('/iframe/'),
       ),
-    ).toHaveLength(11);
+    ).toHaveLength(12);
   });
 
   it('supports graph filter inputs and parent expansion data', () => {
