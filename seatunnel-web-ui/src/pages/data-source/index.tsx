@@ -378,7 +378,7 @@ const DataSourcePage: React.FC = () => {
       key: 'name',
       align: 'left',
       className: 'datasource-catalog-col--left',
-      width: 190,
+      width: 250,
       ellipsis: true,
       render: (_value, record) => (
         <div className="datasource-catalog-name-cell">
@@ -394,6 +394,9 @@ const DataSourcePage: React.FC = () => {
           >
             {record.name || '-'}
           </button>
+          <span className="datasource-catalog-name-url" title={record.jdbcUrl}>
+            {record.jdbcUrl || '-'}
+          </span>
           <span className="datasource-catalog-name-sub">更新于 {formatDateTime(record.updateTime)}</span>
         </div>
       ),
@@ -403,7 +406,7 @@ const DataSourcePage: React.FC = () => {
       key: 'dbType',
       align: 'left',
       className: 'datasource-catalog-col--left',
-      width: 110,
+      width: 130,
       ellipsis: true,
       render: (_value, record) => {
         const category = getDataSourceCategory(record.dbType);
@@ -416,24 +419,11 @@ const DataSourcePage: React.FC = () => {
       },
     },
     {
-      title: '连接地址',
-      key: 'jdbcUrl',
-      align: 'left',
-      className: 'datasource-catalog-col--left',
-      width: 200,
-      ellipsis: true,
-      render: (_value, record) => (
-        <span className="datasource-catalog-address" title={record.jdbcUrl}>
-          {record.jdbcUrl || '-'}
-        </span>
-      ),
-    },
-    {
       title: '归属',
       key: 'owner',
       align: 'left',
       className: 'datasource-catalog-col--left',
-      width: 140,
+      width: 150,
       ellipsis: true,
       render: (_value, record) => {
         const owner = [record.unitName, record.businessSystemName || record.systemName]
@@ -450,21 +440,21 @@ const DataSourcePage: React.FC = () => {
       title: '连通检测',
       key: 'connStatus',
       align: 'center',
-      width: 104,
+      width: 96,
       render: (_value, record) => <DataSourceStatus status={record.connStatus} />,
     },
     {
       title: '是否启用',
       key: 'status',
       align: 'center',
-      width: 100,
+      width: 96,
       render: (_value, record) => <DataSourceLifecycleStatusTag status={record.status} />,
     },
     {
       title: '探查状态',
       key: 'profileStatus',
       align: 'center',
-      width: 104,
+      width: 96,
       render: (_value, record) => {
         const status = profileStatusConfig(record.profileStatus);
         return <StatusChip tone={status.tone} label={status.text} detail={status.detail} />;
@@ -474,7 +464,7 @@ const DataSourcePage: React.FC = () => {
       title: '操作',
       key: 'actions',
       align: 'center',
-      width: 230,
+      width: 220,
       render: (_value, record) => {
         const currentStatus = record.status || 'ENABLED';
         const isRevoked = currentStatus === 'REVOKED';
@@ -722,7 +712,8 @@ const DataSourcePage: React.FC = () => {
                             columns={dataSourceColumns}
                             dataSource={dataSourceList}
                             pagination={false}
-                            scroll={{ x: 'max-content' }}
+                            scroll={{ x: 1038 }}
+                            tableLayout="fixed"
                             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
                           />
                         )}

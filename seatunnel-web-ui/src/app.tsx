@@ -1,13 +1,12 @@
-import type { MenuDataItem, Settings as LayoutSettings } from '@ant-design/pro-components';
+import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import { Footer } from '@/components';
 import ThemeConfigProvider from '@/components/ThemeConfigProvider';
 import '@ant-design/v5-patch-for-react-19';
-import { useLocation } from '@umijs/max';
 import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
 import { Knowledge } from './components/RightContent';
-import { normalMenuData, prototypeMenuData } from './prototype/menuData';
+import { prototypeMenuData } from './prototype/menuData';
 import { isPrototypeMode } from './prototype/mode';
 import PrototypeAnnotationBar from './prototype/PrototypeAnnotationBar';
 import { errorConfig } from './requestErrorConfig';
@@ -29,41 +28,6 @@ const getThemeSettings = (navTheme: 'light' | 'realDark') => ({
   navTheme,
   colorPrimary: navTheme === 'light' ? '#1B87A8' : '#1B87A8',
 });
-
-const findMenuName = (items: MenuDataItem[], pathname: string): string | undefined => {
-  for (const item of items) {
-    if (item.path && pathname === item.path) return String(item.name || '');
-    if (item.children) {
-      const childName = findMenuName(item.children, pathname);
-      if (childName) return childName;
-    }
-  }
-  return undefined;
-};
-
-const environmentLabel = () => {
-  if (isPrototypeMode) return '原型';
-  const environment = process.env.REACT_APP_ENV || process.env.NODE_ENV || 'development';
-  return ({ production: '生产', pre: '预发布', test: '测试', dev: '开发', development: '开发' } as Record<string, string>)[environment] || environment;
-};
-
-const GlobalHeaderContext: React.FC<{ currentUserName?: string }> = ({ currentUserName }) => {
-  const { pathname } = useLocation();
-  const title = findMenuName(prototypeMenuData, pathname) || (pathname.startsWith('/lake/') ? '入湖管理' : '控制台');
-
-  return (
-    <div className="st-global-header-context" aria-label="当前页面上下文">
-      <span className="st-global-header-context__title">{title}</span>
-      <span className="st-global-header-context__meta">环境 · {environmentLabel()}</span>
-      <span className="st-global-header-context__meta st-global-header-context__health">
-        <span className="st-global-header-context__health-dot" aria-hidden="true" />服务状态 · 待检测
-      </span>
-      <span className="st-global-header-context__meta st-global-header-context__user">
-        用户 · {currentUserName || '未登录'}
-      </span>
-    </div>
-  );
-};
 
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
@@ -97,7 +61,7 @@ export async function getInitialState(): Promise<{
       currentUser: prototypeUser,
       settings: {
         ...getThemeSettings(navTheme),
-        title: '数据采集引接软件',
+        title: 'Aircas Web',
       } as Partial<LayoutSettings>,
     };
   }
@@ -123,8 +87,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
   const showWatermark = !pathname.startsWith('/lake/') && pathname !== '/data-source/master-data';
 
   return {
-    menuDataRender: () => (isPrototypeMode ? prototypeMenuData : normalMenuData),
-    headerContentRender: () => <GlobalHeaderContext currentUserName={initialState?.currentUser?.name} />,
+    menuDataRender: () => prototypeMenuData,
     actionsRender: () =>
       isPrototypeMode
         ? []
