@@ -58,6 +58,7 @@ import type {
 } from './types';
 import type { LakeLifecyclePolicy, LakePolicyStatus, LakeResourceStatus } from '@/services/lake';
 import { normalizeLakePage } from '@/services/lake';
+import { withTimeout } from '@/utils/withTimeout';
 import './index.less';
 
 const { Paragraph, Text, Title } = Typography;
@@ -622,6 +623,7 @@ const LifecyclePage: React.FC = () => {
   const [applyPolicy, setApplyPolicy] = useState<LakeLifecyclePolicy>();
   const [detailMappingId, setDetailMappingId] = useState<number>();
   const [policies, setPolicies] = useState<LakeLifecyclePolicy[]>([]);
+  const [listError, setListError] = useState<string>();
 
   const reload = () => {
     actionRef.current?.reloadAndRest?.();
@@ -683,7 +685,6 @@ const LifecyclePage: React.FC = () => {
         title: '操作',
         key: 'option',
         valueType: 'option',
-        fixed: 'right',
         width: 260,
         render: (_, row) => (
           <Space size={4} wrap>
@@ -730,30 +731,45 @@ const LifecyclePage: React.FC = () => {
           </div>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingPolicy(undefined); setEditorOpen(true); }}>新建策略</Button>
         </Card>
+        {listError ? (
+          <Alert
+            className="lake-table-alert"
+            type="error"
+            showIcon
+            message="生命周期策略列表加载失败"
+            description={listError}
+            action={<Button type="link" onClick={reload}>重试</Button>}
+          />
+        ) : null}
         <ProTable<LakeLifecyclePolicy>
           actionRef={actionRef}
           rowKey="id"
           cardBordered
           columns={columns}
-          scroll={{ x: 1180 }}
+          scroll={{ x: 'max-content' }}
           search={{ labelWidth: 'auto' }}
           options={false}
           pagination={{ showSizeChanger: true, showTotal: (total) => `共 ${total} 个策略` }}
           request={async (params) => {
+            setListError(undefined);
             try {
-              const response = await fetchLifecyclePolicies({
-                pageNo: params.current || 1,
-                pageSize: params.pageSize || 10,
-                policyName: typeof params.policyName === 'string' ? params.policyName : undefined,
-                status: typeof params.status === 'string' ? params.status : undefined,
-                granularity: typeof params.granularity === 'string' ? params.granularity : undefined,
-              });
+              const response = await withTimeout(
+                fetchLifecyclePolicies({
+                  pageNo: params.current || 1,
+                  pageSize: params.pageSize || 10,
+                  policyName: typeof params.policyName === 'string' ? params.policyName : undefined,
+                  status: typeof params.status === 'string' ? params.status : undefined,
+                  granularity: typeof params.granularity === 'string' ? params.granularity : undefined,
+                }),
+                10000,
+                '生命周期策略列表请求超时，请稍后重试',
+              );
               if (response.code !== 0) throw new Error(responseError(response, '生命周期策略列表加载失败'));
               const page = normalizeLakePage(response.data);
               setPolicies(page.data);
               return { data: page.data, success: true, total: page.total };
             } catch (error) {
-              message.error(error instanceof Error ? error.message : '生命周期策略列表加载失败');
+              setListError(error instanceof Error ? error.message : '生命周期策略列表加载失败');
               return { data: [], success: false, total: 0 };
             }
           }}

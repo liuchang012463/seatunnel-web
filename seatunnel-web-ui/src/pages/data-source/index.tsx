@@ -3,6 +3,7 @@ import StatusChip from '@/components/StatusChip';
 import { history, useIntl } from '@umijs/max';
 import { AppstoreOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import {
+  Alert,
   Button,
   Drawer,
   Dropdown,
@@ -51,6 +52,7 @@ import type {
 import DataSourceLifecycleStatusTag from './components/DataSourceLifecycleStatus';
 import DataSourceStatus from './components/DataSourceStatus';
 import { profileStatusConfig } from './components/profileStatus';
+import { withTimeout } from '@/utils/withTimeout';
 
 const { confirm } = Modal;
 
@@ -63,6 +65,7 @@ const DataSourcePage: React.FC = () => {
   const modalRef = useRef<DataSourceModalRef>(null);
 
   const [loading, setLoading] = useState(false);
+  const [listError, setListError] = useState<string>();
   const [dataSourceList, setDataSourceList] = useState<DataSourceRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>(PAGE_DEFAULT_PAGINATION);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -72,7 +75,7 @@ const DataSourcePage: React.FC = () => {
   const [businessSystemOptions, setBusinessSystemOptions] = useState<BusinessSystemOption[]>([]);
   const [selectedBusinessSystem, setSelectedBusinessSystem] = useState<string>();
   const [selectedStatus, setSelectedStatus] = useState<DataSourceLifecycleStatus>();
-  const [viewMode, setViewMode] = useState<DataSourceViewMode>('card');
+  const [viewMode, setViewMode] = useState<DataSourceViewMode>('list');
   const [masterDataOpen, setMasterDataOpen] = useState(false);
 
   const refreshUnitOptions = async () => {
@@ -105,6 +108,7 @@ const DataSourcePage: React.FC = () => {
   const fetchList = async (params?: Partial<DataSourcePageParams>) => {
     try {
       setLoading(true);
+      setListError(undefined);
 
       const requestParams: DataSourcePageParams = {
         pageNo: pagination.pageNo,
@@ -117,16 +121,23 @@ const DataSourcePage: React.FC = () => {
         ...params,
       };
 
-      const response = await fetchDataSourcePage(requestParams);
+      const response = await withTimeout(
+        fetchDataSourcePage(requestParams),
+        10000,
+        '数据源列表请求超时，请稍后重试',
+      );
 
       if (response.code !== 0) {
-        return;
+        throw new Error(response.message || '数据源列表加载失败');
       }
 
       const page = normalizeDataSourcePageResult(response.data);
       setDataSourceList(page.bizData);
       setPagination(page.pagination);
     } catch (error: any) {
+      setDataSourceList([]);
+      setPagination((current) => ({ ...current, total: 0 }));
+      setListError(error?.message || '数据源列表加载失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -463,7 +474,6 @@ const DataSourcePage: React.FC = () => {
       title: '操作',
       key: 'actions',
       align: 'center',
-      fixed: 'right',
       width: 230,
       render: (_value, record) => {
         const currentStatus = record.status || 'ENABLED';
@@ -660,6 +670,17 @@ const DataSourcePage: React.FC = () => {
                 </div>
               </motion.div>
 
+              {listError ? (
+                <Alert
+                  className="datasource-list-error"
+                  type="error"
+                  showIcon
+                  message="数据源列表加载失败"
+                  description={listError}
+                  action={<Button type="link" onClick={handleRefresh}>重试</Button>}
+                />
+              ) : null}
+
               <Spin spinning={loading}>
                 <motion.div variants={PAGE_ANIMATION.cardStagger} initial="hidden" animate="visible">
                   {dataSourceList.length > 0 ? (
@@ -691,14 +712,14 @@ const DataSourcePage: React.FC = () => {
                             columns={dataSourceColumns}
                             dataSource={dataSourceList}
                             pagination={false}
-                            scroll={{ x: 1180 }}
+                            scroll={{ x: 'max-content' }}
                             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
                           />
                         )}
                       </div>
                     </section>
                   ) : (
-                    !loading && <EmptyState onCreate={handleCreate} />
+                    !loading && !listError && <EmptyState onCreate={handleCreate} />
                   )}
 
                   {pagination.total > 0 && (

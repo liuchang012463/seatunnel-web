@@ -123,6 +123,7 @@ function createClient() {
   return extend({
     errorHandler,
     credentials: "omit",
+    timeout: 15000,
   });
 }
 

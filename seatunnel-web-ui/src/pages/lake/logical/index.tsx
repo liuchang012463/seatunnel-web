@@ -22,6 +22,7 @@ import {
 import type { LakeApiResponse, LakeCatalog, LakeCatalogScope, LakeLogicalCapability, LakePhysicalDataSource } from '@/services/lake';
 import { CapabilityReason } from '../components/LakeStatus';
 import { useMasterDataNames, type MasterDataNames } from '../useMasterDataNames';
+import { withTimeout } from '@/utils/withTimeout';
 import './index.less';
 
 const adapterOptions = [
@@ -359,6 +360,9 @@ const LogicalAccessPage: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [sources, setSources] = useState<LakePhysicalDataSource[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(true);
+  const [sourcesError, setSourcesError] = useState<string>();
+  const [sourcesReloadKey, setSourcesReloadKey] = useState(0);
+  const [catalogError, setCatalogError] = useState<string>();
   const [selectedSourceId, setSelectedSourceId] = useState<number | undefined>(initialSourceId);
 
   useEffect(() => {
@@ -366,10 +370,30 @@ const LogicalAccessPage: React.FC = () => {
   }, [initialSourceId]);
 
   useEffect(() => {
-    void fetchPhysicalSources({ pageNo: 1, pageSize: 100 }).then((response) => {
-      if (response.code === 0) setSources(normalizeLakePage(response.data).data);
-    }).catch(() => undefined).finally(() => setSourcesLoading(false));
-  }, []);
+    let cancelled = false;
+    setSourcesLoading(true);
+    setSourcesError(undefined);
+    const loadSources = async () => {
+      try {
+        const response = await withTimeout(
+          fetchPhysicalSources({ pageNo: 1, pageSize: 100 }),
+          10000,
+          '业务数据源请求超时，请稍后重试',
+        );
+        if (response.code !== 0) throw new Error(responseMessage(response));
+        if (!cancelled) setSources(normalizeLakePage(response.data).data);
+      } catch (error) {
+        if (!cancelled) {
+          setSources([]);
+          setSourcesError(error instanceof Error ? error.message : '业务数据源加载失败');
+        }
+      } finally {
+        if (!cancelled) setSourcesLoading(false);
+      }
+    };
+    void loadSources();
+    return () => { cancelled = true; };
+  }, [sourcesReloadKey]);
   const sourceLabelById = useMemo(
     () => new Map(sources.map((source) => [source.sourceDataSourceId, sourceOption(source, masterNames).label])),
     [sources],
@@ -396,6 +420,26 @@ const LogicalAccessPage: React.FC = () => {
   return (
     <PageContainer title="逻辑入湖" subTitle="选择已有数据源，按步骤完成 Doris 逻辑挂载">
       <CapabilityCard sources={sources} initialSourceId={initialSourceId} onSourceChange={setSelectedSourceId} masterNames={masterNames} />
+      {sourcesError ? (
+        <Alert
+          className="lake-table-alert"
+          type="error"
+          showIcon
+          message="业务数据源加载失败"
+          description={sourcesError}
+          action={<Button type="link" onClick={() => setSourcesReloadKey((value) => value + 1)}>重试</Button>}
+        />
+      ) : null}
+      {catalogError ? (
+        <Alert
+          className="lake-table-alert"
+          type="error"
+          showIcon
+          message="逻辑入湖列表加载失败"
+          description={catalogError}
+          action={<Button type="link" onClick={() => actionRef.current?.reloadAndRest?.()}>重试</Button>}
+        />
+      ) : null}
       <ProTable<LakeCatalog>
         className="lake-catalog-table"
         rowKey={(row) => String(row.id || `${row.sourceDataSourceId}-${row.targetCatalogName}`)}
@@ -408,18 +452,28 @@ const LogicalAccessPage: React.FC = () => {
           <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reloadAndRest?.()}>刷新</Button>,
         ]}
         request={async (params) => {
-          const response = await fetchCatalogs({
-            pageNo: Number(params.current || 1),
-            pageSize: Number(params.pageSize || 10),
-            targetCatalogName: params.targetCatalogName,
-            sourceDataSourceId: params.sourceDataSourceId,
-            adapter: params.adapter,
-            resourceStatus: params.resourceStatus,
-            validationStatus: params.validationStatus,
-          });
-          if (response.code !== 0) throw new Error(responseMessage(response));
-          const page = normalizeLakePage(response.data);
-          return { data: page.data, success: true, total: page.total };
+          setCatalogError(undefined);
+          try {
+            const response = await withTimeout(
+              fetchCatalogs({
+                pageNo: Number(params.current || 1),
+                pageSize: Number(params.pageSize || 10),
+                targetCatalogName: params.targetCatalogName,
+                sourceDataSourceId: params.sourceDataSourceId,
+                adapter: params.adapter,
+                resourceStatus: params.resourceStatus,
+                validationStatus: params.validationStatus,
+              }),
+              10000,
+              '逻辑入湖列表请求超时，请稍后重试',
+            );
+            if (response.code !== 0) throw new Error(responseMessage(response));
+            const page = normalizeLakePage(response.data);
+            return { data: page.data, success: true, total: page.total };
+          } catch (error) {
+            setCatalogError(error instanceof Error ? error.message : '逻辑入湖列表加载失败');
+            return { data: [], success: false, total: 0 };
+          }
         }}
         />
       {!sourcesLoading && !sources.length ? <Card className="lake-logical-empty"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可用业务数据源" /><Typography.Text type="secondary">请先在数据源管理中完成连接和 Metadata 探查。</Typography.Text></Card> : null}
