@@ -974,6 +974,28 @@ html[data-st-theme="dark"] .theme-switch:hover {
   background: var(--st-color-hover);
 }
 
+/* 静态主题里按常量编译的组件级样式（Segmented 轨道、ProLayout 折叠钮）
+ * 会盖过运行时算法派生样式，这里按主题强制对齐。 */
+html[data-st-theme="light"] .ant-segmented {
+  background: #eef1f5 !important;
+}
+
+html[data-st-theme="light"] .ant-segmented-item-selected {
+  background: #1b87a8 !important;
+  color: #ffffff !important;
+}
+
+html[data-st-theme="light"] .ant-segmented-item:not(.ant-segmented-item-selected):hover {
+  color: #0e7fa6 !important;
+}
+
+html[data-st-theme="light"] .ant-pro-sider-collapsed-button {
+  color: #5b6b82 !important;
+  background: #ffffff !important;
+  border: 1px solid #e8edf5 !important;
+  box-shadow: 0 2px 6px rgba(31, 35, 41, 0.08) !important;
+}
+
 /* A few workflow/editor surfaces still use inline white backgrounds. Keep
  * those escape hatches inside the active dark theme without touching status
  * colors or images. */
