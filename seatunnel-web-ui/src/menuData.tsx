@@ -17,16 +17,20 @@ import {
 import type { MenuDataItem } from '@ant-design/pro-components';
 import React from 'react';
 
-export const prototypeMenuData: MenuDataItem[] = [
+export const menuData: MenuDataItem[] = [
   {
     path: '/bi',
     name: '引接态势',
     icon: <BarChartOutlined />,
+    disabledTooltip: true,
+    collapsedHoverPanel: true,
   },
   {
     path: '/data-source',
     name: '数据源管理',
     icon: <DatabaseOutlined />,
+    disabledTooltip: true,
+    collapsedHoverPanel: true,
   },
   {
     path: '/menu/exploration',
@@ -42,6 +46,8 @@ export const prototypeMenuData: MenuDataItem[] = [
     path: '/reporting/forms',
     name: '数据采报',
     icon: <FormOutlined />,
+    disabledTooltip: true,
+    collapsedHoverPanel: true,
   },
   {
     path: '/menu/ingestion',

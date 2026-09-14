@@ -1,8 +1,8 @@
 # 数据中台引接分系统 · Redesign 方向与 Design System
 
 > 分支：`redesign`（2026-09-12）。状态：**提案，待评审**——未经明确批准不落任何正式页面/共享组件。
-> 上游文档：审计见 [`ui-ux-audit.md`](./ui-ux-audit.md)；既有视觉基线 [`../DESGIN.md`](../DESGIN.md)（探查域）继续有效，本文将其升级为全站系统。
-> 参考原型：`docs/redesign/prototype/`（静态隔离 HTML，仅评审用）。
+> 上游文档：审计见 [`docs/ui-ux-audit.md`](docs/ui-ux-audit.md)；本文作为全站设计基线。
+> 原型状态：运行时原型和静态参考原型已退役；审计报告与截图证据继续保留。
 
 ## 1. 设计方向（一句话）
 
@@ -209,19 +209,6 @@
 
 **风险**：antd 覆盖移除可能暴露隐藏样式依赖 → 以"每组件族小步替换 + Playwright 截图对照"缓解；多域并改冲突 → 按域分支串行。
 
-## 8. 参考原型说明（隔离，不入正式 UI）
+## 8. 原型资产处置
 
-| 文件 | 演示重点 |
-| --- | --- |
-| `docs/redesign/prototype/datasource.html` | 数据源管理：FilterToolbar、密表、状态降噪、动作分层、卡片视图切换、危险动作收纳 |
-| `docs/redesign/prototype/exploration.html` | 数据探查：三栏工作台、行式资源列表、Inspector 列画像、表详情（结构/样本/画像） |
-| `docs/redesign/prototype/ingestion.html` | 数据引接：状态优先任务表、A→B 链路列、行内指标组、失败行展开、BatchBar |
-
-查看方式（静态、零依赖）：
-
-```bash
-python3 -m http.server 8321 -d docs/redesign/prototype
-# 打开 http://127.0.0.1:8321/datasource.html 等
-```
-
-原型为纯 HTML+CSS（少量原生 JS 做视图切换/行展开），数据为**真实测试环境同构 mock**（同名数据源/任务/指标），1440×1000 基准，含 hover/focus 状态；仅表达设计方向，不代表最终实现质量。
+本轮设计评审用的运行时原型、静态 HTML/CSS 参考页和本地 mock 数据已删除，不再作为正式前端入口或开发启动方式。保留的 `docs/ui-ux-audit.md`、`docs/redesign-review.md` 及其截图证据仅用于追溯当时的审计结论，不代表当前页面实现。

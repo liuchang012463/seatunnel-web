@@ -1,51 +1,43 @@
 import { HIDDEN_LAYOUT_ROUTE_PREFIX } from './routePrefix';
 
-const prototypeMode = process.env.REACT_APP_PROTOTYPE === '1' || process.env.UMI_APP_PROTOTYPE === '1';
-const prototypePage = './prototype/CapabilityPage';
-const unavailablePage = './prototype/UnavailablePage';
 const hiddenLayoutRoutePrefix = HIDDEN_LAYOUT_ROUTE_PREFIX;
 const withHiddenLayoutPrefix = (path: string) =>
   path === '/'
     ? hiddenLayoutRoutePrefix
     : `${hiddenLayoutRoutePrefix}${path.startsWith('/') ? path : `/${path}`}`;
-const component = (existing: string) => (prototypeMode ? prototypePage : existing);
-const prototypeOnlyComponent = (existing = prototypePage) => (prototypeMode ? existing : unavailablePage);
 
 /**
- * 真实实现的二级菜单页面（在原型模式下被 CapabilityPage 覆盖，方便菜单评审）。
- *
- * 被撤下的具体页面继续保留原型路由和注册信息，统一落到 CapabilityPage，
- * 供后续原型设计使用，不再加载已删除的业务实现。
+ * 二级菜单页面。尚未接入业务实现的功能保留正式入口，使用统一的占位页。
  */
 const businessRoutes = [
-  ['/reporting/forms', prototypeOnlyComponent()],
-  ['/reporting/reports', component('./reporting-reports')],
-  ['/data-source', component('./data-source')],
-  ['/data-source/master-data', component('./master-data')],
-  ['/data-exploration/overview', component('./data-exploration/overview')],
-  ['/data-exploration/tasks', component('./data-exploration/tasks')],
-  ['/data-exploration/results', component('./data-exploration/results')],
-  ['/client', component('./client')],
-  ['/operations/metadata-engine', component('./operations/metadata-engine')],
-  ['/resources/data-discovery', component('./data-exploration/overview')],
-  ['/sync/batch-link-up', component('./batch-link-up')],
-  ['/sync/file-link-up', component('./file-link-up')],
-  ['/sync/stream-link-up', component('./stream-link-up')],
-  ['/sync/cloud-edge-tasks', prototypeOnlyComponent()],
-  ['/sync/edge-access-tasks', prototypeOnlyComponent()],
-  ['/sync/links', prototypeOnlyComponent()],
-  ['/sync/topology', prototypeOnlyComponent()],
-  ['/bi', prototypeOnlyComponent()],
-  ['/metrics', component('./metrics')],
-  ['/alarm', component('./alarm')],
-  ['/operations/protocol', prototypeOnlyComponent('./prototype/ProtocolPlaceholderPage')],
-  ['/operations/diagnostics', prototypeOnlyComponent()],
-  ['/lake/resources', component('./lake/physical')],
-  ['/lake/warehouse', component('./lake/warehouse')],
-  ['/lake/lifecycle', component('./lake/lifecycle')],
-  ['/lake/logical-access', component('./lake/logical')],
-  ['/knowledge-management', component('./knowledge-management')],
-  ['/open-api', component('./open-api')],
+  ['/reporting/forms', './FeaturePlaceholderPage'],
+  ['/reporting/reports', './reporting-reports'],
+  ['/data-source', './data-source'],
+  ['/data-source/master-data', './master-data'],
+  ['/data-exploration/overview', './data-exploration/overview'],
+  ['/data-exploration/tasks', './data-exploration/tasks'],
+  ['/data-exploration/results', './data-exploration/results'],
+  ['/client', './client'],
+  ['/operations/metadata-engine', './operations/metadata-engine'],
+  ['/resources/data-discovery', './data-exploration/overview'],
+  ['/sync/batch-link-up', './batch-link-up'],
+  ['/sync/file-link-up', './file-link-up'],
+  ['/sync/stream-link-up', './stream-link-up'],
+  ['/sync/cloud-edge-tasks', './FeaturePlaceholderPage'],
+  ['/sync/edge-access-tasks', './FeaturePlaceholderPage'],
+  ['/sync/links', './FeaturePlaceholderPage'],
+  ['/sync/topology', './FeaturePlaceholderPage'],
+  ['/bi', './FeaturePlaceholderPage'],
+  ['/metrics', './metrics'],
+  ['/alarm', './alarm'],
+  ['/operations/protocol', './FeaturePlaceholderPage'],
+  ['/operations/diagnostics', './FeaturePlaceholderPage'],
+  ['/lake/resources', './lake/physical'],
+  ['/lake/warehouse', './lake/warehouse'],
+  ['/lake/lifecycle', './lake/lifecycle'],
+  ['/lake/logical-access', './lake/logical'],
+  ['/knowledge-management', './knowledge-management'],
+  ['/open-api', './open-api'],
 ].map(([path, routeComponent]) => ({
   path,
   component: routeComponent,
@@ -77,17 +69,12 @@ const hiddenRoutes = [
   ['/sync/stream-link-up/:id/config/script', './stream-link-up/config/script', '/sync/stream-link-up'],
 ].map(([path, existing, parentPath]) => ({
   path,
-  component: component(existing),
+  component: existing,
   hideInMenu: true,
   parentKeys: [parentPath],
 }));
 
 const framedRoutes = [
-  {
-    path: '/prototype/traceability',
-    component: './prototype/TraceabilityPage',
-    hideInMenu: true,
-  },
   ...businessRoutes,
   ...hiddenRoutes,
 ];
@@ -95,7 +82,7 @@ const framedRoutes = [
 const hiddenLayoutRoutes = [
   {
     path: hiddenLayoutRoutePrefix,
-    redirect: withHiddenLayoutPrefix(prototypeMode ? '/prototype/traceability' : '/data-source'),
+    redirect: withHiddenLayoutPrefix('/data-source'),
     hideInMenu: true,
   },
   ...framedRoutes.map((route) => ({
@@ -108,7 +95,7 @@ const hiddenLayoutRoutes = [
 export default [
   {
     path: '/',
-    redirect: prototypeMode ? '/prototype/traceability' : '/data-source',
+    redirect: '/data-source',
   },
   ...framedRoutes,
   ...hiddenLayoutRoutes,

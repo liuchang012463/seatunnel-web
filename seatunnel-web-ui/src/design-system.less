@@ -231,6 +231,31 @@ html[data-st-theme="dark"] .ant-menu-dark .ant-menu-submenu-selected > .ant-menu
   background: var(--st-color-hover) !important;
 }
 
+/* 折叠态的一级叶子菜单也使用与子菜单弹层相同的单行面板，
+   避免独立入口退化成窄小的文字 Tooltip。 */
+.ant-tooltip.st-sidebar-leaf-hover-panel {
+  .ant-tooltip-inner {
+    min-width: 160px;
+    padding: 4px;
+    color: var(--st-color-text-secondary) !important;
+    background: var(--st-color-bg-elevated) !important;
+    border: var(--st-border-width) solid var(--st-color-border);
+    border-radius: var(--st-radius-md);
+    box-shadow: var(--st-panel-shadow);
+  }
+
+  .st-sidebar-leaf-hover-panel__item {
+    display: flex;
+    min-height: 34px;
+    align-items: center;
+    padding: 0 16px;
+    color: inherit;
+    font-size: var(--st-type-content-sm-size);
+    line-height: var(--st-type-content-sm-line);
+    white-space: nowrap;
+  }
+}
+
 /* Surfaces */
 .ant-card,
 .ant-modal-content,
@@ -793,36 +818,6 @@ body [class*="[background:radial-gradient(circle_at_top_left"] {
     overflow-x: auto;
   }
 
-  .prototype-capability-page {
-    .ant-page-header-heading {
-      align-items: flex-start;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .ant-page-header-heading-left {
-      width: 100%;
-      align-items: flex-start;
-      flex-direction: column;
-      gap: 4px;
-      overflow: visible;
-    }
-
-    .ant-page-header-heading-title,
-    .ant-page-header-heading-sub-title {
-      width: 100%;
-      max-width: none;
-      margin-inline-start: 0;
-      overflow: visible;
-      white-space: normal;
-      text-overflow: clip;
-    }
-
-    .ant-page-header-heading-extra {
-      width: 100%;
-      margin-inline-start: 0;
-    }
-  }
 }
 
 body [class~="bg-[#EEF4FF]"],

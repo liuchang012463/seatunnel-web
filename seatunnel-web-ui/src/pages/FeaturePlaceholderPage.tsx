@@ -29,19 +29,23 @@ const PAGE_COPY: Record<string, { title: string; description: string }> = {
     title: '引接态势',
     description: '引接态势能力尚未接入当前版本。',
   },
+  '/operations/protocol': {
+    title: '协议管理',
+    description: '协议管理能力尚未接入当前版本。',
+  },
   '/operations/diagnostics': {
     title: '安全加密',
     description: '安全加密与诊断能力尚未接入当前版本。',
   },
 };
 
-const UnavailablePage: React.FC = () => {
+const FeaturePlaceholderPage: React.FC = () => {
   const { pathname } = useLocation();
-  const copy = PAGE_COPY[pathname] || {
+  const normalizedPathname = pathname.replace(/^\/iframe(?=\/|$)/, '') || '/';
+  const copy = PAGE_COPY[normalizedPathname] || {
     title: '页面暂不可用',
     description: '该页面尚未接入当前版本。',
   };
-  const isDiscovery = pathname === '/resources/data-discovery';
 
   return (
     <PageContainer title={copy.title} subTitle={copy.description}>
@@ -54,11 +58,6 @@ const UnavailablePage: React.FC = () => {
             <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/data-source')}>
               返回数据源管理
             </Button>
-            {isDiscovery ? (
-              <Button type="primary" onClick={() => history.push('/data-exploration/overview')}>
-                查看探查概览
-              </Button>
-            ) : null}
           </Space>
         </Empty>
       </Card>
@@ -66,4 +65,4 @@ const UnavailablePage: React.FC = () => {
   );
 };
 
-export default UnavailablePage;
+export default FeaturePlaceholderPage;

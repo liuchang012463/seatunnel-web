@@ -8,9 +8,6 @@ import proxy from "./proxy";
 import routes from "./routes";
 
 const { REACT_APP_ENV = "dev" } = process.env;
-const IS_PROTOTYPE =
-  process.env.REACT_APP_PROTOTYPE === "1" ||
-  process.env.UMI_APP_PROTOTYPE === "1";
 
 /**
  * @name 使用公共路径
@@ -20,10 +17,6 @@ const IS_PROTOTYPE =
 const PUBLIC_PATH: string = "/";
 
 export default defineConfig({
-  define: {
-    "process.env.REACT_APP_PROTOTYPE": IS_PROTOTYPE ? "1" : "0",
-    "process.env.UMI_APP_PROTOTYPE": IS_PROTOTYPE ? "1" : "0",
-  },
   /**
    * @name 开启 hash 模式
    * @description 让 build 之后的产物包含 hash 后缀。通常用于增量发布和避免浏览器加载缓存。
@@ -368,7 +361,7 @@ export default defineConfig({
    * @description 基于 openapi 的规范生成serve 和mock，能减少很多样板代码
    * @doc https://pro.ant.design/zh-cn/docs/openapi/
    */
-  openAPI: IS_PROTOTYPE ? [] : [
+  openAPI: [
     {
       requestLibPath: "import { request } from '@umijs/max'",
       // 或者使用在线的版本

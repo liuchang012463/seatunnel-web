@@ -5,6 +5,7 @@
 > 审查提交：`0a48601e`（`fix(ui): 浅色下 Segmented 轨道与侧栏折叠钮强制对齐主题`）
 > 对比基线：`cad171ee3ccd6f3c05dec53a7e2a14e188c9994b`
 > 范围：`seatunnel-web-ui` 本次 redesign 的路由、页面、共享组件、主题、响应式和可交互状态
+> 历史说明：本文记录 2026-09-14 的审查状态。后续已退役原型运行时、静态参考页和本地 mock；本文保留当时的问题、建议和截图证据，不代表当前代码路径。
 
 ## 结论
 
@@ -17,15 +18,15 @@
 - 基线到当前提交共 550 个前端文件发生变化，约 `44,814` 行新增、`17,498` 行删除；重点阅读了路由、应用壳、主题、数据源、探查、三类引接、入湖、报警、Client、OpenAPI 和原型注册表。
 - 静态检查：`yarn tsc` 通过；`yarn build` 通过；`yarn test --runInBand` 为 24 个 suite 中 23 个通过，1 个失败。
 - 运行检查：先完成生产构建，再用 `max preview` 访问 1440×1000 桌面页面；另用 390×844 手机和 768px 窄平板检查布局。通过 Playwright 记录截图、可访问性树快照和页面状态。
-- 颜色、密度、状态和壳层要求以 [`docs/DESIGN.md`](../DESIGN.md) 为验收基线；本报告中的“符合/不符合”均指该文档，而不是个人偏好。
+- 颜色、密度、状态和壳层要求以 [`DESIGN.md`](../DESIGN.md) 为验收基线；本报告中的“符合/不符合”均指该文档，而不是个人偏好。
 
 ## 阻断问题（P0）
 
 ### P0-01 正式业务菜单仍指向本地原型或占位页
 
-`config/routes.ts` 在非原型模式下仍把以下路由直接指向 `prototypePage`：`/reporting/forms`、`/resources/data-discovery`、`/sync/cloud-edge-tasks`、`/sync/edge-access-tasks`、`/sync/links`、`/sync/topology`、`/bi` 和 `/operations/diagnostics`（[`routes.ts:14-46`](../../seatunnel-web-ui/config/routes.ts#L14)）。`/operations/protocol` 明确渲染“原型设计中”的占位页（[`ProtocolPlaceholderPage.tsx:5-8`](../../seatunnel-web-ui/src/pages/prototype/ProtocolPlaceholderPage.tsx#L5)）。
+审查时，`config/routes.ts` 在非原型模式下仍把以下路由直接指向 `prototypePage`：`/reporting/forms`、`/resources/data-discovery`、`/sync/cloud-edge-tasks`、`/sync/edge-access-tasks`、`/sync/links`、`/sync/topology`、`/bi` 和 `/operations/diagnostics`。`/operations/protocol` 当时也明确渲染“原型设计中”的占位页。
 
-这些页面不是只换了视觉层：`CapabilityPage` 从 `localStorage` 读取和写入演示记录，并在操作后直接显示成功 toast（[`CapabilityPage.tsx:129-241`](../../seatunnel-web-ui/src/pages/prototype/CapabilityPage.tsx#L129)；[`store.ts:20-60`](../../seatunnel-web-ui/src/prototype/store.ts#L20)）。因此用户在 `/bi`、云边任务、拓扑或采报页面看到的“创建/执行/状态更新”不会进入业务 API。截图可见这些页面使用相同的通用演示表和静态记录：[`18-reporting-forms.png`](./evidence/18-reporting-forms.png)、[`19-bi.png`](./evidence/19-bi.png)、[`32-cloud-edge.png`](./evidence/32-cloud-edge.png)、[`33-topology.png`](./evidence/33-topology.png)、[`24-protocol-placeholder.png`](./evidence/24-protocol-placeholder.png)。
+这些页面不是只换了视觉层：当时的 `CapabilityPage` 从 `localStorage` 读取和写入演示记录，并在操作后直接显示成功 toast。因此用户在 `/bi`、云边任务、拓扑或采报页面看到的“创建/执行/状态更新”不会进入业务 API。截图可见这些页面使用相同的通用演示表和静态记录：[`18-reporting-forms.png`](./evidence/18-reporting-forms.png)、[`19-bi.png`](./evidence/19-bi.png)、[`32-cloud-edge.png`](./evidence/32-cloud-edge.png)、[`33-topology.png`](./evidence/33-topology.png)、[`24-protocol-placeholder.png`](./evidence/24-protocol-placeholder.png)。这些原型实现现已按本报告问题完成退役，业务入口保留为正式路由；尚未接入业务的入口使用统一占位页。
 
 影响：菜单名称和按钮行为会让用户误以为功能已经可用，且会污染验收数据。建议二选一：
 
@@ -106,10 +107,10 @@
 
 ### 未通过或受环境限制
 
-- `yarn test --runInBand`：24 suites 中 23 个通过，`src/prototype/__tests__/registry.test.ts:32-44` 失败；测试仍断言 11 条隐藏详情路由，而当前新增了 `/sync/batch-link-up/:id/config/single-incremental`（[`routes.ts:62-65`](../../seatunnel-web-ui/config/routes.ts#L62)）。这不是可忽略的快照差异，应在确认路由清单后更新测试或修复路由注册。
+- 历史 `yarn test --runInBand`：24 suites 中 23 个通过；当时的原型 registry 测试因隐藏详情路由清单变化失败。该测试与原型资产已一并退役，正式路由清单保留 `/sync/batch-link-up/:id/config/single-incremental`。
 - `git diff --check base..HEAD -- seatunnel-web-ui`：失败。存在批量调度、实时页头和样式文件的 trailing whitespace，以及 3 个入湖 less 文件 EOF 空行；具体位置见命令输出中的 `ScheduleParamsSection.tsx:139`、`RealtimeHeader.tsx:59`、`stream-link-up/index.less:24` 和 physical detail/table/wizard less。
 - `yarn biome:lint`：未能完成，已安装的 `@biomejs/cli-linux-arm64` 需要当前环境没有的 GLIBC 2.29/2.30；这是执行环境限制，不能视为代码通过。
-- `yarn prototype` 开发入口在本次环境首先触发 Mako 找不到 `src/.umi/plugin-tailwindcss/tailwind.css`，并伴随 watcher/promisify 错误（[`01-console.log`](./evidence/01-console.log)）。`package.json` 的 `prototype` 脚本没有像 `start:dev` 一样设置 `CHECK_TIMEOUT`（[`package.json:16-27`](../../seatunnel-web-ui/package.json#L16)）。生产构建可以运行，但原型评审入口不稳定，应修复后再作为设计验收入口。
+- 历史 `yarn prototype` 开发入口在本次环境曾触发 Mako 找不到 `src/.umi/plugin-tailwindcss/tailwind.css`，并伴随 watcher/promisify 错误（[`01-console.log`](./evidence/01-console.log)）。该 prototype 脚本和评审入口现已随原型资产删除；生产前端继续使用正式开发/构建命令。
 
 ## 页面覆盖与证据索引
 

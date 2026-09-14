@@ -1,13 +1,13 @@
-import { prototypeMenuData } from '../menuData';
+import { menuData } from '../menuData';
 
 const summarizeMenu = (items: any[]): any[] =>
   items.map(({ path, name, children }) =>
     children ? { path, name, children: summarizeMenu(children) } : { path, name },
   );
 
-describe('prototype navigation menu', () => {
+describe('application navigation menu', () => {
   it('matches the approved first-level and second-level menu structure', () => {
-    expect(summarizeMenu(prototypeMenuData)).toEqual([
+    expect(summarizeMenu(menuData)).toEqual([
       { path: '/bi', name: '引接态势' },
       { path: '/data-source', name: '数据源管理' },
       {
@@ -62,6 +62,22 @@ describe('prototype navigation menu', () => {
           { path: '/open-api', name: '开放接口' },
         ],
       },
+    ]);
+  });
+
+  it('marks standalone first-level entries for the shared collapsed hover panel', () => {
+    expect(
+      menuData
+        .filter((item) => !item.children)
+        .map(({ path, disabledTooltip, collapsedHoverPanel }) => ({
+          path,
+          disabledTooltip,
+          collapsedHoverPanel,
+        })),
+    ).toEqual([
+      { path: '/bi', disabledTooltip: true, collapsedHoverPanel: true },
+      { path: '/data-source', disabledTooltip: true, collapsedHoverPanel: true },
+      { path: '/reporting/forms', disabledTooltip: true, collapsedHoverPanel: true },
     ]);
   });
 });
