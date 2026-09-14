@@ -61,7 +61,13 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         if (command.getMode() == JobDefinitionMode.FILE_SYNC) {
             validateFileSync(cmd.getWorkflow());
         }
+        if (command.getMode() == JobDefinitionMode.GUIDE_SINGLE) {
+            validateWebUploadSingleSource(cmd.getWorkflow());
+        }
         if (command.getMode() == JobDefinitionMode.GUIDE_SINGLE_INCREMENTAL) {
+            if (isWebUploadSource(cmd.getWorkflow())) {
+                throw new IllegalArgumentException("本地文件来源只支持单表向导，不支持单表增量微批");
+            }
             validateIncremental(cmd.getWorkflow(), command);
         }
     }
@@ -162,6 +168,19 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
                     "SeaTunnel 2.3.13 FILE_SYNC incremental mode supports FTP/SFTP only; "
                             + role + " dbType=" + dbType);
         }
+    }
+
+    private void validateWebUploadSingleSource(Map<String, Object> workflow) {
+        Map<String, Object> source = findConfig(workflow, "source");
+        if (isWebUploadSource(workflow)) {
+            LocalFileSourceValidator.validate(source);
+        }
+    }
+
+    private boolean isWebUploadSource(Map<String, Object> workflow) {
+        Map<String, Object> source = findConfig(workflow, "source");
+        return "WEB_UPLOAD".equalsIgnoreCase(firstNonBlank(
+                source.get("sourceMode"), source.get("source_mode")));
     }
 
     private void validateIncremental(Map<String, Object> workflow,

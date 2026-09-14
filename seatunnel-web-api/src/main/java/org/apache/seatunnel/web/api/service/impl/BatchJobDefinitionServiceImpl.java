@@ -782,7 +782,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
     private void validateFileUpload(JobDefinitionSaveCommand command) {
         if (command == null
-                || command.getMode() != JobDefinitionMode.FILE_SYNC
+                || (command.getMode() != JobDefinitionMode.FILE_SYNC
+                && command.getMode() != JobDefinitionMode.GUIDE_SINGLE
+                && command.getMode() != JobDefinitionMode.GUIDE_SINGLE_INCREMENTAL)
                 || !(command instanceof GuideSingleJobContentCommand contentCommand)) {
             return;
         }

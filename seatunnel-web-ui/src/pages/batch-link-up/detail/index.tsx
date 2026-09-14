@@ -6,6 +6,7 @@ import ClientLinkSection from "./components/ClientLinkSection";
 import PageHeader from "./components/PageHeader";
 import { STEP_THEME } from "./constants";
 import useDetailPage from "./hooks/useDetailPage";
+import { isWebUploadSource } from "./modeUtils";
 
 export type ConnectivityStatus = "idle" | "loading" | "success" | "error";
 
@@ -43,6 +44,8 @@ const DetailPage = () => {
     setSourceDataSourceId,
     setTargetDataSourceId,
   } = useDetailPage();
+
+  const sourceManaged = isWebUploadSource(sourceType);
 
   if (!params) {
     // 深链兜底态：任务数据经列表页缓存进入，缺失时给页壳 + 返回 + 引导（审计 G10）。
@@ -116,11 +119,12 @@ const DetailPage = () => {
   })();
 
   const canGoNextFromClient =
-    sourceTestStatus === "success" && targetTestStatus === "success";
+    (sourceManaged || sourceTestStatus === "success")
+    && targetTestStatus === "success";
 
   const handleNextWithGuard = async () => {
     if (activeStep === "client" && !canGoNextFromClient) {
-      if (sourceTestStatus !== "success" && targetTestStatus !== "success") {
+      if (!sourceManaged && sourceTestStatus !== "success" && targetTestStatus !== "success") {
         openPrettyNotification({
           type: "warning",
           title: "操作警告",
@@ -129,7 +133,7 @@ const DetailPage = () => {
         return;
       }
 
-      if (sourceTestStatus !== "success") {
+      if (!sourceManaged && sourceTestStatus !== "success") {
         openPrettyNotification({
           type: "warning",
           title: "操作警告",
@@ -247,6 +251,7 @@ const DetailPage = () => {
                   targetTestStatus={targetTestStatus}
                   setSourceTestStatus={setSourceTestStatus}
                   setTargetTestStatus={setTargetTestStatus}
+                  sourceManaged={sourceManaged}
                 />
               )}
             </div>

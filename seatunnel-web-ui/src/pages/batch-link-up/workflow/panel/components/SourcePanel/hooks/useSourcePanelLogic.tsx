@@ -11,6 +11,7 @@ export interface SourcePanelLogicProps {
   onNodeDataChange: (nodeId: string, newData: any) => void;
   qualityDetailRef: any;
   scheduleConfig: any;
+  jobDefinitionId?: string | number;
 }
 
 export function useSourcePanelLogic({
@@ -22,6 +23,7 @@ export function useSourcePanelLogic({
   const nodeId = selectedNode?.id;
   const nodeData = selectedNode?.data || {};
   const config = nodeData?.config || {};
+  const isWebUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
   const meta = nodeData?.meta || {};
 
   const title = nodeData?.title || "来源节点";
@@ -85,7 +87,7 @@ export function useSourcePanelLogic({
 
   useEffect(() => {
     const loadDataSourceOptions = async () => {
-      if (!dbType) {
+      if (isWebUpload || !dbType) {
         setDataSourceOptions([]);
         return;
       }
@@ -106,7 +108,7 @@ export function useSourcePanelLogic({
     };
 
     loadDataSourceOptions();
-  }, [dbType]);
+  }, [dbType, isWebUpload]);
 
   useEffect(() => {
     if (!dataSourceId || dataSourceOptions.length === 0) return;
@@ -132,7 +134,7 @@ export function useSourcePanelLogic({
 
   useEffect(() => {
     const loadTableOptions = async () => {
-      if (!dataSourceId || String(dbType).toUpperCase() === "HTTP") {
+      if (isWebUpload || !dataSourceId || String(dbType).toUpperCase() === "HTTP") {
         setTableOptions([]);
         return;
       }
@@ -189,7 +191,7 @@ export function useSourcePanelLogic({
     };
 
     loadTableOptions();
-  }, [dataSourceId, dbType, table, updateNode]);
+  }, [dataSourceId, dbType, isWebUpload, table, updateNode]);
 
   const handleDataSourceChange = useCallback(
     (value: string, option: any) => {

@@ -13,6 +13,7 @@ import SqlEditorSection from './SqlEditorSection';
 import KafkaNodeConfig from '@/pages/common/workflow/KafkaNodeConfig';
 import HttpNodeConfig from '@/pages/common/workflow/HttpNodeConfig';
 import ElasticsearchNodeConfig from '@/pages/common/workflow/ElasticsearchNodeConfig';
+import LocalFileSourcePanel from './LocalFileSourcePanel';
 
 dayjs.extend(customParseFormat);
 
@@ -22,9 +23,10 @@ interface Props {
   onNodeDataChange: (nodeId: string, newData: any) => void;
   scheduleConfig: any;
   isIncremental?: boolean;
+  jobDefinitionId?: string | number;
 }
 
-function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, isIncremental = false }: Props) {
+function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, isIncremental = false, jobDefinitionId }: Props) {
   const qualityDetailRef = useRef<any>(null);
   const isKafka = String(selectedNode?.data?.dbType || '').toUpperCase() === 'KAFKA';
   const isHttp = String(selectedNode?.data?.dbType || '').toUpperCase() === 'HTTP';
@@ -69,7 +71,21 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
     onNodeDataChange,
     qualityDetailRef,
     scheduleConfig,
+    jobDefinitionId,
   });
+
+  const isWebUpload = String(selectedNode?.data?.config?.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
+
+  if (isWebUpload) {
+    return (
+      <LocalFileSourcePanel
+        selectedNode={selectedNode}
+        onClose={onClose}
+        jobDefinitionId={jobDefinitionId}
+        updateNode={updateNode}
+      />
+    );
+  }
 
   if (isKafka || isHttp || isElasticsearch) {
     return (

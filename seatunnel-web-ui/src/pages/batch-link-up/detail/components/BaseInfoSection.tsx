@@ -1,11 +1,12 @@
 import { Form, Input, Radio } from 'antd';
 import DataSourceSelect, {
   generateDataSourceOptions,
-  generateSourceDataSourceOptions,
+  generateOfflineSourceDataSourceOptions,
 } from '../../DataSourceSelect';
 import IconRightArrow from '../../IconRightArrow';
 import type { SyncMode } from '../types';
 import ModeCard from './ModeCard';
+import { canUseOfflineMode, isWebUploadSource } from '../modeUtils';
 
 const { TextArea } = Input;
 
@@ -26,6 +27,8 @@ const BaseConfigSection: React.FC<Props> = ({
   mode,
   setMode,
 }) => {
+  const localFileSource = isWebUploadSource(sourceType);
+
   return (
     <div className="p-6">
       {/* 整体卡片 */}
@@ -38,7 +41,7 @@ const BaseConfigSection: React.FC<Props> = ({
             <DataSourceSelect
               value={sourceType}
               onChange={handleSourceChange}
-              dataSourceOptions={generateSourceDataSourceOptions()}
+              dataSourceOptions={generateOfflineSourceDataSourceOptions()}
               placeholder="请选择来源"
               prefix="来源"
               width="48%"
@@ -95,23 +98,27 @@ const BaseConfigSection: React.FC<Props> = ({
                   onSelect={setMode}
                 />
 
-                <ModeCard
-                  value="GUIDE_SINGLE_INCREMENTAL"
-                  current={mode}
-                  title="单表增量微批"
-                  desc="按调度周期接入新增或变更数据。"
-                  tag="增量"
-                  onSelect={setMode}
-                />
+                {!localFileSource && canUseOfflineMode(sourceType, 'GUIDE_SINGLE_INCREMENTAL') && (
+                  <ModeCard
+                    value="GUIDE_SINGLE_INCREMENTAL"
+                    current={mode}
+                    title="单表增量微批"
+                    desc="按调度周期接入新增或变更数据。"
+                    tag="增量"
+                    onSelect={setMode}
+                  />
+                )}
 
-                <ModeCard
-                  value="GUIDE_MULTI"
-                  current={mode}
-                  title="多表向导"
-                  desc="适合批量配置多张表，统一管理同步关系。"
-                  tag="批量"
-                  onSelect={setMode}
-                />
+                {!localFileSource && canUseOfflineMode(sourceType, 'GUIDE_MULTI') && (
+                  <ModeCard
+                    value="GUIDE_MULTI"
+                    current={mode}
+                    title="多表向导"
+                    desc="适合批量配置多张表，统一管理同步关系。"
+                    tag="批量"
+                    onSelect={setMode}
+                  />
+                )}
 
                 <ModeCard
                   value="SCRIPT"

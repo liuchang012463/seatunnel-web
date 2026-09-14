@@ -2,7 +2,8 @@ import { history, useParams } from '@umijs/max';
 import { Form, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getDbLabel } from '../constants';
-import type { DetailFormValues, SourceTargetType, StepKey } from '../types';
+import type { DetailFormValues, SourceTargetType, StepKey, SyncMode } from '../types';
+import { isWebUploadSource, normalizeOfflineMode } from '../modeUtils';
 
 const defaultSourceType: SourceTargetType = {
   dbType: 'MYSQL',
@@ -53,7 +54,7 @@ export default function useDetailPage() {
     if (data?.sourceType) setSourceType(data.sourceType);
     if (data?.targetType) setTargetType(data.targetType);
 
-    const currentMode = data?.mode || 'GUIDE_SINGLE';
+    const currentMode = normalizeOfflineMode(data?.sourceType, data?.mode) as SyncMode;
 
     form.setFieldsValue({
       jobName: data?.jobName || `${data?.sourceType?.dbType?.toLowerCase()}2${data?.targetType?.dbType?.toLowerCase()}`,
@@ -84,11 +85,17 @@ export default function useDetailPage() {
   };
 
   const handleSourceChange = (value: string, option: any) => {
-    setSourceType({
+    const nextSourceType = {
       dbType: value,
       connectorType: option?.connectorType,
       pluginName: option?.pluginName,
-    });
+      sourceManaged: option?.sourceManaged,
+    };
+    setSourceType(nextSourceType);
+    if (isWebUploadSource(nextSourceType)) {
+      setMode('GUIDE_SINGLE');
+      form.setFieldValue('mode', 'GUIDE_SINGLE');
+    }
   };
 
   const handleTargetChange = (value: string, option: any) => {
@@ -100,8 +107,9 @@ export default function useDetailPage() {
   };
 
   const handleModeChange = (value: string) => {
-    setMode(value);
-    form.setFieldValue('mode', value);
+    const nextMode = normalizeOfflineMode(sourceType, value);
+    setMode(nextMode);
+    form.setFieldValue('mode', nextMode);
   };
 
   const goStep = async (step: StepKey) => {
