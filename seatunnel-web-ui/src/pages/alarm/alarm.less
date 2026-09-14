@@ -10,6 +10,8 @@
   --alarm-accent: var(--st-color-accent, #4dd2ff);
   --alarm-primary: var(--st-color-primary, #2187a8);
 
+  box-sizing: border-box;
+  padding-inline: 24px;
   color: var(--alarm-text-secondary);
 }
 
@@ -644,6 +646,10 @@
 }
 
 @media (max-width: 768px) {
+  .alarm-page {
+    padding-inline: 16px;
+  }
+
   .alarm-page__sticky {
     top: 44px;
     padding: 8px;
