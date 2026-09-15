@@ -12,5 +12,7 @@ public interface JobDefinitionContentDao extends IDao<JobDefinitionContentEntity
 
     JobDefinitionContentEntity queryLatestByJobDefinitionId(Long jobDefinitionId);
 
+    boolean existsByFileResourceId(String fileResourceId);
+
     void deleteByJobDefinitionId(Long jobDefinitionId);
 }

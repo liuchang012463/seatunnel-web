@@ -55,9 +55,11 @@ export const menuData: MenuDataItem[] = [
     icon: <SwapOutlined />,
     children: [
       { path: '/metrics', name: '任务概览', icon: <MonitorOutlined /> },
-      { path: '/sync/batch-link-up', name: '离线引接任务', icon: <SwapOutlined /> },
-      { path: '/sync/stream-link-up', name: '实时引接任务', icon: <ThunderboltOutlined /> },
-      { path: '/sync/file-link-up', name: '文件引接任务', icon: <FolderOpenOutlined /> },
+      { path: '/sync/batch-link-up', name: '批量数据引接', icon: <SwapOutlined /> },
+      { path: '/sync/stream-link-up', name: '实时数据引接', icon: <ThunderboltOutlined /> },
+      { path: '/sync/file-ingest', name: '文件数据引接', icon: <FolderOpenOutlined /> },
+      { path: '/sync/file-transfer', name: '文件传输', icon: <SwapOutlined /> },
+      { path: '/sync/file-resources', name: '文件资源管理', icon: <FolderOpenOutlined /> },
       { path: '/sync/cloud-edge-tasks', name: '云边协同任务', icon: <CloudServerOutlined /> },
       {
         path: '/sync/edge-access-tasks',

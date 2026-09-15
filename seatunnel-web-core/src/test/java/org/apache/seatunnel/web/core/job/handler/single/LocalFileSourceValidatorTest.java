@@ -7,6 +7,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LocalFileSourceValidatorTest {
 
@@ -37,5 +38,20 @@ class LocalFileSourceValidatorTest {
     void rejectsUnsupportedFormats() {
         assertThrows(IllegalArgumentException.class, () ->
                 LocalFileSourceValidator.validate(Map.of("fileFormatType", "parquet")));
+    }
+
+    @Test
+    void validatesFileResourceIdAndStructuredFormat() {
+        assertEquals(42L, LocalFileSourceValidator.validateFileResource(Map.of(
+                "fileResourceId", "42",
+                "fileFormatType", "csv")));
+    }
+
+    @Test
+    void requiresFileResourceId() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                LocalFileSourceValidator.validateFileResource(Map.of("fileFormatType", "csv")));
+
+        assertTrue(exception.getMessage().contains("fileResourceId"));
     }
 }

@@ -1,7 +1,10 @@
 import CommonClientLinkSection, {
   ConnectivityStatus,
 } from "@/pages/common/components/CommonClientLinkSection";
-import { generateOfflineSourceDataSourceOptions } from "../../DataSourceSelect";
+import {
+  generateOfflineSourceDataSourceOptions,
+  generateSourceDataSourceOptions,
+} from "../../DataSourceSelect";
 
 interface Props {
   activeStep: "base" | "client";
@@ -29,6 +32,10 @@ interface Props {
 }
 
 const ClientLinkSection: React.FC<Props> = (props) => {
+  const sourceOptions = props.sourceManaged
+    ? generateOfflineSourceDataSourceOptions()
+    : generateSourceDataSourceOptions();
+
   return (
     <CommonClientLinkSection
       {...props}
@@ -39,7 +46,7 @@ const ClientLinkSection: React.FC<Props> = (props) => {
       targetTitle="去向"
       sourceCreateText="新建来源数据源"
       targetCreateText="新建去向数据源"
-      sourceDataSourceTypeOptions={generateOfflineSourceDataSourceOptions()}
+      sourceDataSourceTypeOptions={sourceOptions}
       sourceManaged={props.sourceManaged}
     />
   );

@@ -550,6 +550,21 @@ export default function Workflow({
         edges: nextGraph?.edges || [],
       };
     });
+
+    // Keep the page-level draft in sync with the canvas.  File data-ingest
+    // pages use the same workflow component and may update the resource
+    // selector outside the canvas; persisting the latest graph here prevents
+    // that selector hand-off from dropping field mappings or transforms.
+    setParams((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        workflow: {
+          nodes: nextGraph?.nodes || [],
+          edges: nextGraph?.edges || [],
+        },
+      };
+    });
   };
 
   const actionChipClass =

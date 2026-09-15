@@ -13,6 +13,7 @@
         <result property="jobDesc" column="job_desc"/>
         <result property="mode" column="mode"/>
         <result property="jobType" column="job_type"/>
+        <result property="taskType" column="task_type"/>
         <result property="clientId" column="client_id"/>
         <result property="savepointPath" column="savepoint_path"/>
         <result property="jobVersion" column="job_version"/>
@@ -55,6 +56,16 @@
                 AND d.job_type = #{dto.jobType}
             </if>
 
+            <if test="dto != null and dto.taskType != null">
+                AND (
+                    CASE
+                    WHEN d.task_type IS NOT NULL THEN d.task_type
+                    WHEN UPPER(COALESCE(d.job_type, '')) = 'STREAMING' THEN 'STREAM'
+                    ELSE 'STREAM'
+                    END
+                ) = #{dto.taskType}
+            </if>
+
             <if test="dto != null and dto.releaseState != null">
                 AND d.release_state = #{dto.releaseState}
             </if>
@@ -80,6 +91,7 @@
         d.job_desc,
         d.mode,
         d.job_type,
+        d.task_type,
         d.client_id,
         d.job_version,
         d.release_state,

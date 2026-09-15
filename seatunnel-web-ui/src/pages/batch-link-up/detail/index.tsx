@@ -63,7 +63,7 @@ const DetailPage = () => {
           未找到任务数据
         </strong>
         <span style={{ fontSize: 13, color: "var(--st-color-text-muted)" }}>
-          任务数据在从列表进入时缓存；请回到离线引接任务列表，从任务行「更多 → 查看详情」重新进入。
+          任务数据在从列表进入时缓存；请回到批量数据引接任务列表，从任务行「更多 → 查看详情」重新进入。
         </span>
         <Button type="primary" onClick={goBack}>
           返回任务列表

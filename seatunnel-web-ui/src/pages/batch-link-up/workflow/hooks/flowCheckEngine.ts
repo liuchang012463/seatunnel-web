@@ -48,6 +48,13 @@ const isNonTabularSourceNode = (node: any) =>
 export const isWebUploadSourceNode = (node: any) =>
   String(node?.data?.config?.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
 
+/** Reusable object-storage file source used by FILE_INGEST tasks. */
+export const isFileResourceSourceNode = (node: any) =>
+  String(node?.data?.config?.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
+
+const isManagedFileSourceNode = (node: any) =>
+  isWebUploadSourceNode(node) || isFileResourceSourceNode(node);
+
 const hasElasticsearchTarget = (config: any) => {
   const directTarget = [
     config.index,
@@ -118,6 +125,12 @@ const sourceRules: NodeCheckRule[] = [
       }
       return null;
     }
+    if (isFileResourceSourceNode(node)) {
+      if (!String(config.fileResourceId || '').trim()) {
+        return buildWarning(node, 'fileResourceId', '请先选择文件资源库中的文件');
+      }
+      return null;
+    }
     if (!config.dataSourceId) {
       return buildWarning(node, "dataSourceId", "缺少源端数据源配置");
     }
@@ -125,7 +138,10 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
-    if (isWebUploadSourceNode(node)) {
+    if (isManagedFileSourceNode(node)) {
+      if (isFileResourceSourceNode(node)) {
+        return null;
+      }
       const assets = Array.isArray(config.uploadedAssets) ? config.uploadedAssets : [];
       if (assets.length === 0) {
         return buildWarning(node, 'uploadedAssets', '请先上传本地文件');
@@ -142,7 +158,7 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
-    if (isWebUploadSourceNode(node)) {
+    if (isManagedFileSourceNode(node)) {
       if (!isLocalFileFormat(config.fileFormatType)) {
         return buildWarning(node, 'fileFormatType', '请选择 CSV、Excel、JSON 或 Text 文件格式');
       }
@@ -164,7 +180,7 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
-    if (isWebUploadSourceNode(node)) {
+    if (isManagedFileSourceNode(node)) {
       if (['json', 'excel'].includes(String(config.fileFormatType || '').toLowerCase())
           && !hasSchemaFields(config.schema)) {
         return buildWarning(node, 'schema', 'JSON 和 Excel 来源必须配置字段 Schema');

@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.core.job.assembler;
 
 import org.apache.seatunnel.web.common.enums.ReleaseState;
+import org.apache.seatunnel.web.common.enums.TaskType;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
@@ -23,6 +24,7 @@ public class StreamingJobDefinitionAssembler {
                 .jobDesc(basic.getJobDesc())
                 .mode(command.getMode())
                 .jobType(env.getJobMode())
+                .taskType(TaskType.STREAM)
                 .clientId(basic.getClientId())
                 .releaseState(ReleaseState.OFFLINE)
                 .jobVersion(1)
@@ -52,6 +54,7 @@ public class StreamingJobDefinitionAssembler {
         entity.setJobDesc(basic.getJobDesc());
         entity.setMode(command.getMode());
         entity.setJobType(env.getJobMode());
+        entity.setTaskType(TaskType.STREAM);
         entity.setClientId(basic.getClientId());
         entity.setJobVersion(nextVersion);
         entity.setSourceType(analysis.getSourceType());

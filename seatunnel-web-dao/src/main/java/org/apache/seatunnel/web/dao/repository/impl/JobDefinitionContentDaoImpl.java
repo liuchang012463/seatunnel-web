@@ -47,6 +47,13 @@ public class JobDefinitionContentDaoImpl
     }
 
     @Override
+    public boolean existsByFileResourceId(String fileResourceId) {
+        return fileResourceId != null
+                && !fileResourceId.isBlank()
+                && jobDefinitionContentMapper.existsByFileResourceId(fileResourceId);
+    }
+
+    @Override
     public void deleteByJobDefinitionId(Long jobDefinitionId) {
         jobDefinitionContentMapper.delete(
                 new LambdaQueryWrapper<JobDefinitionContentEntity>()

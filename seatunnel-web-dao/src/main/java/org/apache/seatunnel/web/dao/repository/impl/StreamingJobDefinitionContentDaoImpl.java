@@ -37,6 +37,13 @@ public class StreamingJobDefinitionContentDaoImpl implements StreamingJobDefinit
     }
 
     @Override
+    public boolean existsByFileResourceId(String fileResourceId) {
+        return fileResourceId != null
+                && !fileResourceId.isBlank()
+                && streamingJobDefinitionContentMapper.existsByFileResourceId(fileResourceId);
+    }
+
+    @Override
     public void deleteByJobDefinitionId(Long jobDefinitionId) {
         if (jobDefinitionId == null) {
             return;

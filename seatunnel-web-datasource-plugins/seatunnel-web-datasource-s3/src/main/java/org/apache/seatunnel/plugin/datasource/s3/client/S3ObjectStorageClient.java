@@ -15,6 +15,8 @@ import com.amazonaws.services.s3.model.DeleteObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.PutObjectResult;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.s3.param.ObjectStorageConnectionParam;
@@ -23,6 +25,8 @@ import org.apache.seatunnel.web.spi.bean.vo.FileEntryVO;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 
 import java.io.InputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -122,6 +126,47 @@ public class S3ObjectStorageClient implements ObjectStorageClient {
             PutObjectResult result = client.putObject(
                     new PutObjectRequest(param.getBucket(), objectKey, input, metadata));
             return result == null ? null : result.getETag();
+        } finally {
+            client.shutdown();
+        }
+    }
+
+    /** Reads object metadata and closes the short-lived S3 client. */
+    public ObjectMetadata headObject(
+            ObjectStorageConnectionParam connectionParam,
+            String objectKey) {
+        ObjectStorageConnectionParam param = requireParam(connectionParam);
+        if (objectKey == null || objectKey.isBlank()) {
+            throw new IllegalArgumentException("object key cannot be empty");
+        }
+
+        AmazonS3 client = clientFactory.create(param);
+        try {
+            return client.getObjectMetadata(param.getBucket(), objectKey);
+        } finally {
+            client.shutdown();
+        }
+    }
+
+    /** Streams an object to the caller without materializing it in web memory. */
+    public void downloadObject(
+            ObjectStorageConnectionParam connectionParam,
+            String objectKey,
+            OutputStream output) throws IOException {
+        ObjectStorageConnectionParam param = requireParam(connectionParam);
+        if (objectKey == null || objectKey.isBlank()) {
+            throw new IllegalArgumentException("object key cannot be empty");
+        }
+        if (output == null) {
+            throw new IllegalArgumentException("object output cannot be null");
+        }
+
+        AmazonS3 client = clientFactory.create(param);
+        try {
+            S3Object object = client.getObject(param.getBucket(), objectKey);
+            try (S3ObjectInputStream input = object.getObjectContent()) {
+                input.transferTo(output);
+            }
         } finally {
             client.shutdown();
         }

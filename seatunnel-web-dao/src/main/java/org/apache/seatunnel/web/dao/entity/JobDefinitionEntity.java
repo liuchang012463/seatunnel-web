@@ -5,6 +5,7 @@ import lombok.*;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
+import org.apache.seatunnel.web.common.enums.TaskType;
 
 @Data
 @Builder
@@ -23,6 +24,7 @@ public class JobDefinitionEntity extends BaseEntity {
 
     private JobDefinitionMode mode;
     private JobMode jobType;
+    private TaskType taskType;
 
     private Long clientId;
 

@@ -35,6 +35,9 @@ public class BatchJobDefinitionVO {
      */
     private JobMode jobType;
 
+    /** Stable business task type, distinct from the Engine runtime mode. */
+    private TaskType taskType;
+
     private ReleaseState releaseState;
 
     private Long clientId;

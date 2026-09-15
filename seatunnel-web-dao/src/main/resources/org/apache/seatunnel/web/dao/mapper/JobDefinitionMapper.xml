@@ -13,6 +13,7 @@
         d.job_desc AS jobDesc,
         d.mode AS mode,
         d.job_type AS jobType,
+        d.task_type AS taskType,
         d.client_id AS clientId,
         d.job_version AS jobVersion,
         d.source_type AS sourceType,
@@ -84,6 +85,19 @@
             </if>
             <if test="dto.sinkType != null and dto.sinkType != ''">
                 AND sink_type = #{dto.sinkType}
+            </if>
+            <if test="dto.taskType != null">
+                AND (
+                    CASE
+                    WHEN task_type IS NOT NULL THEN task_type
+                    WHEN UPPER(COALESCE(mode, '')) = 'FILE_SYNC' THEN 'FILE_TRANSFER'
+                    WHEN UPPER(COALESCE(job_type, '')) = 'STREAMING' THEN 'STREAM'
+                    WHEN UPPER(COALESCE(mode, '')) = 'GUIDE_SINGLE'
+                         AND UPPER(COALESCE(source_type, '')) = 'WEB_UPLOAD'
+                        THEN 'FILE_INGEST'
+                    ELSE 'BATCH'
+                    END
+                ) = #{dto.taskType}
             </if>
             <if test="dto.mode != null">
                 AND mode = #{dto.mode}
@@ -218,6 +232,20 @@
 
             <if test="dto.sinkType != null and dto.sinkType != ''">
                 AND d.sink_type = #{dto.sinkType}
+            </if>
+
+            <if test="dto.taskType != null">
+                AND (
+                    CASE
+                    WHEN d.task_type IS NOT NULL THEN d.task_type
+                    WHEN UPPER(COALESCE(d.mode, '')) = 'FILE_SYNC' THEN 'FILE_TRANSFER'
+                    WHEN UPPER(COALESCE(d.job_type, '')) = 'STREAMING' THEN 'STREAM'
+                    WHEN UPPER(COALESCE(d.mode, '')) = 'GUIDE_SINGLE'
+                         AND UPPER(COALESCE(d.source_type, '')) = 'WEB_UPLOAD'
+                        THEN 'FILE_INGEST'
+                    ELSE 'BATCH'
+                    END
+                ) = #{dto.taskType}
             </if>
 
             <if test="dto.mode != null">

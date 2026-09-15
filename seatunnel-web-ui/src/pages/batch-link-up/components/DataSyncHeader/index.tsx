@@ -35,7 +35,7 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
       icon={<SunOutlined />}
       title={intl.formatMessage({
         id: "pages.datasync.header.title",
-        defaultMessage: "链路管理（离线）",
+        defaultMessage: "批量数据引接任务管理",
       })}
       subtitle={intl.formatMessage({
         id: "pages.datasync.header.subtitle",
@@ -48,7 +48,7 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
           onClick={handleCreateClick}
           className="h-10 rounded-full border-none bg-gradient-to-r font-semibold"
         >
-          创建离线任务
+          创建批量数据引接
         </Button>
       }
     />

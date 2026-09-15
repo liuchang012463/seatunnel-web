@@ -21,6 +21,7 @@ import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.core.job.TaskTypeResolver;
 import org.apache.seatunnel.web.core.job.assembler.StreamingJobDefinitionAssembler;
 import org.apache.seatunnel.web.core.job.handler.JobDefinitionModeHandler;
 import org.apache.seatunnel.web.core.job.registry.JobDefinitionModeHandlerRegistry;
@@ -213,6 +214,11 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
 
             List<StreamingJobDefinitionVO> records =
                     streamingJobDefinitionDao.selectPage(dto, offset, dto.getPageSize());
+
+            if (records != null) {
+                records.forEach(record -> record.setTaskType(TaskTypeResolver.resolve(
+                        record.getTaskType(), record.getMode(), record.getJobType(), record.getSourceType())));
+            }
 
             enrichMetrics(records);
 
@@ -505,6 +511,11 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
         detail.setUpdateUserId(definition.getUpdateUserId());
         detail.setCreateTime(definition.getCreateTime());
         detail.setUpdateTime(definition.getUpdateTime());
+        detail.setTaskType(TaskTypeResolver.resolve(
+                definition.getTaskType(),
+                definition.getMode(),
+                definition.getJobType(),
+                definition.getSourceType()));
 
         return detail;
     }

@@ -35,7 +35,7 @@ const RealtimeSyncPlan: React.FC<RealtimeSyncPlanProps> = ({ record }) => {
     if (record?.mode === "GUIDE_SINGLE") return "单表同步";
     if (record?.mode === "GUIDE_MULTI") return "多表同步";
     if (record?.mode === "SCRIPT") return "脚本模式";
-    return "引接链路（实时）";
+    return "实时数据引接";
   };
 
   const getTypeLabel = (dbType: any) => {

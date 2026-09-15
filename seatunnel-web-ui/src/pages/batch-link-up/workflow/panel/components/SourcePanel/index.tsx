@@ -1,4 +1,5 @@
 import { Button, DatePicker, Divider, Segmented, Select, Tooltip } from 'antd';
+import { history } from '@umijs/max';
 import { BarChart3, Database, Eye, FileCode2, Table2 } from 'lucide-react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
@@ -14,6 +15,7 @@ import KafkaNodeConfig from '@/pages/common/workflow/KafkaNodeConfig';
 import HttpNodeConfig from '@/pages/common/workflow/HttpNodeConfig';
 import ElasticsearchNodeConfig from '@/pages/common/workflow/ElasticsearchNodeConfig';
 import LocalFileSourcePanel from './LocalFileSourcePanel';
+import FileSourceConfigPanel from '@/pages/file-ingest/FileSourceConfigPanel';
 
 dayjs.extend(customParseFormat);
 
@@ -75,6 +77,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
   });
 
   const isWebUpload = String(selectedNode?.data?.config?.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
+  const isFileResource = String(selectedNode?.data?.config?.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
 
   if (isWebUpload) {
     return (
@@ -83,6 +86,35 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
         onClose={onClose}
         jobDefinitionId={jobDefinitionId}
         updateNode={updateNode}
+      />
+    );
+  }
+
+  if (isFileResource) {
+    const updateFileResourceNode = (patch: Record<string, any>) => {
+      const configPatch = { ...patch };
+      const metaPatch: Record<string, any> = {};
+      ['outputSchema', 'schemaStatus', 'schemaError'].forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(configPatch, key)) {
+          metaPatch[key] = configPatch[key];
+          delete configPatch[key];
+        }
+      });
+      updateNode(
+        configPatch,
+        undefined,
+        Object.keys(metaPatch).length > 0 ? metaPatch : undefined,
+      );
+    };
+
+    return (
+      <FileSourceConfigPanel
+        sourceConfig={selectedNode?.data?.config || {}}
+        onChange={updateFileResourceNode}
+        onOpenManager={() => {
+          const returnTo = `${window.location.pathname}${window.location.search}`;
+          history.push(`/sync/file-resources?select=1&returnTo=${encodeURIComponent(returnTo)}`);
+        }}
       />
     );
   }

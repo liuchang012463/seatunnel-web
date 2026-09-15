@@ -51,16 +51,33 @@ public class GuideSingleWorkflowAnalyzer {
                                                     Object workflowObj) {
         Map<String, Object> data = WorkflowNodeHelper.safeMap(node == null ? null : node.get("data"));
         Map<String, Object> config = WorkflowNodeHelper.safeMap(data.get("config"));
+        String sourceMode = firstNonBlank(
+                getString(data, "sourceMode"),
+                getString(config, "sourceMode"),
+                getString(data, "source_mode"),
+                getString(config, "source_mode"));
 
         if (role == DatasourceAnalysisRole.SOURCE
-                && "WEB_UPLOAD".equalsIgnoreCase(firstNonBlank(
-                        getString(data, "sourceMode"), getString(config, "sourceMode")))) {
+                && "WEB_UPLOAD".equalsIgnoreCase(sourceMode)) {
             return JobDefinitionAnalysisResult.builder()
                     .sourceType("WEB_UPLOAD")
                     .sourceDatasourceId(null)
                     .sourceTable(firstNonBlank(
                             getString(config, "uploadSessionId"),
                             getString(data, "uploadSessionId")))
+                    .build();
+        }
+
+        if (role == DatasourceAnalysisRole.SOURCE
+                && "FILE_RESOURCE".equalsIgnoreCase(sourceMode)) {
+            return JobDefinitionAnalysisResult.builder()
+                    .sourceType("FILE_RESOURCE")
+                    .sourceDatasourceId(null)
+                    .sourceTable(firstNonBlank(
+                            getString(config, "fileResourceId"),
+                            getString(data, "fileResourceId"),
+                            getString(config, "file_resource_id"),
+                            getString(data, "file_resource_id")))
                     .build();
         }
 

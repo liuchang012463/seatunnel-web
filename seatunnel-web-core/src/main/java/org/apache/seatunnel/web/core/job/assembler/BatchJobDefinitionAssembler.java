@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.core.job.assembler;
 
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
+import org.apache.seatunnel.web.core.job.TaskTypeResolver;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobBasicConfig;
@@ -23,6 +24,7 @@ public class BatchJobDefinitionAssembler {
                 .jobDesc(basic.getJobDesc())
                 .mode(command.getMode())
                 .jobType(env.getJobMode())
+                .taskType(TaskTypeResolver.resolve(command, analysis))
                 .clientId(basic.getClientId())
                 .releaseState(ReleaseState.OFFLINE)
                 .jobVersion(1)
@@ -50,6 +52,7 @@ public class BatchJobDefinitionAssembler {
         entity.setJobDesc(basic.getJobDesc());
         entity.setMode(command.getMode());
         entity.setJobType(env.getJobMode());
+        entity.setTaskType(TaskTypeResolver.resolve(command, analysis));
         entity.setClientId(basic.getClientId());
         entity.setJobVersion(nextVersion);
         entity.setSourceType(analysis.getSourceType());

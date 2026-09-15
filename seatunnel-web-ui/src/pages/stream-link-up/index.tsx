@@ -105,6 +105,7 @@ const buildQueryParams = (
   sort: { field: TaskSortField; order: TaskSortOrder },
 ) => {
   const params: any = {
+    taskType: 'STREAM',
     pageNo: pagination.current,
     pageSize: pagination.pageSize,
     sortField: sort.field,

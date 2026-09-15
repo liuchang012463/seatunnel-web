@@ -21,6 +21,7 @@ public class GuideSingleWorkflowValidator {
         List<Map<String, Object>> sinkNodes = WorkflowNodeHelper.findNodesByType(nodes, "sink");
 
         validateSourceAndSink(sourceNodes, sinkNodes);
+        validateFileResourceSource(sourceNodes.get(0));
 
         Set<String> nodeIds = WorkflowNodeHelper.collectNodeIds(nodes);
         validateEdgeReferences(edges, nodeIds);
@@ -71,6 +72,21 @@ public class GuideSingleWorkflowValidator {
         }
         if (sinkNodes.size() > 1) {
             throw new IllegalArgumentException("Guide single workflow only supports one sink node");
+        }
+    }
+
+    private void validateFileResourceSource(Map<String, Object> sourceNode) {
+        Map<String, Object> data = WorkflowNodeHelper.safeMap(sourceNode.get("data"));
+        Map<String, Object> config = WorkflowNodeHelper.safeMap(data.get("config"));
+        Map<String, Object> source = new HashMap<>(data);
+        source.putAll(config);
+        String sourceMode = WorkflowNodeHelper.firstNonBlank(
+                WorkflowNodeHelper.getString(data, "sourceMode"),
+                WorkflowNodeHelper.getString(config, "sourceMode"),
+                WorkflowNodeHelper.getString(data, "source_mode"),
+                WorkflowNodeHelper.getString(config, "source_mode"));
+        if ("FILE_RESOURCE".equalsIgnoreCase(sourceMode)) {
+            LocalFileSourceValidator.validateFileResourceReference(source);
         }
     }
 

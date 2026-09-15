@@ -8,6 +8,7 @@ import lombok.*;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.common.enums.SyncModeEnum;
+import org.apache.seatunnel.web.common.enums.TaskType;
 import org.apache.seatunnel.web.spi.bean.dto.pagination.PaginationBaseDTO;
 
 import java.util.Date;
@@ -29,6 +30,12 @@ public class BatchJobDefinitionQueryDTO extends PaginationBaseDTO {
     private String sinkType;
 
     private JobMode jobType;
+
+    /**
+     * Stable business task type.  A null value keeps legacy callers
+     * compatible and means that no task type filter is applied.
+     */
+    private TaskType taskType;
 
     /**
      * Only return definitions created with this configuration mode.

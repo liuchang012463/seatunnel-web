@@ -16,7 +16,7 @@ const PageHeader: React.FC<Props> = ({ onBack }) => {
 
           <div className="min-w-0">
             <div className="text-[22px] font-semibold leading-8 text-white">
-              创建实时引接链路 · 物理路由配置
+              创建实时数据引接 · 物理路由配置
             </div>
             <div className="mt-1 text-[14px] leading-6 text-[#D5D5D5]">
               配置引接链路的物理路由：数据源、目标端与执行客户端等接入路径。

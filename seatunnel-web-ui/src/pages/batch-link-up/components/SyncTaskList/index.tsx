@@ -27,6 +27,7 @@ interface Props {
   goDetail: (value: any, item?: any) => void;
   mode?: string;
   excludeMode?: string;
+  taskType?: string;
   emptyDescription?: string;
 }
 
@@ -94,7 +95,8 @@ const App: React.FC<Props> = ({
   goDetail,
   mode,
   excludeMode,
-  emptyDescription = "暂无引接链路（离线）",
+  taskType,
+  emptyDescription = "暂无批量数据引接任务",
 }) => {
   const intl = useIntl();
 
@@ -193,13 +195,14 @@ const App: React.FC<Props> = ({
           ...transformedParams,
           mode,
           excludeMode,
+          taskType,
           sortField: sort.field,
           sortOrder: sort.order,
           pageNo: pagination.current,
           pageSize: pagination.pageSize,
         }),
         10000,
-        "离线任务列表请求超时，请稍后重试",
+        "批量数据引接任务列表请求超时，请稍后重试",
       );
 
       if (data?.code !== undefined && data.code !== 0) {

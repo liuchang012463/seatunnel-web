@@ -53,6 +53,7 @@ interface FileWorkflowProps {
   setScheduleConfig: Dispatch<SetStateAction<ScheduleConfig>>;
   envConfig: EnvConfig;
   setEnvConfig: Dispatch<SetStateAction<EnvConfig>>;
+  setParams?: Dispatch<SetStateAction<any>>;
 }
 
 const buildInitialGraph = (params?: any) => {
@@ -263,6 +264,7 @@ export default function FileWorkflow({
   setScheduleConfig,
   envConfig,
   setEnvConfig,
+  setParams,
 }: FileWorkflowProps) {
   const [form] = Form.useForm();
 
@@ -338,6 +340,8 @@ export default function FileWorkflow({
 
   const sourceNode = graph.nodes.find((node) => node?.data?.nodeType === 'source');
   const sourceConfig = sourceNode?.data?.config || {};
+  const isFileTransfer =
+    params?.taskType === 'FILE_TRANSFER' || params?.mode === 'FILE_SYNC';
   const isWebUploadSource =
     String(sourceConfig.sourceMode || '').toUpperCase() === 'WEB_UPLOAD'
     || params?.sourceType?.dbType === 'WEB_UPLOAD';
@@ -474,18 +478,26 @@ export default function FileWorkflow({
   }, []);
 
   const handleNodesChange = useCallback((changes: any) => {
-    setGraph((prev) => ({
-      nodes: applyNodeChanges(changes, prev.nodes),
-      edges: prev.edges,
-    }));
-  }, []);
+    setGraph((prev) => {
+      const nextGraph = {
+        nodes: applyNodeChanges(changes, prev.nodes),
+        edges: prev.edges,
+      };
+      setParams?.((page: any) => (page ? { ...page, workflow: nextGraph } : page));
+      return nextGraph;
+    });
+  }, [setParams]);
 
   const handleNodeDataChange = useCallback((nodeId: string, data: any) => {
-    setGraph((prev) => ({
-      nodes: prev.nodes.map((node) => (node.id === nodeId ? { ...node, data } : node)),
-      edges: prev.edges,
-    }));
-  }, []);
+    setGraph((prev) => {
+      const nextGraph = {
+        nodes: prev.nodes.map((node) => (node.id === nodeId ? { ...node, data } : node)),
+        edges: prev.edges,
+      };
+      setParams?.((page: any) => (page ? { ...page, workflow: nextGraph } : page));
+      return nextGraph;
+    });
+  }, [setParams]);
 
   const validateBeforeAction = () => {
     if (checkStat.errors.length !== 0) {
@@ -524,6 +536,8 @@ export default function FileWorkflow({
         nodeType,
         title: nodeType === 'source' && config.sourceMode === 'WEB_UPLOAD'
           ? '本地文件'
+          : nodeType === 'source' && config.sourceMode === 'FILE_RESOURCE'
+            ? '文件资源'
           : config.dbType,
         description: nodeType === 'source' ? '读取来源文件' : '写入目标端文件',
         sourceMode: nodeType === 'source' ? config.sourceMode : undefined,
@@ -546,6 +560,8 @@ export default function FileWorkflow({
       workflow: {
         sourceType: sourceConfig.sourceMode === 'WEB_UPLOAD'
           ? { dbType: 'WEB_UPLOAD', connectorType: 'S3File', pluginName: 'S3File', sourceManaged: true }
+          : sourceConfig.sourceMode === 'FILE_RESOURCE'
+            ? { dbType: 'FILE_RESOURCE', connectorType: 'S3File', pluginName: 'S3File', sourceManaged: true }
           : { dbType: sourceConfig.dbType, connectorType: sourceConfig.connectorType, pluginName: sourceConfig.pluginName },
         targetType: { dbType: sinkConfig.dbType, connectorType: sinkConfig.connectorType, pluginName: sinkConfig.pluginName },
         nodes: [
@@ -636,10 +652,12 @@ export default function FileWorkflow({
 
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
-                逻辑关系配置（文件引接任务）
+                逻辑关系配置（{isFileTransfer ? '文件传输' : '文件数据引接'}任务）
               </div>
               <div className="text-[14px] leading-6 text-slate-500">
-                配置文件同步链路与运行参数，在一个页面完成创建、上传与调试。
+                {isFileTransfer
+                  ? '配置文件传输链路与运行参数，在一个页面完成创建、资源选择与调试。'
+                  : '配置文件解析、字段映射与目标入库，在一个页面完成创建、预览与调试。'}
               </div>
             </div>
           </div>
@@ -760,11 +778,13 @@ export default function FileWorkflow({
                           </div>
                           <div className="min-w-0">
                             <div className="text-[13px] font-semibold leading-[1.2] text-slate-900">
-                              文件链路
+                              {isFileTransfer ? '文件传输链路' : '文件数据引接链路'}
                             </div>
                             <div className="mt-1 text-[12px] leading-[1.4] text-slate-500">
-                              文件引接任务为固定的 来源 → 去向
-                              链路。点击画布节点配置浏览器上传或远程读取，不支持插入转换节点。
+                              {isFileTransfer
+                                ? '文件传输任务为固定的 来源 → 去向链路，负责搬运文件本身，不解析文件内容。'
+                                : '文件数据引接任务为固定的 来源 → 去向链路，支持文件解析、字段映射与目标入库。'}
+                              点击画布节点配置文件资源或远程来源，不支持插入转换节点。
                             </div>
                           </div>
                         </div>

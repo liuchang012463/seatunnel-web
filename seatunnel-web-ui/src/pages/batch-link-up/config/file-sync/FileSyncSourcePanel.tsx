@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from 'react';
 import PanelShell from '../../workflow/panel/components/PanelShell';
 import { fileUploadApi } from '../../api';
 import { dataSourceCatalogApi } from '@/pages/data-source/service';
+import FileResourceSourceCard from '@/pages/file-ingest/FileResourceSourceCard';
 import { canUseIncrementalFileSync, fileDataSourceLabel } from './support';
 import DirectoryPickerModal from './DirectoryPickerModal';
 import type { FileDataSourceType } from './support';
@@ -116,7 +117,8 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
 }) => {
   const config = selectedNode?.data?.config || {};
   const isWebUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
-  const isRemote = !isWebUpload;
+  const isFileResource = String(config.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
+  const isRemote = !isWebUpload && !isFileResource;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -236,6 +238,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
   };
 
   const incrementalSupported = isWebUpload
+    || isFileResource
     ? false
     : canUseIncrementalFileSync(
         config.dbType as FileDataSourceType,
@@ -371,6 +374,15 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
               </div>
             ) : null}
           </>
+        ) : isFileResource ? (
+          <FileResourceSourceCard
+            sourceConfig={config}
+            onChange={updateConfig}
+            selectionMode="file"
+            title="传输来源"
+            description="从文件资源库选择文件；SeaTunnel 执行节点直接读取对象存储。"
+            binary
+          />
         ) : (
           <>
             <div className="workflow-panel__group">

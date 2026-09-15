@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.common.enums.SyncModeEnum;
+import org.apache.seatunnel.web.common.enums.TaskType;
 
 import java.util.Date;
 
@@ -31,6 +32,8 @@ public class BatchJobDefinition {
     private Integer parallelism;
 
     private JobMode jobType;
+
+    private TaskType taskType;
 
     private SyncModeEnum syncMode;
 

@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.spi.bean.vo;
 
 import lombok.Data;
+import org.apache.seatunnel.web.common.enums.TaskType;
 import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 
 import java.math.BigDecimal;
@@ -53,6 +54,9 @@ public class JobInstanceVO {
     private String definitionMode;
 
     private String jobType;
+
+    /** Stable business task type; jobType remains the Engine runtime mode. */
+    private TaskType taskType;
 
     private Long definitionClientId;
 

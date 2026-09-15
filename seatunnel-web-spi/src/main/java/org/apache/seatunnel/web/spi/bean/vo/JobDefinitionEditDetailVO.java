@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.spi.bean.vo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
+import org.apache.seatunnel.web.common.enums.TaskType;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobBasicConfig;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 
@@ -42,6 +43,9 @@ public class JobDefinitionEditDetailVO {
     private Object mode;
 
     private Object runtimeType;
+
+    /** Stable business task type; legacy rows may be resolved by the server. */
+    private TaskType taskType;
 
     /** Binding restored from the active lake job relation, when applicable. */
     private Long odsDatabaseBindingId;

@@ -41,8 +41,8 @@ const RealtimeHeader: React.FC<RealtimeHeaderProps> = ({
   return (
     <TaskListPageHeader
       icon={<ThunderboltOutlined />}
-      title="链路管理（实时）"
-      subtitle="持续采集与实时处理数据流，帮助你更快构建端到端流式同步链路"
+      title="实时数据引接任务管理"
+      subtitle="持续采集与实时处理数据流，统一管理实时数据引接任务"
       actions={
         <Button
           type="primary"
@@ -51,7 +51,7 @@ const RealtimeHeader: React.FC<RealtimeHeaderProps> = ({
           onClick={onCreate}
           className="h-10 rounded-full border-none bg-gradient-to-r font-semibold"
         >
-          创建实时引接链路
+          创建实时数据引接
         </Button>
       }
     >

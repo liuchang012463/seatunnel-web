@@ -8,5 +8,7 @@ public interface StreamingJobDefinitionContentDao {
 
     StreamingJobDefinitionContentEntity queryLatestByJobDefinitionId(Long jobDefinitionId);
 
+    boolean existsByFileResourceId(String fileResourceId);
+
     void deleteByJobDefinitionId(Long jobDefinitionId);
 }

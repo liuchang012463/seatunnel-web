@@ -31,8 +31,14 @@ const getConfig = (node: any) => node?.data?.config || {};
 const sourceRules: ((node: any) => CheckItem | null)[] = [
   (node) => {
     const config = getConfig(node);
-    const webUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
-    if (webUpload) {
+    const sourceMode = String(config.sourceMode || '').toUpperCase();
+    if (sourceMode === 'WEB_UPLOAD') {
+      return null;
+    }
+    if (sourceMode === 'FILE_RESOURCE') {
+      if (!String(config.fileResourceId || '').trim()) {
+        return buildError(node, 'fileResourceId', '请选择文件资源库中的文件');
+      }
       return null;
     }
     if (!config.dataSourceId) {
@@ -42,8 +48,8 @@ const sourceRules: ((node: any) => CheckItem | null)[] = [
   },
   (node) => {
     const config = getConfig(node);
-    const webUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
-    if (webUpload) {
+    const sourceMode = String(config.sourceMode || '').toUpperCase();
+    if (sourceMode === 'WEB_UPLOAD') {
       const assets = Array.isArray(config.uploadedAssets)
         ? config.uploadedAssets
         : Array.isArray(config.uploadedFiles)
@@ -55,6 +61,9 @@ const sourceRules: ((node: any) => CheckItem | null)[] = [
       if (!assets.length) {
         return buildError(node, 'uploadedAssets', '请至少上传一个文件');
       }
+      return null;
+    }
+    if (sourceMode === 'FILE_RESOURCE') {
       return null;
     }
     if (!String(config.path || '').trim()) {

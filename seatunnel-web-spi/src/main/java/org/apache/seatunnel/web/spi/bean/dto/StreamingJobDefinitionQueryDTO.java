@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
+import org.apache.seatunnel.web.common.enums.TaskType;
 import org.apache.seatunnel.web.spi.bean.dto.pagination.PaginationBaseDTO;
 
 @Data
@@ -17,6 +18,9 @@ public class StreamingJobDefinitionQueryDTO extends PaginationBaseDTO {
     private JobDefinitionMode mode;
 
     private JobMode jobType;
+
+    /** Stable business task type; null keeps the legacy unfiltered query. */
+    private TaskType taskType;
 
     private ReleaseState releaseState;
 

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.apache.seatunnel.web.dao.mapper.FileResourceMapper">
+
+    <select id="selectActiveByOwnerId"
+            resultType="org.apache.seatunnel.web.dao.entity.FileResource">
+        SELECT id,
+               owner_id,
+               provider_type,
+               bucket,
+               object_key,
+               logical_path,
+               logical_path_hash,
+               name,
+               resource_type,
+               size,
+               content_type,
+               etag,
+               status,
+               create_time,
+               update_time
+        FROM t_seatunnel_web_file_resource
+        WHERE owner_id = #{ownerId}
+          AND status = 'READY'
+        ORDER BY CASE WHEN resource_type = 'DIRECTORY' THEN 0 ELSE 1 END,
+                 logical_path ASC,
+                 id ASC
+    </select>
+
+    <select id="selectByOwnerAndLogicalPath"
+            resultType="org.apache.seatunnel.web.dao.entity.FileResource">
+        SELECT id,
+               owner_id,
+               provider_type,
+               bucket,
+               object_key,
+               logical_path,
+               logical_path_hash,
+               name,
+               resource_type,
+               size,
+               content_type,
+               etag,
+               status,
+               create_time,
+               update_time
+        FROM t_seatunnel_web_file_resource
+        WHERE owner_id = #{ownerId}
+          AND logical_path = #{logicalPath}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectByOwnerAndObjectKey"
+            resultType="org.apache.seatunnel.web.dao.entity.FileResource">
+        SELECT id,
+               owner_id,
+               provider_type,
+               bucket,
+               object_key,
+               logical_path,
+               logical_path_hash,
+               name,
+               resource_type,
+               size,
+               content_type,
+               etag,
+               status,
+               create_time,
+               update_time
+        FROM t_seatunnel_web_file_resource
+        WHERE owner_id = #{ownerId}
+          AND object_key = #{objectKey}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+</mapper>

@@ -10,8 +10,12 @@ interface DataSourceSyncPlanProps {
 /** 单元格只展示「源数据源类型 → 目标数据源类型」，数据源名与表清单收敛进悬浮提示。 */
 const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   const isFileSync = record?.mode === "FILE_SYNC";
+  const taskType = String(record?.taskType || "").toUpperCase();
+  const isFileResourceSource =
+    String(record?.sourceType || "").toUpperCase() === "FILE_RESOURCE";
   const isManagedFileSource =
-    isFileSync && String(record?.sourceType || "").toUpperCase() === "WEB_UPLOAD";
+    isFileResourceSource ||
+    (isFileSync && String(record?.sourceType || "").toUpperCase() === "WEB_UPLOAD");
 
   const safeParse = (value: any) => {
     if (!value) return null;
@@ -32,7 +36,8 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   };
 
   const getPlanTitle = () => {
-    if (isFileSync) return "文件引接";
+    if (taskType === "FILE_TRANSFER" || isFileSync) return "文件传输";
+    if (taskType === "FILE_INGEST" || isFileResourceSource) return "文件数据引接";
     if (record?.jobType === "BATCH") {
       if (record?.mode === "GUIDE_SINGLE") return "单表同步";
       if (record?.mode === "GUIDE_SINGLE_INCREMENTAL") return "单表增量微批";
@@ -122,7 +127,9 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   };
 
   const sourceSummary = isManagedFileSource
-    ? "本地文件"
+    ? isFileResourceSource
+      ? "文件资源库"
+      : "本地文件"
     : `${record?.sourceDatasourceName || "-"} · ${getTableSummary(record?.sourceTable)}`;
   const sinkSummary = `${record?.sinkDatasourceName || "-"} · ${getTableSummary(
     record?.sinkTable
@@ -154,7 +161,11 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
             />
           )}
           <span className="sync-plan-compact__type">
-            {isManagedFileSource ? "本地文件" : getTypeLabel(record?.sourceType)}
+            {isManagedFileSource
+              ? isFileResourceSource
+                ? "文件资源库"
+                : "本地文件"
+              : getTypeLabel(record?.sourceType)}
           </span>
           <DoubleRightOutlined className="sync-plan-compact__arrow" />
           <DatabaseIcons dbType={record?.sinkType} width="16" height="16" />

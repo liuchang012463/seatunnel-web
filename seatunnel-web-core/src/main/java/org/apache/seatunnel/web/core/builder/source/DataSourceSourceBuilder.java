@@ -13,6 +13,9 @@ import org.apache.seatunnel.web.common.config.ReadonlyConfig;
 import org.apache.seatunnel.web.common.enums.HoconBuildStage;
 import org.apache.seatunnel.web.core.builder.context.DagBuildContext;
 import org.apache.seatunnel.web.core.fileupload.BuiltInMinioProperties;
+import org.apache.seatunnel.web.core.fileresource.FileResourceReference;
+import org.apache.seatunnel.web.core.fileresource.FileResourceResolver;
+import org.apache.seatunnel.web.core.job.handler.single.LocalFileSourceValidator;
 import org.apache.seatunnel.web.core.time.TimeVariableJdbcSqlRenderService;
 import org.apache.seatunnel.web.core.time.IncrementalSqlRenderer;
 import org.apache.seatunnel.web.dao.entity.DataSource;
@@ -22,6 +25,7 @@ import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 @Component
@@ -35,6 +39,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     private static final String KEY_CONNECTOR_TYPE = "connectorType";
     private static final String KEY_SOURCE_MODE = "sourceMode";
     private static final String WEB_UPLOAD = "WEB_UPLOAD";
+    private static final String FILE_RESOURCE = "FILE_RESOURCE";
 
     private static final String KEY_SQL = "sql";
     private static final String KEY_WHERE_CONDITION = "where_condition";
@@ -47,6 +52,9 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
     @Resource
     private BuiltInMinioProperties builtInMinioProperties;
+
+    @Resource
+    private FileResourceResolver fileResourceResolver;
 
     @Override
     public String nodeType() {
@@ -63,7 +71,11 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         Config nodeConfig = resolveNodeConfig(data);
         nodeConfig = appendPluginOutputIfNecessary(data, nodeConfig, dagContext);
 
-        if (WEB_UPLOAD.equalsIgnoreCase(getTrimmedString(nodeConfig, KEY_SOURCE_MODE))) {
+        String sourceMode = getTrimmedString(nodeConfig, KEY_SOURCE_MODE);
+        if (FILE_RESOURCE.equalsIgnoreCase(sourceMode)) {
+            return buildFileResourceSource(nodeConfig, dagContext);
+        }
+        if (WEB_UPLOAD.equalsIgnoreCase(sourceMode)) {
             return buildWebUploadSource(nodeConfig, dagContext);
         }
 
@@ -168,16 +180,28 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
     @Override
     public String connectorName(Config data) {
-        if (WEB_UPLOAD.equalsIgnoreCase(getTrimmedString(data, KEY_SOURCE_MODE))) {
+        Config nodeConfig = resolveNodeConfig(data);
+        String sourceMode = getFirstTrimmedString(nodeConfig, KEY_SOURCE_MODE);
+        if (StringUtils.isBlank(sourceMode)) {
+            sourceMode = getTrimmedString(data, KEY_SOURCE_MODE);
+        }
+        if (WEB_UPLOAD.equalsIgnoreCase(sourceMode)
+                || FILE_RESOURCE.equalsIgnoreCase(sourceMode)) {
             return "S3File";
         }
 
-        String dbTypeValue = getTrimmedString(data, KEY_DB_TYPE);
+        String dbTypeValue = getFirstTrimmedString(nodeConfig, KEY_DB_TYPE);
+        if (StringUtils.isBlank(dbTypeValue)) {
+            dbTypeValue = getTrimmedString(data, KEY_DB_TYPE);
+        }
         if ("DORIS".equalsIgnoreCase(dbTypeValue)) {
             return "Doris";
         }
 
-        String connectorType = getTrimmedString(data, KEY_CONNECTOR_TYPE);
+        String connectorType = getFirstTrimmedString(nodeConfig, KEY_CONNECTOR_TYPE);
+        if (StringUtils.isBlank(connectorType)) {
+            connectorType = getTrimmedString(data, KEY_CONNECTOR_TYPE);
+        }
         if (StringUtils.isNotBlank(connectorType)) {
             return connectorType;
         }
@@ -199,6 +223,69 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
             throw new IllegalArgumentException(
                     "Invalid '" + KEY_DATA_SOURCE_ID + "': " + value + ", expected numeric value", e);
         }
+    }
+
+    private Config buildFileResourceSource(Config nodeConfig, DagBuildContext dagContext) {
+        Map<String, Object> nodeValues = new HashMap<>(nodeConfig.root().unwrapped());
+        Long resourceId = LocalFileSourceValidator.requireFileResourceId(nodeValues);
+        String configuredFormat = getFirstTrimmedString(
+                nodeConfig, "fileFormatType", "file_format_type");
+        boolean binarySource = isBinaryFileResource(nodeConfig, configuredFormat);
+        if (binarySource) {
+            LocalFileSourceValidator.validateBinaryFileResource(nodeValues);
+        } else {
+            LocalFileSourceValidator.validateFileResource(nodeValues);
+        }
+        if (fileResourceResolver == null) {
+            throw new IllegalStateException("File resource resolver is not configured");
+        }
+
+        FileResourceReference reference = fileResourceResolver.resolve(resourceId);
+        if (reference == null) {
+            throw new IllegalArgumentException(
+                    "File resource does not exist or is not available, fileResourceId=" + resourceId);
+        }
+
+        Map<String, Object> connection = new HashMap<>();
+        connection.put("dbType", hoconDbType(reference));
+        connection.put("endpoint", reference.getEndpoint());
+        connection.put("region", reference.getRegion());
+        connection.put("bucket", reference.getBucket());
+        connection.put("basePath", normalizeObjectPath(reference.getBasePath(), "basePath"));
+        connection.put("credentialMode", reference.getCredentialMode());
+        putIfNotBlank(connection, "accessKey", reference.getAccessKey());
+        putIfNotBlank(connection, "secretKey", reference.getSecretKey());
+        connection.put("pathStyleAccess", reference.isPathStyleAccess());
+
+        String fileFormatType = binarySource
+                ? "binary"
+                : requireProperty(configuredFormat, "fileFormatType").toLowerCase(Locale.ROOT);
+        Map<String, Object> pathOverride = new HashMap<>();
+        pathOverride.put("path", resolveFileResourcePath(reference));
+        pathOverride.put("fileFormatType", fileFormatType);
+        if (binarySource) {
+            if (!nodeConfig.hasPath("binaryChunkSize")) {
+                pathOverride.put("binaryChunkSize", 1048576);
+            }
+            if (!nodeConfig.hasPath("binaryCompleteFileMode")) {
+                pathOverride.put("binaryCompleteFileMode", false);
+            }
+        }
+        Config effectiveNodeConfig = ConfigFactory.parseMap(pathOverride)
+                .withFallback(nodeConfig)
+                .resolve();
+
+        return buildS3FileSource(
+                ConfigFactory.parseMap(connection).resolve(),
+                effectiveNodeConfig,
+                dagContext,
+                reference.getProviderType());
+    }
+
+    private boolean isBinaryFileResource(Config nodeConfig, String fileFormatType) {
+        return "binary".equalsIgnoreCase(fileFormatType)
+                || (StringUtils.isBlank(fileFormatType)
+                && "resource".equalsIgnoreCase(getTrimmedString(nodeConfig, "readMode")));
     }
 
     private Config buildWebUploadSource(Config nodeConfig, DagBuildContext dagContext) {
@@ -250,25 +337,32 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
                 .resolve();
         Config connectionConfig = ConfigFactory.parseMap(connection).resolve();
 
-        DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(DbType.MINIO);
+        return buildS3FileSource(connectionConfig, effectiveNodeConfig, dagContext, "MINIO");
+    }
+
+    private Config buildS3FileSource(Config connectionConfig,
+                                     Config nodeConfig,
+                                     DagBuildContext dagContext,
+                                     String providerType) {
+        DataSourceProcessor processor = getS3FileProcessor(providerType);
         if (processor == null) {
-            throw new IllegalArgumentException("MINIO datasource processor is unavailable");
+            throw new IllegalArgumentException("S3File datasource processor is unavailable");
         }
         DataSourceHoconBuilder hoconBuilder = processor.getQueryBuilder("S3File");
         if (hoconBuilder == null || !hoconBuilder.supportsSource()) {
             throw new IllegalArgumentException("S3File does not support source side");
         }
 
-        effectiveNodeConfig = IncrementalSqlRenderer.render(
-                effectiveNodeConfig, dagContext == null ? null : dagContext.getScheduleConfig());
-        effectiveNodeConfig = renderTimeVariablesIfNecessary(
-                effectiveNodeConfig, hoconBuilder,
+        nodeConfig = IncrementalSqlRenderer.render(
+                nodeConfig, dagContext == null ? null : dagContext.getScheduleConfig());
+        nodeConfig = renderTimeVariablesIfNecessary(
+                nodeConfig, hoconBuilder,
                 dagContext == null ? null : dagContext.getScheduleConfig());
 
         HoconBuildContext buildContext = HoconBuildContext.builder()
                 .connectionParam(connectionConfig.root().render())
                 .connectionConfig(connectionConfig)
-                .nodeConfig(effectiveNodeConfig)
+                .nodeConfig(nodeConfig)
                 .scheduleConfig(dagContext == null ? null : dagContext.getScheduleConfig())
                 .stage(HoconBuildStage.INSTANCE)
                 .build();
@@ -276,6 +370,95 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         Config sourceConfig = hoconBuilder.buildSourceHocon(buildContext);
         validateSourceConfig(processor, "S3File", sourceConfig);
         return sourceConfig;
+    }
+
+    private DataSourceProcessor getS3FileProcessor(String providerType) {
+        DbType preferredType = "MINIO".equalsIgnoreCase(providerType) ? DbType.MINIO : DbType.S3;
+        DbType fallbackType = preferredType == DbType.MINIO ? DbType.S3 : DbType.MINIO;
+        IllegalArgumentException preferredUnavailable = null;
+        try {
+            DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(preferredType);
+            if (processor != null) {
+                return processor;
+            }
+        } catch (IllegalArgumentException unavailable) {
+            preferredUnavailable = unavailable;
+        }
+        try {
+            DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(fallbackType);
+            if (processor != null) {
+                return processor;
+            }
+        } catch (IllegalArgumentException fallbackUnavailable) {
+            if (preferredUnavailable == null) {
+                preferredUnavailable = fallbackUnavailable;
+            } else {
+                preferredUnavailable.addSuppressed(fallbackUnavailable);
+            }
+        }
+        throw new IllegalArgumentException(
+                "S3File datasource processor is unavailable", preferredUnavailable);
+    }
+
+    private String hoconDbType(FileResourceReference reference) {
+        return "MINIO".equalsIgnoreCase(reference.getProviderType()) ? "MINIO" : "S3";
+    }
+
+    private String resolveFileResourcePath(FileResourceReference reference) {
+        String basePath = normalizeObjectPath(reference.getBasePath(), "basePath");
+        String objectKey = requireProperty(reference.getObjectKey(), "objectKey");
+        if (objectKey.contains("\\")) {
+            throw new IllegalArgumentException("File resource objectKey must not contain backslashes");
+        }
+
+        boolean absoluteObjectKey = objectKey.startsWith("/");
+        String path = normalizeObjectPath(
+                absoluteObjectKey ? objectKey : "/" + objectKey,
+                "objectKey");
+        if (!isWithinBase(basePath, path) && !absoluteObjectKey) {
+            path = normalizeObjectPath(
+                    "/".equals(basePath) ? "/" + objectKey : basePath + "/" + objectKey,
+                    "objectKey");
+        }
+        if (!isWithinBase(basePath, path)) {
+            throw new IllegalArgumentException(
+                    "File resource objectKey is outside its storage basePath: " + objectKey);
+        }
+        return path;
+    }
+
+    private String normalizeObjectPath(String value, String fieldName) {
+        String path = requireProperty(value, fieldName);
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        if (path.contains("\\")) {
+            throw new IllegalArgumentException(fieldName + " must not contain backslashes");
+        }
+
+        StringBuilder normalized = new StringBuilder();
+        for (String part : path.split("/")) {
+            if (part.isEmpty() || ".".equals(part)) {
+                continue;
+            }
+            if ("..".equals(part)) {
+                throw new IllegalArgumentException(fieldName + " must not contain '..'");
+            }
+            normalized.append('/').append(part);
+        }
+        return normalized.length() == 0 ? "/" : normalized.toString();
+    }
+
+    private boolean isWithinBase(String basePath, String path) {
+        return "/".equals(basePath)
+                || path.equals(basePath)
+                || path.startsWith(basePath + "/");
+    }
+
+    private void putIfNotBlank(Map<String, Object> target, String key, String value) {
+        if (StringUtils.isNotBlank(value)) {
+            target.put(key, value.trim());
+        }
     }
 
     private String requireProperty(String value, String propertyName) {

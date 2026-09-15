@@ -27,6 +27,7 @@ import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.core.job.assembler.BatchJobDefinitionAssembler;
+import org.apache.seatunnel.web.core.job.TaskTypeResolver;
 import org.apache.seatunnel.web.core.job.handler.JobDefinitionModeHandler;
 import org.apache.seatunnel.web.core.job.registry.JobDefinitionModeHandlerRegistry;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionContentEntity;
@@ -59,6 +60,7 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Slf4j
@@ -178,7 +180,12 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             }
 
             scheduleApplicationService.saveOrUpdateSchedule(entity.getId(), command);
-            fileUploadService.attach(entity.getId());
+            // WEB_UPLOAD is retained only as a legacy compatibility path.
+            // FILE_RESOURCE tasks own reusable resources and must not acquire
+            // a job-scoped upload-session lifecycle.
+            if (hasLegacyWebUploadSource(command)) {
+                fileUploadService.attach(entity.getId());
+            }
 
             if (lakeJobRelationBridgeService != null) {
                 lakeJobRelationBridgeService.syncRelationAfterJobSave(
@@ -286,7 +293,11 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             Long total = jobDefinitionDao.count(dto);
 
             if (records != null) {
-                records.forEach(vo -> fillScheduleFields(vo.getId(), vo));
+                records.forEach(vo -> {
+                    vo.setTaskType(TaskTypeResolver.resolve(
+                            vo.getTaskType(), vo.getMode(), vo.getJobType(), vo.getSourceType()));
+                    fillScheduleFields(vo.getId(), vo);
+                });
             }
 
             return PaginationResult.buildSuc(records, total, dto.getPageNo(), dto.getPageSize());
@@ -316,7 +327,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             }
             jobDefinitionContentDao.deleteByJobDefinitionId(jobDefinitionId);
             boolean deleted = jobDefinitionDao.deleteById(jobDefinitionId);
-            fileUploadService.deleteByJobDefinitionId(jobDefinitionId);
+            if (isLegacyWebUploadDefinition(definition)) {
+                fileUploadService.deleteByJobDefinitionId(jobDefinitionId);
+            }
             return deleted;
         } catch (ServiceException e) {
             throw e;
@@ -477,6 +490,8 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
                         vo.setJobDesc(item.getJobDesc());
                         vo.setMode(item.getMode());
                         vo.setJobType(item.getJobType());
+                        vo.setTaskType(TaskTypeResolver.resolve(
+                                item.getTaskType(), item.getMode(), item.getJobType(), item.getSourceType()));
                         vo.setClientId(item.getClientId());
                         vo.setJobVersion(item.getJobVersion());
                         vo.setReleaseState(item.getReleaseState());
@@ -553,6 +568,11 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         detail.setUpdateUserId(definition.getUpdateUserId());
         detail.setCreateTime(definition.getCreateTime());
         detail.setUpdateTime(definition.getUpdateTime());
+        detail.setTaskType(TaskTypeResolver.resolve(
+                definition.getTaskType(),
+                definition.getMode(),
+                definition.getJobType(),
+                definition.getSourceType()));
 
         return detail;
     }
@@ -788,7 +808,48 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
                 || !(command instanceof GuideSingleJobContentCommand contentCommand)) {
             return;
         }
-        fileUploadService.validateWorkflow(command.getId(), contentCommand.getWorkflow());
+        if (hasLegacyWebUploadSource(contentCommand.getWorkflow())) {
+            fileUploadService.validateWorkflow(command.getId(), contentCommand.getWorkflow());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean hasLegacyWebUploadSource(JobDefinitionSaveCommand command) {
+        if (!(command instanceof GuideSingleJobContentCommand contentCommand)) {
+            return false;
+        }
+        return hasLegacyWebUploadSource(contentCommand.getWorkflow());
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean hasLegacyWebUploadSource(Map<String, Object> workflow) {
+        if (workflow == null || !(workflow.get("nodes") instanceof List<?> nodes)) {
+            return false;
+        }
+        for (Object rawNode : nodes) {
+            if (!(rawNode instanceof Map<?, ?> node)
+                    || !(node.get("data") instanceof Map<?, ?> rawData)) {
+                continue;
+            }
+            Map<String, Object> data = (Map<String, Object>) rawData;
+            String sourceMode = StringUtils.trimToEmpty(String.valueOf(data.get("sourceMode")));
+            if ("WEB_UPLOAD".equalsIgnoreCase(sourceMode)) {
+                return true;
+            }
+            if (data.get("config") instanceof Map<?, ?> rawConfig) {
+                Map<String, Object> config = (Map<String, Object>) rawConfig;
+                sourceMode = StringUtils.trimToEmpty(String.valueOf(config.get("sourceMode")));
+                if ("WEB_UPLOAD".equalsIgnoreCase(sourceMode)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isLegacyWebUploadDefinition(JobDefinitionEntity definition) {
+        return definition != null
+                && "WEB_UPLOAD".equalsIgnoreCase(StringUtils.trimToEmpty(definition.getSourceType()));
     }
 
     /**

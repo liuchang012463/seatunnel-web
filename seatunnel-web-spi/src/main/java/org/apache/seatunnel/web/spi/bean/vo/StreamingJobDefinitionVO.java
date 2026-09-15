@@ -4,6 +4,7 @@ import lombok.Data;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
+import org.apache.seatunnel.web.common.enums.TaskType;
 
 import java.util.Date;
 import java.util.List;
@@ -24,6 +25,9 @@ public class StreamingJobDefinitionVO {
     private JobDefinitionMode mode;
 
     private JobMode jobType;
+
+    /** Stable business task type, distinct from the Engine runtime mode. */
+    private TaskType taskType;
 
     private Long clientId;
 

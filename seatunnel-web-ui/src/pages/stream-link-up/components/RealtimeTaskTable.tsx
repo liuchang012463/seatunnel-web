@@ -269,7 +269,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         emptyText: (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="暂无引接链路（实时）"
+            description="暂无实时数据引接任务"
           />
         ),
       }}

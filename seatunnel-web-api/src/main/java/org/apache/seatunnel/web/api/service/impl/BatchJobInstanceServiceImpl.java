@@ -16,6 +16,7 @@ import org.apache.seatunnel.web.common.utils.ConvertUtil;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.hocon.JobDefinitionCommandResolver;
 import org.apache.seatunnel.web.core.hocon.JobDefinitionHoconBuilder;
+import org.apache.seatunnel.web.core.job.TaskTypeResolver;
 import org.apache.seatunnel.web.dao.entity.JobInstance;
 import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.JobMetricsDao;
@@ -108,7 +109,14 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
             IPage<JobInstanceVO> pageResult = jobInstanceDao.pageWithDefinition(dto);
 
             if (pageResult.getRecords() != null) {
-                pageResult.getRecords().forEach(this::maskSensitiveFields);
+                pageResult.getRecords().forEach(record -> {
+                    record.setTaskType(TaskTypeResolver.resolve(
+                            record.getTaskType(),
+                            record.getDefinitionMode(),
+                            record.getJobType(),
+                            record.getSourceType()));
+                    maskSensitiveFields(record);
+                });
             }
 
             return PaginationResult.buildSuc(pageResult.getRecords(), pageResult);
@@ -145,6 +153,12 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
             }
 
             vo.setTableMetrics(listTableMetrics(id));
+
+            vo.setTaskType(TaskTypeResolver.resolve(
+                    vo.getTaskType(),
+                    vo.getDefinitionMode(),
+                    vo.getJobType(),
+                    vo.getSourceType()));
 
             maskSensitiveFields(vo);
             return vo;

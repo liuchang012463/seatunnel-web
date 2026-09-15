@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -58,15 +59,28 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         prefillManagedMappings(command);
         GuideSingleJobContentCommand cmd = cast(command);
         workflowValidator.validate(cmd.getWorkflow());
+        boolean fileResourceSource = isFileResourceSource(cmd.getWorkflow());
         if (command.getMode() == JobDefinitionMode.FILE_SYNC) {
+            if (fileResourceSource) {
+                LocalFileSourceValidator.validateBinaryFileResource(
+                        findMergedConfig(cmd.getWorkflow(), "source"));
+            }
             validateFileSync(cmd.getWorkflow());
         }
         if (command.getMode() == JobDefinitionMode.GUIDE_SINGLE) {
             validateWebUploadSingleSource(cmd.getWorkflow());
+            if (fileResourceSource) {
+                LocalFileSourceValidator.validateFileResource(
+                        findMergedConfig(cmd.getWorkflow(), "source"));
+            }
         }
         if (command.getMode() == JobDefinitionMode.GUIDE_SINGLE_INCREMENTAL) {
             if (isWebUploadSource(cmd.getWorkflow())) {
                 throw new IllegalArgumentException("本地文件来源只支持单表向导，不支持单表增量微批");
+            }
+            if (fileResourceSource) {
+                throw new IllegalArgumentException(
+                        "FILE_RESOURCE source is not supported by incremental micro-batch");
             }
             validateIncremental(cmd.getWorkflow(), command);
         }
@@ -180,6 +194,12 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
     private boolean isWebUploadSource(Map<String, Object> workflow) {
         Map<String, Object> source = findConfig(workflow, "source");
         return "WEB_UPLOAD".equalsIgnoreCase(firstNonBlank(
+                source.get("sourceMode"), source.get("source_mode")));
+    }
+
+    private boolean isFileResourceSource(Map<String, Object> workflow) {
+        Map<String, Object> source = findMergedConfig(workflow, "source");
+        return "FILE_RESOURCE".equalsIgnoreCase(firstNonBlank(
                 source.get("sourceMode"), source.get("source_mode")));
     }
 
@@ -375,6 +395,15 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         Map<String, Object> data = WorkflowNodeHelper.safeMap(node.get("data"));
         Map<String, Object> config = WorkflowNodeHelper.safeMap(data.get("config"));
         return config.isEmpty() ? data : config;
+    }
+
+    private Map<String, Object> findMergedConfig(Map<String, Object> workflow, String nodeType) {
+        Map<String, Object> node = WorkflowNodeHelper.findFirstNodeByType(workflow, nodeType);
+        Map<String, Object> data = WorkflowNodeHelper.safeMap(node.get("data"));
+        Map<String, Object> config = WorkflowNodeHelper.safeMap(data.get("config"));
+        Map<String, Object> merged = new HashMap<>(data);
+        merged.putAll(config);
+        return merged;
     }
 
     private String firstNonBlank(Object... values) {

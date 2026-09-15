@@ -2,6 +2,7 @@ import { Form, Input, Radio } from 'antd';
 import DataSourceSelect, {
   generateDataSourceOptions,
   generateOfflineSourceDataSourceOptions,
+  generateSourceDataSourceOptions,
 } from '../../DataSourceSelect';
 import IconRightArrow from '../../IconRightArrow';
 import type { SyncMode } from '../types';
@@ -28,6 +29,9 @@ const BaseConfigSection: React.FC<Props> = ({
   setMode,
 }) => {
   const localFileSource = isWebUploadSource(sourceType);
+  const sourceOptions = localFileSource
+    ? generateOfflineSourceDataSourceOptions()
+    : generateSourceDataSourceOptions();
 
   return (
     <div className="p-6">
@@ -41,7 +45,7 @@ const BaseConfigSection: React.FC<Props> = ({
             <DataSourceSelect
               value={sourceType}
               onChange={handleSourceChange}
-              dataSourceOptions={generateOfflineSourceDataSourceOptions()}
+              dataSourceOptions={sourceOptions}
               placeholder="请选择来源"
               prefix="来源"
               width="48%"

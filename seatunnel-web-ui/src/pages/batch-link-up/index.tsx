@@ -98,7 +98,7 @@ const App = () => {
       />
 
       <div>
-        <SyncTaskList goDetail={goEdit} excludeMode="FILE_SYNC" />
+        <SyncTaskList goDetail={goEdit} taskType="BATCH" excludeMode="FILE_SYNC" />
       </div>
     </div>
   );

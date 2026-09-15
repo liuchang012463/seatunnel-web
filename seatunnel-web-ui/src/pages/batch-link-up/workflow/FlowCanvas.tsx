@@ -90,10 +90,16 @@ function buildInitialGraph(
 
   const sourceDbType = sourceType?.dbType || 'MYSQL';
   const targetDbType = targetType?.dbType || 'MYSQL';
-  const isWebUploadSource = sourceType?.dbType === 'WEB_UPLOAD' || sourceType?.sourceManaged === true;
+  const sourceMode = String(sourceType?.sourceMode || '').toUpperCase();
+  const isFileResourceSource =
+    sourceType?.dbType === 'FILE_RESOURCE' || sourceMode === 'FILE_RESOURCE';
+  const isWebUploadSource =
+    !isFileResourceSource &&
+    (sourceType?.dbType === 'WEB_UPLOAD' || sourceType?.sourceManaged === true);
+  const isManagedFileSource = isFileResourceSource || isWebUploadSource;
 
   const sourceTitle =
-    (isWebUploadSource ? '本地文件' : sourceType?.dbType) ||
+    (isFileResourceSource ? '文件资源库' : isWebUploadSource ? '本地文件' : sourceType?.dbType) ||
     sourceType?.pluginName ||
     sourceType?.connectorType ||
     '输入端';
@@ -113,11 +119,24 @@ function buildInitialGraph(
         nodeType: 'source',
         title: sourceTitle,
         description: '读取源端数据',
-        dbType: isWebUploadSource ? 'MINIO' : sourceDbType,
-        connectorType: isWebUploadSource ? 'S3File' : sourceType?.connectorType,
-        pluginName: isWebUploadSource ? 'S3File' : sourceType?.pluginName,
+        dbType: isManagedFileSource ? 'MINIO' : sourceDbType,
+        connectorType: isManagedFileSource ? 'S3File' : sourceType?.connectorType,
+        pluginName: isManagedFileSource ? 'S3File' : sourceType?.pluginName,
         config: {
-          ...(isWebUploadSource
+          ...(isFileResourceSource
+            ? {
+                sourceMode: 'FILE_RESOURCE',
+                fileResourceId: undefined,
+                fileResource: undefined,
+                objectKey: undefined,
+                path: undefined,
+                fileFormatType: 'csv',
+                dbType: 'MINIO',
+                connectorType: 'S3File',
+                pluginName: 'S3File',
+                readMode: 'file',
+              }
+            : isWebUploadSource
             ? {
                 sourceMode: 'WEB_UPLOAD',
                 jobDefinitionId: params?.id,
@@ -139,8 +158,8 @@ function buildInitialGraph(
                 extraParams: [],
               }),
           pluginOutput: sourceId,
-          incrementalConfig: isIncremental
-            && !isWebUploadSource
+        incrementalConfig: isIncremental
+            && !isManagedFileSource
             ? {
                 enabled: true,
                 fieldName: '',

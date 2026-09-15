@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.common.utils.ConvertUtil;
 import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.core.job.TaskTypeResolver;
 import org.apache.seatunnel.web.core.job.registry.StreamingJobEditCommandBuilderRegistry;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionContentEntity;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
@@ -32,7 +33,10 @@ public class StreamingJobDefinitionQueryService {
 
         try {
             StreamingJobDefinitionEntity entity = getDefinitionOrThrow(id);
-            return ConvertUtil.sourceToTarget(entity, StreamingJobDefinitionVO.class);
+            StreamingJobDefinitionVO vo = ConvertUtil.sourceToTarget(entity, StreamingJobDefinitionVO.class);
+            vo.setTaskType(TaskTypeResolver.resolve(
+                    entity.getTaskType(), entity.getMode(), entity.getJobType(), entity.getSourceType()));
+            return vo;
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {

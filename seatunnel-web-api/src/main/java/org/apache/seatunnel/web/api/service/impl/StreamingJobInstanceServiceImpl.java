@@ -15,6 +15,7 @@ import org.apache.seatunnel.web.common.utils.ConvertUtil;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.hocon.JobDefinitionHoconBuilder;
 import org.apache.seatunnel.web.core.hocon.StreamingJobDefinitionCommandResolver;
+import org.apache.seatunnel.web.core.job.TaskTypeResolver;
 import org.apache.seatunnel.web.dao.entity.StreamingJobInstance;
 import org.apache.seatunnel.web.dao.entity.StreamingJobMetrics;
 import org.apache.seatunnel.web.dao.entity.StreamingJobMetricsCurrent;
@@ -103,7 +104,14 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
             IPage<JobInstanceVO> pageResult = streamingJobInstanceDao.pageWithDefinition(dto);
 
             if (pageResult.getRecords() != null) {
-                pageResult.getRecords().forEach(this::maskSensitiveFields);
+                pageResult.getRecords().forEach(record -> {
+                    record.setTaskType(TaskTypeResolver.resolve(
+                            record.getTaskType(),
+                            record.getDefinitionMode(),
+                            record.getJobType(),
+                            record.getSourceType()));
+                    maskSensitiveFields(record);
+                });
             }
 
             return PaginationResult.buildSuc(pageResult.getRecords(), pageResult);
@@ -126,6 +134,11 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
             }
 
             vo.setTableMetrics(listTableMetrics(id));
+            vo.setTaskType(TaskTypeResolver.resolve(
+                    vo.getTaskType(),
+                    vo.getDefinitionMode(),
+                    vo.getJobType(),
+                    vo.getSourceType()));
             maskSensitiveFields(vo);
             return vo;
         } catch (ServiceException e) {

@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
 import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.utils.ConvertUtil;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.core.job.TaskTypeResolver;
 import org.apache.seatunnel.web.core.job.registry.BatchJobEditCommandBuilderRegistry;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionContentEntity;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
@@ -45,6 +46,8 @@ public class BatchJobDefinitionQueryService {
         try {
             JobDefinitionEntity entity = getDefinitionOrThrow(id);
             BatchJobDefinitionVO vo = ConvertUtil.sourceToTarget(entity, BatchJobDefinitionVO.class);
+            vo.setTaskType(TaskTypeResolver.resolve(
+                    entity.getTaskType(), entity.getMode(), entity.getJobType(), entity.getSourceType()));
             fillScheduleFields(id, vo);
             return vo;
         } catch (ServiceException e) {
