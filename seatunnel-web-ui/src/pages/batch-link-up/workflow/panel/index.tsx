@@ -25,6 +25,7 @@ interface WorkflowPanelProps {
   };
   scheduleConfig: any;
   isIncremental?: boolean;
+  jobDefinitionId?: string | number;
 }
 
 const WorkflowPanel: FC<WorkflowPanelProps> = ({
@@ -38,6 +39,7 @@ const WorkflowPanel: FC<WorkflowPanelProps> = ({
   syncTransformPluginConfig,
   scheduleConfig,
   isIncremental = false,
+  jobDefinitionId,
 }) => {
   const nodeType = selectedNode?.data?.nodeType;
 
@@ -51,6 +53,7 @@ const WorkflowPanel: FC<WorkflowPanelProps> = ({
         onNodeDataChange={onNodeDataChange}
         scheduleConfig={scheduleConfig}
         isIncremental={isIncremental}
+        jobDefinitionId={jobDefinitionId}
       />
     );
   }

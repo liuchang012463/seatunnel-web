@@ -41,6 +41,27 @@ describe('batch flow check engine sink targets', () => {
 });
 
 describe('batch flow check engine source targets', () => {
+  it('validates a structured Web Upload source without datasource or table fields', () => {
+    expect(generateCheckList([sourceNode('MINIO', {
+      sourceMode: 'WEB_UPLOAD',
+      uploadSessionId: 'session-1',
+      uploadedAssets: [{ id: 1, originalName: 'orders.json' }],
+      fileFormatType: 'json',
+      schema: { fields: { id: 'long' } },
+    })])).toEqual([]);
+  });
+
+  it('requires a JSON schema for a Web Upload source', () => {
+    expect(generateCheckList([sourceNode('MINIO', {
+      sourceMode: 'WEB_UPLOAD',
+      uploadSessionId: 'session-1',
+      uploadedAssets: [{ id: 1, originalName: 'orders.json' }],
+      fileFormatType: 'json',
+    })])).toEqual([
+      expect.objectContaining({ field: 'schema', message: 'JSON 和 Excel 来源必须配置字段 Schema' }),
+    ]);
+  });
+
   it('accepts an Elasticsearch index as the source target', () => {
     expect(generateCheckList([sourceNode('ELASTICSEARCH', { index: 'orders' })])).toEqual([]);
   });

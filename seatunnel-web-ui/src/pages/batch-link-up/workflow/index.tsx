@@ -757,6 +757,7 @@ export default function Workflow({
                             onWorkflowChange={handleWorkflowChange}
                             scheduleConfig={scheduleConfig}
                             isIncremental={basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL"}
+                            jobDefinitionId={jobDefinitionId}
                           />
                         </ReactFlowProvider>
                       </div>

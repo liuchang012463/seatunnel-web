@@ -65,6 +65,7 @@ interface FlowCanvasProps {
   onWorkflowChange?: (value: { nodes: any[]; edges: any[] }) => void;
   scheduleConfig?: any;
   isIncremental?: boolean;
+  jobDefinitionId?: string | number;
 }
 
 function buildInitialGraph(
@@ -89,9 +90,10 @@ function buildInitialGraph(
 
   const sourceDbType = sourceType?.dbType || 'MYSQL';
   const targetDbType = targetType?.dbType || 'MYSQL';
+  const isWebUploadSource = sourceType?.dbType === 'WEB_UPLOAD' || sourceType?.sourceManaged === true;
 
   const sourceTitle =
-    sourceType?.dbType ||
+    (isWebUploadSource ? '本地文件' : sourceType?.dbType) ||
     sourceType?.pluginName ||
     sourceType?.connectorType ||
     '输入端';
@@ -111,20 +113,34 @@ function buildInitialGraph(
         nodeType: 'source',
         title: sourceTitle,
         description: '读取源端数据',
-        dbType: sourceDbType,
-        connectorType: sourceType?.connectorType,
-        pluginName: sourceType?.pluginName,
+        dbType: isWebUploadSource ? 'MINIO' : sourceDbType,
+        connectorType: isWebUploadSource ? 'S3File' : sourceType?.connectorType,
+        pluginName: isWebUploadSource ? 'S3File' : sourceType?.pluginName,
         config: {
-          dataSourceId: params?.sourceDataSourceId || '',
-          dbType: sourceType?.dbType,
-          connectorType: sourceType?.connectorType,
-          pluginName: sourceType?.pluginName,
+          ...(isWebUploadSource
+            ? {
+                sourceMode: 'WEB_UPLOAD',
+                jobDefinitionId: params?.id,
+                uploadSessionId: undefined,
+                uploadedAssets: [],
+                fileFormatType: 'csv',
+                dbType: 'MINIO',
+                connectorType: 'S3File',
+                pluginName: 'S3File',
+              }
+            : {
+                dataSourceId: params?.sourceDataSourceId || '',
+                dbType: sourceType?.dbType,
+                connectorType: sourceType?.connectorType,
+                pluginName: sourceType?.pluginName,
+                readMode: 'table',
+                table: undefined,
+                sql: '',
+                extraParams: [],
+              }),
           pluginOutput: sourceId,
-          readMode: 'table',
-          table: undefined,
-          sql: '',
-          extraParams: [],
           incrementalConfig: isIncremental
+            && !isWebUploadSource
             ? {
                 enabled: true,
                 fieldName: '',
@@ -212,6 +228,7 @@ export default function FlowCanvas({
   onWorkflowChange,
   scheduleConfig,
   isIncremental = false,
+  jobDefinitionId,
 }: FlowCanvasProps) {
   const store = useStoreApi();
   const flow = useFlowBuilder({ form, params });
@@ -674,6 +691,7 @@ export default function FlowCanvas({
           syncTransformPluginConfig={flow.syncTransformPluginConfig}
           scheduleConfig={scheduleConfig}
           isIncremental={isIncremental}
+          jobDefinitionId={jobDefinitionId}
         />
       )}
     </div>

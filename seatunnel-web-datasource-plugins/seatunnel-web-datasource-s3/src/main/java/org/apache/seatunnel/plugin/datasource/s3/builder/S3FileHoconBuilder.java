@@ -31,11 +31,35 @@ public class S3FileHoconBuilder implements DataSourceHoconBuilder {
         Map<String, Object> result = connectionValues(context);
         String path = resolveNodePath(context, node, "path");
         result.put("path", path);
+        put(result, node, "fileFormatType", "file_format_type");
+        if (!result.containsKey("file_format_type")) {
+            put(result, node, "file_format_type", "file_format_type");
+        }
+        put(result, node, "readColumns", "read_columns");
+        put(result, node, "fieldDelimiter", "field_delimiter");
+        put(result, node, "rowDelimiter", "row_delimiter");
+        put(result, node, "parsePartitionFromPath", "parse_partition_from_path");
+        put(result, node, "dateFormat", "date_format");
+        put(result, node, "datetimeFormat", "datetime_format");
+        put(result, node, "timeFormat", "time_format");
+        put(result, node, "skipHeaderRowNumber", "skip_header_row_number");
+        put(result, node, "schema", "schema");
+        put(result, node, "sheetName", "sheet_name");
+        put(result, node, "excelEngine", "excel_engine");
+        put(result, node, "csvUseHeaderLine", "csv_use_header_line");
+        put(result, node, "compressCodec", "compress_codec");
+        put(result, node, "archiveCompressCodec", "archive_compress_codec");
+        put(result, node, "encoding", "encoding");
+        put(result, node, "nullFormat", "null_format");
+        put(result, node, "enableFileSplit", "enable_file_split");
+        put(result, node, "fileSplitSize", "file_split_size");
+        put(result, node, "quoteChar", "quote_char");
+        put(result, node, "escapeChar", "escape_char");
         put(result, node, "fileFilterPattern", "file_filter_pattern");
         put(result, node, "filenameExtension", "filename_extension");
         put(result, node, "binaryChunkSize", "binary_chunk_size");
         put(result, node, "binaryCompleteFileMode", "binary_complete_file_mode");
-        result.put("file_format_type", "binary");
+        result.putIfAbsent("file_format_type", "binary");
         return toConfig(result);
     }
 

@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.api.service.FileUploadService;
 import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.fileupload.BuiltInMinioProperties;
+import org.apache.seatunnel.web.core.job.handler.single.LocalFileSourceValidator;
 import org.apache.seatunnel.web.dao.entity.FileUploadAsset;
 import org.apache.seatunnel.web.dao.entity.FileUploadSession;
 import org.apache.seatunnel.web.dao.repository.FileUploadAssetDao;
@@ -25,6 +26,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -221,18 +223,46 @@ public class FileUploadServiceImpl implements FileUploadService {
         }
         validateUploadSession(session);
         List<FileUploadAsset> assets = fileUploadAssetDao.queryBySessionId(sessionId);
-        boolean hasAsset = assets.stream()
-                .anyMatch(asset -> READY.equalsIgnoreCase(asset.getStatus()));
-        if (!hasAsset) {
+        List<FileUploadAsset> readyAssets = assets.stream()
+                .filter(asset -> READY.equalsIgnoreCase(asset.getStatus()))
+                .toList();
+        if (readyAssets.isEmpty()) {
             throw invalid("请先上传至少一个文件");
         }
+
+        String requestedFormat = value(source, "fileFormatType");
+        if (StringUtils.isBlank(requestedFormat)) {
+            requestedFormat = value(source, "file_format_type");
+        }
+        String format = null;
+        if (StringUtils.isNotBlank(requestedFormat)) {
+            format = LocalFileSourceValidator.validate(source);
+            if (readyAssets.size() != 1) {
+                throw invalid("结构化本地文件单表来源只能上传一个文件");
+            }
+        }
+
         migrateSessionPrefixIfNecessary(session, assets);
         source.put("dbType", "MINIO");
         source.put("pluginName", "S3File");
         source.put("connectorType", "S3File");
         source.put("syncType", "FULL");
-        source.put("binaryChunkSize", 1048576);
-        source.put("binaryCompleteFileMode", false);
+
+        if (format == null) {
+            // Existing FILE_SYNC workflows omit the format and remain binary.
+            source.put("binaryChunkSize", 1048576);
+            source.put("binaryCompleteFileMode", false);
+            return;
+        }
+
+        FileUploadAsset asset = readyAssets.get(0);
+        String relativePath = normalizeRelativePath(asset.getRelativePath());
+        source.put("fileFormatType", format.toLowerCase(Locale.ROOT));
+        source.put(
+                "path",
+                builtInMinioProperties.objectPath(session.getJobDefinitionId(), session.getId())
+                        + "/" + relativePath);
+        source.put("uploadedAssetId", asset.getId());
     }
 
     private void migrateSessionPrefixIfNecessary(

@@ -6,6 +6,7 @@ import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -78,6 +79,35 @@ class S3FileHoconBuilderTest {
 
         assertEquals(1048576, result.getInt("binary_chunk_size"));
         assertFalse(result.getBoolean("binary_complete_file_mode"));
+    }
+
+    @Test
+    void mapsStructuredFileFormatsAndOptions() {
+        for (String format : List.of("csv", "excel", "json", "text")) {
+            Map<String, Object> node = new java.util.HashMap<>(Map.of(
+                    "path", "/uploads/file",
+                    "fileFormatType", format,
+                    "encoding", "UTF-8",
+                    "fieldDelimiter", ",",
+                    "rowDelimiter", "\\n",
+                    "schema", Map.of("fields", Map.of("id", "long"))));
+            node.put("sheetName", "Sheet1");
+            node.put("excelEngine", "EasyExcel");
+
+            Config result = new S3FileHoconBuilder().buildSourceHocon(context(
+                    Map.of(
+                            "dbType", "MINIO",
+                            "endpoint", "http://minio:9000",
+                            "bucket", "archive",
+                            "accessKey", "minio",
+                            "secretKey", "minio-secret"),
+                    node));
+
+            assertEquals(format, result.getString("file_format_type"));
+            assertEquals("UTF-8", result.getString("encoding"));
+            assertEquals("Sheet1", result.getString("sheet_name"));
+            assertEquals("long", result.getString("schema.fields.id"));
+        }
     }
 
     @Test

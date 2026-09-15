@@ -236,9 +236,15 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         connection.put("pathStyleAccess", true);
 
         Map<String, Object> node = new HashMap<>();
-        node.put("path", builtInMinioProperties.objectPath(jobDefinitionId, sessionId));
-        node.put("binaryChunkSize", 1048576);
-        node.put("binaryCompleteFileMode", false);
+        String configuredPath = getTrimmedString(nodeConfig, "path");
+        node.put("path", StringUtils.defaultIfBlank(
+                configuredPath, builtInMinioProperties.objectPath(jobDefinitionId, sessionId)));
+        String fileFormatType = getFirstTrimmedString(
+                nodeConfig, "fileFormatType", "file_format_type");
+        if (StringUtils.isBlank(fileFormatType) || "binary".equalsIgnoreCase(fileFormatType)) {
+            node.put("binaryChunkSize", 1048576);
+            node.put("binaryCompleteFileMode", false);
+        }
         Config effectiveNodeConfig = ConfigFactory.parseMap(node)
                 .withFallback(nodeConfig)
                 .resolve();
@@ -325,5 +331,15 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
         String value = config.getString(path);
         return value == null ? null : value.trim();
+    }
+
+    private String getFirstTrimmedString(Config config, String... paths) {
+        for (String path : paths) {
+            String value = getTrimmedString(config, path);
+            if (StringUtils.isNotBlank(value)) {
+                return value;
+            }
+        }
+        return null;
     }
 }

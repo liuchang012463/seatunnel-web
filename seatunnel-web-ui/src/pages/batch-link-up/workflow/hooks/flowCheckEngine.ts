@@ -1,3 +1,8 @@
+import {
+  hasSchemaFields,
+  isLocalFileFormat,
+} from '../panel/components/SourcePanel/localFile';
+
 export type CheckLevel = "error" | "warning";
 
 export interface CheckItem {
@@ -39,6 +44,9 @@ const isNonTabularSourceNode = (node: any) =>
   ["HTTP", "KAFKA", "ELASTICSEARCH"].includes(
     String(node?.data?.dbType || "").toUpperCase()
   );
+
+export const isWebUploadSourceNode = (node: any) =>
+  String(node?.data?.config?.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
 
 const hasElasticsearchTarget = (config: any) => {
   const directTarget = [
@@ -104,6 +112,12 @@ export const groupCheckListByNode = (
 const sourceRules: NodeCheckRule[] = [
   (node) => {
     const config = getConfig(node);
+    if (isWebUploadSourceNode(node)) {
+      if (!String(config.uploadSessionId || '').trim()) {
+        return buildWarning(node, 'uploadSessionId', '请先准备本地文件上传会话');
+      }
+      return null;
+    }
     if (!config.dataSourceId) {
       return buildWarning(node, "dataSourceId", "缺少源端数据源配置");
     }
@@ -111,6 +125,13 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
+    if (isWebUploadSourceNode(node)) {
+      const assets = Array.isArray(config.uploadedAssets) ? config.uploadedAssets : [];
+      if (assets.length === 0) {
+        return buildWarning(node, 'uploadedAssets', '请先上传本地文件');
+      }
+      return null;
+    }
     if (isNonTabularSourceNode(node)) {
       return null;
     }
@@ -121,6 +142,12 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
+    if (isWebUploadSourceNode(node)) {
+      if (!isLocalFileFormat(config.fileFormatType)) {
+        return buildWarning(node, 'fileFormatType', '请选择 CSV、Excel、JSON 或 Text 文件格式');
+      }
+      return null;
+    }
     if (isElasticsearchNode(node)) {
       if (!hasElasticsearchSourceIndex(config)) {
         return buildWarning(node, "index", "请选择来源索引");
@@ -137,6 +164,13 @@ const sourceRules: NodeCheckRule[] = [
   },
   (node) => {
     const config = getConfig(node);
+    if (isWebUploadSourceNode(node)) {
+      if (['json', 'excel'].includes(String(config.fileFormatType || '').toLowerCase())
+          && !hasSchemaFields(config.schema)) {
+        return buildWarning(node, 'schema', 'JSON 和 Excel 来源必须配置字段 Schema');
+      }
+      return null;
+    }
     if (isNonTabularSourceNode(node)) {
       return null;
     }
