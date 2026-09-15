@@ -93,7 +93,8 @@
                     WHEN UPPER(COALESCE(mode, '')) = 'FILE_SYNC' THEN 'FILE_TRANSFER'
                     WHEN UPPER(COALESCE(job_type, '')) = 'STREAMING' THEN 'STREAM'
                     WHEN UPPER(COALESCE(mode, '')) = 'GUIDE_SINGLE'
-                         AND UPPER(COALESCE(source_type, '')) = 'WEB_UPLOAD'
+                         AND UPPER(COALESCE(source_type, '')) IN
+                             ('WEB_UPLOAD', 'FILE_RESOURCE', 'LOCAL_FILE')
                         THEN 'FILE_INGEST'
                     ELSE 'BATCH'
                     END
@@ -241,7 +242,8 @@
                     WHEN UPPER(COALESCE(d.mode, '')) = 'FILE_SYNC' THEN 'FILE_TRANSFER'
                     WHEN UPPER(COALESCE(d.job_type, '')) = 'STREAMING' THEN 'STREAM'
                     WHEN UPPER(COALESCE(d.mode, '')) = 'GUIDE_SINGLE'
-                         AND UPPER(COALESCE(d.source_type, '')) = 'WEB_UPLOAD'
+                         AND UPPER(COALESCE(d.source_type, '')) IN
+                             ('WEB_UPLOAD', 'FILE_RESOURCE', 'LOCAL_FILE')
                         THEN 'FILE_INGEST'
                     ELSE 'BATCH'
                     END

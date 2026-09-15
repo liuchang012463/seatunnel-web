@@ -25,9 +25,9 @@ if port_listening "$FRONTEND_PORT"; then
   exit 1
 fi
 
-echo "building backend (./mvnw -pl $BACKEND_MODULE -am -DskipTests package)"
+echo "building backend (./mvnw -pl $BACKEND_MODULE -am clean -DskipTests package)"
 : >"$BACKEND_LOG"
-./mvnw -pl "$BACKEND_MODULE" -am -DskipTests package >>"$BACKEND_LOG" 2>&1 || {
+./mvnw -pl "$BACKEND_MODULE" -am clean -DskipTests package >>"$BACKEND_LOG" 2>&1 || {
   echo "error: backend package failed; see $BACKEND_LOG" >&2
   tail -n 80 "$BACKEND_LOG" >&2 || true
   exit 1
@@ -58,7 +58,9 @@ setsid bash -c "
   export MOCK=none
   export UMI_ENV=dev
   export PORT=\"$FRONTEND_PORT\"
-  exec yarn exec max dev
+  # Tailwind 3.4 exits before its initial build when Umi inherits a closed
+  # stdin. Keep the watcher input open for the lifetime of the dev server.
+  tail -f /dev/null | yarn exec max dev
 " >>"$FRONTEND_LOG" 2>&1 &
 echo $! >"$FRONTEND_PID_FILE"
 

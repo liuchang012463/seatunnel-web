@@ -92,6 +92,9 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     private FileUploadRecordDao fileUploadRecordDao;
 
     @Resource
+    private FileUploadRecordPersistenceService fileUploadRecordPersistenceService;
+
+    @Resource
     private CurrentUserProvider currentUserProvider;
 
     @Resource
@@ -181,7 +184,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         record.setTotalFiles(items.size());
         record.setTotalSize(totalSize(items));
         record.setStatus(UPLOADING);
-        fileUploadRecordDao.insert(record);
+        fileUploadRecordPersistenceService.insert(record);
 
         List<String> newObjectKeys = new ArrayList<>();
         List<ResourceMutation> mutations = new ArrayList<>();
@@ -227,7 +230,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         } catch (Exception e) {
             cleanupFailedUpload(newObjectKeys, mutations);
             String message = StringUtils.defaultIfBlank(e.getMessage(), "对象存储不可用");
-            markUploadRecord(record, FAILED, message);
+            markFailedUploadRecord(record, message);
             if (e instanceof ServiceException serviceException) {
                 throw serviceException;
             }
@@ -591,6 +594,15 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             fileUploadRecordDao.updateById(record);
         } catch (Exception e) {
             log.warn("Failed to update file resource upload record, recordId={}", record.getId(), e);
+        }
+    }
+
+    private void markFailedUploadRecord(FileUploadRecord record, String errorMessage) {
+        try {
+            fileUploadRecordPersistenceService.markFailed(record, truncate(errorMessage));
+        } catch (Exception e) {
+            log.warn("Failed to persist failed file resource upload record, recordId={}",
+                    record.getId(), e);
         }
     }
 

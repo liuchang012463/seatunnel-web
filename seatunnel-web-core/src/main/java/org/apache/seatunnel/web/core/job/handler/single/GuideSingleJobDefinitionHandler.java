@@ -134,14 +134,19 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
             if (!(rawData instanceof Map)) { continue; }
             Map<String, Object> data = (Map<String, Object>) rawData;
             Object rawConfig = data.get("config");
-            Map<String, Object> config = rawConfig instanceof Map ? (Map<String, Object>) rawConfig : data;
+            Map<String, Object> config = new HashMap<>(data);
+            if (rawConfig instanceof Map<?, ?> rawConfigMap) {
+                config.putAll((Map<String, Object>) rawConfigMap);
+            }
             if ("source".equals(String.valueOf(data.get("nodeType")))) { source = config; }
             if ("sink".equals(String.valueOf(data.get("nodeType")))) { sink = config; }
         }
         if (source == null || sink == null) {
             throw new IllegalArgumentException("FILE_SYNC requires exactly one source and one sink");
         }
-        boolean webUpload = "WEB_UPLOAD".equalsIgnoreCase(String.valueOf(source.get("sourceMode")));
+        String sourceMode = firstNonBlank(source.get("sourceMode"), source.get("source_mode"));
+        boolean webUpload = "WEB_UPLOAD".equalsIgnoreCase(sourceMode);
+        boolean fileResource = "FILE_RESOURCE".equalsIgnoreCase(sourceMode);
         if (webUpload) {
             if (!"MINIO".equalsIgnoreCase(String.valueOf(source.get("dbType")))) {
                 throw new IllegalArgumentException("FILE_SYNC Web 上传来源必须使用内置 MINIO");
@@ -149,11 +154,14 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
             if ("INCREMENTAL".equalsIgnoreCase(String.valueOf(source.get("syncType")))) {
                 throw new IllegalArgumentException("Web 上传文件引接只支持全量同步");
             }
-        } else {
+        } else if (!fileResource) {
             requireFileDbType(source, "source");
         }
         requireFileDbType(sink, "sink");
         if ("INCREMENTAL".equalsIgnoreCase(String.valueOf(source.get("syncType")))) {
+            if (fileResource) {
+                throw new IllegalArgumentException("FILE_RESOURCE 文件传输只支持全量同步");
+            }
             requireIncrementalDbType(source, "source");
             requireIncrementalDbType(sink, "sink");
             if (!String.valueOf(source.get("dataSourceId"))

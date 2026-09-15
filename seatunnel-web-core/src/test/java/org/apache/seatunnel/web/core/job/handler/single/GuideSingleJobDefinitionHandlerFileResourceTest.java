@@ -43,10 +43,9 @@ class GuideSingleJobDefinitionHandlerFileResourceTest {
                                 "data", Map.of(
                                         "nodeType", "source",
                                         "config", Map.of(
-                                                "sourceMode", "FILE_RESOURCE",
-                                                "fileResourceId", "42",
+                                                "source_mode", "FILE_RESOURCE",
+                                                "file_resource_id", "42",
                                                 "readMode", "resource",
-                                                "dbType", "MINIO",
                                                 "syncType", "FULL"))),
                         Map.of(
                                 "id", "sink",

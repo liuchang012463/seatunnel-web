@@ -22,9 +22,10 @@
                 CASE
                     WHEN definition.task_type IS NOT NULL THEN definition.task_type
                     WHEN UPPER(COALESCE(definition.mode, '')) = 'FILE_SYNC' THEN 'FILE_TRANSFER'
-                    WHEN UPPER(COALESCE(definition.mode, '')) = 'STREAMING' THEN 'STREAM'
+                    WHEN UPPER(COALESCE(definition.job_type, '')) = 'STREAMING' THEN 'STREAM'
                     WHEN UPPER(COALESCE(definition.mode, '')) = 'GUIDE_SINGLE'
-                         AND UPPER(COALESCE(definition.source_type, '')) = 'WEB_UPLOAD'
+                         AND UPPER(COALESCE(definition.source_type, '')) IN
+                             ('WEB_UPLOAD', 'FILE_RESOURCE', 'LOCAL_FILE')
                         THEN 'FILE_INGEST'
                     ELSE 'BATCH'
                 END

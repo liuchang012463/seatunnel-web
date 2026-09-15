@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.api.fileresource.FileResourcePathUtils;
 import org.apache.seatunnel.web.core.fileupload.BuiltInMinioProperties;
 import org.apache.seatunnel.web.core.fileresource.FileResourceReference;
 import org.apache.seatunnel.web.spi.bean.vo.FileEntryVO;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
@@ -36,6 +37,7 @@ public class S3CompatibleFileResourceStorageProvider implements FileResourceStor
     private final BuiltInMinioProperties legacyProperties;
     private final S3ObjectStorageClient objectStorageClient;
 
+    @Autowired
     public S3CompatibleFileResourceStorageProvider(
             FileResourceStorageProperties properties,
             BuiltInMinioProperties legacyProperties) {
