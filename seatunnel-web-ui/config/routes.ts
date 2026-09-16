@@ -36,6 +36,7 @@ const businessRoutes = [
   ['/operations/protocol', './FeaturePlaceholderPage'],
   ['/operations/diagnostics', './FeaturePlaceholderPage'],
   ['/lake/resources', './lake/physical'],
+  ['/lake/catalog', './lake/catalog'],
   ['/lake/warehouse', './lake/warehouse'],
   ['/lake/lifecycle', './lake/lifecycle'],
   ['/lake/logical-access', './lake/logical'],

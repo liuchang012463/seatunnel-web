@@ -43,6 +43,24 @@ public class DataSourceCatalogController {
         return Result.buildSuc(dataSourceCatalogService.listTable(id));
     }
 
+    /** List every database exposed by a hierarchical JDBC catalog. */
+    @GetMapping("/databases/{id}")
+    @Operation(summary = "listDatabase", description = "LIST_DATASOURCE_DATABASE_NOTES")
+    @ApiException(DATASOURCE_CATALOG_TABLE_LIST_ERROR)
+    public Result<List<OptionVO>> listDatabase(@PathVariable("id") Long id) {
+        return Result.buildSuc(dataSourceCatalogService.listDatabase(id));
+    }
+
+    /** List tables in one database exposed by a hierarchical JDBC catalog. */
+    @GetMapping("/tables/{id}")
+    @Operation(summary = "listTableByDatabase", description = "LIST_DATASOURCE_TABLE_NOTES")
+    @ApiException(DATASOURCE_CATALOG_TABLE_LIST_ERROR)
+    public Result<List<OptionVO>> listTableByDatabase(
+            @PathVariable("id") Long id,
+            @RequestParam("database") String databaseName) {
+        return Result.buildSuc(dataSourceCatalogService.listTable(id, databaseName));
+    }
+
     @GetMapping("/files/{id}")
     @Operation(summary = "listRemoteFiles",
             description = "List one level of a remote file directory or object-storage prefix")

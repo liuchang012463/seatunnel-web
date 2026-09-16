@@ -183,6 +183,39 @@ export function useMultiWorkflowState({
     return [];
   }, []);
 
+  const fetchDorisTables = useCallback(async (dataSourceId: string) => {
+    const databaseResponse = await dataSourceCatalogApi.listDatabases(dataSourceId);
+    if (databaseResponse?.code !== 0) {
+      throw new Error(databaseResponse?.message || "获取 Doris 数据库失败");
+    }
+
+    const databases = Array.isArray(databaseResponse.data) ? databaseResponse.data : [];
+    const tableGroups = await Promise.all(
+      databases.map(async (database: any) => {
+        const databaseName = String(database?.value ?? "");
+        if (!databaseName) return [];
+
+        const tableResponse = await dataSourceCatalogApi.listTablesByDatabase(
+          dataSourceId,
+          databaseName,
+        );
+        if (tableResponse?.code !== 0) return [];
+
+        const tables = Array.isArray(tableResponse.data) ? tableResponse.data : [];
+        return tables.map((table: any) => {
+          const tableName = String(table?.value ?? "");
+          return {
+            value: `${databaseName}.${tableName}`,
+            label: `${databaseName}.${tableName}`,
+            description: table?.description,
+          };
+        });
+      }),
+    );
+
+    return tableGroups.flat();
+  }, []);
+
   const fetchTables = useCallback(
     async (dataSourceId: string, mode?: string) => {
       if (!dataSourceId) return;
@@ -191,7 +224,9 @@ export function useMultiWorkflowState({
         setLoading(true);
         setCurrentSourceId(dataSourceId);
 
-        const res = await dataSourceCatalogApi.listTable(dataSourceId);
+        const res = String(sourceType?.dbType || "").toUpperCase() === "DORIS"
+          ? { code: 0, data: await fetchDorisTables(dataSourceId) }
+          : await dataSourceCatalogApi.listTable(dataSourceId);
         if (res?.code === 0) {
           const nextTables = buildTableItems(res.data || []);
           setTableData(nextTables);
@@ -211,7 +246,7 @@ export function useMultiWorkflowState({
         setLoading(false);
       }
     },
-    []
+    [fetchDorisTables, sourceType]
   );
 
   const fetchReferenceTables = useCallback(
@@ -221,11 +256,21 @@ export function useMultiWorkflowState({
       try {
         setLoading(true);
 
-        const res = await dataSourceCatalogApi.listTableReference(
-          dataSourceId,
-          mode,
-          keyword
-        );
+        const res = String(sourceType?.dbType || "").toUpperCase() === "DORIS"
+          ? {
+              code: 0,
+              data: (await fetchDorisTables(dataSourceId)).filter((item: any) => {
+                const value = String(item?.value || "");
+                if (mode === "2") return value.match(keyword || "");
+                if (mode === "3") {
+                  return String(keyword || "")
+                    .split(",")
+                    .some((exact) => exact.trim() === value);
+                }
+                return true;
+              }),
+            }
+          : await dataSourceCatalogApi.listTableReference(dataSourceId, mode, keyword);
 
         if (res?.code === 0) {
           setReadOnlyTables(buildTableItems(res.data || []));
@@ -239,7 +284,7 @@ export function useMultiWorkflowState({
         setLoading(false);
       }
     },
-    []
+    [fetchDorisTables, sourceType]
   );
 
   const debouncedFetchReferenceTables = useMemo(
@@ -445,6 +490,7 @@ export function useMultiWorkflowState({
     sourceType,
     targetType,
     fetchDataSourceOptionsU,
+    fetchDorisTables,
     fetchTables,
     fetchReferenceTables,
     debouncedFetchReferenceTables,

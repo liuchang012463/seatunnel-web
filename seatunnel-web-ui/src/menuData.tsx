@@ -76,7 +76,7 @@ export const menuData: MenuDataItem[] = [
     children: [
       { path: '/client', name: '引接引擎管理', icon: <ApiOutlined /> },
       { path: '/operations/metadata-engine', name: '探查引擎管理', icon: <ReadOutlined /> },
-      { path: '/lake/warehouse', name: '数据湖管理', icon: <SettingOutlined /> },
+      { path: '/lake/warehouse', name: 'Doris 集群管理', icon: <SettingOutlined /> },
       { path: '/alarm', name: '告警管理', icon: <SettingOutlined /> },
       { path: '/operations/protocol', name: '协议管理', icon: <ApiOutlined /> },
       { path: '/operations/diagnostics', name: '安全加密', icon: <SafetyCertificateOutlined /> },
@@ -88,6 +88,7 @@ export const menuData: MenuDataItem[] = [
     icon: <CloudServerOutlined />,
     children: [
       { path: '/lake/resources', name: '物理入湖管理', icon: <DatabaseOutlined /> },
+      { path: '/lake/catalog', name: '数据湖管理', icon: <DatabaseOutlined /> },
       { path: '/lake/logical-access', name: '逻辑入湖管理', icon: <LinkOutlined /> },
       { path: '/lake/lifecycle', name: '数据生命周期管理', icon: <FolderOpenOutlined /> },
     ],

@@ -1,8 +1,11 @@
 package org.apache.seatunnel.plugin.datasource.doris.metadata;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.AbstractJdbcCatalog;
+import org.apache.seatunnel.plugin.datasource.api.jdbc.HierarchicalJdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
+import org.apache.seatunnel.plugin.datasource.api.jdbc.QueryRequest;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.TablePath;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
@@ -13,6 +16,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,10 +28,45 @@ import java.util.stream.Collectors;
  * （MySQL 协议端口 9030）执行 SQL 完成，如 SHOW TABLES、INFORMATION_SCHEMA 查询等。</p>
  */
 @Slf4j
-public class DorisCatalog extends AbstractJdbcCatalog {
+public class DorisCatalog extends AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
+
+    private static final String LIST_DATABASE_SQL =
+            "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA ORDER BY SCHEMA_NAME";
 
     public DorisCatalog(BaseConnectionParam param, JdbcConnectionProvider connectionManager) {
         super(param, connectionManager);
+    }
+
+    @Override
+    public List<OptionVO> listDatabaseOptions() {
+        try {
+            return queryOptionList(LIST_DATABASE_SQL, rs -> {
+                String databaseName = rs.getString("SCHEMA_NAME");
+                if (StringUtils.isBlank(databaseName)) {
+                    return null;
+                }
+                OptionVO option = new OptionVO();
+                option.setValue(databaseName);
+                option.setLabel(databaseName);
+                option.setDescription("Doris 数据库");
+                return option;
+            });
+        } catch (Exception e) {
+            throw new RuntimeException("Failed listing Doris databases", e);
+        }
+    }
+
+    @Override
+    public List<OptionVO> listTableOptions(String databaseName) {
+        if (StringUtils.isBlank(databaseName)) {
+            throw new IllegalArgumentException("databaseName must not be blank");
+        }
+        try {
+            return queryOptionList(getListTableSql(databaseName), this::buildTableOption);
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    String.format("Failed listing Doris tables in database %s", databaseName), e);
+        }
     }
 
     @Override
@@ -47,7 +86,7 @@ public class DorisCatalog extends AbstractJdbcCatalog {
                         "FROM INFORMATION_SCHEMA.TABLES " +
                         "WHERE TABLE_SCHEMA = '%s' AND TABLE_TYPE = 'BASE TABLE' " +
                         "ORDER BY TABLE_NAME",
-                databaseName
+                sqlLiteral(databaseName)
         );
     }
 
@@ -65,7 +104,7 @@ public class DorisCatalog extends AbstractJdbcCatalog {
 
     @Override
     protected String quoteIdentifier(String identifier) {
-        return "`" + identifier + "`";
+        return "`" + StringUtils.defaultString(identifier).replace("`", "``") + "`";
     }
 
     @Override
@@ -91,7 +130,7 @@ public class DorisCatalog extends AbstractJdbcCatalog {
     protected String getSelectColumnsSql(TablePath tablePath) {
         return String.format(
                 "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s' ORDER BY ORDINAL_POSITION ASC",
-                tablePath.getDatabaseName(), tablePath.getTableName());
+                sqlLiteral(tablePath.getDatabaseName()), sqlLiteral(tablePath.getTableName()));
     }
 
     @Override
@@ -101,14 +140,69 @@ public class DorisCatalog extends AbstractJdbcCatalog {
                 .toList();
 
         String quotedColumnNames = columnNames.stream()
-                .map(name -> "'" + name + "'")
+                .map(name -> "'" + sqlLiteral(name) + "'")
                 .collect(Collectors.joining(", "));
 
         return String.format(
                 "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s' AND COLUMN_NAME IN (%s) ORDER BY ORDINAL_POSITION ASC",
-                tablePath.getDatabaseName(),
-                tablePath.getTableName(),
+                sqlLiteral(tablePath.getDatabaseName()),
+                sqlLiteral(tablePath.getTableName()),
                 quotedColumnNames);
+    }
+
+    /**
+     * Doris has no schema layer for the JDBC catalog.  A two-part table path
+     * is therefore database.table, not the generic database.schema shape.
+     */
+    @Override
+    protected TablePath resolveTablePath(String tablePath) {
+        if (StringUtils.isBlank(tablePath)) {
+            throw new IllegalArgumentException("tablePath must not be blank");
+        }
+
+        String[] parts = Arrays.stream(tablePath.split("\\."))
+                .map(String::trim)
+                .filter(StringUtils::isNotBlank)
+                .toArray(String[]::new);
+        if (parts.length == 1) {
+            return TablePath.of(getParam().getDatabase(), null, parts[0]);
+        }
+        if (parts.length == 2) {
+            return TablePath.of(parts[0], null, parts[1]);
+        }
+        if (parts.length == 3) {
+            // Keep compatibility with callers that already send a fully
+            // qualified path, while Doris still uses the first component as
+            // the effective database.
+            return TablePath.of(parts[0], parts[1], parts[2]);
+        }
+        throw new IllegalArgumentException("Invalid Doris tablePath: " + tablePath);
+    }
+
+    @Override
+    protected QueryRequest preprocessRequest(Map<String, Object> requestBody) {
+        QueryRequest request = super.preprocessRequest(requestBody);
+        Object database = requestBody == null ? null : requestBody.get("database");
+        if (request.getTablePath() != null && database != null
+                && StringUtils.isNotBlank(database.toString())) {
+            request.setTablePath(TablePath.of(
+                    database.toString().trim(),
+                    null,
+                    request.getTablePath().getTableName()));
+        }
+        return request;
+    }
+
+    @Override
+    public String buildTableReference(TablePath tablePath) {
+        if (tablePath == null || StringUtils.isBlank(tablePath.getTableName())) {
+            throw new IllegalArgumentException("table is null");
+        }
+        String database = tablePath.getDatabaseName();
+        if (StringUtils.isBlank(database)) {
+            return quoteIdentifier(tablePath.getTableName());
+        }
+        return quoteIdentifier(database) + "." + quoteIdentifier(tablePath.getTableName());
     }
 
     /**
@@ -144,7 +238,8 @@ public class DorisCatalog extends AbstractJdbcCatalog {
     private String tryGetPartitionColumn(Connection conn, String database, String table)
             throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
-                String.format("SHOW PARTITIONS FROM `%s`.`%s`", database, table));
+                String.format("SHOW PARTITIONS FROM %s.%s",
+                        quoteIdentifier(database), quoteIdentifier(table)));
              ResultSet rs = ps.executeQuery()) {
             ResultSetMetaData meta = rs.getMetaData();
             // 查找 PartitionKey 列
@@ -177,7 +272,7 @@ public class DorisCatalog extends AbstractJdbcCatalog {
                 "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
                         "WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s' AND IS_NULLABLE ='NO'" +
                         "ORDER BY ORDINAL_POSITION ASC LIMIT 1",
-                database, table));
+                sqlLiteral(database), sqlLiteral(table)));
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 return rs.getString(1);
@@ -185,5 +280,9 @@ public class DorisCatalog extends AbstractJdbcCatalog {
         }
         throw new IllegalStateException(
                 String.format("表 '%s.%s' 没有找到任何字段", database, table));
+    }
+
+    private static String sqlLiteral(String value) {
+        return StringUtils.defaultString(value).replace("'", "''");
     }
 }
