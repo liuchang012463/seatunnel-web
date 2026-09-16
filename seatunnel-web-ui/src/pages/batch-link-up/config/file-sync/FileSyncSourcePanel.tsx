@@ -1,5 +1,5 @@
 import { FileOutlined, FolderOpenOutlined, UploadOutlined } from '@ant-design/icons';
-import { Button, Input, InputNumber, Radio, Select, Switch, message } from 'antd';
+import { App, Button, Input, InputNumber, Radio, Select, Space, Switch } from 'antd';
 import { FileUp, FolderUp, Trash2, UploadCloud } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import PanelShell from '../../workflow/panel/components/PanelShell';
@@ -115,6 +115,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
   datasourceOptions,
   jobDefinitionId,
 }) => {
+  const { message } = App.useApp();
   const config = selectedNode?.data?.config || {};
   const isWebUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
   const isFileResource = String(config.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
@@ -402,31 +403,31 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
                   optionFilterProp="label"
                   className="workflow-panel__antd-select"
                   style={{ width: '100%' }}
-                  popupClassName="workflow-panel__dropdown"
+                  classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
                 />
               </div>
               <div className="workflow-panel__field workflow-panel__field--full mt-3">
                 <div className="mb-1 text-xs text-slate-500">同步目录</div>
-                <Input
-                  value={config.path}
-                  placeholder="/incoming/files 或 /bucket-prefix"
-                  onChange={(event) => updateConfig({ path: event.target.value })}
-                  addonAfter={
-                    <Button
-                      type="text"
-                      icon={<FolderOpenOutlined />}
-                      onClick={() => {
-                        if (!config.dataSourceId) {
-                          message.warning('请先选择数据源');
-                          return;
-                        }
-                        setPickerOpen(true);
-                      }}
-                    >
-                      浏览
-                    </Button>
-                  }
-                />
+                <Space.Compact block>
+                  <Input
+                    value={config.path}
+                    placeholder="/incoming/files 或 /bucket-prefix"
+                    onChange={(event) => updateConfig({ path: event.target.value })}
+                  />
+                  <Button
+                    type="default"
+                    icon={<FolderOpenOutlined />}
+                    onClick={() => {
+                      if (!config.dataSourceId) {
+                        message.warning('请先选择数据源');
+                        return;
+                      }
+                      setPickerOpen(true);
+                    }}
+                  >
+                    浏览
+                  </Button>
+                </Space.Compact>
               </div>
             </div>
 

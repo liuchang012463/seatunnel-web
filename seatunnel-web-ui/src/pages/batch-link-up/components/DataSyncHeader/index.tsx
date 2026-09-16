@@ -1,4 +1,4 @@
-import { SunOutlined } from "@ant-design/icons";
+import { PlusOutlined, SunOutlined } from "@ant-design/icons";
 import { useIntl } from "@umijs/max";
 import { Button } from "antd";
 import React from "react";
@@ -19,8 +19,6 @@ export interface SyncParams {
 
 const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
   goDetail,
-  sourceType,
-  targetType,
 }) => {
   const intl = useIntl();
 
@@ -28,14 +26,12 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
     goDetail();
   };
 
-  const isButtonDisabled = !sourceType || !targetType;
-
   return (
     <TaskListPageHeader
       icon={<SunOutlined />}
       title={intl.formatMessage({
         id: "pages.datasync.header.title",
-        defaultMessage: "批量数据引接任务管理",
+        defaultMessage: "链路管理（批量数据引接）",
       })}
       subtitle={intl.formatMessage({
         id: "pages.datasync.header.subtitle",
@@ -44,11 +40,11 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
       actions={
         <Button
           type="primary"
-          disabled={isButtonDisabled}
+          icon={<PlusOutlined />}
           onClick={handleCreateClick}
-          className="h-10 rounded-full border-none bg-gradient-to-r font-semibold"
+          className="task-list-page-header__create-button"
         >
-          创建批量数据引接
+          创建引接任务
         </Button>
       }
     />

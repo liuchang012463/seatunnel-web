@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { Button, Col, Form, message, Popover, Row, Space, Tooltip } from "antd";
+import { App, Button, Col, Form, Popover, Row, Space, Tooltip } from "antd";
 import {
   Blocks,
   Braces,
@@ -61,6 +61,7 @@ interface WorkflowProps {
   setParams: Dispatch<SetStateAction<any>>;
   envConfig: EnvConfig;
   setEnvConfig: Dispatch<SetStateAction<EnvConfig>>;
+  showRun?: boolean;
 }
 
 const getInitialWorkflowGraph = (params?: any) => {
@@ -69,6 +70,84 @@ const getInitialWorkflowGraph = (params?: any) => {
   return {
     nodes: Array.isArray(workflow?.nodes) ? workflow.nodes : [],
     edges: Array.isArray(workflow?.edges) ? workflow.edges : [],
+  };
+};
+
+const workflowSignature = (workflow: { nodes?: any[]; edges?: any[] }) =>
+  JSON.stringify({
+    nodes: workflow?.nodes || [],
+    edges: workflow?.edges || [],
+  });
+
+/**
+ * File resource selection lives above the generic workflow editor. ReactFlow
+ * can emit one frame of its previous graph while that external selector is
+ * updating; preserve the resource/target identifiers from the current page
+ * draft so that a selection is never silently lost.
+ */
+const mergeExternalWorkflowState = (
+  previousWorkflow: { nodes?: any[]; edges?: any[] } | undefined,
+  nextWorkflow: { nodes?: any[]; edges?: any[] },
+) => {
+  const previousNodes = Array.isArray(previousWorkflow?.nodes)
+    ? previousWorkflow.nodes
+    : [];
+  const nextNodes = (nextWorkflow?.nodes || []).map((node: any) => {
+    const previousNode = previousNodes.find((item: any) => item?.id === node?.id);
+    if (!previousNode) return node;
+
+    const previousConfig = previousNode?.data?.config || {};
+    const nextConfig = node?.data?.config || {};
+    const isSource = node?.data?.nodeType === 'source';
+    const isSink = node?.data?.nodeType === 'sink';
+    const preserveExternalFileSourceConfig =
+      isSource &&
+      String(previousConfig?.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
+    const preserveResource =
+      isSource &&
+      previousConfig?.sourceMode === 'FILE_RESOURCE' &&
+      previousConfig?.fileResourceId &&
+      !nextConfig?.fileResourceId;
+    const preserveTargetDataSource =
+      isSink && previousConfig?.dataSourceId && !nextConfig?.dataSourceId;
+
+    if (
+      !preserveExternalFileSourceConfig &&
+      !preserveResource &&
+      !preserveTargetDataSource
+    ) {
+      return node;
+    }
+
+    return {
+      ...node,
+      data: {
+        ...previousNode.data,
+        ...node.data,
+        config: preserveExternalFileSourceConfig
+          ? { ...nextConfig, ...previousConfig }
+          : {
+              ...previousConfig,
+              ...nextConfig,
+              ...(preserveResource
+                ? {
+                    fileResourceId: previousConfig.fileResourceId,
+                    fileResource: previousConfig.fileResource,
+                    objectKey: previousConfig.objectKey,
+                    path: previousConfig.path,
+                  }
+                : {}),
+              ...(preserveTargetDataSource
+                ? { dataSourceId: previousConfig.dataSourceId }
+                : {}),
+            },
+      },
+    };
+  });
+
+  return {
+    nodes: nextNodes,
+    edges: nextWorkflow?.edges || [],
   };
 };
 
@@ -172,7 +251,9 @@ export default function Workflow({
   setScheduleConfig,
   envConfig,
   setEnvConfig,
+  showRun = true,
 }: WorkflowProps) {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
 
   const [rightWidth, setRightWidth] = useState(540);
@@ -182,11 +263,38 @@ export default function Workflow({
 
   const draggingRef = useRef(false);
   const contextRef = useRef<string>("");
+  const latestParamsRef = useRef(params);
+  const latestWorkflowGraphRef = useRef<{ nodes: any[]; edges: any[] }>({
+    nodes: [],
+    edges: [],
+  });
 
   const [workflowGraph, setWorkflowGraph] = useState<{
     nodes: any[];
     edges: any[];
   }>(() => getInitialWorkflowGraph(params));
+
+  useEffect(() => {
+    latestParamsRef.current = params;
+  }, [params]);
+
+  useEffect(() => {
+    latestWorkflowGraphRef.current = workflowGraph;
+  }, [workflowGraph]);
+
+  useEffect(() => {
+    if (!params?.workflow) return;
+
+    setWorkflowGraph((previous) => {
+      if (workflowSignature(previous) === workflowSignature(params.workflow)) {
+        return previous;
+      }
+      return {
+        nodes: params.workflow.nodes || [],
+        edges: params.workflow.edges || [],
+      };
+    });
+  }, [params?.workflow]);
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState("");
@@ -530,24 +638,21 @@ export default function Workflow({
   };
 
   const handleWorkflowChange = (nextGraph: { nodes: any[]; edges: any[] }) => {
-    setWorkflowGraph((prev) => {
-      const prevSignature = JSON.stringify({
-        nodes: prev?.nodes || [],
-        edges: prev?.edges || [],
-      });
+    const currentWorkflow =
+      latestParamsRef.current?.workflow || latestWorkflowGraphRef.current;
+    const nextWorkflow = mergeExternalWorkflowState(currentWorkflow, nextGraph);
 
-      const nextSignature = JSON.stringify({
-        nodes: nextGraph?.nodes || [],
-        edges: nextGraph?.edges || [],
-      });
+    setWorkflowGraph((prev) => {
+      const prevSignature = workflowSignature(prev);
+      const nextSignature = workflowSignature(nextWorkflow);
 
       if (prevSignature === nextSignature) {
         return prev;
       }
 
       return {
-        nodes: nextGraph?.nodes || [],
-        edges: nextGraph?.edges || [],
+        nodes: nextWorkflow.nodes || [],
+        edges: nextWorkflow.edges || [],
       };
     });
 
@@ -557,22 +662,24 @@ export default function Workflow({
     // that selector hand-off from dropping field mappings or transforms.
     setParams((prev: any) => {
       if (!prev) return prev;
+      const mergedWorkflow = mergeExternalWorkflowState(prev.workflow, nextGraph);
+      if (workflowSignature(prev.workflow || {}) === workflowSignature(mergedWorkflow)) {
+        return prev;
+      }
       return {
         ...prev,
-        workflow: {
-          nodes: nextGraph?.nodes || [],
-          edges: nextGraph?.edges || [],
-        },
+        workflow: mergedWorkflow,
       };
     });
   };
 
   const actionChipClass =
-    "inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[13px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0";
+    "generic-workflow-editor-page__action-chip inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[13px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0";
 
   return (
-    <div className="workflow-editor-page flex h-screen flex-col overflow-hidden bg-white">
-      <div className="shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5">
+    <Form form={form} component={false}>
+      <div className="workflow-editor-page generic-workflow-editor-page flex h-screen flex-col overflow-hidden bg-white">
+      <div className="generic-workflow-editor-page__header shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3.5">
             <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-indigo-50 text-indigo-600">
@@ -604,31 +711,33 @@ export default function Workflow({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden p-[18px]">
-        <div className="h-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-white via-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
-          <div className="flex h-full min-w-0 items-stretch">
-            <div className="h-full min-w-0 flex-1 overflow-hidden">
-              <div className="flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-[0_4px_18px_rgba(15,23,42,0.03)]">
-                <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
+      <div className="generic-workflow-editor-page__body min-h-0 flex-1 overflow-hidden p-[18px]">
+        <div className="generic-workflow-editor-page__frame h-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-white via-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+          <div className="generic-workflow-editor-page__columns flex h-full min-w-0 items-stretch">
+            <div className="generic-workflow-editor-page__main h-full min-w-0 flex-1 overflow-hidden">
+              <div className="generic-workflow-editor-page__content flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-[0_4px_18px_rgba(15,23,42,0.03)]">
+                <div className="generic-workflow-editor-page__toolbar flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
                   <div className="text-[15px] font-semibold text-slate-800">
                     同步编排
                   </div>
 
                   <Space size={10}>
-                    <Tooltip title={runDisabledReason || undefined}>
-                      <span className="inline-flex">
-                        <Button
-                          type="default"
-                          icon={<PlayCircle size={15} strokeWidth={1.9} />}
-                          onClick={handleRun}
-                          loading={runLoading}
-                          disabled={!canRun}
-                          className="!inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
-                        >
-                          运行
-                        </Button>
-                      </span>
-                    </Tooltip>
+                    {showRun ? (
+                      <Tooltip title={runDisabledReason || undefined}>
+                        <span className="inline-flex">
+                          <Button
+                            type="default"
+                            icon={<PlayCircle size={15} strokeWidth={1.9} />}
+                            onClick={handleRun}
+                            loading={runLoading}
+                            disabled={!canRun}
+                            className="!inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:!shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
+                          >
+                            运行
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    ) : null}
 
                     <CheckListPopover
                       checkStat={checkStat}
@@ -640,7 +749,7 @@ export default function Workflow({
                       open={previewOpen}
                       placement="leftTop"
                       trigger="click"
-                      overlayClassName="st-hocon-popover"
+                      classNames={{ root: "st-hocon-popover" }}
                       content={
                         <div className="w-[700px]">
                           <CodeBlockWithCopy
@@ -683,17 +792,17 @@ export default function Workflow({
                       icon={<Upload size={15} strokeWidth={1.9} />}
                       onClick={handleSave}
                       loading={publishLoading}
-                      className="!inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
+                      className="generic-workflow-editor-page__publish-button !inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-white disabled:!shadow-none"
                     >
                       发布
                     </Button>
                   </Space>
                 </div>
 
-                <div className="min-h-0 flex-1 bg-white p-[18px] [background:radial-gradient(circle_at_top_left,rgba(78,116,248,0.04),transparent_22%),#ffffff]">
-                  <Row gutter={24} style={{ height: "100%" }}>
-                    <Col span={4}>
-                      <div className="flex h-full flex-col gap-3 overflow-auto border-r border-slate-100 p-3">
+                <div className="generic-workflow-editor-page__canvas-body min-h-0 flex-1 bg-white p-[18px] [background:radial-gradient(circle_at_top_left,rgba(78,116,248,0.04),transparent_22%),#ffffff]">
+                  <Row className="generic-workflow-editor-page__canvas-layout" gutter={24} style={{ height: "100%" }}>
+                    <Col className="generic-workflow-editor-page__sidebar-col" span={4}>
+                      <div className="generic-workflow-editor-page__sidebar flex h-full flex-col gap-3 overflow-auto border-r border-slate-100 p-3">
                         <div className="px-0.5 pb-2 pt-1 text-[13px] font-semibold text-slate-700">
                           节点组件
                         </div>
@@ -760,8 +869,8 @@ export default function Workflow({
                       </div>
                     </Col>
 
-                    <Col span={20}>
-                      <div className="h-full overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-[14px] text-slate-400">
+                    <Col className="generic-workflow-editor-page__canvas-col" span={20}>
+                      <div className="generic-workflow-editor-page__canvas h-full overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-[14px] text-slate-400">
                         <ReactFlowProvider>
                           <FlowCanvas
                             form={form}
@@ -781,7 +890,7 @@ export default function Workflow({
                 </div>
               </div>
 
-              {runVisible && (
+              {showRun && runVisible && (
                 <RunLog
                   runVisible={runVisible}
                   setRunVisible={setRunVisible}
@@ -793,7 +902,7 @@ export default function Workflow({
 
             {activeTab && (
               <div
-                className="relative flex w-[20px] shrink-0 cursor-col-resize items-center justify-center bg-transparent transition-colors duration-100 hover:bg-[rgba(49,94,251,0.04)]"
+                className="generic-workflow-editor-page__resize relative flex w-[20px] shrink-0 cursor-col-resize items-center justify-center bg-transparent transition-colors duration-100 hover:bg-[rgba(49,94,251,0.04)]"
                 onMouseDown={handleResizeStart}
                 role="separator"
                 aria-orientation="vertical"
@@ -808,7 +917,7 @@ export default function Workflow({
             )}
 
             <div
-              className="h-full shrink-0 overflow-hidden"
+              className="generic-workflow-editor-page__side h-full shrink-0 overflow-hidden"
               style={{ width: activeTab ? rightWidth : 58 }}
             >
               <RightConfigPanel
@@ -826,6 +935,7 @@ export default function Workflow({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </Form>
   );
 }

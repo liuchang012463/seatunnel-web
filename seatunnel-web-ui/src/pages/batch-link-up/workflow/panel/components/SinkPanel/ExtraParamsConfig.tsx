@@ -263,7 +263,7 @@ const ExtraParamsConfig: FC<ExtraParamsConfigProps> = ({
                   disabled={loading}
                   optionFilterProp="value"
                   className="workflow-panel__antd-select workflow-panel__param-key"
-                  popupClassName="workflow-panel__dropdown"
+                  classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
                   notFoundContent={
                     loading ? (
                       <Spin size="small" />

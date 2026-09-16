@@ -1,12 +1,14 @@
 import { FileSyncOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
-import { message } from 'antd';
+import { App } from 'antd';
 import FileTaskList from '../file-ingest/TaskListAdapter';
 import TaskPageHeader from '../file-ingest/TaskPageHeader';
 import { fileTransferTaskApi } from '../file-ingest/api';
 import { FILE_RESOURCE_SOURCE, fileTaskDraftKey } from '../file-ingest/types';
 
 const FileTransferPage: React.FC = () => {
+  const { message } = App.useApp();
+
   const createTask = async () => {
     try {
       const response = await fileTransferTaskApi.getUniqueId();
@@ -49,9 +51,9 @@ const FileTransferPage: React.FC = () => {
     <div>
       <TaskPageHeader
         icon={<FileSyncOutlined />}
-        title="文件传输"
+        title="链路管理（文件传输）"
         subtitle="在文件资源库与 FTP、SFTP、S3、MinIO 之间传输二进制对象，不解析文件内容。"
-        createText="新建文件传输"
+        createText="创建引接任务"
         onCreate={() => void createTask()}
       />
       <FileTaskList

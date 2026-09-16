@@ -1,5 +1,5 @@
 import { history, useLocation, useParams } from '@umijs/max';
-import { Empty, message, Spin } from 'antd';
+import { App, Empty, Spin } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Workflow from '@/pages/batch-link-up/workflow';
 import { fileResourceApi } from '../../api';
@@ -29,6 +29,8 @@ const buildPageParams = (data: any, id: string, scene: 'create' | 'edit') => {
     'FILE_INGEST',
     FILE_RESOURCE_SOURCE,
     targetType,
+    data?.sourceDataSourceId,
+    data?.targetDataSourceId,
   );
 
   return {
@@ -59,11 +61,11 @@ const buildPageParams = (data: any, id: string, scene: 'create' | 'edit') => {
 };
 
 const FileIngestConfigPage: React.FC = () => {
+  const { message } = App.useApp();
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const [params, setParams] = useState<any>();
   const [loading, setLoading] = useState(false);
-  const [revision, setRevision] = useState(0);
   const [basicConfig, setBasicConfig] = useState<any>({
     jobName: '',
     jobDesc: '',
@@ -162,7 +164,6 @@ const FileIngestConfigPage: React.FC = () => {
           workflow: patchSourceConfig(previous, patch),
         };
       });
-      setRevision((previous) => previous + 1);
     },
     [],
   );
@@ -210,7 +211,6 @@ const FileIngestConfigPage: React.FC = () => {
     'FILE_INGEST',
     id || 'unknown',
     params?.state?.editorSyncState || 'UNPUBLISHED',
-    revision,
   ].join('-');
 
   const goBack = () => {
@@ -269,6 +269,7 @@ const FileIngestConfigPage: React.FC = () => {
           setParams={setParams}
           envConfig={envConfig}
           setEnvConfig={setEnvConfig}
+          showRun={false}
         />
       </div>
     </div>

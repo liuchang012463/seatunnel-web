@@ -254,7 +254,7 @@ export default function MultiWorkflow({
                       open={previewOpen}
                       placement="leftTop"
                       trigger="click"
-                      overlayClassName="st-hocon-popover"
+                      classNames={{ root: "st-hocon-popover" }}
                       content={
                         <div className="w-[700px]">
                           <CodeBlockWithCopy

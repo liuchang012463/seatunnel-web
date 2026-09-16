@@ -103,16 +103,20 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
         <>
           <Alert
             className="mt-4"
-            type="warning"
+            type={resource ? 'success' : 'warning'}
             showIcon
-            message="文件需先上传到文件资源库"
+            message={resource ? '已选择文件资源' : '文件需先上传到文件资源库'}
             description={
-              binary
-                ? '文件传输只搬运二进制对象，不解析 CSV、Excel、JSON 或 TXT 内容。'
-                : '选择一个文件资源后，任务将保存资源 ID 和对象存储引用。'
+              resource
+                ? binary
+                  ? '当前任务将直接搬运这个二进制对象到目标端，不解析文件内容。'
+                  : '当前任务将从这个对象读取结构化数据，并按下方解析配置写入目标表。'
+                : binary
+                  ? '文件传输只搬运二进制对象，不解析 CSV、Excel、JSON 或 TXT 内容。'
+                  : '选择一个文件资源后，任务将保存资源 ID 和对象存储引用。'
             }
             action={
-            <Button type="link" icon={<LinkOutlined />} onClick={onOpenManager}>
+              <Button type="link" icon={<LinkOutlined />} onClick={onOpenManager}>
                 前往文件资源管理
               </Button>
             }

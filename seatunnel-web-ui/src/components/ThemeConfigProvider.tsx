@@ -1,7 +1,8 @@
-import { ConfigProvider, theme as antdTheme } from "antd";
+import { App as AntdApp, ConfigProvider, theme as antdTheme } from "antd";
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -14,6 +15,7 @@ import {
   setNavTheme,
   type NavTheme,
 } from "@/theme";
+import { registerAntdFeedback } from "@/utils/antdFeedback";
 
 /**
  * DESIGN.md §6.2 antd 算法正规化 + §6.4 浅色 v2：
@@ -145,6 +147,14 @@ interface ThemeConfigProviderProps {
   children: ReactNode;
 }
 
+const AntdFeedbackBridge: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { message, notification } = AntdApp.useApp();
+  useEffect(() => {
+    registerAntdFeedback({ message, notification });
+  }, [message, notification]);
+  return <>{children}</>;
+};
+
 const ThemeConfigProvider: React.FC<ThemeConfigProviderProps> = ({
   children,
 }) => {
@@ -172,7 +182,9 @@ const ThemeConfigProvider: React.FC<ThemeConfigProviderProps> = ({
           components: isDark ? DARK_COMPONENTS : LIGHT_COMPONENTS,
         }}
       >
-        {children}
+        <AntdApp>
+          <AntdFeedbackBridge>{children}</AntdFeedbackBridge>
+        </AntdApp>
       </ConfigProvider>
     </NavThemeContext.Provider>
   );

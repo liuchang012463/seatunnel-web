@@ -1,11 +1,12 @@
 import { useIntl } from '@umijs/max';
-import { Button, message, notification } from 'antd';
+import { Button } from 'antd';
 import defaultSettings from '../config/defaultSettings';
 import { applyNavTheme, getStoredNavTheme } from './theme';
 import '../tailwind.css';
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import './design-system.less';
+import { appMessage, appNotification } from './utils/antdFeedback';
 
 const { pwa } = defaultSettings;
 const isHttps = document.location.protocol === 'https:';
@@ -30,7 +31,7 @@ const clearCache = () => {
 if (pwa) {
   // Notify user if offline now
   window.addEventListener('sw.offline', () => {
-    message.warning(useIntl().formatMessage({ id: 'app.pwa.offline' }));
+    appMessage.warning(useIntl().formatMessage({ id: 'app.pwa.offline' }));
   });
 
   // Pop up a prompt on the page asking the user if they want to use the latest version
@@ -65,14 +66,14 @@ if (pwa) {
       <Button
         type="primary"
         onClick={() => {
-          notification.destroy(key);
+          appNotification.destroy(key);
           reloadSW();
         }}
       >
         {useIntl().formatMessage({ id: 'app.pwa.serviceworker.updated.ok' })}
       </Button>
     );
-    notification.open({
+    appNotification.open({
       message: useIntl().formatMessage({ id: 'app.pwa.serviceworker.updated' }),
       description: useIntl().formatMessage({
         id: 'app.pwa.serviceworker.updated.hint',

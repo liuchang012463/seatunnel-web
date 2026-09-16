@@ -86,7 +86,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
           title={<span className="st-sidebar-leaf-hover-panel__item">{menuItemProps.name}</span>}
           placement="right"
           arrow={false}
-          overlayClassName="st-sidebar-leaf-hover-panel"
+          classNames={{ root: "st-sidebar-leaf-hover-panel" }}
         >
           {menuItem}
         </Tooltip>

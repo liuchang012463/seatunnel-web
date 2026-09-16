@@ -83,11 +83,13 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
         open={logOpen}
         onOpenChange={setLogOpen}
         title={null}
-        overlayInnerStyle={{
-          padding: 0,
-          borderRadius: 14,
-          overflow: "hidden",
-          boxShadow: "0 18px 45px rgba(15, 23, 42, 0.18)",
+        styles={{
+          body: {
+            padding: 0,
+            borderRadius: 14,
+            overflow: "hidden",
+            boxShadow: "0 18px 45px rgba(15, 23, 42, 0.18)",
+          },
         }}
         content={
           <div className="w-[520px] overflow-hidden rounded-[14px] border border-white/10 bg-[#0f172a] font-mono text-[13px] leading-[1.6]">

@@ -223,37 +223,6 @@ export default function useFlowBuilder({ form, params }: Props) {
   }, [edges]);
 
   useEffect(() => {
-    if (!params) return;
-
-    form.setFieldsValue({
-      jobName: params?.jobName,
-      jobDesc: params?.jobDesc,
-      clientId: params?.clientId,
-      syncMode: "DAG",
-    });
-
-    // 1. 编辑模式优先使用后端返回的 workflow
-    if (params?.workflow) {
-      clearHistory();
-      setNodes(params.workflow?.nodes || []);
-      setEdges(params.workflow?.edges || []);
-      return;
-    }
-
-    // 2. 兼容旧结构：jobDefinitionInfo
-    if (params?.jobDefinitionInfo !== undefined) {
-      const contentInfo =
-        typeof params.jobDefinitionInfo === "string"
-          ? JSON.parse(params.jobDefinitionInfo || "{}")
-          : params.jobDefinitionInfo || {};
-
-      clearHistory();
-      setNodes(contentInfo?.nodes || []);
-      setEdges(contentInfo?.edges || []);
-    }
-  }, [params, form, clearHistory, setNodes, setEdges]);
-
-  useEffect(() => {
     if (nodes.length > 0 && !didFitViewRef.current) {
       didFitViewRef.current = true;
       setTimeout(() => {

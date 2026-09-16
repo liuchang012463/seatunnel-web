@@ -55,6 +55,17 @@ export const mergeEnvConfig = (rawEnv?: any): EnvConfig => ({
   jobMode: 'BATCH',
 });
 
+const normalizeStructuredFileDefaults = (config: Record<string, any>) => ({
+  fileFormatType: config.fileFormatType || 'csv',
+  encoding: config.encoding || 'UTF-8',
+  fieldDelimiter: config.fieldDelimiter ?? ',',
+  csvUseHeaderLine: config.csvUseHeaderLine ?? config.skipHeader !== false,
+  skipHeader: config.skipHeader ?? config.csvUseHeaderLine !== false,
+  skipHeaderRowNumber: config.skipHeaderRowNumber ?? 0,
+  quoteChar: config.quoteChar ?? '"',
+  escapeChar: config.escapeChar ?? '',
+});
+
 const normalizeResourceSourceConfig = (rawConfig: any, taskType: FileTaskType) => {
   const config = rawConfig || {};
   const legacyUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
@@ -82,7 +93,7 @@ const normalizeResourceSourceConfig = (rawConfig: any, taskType: FileTaskType) =
           binaryChunkSize: config.binaryChunkSize || 1048576,
           binaryCompleteFileMode: config.binaryCompleteFileMode ?? false,
         }
-      : { fileFormatType: config.fileFormatType || 'csv' }),
+      : normalizeStructuredFileDefaults(config)),
   };
 };
 
@@ -91,15 +102,30 @@ export const normalizeWorkflowGraph = (
   taskType: FileTaskType,
   sourceType: any,
   targetType: any,
+  sourceDataSourceId?: string | number,
+  targetDataSourceId?: string | number,
 ) => {
   const rawNodes = Array.isArray(workflow?.nodes) ? workflow.nodes : [];
   if (rawNodes.length > 0) {
     return {
       nodes: rawNodes.map((node: any, index: number) => {
         const isSource = node?.data?.nodeType === 'source';
-        const config = isSource
+        const baseConfig = isSource
           ? normalizeResourceSourceConfig(node?.data?.config, taskType)
           : node?.data?.config || {};
+        const config = isSource
+          ? baseConfig.sourceMode === 'FILE_RESOURCE'
+            ? { ...baseConfig, pluginOutput: baseConfig.pluginOutput || node?.id }
+            : {
+                ...baseConfig,
+                dataSourceId: baseConfig.dataSourceId || sourceDataSourceId,
+                pluginOutput: baseConfig.pluginOutput || node?.id,
+              }
+          : {
+              ...baseConfig,
+              dataSourceId: baseConfig.dataSourceId || targetDataSourceId,
+              pluginInput: baseConfig.pluginInput || node?.id,
+            };
         return {
           ...node,
           type: 'custom',
@@ -173,14 +199,15 @@ export const normalizeWorkflowGraph = (
           config:
             taskType === 'FILE_TRANSFER'
               ? {
-                  dataSourceId: undefined,
+                  dataSourceId: targetDataSourceId,
                   dbType: targetType?.dbType,
                   pluginName: targetType?.pluginName,
                   connectorType: targetType?.connectorType,
                   targetPath: undefined,
+                  pluginInput: sinkId,
                 }
               : {
-                  dataSourceId: undefined,
+                  dataSourceId: targetDataSourceId,
                   dbType: targetType?.dbType,
                   pluginName: targetType?.pluginName,
                   connectorType: targetType?.connectorType,
@@ -189,6 +216,7 @@ export const normalizeWorkflowGraph = (
                   targetTableName: '',
                   writeMode: 'append',
                   autoCreateTable: false,
+                  pluginInput: sinkId,
                 },
         },
       },

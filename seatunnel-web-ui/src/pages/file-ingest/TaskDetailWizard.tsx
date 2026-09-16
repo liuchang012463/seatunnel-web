@@ -1,6 +1,6 @@
 import { FileOutlined } from '@ant-design/icons';
 import { history, useLocation, useParams } from '@umijs/max';
-import { Button, Form, Input, message } from 'antd';
+import { App, Button, Form, Input } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DataSourceSelect, {
   type DataSourceType,
@@ -103,6 +103,7 @@ interface TaskDetailWizardProps {
 }
 
 const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
+  const { message } = App.useApp();
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const [form] = Form.useForm();

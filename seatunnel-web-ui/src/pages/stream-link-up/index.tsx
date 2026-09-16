@@ -27,7 +27,7 @@ const REALTIME_DETAIL_CACHE_PREFIX = 'stream-link-up-detail';
 const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
 const getDefaultTimeRange = () => [];
-const DEFAULT_SORT_FIELD: TaskSortField = 'updateTime';
+const DEFAULT_SORT_FIELD: TaskSortField = 'createTime';
 const DEFAULT_SORT_ORDER: TaskSortOrder = 'desc';
 
 interface StreamingJobDefinitionVO {
@@ -167,7 +167,7 @@ const parseSortFromUrl = () => {
   const order = params.get('sortOrder');
 
   return {
-    field: field === 'name' || field === 'createTime' || field === 'updateTime' ? field : DEFAULT_SORT_FIELD,
+    field: field === 'name' || field === 'createTime' ? field : DEFAULT_SORT_FIELD,
     order: order === 'asc' || order === 'desc' ? order : DEFAULT_SORT_ORDER,
   } as { field: TaskSortField; order: TaskSortOrder };
 };
@@ -1015,7 +1015,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   return (
     <>
-      <div className={`stream-link-page min-h-screen pt-5${hasSelected ? ' has-selected-tasks' : ''}`}>
+      <div className={`stream-link-page sync-task-list min-h-screen${hasSelected ? ' has-selected-tasks' : ''}`}>
         <RealtimeHeader
           sourceType={sourceType}
           sinkType={sinkType}
@@ -1025,11 +1025,15 @@ const RealtimeSyncPage: React.FC = () => {
           creating={creating}
         />
 
-        <SearchToolbar
-          initialValues={searchValues}
-          onSearch={handleSearch}
-          onReset={handleReset}
-        />
+        <div className="operate-bar task-search-wrap">
+          <div className="left">
+            <SearchToolbar
+              initialValues={searchValues}
+              onSearch={handleSearch}
+              onReset={handleReset}
+            />
+          </div>
+        </div>
         <Divider style={{ margin: "16px 0" }} />
 
         {listError ? (

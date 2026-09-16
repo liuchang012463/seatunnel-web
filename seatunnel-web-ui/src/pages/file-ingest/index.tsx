@@ -1,12 +1,14 @@
 import { FileTextOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
-import { message } from 'antd';
+import { App } from 'antd';
 import FileTaskList from './TaskListAdapter';
 import TaskPageHeader from './TaskPageHeader';
 import { fileIngestTaskApi } from './api';
 import { FILE_RESOURCE_SOURCE, fileTaskDraftKey } from './types';
 
 const FileIngestPage: React.FC = () => {
+  const { message } = App.useApp();
+
   const createTask = async () => {
     try {
       const response = await fileIngestTaskApi.getUniqueId();
@@ -53,9 +55,9 @@ const FileIngestPage: React.FC = () => {
     <div>
       <TaskPageHeader
         icon={<FileTextOutlined />}
-        title="文件数据引接"
+        title="链路管理（文件数据引接）"
         subtitle="从文件资源库读取 CSV、Excel、JSON 或 TXT，配置单表解析、字段映射和目标端入库。"
-        createText="新建文件数据引接"
+        createText="创建引接任务"
         onCreate={() => void createTask()}
       />
       <FileTaskList

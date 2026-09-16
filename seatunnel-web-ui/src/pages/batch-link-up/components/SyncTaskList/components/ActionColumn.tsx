@@ -10,7 +10,7 @@ import {
   PlayCircleOutlined,
 } from "@ant-design/icons";
 import { useIntl } from "@umijs/max";
-import { Dropdown, Modal, Popconfirm, Space, message } from "antd";
+import { App, Dropdown, Popconfirm, Space } from "antd";
 import { useRef, useState } from "react";
 import {
   seatunnelJobDefinitionApi,
@@ -24,8 +24,6 @@ interface ActionColumnProps {
   cbk: () => void;
   goDetail: (value: any, item: any) => void;
 }
-
-const { confirm } = Modal;
 
 const actionBaseClass =
   "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-all duration-150";
@@ -52,6 +50,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
   goDetail,
 }) => {
   const intl = useIntl();
+  const { message, modal } = App.useApp();
 
   const ref = useRef<any>(null);
 
@@ -156,7 +155,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       }
     }
 
-    confirm({
+    modal.confirm({
       title: intl.formatMessage({
         id: "pages.job.action.delete.confirmTitle",
         defaultMessage: "Confirm delete?",

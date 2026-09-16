@@ -230,7 +230,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
                 optionFilterProp="label"
                 className="workflow-panel__antd-select"
                 style={{ width: '100%' }}
-                popupClassName="workflow-panel__dropdown"
+                classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
               />
             </div>
           </div>
@@ -306,7 +306,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
                   placeholder="请选择来源表"
                   className="workflow-panel__antd-select"
                   style={{ width: '100%' }}
-                  popupClassName="workflow-panel__dropdown"
+                  classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
                   showSearch
                   optionFilterProp="rawLabel"
                 />
@@ -379,7 +379,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
                     placeholder="请选择时间类型字段"
                     className="workflow-panel__antd-select"
                     style={{ width: '100%' }}
-                    popupClassName="workflow-panel__dropdown"
+                    classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
                     showSearch
                     optionFilterProp="label"
                   />

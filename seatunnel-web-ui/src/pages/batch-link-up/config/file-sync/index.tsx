@@ -1,5 +1,5 @@
 import { history, useLocation, useParams } from '@umijs/max';
-import { Empty, message, Spin } from 'antd';
+import { App, Empty, Spin } from 'antd';
 import { useEffect, useState } from 'react';
 import { seatunnelJobDefinitionApi } from '../../api';
 import {
@@ -145,6 +145,7 @@ const buildPageParamsForEdit = (editData?: any) => {
 };
 
 const FileSyncWorkflowPage: React.FC = () => {
+  const { message } = App.useApp();
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
 

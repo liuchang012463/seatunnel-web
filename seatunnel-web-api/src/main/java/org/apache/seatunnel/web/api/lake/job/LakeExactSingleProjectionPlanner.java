@@ -152,6 +152,15 @@ public final class LakeExactSingleProjectionPlanner {
             throw invalid();
         }
 
+        // File-resource and browser-upload sources are managed by the file
+        // resource subsystem.  They do not identify an ODS source table, so
+        // the lake projection planner must stay out of these ordinary
+        // structured-file jobs before attempting to parse an exact table
+        // endpoint.
+        if (isManagedFileSource(singleCommand.getWorkflow())) {
+            return ProjectionPlan.notApplicable();
+        }
+
         SingleCommand parsed = parseSingleCommand(command, singleCommand.getWorkflow());
         if (!parsed.sink().isConfiguredDorisTarget()) {
             return ProjectionPlan.notApplicable();
@@ -555,6 +564,32 @@ public final class LakeExactSingleProjectionPlanner {
     private boolean isSingleMode(JobDefinitionMode mode) {
         return mode == JobDefinitionMode.GUIDE_SINGLE
                 || mode == JobDefinitionMode.GUIDE_SINGLE_INCREMENTAL;
+    }
+
+    private boolean isManagedFileSource(Map<String, Object> workflow) {
+        if (workflow == null || !(workflow.get("nodes") instanceof List<?> nodes)) {
+            return false;
+        }
+        for (Object rawNode : nodes) {
+            if (!(rawNode instanceof Map<?, ?> node)) {
+                continue;
+            }
+            Object rawData = node.get(KEY_DATA);
+            if (!(rawData instanceof Map<?, ?> data)) {
+                continue;
+            }
+            Object rawConfig = data.get(KEY_CONFIG);
+            Map<?, ?> config = rawConfig instanceof Map<?, ?> map ? map : data;
+            Object sourceMode = config.get("sourceMode");
+            if (sourceMode == null) {
+                sourceMode = config.get("source_mode");
+            }
+            if ("FILE_RESOURCE".equalsIgnoreCase(String.valueOf(sourceMode))
+                    || "WEB_UPLOAD".equalsIgnoreCase(String.valueOf(sourceMode))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Long configuredLakeDataSourceId() {

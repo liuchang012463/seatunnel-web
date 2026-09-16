@@ -16,6 +16,201 @@
   height: 100% !important;
 }
 
+// The workflow editor also runs in deployments where the optional Tailwind
+// transform is not enabled. Keep the structural layout explicit so the
+// canvas never collapses to zero height and both file editors remain usable.
+.file-workflow-editor-page,
+.generic-workflow-editor-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.file-workflow-editor-page__header,
+.generic-workflow-editor-page__header {
+  flex: 0 0 auto;
+}
+
+.file-workflow-editor-page__body,
+.generic-workflow-editor-page__body {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.file-workflow-editor-page__frame,
+.generic-workflow-editor-page__frame {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.file-workflow-editor-page__columns,
+.generic-workflow-editor-page__columns {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.file-workflow-editor-page__main,
+.generic-workflow-editor-page__main {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+}
+
+.file-workflow-editor-page__content,
+.generic-workflow-editor-page__content {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.file-workflow-editor-page__toolbar,
+.generic-workflow-editor-page__toolbar {
+  display: flex;
+  flex: 0 0 56px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.file-workflow-editor-page__canvas-body,
+.generic-workflow-editor-page__canvas-body {
+  min-height: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+}
+
+.file-workflow-editor-page__canvas-layout {
+  display: grid;
+  grid-template-columns: minmax(150px, 18%) minmax(0, 1fr);
+  height: 100%;
+  min-width: 0;
+  gap: 16px;
+}
+
+.file-workflow-editor-page__canvas,
+.generic-workflow-editor-page__canvas {
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.file-workflow-canvas,
+.generic-workflow-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+}
+
+.file-workflow-canvas > .react-flow,
+.generic-workflow-canvas > .react-flow {
+  width: 100%;
+  height: 100%;
+}
+
+.generic-workflow-editor-page__canvas-layout {
+  display: flex;
+  width: calc(100% + 24px);
+  height: 100%;
+  min-width: 0;
+  margin-right: -12px;
+  margin-left: -12px;
+  align-items: stretch;
+}
+
+.generic-workflow-editor-page__sidebar-col,
+.generic-workflow-editor-page__canvas-col {
+  height: 100%;
+  min-height: 0;
+}
+
+.generic-workflow-editor-page__sidebar-col {
+  flex: 0 0 16.666667%;
+  max-width: 16.666667%;
+}
+
+.generic-workflow-editor-page__canvas-col {
+  min-width: 0;
+  flex: 0 0 83.333333%;
+  max-width: 83.333333%;
+}
+
+.generic-workflow-editor-page__sidebar {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.generic-workflow-editor-page__canvas > .generic-workflow-canvas {
+  height: 100%;
+}
+
+.file-workflow-editor-page__side,
+.generic-workflow-editor-page__side {
+  height: 100%;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.file-workflow-editor-page__action-chip,
+.generic-workflow-editor-page__action-chip {
+  display: inline-flex;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.file-workflow-editor-page__action-chip:hover,
+.generic-workflow-editor-page__action-chip:hover {
+  border-color: #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+
+.file-workflow-editor-page__publish-button,
+.generic-workflow-editor-page__publish-button {
+  background: var(--st-color-primary, #2187a8) !important;
+  border-color: var(--st-color-primary, #2187a8) !important;
+  color: #fff !important;
+}
+
+@media (max-width: 1100px) {
+  .file-workflow-editor-page__canvas-layout {
+    grid-template-columns: minmax(130px, 24%) minmax(0, 1fr);
+  }
+
+  .generic-workflow-editor-page__sidebar-col {
+    flex-basis: 24%;
+    max-width: 24%;
+  }
+
+  .generic-workflow-editor-page__canvas-col {
+    flex-basis: 76%;
+    max-width: 76%;
+  }
+}
+
 @media (max-width: 900px) {
   .file-task-workflow-shell {
     height: calc(100vh - 250px);

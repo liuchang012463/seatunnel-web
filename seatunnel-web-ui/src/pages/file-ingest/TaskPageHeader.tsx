@@ -27,7 +27,7 @@ const TaskPageHeader: React.FC<TaskPageHeaderProps> = ({
         type="primary"
         icon={<PlusOutlined />}
         onClick={onCreate}
-        className="h-10 rounded-full px-5"
+        className="task-list-page-header__create-button"
       >
         {createText}
       </Button>

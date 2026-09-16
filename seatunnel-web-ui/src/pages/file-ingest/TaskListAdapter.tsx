@@ -1,11 +1,15 @@
-import { CopyOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import { Button, DatePicker, Empty, Form, Input, Select, Table, Tooltip, message } from 'antd';
+import { CopyOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Alert, App, Button, Divider, Empty, Table, Tooltip } from 'antd';
 import type { TablePaginationConfig } from 'antd';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useIntl } from '@umijs/max';
 import { fileIngestTaskApi, fileTransferTaskApi } from './api';
 import type { FileTaskType } from './types';
 import type { TaskSortField, TaskSortOrder } from '@/pages/common/components/TaskSortControls';
+import AdvancedSearchForm, {
+  TaskFilterOption,
+} from '@/pages/batch-link-up/components/SyncTaskList/components/AdvancedSearchForm';
 import ActionColumn from '@/pages/batch-link-up/components/SyncTaskList/components/ActionColumn';
 import DataSourceSyncPlan from '@/pages/batch-link-up/components/SyncTaskList/components/DataSourceSyncPlan';
 import ExecutionStatus from '@/pages/batch-link-up/components/SyncTaskList/components/ExecutionStatus';
@@ -15,16 +19,6 @@ import CustomPagination from '@/pages/batch-link-up/CustomPagination';
 import { withTimeout } from '@/utils/withTimeout';
 import '@/pages/batch-link-up/components/SyncTaskList/index.less';
 
-const { RangePicker } = DatePicker;
-
-interface SearchValues {
-  jobName?: string;
-  id?: string;
-  status?: string;
-  sourceType?: string;
-  createTime?: moment.Moment[];
-}
-
 interface FileTaskListProps {
   taskType: FileTaskType;
   mode: 'GUIDE_SINGLE' | 'FILE_SYNC';
@@ -32,85 +26,6 @@ interface FileTaskListProps {
   emptyDescription: string;
   fileMode?: boolean;
 }
-
-const sourceOptions = [
-  { label: '文件资源库', value: 'FILE_RESOURCE' },
-  { label: 'FTP', value: 'FTP' },
-  { label: 'SFTP', value: 'SFTP' },
-  { label: 'S3', value: 'S3' },
-  { label: 'MinIO', value: 'MINIO' },
-];
-
-const statusOptions = [
-  { label: '运行中', value: 'RUNNING' },
-  { label: '已完成', value: 'COMPLETED' },
-  { label: '失败', value: 'FAILED' },
-];
-
-const FileTaskSearchForm: React.FC<{
-  fileMode: boolean;
-  initialValues: SearchValues;
-  onSearch: (values: SearchValues) => void;
-  onReset: () => void;
-}> = ({ fileMode, initialValues, onSearch, onReset }) => {
-  const [form] = Form.useForm<SearchValues>();
-
-  useEffect(() => {
-    form.setFieldsValue(initialValues);
-  }, [form, initialValues]);
-
-  return (
-    <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-      <Form
-        form={form}
-        layout="inline"
-        initialValues={initialValues}
-        onFinish={(values) => onSearch(values)}
-        className="flex flex-wrap gap-2"
-      >
-        <Form.Item name="jobName" className="mb-0">
-          <Input
-            allowClear
-            prefix={<SearchOutlined className="text-slate-400" />}
-            placeholder="任务名称"
-            className="w-[190px] rounded-full"
-          />
-        </Form.Item>
-        <Form.Item name="id" className="mb-0">
-          <Input allowClear placeholder="任务定义 ID" className="w-[170px] rounded-full" />
-        </Form.Item>
-        <Form.Item name="status" className="mb-0">
-          <Select allowClear options={statusOptions} placeholder="运行状态" className="w-[130px]" />
-        </Form.Item>
-        {fileMode ? (
-          <Form.Item name="sourceType" className="mb-0">
-            <Select allowClear options={sourceOptions} placeholder="来源类型" className="w-[145px]" />
-          </Form.Item>
-        ) : null}
-        <Form.Item name="createTime" className="mb-0">
-          <RangePicker className="rounded-full" placeholder={['创建开始', '创建结束']} />
-        </Form.Item>
-        <Form.Item className="mb-0">
-          <div className="flex gap-2">
-            <Button type="primary" htmlType="submit" className="rounded-full px-4">
-              查询
-            </Button>
-            <Button
-              htmlType="button"
-              className="rounded-full"
-              onClick={() => {
-                form.resetFields();
-                onReset();
-              }}
-            >
-              重置
-            </Button>
-          </div>
-        </Form.Item>
-      </Form>
-    </div>
-  );
-};
 
 const getErrorMessage = (error: any, fallback: string) =>
   error?.response?.data?.message ||
@@ -127,8 +42,10 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
   emptyDescription,
   fileMode = false,
 }) => {
+  const { message } = App.useApp();
+  const intl = useIntl();
   const [taskList, setTaskList] = useState<any[]>([]);
-  const [searchParams, setSearchParams] = useState<SearchValues>({});
+  const [searchParams, setSearchParams] = useState<any>({});
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [sort, setSort] = useState<{ field: TaskSortField; order: TaskSortOrder }>({
     field: 'createTime',
@@ -182,7 +99,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
     void fetchTaskList();
   }, [fetchTaskList]);
 
-  const handleSearch = (values: SearchValues) => {
+  const handleSearch = (values: any) => {
     setSearchParams(values);
     setPagination((previous) => ({ ...previous, current: 1 }));
   };
@@ -192,6 +109,33 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
     setSort({ field: 'createTime', order: 'desc' });
     setPagination((previous) => ({ ...previous, current: 1 }));
   };
+
+  const sourceOptions = useMemo<TaskFilterOption[]>(
+    () =>
+      taskType === 'FILE_INGEST'
+        ? [{ label: '文件资源库', value: 'FILE_RESOURCE' }]
+        : [
+            { label: '文件资源库', value: 'FILE_RESOURCE' },
+            { label: 'FTP', value: 'FTP' },
+            { label: 'SFTP', value: 'SFTP' },
+            { label: 'S3', value: 'S3' },
+            { label: 'MinIO', value: 'MINIO' },
+          ],
+    [taskType],
+  );
+
+  const sinkOptions = useMemo<TaskFilterOption[]>(
+    () =>
+      taskType === 'FILE_TRANSFER'
+        ? [
+            { label: 'FTP', value: 'FTP' },
+            { label: 'SFTP', value: 'SFTP' },
+            { label: 'S3', value: 'S3' },
+            { label: 'MinIO', value: 'MINIO' },
+          ]
+        : [],
+    [taskType],
+  );
 
   const copyId = async (id: string | number) => {
     try {
@@ -205,7 +149,10 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
   const columns = useMemo(
     () => [
       {
-        title: '任务名称',
+        title: intl.formatMessage({
+          id: 'pages.job.table.col.name',
+          defaultMessage: '链路名称/ID',
+        }),
         dataIndex: 'jobName',
         width: 220,
         ellipsis: true,
@@ -235,7 +182,10 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         ),
       },
       {
-        title: '状态',
+        title: intl.formatMessage({
+          id: 'pages.job.table.col.status',
+          defaultMessage: '健康状态',
+        }),
         dataIndex: 'lastJobStatus',
         width: 120,
         render: (_value: unknown, record: any) => (
@@ -245,25 +195,37 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         ),
       },
       {
-        title: '引接计划',
+        title: intl.formatMessage({
+          id: 'pages.job.table.col.syncPlan',
+          defaultMessage: '数据源同步方案',
+        }),
         key: 'syncPlan',
         width: 260,
         render: (_value: unknown, record: any) => <DataSourceSyncPlan record={record} />,
       },
       {
-        title: '执行概况',
+        title: intl.formatMessage({
+          id: 'pages.job.table.col.execution',
+          defaultMessage: '执行概况',
+        }),
         key: 'execution',
         width: 210,
         render: (_value: unknown, record: any) => <ExecutionStatus record={record} />,
       },
       {
-        title: '调度',
+        title: intl.formatMessage({
+          id: 'pages.job.table.col.schedule',
+          defaultMessage: '链路动态调度',
+        }),
         key: 'schedule',
         width: 220,
         render: (_value: unknown, record: any) => <ScheduleInfo record={record} />,
       },
       {
-        title: '创建时间',
+        title: intl.formatMessage({
+          id: 'pages.job.table.col.createTime',
+          defaultMessage: '创建时间',
+        }),
         dataIndex: 'createTime',
         width: 170,
         sorter: true,
@@ -271,7 +233,10 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         render: (value: string) => <span className="sync-task-time">{value || '-'}</span>,
       },
       {
-        title: '操作',
+        title: intl.formatMessage({
+          id: 'pages.job.table.col.operate',
+          defaultMessage: '操作',
+        }),
         key: 'action',
         width: 260,
         render: (_value: unknown, record: any) => (
@@ -279,49 +244,65 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         ),
       },
     ],
-    [fetchTaskList, goDetail, sort.field, sort.order],
+    [fetchTaskList, goDetail, intl, sort.field, sort.order],
   );
 
   return (
     <div className="batch-link-up-page sync-task-list">
-      <div className="space-y-4">
-        <FileTaskSearchForm
-          fileMode={fileMode}
-          initialValues={searchParams}
-          onSearch={handleSearch}
-          onReset={handleReset}
-        />
-        {error ? (
-          <div className="flex items-center justify-between rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            <span>{error}</span>
-            <Button size="small" icon={<ReloadOutlined />} onClick={() => void fetchTaskList()}>
-              重试
-            </Button>
+      <div className="config-manage-page">
+        <div className="operate-bar task-search-wrap">
+          <div className="left">
+            <AdvancedSearchForm
+              initialValues={searchParams}
+              onSearch={handleSearch}
+              onReset={handleReset}
+              fileMode={fileMode}
+              sourceOptions={sourceOptions}
+              sinkOptions={taskType === 'FILE_TRANSFER' ? sinkOptions : undefined}
+              showTableFilters={taskType === 'FILE_INGEST'}
+            />
           </div>
+        </div>
+        <Divider style={{ margin: '16px 0' }} />
+        {error ? (
+          <Alert
+            type="error"
+            showIcon
+            className="task-list-error"
+            message="任务列表加载失败"
+            description={error}
+            action={
+              <Button size="small" icon={<ReloadOutlined />} onClick={() => void fetchTaskList()}>
+                重试
+              </Button>
+            }
+          />
         ) : null}
-        <Table
-          rowKey="id"
-          columns={columns as any}
-          dataSource={taskList}
-          loading={loading}
-          pagination={false}
-          onChange={(_tablePagination: TablePaginationConfig, _filters, sorter) => {
-            const active = Array.isArray(sorter) ? sorter[0] : sorter;
-            if (!active?.order) return;
-            setSort({
-              field: active.field === 'jobName' ? 'name' : 'createTime',
-              order: active.order === 'ascend' ? 'asc' : 'desc',
-            });
-            setPagination((previous) => ({ ...previous, current: 1 }));
-          }}
-          scroll={{ x: 'max-content', y: 'calc(100vh - 380px)' }}
-          className="task-table"
-          locale={{
-            emptyText: (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={error ? '请重试加载任务列表' : emptyDescription} />
-            ),
-          }}
-        />
+        <div className="task-table-shell">
+          <Table
+            rowKey="id"
+            columns={columns as any}
+            dataSource={taskList}
+            loading={loading}
+            pagination={false}
+            onChange={(_tablePagination: TablePaginationConfig, _filters, sorter) => {
+              const active = Array.isArray(sorter) ? sorter[0] : sorter;
+              if (!active?.order) return;
+              setSort({
+                field: active.field === 'jobName' ? 'name' : 'createTime',
+                order: active.order === 'ascend' ? 'asc' : 'desc',
+              });
+              setPagination((previous) => ({ ...previous, current: 1 }));
+            }}
+            scroll={{ x: 'max-content', y: 'calc(100vh - 380px)' }}
+            className="task-table"
+            locale={{
+              emptyText: (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={error ? '请重试加载任务列表' : emptyDescription} />
+              ),
+            }}
+          />
+        </div>
         {pagination.total > 0 ? (
           <div className="task-pagination">
             <CustomPagination

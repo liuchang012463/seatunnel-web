@@ -1,6 +1,6 @@
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { Button, Form, message, Popover, Space, Tooltip } from 'antd';
-import { Blocks, Eye, FolderSync, PlayCircle, Upload } from 'lucide-react';
+import { App, Button, Popover, Space, Tooltip } from 'antd';
+import { Blocks, Eye, FolderSync, Upload } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -22,7 +22,6 @@ import {
   ScheduleConfig,
 } from '../../workflow/components/ScheduleConfigContent/types';
 import CodeBlockWithCopy from '../../workflow/operator/CodeBlockWithCopy';
-import RunLog from '../../workflow/run';
 import {
   classifyFileSyncCheckResult,
   generateFileSyncCheckList,
@@ -266,8 +265,7 @@ export default function FileWorkflow({
   setEnvConfig,
   setParams,
 }: FileWorkflowProps) {
-  const [form] = Form.useForm();
-
+  const { message } = App.useApp();
   const [rightWidth, setRightWidth] = useState(540);
   const [activeTab, setActiveTab] = useState<'basic' | 'schedule' | 'env' | null>(null);
   const draggingRef = useRef(false);
@@ -280,8 +278,6 @@ export default function FileWorkflow({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
-
-  const [runVisible, setRunVisible] = useState(false);
 
   const [definitionState, setDefinitionState] = useState<JobDefinitionState>(() =>
     normalizeInitialState(params?.state, pageScene),
@@ -427,15 +423,6 @@ export default function FileWorkflow({
   const checkStat = useMemo(() => classifyFileSyncCheckResult(checkList), [checkList]);
   const checkGroups = useMemo(() => groupFileSyncCheckListByNode(checkList), [checkList]);
 
-  const canRun = editorSyncState === 'SYNCED' && !publishLoading;
-
-  const runDisabledReason =
-    editorSyncState === 'UNPUBLISHED'
-      ? '请先发布任务，再执行'
-      : editorSyncState === 'DIRTY'
-        ? '当前内容已修改，请发布后再执行'
-        : '';
-
   const publishStatusView = {
     UNPUBLISHED: {
       text: '未发布',
@@ -478,26 +465,42 @@ export default function FileWorkflow({
   }, []);
 
   const handleNodesChange = useCallback((changes: any) => {
-    setGraph((prev) => {
-      const nextGraph = {
-        nodes: applyNodeChanges(changes, prev.nodes),
-        edges: prev.edges,
-      };
-      setParams?.((page: any) => (page ? { ...page, workflow: nextGraph } : page));
-      return nextGraph;
-    });
-  }, [setParams]);
+    setGraph((prev) => ({
+      nodes: applyNodeChanges(changes, prev.nodes),
+      edges: prev.edges,
+    }));
+  }, []);
 
   const handleNodeDataChange = useCallback((nodeId: string, data: any) => {
-    setGraph((prev) => {
-      const nextGraph = {
-        nodes: prev.nodes.map((node) => (node.id === nodeId ? { ...node, data } : node)),
-        edges: prev.edges,
+    setGraph((prev) => ({
+      nodes: prev.nodes.map((node) => (node.id === nodeId ? { ...node, data } : node)),
+      edges: prev.edges,
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (!setParams) return;
+
+    setParams((page: any) => {
+      if (!page) return page;
+
+      const previousWorkflow = page.workflow || {};
+      const previousSignature = JSON.stringify({
+        nodes: previousWorkflow.nodes || [],
+        edges: previousWorkflow.edges || [],
+      });
+      const nextSignature = JSON.stringify({
+        nodes: graph.nodes || [],
+        edges: graph.edges || [],
+      });
+
+      if (previousSignature === nextSignature) return page;
+      return {
+        ...page,
+        workflow: graph,
       };
-      setParams?.((page: any) => (page ? { ...page, workflow: nextGraph } : page));
-      return nextGraph;
     });
-  }, [setParams]);
+  }, [graph, setParams]);
 
   const validateBeforeAction = () => {
     if (checkStat.errors.length !== 0) {
@@ -639,11 +642,11 @@ export default function FileWorkflow({
   };
 
   const actionChipClass =
-    'inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[13px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0';
+    'file-workflow-editor-page__action-chip inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[13px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0';
 
   return (
-    <div className="workflow-editor-page flex h-full min-h-0 flex-col overflow-hidden bg-white">
-      <div className="shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5">
+    <div className="workflow-editor-page file-workflow-editor-page flex h-full min-h-0 flex-col overflow-hidden bg-white">
+      <div className="file-workflow-editor-page__header shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3.5">
             <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-indigo-50 text-indigo-600">
@@ -675,35 +678,15 @@ export default function FileWorkflow({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden p-[18px]">
-        <div className="h-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-white via-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
-          <div className="flex h-full min-w-0 items-stretch">
-            <div className="flex h-full min-w-0 flex-1 overflow-hidden">
-              <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-white shadow-[0_4px_18px_rgba(15,23,42,0.03)]">
-                <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
+      <div className="file-workflow-editor-page__body min-h-0 flex-1 overflow-hidden p-[18px]">
+        <div className="file-workflow-editor-page__frame h-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-white via-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+          <div className="file-workflow-editor-page__columns flex h-full min-w-0 items-stretch">
+            <div className="file-workflow-editor-page__main flex h-full min-w-0 flex-1 overflow-hidden">
+              <div className="file-workflow-editor-page__content flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-white shadow-[0_4px_18px_rgba(15,23,42,0.03)]">
+                <div className="file-workflow-editor-page__toolbar flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
                   <div className="text-[15px] font-semibold text-slate-800">同步编排</div>
 
                   <Space size={10}>
-                    <Tooltip title={runDisabledReason || undefined}>
-                      <span className="inline-flex">
-                        <Button
-                          type="default"
-                          icon={<PlayCircle size={15} strokeWidth={1.9} />}
-                          onClick={() => {
-                            if (editorSyncState !== 'SYNCED') {
-                              message.warning(runDisabledReason || '请先发布任务');
-                              return;
-                            }
-                            setRunVisible(true);
-                          }}
-                          disabled={!canRun}
-                          className="!inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
-                        >
-                          运行
-                        </Button>
-                      </span>
-                    </Tooltip>
-
                     <CheckListPopover
                       checkStat={checkStat}
                       checkGroups={checkGroups}
@@ -714,7 +697,7 @@ export default function FileWorkflow({
                       open={previewOpen}
                       placement="leftTop"
                       trigger="click"
-                      overlayClassName="st-hocon-popover"
+                      classNames={{ root: "st-hocon-popover" }}
                       content={
                         <div className="w-[700px]">
                           <CodeBlockWithCopy
@@ -757,15 +740,15 @@ export default function FileWorkflow({
                       icon={<Upload size={15} strokeWidth={1.9} />}
                       onClick={handleSave}
                       loading={publishLoading}
-                      className="!inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
+                      className="file-workflow-editor-page__publish-button !inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
                     >
                       发布
                     </Button>
                   </Space>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-hidden bg-white p-[18px] [background:radial-gradient(circle_at_top_left,rgba(78,116,248,0.04),transparent_22%),#ffffff]">
-                  <div className="grid h-full min-w-0 grid-cols-[minmax(150px,18%)_minmax(0,1fr)] gap-4">
+                <div className="file-workflow-editor-page__canvas-body min-h-0 flex-1 overflow-hidden bg-white p-[18px] [background:radial-gradient(circle_at_top_left,rgba(78,116,248,0.04),transparent_22%),#ffffff]">
+                  <div className="file-workflow-editor-page__canvas-layout grid h-full min-w-0 grid-cols-[minmax(150px,18%)_minmax(0,1fr)] gap-4">
                     <div className="min-w-0 overflow-auto border-r border-slate-100 pr-4">
                       <div className="flex h-full flex-col gap-3 p-1">
                         <div className="px-0.5 pb-2 pt-1 text-[13px] font-semibold text-slate-700">
@@ -791,7 +774,7 @@ export default function FileWorkflow({
                       </div>
                     </div>
 
-                    <div className="min-w-0 overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-[14px] text-slate-400">
+                    <div className="file-workflow-editor-page__canvas min-w-0 overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-[14px] text-slate-400">
                         <FileSyncCanvas
                           nodes={graph.nodes}
                           edges={graph.edges}
@@ -805,19 +788,11 @@ export default function FileWorkflow({
                 </div>
               </div>
 
-              {runVisible && (
-                <RunLog
-                  runVisible={runVisible}
-                  setRunVisible={setRunVisible}
-                  baseForm={form}
-                  params={params}
-                />
-              )}
             </div>
 
             {activeTab && (
               <div
-                className="relative flex w-[20px] shrink-0 cursor-col-resize items-center justify-center bg-transparent transition-colors duration-100 hover:bg-[rgba(49,94,251,0.04)]"
+                className="file-workflow-editor-page__resize relative flex w-[20px] shrink-0 cursor-col-resize items-center justify-center bg-transparent transition-colors duration-100 hover:bg-[rgba(49,94,251,0.04)]"
                 onMouseDown={() => {
                   draggingRef.current = true;
                   document.body.style.cursor = 'col-resize';
@@ -836,7 +811,7 @@ export default function FileWorkflow({
             )}
 
             <div
-              className="h-full shrink-0 overflow-hidden"
+              className="file-workflow-editor-page__side h-full shrink-0 overflow-hidden"
               style={{ width: activeTab ? rightWidth : 58 }}
             >
               <RightConfigPanel

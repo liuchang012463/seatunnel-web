@@ -1,5 +1,5 @@
 import { FolderOpenOutlined } from '@ant-design/icons';
-import { Button, Input, Select, message } from 'antd';
+import { App, Button, Input, Select, Space } from 'antd';
 import { useMemo, useState } from 'react';
 import PanelShell from '../../workflow/panel/components/PanelShell';
 import { fileDataSourceLabel } from './support';
@@ -20,6 +20,7 @@ const FileSyncSinkPanel: React.FC<FileSyncSinkPanelProps> = ({
   onNodeDataChange,
   datasourceOptions,
 }) => {
+  const { message } = App.useApp();
   const config = selectedNode?.data?.config || {};
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -85,31 +86,31 @@ const FileSyncSinkPanel: React.FC<FileSyncSinkPanelProps> = ({
               optionFilterProp="label"
               className="workflow-panel__antd-select"
               style={{ width: '100%' }}
-              popupClassName="workflow-panel__dropdown"
+              classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
             />
           </div>
           <div className="workflow-panel__field workflow-panel__field--full mt-3">
             <div className="mb-1 text-xs text-slate-500">目标目录</div>
-            <Input
-              value={config.targetPath}
-              placeholder="/archive/files 或 /bucket-prefix"
-              onChange={(event) => updateConfig({ targetPath: event.target.value })}
-              addonAfter={
-                <Button
-                  type="text"
-                  icon={<FolderOpenOutlined />}
-                  onClick={() => {
-                    if (!config.dataSourceId) {
-                      message.warning('请先选择数据源');
-                      return;
-                    }
-                    setPickerOpen(true);
-                  }}
-                >
-                  浏览
-                </Button>
-              }
-            />
+            <Space.Compact block>
+              <Input
+                value={config.targetPath}
+                placeholder="/archive/files 或 /bucket-prefix"
+                onChange={(event) => updateConfig({ targetPath: event.target.value })}
+              />
+              <Button
+                type="default"
+                icon={<FolderOpenOutlined />}
+                onClick={() => {
+                  if (!config.dataSourceId) {
+                    message.warning('请先选择数据源');
+                    return;
+                  }
+                  setPickerOpen(true);
+                }}
+              >
+                浏览
+              </Button>
+            </Space.Compact>
           </div>
           <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-500">
             复制策略：仅复制新增或内容变化的文件，不删除目标端已有文件；数据格式固定为 binary。

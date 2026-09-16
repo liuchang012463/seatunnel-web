@@ -6,10 +6,11 @@ import React from "react";
 import { CopyOutlined } from "@ant-design/icons";
 
 import type { TaskSortField, TaskSortOrder } from "@/pages/common/components/TaskSortControls";
+import DataSourceSyncPlan from "@/pages/batch-link-up/components/SyncTaskList/components/DataSourceSyncPlan";
+import ScheduleInfo from "@/pages/batch-link-up/components/SyncTaskList/components/ScheduleInfo";
+import ExecutionStatus from "@/pages/batch-link-up/components/SyncTaskList/components/ExecutionStatus";
+import "@/pages/batch-link-up/components/SyncTaskList/index.less";
 
-import ExecutionStatus from "./ExecutionStatus";
-import RealtimeMetricsTrend from "./RealtimeMetricsTrend";
-import RealtimeSyncPlan from "./RealtimeSyncPlan";
 import RealtimeTaskActionColumn, {
   StreamingJobDefinitionVO,
 } from "./RealtimeTaskActionColumn";
@@ -98,28 +99,22 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "链路名称/ID",
       }),
       dataIndex: "jobName",
-      width: 260,
+      width: 220,
       ellipsis: true,
       sorter: true,
       sortOrder: sort?.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (_content, record) => (
-        <div className="stream-link-task-name-cell">
-          <div className="sync-task-name-cell__title">
-            <Tooltip title={record.jobName || record.id}>
-              <span className="min-w-0 max-w-[240px] truncate text-[color:var(--st-color-text-primary)]">
-                {record.jobName || "未命名实时任务"}
-              </span>
-            </Tooltip>
+        <div className="sync-task-name-cell">
+          <div className="sync-task-name-cell__title" title={record.jobName || String(record.id)}>
+            {record.jobName || "未命名实时任务"}
           </div>
-          <div className="stream-link-task-name-cell__line">
-            <Tooltip title={record.id}>
-              <span className="sync-task-name-cell__id">{record.id}</span>
-            </Tooltip>
+          <div className="sync-task-name-cell__id">
+            <span>{record.id}</span>
 
             <Tooltip title="复制任务定义 ID">
               <button
                 type="button"
-                className="ml-1 inline-flex h-[18px] w-[18px] items-center justify-center rounded border-none bg-transparent text-[color:var(--st-color-text-muted)] transition hover:bg-[rgba(77,210,255,0.08)] hover:text-[color:var(--st-color-accent)]"
+                className="sync-task-copy-btn"
                 aria-label="复制任务定义 ID"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -128,13 +123,6 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
               >
                 <CopyOutlined className="text-[12px]" />
               </button>
-            </Tooltip>
-          </div>
-          <div className="stream-link-task-name-cell__line">
-            <Tooltip title={record.engineJobId || "未启动"}>
-              <span className="min-w-0 max-w-[150px] truncate text-[color:var(--st-color-text-muted)]">
-                zetaId {record.engineJobId || "未启动"}
-              </span>
             </Tooltip>
           </div>
         </div>
@@ -164,25 +152,11 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "数据源同步方案",
       }),
       dataIndex: "",
-      width: 230,
+      width: 260,
       ellipsis: true,
       render: (_content, record) => (
-        <div className="min-w-[190px]">
-          <RealtimeSyncPlan record={record} />
-        </div>
-      ),
-    },
-    {
-      key: "metrics",
-      title: intl.formatMessage({
-        id: "pages.job.table.col.metrics",
-        defaultMessage: "负载情况",
-      }),
-      dataIndex: "",
-      width: 370,
-      render: (_content, record) => (
-        <div className="min-w-[350px]">
-          <RealtimeMetricsTrend record={record} onView={onView} />
+        <div className="sync-task-plan-cell">
+          <DataSourceSyncPlan record={record} />
         </div>
       ),
     },
@@ -193,26 +167,32 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "执行概况",
       }),
       dataIndex: "",
-      width: 280,
-      render: (_content, record) => (
-        <div className="min-w-[240px]">
-          <ExecutionStatus record={record} />
-        </div>
-      ),
+      width: 210,
+      render: (_content, record) => <ExecutionStatus record={record} />,
     },
     {
-      key: "updateTime",
+      key: "schedule",
       title: intl.formatMessage({
-        id: "pages.job.table.col.updateTime",
-        defaultMessage: "最近更新时间",
+        id: "pages.job.table.col.schedule",
+        defaultMessage: "链路动态调度",
       }),
-      dataIndex: "updateTime",
+      dataIndex: "",
+      width: 220,
+      render: (_content, record) => <ScheduleInfo record={record} />,
+    },
+    {
+      key: "createTime",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.createTime",
+        defaultMessage: "创建时间",
+      }),
+      dataIndex: "createTime",
       sorter: true,
-      sortOrder: sort?.field === "updateTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
-      width: 160,
+      sortOrder: sort?.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
+      width: 170,
       ellipsis: true,
       render: (value: string | undefined) => (
-        <span className="stream-link-time-cell">{formatDateTime(value)}</span>
+        <span className="sync-task-time">{formatDateTime(value)}</span>
       ),
     },
     {
@@ -222,7 +202,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "操作",
       }),
       dataIndex: "",
-      width: 250,
+      width: 260,
       render: (_content, record) => (
         <RealtimeTaskActionColumn
           record={record}
@@ -243,7 +223,8 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
   ];
 
   return (
-    <Table<StreamingJobDefinitionVO>
+    <div className="sync-task-list task-table-shell">
+      <Table<StreamingJobDefinitionVO>
       rowKey="id"
       loading={loading}
       columns={columns}
@@ -251,7 +232,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         const active = Array.isArray(sorter) ? sorter[0] : sorter;
         if (!active?.order) return;
         onSortChange?.(
-          active.field === "updateTime" || active.field === "createTime" ? active.field : "name",
+          active.field === "createTime" ? "createTime" : "name",
           active.order === "ascend" ? "asc" : "desc",
         );
       }}
@@ -264,7 +245,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       }}
       size="middle"
       scroll={{ x: "max-content", y: "calc(100vh - 380px)" }}
-      className="stream-link-task-table"
+      className="task-table"
       locale={{
         emptyText: (
           <Empty
@@ -273,7 +254,8 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
           />
         ),
       }}
-    />
+      />
+    </div>
   );
 };
 

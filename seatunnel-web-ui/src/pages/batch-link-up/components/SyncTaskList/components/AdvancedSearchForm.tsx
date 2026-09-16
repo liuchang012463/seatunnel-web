@@ -11,11 +11,19 @@ import moment from "moment";
 import { useEffect, useMemo, useState } from "react";
 import DatabaseIcons from "../../../../data-source/icon/DatabaseIcons";
 
+export interface TaskFilterOption {
+  label: React.ReactNode;
+  value: string;
+}
+
 interface AdvancedSearchFormProps {
   onSearch: (values: any) => void;
   onReset: () => void;
   initialValues?: any;
   fileMode?: boolean;
+  sourceOptions?: TaskFilterOption[];
+  sinkOptions?: TaskFilterOption[];
+  showTableFilters?: boolean;
 }
 
 const { RangePicker } = DatePicker;
@@ -25,6 +33,9 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   onReset,
   initialValues,
   fileMode = false,
+  sourceOptions,
+  sinkOptions,
+  showTableFilters = !fileMode,
 }) => {
   const intl = useIntl();
   const [form] = Form.useForm();
@@ -92,7 +103,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
     value,
   });
 
-  const dataSourceOption = fileMode
+  const defaultDataSourceOptions = fileMode
     ? [
         createDataSourceOption("FTP", "FTP"),
         createDataSourceOption("SFTP", "SFTP"),
@@ -112,6 +123,9 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
         createDataSourceOption("Kafka", "KAFKA"),
         createDataSourceOption("HTTP", "HTTP"),
       ];
+
+  const sourceDataSourceOptions = sourceOptions || defaultDataSourceOptions;
+  const sinkDataSourceOptions = sinkOptions || defaultDataSourceOptions;
 
   const statusOptions = [
     {
@@ -335,7 +349,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                   allowClear
                   showSearch
                   placeholder={selectPlaceholder}
-                  options={dataSourceOption}
+                  options={sourceDataSourceOptions}
                   className="w-full"
                 />
               </Form.Item>
@@ -356,7 +370,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                   allowClear
                   showSearch
                   placeholder={selectPlaceholder}
-                  options={dataSourceOption}
+                  options={sinkDataSourceOptions}
                   className="w-full"
                 />
               </Form.Item>
@@ -364,7 +378,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
 
             <Col xs={24} md={12} xl={4} />
 
-            {!fileMode && (
+            {showTableFilters && (
               <>
                 <Col xs={24} md={12} xl={7}>
                   <Form.Item

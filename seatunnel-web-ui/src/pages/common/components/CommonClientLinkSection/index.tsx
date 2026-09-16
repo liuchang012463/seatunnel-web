@@ -320,9 +320,11 @@ const SimpleStatus: React.FC<{
       trigger="hover"
       placement="right"
       content={<VerifyItemsPopoverContent items={items} />}
-      overlayInnerStyle={{
-        borderRadius: 18,
-        padding: 12,
+      styles={{
+        body: {
+          borderRadius: 18,
+          padding: 12,
+        },
       }}
     >
       {content}
@@ -1113,7 +1115,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
           loading={isSource ? sourceLoading : targetLoading}
           showSearch
           options={isSource ? sourceOptions : targetOptions}
-          dropdownRender={(menu) => (
+          popupRender={(menu) => (
             <>
               {menu}
 

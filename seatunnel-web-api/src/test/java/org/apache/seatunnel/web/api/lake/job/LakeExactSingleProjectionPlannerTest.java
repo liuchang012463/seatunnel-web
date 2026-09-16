@@ -219,6 +219,28 @@ class LakeExactSingleProjectionPlannerTest {
     }
 
     @Test
+    void fileResourceSourceIsNotApplicableWithoutReadingLakeState() {
+        BatchGuideSingleJobSaveCommand command = new BatchGuideSingleJobSaveCommand();
+        Map<String, Object> source = new HashMap<>(Map.of(
+                "sourceMode", "FILE_RESOURCE",
+                "fileResourceId", "23047201709472",
+                "fileFormatType", "csv"));
+        Map<String, Object> sink = new HashMap<>(Map.of(
+                "dataSourceId", "55",
+                "dbType", "KINGBASE",
+                "pluginName", "Jdbc",
+                "targetTableName", "acceptance_file_ingest",
+                "schemaSaveMode", "CREATE_SCHEMA_WHEN_NOT_EXIST"));
+        command.setWorkflow(new HashMap<>(Map.of(
+                "nodes", List.of(node("source", source), node("sink", sink)))));
+
+        LakeExactSingleProjectionPlanner.ProjectionPlan plan = planner.plan(command);
+
+        assertEquals(LakeExactSingleProjectionPlanner.Decision.NOT_APPLICABLE, plan.decision());
+        verifyNoInteractions(bindingDao, mappingDao, provider, doris);
+    }
+
+    @Test
     void ordinaryAndMultiJobsAreNotApplicable() {
         BatchScriptJobSaveCommand script = new BatchScriptJobSaveCommand();
         assertEquals(

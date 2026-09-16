@@ -593,15 +593,17 @@ const RecordTab: React.FC = () => {
                 overlayStyle={{
                   maxWidth: 'calc(100vw - 24px)',
                 }}
-                overlayInnerStyle={{
-                  width: 'min(360px, calc(100vw - 48px))',
-                  maxWidth: 'calc(100vw - 48px)',
-                  boxSizing: 'border-box',
-                  overflow: 'hidden',
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(33, 135, 168, 0.72)',
-                  boxShadow: '0 12px 28px rgba(0, 25, 34, 0.3)',
+                styles={{
+                  body: {
+                    width: 'min(360px, calc(100vw - 48px))',
+                    maxWidth: 'calc(100vw - 48px)',
+                    boxSizing: 'border-box',
+                    overflow: 'hidden',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(33, 135, 168, 0.72)',
+                    boxShadow: '0 12px 28px rgba(0, 25, 34, 0.3)',
+                  },
                 }}
               >
                 <button

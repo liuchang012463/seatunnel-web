@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Space, Tag, notification } from "antd";
+import { Button, Space, Tag } from "antd";
 import {
   AlertCircle,
   CheckCircle2,
@@ -8,6 +8,7 @@ import {
   ArrowRight,
   X,
 } from "lucide-react";
+import { appNotification } from "./antdFeedback";
 import "./index.less";
 
 type NotifyType = "error" | "success" | "warning" | "info";
@@ -72,7 +73,7 @@ export function openPrettyNotification({
 }: PrettyNotificationOptions) {
   const tone = toneMap[type];
 
-  notification.open({
+  appNotification.open({
     key,
     placement,
     duration,

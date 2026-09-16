@@ -632,7 +632,7 @@ export default function FlowCanvas({
       )}
 
       <Dropdown
-        overlay={flow.renderContextMenu()}
+        popupRender={() => flow.renderContextMenu()}
         open={flow.menuVisible}
         onOpenChange={flow.closeContextMenu}
         trigger={['contextMenu']}

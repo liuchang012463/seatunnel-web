@@ -39,7 +39,7 @@ export const CheckListPopover = ({
     <Popover
       trigger="click"
       placement="bottomRight"
-      overlayClassName="st-checklist-popover"
+      classNames={{ root: "st-checklist-popover" }}
       content={
         <div className="w-[360px] p-1">
           <div className="flex items-center justify-between">

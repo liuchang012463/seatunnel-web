@@ -80,11 +80,13 @@ const TaskStatus: React.FC<TaskStatusProps> = ({ status, errorMessage }) => {
       placement="right"
       trigger="hover"
       title={null}
-      overlayInnerStyle={{
-        padding: 0,
-        borderRadius: 10,
-        overflow: "hidden",
-        boxShadow: "0 14px 36px rgba(15, 23, 42, 0.16)",
+      styles={{
+        body: {
+          padding: 0,
+          borderRadius: 10,
+          overflow: "hidden",
+          boxShadow: "0 14px 36px rgba(15, 23, 42, 0.16)",
+        },
       }}
       content={
         <div className="stream-link-error-popover">

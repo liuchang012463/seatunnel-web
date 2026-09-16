@@ -1,6 +1,6 @@
 import { DeleteOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Input, InputNumber, Modal, Select, Switch, message } from 'antd';
-import { useMemo, useState } from 'react';
+import { App, Button, Input, InputNumber, Modal, Select, Switch } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
 import FileResourceSourceCard from './FileResourceSourceCard';
 import { buildFileResourcePreviewOptions, fileResourceApi } from './api';
 import type { FileFormat, FileResource } from './types';
@@ -41,6 +41,45 @@ interface FileSourceConfigPanelProps {
   onPreview?: (resource: FileResource, options: Record<string, any>) => Promise<unknown>;
 }
 
+interface SchemaFieldNameInputProps {
+  name: string;
+  existingNames: string[];
+  onCommit: (oldName: string, nextName: string) => void;
+}
+
+const SchemaFieldNameInput: React.FC<SchemaFieldNameInputProps> = ({
+  name,
+  existingNames,
+  onCommit,
+}) => {
+  const [value, setValue] = useState(name);
+
+  useEffect(() => {
+    setValue(name);
+  }, [name]);
+
+  const commit = () => {
+    const nextName = value.trim();
+    if (!nextName || (nextName !== name && existingNames.includes(nextName))) {
+      setValue(name);
+      return;
+    }
+    onCommit(name, nextName);
+  };
+
+  return (
+    <Input
+      value={value}
+      aria-label={`字段名 ${name}`}
+      onChange={(event) => setValue(event.target.value)}
+      onBlur={commit}
+      onPressEnter={(event) => {
+        event.currentTarget.blur();
+      }}
+    />
+  );
+};
+
 const getFormat = (value: unknown): FileFormat => {
   const normalized = String(value || '').toLowerCase();
   return isLocalFileFormat(normalized) ? normalized : 'csv';
@@ -52,6 +91,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
   onOpenManager,
   onPreview,
 }) => {
+  const { message } = App.useApp();
   const format = getFormat(sourceConfig?.fileFormatType);
   const resource = (sourceConfig?.fileResource || sourceConfig?.resource) as FileResource | undefined;
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -310,10 +350,10 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         <div className="mt-3 space-y-2">
           {Object.entries(fields).map(([name, type]) => (
             <div key={name} className="grid grid-cols-[minmax(0,1fr)_130px_32px] gap-2">
-              <Input
-                value={name}
-                aria-label={`字段名 ${name}`}
-                onChange={(event) => renameField(name, event.target.value)}
+              <SchemaFieldNameInput
+                name={name}
+                existingNames={Object.keys(fields).filter((field) => field !== name)}
+                onCommit={renameField}
               />
               <Select
                 value={type}

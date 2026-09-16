@@ -1,7 +1,7 @@
 import { SearchOutlined } from '@ant-design/icons';
 import { Dropdown, Input } from 'antd';
 import { Braces, Database } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ReactFlow, {
   Background,
   type Edge,
@@ -256,11 +256,32 @@ export default function FlowCanvas({
     setControlMode: flow.setControlMode,
   });
   const initializedRef = useRef(false);
+  const [canvasReady, setCanvasReady] = useState(false);
   const [edgeInsertMenu, setEdgeInsertMenu] =
     useState<EdgeInsertMenuState | null>(null);
   const [edgeInsertSearchText, setEdgeInsertSearchText] = useState('');
   const [hoveredInsertNode, setHoveredInsertNode] =
     useState<HoveredInsertNodeState | null>(null);
+
+  useLayoutEffect(() => {
+    const element = placement.reactFlowWrapper.current;
+    if (!element) return;
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      setCanvasReady(rect.width > 0 && rect.height > 0);
+    };
+
+    updateSize();
+    if (typeof ResizeObserver === 'undefined') {
+      const frame = window.requestAnimationFrame(updateSize);
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [placement.reactFlowWrapper]);
 
   const closeEdgeInsertMenu = useCallback(() => {
     setEdgeInsertMenu(null);
@@ -379,6 +400,8 @@ export default function FlowCanvas({
   );
 
   useEffect(() => {
+    if (!initializedRef.current) return;
+
     onWorkflowChange?.({
       nodes: flow.nodes,
       edges: flow.edges,
@@ -494,7 +517,7 @@ export default function FlowCanvas({
 
   return (
     <div
-      className="relative h-full w-full min-w-[960px]"
+      className="relative h-full w-full min-w-[960px] generic-workflow-canvas"
       style={{
         height: '100%',
         width: '100%',
@@ -517,62 +540,68 @@ export default function FlowCanvas({
         onUndo={flow.undo}
       />
 
-      <ReactFlow
-        nodes={flow.nodes}
-        edges={interactiveEdges}
-        nodeTypes={nodeTypesConfig}
-        edgeTypes={edgeTypes}
-        onNodesChange={flow.onNodesChange}
-        onEdgesChange={flow.onEdgesChange}
-        onConnect={flow.onConnect}
-        onNodeClick={flow.onNodeClick}
-        onEdgeClick={flow.onEdgeClick}
-        onNodeContextMenu={flow.onNodeContextMenu}
-        onPaneClick={handlePaneClick}
-        onSelectionChange={flow.onSelectionChange}
-        onSelectionEnd={clearSelectionRect}
-        onSelectionContextMenu={flow.onSelectionContextMenu}
-        onNodeMouseEnter={flow.onNodeMouseEnter}
-        onNodeMouseLeave={flow.onNodeMouseLeave}
-        onPaneContextMenu={flow.onPaneContextMenu}
-        isValidConnection={flow.isValidConnection}
-        selectionMode={SelectionMode.Partial}
-        multiSelectionKeyCode={null}
-        deleteKeyCode={null}
-        minZoom={MIN_ZOOM}
-        maxZoom={MAX_ZOOM}
-        nodesDraggable={
-          !flow.nodesReadOnly && flow.controlMode === ControlMode.Pointer
-        }
-        nodesConnectable={!flow.nodesReadOnly}
-        nodesFocusable={!flow.nodesReadOnly}
-        edgesFocusable={!flow.nodesReadOnly}
-        panOnDrag={flow.controlMode === ControlMode.Hand}
-        zoomOnPinch={!flow.workflowReadOnly}
-        zoomOnScroll={!flow.workflowReadOnly}
-        zoomOnDoubleClick={!flow.workflowReadOnly}
-        selectionOnDrag={
-          flow.controlMode === ControlMode.Pointer && !flow.workflowReadOnly
-        }
-        fitView
-        fitViewOptions={{
-          padding: 0.2,
-          minZoom: 0.25,
-          maxZoom: 0.75,
-        }}
-        className={`reactflow-wrapper ${
-          flow.controlMode === ControlMode.Hand ? 'hand-mode' : 'pointer-mode'
-        }`}
-      >
-        <Background gap={[14, 14]} size={2} color="#8585ad26" />
+      {canvasReady ? (
+        <ReactFlow
+          nodes={flow.nodes}
+          edges={interactiveEdges}
+          nodeTypes={nodeTypesConfig}
+          edgeTypes={edgeTypes}
+          onNodesChange={flow.onNodesChange}
+          onEdgesChange={flow.onEdgesChange}
+          onConnect={flow.onConnect}
+          onNodeClick={flow.onNodeClick}
+          onEdgeClick={flow.onEdgeClick}
+          onNodeContextMenu={flow.onNodeContextMenu}
+          onPaneClick={handlePaneClick}
+          onSelectionChange={flow.onSelectionChange}
+          onSelectionEnd={clearSelectionRect}
+          onSelectionContextMenu={flow.onSelectionContextMenu}
+          onNodeMouseEnter={flow.onNodeMouseEnter}
+          onNodeMouseLeave={flow.onNodeMouseLeave}
+          onPaneContextMenu={flow.onPaneContextMenu}
+          isValidConnection={flow.isValidConnection}
+          selectionMode={SelectionMode.Partial}
+          multiSelectionKeyCode={null}
+          deleteKeyCode={null}
+          minZoom={MIN_ZOOM}
+          maxZoom={MAX_ZOOM}
+          nodesDraggable={
+            !flow.nodesReadOnly && flow.controlMode === ControlMode.Pointer
+          }
+          nodesConnectable={!flow.nodesReadOnly}
+          nodesFocusable={!flow.nodesReadOnly}
+          edgesFocusable={!flow.nodesReadOnly}
+          panOnDrag={flow.controlMode === ControlMode.Hand}
+          zoomOnPinch={!flow.workflowReadOnly}
+          zoomOnScroll={!flow.workflowReadOnly}
+          zoomOnDoubleClick={!flow.workflowReadOnly}
+          selectionOnDrag={
+            flow.controlMode === ControlMode.Pointer && !flow.workflowReadOnly
+          }
+          fitView
+          fitViewOptions={{
+            padding: 0.2,
+            minZoom: 0.25,
+            maxZoom: 0.75,
+          }}
+          className={`reactflow-wrapper ${
+            flow.controlMode === ControlMode.Hand ? 'hand-mode' : 'pointer-mode'
+          }`}
+        >
+          <Background gap={[14, 14]} size={2} color="#8585ad26" />
 
-        <MiniMap
-          className="workflow-minimap"
-          position="bottom-left"
-          style={{ width: 102, height: 72 }}
-          maskColor="rgba(0, 25, 34, 0.72)"
-        />
-      </ReactFlow>
+          <MiniMap
+            className="workflow-minimap"
+            position="bottom-left"
+            style={{ width: 102, height: 72 }}
+            maskColor="rgba(0, 25, 34, 0.72)"
+          />
+        </ReactFlow>
+      ) : (
+        <div className="flex h-full items-center justify-center text-sm text-slate-400">
+          正在加载画布…
+        </div>
+      )}
 
       {edgeInsertMenu && (
         <div
@@ -682,7 +711,7 @@ export default function FlowCanvas({
       )}
 
       <Dropdown
-        overlay={flow.renderContextMenu()}
+        popupRender={() => flow.renderContextMenu()}
         open={flow.menuVisible}
         onOpenChange={flow.closeContextMenu}
         trigger={['contextMenu']}

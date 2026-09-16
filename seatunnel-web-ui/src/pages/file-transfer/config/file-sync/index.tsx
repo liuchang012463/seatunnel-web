@@ -1,5 +1,5 @@
 import { history, useLocation, useParams } from '@umijs/max';
-import { Empty, message, Spin } from 'antd';
+import { App, Empty, Spin } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import FileWorkflow from '@/pages/batch-link-up/config/file-sync/FileWorkflow';
 import { fileResourceApi, fileTransferTaskApi } from '../../../file-ingest/api';
@@ -44,7 +44,14 @@ const buildPageParams = (data: any, id: string, scene: 'create' | 'edit') => {
     runtimeType: 'BATCH',
     sourceType,
     targetType,
-    workflow: normalizeWorkflowGraph(data?.workflow, 'FILE_TRANSFER', sourceType, targetType),
+    workflow: normalizeWorkflowGraph(
+      data?.workflow,
+      'FILE_TRANSFER',
+      sourceType,
+      targetType,
+      data?.sourceDataSourceId,
+      data?.targetDataSourceId,
+    ),
     __pageScene: scene,
     state:
       scene === 'edit'
@@ -64,11 +71,11 @@ const buildPageParams = (data: any, id: string, scene: 'create' | 'edit') => {
 };
 
 const FileTransferConfigPage: React.FC = () => {
+  const { message } = App.useApp();
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const [params, setParams] = useState<any>();
   const [loading, setLoading] = useState(false);
-  const [revision, setRevision] = useState(0);
   const [basicConfig, setBasicConfig] = useState<any>({
     jobName: '',
     jobDesc: '',
@@ -168,7 +175,6 @@ const FileTransferConfigPage: React.FC = () => {
         };
       });
       setBasicConfig((previous: any) => ({ ...previous, sourceType: 'FILE_RESOURCE' }));
-      setRevision((previous) => previous + 1);
     },
     [],
   );
@@ -213,7 +219,7 @@ const FileTransferConfigPage: React.FC = () => {
 
   const targetType = params?.targetType || defaultTargetType;
   const sourceType = params?.sourceType || FILE_RESOURCE_SOURCE;
-  const workflowContextKey = ['FILE_TRANSFER', id || 'unknown', revision, params?.state?.editorSyncState || 'UNPUBLISHED'].join('-');
+  const workflowContextKey = ['FILE_TRANSFER', id || 'unknown', params?.state?.editorSyncState || 'UNPUBLISHED'].join('-');
 
   const goBack = () => {
     if (scene === 'edit') {

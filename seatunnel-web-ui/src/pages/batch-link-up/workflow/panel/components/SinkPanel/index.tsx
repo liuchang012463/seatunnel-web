@@ -156,7 +156,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
               optionFilterProp="label"
               className="workflow-panel__antd-select"
               style={{ width: '100%' }}
-              popupClassName="workflow-panel__dropdown"
+              classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
             />
           </div>
         </div>
@@ -232,7 +232,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
                       placeholder="请选择目标表"
                       className="workflow-panel__antd-select"
                       style={{ width: '100%' }}
-                      popupClassName="workflow-panel__dropdown"
+                      classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
                       showSearch
                       optionFilterProp="rawLabel"
                     />

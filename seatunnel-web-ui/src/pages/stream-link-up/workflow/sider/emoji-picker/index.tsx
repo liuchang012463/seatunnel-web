@@ -123,7 +123,7 @@ const EmojiPicker: FC<AppIconPickerProps> = ({ onSelect, onClose, className }) =
       centered
       rootClassName="custom-modal-root"
       footer={null}
-      maskStyle={{ background: '#10182899' }} // 自定义遮罩样式
+      styles={{ mask: { background: '#10182899' } }} // 自定义遮罩样式
     >
       <div>
         <div style={{ padding: '0.5rem', width: '100%', paddingBottom: 0 }}>
