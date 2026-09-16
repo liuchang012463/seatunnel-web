@@ -239,7 +239,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '操作',
         }),
         key: 'action',
-        width: 168,
+        width: 224,
         fixed: 'right',
         render: (_value: unknown, record: any) => (
           <ActionColumn record={record} cbk={() => void fetchTaskList()} goDetail={goDetail} />

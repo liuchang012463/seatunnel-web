@@ -35,6 +35,8 @@ const dangerActionClass = `${actionBaseClass} sync-action-btn is-danger`;
 
 const secondaryActionClass = `${actionBaseClass} sync-action-btn is-secondary`;
 
+const disabledActionClass = `${actionBaseClass} sync-action-btn is-disabled`;
+
 const moreActionClass =
   "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 border px-2 text-xs font-medium transition-all duration-150 sync-action-btn is-secondary";
 
@@ -52,11 +54,13 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
 
   const ref = useRef<any>(null);
 
+  const [runOpen, setRunOpen] = useState(false);
   const [runLoading, setRunLoading] = useState(false);
 
   const isOnline = isReleaseOnline(record?.releaseState);
   const isRunning = record?.lastJobStatus === "RUNNING";
   const [logOpen, setLogOpen] = useState(false);
+  const canRun = isOnline && !isRunning;
 
   /**
    * 上线后不能编辑和删除。
@@ -245,16 +249,6 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       return;
     }
 
-    if (info?.key === "online") {
-      handleOnline();
-      return;
-    }
-
-    if (info?.key === "offline") {
-      handleOffline();
-      return;
-    }
-
     if (info?.key === "delete") {
       handleDeleteTask();
     }
@@ -285,19 +279,6 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
         </span>
       ),
       disabled: !canEdit,
-    },
-    {
-      type: "divider" as const,
-    },
-    {
-      key: isOnline ? "offline" : "online",
-      icon: isOnline ? <CloudDownloadOutlined /> : <CloudUploadOutlined />,
-      label: isOnline
-        ? isRunning
-          ? "下线任务（请先终止任务）"
-          : "下线任务"
-        : "上线任务",
-      disabled: isOnline && isRunning,
     },
     {
       key: "log",
@@ -350,12 +331,23 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
         终止
       </button>
     </Popconfirm>
-  ) : isOnline ? (
+  ) : (
     <Popconfirm
       title={intl.formatMessage({
         id: "pages.job.action.run.title",
         defaultMessage: "Run Task",
       })}
+      open={canRun ? runOpen : false}
+      onOpenChange={(open) => {
+        if (!canRun) {
+          message.warning("请先上线任务，再执行启动操作");
+          return;
+        }
+
+        if (!runLoading) {
+          setRunOpen(open);
+        }
+      }}
       okButtonProps={{ loading: runLoading }}
       description={
         <div style={{ marginRight: 12 }}>
@@ -368,6 +360,11 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       okText={yesText}
       cancelText={noText}
       onConfirm={async () => {
+        if (!canRun) {
+          message.warning("请先上线任务，再执行启动操作");
+          return;
+        }
+
         try {
           setRunLoading(true);
 
@@ -381,6 +378,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
               })
             );
             cbk();
+            setRunOpen(false);
           } else {
             message.error(data?.msg || "启动失败");
           }
@@ -391,12 +389,45 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
     >
       <button
         type="button"
-        className={primaryActionClass}
+        disabled={!canRun}
+        className={canRun ? primaryActionClass : disabledActionClass}
         aria-label={`启动任务 ${record?.jobName || ""}`}
-        onClick={stopPropagation}
+        onClick={(event) => {
+          event.stopPropagation();
+
+          if (!canRun) {
+            message.warning("请先上线任务，再执行启动操作");
+          }
+        }}
       >
         <PlayCircleOutlined />
         启动
+      </button>
+    </Popconfirm>
+  );
+
+  const releaseAction = isOnline ? (
+    <Popconfirm
+      title="任务下线"
+      description={
+        <div style={{ marginRight: 12 }}>
+          下线后任务将不会再被调度触发，
+          <br />
+          确认下线该任务吗？
+        </div>
+      }
+      okText="确认"
+      cancelText="取消"
+      onConfirm={handleOffline}
+    >
+      <button
+        type="button"
+        className={secondaryActionClass}
+        aria-label={`下线任务 ${record?.jobName || ""}`}
+        onClick={stopPropagation}
+      >
+        <CloudDownloadOutlined />
+        下线
       </button>
     </Popconfirm>
   ) : (
@@ -429,6 +460,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
     <>
       <Space size={8} className="sync-task-row-actions">
         {primaryAction}
+        {releaseAction}
         <Dropdown
           trigger={["click"]}
           menu={{

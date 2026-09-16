@@ -204,7 +204,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "操作",
       }),
       dataIndex: "",
-      width: 168,
+      width: 224,
       fixed: "right",
       render: (_content, record) => (
         <RealtimeTaskActionColumn

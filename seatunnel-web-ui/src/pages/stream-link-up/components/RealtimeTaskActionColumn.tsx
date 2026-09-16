@@ -71,6 +71,8 @@ const dangerActionClass = `${actionBaseClass} stream-link-task-action--danger`;
 
 const secondaryActionClass = `${actionBaseClass} stream-link-task-action--secondary`;
 
+const disabledActionClass = `${actionBaseClass} stream-link-task-action--disabled`;
+
 const moreActionClass = `${actionBaseClass} gap-1 px-2 stream-link-task-action--more`;
 
 const isReleaseOnline = (releaseState?: string | number) => {
@@ -95,12 +97,14 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
   onLog,
   onCheckpoint,
 }) => {
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
   const [runOpen, setRunOpen] = useState(false);
+  const [offlineOpen, setOfflineOpen] = useState(false);
 
   const [runLoading, setRunLoading] = useState(false);
   const [stopLoading, setStopLoading] = useState(false);
   const [onlineLoading, setOnlineLoading] = useState(false);
+  const [offlineLoading, setOfflineLoading] = useState(false);
 
   const isOnline = isReleaseOnline(record.releaseState);
   const isRunning = isRunningStatus(record.lastJobStatus);
@@ -168,7 +172,13 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
       return;
     }
 
-    await onOffline?.(record);
+    try {
+      setOfflineLoading(true);
+      await onOffline?.(record);
+      setOfflineOpen(false);
+    } finally {
+      setOfflineLoading(false);
+    }
   };
 
   const primaryAction = isRunning ? (
@@ -201,11 +211,16 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
         终止
       </button>
     </Popconfirm>
-  ) : isOnline ? (
+  ) : (
     <Popconfirm
       title="启动实时任务"
-      open={runOpen}
+      open={canRun ? runOpen : false}
       onOpenChange={(open) => {
+        if (!canRun) {
+          message.warning("请先上线任务，再执行启动操作");
+          return;
+        }
+
         if (!runLoading) {
           setRunOpen(open);
         }
@@ -234,12 +249,71 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
     >
       <button
         type="button"
-        className={primaryActionClass}
+        disabled={!canRun}
+        className={canRun ? primaryActionClass : disabledActionClass}
         aria-label={`启动实时任务 ${record.jobName || ""}`}
-        onClick={stopPropagation}
+        onClick={(event) => {
+          event.stopPropagation();
+
+          if (!canRun) {
+            message.warning("请先上线任务，再执行启动操作");
+          }
+        }}
       >
         <PlayCircleOutlined />
         启动
+      </button>
+    </Popconfirm>
+  );
+
+  const releaseAction = isOnline ? (
+    <Popconfirm
+      title="任务下线"
+      open={canOffline ? offlineOpen : false}
+      onOpenChange={(open) => {
+        if (!canOffline) {
+          if (isRunning) {
+            message.warning("任务正在运行中，请先终止任务后再下线");
+          }
+
+          return;
+        }
+
+        if (!offlineLoading) {
+          setOfflineOpen(open);
+        }
+      }}
+      description={
+        <div className="mr-3">
+          下线后任务将不会再被调度触发，
+          <br />
+          确认下线该任务吗？
+        </div>
+      }
+      okText="确认"
+      cancelText="取消"
+      okButtonProps={{
+        size: "small",
+        loading: offlineLoading,
+      }}
+      cancelButtonProps={{ size: "small" }}
+      onConfirm={handleOffline}
+    >
+      <button
+        type="button"
+        className={canOffline ? secondaryActionClass : disabledActionClass}
+        aria-label={`下线实时任务 ${record.jobName || ""}`}
+        aria-disabled={!canOffline}
+        onClick={(event) => {
+          event.stopPropagation();
+
+          if (!canOffline && isRunning) {
+            message.warning("任务正在运行中，请先终止任务后再下线");
+          }
+        }}
+      >
+        <CloudDownloadOutlined />
+        下线
       </button>
     </Popconfirm>
   ) : (
@@ -274,6 +348,7 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
   return (
     <Space size={6} className="stream-link-row-actions whitespace-nowrap">
       {primaryAction}
+      {releaseAction}
 
       <Dropdown
         trigger={["click"]}
@@ -284,16 +359,6 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
               icon: <EyeOutlined />,
               label: "查看详情",
             },
-            ...(isOnline
-              ? [
-                  {
-                    key: "offline",
-                    icon: <CloudDownloadOutlined />,
-                    label: isRunning ? "下线任务（请先终止任务）" : "下线任务",
-                    disabled: isRunning,
-                  },
-                ]
-              : []),
             {
               type: "divider" as const,
             },
@@ -352,17 +417,6 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
 
             if (info.key === "view") {
               onDetail?.(record);
-              return;
-            }
-
-            if (info.key === "offline") {
-              modal.confirm({
-                title: "任务下线",
-                content: "下线后任务将不会再被调度触发，确认下线该任务吗？",
-                okText: "确认",
-                cancelText: "取消",
-                onOk: handleOffline,
-              });
               return;
             }
 

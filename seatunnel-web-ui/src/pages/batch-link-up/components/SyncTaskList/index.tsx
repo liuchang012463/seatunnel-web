@@ -338,7 +338,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Operate",
       }),
       dataIndex: "",
-      width: 168,
+      width: 224,
       fixed: "right",
       render: (_content: any, record: any) => (
         <ActionColumn record={record} cbk={fetchTaskList} goDetail={goDetail} />
