@@ -91,7 +91,7 @@ type LogEntry = {
 };
 
 const CONNECT_TIMEOUT = 5000;
-const WS_URL = "http://127.0.0.1:9527/ws";
+const WS_URL = "http://192.168.100.95:9527/ws";
 const WS_TOPIC = "/topic/log/test";
 
 const RunLog: FC<RunLogProps> = ({

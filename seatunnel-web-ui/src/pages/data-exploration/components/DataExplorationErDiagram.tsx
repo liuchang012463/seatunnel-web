@@ -1,10 +1,11 @@
 import {
-  ApartmentOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
+  LeftOutlined,
+  RightOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import { Input, Modal } from 'antd';
+import { Input } from 'antd';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ReactFlow, {
   Background,
@@ -29,11 +30,11 @@ import type {
 import './DataExplorationErDiagram.less';
 
 interface DataExplorationErDiagramProps {
-  open: boolean;
+  /** When false the workspace resets and stops rendering its content. */
+  active: boolean;
   dataSourceId?: string;
   databaseFqn?: string;
   schemaFqn?: string;
-  onClose: () => void;
 }
 
 interface ErNodeData {
@@ -141,11 +142,10 @@ const ErTableNode: React.FC<NodeProps<ErNodeData>> = ({ id, data }) => {
 const nodeTypes = { table: ErTableNode };
 
 const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
-  open,
+  active,
   dataSourceId,
   databaseFqn,
   schemaFqn,
-  onClose,
 }) => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -154,10 +154,13 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
   const [searchKeyword, setSearchKeyword] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [hiddenDescriptionIds, setHiddenDescriptionIds] = useState<Set<string>>(new Set());
+  // Both side drawers start collapsed so the ER canvas gets the full width.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [detailCollapsed, setDetailCollapsed] = useState(true);
   const flowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
   useEffect(() => {
-    if (!open || !dataSourceId || !databaseFqn) {
+    if (!active || !dataSourceId || !databaseFqn) {
       setLoading(false);
       setLoadError('');
       setDiagram(undefined);
@@ -207,7 +210,7 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
     return () => {
       disposed = true;
     };
-  }, [databaseFqn, dataSourceId, open, schemaFqn]);
+  }, [active, dataSourceId, databaseFqn, schemaFqn]);
 
   const visibleTables = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -304,32 +307,25 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
     }
   };
 
-  const schemaLabel = schemaFqn || databaseFqn || 'schema';
-
   return (
-    <Modal
-      className="exploration-er-modal"
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      width="96vw"
-      destroyOnHidden
-      title={(
-        <div className="er-modal-title">
-          <ApartmentOutlined />
-          <span>ER 图</span>
-          <span aria-hidden="true">·</span>
-          <span className="er-modal-title__path" title={schemaLabel}>{schemaLabel}</span>
-        </div>
-      )}
-      styles={{ body: { padding: 0 } }}
+    <main
+      className={`er-dialog-content${sidebarCollapsed ? ' is-sidebar-collapsed' : ''}${detailCollapsed ? ' is-detail-collapsed' : ''}`}
     >
-      <main className="er-dialog-content">
         <aside className="sidebar">
           <div className="table-list">
             <div className="side-head">
               <strong>数据表</strong>
-              <span>{diagram?.nodes.length || 0}</span>
+              <div className="side-head__right">
+                <span>{diagram?.nodes.length || 0}</span>
+                <button
+                  type="button"
+                  className="panel-toggle"
+                  title="收起数据表栏"
+                  onClick={() => setSidebarCollapsed(true)}
+                >
+                  <LeftOutlined />
+                </button>
+              </div>
             </div>
             <Input
               allowClear
@@ -361,13 +357,29 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
               )}
             </div>
           </div>
-          <div className="legend">
-            <p><i className="pk">PK</i> 主键</p>
-            <p><i className="fk">FK</i> 外键</p>
-          </div>
         </aside>
 
         <div className="flow-wrapper">
+          {sidebarCollapsed && (
+            <button
+              type="button"
+              className="edge-toggle edge-toggle--left"
+              title="展开数据表栏"
+              onClick={() => setSidebarCollapsed(false)}
+            >
+              <RightOutlined />
+            </button>
+          )}
+          {detailCollapsed && (
+            <button
+              type="button"
+              className="edge-toggle edge-toggle--right"
+              title="展开字段栏"
+              onClick={() => setDetailCollapsed(false)}
+            >
+              <LeftOutlined />
+            </button>
+          )}
           {loading && <div className="flow-mask">正在加载 ER 图...</div>}
           {!loading && loadError && <div className="flow-mask error">{loadError}</div>}
           {!loading && !loadError && !diagram?.nodes.length && (
@@ -401,6 +413,14 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
           {selectedTable ? (
             <>
               <div className="detail-head">
+                <button
+                  type="button"
+                  className="panel-toggle"
+                  title="收起字段栏"
+                  onClick={() => setDetailCollapsed(true)}
+                >
+                  <RightOutlined />
+                </button>
                 <span aria-hidden="true">▦</span>
                 <div>
                   <strong title={tableTitle(selectedTable)}>{tableTitle(selectedTable)}</strong>
@@ -426,11 +446,28 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
               </section>
             </>
           ) : (
-            <div className="detail-empty">请选择一张数据表</div>
+            <>
+              <div className="detail-empty-actions">
+                <button
+                  type="button"
+                  className="panel-toggle"
+                  title="收起字段栏"
+                  onClick={() => setDetailCollapsed(true)}
+                >
+                  <RightOutlined />
+                </button>
+              </div>
+              <div className="detail-empty">请选择一张数据表</div>
+            </>
           )}
+          {/* PK/FK legend pinned to the bottom of the field panel, outside
+              the scrolling field list. */}
+          <div className="legend">
+            <p><i className="pk">PK</i> 主键</p>
+            <p><i className="fk">FK</i> 外键</p>
+          </div>
         </aside>
-      </main>
-    </Modal>
+    </main>
   );
 };
 

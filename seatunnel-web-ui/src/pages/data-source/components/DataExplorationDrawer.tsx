@@ -231,7 +231,9 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const [activeTab, setActiveTab] = useState('columns');
   const [tableSearch, setTableSearch] = useState('');
   const [pendingSchemaFqn, setPendingSchemaFqn] = useState<string>();
-  const [erOpen, setErOpen] = useState(false);
+  // The ER diagram is the default view of the main workspace; selecting a
+  // table switches to the table detail and the ER link switches back.
+  const [erActive, setErActive] = useState(true);
   const [completionJob, setCompletionJob] = useState<DataExplorationMetadataJob>();
   const [completionLoading, setCompletionLoading] = useState(false);
   const completionNoticeRef = useRef<string>();
@@ -262,7 +264,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setTableSearch('');
     setActiveTab('columns');
     setPendingSchemaFqn(undefined);
-    setErOpen(false);
+    setErActive(true);
     setCompletionJob(undefined);
 
     fetchDataExplorationDatabases(dataSourceId)
@@ -465,13 +467,13 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     };
   }, [dataSourceId, open, selectedTableId]);
 
+  // The inventory summary backs the compact metrics strip in the title bar,
+  // so it is kept loaded regardless of the selected table.
   useEffect(() => {
-    if (!open || !dataSourceId || !databaseFqn || selectedTableId) {
-      if (selectedTableId) {
-        setScopeSummary(undefined);
-        setScopeSummaryError(undefined);
-        setScopeSummaryLoading(false);
-      }
+    if (!open || !dataSourceId || !databaseFqn) {
+      setScopeSummary(undefined);
+      setScopeSummaryError(undefined);
+      setScopeSummaryLoading(false);
       return;
     }
     let disposed = false;
@@ -503,7 +505,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     return () => {
       disposed = true;
     };
-  }, [open, dataSourceId, databaseFqn, schemaFqn, selectedTableId]);
+  }, [open, dataSourceId, databaseFqn, schemaFqn]);
 
   useEffect(() => {
     const jobId = completionJob?.jobId;
@@ -746,21 +748,31 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
           {sourcePath || '正在连接数据源'}
         </div>
       </div>
-      <div className="exploration-drawer__title-status">
-        <span className="exploration-status-dot" />
-        OpenMetadata
+      <div className="exploration-drawer__title-status exploration-drawer__title-scope">
+        {scopeSummaryLoading ? (
+          <Spin size="small" />
+        ) : scopeSummaryError ? (
+          <span className="is-error" title={scopeSummaryError}>{scopeSummaryError}</span>
+        ) : (
+          <>
+            <span className="exploration-status-dot" />
+            <span>数据表 <b>{formatCount(scopeSummary?.tableCount)}</b></span>
+            <span>已探查表 <b>{formatCount(scopeSummary?.profiledTableCount)}</b></span>
+            <span>已统计行数 <b>{formatCount(scopeSummary?.knownRowCount)}</b></span>
+            <span>已统计体积 <b>{formatDataSize(scopeSummary?.knownSizeInByte)}</b></span>
+          </>
+        )}
       </div>
     </div>
   );
 
   const closeExploration = () => {
-    setErOpen(false);
     onClose();
   };
 
   const workspace = (
         <Spin spinning={loading} className="exploration-drawer__spin">
-          <div className="exploration-drawer__workspace">
+          <div className={`exploration-drawer__workspace${erActive ? ' exploration-drawer__workspace--er' : ''}`}>
             <aside className="exploration-drawer__nav">
               <div className="exploration-drawer__nav-context">
                 <div className="exploration-drawer__eyebrow">CATALOG</div>
@@ -796,9 +808,12 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                 </label>
                 <button
                   type="button"
-                  className="exploration-drawer__er-link"
+                  className={`exploration-drawer__er-link${erActive ? ' is-active' : ''}`}
                   disabled={!databaseFqn || !schemaFqn}
-                  onClick={() => setErOpen(true)}
+                  onClick={() => {
+                    setSelectedTableId(undefined);
+                    setErActive(true);
+                  }}
                 >
                   <span><ApartmentOutlined /> ER 图</span>
                   <RightOutlined />
@@ -840,7 +855,10 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                         type="button"
                         key={table.id}
                         className={`exploration-drawer__table-item${selectedTableId === table.id ? ' is-selected' : ''}`}
-                        onClick={() => setSelectedTableId(table.id)}
+                        onClick={() => {
+                          setSelectedTableId(table.id);
+                          setErActive(false);
+                        }}
                       >
                         <TableOutlined />
                         <span className="exploration-drawer__table-item-copy">
@@ -869,13 +887,24 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
               </div>
             </aside>
 
-            <main className="exploration-drawer__main">
+            <main className={`exploration-drawer__main${erActive ? ' exploration-drawer__main--er' : ''}`}>
               {databases.length === 0 ? (
                 <div className="exploration-drawer__empty-state">
                   <div className="exploration-drawer__empty-icon"><DatabaseOutlined /></div>
                   <strong>暂无可用的探查结果</strong>
                   <span>请先完成数据源扫描，再从目录中选择数据库。</span>
                 </div>
+              ) : erActive ? (
+                databaseFqn && schemaFqn ? (
+                  <DataExplorationErDiagram
+                    active
+                    dataSourceId={dataSourceId}
+                    databaseFqn={databaseFqn}
+                    schemaFqn={schemaFqn}
+                  />
+                ) : (
+                  <div className="exploration-drawer__empty-state"><Spin /></div>
+                )
               ) : !schemaFqn ? (
                 <div className="exploration-drawer__empty-state">
                   <div className="exploration-drawer__empty-icon"><DatabaseOutlined /></div>
@@ -1040,12 +1069,15 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
               )}
             </main>
 
-            <aside className="exploration-drawer__inspector">
-              <div className="exploration-drawer__inspector-header">
-                <div className="exploration-drawer__eyebrow">INSPECTOR</div>
-                <strong>元数据摘要</strong>
-              </div>
-              {tableDetail ? (
+            {/* The inspector only backs the table detail view; the ER view
+                reclaims this column for a wider diagram canvas. */}
+            {!erActive && (
+              <aside className="exploration-drawer__inspector">
+                <div className="exploration-drawer__inspector-header">
+                  <div className="exploration-drawer__eyebrow">INSPECTOR</div>
+                  <strong>元数据摘要</strong>
+                </div>
+                {tableDetail && selectedTableId ? (
                 <div className="exploration-drawer__inspector-scroll">
                   <section className="exploration-drawer__inspector-section">
                     <div className="exploration-drawer__property-label">数据量</div>
@@ -1145,45 +1177,11 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                     )}
                   </section>
                 </div>
-              ) : databaseFqn ? (
-                <div className="exploration-drawer__inspector-scroll">
-                  <section className="exploration-drawer__inspector-section">
-                    <div className="exploration-drawer__property-label">
-                      {schemaFqn ? 'Schema 数据量' : '库数据量'}
-                    </div>
-                    {scopeSummaryLoading ? (
-                      <Spin size="small" />
-                    ) : scopeSummaryError ? (
-                      <p className="is-empty">{scopeSummaryError}</p>
-                    ) : (
-                      <>
-                        <div className="exploration-drawer__property">
-                          <span>数据表</span>
-                          <strong>{formatCount(scopeSummary?.tableCount)}</strong>
-                        </div>
-                        <div className="exploration-drawer__property">
-                          <span>已探查表</span>
-                          <strong>{formatCount(scopeSummary?.profiledTableCount)}</strong>
-                        </div>
-                        <div className="exploration-drawer__property">
-                          <span>已统计行数</span>
-                          <strong>{formatCount(scopeSummary?.knownRowCount)}</strong>
-                        </div>
-                        <div className="exploration-drawer__property">
-                          <span>已统计体积</span>
-                          <strong>{formatDataSize(scopeSummary?.knownSizeInByte)}</strong>
-                        </div>
-                      </>
-                    )}
-                  </section>
-                  <div className="exploration-drawer__inspector-empty">
-                    选择表后查看描述和约束。
-                  </div>
-                </div>
               ) : (
                 <div className="exploration-drawer__inspector-empty">选择表后查看描述和约束。</div>
               )}
-            </aside>
+              </aside>
+            )}
           </div>
         </Spin>
   );
@@ -1211,13 +1209,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
           {workspace}
         </Drawer>
       )}
-      <DataExplorationErDiagram
-        open={erOpen}
-        dataSourceId={dataSourceId}
-        databaseFqn={databaseFqn}
-        schemaFqn={schemaFqn}
-        onClose={() => setErOpen(false)}
-      />
       <Modal
         className="exploration-completion-modal"
         open={completionBusy}
