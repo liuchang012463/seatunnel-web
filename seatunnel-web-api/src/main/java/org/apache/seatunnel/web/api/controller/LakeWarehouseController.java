@@ -4,13 +4,17 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
+import org.apache.seatunnel.web.api.service.DataSourceCatalogService;
 import org.apache.seatunnel.web.api.service.LakeWarehouseService;
+import org.apache.seatunnel.web.common.QueryResult;
+import org.apache.seatunnel.web.spi.bean.vo.ColumnOptionVO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeWarehouseConfigDTO;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.LakeJdbcDriverVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakeDorisHardwareVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakeDorisStatusVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakeWarehouseConfigVO;
+import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @Tag(name = "LAKE_WAREHOUSE_TAG")
@@ -31,6 +36,9 @@ public class LakeWarehouseController {
 
     @Resource
     private LakeWarehouseService lakeWarehouseService;
+
+    @Resource
+    private DataSourceCatalogService dataSourceCatalogService;
 
     @GetMapping
     @Operation(summary = "getLakeWarehouseConfig")
@@ -48,6 +56,34 @@ public class LakeWarehouseController {
     @Operation(summary = "testLakeWarehouseConfig")
     public Result<LakeWarehouseConfigVO> testConfig(@RequestBody LakeWarehouseConfigDTO request) {
         return Result.buildSuc(lakeWarehouseService.testConfig(request));
+    }
+
+    @GetMapping("/catalog/databases")
+    @Operation(summary = "listLakeCatalogDatabases")
+    public Result<List<OptionVO>> listCatalogDatabases() {
+        return Result.buildSuc(dataSourceCatalogService.listDatabase(
+                lakeWarehouseService.requireSystemDataSourceId()));
+    }
+
+    @GetMapping("/catalog/tables")
+    @Operation(summary = "listLakeCatalogTables")
+    public Result<List<OptionVO>> listCatalogTables(@RequestParam("database") String databaseName) {
+        return Result.buildSuc(dataSourceCatalogService.listTable(
+                lakeWarehouseService.requireSystemDataSourceId(), databaseName));
+    }
+
+    @PostMapping("/catalog/columns")
+    @Operation(summary = "listLakeCatalogColumns")
+    public Result<List<ColumnOptionVO>> listCatalogColumns(@RequestBody Map<String, Object> requestBody) {
+        return Result.buildSuc(dataSourceCatalogService.listColumn(
+                lakeWarehouseService.requireSystemDataSourceId(), requestBody));
+    }
+
+    @PostMapping("/catalog/preview")
+    @Operation(summary = "previewLakeCatalogData")
+    public Result<QueryResult> previewCatalogData(@RequestBody Map<String, Object> requestBody) {
+        return Result.buildSuc(dataSourceCatalogService.getTop20Data(
+                lakeWarehouseService.requireSystemDataSourceId(), requestBody));
     }
 
     @GetMapping("/status")

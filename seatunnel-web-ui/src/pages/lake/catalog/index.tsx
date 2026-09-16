@@ -9,8 +9,7 @@ import { Button, Empty, Input, Spin, Table, Tabs, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { history } from '@umijs/max';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { dataSourceCatalogApi } from '@/pages/data-source/service';
-import { fetchLakeWarehouse } from '@/services/lake';
+import { fetchLakeWarehouse, lakeCatalogApi } from '@/services/lake';
 import type { LakeWarehouseConfig } from '@/services/lake';
 import './index.less';
 
@@ -64,11 +63,12 @@ const DataLakeCatalogPage: React.FC = () => {
   const [tableSearch, setTableSearch] = useState('');
   const [activeTab, setActiveTab] = useState('columns');
 
-  const dataSourceId = warehouse?.systemDataSourceId ? String(warehouse.systemDataSourceId) : '';
   const selectedTableOption = tables.find((item) => optionValue(item) === selectedTable);
+  const configured = Boolean(warehouse?.configured);
+  const catalogReady = warehouse?.catalogReady !== false;
 
   const loadDatabases = useCallback(async () => {
-    if (!dataSourceId) {
+    if (!configured || !catalogReady) {
       setDatabases([]);
       setSelectedDatabase('');
       return;
@@ -76,7 +76,7 @@ const DataLakeCatalogPage: React.FC = () => {
 
     setCatalogLoading(true);
     try {
-      const response = await dataSourceCatalogApi.listDatabases(dataSourceId);
+      const response = await lakeCatalogApi.listDatabases();
       if (response.code !== 0) throw new Error(response.message || '数据库列表读取失败');
       const nextDatabases = Array.isArray(response.data) ? response.data : [];
       setCatalogError('');
@@ -93,10 +93,10 @@ const DataLakeCatalogPage: React.FC = () => {
     } finally {
       setCatalogLoading(false);
     }
-  }, [dataSourceId]);
+  }, [catalogReady, configured]);
 
   const loadTables = useCallback(async () => {
-    if (!dataSourceId || !selectedDatabase) {
+    if (!configured || !catalogReady || !selectedDatabase) {
       setTables([]);
       setSelectedTable('');
       return;
@@ -104,7 +104,7 @@ const DataLakeCatalogPage: React.FC = () => {
 
     setTableLoading(true);
     try {
-      const response = await dataSourceCatalogApi.listTablesByDatabase(dataSourceId, selectedDatabase);
+      const response = await lakeCatalogApi.listTablesByDatabase(selectedDatabase);
       if (response.code !== 0) throw new Error(response.message || '表列表读取失败');
       const nextTables = Array.isArray(response.data) ? response.data : [];
       setCatalogError('');
@@ -121,10 +121,10 @@ const DataLakeCatalogPage: React.FC = () => {
     } finally {
       setTableLoading(false);
     }
-  }, [dataSourceId, selectedDatabase]);
+  }, [catalogReady, configured, selectedDatabase]);
 
   const loadDetail = useCallback(async () => {
-    if (!dataSourceId || !selectedDatabase || !selectedTable) {
+    if (!configured || !catalogReady || !selectedDatabase || !selectedTable) {
       setColumns([]);
       setPreview({});
       return;
@@ -138,8 +138,8 @@ const DataLakeCatalogPage: React.FC = () => {
         database: selectedDatabase,
       };
       const [columnResponse, previewResponse] = await Promise.all([
-        dataSourceCatalogApi.listColumn(dataSourceId, request),
-        dataSourceCatalogApi.getTop20Data(dataSourceId, request),
+        lakeCatalogApi.listColumn(request),
+        lakeCatalogApi.getTop20Data(request),
       ]);
       if (columnResponse.code !== 0) throw new Error(columnResponse.message || '字段读取失败');
       if (previewResponse.code !== 0) throw new Error(previewResponse.message || '样本数据读取失败');
@@ -152,7 +152,7 @@ const DataLakeCatalogPage: React.FC = () => {
     } finally {
       setDetailLoading(false);
     }
-  }, [dataSourceId, selectedDatabase, selectedTable]);
+  }, [catalogReady, configured, selectedDatabase, selectedTable]);
 
   useEffect(() => {
     let active = true;
@@ -234,7 +234,6 @@ const DataLakeCatalogPage: React.FC = () => {
     { title: '说明', dataIndex: 'fieldComment', key: 'fieldComment', ellipsis: true },
   ];
 
-  const configured = Boolean(dataSourceId);
   const refresh = async () => {
     await loadDatabases();
     if (selectedDatabase) await loadTables();
@@ -271,6 +270,12 @@ const DataLakeCatalogPage: React.FC = () => {
         <div className="lake-catalog-state lake-catalog-state--empty">
           <Empty description="尚未配置 Doris 数据湖连接">
             <Button type="primary" onClick={() => history.push('/lake/warehouse/config')}>前往连接配置</Button>
+          </Empty>
+        </div>
+      ) : !catalogReady ? (
+        <div className="lake-catalog-state lake-catalog-state--empty">
+          <Empty description={warehouse?.lastError || 'Doris 已连接，但数据目录尚未就绪'}>
+            <Button type="primary" onClick={() => history.push('/lake/warehouse/config')}>重新保存连接配置</Button>
           </Empty>
         </div>
       ) : (

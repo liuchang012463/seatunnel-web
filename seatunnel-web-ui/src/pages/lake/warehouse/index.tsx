@@ -230,7 +230,17 @@ const WarehousePage: React.FC = () => {
     void load();
   }, [load]);
 
-  const clusterStatus = useMemo(() => statusMeta(status?.status), [status?.status]);
+  const clusterStatus = useMemo(() => {
+    const meta = statusMeta(status?.status);
+    if (meta.tone === 'success' && config?.catalogReady === false) {
+      return {
+        label: '目录待修复',
+        tone: 'error' as StatusTone,
+        description: 'Doris 集群已连接，但数据目录投影未就绪，请重新保存连接配置。',
+      };
+    }
+    return meta;
+  }, [config?.catalogReady, status?.status]);
   const configured = Boolean(config?.configured || status?.configured);
   const checkedAt = formatTime(status?.checkedAt);
   const backendUsage = maxBackendUsage(status?.backends);
@@ -336,6 +346,15 @@ const WarehousePage: React.FC = () => {
                 <p>先配置 Doris FE 节点、查询端口和本地 JDBC 驱动，保存后即可在这里查看集群健康状态。</p>
               </div>
               <Button type="primary" onClick={() => history.push('/lake/warehouse/config')}>开始配置</Button>
+            </div>
+          ) : config?.catalogReady === false ? (
+            <div className="lake-cluster-notice">
+              <div className="lake-cluster-notice-icon"><SettingOutlined /></div>
+              <div>
+                <strong>Doris 已连接，但数据目录尚未就绪</strong>
+                <p>{config.lastError || '系统数据源投影不存在，请重新保存连接配置以自动修复。'}</p>
+              </div>
+              <Button type="primary" onClick={() => history.push('/lake/warehouse/config')}>重新保存配置</Button>
             </div>
           ) : null}
 

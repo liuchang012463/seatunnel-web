@@ -31,4 +31,7 @@ public class LakeWarehouseConfigVO {
     private String lastError;
 
     private boolean configured;
+
+    /** True when the lake configuration is backed by a usable system data source projection. */
+    private boolean catalogReady;
 }

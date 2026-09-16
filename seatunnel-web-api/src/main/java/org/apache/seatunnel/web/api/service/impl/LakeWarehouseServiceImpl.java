@@ -137,8 +137,8 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
             throw invalid("password");
         }
 
-        Long adoptedId = current == null ? request.getAdoptDataSourceId() : current.getSystemDataSourceId();
-        DataSource projection = resolveProjection(adoptedId);
+        DataSource projection = resolveProjection(current, request.getAdoptDataSourceId());
+        boolean projectionCreated = projection == null;
         if (projection == null) {
             projection = new DataSource();
             projection.initInsert();
@@ -160,7 +160,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         projection.setStatus(DataSourceLifecycleStatus.ENABLED);
         projection.setUpdateUserId(currentUserId());
         projection.initUpdate();
-        if (projection.getId() == null) {
+        if (projectionCreated) {
             dataSourceDao.insert(projection);
         } else {
             dataSourceDao.updateById(projection);
@@ -504,9 +504,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
                     "湖 ODS 数据湖尚未生成系统数据源，请保存数据湖配置");
         }
         DataSource projection = dataSourceDao.queryById(config.getSystemDataSourceId());
-        if (projection == null || !Boolean.TRUE.equals(projection.getSystemManaged())
-                || !SYSTEM_KEY.equals(projection.getSystemKey())
-                || projection.getDbType() != DbType.DORIS) {
+        if (!isLakeProjection(projection)) {
             throw new LakeServiceException(LakeErrorCode.LAKE_WAREHOUSE_NOT_CONFIGURED,
                     "湖 ODS 系统数据源投影不存在，请重新保存数据湖配置");
         }
@@ -538,7 +536,15 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
                 "历史湖数据源 ID 未注册兼容映射，请重新保存数据湖配置");
     }
 
-    private DataSource resolveProjection(Long adoptedId) {
+    /**
+     * Resolves the data-source row used by the generic catalog APIs.
+     *
+     * <p>A historical lake configuration can retain an ID whose data-source
+     * row was deleted during a restore or cleanup. That ID is not an explicit
+     * adoption request and must not prevent the lake configuration from
+     * rebuilding its canonical projection.</p>
+     */
+    private DataSource resolveProjection(LakeWarehouseConfig current, Long adoptedId) {
         if (adoptedId != null) {
             DataSource candidate = dataSourceDao.queryById(adoptedId);
             if (candidate == null || candidate.getDbType() != DbType.DORIS) {
@@ -546,7 +552,33 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
             }
             return candidate;
         }
-        return dataSourceDao.queryBySystemKey(SYSTEM_KEY);
+
+        if (current != null && current.getSystemDataSourceId() != null) {
+            DataSource currentProjection = dataSourceDao.queryById(current.getSystemDataSourceId());
+            if (isLakeProjection(currentProjection)) {
+                return currentProjection;
+            }
+        }
+
+        DataSource canonicalProjection = dataSourceDao.queryBySystemKey(SYSTEM_KEY);
+        if (canonicalProjection != null && canonicalProjection.getDbType() == DbType.DORIS) {
+            return canonicalProjection;
+        }
+        return null;
+    }
+
+    private boolean isSystemProjection(Long dataSourceId) {
+        if (dataSourceId == null || dataSourceId <= 0) {
+            return false;
+        }
+        return isLakeProjection(dataSourceDao.queryById(dataSourceId));
+    }
+
+    private static boolean isLakeProjection(DataSource dataSource) {
+        return dataSource != null
+                && dataSource.getDbType() == DbType.DORIS
+                && Boolean.TRUE.equals(dataSource.getSystemManaged())
+                && SYSTEM_KEY.equals(dataSource.getSystemKey());
     }
 
     private void saveAlias(Long legacyId, Long canonicalId, String reason) {
@@ -703,7 +735,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
                 : requestedPassword;
     }
 
-    private static LakeWarehouseConfigVO toVO(LakeWarehouseConfig config) {
+    private LakeWarehouseConfigVO toVO(LakeWarehouseConfig config) {
         if (config == null) {
             return null;
         }
@@ -722,6 +754,11 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         result.setConfigured(StringUtils.isNotBlank(config.getJdbcUrl())
                 && StringUtils.isNotBlank(config.getUsername())
                 && StringUtils.isNotBlank(config.getPassword()));
+        boolean catalogReady = isSystemProjection(config.getSystemDataSourceId());
+        result.setCatalogReady(catalogReady);
+        if (result.isConfigured() && !catalogReady && StringUtils.isBlank(result.getLastError())) {
+            result.setLastError("湖 ODS 系统数据源投影不存在，请重新保存数据湖配置");
+        }
         return result;
     }
 
