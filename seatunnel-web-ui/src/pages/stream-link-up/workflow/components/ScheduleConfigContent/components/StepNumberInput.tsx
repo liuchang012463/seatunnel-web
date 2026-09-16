@@ -65,7 +65,7 @@ const StepNumberInput: React.FC<StepNumberInputProps> = ({
         max={max}
         step={step}
         controls={false}
-        bordered={false}
+        variant="borderless"
         style={{
           width: "34px",
           textAlign: "center",

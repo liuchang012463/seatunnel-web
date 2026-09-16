@@ -446,7 +446,7 @@ const ManagedTableDetailPage: React.FC = () => {
       ]}
     >
       <div className="lake-table-detail">
-        <Card className="lake-table-hero" bordered={false}>
+        <Card className="lake-table-hero" variant="borderless">
           <div className="lake-table-hero-icon"><TableOutlined /></div>
           <div className="lake-table-hero-copy">
             <div className="lake-detail-kicker">MANAGED ODS TABLE</div>
@@ -456,7 +456,7 @@ const ManagedTableDetailPage: React.FC = () => {
           <LakeResourceStatusTag status={table.resourceStatus} />
         </Card>
         <LakeErrorAlert code={table.errorCode} message={table.errorMessage} action={<Button type="link" onClick={() => void execute('对账', reconcileManagedTable)}>重新对账</Button>} />
-        <Card className="lake-table-status-card" bordered={false}>
+        <Card className="lake-table-status-card" variant="borderless">
           <Space size={24} wrap>
             <div><Text type="secondary">Source</Text><div><LakeConsistencyTag status={table.sourceConsistencyStatus as LakeConsistencyStatus} /></div></div>
             <div><Text type="secondary">Target</Text><div><LakeConsistencyTag status={table.targetConsistencyStatus as LakeConsistencyStatus} /></div></div>

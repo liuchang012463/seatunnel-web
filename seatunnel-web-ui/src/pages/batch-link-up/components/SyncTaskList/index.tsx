@@ -244,7 +244,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Name",
       }),
       dataIndex: "jobName",
-      width: 220,
+      width: 208,
       ellipsis: true,
       sorter: true,
       sortOrder: sort.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
@@ -278,7 +278,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Status",
       }),
       dataIndex: "taskParams",
-      width: 120,
+      width: 112,
       render: (_content: any, record: any) => (
         <div className="sync-task-status-cell flex w-full justify-center">
           <TaskStatus
@@ -294,7 +294,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Sync Plan",
       }),
       dataIndex: "",
-      width: 260,
+      width: 198,
       render: (_content: any, record: any) => (
         <div className="sync-task-plan-cell">
           <DataSourceSyncPlan record={record} />
@@ -307,7 +307,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Execution",
       }),
       dataIndex: "执行概况",
-      width: 210,
+      width: 156,
       render: (_content: any, record: any) => <ExecutionStatus record={record} />,
     },
     {
@@ -316,7 +316,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Schedule",
       }),
       dataIndex: "taskName",
-      width: 220,
+      width: 154,
       render: (_content: any, record: any) => <ScheduleInfo record={record} />,
     },
     {
@@ -325,7 +325,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "CreateTime",
       }),
       dataIndex: "createTime",
-      width: 170,
+      width: 136,
       sorter: true,
       sortOrder: sort.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (createTime: string) => (
@@ -338,7 +338,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Operate",
       }),
       dataIndex: "",
-      width: 260,
+      width: 168,
       fixed: "right",
       render: (_content: any, record: any) => (
         <ActionColumn record={record} cbk={fetchTaskList} goDetail={goDetail} />
@@ -353,6 +353,12 @@ const App: React.FC<Props> = ({
   const rowSelection: TableRowSelection<any> = {
     selectedRowKeys,
     onChange: onSelectChange,
+    getCheckboxProps: (record) => ({
+      'aria-label': `选择任务 ${record?.jobName || record?.id || ''}`,
+    } as any),
+    getTitleCheckboxProps: () => ({
+      'aria-label': '选择全部任务',
+    }),
   };
 
   const handleSearch = (values: any) => {
@@ -820,6 +826,7 @@ const App: React.FC<Props> = ({
             rowKey="id"
             pagination={false}
             loading={loading}
+            tableLayout="fixed"
             rowSelection={{ ...rowSelection, type: "checkbox", columnWidth: 44 }}
             onChange={(_pagination, _filters, sorter) => {
               const active = Array.isArray(sorter) ? sorter[0] : sorter;
@@ -830,7 +837,9 @@ const App: React.FC<Props> = ({
               );
             }}
             scroll={{
-              x: "max-content",
+              // Keep the fixed action column complete without covering the
+              // adjacent create-time column in the 1440px desktop shell.
+              x: "100%",
               ...(taskList.length > 0 ? { y: "calc(100vh - 380px)" } : {}),
             }}
             className="task-table"

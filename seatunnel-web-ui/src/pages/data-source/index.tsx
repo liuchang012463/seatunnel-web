@@ -1,7 +1,7 @@
 import ClickSpark from '@/components/ClickSpark';
 import StatusChip from '@/components/StatusChip';
 import { history, useIntl } from '@umijs/max';
-import { AppstoreOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, MoreOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -464,7 +464,7 @@ const DataSourcePage: React.FC = () => {
       title: '操作',
       key: 'actions',
       align: 'center',
-      width: 220,
+      width: 208,
       render: (_value, record) => {
         const currentStatus = record.status || 'ENABLED';
         const isRevoked = currentStatus === 'REVOKED';
@@ -472,37 +472,43 @@ const DataSourcePage: React.FC = () => {
         const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
         const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
 
-        const moreItems =
-          record.systemManaged && !isDeleting
-            ? undefined
-            : [
-                {
-                  key: 'lifecycle',
-                  label: statusActionLabel,
-                  disabled: isDeleting,
-                  onClick: () => handleStatusChange(record, nextStatus),
-                },
-                {
-                  key: 'revoke',
-                  label: '注销',
-                  disabled: isDeleting || isRevoked,
-                  onClick: () => handleStatusChange(record, 'REVOKED'),
-                },
-                { type: 'divider' as const },
-                {
-                  key: 'delete',
-                  label: '删除',
-                  danger: true,
-                  disabled: isDeleting,
-                  onClick: () => handleDelete(record),
-                },
-              ];
+        const moreItems = record.systemManaged
+          ? [
+              {
+                key: 'warehouse',
+                label: '数据湖管理',
+                onClick: handleOpenWarehouse,
+              },
+            ]
+          : [
+              {
+                key: 'lifecycle',
+                label: statusActionLabel,
+                disabled: isDeleting,
+                onClick: () => handleStatusChange(record, nextStatus),
+              },
+              {
+                key: 'revoke',
+                label: '注销',
+                disabled: isDeleting || isRevoked,
+                onClick: () => handleStatusChange(record, 'REVOKED'),
+              },
+              { type: 'divider' as const },
+              {
+                key: 'delete',
+                label: '删除',
+                danger: true,
+                disabled: isDeleting,
+                onClick: () => handleDelete(record),
+              },
+            ];
 
         return (
           <div className="datasource-catalog-actions">
             <button
               type="button"
               className="datasource-catalog-action datasource-catalog-action--test"
+              aria-label={`测试连接 ${record.name || ''}`}
               disabled={isDeleting}
               onClick={() => void handleTestConnection(record)}
             >
@@ -513,40 +519,36 @@ const DataSourcePage: React.FC = () => {
                 <button
                   type="button"
                   className="datasource-catalog-action datasource-catalog-action--primary"
+                  aria-label={`查看探查结果 ${record.name || ''}`}
                   disabled={isDeleting}
                   onClick={() => handleViewExploration(record)}
                 >
                   探查结果
-                </button>
-                <button
-                  type="button"
-                  className="datasource-catalog-action datasource-catalog-action--neutral"
-                  onClick={handleOpenWarehouse}
-                >
-                  数据湖管理
                 </button>
               </>
             ) : (
-              <>
-                <button
-                  type="button"
-                  className="datasource-catalog-action datasource-catalog-action--primary"
-                  disabled={isDeleting}
-                  onClick={() => handleViewExploration(record)}
-                >
-                  探查结果
-                </button>
-                <Dropdown trigger={['click']} menu={{ items: moreItems }}>
-                  <button
-                    type="button"
-                    className="datasource-catalog-action datasource-catalog-action--neutral"
-                    disabled={isDeleting}
-                  >
-                    更多
-                  </button>
-                </Dropdown>
-              </>
+              <button
+                type="button"
+                className="datasource-catalog-action datasource-catalog-action--primary"
+                aria-label={`查看探查结果 ${record.name || ''}`}
+                disabled={isDeleting}
+                onClick={() => handleViewExploration(record)}
+              >
+                探查结果
+              </button>
             )}
+            <Dropdown trigger={['click']} menu={{ items: moreItems }}>
+              <button
+                type="button"
+                className="datasource-catalog-action datasource-catalog-action--neutral"
+                aria-haspopup="menu"
+                aria-label={`更多数据源操作 ${record.name || ''}`}
+                disabled={isDeleting}
+              >
+                <MoreOutlined aria-hidden />
+                更多
+              </button>
+            </Dropdown>
           </div>
         );
       },
@@ -605,7 +607,6 @@ const DataSourcePage: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  size="large"
                   onClick={handleCreate}
                   className="datasource-create-button"
                 >
@@ -617,7 +618,6 @@ const DataSourcePage: React.FC = () => {
                 <div className="flex min-w-0 flex-1 flex-wrap gap-2">
                   <Button
                     type={selectedCategory === 'ALL' ? 'primary' : 'default'}
-                    shape="round"
                     onClick={() => {
                       setSelectedCategory('ALL');
                       setPagination((current) => ({ ...current, pageNo: 1 }));
@@ -629,7 +629,6 @@ const DataSourcePage: React.FC = () => {
                     <Button
                       key={category.key}
                       type={selectedCategory === category.key ? 'primary' : 'default'}
-                      shape="round"
                       onClick={() => {
                         setSelectedCategory(category.key);
                         setPagination((current) => ({ ...current, pageNo: 1 }));

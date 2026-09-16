@@ -31,8 +31,8 @@
     padding: 16px 20px;
     background: var(--st-color-bg-panel);
     border: 1px solid var(--st-color-border);
-    border-radius: 12px;
-    box-shadow: 0 6px 18px rgb(15 23 42 / 5%);
+    border-radius: var(--st-radius-md, 4px);
+    box-shadow: none;
 
     .ant-form-item-label > label {
       color: var(--st-color-text-secondary);
@@ -43,6 +43,7 @@
     .ant-select-selector {
       background: var(--st-color-bg-page) !important;
       border-color: var(--st-color-border) !important;
+      border-radius: var(--st-radius-md, 4px) !important;
       box-shadow: none !important;
     }
 
@@ -60,11 +61,11 @@
   }
 
   .task-table-shell {
-    overflow: hidden;
+    overflow: visible;
     background: var(--st-color-bg-panel);
     border: 1px solid var(--st-color-border);
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
+    border-radius: var(--st-radius-md, 4px);
+    box-shadow: none;
   }
 
   .task-table {
@@ -77,7 +78,7 @@
     }
 
     .ant-table-thead > tr > th {
-      padding: 13px 14px;
+      padding: 9px 12px;
       color: var(--st-color-text-secondary);
       font-size: 12px;
       font-weight: 700;
@@ -87,7 +88,7 @@
     }
 
     .ant-table-tbody > tr > td {
-      padding: 16px 14px;
+      padding: 10px 12px;
       background: var(--st-color-bg-panel);
       border-bottom: 1px solid var(--st-color-divider);
     }
@@ -125,14 +126,14 @@
   padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--st-color-bg-panel) 94%, transparent);
   border-top: 1px solid var(--st-color-border);
-  box-shadow: 0 -8px 24px rgb(15 23 42 / 8%);
+  box-shadow: none;
   backdrop-filter: blur(12px);
   transition: left var(--pro-sider-transition-duration) ease;
 
   &__content {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 12px 20px;
     max-width: 1540px;
     margin: 0 auto;
@@ -144,6 +145,37 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
+  }
+
+  .task-bottom-action-button {
+    height: var(--st-control-height, 32px);
+    min-width: 88px;
+    padding-inline: 12px;
+    color: var(--st-color-text-secondary);
+    font-weight: 500;
+    background: transparent;
+    border: 1px solid var(--st-color-border);
+    border-radius: var(--st-radius-md, 4px);
+    box-shadow: none;
+
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled) {
+      color: var(--st-color-accent);
+      background: var(--st-color-hover);
+      border-color: var(--st-color-accent);
+    }
+
+    &--primary {
+      color: #04222d !important;
+      background: var(--st-color-accent) !important;
+      border-color: var(--st-color-accent) !important;
+    }
+
+    &--danger {
+      color: var(--st-color-error) !important;
+      background: transparent !important;
+      border-color: var(--st-color-error) !important;
+    }
   }
 
   &__selection {
@@ -178,7 +210,7 @@
     margin: 16px 8px 0;
     left: 0;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-    border-radius: 12px;
+    border-radius: var(--st-radius-md, 4px);
     box-shadow: var(--st-panel-shadow);
 
     &__content {
@@ -203,7 +235,7 @@
       }
     }
 
-    &__selection { align-self: flex-end; }
+    &__selection { align-self: flex-start; }
   }
 }
 

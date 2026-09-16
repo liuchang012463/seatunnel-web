@@ -44,7 +44,8 @@
   /* §3.2 文字 */
   --st-color-text-primary: #edf4f7;
   --st-color-text-secondary: #afc4cd;
-  --st-color-text-muted: #6c8792;
+  --st-color-text-muted: #9bb5bd;
+  --st-color-on-primary: #000d12;
 
   /* §3.3 强调与语义（状态五色全局唯一） */
   --st-color-accent: #3fc6ff;
@@ -330,13 +331,13 @@ html[data-st-theme="dark"] .ant-menu-dark .ant-menu-submenu-selected > .ant-menu
 }
 
 .ant-btn-primary {
-  color: var(--st-color-text-primary);
+  color: var(--st-color-on-primary);
   background: var(--st-color-primary);
   border-color: var(--st-color-primary);
 }
 
 .ant-btn-primary:not(:disabled):hover {
-  color: var(--st-color-bg-primary);
+  color: var(--st-color-on-primary);
   background: var(--st-color-accent);
   border-color: var(--st-color-accent);
 }
@@ -443,6 +444,13 @@ html[data-st-theme="dark"] .ant-menu-dark .ant-menu-submenu-selected > .ant-menu
 
 .ant-table-wrapper .ant-table-placeholder > td {
   background: var(--st-color-bg-secondary) !important;
+}
+
+/* rc-table keeps a hidden measurement row in the DOM. Preserve its layout
+ * footprint while removing its focusable controls from the accessibility tree. */
+.ant-table-wrapper .ant-table-measure-row {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* Tabs, navigation and overlays */
@@ -937,7 +945,7 @@ html[data-st-theme="light"] .ant-app * {
 html[data-st-theme="light"] .ant-btn-primary,
 html[data-st-theme="light"] .ant-pagination .ant-pagination-item-active,
 html[data-st-theme="light"] .ant-table-wrapper .ant-table-thead > tr > th {
-  color: #ffffff !important;
+  color: var(--st-color-on-primary) !important;
 }
 
 html[data-st-theme="light"] .ant-table-wrapper .ant-table-thead > tr > th {

@@ -33,15 +33,19 @@ const SearchBar: React.FC<SearchBarProps> = ({
     <div className="datasource-search-bar">
       <div className="datasource-search-filter-row">
         <Input
+          id="data-source-search-name"
+          name="dataSourceName"
           allowClear
           prefix={<SearchOutlined className="datasource-search-control-icon" />}
           placeholder="根据数据源名称搜索"
+          aria-label="根据数据源名称搜索"
           value={value}
           className="datasource-search-control"
           onChange={(e) => onChange(e.target.value)}
         />
 
         <Select
+          id="data-source-filter-unit"
           allowClear
           showSearch
           value={selectedUnit === undefined ? undefined : String(selectedUnit)}
@@ -50,12 +54,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
             value: String(unit.id),
           }))}
           placeholder="按数据源单位筛选"
+          aria-label="按数据源单位筛选"
           className="datasource-filter-select"
           optionFilterProp="label"
           onChange={onUnitChange}
         />
 
         <Select
+          id="data-source-filter-business-system"
           allowClear
           showSearch
           value={selectedBusinessSystem === undefined ? undefined : String(selectedBusinessSystem)}
@@ -64,6 +70,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
             value: String(system.id),
           }))}
           placeholder="按业务系统筛选"
+          aria-label="按业务系统筛选"
           className="datasource-filter-select"
           optionFilterProp="label"
           disabled={selectedUnit === undefined}
@@ -71,10 +78,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
         />
 
         <Select
+          id="data-source-filter-status"
           allowClear
           value={selectedStatus}
           options={DATA_SOURCE_STATUS_OPTIONS}
           placeholder="按生命周期状态筛选"
+          aria-label="按生命周期状态筛选"
           className="datasource-filter-select"
           onChange={onStatusChange}
         />

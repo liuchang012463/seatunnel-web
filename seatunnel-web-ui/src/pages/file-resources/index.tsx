@@ -273,7 +273,7 @@ const FileResourcesPage: React.FC = () => {
   return (
     <PageContainer className="file-resources-page" title="文件资源管理" subTitle="统一管理可复用的对象存储文件资源">
       {contextHolder}
-      <Card className="file-resources-page__hero" bordered={false}>
+      <Card className="file-resources-page__hero" variant="borderless">
         <Row gutter={[20, 16]} align="middle">
           <Col flex="auto">
             <Space align="start" size={14}>
@@ -308,7 +308,7 @@ const FileResourcesPage: React.FC = () => {
         />
       ) : null}
 
-      <Card className="file-resources-page__workspace" bordered={false}>
+      <Card className="file-resources-page__workspace" variant="borderless">
         <div className="file-resources-page__toolbar">
           <div className="file-resources-page__location">
             <FolderOpenOutlined />

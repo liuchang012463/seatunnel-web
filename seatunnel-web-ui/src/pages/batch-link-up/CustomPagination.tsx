@@ -1,5 +1,6 @@
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Button, Pagination, PaginationProps } from "antd";
+import React from "react";
 
 interface CustomPaginationProps {
   total: number;
@@ -15,7 +16,7 @@ const CustomPagination: React.FC<CustomPaginationProps> = ({
   onChange,
 }) => {
   const itemRender: PaginationProps["itemRender"] = (
-    _,
+    page,
     type,
     originalElement
   ) => {
@@ -56,6 +57,19 @@ const CustomPagination: React.FC<CustomPaginationProps> = ({
         />
       );
     }
+
+    if (type === "page" && React.isValidElement(originalElement)) {
+      const params = new URLSearchParams(window.location.search);
+      params.set("current", String(page));
+      if (pageSize) {
+        params.set("pageSize", String(pageSize));
+      }
+
+      return React.cloneElement(originalElement, {
+        href: `${window.location.pathname}?${params.toString()}`,
+      });
+    }
+
     return originalElement;
   };
 
@@ -70,6 +84,7 @@ const CustomPagination: React.FC<CustomPaginationProps> = ({
         pageSize={pageSize}
         showSizeChanger
         pageSizeOptions={[10, 20, 50]}
+        itemRender={itemRender}
         onChange={onChange}
         onShowSizeChange={onChange}
       />

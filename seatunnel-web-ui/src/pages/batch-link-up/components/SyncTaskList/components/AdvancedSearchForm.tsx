@@ -187,6 +187,8 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
       <Form
         form={form}
         name="advanced_search"
+        id="task-advanced-search"
+        colon={false}
         onFinish={handleFinish}
         initialValues={mergedInitialValues}
       >
@@ -203,6 +205,8 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
               )}
             >
               <Input
+                id="task-search-job-name"
+                name="jobName"
                 allowClear
                 prefix={<SearchOutlined className="text-slate-400" />}
                 placeholder={intl.formatMessage({
@@ -210,7 +214,6 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                   defaultMessage: "Enter job name",
                 })}
                 className="h-8"
-                style={{ borderRadius: 16 }}
               />
             </Form.Item>
           </Col>
@@ -227,8 +230,11 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
               )}
             >
               <RangePicker
+                id={{
+                  start: "task-search-create-time-start",
+                  end: "task-search-create-time-end",
+                }}
                 className="h-8 w-full"
-                style={{ borderRadius: 16 }}
               />
             </Form.Item>
           </Col>
@@ -245,6 +251,8 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
               )}
             >
               <Select
+                id="task-search-status"
+                aria-label="按任务状态筛选"
                 allowClear
                 showSearch
                 placeholder={selectPlaceholder}
@@ -260,7 +268,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                 <Button
                   type="primary"
                   htmlType="submit"
-                  className="h-8 rounded-full border-none px-5 font-medium shadow-none"
+                  className="task-search-submit h-8 px-5 font-medium"
                 >
                   {intl.formatMessage({
                     id: "pages.job.search.button.search",
@@ -270,7 +278,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
 
                 <Button
                   onClick={handleReset}
-                  className="h-8 rounded-full border-slate-200 px-5 text-slate-600 hover:!border-slate-300 hover:!text-slate-900"
+                  className="task-search-reset h-8 px-5"
                 >
                   {intl.formatMessage({
                     id: "pages.job.search.button.reset",
@@ -280,7 +288,9 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
 
                 <button
                   type="button"
-                  className="inline-flex h-8 items-center gap-1 rounded-full px-2 text-xs font-medium text-[color:var(--st-color-accent)] transition hover:bg-[rgba(77,210,255,0.08)]"
+                  className="task-search-expand inline-flex h-8 items-center gap-1 px-2 text-xs font-medium text-[color:var(--st-color-accent)] transition hover:bg-[rgba(63,198,255,0.08)]"
+                  aria-expanded={expand}
+                  aria-controls="task-advanced-search-filters"
                   onClick={() => setExpand((prev) => !prev)}
                 >
                   {expand
@@ -307,7 +317,12 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
         </Row>
 
         {expand && (
-          <Row gutter={[16, 14]} className="mt-4" align="bottom">
+          <Row
+            id="task-advanced-search-filters"
+            gutter={[16, 14]}
+            className="mt-4"
+            align="bottom"
+          >
             <Col xs={24} md={12} xl={7}>
               <Form.Item
                 {...commonFormItemProps}
@@ -320,13 +335,14 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                 )}
               >
                 <Input
+                  id="task-search-job-id"
+                  name="id"
                   allowClear
                   placeholder={intl.formatMessage({
                     id: "pages.job.search.jobId.placeholder",
                     defaultMessage: "Enter job definition ID",
                   })}
                   className="h-8"
-                  style={{ borderRadius: 16 }}
                 />
               </Form.Item>
             </Col>
@@ -342,8 +358,9 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                   }),
                 )}
               >
-                <Select
-                  allowClear
+              <Select
+                id="task-search-source-type"
+                allowClear
                   showSearch
                   placeholder={selectPlaceholder}
                   options={sourceDataSourceOptions}
@@ -363,8 +380,9 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                   }),
                 )}
               >
-                <Select
-                  allowClear
+              <Select
+                id="task-search-sink-type"
+                allowClear
                   showSearch
                   placeholder={selectPlaceholder}
                   options={sinkDataSourceOptions}
@@ -389,13 +407,14 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                     )}
                   >
                     <Input
+                      id="task-search-source-table"
+                      name="sourceTable"
                       allowClear
                       placeholder={intl.formatMessage({
                         id: "pages.job.search.fuzzyPlaceholder",
                         defaultMessage: "Fuzzy match...",
                       })}
                       className="h-8"
-                      style={{ borderRadius: 16 }}
                     />
                   </Form.Item>
                 </Col>
@@ -412,13 +431,14 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                     )}
                   >
                     <Input
+                      id="task-search-sink-table"
+                      name="sinkTable"
                       allowClear
                       placeholder={intl.formatMessage({
                         id: "pages.job.search.fuzzyPlaceholder",
                         defaultMessage: "Fuzzy match...",
                       })}
                       className="h-8"
-                      style={{ borderRadius: 16 }}
                     />
                   </Form.Item>
                 </Col>

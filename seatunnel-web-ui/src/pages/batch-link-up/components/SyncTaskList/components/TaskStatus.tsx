@@ -86,42 +86,33 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
         styles={{
           body: {
             padding: 0,
-            borderRadius: 14,
             overflow: "hidden",
-            boxShadow: "0 18px 45px rgba(15, 23, 42, 0.18)",
+            boxShadow: "none",
           },
         }}
         content={
-          <div className="w-[520px] overflow-hidden rounded-[14px] border border-white/10 bg-[#0f172a] font-mono text-[13px] leading-[1.6]">
-            <div className="flex h-10 items-center justify-between border-b border-white/10 bg-white/[0.03] px-3">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-              </div>
+          <div className="sync-task-error-popover">
+            <div className="sync-task-error-popover__header">
+              <span>失败原因</span>
 
               <button
                 type="button"
+                aria-label="复制失败原因"
                 onClick={handleCopy}
-                className={[
-                  "inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs transition-colors",
-                  copied
-                    ? "border-[#86efac]/80 bg-[#f0fdf4] text-[#16a34a]"
-                    : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white",
-                ].join(" ")}
+                className={`sync-task-error-popover__copy${copied ? " is-copied" : ""}`}
               >
-                {copied ? "COPIED" : "COPY"}
+                {copied ? "已复制" : "复制"}
               </button>
             </div>
 
-            <div className="max-h-[240px] min-h-[120px] overflow-auto px-3 py-3">
+            <div className="sync-task-error-popover__body">
               {lines.map((line, index) => (
-                <div key={index} className="flex items-start">
-                  <span className="w-9 shrink-0 select-none pr-3 text-right text-[color:var(--st-color-text-muted)]">
+                <div key={index} className="sync-task-error-popover__line">
+                  <span className="sync-task-error-popover__line-number">
                     {index + 1}
                   </span>
 
-                  <span className="flex-1 whitespace-pre-wrap break-words text-[rgb(0,255,136)]">
+                  <span className="sync-task-error-popover__line-text">
                     {line || " "}
                   </span>
                 </div>
@@ -139,11 +130,6 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
             type="button"
             className="sync-task-log-link"
             aria-label={`查看${config.label}任务日志`}
-            style={{
-              fontSize: 12,
-              lineHeight: '20px',
-              color: 'var(--st-color-accent)',
-            }}
             onClick={(e) => {
               e.stopPropagation();
               setLogOpen(true);

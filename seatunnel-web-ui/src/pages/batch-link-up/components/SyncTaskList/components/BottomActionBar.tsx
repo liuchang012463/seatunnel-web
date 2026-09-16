@@ -7,7 +7,7 @@ import {
   PlayCircleOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import { Button, Dropdown, Tooltip } from "antd";
+import { Button, Dropdown } from "antd";
 import React from "react";
 
 interface BottomActionBarProps {
@@ -89,67 +89,60 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   return (
     <div className="task-bottom-action-bar">
       <div className="task-bottom-action-bar__content">
-        <div className="task-bottom-action-bar__actions">
-          <Tooltip title={defaultDisabledTooltip}>
-            <span style={{ display: "inline-flex" }}>
-              <Button
-                size="small"
-                onClick={onCreate}
-                disabled={disabled}
-                className="h-8 min-w-[104px] rounded-full border-slate-200 font-bold"
-                icon={<CopyOutlined />}
-              >
-                批量创建
-              </Button>
-            </span>
-          </Tooltip>
-
-          <Tooltip title={startTooltip || defaultDisabledTooltip}>
-            <span style={{ display: "inline-flex" }}>
-              <Button
-                size="small"
-                type="primary"
-                onClick={onStart}
-                disabled={finalStartDisabled}
-                className="h-8 min-w-[88px] rounded-full border-none font-bold shadow-[0_12px_26px_rgba(53,84,209,0.23)]"
-                icon={<PlayCircleOutlined />}
-              >
-                启动
-              </Button>
-            </span>
-          </Tooltip>
-
-          <Tooltip title={stopTooltip || defaultDisabledTooltip}>
-            <span style={{ display: "inline-flex" }}>
-              <Button
-                size="small"
-                onClick={onStop}
-                danger
-                type="primary"
-                disabled={finalStopDisabled}
-                className="h-8 min-w-[88px] rounded-full border-none font-bold shadow-[0_12px_26px_rgba(244,63,94,0.18)]"
-                icon={<StopOutlined />}
-              >
-                终止
-              </Button>
-            </span>
-          </Tooltip>
-
-          <Tooltip title="更多批量操作">
-            <Dropdown trigger={["click"]} menu={{ items: moreItems }}>
-              <Button
-                size="small"
-                className="h-8 rounded-full border-slate-200 font-bold"
-                icon={<MoreOutlined />}
-              >
-                更多操作
-              </Button>
-            </Dropdown>
-          </Tooltip>
+        <div className="task-bottom-action-bar__selection" aria-live="polite">
+          已选择 <strong>{selectedCount}</strong> 条
         </div>
 
-        <div className="task-bottom-action-bar__selection">
-          已选择 <strong>{selectedCount}</strong> 条
+        <div className="task-bottom-action-bar__actions">
+          <span style={{ display: "inline-flex" }} title={defaultDisabledTooltip}>
+            <Button
+              size="small"
+              onClick={onCreate}
+              disabled={disabled}
+              className="task-bottom-action-button"
+              icon={<CopyOutlined />}
+            >
+              批量创建
+            </Button>
+          </span>
+
+          <span style={{ display: "inline-flex" }} title={startTooltip || defaultDisabledTooltip}>
+            <Button
+              size="small"
+              type="primary"
+              onClick={onStart}
+              disabled={finalStartDisabled}
+              className="task-bottom-action-button task-bottom-action-button--primary"
+              icon={<PlayCircleOutlined />}
+            >
+              启动
+            </Button>
+          </span>
+
+          <span style={{ display: "inline-flex" }} title={stopTooltip || defaultDisabledTooltip}>
+            <Button
+              size="small"
+              onClick={onStop}
+              danger
+              type="primary"
+              disabled={finalStopDisabled}
+              className="task-bottom-action-button task-bottom-action-button--danger"
+              icon={<StopOutlined />}
+            >
+              终止
+            </Button>
+          </span>
+
+          <Dropdown trigger={["click"]} menu={{ items: moreItems }}>
+            <Button
+              size="small"
+              title="更多批量操作"
+              className="task-bottom-action-button"
+              icon={<MoreOutlined />}
+            >
+              更多操作
+            </Button>
+          </Dropdown>
         </div>
       </div>
     </div>

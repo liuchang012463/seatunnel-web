@@ -9,8 +9,7 @@ import defaultSettings from '../config/defaultSettings';
 import { Knowledge } from './components/RightContent';
 import { menuData } from './menuData';
 import { errorConfig } from './requestErrorConfig';
-import ThemeSwitch from './components/RightContent/ThemeSwitch';
-import { applyNavTheme, getStoredNavTheme, setNavTheme } from './theme';
+import { applyNavTheme, persistNavTheme, setNavTheme } from './theme';
 import HttpUtils from './utils/HttpUtils';
 import { applyLayoutVisibility, shouldHideLayout } from './utils/iframeLayout';
 
@@ -41,10 +40,11 @@ export async function getInitialState(): Promise<{
     return undefined;
   };
   const currentUser = await fetchUserInfo();
-  // 浅色 v2（DESIGN.md §6.4）：恢复读取持久化主题，切换入口回到顶栏。
-  const navTheme = getStoredNavTheme();
+  // 浅色 v2 尚未完成前，桌面验收固定在深色值班台主题。
+  const navTheme = 'realDark' as const;
   setNavTheme(navTheme);
   applyNavTheme(navTheme);
+  persistNavTheme(navTheme);
   return {
     fetchUserInfo,
     currentUser,
@@ -58,8 +58,6 @@ export async function getInitialState(): Promise<{
 export const layout: RunTimeLayoutConfig = ({ initialState }) => {
   const hideLayout = shouldHideLayout();
   applyLayoutVisibility(hideLayout);
-  const pathname = typeof window === 'undefined' ? '' : window.location.pathname;
-  const showWatermark = !pathname.startsWith('/lake/') && pathname !== '/data-source/master-data';
 
   return {
     menuDataRender: () => menuData,
@@ -92,35 +90,11 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
         </Tooltip>
       );
     },
-    actionsRender: () => [<ThemeSwitch key="theme" />, <Knowledge key="knowledge" />],
-    waterMarkProps: showWatermark
-      ? {
-          content: initialState?.currentUser?.name,
-          fontSize: 13,
-          fontColor: 'rgba(143, 173, 186, 0.10)',
-        }
-      : undefined,
+    // 主题切换在浅色 token 完整迁移前隐藏，避免同一产品出现两套几何语言。
+    actionsRender: () => [<Knowledge key="knowledge" />],
+    // 业务水印默认关闭；审计/导出场景另行显式开启。
+    waterMarkProps: undefined,
     footerRender: () => <Footer />,
-    bgLayoutImgList: [
-      {
-        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/D2LWSqNny4sAAAAAAAAAAAAAFl94AQBr',
-        left: 85,
-        bottom: 100,
-        height: '303px',
-      },
-      {
-        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/C2TWRpJpiC0AAAAAAAAAAAAAFl94AQBr',
-        bottom: -68,
-        right: -45,
-        height: '303px',
-      },
-      {
-        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/F6vSTbj8KpYAAAAAAAAAAAAAFl94AQBr',
-        bottom: 0,
-        left: 0,
-        width: '331px',
-      },
-    ],
     links: [],
     // 自定义 403 页面
     // unAccessible: <div>unAccessible</div>,
@@ -147,6 +121,10 @@ export const request: RequestConfig = {
  * DESIGN.md §6.2 antd 算法正规化：运行时统一走 ThemeConfigProvider 的
  * theme.algorithm 派生映射令牌（浅色 v2 也在该 Provider 内切换算法）。
  */
-export const rootContainer = (container: React.ReactNode) => (
-  <ThemeConfigProvider>{container}</ThemeConfigProvider>
-);
+export const rootContainer = (container: React.ReactNode) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = 'zh-CN';
+  }
+
+  return <ThemeConfigProvider>{container}</ThemeConfigProvider>;
+};

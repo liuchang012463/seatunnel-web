@@ -84,6 +84,16 @@ export default defineConfig({
    * @doc https://umijs.org/docs/max/layout-menu
    */
   title: "Aircas Web",
+  metas: [
+    {
+      name: "description",
+      content: "Aircas Web 数据引接与数据源管理工作台",
+    },
+    {
+      name: "viewport",
+      content: "width=device-width, initial-scale=1",
+    },
+  ],
   layout: {
     locale: true,
     ...defaultSettings,
@@ -133,9 +143,9 @@ export default defineConfig({
           colorBgSpotlight: "#052F3F",
           colorText: "#EDF4F7",
           colorTextSecondary: "#AFC4CD",
-          colorTextTertiary: "#6C8792",
-          colorTextQuaternary: "#6C8792",
-          colorTextDisabled: "#6C8792",
+          colorTextTertiary: "#9BB5BD",
+          colorTextQuaternary: "#9BB5BD",
+          colorTextDisabled: "#9BB5BD",
           colorBorder: "rgba(126, 183, 208, 0.30)",
           colorBorderSecondary: "rgba(126, 183, 208, 0.14)",
           colorSplit: "rgba(126, 183, 208, 0.14)",

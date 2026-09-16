@@ -154,7 +154,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '链路名称/ID',
         }),
         dataIndex: 'jobName',
-        width: 220,
+        width: 208,
         ellipsis: true,
         sorter: true,
         sortOrder: sort.field === 'name' ? (sort.order === 'asc' ? 'ascend' : 'descend') : undefined,
@@ -188,7 +188,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '健康状态',
         }),
         dataIndex: 'lastJobStatus',
-        width: 120,
+        width: 112,
         render: (_value: unknown, record: any) => (
           <div className="sync-task-status-cell flex w-full justify-center">
             <TaskStatus status={record?.lastJobStatus} errorMessage={record?.lastErrorMessage} />
@@ -201,7 +201,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '数据源同步方案',
         }),
         key: 'syncPlan',
-        width: 260,
+        width: 198,
         render: (_value: unknown, record: any) => <DataSourceSyncPlan record={record} />,
       },
       {
@@ -210,7 +210,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '执行概况',
         }),
         key: 'execution',
-        width: 210,
+        width: 156,
         render: (_value: unknown, record: any) => <ExecutionStatus record={record} />,
       },
       {
@@ -219,7 +219,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '链路动态调度',
         }),
         key: 'schedule',
-        width: 220,
+        width: 154,
         render: (_value: unknown, record: any) => <ScheduleInfo record={record} />,
       },
       {
@@ -228,7 +228,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '创建时间',
         }),
         dataIndex: 'createTime',
-        width: 170,
+        width: 136,
         sorter: true,
         sortOrder: sort.field === 'createTime' ? (sort.order === 'asc' ? 'ascend' : 'descend') : undefined,
         render: (value: string) => <span className="sync-task-time">{value || '-'}</span>,
@@ -239,7 +239,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '操作',
         }),
         key: 'action',
-        width: 260,
+        width: 168,
         fixed: 'right',
         render: (_value: unknown, record: any) => (
           <ActionColumn record={record} cbk={() => void fetchTaskList()} goDetail={goDetail} />
@@ -287,6 +287,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
             dataSource={taskList}
             loading={loading}
             pagination={false}
+            tableLayout="fixed"
             onChange={(_tablePagination: TablePaginationConfig, _filters, sorter) => {
               const active = Array.isArray(sorter) ? sorter[0] : sorter;
               if (!active?.order) return;
@@ -297,7 +298,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
               setPagination((previous) => ({ ...previous, current: 1 }));
             }}
             scroll={{
-              x: 'max-content',
+              x: '100%',
               ...(taskList.length > 0 ? { y: 'calc(100vh - 380px)' } : {}),
             }}
             className="task-table"

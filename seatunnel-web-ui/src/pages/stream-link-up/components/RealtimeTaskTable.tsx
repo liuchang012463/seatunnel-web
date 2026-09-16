@@ -101,7 +101,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "链路名称/ID",
       }),
       dataIndex: "jobName",
-      width: 220,
+      width: 208,
       ellipsis: true,
       sorter: true,
       sortOrder: sort?.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
@@ -154,7 +154,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "数据源同步方案",
       }),
       dataIndex: "",
-      width: 260,
+      width: 198,
       ellipsis: true,
       render: (_content, record) => (
         <div className="sync-task-plan-cell">
@@ -169,7 +169,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "执行概况",
       }),
       dataIndex: "",
-      width: 210,
+      width: 156,
       render: (_content, record) => <ExecutionStatus record={record} />,
     },
     {
@@ -179,7 +179,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "链路动态调度",
       }),
       dataIndex: "",
-      width: 220,
+      width: 154,
       render: (_content, record) => <ScheduleInfo record={record} />,
     },
     {
@@ -191,7 +191,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       dataIndex: "createTime",
       sorter: true,
       sortOrder: sort?.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
-      width: 170,
+      width: 136,
       ellipsis: true,
       render: (value: string | undefined) => (
         <span className="sync-task-time">{formatDateTime(value)}</span>
@@ -204,7 +204,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "操作",
       }),
       dataIndex: "",
-      width: 260,
+      width: 168,
       fixed: "right",
       render: (_content, record) => (
         <RealtimeTaskActionColumn
@@ -241,14 +241,21 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       }}
       dataSource={dataSource}
       pagination={false}
+      tableLayout="fixed"
       rowSelection={{
         selectedRowKeys,
         onChange: onSelectedRowKeysChange,
         columnWidth: 42,
+        getCheckboxProps: (record) => ({
+          'aria-label': `选择任务 ${record?.jobName || record?.id || ''}`,
+        } as any),
+        getTitleCheckboxProps: () => ({
+          'aria-label': '选择全部任务',
+        }),
       }}
       size="middle"
       scroll={{
-        x: "max-content",
+        x: "100%",
         ...(dataSource.length > 0 ? { y: "calc(100vh - 380px)" } : {}),
       }}
       className="task-table"

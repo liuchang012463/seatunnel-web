@@ -389,7 +389,7 @@ const PhysicalResourceDetailPage: React.FC = () => {
       ].filter(Boolean)}
     >
       <div className="lake-resource-detail">
-        <Card className="lake-detail-hero" bordered={false}>
+        <Card className="lake-detail-hero" variant="borderless">
           <div className="lake-detail-hero-icon"><DatabaseOutlined /></div>
           <div className="lake-detail-hero-copy">
             <div className="lake-detail-kicker">业务数据源</div>
@@ -405,7 +405,7 @@ const PhysicalResourceDetailPage: React.FC = () => {
           <Card><Statistic title="最近对账" value={formatTime(database?.lastReconcileAt)} prefix={<ReloadOutlined />} /></Card>
         </div>
         <LakeErrorAlert code={database?.errorCode} message={database?.errorMessage} action={database?.id ? <Button type="link" onClick={() => void reconcile()}>重新读取 Doris 状态</Button> : undefined} />
-        <Card className="lake-detail-card" bordered={false}>
+        <Card className="lake-detail-card" variant="borderless">
           <Descriptions column={{ xs: 1, sm: 2, md: 3 }} size="small">
             <Descriptions.Item label="单位">{unitNameByCode(source.unitCode) || '-'}</Descriptions.Item>
             <Descriptions.Item label="业务系统">{systemNameByCode(source.systemCode) || '-'}</Descriptions.Item>

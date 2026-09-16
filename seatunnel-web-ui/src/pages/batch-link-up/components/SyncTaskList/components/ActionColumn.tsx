@@ -26,7 +26,7 @@ interface ActionColumnProps {
 }
 
 const actionBaseClass =
-  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-all duration-150";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-xs font-medium transition-all duration-150";
 
 /* 动作按钮配色走 SyncTaskList/index.less 的令牌类，深浅主题自适应 */
 const primaryActionClass = `${actionBaseClass} sync-action-btn is-primary`;
@@ -35,10 +35,8 @@ const dangerActionClass = `${actionBaseClass} sync-action-btn is-danger`;
 
 const secondaryActionClass = `${actionBaseClass} sync-action-btn is-secondary`;
 
-const disabledActionClass = `${actionBaseClass} sync-action-btn is-disabled`;
-
 const moreActionClass =
-  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 rounded-md border px-2 text-xs font-medium transition-all duration-150 sync-action-btn is-secondary";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 border px-2 text-xs font-medium transition-all duration-150 sync-action-btn is-secondary";
 
 const isReleaseOnline = (releaseState?: string | number) => {
   return releaseState === "ONLINE" || releaseState === 1;
@@ -54,13 +52,11 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
 
   const ref = useRef<any>(null);
 
-  const [runOpen, setRunOpen] = useState(false);
   const [runLoading, setRunLoading] = useState(false);
 
   const isOnline = isReleaseOnline(record?.releaseState);
   const isRunning = record?.lastJobStatus === "RUNNING";
   const [logOpen, setLogOpen] = useState(false);
-  const canRun = isOnline && !isRunning;
 
   /**
    * 上线后不能编辑和删除。
@@ -249,6 +245,16 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       return;
     }
 
+    if (info?.key === "online") {
+      handleOnline();
+      return;
+    }
+
+    if (info?.key === "offline") {
+      handleOffline();
+      return;
+    }
+
     if (info?.key === "delete") {
       handleDeleteTask();
     }
@@ -273,11 +279,25 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
     {
       key: "edit",
       icon: <EditOutlined />,
-      label: <span style={{ fontWeight: 500 }}>编辑配置</span>,
+      label: (
+        <span style={{ fontWeight: 500 }}>
+          编辑配置{canEdit ? "" : `（请先${isRunning ? "终止任务" : "下线任务"}）`}
+        </span>
+      ),
       disabled: !canEdit,
     },
     {
       type: "divider" as const,
+    },
+    {
+      key: isOnline ? "offline" : "online",
+      icon: isOnline ? <CloudDownloadOutlined /> : <CloudUploadOutlined />,
+      label: isOnline
+        ? isRunning
+          ? "下线任务（请先终止任务）"
+          : "下线任务"
+        : "上线任务",
+      disabled: isOnline && isRunning,
     },
     {
       key: "log",
@@ -291,164 +311,124 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
     {
       key: "delete",
       icon: <DeleteOutlined />,
-      label: <span style={{ fontWeight: 500 }}>删除任务</span>,
+      label: (
+        <span style={{ fontWeight: 500 }}>
+          删除任务
+          {!canDelete ? `（请先${isRunning ? "终止并" : ""}下线任务）` : ""}
+        </span>
+      ),
       danger: true,
       disabled: !canDelete,
     },
   ];
 
+  const primaryAction = isRunning ? (
+    <Popconfirm
+      title={intl.formatMessage({
+        id: "pages.job.action.stop.title",
+        defaultMessage: "Terminate Task",
+      })}
+      description={
+        <div style={{ marginRight: 12 }}>
+          {intl.formatMessage({
+            id: "pages.job.action.stop.desc",
+            defaultMessage: "Are you sure to terminate this job?",
+          })}
+        </div>
+      }
+      okText={yesText}
+      cancelText={noText}
+      onConfirm={handleStop}
+    >
+      <button
+        type="button"
+        className={dangerActionClass}
+        aria-label={`终止任务 ${record?.jobName || ""}`}
+        onClick={stopPropagation}
+      >
+        <PauseCircleOutlined />
+        终止
+      </button>
+    </Popconfirm>
+  ) : isOnline ? (
+    <Popconfirm
+      title={intl.formatMessage({
+        id: "pages.job.action.run.title",
+        defaultMessage: "Run Task",
+      })}
+      okButtonProps={{ loading: runLoading }}
+      description={
+        <div style={{ marginRight: 12 }}>
+          {intl.formatMessage({
+            id: "pages.job.action.run.desc",
+            defaultMessage: "Are you sure to start this job?",
+          })}
+        </div>
+      }
+      okText={yesText}
+      cancelText={noText}
+      onConfirm={async () => {
+        try {
+          setRunLoading(true);
+
+          const data = await seatunnelJobExecuteApi.execute(record?.id);
+
+          if (data?.code === 0) {
+            message.success(
+              intl.formatMessage({
+                id: "pages.common.success",
+                defaultMessage: "Success",
+              })
+            );
+            cbk();
+          } else {
+            message.error(data?.msg || "启动失败");
+          }
+        } finally {
+          setRunLoading(false);
+        }
+      }}
+    >
+      <button
+        type="button"
+        className={primaryActionClass}
+        aria-label={`启动任务 ${record?.jobName || ""}`}
+        onClick={stopPropagation}
+      >
+        <PlayCircleOutlined />
+        启动
+      </button>
+    </Popconfirm>
+  ) : (
+    <Popconfirm
+      title="任务上线"
+      description={
+        <div style={{ marginRight: 12 }}>
+          上线后任务将恢复可运行状态，并同步恢复调度，
+          <br />
+          确认上线该任务吗？
+        </div>
+      }
+      okText="确认"
+      cancelText="取消"
+      onConfirm={handleOnline}
+    >
+      <button
+        type="button"
+        className={secondaryActionClass}
+        aria-label={`上线任务 ${record?.jobName || ""}`}
+        onClick={stopPropagation}
+      >
+        <CloudUploadOutlined />
+        上线
+      </button>
+    </Popconfirm>
+  );
+
   return (
     <>
-      <Space size={6} className="whitespace-nowrap">
-        {isRunning ? (
-          <Popconfirm
-            title={intl.formatMessage({
-              id: "pages.job.action.stop.title",
-              defaultMessage: "Terminate Task",
-            })}
-            description={
-              <div style={{ marginRight: 12 }}>
-                {intl.formatMessage({
-                  id: "pages.job.action.stop.desc",
-                  defaultMessage: "Are you sure to terminate this job?",
-                })}
-              </div>
-            }
-            okText={yesText}
-            cancelText={noText}
-            onConfirm={handleStop}
-          >
-            <button
-              type="button"
-              className={dangerActionClass}
-              onClick={stopPropagation}
-            >
-              <PauseCircleOutlined />
-              终止
-            </button>
-          </Popconfirm>
-        ) : (
-          <Popconfirm
-            title={intl.formatMessage({
-              id: "pages.job.action.run.title",
-              defaultMessage: "Run Task",
-            })}
-            open={canRun ? runOpen : false}
-            onOpenChange={(open) => {
-              if (!canRun) {
-                message.warning("请先上线任务，再执行启动操作");
-                return;
-              }
-
-              if (!runLoading) {
-                setRunOpen(open);
-              }
-            }}
-            okButtonProps={{ loading: runLoading }}
-            description={
-              <div style={{ marginRight: 12 }}>
-                {intl.formatMessage({
-                  id: "pages.job.action.run.desc",
-                  defaultMessage: "Are you sure to start this job?",
-                })}
-              </div>
-            }
-            okText={yesText}
-            cancelText={noText}
-            onConfirm={async () => {
-              if (!canRun) {
-                message.warning("请先上线任务，再执行启动操作");
-                return;
-              }
-
-              try {
-                setRunLoading(true);
-
-                const data = await seatunnelJobExecuteApi.execute(record?.id);
-
-                if (data?.code === 0) {
-                  message.success(
-                    intl.formatMessage({
-                      id: "pages.common.success",
-                      defaultMessage: "Success",
-                    })
-                  );
-                  cbk();
-                  setRunOpen(false);
-                } else {
-                  message.error(data?.msg || "启动失败");
-                }
-              } finally {
-                setRunLoading(false);
-              }
-            }}
-          >
-            <button
-              type="button"
-              disabled={!canRun}
-              className={canRun ? primaryActionClass : disabledActionClass}
-              onClick={(event) => {
-                event.stopPropagation();
-
-                if (!canRun) {
-                  message.warning("请先上线任务，再执行启动操作");
-                }
-              }}
-            >
-              <PlayCircleOutlined />
-              启动
-            </button>
-          </Popconfirm>
-        )}
-
-        {isOnline ? (
-          <Popconfirm
-            title="任务下线"
-            description={
-              <div style={{ marginRight: 12 }}>
-                下线后任务将不会再被调度触发，
-                <br />
-                确认下线该任务吗？
-              </div>
-            }
-            okText="确认"
-            cancelText="取消"
-            onConfirm={handleOffline}
-          >
-            <button
-              type="button"
-              className={secondaryActionClass}
-              onClick={stopPropagation}
-            >
-              <CloudDownloadOutlined />
-              下线
-            </button>
-          </Popconfirm>
-        ) : (
-          <Popconfirm
-            title="任务上线"
-            description={
-              <div style={{ marginRight: 12 }}>
-                上线后任务将恢复可运行状态，并同步恢复调度，
-                <br />
-                确认上线该任务吗？
-              </div>
-            }
-            okText="确认"
-            cancelText="取消"
-            onConfirm={handleOnline}
-          >
-            <button
-              type="button"
-              className={secondaryActionClass}
-              onClick={stopPropagation}
-            >
-              <CloudUploadOutlined />
-              上线
-            </button>
-          </Popconfirm>
-        )}
-
+      <Space size={8} className="sync-task-row-actions">
+        {primaryAction}
         <Dropdown
           trigger={["click"]}
           menu={{
@@ -461,6 +441,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
             type="button"
             className={moreActionClass}
             aria-haspopup="menu"
+            aria-label={`更多任务操作 ${record?.jobName || ""}`}
             onClick={stopPropagation}
           >
             更多

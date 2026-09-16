@@ -9,7 +9,7 @@ import {
   StopOutlined,
   SyncOutlined,
 } from "@ant-design/icons";
-import { Button, Dropdown, Tag, Tooltip } from "antd";
+import { Button, Dropdown } from "antd";
 import React from "react";
 
 interface BottomActionBarProps {
@@ -76,38 +76,32 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
   return (
     <div className="stream-link-bottom-bar">
       <div className="stream-link-bottom-bar__content">
+        <div className="stream-link-bottom-bar__selection" aria-live="polite">
+          已选择 <strong>{selectedCount}</strong> 条
+        </div>
+
         <div className="stream-link-bottom-bar__actions">
-        <Tooltip title={defaultDisabledTooltip}>
-          <span>
-            <Button size="small" disabled={disabled} onClick={onCreate} icon={<CopyOutlined />}>
-              批量创建
-            </Button>
-          </span>
-        </Tooltip>
+        <span title={defaultDisabledTooltip}>
+          <Button size="small" disabled={disabled} onClick={onCreate} icon={<CopyOutlined />} className="stream-link-bottom-action-button">
+            批量创建
+          </Button>
+        </span>
 
-        <Tooltip title={withDefault(startTooltip)}>
-          <span>
-            <Button type="primary" size="small" disabled={disabled || startDisabled} onClick={onStart} icon={<PlayCircleOutlined />}>
-              启动
-            </Button>
-          </span>
-        </Tooltip>
+        <span title={withDefault(startTooltip)}>
+          <Button type="primary" size="small" disabled={disabled || startDisabled} onClick={onStart} icon={<PlayCircleOutlined />} className="stream-link-bottom-action-button stream-link-bottom-action-button--primary">
+            启动
+          </Button>
+        </span>
 
-        <Tooltip title={withDefault(terminateTooltip)}>
-          <span>
-            <Button danger size="small" disabled={disabled || terminateDisabled} onClick={onTerminate} icon={<StopOutlined />}>
-              终止
-            </Button>
-          </span>
-        </Tooltip>
+        <span title={withDefault(terminateTooltip)}>
+          <Button danger size="small" disabled={disabled || terminateDisabled} onClick={onTerminate} icon={<StopOutlined />} className="stream-link-bottom-action-button stream-link-bottom-action-button--danger">
+            终止
+          </Button>
+        </span>
 
-        <Tooltip title="更多批量操作">
-          <Dropdown trigger={["click"]} menu={{ items: moreItems }}>
-            <Button size="small" icon={<MoreOutlined />}>更多操作</Button>
-          </Dropdown>
-        </Tooltip>
-
-        <Tag color="blue" className="rounded-full px-3 py-0.5">已选择 {selectedCount}</Tag>
+        <Dropdown trigger={["click"]} menu={{ items: moreItems }}>
+          <Button title="更多批量操作" size="small" icon={<MoreOutlined />} className="stream-link-bottom-action-button">更多操作</Button>
+        </Dropdown>
         </div>
       </div>
     </div>

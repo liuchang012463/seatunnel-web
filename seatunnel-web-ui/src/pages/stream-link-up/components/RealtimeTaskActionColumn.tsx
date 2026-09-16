@@ -11,7 +11,7 @@ import {
   SaveOutlined,
   SyncOutlined,
 } from "@ant-design/icons";
-import { Dropdown, Popconfirm, Space, message } from "antd";
+import { App, Dropdown, Popconfirm, Space } from "antd";
 import React, { useState } from "react";
 
 export interface StreamingJobDefinitionVO {
@@ -63,15 +63,13 @@ interface RealtimeTaskActionColumnProps {
 }
 
 const actionBaseClass =
-  "stream-link-task-action inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-all duration-150";
+  "stream-link-task-action inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-xs font-medium transition-all duration-150";
 
 const primaryActionClass = `${actionBaseClass} stream-link-task-action--primary`;
 
 const dangerActionClass = `${actionBaseClass} stream-link-task-action--danger`;
 
 const secondaryActionClass = `${actionBaseClass} stream-link-task-action--secondary`;
-
-const disabledActionClass = `${actionBaseClass} stream-link-task-action--disabled`;
 
 const moreActionClass = `${actionBaseClass} gap-1 px-2 stream-link-task-action--more`;
 
@@ -97,13 +95,12 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
   onLog,
   onCheckpoint,
 }) => {
+  const { message, modal } = App.useApp();
   const [runOpen, setRunOpen] = useState(false);
-  const [offlineOpen, setOfflineOpen] = useState(false);
 
   const [runLoading, setRunLoading] = useState(false);
   const [stopLoading, setStopLoading] = useState(false);
   const [onlineLoading, setOnlineLoading] = useState(false);
-  const [offlineLoading, setOfflineLoading] = useState(false);
 
   const isOnline = isReleaseOnline(record.releaseState);
   const isRunning = isRunningStatus(record.lastJobStatus);
@@ -171,187 +168,112 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
       return;
     }
 
-    try {
-      setOfflineLoading(true);
-      await onOffline?.(record);
-      setOfflineOpen(false);
-    } finally {
-      setOfflineLoading(false);
-    }
+    await onOffline?.(record);
   };
 
+  const primaryAction = isRunning ? (
+    <Popconfirm
+      title="终止实时任务"
+      description={
+        <div className="mr-3">
+          终止后当前运行实例会被停止，
+          <br />
+          确认终止该任务吗？
+        </div>
+      }
+      okText="确认"
+      cancelText="取消"
+      okButtonProps={{
+        danger: true,
+        size: "small",
+        loading: stopLoading,
+      }}
+      cancelButtonProps={{ size: "small" }}
+      onConfirm={handleStop}
+    >
+      <button
+        type="button"
+        className={dangerActionClass}
+        aria-label={`终止实时任务 ${record.jobName || ""}`}
+        onClick={stopPropagation}
+      >
+        <PauseCircleOutlined />
+        终止
+      </button>
+    </Popconfirm>
+  ) : isOnline ? (
+    <Popconfirm
+      title="启动实时任务"
+      open={runOpen}
+      onOpenChange={(open) => {
+        if (!runLoading) {
+          setRunOpen(open);
+        }
+      }}
+      description={
+        <div className="mr-3">
+          实时任务会持续运行，
+          <br />
+          确认立即启动该任务吗？
+          {hasSavepoint ? (
+            <>
+              <br />
+              <span>存在保存点：{record.savepointPath}</span>
+            </>
+          ) : null}
+        </div>
+      }
+      okText="确认"
+      cancelText="取消"
+      okButtonProps={{
+        size: "small",
+        loading: runLoading,
+      }}
+      cancelButtonProps={{ size: "small" }}
+      onConfirm={handleRun}
+    >
+      <button
+        type="button"
+        className={primaryActionClass}
+        aria-label={`启动实时任务 ${record.jobName || ""}`}
+        onClick={stopPropagation}
+      >
+        <PlayCircleOutlined />
+        启动
+      </button>
+    </Popconfirm>
+  ) : (
+    <Popconfirm
+      title="任务上线"
+      description={
+        <div className="mr-3">
+          上线后任务将恢复可运行状态，确认上线该任务吗？
+        </div>
+      }
+      okText="确认"
+      cancelText="取消"
+      okButtonProps={{
+        size: "small",
+        loading: onlineLoading,
+      }}
+      cancelButtonProps={{ size: "small" }}
+      onConfirm={handleOnline}
+    >
+      <button
+        type="button"
+        className={secondaryActionClass}
+        aria-label={`上线实时任务 ${record.jobName || ""}`}
+        onClick={stopPropagation}
+      >
+        <CloudUploadOutlined />
+        上线
+      </button>
+    </Popconfirm>
+  );
+
   return (
-    <Space size={6} className="whitespace-nowrap">
-      {isRunning ? (
-        <Popconfirm
-          title="终止实时任务"
-          description={
-            <div className="mr-3">
-              终止后当前运行实例会被停止，
-              <br />
-              确认终止该任务吗？
-            </div>
-          }
-          okText="确认"
-          cancelText="取消"
-          okButtonProps={{
-            danger: true,
-            size: "small",
-            loading: stopLoading,
-          }}
-          cancelButtonProps={{ size: "small" }}
-          onConfirm={handleStop}
-        >
-          <button
-            type="button"
-            className={dangerActionClass}
-            onClick={stopPropagation}
-          >
-            <PauseCircleOutlined />
-            终止
-          </button>
-        </Popconfirm>
-      ) : (
-        <Popconfirm
-          title="启动实时任务"
-          open={canRun ? runOpen : false}
-          onOpenChange={(open) => {
-            if (!canRun) {
-              if (!isOnline) {
-                message.warning("请先上线任务，再执行启动操作");
-              }
-
-              if (isRunning) {
-                message.warning("任务正在运行中");
-              }
-
-              return;
-            }
-
-            if (!runLoading) {
-              setRunOpen(open);
-            }
-          }}
-          description={
-            <div className="mr-3">
-              实时任务会持续运行，
-              <br/>
-              确认立即启动该任务吗？
-              {hasSavepoint ? (
-                <>
-                  <br />
-                  <span>存在保存点：{record.savepointPath}</span>
-                </>
-              ) : null}
-            </div>
-          }
-          okText="确认"
-          cancelText="取消"
-          okButtonProps={{
-            size: "small",
-            loading: runLoading,
-          }}
-          cancelButtonProps={{ size: "small" }}
-          onConfirm={handleRun}
-        >
-          <button
-            type="button"
-            className={canRun ? primaryActionClass : disabledActionClass}
-            onClick={(event) => {
-              event.stopPropagation();
-
-              if (!canRun) {
-                if (!isOnline) {
-                  message.warning("请先上线任务，再执行启动操作");
-                }
-
-                if (isRunning) {
-                  message.warning("任务正在运行中");
-                }
-              }
-            }}
-          >
-            <PlayCircleOutlined />
-            启动
-          </button>
-        </Popconfirm>
-      )}
-
-      {isOnline ? (
-        <Popconfirm
-          title="任务下线"
-          open={canOffline ? offlineOpen : false}
-          onOpenChange={(open) => {
-            if (!canOffline) {
-              if (isRunning) {
-                message.warning("任务正在运行中，请先终止任务后再下线");
-              }
-
-              return;
-            }
-
-            if (!offlineLoading) {
-              setOfflineOpen(open);
-            }
-          }}
-          description={
-            <div className="mr-3">
-              下线后任务将不会再被调度触发，
-              <br />
-              确认下线该任务吗？
-            </div>
-          }
-          okText="确认"
-          cancelText="取消"
-          okButtonProps={{
-            size: "small",
-            loading: offlineLoading,
-          }}
-          cancelButtonProps={{ size: "small" }}
-          onConfirm={handleOffline}
-        >
-          <button
-            type="button"
-            className={canOffline ? secondaryActionClass : disabledActionClass}
-            onClick={(event) => {
-              event.stopPropagation();
-
-              if (!canOffline && isRunning) {
-                message.warning("任务正在运行中，请先终止任务后再下线");
-              }
-            }}
-          >
-            <CloudDownloadOutlined />
-            下线
-          </button>
-        </Popconfirm>
-      ) : (
-        <Popconfirm
-          title="任务上线"
-          description={
-            <div className="mr-3">
-              上线后任务将恢复可运行状态，确认上线该任务吗？
-            </div>
-          }
-          okText="确认"
-          cancelText="取消"
-          okButtonProps={{
-            size: "small",
-            loading: onlineLoading,
-          }}
-          cancelButtonProps={{ size: "small" }}
-          onConfirm={handleOnline}
-        >
-          <button
-            type="button"
-            className={secondaryActionClass}
-            onClick={stopPropagation}
-          >
-            <CloudUploadOutlined />
-            上线
-          </button>
-        </Popconfirm>
-      )}
+    <Space size={6} className="stream-link-row-actions whitespace-nowrap">
+      {primaryAction}
 
       <Dropdown
         trigger={["click"]}
@@ -362,33 +284,37 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
               icon: <EyeOutlined />,
               label: "查看详情",
             },
-            // {
-            //   key: "log",
-            //   icon: <FileTextOutlined />,
-            //   label: "查看日志",
-            // },
-            // {
-            //   key: "checkpoint",
-            //   icon: <SaveOutlined />,
-            //   label: "检查点配置",
-            // },
+            ...(isOnline
+              ? [
+                  {
+                    key: "offline",
+                    icon: <CloudDownloadOutlined />,
+                    label: isRunning ? "下线任务（请先终止任务）" : "下线任务",
+                    disabled: isRunning,
+                  },
+                ]
+              : []),
             {
-              type: "divider",
+              type: "divider" as const,
             },
             {
               key: "stopWithSavepoint",
               icon: <SaveOutlined />,
-              label: "停止并保存检查点",
+              label: canStopWithSavepoint
+                ? "停止并保存检查点"
+                : "停止并保存检查点（需运行中且有实例）",
               disabled: !canStopWithSavepoint,
             },
             {
               key: "resumeFromSavepoint",
               icon: <SyncOutlined />,
-              label: "从检查点恢复",
+              label: canResumeFromSavepoint
+                ? "从检查点恢复"
+                : "从检查点恢复（需上线且存在保存点）",
               disabled: !canResumeFromSavepoint,
             },
             {
-              type: "divider",
+              type: "divider" as const,
             },
             {
               key: "log",
@@ -401,18 +327,22 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
               label: "查看检查点",
             },
             {
-              type: "divider",
+              type: "divider" as const,
             },
             {
               key: "edit",
               icon: <EditOutlined />,
-              label: "编辑配置",
+              label: disableEditOrDelete
+                ? `编辑配置（请先${isRunning ? "终止任务" : "下线任务"}）`
+                : "编辑配置",
               disabled: disableEditOrDelete,
             },
             {
               key: "delete",
               icon: <DeleteOutlined />,
-              label: "删除任务",
+              label: disableEditOrDelete
+                ? `删除任务（请先${isRunning ? "终止并下线任务" : "下线任务"}）`
+                : "删除任务",
               danger: true,
               disabled: disableEditOrDelete,
             },
@@ -422,6 +352,17 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
 
             if (info.key === "view") {
               onDetail?.(record);
+              return;
+            }
+
+            if (info.key === "offline") {
+              modal.confirm({
+                title: "任务下线",
+                content: "下线后任务将不会再被调度触发，确认下线该任务吗？",
+                okText: "确认",
+                cancelText: "取消",
+                onOk: handleOffline,
+              });
               return;
             }
 
@@ -494,6 +435,7 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
         <button
           type="button"
           className={moreActionClass}
+          aria-label={`更多实时任务操作 ${record.jobName || ""}`}
           aria-haspopup="menu"
           onClick={stopPropagation}
         >
@@ -503,6 +445,6 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
       </Dropdown>
     </Space>
   );
-};
+}
 
 export default RealtimeTaskActionColumn;

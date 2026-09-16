@@ -316,7 +316,7 @@ const ManagedTableWizard: React.FC = () => {
   return (
     <PageContainer title="创建 MANAGED 表" subTitle="从 OpenMetadata 源表生成受控的 Doris ODS 表" onBack={() => history.back()} extra={<Button icon={<ArrowLeftOutlined />} onClick={() => history.back()}>返回资源详情</Button>}>
       <div className="lake-wizard-page">
-        <Card className="lake-wizard-intro" bordered={false}>
+        <Card className="lake-wizard-intro" variant="borderless">
           <div className="lake-wizard-intro-icon"><SafetyCertificateOutlined /></div>
           <div><div className="lake-detail-kicker">SAFE TABLE CREATION</div><Title level={3}>创建一张可追溯的 MANAGED 表</Title><Paragraph type="secondary">源表、字段映射、分区和生命周期会先在服务端校验，再生成计划指纹。提交时服务端会重新校验当前资源版本，页面不会执行 SQL。</Paragraph></div>
         </Card>

@@ -15,6 +15,11 @@ const TONE_RGB: Record<StatusChipTone, string> = {
   neutral: '108, 135, 146',
 };
 
+const TONE_TEXT_RGB: Partial<Record<StatusChipTone, string>> = {
+  error: '255, 154, 143',
+  neutral: '155, 181, 189',
+};
+
 export interface StatusChipProps {
   tone: StatusChipTone;
   /** 状态文本。 */
@@ -29,6 +34,7 @@ export interface StatusChipProps {
 
 const StatusChip: React.FC<StatusChipProps> = ({ tone, label, extra, detail, className, style }) => {
   const rgb = TONE_RGB[tone] ?? TONE_RGB.neutral;
+  const textRgb = TONE_TEXT_RGB[tone] ?? rgb;
   const chip = (
     <span
       className={className ? `st-status-chip ${className}` : 'st-status-chip'}
@@ -43,7 +49,7 @@ const StatusChip: React.FC<StatusChipProps> = ({ tone, label, extra, detail, cla
         whiteSpace: 'nowrap',
         fontSize: 12,
         lineHeight: '20px',
-        color: `rgb(${rgb})`,
+        color: `rgb(${textRgb})`,
         background: `rgba(${rgb}, 0.12)`,
         border: `1px solid rgba(${rgb}, 0.28)`,
       }}

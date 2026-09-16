@@ -8,8 +8,6 @@ import {
 } from "react";
 import {
   applyNavTheme,
-  getStoredNavTheme,
-  getNavThemeSnapshot,
   isDarkNavTheme,
   persistNavTheme,
   setNavTheme,
@@ -40,7 +38,7 @@ const DARK_TOKEN = {
   colorBgElevated: "#0A3D52",
   colorText: "#EDF4F7",
   colorTextSecondary: "#AFC4CD",
-  colorTextTertiary: "#6C8792",
+  colorTextTertiary: "#9BB5BD",
   colorBorder: "rgba(126, 183, 208, 0.30)",
   colorBorderSecondary: "rgba(126, 183, 208, 0.14)",
   colorSplit: "rgba(126, 183, 208, 0.14)",
@@ -137,7 +135,8 @@ export const useNavTheme = (): NavThemeContextValue =>
   useContext(NavThemeContext);
 
 const getInitialNavTheme = (): NavTheme => {
-  const initialTheme = getStoredNavTheme(getNavThemeSnapshot());
+  // 浅色 v2 尚未完成前，所有入口都从深色值班台开始，避免读取旧存储值造成主题闪烁。
+  const initialTheme: NavTheme = "realDark";
   setNavTheme(initialTheme);
   applyNavTheme(initialTheme);
   return initialTheme;

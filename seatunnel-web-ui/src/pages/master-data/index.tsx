@@ -17,12 +17,12 @@ import {
   Space,
   Switch,
   Table,
-  Tag,
   Tabs,
   Typography,
   message,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
+import StatusChip from '@/components/StatusChip';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   createBusinessSystem,
@@ -124,10 +124,14 @@ function ensureSuccess(response: ApiResponse<unknown> | undefined, fallback: str
 }
 
 function StatusLabel({ status }: { status: MasterDataStatus }) {
-  return status === 1 ? (
-    <Tag color="success">启用</Tag>
-  ) : (
-    <Tag>停用</Tag>
+  const enabled = status === 1;
+
+  return (
+    <StatusChip
+      tone={enabled ? 'success' : 'neutral'}
+      label={enabled ? '启用' : '停用'}
+      detail={enabled ? '单位或业务系统可用于数据源配置' : '已从数据源配置的可选项中移除'}
+    />
   );
 }
 
@@ -402,6 +406,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
         <Space size={8} className="master-data-page__status">
           <Switch
             size="small"
+            aria-label={`切换单位 ${record.unitName || ''} 状态`}
             checked={status === 1}
             loading={busyKey === `unit-status-${record.id}`}
             onChange={(checked) => updateUnitStatus(record, checked)}
@@ -420,11 +425,11 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
     {
       title: '操作',
       key: 'actions',
-      width: 150,
+      width: 188,
       fixed: 'right',
       render: (_, record) => (
-        <Space size="small">
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEditUnit(record)}>
+        <Space size="small" className="master-data-page__row-actions">
+          <Button type="link" size="small" icon={<EditOutlined />} aria-label={`编辑单位 ${record.unitName || ''}`} onClick={() => openEditUnit(record)}>
             编辑
           </Button>
           <Popconfirm
@@ -439,6 +444,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
               danger
               size="small"
               icon={<DeleteOutlined />}
+              aria-label={`删除单位 ${record.unitName || ''}`}
               loading={busyKey === `unit-delete-${record.id}`}
             >
               删除
@@ -460,6 +466,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
         <Space size={8} className="master-data-page__status">
           <Switch
             size="small"
+            aria-label={`切换业务系统 ${record.systemName || ''} 状态`}
             checked={status === 1}
             loading={busyKey === `system-status-${record.id}`}
             onChange={(checked) => updateBusinessSystemStatus(record, checked)}
@@ -478,11 +485,11 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
     {
       title: '操作',
       key: 'actions',
-      width: 150,
+      width: 188,
       fixed: 'right',
       render: (_, record) => (
-        <Space size="small">
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEditBusinessSystem(record)}>
+        <Space size="small" className="master-data-page__row-actions">
+          <Button type="link" size="small" icon={<EditOutlined />} aria-label={`编辑业务系统 ${record.systemName || ''}`} onClick={() => openEditBusinessSystem(record)}>
             编辑
           </Button>
           <Popconfirm
@@ -497,6 +504,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
               danger
               size="small"
               icon={<DeleteOutlined />}
+              aria-label={`删除业务系统 ${record.systemName || ''}`}
               loading={busyKey === `system-delete-${record.id}`}
             >
               删除
@@ -520,11 +528,12 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
       key: 'units',
       label: '单位管理',
       children: (
-        <Card className="master-data-page__card master-data-page__panel" bordered>
+        <Card className="master-data-page__card master-data-page__panel" variant="outlined">
           <div className="master-data-page__toolbar">
             <Form
               form={unitSearchForm}
               layout="inline"
+              colon={false}
               className="master-data-page__filters"
               onFinish={(values) =>
                 setUnitQuery({
@@ -536,11 +545,19 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
               }
             >
               <Form.Item name="unitName" label="单位名称">
-                <Input allowClear placeholder="请输入单位名称" style={{ width: 240 }} />
+                <Input
+                  allowClear
+                  id="unitName"
+                  name="unitName"
+                  aria-label="按单位名称筛选"
+                  placeholder="请输入单位名称"
+                  style={{ width: 240 }}
+                />
               </Form.Item>
               <Form.Item name="status" label="状态">
                 <Select
                   allowClear
+                  aria-label="按单位状态筛选"
                   placeholder="全部"
                   options={[
                     { label: '启用', value: 1 },
@@ -551,7 +568,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
               </Form.Item>
               <Form.Item>
                 <Space>
-                  <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                  <Button htmlType="submit" icon={<SearchOutlined />}>
                     查询
                   </Button>
                   <Button
@@ -595,11 +612,12 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
       key: 'business-systems',
       label: '业务系统管理',
       children: (
-        <Card className="master-data-page__card master-data-page__panel" bordered>
+        <Card className="master-data-page__card master-data-page__panel" variant="outlined">
           <div className="master-data-page__toolbar">
             <Form
               form={businessSystemSearchForm}
               layout="inline"
+              colon={false}
               className="master-data-page__filters"
               onFinish={(values) =>
                 setBusinessSystemQuery({
@@ -615,6 +633,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
                 <Select
                   allowClear
                   showSearch
+                  aria-label="按所属单位筛选"
                   optionFilterProp="label"
                   placeholder="全部单位"
                   options={unitSelectOptions.map((option) => ({ value: option.id, label: option.label }))}
@@ -622,11 +641,19 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
                 />
               </Form.Item>
               <Form.Item name="systemName" label="系统名称">
-                <Input allowClear placeholder="请输入系统名称" style={{ width: 240 }} />
+                <Input
+                  allowClear
+                  id="systemName"
+                  name="systemName"
+                  aria-label="按业务系统名称筛选"
+                  placeholder="请输入系统名称"
+                  style={{ width: 240 }}
+                />
               </Form.Item>
               <Form.Item name="status" label="状态">
                 <Select
                   allowClear
+                  aria-label="按业务系统状态筛选"
                   placeholder="全部"
                   options={[
                     { label: '启用', value: 1 },
@@ -637,7 +664,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
               </Form.Item>
               <Form.Item>
                 <Space>
-                  <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                  <Button htmlType="submit" icon={<SearchOutlined />}>
                     查询
                   </Button>
                   <Button
@@ -663,7 +690,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
             loading={businessSystemLoading}
             columns={businessSystemColumns}
             dataSource={businessSystemPage.records}
-            scroll={{ x: 1260 }}
+            scroll={{ x: 1100 }}
             pagination={{
               current: businessSystemPage.pagination.pageNo,
               pageSize: businessSystemPage.pagination.pageSize,
@@ -689,7 +716,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
         activeKey={activeTab}
         items={tabs}
         onChange={(key) => setActiveTab(key as TabKey)}
-        destroyInactiveTabPane={false}
+        destroyOnHidden={false}
       />
       <Modal
         className="master-data-editor-modal"
@@ -719,7 +746,13 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
                 name="unitName"
                 rules={[{ required: true, whitespace: true, message: '请输入单位名称' }]}
               >
-                <Input maxLength={256} placeholder="请输入单位名称" />
+                <Input
+                  id="unit-editor-name"
+                  name="unitName"
+                  aria-label="单位名称"
+                  maxLength={256}
+                  placeholder="请输入单位名称"
+                />
               </Form.Item>
             </>
           ) : (
@@ -730,6 +763,8 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
                 rules={[{ required: true, message: '请选择所属单位' }]}
               >
                 <Select
+                  id="business-system-editor-unit"
+                  aria-label="所属单位"
                   showSearch
                   optionFilterProp="label"
                   placeholder="请选择所属单位"
@@ -744,15 +779,29 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
                 name="systemName"
                 rules={[{ required: true, whitespace: true, message: '请输入系统名称' }]}
               >
-                <Input maxLength={256} placeholder="请输入业务系统名称" />
+                <Input
+                  id="business-system-editor-name"
+                  name="systemName"
+                  aria-label="系统名称"
+                  maxLength={256}
+                  placeholder="请输入业务系统名称"
+                />
               </Form.Item>
             </>
           )}
           <Form.Item label="状态" name="status" valuePropName="checked">
-            <Switch checkedChildren="启用" unCheckedChildren="停用" />
+            <Switch aria-label="启用状态" checkedChildren="启用" unCheckedChildren="停用" />
           </Form.Item>
           <Form.Item label="备注" name="remark">
-            <Input.TextArea rows={3} maxLength={512} showCount placeholder="请输入备注（可选）" />
+            <Input.TextArea
+              id="master-data-editor-remark"
+              name="remark"
+              aria-label="备注"
+              rows={3}
+              maxLength={512}
+              showCount
+              placeholder="请输入备注（可选）"
+            />
           </Form.Item>
           </Form>
         </Modal>

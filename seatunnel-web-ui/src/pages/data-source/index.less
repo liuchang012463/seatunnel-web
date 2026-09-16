@@ -115,7 +115,7 @@
 }
 
 .data-asset-header-metadata {
-  border-radius: 12px;
+  border-radius: var(--st-radius-md);
   border: 1px solid var(--st-color-border);
   padding: 16px 20px;
   gap: 16px;
@@ -248,7 +248,7 @@
   padding: 44px 24px 36px;
   background: var(--st-color-bg-panel);
   border-color: var(--st-color-divider);
-  border-radius: 10px;
+  border-radius: var(--st-radius-md);
   box-shadow: none;
 }
 
@@ -257,6 +257,7 @@
   overflow: visible;
   background: var(--st-color-bg-page);
   border: 1px solid var(--st-color-divider);
+  border-radius: var(--st-radius-md);
 }
 
 .datasource-catalog-panel__controls {
@@ -292,7 +293,7 @@
 
 .datasource-catalog-table {
   min-width: 0;
-  padding: 16px;
+  padding: 12px;
 
   .ant-table-wrapper,
   .ant-table-container,
@@ -308,7 +309,7 @@
 
   .ant-table-thead > tr > th {
     color: var(--st-color-text-secondary);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     background: var(--st-color-bg-elevated);
     border-bottom: 1px solid var(--st-color-divider);
@@ -319,7 +320,8 @@
   }
 
   .ant-table-tbody > tr > td {
-    min-height: 38px;
+    min-height: 36px;
+    padding-block: 8px;
     color: var(--st-color-text-primary);
     font-size: 14px;
     line-height: 22px;
@@ -420,8 +422,9 @@
   flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  height: 38px;
+  gap: 8px;
+  min-height: 32px;
+  height: auto;
 
   .datasource-catalog-action {
     white-space: nowrap;
@@ -429,7 +432,8 @@
 }
 
 .datasource-catalog-action {
-  padding: 0;
+  min-height: 28px;
+  padding: 0 2px;
   font-size: 14px;
   line-height: 20px;
   background: transparent;
@@ -444,6 +448,11 @@
   &:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--st-color-focus);
+    outline-offset: 2px;
   }
 
   &--test {
@@ -809,7 +818,7 @@
   color: var(--st-color-text-secondary);
   background: var(--st-color-bg-panel);
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--st-radius-md);
   box-shadow: none;
   transition: border-color 0.2s ease;
 
@@ -1000,7 +1009,7 @@
   padding: 44px 24px 36px;
   background: var(--st-color-bg-panel);
   border-color: var(--st-color-divider);
-  border-radius: 10px;
+  border-radius: var(--st-radius-md);
   box-shadow: none;
 }
 
