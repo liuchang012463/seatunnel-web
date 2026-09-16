@@ -281,9 +281,9 @@ const FileResourcesPage: React.FC = () => {
                 <CloudUploadOutlined />
               </div>
               <div>
-                <Title level={4}>把文件放进资源库，再交给任务使用</Title>
+                <Title level={4}>文件资源库</Title>
                 <Paragraph type="secondary">
-                  文件上传后形成独立资源。文件数据引接和文件传输任务只保存资源引用，由 SeaTunnel 执行节点直接读取对象存储。
+                  上传一次，供文件数据引接和文件传输任务复用。任务只保存资源引用，由执行节点直接读取对象存储。
                 </Paragraph>
               </div>
             </Space>

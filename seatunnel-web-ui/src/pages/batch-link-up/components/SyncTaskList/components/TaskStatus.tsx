@@ -135,21 +135,22 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
           onClick={(e) => e.stopPropagation()}
         >
           {content}
-          <a
+          <button
+            type="button"
+            className="sync-task-log-link"
+            aria-label={`查看${config.label}任务日志`}
             style={{
               fontSize: 12,
               lineHeight: '20px',
               color: 'var(--st-color-accent)',
             }}
-            role="button"
-            tabIndex={0}
             onClick={(e) => {
               e.stopPropagation();
               setLogOpen(true);
             }}
           >
             日志
-          </a>
+          </button>
         </span>
       </Popover>
     );

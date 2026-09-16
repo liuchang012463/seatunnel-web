@@ -97,7 +97,7 @@ export default {
   'pages.datasource.filter.all': '全部',
   'pages.datasource.filter.inputPlaceholder': '请输入...',
 
-  'pages.datasync.header.title': '链路管理（批量数据引接）',
+  'pages.datasync.header.title': '批量数据引接',
   'pages.datasync.header.subtitle': '统一管理采集引接链路：配置、调度与健康状态监测',
 
   'pages.datasync.header.source.placeholder': '源端',

@@ -30,9 +30,9 @@
 
 .stream-link-task-table .ant-table-thead > tr > th {
   color: var(--st-color-text-primary);
-  background: var(--st-color-bg-interactive);
+  background: #032a37;
   border-color: var(--st-color-border);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .stream-link-task-table .ant-table-thead > tr > th::before {
@@ -59,6 +59,10 @@
   box-shadow: none;
 }
 
+.stream-link-task-table th.ant-table-cell-fix-right {
+  background: #032a37 !important;
+}
+
 .stream-link-task-table .ant-table-cell-fix-right-first::after {
   box-shadow: none;
 }
@@ -74,7 +78,25 @@
 .stream-link-task-table .text-slate-400 { color: var(--st-color-text-muted) !important; }
 
 .stream-link-task-table .execution-status-separator {
-  color: #4dd2ff !important;
+  color: var(--st-color-accent) !important;
+}
+
+.stream-link-empty-state {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  color: var(--st-color-text-secondary);
+  line-height: 22px;
+}
+
+.stream-link-empty-state > span {
+  color: var(--st-color-text-muted);
+  font-size: 12px;
+}
+
+.stream-link-empty-state .ant-btn-link {
+  height: auto;
+  padding: 0;
 }
 
 .stream-link-task-name-cell { min-width: 0; }

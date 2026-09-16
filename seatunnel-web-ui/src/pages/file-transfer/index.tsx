@@ -51,9 +51,9 @@ const FileTransferPage: React.FC = () => {
     <div>
       <TaskPageHeader
         icon={<FileSyncOutlined />}
-        title="链路管理（文件传输）"
+        title="文件传输"
         subtitle="在文件资源库与 FTP、SFTP、S3、MinIO 之间传输二进制对象，不解析文件内容。"
-        createText="创建引接任务"
+        createText="创建文件传输"
         onCreate={() => void createTask()}
       />
       <FileTaskList

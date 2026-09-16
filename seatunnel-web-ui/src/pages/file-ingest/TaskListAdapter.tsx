@@ -169,6 +169,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
                 <button
                   type="button"
                   className="sync-task-copy-btn"
+                  aria-label={`复制任务定义 ID ${record?.id ?? ""}`}
                   onClick={(event) => {
                     event.stopPropagation();
                     void copyId(record?.id);
@@ -239,6 +240,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         }),
         key: 'action',
         width: 260,
+        fixed: 'right',
         render: (_value: unknown, record: any) => (
           <ActionColumn record={record} cbk={() => void fetchTaskList()} goDetail={goDetail} />
         ),
@@ -294,7 +296,10 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
               });
               setPagination((previous) => ({ ...previous, current: 1 }));
             }}
-            scroll={{ x: 'max-content', y: 'calc(100vh - 380px)' }}
+            scroll={{
+              x: 'max-content',
+              ...(taskList.length > 0 ? { y: 'calc(100vh - 380px)' } : {}),
+            }}
             className="task-table"
             locale={{
               emptyText: (

@@ -97,7 +97,7 @@ const DetailPage = () => {
     : STEP_THEME.client.dotInactive;
 
   const nextText = (() => {
-    if (isBaseStep) return "下一步：客户端链接配置";
+    if (isBaseStep) return "下一步：客户端与连接";
     if (mode === "GUIDE_MULTI") return "进入多表配置";
     if (mode === "SCRIPT") return "进入脚本配置";
     if (mode === "GUIDE_SINGLE_INCREMENTAL") return "进入单表增量配置";
@@ -105,7 +105,7 @@ const DetailPage = () => {
   })();
 
   const hintText = (() => {
-    if (isBaseStep) return "先完成基础配置，再进入客户端链接配置";
+    if (isBaseStep) return "先完成基础信息，再选择客户端并测试来源与去向连接";
     if (mode === "GUIDE_MULTI") {
       return "确认客户端链接关系后，将进入多表向导配置";
     }
@@ -209,7 +209,7 @@ const DetailPage = () => {
               >
                 2
               </span>
-              客户端链接配置
+              客户端与连接
             </button>
           </div>
         </div>

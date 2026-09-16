@@ -55,9 +55,9 @@ const FileIngestPage: React.FC = () => {
     <div>
       <TaskPageHeader
         icon={<FileTextOutlined />}
-        title="链路管理（文件数据引接）"
+        title="文件数据引接"
         subtitle="从文件资源库读取 CSV、Excel、JSON 或 TXT，配置单表解析、字段映射和目标端入库。"
-        createText="创建引接任务"
+        createText="创建文件引接"
         onCreate={() => void createTask()}
       />
       <FileTaskList

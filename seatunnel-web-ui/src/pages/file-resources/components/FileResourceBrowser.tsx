@@ -143,19 +143,28 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
               onSelect?.(record);
             }
           };
+          const canActivate = directory || (selectable && (canSelect?.(record) ?? true));
+          const labelNode = canActivate ? (
+            <Button
+              type="link"
+              size="small"
+              className="file-resource-browser__name-button"
+              onClick={handleClick}
+              title={label}
+              aria-label={directory ? `进入目录 ${label}` : `选择文件 ${label}`}
+            >
+              {label}
+            </Button>
+          ) : (
+            <span className="file-resource-browser__name-label" title={label}>
+              {label}
+            </span>
+          );
 
           return (
             <Space size={8} className="file-resource-browser__name">
               {directory ? <FolderOpenOutlined className="file-resource-browser__folder-icon" /> : <FileOutlined />}
-              <Button
-                type="link"
-                size="small"
-                className="file-resource-browser__name-button"
-                onClick={handleClick}
-                title={label}
-              >
-                {label}
-              </Button>
+              {labelNode}
             </Space>
           );
         },
@@ -181,7 +190,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
       {
         title: '状态',
         key: 'status',
-        width: 110,
+        width: 70,
         render: (_, record) => {
           const status = String(record.status || 'READY').toUpperCase();
           return <Tag color={statusColor[status]}>{statusLabel[status] || status}</Tag>;
@@ -194,7 +203,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
         title: '操作',
         key: 'option',
         valueType: 'option',
-        width: compact ? 180 : 220,
+        width: 180,
         fixed: 'right',
         render: (_, record) => {
           const directory = isDirectoryResource(record);
@@ -255,7 +264,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
               <Popconfirm
                 key="delete"
                 title={directory ? '确定删除这个文件夹及其内容吗？' : '确定删除这个文件吗？'}
-                description="删除后，引用该资源的任务将无法读取。"
+                description="被任务引用的资源无法删除；未被引用的资源删除后不可恢复。"
                 okText="删除"
                 cancelText="取消"
                 okButtonProps={{ danger: true }}
@@ -322,7 +331,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
         options={false}
         dateFormatter="string"
         cardBordered={false}
-        scroll={{ x: compact ? 760 : 980 }}
+        scroll={{ x: 'max-content' }}
         pagination={{
           current: pagination.pageNo,
           pageSize: pagination.pageSize,

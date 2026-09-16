@@ -272,7 +272,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
                   ].join(' ')}>
                     {index + 1}
                   </span>
-                  {step === 'base' ? '基础配置' : '客户端链接配置'}
+                  {step === 'base' ? '基础信息' : '客户端与连接'}
                 </button>
                 {index === 0 ? <div className="h-px flex-1 bg-slate-200" /> : null}
               </div>
@@ -307,7 +307,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
                   </div>
                   <div className="mt-3 text-xs leading-5 text-slate-500">
                     {isSourceManaged
-                      ? '下一步从文件资源库选择对象；任务仅支持一个文件来源。'
+                      ? '下一步选择执行客户端并测试目标连接；文件资源将在进入任务配置后选择。'
                       : '远端文件来源将在后续配置页面中选择目录或对象前缀。'}
                   </div>
                 </div>
@@ -373,8 +373,8 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
         onCancel={goBack}
         onNext={() => void handleNext()}
         onPrev={activeStep === 'client' ? () => setActiveStep('base') : undefined}
-        nextText={activeStep === 'base' ? '下一步：客户端链接配置' : '进入任务配置'}
-        hintText={activeStep === 'base' ? '先完成任务基础信息，再配置执行客户端。' : '确认客户端连通性后进入任务编排。'}
+        nextText={activeStep === 'base' ? '下一步：客户端与连接' : '进入任务配置'}
+        hintText={activeStep === 'base' ? '先保存任务基础信息，再选择客户端并测试目标连接。' : '确认客户端与目标连接后，进入文件资源和任务规则配置。'}
         nextDisabled={activeStep === 'client' && (!canContinue || targetTestStatus !== 'success')}
       />
     </div>

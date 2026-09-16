@@ -41,10 +41,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   const [form] = Form.useForm();
   const [expand, setExpand] = useState(false);
 
-  const defaultTimeRange = useMemo(
-    () => [moment().subtract(4, "days"), moment().add(1, "days")],
-    [],
-  );
+  const defaultTimeRange = useMemo<moment.Moment[]>(() => [], []);
 
   const mergedInitialValues = useMemo(
     () => ({

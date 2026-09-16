@@ -16,7 +16,7 @@ const BottomActionBar: React.FC<Props> = ({
   onNext,
   onPrev,
   nextText = "下一步",
-  hintText = "完成基础信息与客户端链接配置后，即可进入下一步",
+  hintText = "完成基础信息与客户端连接后，即可进入下一步",
   nextDisabled = false,
 }) => {
   return (

@@ -9,17 +9,15 @@
 .file-resources-page__hero,
 .file-resources-page__workspace {
   border: 1px solid var(--st-color-border, rgba(33, 135, 168, 0.28));
-  border-radius: 16px;
+  border-radius: var(--st-radius-md, 4px);
   background: var(--st-color-bg-panel, rgba(8, 28, 38, 0.9));
-  box-shadow: var(--st-panel-shadow, 0 12px 30px rgba(0, 20, 28, 0.16));
+  box-shadow: none;
 }
 
 .file-resources-page__hero {
   margin-bottom: 16px;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 92% 18%, rgba(75, 210, 255, 0.15), transparent 38%),
-    var(--st-color-bg-panel, rgba(8, 28, 38, 0.9));
+  background: var(--st-color-bg-panel, rgba(8, 28, 38, 0.9));
 
   .ant-typography {
     margin-bottom: 0;
@@ -40,7 +38,7 @@
   font-size: 24px;
   background: rgba(83, 212, 245, 0.12);
   border: 1px solid rgba(83, 212, 245, 0.3);
-  border-radius: 14px;
+  border-radius: var(--st-radius-md, 4px);
 }
 
 .file-resources-page__hero-stat {
@@ -141,6 +139,15 @@
   white-space: nowrap;
 }
 
+.file-resource-browser__name-label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--st-color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .file-resource-picker__notice {
   margin-bottom: 16px;
 }
@@ -166,9 +173,7 @@ html[data-st-theme='light'] {
   }
 
   .file-resources-page__hero {
-    background:
-      radial-gradient(circle at 92% 18%, rgba(33, 135, 168, 0.1), transparent 38%),
-      #ffffff;
+    background: #ffffff;
   }
 
   .file-resources-page__hero-stat,

@@ -1066,6 +1066,7 @@ const RealtimeSyncPage: React.FC = () => {
           onDelete={handleDelete}
           onLog={handleLog}
           onCheckpoint={handleCheckpoint}
+          onCreate={() => void handleCreate()}
         />
 
         {pagination.total > 0 ? (

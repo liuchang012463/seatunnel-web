@@ -94,7 +94,7 @@ export default {
   'pages.datasource.filter.all': 'All',
   'pages.datasource.filter.inputPlaceholder': 'Input...',
 
-  'pages.datasync.header.title': 'Link Management (Batch Data Ingestion)',
+  'pages.datasync.header.title': 'Batch Data Ingestion',
   'pages.datasync.header.subtitle':
     'Build enterprise-grade data sync jobs in minutes with a fully guided, white-screen configuration.',
 

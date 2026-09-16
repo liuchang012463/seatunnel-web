@@ -88,7 +88,7 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
             <div className="mt-1 text-xs leading-5 text-slate-500">{description}</div>
           </div>
         </div>
-        <Tag color="blue">{binary ? 'BINARY' : 'S3File'}</Tag>
+        <Tag color="blue">{binary ? '二进制对象' : '结构化文件'}</Tag>
       </div>
 
       {!isResourceSource ? (

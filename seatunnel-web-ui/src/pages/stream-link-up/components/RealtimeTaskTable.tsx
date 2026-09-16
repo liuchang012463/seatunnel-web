@@ -1,4 +1,4 @@
-import { Empty, message, Table, Tooltip } from "antd";
+import { Button, Empty, message, Table, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useIntl } from "@umijs/max";
 import React from "react";
@@ -39,6 +39,7 @@ interface RealtimeTaskTableProps {
   onDelete?: (record: StreamingJobDefinitionVO) => Promise<void> | void;
   onLog?: (record: StreamingJobDefinitionVO) => void;
   onCheckpoint?: (record: StreamingJobDefinitionVO) => void;
+  onCreate?: () => void;
 }
 
 const formatDateTime = (value?: string) => {
@@ -64,6 +65,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
   onDelete,
   onLog,
   onCheckpoint,
+  onCreate,
   sort,
   onSortChange,}) => {
   const intl = useIntl();
@@ -203,6 +205,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       }),
       dataIndex: "",
       width: 260,
+      fixed: "right",
       render: (_content, record) => (
         <RealtimeTaskActionColumn
           record={record}
@@ -223,7 +226,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
   ];
 
   return (
-    <div className="sync-task-list task-table-shell">
+    <div className="sync-task-list task-table-shell stream-link-task-table">
       <Table<StreamingJobDefinitionVO>
       rowKey="id"
       loading={loading}
@@ -244,13 +247,26 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         columnWidth: 42,
       }}
       size="middle"
-      scroll={{ x: "max-content", y: "calc(100vh - 380px)" }}
+      scroll={{
+        x: "max-content",
+        ...(dataSource.length > 0 ? { y: "calc(100vh - 380px)" } : {}),
+      }}
       className="task-table"
       locale={{
         emptyText: (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="暂无实时数据引接任务"
+            description={
+              <div className="stream-link-empty-state">
+                <div>暂无实时数据引接任务</div>
+                <span>创建后，实时任务会在这里显示运行状态和最近一次执行结果。</span>
+                {onCreate ? (
+                  <Button type="link" onClick={onCreate}>
+                    创建实时任务
+                  </Button>
+                ) : null}
+              </div>
+            }
           />
         ),
       }}

@@ -259,6 +259,7 @@ const App: React.FC<Props> = ({
               <button
                 type="button"
                 className="sync-task-copy-btn"
+                aria-label={`复制任务定义 ID ${record?.id ?? ""}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   copyToClipboard(record?.id);
@@ -338,6 +339,7 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "",
       width: 260,
+      fixed: "right",
       render: (_content: any, record: any) => (
         <ActionColumn record={record} cbk={fetchTaskList} goDetail={goDetail} />
       ),
@@ -827,7 +829,10 @@ const App: React.FC<Props> = ({
                 active.order === "ascend" ? "asc" : "desc",
               );
             }}
-            scroll={{ x: "max-content", y: "calc(100vh - 380px)" }}
+            scroll={{
+              x: "max-content",
+              ...(taskList.length > 0 ? { y: "calc(100vh - 380px)" } : {}),
+            }}
             className="task-table"
             locale={{
               emptyText: (
