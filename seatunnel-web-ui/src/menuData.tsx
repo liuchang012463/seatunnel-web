@@ -87,8 +87,8 @@ export const menuData: MenuDataItem[] = [
     name: '入湖管理',
     icon: <CloudServerOutlined />,
     children: [
+      { path: '/lake/catalog', name: '数据湖目录', icon: <DatabaseOutlined /> },
       { path: '/lake/resources', name: '物理入湖管理', icon: <DatabaseOutlined /> },
-      { path: '/lake/catalog', name: '数据湖管理', icon: <DatabaseOutlined /> },
       { path: '/lake/logical-access', name: '逻辑入湖管理', icon: <LinkOutlined /> },
       { path: '/lake/lifecycle', name: '数据生命周期管理', icon: <FolderOpenOutlined /> },
     ],

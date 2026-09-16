@@ -27,12 +27,22 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @Tag(name = "LAKE_WAREHOUSE_TAG")
 @RequestMapping("/api/v1/lake/warehouse")
 public class LakeWarehouseController {
+
+    private static final Set<String> HIDDEN_SYSTEM_DATABASES = Set.of(
+            "__internal_schema",
+            "_internal_schema",
+            "information_schema",
+            "mysql",
+            "performance_schema",
+            "sys");
 
     @Resource
     private LakeWarehouseService lakeWarehouseService;
@@ -61,8 +71,12 @@ public class LakeWarehouseController {
     @GetMapping("/catalog/databases")
     @Operation(summary = "listLakeCatalogDatabases")
     public Result<List<OptionVO>> listCatalogDatabases() {
-        return Result.buildSuc(dataSourceCatalogService.listDatabase(
-                lakeWarehouseService.requireSystemDataSourceId()));
+        List<OptionVO> databases = dataSourceCatalogService.listDatabase(
+                lakeWarehouseService.requireSystemDataSourceId());
+        return Result.buildSuc(databases.stream()
+                .filter(database -> !HIDDEN_SYSTEM_DATABASES.contains(
+                        String.valueOf(database.getValue()).toLowerCase(Locale.ROOT)))
+                .toList());
     }
 
     @GetMapping("/catalog/tables")
