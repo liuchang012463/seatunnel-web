@@ -1,24 +1,21 @@
 import { FileOutlined } from '@ant-design/icons';
 import { history, useLocation, useParams } from '@umijs/max';
 import { App, Button, Form, Input } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import DataSourceSelect, {
-  type DataSourceType,
-  generateDataSourceOptions,
-} from '@/pages/batch-link-up/DataSourceSelect';
+import { useEffect, useRef, useState } from 'react';
+import { type DataSourceType, generateDataSourceOptions } from '@/pages/batch-link-up/DataSourceSelect';
 import CommonClientLinkSection, {
   type ConnectivityStatus,
 } from '@/pages/common/components/CommonClientLinkSection';
 import { DATA_SOURCE_REGISTRY } from '@/pages/data-source/dataSourceRegistry';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import BottomActionBar from '@/pages/batch-link-up/detail/components/BottomActionBar';
-import IconRightArrow from '@/pages/batch-link-up/IconRightArrow';
 import {
   FILE_RESOURCE_SOURCE,
   fileTaskDraftKey,
   type FileTaskDetailConfig,
   type FileTaskType,
 } from './types';
+import './TaskDetailWizard.less';
 
 const fileResourceOption: DataSourceType = {
   value: FILE_RESOURCE_SOURCE.dbType,
@@ -110,18 +107,16 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
   const [params, setParams] = useState<any>();
   const [sourceType, setSourceType] = useState<any>(config.defaultSource);
   const [targetType, setTargetType] = useState<any>(config.defaultTarget);
-  const [activeStep, setActiveStep] = useState<'base' | 'client'>('base');
   const [clientId, setClientId] = useState<string>();
   const [sourceDataSourceId, setSourceDataSourceId] = useState<string>();
   const [targetDataSourceId, setTargetDataSourceId] = useState<string>();
   const [sourceTestStatus, setSourceTestStatus] = useState<ConnectivityStatus>('idle');
   const [targetTestStatus, setTargetTestStatus] = useState<ConnectivityStatus>('idle');
-  const scrollRef = useRef<HTMLDivElement>(null);
   const clientSectionRef = useRef<HTMLDivElement>(null);
 
   const isSourceManaged = sourceManaged(sourceType);
-  const sourceLabel = isSourceManaged ? '文件资源' : '远端文件';
-  const targetLabel = '目标端';
+  const sourceLabel = isSourceManaged ? '文件资源库' : '远端文件系统';
+  const targetLabel = config.taskType === 'FILE_TRANSFER' ? '目标文件系统' : '目标表';
 
   useEffect(() => {
     if (!id) return;
@@ -176,34 +171,11 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
     setTargetTestStatus('idle');
   };
 
-  const canContinue = useMemo(
-    () => isSourceManaged || sourceTestStatus === 'success',
-    [isSourceManaged, sourceTestStatus],
-  );
+  const canContinue = isSourceManaged || sourceTestStatus === 'success';
 
   const goBack = () => history.push(config.listPath);
 
-  const goStep = async (step: 'base' | 'client') => {
-    if (step === 'base') {
-      setActiveStep('base');
-      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    try {
-      await form.validateFields(['jobName']);
-      setActiveStep('client');
-      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch {
-      // Ant Design renders the field-level error.
-    }
-  };
-
   const handleNext = async () => {
-    if (activeStep === 'base') {
-      await goStep('client');
-      return;
-    }
-
     try {
       await form.validateFields(['jobName']);
       if (!canContinue) {
@@ -240,142 +212,104 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
   if (!params) return null;
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="border-b border-slate-100 bg-white">
-        <div className="mx-auto flex max-w-[1540px] items-center justify-between gap-4 px-6 py-5">
-          <div>
-            <div className="text-[22px] font-semibold leading-8 text-slate-900">{config.title}</div>
-            <div className="mt-1 text-sm leading-6 text-slate-500">{config.description}</div>
+    <div className="file-task-create-page">
+      <header className="file-task-create-page__header">
+        <div className="file-task-create-page__header-inner">
+          <div className="file-task-create-page__identity">
+            <div className="file-task-create-page__icon" aria-hidden="true">
+              <FileOutlined />
+            </div>
+            <div>
+              <h1>{config.title}</h1>
+              <p>{config.description}</p>
+            </div>
           </div>
           <Button onClick={goBack}>返回列表</Button>
         </div>
-      </div>
+      </header>
 
-      <div className="mx-auto max-w-[1540px] px-6 pb-28 pt-6">
-        <div className="mb-6 flex items-center gap-3">
-          {(['base', 'client'] as const).map((step, index) => {
-            const active = activeStep === step;
-            const done = index === 0 && activeStep === 'client';
-            return (
-              <div key={step} className="flex min-w-0 flex-1 items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => void goStep(step)}
-                  className={[
-                    'inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-sm',
-                    active || done ? 'bg-blue-50 text-blue-700' : 'bg-slate-50 text-slate-400',
-                  ].join(' ')}
-                >
-                  <span className={[
-                    'flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold',
-                    active ? 'bg-blue-600 text-white' : done ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500',
-                  ].join(' ')}>
-                    {index + 1}
-                  </span>
-                  {step === 'base' ? '基础信息' : '客户端与连接'}
-                </button>
-                {index === 0 ? <div className="h-px flex-1 bg-slate-200" /> : null}
+      <main className="file-task-create-page__body">
+        <section className="file-task-create-page__overview">
+          <div className="file-task-create-page__section-heading">
+            <div>
+              <span className="file-task-create-page__eyebrow">任务基础信息</span>
+              <h2>填写任务信息</h2>
+            </div>
+            <span className="file-task-create-page__task-kind">
+              {config.mode === 'GUIDE_SINGLE' ? '单表入库' : '对象传输'}
+            </span>
+          </div>
+
+          <Form form={form} layout="vertical">
+            <div className="file-task-create-page__form-grid">
+              <Form.Item
+                label="任务名称"
+                name="jobName"
+                rules={[{ required: true, message: '请输入任务名称' }]}
+                className="file-task-create-page__field"
+              >
+                <Input placeholder={config.taskType === 'FILE_TRANSFER' ? '例如：资源库 → S3 归档' : '例如：销售订单文件 → MySQL'} />
+              </Form.Item>
+              <div className="file-task-create-page__task-note">
+                <strong>{config.mode === 'GUIDE_SINGLE' ? '文件数据引接' : '文件传输'}</strong>
+                <span>
+                  {config.mode === 'GUIDE_SINGLE'
+                    ? '从资源库读取一个文件，解析后写入目标表。'
+                    : '只搬运对象，不解析 CSV、Excel、JSON 或 TXT 内容。'}
+                </span>
               </div>
-            );
-          })}
-        </div>
+            </div>
+            <Form.Item label="任务描述" name="jobDesc" className="file-task-create-page__field">
+              <Input.TextArea rows={2} placeholder="描述本次任务的范围和用途" />
+            </Form.Item>
+          </Form>
+        </section>
 
-        <div ref={scrollRef} className="max-h-[calc(100vh-250px)] overflow-auto">
-          {activeStep === 'base' ? (
-            <Form form={form} layout="vertical">
-              <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
-                  <div className="mb-3 text-sm font-medium text-slate-800">引接路径</div>
-                  <div className="flex items-center gap-3">
-                    <DataSourceSelect
-                      value={sourceType}
-                      onChange={handleSourceChange}
-                      dataSourceOptions={config.sourceOptions}
-                      placeholder="请选择来源"
-                      prefix="来源"
-                      width="48%"
-                    />
-                    <IconRightArrow />
-                    <DataSourceSelect
-                      value={targetType}
-                      onChange={handleTargetChange}
-                      dataSourceOptions={config.targetOptions}
-                      placeholder="请选择去向"
-                      prefix="去向"
-                      width="48%"
-                    />
-                  </div>
-                  <div className="mt-3 text-xs leading-5 text-slate-500">
-                    {isSourceManaged
-                      ? '下一步选择执行客户端并测试目标连接；文件资源将在进入任务配置后选择。'
-                      : '远端文件来源将在后续配置页面中选择目录或对象前缀。'}
-                  </div>
-                </div>
+        <section className="file-task-create-page__connections">
+          <div className="file-task-create-page__section-heading">
+            <div>
+              <span className="file-task-create-page__eyebrow">连接与执行</span>
+              <h2>确认来源、客户端和去向</h2>
+            </div>
+            <span className="file-task-create-page__section-hint">连接测试通过后即可进入任务配置</span>
+          </div>
 
-                <div className="mt-6 grid gap-4">
-                  <Form.Item
-                    label="任务名称"
-                    name="jobName"
-                    rules={[{ required: true, message: '请输入任务名称' }]}
-                    className="mb-0"
-                  >
-                    <Input placeholder={config.taskType === 'FILE_TRANSFER' ? '例如：资源库 → S3 归档' : '例如：销售订单文件 → MySQL'} />
-                  </Form.Item>
-                  <Form.Item label="任务描述" name="jobDesc" className="mb-0">
-                    <Input.TextArea rows={3} placeholder="描述本次引接的范围和用途" />
-                  </Form.Item>
-                </div>
-
-                <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  <strong className="text-slate-800">{config.mode === 'GUIDE_SINGLE' ? '单表任务' : '二进制文件任务'}</strong>
-                  <span className="ml-2">
-                    {config.mode === 'GUIDE_SINGLE'
-                      ? '文件数据引接只允许一个文件来源和一个目标表。'
-                      : '文件传输只搬运对象，不解析 CSV、Excel、JSON 或 TXT 内容。'}
-                  </span>
-                </div>
-              </div>
-            </Form>
-          ) : (
-            <CommonClientLinkSection
-              activeStep={activeStep}
-              sourceType={sourceType}
-              targetType={targetType}
-              sourceLabel={sourceLabel}
-              targetLabel={targetLabel}
-              clientId={clientId}
-              setClientId={setClientId}
-              handleSourceChange={handleSourceChange}
-              handleTargetChange={handleTargetChange}
-              sourceDataSourceId={sourceDataSourceId}
-              targetDataSourceId={targetDataSourceId}
-              setSourceDataSourceId={setSourceDataSourceId}
-              setTargetDataSourceId={setTargetDataSourceId}
-              sourceTestStatus={sourceTestStatus}
-              targetTestStatus={targetTestStatus}
-              setSourceTestStatus={setSourceTestStatus}
-              setTargetTestStatus={setTargetTestStatus}
-              sourceDataSourceTypeOptions={config.sourceOptions}
-              targetDataSourceTypeOptions={config.targetOptions}
-              sourceManaged={isSourceManaged}
-              sectionRef={clientSectionRef}
-              scene="offline"
-              sourceTitle="来源"
-              targetTitle="去向"
-              sourceCreateText="新建来源数据源"
-              targetCreateText="新建去向数据源"
-            />
-          )}
-        </div>
-      </div>
+          <CommonClientLinkSection
+            activeStep="client"
+            sourceType={sourceType}
+            targetType={targetType}
+            sourceLabel={sourceLabel}
+            targetLabel={targetLabel}
+            clientId={clientId}
+            setClientId={setClientId}
+            handleSourceChange={handleSourceChange}
+            handleTargetChange={handleTargetChange}
+            sourceDataSourceId={sourceDataSourceId}
+            targetDataSourceId={targetDataSourceId}
+            setSourceDataSourceId={setSourceDataSourceId}
+            setTargetDataSourceId={setTargetDataSourceId}
+            sourceTestStatus={sourceTestStatus}
+            targetTestStatus={targetTestStatus}
+            setSourceTestStatus={setSourceTestStatus}
+            setTargetTestStatus={setTargetTestStatus}
+            sourceDataSourceTypeOptions={config.sourceOptions}
+            targetDataSourceTypeOptions={config.targetOptions}
+            sourceManaged={isSourceManaged}
+            sectionRef={clientSectionRef}
+            scene="offline"
+            sourceTitle="来源"
+            targetTitle={targetLabel}
+            sourceCreateText="新建来源数据源"
+            targetCreateText="新建去向数据源"
+          />
+        </section>
+      </main>
 
       <BottomActionBar
         onCancel={goBack}
         onNext={() => void handleNext()}
-        onPrev={activeStep === 'client' ? () => setActiveStep('base') : undefined}
-        nextText={activeStep === 'base' ? '下一步：客户端与连接' : '进入任务配置'}
-        hintText={activeStep === 'base' ? '先保存任务基础信息，再选择客户端并测试目标连接。' : '确认客户端与目标连接后，进入文件资源和任务规则配置。'}
-        nextDisabled={activeStep === 'client' && (!canContinue || targetTestStatus !== 'success')}
+        nextText="进入任务配置"
+        hintText="完成任务信息与连接测试后，进入文件资源和规则配置。"
       />
     </div>
   );
