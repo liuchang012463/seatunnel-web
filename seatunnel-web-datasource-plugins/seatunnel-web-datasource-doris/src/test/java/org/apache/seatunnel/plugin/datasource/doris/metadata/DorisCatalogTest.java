@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Test;
 import java.sql.Connection;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DorisCatalogTest {
 
@@ -40,6 +42,16 @@ class DorisCatalogTest {
 
         assertEquals("analytics", request.getTablePath().getDatabaseName());
         assertEquals("orders", request.getTablePath().getTableName());
+    }
+
+    @Test
+    void firstColumnSqlDoesNotRequireNonNullableColumns() {
+        String sql = DorisCatalog.firstColumnSql("ods", "test");
+
+        assertFalse(sql.contains("IS_NULLABLE"), sql);
+        assertTrue(sql.contains("TABLE_SCHEMA = 'ods'"), sql);
+        assertTrue(sql.contains("TABLE_NAME = 'test'"), sql);
+        assertTrue(sql.contains("ORDER BY ORDINAL_POSITION ASC LIMIT 1"), sql);
     }
 
     private static final class ExposedDorisCatalog extends DorisCatalog {

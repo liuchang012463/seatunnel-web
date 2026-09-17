@@ -265,14 +265,12 @@ public class DorisCatalog extends AbstractJdbcCatalog implements HierarchicalJdb
 
     /**
      * 获取表的第一个字段名（按 ORDINAL_POSITION 排序）。
+     *
+     * <p>不按 IS_NULLABLE 过滤：Doris 表列常为可空，连通性测试只需任意列名构造 filter。</p>
      */
     private String getFirstColumn(Connection conn, String database, String table)
             throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(String.format(
-                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
-                        "WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s' AND IS_NULLABLE ='NO'" +
-                        "ORDER BY ORDINAL_POSITION ASC LIMIT 1",
-                sqlLiteral(database), sqlLiteral(table)));
+        try (PreparedStatement ps = conn.prepareStatement(firstColumnSql(database, table));
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 return rs.getString(1);
@@ -280,6 +278,14 @@ public class DorisCatalog extends AbstractJdbcCatalog implements HierarchicalJdb
         }
         throw new IllegalStateException(
                 String.format("表 '%s.%s' 没有找到任何字段", database, table));
+    }
+
+    static String firstColumnSql(String database, String table) {
+        return String.format(
+                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
+                        "WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s' " +
+                        "ORDER BY ORDINAL_POSITION ASC LIMIT 1",
+                sqlLiteral(database), sqlLiteral(table));
     }
 
     private static String sqlLiteral(String value) {
