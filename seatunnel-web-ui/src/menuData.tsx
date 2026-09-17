@@ -55,6 +55,7 @@ export const menuData: MenuDataItem[] = [
     icon: <SwapOutlined />,
     children: [
       { path: '/metrics', name: '任务概览', icon: <MonitorOutlined /> },
+      { path: '/ingestion/report', name: '数据引接报告', icon: <BarChartOutlined /> },
       { path: '/sync/batch-link-up', name: '批量数据引接', icon: <SwapOutlined /> },
       { path: '/sync/stream-link-up', name: '实时数据引接', icon: <ThunderboltOutlined /> },
       { path: '/sync/file-ingest', name: '离线文件导入', icon: <FolderOpenOutlined /> },

@@ -25,6 +25,7 @@ describe('application navigation menu', () => {
         name: '数据引接',
         children: [
           { path: '/metrics', name: '任务概览' },
+          { path: '/ingestion/report', name: '数据引接报告' },
           { path: '/sync/batch-link-up', name: '批量数据引接' },
           { path: '/sync/stream-link-up', name: '实时数据引接' },
           { path: '/sync/file-ingest', name: '离线文件导入' },

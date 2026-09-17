@@ -40,6 +40,7 @@ const businessRoutes = [
   ['/sync/topology', './FeaturePlaceholderPage'],
   ['/bi', './FeaturePlaceholderPage'],
   ['/metrics', './metrics'],
+  ['/ingestion/report', './ingestion-report'],
   ['/alarm', './alarm'],
   ['/operations/protocol', './FeaturePlaceholderPage'],
   ['/operations/diagnostics', './FeaturePlaceholderPage'],
