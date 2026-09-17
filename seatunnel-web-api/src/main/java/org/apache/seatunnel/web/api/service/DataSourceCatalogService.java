@@ -20,6 +20,12 @@ public interface DataSourceCatalogService {
      */
     List<OptionVO> listTable(Long id);
 
+    /** Lists all databases for a hierarchical JDBC catalog such as Doris. */
+    List<OptionVO> listDatabase(Long id);
+
+    /** Lists tables in one database for a hierarchical JDBC catalog. */
+    List<OptionVO> listTable(Long id, String databaseName);
+
     List<FileEntryVO> listFiles(Long id, String path);
 
     /**

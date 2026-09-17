@@ -9,6 +9,7 @@ import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.datasource.DataSourceCatalog;
 import org.apache.seatunnel.plugin.datasource.api.datasource.FileDataSourceCatalog;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
+import org.apache.seatunnel.plugin.datasource.api.jdbc.HierarchicalJdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
@@ -80,6 +81,41 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
             throw e;
         } catch (Exception e) {
             log.error("Failed to list tables, datasourceId={}", datasourceId, e);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
+        }
+    }
+
+    @Override
+    public List<OptionVO> listDatabase(Long datasourceId) {
+        validateDatasourceId(datasourceId);
+        DataSource dataSource = getDataSourceOrThrow(datasourceId);
+        ConnectionParam connectionParam = buildConnectionParam(dataSource);
+
+        try {
+            return hierarchicalCatalog(dataSource, connectionParam).listDatabaseOptions();
+        } catch (ServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to list databases, datasourceId={}", datasourceId, e);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
+        }
+    }
+
+    @Override
+    public List<OptionVO> listTable(Long datasourceId, String databaseName) {
+        validateDatasourceId(datasourceId);
+        if (StringUtils.isBlank(databaseName)) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "database");
+        }
+        DataSource dataSource = getDataSourceOrThrow(datasourceId);
+        ConnectionParam connectionParam = buildConnectionParam(dataSource);
+
+        try {
+            return hierarchicalCatalog(dataSource, connectionParam).listTableOptions(databaseName.trim());
+        } catch (ServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to list tables, datasourceId={}, database={}", datasourceId, databaseName, e);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
         }
     }
@@ -304,23 +340,29 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
 
         String tablePath = getRequiredText(requestBody, KEY_TABLE_PATH);
         getRequiredText(requestBody, KEY_READ_MODE);
+        String databaseName = getText(requestBody, "database");
+        String effectiveTablePath = StringUtils.isNotBlank(databaseName) && !tablePath.contains(".")
+                ? databaseName + "." + tablePath
+                : tablePath;
 
         DataSource dataSource = getDataSourceOrThrow(datasourceId);
         ConnectionParam connectionParam = buildConnectionParam(dataSource);
         JdbcCatalog jdbcCatalog = getJdbcCatalog(dataSource, connectionParam);
 
-        Map<String, Object> columnRequest = Map.of(
-                KEY_READ_MODE, "table",
-                KEY_TABLE_PATH, tablePath,
-                KEY_QUERY, ""
-        );
+        Map<String, Object> columnRequest = new LinkedHashMap<>();
+        columnRequest.put(KEY_READ_MODE, "table");
+        columnRequest.put(KEY_TABLE_PATH, tablePath);
+        columnRequest.put(KEY_QUERY, "");
+        if (StringUtils.isNotBlank(databaseName)) {
+            columnRequest.put("database", databaseName);
+        }
 
         try {
             List<DataSourceTableColumn> columns = jdbcCatalog.listColumns(columnRequest);
             if (columns == null || columns.isEmpty()) {
                 throw new ServiceException(Status.DATASOURCE_COLUMN_NOT_FOUND, tablePath);
             }
-            return jdbcCatalog.buildSelectAllColumnsSql(tablePath, columns);
+            return jdbcCatalog.buildSelectAllColumnsSql(effectiveTablePath, columns);
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -590,6 +632,17 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
                     dataSource.getDbType() + " does not support column, SQL, count, or preview operations");
         }
         return (JdbcCatalog) catalog;
+    }
+
+    private HierarchicalJdbcCatalog hierarchicalCatalog(
+            DataSource dataSource, ConnectionParam connectionParam) {
+        DataSourceCatalog catalog = getCatalog(dataSource, connectionParam);
+        if (!(catalog instanceof HierarchicalJdbcCatalog)) {
+            throw new ServiceException(
+                    Status.DATASOURCE_METADATA_ERROR,
+                    dataSource.getDbType() + " does not support database catalog operations");
+        }
+        return (HierarchicalJdbcCatalog) catalog;
     }
 
     private void validateDatasourceId(Long datasourceId) {

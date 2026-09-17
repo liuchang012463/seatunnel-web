@@ -31,6 +31,7 @@ export function useSourcePanelLogic({
   const description = nodeData?.description || "读取源端数据";
 
   const dataSourceId = config?.dataSourceId ? String(config.dataSourceId) : "";
+  const database = config?.database || "";
   const readMode = config?.readMode || "table";
   const table = config?.table || undefined;
   const sql = config?.sql || "";
@@ -38,7 +39,9 @@ export function useSourcePanelLogic({
   const incrementalConfig = config?.incrementalConfig || {};
 
   const [dataSourceOptions, setDataSourceOptions] = useState<any[]>([]);
+  const [databaseOptions, setDatabaseOptions] = useState<any[]>([]);
   const [tableOptions, setTableOptions] = useState<any[]>([]);
+  const [databaseLoading, setDatabaseLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
 
   const [sqlPopoverOpen, setSqlPopoverOpen] = useState(false);
@@ -133,15 +136,63 @@ export function useSourcePanelLogic({
   }, [dataSourceId, dataSourceOptions, nodeData, updateNode]);
 
   useEffect(() => {
+    const loadDatabaseOptions = async () => {
+      if (
+        isWebUpload ||
+        !dataSourceId ||
+        String(dbType).toUpperCase() !== "DORIS"
+      ) {
+        setDatabaseOptions([]);
+        return;
+      }
+
+      setDatabaseLoading(true);
+      try {
+        const res = await dataSourceCatalogApi.listDatabases(dataSourceId);
+        const list = Array.isArray(res?.data) ? res.data : [];
+        const options = list.map((item: any) => ({
+          label: item?.label ?? item?.value,
+          value: String(item?.value ?? ""),
+          description: item?.description,
+        }));
+        setDatabaseOptions(options);
+
+        if (
+          database &&
+          !options.some((item: any) => String(item.value) === String(database))
+        ) {
+          updateNode({ database: undefined, table: undefined, incrementalConfig: undefined });
+        }
+      } catch (error) {
+        console.error("load database options error", error);
+        setDatabaseOptions([]);
+      } finally {
+        setDatabaseLoading(false);
+      }
+    };
+
+    loadDatabaseOptions();
+  }, [dataSourceId, database, dbType, isWebUpload, updateNode]);
+
+  useEffect(() => {
     const loadTableOptions = async () => {
       if (isWebUpload || !dataSourceId || String(dbType).toUpperCase() === "HTTP") {
+        setDatabaseOptions([]);
+        setTableOptions([]);
+        return;
+      }
+
+      if (String(dbType).toUpperCase() === "DORIS" && !database) {
         setTableOptions([]);
         return;
       }
 
       setTableLoading(true);
       try {
-        const res = await dataSourceCatalogApi.listTable(dataSourceId);
+        const res =
+          String(dbType).toUpperCase() === "DORIS"
+            ? await dataSourceCatalogApi.listTablesByDatabase(dataSourceId, database)
+            : await dataSourceCatalogApi.listTable(dataSourceId);
         const list = Array.isArray(res?.data) ? res.data : [];
 
         const options = list.map((item: any) => {
@@ -191,7 +242,7 @@ export function useSourcePanelLogic({
     };
 
     loadTableOptions();
-  }, [dataSourceId, dbType, isWebUpload, table, updateNode]);
+  }, [dataSourceId, database, dbType, isWebUpload, table, updateNode]);
 
   const handleDataSourceChange = useCallback(
     (value: string, option: any) => {
@@ -203,6 +254,7 @@ export function useSourcePanelLogic({
       updateNode(
         {
           dataSourceId: value,
+          database: undefined,
           index: undefined,
           index_list: undefined,
           table: undefined,
@@ -267,6 +319,9 @@ export function useSourcePanelLogic({
       const params = {
         read_mode: currentReadMode,
         table_path: currentReadMode === "table" ? currentTable : "",
+        ...(String(dbType).toUpperCase() === "DORIS" && database
+          ? { database }
+          : {}),
         query: currentReadMode === "sql" ? sqlText : "",
         paramsList: scheduleConfig?.paramsList || [],
       };
@@ -316,7 +371,7 @@ export function useSourcePanelLogic({
     } finally {
       setTableLoading(false);
     }
-  }, [dataSourceId, readMode, table, sql, updateNode, scheduleParamsList]);
+  }, [dataSourceId, database, dbType, readMode, table, sql, updateNode, scheduleParamsList]);
 
   const handlePreview = useCallback(async () => {
     if (!dataSourceId) {
@@ -329,6 +384,9 @@ export function useSourcePanelLogic({
     const getRequestParams = () => ({
       read_mode: readMode,
       ...(readMode === "table" ? { table_path: table } : { query: sql }),
+      ...(String(dbType).toUpperCase() === "DORIS" && database
+        ? { database }
+        : {}),
       extra_params: extraParams,
       paramsList: scheduleConfig?.paramsList || [],
     });
@@ -361,6 +419,8 @@ export function useSourcePanelLogic({
     }
   }, [
     dataSourceId,
+    database,
+    dbType,
     readMode,
     table,
     sql,
@@ -397,6 +457,9 @@ export function useSourcePanelLogic({
       const res = await dataSourceCatalogApi.buildSqlTemplate(dataSourceId, {
         read_mode: "table",
         table_path: selectedSqlTable,
+        ...(String(dbType).toUpperCase() === "DORIS" && database
+          ? { database }
+          : {}),
       });
 
       if (res?.code !== 0) {
@@ -417,7 +480,7 @@ export function useSourcePanelLogic({
     } finally {
       setGenerateSqlLoading(false);
     }
-  }, [dataSourceId, selectedSqlTable, updateNode]);
+  }, [dataSourceId, database, dbType, selectedSqlTable, updateNode]);
 
   const handleResolveSqlPreview = useCallback(async () => {
     if (!dataSourceId) {
@@ -475,6 +538,7 @@ export function useSourcePanelLogic({
     dbType,
     description,
     dataSourceId,
+    database,
     readMode,
     table,
     sql,
@@ -483,7 +547,9 @@ export function useSourcePanelLogic({
     currentDataSource,
 
     dataSourceOptions,
+    databaseOptions,
     tableOptions,
+    databaseLoading,
     tableLoading,
 
     sqlPopoverOpen,

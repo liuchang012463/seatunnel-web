@@ -52,7 +52,7 @@ const FeaturePlaceholderPage: React.FC = () => {
       <Card>
         <Empty
           image={<ReadOutlined style={{ fontSize: 40, color: 'var(--st-color-text-muted)' }} />}
-          description="功能建设中，当前不会展示演示数据或虚假操作。"
+          description="功能建设中"
         >
           <Space wrap>
             <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/data-source')}>

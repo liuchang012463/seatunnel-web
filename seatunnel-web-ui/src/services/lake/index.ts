@@ -182,6 +182,7 @@ export async function updateRetention(
 }
 
 const WAREHOUSE = `${LAKE}/warehouse`;
+const WAREHOUSE_CATALOG = `${WAREHOUSE}/catalog`;
 
 export async function fetchLakeWarehouse(): Promise<LakeApiResponse<LakeWarehouseConfig>> {
   return HttpUtils.get(WAREHOUSE);
@@ -198,6 +199,16 @@ export async function testLakeWarehouse(
 ): Promise<LakeApiResponse<LakeWarehouseConfig>> {
   return HttpUtils.post(`${WAREHOUSE}/connect-test`, payload);
 }
+
+export const lakeCatalogApi = {
+  listDatabases: (): Promise<LakeApiResponse<any[]>> => HttpUtils.get(`${WAREHOUSE_CATALOG}/databases`),
+  listTablesByDatabase: (database: string): Promise<LakeApiResponse<any[]>> =>
+    HttpUtils.get(`${WAREHOUSE_CATALOG}/tables?database=${encodeURIComponent(database)}`),
+  listColumn: (requestBody: Record<string, unknown>): Promise<LakeApiResponse<any[]>> =>
+    HttpUtils.post(`${WAREHOUSE_CATALOG}/columns`, requestBody),
+  getTop20Data: (requestBody: Record<string, unknown>): Promise<LakeApiResponse<any>> =>
+    HttpUtils.post(`${WAREHOUSE_CATALOG}/preview`, requestBody),
+};
 
 export async function fetchLakeDorisStatus(): Promise<LakeApiResponse<LakeDorisStatus>> {
   return HttpUtils.get(`${WAREHOUSE}/status`);

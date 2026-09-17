@@ -1,13 +1,13 @@
 # SeaTunnel Web 项目约束
 
-修改或新增代码前，必须阅读根目录 [`CLAUDE.md`](CLAUDE.md)。
+修改或新增代码前，必须阅读根目录 [`CLAUDE.md`]。
 
 ## 版本与范围
 
 * SeaTunnel Web：`1.0.0`；SeaTunnel Engine：`2.3.13`。
 * OpenMetadata Server / Java SDK：`1.12.10`；ingestion / managed APIs 仅使用已验证的 `1.12.10.x` 版本线。
 * Spring Boot：`3.3.13`；部署 MySQL：`8.0.39`。
-* Java 使用 `/opt/jdk-21.0.11+10`；Maven 只能使用仓库内 `./mvnw`。
+* Java 使用 `/opt/jdk-21.0.11+10`；Maven 使用仓库内 `./mvnw`。
 * 前端使用 Node `24.19.0`、npm `11.17.0`、Yarn Classic `1.22.22`。
 * 本项目仅涉及 Web 端；不要实现、适配或验收任何移动端功能或移动端 UI。
 * JDBC 驱动与连接器参数以 SeaTunnel Engine `2.3.13` 为准。
@@ -28,4 +28,4 @@
 
 ## 验收
 
-* 涉及用户可操作 Web 行为的新增或修改，在宣称完成前必须使用 Playwright 实际完成受影响的 happy path 验收。
+* 涉及用户可操作 Web 行为的新增或修改，在宣称完成前必须使用 Chrome dev/Playwright 实际完成受影响的 happy path 验收。

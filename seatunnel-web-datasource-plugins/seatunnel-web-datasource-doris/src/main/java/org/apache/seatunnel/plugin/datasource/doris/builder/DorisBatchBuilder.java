@@ -178,9 +178,18 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
             if (StringUtils.isBlank(table)) {
                 continue;
             }
+            String tableDatabase = database;
+            String tableName = table.trim();
+            String[] qualifiedParts = tableName.split("\\.", -1);
+            if (qualifiedParts.length == 2
+                    && StringUtils.isNotBlank(qualifiedParts[0])
+                    && StringUtils.isNotBlank(qualifiedParts[1])) {
+                tableDatabase = qualifiedParts[0].trim();
+                tableName = qualifiedParts[1].trim();
+            }
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("database", database);
-            item.put("table", table.trim());
+            item.put("database", tableDatabase);
+            item.put("table", tableName);
             tableList.add(item);
         }
 

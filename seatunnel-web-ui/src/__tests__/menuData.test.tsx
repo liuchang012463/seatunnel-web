@@ -41,7 +41,7 @@ describe('application navigation menu', () => {
         children: [
           { path: '/client', name: '引接引擎管理' },
           { path: '/operations/metadata-engine', name: '探查引擎管理' },
-          { path: '/lake/warehouse', name: '数据湖管理' },
+          { path: '/lake/warehouse', name: 'Doris 集群管理' },
           { path: '/alarm', name: '告警管理' },
           { path: '/operations/protocol', name: '协议管理' },
           { path: '/operations/diagnostics', name: '安全加密' },
@@ -51,6 +51,7 @@ describe('application navigation menu', () => {
         path: '/menu/lake',
         name: '入湖管理',
         children: [
+          { path: '/lake/catalog', name: '数据湖目录' },
           { path: '/lake/resources', name: '物理入湖管理' },
           { path: '/lake/logical-access', name: '逻辑入湖管理' },
           { path: '/lake/lifecycle', name: '数据生命周期管理' },

@@ -29,6 +29,19 @@ class DorisBatchBuilderTest {
         assertEquals("existing_table", config.getString("table"));
     }
 
+    @Test
+    void splitsQualifiedDorisTablesIntoDatabaseAndTableForMultiSource() {
+        Config config = builder.buildSourceHocon(context(
+                "database = ods\n"
+                        + "multiTable = true\n"
+                        + "table_list = [\"analytics.orders\", \"ods.customers\"]"));
+
+        assertEquals("analytics", config.getConfigList("table_list").get(0).getString("database"));
+        assertEquals("orders", config.getConfigList("table_list").get(0).getString("table"));
+        assertEquals("ods", config.getConfigList("table_list").get(1).getString("database"));
+        assertEquals("customers", config.getConfigList("table_list").get(1).getString("table"));
+    }
+
     private HoconBuildContext context(String nodeConfig) {
         return HoconBuildContext.builder()
                 .connectionConfig(ConfigFactory.parseString(

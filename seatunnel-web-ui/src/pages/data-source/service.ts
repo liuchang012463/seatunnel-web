@@ -449,6 +449,19 @@ export const dataSourceCatalogApi = {
     return HttpUtils.get(`${apiPrefixCatalog}/list/${id}`);
   },
 
+  listDatabases: (id: string): Promise<{ code: number; data: any[]; message?: string }> => {
+    return HttpUtils.get(`${apiPrefixCatalog}/databases/${encodeURIComponent(id)}`);
+  },
+
+  listTablesByDatabase: (
+    id: string,
+    database: string,
+  ): Promise<{ code: number; data: any[]; message?: string }> => {
+    return HttpUtils.get(
+      `${apiPrefixCatalog}/tables/${encodeURIComponent(id)}?database=${encodeURIComponent(database)}`,
+    );
+  },
+
   listTableReference: (
     id: string,
     matchMode: any,

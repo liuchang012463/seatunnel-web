@@ -238,6 +238,7 @@ export interface LakeWarehouseConfig {
   connStatus?: string;
   lastError?: string;
   configured?: boolean;
+  catalogReady?: boolean;
 }
 
 export interface LakeDorisNode {

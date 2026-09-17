@@ -39,6 +39,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
     dbType,
     description,
     dataSourceId,
+    database,
     readMode,
     table,
     sql,
@@ -47,7 +48,9 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
     meta,
 
     dataSourceOptions,
+    databaseOptions,
     tableOptions,
+    databaseLoading,
     tableLoading,
 
     sqlPopoverOpen,
@@ -78,6 +81,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
 
   const isWebUpload = String(selectedNode?.data?.config?.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
   const isFileResource = String(selectedNode?.data?.config?.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
+  const isDoris = String(dbType || '').toUpperCase() === 'DORIS';
 
   if (isWebUpload) {
     return (
@@ -236,6 +240,42 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
           </div>
 
           <div className="workflow-panel__divider" />
+
+          {isDoris && (
+            <>
+              <div className="workflow-panel__group">
+                <div className="workflow-panel__group-head">
+                  <div className="workflow-panel__group-kicker">数据库 / Schema</div>
+                </div>
+                <Select
+                  value={database || undefined}
+                  onChange={(value) =>
+                    updateNode({
+                      database: value,
+                      table: undefined,
+                      incrementalConfig: undefined,
+                    }, undefined, {
+                      outputSchema: [],
+                      schemaStatus: 'idle',
+                      schemaError: '',
+                    })
+                  }
+                  options={databaseOptions}
+                  loading={databaseLoading}
+                  placeholder="请选择 Doris 数据库"
+                  className="workflow-panel__antd-select"
+                  style={{ width: '100%' }}
+                  classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
+                  showSearch
+                  optionFilterProp="label"
+                />
+                <div className="mt-1 text-xs leading-5 text-slate-500">
+                  Doris 没有独立 Schema，这里使用数据库名作为 Schema。
+                </div>
+              </div>
+              <div className="workflow-panel__divider" />
+            </>
+          )}
 
           <div className="workflow-panel__group">
             <div className="workflow-panel__group-head" style={{ display: 'flex', justifyContent: 'space-between' }}>
