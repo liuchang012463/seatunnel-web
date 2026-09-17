@@ -1,6 +1,7 @@
 import { history, useLocation, useParams } from '@umijs/max';
 import { App, Empty, Spin } from 'antd';
 import { useEffect, useState } from 'react';
+import { stripLayoutPrefix } from '@/utils/iframeLayout';
 import { seatunnelJobDefinitionApi } from '../../api';
 import {
   defaultEnvConfig,
@@ -253,7 +254,7 @@ const FileSyncWorkflowPage: React.FC = () => {
   const goBack = () => {
     const searchParams = new URLSearchParams(location.search);
     const scene = searchParams.get('scene');
-    const isFileRoute = location.pathname.startsWith('/sync/file-link-up');
+    const isFileRoute = stripLayoutPrefix(location.pathname).startsWith('/sync/file-link-up');
     const listPath = isFileRoute ? '/sync/file-link-up' : '/sync/batch-link-up';
     const detailPath = isFileRoute
       ? `/sync/file-link-up/${id}/detail`

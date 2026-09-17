@@ -1,7 +1,11 @@
 import {
   applyLayoutVisibility,
   isCrossOriginIframe,
+  prefixLayoutPath,
+  rewriteInAppLocation,
   shouldHideLayout,
+  stripLayoutPrefix,
+  withLayoutPrefix,
 } from '../iframeLayout';
 
 describe('iframe layout route prefix', () => {
@@ -55,5 +59,52 @@ describe('iframe layout route prefix', () => {
     };
 
     expect(isCrossOriginIframe(context)).toBe(false);
+  });
+});
+
+describe('iframe layout path helpers', () => {
+  it.each([
+    ['/iframe', '/'],
+    ['/iframe/', '/'],
+    ['/iframe/data-source', '/data-source'],
+    ['/iframe/sync/link-up', '/sync/link-up'],
+    ['/data-source', '/data-source'],
+  ])('strips the layout prefix from %s', (pathname, expected) => {
+    expect(stripLayoutPrefix(pathname)).toBe(expected);
+  });
+
+  it.each([
+    ['/data-source', '/iframe/data-source'],
+    ['/sync/link-up?tab=stream', '/iframe/sync/link-up?tab=stream'],
+    ['/iframe/data-source', '/iframe/data-source'],
+    ['https://example.com/x', 'https://example.com/x'],
+    ['relative', 'relative'],
+    ['/', '/iframe'],
+  ])('prefixes absolute in-app path %s', (path, expected) => {
+    expect(prefixLayoutPath(path)).toBe(expected);
+  });
+
+  it('only rewrites when the current location is under /iframe', () => {
+    expect(withLayoutPrefix('/data-source', '/data-source')).toBe('/data-source');
+    expect(withLayoutPrefix('/data-source', '/iframe/sync/link-up')).toBe('/iframe/data-source');
+  });
+
+  it('rewrites string and object history targets in iframe mode', () => {
+    expect(rewriteInAppLocation('/sync/link-up', '/iframe/data-source')).toBe(
+      '/iframe/sync/link-up',
+    );
+    expect(
+      rewriteInAppLocation(
+        { pathname: '/sync/link-up', search: '?tab=stream' },
+        '/iframe/data-source',
+      ),
+    ).toEqual({ pathname: '/iframe/sync/link-up', search: '?tab=stream' });
+  });
+
+  it('leaves history targets unchanged outside iframe mode', () => {
+    expect(rewriteInAppLocation('/sync/link-up', '/data-source')).toBe('/sync/link-up');
+    expect(
+      rewriteInAppLocation({ pathname: '/sync/link-up' }, '/data-source'),
+    ).toEqual({ pathname: '/sync/link-up' });
   });
 });

@@ -11,13 +11,30 @@ import { menuData } from './menuData';
 import { errorConfig } from './requestErrorConfig';
 import { applyNavTheme, persistNavTheme, setNavTheme } from './theme';
 import HttpUtils from './utils/HttpUtils';
-import { applyLayoutVisibility, shouldHideLayout } from './utils/iframeLayout';
+import { installIframeHistoryGuard } from './utils/iframeHistoryGuard';
+import {
+  applyLayoutVisibility,
+  shouldHideLayout,
+  withLayoutPrefix,
+} from './utils/iframeLayout';
 
 const getThemeSettings = (navTheme: 'light' | 'realDark') => ({
   ...defaultSettings,
   navTheme,
   colorPrimary: navTheme === 'light' ? '#1B87A8' : '#1B87A8',
 });
+
+/**
+ * Install the `/iframe` navigation guard after Umi has created history.
+ * Do not touch history during module evaluation of this file.
+ */
+export function render(oldRender: () => void) {
+  // Prefer the core history module to avoid a circular import through `@umijs/max`.
+  return import('@@/core/history').then(({ history }) => {
+    installIframeHistoryGuard(history);
+    oldRender();
+  });
+}
 
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
@@ -66,9 +83,11 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
         return defaultDom;
       }
 
-      const itemPath = menuItemProps.path;
+      const itemPath = menuItemProps.path
+        ? withLayoutPrefix(menuItemProps.path.replace('/*', ''))
+        : menuItemProps.path;
       const menuItem = itemPath && menuProps.location?.pathname !== itemPath ? (
-        <Link to={itemPath.replace('/*', '')} target={menuItemProps.target}>
+        <Link to={itemPath} target={menuItemProps.target}>
           {defaultDom}
         </Link>
       ) : (

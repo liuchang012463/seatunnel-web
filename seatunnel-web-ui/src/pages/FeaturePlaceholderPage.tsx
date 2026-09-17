@@ -3,6 +3,7 @@ import { PageContainer } from '@ant-design/pro-components';
 import { Button, Card, Empty, Space } from 'antd';
 import { history, useLocation } from '@umijs/max';
 import React from 'react';
+import { stripLayoutPrefix } from '@/utils/iframeLayout';
 
 const PAGE_COPY: Record<string, { title: string; description: string }> = {
   '/reporting/forms': {
@@ -41,7 +42,7 @@ const PAGE_COPY: Record<string, { title: string; description: string }> = {
 
 const FeaturePlaceholderPage: React.FC = () => {
   const { pathname } = useLocation();
-  const normalizedPathname = pathname.replace(/^\/iframe(?=\/|$)/, '') || '/';
+  const normalizedPathname = stripLayoutPrefix(pathname);
   const copy = PAGE_COPY[normalizedPathname] || {
     title: '页面暂不可用',
     description: '该页面尚未接入当前版本。',

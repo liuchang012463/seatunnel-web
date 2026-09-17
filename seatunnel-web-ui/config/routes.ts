@@ -6,6 +6,14 @@ const withHiddenLayoutPrefix = (path: string) =>
     ? hiddenLayoutRoutePrefix
     : `${hiddenLayoutRoutePrefix}${path.startsWith('/') ? path : `/${path}`}`;
 
+/** Prefix redirect targets (may include ?query / #hash) for the /iframe mirror. */
+const withHiddenLayoutRedirect = (redirect: string) => {
+  const match = redirect.match(/^([^?#]*)(.*)$/);
+  const path = match?.[1] ?? redirect;
+  const rest = match?.[2] ?? '';
+  return `${withHiddenLayoutPrefix(path)}${rest}`;
+};
+
 /**
  * 二级菜单页面。尚未接入业务实现的功能保留正式入口，使用统一的占位页。
  */
@@ -97,6 +105,9 @@ const hiddenLayoutRoutes = [
     ...route,
     path: withHiddenLayoutPrefix(route.path),
     hideInMenu: true,
+    ...('redirect' in route && typeof route.redirect === 'string'
+      ? { redirect: withHiddenLayoutRedirect(route.redirect) }
+      : {}),
   })),
 ];
 
