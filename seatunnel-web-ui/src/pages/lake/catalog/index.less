@@ -34,7 +34,6 @@
   font-size: 21px;
 }
 
-.lake-catalog-kicker,
 .lake-catalog-pane-kicker {
   display: block;
   color: var(--st-color-accent);
@@ -256,6 +255,26 @@
   gap: 8px;
 }
 
+.lake-catalog-tree-node--group {
+  gap: 10px;
+}
+
+.lake-catalog-tree-node--group strong {
+  font-size: 13px;
+}
+
+.lake-catalog-tree-node--group small {
+  color: var(--st-color-accent);
+}
+
+.lake-catalog-tree-node--logical small {
+  color: #a5d6ff;
+}
+
+.lake-catalog-tree-node--catalog strong {
+  font-weight: 500;
+}
+
 .lake-catalog-tree-node__copy {
   display: flex;
   min-width: 0;
@@ -321,6 +340,32 @@
   white-space: nowrap;
 }
 
+.lake-catalog-inspector__comment {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 10px;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  color: var(--st-color-text-secondary);
+  font-size: 11px;
+  line-height: 17px;
+  background: var(--st-color-bg-control);
+  border-left: 2px solid var(--st-color-accent);
+}
+
+.lake-catalog-inspector__comment > span:first-child {
+  flex: 0 0 auto;
+  color: var(--st-color-accent);
+}
+
+.lake-catalog-inspector__comment > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lake-catalog-inspector > .ant-tabs {
   min-height: 0;
   flex: 1;
@@ -371,17 +416,6 @@
 
 .lake-catalog-preview-meta .anticon {
   color: var(--st-color-accent);
-}
-
-.lake-catalog-inspector__description {
-  flex: 0 0 auto;
-  margin-top: 9px;
-  padding: 8px 10px;
-  color: var(--st-color-text-muted);
-  font-size: 11px;
-  line-height: 17px;
-  background: var(--st-color-bg-control);
-  border-top: 1px solid var(--st-color-divider);
 }
 
 .lake-catalog-inspector__empty,
