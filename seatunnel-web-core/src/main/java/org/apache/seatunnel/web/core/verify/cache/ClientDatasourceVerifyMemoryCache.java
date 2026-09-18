@@ -83,6 +83,20 @@ public class ClientDatasourceVerifyMemoryCache {
             String connectorType,
             String role
     ) {
+        return buildKey(client, datasource, pluginName, connectorType, role,
+                null, null, null);
+    }
+
+    public String buildKey(
+            SeaTunnelClient client,
+            DataSource datasource,
+            String pluginName,
+            String connectorType,
+            String role,
+            String database,
+            String schema,
+            String table
+    ) {
         return String.join(
                 "::",
                 "clientDatasourceVerify",
@@ -93,7 +107,10 @@ public class ClientDatasourceVerifyMemoryCache {
                 Objects.toString(getTimeValue(datasource == null ? null : datasource.getUpdateTime()), ""),
                 StringUtils.defaultString(pluginName).toUpperCase(),
                 StringUtils.defaultString(connectorType).toUpperCase(),
-                StringUtils.defaultString(role).toUpperCase()
+                StringUtils.defaultString(role).toUpperCase(),
+                StringUtils.defaultString(database),
+                StringUtils.defaultString(schema),
+                StringUtils.defaultString(table)
         );
     }
 

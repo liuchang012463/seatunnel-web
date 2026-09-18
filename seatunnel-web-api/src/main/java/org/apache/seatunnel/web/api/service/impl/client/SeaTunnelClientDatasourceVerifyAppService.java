@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.core.verify.DatasourceConnectivityVerificationSt
 import org.apache.seatunnel.web.core.verify.DatasourceConnectivityVerificationStrategyFactory;
 import org.apache.seatunnel.web.core.verify.cache.ClientDatasourceVerifyMemoryCache;
 import org.apache.seatunnel.web.core.verify.modal.DatasourceVerifyContext;
+import org.apache.seatunnel.web.core.verify.modal.DatasourceVerifyScope;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.SeaTunnelClient;
 import org.apache.seatunnel.web.dao.repository.SeaTunnelClientDao;
@@ -103,7 +104,10 @@ public class SeaTunnelClientDatasourceVerifyAppService {
                 datasource,
                 dto.getPluginName(),
                 dto.getConnectorType(),
-                dto.getRole()
+                dto.getRole(),
+                dto.getDatabase(),
+                dto.getSchema(),
+                dto.getTable()
         );
 
         // Reuse cached successful verification result in auto mode unless force refresh is requested.
@@ -178,9 +182,21 @@ public class SeaTunnelClientDatasourceVerifyAppService {
                 .pluginName(dto.getPluginName())
                 .connectorType(dto.getConnectorType())
                 .role(dto.getRole())
+                .scope(buildScope(dto))
                 .topic(dto.getTopic())
                 .timeoutMs(timeoutMs)
                 .pollIntervalMs(pollIntervalMs)
+                .build();
+    }
+
+    private DatasourceVerifyScope buildScope(ClientDatasourceVerifyDTO dto) {
+        if (StringUtils.isAllBlank(dto.getDatabase(), dto.getSchema(), dto.getTable())) {
+            return null;
+        }
+        return DatasourceVerifyScope.builder()
+                .database(StringUtils.trimToNull(dto.getDatabase()))
+                .schema(StringUtils.trimToNull(dto.getSchema()))
+                .table(StringUtils.trimToNull(dto.getTable()))
                 .build();
     }
 

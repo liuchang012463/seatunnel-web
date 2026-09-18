@@ -22,6 +22,9 @@ public class DatasourceVerifyContext {
 
     private String role;
 
+    /** Optional task-level scope used by explicit table verification. */
+    private DatasourceVerifyScope scope;
+
     private String topic;
 
     private long timeoutMs;
