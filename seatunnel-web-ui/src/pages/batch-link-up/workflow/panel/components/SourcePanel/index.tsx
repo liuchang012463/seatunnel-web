@@ -117,7 +117,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
         onChange={updateFileResourceNode}
         onOpenManager={() => {
           const returnTo = `${window.location.pathname}${window.location.search}`;
-          history.push(`/sync/file-resources?select=1&returnTo=${encodeURIComponent(returnTo)}`);
+          history.push(`/lake/file-resources?select=1&returnTo=${encodeURIComponent(returnTo)}`);
         }}
       />
     );

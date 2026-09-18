@@ -99,7 +99,7 @@ function buildInitialGraph(
   const isManagedFileSource = isFileResourceSource || isWebUploadSource;
 
   const sourceTitle =
-    (isFileResourceSource ? '文件资源库' : isWebUploadSource ? '本地文件' : sourceType?.dbType) ||
+    (isFileResourceSource ? '湖文件' : isWebUploadSource ? '本地文件' : sourceType?.dbType) ||
     sourceType?.pluginName ||
     sourceType?.connectorType ||
     '输入端';

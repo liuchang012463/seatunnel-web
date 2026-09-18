@@ -381,7 +381,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
             onChange={updateConfig}
             selectionMode="file"
             title="传输来源"
-            description="从文件资源库选择文件；SeaTunnel 执行节点直接读取对象存储。"
+            description="从湖文件区选择文件；SeaTunnel 执行节点直接读取对象存储。"
             binary
           />
         ) : (

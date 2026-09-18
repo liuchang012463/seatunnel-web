@@ -68,7 +68,7 @@ const EXPLORATION_GROUPS = [
   },
   {
     key: 'FILE_TRANSFER',
-    label: '文件传输',
+    label: '文件同步任务',
     description: 'FTP / SFTP / 对象存储',
     icon: <FolderOpenOutlined />,
   },
@@ -92,7 +92,7 @@ const GROUP_LABELS: Record<SelectedGroupKey, string> = {
   DATABASE: '数据库',
   MESSAGE_QUEUE: '消息队列',
   API: 'API 服务',
-  FILE_TRANSFER: '文件传输',
+  FILE_TRANSFER: '文件同步任务',
 };
 
 const GROUP_DESCRIPTIONS: Record<SelectedGroupKey, string> = {

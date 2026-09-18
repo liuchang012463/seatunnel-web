@@ -1150,7 +1150,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                   <div className="h-px w-8 bg-slate-300 md:w-10" />
                   {sourceManaged ? (
                     <div className="inline-flex h-9 items-center rounded-full border border-teal-100 bg-teal-50 px-3 text-xs font-medium text-teal-700">
-                      文件资源库
+                      湖文件
                     </div>
                   ) : (
                     <LinkStatusAction
@@ -1236,10 +1236,10 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                   {sourceManaged ? (
                     <div className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-4">
                       <div className="text-sm font-semibold text-teal-900">
-                        文件资源库
+                        湖文件
                       </div>
                       <div className="mt-2 text-xs leading-5 text-teal-700">
-                        文件资源将在进入任务配置后选择；这里无需创建或选择文件数据源。
+                        湖文件将在进入任务配置后选择；这里无需创建或选择文件数据源。
                       </div>
                     </div>
                   ) : renderDataSourceSelect("source")}

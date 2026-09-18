@@ -33,7 +33,7 @@ const FileIngestPage: React.FC = () => {
       );
       history.push(`/sync/file-ingest/${id}/detail?scene=create`);
     } catch (error: any) {
-      message.error(error?.message || '新建文件数据引接任务失败');
+      message.error(error?.message || '新建离线文件导入任务失败');
     }
   };
 
@@ -55,16 +55,16 @@ const FileIngestPage: React.FC = () => {
     <div>
       <TaskPageHeader
         icon={<FileTextOutlined />}
-        title="文件数据引接"
-        subtitle="从文件资源库读取 CSV、Excel、JSON 或 TXT，配置单表解析、字段映射和目标端入库。"
-        createText="创建文件引接"
+        title="离线文件导入"
+        subtitle="上传或选择 CSV、Excel、JSON、TXT，完成单表解析、字段映射和目标端入库。"
+        createText="创建文件导入"
         onCreate={() => void createTask()}
       />
       <FileTaskList
         taskType="FILE_INGEST"
         mode="GUIDE_SINGLE"
         goDetail={(id, item) => editTask(String(id), item)}
-        emptyDescription="暂无文件数据引接任务"
+        emptyDescription="暂无离线文件导入任务"
       />
     </div>
   );

@@ -17,8 +17,8 @@ import lombok.Getter;
 public enum TaskType {
     BATCH("BATCH", "批量数据引接"),
     STREAM("STREAM", "实时数据引接"),
-    FILE_INGEST("FILE_INGEST", "文件数据引接"),
-    FILE_TRANSFER("FILE_TRANSFER", "文件传输");
+    FILE_INGEST("FILE_INGEST", "离线文件导入"),
+    FILE_TRANSFER("FILE_TRANSFER", "文件同步任务");
 
     @EnumValue
     private final String code;

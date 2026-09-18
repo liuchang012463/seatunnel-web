@@ -17,8 +17,8 @@ const FileTransferSourceCard: React.FC<FileTransferSourceCardProps> = ({
     onChange={onChange}
     onOpenManager={onOpenManager}
     selectionMode="file"
-    title="传输来源"
-    description="选择文件资源库中的文件；执行节点直接读取对象存储。"
+    title="同步来源"
+    description="选择湖文件区中的文件；执行节点直接读取对象存储。"
     binary
   />
 );

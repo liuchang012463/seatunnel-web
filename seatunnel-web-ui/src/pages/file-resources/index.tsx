@@ -271,7 +271,7 @@ const FileResourcesPage: React.FC = () => {
   ];
 
   return (
-    <PageContainer className="file-resources-page" title="文件资源管理" subTitle="统一管理可复用的对象存储文件资源">
+    <PageContainer className="file-resources-page" title="湖文件管理" subTitle="管理数据湖对象存储中的文件与目录">
       {contextHolder}
       <Card className="file-resources-page__hero" variant="borderless">
         <Row gutter={[20, 16]} align="middle">
@@ -281,9 +281,9 @@ const FileResourcesPage: React.FC = () => {
                 <CloudUploadOutlined />
               </div>
               <div>
-                <Title level={4}>文件资源库</Title>
+                <Title level={4}>湖文件区</Title>
                 <Paragraph type="secondary">
-                  上传一次，供文件数据引接和文件传输任务复用。任务只保存资源引用，由执行节点直接读取对象存储。
+                  浏览与管理 MinIO 等湖侧对象存储中的文件，供离线文件导入与文件同步任务按需引用。
                 </Paragraph>
               </div>
             </Space>

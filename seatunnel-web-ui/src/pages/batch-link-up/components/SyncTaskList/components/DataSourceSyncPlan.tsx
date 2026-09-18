@@ -36,8 +36,8 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   };
 
   const getPlanTitle = () => {
-    if (taskType === "FILE_TRANSFER" || isFileSync) return "文件传输";
-    if (taskType === "FILE_INGEST" || isFileResourceSource) return "文件数据引接";
+    if (taskType === "FILE_TRANSFER" || isFileSync) return "文件同步任务";
+    if (taskType === "FILE_INGEST" || isFileResourceSource) return "离线文件导入";
     if (record?.jobType === "BATCH") {
       if (record?.mode === "GUIDE_SINGLE") return "单表同步";
       if (record?.mode === "GUIDE_SINGLE_INCREMENTAL") return "单表增量微批";
@@ -128,7 +128,7 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
 
   const sourceSummary = isManagedFileSource
     ? isFileResourceSource
-      ? "文件资源库"
+      ? "湖文件"
       : "本地文件"
     : `${record?.sourceDatasourceName || "-"} · ${getTableSummary(record?.sourceTable)}`;
   const sinkSummary = `${record?.sinkDatasourceName || "-"} · ${getTableSummary(
@@ -163,7 +163,7 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
           <span className="sync-plan-compact__type">
             {isManagedFileSource
               ? isFileResourceSource
-                ? "文件资源库"
+                ? "湖文件"
                 : "本地文件"
               : getTypeLabel(record?.sourceType)}
           </span>

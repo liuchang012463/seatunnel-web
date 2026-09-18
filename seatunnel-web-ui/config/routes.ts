@@ -31,7 +31,7 @@ const businessRoutes = [
   ['/sync/batch-link-up', './batch-link-up'],
   ['/sync/file-ingest', './file-ingest'],
   ['/sync/file-transfer', './file-transfer'],
-  ['/sync/file-resources', './file-resources'],
+  ['/lake/file-resources', './file-resources'],
   ['/sync/file-link-up', './file-link-up'],
   ['/sync/stream-link-up', './stream-link-up'],
   ['/sync/cloud-edge-tasks', './FeaturePlaceholderPage'],
@@ -93,6 +93,11 @@ const hiddenRoutes = [
 const framedRoutes = [
   ...businessRoutes,
   ...hiddenRoutes,
+  {
+    path: '/sync/file-resources',
+    component: './file-resources',
+    hideInMenu: true,
+  },
 ];
 
 const hiddenLayoutRoutes = [
