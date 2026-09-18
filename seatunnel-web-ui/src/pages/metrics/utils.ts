@@ -15,8 +15,8 @@ export const timeRangeMap = {
 };
 
 export const taskTypeOptions = [
-  {
-    label: 'BATCH',
-    value: 'BATCH',
-  },
+  { label: '批量数据引接', value: 'BATCH' },
+  { label: '实时数据引接', value: 'STREAM', disabled: true },
+  { label: '文件数据引接', value: 'FILE_INGEST', disabled: true },
+  { label: '文件传输', value: 'FILE_TRANSFER', disabled: true },
 ];

@@ -134,11 +134,6 @@ const MetadataEngineOverviewPage: React.FC = () => {
             </Paragraph>
           </div>
         </div>
-        <div className="meta-engine-actions">
-          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
-            刷新状态
-          </Button>
-        </div>
       </header>
 
       <section className="meta-engine-shell">

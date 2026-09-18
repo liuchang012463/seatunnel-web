@@ -28,7 +28,7 @@ import type {
 } from '@/pages/data-source/types';
 import { getDataSourceCategory } from '@/pages/data-source/dataSourceRegistry';
 import { formatDataSize } from '@/pages/data-source/metricFormat';
-import { explorationStatus, normalizeDataSourceList } from '../shared';
+import { explorationStatus, normalizeDataSourceList, withoutSystemManagedSources } from '../shared';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import '../index.less';
 import './results.less';
@@ -207,7 +207,7 @@ const DataExplorationResultsPage: React.FC = () => {
     try {
       const response = await fetchDataSourceAll();
       if (response.code !== 0) throw new Error(response.message || 'data source list unavailable');
-      setDataSources(normalizeDataSourceList(response.data));
+      setDataSources(withoutSystemManagedSources(normalizeDataSourceList(response.data)));
     } catch (error: any) {
       setDataSources([]);
       message.warning(error?.response?.data?.message || '数据源列表暂不可用');

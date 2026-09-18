@@ -55,6 +55,11 @@ export function normalizeDataSourceList(payload: unknown): DataSourceRecord[] {
   return [];
 }
 
+/** Drop system-managed projections (e.g. built-in Doris data lake) from exploration UIs. */
+export function withoutSystemManagedSources(records: DataSourceRecord[]): DataSourceRecord[] {
+  return records.filter((record) => !record.systemManaged);
+}
+
 export function displayOwner(record: DataSourceRecord) {
   return {
     unit: record.unitName || record.dataSourceUnit || '待归属',

@@ -34,7 +34,7 @@ import type {
   DataSourceUnitOption,
 } from '@/pages/data-source/types';
 import { formatDataSize } from '@/pages/data-source/metricFormat';
-import { displayOwner, explorationStatus, normalizeDataSourceList, sourceMatches } from '../shared';
+import { displayOwner, explorationStatus, normalizeDataSourceList, sourceMatches, withoutSystemManagedSources } from '../shared';
 import '../index.less';
 import './overview.less';
 
@@ -132,7 +132,9 @@ const DataExplorationOverviewPage: React.FC = () => {
     setSourcesLoading(true);
     try {
       const response = await fetchDataSourceAll();
-      if (response.code === 0) setDataSources(normalizeDataSourceList(response.data));
+      if (response.code === 0) {
+        setDataSources(withoutSystemManagedSources(normalizeDataSourceList(response.data)));
+      }
     } catch (_) {
       message.warning('数据源列表暂不可用，筛选项可能不完整');
     } finally {

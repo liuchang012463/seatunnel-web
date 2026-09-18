@@ -267,9 +267,6 @@ const WarehousePage: React.FC = () => {
             <Paragraph>统一管理 Doris 数据湖连接与集群运行指标，持续掌握 FE/BE 健康状态。</Paragraph>
           </div>
         </div>
-        <div className="lake-overview-actions">
-          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新状态</Button>
-        </div>
       </header>
 
       <section className="lake-warehouse-shell">

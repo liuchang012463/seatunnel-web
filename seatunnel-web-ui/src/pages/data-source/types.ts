@@ -104,6 +104,8 @@ export interface DataSourcePageParams {
   dataSourceUnit?: string;
   status?: DataSourceLifecycleStatus;
   environment?: string;
+  /** When true, exclude system-managed projections (e.g. built-in Doris data lake). */
+  excludeSystemManaged?: boolean;
 }
 
 export interface DataSourceFormValues {

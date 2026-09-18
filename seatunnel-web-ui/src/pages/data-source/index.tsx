@@ -75,7 +75,7 @@ const DataSourcePage: React.FC = () => {
   const [businessSystemOptions, setBusinessSystemOptions] = useState<BusinessSystemOption[]>([]);
   const [selectedBusinessSystem, setSelectedBusinessSystem] = useState<string>();
   const [selectedStatus, setSelectedStatus] = useState<DataSourceLifecycleStatus>();
-  const [viewMode, setViewMode] = useState<DataSourceViewMode>('list');
+  const [viewMode, setViewMode] = useState<DataSourceViewMode>('card');
   const [masterDataOpen, setMasterDataOpen] = useState(false);
 
   const refreshUnitOptions = async () => {
@@ -118,6 +118,7 @@ const DataSourcePage: React.FC = () => {
         unitId: selectedUnit || undefined,
         businessSystemId: selectedBusinessSystem || undefined,
         status: selectedStatus,
+        excludeSystemManaged: true,
         ...params,
       };
 

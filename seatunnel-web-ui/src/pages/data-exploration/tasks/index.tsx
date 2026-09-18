@@ -183,6 +183,7 @@ const DataExplorationTasksPage: React.FC = () => {
       businessSystemId: businessSystemId || undefined,
       status,
       dbTypes: category === 'ALL' ? undefined : [...selectedCategory.dbTypes],
+      excludeSystemManaged: true,
     };
     try {
       const response = await withTimeout(

@@ -1,11 +1,9 @@
-import { message, Segmented, Select, Spin } from "antd";
+import { message, Select, Spin } from "antd";
 import { motion } from "framer-motion";
 import {
-  Activity,
   BarChart3,
   Clock3,
   Database,
-  Layers3,
   Target,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -218,34 +216,17 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="task-type-option">
-                    <Layers3 size={14} /> 引接链路（离线）
-                  </div>
-                  {/* <Segmented
+                  <Select
                     value={taskType}
                     onChange={(value) => setTaskType(value as TaskType)}
-                    className="task-type-segmented"
+                    style={{ width: 160 }}
                     options={[
-                      {
-                        label: (
-                          <div className="task-type-option">
-                            <Layers3 size={14} /> 引接链路（离线）
-                          </div>
-                        ),
-                        value: "BATCH",
-                      },
-                      {
-                        label: (
-                          <div className="task-type-option">
-                            <Activity size={14} />
-                            引接链路（实时）
-                          </div>
-                        ),
-                        disabled: true,
-                        value: "STREAMING",
-                      },
+                      { label: "批量数据引接", value: "BATCH" },
+                      { label: "实时数据引接", value: "STREAM", disabled: true },
+                      { label: "文件数据引接", value: "FILE_INGEST", disabled: true },
+                      { label: "文件传输", value: "FILE_TRANSFER", disabled: true },
                     ]}
-                  /> */}
+                  />
                   <Select
                     value={timeRange}
                     onChange={(value) => setTimeRange(value)}
