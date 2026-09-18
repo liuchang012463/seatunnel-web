@@ -5,15 +5,18 @@ import {
 import { message } from "antd";
 import { Table2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { fetchReadyOdsDatabases } from "@/pages/lake/physical/service";
 
 export interface SinkPanelLogicProps {
   selectedNode: any;
   onNodeDataChange: (nodeId: string, newData: any) => void;
+  sourceDataSourceId?: string;
 }
 
 export function useSinkPanelLogic({
   selectedNode,
   onNodeDataChange,
+  sourceDataSourceId,
 }: SinkPanelLogicProps) {
   const nodeId = selectedNode?.id;
   const nodeData = selectedNode?.data || {};
@@ -26,6 +29,8 @@ export function useSinkPanelLogic({
   const dataSourceId = config?.dataSourceId
     ? String(config.dataSourceId)
     : undefined;
+  const database = config?.database || "";
+  const odsDatabaseBindingId = config?.odsDatabaseBindingId;
 
   const autoCreateTable = Boolean(config?.autoCreateTable);
   const writeMode = config?.writeMode || "append";
@@ -39,7 +44,9 @@ export function useSinkPanelLogic({
   const extraParams = config?.extraParams || [];
 
   const [dataSourceOptions, setDataSourceOptions] = useState<any[]>([]);
+  const [databaseOptions, setDatabaseOptions] = useState<any[]>([]);
   const [tableOptions, setTableOptions] = useState<any[]>([]);
+  const [databaseLoading, setDatabaseLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
 
   const [sqlPopoverOpen, setSqlPopoverOpen] = useState(false);
@@ -68,6 +75,8 @@ export function useSinkPanelLogic({
     );
   }, [dataSourceId, dataSourceOptions]);
 
+  const isSystemManagedTarget = Boolean(currentDataSource?.systemManaged);
+
   useEffect(() => {
     const loadDataSourceOptions = async () => {
       if (!dbType) {
@@ -82,6 +91,7 @@ export function useSinkPanelLogic({
           label: item?.label,
           value: String(item?.value),
           dbType: item?.dbType,
+          systemManaged: item?.systemManaged,
         }));
         setDataSourceOptions(options);
       } catch (error) {
@@ -113,15 +123,99 @@ export function useSinkPanelLogic({
   }, [dataSourceId, dataSourceOptions, nodeData, updateNode]);
 
   useEffect(() => {
+    const loadDatabaseOptions = async () => {
+      if (!dataSourceId || String(dbType).toUpperCase() !== "DORIS") {
+        setDatabaseOptions([]);
+        return;
+      }
+
+      // Wait for datasource metadata before selecting the catalog path.  A
+      // system-managed Doris target must never briefly fall back to the
+      // unrestricted database catalog while its option is still loading.
+      if (dataSourceOptions.length === 0 || !currentDataSource) {
+        setDatabaseOptions([]);
+        return;
+      }
+      if (isSystemManagedTarget && !sourceDataSourceId) {
+        setDatabaseOptions([]);
+        return;
+      }
+
+      setDatabaseLoading(true);
+      try {
+        const res = isSystemManagedTarget
+          ? await fetchReadyOdsDatabases(Number(sourceDataSourceId))
+          : await dataSourceCatalogApi.listDatabases(dataSourceId);
+        const list = Array.isArray(res?.data) ? res.data : [];
+        const options = isSystemManagedTarget
+          ? list.map((item: any) => ({
+              label: item?.databaseName,
+              value: String(item?.databaseName ?? ""),
+              description: item?.resourceStatus,
+              odsDatabaseBindingId: item?.id,
+            }))
+          : list.map((item: any) => ({
+              label: item?.label ?? item?.value,
+              value: String(item?.value ?? ""),
+              description: item?.description,
+            }));
+        setDatabaseOptions(options);
+
+        if (
+          database &&
+          !options.some((item: any) => String(item.value) === String(database))
+        ) {
+          updateNode({
+            database: undefined,
+            odsDatabaseBindingId: undefined,
+            table: undefined,
+            targetTableName: "",
+          });
+        }
+      } catch (error) {
+        console.error("load sink database options error", error);
+        setDatabaseOptions([]);
+      } finally {
+        setDatabaseLoading(false);
+      }
+    };
+
+    loadDatabaseOptions();
+  }, [
+    dataSourceId,
+    database,
+    dbType,
+    dataSourceOptions.length,
+    currentDataSource,
+    isSystemManagedTarget,
+    sourceDataSourceId,
+    updateNode,
+  ]);
+
+  useEffect(() => {
     const loadTableOptions = async () => {
       if (!dataSourceId || autoCreateTable) {
         setTableOptions([]);
         return;
       }
 
+      if (
+        String(dbType).toUpperCase() === "DORIS"
+        && (
+          !database
+          || !currentDataSource
+          || (isSystemManagedTarget && !sourceDataSourceId)
+        )
+      ) {
+        setTableOptions([]);
+        return;
+      }
+
       setTableLoading(true);
       try {
-        const res = await dataSourceCatalogApi.listTable(dataSourceId);
+        const res = String(dbType).toUpperCase() === "DORIS"
+          ? await dataSourceCatalogApi.listTablesByDatabase(dataSourceId, database)
+          : await dataSourceCatalogApi.listTable(dataSourceId);
         const list = Array.isArray(res?.data) ? res.data : [];
 
         const options = list.map((item: any) => {
@@ -171,7 +265,17 @@ export function useSinkPanelLogic({
     };
 
     loadTableOptions();
-  }, [dataSourceId, autoCreateTable, table, updateNode]);
+  }, [
+    dataSourceId,
+    autoCreateTable,
+    database,
+    dbType,
+    currentDataSource,
+    isSystemManagedTarget,
+    sourceDataSourceId,
+    table,
+    updateNode,
+  ]);
 
   const handleDataSourceChange = useCallback(
     (value: string, option: any) => {
@@ -181,6 +285,8 @@ export function useSinkPanelLogic({
       updateNode(
         {
           dataSourceId: value,
+          database: undefined,
+          odsDatabaseBindingId: undefined,
           index: undefined,
           table: undefined,
           targetTableName: "",
@@ -194,6 +300,20 @@ export function useSinkPanelLogic({
       );
     },
     [nodeData, updateNode]
+  );
+
+  const handleDatabaseChange = useCallback(
+    (value: string, option: any) => {
+      updateNode({
+        database: value,
+        odsDatabaseBindingId: isSystemManagedTarget
+          ? option?.odsDatabaseBindingId
+          : undefined,
+        table: undefined,
+        targetTableName: "",
+      });
+    },
+    [isSystemManagedTarget, updateNode]
   );
 
   const handleAutoCreateTableChange = useCallback(
@@ -252,6 +372,9 @@ export function useSinkPanelLogic({
       const res = await dataSourceCatalogApi.buildSqlTemplate(dataSourceId, {
         read_mode: "table",
         table_path: selectedSqlTable,
+        ...(String(dbType).toUpperCase() === "DORIS" && database
+          ? { database }
+          : {}),
       });
 
       if (res?.code !== 0) {
@@ -271,7 +394,7 @@ export function useSinkPanelLogic({
     } finally {
       setGenerateSqlLoading(false);
     }
-  }, [dataSourceId, selectedSqlTable, updateNode]);
+  }, [dataSourceId, database, dbType, selectedSqlTable, updateNode]);
 
   return {
     title,
@@ -279,6 +402,7 @@ export function useSinkPanelLogic({
     description,
 
     dataSourceId,
+    database,
     autoCreateTable,
     writeMode,
     targetMode,
@@ -291,6 +415,10 @@ export function useSinkPanelLogic({
 
     currentDataSource,
     dataSourceOptions,
+    databaseOptions,
+    databaseLoading,
+    odsDatabaseBindingId,
+    isSystemManagedTarget,
     tableOptions,
     tableLoading,
 
@@ -302,6 +430,7 @@ export function useSinkPanelLogic({
 
     updateNode,
     handleDataSourceChange,
+    handleDatabaseChange,
     handleAutoCreateTableChange,
     handleWriteModeChange,
     handleTargetModeChange,

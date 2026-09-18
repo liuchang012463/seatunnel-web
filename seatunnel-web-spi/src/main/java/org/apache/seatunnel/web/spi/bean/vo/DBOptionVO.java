@@ -31,4 +31,7 @@ public class DBOptionVO {
             allowableValues = {"MYSQL", "POSTGRE_SQL", "KINGBASE", "DAMENG", "ORACLE", "SQLSERVER", "CLICKHOUSE", "KAFKA", "ELASTICSEARCH"}
     )
     private Object dbType;
+
+    /** True for platform-managed projections such as the Lake ODS Doris source. */
+    private Boolean systemManaged;
 }

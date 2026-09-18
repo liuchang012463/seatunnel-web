@@ -13,9 +13,10 @@ interface Props {
   selectedNode: any;
   onClose: () => void;
   onNodeDataChange: (nodeId: string, newData: any) => void;
+  sourceDataSourceId?: string;
 }
 
-function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
+function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId }: Props) {
   const isKafka = String(selectedNode?.data?.dbType || '').toUpperCase() === 'KAFKA';
   const isElasticsearch = String(selectedNode?.data?.dbType || '').toUpperCase() === 'ELASTICSEARCH';
   const {
@@ -24,6 +25,8 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
     description,
 
     dataSourceId,
+    database,
+    isSystemManagedTarget,
     autoCreateTable,
     writeMode,
     targetMode,
@@ -34,6 +37,8 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
     extraParams,
 
     dataSourceOptions,
+    databaseOptions,
+    databaseLoading,
     tableOptions,
     tableLoading,
 
@@ -45,6 +50,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
 
     updateNode,
     handleDataSourceChange,
+    handleDatabaseChange,
     handleAutoCreateTableChange,
     handleWriteModeChange,
     handleTargetModeChange,
@@ -52,6 +58,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
   } = useSinkPanelLogic({
     selectedNode,
     onNodeDataChange,
+    sourceDataSourceId,
   });
 
   if (isKafka || isElasticsearch) {
@@ -162,6 +169,34 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
         </div>
 
         <div className="workflow-panel__divider" />
+
+        {String(dbType).toUpperCase() === 'DORIS' && (
+          <>
+            <div className="workflow-panel__group">
+              <div className="workflow-panel__group-head">
+                <div className="workflow-panel__group-kicker">目标数据库</div>
+              </div>
+              <Select
+                value={database || undefined}
+                onChange={handleDatabaseChange}
+                options={databaseOptions}
+                loading={databaseLoading}
+                placeholder="请选择 Doris 目标数据库"
+                showSearch
+                optionFilterProp="label"
+                className="workflow-panel__antd-select"
+                style={{ width: '100%' }}
+                classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
+              />
+              <div className="mt-1 text-xs leading-5 text-slate-500">
+                {isSystemManagedTarget
+                  ? '系统 Doris 仅允许选择当前来源数据源关联且 READY 的 ODS 数据库。'
+                  : 'Doris 使用 database 作为唯一命名空间；默认连接库只作为回退值。'}
+              </div>
+            </div>
+            <div className="workflow-panel__divider" />
+          </>
+        )}
 
         <div className="workflow-panel__group">
           <div className="workflow-panel__group-head" style={{ display: 'flex', justifyContent: 'space-between' }}>

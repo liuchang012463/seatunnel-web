@@ -8,43 +8,28 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
-import org.apache.seatunnel.plugin.datasource.api.jdbc.HierarchicalJdbcCatalog;
-import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
-import org.apache.seatunnel.plugin.datasource.doris.metadata.DorisCatalog;
+import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.seatunnel.web.common.enums.HoconBuildStage;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.SeaTunnelClient;
-import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
-import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
+import org.apache.seatunnel.web.core.verify.modal.DatasourceVerifyScope;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Doris 连通性测试任务构建器。
  *
- * <p>Doris 不走 JDBC select 1 的方式测试连通性，而是通过 Doris Source 插件
- * 读取一张表来验证连通性。使用分区字段（分区表）或第一个字段（非分区表）
- * 构建 doris.filter.query 过滤条件，确保 Doris Source 能有效扫描数据。</p>
- *
- * <p>表名和字段信息通过 DorisCatalog（JDBC queryPort 9030）获取。
- * 数据湖投影故意不绑定默认 database（任务配置时再选库），此时先枚举可见库再选表探测。</p>
+ * <p>Doris 的客户端连通性验证使用 JDBC query port 上的轻量 SQL 探针。
+ * 未提供任务表范围时执行 {@code SELECT 1}，不依赖任意业务表；显式提供
+ * database/table 时执行 {@code LIMIT 0} 表访问检查。</p>
  */
 @Slf4j
 @Component
 public class DorisConnectivityTestJobDefinitionBuilder implements ConnectivityTestJobDefinitionBuilder {
-
-    private static final Set<String> SKIPPED_DATABASES = Set.of(
-            "information_schema",
-            "mysql",
-            "_internal_schema",
-            "sys");
 
     @Resource
     private ConsoleSinkHoconBuilder consoleSinkHoconBuilder;
@@ -62,27 +47,26 @@ public class DorisConnectivityTestJobDefinitionBuilder implements ConnectivityTe
 
     @Override
     public ConnectivityTestJob build(SeaTunnelClient client, DataSource datasource) {
-        DbType dbType = datasource.getDbType();
+        return build(client, datasource, "SOURCE", null, null);
+    }
+
+    @Override
+    public ConnectivityTestJob build(
+            SeaTunnelClient client,
+            DataSource datasource,
+            String role,
+            DatasourceVerifyScope scope,
+            String topic) {
         String connectionJson = datasource.getConnectionParams();
 
-        // 通过 SPI 获取 Doris 处理器
-        DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
-        BaseConnectionParam param =
-                DataSourceUtils.buildJdbcConnectionParams(dbType, connectionJson);
+        DataSourceProcessor jdbcProcessor = DataSourceUtils.getDatasourceProcessor(DbType.JDBC);
+        DataSourceHoconBuilder sourceBuilder = jdbcProcessor.getQueryBuilder("JDBC-JDBC");
 
-        // 通过 DorisCatalog（JDBC queryPort）获取表和过滤字段
-        JdbcCatalog catalog = processor.getMetadataService(param);
-        DorisCatalog dorisCatalog = (DorisCatalog) catalog;
-        ProbeTarget probe = resolveProbeTarget(dorisCatalog, param.getDatabase());
-        String filterColumn = dorisCatalog.getFilterColumn(probe.database(), probe.table());
-
-        // 构建 node 配置（database、table、doris.filter.query）
-        Config sourceNodeConfig = buildConnectivitySourceNodeConfig(
-                probe.database(), probe.table(), filterColumn);
-
-        // 使用 DorisBatchBuilder 构建 source HOCON
-        DataSourceHoconBuilder sourceBuilder = processor.getQueryBuilder("DORIS");
-        Config connectionConfig = ConfigFactory.parseString(connectionJson);
+        Config connectionConfig = buildJdbcProbeConnectionConfig(connectionJson);
+        Config sourceNodeConfig = ConfigFactory.parseMap(Map.of(
+                "sql", buildProbeSql(connectionConfig, scope),
+                "readMode", "sql"
+        ));
         HoconBuildContext buildContext = HoconBuildContext.builder()
                 .connectionParam(connectionJson)
                 .connectionConfig(connectionConfig)
@@ -91,94 +75,75 @@ public class DorisConnectivityTestJobDefinitionBuilder implements ConnectivityTe
                 .build();
         Config sourcePluginConfig = sourceBuilder.buildSourceHocon(buildContext);
 
-        // 组装完整 job 配置
         String jobName = buildJobName(client.getId(), datasource.getId());
         String jobConfig = seaTunnelJobConfigAssembler.assemble(
                 testJobEnvConfigBuilder.buildBatchEnv(),
-                "Doris",
+                "Jdbc",
                 sourcePluginConfig,
                 consoleSinkHoconBuilder.pluginName(),
                 consoleSinkHoconBuilder.build()
         );
 
+        log.info("Doris 连通性测试使用 JDBC 探针: role={}, scope={}, sql={}",
+                role, scope, sourceNodeConfig.getString("sql"));
         return new ConnectivityTestJob(jobName, jobConfig, "hocon", true);
     }
 
-    /**
-     * 解析连通性探测用的 library.table。
-     *
-     * <p>连接参数已绑定 database 时沿用该库；数据湖投影 database 为空时，
-     * 在可见业务库中找第一张 BASE TABLE。</p>
-     */
-    static ProbeTarget resolveProbeTarget(HierarchicalJdbcCatalog catalog, String configuredDatabase) {
-        if (StringUtils.isNotBlank(configuredDatabase)) {
-            List<String> tables = catalog.listTables();
-            if (tables == null || tables.isEmpty()) {
-                throw new IllegalStateException(
-                        "Doris 数据库 '" + configuredDatabase.trim()
-                                + "' 中没有找到任何表，无法执行连通性测试");
-            }
-            return new ProbeTarget(configuredDatabase.trim(), tables.get(0));
-        }
+    private Config buildJdbcProbeConnectionConfig(String connectionJson) {
+        Config original = ConfigFactory.parseString(connectionJson);
+        Map<String, Object> values = new LinkedHashMap<>(original.root().unwrapped());
 
-        List<OptionVO> databases = catalog.listDatabaseOptions();
-        if (databases != null) {
-            for (OptionVO databaseOption : databases) {
-                String database = optionValue(databaseOption);
-                if (StringUtils.isBlank(database) || isSkippedDatabase(database)) {
-                    continue;
-                }
-                List<OptionVO> tables = catalog.listTableOptions(database);
-                if (tables == null || tables.isEmpty()) {
-                    continue;
-                }
-                String table = optionValue(tables.get(0));
-                if (StringUtils.isNotBlank(table)) {
-                    return new ProbeTarget(database, table);
-                }
-            }
+        if (!values.containsKey("user") && values.containsKey("username")) {
+            values.put("user", values.get("username"));
         }
-
-        throw new IllegalStateException(
-                "Doris 集群中没有找到可用于连通性测试的业务表（连接未绑定默认库）");
+        Object password = values.get("password");
+        if (password != null) {
+            values.put("password", PasswordUtils.decodePassword(String.valueOf(password)));
+        }
+        return ConfigFactory.parseMap(values);
     }
 
-    private static boolean isSkippedDatabase(String database) {
-        return SKIPPED_DATABASES.contains(database.toLowerCase(Locale.ROOT));
+    static String buildProbeSql(Config connectionConfig, DatasourceVerifyScope scope) {
+        if (scope == null || !scope.hasTable()) {
+            return "SELECT 1 AS connectivity_check";
+        }
+
+        String database = firstNonBlank(
+                scope.getDatabase(),
+                getString(connectionConfig, "database"));
+        if (StringUtils.isBlank(database)) {
+            throw new IllegalArgumentException(
+                    "Doris 显式表连通性测试必须提供 database");
+        }
+
+        return "SELECT * FROM " + quoteIdentifier(database) + "."
+                + quoteIdentifier(scope.getTable()) + " LIMIT 0";
     }
 
-    private static String optionValue(OptionVO option) {
-        if (option == null || option.getValue() == null) {
+    private static String getString(Config config, String path) {
+        if (config == null || !config.hasPath(path)) {
             return null;
         }
-        String value = option.getValue().toString();
-        return StringUtils.isBlank(value) ? null : value.trim();
+        return StringUtils.trimToNull(config.getString(path));
     }
 
-    /**
-     * 构建连通性测试的 source node 配置。
-     *
-     * <p>包含 database、table 和 doris.filter.query。
-     * doris.filter.query 使用分区字段（分区表）或第一个字段（非分区表）
-     * 构建 IS NULL 过滤条件，确保 Doris Source 能有效扫描元数据路径。</p>
-     */
-    private Config buildConnectivitySourceNodeConfig(
-            String database, String tableName, String filterColumn) {
-        String filterQuery = "`" + filterColumn + "` IS NULL";
-        log.info("Doris 连通性测试: table={}.{}, filterColumn={}, filterQuery={}",
-                database, tableName, filterColumn, filterQuery);
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (StringUtils.isNotBlank(value)) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
 
-        Map<String, Object> map = new LinkedHashMap<>(4);
-        map.put("database", database);
-        map.put("table", tableName);
-        map.put("doris.filter.query", filterQuery);
-        return ConfigFactory.parseMap(map);
+    private static String quoteIdentifier(String identifier) {
+        if (StringUtils.isBlank(identifier)) {
+            throw new IllegalArgumentException("Doris identifier must not be blank");
+        }
+        return "`" + identifier.trim().replace("`", "``") + "`";
     }
 
     private String buildJobName(Long clientId, Long datasourceId) {
         return "connectivity_check_" + datasourceId + "_" + clientId + "_" + System.currentTimeMillis();
-    }
-
-    record ProbeTarget(String database, String table) {
     }
 }

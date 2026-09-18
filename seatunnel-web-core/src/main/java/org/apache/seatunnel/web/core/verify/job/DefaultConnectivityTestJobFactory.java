@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.core.verify.job;
 
 import jakarta.annotation.Resource;
+import org.apache.seatunnel.web.core.verify.modal.DatasourceVerifyScope;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.SeaTunnelClient;
 import org.springframework.stereotype.Component;
@@ -26,5 +27,20 @@ public class DefaultConnectivityTestJobFactory implements ConnectivityTestJobFac
                 .orElseThrow(() -> new IllegalArgumentException(
                         "暂不支持该数据源类型的测试任务构建: " + datasource.getDbType()))
                 .build(client, datasource, topic);
+    }
+
+    @Override
+    public ConnectivityTestJob build(
+            SeaTunnelClient client,
+            DataSource datasource,
+            String role,
+            DatasourceVerifyScope scope,
+            String topic) {
+        return builders.stream()
+                .filter(builder -> builder.supports(datasource.getDbType()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "暂不支持该数据源类型的测试任务构建: " + datasource.getDbType()))
+                .build(client, datasource, role, scope, topic);
     }
 }

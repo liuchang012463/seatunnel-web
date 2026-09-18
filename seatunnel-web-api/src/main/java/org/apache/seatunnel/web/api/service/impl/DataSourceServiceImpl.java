@@ -848,6 +848,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         option.setValue(entity.getId());
         option.setLabel(entity.getName());
         option.setDbType(entity.getDbType());
+        option.setSystemManaged(Boolean.TRUE.equals(entity.getSystemManaged()));
         return option;
     }
 

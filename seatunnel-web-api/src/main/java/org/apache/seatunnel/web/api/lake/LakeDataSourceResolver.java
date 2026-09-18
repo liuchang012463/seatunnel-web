@@ -147,12 +147,37 @@ public class LakeDataSourceResolver implements AutoCloseable {
         if (StringUtils.isNotBlank(config.getDriverLocation())) {
             node.put("driverLocation", config.getDriverLocation());
         }
-        node.put("database", "");
+        // The lake warehouse JDBC database is a connection anchor.  It must
+        // remain available to JDBC clients even though OpenMetadata discovery
+        // deliberately ignores it as a metadata-scope filter.
+        node.put("database", jdbcDatabase(config.getJdbcUrl()));
         try {
             return DataSourceUtils.buildJdbcConnectionParams(DbType.DORIS, node.toString());
         } catch (RuntimeException exception) {
             throw new IllegalArgumentException("Lake Doris warehouse configuration is invalid");
         }
+    }
+
+    static String jdbcDatabase(String jdbcUrl) {
+        if (StringUtils.isBlank(jdbcUrl)) {
+            return "";
+        }
+        String normalized = jdbcUrl.trim();
+        int schemeEnd = normalized.indexOf("://");
+        if (schemeEnd < 0 || schemeEnd + 3 >= normalized.length()) {
+            return "";
+        }
+        String authorityAndPath = normalized.substring(schemeEnd + 3);
+        int slash = authorityAndPath.indexOf('/');
+        if (slash < 0 || slash + 1 >= authorityAndPath.length()) {
+            return "";
+        }
+        String database = authorityAndPath.substring(slash + 1);
+        int query = database.indexOf('?');
+        if (query >= 0) {
+            database = database.substring(0, query);
+        }
+        return StringUtils.trimToEmpty(database);
     }
 
     private HikariDataSource createPool(String key, BaseConnectionParam param, boolean readOnly) {

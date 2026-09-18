@@ -260,6 +260,9 @@ const DorisConfigPage: React.FC = () => {
               allowExistingPassword={Boolean(config?.passwordConfigured)}
               initialConfig={initialConnection}
             />
+            <Text type="secondary">
+              默认数据库仅用于生成 JDBC 默认连接地址；引接任务可以另外选择目标库，OpenMetadata 探查会扫描账号可见的全部数据库。
+            </Text>
           </div>
 
           {testResult ? (

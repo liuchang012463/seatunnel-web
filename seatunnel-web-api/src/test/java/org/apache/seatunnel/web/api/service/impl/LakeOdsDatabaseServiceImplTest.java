@@ -238,6 +238,26 @@ class LakeOdsDatabaseServiceImplTest {
         verifyNoInteractions(dataSourceDao, bindingDao);
     }
 
+    @Test
+    void readyDatabasesOnlyExposesTheReadyBindingForTheSelectedSource() {
+        LakeOdsDatabaseBinding ready = binding(36L, LakeResourceStatus.READY, false);
+        when(bindingDao.queryBySourceDataSourceId(7L)).thenReturn(ready);
+
+        var result = service.readyDatabases(7L);
+
+        assertEquals(1, result.size());
+        assertEquals(36L, result.get(0).getId());
+        assertEquals("ods_unit_system_orders", result.get(0).getDatabaseName());
+    }
+
+    @Test
+    void readyDatabasesDoesNotExposeAnErrorBinding() {
+        when(bindingDao.queryBySourceDataSourceId(7L))
+                .thenReturn(binding(37L, LakeResourceStatus.ERROR, false));
+
+        assertEquals(List.of(), service.readyDatabases(7L));
+    }
+
     private void stubCoordinatorFor(AtomicReference<LakeOdsDatabaseBinding> binding) {
         when(coordinator.begin(any(LakeOperationIntent.class))).thenAnswer(invocation -> {
             LakeOperationIntent intent = invocation.getArgument(0);

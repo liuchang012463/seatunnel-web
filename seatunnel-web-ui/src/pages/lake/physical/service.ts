@@ -45,6 +45,9 @@ export const recommendLakeMode = (payload: Record<string, unknown>): Promise<Api
 export const fetchPhysicalSource = (sourceDataSourceId: number): Promise<ApiResponse<PhysicalDataSource>> =>
   HttpUtils.get(`${PHYSICAL_API}/datasources/${encodeURIComponent(String(sourceDataSourceId))}`);
 
+export const fetchReadyOdsDatabases = (sourceDataSourceId: number): Promise<ApiResponse<OdsDatabase[]>> =>
+  HttpUtils.get(`${PHYSICAL_API}/datasources/${encodeURIComponent(String(sourceDataSourceId))}/ready-databases`);
+
 export const createOdsDatabase = (sourceDataSourceId: number, customName: string): Promise<ApiResponse<OdsDatabase>> =>
   HttpUtils.post(`${PHYSICAL_API}/datasources/${encodeURIComponent(String(sourceDataSourceId))}/database`, { customName });
 

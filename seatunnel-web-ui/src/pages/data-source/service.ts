@@ -411,6 +411,7 @@ export interface DataSourceOptionRecord {
   name?: string;
   label?: string;
   dbType?: string;
+  systemManaged?: boolean;
   [key: string]: unknown;
 }
 

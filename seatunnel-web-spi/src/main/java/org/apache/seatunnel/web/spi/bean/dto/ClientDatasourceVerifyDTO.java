@@ -39,6 +39,13 @@ public class ClientDatasourceVerifyDTO {
      */
     private String role;
 
+    /** Optional task-level scope; omitted means connection-only verification. */
+    private String database;
+
+    private String schema;
+
+    private String table;
+
     @Schema(description = "Kafka 验证 Topic；为空时使用首个可见 Topic")
     private String topic;
 

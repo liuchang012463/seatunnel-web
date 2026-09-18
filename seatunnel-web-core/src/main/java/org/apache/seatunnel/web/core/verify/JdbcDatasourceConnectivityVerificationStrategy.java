@@ -63,7 +63,10 @@ public class JdbcDatasourceConnectivityVerificationStrategy
     public ClientDatasourceVerifyVO doVerify(DatasourceVerifyContext context) {
         ConnectivityTestJob testJob = connectivityTestJobFactory.build(
                 context.getClient(),
-                context.getDatasource()
+                context.getDatasource(),
+                context.getRole(),
+                context.getScope(),
+                context.getTopic()
         );
 
         JobExecutionResult executionResult = seaTunnelTestJobExecutor.executeAndWait(
@@ -92,19 +95,19 @@ public class JdbcDatasourceConnectivityVerificationStrategy
 
         if (success) {
             return ClientDatasourceVerifyItemVO.success(
-                    "JDBC_HOCON_CONNECTIVITY",
-                    "基础连通性",
-                    "SeaTunnel 测试任务执行成功",
-                    "SeaTunnel 测试任务执行成功",
-                    "客户端可以通过 SeaTunnel 访问该数据源"
+                    "JDBC_DATABASE_ACCESS",
+                    "客户端 JDBC/数据库访问",
+                    "SeaTunnel 客户端 JDBC/数据库访问验证成功",
+                    "SeaTunnel 客户端 JDBC/数据库访问验证成功",
+                    "客户端可以通过 SeaTunnel 访问该数据源；该结果不代表已执行真实 Stream Load 写入"
             );
         }
 
         return ClientDatasourceVerifyItemVO.fail(
-                "JDBC_HOCON_CONNECTIVITY",
-                "基础连通性",
+                "JDBC_DATABASE_ACCESS",
+                "客户端 JDBC/数据库访问",
                 StringUtils.defaultIfBlank(vo.getErrorMessage(), vo.getMessage()),
-                "SeaTunnel 测试任务执行成功",
+                "SeaTunnel 客户端 JDBC/数据库访问验证成功",
                 "客户端无法通过 SeaTunnel 访问该数据源"
         );
     }

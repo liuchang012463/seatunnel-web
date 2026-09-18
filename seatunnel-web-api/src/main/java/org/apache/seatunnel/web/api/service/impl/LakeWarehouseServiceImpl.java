@@ -656,8 +656,33 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         if (StringUtils.isNotBlank(location)) {
             node.put("driverLocation", location);
         }
-        node.put("database", "");
+        // Keep the JDBC database as a connection anchor for SeaTunnel/JDBC
+        // clients. OpenMetadata discovery deliberately ignores this field for
+        // Doris so the anchor does not narrow metadata discovery.
+        node.put("database", jdbcDatabase(config.jdbcUrl()));
         return node.toString();
+    }
+
+    static String jdbcDatabase(String jdbcUrl) {
+        if (StringUtils.isBlank(jdbcUrl)) {
+            return "";
+        }
+        String normalized = jdbcUrl.trim();
+        int schemeEnd = normalized.indexOf("://");
+        if (schemeEnd < 0 || schemeEnd + 3 >= normalized.length()) {
+            return "";
+        }
+        String authorityAndPath = normalized.substring(schemeEnd + 3);
+        int slash = authorityAndPath.indexOf('/');
+        if (slash < 0 || slash + 1 >= authorityAndPath.length()) {
+            return "";
+        }
+        String database = authorityAndPath.substring(slash + 1);
+        int query = database.indexOf('?');
+        if (query >= 0) {
+            database = database.substring(0, query);
+        }
+        return StringUtils.trimToEmpty(database);
     }
 
     private String validateDriverLocation(String location, String fallbackFileName) {

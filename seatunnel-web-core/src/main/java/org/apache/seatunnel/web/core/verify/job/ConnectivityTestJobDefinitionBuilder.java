@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.core.verify.job;
 
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.SeaTunnelClient;
+import org.apache.seatunnel.web.core.verify.modal.DatasourceVerifyScope;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
 /**
@@ -21,5 +22,18 @@ public interface ConnectivityTestJobDefinitionBuilder {
 
     default ConnectivityTestJob build(SeaTunnelClient client, DataSource datasource, String topic) {
         return build(client, datasource);
+    }
+
+    /**
+     * Build a role-aware connectivity check. Existing builders keep their
+     * legacy behaviour until they opt into the richer contract.
+     */
+    default ConnectivityTestJob build(
+            SeaTunnelClient client,
+            DataSource datasource,
+            String role,
+            DatasourceVerifyScope scope,
+            String topic) {
+        return build(client, datasource, topic);
     }
 }

@@ -30,6 +30,8 @@ public class GuideMultiJobContent {
         private String connectorType;
         private String datasourceId;
         private String pluginName;
+        /** Task namespace; for Doris this is the database. */
+        private String database;
         private Integer fetchSize;
         private Integer splitSize;
         private String serverIdMode;
@@ -61,6 +63,8 @@ public class GuideMultiJobContent {
         private String connectorType;
         private String datasourceId;
         private String pluginName;
+        /** Task namespace; for Doris this is the database. */
+        private String database;
         /** Server-selected ODS binding; never a client-supplied database name. */
         private Long odsDatabaseBindingId;
         private String dataSaveMode;

@@ -36,9 +36,10 @@ public class DorisMetadataConnectorAdapter extends AbstractDatabaseMetadataConne
         }
         config.put("password", source.password());
         config.put("hostPort", source.hostPort());
-        if (!isBlank(source.database())) {
-            config.put("databaseName", source.database());
-        }
+        // The persisted database is only the JDBC connection anchor. Doris
+        // metadata ingestion must discover every database visible to the
+        // account; explicit database/schema filters belong to profiler
+        // requests, not the service connection.
         config.put("supportsMetadataExtraction", true);
         config.put("supportsProfiler", true);
         return root;

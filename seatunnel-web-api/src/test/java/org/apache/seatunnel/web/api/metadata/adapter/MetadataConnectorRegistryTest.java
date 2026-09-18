@@ -135,7 +135,7 @@ class MetadataConnectorRegistryTest {
 
         assertEquals("Doris", service.at("/connection/config/type").asText());
         assertEquals("192.168.100.95:9030", service.at("/connection/config/hostPort").asText());
-        assertEquals("ods", service.at("/connection/config/databaseName").asText());
+        assertTrue(service.at("/connection/config/databaseName").isMissingNode());
         assertEquals("secret", service.at("/connection/config/password").asText());
     }
 
