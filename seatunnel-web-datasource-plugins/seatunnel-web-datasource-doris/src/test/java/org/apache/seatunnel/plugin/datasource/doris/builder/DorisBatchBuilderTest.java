@@ -30,6 +30,17 @@ class DorisBatchBuilderTest {
     }
 
     @Test
+    void usesSelectedDatabaseAndDynamicTableNameForMultiTableSink() {
+        Config config = builder.buildSinkHocon(context(
+                "database = target_db\n"
+                        + "multiTable = true\n"
+                        + "table_list = [\"orders\", \"customers\"]"));
+
+        assertEquals("target_db", config.getString("database"));
+        assertEquals("${table_name}", config.getString("table"));
+    }
+
+    @Test
     void splitsQualifiedDorisTablesIntoDatabaseAndTableForMultiSource() {
         Config config = builder.buildSourceHocon(context(
                 "database = ods\n"

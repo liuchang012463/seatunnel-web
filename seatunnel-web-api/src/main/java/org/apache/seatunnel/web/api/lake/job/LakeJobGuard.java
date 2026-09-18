@@ -285,6 +285,12 @@ public class LakeJobGuard {
             throw invalid();
         }
 
+        String requestedDatabase = firstText(details.sinkConfig().get("database"));
+        if (StringUtils.isNotBlank(requestedDatabase)
+                && !requestedDatabase.equalsIgnoreCase(binding.getDatabaseName().trim())) {
+            throw invalid();
+        }
+
         rejectDangerousSchemaMode(details.sinkConfig());
         LakeOdsTableMapping mapping = validateTableMapping(details, bindingId);
         if (mapping != null && mapping.getManagementLevel() == LakeManagementLevel.MANAGED) {
@@ -533,6 +539,8 @@ public class LakeJobGuard {
             put(sink, "dbType", target.getDbType());
             put(sink, "pluginName", target.getPluginName());
             put(sink, "connectorType", target.getConnectorType());
+            put(sink, "database", target.getDatabase());
+            put(sink, "odsDatabaseBindingId", target.getOdsDatabaseBindingId());
             return new StructuredDetails(
                     parseLong(source.getDatasourceId()),
                     parseLong(target.getDatasourceId()),

@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.common.config.ConfigValidator;
 import org.apache.seatunnel.web.common.config.ReadonlyConfig;
 import org.apache.seatunnel.web.common.enums.HoconBuildStage;
 import org.apache.seatunnel.web.core.builder.context.DagBuildContext;
+import org.apache.seatunnel.web.core.job.validation.DorisTaskScopeValidator;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
@@ -21,6 +22,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -51,6 +54,9 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
     @Resource
     private Environment environment;
 
+    @Resource
+    private DorisTaskScopeValidator dorisTaskScopeValidator;
+
     @Override
     public String nodeType() {
         return NODE_TYPE;
@@ -74,6 +80,8 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
 
         config = overrideLakeDatabase(config, context, dataSourceId, dataSource, dbType, pluginName);
 
+        validateDorisSinkScope(config, dataSourceId, dbType);
+
         DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
         DataSourceHoconBuilder hoconBuilder = processor.getQueryBuilder(pluginName);
 
@@ -92,6 +100,50 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
         validateSinkConfig(processor, pluginName, sinkConfig);
 
         return sinkConfig;
+    }
+
+    private void validateDorisSinkScope(Config config, Long dataSourceId, DbType dbType) {
+        if (dbType != DbType.DORIS || dorisTaskScopeValidator == null) {
+            return;
+        }
+
+        List<String> tables = new ArrayList<>();
+        if (config.hasPath("table_list")) {
+            try {
+                tables.addAll(config.getStringList("table_list"));
+            } catch (Exception ignored) {
+                // A connector-specific builder may expose a non-list table
+                // value; the single-table fallback below handles that case.
+            }
+        }
+        if (tables.isEmpty()) {
+            String table = getFirstTrimmedString(
+                    config, "table", "targetTableName", "table_path");
+            if (StringUtils.isNotBlank(table) && !table.contains("${")) {
+                tables.add(table);
+            }
+        }
+
+        String autoCreate = getTrimmedString(config, "autoCreateTable");
+        String schemaSaveMode = getTrimmedString(config, "schema_save_mode");
+        if (StringUtils.isBlank(schemaSaveMode)) {
+            schemaSaveMode = getTrimmedString(config, "schemaSaveMode");
+        }
+        if (StringUtils.isBlank(schemaSaveMode)) {
+            // DorisBatchBuilder applies this same default when it emits the
+            // final connector config.  Keep validation and connector
+            // semantics aligned for legacy tasks that omitted the field.
+            schemaSaveMode = "CREATE_SCHEMA_WHEN_NOT_EXIST";
+        }
+        boolean createsTables = "true".equalsIgnoreCase(autoCreate)
+                || "CREATE_SCHEMA_WHEN_NOT_EXIST".equalsIgnoreCase(schemaSaveMode)
+                || "RECREATE_SCHEMA".equalsIgnoreCase(schemaSaveMode);
+
+        dorisTaskScopeValidator.validate(
+                String.valueOf(dataSourceId),
+                getTrimmedString(config, "database"),
+                tables,
+                !createsTables && !tables.isEmpty());
     }
 
     /**
@@ -286,6 +338,19 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
 
         String value = config.getString(path);
         return value == null ? null : value.trim();
+    }
+
+    private String getFirstTrimmedString(Config config, String... paths) {
+        if (paths == null) {
+            return null;
+        }
+        for (String path : paths) {
+            String value = getTrimmedString(config, path);
+            if (StringUtils.isNotBlank(value)) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private Long parseOptionalLong(Config config, String path) {

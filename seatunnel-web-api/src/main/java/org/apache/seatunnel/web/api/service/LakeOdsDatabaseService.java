@@ -7,6 +7,8 @@ import org.apache.seatunnel.web.spi.bean.vo.LakeOdsDatabaseVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalDataSourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalSummaryVO;
 
+import java.util.List;
+
 public interface LakeOdsDatabaseService {
 
     PaginationResult<LakePhysicalDataSourceVO> page(LakePhysicalDataSourcePageDTO request);
@@ -14,6 +16,9 @@ public interface LakeOdsDatabaseService {
     LakePhysicalSummaryVO summary();
 
     LakePhysicalDataSourceVO sourceDetail(Long sourceDataSourceId);
+
+    /** Return only the READY ODS database choices for one source data source. */
+    List<LakeOdsDatabaseVO> readyDatabases(Long sourceDataSourceId);
 
     LakeOdsDatabaseVO create(Long sourceDataSourceId, LakeOdsDatabaseCreateDTO request);
 

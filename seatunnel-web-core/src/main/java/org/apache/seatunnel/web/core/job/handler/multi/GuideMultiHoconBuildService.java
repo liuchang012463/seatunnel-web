@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.core.dag.DagGraph;
 import org.apache.seatunnel.web.core.job.bridge.LakeJobBindingResolver;
 import org.apache.seatunnel.web.core.job.handler.JobRuntimeContext;
 import org.apache.seatunnel.web.core.job.handler.JobRuntimeContextFactory;
+import org.apache.seatunnel.web.core.job.validation.DorisTaskScopeValidator;
 import org.apache.seatunnel.web.core.utils.DagUtil;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.config.GuideMultiJobContent;
@@ -53,6 +54,9 @@ public class GuideMultiHoconBuildService {
 
     @Resource
     private JobRuntimeContextFactory runtimeContextFactory;
+
+    @Resource
+    private DorisTaskScopeValidator dorisTaskScopeValidator;
 
     public String build(GuideMultiJobContent content, JobDefinitionSaveCommand command) {
         validateContent(content);
@@ -112,6 +116,10 @@ public class GuideMultiHoconBuildService {
         if (!kafkaFlow) {
             validateTables(content.getSource(), tableMatch, sourceTables, sinkTables, patternMode);
         }
+        // Namespace visibility is independent of whether the opposite side
+        // is Kafka.  Kafka flows do not have relational table lists, but a
+        // Doris source/target still must be restricted to its selected DB.
+        validateDorisScope(content, sourceTables, sinkTables, patternMode);
 
         Map<String, Object> sourceNode = buildSourceNode(
                 content.getSource(),
@@ -158,6 +166,7 @@ public class GuideMultiHoconBuildService {
         putIfNotBlank(config, "dbType", source.getDbType());
         putIfNotBlank(config, "connectorType", source.getConnectorType());
         putIfNotBlank(config, "pluginName", source.getPluginName());
+        putIfNotBlank(config, "database", source.getDatabase());
 
         boolean kafka = isKafka(source.getDbType());
         if (!kafka) {
@@ -278,6 +287,8 @@ public class GuideMultiHoconBuildService {
         putIfNotBlank(config, "dbType", target.getDbType());
         putIfNotBlank(config, "connectorType", target.getConnectorType());
         putIfNotBlank(config, "pluginName", target.getPluginName());
+        putIfNotBlank(config, "database", target.getDatabase());
+        putIfNotNull(config, "odsDatabaseBindingId", target.getOdsDatabaseBindingId());
 
         if (!kafka) {
             config.put(KEY_MULTI_TABLE, multiTable);
@@ -487,6 +498,53 @@ public class GuideMultiHoconBuildService {
         if (sourceTables.size() != sinkTables.size()) {
             throw new IllegalArgumentException("source tables and sink tables size must be equal");
         }
+    }
+
+    private void validateDorisScope(
+            GuideMultiJobContent content,
+            List<String> sourceTables,
+            List<String> sinkTables,
+            boolean patternMode) {
+        if (dorisTaskScopeValidator == null) {
+            return;
+        }
+
+        GuideMultiJobContent.WorkflowSourceConfig source = content.getSource();
+        GuideMultiJobContent.WorkflowTargetConfig target = content.getTarget();
+
+        if (isDoris(source.getDbType()) && !patternMode) {
+            dorisTaskScopeValidator.validate(
+                    source.getDatasourceId(),
+                    source.getDatabase(),
+                    sourceTables,
+                    true);
+        } else if (isDoris(source.getDbType())) {
+            dorisTaskScopeValidator.validate(
+                    source.getDatasourceId(), source.getDatabase(), List.of(), false);
+        }
+
+        if (isDoris(target.getDbType())) {
+            boolean bindingSelected = target.getOdsDatabaseBindingId() != null;
+            String schemaSaveMode = StringUtils.defaultIfBlank(
+                    target.getSchemaSaveMode(), "CREATE_SCHEMA_WHEN_NOT_EXIST");
+            boolean autoCreate = StringUtils.equalsIgnoreCase(
+                    schemaSaveMode, "CREATE_SCHEMA_WHEN_NOT_EXIST")
+                    || StringUtils.equalsIgnoreCase(schemaSaveMode, "RECREATE_SCHEMA");
+            if (StringUtils.isBlank(target.getDatabase()) && bindingSelected) {
+                // DataSourceSinkBuilder resolves the server-owned binding before
+                // the final sink HOCON is emitted.
+                return;
+            }
+            dorisTaskScopeValidator.validate(
+                    target.getDatasourceId(),
+                    target.getDatabase(),
+                    sinkTables,
+                    !patternMode && !autoCreate);
+        }
+    }
+
+    private boolean isDoris(String dbType) {
+        return "DORIS".equalsIgnoreCase(StringUtils.trimToEmpty(dbType));
     }
 
     private String resolveMatchMode(GuideMultiJobContent.TableMatchConfig tableMatch) {

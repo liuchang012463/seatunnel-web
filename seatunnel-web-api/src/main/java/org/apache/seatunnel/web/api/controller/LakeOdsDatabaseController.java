@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.List;
+
 /** v1.4 physical source/ODS database endpoints. */
 @RestController
 @RequestMapping("/api/v1/lake/physical")
@@ -45,6 +47,12 @@ public class LakeOdsDatabaseController {
     public Result<LakePhysicalDataSourceVO> sourceDetail(
             @PathVariable("sourceDataSourceId") Long sourceDataSourceId) {
         return Result.buildSuc(service.sourceDetail(sourceDataSourceId));
+    }
+
+    @GetMapping("/datasources/{sourceDataSourceId}/ready-databases")
+    public Result<List<LakeOdsDatabaseVO>> readyDatabases(
+            @PathVariable("sourceDataSourceId") Long sourceDataSourceId) {
+        return Result.buildSuc(service.readyDatabases(sourceDataSourceId));
     }
 
     @PostMapping("/datasources/{sourceDataSourceId}/database")

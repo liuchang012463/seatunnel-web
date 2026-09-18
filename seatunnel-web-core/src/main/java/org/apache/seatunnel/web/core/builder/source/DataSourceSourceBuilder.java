@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.core.builder.source;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigValue;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
@@ -16,6 +17,7 @@ import org.apache.seatunnel.web.core.fileupload.BuiltInMinioProperties;
 import org.apache.seatunnel.web.core.fileresource.FileResourceReference;
 import org.apache.seatunnel.web.core.fileresource.FileResourceResolver;
 import org.apache.seatunnel.web.core.job.handler.single.LocalFileSourceValidator;
+import org.apache.seatunnel.web.core.job.validation.DorisTaskScopeValidator;
 import org.apache.seatunnel.web.core.time.TimeVariableJdbcSqlRenderService;
 import org.apache.seatunnel.web.core.time.IncrementalSqlRenderer;
 import org.apache.seatunnel.web.dao.entity.DataSource;
@@ -25,6 +27,8 @@ import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -56,6 +60,9 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     @Resource
     private FileResourceResolver fileResourceResolver;
 
+    @Resource
+    private DorisTaskScopeValidator dorisTaskScopeValidator;
+
     @Override
     public String nodeType() {
         return NODE_TYPE;
@@ -84,6 +91,8 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
         DbType dbType = parseDbType(nodeConfig);
         String pluginName = getRequiredPluginName(nodeConfig);
+
+        validateDorisSourceScope(nodeConfig, dataSourceId, dbType);
 
         DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
         DataSourceHoconBuilder hoconBuilder = processor.getQueryBuilder(pluginName);
@@ -114,6 +123,45 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         validateSourceConfig(processor, pluginName, sourceConfig);
 
         return sourceConfig;
+    }
+
+    private void validateDorisSourceScope(Config config, Long dataSourceId, DbType dbType) {
+        if (dbType != DbType.DORIS || dorisTaskScopeValidator == null) {
+            return;
+        }
+
+        List<String> tables = new ArrayList<>();
+        String table = getFirstTrimmedString(config, "table", "table_path");
+        if (StringUtils.isNotBlank(table) && !table.contains("${")) {
+            tables.add(table);
+        }
+        if (config.hasPath("table_list")) {
+            try {
+                for (ConfigValue value : config.getList("table_list")) {
+                    Object unwrapped = value.unwrapped();
+                    if (unwrapped instanceof String tableName
+                            && StringUtils.isNotBlank(tableName)
+                            && !tableName.contains("${")) {
+                        tables.add(tableName.trim());
+                    } else if (unwrapped instanceof Map<?, ?> tableConfig) {
+                        Object tableValue = tableConfig.get("table");
+                        if (tableValue != null && StringUtils.isNotBlank(String.valueOf(tableValue))
+                                && !String.valueOf(tableValue).contains("${")) {
+                            tables.add(String.valueOf(tableValue).trim());
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+                // Connector-specific pattern/list forms are validated by the
+                // connector itself; an explicit scalar table is handled above.
+            }
+        }
+
+        dorisTaskScopeValidator.validate(
+                String.valueOf(dataSourceId),
+                getTrimmedString(config, "database"),
+                tables,
+                !tables.isEmpty());
     }
 
     private Config renderTimeVariablesIfNecessary(Config config,

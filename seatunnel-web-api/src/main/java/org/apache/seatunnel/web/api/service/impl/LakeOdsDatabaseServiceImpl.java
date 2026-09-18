@@ -200,6 +200,21 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
     }
 
     @Override
+    public List<LakeOdsDatabaseVO> readyDatabases(Long sourceDataSourceId) {
+        requireSource(sourceDataSourceId);
+        LakeOdsDatabaseBinding binding = bindingDao.queryBySourceDataSourceId(sourceDataSourceId);
+        if (binding == null
+                || Boolean.TRUE.equals(binding.getDeleted())
+                || binding.getResourceStatus() != LakeResourceStatus.READY
+                || binding.getId() == null
+                || binding.getDatabaseName() == null
+                || binding.getDatabaseName().isBlank()) {
+            return List.of();
+        }
+        return List.of(toVO(binding));
+    }
+
+    @Override
     public LakeOdsDatabaseVO create(Long sourceDataSourceId, LakeOdsDatabaseCreateDTO request) {
         if (request == null || request.getCustomName() == null || request.getCustomName().isBlank()) {
             throw new LakeServiceException(LakeErrorCode.LAKE_MASTER_DATA_CODE_INVALID,
