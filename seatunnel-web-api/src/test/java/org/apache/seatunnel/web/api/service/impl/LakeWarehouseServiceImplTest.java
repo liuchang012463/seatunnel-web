@@ -26,6 +26,15 @@ class LakeWarehouseServiceImplTest {
     }
 
     @Test
+    void extractsTheJdbcDatabaseAsTheConnectionAnchor() {
+        assertEquals("ods",
+                LakeWarehouseServiceImpl.jdbcDatabase(
+                        "jdbc:mysql://doris.example:9030/ods?useUnicode=true"));
+        assertEquals("",
+                LakeWarehouseServiceImpl.jdbcDatabase("jdbc:mysql://doris.example:9030"));
+    }
+
+    @Test
     void parsesTheDorisHomeHardwareSummaryIntoDisplaySafeFields() {
         String payload = """
                 {"code":0,"data":{"VersionInfo":{"Version":"doris-4.1.2-rc01","BuildInfo":"qa","BuildTime":"2026-06-12"},"HardwareInfo":{"NetworkParameter":"Host name: fe Domain name: fe DNS servers: [127.0.0.11] IPv4 Gateway: 172.26.0.1","Processor":"HUAWEI,Kunpeng 920 2 physical CPU package(s) 96 physical CPU core(s) CPU load: 3.0%","OS":"GNU/Linux Ubuntu 22.04.5 LTS Uptime: 9 days","Memory":"Memory: 107.6 GiB/254.1 GiB Swap used: 16.1 MiB/4.0 GiB","FileSystem":"37.6 TiB of 39.9 TiB free (94.2%)","NetworkInterface":"IPv4 [172.26.0.2] Traffic received: 1.2 GiB, Traffic transmitted: 2.4 GiB","Processes":"Processes: 4, Threads: 22089","Disk":"Disks: /dev/sda"}}}
