@@ -7,9 +7,19 @@ interface Props {
   form: any;
   sourceOption: any[];
   targetOption: any[];
+  sourceType?: any;
+  targetType?: any;
+  sourceDatabase?: string;
+  targetDatabase?: string;
+  sourceDatabaseOptions?: any[];
+  targetDatabaseOptions?: any[];
+  databaseLoading?: boolean;
   matchMode: string;
   tableKeyword: string;
   onSourceIdChange: (value: string) => void;
+  onTargetIdChange: (value: string, option?: any) => void;
+  onSourceDatabaseChange: (value: string, option?: any) => void;
+  onTargetDatabaseChange: (value: string, option?: any) => void;
   onMatchModeChange: (value: string) => void;
   onKeywordChange: (value: string) => void;
 }
@@ -20,9 +30,19 @@ const MultiSyncForm: React.FC<Props> = ({
   form,
   sourceOption,
   targetOption,
+  sourceType,
+  targetType,
+  sourceDatabase,
+  targetDatabase,
+  sourceDatabaseOptions,
+  targetDatabaseOptions,
+  databaseLoading,
   matchMode,
   tableKeyword,
   onSourceIdChange,
+  onTargetIdChange,
+  onSourceDatabaseChange,
+  onTargetDatabaseChange,
   onMatchModeChange,
   onKeywordChange,
 }) => {
@@ -50,6 +70,25 @@ const MultiSyncForm: React.FC<Props> = ({
                 className="st-round-select"
               />
             </Form.Item>
+            {String(sourceType?.dbType || '').toUpperCase() === 'DORIS' && (
+              <Form.Item
+                label="Doris 来源数据库"
+                name="sourceDatabase"
+                rules={[{ required: true, message: "请选择 Doris 来源数据库" }]}
+                className={`${formItemClass} mb-0`}
+              >
+                <Select
+                  className="st-round-select"
+                  placeholder="请选择 Doris 来源数据库"
+                  value={sourceDatabase || undefined}
+                  options={sourceDatabaseOptions}
+                  loading={databaseLoading}
+                  showSearch
+                  optionFilterProp="label"
+                  onChange={onSourceDatabaseChange}
+                />
+              </Form.Item>
+            )}
           </Col>
 
           <Col span={12}>
@@ -64,9 +103,29 @@ const MultiSyncForm: React.FC<Props> = ({
                 placeholder="请选择目标库"
                 showSearch
                 options={targetOption}
+                onChange={onTargetIdChange}
                 className="st-round-select"
               />
             </Form.Item>
+            {String(targetType?.dbType || '').toUpperCase() === 'DORIS' && (
+              <Form.Item
+                label="Doris 目标数据库"
+                name="targetDatabase"
+                rules={[{ required: true, message: "请选择 Doris 目标数据库" }]}
+                className={`${formItemClass} mb-0`}
+              >
+                <Select
+                  className="st-round-select"
+                  placeholder="请选择 Doris 目标数据库"
+                  value={targetDatabase || undefined}
+                  options={targetDatabaseOptions}
+                  loading={databaseLoading}
+                  showSearch
+                  optionFilterProp="label"
+                  onChange={onTargetDatabaseChange}
+                />
+              </Form.Item>
+            )}
           </Col>
         </Row>
 

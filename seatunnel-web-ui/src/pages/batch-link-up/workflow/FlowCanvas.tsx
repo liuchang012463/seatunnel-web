@@ -149,6 +149,7 @@ function buildInitialGraph(
               }
             : {
                 dataSourceId: params?.sourceDataSourceId || '',
+                database: params?.sourceDatabase,
                 dbType: sourceType?.dbType,
                 connectorType: sourceType?.connectorType,
                 pluginName: sourceType?.pluginName,
@@ -190,6 +191,8 @@ function buildInitialGraph(
         pluginName: targetType?.pluginName,
         config: {
           dataSourceId: params?.targetDataSourceId || '',
+          database: params?.targetDatabase,
+          odsDatabaseBindingId: params?.odsDatabaseBindingId,
           autoCreateTable: false,
           targetMode: 'table',
           table: undefined,
@@ -740,6 +743,9 @@ export default function FlowCanvas({
           scheduleConfig={scheduleConfig}
           isIncremental={isIncremental}
           jobDefinitionId={jobDefinitionId}
+          sourceDataSourceId={String(
+            flow.nodes.find((node: any) => node?.data?.nodeType === 'source')?.data?.config?.dataSourceId || ''
+          )}
         />
       )}
     </div>

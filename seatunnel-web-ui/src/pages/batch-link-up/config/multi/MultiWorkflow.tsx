@@ -58,6 +58,13 @@ export default function MultiWorkflow({
     loading,
     sourceOption,
     targetOption,
+    sourceType,
+    targetType,
+    sourceDatabaseOptions,
+    targetDatabaseOptions,
+    sourceDatabase,
+    targetDatabase,
+    databaseLoading,
     tableData,
     readOnlyTables,
     multiTableList,
@@ -75,6 +82,9 @@ export default function MultiWorkflow({
     runDisabledReason,
 
     handleSourceIdChange,
+    handleTargetIdChange,
+    handleSourceDatabaseChange,
+    handleTargetDatabaseChange,
     handleMatchModeChange,
     handleKeywordChange,
     handleSave,
@@ -128,6 +138,21 @@ export default function MultiWorkflow({
   const handleSourceIdChangeWithDirty = (...args: any[]) => {
     markCurrentDefinitionDirty();
     return (handleSourceIdChange as any)(...args);
+  };
+
+  const handleTargetIdChangeWithDirty = (...args: any[]) => {
+    markCurrentDefinitionDirty();
+    return (handleTargetIdChange as any)(...args);
+  };
+
+  const handleSourceDatabaseChangeWithDirty = (...args: any[]) => {
+    markCurrentDefinitionDirty();
+    return (handleSourceDatabaseChange as any)(...args);
+  };
+
+  const handleTargetDatabaseChangeWithDirty = (...args: any[]) => {
+    markCurrentDefinitionDirty();
+    return (handleTargetDatabaseChange as any)(...args);
   };
 
   const handleMatchModeChangeWithDirty = (...args: any[]) => {
@@ -312,9 +337,19 @@ export default function MultiWorkflow({
                           form={form}
                           sourceOption={sourceOption}
                           targetOption={targetOption}
+                          sourceType={sourceType}
+                          targetType={targetType}
+                          sourceDatabase={sourceDatabase}
+                          targetDatabase={targetDatabase}
+                          sourceDatabaseOptions={sourceDatabaseOptions}
+                          targetDatabaseOptions={targetDatabaseOptions}
+                          databaseLoading={databaseLoading}
                           matchMode={matchMode}
                           tableKeyword={tableKeyword}
                           onSourceIdChange={handleSourceIdChangeWithDirty}
+                          onTargetIdChange={handleTargetIdChangeWithDirty}
+                          onSourceDatabaseChange={handleSourceDatabaseChangeWithDirty}
+                          onTargetDatabaseChange={handleTargetDatabaseChangeWithDirty}
                           onMatchModeChange={handleMatchModeChangeWithDirty}
                           onKeywordChange={handleKeywordChangeWithDirty}
                         />

@@ -65,6 +65,12 @@ export async function fetchPhysicalSource(sourceDataSourceId: string | number): 
   return HttpUtils.get(`${PHYSICAL}/datasources/${pathId(sourceDataSourceId)}`);
 }
 
+export async function fetchReadyOdsDatabases(
+  sourceDataSourceId: string | number,
+): Promise<LakeApiResponse<LakeOdsDatabase[]>> {
+  return HttpUtils.get(`${PHYSICAL}/datasources/${pathId(sourceDataSourceId)}/ready-databases`);
+}
+
 export async function createOdsDatabase(
   sourceDataSourceId: string | number,
   customName: string,

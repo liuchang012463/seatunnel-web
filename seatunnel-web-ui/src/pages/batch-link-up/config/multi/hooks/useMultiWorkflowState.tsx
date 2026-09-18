@@ -6,6 +6,7 @@ import {
   dataSourceCatalogApi,
   fetchDataSourceOptions,
 } from "@/pages/data-source/service";
+import { fetchReadyOdsDatabases } from "@/pages/lake/physical/service";
 
 import { seatunnelJobDefinitionApi } from "@/pages/batch-link-up/api";
 import {
@@ -146,6 +147,15 @@ export function useMultiWorkflowState({
   const [sourceOption, setSourceOption] = useState<any[]>([]);
   const [targetOption, setTargetOption] = useState<any[]>([]);
   const [currentSourceId, setCurrentSourceId] = useState("");
+  const [currentTargetId, setCurrentTargetId] = useState("");
+  const [sourceDatabaseOptions, setSourceDatabaseOptions] = useState<any[]>([]);
+  const [targetDatabaseOptions, setTargetDatabaseOptions] = useState<any[]>([]);
+  const [sourceDatabase, setSourceDatabase] = useState("");
+  const [targetDatabase, setTargetDatabase] = useState("");
+  const [targetOdsDatabaseBindingId, setTargetOdsDatabaseBindingId] = useState<
+    number | undefined
+  >();
+  const [databaseLoading, setDatabaseLoading] = useState(false);
 
   const [tableData, setTableData] = useState<TableItem[]>([]);
   const [readOnlyTables, setReadOnlyTables] = useState<TableItem[]>([]);
@@ -183,41 +193,64 @@ export function useMultiWorkflowState({
     return [];
   }, []);
 
-  const fetchDorisTables = useCallback(async (dataSourceId: string) => {
-    const databaseResponse = await dataSourceCatalogApi.listDatabases(dataSourceId);
-    if (databaseResponse?.code !== 0) {
-      throw new Error(databaseResponse?.message || "获取 Doris 数据库失败");
-    }
+  const fetchDorisDatabaseOptions = useCallback(
+    async (
+      dataSourceId: string,
+      target = false,
+      sourceId?: string,
+      systemManaged = false,
+    ) => {
+      if (!dataSourceId) return [];
 
-    const databases = Array.isArray(databaseResponse.data) ? databaseResponse.data : [];
-    const tableGroups = await Promise.all(
-      databases.map(async (database: any) => {
-        const databaseName = String(database?.value ?? "");
-        if (!databaseName) return [];
+      if (target && systemManaged && !sourceId) {
+        return [];
+      }
 
-        const tableResponse = await dataSourceCatalogApi.listTablesByDatabase(
-          dataSourceId,
-          databaseName,
-        );
-        if (tableResponse?.code !== 0) return [];
+      const response = target && systemManaged && sourceId
+        ? await fetchReadyOdsDatabases(Number(sourceId))
+        : await dataSourceCatalogApi.listDatabases(dataSourceId);
+      if (response?.code !== 0) {
+        throw new Error(response?.message || "获取 Doris 数据库失败");
+      }
 
-        const tables = Array.isArray(tableResponse.data) ? tableResponse.data : [];
-        return tables.map((table: any) => {
-          const tableName = String(table?.value ?? "");
-          return {
-            value: `${databaseName}.${tableName}`,
-            label: `${databaseName}.${tableName}`,
-            description: table?.description,
-          };
-        });
-      }),
+      const list = Array.isArray(response.data) ? response.data : [];
+      return systemManaged && target
+        ? list.map((item: any) => ({
+            label: item?.databaseName,
+            value: String(item?.databaseName ?? ""),
+            description: item?.resourceStatus,
+            odsDatabaseBindingId: item?.id,
+          }))
+        : list.map((item: any) => ({
+            label: item?.label ?? item?.value,
+            value: String(item?.value ?? ""),
+            description: item?.description,
+          }));
+    },
+    [],
+  );
+
+  const fetchDorisTables = useCallback(async (dataSourceId: string, databaseName?: string) => {
+    if (!databaseName) return [];
+    const tableResponse = await dataSourceCatalogApi.listTablesByDatabase(
+      dataSourceId,
+      databaseName,
     );
+    if (tableResponse?.code !== 0) return [];
 
-    return tableGroups.flat();
+    const tables = Array.isArray(tableResponse.data) ? tableResponse.data : [];
+    return tables.map((table: any) => {
+      const tableName = String(table?.value ?? "");
+      return {
+        value: tableName,
+        label: tableName,
+        description: table?.description,
+      };
+    });
   }, []);
 
   const fetchTables = useCallback(
-    async (dataSourceId: string, mode?: string) => {
+    async (dataSourceId: string, mode?: string, databaseOverride?: string) => {
       if (!dataSourceId) return;
 
       try {
@@ -225,7 +258,7 @@ export function useMultiWorkflowState({
         setCurrentSourceId(dataSourceId);
 
         const res = String(sourceType?.dbType || "").toUpperCase() === "DORIS"
-          ? { code: 0, data: await fetchDorisTables(dataSourceId) }
+          ? { code: 0, data: await fetchDorisTables(dataSourceId, databaseOverride) }
           : await dataSourceCatalogApi.listTable(dataSourceId);
         if (res?.code === 0) {
           const nextTables = buildTableItems(res.data || []);
@@ -250,7 +283,7 @@ export function useMultiWorkflowState({
   );
 
   const fetchReferenceTables = useCallback(
-    async (dataSourceId: string, mode: string, keyword?: string) => {
+    async (dataSourceId: string, mode: string, keyword?: string, databaseOverride?: string) => {
       if (!dataSourceId) return;
 
       try {
@@ -259,7 +292,7 @@ export function useMultiWorkflowState({
         const res = String(sourceType?.dbType || "").toUpperCase() === "DORIS"
           ? {
               code: 0,
-              data: (await fetchDorisTables(dataSourceId)).filter((item: any) => {
+              data: (await fetchDorisTables(dataSourceId, databaseOverride)).filter((item: any) => {
                 const value = String(item?.value || "");
                 if (mode === "2") return value.match(keyword || "");
                 if (mode === "3") {
@@ -289,8 +322,8 @@ export function useMultiWorkflowState({
 
   const debouncedFetchReferenceTables = useMemo(
     () =>
-      debounce((dataSourceId: string, mode: string, keyword: string) => {
-        fetchReferenceTables(dataSourceId, mode, keyword);
+      debounce((dataSourceId: string, mode: string, keyword: string, database?: string) => {
+        fetchReferenceTables(dataSourceId, mode, keyword, database);
       }, 400),
     [fetchReferenceTables]
   );
@@ -305,6 +338,7 @@ export function useMultiWorkflowState({
         connectorType: sourceType?.connectorType,
         datasourceId: formValues.sourceId,
         pluginName: sourceType?.pluginName,
+        database: String(formValues.sourceDatabase || sourceDatabase || "").trim() || undefined,
         fetchSize: formValues.fetchSize,
         splitSize: formValues.splitSize,
       },
@@ -313,6 +347,9 @@ export function useMultiWorkflowState({
         connectorType: targetType?.connectorType,
         datasourceId: formValues.sinkId,
         pluginName: targetType?.pluginName,
+        database: String(formValues.targetDatabase || targetDatabase || "").trim() || undefined,
+        odsDatabaseBindingId:
+          formValues.odsDatabaseBindingId ?? targetOdsDatabaseBindingId,
         dataSaveMode: formValues.dataSaveMode,
         batchSize: formValues.batchSize,
         schemaSaveMode: formValues.schemaSaveMode,
@@ -331,6 +368,9 @@ export function useMultiWorkflowState({
     form,
     sourceType,
     targetType,
+    sourceDatabase,
+    targetDatabase,
+    targetOdsDatabaseBindingId,
     matchMode,
     multiTableList,
     tableKeyword,
@@ -339,6 +379,7 @@ export function useMultiWorkflowState({
   const buildFinalPayload = useCallback(() => {
     return {
       id: params?.id ?? publishedJobDefineId,
+      odsDatabaseBindingId: targetOdsDatabaseBindingId,
       basic: {
         ...basicConfig,
         mode: "GUIDE_MULTI",
@@ -355,6 +396,7 @@ export function useMultiWorkflowState({
     basicConfig,
     scheduleConfig,
     envConfig,
+    targetOdsDatabaseBindingId,
     buildWorkflowData,
   ]);
 
@@ -414,19 +456,64 @@ export function useMultiWorkflowState({
             workflow?.target?.datasourceId
         );
 
+        const sourceIsDoris = String(sourceDbType).toUpperCase() === "DORIS";
+        const targetIsDoris = String(targetDbType).toUpperCase() === "DORIS";
+        const targetIsSystemManaged = Boolean(
+          targetOptions.find((item: any) => String(item?.value) === String(sinkId))
+            ?.systemManaged,
+        );
+
         const nextMatchMode =
           workflow?.tableMatch?.mode || DEFAULT_FORM_VALUES.matchMode;
 
         const nextKeyword = workflow?.tableMatch?.keyword || "";
         const nextMultiTableList = workflow?.tableMatch?.tables || [];
+        const legacyTableParts = String(nextMultiTableList?.[0] || "")
+          .split(".")
+          .filter(Boolean);
+        const legacyDatabaseFromTables = legacyTableParts.length === 2
+          ? legacyTableParts[0]
+          : "";
+        const nextSourceDatabase = String(
+          workflow?.source?.database || (sourceIsDoris ? legacyDatabaseFromTables : "") || "",
+        );
+        const nextTargetDatabase = String(workflow?.target?.database || "");
+        const nextBindingId = workflow?.target?.odsDatabaseBindingId
+          ?? params?.odsDatabaseBindingId;
+
+        let nextSourceDatabaseOptions: any[] = [];
+        let nextTargetDatabaseOptions: any[] = [];
+        if (sourceIsDoris && sourceId) {
+          nextSourceDatabaseOptions = await fetchDorisDatabaseOptions(String(sourceId));
+        }
+        if (targetIsDoris && sinkId) {
+          nextTargetDatabaseOptions = await fetchDorisDatabaseOptions(
+            String(sinkId),
+            true,
+            String(sourceId || ""),
+            targetIsSystemManaged,
+          );
+        }
 
         setMatchMode(nextMatchMode);
         setTableKeyword(nextKeyword);
         setCurrentSourceId(String(sourceId || ""));
+        setCurrentTargetId(String(sinkId || ""));
+        setSourceDatabaseOptions(nextSourceDatabaseOptions);
+        setTargetDatabaseOptions(nextTargetDatabaseOptions);
+        setSourceDatabase(nextSourceDatabase);
+        setTargetDatabase(nextTargetDatabase);
+        setTargetOdsDatabaseBindingId(
+          nextBindingId == null ? undefined : Number(nextBindingId),
+        );
 
         form.setFieldsValue({
           sourceId,
           sinkId,
+          sourceDatabase: nextSourceDatabase || undefined,
+          targetDatabase: nextTargetDatabase || undefined,
+          odsDatabaseBindingId:
+            nextBindingId == null ? undefined : Number(nextBindingId),
           matchMode: nextMatchMode,
           sourceTable: nextKeyword,
 
@@ -454,6 +541,34 @@ export function useMultiWorkflowState({
         });
 
         if (sourceId) {
+          const sourceDatabaseRequired = sourceIsDoris;
+          if (sourceDatabaseRequired && !nextSourceDatabase) {
+            setTableData([]);
+            setMultiTableList([]);
+          } else if (nextMatchMode === "1") {
+            await fetchTables(String(sourceId), "1", nextSourceDatabase);
+            if (mounted) {
+              setMultiTableList(nextMultiTableList.map((table: string) => {
+                const parts = String(table).split(".");
+                return sourceIsDoris && parts.length === 2 ? parts[1] : table;
+              }));
+            }
+          } else if (nextMatchMode === "4") {
+            await fetchTables(String(sourceId), "4", nextSourceDatabase);
+          } else if (nextMatchMode === "2" || nextMatchMode === "3") {
+            if (nextKeyword) {
+              await fetchReferenceTables(
+                String(sourceId),
+                nextMatchMode,
+                nextKeyword,
+                nextSourceDatabase,
+              );
+            }
+          }
+          /* The legacy branch below is intentionally skipped for Doris. */
+          if (sourceIsDoris) {
+            return;
+          }
           if (nextMatchMode === "1") {
             await fetchTables(String(sourceId), "1");
             if (mounted) {
@@ -490,6 +605,7 @@ export function useMultiWorkflowState({
     sourceType,
     targetType,
     fetchDataSourceOptionsU,
+    fetchDorisDatabaseOptions,
     fetchDorisTables,
     fetchTables,
     fetchReferenceTables,
@@ -521,16 +637,134 @@ export function useMultiWorkflowState({
 
   const handleSourceIdChange = async (value: string) => {
     setCurrentSourceId(value);
+    setSourceDatabase("");
+    form.setFieldsValue({ sourceDatabase: undefined });
+
+    const selectedTarget = targetOption.find(
+      (item: any) => String(item?.value) === String(currentTargetId),
+    );
+    const targetIsSystemManagedDoris = Boolean(
+      currentTargetId
+      && String(targetType?.dbType || "").toUpperCase() === "DORIS"
+      && selectedTarget?.systemManaged,
+    );
+    if (targetIsSystemManagedDoris) {
+      setTargetDatabase("");
+      setTargetOdsDatabaseBindingId(undefined);
+      form.setFieldsValue({
+        targetDatabase: undefined,
+        odsDatabaseBindingId: undefined,
+      });
+    }
+
+    if (String(sourceType?.dbType || "").toUpperCase() === "DORIS") {
+      try {
+        setDatabaseLoading(true);
+        setSourceDatabaseOptions(await fetchDorisDatabaseOptions(value));
+
+        if (targetIsSystemManagedDoris) {
+          setTargetDatabaseOptions(await fetchDorisDatabaseOptions(
+            currentTargetId,
+            true,
+            value,
+            true,
+          ));
+        }
+      } catch (error) {
+        console.error(error);
+        setSourceDatabaseOptions([]);
+      } finally {
+        setDatabaseLoading(false);
+      }
+      setTableData([]);
+      setReadOnlyTables([]);
+      setMultiTableList([]);
+      return;
+    }
+
+    if (targetIsSystemManagedDoris) {
+      try {
+        setDatabaseLoading(true);
+        setTargetDatabaseOptions(await fetchDorisDatabaseOptions(
+          currentTargetId,
+          true,
+          value,
+          true,
+        ));
+      } catch (error) {
+        console.error(error);
+        setTargetDatabaseOptions([]);
+      } finally {
+        setDatabaseLoading(false);
+      }
+    }
 
     if (matchMode === "1" || matchMode === "4") {
-      await fetchTables(value, matchMode);
+      await fetchTables(value, matchMode, sourceDatabase);
       setReadOnlyTables([]);
       return;
     }
 
     if (tableKeyword) {
-      await fetchReferenceTables(value, matchMode, tableKeyword);
+      await fetchReferenceTables(value, matchMode, tableKeyword, sourceDatabase);
     }
+  };
+
+  const handleTargetIdChange = async (value: string, option?: any) => {
+    setCurrentTargetId(value);
+    setTargetDatabase("");
+    setTargetOdsDatabaseBindingId(undefined);
+    form.setFieldsValue({
+      targetDatabase: undefined,
+      odsDatabaseBindingId: undefined,
+    });
+
+    if (String(targetType?.dbType || "").toUpperCase() !== "DORIS") {
+      setTargetDatabaseOptions([]);
+      return;
+    }
+
+    try {
+      setDatabaseLoading(true);
+      const options = await fetchDorisDatabaseOptions(
+        value,
+        true,
+        currentSourceId,
+        Boolean(option?.systemManaged),
+      );
+      setTargetDatabaseOptions(options);
+    } catch (error) {
+      console.error(error);
+      setTargetDatabaseOptions([]);
+    } finally {
+      setDatabaseLoading(false);
+    }
+  };
+
+  const handleSourceDatabaseChange = async (value: string) => {
+    setSourceDatabase(value);
+    form.setFieldValue("sourceDatabase", value);
+    setMultiTableList([]);
+    setReadOnlyTables([]);
+    if (!currentSourceId) return;
+
+    if (matchMode === "1" || matchMode === "4") {
+      await fetchTables(currentSourceId, matchMode, value);
+    } else if (tableKeyword) {
+      await fetchReferenceTables(currentSourceId, matchMode, tableKeyword, value);
+    }
+  };
+
+  const handleTargetDatabaseChange = (value: string, option?: any) => {
+    setTargetDatabase(value);
+    const bindingId = option?.odsDatabaseBindingId == null
+      ? undefined
+      : Number(option.odsDatabaseBindingId);
+    setTargetOdsDatabaseBindingId(bindingId);
+    form.setFieldsValue({
+      targetDatabase: value,
+      odsDatabaseBindingId: bindingId,
+    });
   };
 
   const handleMatchModeChange = async (value: string) => {
@@ -541,7 +775,7 @@ export function useMultiWorkflowState({
 
     if (value === "1" || value === "4") {
       setReadOnlyTables([]);
-      await fetchTables(currentSourceId, value);
+      await fetchTables(currentSourceId, value, sourceDatabase);
       return;
     }
 
@@ -549,7 +783,7 @@ export function useMultiWorkflowState({
     setMultiTableList([]);
 
     if (tableKeyword) {
-      await fetchReferenceTables(currentSourceId, value, tableKeyword);
+      await fetchReferenceTables(currentSourceId, value, tableKeyword, sourceDatabase);
     } else {
       setReadOnlyTables([]);
     }
@@ -567,7 +801,7 @@ export function useMultiWorkflowState({
 
     if (!currentSourceId) return;
 
-    debouncedFetchReferenceTables(currentSourceId, matchMode, keyword);
+    debouncedFetchReferenceTables(currentSourceId, matchMode, keyword, sourceDatabase);
   };
 
   const validateBeforeSubmit = async () => {
@@ -586,6 +820,26 @@ export function useMultiWorkflowState({
 
     const sourceId = form.getFieldValue("sourceId");
     const sinkId = form.getFieldValue("sinkId");
+
+    if (String(sourceType?.dbType || "").toUpperCase() === "DORIS"
+      && !String(form.getFieldValue("sourceDatabase") || sourceDatabase).trim()) {
+      message.warning("请选择 Doris 来源数据库");
+      return false;
+    }
+    if (String(targetType?.dbType || "").toUpperCase() === "DORIS"
+      && !String(form.getFieldValue("targetDatabase") || targetDatabase).trim()) {
+      message.warning("请选择 Doris 目标数据库");
+      return false;
+    }
+    const selectedTarget = targetOption.find(
+      (item: any) => String(item?.value) === String(sinkId),
+    );
+    if (selectedTarget?.systemManaged && !(
+      form.getFieldValue("odsDatabaseBindingId") || targetOdsDatabaseBindingId
+    )) {
+      message.warning("系统 Doris 目标必须选择 READY 的 ODS 数据库");
+      return false;
+    }
 
     if (sourceId && sinkId && sourceId === sinkId) {
       message.warning("来源和目标数据源不能相同");
@@ -641,6 +895,7 @@ export function useMultiWorkflowState({
 
         sourceDataSourceId: workflowData.source.datasourceId,
         targetDataSourceId: workflowData.target.datasourceId,
+        odsDatabaseBindingId: workflowData.target.odsDatabaseBindingId,
 
         scheduleConfig,
         schedule: finalPayload.schedule,
@@ -741,6 +996,14 @@ export function useMultiWorkflowState({
 
     sourceOption,
     targetOption,
+    sourceType,
+    targetType,
+    sourceDatabaseOptions,
+    targetDatabaseOptions,
+    sourceDatabase,
+    targetDatabase,
+    targetOdsDatabaseBindingId,
+    databaseLoading,
 
     tableData,
     readOnlyTables,
@@ -763,6 +1026,9 @@ export function useMultiWorkflowState({
     runDisabledReason,
 
     handleSourceIdChange,
+    handleTargetIdChange,
+    handleSourceDatabaseChange,
+    handleTargetDatabaseChange,
     handleMatchModeChange,
     handleKeywordChange,
     handleSave,
