@@ -32,6 +32,8 @@ public class GuideMultiJobContent {
         private String pluginName;
         /** Task namespace; for Doris this is the database. */
         private String database;
+        /** Optional schema below the selected database for JDBC task sources. */
+        private String schemaName;
         private Integer fetchSize;
         private Integer splitSize;
         private String serverIdMode;
@@ -65,6 +67,8 @@ public class GuideMultiJobContent {
         private String pluginName;
         /** Task namespace; for Doris this is the database. */
         private String database;
+        /** Optional schema below the selected database for JDBC task sinks. */
+        private String schemaName;
         /** Server-selected ODS binding; never a client-supplied database name. */
         private Long odsDatabaseBindingId;
         private String dataSaveMode;

@@ -103,6 +103,11 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
 
     @Override
     public List<OptionVO> listTable(Long datasourceId, String databaseName) {
+        return listTable(datasourceId, databaseName, null);
+    }
+
+    @Override
+    public List<OptionVO> listSchema(Long datasourceId, String databaseName) {
         validateDatasourceId(datasourceId);
         if (StringUtils.isBlank(databaseName)) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "database");
@@ -111,11 +116,35 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         ConnectionParam connectionParam = buildConnectionParam(dataSource);
 
         try {
-            return hierarchicalCatalog(dataSource, connectionParam).listTableOptions(databaseName.trim());
+            return hierarchicalCatalog(dataSource, connectionParam)
+                    .listSchemaOptions(databaseName.trim());
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to list tables, datasourceId={}, database={}", datasourceId, databaseName, e);
+            log.error("Failed to list schemas, datasourceId={}, database={}", datasourceId, databaseName, e);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
+        }
+    }
+
+    @Override
+    public List<OptionVO> listTable(Long datasourceId, String databaseName, String schemaName) {
+        validateDatasourceId(datasourceId);
+        if (StringUtils.isBlank(databaseName)) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "database");
+        }
+        DataSource dataSource = getDataSourceOrThrow(datasourceId);
+        ConnectionParam connectionParam = buildConnectionParam(dataSource);
+
+        try {
+            HierarchicalJdbcCatalog catalog = hierarchicalCatalog(dataSource, connectionParam);
+            return StringUtils.isBlank(schemaName)
+                    ? catalog.listTableOptions(databaseName.trim())
+                    : catalog.listTableOptions(databaseName.trim(), schemaName.trim());
+        } catch (ServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to list tables, datasourceId={}, database={}, schema={}",
+                    datasourceId, databaseName, schemaName, e);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());
         }
     }

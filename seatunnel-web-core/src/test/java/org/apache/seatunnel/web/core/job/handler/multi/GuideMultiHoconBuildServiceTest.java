@@ -52,6 +52,65 @@ class GuideMultiHoconBuildServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void jdbcScopeIsPropagatedToSourceAndSinkNodes() throws Exception {
+        GuideMultiHoconBuildService service = new GuideMultiHoconBuildService();
+        GuideMultiJobContent.WorkflowSourceConfig source =
+                new GuideMultiJobContent.WorkflowSourceConfig();
+        source.setDatasourceId("1");
+        source.setDbType("POSTGRE_SQL");
+        source.setConnectorType("Jdbc");
+        source.setPluginName("JDBC-POSTGRESQL");
+        source.setDatabase("analytics");
+        source.setSchemaName("reporting");
+
+        GuideMultiJobContent.WorkflowTargetConfig target =
+                new GuideMultiJobContent.WorkflowTargetConfig();
+        target.setDatasourceId("2");
+        target.setDbType("POSTGRE_SQL");
+        target.setConnectorType("Jdbc");
+        target.setPluginName("JDBC-POSTGRESQL");
+        target.setDatabase("warehouse");
+        target.setSchemaName("ods");
+
+        GuideMultiJobContent.TableMatchConfig tableMatch =
+                new GuideMultiJobContent.TableMatchConfig();
+        tableMatch.setMode("1");
+
+        Method buildSourceNode = GuideMultiHoconBuildService.class.getDeclaredMethod(
+                "buildSourceNode",
+                GuideMultiJobContent.WorkflowSourceConfig.class,
+                GuideMultiJobContent.TableMatchConfig.class,
+                List.class,
+                boolean.class,
+                org.apache.seatunnel.web.core.job.handler.JobRuntimeContext.class);
+        buildSourceNode.setAccessible(true);
+        Map<String, Object> sourceNode = (Map<String, Object>) buildSourceNode.invoke(
+                service, source, tableMatch, List.of("orders"), false, null);
+
+        Method buildSinkNode = GuideMultiHoconBuildService.class.getDeclaredMethod(
+                "buildSinkNode",
+                GuideMultiJobContent.WorkflowTargetConfig.class,
+                GuideMultiJobContent.TableMatchConfig.class,
+                List.class,
+                boolean.class,
+                org.apache.seatunnel.web.core.job.handler.JobRuntimeContext.class);
+        buildSinkNode.setAccessible(true);
+        Map<String, Object> sinkNode = (Map<String, Object>) buildSinkNode.invoke(
+                service, target, tableMatch, List.of("orders"), false, null);
+
+        Map<String, Object> sourceData = (Map<String, Object>) sourceNode.get("data");
+        Map<String, Object> sourceConfig = (Map<String, Object>) sourceData.get("config");
+        Map<String, Object> sinkData = (Map<String, Object>) sinkNode.get("data");
+        Map<String, Object> sinkConfig = (Map<String, Object>) sinkData.get("config");
+
+        assertEquals("analytics", sourceConfig.get("database"));
+        assertEquals("reporting", sourceConfig.get("schemaName"));
+        assertEquals("warehouse", sinkConfig.get("database"));
+        assertEquals("ods", sinkConfig.get("schemaName"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void postgresCdcWholeDatabaseUsesExpandedExactTableList() throws Exception {
         GuideMultiHoconBuildService service = new GuideMultiHoconBuildService();
         GuideMultiJobContent.WorkflowSourceConfig source =

@@ -56,6 +56,12 @@ public class DorisCatalog extends AbstractJdbcCatalog implements HierarchicalJdb
         }
     }
 
+    /** Doris uses databases as its only table namespace. */
+    @Override
+    public List<OptionVO> listSchemaOptions(String databaseName) {
+        return List.of();
+    }
+
     @Override
     public List<OptionVO> listTableOptions(String databaseName) {
         if (StringUtils.isBlank(databaseName)) {
@@ -67,6 +73,11 @@ public class DorisCatalog extends AbstractJdbcCatalog implements HierarchicalJdb
             throw new RuntimeException(
                     String.format("Failed listing Doris tables in database %s", databaseName), e);
         }
+    }
+
+    @Override
+    public List<OptionVO> listTableOptions(String databaseName, String schemaName) {
+        return listTableOptions(databaseName);
     }
 
     @Override

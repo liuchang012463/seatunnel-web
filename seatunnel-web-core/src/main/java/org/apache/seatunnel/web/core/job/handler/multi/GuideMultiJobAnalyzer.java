@@ -112,6 +112,8 @@ public class GuideMultiJobAnalyzer {
         putIfNotBlank(config, "pluginName", source.getPluginName());
         putIfNotBlank(config, "connectorType", source.getConnectorType());
         putIfNotBlank(config, "dataSourceId", source.getDatasourceId());
+        putIfNotBlank(config, "database", source.getDatabase());
+        putIfNotBlank(config, "schemaName", source.getSchemaName());
 
         List<String> tables = resolveTableList(content);
         if (CollectionUtils.isNotEmpty(tables)) {
@@ -132,6 +134,8 @@ public class GuideMultiJobAnalyzer {
         putIfNotBlank(config, "pluginName", target.getPluginName());
         putIfNotBlank(config, "connectorType", target.getConnectorType());
         putIfNotBlank(config, "dataSourceId", target.getDatasourceId());
+        putIfNotBlank(config, "database", target.getDatabase());
+        putIfNotBlank(config, "schemaName", target.getSchemaName());
 
         /*
          * 多表 sink 端直接复用 source 端 table_list。

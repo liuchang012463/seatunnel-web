@@ -43,6 +43,34 @@ export const DATA_SOURCE_REGISTRY: DataSourceRegistryItem[] = [
   { dbType: 'H2', label: 'H2', category: 'OTHER', connectorType: 'Jdbc', creatable: false },
 ];
 
+/** JDBC-backed task sources that expose database-first metadata. */
+export const DATABASE_SCOPE_DATA_SOURCE_TYPES = new Set([
+  'JDBC',
+  'MYSQL',
+  'ORACLE',
+  'POSTGRE_SQL',
+  'KINGBASE',
+  'DAMENG',
+  'DORIS',
+]);
+
+/** Sources with a schema layer below the selected database. */
+export const SCHEMA_SCOPE_DATA_SOURCE_TYPES = new Set([
+  'JDBC',
+  'ORACLE',
+  'POSTGRE_SQL',
+  'KINGBASE',
+  'DAMENG',
+]);
+
+export function supportsDatabaseScope(dbType?: string): boolean {
+  return DATABASE_SCOPE_DATA_SOURCE_TYPES.has(String(dbType || '').toUpperCase());
+}
+
+export function supportsSchemaScope(dbType?: string): boolean {
+  return SCHEMA_SCOPE_DATA_SOURCE_TYPES.has(String(dbType || '').toUpperCase());
+}
+
 const CATEGORY_LABELS: Record<DataSourceCategoryKey, string> = {
   RELATIONAL: '关系型数据库',
   OLAP: 'OLAP 数据库',

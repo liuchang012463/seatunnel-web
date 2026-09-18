@@ -16,6 +16,16 @@ public interface HierarchicalJdbcCatalog extends JdbcCatalog {
     /** Lists every database visible to the configured account. */
     List<OptionVO> listDatabaseOptions();
 
+    /** Lists every schema visible below one database. */
+    default List<OptionVO> listSchemaOptions(String databaseName) {
+        return List.of();
+    }
+
     /** Lists tables in one database. */
     List<OptionVO> listTableOptions(String databaseName);
+
+    /** Lists tables in one database and, when supplied, one schema. */
+    default List<OptionVO> listTableOptions(String databaseName, String schemaName) {
+        return listTableOptions(databaseName);
+    }
 }

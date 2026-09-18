@@ -167,6 +167,7 @@ public class GuideMultiHoconBuildService {
         putIfNotBlank(config, "connectorType", source.getConnectorType());
         putIfNotBlank(config, "pluginName", source.getPluginName());
         putIfNotBlank(config, "database", source.getDatabase());
+        putIfNotBlank(config, "schemaName", source.getSchemaName());
 
         boolean kafka = isKafka(source.getDbType());
         if (!kafka) {
@@ -288,6 +289,7 @@ public class GuideMultiHoconBuildService {
         putIfNotBlank(config, "connectorType", target.getConnectorType());
         putIfNotBlank(config, "pluginName", target.getPluginName());
         putIfNotBlank(config, "database", target.getDatabase());
+        putIfNotBlank(config, "schemaName", target.getSchemaName());
         putIfNotNull(config, "odsDatabaseBindingId", target.getOdsDatabaseBindingId());
 
         if (!kafka) {
