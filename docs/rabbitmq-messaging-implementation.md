@@ -271,7 +271,8 @@ POST /api/v1/message/pull
 byte[] body = objectMapper.writeValueAsBytes(command.getMessage());
 ```
 
-**必须启用解析防护**（「结构不固定」= 必须设防）：
+**必须启用解析防护**（「结构不固定」= 必须设防）。解析防护与体积上限都实现在
+`MessagePayloadValidator`（`api/message/`），**不在 controller 内联** —— 便于单元测试，且这两项都是安全属性：
 
 ```java
 JsonFactory factory = JsonFactory.builder()
@@ -283,9 +284,15 @@ JsonFactory factory = JsonFactory.builder()
         .build();
 ```
 
-- 大小上限 1 MB：Spring 层通过 `@Size` + Tomcat `maxPostSize` 双重兜底
-- 序列化后立即校验字节数，超限**在进入 MQ 逻辑之前**返回错误
+- 大小上限 1 MB：**对「重新序列化后」的字节数测量**，而非原始请求体。因为前者才是真正进 MQ 的东西 —— 紧凑写法可能在规范化时膨胀，量原始输入会低估
+- 校验**在进入 MQ 逻辑之前**完成
 - **出向**：`basicGet` 拿到的 bytes 尝试解析为 `JsonNode`；失败则 `parseable=false` + 原文放 `rawBody`
+
+> ⚠️ **实现阶段修掉的一个真实缺陷。** 体积校验最初写成一个只「测量」不「比较」的方法
+> （`validateAndMeasureBody` 返回字节数，调用方仅判 null），导致 **1MB 上限完全未生效** ——
+> 1.5MB 的消息会一路直达 broker。现已改为返回拒绝原因或 `null`，并补了
+> `MessagePayloadValidatorTest`（11 个用例）作为回归防护。**其中 2 个用例在旧逻辑下会失败**，
+> 已验证过。
 
 ### 6.2 拉取（对应 B1 / B3）
 
@@ -461,6 +468,7 @@ private void assertApiKey(String providedKey) {
 | 文件 | 目录 |
 | --- | --- |
 | `MessageProperties` | `api/message/` —— `@ConfigurationProperties("seatunnel.message")` |
+| `MessagePayloadValidator` | `api/message/` —— 解析防护 + 1MB 体积校验（可单测） |
 | `MessagePluginManager` | `api/message/plugin/` —— 照搬 `AlarmPluginManager` |
 | `MessagePushRequest` / `MessagePullRequest` | `api/controller/message/` |
 | `MessageController` | `api/controller/` |
@@ -471,18 +479,26 @@ private void assertApiKey(String providedKey) {
 
 1. **鉴权失败走 HTTP 401，其余一律 200。** 共享的 `Status` 枚举里没有鉴权相关条目（已核对全表），因此 `MessageController` 内定义了私有异常 `UnauthorizedException` + 局部 `@ExceptionHandler`，返回 `ResponseEntity.status(401)`。**不改动全局的 `ApiExceptionHandler` / `CustomGlobalExceptionHandler`** —— 那两个是 `@RestControllerAdvice`，改它们会影响全部 45 个 controller。局部 handler 只作用于本 controller。
 
-2. **Jackson 解析防护落在接口层**（契约层刻意不引 Jackson）。`MessageController` 自带一个收紧过的 `ObjectMapper`：`maxNestingDepth=200`、`maxStringLength=1MB`、`maxNumberLength=1000`。1MB 体积校验在**进入 MQ 逻辑之前**完成。
+2. **Jackson 解析防护落在接口层**（契约层刻意不引 Jackson）。实现在 `MessagePayloadValidator`：
+`maxNestingDepth=200`、`maxStringLength=1MB`、`maxNumberLength=1000`。1MB 体积校验在**进入 MQ 逻辑之前**完成。
+
+3. **`MessagePayloadValidator` 独立成类而非内联在 controller。** 体积上限与解析防护都是安全属性，
+必须能被单元测试直接覆盖 —— 内联在 controller 里就测不到，而正是这个缺陷（1MB 上限未生效）
+在没有测试的情况下被漏掉了。
 
 ### 步骤 5：编译与单元测试
 
 1. 全量编译：`./mvnw -q -DskipTests compile`
 2. 针对性测试：`./mvnw -pl seatunnel-web-messaging-plugins/seatunnel-web-messaging-api,seatunnel-web-messaging-plugins/seatunnel-web-messaging-rabbitmq -am test`
-3. 测试用例（**均已实现并通过，共 17 个**）：
+3. 测试用例（**均已实现并通过，共 28 个**）：
    - `RabbitServiceLoaderTest`（4）：SPI 发现、identify 稳定、表单字段键名与 `MessageConnectionParam` 属性名对齐、`create()` 可用
    - `RabbitMessageClientTest`（13）：入参校验、`exchange`/`queue` 组合校验、不可达 broker 返回脱敏失败、错误信息不含 host 与凭据、Result 工厂、任意结构 JSON 往返（**不连真实 MQ**）
    - `MessageConnectionParamTest`（6）：`toString()` 不含明文密码、保留排查字段、默认值回退、null/空白/0 处理
+   - `MessagePayloadValidatorTest`（11）：**1MB 上限回归防护**（超限/略超限/未超限/自定义上限）、null 与显式 JSON null、任意嵌套结构、数组根节点、空对象、序列化往返、嵌套深度上限低于 Jackson 默认
 
 > ⚠️ **`-pl` 指向 pom 聚合模块不会递归到子模块。** `-pl seatunnel-web-messaging-plugins` 只跑到聚合 pom 本身（2 个模块、0 个测试）却报 BUILD SUCCESS，容易造成「测试过了」的误判。必须显式列出叶子模块。
+>
+> 另：`seatunnel-web-api` 的 pom 里 `skipTests` 默认为 `true`，跑该模块测试需显式 `-DskipTests=false`；若同时用 `-Dtest=` 过滤，还需 `-DfailIfNoTests=false`，否则无匹配测试的模块会报错中断。
 
 ### 步骤 6：联调验收
 
@@ -519,9 +535,9 @@ private void assertApiKey(String providedKey) {
 | 类型 | 内容 |
 | --- | --- |
 | 新增模块 | 3 个（`messaging-api`、`messaging-rabbitmq`、`messaging-all`）+ 1 个聚合 pom |
-| 新增 Java 文件 | 20 个（契约 10 + 实现 3 + 接口层 5 + 测试 2） |
-| 修改既有文件 | 4 个（根 `pom.xml`、`seatunnel-web-api/pom.xml`、`application.yml`、`.env.example`） |
-| 新增测试 | 3 个测试类 |
+| 新增 Java 文件 | 21 个（契约 10 + 实现 3 + 接口层 6 + 测试 2） |
+| 修改既有文件 | 5 个（根 `pom.xml`、`seatunnel-web-api/pom.xml`、`application.yml`、`.env.example`、`.gitignore`） |
+| 新增测试 | 4 个测试类，共 28 个用例 |
 | 新增配置 | `application.yml` 7 项 + `.env.example` 7 项 |
 | 对外文档 | [`rabbitmq-messaging-api-usage.md`](rabbitmq-messaging-api-usage.md)（已产出） |
 | 调试脚本 | `scripts/message-api-demo.sh`（已产出并验证） |

@@ -1,9 +1,5 @@
 package org.apache.seatunnel.web.api.controller;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.StreamReadConstraints;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
@@ -17,6 +13,7 @@ import org.apache.seatunnel.plugin.messaging.api.MessagePushCommand;
 import org.apache.seatunnel.plugin.messaging.api.MessagePushResult;
 import org.apache.seatunnel.web.api.controller.message.MessagePullRequest;
 import org.apache.seatunnel.web.api.controller.message.MessagePushRequest;
+import org.apache.seatunnel.web.api.message.MessagePayloadValidator;
 import org.apache.seatunnel.web.api.message.MessageProperties;
 import org.apache.seatunnel.web.api.message.plugin.MessagePluginManager;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
@@ -80,25 +77,8 @@ public class MessageController {
     @Resource
     private MessageProperties messageProperties;
 
-    /**
-     * Dedicated mapper with tightened read constraints.
-     *
-     * <p>Payload structure is caller-defined and therefore untrusted, so
-     * nesting depth, string length and number length are all capped below
-     * Jackson's defaults (design decision D1).</p>
-     */
-    private final ObjectMapper objectMapper;
-
-    public MessageController() {
-        JsonFactory factory = JsonFactory.builder()
-                .streamReadConstraints(StreamReadConstraints.builder()
-                        .maxNestingDepth(200)
-                        .maxStringLength(1024 * 1024)
-                        .maxNumberLength(1000)
-                        .build())
-                .build();
-        this.objectMapper = new ObjectMapper(factory);
-    }
+    @Resource
+    private MessagePayloadValidator payloadValidator;
 
     // -------------------- push --------------------
 
@@ -114,11 +94,10 @@ public class MessageController {
             return ok(Result.buildFailure("不支持的消息类型: " + request.resolveClientType()));
         }
 
-        // Size check happens before any broker work (decision D2).
-        Integer bodyBytes = validateAndMeasureBody(request.getMessage());
-        if (bodyBytes == null) {
-            return ok(Result.buildFailure(
-                    "消息体超过 " + (messageProperties.getMaxBodyBytes() / 1024) + "KB 限制"));
+        // Size and JSON checks run before any broker work (decision D2).
+        String rejection = payloadValidator.validate(request.getMessage());
+        if (rejection != null) {
+            return ok(Result.buildFailure(rejection));
         }
 
         MessagePushCommand command = MessagePushCommand.builder()
@@ -249,24 +228,6 @@ public class MessageController {
             log.warn("消息接口鉴权失败, remoteAddr={}, uri={}",
                     request.getRemoteAddr(), request.getRequestURI());
             throw new UnauthorizedException();
-        }
-    }
-
-    /**
-     * Measure the serialized payload and reject anything over the limit.
-     *
-     * @return byte length, or {@code null} when the payload is too large or
-     *         cannot be serialized
-     */
-    private Integer validateAndMeasureBody(JsonNode payload) {
-        if (payload == null || payload.isNull()) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsBytes(payload).length;
-        } catch (Exception e) {
-            log.warn("消息体序列化失败", e);
-            return null;
         }
     }
 
