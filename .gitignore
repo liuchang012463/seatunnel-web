@@ -81,3 +81,5 @@ ftp-*.png
 preview-request.json
 .playwright-mcp/
 .cursor/
+# Local AI assistant workspace (memory, caches); not part of the build
+.workbuddy-ai/
