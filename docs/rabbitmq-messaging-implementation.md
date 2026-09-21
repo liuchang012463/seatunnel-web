@@ -123,6 +123,13 @@ org.apache.seatunnel.web.api.controller
 - **与服务端版本无关**：`amqp-client` 实现的是已冻结的 AMQP 0-9-1 协议，5.36.0 可连 RabbitMQ 3.x ~ 4.x 全系。版本升级成本极低
 - **唯一需向对接方确认的服务端配置**：`max_message_size`（默认 128MB，远高于本接口 1MB 上限；但若被管理员调小到 512KB 以下则消息会被拒）
 
+> **已在真实 RabbitMQ 4.3.6 上实测通过**（见 §8 步骤 6）。实测中发现一处 RabbitMQ 4.x 行为变更，需对接方注意：
+> 4.x 默认**不再允许「非持久化 + 非排他」队列**（`transient_nonexcl_queues` 已废弃），此类声明会以
+> `reply-code=541 INTERNAL_ERROR` 被拒。本实现**不受影响**——生产代码只做只读的
+> `queueDeclarePassive`（不创建资源），push/pull 均假设目标队列已由业务方预先创建。
+> 但若对接方自行用 `queueDeclare(..., durable=false, exclusive=false, ...)` 建队列，需改为
+> `durable=true`（或 `exclusive=true`），否则会失败。
+
 ### 4.3 模块 pom 依赖
 
 | 模块 | 依赖 |
@@ -490,11 +497,32 @@ private void assertApiKey(String providedKey) {
 
 1. 全量编译：`./mvnw -q -DskipTests compile`
 2. 针对性测试：`./mvnw -pl seatunnel-web-messaging-plugins/seatunnel-web-messaging-api,seatunnel-web-messaging-plugins/seatunnel-web-messaging-rabbitmq -am test`
-3. 测试用例（**均已实现并通过，共 28 个**）：
+3. 测试用例（**均已实现并通过**）：
+
+   **A. 不依赖 broker（47 个，随构建自动运行）**
    - `RabbitServiceLoaderTest`（4）：SPI 发现、identify 稳定、表单字段键名与 `MessageConnectionParam` 属性名对齐、`create()` 可用
-   - `RabbitMessageClientTest`（13）：入参校验、`exchange`/`queue` 组合校验、不可达 broker 返回脱敏失败、错误信息不含 host 与凭据、Result 工厂、任意结构 JSON 往返（**不连真实 MQ**）
+   - `RabbitMessageClientTest`（13）：入参校验、`exchange`/`queue` 组合校验、不可达 broker 返回脱敏失败、错误信息不含 host 与凭据、Result 工厂、任意结构 JSON 往返
    - `MessageConnectionParamTest`（6）：`toString()` 不含明文密码、保留排查字段、默认值回退、null/空白/0 处理
    - `MessagePayloadValidatorTest`（11）：**1MB 上限回归防护**（超限/略超限/未超限/自定义上限）、null 与显式 JSON null、任意嵌套结构、数组根节点、空对象、序列化往返、嵌套深度上限低于 Jackson 默认
+   - `MessageControllerTest`（13）：HTTP 层。鉴权（缺 key / 错 key / 对 key / 未配 key 时跳过）、1MB 超限在进入 MQ 逻辑前被拒、push 的 exchange/queue/routingKey/payload 透传、未知 clientType、pull 的 parseable/不可解析消息整形、`maxMessages` 上限钳制与非正数拒绝、失败不返回 5xx
+
+   **B. 依赖真实 broker（11 个，**默认不运行**，需显式开启）**
+
+   | 测试类 | 用例数 | 覆盖 |
+   | --- | --- | --- |
+   | `RabbitMessageClientLiveIT` | 6 | MQ 层：任意嵌套 JSON 往返（含中文与 emoji）、空队列、`maxMessages` 边界且剩余消息仍在队列、错误凭据返回脱敏失败而非抛异常、队列不存在给出可读原因、非 JSON 消息降级为 `rawBody` |
+   | `MessageEndpointLiveIT` | 5 | 全链路 HTTP：push→pull 往返、**超限消息体确实未进 broker（回读队列为 0 条）**、错误密码脱敏、缺 key 返回真实 401、未知队列不返回 5xx |
+
+   开启方式（两个 IT 均以 `@EnabledIfSystemProperty` 门控，未开启时连测试选择都命中不到，绝不会让无 broker 的机器变红）：
+
+   ```bash
+   ./.mvn/mvn21.sh -pl seatunnel-web-api test -DskipTests=false \
+       -Dtest=MessageEndpointLiveIT -DfailIfNoTests=false \
+       -Dmessaging.it.enabled=true \
+       -Dmessaging.it.user=<user> -Dmessaging.it.pass=<password>
+   ```
+
+   可选覆盖项：`messaging.it.host`（127.0.0.1）、`messaging.it.port`（5672）、`messaging.it.vhost`（/）、`messaging.it.queue-prefix`（seatunnel.it）。每个用例使用随机队列名并在结束后删除，不依赖也不污染 broker 既有状态。
 
 > ⚠️ **`-pl` 指向 pom 聚合模块不会递归到子模块。** `-pl seatunnel-web-messaging-plugins` 只跑到聚合 pom 本身（2 个模块、0 个测试）却报 BUILD SUCCESS，容易造成「测试过了」的误判。必须显式列出叶子模块。
 >
@@ -504,14 +532,32 @@ private void assertApiKey(String providedKey) {
 
 依据 `AGENTS.md`「验收」条款，涉及用户可操作行为的新增必须在宣称完成前实际走通 happy path。
 
-1. 起一个本地 RabbitMQ（或复用 `/mnt/lc` 已有实例，**需明确授权**）
+**已完成（真实 broker：RabbitMQ 4.3.6，`amqp-client` 5.36.0）**
+
+| 验收项 | 方式 | 结果 |
+| --- | --- | --- |
+| push → pull 内容一致 | `MessageEndpointLiveIT.pushThenPullOverHttpRoundTripsArbitraryJson` | 通过。任意嵌套 JSON 逐字段一致（树级比对），中文与 emoji 无损 |
+| 超限消息体被拒 **且未进 broker** | `MessageEndpointLiveIT.oversizePayloadIsRejectedBeforeItReachesTheBroker` | 通过。回读队列 0 条——这是 mock 无法伪造的证明 |
+| 错误凭据返回脱敏文案 | `MessageEndpointLiveIT.wrongPasswordIsReportedAsASanitizedFailure` | 通过。响应不含密码、不含异常类名 |
+| 配好 key 后不带 header → 401 | `MessageEndpointLiveIT.missingApiKeyIsRejectedWithAReal401` | 通过。真实 HTTP 401 |
+| `maxMessages` 边界与剩余消息保留 | `RabbitMessageClientLiveIT.pullHonoursMaxMessagesAndLeavesTheRestBehind` | 通过。拉 3 留 2，再次拉取得 2 |
+| 非 JSON 消息降级 | `RabbitMessageClientLiveIT.nonJsonBodyIsReturnedAsRawTextInsteadOfFailing` | 通过。`parseable=false`，`rawBody` 原样 |
+
+**尚未完成（需要额外环境）**
+
+后端全量启动路径未验收：`seatunnel-web-api` 依赖 MySQL，本机 3306 未运行、`.env` 不存在，
+且 `AGENTS.md` 规定未经明确授权不得执行 Compose / 部署操作。`MessageEndpointLiveIT` 已把
+「HTTP → 控制器 → 校验器 → SPI → RabbitMQ → HTTP」整条链路跑通（仅 HTTP 传输为模拟），
+因此剩余未验证部分只有 Spring 容器装配与真实网络监听，而非业务逻辑。
+
+若需补齐全量验收：
+
+1. 准备 MySQL（或授权启动 Compose）并生成 `.env`
 2. `scripts/dev-up.sh` 启动后端
-3. 用 `scripts/message-api-demo.sh` 走通：
-   - `push` → 到 RabbitMQ 管理台确认消息落地、内容与入参一致
-   - `pull` → 确认 `body` 与推入时一致
-   - `push-err` → 确认返回脱敏文案
-   - `oversize` → 确认被拒
-   - 配好 key 后不带 header → 确认 401
+3. 用 `scripts/message-api-demo.sh` 走通：`push` / `pull` / `push-err` / `oversize` / 无 header → 401
+
+> 注：`scripts/dev-up.sh` 内部调用 `./mvnw`，而仓库 `.mvn/wrapper/maven-wrapper.jar` 缺失，
+> 该脚本当前无法直接使用；需先补齐 wrapper jar，或改用本地 Maven。此为项目既有问题，与本次改动无关。
 
 ---
 
@@ -535,12 +581,25 @@ private void assertApiKey(String providedKey) {
 | 类型 | 内容 |
 | --- | --- |
 | 新增模块 | 3 个（`messaging-api`、`messaging-rabbitmq`、`messaging-all`）+ 1 个聚合 pom |
-| 新增 Java 文件 | 21 个（契约 10 + 实现 3 + 接口层 6 + 测试 2） |
+| 新增 Java 文件 | 23 个（契约 10 + 实现 3 + 接口层 6 + 测试 4） |
 | 修改既有文件 | 5 个（根 `pom.xml`、`seatunnel-web-api/pom.xml`、`application.yml`、`.env.example`、`.gitignore`） |
-| 新增测试 | 4 个测试类，共 28 个用例 |
+| 新增测试 | 6 个测试类：47 个用例随构建运行 + 11 个用例连真实 broker（默认关闭） |
 | 新增配置 | `application.yml` 7 项 + `.env.example` 7 项 |
 | 对外文档 | [`rabbitmq-messaging-api-usage.md`](rabbitmq-messaging-api-usage.md)（已产出） |
 | 调试脚本 | `scripts/message-api-demo.sh`（已产出并验证） |
+
+### 提交记录（`develop` 分支）
+
+| commit | 类型 | 内容 |
+| --- | --- | --- |
+| `1fe824e4` | chore | `.gitignore` + `.env.example` |
+| `25907cbb` | feat | messaging 插件族（3 模块）+ 根 `pom.xml` |
+| `d51feaa1` | feat | 接口层 + `application.yml` |
+| `38952bcc` | docs | 实现文档 + 使用说明 + 调试脚本 |
+| `a5a4abb9` | fix | **1MB 上限真正生效**（此前从未被校验）+ 11 个回归用例 |
+| `2b9c6fd9` | test | HTTP 层 MockMvc 覆盖（13 例） |
+| `93fe0194` | test | 真实 broker 验收套件（6 例，opt-in） |
+| `943523c4` | test | 全链路 HTTP 验收套件（5 例，opt-in） |
 
 ---
 
