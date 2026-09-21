@@ -1,0 +1,325 @@
+# RabbitMQ 消息推送 / 拉取接口 · 使用说明
+
+> 面向对象：**外部系统对接方**
+> 版本：v1.0　|　日期：2026-09-21
+> 接口规划依据：[`rabbitmq-messaging-implementation.md`](rabbitmq-messaging-implementation.md)
+
+---
+
+## 一、这个接口是做什么的
+
+本平台提供两个通用接口，帮你操作你自己的 RabbitMQ：
+
+| 接口 | 作用 |
+| --- | --- |
+| **推送** `POST /api/v1/message/push` | 把一段 JSON 消息发进队列 |
+| **拉取** `POST /api/v1/message/pull` | 从队列里取出一批消息 |
+
+你可以把本平台当成一个**消息中继**：你告诉它「连哪个 MQ、发到哪、发什么」，它替你完成操作。
+
+**你不需要安装 RabbitMQ 客户端，也不需要直接连 MQ。** 平台会用你在请求里提供的连接信息去连接。
+
+---
+
+## 二、调用前准备
+
+需要向平台管理员获取：
+
+1. **接口地址**（例如 `http://<平台地址>:9527`）
+2. **API Key**（如果管理员启用了鉴权）
+
+还需要准备好你自己的 RabbitMQ 信息：地址、端口、虚拟主机、用户名、密码、队列名。
+
+---
+
+## 三、请求头
+
+两个接口都需要携带：
+
+```http
+Content-Type: application/json
+X-Api-Key: <向管理员索取>
+```
+
+> 若管理员未启用 API Key，可省略 `X-Api-Key` 一行。
+
+---
+
+## 四、推送消息
+
+### 请求
+
+```http
+POST /api/v1/message/push
+Content-Type: application/json
+X-Api-Key: <你的key>
+```
+
+```json
+{
+  "connection": {
+    "host": "10.0.0.1",
+    "port": 5672,
+    "virtualHost": "/",
+    "username": "guest",
+    "password": "guest",
+    "sslEnabled": false,
+    "connectionTimeoutMs": 10000
+  },
+  "queue": "order.sync",
+  "message": {
+    "orderId": "A001",
+    "amount": 100,
+    "items": [ { "sku": "X1" } ]
+  },
+  "persistent": true
+}
+```
+
+### 参数说明
+
+| 参数 | 必填 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `connection` | 是 | — | 你的 RabbitMQ 连接配置 |
+| `connection.host` | 是 | — | MQ 主机地址 |
+| `connection.port` | 否 | `5672` | MQ 端口 |
+| `connection.virtualHost` | 否 | `/` | 虚拟主机 |
+| `connection.username` | 是 | — | 用户名 |
+| `connection.password` | 是 | — | 密码 |
+| `connection.sslEnabled` | 否 | `false` | 是否启用 TLS |
+| `connection.connectionTimeoutMs` | 否 | `10000` | 连接超时（毫秒） |
+| `queue` | 是 | — | 目标队列名（`exchange` 为空时必填） |
+| `message` | 是 | — | **任意 JSON 对象**，结构不限，最大 1 MB |
+| `exchange` | 否 | `""` | 交换机名。**一般留空不填** |
+| `routingKey` | 否 | 同 `queue` | 仅当填了 `exchange` 时才需要 |
+| `persistent` | 否 | `true` | 是否持久化消息 |
+| `headers` | 否 | — | 自定义消息头（键值对） |
+
+### 成功响应
+
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "success": true,
+    "exchange": "",
+    "routingKey": "order.sync"
+  }
+}
+```
+
+### 关于 `message`
+
+`message` 直接写成 **JSON 对象**即可，不要转成字符串：
+
+```json
+// 正确
+"message": { "orderId": "A001", "amount": 100 }
+
+// 错误（不要这样做）
+"message": "{\"orderId\":\"A001\",\"amount\":100}"
+```
+
+结构随意，嵌套、数组、中文都支持，只要不超过 **1 MB**。
+
+---
+
+## 五、拉取消息
+
+### 请求
+
+```http
+POST /api/v1/message/pull
+Content-Type: application/json
+X-Api-Key: <你的key>
+```
+
+```json
+{
+  "connection": {
+    "host": "10.0.0.1",
+    "port": 5672,
+    "virtualHost": "/",
+    "username": "guest",
+    "password": "guest"
+  },
+  "queue": "order.sync",
+  "maxMessages": 10,
+  "timeoutMs": 3000
+}
+```
+
+### 参数说明
+
+| 参数 | 必填 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `connection` | 是 | — | 同推送，必填 |
+| `queue` | 是 | — | 从哪个队列取 |
+| `maxMessages` | 否 | `10` | 最多取几条。**服务端上限 100 条** |
+| `timeoutMs` | 否 | `3000` | 最长等待时间（毫秒） |
+
+### 成功响应
+
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "messages": [
+      {
+        "deliveryTag": 42,
+        "parseable": true,
+        "body": { "orderId": "A001", "amount": 100 },
+        "headers": { "source": "erp" },
+        "contentType": "application/json"
+      }
+    ],
+    "returned": 1,
+    "truncated": false,
+    "elapsedMs": 12
+  }
+}
+```
+
+### 响应字段说明
+
+| 字段 | 含义 |
+| --- | --- |
+| `messages` | 本次取到的消息数组 |
+| `messages[].body` | 消息内容（已解析为 JSON 对象） |
+| `messages[].parseable` | `true` = `body` 是合法 JSON；`false` 时改看 `rawBody` |
+| `messages[].rawBody` | 内容不是合法 JSON 时的原文 |
+| `messages[].headers` | 消息头 |
+| `messages[].deliveryTag` | 消息在本次投递中的序号，仅供排查参考 |
+| `returned` | 本次实际取到几条 |
+| `truncated` | `true` = 队列里还有消息没取完，可再调用一次 |
+| `elapsedMs` | 本次耗时（毫秒） |
+
+> **队列为空是正常的**：此时 `messages` 是 `[]`、`returned` 为 `0`，`code` 仍为 `0`，不是错误。
+
+---
+
+## 六、⚠️ 必读：消息可能丢失
+
+**这是本接口最重要的限制，请务必完整理解。**
+
+### 行为说明
+
+消息一旦被你拉走（`pull` 返回成功），它**就从这个队列永久删除了**，不会再回来。
+
+如果出现以下情况，**这条消息就永久丢失，任何人都找不回来**：
+
+- 你发出了 `pull` 请求，但网络中断，响应没收到
+- 你的程序收到响应后处理失败
+- 你的程序崩溃、重启
+
+### 你需要做的事
+
+1. **保证自己能重放** —— 例如消息本身来自你的业务表，丢失后你能重新推一次
+2. **取到消息先落地再处理** —— 先写入本地存储或数据库，再做业务处理
+3. **不要用这个接口传输不能丢失的数据** —— 如金融交易凭证、不可重现的日志
+
+### 如果你需要「绝对不丢」
+
+当前接口**不提供**这个保证。请联系平台管理员评估其他方案（例如直接在 MQ 侧消费）。
+
+---
+
+## 七、错误处理
+
+### 所有业务错误都返回 HTTP 200
+
+请通过响应体中的 `code` 判断成败。`code != 0` 即为失败。
+
+```json
+{ "code": 500, "msg": "MQ 连接失败，请检查配置", "data": null }
+```
+
+### 错误对照表
+
+| 情况 | HTTP | `msg` |
+| --- | --- | --- |
+| 连接不上 / 认证失败 | 200 | `MQ 连接失败，请检查配置` |
+| 队列不存在 | 200 | `目标队列不存在` |
+| 消息超过 1 MB | 200 | `消息体超过 1MB 限制` |
+| 必填参数缺失 | 200 | 明确指出是哪个字段 |
+| API Key 错误或缺失 | 401 | 鉴权失败 |
+
+### 两点提醒
+
+1. **不要对 HTTP 5xx 做自动重试** —— 本接口的业务错误都返回 200，不会出现 5xx。如果拿到了 5xx，那是平台自身故障，重试无益，请联系管理员。
+2. **错误信息不含网络细节** —— 出于安全考虑，服务端不会返回具体的 IP、端口或底层异常。需要排查时请联系管理员查看服务端日志。
+
+---
+
+## 八、常见问题
+
+**Q：`message` 里能放多复杂的结构？**
+任意合法 JSON。嵌套、数组、中文都可以，只要总大小不超过 **1 MB**。
+
+**Q：一次能推多条消息吗？**
+不能，一次调用推一条。需要推多条就多次调用。
+
+**Q：`maxMessages` 填 500 行不行？**
+填了也会被服务端截断到 100 条。请查看返回的 `truncated`：
+- `truncated = true` → 还有消息，继续调 `pull`
+- `truncated = false` → 已取完
+
+**Q：`exchange` 到底要不要填？**
+**一般不填。** 不填就是直接发到 `queue` 指定的队列。只有当你明确需要走交换机的路由能力（如 fanout、topic）时才填。
+
+**Q：连接信息每次都要传吗？**
+是的，每次调用都要传完整配置。
+
+**Q：消息在里面会存多久？**
+本接口不做保留。不取就一直堆在队列里，直到被取走或队列被清理。保留策略由你自己的 RabbitMQ 决定。
+
+**Q：密码明文传输安全吗？**
+**请务必在生产环境使用 HTTPS。** 当前接口的密码在请求体中明文传输，HTTP 环境下可能被中间人截获。
+
+**Q：对我的 RabbitMQ 版本有要求吗？**
+**基本没有。** 平台内部使用标准 AMQP 0-9-1 协议客户端，该协议已经冻结稳定，可连接 RabbitMQ **3.x ~ 4.x 全系版本**，也兼容阿里云 / 腾讯云 / Amazon MQ 等托管 RabbitMQ 服务。
+
+但请确认你的服务端**这两项配置没有被调小**：
+
+| 配置 | 要求 | 说明 |
+| --- | --- | --- |
+| `max_message_size` | **≥ 1 MB** | 默认 128MB。若被管理员调小到 1MB 以下，你发的消息会被拒 |
+| `channel_max` | 无特殊要求 | 平台每次请求只用 1 个 channel |
+
+如果发现消息发送失败且错误提示与消息体大小相关，请联系你的 RabbitMQ 管理员检查 `max_message_size`。
+
+**Q：必须用标准 RabbitMQ 吗？**
+标准 RabbitMQ 或兼容 AMQP 0-9-1 的实现都可以。若你使用 Apache Qpid 等非 RabbitMQ 的 broker，建议先做一次联调验证。
+
+---
+
+## 九、快速接入清单
+
+- [ ] 向管理员索取接口地址与 `X-Api-Key`
+- [ ] 准备好 RabbitMQ 地址、端口、虚拟主机、账号、密码、队列名
+- [ ] 用 `scripts/message-api-demo.sh` 或 Postman 调一次 `push`，到 MQ 管理台确认消息已到达
+- [ ] 调一次 `pull`，确认能取回消息且内容与推入时一致
+- [ ] **在自己的代码中实现「消息可重放」机制**
+- [ ] 确认生产环境使用 HTTPS
+- [ ] 确认已理解并接受「消息可能丢失」（见第六节）
+
+---
+
+## 附：调试脚本
+
+仓库内提供了 `scripts/message-api-demo.sh`，可直接发请求验证：
+
+```bash
+# 推送
+./scripts/message-api-demo.sh push
+
+# 拉取
+./scripts/message-api-demo.sh pull
+
+# 查看用法
+./scripts/message-api-demo.sh help
+```
+
+脚本中的 MQ 配置与接口地址可通过环境变量覆盖，详见脚本头部注释。
