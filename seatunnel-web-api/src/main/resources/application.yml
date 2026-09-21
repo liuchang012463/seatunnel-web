@@ -149,6 +149,28 @@ seatunnel:
       enabled: true
       initial-delay-ms: 60000
       fixed-delay-ms: 60000
+
+  # Generic message push/pull endpoints (/api/v1/message/**).
+  #
+  # SECURITY: api-key intentionally defaults to EMPTY, which disables
+  # authentication on these endpoints. That is fine for local development but
+  # unacceptable in production — set SEATUNNEL_MESSAGE_API_KEY there.
+  # Never commit the real key into this file; the default must stay blank so a
+  # misconfigured deployment fails closed-by-explicit-choice rather than by
+  # shipping a known secret.
+  message:
+    api-key: ${SEATUNNEL_MESSAGE_API_KEY:}
+    # Maximum accepted payload size: 1MB
+    max-body-bytes: ${SEATUNNEL_MESSAGE_MAX_BODY_BYTES:1048576}
+    # Hard ceiling on one pull, regardless of what the caller requests
+    max-batch-size: ${SEATUNNEL_MESSAGE_MAX_BATCH_SIZE:100}
+    pull-default-timeout-ms: ${SEATUNNEL_MESSAGE_PULL_DEFAULT_TIMEOUT_MS:3000}
+    # Payload structure is caller-defined, so parse limits are tightened below
+    # Jackson's defaults (1000 depth).
+    max-nesting-depth: ${SEATUNNEL_MESSAGE_MAX_NESTING_DEPTH:200}
+    max-string-length: ${SEATUNNEL_MESSAGE_MAX_STRING_LENGTH:1048576}
+    max-number-length: ${SEATUNNEL_MESSAGE_MAX_NUMBER_LENGTH:1000}
+
   web:
     database:
       type: ${SEATUNNEL_WEB_DATABASE_TYPE:mysql}

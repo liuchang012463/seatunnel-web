@@ -64,6 +64,19 @@
             <artifactId>seatunnel-web-alarm-all</artifactId>
         </dependency>
 
+        <!-- Generic message push/pull channel. The -all aggregator brings the
+             RabbitMQ implementation onto the runtime classpath so ServiceLoader
+             can discover it, mirroring the alarm family above. -->
+        <dependency>
+            <groupId>org.apache.seatunnel.web</groupId>
+            <artifactId>seatunnel-web-messaging-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.seatunnel.web</groupId>
+            <artifactId>seatunnel-web-messaging-all</artifactId>
+        </dependency>
+
         <!-- spring-boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
