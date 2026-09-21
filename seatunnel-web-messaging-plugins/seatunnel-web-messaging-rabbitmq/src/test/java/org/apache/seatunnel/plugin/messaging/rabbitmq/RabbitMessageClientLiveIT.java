@@ -60,9 +60,16 @@ class RabbitMessageClientLiveIT {
     private String queue;
 
     @BeforeEach
-    void createQueue() {
+    void createQueue() throws Exception {
         queue = System.getProperty("messaging.it.queue-prefix", "seatunnel.it")
                 + "." + UUID.randomUUID().toString().substring(0, 8);
+        try (Connection connection = rawFactory().newConnection("seatunnel-web-it-setup");
+                Channel channel = connection.createChannel()) {
+            // Durable on purpose: RabbitMQ 4.x rejects transient non-exclusive
+            // queues (reply-code 541, "transient_nonexcl_queues is deprecated")
+            // unless the broker is explicitly reconfigured to allow them.
+            channel.queueDeclare(queue, true, false, false, null);
+        }
     }
 
     @AfterEach
@@ -199,7 +206,6 @@ class RabbitMessageClientLiveIT {
         String raw = "this is not json at all";
         try (Connection connection = rawFactory().newConnection("seatunnel-web-it-raw");
                 Channel channel = connection.createChannel()) {
-            channel.queueDeclare(queue, false, false, false, null);
             channel.basicPublish("", queue, null, raw.getBytes(StandardCharsets.UTF_8));
         }
 
