@@ -36,6 +36,7 @@
         <lombok.version>1.18.42</lombok.version>
         <typesafe.version>1.4.3</typesafe.version>
         <kafka-clients.version>3.4.0</kafka-clients.version>
+        <amqp-client.version>5.36.0</amqp-client.version>
         <commons-net.version>3.12.0</commons-net.version>
         <jsch.version>0.2.20</jsch.version>
         <aws-java-sdk-s3.version>1.12.692</aws-java-sdk-s3.version>
@@ -55,6 +56,7 @@
         <module>seatunnel-web-datasource-connection</module>
         <module>seatunnel-web-datasource-plugins</module>
         <module>seatunnel-web-alarm-plugins</module>
+        <module>seatunnel-web-messaging-plugins</module>
         <module>seatunnel-web-ui</module>
         <module>seatunnel-web-dao</module>
         <module>seatunnel-web-dao-plugin</module>
@@ -221,6 +223,26 @@
                 <groupId>org.apache.seatunnel.web</groupId>
                 <artifactId>seatunnel-web-dao-api</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.seatunnel.web</groupId>
+                <artifactId>seatunnel-web-messaging-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.seatunnel.web</groupId>
+                <artifactId>seatunnel-web-messaging-rabbitmq</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.seatunnel.web</groupId>
+                <artifactId>seatunnel-web-messaging-all</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.rabbitmq</groupId>
+                <artifactId>amqp-client</artifactId>
+                <version>${amqp-client.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
