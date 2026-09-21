@@ -556,8 +556,17 @@ private void assertApiKey(String providedKey) {
 2. `scripts/dev-up.sh` 启动后端
 3. 用 `scripts/message-api-demo.sh` 走通：`push` / `pull` / `push-err` / `oversize` / 无 header → 401
 
-> 注：`scripts/dev-up.sh` 内部调用 `./mvnw`，而仓库 `.mvn/wrapper/maven-wrapper.jar` 缺失，
-> 该脚本当前无法直接使用；需先补齐 wrapper jar，或改用本地 Maven。此为项目既有问题，与本次改动无关。
+> 注：`scripts/dev-up.sh` 内部调用 `./mvnw`。仓库里 `mvnw` / `mvnw.cmd` 曾是 3.1.0 时代的脚本，
+> 与 `maven-wrapper.properties` 声明的 `wrapperVersion=3.3.4` + `distributionType=only-script` 不一致
+> （旧脚本忽略 `distributionType`，硬编码 `maven-wrapper-3.1.0.jar` 下载地址，还去读一个并不存在的
+> `wrapperUrl` 键），已在 `8a4fc751` 中重新生成并对齐。生成后的 `mvnw` 不再引用任何 jar。
+>
+> 但在 Windows + Git Bash 环境下 `./mvnw` 仍跑不完：`only-script` 模式最终会 exec 出 Maven 发行包自带的
+> `bin/mvn` 脚本，而该脚本在 MSYS 路径转换下把 POSIX 形式的 classpath 交给 Windows JVM，导致
+> `找不到或无法加载主类 org.codehaus.plexus.classworlds.launcher.Launcher`。这与仓库原本就无法直接使用
+> 裸 `mvn` 是同一个原因，属既有本地环境问题。已实测确认 wrapper 自身的下载与解压是正常的：
+> `~/.m2/wrapper/dists/apache-maven-3.9.16/<hash>` 可正常启动并输出 `Apache Maven 3.9.16`（JDK 21）。
+> Linux / CI 不受影响。
 
 ---
 
