@@ -600,6 +600,7 @@ private void assertApiKey(String providedKey) {
 | `2b9c6fd9` | test | HTTP 层 MockMvc 覆盖（13 例） |
 | `93fe0194` | test | 真实 broker 验收套件（6 例，opt-in） |
 | `943523c4` | test | 全链路 HTTP 验收套件（5 例，opt-in） |
+| `089df1b1` | fix | 验收套件改用持久化队列（RabbitMQ 4.x 拒绝 transient non-exclusive） |
 
 ---
 
