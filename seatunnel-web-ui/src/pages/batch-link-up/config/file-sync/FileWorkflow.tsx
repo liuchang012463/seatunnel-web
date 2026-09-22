@@ -655,11 +655,11 @@ export default function FileWorkflow({
 
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
-                逻辑关系配置（{isFileTransfer ? '文件传输' : '文件数据引接'}任务）
+                逻辑关系配置（{isFileTransfer ? '文件同步' : '离线文件导入'}任务）
               </div>
               <div className="text-[14px] leading-6 text-slate-500">
                 {isFileTransfer
-                  ? '配置文件传输链路与运行参数，在一个页面完成创建、资源选择与调试。'
+                  ? '配置文件同步链路与运行参数，在一个页面完成创建、资源选择与调试。'
                   : '配置文件解析、字段映射与目标入库，在一个页面完成创建、预览与调试。'}
               </div>
             </div>
@@ -761,13 +761,13 @@ export default function FileWorkflow({
                           </div>
                           <div className="min-w-0">
                             <div className="text-[13px] font-semibold leading-[1.2] text-slate-900">
-                              {isFileTransfer ? '文件传输链路' : '文件数据引接链路'}
+                              {isFileTransfer ? '文件同步链路' : '离线文件导入链路'}
                             </div>
                             <div className="mt-1 text-[12px] leading-[1.4] text-slate-500">
                               {isFileTransfer
-                                ? '文件传输任务为固定的 来源 → 去向链路，负责搬运文件本身，不解析文件内容。'
-                                : '文件数据引接任务为固定的 来源 → 去向链路，支持文件解析、字段映射与目标入库。'}
-                              点击画布节点配置文件资源或远程来源，不支持插入转换节点。
+                                ? '文件同步任务为固定的 来源 → 去向链路，负责搬运文件本身，不解析文件内容。'
+                                : '离线文件导入任务为固定的 来源 → 去向链路，支持文件解析、字段映射与目标入库。'}
+                              点击画布节点配置湖文件或远程来源，不支持插入转换节点。
                             </div>
                           </div>
                         </div>

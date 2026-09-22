@@ -43,11 +43,39 @@ export const DATA_SOURCE_REGISTRY: DataSourceRegistryItem[] = [
   { dbType: 'H2', label: 'H2', category: 'OTHER', connectorType: 'Jdbc', creatable: false },
 ];
 
+/** JDBC-backed task sources that expose database-first metadata. */
+export const DATABASE_SCOPE_DATA_SOURCE_TYPES = new Set([
+  'JDBC',
+  'MYSQL',
+  'ORACLE',
+  'POSTGRE_SQL',
+  'KINGBASE',
+  'DAMENG',
+  'DORIS',
+]);
+
+/** Sources with a schema layer below the selected database. */
+export const SCHEMA_SCOPE_DATA_SOURCE_TYPES = new Set([
+  'JDBC',
+  'ORACLE',
+  'POSTGRE_SQL',
+  'KINGBASE',
+  'DAMENG',
+]);
+
+export function supportsDatabaseScope(dbType?: string): boolean {
+  return DATABASE_SCOPE_DATA_SOURCE_TYPES.has(String(dbType || '').toUpperCase());
+}
+
+export function supportsSchemaScope(dbType?: string): boolean {
+  return SCHEMA_SCOPE_DATA_SOURCE_TYPES.has(String(dbType || '').toUpperCase());
+}
+
 const CATEGORY_LABELS: Record<DataSourceCategoryKey, string> = {
   RELATIONAL: '关系型数据库',
   OLAP: 'OLAP 数据库',
   MESSAGE_QUEUE: '消息队列',
-  FILE_TRANSFER: '文件传输',
+  FILE_TRANSFER: '文件同步任务',
   API: 'API 服务',
   OTHER: '其他',
 };
@@ -55,8 +83,8 @@ const CATEGORY_LABELS: Record<DataSourceCategoryKey, string> = {
 /** 连接器副标题用协议说明，不暴露内部代码（DESIGN.md §4.8）。 */
 const CONNECTOR_TYPE_LABELS: Record<string, string> = {
   Jdbc: 'JDBC 通用连接',
-  FtpFile: 'FTP 文件传输',
-  SftpFile: 'SFTP 文件传输',
+  FtpFile: 'FTP 文件同步',
+  SftpFile: 'SFTP 文件同步',
   S3File: 'S3 协议对象存储',
   Kafka: 'Kafka 消息队列',
   Http: 'HTTP 接口',

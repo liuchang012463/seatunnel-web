@@ -113,9 +113,9 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
   const sourceOptions = useMemo<TaskFilterOption[]>(
     () =>
       taskType === 'FILE_INGEST'
-        ? [{ label: '文件资源库', value: 'FILE_RESOURCE' }]
+        ? [{ label: '湖文件', value: 'FILE_RESOURCE' }]
         : [
-            { label: '文件资源库', value: 'FILE_RESOURCE' },
+            { label: '湖文件', value: 'FILE_RESOURCE' },
             { label: 'FTP', value: 'FTP' },
             { label: 'SFTP', value: 'SFTP' },
             { label: 'S3', value: 'S3' },

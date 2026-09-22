@@ -21,12 +21,12 @@ const fileResourceOption: DataSourceType = {
   value: FILE_RESOURCE_SOURCE.dbType,
   connectorType: FILE_RESOURCE_SOURCE.connectorType,
   pluginName: FILE_RESOURCE_SOURCE.pluginName,
-  rawLabel: '文件资源库',
+  rawLabel: '湖文件',
   sourceManaged: true,
   label: (
     <div className="flex items-center">
       <FileOutlined className="text-[22px] text-blue-600" />
-      <span className="ml-2">文件资源库</span>
+      <span className="ml-2">湖文件</span>
     </div>
   ),
 };
@@ -53,8 +53,8 @@ export const FILE_INGEST_DETAIL_CONFIG: FileTaskDetailConfig = {
   mode: 'GUIDE_SINGLE',
   listPath: '/sync/file-ingest',
   configPath: '/sync/file-ingest/:id/config/single',
-  title: '文件数据引接',
-  description: '从文件资源库读取结构化文件，配置单表入库链路。',
+  title: '离线文件导入',
+  description: '上传或选择结构化文件，配置单表解析与入库链路。',
   sourceOptions: [fileResourceOption],
   targetOptions: generateDataSourceOptions(),
   defaultSource: FILE_RESOURCE_SOURCE,
@@ -70,8 +70,8 @@ export const FILE_TRANSFER_DETAIL_CONFIG: FileTaskDetailConfig = {
   mode: 'FILE_SYNC',
   listPath: '/sync/file-transfer',
   configPath: '/sync/file-transfer/:id/config/file-sync',
-  title: '文件传输',
-  description: '以二进制方式在文件资源和远端文件系统之间传输对象。',
+  title: '文件同步任务',
+  description: '以二进制方式在湖文件与远端文件系统之间同步对象。',
   sourceOptions: [fileResourceOption, ...remoteFileOptions],
   targetOptions: remoteFileOptions,
   defaultSource: FILE_RESOURCE_SOURCE,
@@ -115,7 +115,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
   const clientSectionRef = useRef<HTMLDivElement>(null);
 
   const isSourceManaged = sourceManaged(sourceType);
-  const sourceLabel = isSourceManaged ? '文件资源库' : '远端文件系统';
+  const sourceLabel = isSourceManaged ? '湖文件' : '远端文件系统';
   const targetLabel = config.taskType === 'FILE_TRANSFER' ? '目标文件系统' : '目标表';
 
   useEffect(() => {
@@ -248,14 +248,14 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
                 rules={[{ required: true, message: '请输入任务名称' }]}
                 className="file-task-create-page__field"
               >
-                <Input placeholder={config.taskType === 'FILE_TRANSFER' ? '例如：资源库 → S3 归档' : '例如：销售订单文件 → MySQL'} />
+                <Input placeholder={config.taskType === 'FILE_TRANSFER' ? '例如：湖文件 → S3 归档' : '例如：销售订单文件 → MySQL'} />
               </Form.Item>
               <div className="file-task-create-page__task-note">
-                <strong>{config.mode === 'GUIDE_SINGLE' ? '文件数据引接' : '文件传输'}</strong>
+                <strong>{config.mode === 'GUIDE_SINGLE' ? '离线文件导入' : '文件同步任务'}</strong>
                 <span>
                   {config.mode === 'GUIDE_SINGLE'
-                    ? '从资源库读取一个文件，解析后写入目标表。'
-                    : '只搬运对象，不解析 CSV、Excel、JSON 或 TXT 内容。'}
+                    ? '读取一个文件，解析后写入目标表。'
+                    : '只同步对象，不解析 CSV、Excel、JSON 或 TXT 内容。'}
                 </span>
               </div>
             </div>
@@ -309,7 +309,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
         onCancel={goBack}
         onNext={() => void handleNext()}
         nextText="进入任务配置"
-        hintText="完成任务信息与连接测试后，进入文件资源和规则配置。"
+        hintText="完成任务信息与连接测试后，进入湖文件与规则配置。"
       />
     </div>
   );

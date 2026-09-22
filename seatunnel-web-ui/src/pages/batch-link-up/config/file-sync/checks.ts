@@ -37,7 +37,7 @@ const sourceRules: ((node: any) => CheckItem | null)[] = [
     }
     if (sourceMode === 'FILE_RESOURCE') {
       if (!String(config.fileResourceId || '').trim()) {
-        return buildError(node, 'fileResourceId', '请选择文件资源库中的文件');
+        return buildError(node, 'fileResourceId', '请选择湖文件区中的文件');
       }
       return null;
     }

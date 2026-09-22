@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
-public abstract class AbstractJdbcCatalog implements JdbcCatalog {
+public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
 
     private static final Pattern SQL_VARIABLE_PATTERN =
             Pattern.compile("\\$\\{var:([^}]+)}");
@@ -61,9 +61,27 @@ public abstract class AbstractJdbcCatalog implements JdbcCatalog {
         TablePath tablePath = request.getTablePath();
         if (tablePath != null && StringUtils.isNotBlank(tablePath.getTableName())
                 && tablePath.getTableName().contains(".")) {
-            request.setTablePath(resolveTablePath(tablePath.getTableName()));
+            TablePath resolved = resolveTablePath(tablePath.getTableName());
+            String database = getText(requestBody, "database");
+            String schema = getText(requestBody, "schema_name");
+            if (StringUtils.isNotBlank(database) || StringUtils.isNotBlank(schema)) {
+                request.setTablePath(TablePath.of(
+                        StringUtils.defaultIfBlank(database, resolved.getDatabaseName()),
+                        StringUtils.defaultIfBlank(schema, resolved.getSchemaName()),
+                        resolved.getTableName()));
+            } else {
+                request.setTablePath(resolved);
+            }
         }
         return request;
+    }
+
+    private static String getText(Map<String, Object> values, String key) {
+        if (values == null || values.get(key) == null) {
+            return null;
+        }
+        String value = String.valueOf(values.get(key)).trim();
+        return value.isEmpty() ? null : value;
     }
 
     @FunctionalInterface
@@ -88,6 +106,111 @@ public abstract class AbstractJdbcCatalog implements JdbcCatalog {
             throw new RuntimeException(
                     String.format("Failed listing database in catalog %s", param.getDbType()), e);
         }
+    }
+
+    /**
+     * Lists databases through the JDBC metadata contract. Vendor catalogs can
+     * override this when the driver exposes a richer database listing.
+     */
+    @Override
+    public List<OptionVO> listDatabaseOptions() {
+        List<OptionVO> options = new ArrayList<>();
+        try (Connection connection = getConnection();
+                ResultSet resultSet = connection.getMetaData().getCatalogs()) {
+            while (resultSet.next()) {
+                addMetadataOption(options, resultSet.getString("TABLE_CAT"), null);
+            }
+        } catch (SQLException error) {
+            log.debug("JDBC driver does not expose database metadata", error);
+        }
+
+        if (options.isEmpty() && param != null && StringUtils.isNotBlank(param.getDatabase())) {
+            addMetadataOption(options, param.getDatabase(), null);
+        }
+        return options;
+    }
+
+    /**
+     * Lists schemas through JDBC metadata. MySQL treats schema and database
+     * as the same namespace, so it intentionally has no second level.
+     */
+    @Override
+    public List<OptionVO> listSchemaOptions(String databaseName) {
+        if (param != null
+                && param.getDbType() == org.apache.seatunnel.web.spi.enums.DbType.MYSQL) {
+            return List.of();
+        }
+
+        List<OptionVO> options = new ArrayList<>();
+        String catalog = StringUtils.isBlank(databaseName) ? null : databaseName.trim();
+        try (Connection connection = getConnection();
+                ResultSet resultSet = connection.getMetaData().getSchemas(catalog, "%")) {
+            while (resultSet.next()) {
+                addMetadataOption(options, resultSet.getString("TABLE_SCHEM"), null);
+            }
+        } catch (SQLException error) {
+            log.debug("JDBC driver does not expose schema metadata", error);
+        }
+
+        if (options.isEmpty() && param != null && StringUtils.isNotBlank(param.getSchemaName())) {
+            addMetadataOption(options, param.getSchemaName(), null);
+        }
+        return options;
+    }
+
+    /** Lists tables for the selected database using JDBC metadata. */
+    @Override
+    public List<OptionVO> listTableOptions(String databaseName) {
+        return listTableOptions(databaseName, null);
+    }
+
+    /** Lists tables for the selected database and optional schema. */
+    @Override
+    public List<OptionVO> listTableOptions(String databaseName, String schemaName) {
+        String catalog = StringUtils.isBlank(databaseName) ? null : databaseName.trim();
+        String schema = StringUtils.isBlank(schemaName) ? null : schemaName.trim();
+        List<OptionVO> options = queryMetadataTables(catalog, schema);
+        if (options.isEmpty() && catalog != null) {
+            options = queryMetadataTables(null, schema);
+        }
+        return options;
+    }
+
+    private List<OptionVO> queryMetadataTables(String catalog, String schema) {
+        List<OptionVO> options = new ArrayList<>();
+        try (Connection connection = getConnection();
+                ResultSet resultSet = connection.getMetaData().getTables(
+                        catalog, schema, "%", new String[] {"TABLE", "VIEW"})) {
+            while (resultSet.next()) {
+                String table = resultSet.getString("TABLE_NAME");
+                if (StringUtils.isBlank(table)) {
+                    continue;
+                }
+                String result = table;
+                String resultSchema = resultSet.getString("TABLE_SCHEM");
+                if (StringUtils.isBlank(schema) && StringUtils.isNotBlank(resultSchema)
+                        && (param == null
+                        || param.getDbType() != org.apache.seatunnel.web.spi.enums.DbType.MYSQL)) {
+                    result = resultSchema + "." + table;
+                }
+                addMetadataOption(options, result, resultSet.getString("REMARKS"));
+            }
+        } catch (SQLException error) {
+            log.debug("JDBC driver does not expose table metadata", error);
+        }
+        return options;
+    }
+
+    private void addMetadataOption(List<OptionVO> options, String value, String description) {
+        if (StringUtils.isBlank(value)
+                || options.stream().anyMatch(option -> value.equals(option.getValue()))) {
+            return;
+        }
+        OptionVO option = new OptionVO();
+        option.setValue(value);
+        option.setLabel(value);
+        option.setDescription(StringUtils.isBlank(description) ? null : description);
+        options.add(option);
     }
 
     protected OptionVO buildTableOption(ResultSet rs) throws SQLException {

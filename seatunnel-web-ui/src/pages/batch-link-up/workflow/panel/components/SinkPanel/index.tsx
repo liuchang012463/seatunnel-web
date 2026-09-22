@@ -8,6 +8,10 @@ import { useSinkPanelLogic } from './hooks/useSinkPanelLogic';
 import './index.less';
 import KafkaNodeConfig from '@/pages/common/workflow/KafkaNodeConfig';
 import ElasticsearchNodeConfig from '@/pages/common/workflow/ElasticsearchNodeConfig';
+import {
+  supportsDatabaseScope,
+  supportsSchemaScope,
+} from '@/pages/data-source/dataSourceRegistry';
 
 interface Props {
   selectedNode: any;
@@ -26,6 +30,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
 
     dataSourceId,
     database,
+    schemaName,
     isSystemManagedTarget,
     autoCreateTable,
     writeMode,
@@ -38,7 +43,9 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
 
     dataSourceOptions,
     databaseOptions,
+    schemaOptions,
     databaseLoading,
+    schemaLoading,
     tableOptions,
     tableLoading,
 
@@ -51,6 +58,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
     updateNode,
     handleDataSourceChange,
     handleDatabaseChange,
+    handleSchemaChange,
     handleAutoCreateTableChange,
     handleWriteModeChange,
     handleTargetModeChange,
@@ -60,6 +68,9 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
     onNodeDataChange,
     sourceDataSourceId,
   });
+
+  const isDatabaseScoped = supportsDatabaseScope(dbType);
+  const isSchemaScoped = supportsSchemaScope(dbType);
 
   if (isKafka || isElasticsearch) {
     return (
@@ -170,28 +181,52 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
 
         <div className="workflow-panel__divider" />
 
-        {String(dbType).toUpperCase() === 'DORIS' && (
+        {isDatabaseScoped && (
           <>
             <div className="workflow-panel__group">
               <div className="workflow-panel__group-head">
-                <div className="workflow-panel__group-kicker">目标数据库</div>
+                <div className="workflow-panel__group-kicker">
+                  目标数据库
+                </div>
               </div>
               <Select
                 value={database || undefined}
                 onChange={handleDatabaseChange}
                 options={databaseOptions}
                 loading={databaseLoading}
-                placeholder="请选择 Doris 目标数据库"
+                placeholder={String(dbType).toUpperCase() === 'DORIS'
+                  ? '请选择 Doris 目标数据库'
+                  : '请选择目标数据库'}
                 showSearch
                 optionFilterProp="label"
                 className="workflow-panel__antd-select"
                 style={{ width: '100%' }}
                 classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
               />
+              {isSchemaScoped && (
+                <>
+                  <div className="mt-3 mb-1 text-xs text-slate-500">Schema</div>
+                  <Select
+                    value={schemaName || undefined}
+                    onChange={handleSchemaChange}
+                    options={schemaOptions}
+                    loading={schemaLoading}
+                    placeholder="请选择 Schema"
+                    showSearch
+                    optionFilterProp="label"
+                    className="workflow-panel__antd-select"
+                    style={{ width: '100%' }}
+                    classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
+                    disabled={!database}
+                  />
+                </>
+              )}
               <div className="mt-1 text-xs leading-5 text-slate-500">
-                {isSystemManagedTarget
+                {String(dbType).toUpperCase() === 'DORIS' && isSystemManagedTarget
                   ? '系统 Doris 仅允许选择当前来源数据源关联且 READY 的 ODS 数据库。'
-                  : 'Doris 使用 database 作为唯一命名空间；默认连接库只作为回退值。'}
+                  : String(dbType).toUpperCase() === 'DORIS'
+                    ? 'Doris 使用 database 作为唯一命名空间；默认连接库只作为回退值。'
+                    : '选择数据库和 Schema 后，再选择对应范围内的目标表。'}
               </div>
             </div>
             <div className="workflow-panel__divider" />

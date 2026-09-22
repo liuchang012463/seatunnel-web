@@ -31,9 +31,10 @@ public class QueryRequest {
                     // Prefer explicit schema_name from the caller (e.g. exploration OM
                     // schema) over the datasource connection schema. Do not infer
                     // schema from dotted table_path — MySQL uses database.table.
+                    String databaseName = resolveDatabaseName(body, param);
                     String schemaName = resolveSchemaName(body, param);
                     req.tablePath = TablePath.of(
-                            param.getDatabase(),
+                            databaseName,
                             schemaName,
                             body.get("table_path").toString()
                     );
@@ -53,5 +54,13 @@ public class QueryRequest {
             return schemaFromBody.toString();
         }
         return param.getSchemaName();
+    }
+
+    private static String resolveDatabaseName(Map<String, Object> body, BaseConnectionParam param) {
+        Object databaseFromBody = body.get("database");
+        if (databaseFromBody != null && StringUtils.isNotBlank(databaseFromBody.toString())) {
+            return databaseFromBody.toString();
+        }
+        return param.getDatabase();
     }
 }

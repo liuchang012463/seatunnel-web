@@ -210,6 +210,20 @@ class JdbcSourceTargetBuilderTest {
         assertFalse(map.containsKey(DATABASE));
     }
 
+    @Test
+    void genericJdbcSourceUsesExplicitDatabaseAndSchema() {
+        Map<String, Object> map = new HashMap<>();
+
+        singleBuilder.build(
+                config("table = user_info\ndatabase = test_db\nschemaName = analytics"),
+                genericConnection(""),
+                map,
+                HoconBuildStage.DEFINITION);
+
+        assertEquals("test_db", map.get(DATABASE));
+        assertEquals("test_db.analytics.user_info", map.get(TABLE_PATH));
+    }
+
     private Config config(String body) {
         return ConfigFactory.parseString(body);
     }
@@ -247,6 +261,14 @@ class JdbcSourceTargetBuilderTest {
                         + "driver = \"com.kingbase8.Driver\"\n"
                         + "user = st\n"
                         + "password = st_pass\n"
+                + body);
+    }
+
+    private Config genericConnection(String body) {
+        return ConfigFactory.parseString(
+                "url = \"jdbc:vendor://localhost:1234/test_db\"\n"
+                        + "driver = \"com.vendor.Driver\"\n"
+                        + "user = st\n"
                         + body);
     }
 }

@@ -57,9 +57,8 @@ export const menuData: MenuDataItem[] = [
       { path: '/metrics', name: '任务概览', icon: <MonitorOutlined /> },
       { path: '/sync/batch-link-up', name: '批量数据引接', icon: <SwapOutlined /> },
       { path: '/sync/stream-link-up', name: '实时数据引接', icon: <ThunderboltOutlined /> },
-      { path: '/sync/file-ingest', name: '文件数据引接', icon: <FolderOpenOutlined /> },
-      { path: '/sync/file-transfer', name: '文件传输', icon: <SwapOutlined /> },
-      { path: '/sync/file-resources', name: '文件资源管理', icon: <FolderOpenOutlined /> },
+      { path: '/sync/file-ingest', name: '离线文件导入', icon: <FolderOpenOutlined /> },
+      { path: '/sync/file-transfer', name: '文件同步任务', icon: <SwapOutlined /> },
       { path: '/sync/cloud-edge-tasks', name: '云边协同任务', icon: <CloudServerOutlined /> },
       {
         path: '/sync/edge-access-tasks',
@@ -91,6 +90,7 @@ export const menuData: MenuDataItem[] = [
       { path: '/lake/resources', name: '物理入湖管理', icon: <DatabaseOutlined /> },
       { path: '/lake/logical-access', name: '逻辑入湖管理', icon: <LinkOutlined /> },
       { path: '/lake/lifecycle', name: '数据生命周期管理', icon: <FolderOpenOutlined /> },
+      { path: '/lake/file-resources', name: '湖文件管理', icon: <FolderOpenOutlined /> },
     ],
   },
   {

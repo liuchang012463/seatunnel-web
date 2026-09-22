@@ -97,11 +97,11 @@ const FileResourcePicker: React.FC<FileResourcePickerProps> = ({
         type="info"
         showIcon
         icon={<UploadOutlined />}
-        message="文件需先上传到文件资源库"
+        message="文件需先上传到湖文件区"
         description="任务执行节点会直接读取对象存储中的文件，不依赖 Web 服务本地临时文件。"
         action={
           <Button type="link" icon={<FolderOpenOutlined />} onClick={openResourceManager}>
-            前往文件资源管理
+            前往湖文件管理
           </Button>
         }
       />

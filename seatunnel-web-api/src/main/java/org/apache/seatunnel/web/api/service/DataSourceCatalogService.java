@@ -26,6 +26,12 @@ public interface DataSourceCatalogService {
     /** Lists tables in one database for a hierarchical JDBC catalog. */
     List<OptionVO> listTable(Long id, String databaseName);
 
+    /** Lists schemas in one database for a hierarchical JDBC catalog. */
+    List<OptionVO> listSchema(Long id, String databaseName);
+
+    /** Lists tables in one database and optional schema. */
+    List<OptionVO> listTable(Long id, String databaseName, String schemaName);
+
     List<FileEntryVO> listFiles(Long id, String path);
 
     /**

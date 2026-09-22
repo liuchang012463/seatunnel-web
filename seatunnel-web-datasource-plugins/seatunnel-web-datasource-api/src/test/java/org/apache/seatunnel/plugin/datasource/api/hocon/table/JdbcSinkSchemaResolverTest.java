@@ -238,6 +238,25 @@ class JdbcSinkSchemaResolverTest {
         assertEquals("user_info", map.get(TABLE));
     }
 
+    @Test
+    void genericJdbcSinkUsesExplicitSchemaName() {
+        Map<String, Object> singleMap = new HashMap<>();
+        singleBuilder.build(
+                config("targetTableName = user_info\nschemaName = analytics"),
+                genericConnection("database = test_db"),
+                singleMap);
+
+        Map<String, Object> multiMap = new HashMap<>();
+        multiBuilder.build(
+                config("multiTable = true\nschemaName = analytics"),
+                genericConnection("database = test_db"),
+                multiMap);
+
+        assertEquals("test_db", singleMap.get(DATABASE));
+        assertEquals("analytics.user_info", singleMap.get(TABLE));
+        assertEquals("analytics.${table_name}", multiMap.get(TABLE));
+    }
+
     private Config config(String body) {
         return ConfigFactory.parseString(body);
     }
@@ -268,6 +287,14 @@ class JdbcSinkSchemaResolverTest {
         return ConfigFactory.parseString(
                 "url = \"jdbc:kingbase8://localhost:54321/test\"\n"
                         + "driver = \"com.kingbase8.Driver\"\n"
+                        + "user = test\n"
+                + body);
+    }
+
+    private Config genericConnection(String body) {
+        return ConfigFactory.parseString(
+                "url = \"jdbc:vendor://localhost:1234/test_db\"\n"
+                        + "driver = \"com.vendor.Driver\"\n"
                         + "user = test\n"
                         + body);
     }

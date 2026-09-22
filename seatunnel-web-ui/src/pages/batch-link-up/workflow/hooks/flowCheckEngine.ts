@@ -127,7 +127,7 @@ const sourceRules: NodeCheckRule[] = [
     }
     if (isFileResourceSourceNode(node)) {
       if (!String(config.fileResourceId || '').trim()) {
-        return buildWarning(node, 'fileResourceId', '请先选择文件资源库中的文件');
+        return buildWarning(node, 'fileResourceId', '请先选择湖文件区中的文件');
       }
       return null;
     }

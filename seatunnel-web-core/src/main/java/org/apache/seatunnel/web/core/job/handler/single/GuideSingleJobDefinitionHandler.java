@@ -160,7 +160,7 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         requireFileDbType(sink, "sink");
         if ("INCREMENTAL".equalsIgnoreCase(String.valueOf(source.get("syncType")))) {
             if (fileResource) {
-                throw new IllegalArgumentException("FILE_RESOURCE 文件传输只支持全量同步");
+                throw new IllegalArgumentException("FILE_RESOURCE 文件同步只支持全量同步");
             }
             requireIncrementalDbType(source, "source");
             requireIncrementalDbType(sink, "sink");

@@ -16,6 +16,10 @@ import HttpNodeConfig from '@/pages/common/workflow/HttpNodeConfig';
 import ElasticsearchNodeConfig from '@/pages/common/workflow/ElasticsearchNodeConfig';
 import LocalFileSourcePanel from './LocalFileSourcePanel';
 import FileSourceConfigPanel from '@/pages/file-ingest/FileSourceConfigPanel';
+import {
+  supportsDatabaseScope,
+  supportsSchemaScope,
+} from '@/pages/data-source/dataSourceRegistry';
 
 dayjs.extend(customParseFormat);
 
@@ -40,6 +44,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
     description,
     dataSourceId,
     database,
+    schemaName,
     readMode,
     table,
     sql,
@@ -49,8 +54,10 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
 
     dataSourceOptions,
     databaseOptions,
+    schemaOptions,
     tableOptions,
     databaseLoading,
+    schemaLoading,
     tableLoading,
 
     sqlPopoverOpen,
@@ -64,6 +71,8 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
 
     updateNode,
     handleDataSourceChange,
+    handleDatabaseChange,
+    handleSchemaChange,
     handleReadModeChange,
     handlePreview,
     handleGenerateSql,
@@ -82,6 +91,8 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
   const isWebUpload = String(selectedNode?.data?.config?.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
   const isFileResource = String(selectedNode?.data?.config?.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
   const isDoris = String(dbType || '').toUpperCase() === 'DORIS';
+  const isDatabaseScoped = supportsDatabaseScope(dbType);
+  const isSchemaScoped = supportsSchemaScope(dbType);
 
   if (isWebUpload) {
     return (
@@ -117,7 +128,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
         onChange={updateFileResourceNode}
         onOpenManager={() => {
           const returnTo = `${window.location.pathname}${window.location.search}`;
-          history.push(`/sync/file-resources?select=1&returnTo=${encodeURIComponent(returnTo)}`);
+          history.push(`/lake/file-resources?select=1&returnTo=${encodeURIComponent(returnTo)}`);
         }}
       />
     );
@@ -241,36 +252,48 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
 
           <div className="workflow-panel__divider" />
 
-          {isDoris && (
+          {isDatabaseScoped && (
             <>
               <div className="workflow-panel__group">
                 <div className="workflow-panel__group-head">
-                  <div className="workflow-panel__group-kicker">数据库 / Schema</div>
+                  <div className="workflow-panel__group-kicker">
+                    {isDoris ? '数据库 / Schema' : '数据库'}
+                  </div>
                 </div>
                 <Select
                   value={database || undefined}
-                  onChange={(value) =>
-                    updateNode({
-                      database: value,
-                      table: undefined,
-                      incrementalConfig: undefined,
-                    }, undefined, {
-                      outputSchema: [],
-                      schemaStatus: 'idle',
-                      schemaError: '',
-                    })
-                  }
+                  onChange={handleDatabaseChange}
                   options={databaseOptions}
                   loading={databaseLoading}
-                  placeholder="请选择 Doris 数据库"
+                  placeholder={isDoris ? '请选择 Doris 数据库' : '请选择数据库'}
                   className="workflow-panel__antd-select"
                   style={{ width: '100%' }}
                   classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
                   showSearch
                   optionFilterProp="label"
                 />
+                {isSchemaScoped && (
+                  <>
+                    <div className="mt-3 mb-1 text-xs text-slate-500">Schema</div>
+                    <Select
+                      value={schemaName || undefined}
+                      onChange={handleSchemaChange}
+                      options={schemaOptions}
+                      loading={schemaLoading}
+                      placeholder="请选择 Schema"
+                      className="workflow-panel__antd-select"
+                      style={{ width: '100%' }}
+                      classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
+                      showSearch
+                      optionFilterProp="label"
+                      disabled={!database}
+                    />
+                  </>
+                )}
                 <div className="mt-1 text-xs leading-5 text-slate-500">
-                  Doris 没有独立 Schema，这里使用数据库名作为 Schema。
+                  {isDoris
+                    ? 'Doris 没有独立 Schema，这里使用数据库名作为 Schema。'
+                    : '选择数据库和 Schema 后，再选择对应范围内的表。'}
                 </div>
               </div>
               <div className="workflow-panel__divider" />

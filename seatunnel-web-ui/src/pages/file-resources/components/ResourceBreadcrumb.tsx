@@ -8,7 +8,7 @@ export interface ResourceBreadcrumbProps {
   rootLabel?: React.ReactNode;
 }
 
-const ResourceBreadcrumb: React.FC<ResourceBreadcrumbProps> = ({ path, onNavigate, rootLabel = '资源库' }) => {
+const ResourceBreadcrumb: React.FC<ResourceBreadcrumbProps> = ({ path, onNavigate, rootLabel = '湖文件' }) => {
   const normalizedPath = normalizeResourcePath(path);
   const items = useMemo(() => {
     const segments = normalizedPath.split('/').filter(Boolean);

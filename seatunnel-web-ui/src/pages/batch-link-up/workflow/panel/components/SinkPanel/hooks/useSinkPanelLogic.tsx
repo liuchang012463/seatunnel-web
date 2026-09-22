@@ -2,6 +2,10 @@ import {
   dataSourceCatalogApi,
   fetchDataSourceOptions,
 } from "@/pages/data-source/service";
+import {
+  supportsDatabaseScope,
+  supportsSchemaScope,
+} from "@/pages/data-source/dataSourceRegistry";
 import { message } from "antd";
 import { Table2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -30,6 +34,7 @@ export function useSinkPanelLogic({
     ? String(config.dataSourceId)
     : undefined;
   const database = config?.database || "";
+  const schemaName = config?.schemaName || config?.schema || "";
   const odsDatabaseBindingId = config?.odsDatabaseBindingId;
 
   const autoCreateTable = Boolean(config?.autoCreateTable);
@@ -45,8 +50,10 @@ export function useSinkPanelLogic({
 
   const [dataSourceOptions, setDataSourceOptions] = useState<any[]>([]);
   const [databaseOptions, setDatabaseOptions] = useState<any[]>([]);
+  const [schemaOptions, setSchemaOptions] = useState<any[]>([]);
   const [tableOptions, setTableOptions] = useState<any[]>([]);
   const [databaseLoading, setDatabaseLoading] = useState(false);
+  const [schemaLoading, setSchemaLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
 
   const [sqlPopoverOpen, setSqlPopoverOpen] = useState(false);
@@ -124,7 +131,7 @@ export function useSinkPanelLogic({
 
   useEffect(() => {
     const loadDatabaseOptions = async () => {
-      if (!dataSourceId || String(dbType).toUpperCase() !== "DORIS") {
+      if (!dataSourceId || !supportsDatabaseScope(dbType)) {
         setDatabaseOptions([]);
         return;
       }
@@ -167,6 +174,7 @@ export function useSinkPanelLogic({
         ) {
           updateNode({
             database: undefined,
+            schemaName: undefined,
             odsDatabaseBindingId: undefined,
             table: undefined,
             targetTableName: "",
@@ -193,14 +201,60 @@ export function useSinkPanelLogic({
   ]);
 
   useEffect(() => {
+    const loadSchemaOptions = async () => {
+      if (
+        !dataSourceId ||
+        !database ||
+        !supportsSchemaScope(dbType)
+      ) {
+        setSchemaOptions([]);
+        return;
+      }
+
+      setSchemaLoading(true);
+      try {
+        const res = await dataSourceCatalogApi.listSchemas(dataSourceId, database);
+        const list = Array.isArray(res?.data) ? res.data : [];
+        const options = list.map((item: any) => ({
+          label: item?.label ?? item?.value,
+          value: String(item?.value ?? ""),
+          description: item?.description,
+        }));
+        setSchemaOptions(options);
+
+        if (
+          schemaName &&
+          options.length > 0 &&
+          !options.some((item: any) => String(item.value) === String(schemaName))
+        ) {
+          updateNode({
+            schemaName: undefined,
+            table: undefined,
+            targetTableName: "",
+          });
+        }
+      } catch (error) {
+        console.error("load sink schema options error", error);
+        setSchemaOptions([]);
+      } finally {
+        setSchemaLoading(false);
+      }
+    };
+
+    loadSchemaOptions();
+  }, [dataSourceId, database, dbType, schemaName, updateNode]);
+
+  useEffect(() => {
     const loadTableOptions = async () => {
       if (!dataSourceId || autoCreateTable) {
         setTableOptions([]);
         return;
       }
 
+      const databaseScoped = supportsDatabaseScope(dbType);
+      const schemaScoped = supportsSchemaScope(dbType);
       if (
-        String(dbType).toUpperCase() === "DORIS"
+        databaseScoped
         && (
           !database
           || !currentDataSource
@@ -211,10 +265,19 @@ export function useSinkPanelLogic({
         return;
       }
 
+      if (schemaScoped && schemaOptions.length > 0 && !schemaName) {
+        setTableOptions([]);
+        return;
+      }
+
       setTableLoading(true);
       try {
-        const res = String(dbType).toUpperCase() === "DORIS"
-          ? await dataSourceCatalogApi.listTablesByDatabase(dataSourceId, database)
+        const res = databaseScoped
+          ? await dataSourceCatalogApi.listTablesByDatabase(
+              dataSourceId,
+              database,
+              schemaScoped ? schemaName : undefined,
+            )
           : await dataSourceCatalogApi.listTable(dataSourceId);
         const list = Array.isArray(res?.data) ? res.data : [];
 
@@ -270,6 +333,8 @@ export function useSinkPanelLogic({
     autoCreateTable,
     database,
     dbType,
+    schemaName,
+    schemaOptions.length,
     currentDataSource,
     isSystemManagedTarget,
     sourceDataSourceId,
@@ -286,6 +351,7 @@ export function useSinkPanelLogic({
         {
           dataSourceId: value,
           database: undefined,
+          schemaName: undefined,
           odsDatabaseBindingId: undefined,
           index: undefined,
           table: undefined,
@@ -306,6 +372,7 @@ export function useSinkPanelLogic({
     (value: string, option: any) => {
       updateNode({
         database: value,
+        schemaName: undefined,
         odsDatabaseBindingId: isSystemManagedTarget
           ? option?.odsDatabaseBindingId
           : undefined,
@@ -314,6 +381,17 @@ export function useSinkPanelLogic({
       });
     },
     [isSystemManagedTarget, updateNode]
+  );
+
+  const handleSchemaChange = useCallback(
+    (value: string) => {
+      updateNode({
+        schemaName: value,
+        table: undefined,
+        targetTableName: "",
+      });
+    },
+    [updateNode]
   );
 
   const handleAutoCreateTableChange = useCallback(
@@ -372,9 +450,8 @@ export function useSinkPanelLogic({
       const res = await dataSourceCatalogApi.buildSqlTemplate(dataSourceId, {
         read_mode: "table",
         table_path: selectedSqlTable,
-        ...(String(dbType).toUpperCase() === "DORIS" && database
-          ? { database }
-          : {}),
+        ...(database ? { database } : {}),
+        ...(schemaName ? { schema_name: schemaName } : {}),
       });
 
       if (res?.code !== 0) {
@@ -394,7 +471,7 @@ export function useSinkPanelLogic({
     } finally {
       setGenerateSqlLoading(false);
     }
-  }, [dataSourceId, database, dbType, selectedSqlTable, updateNode]);
+  }, [dataSourceId, database, dbType, schemaName, selectedSqlTable, updateNode]);
 
   return {
     title,
@@ -403,6 +480,7 @@ export function useSinkPanelLogic({
 
     dataSourceId,
     database,
+    schemaName,
     autoCreateTable,
     writeMode,
     targetMode,
@@ -416,7 +494,9 @@ export function useSinkPanelLogic({
     currentDataSource,
     dataSourceOptions,
     databaseOptions,
+    schemaOptions,
     databaseLoading,
+    schemaLoading,
     odsDatabaseBindingId,
     isSystemManagedTarget,
     tableOptions,
@@ -431,6 +511,7 @@ export function useSinkPanelLogic({
     updateNode,
     handleDataSourceChange,
     handleDatabaseChange,
+    handleSchemaChange,
     handleAutoCreateTableChange,
     handleWriteModeChange,
     handleTargetModeChange,

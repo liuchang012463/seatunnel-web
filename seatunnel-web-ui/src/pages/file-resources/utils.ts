@@ -107,7 +107,7 @@ export function buildResourceManagerUrl(query: FileResourceManagerQuery = {}): s
   params.set('selectionMode', query.selectionMode || 'single');
   if (query.returnTo) params.set('returnTo', query.returnTo);
   if (query.selection) params.set('selection', query.selection);
-  return `/sync/file-resources?${params.toString()}`;
+  return `/lake/file-resources?${params.toString()}`;
 }
 
 export function appendResourceSelection(

@@ -62,9 +62,14 @@ export default function MultiWorkflow({
     targetType,
     sourceDatabaseOptions,
     targetDatabaseOptions,
+    sourceSchemaOptions,
+    targetSchemaOptions,
     sourceDatabase,
     targetDatabase,
+    sourceSchemaName,
+    targetSchemaName,
     databaseLoading,
+    schemaLoading,
     tableData,
     readOnlyTables,
     multiTableList,
@@ -84,7 +89,9 @@ export default function MultiWorkflow({
     handleSourceIdChange,
     handleTargetIdChange,
     handleSourceDatabaseChange,
+    handleSourceSchemaChange,
     handleTargetDatabaseChange,
+    handleTargetSchemaChange,
     handleMatchModeChange,
     handleKeywordChange,
     handleSave,
@@ -153,6 +160,16 @@ export default function MultiWorkflow({
   const handleTargetDatabaseChangeWithDirty = (...args: any[]) => {
     markCurrentDefinitionDirty();
     return (handleTargetDatabaseChange as any)(...args);
+  };
+
+  const handleSourceSchemaChangeWithDirty = (...args: any[]) => {
+    markCurrentDefinitionDirty();
+    return (handleSourceSchemaChange as any)(...args);
+  };
+
+  const handleTargetSchemaChangeWithDirty = (...args: any[]) => {
+    markCurrentDefinitionDirty();
+    return (handleTargetSchemaChange as any)(...args);
   };
 
   const handleMatchModeChangeWithDirty = (...args: any[]) => {
@@ -341,15 +358,22 @@ export default function MultiWorkflow({
                           targetType={targetType}
                           sourceDatabase={sourceDatabase}
                           targetDatabase={targetDatabase}
+                          sourceSchemaName={sourceSchemaName}
+                          targetSchemaName={targetSchemaName}
                           sourceDatabaseOptions={sourceDatabaseOptions}
                           targetDatabaseOptions={targetDatabaseOptions}
+                          sourceSchemaOptions={sourceSchemaOptions}
+                          targetSchemaOptions={targetSchemaOptions}
                           databaseLoading={databaseLoading}
+                          schemaLoading={schemaLoading}
                           matchMode={matchMode}
                           tableKeyword={tableKeyword}
                           onSourceIdChange={handleSourceIdChangeWithDirty}
                           onTargetIdChange={handleTargetIdChangeWithDirty}
                           onSourceDatabaseChange={handleSourceDatabaseChangeWithDirty}
                           onTargetDatabaseChange={handleTargetDatabaseChangeWithDirty}
+                          onSourceSchemaChange={handleSourceSchemaChangeWithDirty}
+                          onTargetSchemaChange={handleTargetSchemaChangeWithDirty}
                           onMatchModeChange={handleMatchModeChangeWithDirty}
                           onKeywordChange={handleKeywordChangeWithDirty}
                         />

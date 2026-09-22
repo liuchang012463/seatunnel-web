@@ -22,8 +22,8 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
   onOpenManager,
   selectionMode = 'file',
   allowedFormats,
-  title = '文件资源来源',
-  description = '从文件资源库读取对象，执行节点直接访问对象存储。',
+  title = '湖文件来源',
+  description = '从湖文件区读取对象，执行节点直接访问对象存储。',
   binary = false,
 }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -105,19 +105,19 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
             className="mt-4"
             type={resource ? 'success' : 'warning'}
             showIcon
-            message={resource ? '已选择文件资源' : '文件需先上传到文件资源库'}
+            message={resource ? '已选择湖文件' : '文件需先上传到湖文件区'}
             description={
               resource
                 ? binary
-                  ? '当前任务将直接搬运这个二进制对象到目标端，不解析文件内容。'
+                  ? '当前任务将直接同步这个二进制对象到目标端，不解析文件内容。'
                   : '当前任务将从这个对象读取结构化数据，并按下方解析配置写入目标表。'
                 : binary
-                  ? '文件传输只搬运二进制对象，不解析 CSV、Excel、JSON 或 TXT 内容。'
-                  : '选择一个文件资源后，任务将保存资源 ID 和对象存储引用。'
+                  ? '文件同步任务只搬运二进制对象，不解析 CSV、Excel、JSON 或 TXT 内容。'
+                  : '选择一个湖文件后，任务将保存资源 ID 和对象存储引用。'
             }
             action={
               <Button type="link" icon={<LinkOutlined />} onClick={onOpenManager}>
-                前往文件资源管理
+                前往湖文件管理
               </Button>
             }
           />
@@ -125,10 +125,10 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
           <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3">
             <div className="min-w-0">
               <div className="truncate text-sm font-medium text-slate-800">
-                {resource?.name || '尚未选择文件资源'}
+                {resource?.name || '尚未选择湖文件'}
               </div>
               <div className="mt-1 truncate text-xs text-slate-500">
-                {resource?.path || resource?.objectKey || '请选择文件资源库中的文件'}
+                {resource?.path || resource?.objectKey || '请选择湖文件区中的文件'}
               </div>
             </div>
             <Button type="primary" ghost onClick={() => setPickerOpen(true)}>

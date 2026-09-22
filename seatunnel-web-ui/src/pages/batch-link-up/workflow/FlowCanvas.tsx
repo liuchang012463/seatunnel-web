@@ -99,7 +99,7 @@ function buildInitialGraph(
   const isManagedFileSource = isFileResourceSource || isWebUploadSource;
 
   const sourceTitle =
-    (isFileResourceSource ? '文件资源库' : isWebUploadSource ? '本地文件' : sourceType?.dbType) ||
+    (isFileResourceSource ? '湖文件' : isWebUploadSource ? '本地文件' : sourceType?.dbType) ||
     sourceType?.pluginName ||
     sourceType?.connectorType ||
     '输入端';
@@ -150,6 +150,7 @@ function buildInitialGraph(
             : {
                 dataSourceId: params?.sourceDataSourceId || '',
                 database: params?.sourceDatabase,
+                schemaName: params?.sourceSchemaName,
                 dbType: sourceType?.dbType,
                 connectorType: sourceType?.connectorType,
                 pluginName: sourceType?.pluginName,
@@ -192,6 +193,7 @@ function buildInitialGraph(
         config: {
           dataSourceId: params?.targetDataSourceId || '',
           database: params?.targetDatabase,
+          schemaName: params?.targetSchemaName,
           odsDatabaseBindingId: params?.odsDatabaseBindingId,
           autoCreateTable: false,
           targetMode: 'table',

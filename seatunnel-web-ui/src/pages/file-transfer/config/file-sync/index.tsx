@@ -119,7 +119,7 @@ const FileTransferConfigPage: React.FC = () => {
         setScheduleConfig(mergeScheduleConfig(data?.schedule));
         setEnvConfig(mergeEnvConfig(data?.env));
       } catch {
-        message.error('读取文件传输草稿失败');
+        message.error('读取文件同步任务草稿失败');
         setParams(undefined);
       }
     };
@@ -214,7 +214,7 @@ const FileTransferConfigPage: React.FC = () => {
       path: managerPath,
       returnTo,
     });
-    history.push(`/sync/file-resources?${query.toString()}`);
+    history.push(`/lake/file-resources?${query.toString()}`);
   };
 
   const targetType = params?.targetType || defaultTargetType;
@@ -240,7 +240,7 @@ const FileTransferConfigPage: React.FC = () => {
   if (!params) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Empty description="未找到文件传输配置，请从任务列表重新进入" />
+        <Empty description="未找到文件同步任务配置，请从任务列表重新进入" />
       </div>
     );
   }

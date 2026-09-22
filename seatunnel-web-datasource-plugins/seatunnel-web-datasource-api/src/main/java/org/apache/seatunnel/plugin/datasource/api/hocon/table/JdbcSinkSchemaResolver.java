@@ -53,7 +53,7 @@ final class JdbcSinkSchemaResolver {
     }
 
     private static String resolvePostgreSqlSchema(Config config, Config conn) {
-        if (!isPostgreSql(config, conn)) {
+        if (isDatabaseOnly(config, conn)) {
             return "";
         }
 
@@ -63,11 +63,30 @@ final class JdbcSinkSchemaResolver {
                 JdbcConfigReaders.getString(conn, SCHEMA, ""),
                 JdbcConfigReaders.getString(conn, SCHEMA_NAME, "")
         );
+        if (StringUtils.isNotBlank(schema)) {
+            return schema.trim();
+        }
+
         // PostgreSQL-compatible databases use public when a legacy datasource
         // connection does not contain schema/schemaName. This mirrors the
         // PostgreSQL datasource default and ensures multi-table sinks retain a
         // schema-qualified target name.
-        return StringUtils.defaultIfBlank(StringUtils.trimToEmpty(schema), "public");
+        return isPostgreSql(config, conn) ? "public" : "";
+    }
+
+    private static boolean isDatabaseOnly(Config config, Config conn) {
+        return containsIgnoreCase(config, DB_TYPE, "mysql")
+                || containsIgnoreCase(conn, DB_TYPE, "mysql")
+                || containsIgnoreCase(config, DB_TYPE, "doris")
+                || containsIgnoreCase(conn, DB_TYPE, "doris")
+                || containsIgnoreCase(config, PLUGIN_NAME, "mysql")
+                || containsIgnoreCase(conn, PLUGIN_NAME, "mysql")
+                || containsIgnoreCase(config, PLUGIN_NAME, "doris")
+                || containsIgnoreCase(conn, PLUGIN_NAME, "doris")
+                || containsIgnoreCase(config, DRIVER, "mysql")
+                || containsIgnoreCase(conn, DRIVER, "mysql")
+                || startsWithIgnoreCase(config, URL, "jdbc:mysql:")
+                || startsWithIgnoreCase(conn, URL, "jdbc:mysql:");
     }
 
     private static boolean isPostgreSql(Config config, Config conn) {

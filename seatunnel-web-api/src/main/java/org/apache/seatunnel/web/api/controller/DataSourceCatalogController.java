@@ -51,14 +51,25 @@ public class DataSourceCatalogController {
         return Result.buildSuc(dataSourceCatalogService.listDatabase(id));
     }
 
+    /** List every schema exposed below one database. */
+    @GetMapping("/schemas/{id}")
+    @Operation(summary = "listSchema", description = "LIST_DATASOURCE_SCHEMA_NOTES")
+    @ApiException(DATASOURCE_CATALOG_TABLE_LIST_ERROR)
+    public Result<List<OptionVO>> listSchema(
+            @PathVariable("id") Long id,
+            @RequestParam("database") String databaseName) {
+        return Result.buildSuc(dataSourceCatalogService.listSchema(id, databaseName));
+    }
+
     /** List tables in one database exposed by a hierarchical JDBC catalog. */
     @GetMapping("/tables/{id}")
     @Operation(summary = "listTableByDatabase", description = "LIST_DATASOURCE_TABLE_NOTES")
     @ApiException(DATASOURCE_CATALOG_TABLE_LIST_ERROR)
     public Result<List<OptionVO>> listTableByDatabase(
             @PathVariable("id") Long id,
-            @RequestParam("database") String databaseName) {
-        return Result.buildSuc(dataSourceCatalogService.listTable(id, databaseName));
+            @RequestParam("database") String databaseName,
+            @RequestParam(value = "schema", required = false) String schemaName) {
+        return Result.buildSuc(dataSourceCatalogService.listTable(id, databaseName, schemaName));
     }
 
     @GetMapping("/files/{id}")

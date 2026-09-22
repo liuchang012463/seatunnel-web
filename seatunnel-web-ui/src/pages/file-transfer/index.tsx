@@ -29,7 +29,7 @@ const FileTransferPage: React.FC = () => {
       );
       history.push(`/sync/file-transfer/${id}/detail?scene=create`);
     } catch (error: any) {
-      message.error(error?.message || '新建文件传输任务失败');
+      message.error(error?.message || '新建文件同步任务失败');
     }
   };
 
@@ -51,9 +51,9 @@ const FileTransferPage: React.FC = () => {
     <div>
       <TaskPageHeader
         icon={<FileSyncOutlined />}
-        title="文件传输"
-        subtitle="在文件资源库与 FTP、SFTP、S3、MinIO 之间传输二进制对象，不解析文件内容。"
-        createText="创建文件传输"
+        title="文件同步任务"
+        subtitle="在湖文件与 FTP、SFTP、S3、MinIO 之间同步二进制对象，不解析文件内容。"
+        createText="创建文件同步"
         onCreate={() => void createTask()}
       />
       <FileTaskList
@@ -61,7 +61,7 @@ const FileTransferPage: React.FC = () => {
         mode="FILE_SYNC"
         fileMode
         goDetail={(id, item) => editTask(String(id), item)}
-        emptyDescription="暂无文件传输任务"
+        emptyDescription="暂无文件同步任务"
       />
     </div>
   );

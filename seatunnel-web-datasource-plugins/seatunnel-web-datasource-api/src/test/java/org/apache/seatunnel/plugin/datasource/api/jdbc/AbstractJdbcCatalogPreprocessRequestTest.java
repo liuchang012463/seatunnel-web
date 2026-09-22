@@ -66,6 +66,26 @@ class AbstractJdbcCatalogPreprocessRequestTest {
         assertNull(request.getQuery());
     }
 
+    @Test
+    void prefersExplicitDatabaseAndSchemaWithQualifiedTablePath() {
+        BaseConnectionParam param = new BaseConnectionParam() {};
+        param.setDatabase("DEFAULT_DB");
+        param.setSchemaName("DEFAULT_SCHEMA");
+        TestCatalog catalog = new TestCatalog(param);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("read_mode", "TABLE");
+        body.put("table_path", "OLD_SCHEMA.TEST_USER");
+        body.put("database", "SELECTED_DB");
+        body.put("schema_name", "SELECTED_SCHEMA");
+
+        QueryRequest request = catalog.preprocessRequest(body);
+
+        assertEquals("SELECTED_DB", request.getTablePath().getDatabaseName());
+        assertEquals("SELECTED_SCHEMA", request.getTablePath().getSchemaName());
+        assertEquals("TEST_USER", request.getTablePath().getTableName());
+    }
+
     private static final class TestCatalog extends AbstractJdbcCatalog {
         private TestCatalog(BaseConnectionParam param) {
             super(param, null);

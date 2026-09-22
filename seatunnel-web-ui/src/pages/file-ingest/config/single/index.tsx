@@ -109,7 +109,7 @@ const FileIngestConfigPage: React.FC = () => {
         setScheduleConfig(mergeScheduleConfig(data?.schedule));
         setEnvConfig(mergeEnvConfig(data?.env));
       } catch {
-        message.error('读取文件数据引接草稿失败');
+        message.error('读取离线文件导入草稿失败');
         setParams(undefined);
       }
     };
@@ -203,7 +203,7 @@ const FileIngestConfigPage: React.FC = () => {
       path: managerPath,
       returnTo,
     });
-    history.push(`/sync/file-resources?${query.toString()}`);
+    history.push(`/lake/file-resources?${query.toString()}`);
   };
 
   const targetType = params?.targetType || defaultTargetType;
@@ -232,7 +232,7 @@ const FileIngestConfigPage: React.FC = () => {
   if (!params) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Empty description="未找到文件数据引接配置，请从任务列表重新进入" />
+        <Empty description="未找到离线文件导入配置，请从任务列表重新进入" />
       </div>
     );
   }
