@@ -1,6 +1,39 @@
-# OpenMetadata 1.12.10 Sprint 0 工具
+# OpenMetadata 1.12.10 工具
 
 这些脚本用于固定版本核验和重复执行 Sprint 0 smoke。它们只调用 OpenMetadata Server 的 `/api/v1/...` REST API；不会访问 Airflow `:8082`、Airflow `/api` 或任何 managed API。OpenMetadata 自己通过其 PipelineServiceClient 控制编排器，这是本设计允许的边界。
+
+## 标准化 CustomDatabase 扩展
+
+当前部署通过 `openmetadata_ingestion` 的只读 bind mount 加载
+`customdatabase-om-1.12.10.0`，扩展 Python 包不需要重新构建 ingestion 镜像。
+仓库内的可复制源代码位于
+`tools/openmetadata/ingestion-extension/customdatabase-om-1.12.10.0`，安装到运行环境使用：
+
+```bash
+VASTBASE_JDBC_DRIVER_SOURCE=/mnt/djc/vastbase/Vastbase-G100-2.16_pg_2026062910.jar \
+  tools/openmetadata/install-customdatabase-extension.sh
+```
+
+脚本默认目标是
+`/data/vol_a/lc/open_metadata/extensions/customdatabase-om-1.12.10.0`，也可通过
+`OPENMETADATA_EXTENSION_DIR` 指定。它会同步通用 CustomDatabase loader、Vastbase
+connector 和厂商 JDBC Jar；容器只需继续使用既有 bind mount 即可，后续更新扩展
+代码或驱动重复执行同一脚本，不需要重打镜像。驱动路径也可以在连接配置的
+`VASTBASE_JDBC_DRIVER_PATH` 环境变量中覆盖，默认使用 `vastbase_connector/drivers`
+下的厂商 Jar。
+
+Vastbase 的 Web 连接配置使用 `jdbc:postgresql://` 协议和
+`org.postgresql.Driver` 类名，但驱动文件必须是 Vastbase 发布的
+`Vastbase-G100-2.16_pg_2026062910.jar`；不使用 PostgreSQL 原生驱动。
+
+SeaTunnel Engine 的批量 source/sink 也需要在每个 master/worker 的共享
+`lib` 目录放置同一个 Vastbase 驱动 Jar。Vastbase 插件本身不声明 PostgreSQL
+原生依赖；现有 PostgreSQL 原生 Jar 可以继续为 `POSTGRE_SQL` 数据源服务，不能
+作为 Vastbase 的替代驱动。由于厂商驱动兼容 PostgreSQL JDBC 接口，生成的任务
+配置仍使用 `org.postgresql.Driver` 和 `jdbc:postgresql://`。
+
+本次测试环境的完整 Web 验收记录见
+[`docs/openmetadata/vastbase-acceptance.md`](../../docs/openmetadata/vastbase-acceptance.md)。
 
 ## 前置条件
 
