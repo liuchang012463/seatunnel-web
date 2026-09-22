@@ -19,6 +19,7 @@ class MetadataConnectorRegistryTest {
             new OracleMetadataConnectorAdapter(),
             new DamengMetadataConnectorAdapter(),
             new KingbaseMetadataConnectorAdapter(),
+            new VastbaseMetadataConnectorAdapter(),
             new JdbcMetadataConnectorAdapter()));
 
     @Test
@@ -51,6 +52,7 @@ class MetadataConnectorRegistryTest {
         assertEquals("Doris", registry.require(DbType.DORIS).openMetadataServiceType());
         assertEquals("CustomDatabase", registry.require(DbType.DAMENG).openMetadataServiceType());
         assertEquals("CustomDatabase", registry.require(DbType.KINGBASE).openMetadataServiceType());
+        assertEquals("CustomDatabase", registry.require(DbType.VASTBASE).openMetadataServiceType());
     }
 
     @Test
@@ -119,6 +121,26 @@ class MetadataConnectorRegistryTest {
                 service.at("/connection/config/connectionOptions/hostPort").asText());
         assertTrue(service.at("/connection/config/connectionOptions/database").isMissingNode());
         assertEquals("TEST",
+                service.at("/connection/config/connectionOptions/schema").asText());
+    }
+
+    @Test
+    void emitsMountedVastbaseCustomDatabaseConnection() {
+        DataSource dataSource = source(13L, DbType.VASTBASE,
+                "{\"url\":\"jdbc:postgresql://192.168.100.95:25432/postgres\","
+                        + "\"user\":\"postgres\",\"password\":\"secret\","
+                        + "\"database\":\"postgres\",\"schemaName\":\"public\"}");
+
+        JsonNode service = registry.require(DbType.VASTBASE)
+                .databaseServiceRequest(dataSource, "st_ds_13");
+
+        assertEquals("metadata.ingestion.source.database.customdatabase.vastbase_connector.vastbase_source.VastbaseSource",
+                service.at("/connection/config/sourcePythonClass").asText());
+        assertEquals("192.168.100.95:25432",
+                service.at("/connection/config/connectionOptions/hostPort").asText());
+        assertEquals("postgres",
+                service.at("/connection/config/connectionOptions/database").asText());
+        assertEquals("public",
                 service.at("/connection/config/connectionOptions/schema").asText());
     }
 

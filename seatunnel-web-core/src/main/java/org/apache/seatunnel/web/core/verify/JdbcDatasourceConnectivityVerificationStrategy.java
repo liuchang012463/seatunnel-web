@@ -28,7 +28,8 @@ public class JdbcDatasourceConnectivityVerificationStrategy
             DbType.ORACLE,
             DbType.DORIS,
             DbType.KINGBASE,
-            DbType.DAMENG
+            DbType.DAMENG,
+            DbType.VASTBASE
     ));
 
     @Resource

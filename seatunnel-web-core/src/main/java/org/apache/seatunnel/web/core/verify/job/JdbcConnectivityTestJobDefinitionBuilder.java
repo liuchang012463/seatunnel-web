@@ -24,6 +24,7 @@ public class JdbcConnectivityTestJobDefinitionBuilder implements ConnectivityTes
             DbType.POSTGRE_SQL,
             DbType.KINGBASE,
             DbType.DAMENG,
+            DbType.VASTBASE,
             DbType.ORACLE
     ));
 

@@ -396,7 +396,7 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
     }
 
     private static final Set<String> JDBC_DB_TYPES = new HashSet<>(Set.of(
-            "JDBC", "MYSQL", "ORACLE", "POSTGRE_SQL", "DORIS", "KINGBASE", "DAMENG", "H2"));
+            "JDBC", "MYSQL", "ORACLE", "POSTGRE_SQL", "DORIS", "KINGBASE", "DAMENG", "VASTBASE", "H2"));
 
     private Map<String, Object> findConfig(Map<String, Object> workflow, String nodeType) {
         Map<String, Object> node = WorkflowNodeHelper.findFirstNodeByType(workflow, nodeType);

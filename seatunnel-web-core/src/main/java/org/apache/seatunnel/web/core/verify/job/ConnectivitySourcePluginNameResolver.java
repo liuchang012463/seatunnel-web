@@ -8,7 +8,7 @@ public class ConnectivitySourcePluginNameResolver {
 
     public String resolvePluginName(DbType dbType) {
         return switch (dbType) {
-            case JDBC, MYSQL, POSTGRE_SQL, KINGBASE, DAMENG, ORACLE -> "Jdbc";
+            case JDBC, MYSQL, POSTGRE_SQL, KINGBASE, DAMENG, VASTBASE, ORACLE -> "Jdbc";
             case DORIS -> "Doris";
             case ELASTICSEARCH -> "Elasticsearch";
             case KAFKA -> "Kafka";

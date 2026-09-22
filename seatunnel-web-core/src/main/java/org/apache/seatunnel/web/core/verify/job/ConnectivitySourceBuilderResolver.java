@@ -13,6 +13,7 @@ public class ConnectivitySourceBuilderResolver {
             case POSTGRE_SQL -> "JDBC-POSTGRESQL";
             case KINGBASE -> "JDBC-KINGBASE";
             case DAMENG -> "JDBC-DAMENG";
+            case VASTBASE -> "JDBC-VASTBASE";
             case ORACLE -> "JDBC-ORACLE";
             case DORIS -> "DORIS";
             case ELASTICSEARCH -> "ELASTICSEARCH";
