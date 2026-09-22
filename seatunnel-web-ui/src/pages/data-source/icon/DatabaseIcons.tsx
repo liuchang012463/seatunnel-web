@@ -19,6 +19,7 @@ import SQLServer from './SQLServer';
 import StarRocksIcon from './StarRocksIcon';
 import TiDBIcon from './TiDBIcon';
 import ConnectorIcon from './ConnectorIcon';
+import VastbaseIcon from './VastbaseIcon';
 
 interface DatabaseIconsProps {
   dbType?: string;
@@ -67,6 +68,8 @@ const DatabaseIcons = ({
       return <DaMengIcon width={width} height={height} />;
     case 'kingbase':
       return <KingBaseIcon width={width} height={height} />;
+    case 'vastbase':
+      return <VastbaseIcon width={width} height={height} />;
     case 'mongodb':
       return <MongoDBIcon width={width} height={height} />;
     case 'db2':

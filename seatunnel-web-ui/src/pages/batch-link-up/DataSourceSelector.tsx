@@ -15,6 +15,7 @@ import SQLServer from '../data-source/icon/SQLServer';
 import StarRocksIcon from '../data-source/icon/StarRocksIcon';
 import KingBaseIcon from '../data-source/icon/KingBaseIcon';
 import TiDBIcon from '../data-source/icon/TiDBIcon';
+import VastbaseIcon from '../data-source/icon/VastbaseIcon';
 
 const { Option } = Select;
 
@@ -22,6 +23,7 @@ type DataSourceType =
   | 'MYSQL'
   | 'ORACLE'
   | 'POSTGRE_SQL'
+  | 'VASTBASE'
   | 'DORIS'
   | 'KINGBASE'
   | 'DAMENG'
@@ -43,6 +45,7 @@ const DATA_SOURCE_CONFIG: Record<
   MYSQL: { icon: MysqlIcon, displayName: 'MySQL' },
   ORACLE: { icon: OracleIcon, displayName: 'ORACLE' },
   POSTGRE_SQL: { icon: PostgreSQL, displayName: 'PostgreSQL' },
+  VASTBASE: { icon: VastbaseIcon, displayName: 'Vastbase' },
   DORIS: { icon: DorisIcon, displayName: 'Doris' },
   KINGBASE: { icon: KingBaseIcon, displayName: 'Kingbase' },
   DAMENG: { icon: DaMengIcon, displayName: 'Dameng' },
@@ -54,6 +57,7 @@ const DEFAULT_DATA_SOURCES: DataSourceType[] = [
   'MYSQL',
   'ORACLE',
   'POSTGRE_SQL',
+  'VASTBASE',
   'DORIS',
   'KINGBASE',
   'DAMENG',

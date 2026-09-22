@@ -43,6 +43,12 @@ export const sourceList = [
       },
       {
         onlyDiScript: false,
+        dbType: "VASTBASE",
+        type: "VASTBASE",
+        connectorType: "Jdbc"
+      },
+      {
+        onlyDiScript: false,
         dbType: "KINGBASE",
         type: "KINGBASE",
         connectorType: "Jdbc"

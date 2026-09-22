@@ -30,6 +30,7 @@ export const DATA_SOURCE_REGISTRY: DataSourceRegistryItem[] = [
   { dbType: 'MYSQL', label: 'MYSQL', category: 'RELATIONAL', connectorType: 'Jdbc', pluginName: 'JDBC-MYSQL', source: true, sink: true, taskSelector: true },
   { dbType: 'ORACLE', label: 'ORACLE', category: 'RELATIONAL', connectorType: 'Jdbc', pluginName: 'JDBC-ORACLE', source: true, sink: true, taskSelector: true },
   { dbType: 'POSTGRE_SQL', label: 'PostgreSQL', category: 'RELATIONAL', connectorType: 'Jdbc', pluginName: 'JDBC-POSTGRESQL', source: true, sink: true, taskSelector: true },
+  { dbType: 'VASTBASE', label: 'Vastbase', category: 'RELATIONAL', connectorType: 'Jdbc', pluginName: 'JDBC-VASTBASE', source: true, sink: true, taskSelector: true },
   { dbType: 'KINGBASE', label: '人大金仓（Kingbase）', category: 'RELATIONAL', connectorType: 'Jdbc', pluginName: 'JDBC-KINGBASE', source: true, sink: true, taskSelector: true },
   { dbType: 'DAMENG', label: '达梦（Dameng）', category: 'RELATIONAL', connectorType: 'Jdbc', pluginName: 'JDBC-DAMENG', source: true, sink: true, taskSelector: true },
   { dbType: 'DORIS', label: 'Doris', category: 'OLAP', connectorType: 'Doris', pluginName: 'DORIS', source: true, sink: true, taskSelector: true },
@@ -49,6 +50,7 @@ export const DATABASE_SCOPE_DATA_SOURCE_TYPES = new Set([
   'MYSQL',
   'ORACLE',
   'POSTGRE_SQL',
+  'VASTBASE',
   'KINGBASE',
   'DAMENG',
   'DORIS',
@@ -59,6 +61,7 @@ export const SCHEMA_SCOPE_DATA_SOURCE_TYPES = new Set([
   'JDBC',
   'ORACLE',
   'POSTGRE_SQL',
+  'VASTBASE',
   'KINGBASE',
   'DAMENG',
 ]);
