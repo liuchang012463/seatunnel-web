@@ -1,0 +1,40 @@
+package org.apache.seatunnel.plugin.datasource.vastbase.builder;
+
+import com.google.auto.service.AutoService;
+import com.typesafe.config.Config;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.seatunnel.plugin.datasource.api.constants.DataSourceConstants;
+import org.apache.seatunnel.plugin.datasource.api.hocon.AbstractJdbcBatchBuilder;
+import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
+import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
+
+/** Builds batch source/sink HOCON for Vastbase. */
+@AutoService(DataSourceHoconBuilder.class)
+public class VastbaseBatchBuilder extends AbstractJdbcBatchBuilder {
+
+    @Override
+    protected String defaultDriver() {
+        return DataSourceConstants.ORG_POSTGRESQL_DRIVER;
+    }
+
+    @Override
+    public Config buildSinkHocon(HoconBuildContext context) {
+        Config config = super.buildSinkHocon(context);
+        if (config.hasPath("dialect")) {
+            return config;
+        }
+        return config.withValue("dialect",
+                com.typesafe.config.ConfigValueFactory.fromAnyRef("Postgres"));
+    }
+
+    @Override
+    protected String buildTablePath(String database, String schemaName, String table) {
+        String schema = StringUtils.isNotBlank(schemaName) ? schemaName : "public";
+        return String.format("%s.%s.%s", database, schema, table);
+    }
+
+    @Override
+    public String pluginName() {
+        return "JDBC-VASTBASE";
+    }
+}

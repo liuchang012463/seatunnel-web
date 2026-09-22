@@ -52,6 +52,8 @@ public class DataSourceConstants {
     public static final String JDBC_MYSQL_LOADBALANCE = "jdbc:mysql:loadbalance://";
     public static final String JDBC_TIDB = "jdbc:mysql://";
     public static final String JDBC_POSTGRESQL = "jdbc:postgresql://";
+    /** Vastbase G100 exposes the PostgreSQL-compatible JDBC protocol. */
+    public static final String JDBC_VASTBASE = JDBC_POSTGRESQL;
     public static final String JDBC_OPEN_GAUSS = "jdbc:opengauss://";
     public static final String JDBC_HIVE_2 = "jdbc:hive2://";
     public static final String JDBC_KYUUBI = "jdbc:kyuubi://";
@@ -75,6 +77,7 @@ public class DataSourceConstants {
     public static final String JDBC_CACHE = "jdbc:Cache://";
 
     public static final String POSTGRESQL_VALIDATION_QUERY = "select version()";
+    public static final String VASTBASE_VALIDATION_QUERY = "select 1";
     public static final String OPENGAUSS_VALIDATION_QUERY = "select version()";
     public static final String KINGBASE_VALIDATION_QUERY = "select 1";
     public static final String MYSQL_VALIDATION_QUERY = "select 1";
