@@ -1,10 +1,14 @@
 package org.apache.seatunnel.web.api.controller;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.plugin.messaging.api.MessageClient;
 import org.apache.seatunnel.plugin.messaging.api.MessageConnectionParam;
+import org.apache.seatunnel.plugin.messaging.api.MessageException;
 import org.apache.seatunnel.plugin.messaging.api.MessagePullCommand;
 import org.apache.seatunnel.plugin.messaging.api.MessagePullItem;
 import org.apache.seatunnel.plugin.messaging.api.MessagePullResult;
@@ -13,20 +17,25 @@ import org.apache.seatunnel.plugin.messaging.api.MessagePushResult;
 import org.apache.seatunnel.web.api.message.MessagePayloadValidator;
 import org.apache.seatunnel.web.api.message.MessageProperties;
 import org.apache.seatunnel.web.api.message.plugin.MessagePluginManager;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -313,7 +322,97 @@ class MessageControllerTest {
                 });
     }
 
+    // -------------------- exception path & log hygiene --------------------
+
+    /**
+     * A caller-fixable failure must reach the log as one line, not a stack trace.
+     *
+     * <p>
+     * {@code getThrowableProxy()} is the precise assertion point: SLF4J only
+     * attaches one when the throwable was passed as the final argument, which is
+     * exactly the behaviour under test.
+     * </p>
+     */
+    @Test
+    void callerFixableExceptionIsReportedWithoutStackTrace() throws Exception {
+        RecordingClient client = new RecordingClient();
+        client.pushThrows = new MessageException("connection 参数不能为空");
+
+        ListAppender<ILoggingEvent> logs = captureControllerLogs();
+
+        mvc(client, propsWithKey())
+                .perform(post("/api/v1/message/push")
+                        .header("X-Api-Key", API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pushBody("{}")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code", not(0)))
+                // Chinese assertions must decode the raw bytes as UTF-8: Spring
+                // writes UTF-8 bytes without a charset parameter (correct for
+                // JSON), while MockMvc would decode with its ISO-8859-1 default.
+                .andExpect(result -> assertTrue(
+                        new String(result.getResponse().getContentAsByteArray(),
+                                StandardCharsets.UTF_8).contains("connection 参数不能为空"),
+                        "可读的失败原因应回传调用方"));
+
+        assertEquals(1, logs.list.size(), "失败应只记一条日志，而不是新增一条");
+        ILoggingEvent event = logs.list.get(0);
+        assertTrue(event.getFormattedMessage().contains("connection 参数不能为空"),
+                "日志应带上可读原因，实际: " + event.getFormattedMessage());
+        assertNull(event.getThrowableProxy(),
+                "调用方可修复的错误不应打堆栈——一个配置错的调用方会把日志刷爆");
+    }
+
+    /**
+     * An unexpected exception is the opposite case: the trace is the only useful
+     * artefact, and the caller must still not see the internal detail.
+     */
+    @Test
+    void unexpectedExceptionKeepsStackTraceAndStaysSanitized() throws Exception {
+        RecordingClient client = new RecordingClient();
+        client.pushThrows = new IllegalStateException("boom: internal topology");
+
+        ListAppender<ILoggingEvent> logs = captureControllerLogs();
+
+        mvc(client, propsWithKey())
+                .perform(post("/api/v1/message/push")
+                        .header("X-Api-Key", API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pushBody("{}")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code", not(0)))
+                .andExpect(result -> assertFalse(
+                        new String(result.getResponse().getContentAsByteArray(),
+                                StandardCharsets.UTF_8).contains("boom"),
+                        "非插件异常不得把内部细节回传调用方"));
+
+        assertNotNull(logs.list.get(0).getThrowableProxy(),
+                "意外异常必须保留堆栈，否则线上无法定位");
+    }
+
     // -------------------- helpers --------------------
+
+    private final List<Runnable> logDetachers = new ArrayList<>();
+
+    /**
+     * Attach a list appender to the controller's logger so a test can assert on
+     * what was logged. {@link #detachLogAppenders()} removes it afterwards —
+     * otherwise appenders accumulate on the shared logger across tests.
+     */
+    private ListAppender<ILoggingEvent> captureControllerLogs() {
+        Logger logger = (Logger) LoggerFactory.getLogger(MessageController.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        logDetachers.add(() -> logger.detachAppender(appender));
+        return appender;
+    }
+
+    @AfterEach
+    void detachLogAppenders() {
+        logDetachers.forEach(Runnable::run);
+        logDetachers.clear();
+    }
 
     private MessageProperties propsWithKey() {
         MessageProperties props = new MessageProperties();
@@ -375,11 +474,16 @@ class MessageControllerTest {
         private MessagePullCommand lastPull;
         private MessagePushResult pushResult;
         private MessagePullResult pullResult;
+        private RuntimeException pushThrows;
+        private RuntimeException pullThrows;
 
         @Override
         public MessagePushResult push(MessageConnectionParam param, MessagePushCommand command) {
             pushCalled = true;
             lastPush = command;
+            if (pushThrows != null) {
+                throw pushThrows;
+            }
             if (pushResult != null) {
                 return pushResult;
             }
@@ -393,6 +497,9 @@ class MessageControllerTest {
         public MessagePullResult pull(MessageConnectionParam param, MessagePullCommand command) {
             pullCalled = true;
             lastPull = command;
+            if (pullThrows != null) {
+                throw pullThrows;
+            }
             if (pullResult != null) {
                 return pullResult;
             }

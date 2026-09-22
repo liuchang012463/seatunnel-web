@@ -159,7 +159,7 @@ seatunnel:
   # misconfigured deployment fails closed-by-explicit-choice rather than by
   # shipping a known secret.
   message:
-    api-key: ${SEATUNNEL_MESSAGE_API_KEY:}
+    api-key: ${SEATUNNEL_MESSAGE_API_KEY:sk-common-interface}
     # Maximum accepted payload size: 1MB
     max-body-bytes: ${SEATUNNEL_MESSAGE_MAX_BODY_BYTES:1048576}
     # Hard ceiling on one pull, regardless of what the caller requests

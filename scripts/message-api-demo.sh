@@ -7,11 +7,26 @@
 #   scripts/message-api-demo.sh oversize  # publish a >1MB body (should be rejected)
 #   scripts/message-api-demo.sh help      # show this help
 #
+# Prerequisites -- read before running. The defaults below are placeholders and
+# will NOT work against a stock local setup:
+#
+#   1) export SEATUNNEL_MESSAGE_API_KEY=<the key the platform uses>
+#      The server defaults seatunnel.message.api-key to "sk-common-interface".
+#      Leaving this empty means NO X-Api-Key header is sent and every call
+#      returns HTTP 401 -- the single most common "why does push fail" cause.
+#   2) Point MQ_* at YOUR OWN broker. The guest/guest default is RabbitMQ's
+#      out-of-the-box account, which a stock install only accepts from
+#      localhost. A broker set up for this project usually wants
+#      MQ_USER=admin MQ_PASSWORD=admin123 instead.
+#
+# No credentials are stored in this file; everything comes from the
+# environment, so nothing secret lands in git history.
+#
 # Overridable environment variables:
-#   SEATUNNEL_WEB_BASE_URL   platform base url          (default http://localhost:9527)
-#   SEATUNNEL_MESSAGE_API_KEY  api key, empty = skip header
+#   SEATUNNEL_WEB_BASE_URL     platform base url        (default http://localhost:9527)
+#   SEATUNNEL_MESSAGE_API_KEY  api key, empty = no header (see prerequisite 1)
 #   MQ_HOST / MQ_PORT / MQ_VHOST / MQ_USER / MQ_PASSWORD
-#   MQ_QUEUE                 target queue               (default order.sync)
+#   MQ_QUEUE                   target queue             (default order.sync)
 #
 # Note: this script only sends HTTP requests. It never touches RabbitMQ directly.
 
@@ -27,7 +42,7 @@ MQ_PASSWORD="${MQ_PASSWORD:-guest}"
 MQ_QUEUE="${MQ_QUEUE:-order.sync}"
 
 usage() {
-  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 }
 

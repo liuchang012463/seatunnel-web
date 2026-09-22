@@ -95,6 +95,34 @@ X-Api-Key: <你的key>
 | `persistent` | 否 | `true` | 是否持久化消息 |
 | `headers` | 否 | — | 自定义消息头（键值对） |
 
+### 走 `exchange` 时的前提（重要）
+
+**不填 `exchange`（推荐）** 时，消息经默认交换机直达 `queue`，不需要任何绑定。
+
+**一旦填了 `exchange`，下面两个前提必须都满足**，否则消息会被 broker **静默丢弃**——而本接口**仍会返回 `code: 0` / `success: true`**，看起来完全成功：
+
+1. **交换机必须已存在**
+2. **队列上必须已有一条从该交换机出发、routing key 匹配的绑定（binding）**
+
+原因：平台投递用的是 `basicPublish` 的非 mandatory 形式，也不注册 ReturnListener，未路由的消息 broker 不会退回，平台无从得知。而且 `basicPublish` 不等服务端应答，**连「交换机根本不存在」这种情况也会返回成功**（已实测确认）。
+
+所以平台**从不替你声明队列、交换机或绑定**——它只是中继，拓扑需要你自己维护。
+
+**自查方式**（RabbitMQ 管理接口）：
+
+```bash
+# 1) 交换机是否存在（不存在会返回 404）
+curl -u <user>:<pass> "http://<host>:15672/api/exchanges/%2F/<exchange>"
+
+# 2) 该交换机的出向绑定
+#    注意：交换机不存在时这里也返回 200 + []，不能用来判断存在性
+curl -u <user>:<pass> "http://<host>:15672/api/exchanges/%2F/<exchange>/bindings/source"
+```
+
+能否路由还要看交换机类型：`direct` 精确相等、`topic` 支持 `*` 与 `#` 通配、`fanout` 忽略 routing key、`headers` 看 arguments。
+
+> 建议联调阶段先跑一次上面两条命令，确认交换机存在、绑定匹配，再去调接口。
+
 ### 成功响应
 
 ```json
@@ -299,6 +327,7 @@ X-Api-Key: <你的key>
 
 - [ ] 向管理员索取接口地址与 `X-Api-Key`
 - [ ] 准备好 RabbitMQ 地址、端口、虚拟主机、账号、密码、队列名
+- [ ] **先在环境变量里导出 `SEATUNNEL_MESSAGE_API_KEY` 与 `MQ_*`**，再跑调试脚本（脚本不内置任何凭据，不导出会得到 `401`，详见文末「调试脚本」）
 - [ ] 用 `scripts/message-api-demo.sh` 或 Postman 调一次 `push`，到 MQ 管理台确认消息已到达
 - [ ] 调一次 `pull`，确认能取回消息且内容与推入时一致
 - [ ] **在自己的代码中实现「消息可重放」机制**
@@ -309,7 +338,18 @@ X-Api-Key: <你的key>
 
 ## 附：调试脚本
 
-仓库内提供了 `scripts/message-api-demo.sh`，可直接发请求验证：
+仓库内提供了 `scripts/message-api-demo.sh`，可直接发请求验证。
+
+**运行前必须先导出环境变量。** 脚本刻意不内置任何凭据（避免明文密钥进入 git 历史），
+里面的默认值只是占位符——不导出直接跑，`pull` 会返回 `401`：
+
+```bash
+export SEATUNNEL_MESSAGE_API_KEY=sk-common-interface   # 与后端 seatunnel.message.api-key 保持一致
+export MQ_USER=admin MQ_PASSWORD=admin123              # 换成你自己 broker 的账号密码
+# 按需再覆盖：MQ_HOST / MQ_PORT / MQ_VHOST / MQ_QUEUE / SEATUNNEL_WEB_BASE_URL
+```
+
+然后：
 
 ```bash
 # 推送
@@ -318,8 +358,13 @@ X-Api-Key: <你的key>
 # 拉取
 ./scripts/message-api-demo.sh pull
 
-# 查看用法
+# 查看用法（含上面这些前置说明）
 ./scripts/message-api-demo.sh help
 ```
 
-脚本中的 MQ 配置与接口地址可通过环境变量覆盖，详见脚本头部注释。
+> 关于 `MQ_USER` / `MQ_PASSWORD`：脚本默认值是 `guest` / `guest`，那是 RabbitMQ 的开箱账号，
+> 默认只允许从 localhost 登录。本项目本地联调用的 broker 通常是 `admin` / `admin123`，
+> 所以务必按上面的方式覆盖，否则会连不上你自己的 MQ。
+>
+> 脚本中的接口地址与 MQ 配置全部可用环境变量覆盖，完整清单见脚本头部注释。
+

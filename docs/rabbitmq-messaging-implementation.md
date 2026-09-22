@@ -343,7 +343,7 @@ public interface MessageConnectionResources extends AutoCloseable {
 | API Key 错误或缺失 | 401 | 鉴权失败 |
 
 - **不用 HTTP 5xx**：外部 HTTP 客户端普遍对 5xx 自动重试，而认证失败重试无意义
-- 完整异常（含 host、底层原因）**只写服务端日志**
+- 完整异常（含 host、底层原因）**只写服务端日志**，详略分界见 §6.4.2
 
 #### 6.4.1 「失败 Result」与「抛异常」的分界（实现阶段补充）
 
@@ -362,6 +362,34 @@ public interface MessageConnectionResources extends AutoCloseable {
 
 - `RabbitConnectionResources.verify()` 里「连接/通道已关闭」那条**必须挂 cause** —— 死连接是运营失败
 - `RabbitMessageClient.open()` 里 `useSslProtocol()` 失败那条**必须不挂 cause** —— 属配置问题
+
+#### 6.4.2 日志详略的分界（实现阶段补充）
+
+同一个判别式（`MessageException` 且无 cause）也决定**日志打多详细**，判别式在
+`MessageController.isCallerFixable(RuntimeException)`：
+
+| 异常形态 | 日志 | 理由 |
+| --- | --- | --- |
+| 无 cause 的 `MessageException` | 单行：`{动作}失败, {上下文}, reason={message}` | message 按契约已脱敏且本身即完整说明，堆栈不增加任何信息 |
+| 其他任何异常 | 完整堆栈 | 服务或插件的缺陷，堆栈是唯一有用的线索 |
+
+**为什么必须区分**：调用方可修复的错误会随调用方的重试而重复出现。一个配置错的调用方
+循环重试时，每次请求都打约 60 行堆栈，会把真正的故障淹掉。此前两处 `catch` 无条件把异常
+作为 SLF4J 最后一个参数传入，因此必然打堆栈 —— 这正是要避免的形态。
+
+**日志前缀保持 `消息推送失败` / `消息拉取失败` 不变**，基于日志的 grep 与告警规则不受影响。
+
+**运营失败（Result 路径）的日志由插件层负责**，controller 侧不重复记录 ——
+`RabbitMessageClient` 中每条运营类 `Result.fail` 都配了带 throwable 的 `LOG.warn`：
+
+| `Result.fail` | 对应日志 |
+| --- | --- |
+| `消息体不是合法的 JSON` | `:112` `消息体序列化失败` |
+| `MQ 连接失败，请检查配置`（push） | `:123` / `:136` `RabbitMQ 投递失败` |
+| `MQ 连接失败，请检查配置`（pull） | `:179` / `:187` `RabbitMQ 拉取失败` |
+
+只有纯入参校验（`exchange 为空时 queue 必填`、`routingKey 不能为空`、`queue 不能为空`、
+`maxMessages 必须大于 0`）是静默的，这类错误调用方看响应文案即可，无需服务端留痕。
 
 ### 6.5 密码保护
 
@@ -499,12 +527,12 @@ private void assertApiKey(String providedKey) {
 2. 针对性测试：`./mvnw -pl seatunnel-web-messaging-plugins/seatunnel-web-messaging-api,seatunnel-web-messaging-plugins/seatunnel-web-messaging-rabbitmq -am test`
 3. 测试用例（**均已实现并通过**）：
 
-   **A. 不依赖 broker（47 个，随构建自动运行）**
+   **A. 不依赖 broker（49 个，随构建自动运行）**
    - `RabbitServiceLoaderTest`（4）：SPI 发现、identify 稳定、表单字段键名与 `MessageConnectionParam` 属性名对齐、`create()` 可用
    - `RabbitMessageClientTest`（13）：入参校验、`exchange`/`queue` 组合校验、不可达 broker 返回脱敏失败、错误信息不含 host 与凭据、Result 工厂、任意结构 JSON 往返
    - `MessageConnectionParamTest`（6）：`toString()` 不含明文密码、保留排查字段、默认值回退、null/空白/0 处理
    - `MessagePayloadValidatorTest`（11）：**1MB 上限回归防护**（超限/略超限/未超限/自定义上限）、null 与显式 JSON null、任意嵌套结构、数组根节点、空对象、序列化往返、嵌套深度上限低于 Jackson 默认
-   - `MessageControllerTest`（13）：HTTP 层。鉴权（缺 key / 错 key / 对 key / 未配 key 时跳过）、1MB 超限在进入 MQ 逻辑前被拒、push 的 exchange/queue/routingKey/payload 透传、未知 clientType、pull 的 parseable/不可解析消息整形、`maxMessages` 上限钳制与非正数拒绝、失败不返回 5xx
+   - `MessageControllerTest`（15）：HTTP 层。鉴权（缺 key / 错 key / 对 key / 未配 key 时跳过）、1MB 超限在进入 MQ 逻辑前被拒、push 的 exchange/queue/routingKey/payload 透传、未知 clientType、pull 的 parseable/不可解析消息整形、`maxMessages` 上限钳制与非正数拒绝、失败不返回 5xx；**异常路径与日志详略**（见 §6.4.2）—— 无 cause 的 `MessageException` 记单行且 `getThrowableProxy()` 为 null，意外异常保留堆栈且内部细节不回传调用方
 
    **B. 依赖真实 broker（11 个，**默认不运行**，需显式开启）**
 
@@ -592,7 +620,7 @@ private void assertApiKey(String providedKey) {
 | 新增模块 | 3 个（`messaging-api`、`messaging-rabbitmq`、`messaging-all`）+ 1 个聚合 pom |
 | 新增 Java 文件 | 23 个（契约 10 + 实现 3 + 接口层 6 + 测试 4） |
 | 修改既有文件 | 5 个（根 `pom.xml`、`seatunnel-web-api/pom.xml`、`application.yml`、`.env.example`、`.gitignore`） |
-| 新增测试 | 6 个测试类：47 个用例随构建运行 + 11 个用例连真实 broker（默认关闭） |
+| 新增测试 | 6 个测试类：49 个用例随构建运行 + 11 个用例连真实 broker（默认关闭） |
 | 新增配置 | `application.yml` 7 项 + `.env.example` 7 项 |
 | 对外文档 | [`rabbitmq-messaging-api-usage.md`](rabbitmq-messaging-api-usage.md)（已产出） |
 | 调试脚本 | `scripts/message-api-demo.sh`（已产出并验证） |

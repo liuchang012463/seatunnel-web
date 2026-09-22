@@ -6,6 +6,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.plugin.messaging.api.MessageClient;
+import org.apache.seatunnel.plugin.messaging.api.MessageException;
 import org.apache.seatunnel.plugin.messaging.api.MessagePullCommand;
 import org.apache.seatunnel.plugin.messaging.api.MessagePullItem;
 import org.apache.seatunnel.plugin.messaging.api.MessagePullResult;
@@ -113,8 +114,7 @@ public class MessageController {
         try {
             result = client.push(request.getConnection(), command);
         } catch (RuntimeException e) {
-            // Full detail to the server log; the caller gets a sanitized message.
-            log.warn("消息推送失败, clientType={}", request.resolveClientType(), e);
+            logFailure("消息推送", "clientType=" + request.resolveClientType(), e);
             return ok(Result.buildFailure(sanitize(e)));
         }
 
@@ -165,8 +165,8 @@ public class MessageController {
         try {
             result = client.pull(request.getConnection(), command);
         } catch (RuntimeException e) {
-            log.warn("消息拉取失败, clientType={}, queue={}",
-                    request.resolveClientType(), request.getQueue(), e);
+            logFailure("消息拉取",
+                    "clientType=" + request.resolveClientType() + ", queue=" + request.getQueue(), e);
             return ok(Result.buildFailure(sanitize(e)));
         }
 
@@ -237,6 +237,39 @@ public class MessageController {
 
     private ResponseEntity<Result<Map<String, Object>>> ok(Result<Map<String, Object>> body) {
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * Log a failed push/pull at a level of detail that matches who can act on it.
+     *
+     * <p>
+     * {@link MessageException} is the contract's channel for caller-fixable
+     * defects, and its message is required to be sanitized (see its javadoc), so
+     * the message is the whole story — a stack trace adds nothing. That matters
+     * at this call site: a single misconfigured caller retrying in a loop would
+     * otherwise emit a ~60-line trace per request and bury genuine faults.
+     * </p>
+     *
+     * <p>
+     * Anything else reaching this point is a defect in this service or in a
+     * plugin, and there the trace is the only useful artefact.
+     * </p>
+     */
+    private void logFailure(String action, String context, RuntimeException e) {
+        if (isCallerFixable(e)) {
+            log.warn("{}失败, {}, reason={}", action, context, e.getMessage());
+        } else {
+            log.warn("{}失败, {}", action, context, e);
+        }
+    }
+
+    /**
+     * Mirrors {@code RabbitMessageClient#isCallerFixable}: a bare
+     * {@link MessageException} is a caller mistake; one wrapping a cause is a
+     * transport failure whose detail lives in the cause.
+     */
+    private boolean isCallerFixable(RuntimeException e) {
+        return e instanceof MessageException && e.getCause() == null;
     }
 
     /**
