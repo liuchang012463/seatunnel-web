@@ -433,11 +433,7 @@ const renderFieldLabel = (field: any): React.ReactNode => {
           className="mb-4"
           type="info"
           showIcon
-          message={
-            dbType === 'DAMENG'
-              ? '达梦连接测试会校验数据库实例。数据库实例请填写 V$DATABASE.NAME（例如 DAMENG）；模式/Owner 请填写表归属用户（例如 XXTX），不等同于登录用户名。'
-              : '连接测试通过仅表示网络与认证成功；账号若不具备读取库表元数据等相应权限，后续元数据扫描与探查可能失败。'
-          }
+          message="连接测试通过仅表示网络与认证成功；账号若不具备读取库表元数据等相应权限，后续元数据扫描与探查可能失败。"
         />
 
         <Form
@@ -462,7 +458,11 @@ const renderFieldLabel = (field: any): React.ReactNode => {
                 label={renderFieldLabel(field)}
                 name={field.key}
                 preserve={false}
-                extra={field.description || undefined}
+                extra={
+                  dbType === 'DAMENG' && ['database', 'schemaName'].includes(field.key)
+                    ? undefined
+                    : field.description || undefined
+                }
                 rules={
                   field.key === 'password' && allowExistingPassword
                     ? fieldRules(field).filter((rule) => !rule.required)
