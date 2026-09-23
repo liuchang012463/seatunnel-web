@@ -98,20 +98,20 @@ public class RabbitMessageClient implements MessageClient {
         String queue = trimToNull(command.getQueue());
         String exchange = command.getExchange() == null ? "" : command.getExchange().trim();
 
-        if (exchange.isEmpty() && queue == null) {
-            return MessagePushResult.fail("exchange 为空时 queue 必填");
-        }
-        // When publishing to the default exchange the queue name IS the routing
-        // key (decision D4); otherwise fall back to the queue name if the caller
-        // gave no explicit routing key.
+        // When publishing to the default exchange the routing key IS the queue
+        // name (decision D4). Accept either queue or an explicit routingKey.
         String routingKey = trimToNull(command.getRoutingKey());
         if (routingKey == null) {
             routingKey = queue;
         }
         if (exchange.isEmpty()) {
-            routingKey = queue;
-        }
-        if (routingKey == null) {
+            if (queue != null) {
+                routingKey = queue;
+            }
+            if (routingKey == null) {
+                return MessagePushResult.fail("exchange 为空时 queue 或 routingKey 必填");
+            }
+        } else if (routingKey == null) {
             return MessagePushResult.fail("routingKey 不能为空");
         }
 
