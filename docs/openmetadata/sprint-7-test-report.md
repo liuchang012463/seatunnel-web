@@ -1,4 +1,4 @@
-# Sprint 7 验收记录：Dameng/Kingbase CustomDatabase 闭环
+# Sprint 7 验收记录：Dameng/Kingbase Metadata 与 Profiler 闭环
 
 日期：2026-08-27  
 分支：`codex/openmetadata-data-exploration-mvp`
@@ -11,18 +11,6 @@
 - SeaTunnel Web 的 OpenMetadata 交互继续使用官方 Java SDK；SDK 未暴露的
   1.12.10 管道控制能力使用 SDK 自带网络客户端，不直连 Airflow。
 - 探查仍是用户触发的一次性操作，不新增定时 Profile 调度。
-
-## CustomDatabase 扩展
-
-`openmetadata-ingestion-extension/customdatabase` 实现 1.12.10 官方
-`ServiceSpec`、`BaseConnection` 和 source 工厂扩展点，并由
-`/mnt/lc/open_metadata/docker-compose.yml` 只读挂载到 ingestion 容器。容器内完成：
-
-```text
-BaseSpec.get_for_source(Database, "customdatabase")
-```
-
-解析成功；Dameng 与 Kingbase 的 SQLAlchemy engine 分别在独立进程中建立成功。
 
 ## 真实环境结果
 

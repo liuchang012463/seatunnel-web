@@ -151,18 +151,6 @@ queued | success | failed | running | partialSuccess | stopped
 
 Profile latest 的实际 1.12.10 响应是 Table entity，表级 `profile` 和列级 `columns[].profile` 嵌在响应中；不是一个只含 `tableProfile`/`columnProfile` 的自定义包装。SeaTunnel 后续必须在自己的 DTO 中转换，不能把 OM 原始 JSON 透传前端。
 
-## Connector extension points
-
-运行中的 `openmetadata-ingestion 1.12.10.0` 源码确认：
-
-- 数据库动态入口约定为 `metadata.ingestion.source.database.<service_type>.<service_name>.service_spec.ServiceSpec`；
-- `BaseSpec` 负责 metadata/profiler/sampler/test/connection class path；
-- `DefaultDatabaseSpec` 默认提供 `SQAProfilerInterface`、`SQASampler`、`SQATestSuiteInterface`；
-- 官方 MySQL、Postgres、Oracle、Doris 的 `service_spec.py` 均按 1.12.10 运行时实现；Doris 仅显式传 metadata/lineage class；
-- 数据库自定义扩展至少需要 `connection.py`、`metadata.py`、`service_spec.py`，并需要 1.12.10 Server side connection schema/generated model/注册和 secrets converter 配套。
-
-当前镜像中的 `/opt/dameng_connector` 和 `/opt/kingbase_connector` 没有可复现源码包/lock；Kingbase 现有服务还声明为 `Postgres`。因此它们在 Sprint 0 矩阵中只能是 `DEFERRED`，不作为通过证据。
-
 ## 真实请求与响应 fixture
 
 脱敏模板和实际返回形状位于：

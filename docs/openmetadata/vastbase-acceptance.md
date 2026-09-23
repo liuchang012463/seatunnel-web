@@ -18,19 +18,6 @@
 包含 `org/postgresql/Driver.class`。Vastbase 的 Web、Engine 与 OpenMetadata
 配置均使用 PostgreSQL 兼容的 URL/类名，但实际加载的是上述厂商 Jar。
 
-## OpenMetadata 扩展
-
-扩展源码位于 `tools/openmetadata/ingestion-extension/`，通过既有
-`openmetadata_ingestion` 只读 bind mount 加载。标准安装命令为：
-
-```bash
-VASTBASE_JDBC_DRIVER_SOURCE=/mnt/djc/vastbase/Vastbase-G100-2.16_pg_2026062910.jar \
-  tools/openmetadata/install-customdatabase-extension.sh
-```
-
-它只同步外置扩展包和厂商 Jar，不构建或重启镜像；更新代码或驱动时重复执行
-即可。实际部署目录和密码未写入仓库。
-
 ## Web 探查验收
 
 数据源：`codex_vastbase_acceptance_20260923`（ID `23125418729440`）

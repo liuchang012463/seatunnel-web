@@ -24,6 +24,7 @@
 * 保留用户已有改动；不得提交密钥、`.env`、生产数据或构建产物。
 * 新增 Flyway migration 前必须检查现有版本，禁止重复版本；已应用的 migration 不改名、不修改，不手工编辑历史表。
 * OpenMetadata 操作必须使用官方 `1.12.10` Java SDK；SDK 未直接暴露的能力只能使用 SDK 自带网络客户端。禁止自建 HTTP 客户端、直连 Airflow 或使用 `1.13.x` Schema。
+* OpenMetadata ingestion 扩展维护在 `/home/haruka/workspace/OpenMetadata/ingestion/extensions` 的版本匹配分支；新增数据库在该处实现 source/connection、`sourcePythonClass`、驱动路径和依赖，运行 `package-bundle.sh` 验证。本仓库不保存 OM 扩展源码或打包脚本。
 * 每个独立功能小步提交，使用 Conventional Commits；不得使用破坏性 Git 操作。
 
 ## 验收
