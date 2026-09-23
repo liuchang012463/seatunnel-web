@@ -3,29 +3,19 @@
 # Usage:
 #   scripts/message-api-demo.sh push      # publish one message
 #   scripts/message-api-demo.sh pull      # pull a batch
-#   scripts/message-api-demo.sh push-err  # publish against a bad password (error path)
+#   scripts/message-api-demo.sh push-err  # publish with unknown clientType (error path)
 #   scripts/message-api-demo.sh oversize  # publish a >1MB body (should be rejected)
 #   scripts/message-api-demo.sh help      # show this help
 #
-# Prerequisites -- read before running. The defaults below are placeholders and
-# will NOT work against a stock local setup:
+# Prerequisites -- read before running:
 #
-#   1) export SEATUNNEL_MESSAGE_API_KEY=<the key the platform uses>
-#      The server defaults seatunnel.message.api-key to "sk-common-interface".
-#      Leaving this empty means NO X-Api-Key header is sent and every call
-#      returns HTTP 401 -- the single most common "why does push fail" cause.
-#   2) Point MQ_* at YOUR OWN broker. The guest/guest default is RabbitMQ's
-#      out-of-the-box account, which a stock install only accepts from
-#      localhost. A broker set up for this project usually wants
-#      MQ_USER=admin MQ_PASSWORD=admin123 instead.
-#
-# No credentials are stored in this file; everything comes from the
-# environment, so nothing secret lands in git history.
+#   1) Configure the broker on the SeaTunnel Web server via
+#      seatunnel.message.broker.* (application.yml or SEATUNNEL_MESSAGE_BROKER_*).
+#      This script no longer sends connection credentials in the request body.
+#   2) These endpoints do not require an API key.
 #
 # Overridable environment variables:
 #   SEATUNNEL_WEB_BASE_URL     platform base url        (default http://localhost:9527)
-#   SEATUNNEL_MESSAGE_API_KEY  api key, empty = no header (see prerequisite 1)
-#   MQ_HOST / MQ_PORT / MQ_VHOST / MQ_USER / MQ_PASSWORD
 #   MQ_QUEUE                   target queue             (default order.sync)
 #
 # Note: this script only sends HTTP requests. It never touches RabbitMQ directly.
@@ -33,33 +23,19 @@
 set -euo pipefail
 
 BASE_URL="${SEATUNNEL_WEB_BASE_URL:-http://localhost:9527}"
-API_KEY="${SEATUNNEL_MESSAGE_API_KEY:-}"
-MQ_HOST="${MQ_HOST:-localhost}"
-MQ_PORT="${MQ_PORT:-5672}"
-MQ_VHOST="${MQ_VHOST:-/}"
-MQ_USER="${MQ_USER:-guest}"
-MQ_PASSWORD="${MQ_PASSWORD:-guest}"
 MQ_QUEUE="${MQ_QUEUE:-order.sync}"
 
 usage() {
-  sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 }
 
 # Builds the JSON body. The message itself stays a real JSON object, so no
 # string escaping is needed here.
 push_body() {
-  local password="$1"
-  local payload="$2"
+  local payload="$1"
   cat <<JSON
 {
-  "connection": {
-    "host": "${MQ_HOST}",
-    "port": ${MQ_PORT},
-    "virtualHost": "${MQ_VHOST}",
-    "username": "${MQ_USER}",
-    "password": "${password}"
-  },
   "queue": "${MQ_QUEUE}",
   "message": ${payload},
   "persistent": true
@@ -70,13 +46,6 @@ JSON
 pull_body() {
   cat <<JSON
 {
-  "connection": {
-    "host": "${MQ_HOST}",
-    "port": ${MQ_PORT},
-    "virtualHost": "${MQ_VHOST}",
-    "username": "${MQ_USER}",
-    "password": "${MQ_PASSWORD}"
-  },
   "queue": "${MQ_QUEUE}",
   "maxMessages": 10,
   "timeoutMs": 3000
@@ -87,11 +56,10 @@ JSON
 post() {
   local path="$1"
   local body="$2"
-  local args=(-sS -X POST "${BASE_URL}${path}" -H 'Content-Type: application/json' -w '\nHTTP %{http_code}\n')
-  if [[ -n "${API_KEY}" ]]; then
-    args+=(-H "X-Api-Key: ${API_KEY}")
-  fi
-  curl "${args[@]}" -d "${body}"
+  curl -sS -X POST "${BASE_URL}${path}" \
+    -H 'Content-Type: application/json' \
+    -w '\nHTTP %{http_code}\n' \
+    -d "${body}"
 }
 
 # Same as post(), but reads the body from a file. Required for large payloads:
@@ -100,16 +68,14 @@ post() {
 post_file() {
   local path="$1"
   local file="$2"
-  local args=(-sS -X POST "${BASE_URL}${path}" -H 'Content-Type: application/json' -w '\nHTTP %{http_code}\n')
-  if [[ -n "${API_KEY}" ]]; then
-    args+=(-H "X-Api-Key: ${API_KEY}")
-  fi
-  curl "${args[@]}" --data-binary "@${file}"
+  curl -sS -X POST "${BASE_URL}${path}" \
+    -H 'Content-Type: application/json' \
+    -w '\nHTTP %{http_code}\n' \
+    --data-binary "@${file}"
 }
-
 cmd_push() {
   echo "==> POST /api/v1/message/push  queue=${MQ_QUEUE}"
-  post /api/v1/message/push "$(push_body "${MQ_PASSWORD}" '{
+  post /api/v1/message/push "$(push_body '{
     "orderId": "A001",
     "amount": 100,
     "items": [ { "sku": "X1" } ],
@@ -123,8 +89,13 @@ cmd_pull() {
 }
 
 cmd_push_err() {
-  echo "==> POST /api/v1/message/push  with a wrong password (expect a masked error)"
-  post /api/v1/message/push "$(push_body 'definitely-wrong-password' '{"orderId": "ERR"}')"
+  echo "==> POST /api/v1/message/push  with unknown clientType (expect a failure envelope)"
+  post /api/v1/message/push '{
+  "clientType": "KAFKA",
+  "queue": "'"${MQ_QUEUE}"'",
+  "message": {"orderId": "ERR"},
+  "persistent": true
+}'
 }
 
 cmd_oversize() {
@@ -134,9 +105,7 @@ cmd_oversize() {
   trap 'rm -f "${tmp}"' RETURN
   # Build via a temp file: 1.5MB cannot be passed as an argv argument.
   {
-    printf '{\n  "connection": {\n    "host": "%s",\n    "port": %s,\n    "virtualHost": "%s",\n    "username": "%s",\n    "password": "%s"\n  },\n' \
-      "${MQ_HOST}" "${MQ_PORT}" "${MQ_VHOST}" "${MQ_USER}" "${MQ_PASSWORD}"
-    printf '  "queue": "%s",\n  "message": { "blob": "' "${MQ_QUEUE}"
+    printf '{\n  "queue": "%s",\n  "message": { "blob": "' "${MQ_QUEUE}"
     head -c 1572864 /dev/zero | tr '\0' 'x'
     printf '" },\n  "persistent": true\n}\n'
   } > "${tmp}"

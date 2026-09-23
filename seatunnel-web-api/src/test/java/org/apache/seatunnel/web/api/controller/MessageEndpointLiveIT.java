@@ -45,6 +45,12 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
  * </p>
  *
  * <p>
+ * Broker credentials come from {@link MessageProperties} (YAML / system
+ * properties), matching production — the HTTP body no longer carries
+ * {@code connection}.
+ * </p>
+ *
+ * <p>
  * Opt-in, so a broker-less machine never goes red:
  * </p>
  *
@@ -58,20 +64,19 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 @EnabledIfSystemProperty(named = "messaging.it.enabled", matches = "true")
 class MessageEndpointLiveIT {
 
-    private static final String API_KEY = "live-it-key";
-
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private String queue;
 
     private MockMvc mvc;
 
+    private MessageProperties properties;
+
     @BeforeEach
     void setUp() throws Exception {
         queue = "seatunnel.it.http." + UUID.randomUUID().toString().substring(0, 8);
 
-        MessageProperties properties = new MessageProperties();
-        properties.setApiKey(API_KEY);
+        properties = brokerProperties();
 
         MessageController controller = new MessageController();
         ReflectionTestUtils.setField(controller, "messagePluginManager",
@@ -105,19 +110,14 @@ class MessageEndpointLiveIT {
                 + "\"items\":[{\"sku\":\"X1\",\"qty\":2}],\"nested\":{\"flag\":true,\"none\":null}}";
 
         mvc.perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"connection\":" + connectionJson() + ","
-                                + "\"queue\":\"" + queue + "\","
-                                + "\"message\":" + payload + "}"))
+                        .content("{\"queue\":\"" + queue + "\",\"message\":" + payload + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
 
         MvcResult result = mvc.perform(post("/api/v1/message/pull")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"connection\":" + connectionJson() + ","
-                                + "\"queue\":\"" + queue + "\",\"maxMessages\":10,\"timeoutMs\":5000}"))
+                        .content("{\"queue\":\"" + queue + "\",\"maxMessages\":10,\"timeoutMs\":5000}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.returned").value(1))
@@ -143,10 +143,8 @@ class MessageEndpointLiveIT {
         String oversize = "x".repeat(1_500_000);
 
         mvc.perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"connection\":" + connectionJson() + ","
-                                + "\"queue\":\"" + queue + "\","
+                        .content("{\"queue\":\"" + queue + "\","
                                 + "\"message\":{\"blob\":\"" + oversize + "\"}}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(not(0)));
@@ -154,10 +152,8 @@ class MessageEndpointLiveIT {
         // The real proof: the broker must be untouched. Reading the queue back
         // is the only assertion that cannot be satisfied by a mocked client.
         mvc.perform(post("/api/v1/message/pull")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"connection\":" + connectionJson() + ","
-                                + "\"queue\":\"" + queue + "\",\"maxMessages\":10,\"timeoutMs\":3000}"))
+                        .content("{\"queue\":\"" + queue + "\",\"maxMessages\":10,\"timeoutMs\":3000}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.returned").value(0));
     }
@@ -166,14 +162,11 @@ class MessageEndpointLiveIT {
 
     @Test
     void wrongPasswordIsReportedAsASanitizedFailure() throws Exception {
-        String json = "{\"connection\":{\"host\":\"" + host() + "\",\"port\":" + port()
-                + ",\"username\":\"" + user() + "\",\"password\":\"totally-wrong\"},"
-                + "\"queue\":\"" + queue + "\",\"message\":{\"a\":1}}";
+        properties.getBroker().setPassword("totally-wrong");
 
         MvcResult result = mvc.perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
+                        .content("{\"queue\":\"" + queue + "\",\"message\":{\"a\":1}}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(not(0)))
                 .andReturn();
@@ -184,21 +177,10 @@ class MessageEndpointLiveIT {
     }
 
     @Test
-    void missingApiKeyIsRejectedWithAReal401() throws Exception {
-        mvc.perform(post("/api/v1/message/push")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"connection\":" + connectionJson() + ","
-                                + "\"queue\":\"" + queue + "\",\"message\":{\"a\":1}}"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
     void pullFromAnUnknownQueueIsReportedWithoutHttp5xx() throws Exception {
         mvc.perform(post("/api/v1/message/pull")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"connection\":" + connectionJson() + ","
-                                + "\"queue\":\"seatunnel.it.missing."
+                        .content("{\"queue\":\"seatunnel.it.missing."
                                 + UUID.randomUUID().toString().substring(0, 8)
                                 + "\",\"maxMessages\":1,\"timeoutMs\":3000}"))
                 .andExpect(status().isOk())
@@ -207,10 +189,15 @@ class MessageEndpointLiveIT {
 
     // -------------------- helpers --------------------
 
-    private String connectionJson() {
-        return "{\"host\":\"" + host() + "\",\"port\":" + port()
-                + ",\"virtualHost\":\"" + vhost() + "\",\"username\":\"" + user()
-                + "\",\"password\":\"" + password() + "\"}";
+    private MessageProperties brokerProperties() {
+        MessageProperties props = new MessageProperties();
+        MessageProperties.Broker broker = props.getBroker();
+        broker.setHost(host());
+        broker.setPort(port());
+        broker.setVirtualHost(vhost());
+        broker.setUsername(user());
+        broker.setPassword(password());
+        return props;
     }
 
     private String host() {

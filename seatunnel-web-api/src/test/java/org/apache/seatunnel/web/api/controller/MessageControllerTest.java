@@ -48,7 +48,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
  *
  * <p>
  * These run the real controller through MockMvc with a stub client, so they
- * cover routing, authentication, payload rejection and response shaping
+ * cover routing, payload rejection and response shaping
  * <b>without needing a broker or a database</b>. The broker-facing behaviour is
  * covered separately by {@code RabbitMessageClientTest}.
  * </p>
@@ -61,81 +61,23 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
  */
 class MessageControllerTest {
 
-    private static final String API_KEY = "test-key-abc123";
-
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    // -------------------- authentication --------------------
+    // -------------------- open access --------------------
 
     @Test
-    void rejectsRequestWithoutApiKey() throws Exception {
+    void acceptsRequestWithoutApiKey() throws Exception {
         RecordingClient client = new RecordingClient();
 
-        mvc(client, propsWithKey())
+        mvc(client, props())
                 .perform(post("/api/v1/message/push")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(pushBody("{}")))
-                .andExpect(status().isUnauthorized());
-
-        assertFalse(client.pushCalled, "鉴权失败时不应触碰 broker");
-    }
-
-    @Test
-    void rejectsRequestWithWrongApiKey() throws Exception {
-        RecordingClient client = new RecordingClient();
-
-        mvc(client, propsWithKey())
-                .perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", "wrong-key")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(pushBody("{}")))
-                .andExpect(status().isUnauthorized());
-
-        assertFalse(client.pushCalled, "鉴权失败时不应触碰 broker");
-    }
-
-    @Test
-    void acceptsRequestWithCorrectApiKey() throws Exception {
-        RecordingClient client = new RecordingClient();
-
-        mvc(client, propsWithKey())
-                .perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(pushBody("{\"orderId\":\"A001\"}")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code", is(0)))
                 .andExpect(jsonPath("$.data.success", is(true)));
 
-        assertTrue(client.pushCalled, "鉴权通过后应调用 client");
-    }
-
-    @Test
-    void skipsAuthWhenKeyIsNotConfigured() throws Exception {
-        RecordingClient client = new RecordingClient();
-
-        // Blank key means auth disabled entirely (decision F1).
-        mvc(client, propsWithoutKey())
-                .perform(post("/api/v1/message/push")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(pushBody("{}")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code", is(0)));
-
         assertTrue(client.pushCalled);
-    }
-
-    @Test
-    void appliesAuthToPullAsWell() throws Exception {
-        RecordingClient client = new RecordingClient();
-
-        mvc(client, propsWithKey())
-                .perform(post("/api/v1/message/pull")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(pullBody()))
-                .andExpect(status().isUnauthorized());
-
-        assertFalse(client.pullCalled);
     }
 
     // -------------------- payload size limit --------------------
@@ -148,9 +90,8 @@ class MessageControllerTest {
         // sailed through and was handed to the broker.
         String oversize = "x".repeat(1_500_000);
 
-        mvc(client, propsWithKey())
+        mvc(client, props())
                 .perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(pushBody("{\"blob\":\"" + oversize + "\"}")))
                 .andExpect(status().isOk())
@@ -165,9 +106,8 @@ class MessageControllerTest {
     void acceptsPayloadWithinLimit() throws Exception {
         RecordingClient client = new RecordingClient();
 
-        mvc(client, propsWithKey())
+        mvc(client, props())
                 .perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(pushBody("{\"blob\":\"" + "x".repeat(1000) + "\"}")))
                 .andExpect(status().isOk())
@@ -182,12 +122,10 @@ class MessageControllerTest {
     void pushForwardsExchangeQueueAndPayload() throws Exception {
         RecordingClient client = new RecordingClient();
 
-        mvc(client, propsWithKey())
+        mvc(client, props())
                 .perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"connection\":{\"host\":\"h\",\"username\":\"u\",\"password\":\"p\"},"
-                                + "\"exchange\":\"ex\",\"queue\":\"q\",\"routingKey\":\"rk\","
+                        .content("{\"exchange\":\"ex\",\"queue\":\"q\",\"routingKey\":\"rk\","
                                 + "\"persistent\":false,"
                                 + "\"message\":{\"orderId\":\"A001\",\"items\":[{\"sku\":\"X1\"}]}}"))
                 .andExpect(status().isOk())
@@ -206,9 +144,8 @@ class MessageControllerTest {
     void unknownClientTypeIsReported() throws Exception {
         RecordingClient client = new RecordingClient();
 
-        mvc(client, propsWithKey())
+        mvc(client, props())
                 .perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"clientType\":\"KAFKA\",\"queue\":\"q\",\"message\":{}}"))
                 .andExpect(status().isOk())
@@ -240,9 +177,8 @@ class MessageControllerTest {
                         .build()
         ), false, 12L);
 
-        mvc(client, propsWithKey())
+        mvc(client, props())
                 .perform(post("/api/v1/message/pull")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(pullBody()))
                 .andExpect(status().isOk())
@@ -263,15 +199,13 @@ class MessageControllerTest {
     void pullClampsMaxMessagesToServerCeiling() throws Exception {
         RecordingClient client = new RecordingClient();
 
-        MessageProperties props = propsWithKey();
+        MessageProperties props = props();
         props.setMaxBatchSize(100);
 
         mvc(client, props)
                 .perform(post("/api/v1/message/pull")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"connection\":{\"host\":\"h\",\"username\":\"u\",\"password\":\"p\"},"
-                                + "\"queue\":\"q\",\"maxMessages\":99999}"))
+                        .content("{\"queue\":\"q\",\"maxMessages\":99999}"))
                 .andExpect(status().isOk());
 
         assertNotNull(client.lastPull);
@@ -283,12 +217,10 @@ class MessageControllerTest {
     void pullRejectsNonPositiveMaxMessages() throws Exception {
         RecordingClient client = new RecordingClient();
 
-        mvc(client, propsWithKey())
+        mvc(client, props())
                 .perform(post("/api/v1/message/pull")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"connection\":{\"host\":\"h\",\"username\":\"u\",\"password\":\"p\"},"
-                                + "\"queue\":\"q\",\"maxMessages\":0}"))
+                        .content("{\"queue\":\"q\",\"maxMessages\":0}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code", not(0)));
 
@@ -302,9 +234,8 @@ class MessageControllerTest {
         RecordingClient client = new RecordingClient();
         client.pushResult = MessagePushResult.fail("MQ 连接失败，请检查配置");
 
-        mvc(client, propsWithKey())
+        mvc(client, props())
                 .perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(pushBody("{}")))
                 // 200, not 5xx: generic HTTP clients auto-retry 5xx and a
@@ -336,13 +267,12 @@ class MessageControllerTest {
     @Test
     void callerFixableExceptionIsReportedWithoutStackTrace() throws Exception {
         RecordingClient client = new RecordingClient();
-        client.pushThrows = new MessageException("connection 参数不能为空");
+        client.pushThrows = new MessageException("消息队列未配置");
 
         ListAppender<ILoggingEvent> logs = captureControllerLogs();
 
-        mvc(client, propsWithKey())
+        mvc(client, props())
                 .perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(pushBody("{}")))
                 .andExpect(status().isOk())
@@ -352,12 +282,12 @@ class MessageControllerTest {
                 // JSON), while MockMvc would decode with its ISO-8859-1 default.
                 .andExpect(result -> assertTrue(
                         new String(result.getResponse().getContentAsByteArray(),
-                                StandardCharsets.UTF_8).contains("connection 参数不能为空"),
+                                StandardCharsets.UTF_8).contains("消息队列未配置"),
                         "可读的失败原因应回传调用方"));
 
         assertEquals(1, logs.list.size(), "失败应只记一条日志，而不是新增一条");
         ILoggingEvent event = logs.list.get(0);
-        assertTrue(event.getFormattedMessage().contains("connection 参数不能为空"),
+        assertTrue(event.getFormattedMessage().contains("消息队列未配置"),
                 "日志应带上可读原因，实际: " + event.getFormattedMessage());
         assertNull(event.getThrowableProxy(),
                 "调用方可修复的错误不应打堆栈——一个配置错的调用方会把日志刷爆");
@@ -374,9 +304,8 @@ class MessageControllerTest {
 
         ListAppender<ILoggingEvent> logs = captureControllerLogs();
 
-        mvc(client, propsWithKey())
+        mvc(client, props())
                 .perform(post("/api/v1/message/push")
-                        .header("X-Api-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(pushBody("{}")))
                 .andExpect(status().isOk())
@@ -414,16 +343,8 @@ class MessageControllerTest {
         logDetachers.clear();
     }
 
-    private MessageProperties propsWithKey() {
-        MessageProperties props = new MessageProperties();
-        props.setApiKey(API_KEY);
-        return props;
-    }
-
-    private MessageProperties propsWithoutKey() {
-        MessageProperties props = new MessageProperties();
-        props.setApiKey("");
-        return props;
+    private MessageProperties props() {
+        return new MessageProperties();
     }
 
     private MockMvc mvc(MessageClient client, MessageProperties props) {
@@ -435,13 +356,11 @@ class MessageControllerTest {
     }
 
     private String pushBody(String messageJson) {
-        return "{\"connection\":{\"host\":\"h\",\"username\":\"u\",\"password\":\"p\"},"
-                + "\"queue\":\"order.sync\",\"message\":" + messageJson + "}";
+        return "{\"queue\":\"order.sync\",\"message\":" + messageJson + "}";
     }
 
     private String pullBody() {
-        return "{\"connection\":{\"host\":\"h\",\"username\":\"u\",\"password\":\"p\"},"
-                + "\"queue\":\"order.sync\",\"maxMessages\":10}";
+        return "{\"queue\":\"order.sync\",\"maxMessages\":10}";
     }
 
     /**
