@@ -25,6 +25,15 @@ public interface FileResourceStorageProvider {
 
     String upload(String objectKey, InputStream input, long size, String contentType);
 
+    String initiateMultipartUpload(String objectKey, String contentType);
+
+    String presignMultipartUploadPart(
+            String objectKey, String uploadId, int partNumber, long expiresInMillis);
+
+    String completeMultipartUpload(String objectKey, String uploadId, List<StorageUploadPart> parts);
+
+    void abortMultipartUpload(String objectKey, String uploadId);
+
     void createDirectory(String objectKey);
 
     List<StorageEntry> list(String logicalPath);

@@ -1,6 +1,7 @@
 package org.apache.seatunnel.plugin.datasource.s3.client;
 
 import com.amazonaws.ClientConfiguration;
+import com.amazonaws.HttpMethod;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -12,7 +13,14 @@ import com.amazonaws.services.s3.model.CopyObjectRequest;
 import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.DeleteObjectsRequest;
+import com.amazonaws.services.s3.model.AbortMultipartUploadRequest;
+import com.amazonaws.services.s3.model.CompleteMultipartUploadRequest;
+import com.amazonaws.services.s3.model.CompleteMultipartUploadResult;
+import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
+import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
+import com.amazonaws.services.s3.model.InitiateMultipartUploadResult;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PartETag;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.PutObjectResult;
 import com.amazonaws.services.s3.model.S3Object;
@@ -126,6 +134,73 @@ public class S3ObjectStorageClient implements ObjectStorageClient {
             PutObjectResult result = client.putObject(
                     new PutObjectRequest(param.getBucket(), objectKey, input, metadata));
             return result == null ? null : result.getETag();
+        } finally {
+            client.shutdown();
+        }
+    }
+
+    public String initiateMultipartUpload(
+            ObjectStorageConnectionParam connectionParam, String objectKey, String contentType) {
+        ObjectStorageConnectionParam param = requireParam(connectionParam);
+        AmazonS3 client = clientFactory.create(param);
+        try {
+            ObjectMetadata metadata = new ObjectMetadata();
+            if (contentType != null && !contentType.isBlank()) {
+                metadata.setContentType(contentType);
+            }
+            InitiateMultipartUploadResult result = client.initiateMultipartUpload(
+                    new InitiateMultipartUploadRequest(param.getBucket(), objectKey)
+                            .withObjectMetadata(metadata));
+            return result.getUploadId();
+        } finally {
+            client.shutdown();
+        }
+    }
+
+    public String presignMultipartUploadPart(
+            ObjectStorageConnectionParam connectionParam,
+            String objectKey,
+            String uploadId,
+            int partNumber,
+            long expiresInMillis) {
+        ObjectStorageConnectionParam param = requireParam(connectionParam);
+        AmazonS3 client = clientFactory.create(param);
+        try {
+            GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(
+                    param.getBucket(), objectKey, HttpMethod.PUT)
+                    .withExpiration(new Date(System.currentTimeMillis() + expiresInMillis));
+            request.addRequestParameter("uploadId", uploadId);
+            request.addRequestParameter("partNumber", String.valueOf(partNumber));
+            return client.generatePresignedUrl(request).toExternalForm();
+        } finally {
+            client.shutdown();
+        }
+    }
+
+    public String completeMultipartUpload(
+            ObjectStorageConnectionParam connectionParam,
+            String objectKey,
+            String uploadId,
+            List<PartETag> parts) {
+        ObjectStorageConnectionParam param = requireParam(connectionParam);
+        AmazonS3 client = clientFactory.create(param);
+        try {
+            CompleteMultipartUploadResult result = client.completeMultipartUpload(
+                    new CompleteMultipartUploadRequest(
+                            param.getBucket(), objectKey, uploadId, parts));
+            return result == null ? null : result.getETag();
+        } finally {
+            client.shutdown();
+        }
+    }
+
+    public void abortMultipartUpload(
+            ObjectStorageConnectionParam connectionParam, String objectKey, String uploadId) {
+        ObjectStorageConnectionParam param = requireParam(connectionParam);
+        AmazonS3 client = clientFactory.create(param);
+        try {
+            client.abortMultipartUpload(
+                    new AbortMultipartUploadRequest(param.getBucket(), objectKey, uploadId));
         } finally {
             client.shutdown();
         }

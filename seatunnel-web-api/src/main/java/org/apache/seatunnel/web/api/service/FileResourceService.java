@@ -1,10 +1,15 @@
 package org.apache.seatunnel.web.api.service;
 
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceDirectoryDTO;
+import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartCompleteRequestDTO;
+import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartPartsRequestDTO;
+import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartUploadRequestDTO;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourcePreviewDTO;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceUploadRecordQueryDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
+import org.apache.seatunnel.web.spi.bean.vo.FileResourceMultipartPartUrlVO;
+import org.apache.seatunnel.web.spi.bean.vo.FileResourceMultipartUploadVO;
 import org.apache.seatunnel.web.spi.bean.vo.FileUploadRecordVO;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +28,16 @@ public interface FileResourceService {
     FileResourceVO createDirectory(FileResourceDirectoryDTO request);
 
     List<FileResourceVO> upload(String path, MultipartFile[] files, String[] relativePaths);
+
+    FileResourceMultipartUploadVO initiateMultipartUpload(FileResourceMultipartUploadRequestDTO request);
+
+    List<FileResourceMultipartPartUrlVO> presignMultipartUploadParts(
+            Long uploadRecordId, FileResourceMultipartPartsRequestDTO request);
+
+    FileResourceVO completeMultipartUpload(
+            Long uploadRecordId, FileResourceMultipartCompleteRequestDTO request);
+
+    void abortMultipartUpload(Long uploadRecordId);
 
     void delete(Long id);
 

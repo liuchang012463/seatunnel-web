@@ -24,6 +24,8 @@ public class FileResourceStorageProperties {
 
     private String runtimeEndpoint;
 
+    private String uploadEndpoint;
+
     private String region = "us-east-1";
 
     private String bucket;

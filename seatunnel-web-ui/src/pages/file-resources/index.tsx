@@ -22,6 +22,7 @@ import {
   Row,
   Space,
   Spin,
+  Progress,
   Table,
   Tag,
   Typography,
@@ -55,6 +56,7 @@ import {
 } from './service';
 import type {
   FileResourceEntry,
+  FileResourceUploadProgress,
   FileResourceUploadRecord,
   FileResourceUploadRecordPage,
 } from './types';
@@ -108,6 +110,13 @@ const FileResourcesPage: React.FC = () => {
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [records, setRecords] = useState<FileResourceUploadRecordPage>(emptyUploadRecords);
   const [uploadingCount, setUploadingCount] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, {
+    name: string;
+    loaded: number;
+    total: number;
+    percent: number;
+    status: 'active' | 'success' | 'exception';
+  }>>({});
   const [directoryForm] = Form.useForm<{ name: string }>();
 
   useEffect(() => {
@@ -133,21 +142,57 @@ const FileResourcesPage: React.FC = () => {
         }
 
         setUploadingCount((count) => count + 1);
-        options.onProgress?.({ percent: 10 }, file);
+        const uploadKey = String((options.file as any).uid || `${file.name}-${Date.now()}`);
+        const updateProgress = (progress: FileResourceUploadProgress) => {
+          setUploadProgress((current) => ({
+            ...current,
+            [uploadKey]: {
+              name: file.name,
+              loaded: progress.loaded,
+              total: progress.total,
+              percent: progress.percent,
+              status: 'active',
+            },
+          }));
+          options.onProgress?.({ percent: progress.percent }, file);
+        };
+        updateProgress({ loaded: 0, total: file.size, percent: 0 });
         try {
           const response = await uploadFileResources(path, [
             {
               file,
               relativePath: getUploadRelativePath(file),
             },
-          ]);
-          options.onProgress?.({ percent: 100 }, file);
+          ], updateProgress);
+          updateProgress({ loaded: file.size, total: file.size, percent: 100 });
+          setUploadProgress((current) => ({
+            ...current,
+            [uploadKey]: { ...current[uploadKey], status: 'success' },
+          }));
           options.onSuccess?.((response || {}) as Record<string, unknown>, file);
           reload();
+          window.setTimeout(() => {
+            setUploadProgress((current) => {
+              const next = { ...current };
+              delete next[uploadKey];
+              return next;
+            });
+          }, 1800);
         } catch (error) {
           const reason = error instanceof Error ? error : new Error('文件上传失败，请稍后重试');
+          setUploadProgress((current) => ({
+            ...current,
+            [uploadKey]: { ...current[uploadKey], status: 'exception' },
+          }));
           options.onError?.(reason as any);
           messageApi.error(reason.message);
+          window.setTimeout(() => {
+            setUploadProgress((current) => {
+              const next = { ...current };
+              delete next[uploadKey];
+              return next;
+            });
+          }, 6000);
         } finally {
           setUploadingCount((count) => Math.max(0, count - 1));
         }
@@ -334,6 +379,26 @@ const FileResourcesPage: React.FC = () => {
             <Button aria-label="刷新目录" icon={<ReloadOutlined />} onClick={reload} />
           </Space>
         </div>
+
+        {Object.entries(uploadProgress).length > 0 ? (
+          <div className="file-resources-page__upload-progress" aria-live="polite">
+            {Object.entries(uploadProgress).map(([key, progress]) => (
+              <div className="file-resources-page__upload-progress-item" key={key}>
+                <div className="file-resources-page__upload-progress-heading">
+                  <Text ellipsis title={progress.name}>{progress.name}</Text>
+                  <Text type="secondary">
+                    {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
+                  </Text>
+                </div>
+                <Progress
+                  percent={progress.percent}
+                  status={progress.status}
+                  size="small"
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         <FileResourceBrowser
           path={path}

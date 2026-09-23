@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,7 @@ import org.apache.seatunnel.web.api.fileresource.FileResourcePathUtils;
 import org.apache.seatunnel.web.api.fileresource.FileResourceReferenceChecker;
 import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProvider;
 import org.apache.seatunnel.web.api.fileresource.storage.StorageObjectMetadata;
+import org.apache.seatunnel.web.api.fileresource.storage.StorageUploadPart;
 import org.apache.seatunnel.web.api.service.FileResourceService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -28,10 +30,16 @@ import org.apache.seatunnel.web.dao.entity.FileUploadRecord;
 import org.apache.seatunnel.web.dao.repository.FileResourceDao;
 import org.apache.seatunnel.web.dao.repository.FileUploadRecordDao;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceDirectoryDTO;
+import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartCompleteRequestDTO;
+import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartPartETagDTO;
+import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartPartsRequestDTO;
+import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartUploadRequestDTO;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourcePreviewDTO;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceUploadRecordQueryDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
+import org.apache.seatunnel.web.spi.bean.vo.FileResourceMultipartPartUrlVO;
+import org.apache.seatunnel.web.spi.bean.vo.FileResourceMultipartUploadVO;
 import org.apache.seatunnel.web.spi.bean.vo.FileUploadRecordVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.beans.factory.ObjectProvider;
@@ -85,6 +93,11 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     private static final int MAX_PREVIEW_ROWS = 100;
     private static final int MAX_PREVIEW_COLUMNS = 200;
     private static final int MAX_PREVIEW_BYTES = 8 * 1024 * 1024;
+    private static final long DEFAULT_MULTIPART_PART_SIZE = 64L * 1024L * 1024L;
+    private static final long MAX_MULTIPART_PARTS = 10_000L;
+    private static final long MAX_OBJECT_SIZE = 5L * 1024L * 1024L * 1024L * 1024L;
+    private static final int MAX_PRESIGNED_PARTS_PER_REQUEST = 128;
+    private static final long PRESIGNED_PART_URL_TTL_MILLIS = 60L * 60L * 1000L;
 
     @Resource
     private FileResourceDao fileResourceDao;
@@ -242,6 +255,216 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             log.error("Upload file resources failed, recordId={}, targetPath={}",
                     record.getId(), targetPath, e);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, "文件上传失败: " + message);
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public FileResourceMultipartUploadVO initiateMultipartUpload(
+            FileResourceMultipartUploadRequestDTO request) {
+        if (request == null || request.getSize() == null
+                || request.getSize() <= 0 || request.getSize() > MAX_OBJECT_SIZE) {
+            throw invalid("分片上传文件大小必须在 1 字节到 5 TiB 之间");
+        }
+        Integer ownerId = currentUserId();
+        String targetPath = FileResourcePathUtils.normalizePath(request.getPath());
+        String relativePath = FileResourcePathUtils.normalizeRelativePath(request.getRelativePath());
+        String logicalPath = FileResourcePathUtils.join(targetPath, relativePath);
+        validateMultipartUploadPath(ownerId, logicalPath, null);
+
+        String objectKey = storageProvider.objectKey(logicalPath);
+        String normalizedContentType = contentType(request.getContentType());
+        long partSize = multipartPartSize(request.getSize());
+        storageProvider.ensureBucket();
+
+        FileUploadRecord record = new FileUploadRecord();
+        record.initInsert();
+        record.setOwnerId(ownerId);
+        record.setProviderType(storageProvider.providerType());
+        record.setBucket(storageProvider.bucket());
+        record.setTargetPath(targetPath);
+        record.setLogicalPath(logicalPath);
+        record.setObjectKey(objectKey);
+        record.setContentType(normalizedContentType);
+        record.setTotalFiles(1);
+        record.setTotalSize(request.getSize());
+        record.setPartSize(partSize);
+        record.setStatus(UPLOADING);
+        fileUploadRecordPersistenceService.insert(record);
+
+        String storageUploadId = null;
+        try {
+            storageUploadId = storageProvider.initiateMultipartUpload(objectKey, normalizedContentType);
+            if (StringUtils.isBlank(storageUploadId)) {
+                throw new IllegalStateException("MinIO 未返回分片上传会话 ID");
+            }
+            record.setMultipartUploadId(storageUploadId);
+            record.setUpdateTime(new Date());
+            if (!fileUploadRecordDao.updateById(record)) {
+                throw new IllegalStateException("无法保存分片上传会话");
+            }
+
+            FileResourceMultipartUploadVO result = new FileResourceMultipartUploadVO();
+            result.setUploadRecordId(record.getId());
+            result.setPartSizeBytes(partSize);
+            result.setTotalParts(multipartPartCount(request.getSize(), partSize));
+            return result;
+        } catch (Exception e) {
+            if (StringUtils.isNotBlank(storageUploadId)) {
+                try {
+                    storageProvider.abortMultipartUpload(objectKey, storageUploadId);
+                } catch (Exception abortError) {
+                    log.warn("Failed to abort multipart upload after initialization error, recordId={}",
+                            record.getId(), abortError);
+                }
+            }
+            String error = StringUtils.defaultIfBlank(e.getMessage(), "MinIO 不可用");
+            markFailedUploadRecord(record, error);
+            if (e instanceof ServiceException serviceException) {
+                throw serviceException;
+            }
+            log.error("Failed to initiate file resource multipart upload, recordId={}", record.getId(), e);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, "文件上传初始化失败: " + error);
+        }
+    }
+
+    @Override
+    public List<FileResourceMultipartPartUrlVO> presignMultipartUploadParts(
+            Long uploadRecordId, FileResourceMultipartPartsRequestDTO request) {
+        FileUploadRecord record = requireOwnedMultipartUpload(uploadRecordId);
+        if (request == null || request.getPartNumbers() == null
+                || request.getPartNumbers().isEmpty()
+                || request.getPartNumbers().size() > MAX_PRESIGNED_PARTS_PER_REQUEST) {
+            throw invalid("每次最多请求 " + MAX_PRESIGNED_PARTS_PER_REQUEST + " 个分片上传地址");
+        }
+        int totalParts = multipartPartCount(record.getTotalSize(), record.getPartSize());
+        Set<Integer> requested = new HashSet<>();
+        List<FileResourceMultipartPartUrlVO> urls = new ArrayList<>();
+        for (Integer partNumber : request.getPartNumbers()) {
+            if (partNumber == null || partNumber < 1 || partNumber > totalParts
+                    || !requested.add(partNumber)) {
+                throw invalid("分片编号无效或重复");
+            }
+            urls.add(new FileResourceMultipartPartUrlVO(
+                    partNumber,
+                    storageProvider.presignMultipartUploadPart(
+                            record.getObjectKey(),
+                            record.getMultipartUploadId(),
+                            partNumber,
+                            PRESIGNED_PART_URL_TTL_MILLIS)));
+        }
+        return urls;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public FileResourceVO completeMultipartUpload(
+            Long uploadRecordId, FileResourceMultipartCompleteRequestDTO request) {
+        FileUploadRecord record = requireOwnedUploadRecord(uploadRecordId);
+        if (SUCCESS.equalsIgnoreCase(record.getStatus())) {
+            FileResource existing = fileResourceDao.queryByOwnerAndLogicalPath(
+                    record.getOwnerId(), record.getLogicalPath());
+            if (isActive(existing)) {
+                return toVO(existing);
+            }
+            throw invalid("上传记录已完成，但文件资源不存在");
+        }
+        if (!UPLOADING.equalsIgnoreCase(record.getStatus())
+                || StringUtils.isBlank(record.getMultipartUploadId())) {
+            throw invalid("分片上传会话已结束");
+        }
+
+        int expectedParts = multipartPartCount(record.getTotalSize(), record.getPartSize());
+        if (request == null || request.getParts() == null || request.getParts().size() != expectedParts) {
+            throw invalid("上传分片不完整");
+        }
+        Map<Integer, String> etags = new java.util.TreeMap<>();
+        for (FileResourceMultipartPartETagDTO part : request.getParts()) {
+            if (part == null || part.getPartNumber() == null
+                    || part.getPartNumber() < 1 || part.getPartNumber() > expectedParts
+                    || StringUtils.isBlank(part.getEtag())
+                    || etags.putIfAbsent(part.getPartNumber(), part.getEtag().trim()) != null) {
+                throw invalid("分片 ETag 无效或重复");
+            }
+        }
+        if (etags.size() != expectedParts) {
+            throw invalid("上传分片不完整");
+        }
+        List<StorageUploadPart> parts = new ArrayList<>(expectedParts);
+        for (int partNumber = 1; partNumber <= expectedParts; partNumber++) {
+            String etag = etags.get(partNumber);
+            if (etag == null) {
+                throw invalid("上传分片不完整");
+            }
+            parts.add(new StorageUploadPart(partNumber, etag));
+        }
+
+        validateMultipartUploadPath(record.getOwnerId(), record.getLogicalPath(), record.getId());
+        List<String> newObjectKeys = new ArrayList<>();
+        List<ResourceMutation> mutations = new ArrayList<>();
+        FileResource existing = fileResourceDao.queryByOwnerAndLogicalPath(
+                record.getOwnerId(), record.getLogicalPath());
+        if (!isActive(existing)) {
+            newObjectKeys.add(record.getObjectKey());
+        }
+        boolean storageCompleted = false;
+        try {
+            String etag = storageProvider.completeMultipartUpload(
+                    record.getObjectKey(), record.getMultipartUploadId(), parts);
+            storageCompleted = true;
+            ensureParentDirectories(record.getOwnerId(), record.getLogicalPath(), mutations);
+            String previousStatus = existing == null ? null : existing.getStatus();
+            FileResource resource = saveResource(
+                    existing,
+                    record.getOwnerId(),
+                    record.getLogicalPath(),
+                    record.getObjectKey(),
+                    FILE,
+                    record.getTotalSize(),
+                    record.getContentType(),
+                    etag);
+            if (existing == null || DELETED.equalsIgnoreCase(previousStatus)) {
+                mutations.add(new ResourceMutation(resource.getId(), previousStatus));
+            }
+            fileResourceMqNotifier.notifyUploaded(resource, record.getId());
+            markUploadRecord(record, SUCCESS, null);
+            return toVO(resource);
+        } catch (Exception e) {
+            if (!storageCompleted) {
+                try {
+                    storageProvider.abortMultipartUpload(
+                            record.getObjectKey(), record.getMultipartUploadId());
+                } catch (Exception abortError) {
+                    log.warn("Failed to abort incomplete file resource upload, recordId={}",
+                            record.getId(), abortError);
+                }
+            }
+            cleanupFailedUpload(newObjectKeys, mutations);
+            String error = StringUtils.defaultIfBlank(e.getMessage(), "MinIO 不可用");
+            markFailedUploadRecord(record, error);
+            if (e instanceof ServiceException serviceException) {
+                throw serviceException;
+            }
+            log.error("Failed to complete file resource multipart upload, recordId={}", record.getId(), e);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, "文件上传失败: " + error);
+        }
+    }
+
+    @Override
+    public void abortMultipartUpload(Long uploadRecordId) {
+        FileUploadRecord record = requireOwnedUploadRecord(uploadRecordId);
+        if (!UPLOADING.equalsIgnoreCase(record.getStatus())) {
+            return;
+        }
+        try {
+            if (StringUtils.isNotBlank(record.getMultipartUploadId())) {
+                storageProvider.abortMultipartUpload(
+                        record.getObjectKey(), record.getMultipartUploadId());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to abort file resource multipart upload, recordId={}", record.getId(), e);
+        } finally {
+            markFailedUploadRecord(record, "用户取消了上传");
         }
     }
 
@@ -413,6 +636,79 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             throw invalid("至少选择一个文件");
         }
         return items;
+    }
+
+    private FileUploadRecord requireOwnedMultipartUpload(Long uploadRecordId) {
+        FileUploadRecord record = requireOwnedUploadRecord(uploadRecordId);
+        if (!UPLOADING.equalsIgnoreCase(record.getStatus())
+                || StringUtils.isBlank(record.getMultipartUploadId())
+                || StringUtils.isBlank(record.getObjectKey())
+                || StringUtils.isBlank(record.getLogicalPath())
+                || record.getTotalSize() == null
+                || record.getPartSize() == null) {
+            throw invalid("分片上传会话已结束或不存在");
+        }
+        return record;
+    }
+
+    private FileUploadRecord requireOwnedUploadRecord(Long uploadRecordId) {
+        if (uploadRecordId == null || uploadRecordId <= 0) {
+            throw invalid("上传会话不存在");
+        }
+        Integer ownerId = currentUserId();
+        FileUploadRecord record = fileUploadRecordDao.queryById(uploadRecordId);
+        if (record == null || ownerId == null || !ownerId.equals(record.getOwnerId())) {
+            throw invalid("上传会话不存在");
+        }
+        return record;
+    }
+
+    private void validateMultipartUploadPath(
+            Integer ownerId, String logicalPath, Long currentUploadRecordId) {
+        FileResource existing = fileResourceDao.queryByOwnerAndLogicalPath(ownerId, logicalPath);
+        if (isActive(existing)) {
+            throw invalid("文件资源已存在: " + logicalPath);
+        }
+        if (hasInProgressMultipartUpload(ownerId, logicalPath, currentUploadRecordId)) {
+            throw invalid("该路径已有文件正在上传: " + logicalPath);
+        }
+
+        String parent = FileResourcePathUtils.parent(logicalPath);
+        while (!"/".equals(parent)) {
+            FileResource parentResource = fileResourceDao.queryByOwnerAndLogicalPath(ownerId, parent);
+            if (isActive(parentResource) && FILE.equalsIgnoreCase(parentResource.getResourceType())) {
+                throw invalid("文件路径与已有文件冲突: " + parent);
+            }
+            if (hasInProgressMultipartUpload(ownerId, parent, currentUploadRecordId)) {
+                throw invalid("父路径有文件正在上传: " + parent);
+            }
+            parent = FileResourcePathUtils.parent(parent);
+        }
+    }
+
+    private boolean hasInProgressMultipartUpload(
+            Integer ownerId, String logicalPath, Long currentUploadRecordId) {
+        LambdaQueryWrapper<FileUploadRecord> query = new LambdaQueryWrapper<FileUploadRecord>()
+                .eq(FileUploadRecord::getOwnerId, ownerId)
+                .eq(FileUploadRecord::getLogicalPath, logicalPath)
+                .eq(FileUploadRecord::getStatus, UPLOADING);
+        if (currentUploadRecordId != null) {
+            query.ne(FileUploadRecord::getId, currentUploadRecordId);
+        }
+        query.last("LIMIT 1");
+        return !fileUploadRecordDao.selectList(query).isEmpty();
+    }
+
+    private long multipartPartSize(long size) {
+        long sizeForMaxPartCount = (size - 1) / MAX_MULTIPART_PARTS + 1;
+        return Math.max(DEFAULT_MULTIPART_PART_SIZE, sizeForMaxPartCount);
+    }
+
+    private int multipartPartCount(Long size, Long partSize) {
+        if (size == null || size <= 0 || partSize == null || partSize <= 0) {
+            throw invalid("分片上传参数无效");
+        }
+        return Math.toIntExact((size - 1) / partSize + 1);
     }
 
     private void validateUploadItems(Integer ownerId, List<UploadItem> items) {

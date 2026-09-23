@@ -90,6 +90,42 @@ public class S3CompatibleFileResourceStorageProvider implements FileResourceStor
     }
 
     @Override
+    public String initiateMultipartUpload(String objectKey, String contentType) {
+        return objectStorageClient.initiateMultipartUpload(
+                writeConnectionParam(), validateObjectKey(objectKey), contentType);
+    }
+
+    @Override
+    public String presignMultipartUploadPart(
+            String objectKey, String uploadId, int partNumber, long expiresInMillis) {
+        return objectStorageClient.presignMultipartUploadPart(
+                browserConnectionParam(),
+                validateObjectKey(objectKey),
+                uploadId,
+                partNumber,
+                expiresInMillis);
+    }
+
+    @Override
+    public String completeMultipartUpload(
+            String objectKey, String uploadId, List<StorageUploadPart> parts) {
+        return objectStorageClient.completeMultipartUpload(
+                writeConnectionParam(),
+                validateObjectKey(objectKey),
+                uploadId,
+                parts.stream()
+                        .map(part -> new com.amazonaws.services.s3.model.PartETag(
+                                part.partNumber(), part.etag()))
+                        .toList());
+    }
+
+    @Override
+    public void abortMultipartUpload(String objectKey, String uploadId) {
+        objectStorageClient.abortMultipartUpload(
+                writeConnectionParam(), validateObjectKey(objectKey), uploadId);
+    }
+
+    @Override
     public void createDirectory(String objectKey) {
         String key = validateObjectKey(objectKey) + "/";
         objectStorageClient.putObject(
@@ -219,6 +255,18 @@ public class S3CompatibleFileResourceStorageProvider implements FileResourceStor
         if (param.getRequestTimeoutMs() == null || param.getRequestTimeoutMs() <= 0) {
             param.setRequestTimeoutMs(30000);
         }
+        return param;
+    }
+
+    private S3ConnectionParam browserConnectionParam() {
+        S3ConnectionParam param = writeConnectionParam();
+        param.setEndpoint(required(
+                StringUtils.defaultIfBlank(
+                        properties.getUploadEndpoint(),
+                        StringUtils.defaultIfBlank(properties.getRuntimeEndpoint(), legacyRuntimeEndpoint())),
+                "SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_UPLOAD_ENDPOINT",
+                "SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_RUNTIME_ENDPOINT",
+                "SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ENDPOINT"));
         return param;
     }
 

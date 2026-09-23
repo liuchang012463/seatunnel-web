@@ -4,6 +4,9 @@ import type {
   FileResourceListParams,
   FileResourcePage,
   FileResourcePagination,
+  FileResourceMultipartPartUrl,
+  FileResourceMultipartUploadSession,
+  FileResourceUploadProgress,
   FileResourceUploadItem,
   FileResourceUploadRecord,
   FileResourceUploadRecordPage,
@@ -25,6 +28,177 @@ function queryString(params: Record<string, unknown>): string {
 
 export function responseError<T>(response: Partial<ApiResponse<T>>, fallback: string): Error {
   return new Error(response.message || response.msg || fallback);
+}
+
+const MAX_PART_URLS_PER_REQUEST = 32;
+const MAX_PARALLEL_UPLOAD_PARTS = 4;
+let activeUploadParts = 0;
+const uploadPartWaiters: Array<() => void> = [];
+
+async function withUploadPartSlot<T>(upload: () => Promise<T>): Promise<T> {
+  if (activeUploadParts >= MAX_PARALLEL_UPLOAD_PARTS) {
+    await new Promise<void>((resolve) => uploadPartWaiters.push(resolve));
+  } else {
+    activeUploadParts += 1;
+  }
+  try {
+    return await upload();
+  } finally {
+    const next = uploadPartWaiters.shift();
+    if (next) next();
+    else activeUploadParts -= 1;
+  }
+}
+
+function uploadBlob(
+  url: string,
+  body: Blob,
+  onProgress: (loaded: number) => void,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url, true);
+    xhr.withCredentials = false;
+    xhr.timeout = 30 * 60 * 1000;
+    xhr.upload.onprogress = (event) => onProgress(event.loaded);
+    xhr.onerror = () => reject(new Error('无法连接 MinIO，请检查浏览器上传地址和跨域配置'));
+    xhr.onabort = () => reject(new Error('文件上传已取消'));
+    xhr.ontimeout = () => reject(new Error('MinIO 分片上传超时，请重试'));
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(`MinIO 分片上传失败（HTTP ${xhr.status}）`));
+        return;
+      }
+      const etag = xhr.getResponseHeader('ETag');
+      if (!etag) {
+        reject(new Error('MinIO 未返回 ETag，请检查跨域响应头配置'));
+        return;
+      }
+      resolve(etag);
+    };
+    xhr.send(body);
+  });
+}
+
+async function requestPartUrls(
+  uploadRecordId: string,
+  partNumbers: number[],
+): Promise<FileResourceMultipartPartUrl[]> {
+  const response = await HttpUtils.post<FileResourceMultipartPartUrl[]>(
+    `${FILE_RESOURCE_API_PREFIX}/multipart-uploads/${encodeURIComponent(uploadRecordId)}/parts`,
+    { partNumbers },
+  );
+  if (response.code !== 0) throw responseError(response, '获取 MinIO 分片上传地址失败');
+  if (!Array.isArray(response.data)) throw new Error('MinIO 分片上传地址响应无效');
+  return response.data;
+}
+
+async function uploadMultipartFile(
+  path: string,
+  item: FileResourceUploadItem,
+  onProgress?: (progress: FileResourceUploadProgress) => void,
+): Promise<{ resource: FileResourceEntry; uploadRecordId: string }> {
+  const { file } = item;
+  const initResponse = await HttpUtils.post<FileResourceMultipartUploadSession>(
+    `${FILE_RESOURCE_API_PREFIX}/multipart-uploads`,
+    {
+      path: normalizeResourcePath(path),
+      relativePath: item.relativePath || file.name,
+      size: file.size,
+      contentType: file.type || 'application/octet-stream',
+    },
+  );
+  if (initResponse.code !== 0) throw responseError(initResponse, '创建 MinIO 分片上传会话失败');
+  const session = initResponse.data;
+  if (!session?.uploadRecordId || !session.partSizeBytes || !session.totalParts) {
+    throw new Error('MinIO 分片上传会话响应无效');
+  }
+
+  const uploadedBytes = new Map<number, number>();
+  const etags = new Map<number, string>();
+  const reportProgress = () => {
+    const loaded = Math.min(file.size, [...uploadedBytes.values()].reduce((sum, value) => sum + value, 0));
+    onProgress?.({
+      loaded,
+      total: file.size,
+      percent: Math.min(99, Math.floor((loaded / file.size) * 100)),
+    });
+  };
+
+  try {
+    for (let offset = 0; offset < session.totalParts; offset += MAX_PART_URLS_PER_REQUEST) {
+      const partNumbers = Array.from(
+        { length: Math.min(MAX_PART_URLS_PER_REQUEST, session.totalParts - offset) },
+        (_, index) => offset + index + 1,
+      );
+      const urls = await requestPartUrls(session.uploadRecordId, partNumbers);
+      const urlByPart = new Map(urls.map(({ partNumber, url }) => [partNumber, url]));
+      if (partNumbers.some((partNumber) => !urlByPart.has(partNumber))) {
+        throw new Error('MinIO 分片上传地址不完整');
+      }
+
+      let nextIndex = 0;
+      const worker = async () => {
+        while (nextIndex < partNumbers.length) {
+          const partNumber = partNumbers[nextIndex++];
+          const start = (partNumber - 1) * session.partSizeBytes;
+          const end = Math.min(file.size, start + session.partSizeBytes);
+          const blob = file.slice(start, end);
+          uploadedBytes.set(partNumber, 0);
+          reportProgress();
+          const etag = await withUploadPartSlot(() =>
+            uploadBlob(urlByPart.get(partNumber)!, blob, (loaded) => {
+              uploadedBytes.set(partNumber, Math.min(loaded, blob.size));
+              reportProgress();
+            }),
+          );
+          uploadedBytes.set(partNumber, blob.size);
+          etags.set(partNumber, etag);
+          reportProgress();
+        }
+      };
+      const workerResults = await Promise.allSettled(
+        Array.from({ length: Math.min(MAX_PARALLEL_UPLOAD_PARTS, partNumbers.length) }, worker),
+      );
+      const failedWorker = workerResults.find((result) => result.status === 'rejected');
+      if (failedWorker?.status === 'rejected') throw failedWorker.reason;
+    }
+
+    const completeResponse = await HttpUtils.post<FileResourceEntry>(
+      `${FILE_RESOURCE_API_PREFIX}/multipart-uploads/${encodeURIComponent(session.uploadRecordId)}/complete`,
+      {
+        parts: Array.from(etags, ([partNumber, etag]) => ({ partNumber, etag }))
+          .sort((left, right) => left.partNumber - right.partNumber),
+      },
+    );
+    if (completeResponse.code !== 0) throw responseError(completeResponse, '完成 MinIO 分片上传失败');
+    if (!completeResponse.data) throw new Error('MinIO 分片上传完成响应无效');
+    onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
+    return { resource: completeResponse.data, uploadRecordId: session.uploadRecordId };
+  } catch (error) {
+    await HttpUtils.delete(
+      `${FILE_RESOURCE_API_PREFIX}/multipart-uploads/${encodeURIComponent(session.uploadRecordId)}`,
+    ).catch(() => undefined);
+    throw error;
+  }
+}
+
+async function uploadEmptyFile(
+  path: string,
+  item: FileResourceUploadItem,
+): Promise<{ resource: FileResourceEntry; uploadRecordId?: string }> {
+  const formData = new FormData();
+  formData.append('path', normalizeResourcePath(path));
+  formData.append('files', item.file, item.file.name);
+  formData.append('relativePaths', item.relativePath || item.file.name);
+  const response = await HttpUtils.postForm<FileResourceUploadResponse>(
+    `${FILE_RESOURCE_API_PREFIX}/upload`,
+    formData,
+  );
+  if (response.code !== 0) throw responseError(response, '文件上传失败');
+  const resource = Array.isArray(response.data) ? response.data[0] : response.data?.resources?.[0];
+  if (!resource) throw new Error('文件上传完成响应无效');
+  return { resource, uploadRecordId: response.data?.uploadRecordId as string | undefined };
 }
 
 export async function fetchFileResourcePage(
@@ -57,24 +231,18 @@ export async function createFileResourceDirectory(
 export async function uploadFileResources(
   path: string,
   files: FileResourceUploadItem[],
+  onProgress?: (progress: FileResourceUploadProgress, item: FileResourceUploadItem) => void,
 ): Promise<FileResourceUploadResponse | undefined> {
-  const formData = new FormData();
-  formData.append('path', normalizeResourcePath(path));
-  files.forEach(({ file, relativePath }) => {
-    formData.append('files', file, file.name);
-    formData.append('relativePaths', relativePath || file.name);
-  });
-
-  const response = await HttpUtils.postForm<FileResourceUploadResponse>(`${FILE_RESOURCE_API_PREFIX}/upload`, formData);
-  if (response.code !== 0) throw responseError(response, '文件上传失败');
-  if (Array.isArray(response.data)) {
-    return {
-      resources: response.data,
-      uploaded: response.data.length,
-      total: response.data.length,
-    };
+  const resources: FileResourceEntry[] = [];
+  let uploadRecordId: string | undefined;
+  for (const item of files) {
+    const result = item.file.size === 0
+      ? await uploadEmptyFile(path, item)
+      : await uploadMultipartFile(path, item, (progress) => onProgress?.(progress, item));
+    resources.push(result.resource);
+    uploadRecordId = result.uploadRecordId || uploadRecordId;
   }
-  return response.data;
+  return { resources, uploaded: resources.length, total: files.length, uploadRecordId };
 }
 
 export async function deleteFileResource(resource: Pick<FileResourceEntry, 'id' | 'path' | 'objectKey'>): Promise<void> {

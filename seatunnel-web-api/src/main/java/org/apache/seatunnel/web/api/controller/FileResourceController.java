@@ -6,11 +6,16 @@ import jakarta.annotation.Resource;
 import org.apache.seatunnel.web.api.service.FileResourceService;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceDirectoryDTO;
+import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartCompleteRequestDTO;
+import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartPartsRequestDTO;
+import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartUploadRequestDTO;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourcePreviewDTO;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceUploadRecordQueryDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
+import org.apache.seatunnel.web.spi.bean.vo.FileResourceMultipartPartUrlVO;
+import org.apache.seatunnel.web.spi.bean.vo.FileResourceMultipartUploadVO;
 import org.apache.seatunnel.web.spi.bean.vo.FileUploadRecordVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.http.ContentDisposition;
@@ -68,6 +73,36 @@ public class FileResourceController {
             @RequestParam("files") MultipartFile[] files,
             @RequestParam(value = "relativePaths", required = false) String[] relativePaths) {
         return Result.buildSuc(fileResourceService.upload(path, files, relativePaths));
+    }
+
+    @PostMapping("/multipart-uploads")
+    @Operation(summary = "initiateFileResourceMultipartUpload", description = "为大文件创建 MinIO 分片上传会话")
+    public Result<FileResourceMultipartUploadVO> initiateMultipartUpload(
+            @RequestBody FileResourceMultipartUploadRequestDTO request) {
+        return Result.buildSuc(fileResourceService.initiateMultipartUpload(request));
+    }
+
+    @PostMapping("/multipart-uploads/{uploadRecordId}/parts")
+    @Operation(summary = "presignFileResourceMultipartParts", description = "生成限定分片的短时上传地址")
+    public Result<List<FileResourceMultipartPartUrlVO>> presignMultipartUploadParts(
+            @PathVariable("uploadRecordId") Long uploadRecordId,
+            @RequestBody FileResourceMultipartPartsRequestDTO request) {
+        return Result.buildSuc(fileResourceService.presignMultipartUploadParts(uploadRecordId, request));
+    }
+
+    @PostMapping("/multipart-uploads/{uploadRecordId}/complete")
+    @Operation(summary = "completeFileResourceMultipartUpload", description = "完成 MinIO 分片上传并登记文件资源")
+    public Result<FileResourceVO> completeMultipartUpload(
+            @PathVariable("uploadRecordId") Long uploadRecordId,
+            @RequestBody FileResourceMultipartCompleteRequestDTO request) {
+        return Result.buildSuc(fileResourceService.completeMultipartUpload(uploadRecordId, request));
+    }
+
+    @DeleteMapping("/multipart-uploads/{uploadRecordId}")
+    @Operation(summary = "abortFileResourceMultipartUpload", description = "取消并清理未完成的 MinIO 分片上传")
+    public Result<Boolean> abortMultipartUpload(@PathVariable("uploadRecordId") Long uploadRecordId) {
+        fileResourceService.abortMultipartUpload(uploadRecordId);
+        return Result.buildSuc(true);
     }
 
     @DeleteMapping("/{id}")

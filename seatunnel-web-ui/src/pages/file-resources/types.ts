@@ -62,6 +62,23 @@ export interface FileResourceUploadResponse {
   [key: string]: unknown;
 }
 
+export interface FileResourceMultipartUploadSession {
+  uploadRecordId: string;
+  partSizeBytes: number;
+  totalParts: number;
+}
+
+export interface FileResourceMultipartPartUrl {
+  partNumber: number;
+  url: string;
+}
+
+export interface FileResourceUploadProgress {
+  loaded: number;
+  total: number;
+  percent: number;
+}
+
 export type FileResourceUploadRecordStatus = 'PENDING' | 'UPLOADING' | 'SUCCESS' | 'PARTIAL' | 'FAILED' | string;
 
 export interface FileResourceUploadRecord {

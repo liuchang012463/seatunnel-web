@@ -20,6 +20,16 @@ public class FileUploadRecord extends BaseEntity {
 
     private String targetPath;
 
+    private String logicalPath;
+
+    private String objectKey;
+
+    private String contentType;
+
+    private String multipartUploadId;
+
+    private Long partSize;
+
     private Integer totalFiles;
 
     private Long totalSize;
