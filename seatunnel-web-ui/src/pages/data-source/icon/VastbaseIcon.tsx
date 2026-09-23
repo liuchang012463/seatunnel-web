@@ -7,7 +7,7 @@ type VastbaseIconProps = {
 
 /** Official Vastdata mark used by Vastbase in datasource selectors. */
 const VastbaseIcon: React.FC<VastbaseIconProps> = ({ width = 24, height = 24 }) => (
-  <svg width={width} height={height} viewBox="0 0 50 48" role="img" aria-label="Vastbase">
+  <svg width={width} height={height} viewBox="0 0 50 48" role="img" aria-label="海量（Vastbase）">
     <defs>
       <radialGradient id="vastbase-mark-gradient" cx="24.7" cy="23.7" r="24.6" gradientUnits="userSpaceOnUse">
         <stop stopColor="#FFC80F" />

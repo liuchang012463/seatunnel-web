@@ -112,7 +112,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
         createDataSourceOption("MySql", "MYSQL"),
         createDataSourceOption("Oracle", "ORACLE"),
         createDataSourceOption("PostgreSQL", "POSTGRE_SQL"),
-        createDataSourceOption("Vastbase", "VASTBASE"),
+        createDataSourceOption("海量（Vastbase）", "VASTBASE"),
         createDataSourceOption("Doris", "DORIS"),
         createDataSourceOption("Elasticsearch", "ELASTICSEARCH"),
         createDataSourceOption("Kingbase", "KINGBASE"),

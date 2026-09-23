@@ -45,7 +45,7 @@ const DATA_SOURCE_CONFIG: Record<
   MYSQL: { icon: MysqlIcon, displayName: 'MySQL' },
   ORACLE: { icon: OracleIcon, displayName: 'ORACLE' },
   POSTGRE_SQL: { icon: PostgreSQL, displayName: 'PostgreSQL' },
-  VASTBASE: { icon: VastbaseIcon, displayName: 'Vastbase' },
+  VASTBASE: { icon: VastbaseIcon, displayName: '海量（Vastbase）' },
   DORIS: { icon: DorisIcon, displayName: 'Doris' },
   KINGBASE: { icon: KingBaseIcon, displayName: 'Kingbase' },
   DAMENG: { icon: DaMengIcon, displayName: 'Dameng' },
