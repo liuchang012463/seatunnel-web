@@ -13,6 +13,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.seatunnel.web.api.fileresource.FileResourceMqNotifier;
 import org.apache.seatunnel.web.api.fileresource.FileResourcePathUtils;
 import org.apache.seatunnel.web.api.fileresource.FileResourceReferenceChecker;
 import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProvider;
@@ -105,6 +106,9 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
 
     @Resource
     private ObjectProvider<FileResourceReferenceChecker> referenceCheckers;
+
+    @Resource
+    private FileResourceMqNotifier fileResourceMqNotifier;
 
     @Override
     public List<FileResourceVO> list(String path) {
@@ -220,6 +224,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
                     mutations.add(new ResourceMutation(resource.getId(),
                             previousStatus));
                 }
+                fileResourceMqNotifier.notifyUploaded(resource, record.getId());
             }
             markUploadRecord(record, SUCCESS, null);
             return items.stream()

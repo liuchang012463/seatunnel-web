@@ -13,7 +13,7 @@
 export default {
   dev: {
     '/api/': {
-      target: 'http://192.168.100.95:9527',
+      target: 'http://localhost:9527',
       changeOrigin: true,
       pathRewrite: { '^/api': '/api' },
     },

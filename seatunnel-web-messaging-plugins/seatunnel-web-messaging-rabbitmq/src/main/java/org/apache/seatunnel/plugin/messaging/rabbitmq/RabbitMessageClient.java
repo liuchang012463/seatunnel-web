@@ -3,9 +3,7 @@ package org.apache.seatunnel.plugin.messaging.rabbitmq;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.GetResponse;
-import com.rabbitmq.client.MessageProperties;
 import org.apache.seatunnel.plugin.messaging.api.MessageClient;
 import org.apache.seatunnel.plugin.messaging.api.MessageConnectionParam;
 import org.apache.seatunnel.plugin.messaging.api.MessageConnectionResources;
@@ -29,10 +27,9 @@ import java.util.Map;
  * for pull.
  *
  * <p>
- * <b>Stateless by design.</b> Mirrors the alarm family, where the channel
- * worker holds no resources and receives everything per call. All connection
- * state lives in {@link RabbitConnectionResources}, created and released inside
- * each method.
+ * Connections are shared via {@link RabbitConnectionManager}: each call borrows
+ * a channel and returns it in {@code close()}. The TCP + AMQP handshake and
+ * reachability {@code verify} run only when a shared connection is (re)created.
  * </p>
  *
  * <h3>Delivery semantics — read before "fixing"</h3>
@@ -57,7 +54,7 @@ public class RabbitMessageClient implements MessageClient {
     private static final Logger LOG = LoggerFactory.getLogger(RabbitMessageClient.class);
 
     /**
-     * Queue probed by {@link RabbitConnectionResources#verify()}.
+     * Queue probed when a shared connection is first established.
      *
      * <p>A library-provided, virtually always-present queue, used only for a
      * read-only reachability probe. It is never read from or written to.</p>
@@ -76,6 +73,19 @@ public class RabbitMessageClient implements MessageClient {
      */
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    private final RabbitConnectionManager connections;
+
+    public RabbitMessageClient() {
+        this(RabbitConnectionManager.shared());
+    }
+
+    /**
+     * Package-visible for tests that need an isolated manager.
+     */
+    RabbitMessageClient(RabbitConnectionManager connections) {
+        this.connections = connections;
+    }
+
     @Override
     public MessagePushResult push(MessageConnectionParam param, MessagePushCommand command) {
         if (param == null) {
@@ -88,20 +98,20 @@ public class RabbitMessageClient implements MessageClient {
         String queue = trimToNull(command.getQueue());
         String exchange = command.getExchange() == null ? "" : command.getExchange().trim();
 
-        if (exchange.isEmpty() && queue == null) {
-            return MessagePushResult.fail("exchange 为空时 queue 必填");
-        }
-        // When publishing to the default exchange the queue name IS the routing
-        // key (decision D4); otherwise fall back to the queue name if the caller
-        // gave no explicit routing key.
+        // When publishing to the default exchange the routing key IS the queue
+        // name (decision D4). Accept either queue or an explicit routingKey.
         String routingKey = trimToNull(command.getRoutingKey());
         if (routingKey == null) {
             routingKey = queue;
         }
         if (exchange.isEmpty()) {
-            routingKey = queue;
-        }
-        if (routingKey == null) {
+            if (queue != null) {
+                routingKey = queue;
+            }
+            if (routingKey == null) {
+                return MessagePushResult.fail("exchange 为空时 queue 或 routingKey 必填");
+            }
+        } else if (routingKey == null) {
             return MessagePushResult.fail("routingKey 不能为空");
         }
 
@@ -115,18 +125,19 @@ public class RabbitMessageClient implements MessageClient {
 
         AMQP.BasicProperties properties = buildProperties(command);
 
-        try (MessageConnectionResources res = open(param)) {
+        try (MessageConnectionResources res = connections.borrow(param)) {
             Channel channel = (Channel) res.channel();
             try {
                 channel.basicPublish(exchange, routingKey, properties, body);
             } catch (java.io.IOException e) {
+                invalidateIfBorrowed(res);
                 LOG.warn("RabbitMQ 投递失败, host={}:{}, queue={}, exchange={}, routingKey={}",
                         param.getHost(), param.resolvePort(), queue, exchange, routingKey, e);
                 return MessagePushResult.fail(mapIoFailure(e));
             }
             return MessagePushResult.success(exchange, routingKey, body.length);
         } catch (Exception e) {
-            // Covers both a failed open() and a failed publish. open() throws
+            // Covers both a failed borrow and a failed publish. borrow() throws
             // MessageException with no cause for its own validation failures, so
             // treat it as retryable only when it wraps an underlying cause;
             // otherwise it is a configuration problem the caller must fix.
@@ -162,7 +173,7 @@ public class RabbitMessageClient implements MessageClient {
         long deadline = startedAt + timeoutMs;
         List<MessagePullItem> items = new ArrayList<>();
 
-        try (MessageConnectionResources res = open(param)) {
+        try (MessageConnectionResources res = connections.borrow(param)) {
             Channel channel = (Channel) res.channel();
             try {
                 // Loop until the batch is full or the queue is drained. Returning
@@ -176,6 +187,7 @@ public class RabbitMessageClient implements MessageClient {
                     items.add(toItem(response));
                 }
             } catch (java.io.IOException e) {
+                invalidateIfBorrowed(res);
                 LOG.warn("RabbitMQ 拉取失败, host={}:{}, queue={}",
                         param.getHost(), param.resolvePort(), queue, e);
                 return MessagePullResult.fail(mapIoFailure(e));
@@ -193,65 +205,9 @@ public class RabbitMessageClient implements MessageClient {
         return MessagePullResult.of(items, items.size() == limit, elapsed);
     }
 
-    /**
-     * Open a fresh connection + channel, then prove the session works before
-     * handing it to the caller.
-     */
-    private MessageConnectionResources open(MessageConnectionParam param) {
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setHost(param.getHost());
-        factory.setPort(param.resolvePort());
-        factory.setVirtualHost(param.resolveVirtualHost());
-        factory.setUsername(param.getUsername());
-        factory.setPassword(param.getPassword());
-        factory.setConnectionTimeout(param.resolveConnectionTimeoutMs());
-        if (param.isSslEnabled()) {
-            try {
-                factory.useSslProtocol();
-            } catch (Exception e) {
-                // Caller-fixable: the JVM lacks a usable TLS setup. No cause is
-                // attached so this surfaces as an exception, not a result.
-                LOG.warn("初始化 TLS 失败", e);
-                throw new MessageException("启用 TLS 失败，请检查配置");
-            }
-        }
-
-        com.rabbitmq.client.Connection connection = null;
-        Channel channel = null;
-        try {
-            connection = factory.newConnection("seatunnel-web-messaging");
-            channel = connection.createChannel();
-            RabbitConnectionResources resources =
-                    new RabbitConnectionResources(connection, channel, param);
-            resources.verify();
-            return resources;
-        } catch (Exception e) {
-            // Clean up the partial open; otherwise a failed verify leaks a live
-            // connection until the broker's heartbeat timeout kills it.
-            closeQuietly(channel, connection);
-            if (e instanceof MessageException) {
-                throw (MessageException) e;
-            }
-            LOG.warn("建立 RabbitMQ 连接失败, host={}:{}, vhost={}",
-                    param.getHost(), param.resolvePort(), param.resolveVirtualHost(), e);
-            throw new MessageException("MQ 连接失败，请检查配置", e);
-        }
-    }
-
-    private void closeQuietly(Channel channel, com.rabbitmq.client.Connection connection) {
-        try {
-            if (channel != null && channel.isOpen()) {
-                channel.close();
-            }
-        } catch (Exception ignored) {
-            // best effort during failure cleanup
-        }
-        try {
-            if (connection != null && connection.isOpen()) {
-                connection.close();
-            }
-        } catch (Exception ignored) {
-            // best effort during failure cleanup
+    private void invalidateIfBorrowed(MessageConnectionResources res) {
+        if (res instanceof RabbitConnectionManager.BorrowedChannelResources) {
+            ((RabbitConnectionManager.BorrowedChannelResources) res).invalidateShared();
         }
     }
 
@@ -327,7 +283,7 @@ public class RabbitMessageClient implements MessageClient {
      * </p>
      * <ul>
      *   <li><b>No cause</b> — raised by this class's own validation or by
-     *       {@code open()}'s argument checks (e.g. "启用 TLS 失败"). The caller
+     *       connection-manager argument checks (e.g. "启用 TLS 失败"). The caller
      *       must change the request; retrying the same input is pointless.</li>
      *   <li><b>With a cause</b> — wraps a transport failure such as
      *       {@code Connection refused}. This is an expected operational
