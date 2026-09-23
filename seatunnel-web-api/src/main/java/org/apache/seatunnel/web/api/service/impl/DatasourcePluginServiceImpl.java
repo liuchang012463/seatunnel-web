@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -46,12 +47,50 @@ public class DatasourcePluginServiceImpl implements DatasourcePluginService {
             return response;
         }
 
+        List<FormFieldConfig> currentFields = refreshDamengFormSchema(dbType, config);
+        if (currentFields != null) {
+            PluginConfigResponse response = new PluginConfigResponse();
+            response.setPluginType(config.getPluginType());
+            response.setFormFields(currentFields);
+            return response;
+        }
+
         ObjectNode schema = parseSchema(config.getConfigSchema());
 
         PluginConfigResponse response = new PluginConfigResponse();
         response.setPluginType(config.getPluginType());
         response.setFormFields(parseConfigSchema(schema));
         return response;
+    }
+
+    /**
+     * The plugin form schema is persisted when a plugin is installed.  Dameng's
+     * database/owner semantics are part of the runtime contract, so an older
+     * persisted schema must not keep presenting the generic JDBC labels after an
+     * application upgrade.
+     */
+    private List<FormFieldConfig> refreshDamengFormSchema(
+            DbType dbType, DataSourcePluginConfig config) {
+        if (!DbType.DAMENG.equals(dbType)) {
+            return null;
+        }
+
+        try {
+            DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
+            List<FormFieldConfig> fields = processor.generateFormFields();
+            ObjectNode schema = JSONUtils.createObjectNode();
+            schema.set("fields", JSONUtils.toJsonNode(fields));
+            String currentSchema = JSONUtils.toJsonString(schema);
+            if (!Objects.equals(currentSchema, config.getConfigSchema())) {
+                config.setConfigSchema(currentSchema);
+                config.initUpdate();
+                dataSourcePluginConfigDao.updatePluginConfig(config);
+            }
+            return fields;
+        } catch (Exception e) {
+            log.warn("Failed to refresh Dameng plugin form schema; using stored schema", e);
+            return null;
+        }
     }
 
     @Override

@@ -158,6 +158,14 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             // 修改也需要限制，离线任务下次运行时会导致任务被变更
             checkDataSourceNotUsed(id);
 
+            // Dameng's database field is also the catalog part of generated
+            // table paths. Revalidate the live instance before persisting an
+            // edited connection so an old, semantically invalid datasource
+            // cannot continue producing bad HOCON.
+            if (dto.getDbType() == DbType.DAMENG) {
+                checkConnection(dto.getDbType(), connectionParam);
+            }
+
             DataSource entity = ConvertUtil.sourceToTarget(dto, DataSource.class);
             entity.setId(id);
             entity.setName(dto.getName().trim());

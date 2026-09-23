@@ -20,6 +20,20 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = true)
 public class DamengConnectionParam extends BaseConnectionParam {
     /**
+     * Dameng JDBC connects to an instance, while SeaTunnel still needs the
+     * physical database name as the catalog part of a table path.  Keep this
+     * field local to the Dameng form so the UI does not present the generic
+     * JDBC "database" label without that distinction.
+     */
+    @FormField(
+            label = "数据库实例",
+            required = true,
+            order = 3,
+            description = "填写 V$DATABASE.NAME，例如 DAMENG；不要填写表 Owner"
+    )
+    protected String database;
+
+    /**
      * Database Port
      */
     @FormField(label = "端口号", defaultValue = "5236", required = true, order = 2, type = FieldType.NUMBER, placeholder = "Please enter the port")
@@ -28,7 +42,14 @@ public class DamengConnectionParam extends BaseConnectionParam {
     /**
      * Schema Name
      */
-    @FormField(label = "模式", order = 4, required = false, defaultValue = "SYSDBA", placeholder = "Please enter the schema name")
+    @FormField(
+            label = "模式/Owner",
+            order = 4,
+            required = false,
+            defaultValue = "SYSDBA",
+            placeholder = "例如 XXTX",
+            description = "填写表的 Schema/Owner；登录用户 SYSDBA 不等于表 Owner"
+    )
     protected String schemaName;
 
     @FormField(

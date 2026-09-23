@@ -134,6 +134,10 @@ public class JdbcTableNameResolver {
         }
 
         String trimmed = table.trim();
+        if (isDameng(config, conn)) {
+            return normalizeDamengSourceTablePath(database, schema, trimmed);
+        }
+
         if (isPostgreSql(config, conn)) {
             return normalizePostgreSqlSourceTablePath(database, schema, trimmed);
         }
@@ -147,6 +151,41 @@ public class JdbcTableNameResolver {
         }
 
         return buildTablePath(database, schema, trimmed);
+    }
+
+    private String normalizeDamengSourceTablePath(String database, String schema, String table) {
+        String[] parts = StringUtils.split(table, '.');
+        if (parts == null || parts.length == 0) {
+            return "";
+        }
+
+        if (parts.length >= 3) {
+            if (StringUtils.isBlank(database)
+                    || StringUtils.equalsIgnoreCase(parts[0].trim(), database.trim())) {
+                return TablePath.of(
+                        normalizeBlank(database),
+                        parts[1].trim(),
+                        parts[2].trim()).getFullName();
+            }
+
+            throw new IllegalArgumentException(
+                    "Dameng source table path database ["
+                            + parts[0].trim()
+                            + "] does not match the configured database instance ["
+                            + database.trim()
+                            + "]; reselect the table after refreshing metadata");
+        }
+
+        if (parts.length == 2) {
+            if (StringUtils.isBlank(database)) {
+                return table;
+            }
+
+            // Dameng's two-part table path is schema.table, not database.table.
+            return TablePath.of(database.trim(), parts[0].trim(), parts[1].trim()).getFullName();
+        }
+
+        return buildTablePath(database, schema, parts[0].trim());
     }
 
     public String buildTablePath(String database, String schema, String table) {
@@ -240,24 +279,27 @@ public class JdbcTableNameResolver {
                 || containsIgnoreCase(conn, PLUGIN_NAME, "postgres")
                 || containsIgnoreCase(config, PLUGIN_NAME, "kingbase")
                 || containsIgnoreCase(conn, PLUGIN_NAME, "kingbase")
-                || containsIgnoreCase(config, PLUGIN_NAME, "dameng")
-                || containsIgnoreCase(conn, PLUGIN_NAME, "dameng")
                 || containsIgnoreCase(config, DB_TYPE, "postgre")
                 || containsIgnoreCase(conn, DB_TYPE, "postgre")
                 || containsIgnoreCase(config, DB_TYPE, "kingbase")
                 || containsIgnoreCase(conn, DB_TYPE, "kingbase")
-                || containsIgnoreCase(config, DB_TYPE, "dameng")
-                || containsIgnoreCase(conn, DB_TYPE, "dameng")
                 || containsIgnoreCase(config, DRIVER, "postgresql")
                 || containsIgnoreCase(conn, DRIVER, "postgresql")
                 || containsIgnoreCase(config, DRIVER, "kingbase")
                 || containsIgnoreCase(conn, DRIVER, "kingbase")
-                || containsIgnoreCase(config, DRIVER, "dm.jdbc")
-                || containsIgnoreCase(conn, DRIVER, "dm.jdbc")
                 || startsWithIgnoreCase(config, URL, "jdbc:postgresql:")
                 || startsWithIgnoreCase(conn, URL, "jdbc:postgresql:")
                 || startsWithIgnoreCase(config, URL, "jdbc:kingbase8:")
-                || startsWithIgnoreCase(conn, URL, "jdbc:kingbase8:")
+                || startsWithIgnoreCase(conn, URL, "jdbc:kingbase8:");
+    }
+
+    private boolean isDameng(Config config, Config conn) {
+        return containsIgnoreCase(config, PLUGIN_NAME, "dameng")
+                || containsIgnoreCase(conn, PLUGIN_NAME, "dameng")
+                || containsIgnoreCase(config, DB_TYPE, "dameng")
+                || containsIgnoreCase(conn, DB_TYPE, "dameng")
+                || containsIgnoreCase(config, DRIVER, "dm.jdbc")
+                || containsIgnoreCase(conn, DRIVER, "dm.jdbc")
                 || startsWithIgnoreCase(config, URL, "jdbc:dm:")
                 || startsWithIgnoreCase(conn, URL, "jdbc:dm:");
     }

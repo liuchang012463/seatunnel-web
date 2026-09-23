@@ -7,9 +7,13 @@ import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.TablePath;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
+import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -17,6 +21,12 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class DamengCatalog extends AbstractJdbcCatalog {
+
+    private static final String INSTANCE_NAME_SQL = "SELECT name FROM v$database";
+    private static final String LIST_SCHEMA_SQL =
+            "SELECT DISTINCT OWNER FROM ALL_TABLES "
+                    + "WHERE OWNER NOT IN ('SYS', 'SYSAUDITOR', 'SYSSSO', 'CTISYS') "
+                    + "ORDER BY OWNER";
 
     private static final String SELECT_COLUMNS_SQL_TEMPLATE =
             "SELECT COLUMN_NAME, DATA_TYPE, NULLABLE, COLUMN_ID FROM ALL_TAB_COLUMNS "
@@ -109,6 +119,63 @@ public class DamengCatalog extends AbstractJdbcCatalog {
                 + quoteIdentifier(tablePath.getTableName());
     }
 
+    /**
+     * Dameng's JDBC metadata catalog is not a reliable source for the
+     * physical instance name.  Use the same authoritative value that the
+     * SeaTunnel table path requires.
+     */
+    @Override
+    public List<OptionVO> listDatabaseOptions() {
+        try (Connection connection = getConnection();
+                PreparedStatement statement = connection.prepareStatement(INSTANCE_NAME_SQL);
+                ResultSet resultSet = statement.executeQuery()) {
+            List<OptionVO> options = new ArrayList<>();
+            while (resultSet.next()) {
+                addOption(options, resultSet.getString(1));
+            }
+            return options;
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed listing Dameng database instance", e);
+        }
+    }
+
+    /**
+     * Dameng schemas are table owners.  Returning them from ALL_TABLES keeps
+     * the database -> schema -> table selectors on the same namespace as the
+     * metadata preview and generated HOCON.
+     */
+    @Override
+    public List<OptionVO> listSchemaOptions(String databaseName) {
+        try {
+            return queryOptions(LIST_SCHEMA_SQL, null);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed listing Dameng schema owners", e);
+        }
+    }
+
+    /**
+     * When an Owner is selected, return only table names.  The source HOCON
+     * builder then combines the physical database, Owner, and table exactly
+     * once instead of receiving an ambiguous database.table value.
+     */
+    @Override
+    public List<OptionVO> listTableOptions(String databaseName, String schemaName) {
+        boolean ownerSpecified = StringUtils.isNotBlank(schemaName);
+        String sql = ownerSpecified
+                ? "SELECT TABLE_NAME FROM ALL_TABLES "
+                        + "WHERE UPPER(OWNER) = UPPER(?) "
+                        + "ORDER BY TABLE_NAME"
+                : "SELECT OWNER || '.' || TABLE_NAME AS table_path FROM ALL_TABLES "
+                        + "WHERE OWNER NOT IN ('SYS', 'SYSAUDITOR', 'SYSSSO', 'CTISYS') "
+                        + "ORDER BY OWNER, TABLE_NAME";
+
+        try {
+            return queryOptions(sql, ownerSpecified ? schemaName.trim() : null);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed listing Dameng tables", e);
+        }
+    }
+
     @Override
     protected String getSelectColumnsSql(TablePath tablePath) {
         return String.format(
@@ -132,5 +199,33 @@ public class DamengCatalog extends AbstractJdbcCatalog {
                 resolveOwnerForTablePath(tablePath),
                 resolveTableName(tablePath),
                 quotedColumnNames);
+    }
+
+    private List<OptionVO> queryOptions(String sql, String owner) throws SQLException {
+        try (Connection connection = getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            if (StringUtils.isNotBlank(owner)) {
+                statement.setString(1, owner);
+            }
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<OptionVO> options = new ArrayList<>();
+                while (resultSet.next()) {
+                    addOption(options, resultSet.getString(1));
+                }
+                return options;
+            }
+        }
+    }
+
+    private void addOption(List<OptionVO> options, String value) {
+        if (StringUtils.isBlank(value)) {
+            return;
+        }
+
+        OptionVO option = new OptionVO();
+        option.setValue(value.trim());
+        option.setLabel(value.trim());
+        options.add(option);
     }
 }

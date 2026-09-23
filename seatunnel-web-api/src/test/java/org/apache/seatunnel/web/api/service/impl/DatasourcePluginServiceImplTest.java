@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -71,5 +74,26 @@ class DatasourcePluginServiceImplTest {
         verify(dao).updatePluginConfig(config);
         assertTrue(config.getConfigSchema().contains("authenticationType=BASIC"));
         assertTrue(config.getConfigSchema().contains("填写 API 服务的根地址"));
+    }
+
+    @Test
+    void refreshesStaleDamengFormSchemaBeforeReturningIt() {
+        DataSourcePluginConfigDao dao = mock(DataSourcePluginConfigDao.class);
+        DataSourcePluginConfig config = new DataSourcePluginConfig();
+        config.setPluginType(DbType.DAMENG);
+        config.setConfigSchema("{\"fields\":[{\"key\":\"database\",\"label\":\"数据库\"}]}");
+        when(dao.queryByPluginType(DbType.DAMENG)).thenReturn(config);
+
+        DatasourcePluginServiceImpl service = new DatasourcePluginServiceImpl();
+        ReflectionTestUtils.setField(service, "dataSourcePluginConfigDao", dao);
+
+        List<FormFieldConfig> fields = service.getPluginConfig("DAMENG").getFormFields();
+        Map<String, FormFieldConfig> fieldsByKey = fields.stream()
+                .collect(Collectors.toMap(FormFieldConfig::getKey, Function.identity()));
+
+        assertEquals("数据库实例", fieldsByKey.get("database").getLabel());
+        assertEquals("模式/Owner", fieldsByKey.get("schemaName").getLabel());
+        verify(dao).updatePluginConfig(config);
+        assertTrue(config.getConfigSchema().contains("数据库实例"));
     }
 }

@@ -12,6 +12,10 @@ final class JdbcSinkSchemaResolver {
     }
 
     static String normalizeSingleTable(Config config, Config conn, String database, String table) {
+        if (isDameng(config, conn)) {
+            return normalizeDamengSingleTable(config, conn, database, table);
+        }
+
         String schema = resolvePostgreSqlSchema(config, conn);
         if (StringUtils.isBlank(schema) || StringUtils.isBlank(table)) {
             return table;
@@ -45,6 +49,11 @@ final class JdbcSinkSchemaResolver {
     }
 
     static String defaultMultiTablePattern(Config config, Config conn) {
+        if (isDameng(config, conn)) {
+            String owner = resolveDamengSchema(config, conn);
+            return StringUtils.isBlank(owner) ? TABLE_NAME_PLACEHOLDER : owner + "." + TABLE_NAME_PLACEHOLDER;
+        }
+
         String schema = resolvePostgreSqlSchema(config, conn);
         if (StringUtils.isBlank(schema)) {
             return TABLE_NAME_PLACEHOLDER;
@@ -74,6 +83,80 @@ final class JdbcSinkSchemaResolver {
         return isPostgreSql(config, conn) ? "public" : "";
     }
 
+    private static String normalizeDamengSingleTable(
+            Config config, Config conn, String database, String table) {
+        if (StringUtils.isBlank(table)) {
+            return table;
+        }
+
+        String owner = resolveDamengSchema(config, conn);
+        String[] parts = StringUtils.split(table.trim(), '.');
+        if (parts == null || parts.length == 0) {
+            return table.trim();
+        }
+
+        if (parts.length >= 3) {
+            if (StringUtils.isNotBlank(database)
+                    && !StringUtils.equalsIgnoreCase(parts[0].trim(), database.trim())) {
+                throw new IllegalArgumentException(
+                        "Dameng sink table path database ["
+                                + parts[0].trim()
+                                + "] does not match the configured database instance ["
+                                + database.trim()
+                                + "]");
+            }
+
+            assertOwnerMatches(owner, parts[1].trim());
+            return parts[1].trim() + "." + parts[2].trim();
+        }
+
+        if (parts.length == 2) {
+            String firstPart = parts[0].trim();
+            String tableName = parts[1].trim();
+            if (StringUtils.isBlank(owner)) {
+                return firstPart + "." + tableName;
+            }
+
+            if (StringUtils.equalsIgnoreCase(firstPart, owner)) {
+                return firstPart + "." + tableName;
+            }
+
+            if (StringUtils.isNotBlank(database)
+                    && StringUtils.equalsIgnoreCase(firstPart, database.trim())) {
+                return owner + "." + tableName;
+            }
+
+            throw new IllegalArgumentException(
+                    "Dameng sink table path owner ["
+                            + firstPart
+                            + "] does not match the configured Schema/Owner ["
+                            + owner
+                            + "]");
+        }
+
+        return StringUtils.isBlank(owner) ? parts[0].trim() : owner + "." + parts[0].trim();
+    }
+
+    private static String resolveDamengSchema(Config config, Config conn) {
+        return firstNonBlank(
+                JdbcConfigReaders.getString(config, SCHEMA, ""),
+                JdbcConfigReaders.getString(config, SCHEMA_NAME, ""),
+                JdbcConfigReaders.getString(conn, SCHEMA, ""),
+                JdbcConfigReaders.getString(conn, SCHEMA_NAME, ""));
+    }
+
+    private static void assertOwnerMatches(String configuredOwner, String actualOwner) {
+        if (StringUtils.isNotBlank(configuredOwner)
+                && !StringUtils.equalsIgnoreCase(configuredOwner.trim(), actualOwner)) {
+            throw new IllegalArgumentException(
+                    "Dameng table path owner ["
+                            + actualOwner
+                            + "] does not match the configured Schema/Owner ["
+                            + configuredOwner.trim()
+                            + "]");
+        }
+    }
+
     private static boolean isDatabaseOnly(Config config, Config conn) {
         return containsIgnoreCase(config, DB_TYPE, "mysql")
                 || containsIgnoreCase(conn, DB_TYPE, "mysql")
@@ -100,18 +183,23 @@ final class JdbcSinkSchemaResolver {
                 || containsIgnoreCase(conn, DB_TYPE, "postgre")
                 || containsIgnoreCase(config, DB_TYPE, "kingbase")
                 || containsIgnoreCase(conn, DB_TYPE, "kingbase")
-                || containsIgnoreCase(config, DB_TYPE, "dameng")
-                || containsIgnoreCase(conn, DB_TYPE, "dameng")
                 || containsIgnoreCase(config, DRIVER, "postgresql")
                 || containsIgnoreCase(conn, DRIVER, "postgresql")
                 || containsIgnoreCase(config, DRIVER, "kingbase")
                 || containsIgnoreCase(conn, DRIVER, "kingbase")
-                || containsIgnoreCase(config, DRIVER, "dm.jdbc")
-                || containsIgnoreCase(conn, DRIVER, "dm.jdbc")
                 || startsWithIgnoreCase(config, URL, "jdbc:postgresql:")
                 || startsWithIgnoreCase(conn, URL, "jdbc:postgresql:")
                 || startsWithIgnoreCase(config, URL, "jdbc:kingbase8:")
-                || startsWithIgnoreCase(conn, URL, "jdbc:kingbase8:")
+                || startsWithIgnoreCase(conn, URL, "jdbc:kingbase8:");
+    }
+
+    private static boolean isDameng(Config config, Config conn) {
+        return containsIgnoreCase(config, PLUGIN_NAME, "dameng")
+                || containsIgnoreCase(conn, PLUGIN_NAME, "dameng")
+                || containsIgnoreCase(config, DB_TYPE, "dameng")
+                || containsIgnoreCase(conn, DB_TYPE, "dameng")
+                || containsIgnoreCase(config, DRIVER, "dm.jdbc")
+                || containsIgnoreCase(conn, DRIVER, "dm.jdbc")
                 || startsWithIgnoreCase(config, URL, "jdbc:dm:")
                 || startsWithIgnoreCase(conn, URL, "jdbc:dm:");
     }

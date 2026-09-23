@@ -31,26 +31,18 @@ public class DamengBatchBuilder extends AbstractJdbcBatchBuilder {
     }
 
     @Override
+    public Config buildSourceHocon(HoconBuildContext context) {
+        return super.buildSourceHocon(normalizeContext(context));
+    }
+
+    @Override
     public Config buildSinkHocon(HoconBuildContext context) {
-        Config config = super.buildSinkHocon(context);
+        Config config = super.buildSinkHocon(normalizeContext(context));
 
         if (!config.hasPath("dialect")) {
             config =
                     config.withValue(
                             "dialect", ConfigValueFactory.fromAnyRef(DAMENG_DIALECT));
-        }
-
-        // Engine DamengCatalog.databaseExists checks v$database by exact name, then
-        // createDatabaseInternal throws UnsupportedOperationException when it misses.
-        // The Web "database" field is often a URL path segment, not the instance name.
-        String configured =
-                config.hasPath("database") ? StringUtils.trimToEmpty(config.getString("database")) : "";
-        String physicalName = resolvePhysicalDatabaseName(context, configured);
-        if (StringUtils.isNotBlank(physicalName)
-                && !physicalName.equals(configured)) {
-            config =
-                    config.withValue(
-                            "database", ConfigValueFactory.fromAnyRef(physicalName));
         }
 
         // SeaTunnel Engine 2.3.13 DamengCreateTableSqlBuilder concatenates
@@ -59,6 +51,48 @@ public class DamengBatchBuilder extends AbstractJdbcBatchBuilder {
         // Engine can create tables; comments are still best-effort there.
 
         return config;
+    }
+
+    /**
+     * Source and sink must use the same live database instance name.  The
+     * connection form can contain a legacy URL/database value, so normalize
+     * both connection and node config before the generic JDBC builders create
+     * table paths.
+     */
+    private HoconBuildContext normalizeContext(HoconBuildContext context) {
+        if (context == null || context.getConnectionConfig() == null) {
+            return context;
+        }
+
+        Config connection = context.getConnectionConfig();
+        String configured = connection.hasPath("database")
+                ? StringUtils.trimToEmpty(connection.getString("database"))
+                : "";
+        String physicalName = resolvePhysicalDatabaseName(context, configured);
+        if (StringUtils.isBlank(physicalName)) {
+            return context;
+        }
+
+        Config normalizedConnection = connection.withValue(
+                "database", ConfigValueFactory.fromAnyRef(physicalName));
+
+        Config node = context.getNodeConfig();
+        if (node != null) {
+            node = node.withValue(
+                    "database", ConfigValueFactory.fromAnyRef(physicalName));
+        }
+
+        return HoconBuildContext.builder()
+                .connectionParam(context.getConnectionParam())
+                .connectionConfig(normalizedConnection)
+                .nodeConfig(node)
+                .stage(context.getStage())
+                .scheduleConfig(context.getScheduleConfig())
+                .hasTransform(context.isHasTransform())
+                .dataSourceId(context.getDataSourceId())
+                .dataSourceName(context.getDataSourceName())
+                .dbType(context.getDbType())
+                .build();
     }
 
     /**
@@ -130,12 +164,6 @@ public class DamengBatchBuilder extends AbstractJdbcBatchBuilder {
             return first;
         }
         return second;
-    }
-
-    @Override
-    protected String buildTablePath(String database, String schemaName, String table) {
-        String schema = StringUtils.isNotBlank(schemaName) ? schemaName : "SYSDBA";
-        return String.format("%s.%s.%s", database, schema, table);
     }
 
     @Override
