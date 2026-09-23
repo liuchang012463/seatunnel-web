@@ -2,7 +2,107 @@
 
 这些脚本用于固定版本核验和重复执行 Sprint 0 smoke。它们只调用 OpenMetadata Server 的 `/api/v1/...` REST API；不会访问 Airflow `:8082`、Airflow `/api` 或任何 managed API。OpenMetadata 自己通过其 PipelineServiceClient 控制编排器，这是本设计允许的边界。
 
-## 标准化 CustomDatabase 扩展
+## 推荐方案：一个 bind 目录覆盖全部扩展
+
+运行时固定使用官方基础镜像 `openmetadata/ingestion:1.12.10`。当前已经验证的
+Kingbase、Dameng、Vastbase 扩展代码、JDBC 驱动以及 `JayDeBeApi/JPype1` 运行时依赖
+统一放在一个宿主机目录中；以后增加扩展时只更新这个目录，不重新构建 ingestion 镜像。
+
+当前目录包含的数据库扩展：
+
+| 数据库 | OpenMetadata `sourcePythonClass` | 驱动 |
+| --- | --- | --- |
+| Kingbase | `kingbase_connector.kingbase_source.KingbaseSource` | `kingbase8-8.6.0.jar` |
+| Dameng | `dameng_connector.dameng_source.DamengSource` | `DmJdbcDriver8.jar`（目录内保留其他版本） |
+| Vastbase | `metadata.ingestion.source.database.customdatabase.vastbase_connector.vastbase_source.VastbaseSource` | `Vastbase-G100-2.16_pg_2026062910.jar` |
+
+Kingbase 和 Dameng 的 JDBC Python 依赖为 `JayDeBeApi 1.2.3`、`JPype1 1.7.1`；两者及
+JPype 的本机扩展文件也一并放在挂载目录内。Vastbase 复用同一个 CustomDatabase loader。
+
+### 一次性准备扩展目录
+
+下面的命令从已经导入的三库镜像中提取当前全部扩展。三库镜像只作为一次性资产来源，
+不是后续运行时镜像：
+
+```bash
+OPENMETADATA_EXTENSIONS_SOURCE_IMAGE=openmetadata/ingestion:1.12.10-kingbase-dameng-vastbase \
+OPENMETADATA_EXTENSION_DIR=/mnt/lc/open_metadata/extensions/ingestion-1.12.10 \
+  tools/openmetadata/install-ingestion-extensions.sh
+```
+
+如果内网给镜像重新打了标签，只替换 `OPENMETADATA_EXTENSIONS_SOURCE_IMAGE`；目标目录
+结构不需要变化。
+
+目录结构约定如下：
+
+```text
+ingestion-1.12.10/
+├── connectors/                         # 顶层 Python connector（当前 Dameng/Kingbase）
+│   ├── dameng_connector/
+│   └── kingbase_connector/
+├── drivers/                            # JDBC 驱动
+│   ├── dameng/
+│   ├── kingbase/
+│   └── vastbase/
+└── python/
+    ├── sitecustomize.py                 # 自动接入路径和驱动默认值
+    ├── jaydebeapi/
+    ├── jpype/
+    ├── _jpype.so / org.jpype.jar         # JPype 本机模块和运行时 jar
+    ├── *.dist-info/                      # JayDeBeApi/JPype1 版本元数据
+    └── metadata/.../customdatabase/     # OM CustomDatabase loader/Vastbase
+```
+
+### Compose 只挂载一个目录
+
+将 ingestion 服务改为官方基础镜像，删除旧的
+`...:/home/airflow/.local/lib/python3.10/site-packages/metadata/ingestion/source/database/customdatabase:ro`
+挂载，只保留下面这一条扩展目录挂载，并在 `PYTHONPATH` 前面加入扩展目录的 Python 根。
+保留镜像和当前 Compose 已有的其余路径：
+
+```yaml
+ingestion:
+  image: openmetadata/ingestion:1.12.10
+  environment:
+    PYTHONPATH: "/opt/om-extensions/python:/opt:/usr/python/lib/python3.10/site-packages:/home/airflow/.local/lib/python3.10/site-packages"
+    PYTHONDONTWRITEBYTECODE: "1"
+  volumes:
+    - /mnt/lc/open_metadata/extensions/ingestion-1.12.10:/opt/om-extensions:ro
+```
+
+原有的 Airflow DAG、临时目录等 volume 继续保留。`sitecustomize.py` 会自动：
+
+1. 将 `connectors/` 加入 Python 搜索路径；
+2. 将 `metadata/.../customdatabase` 接到官方 OM `metadata` 包；
+3. 为三套 JDBC 驱动设置默认路径，同时保留显式环境变量覆盖能力。
+
+切换前可执行只读验证，不会启动或重启 Compose 服务：
+
+```bash
+OPENMETADATA_INGESTION_IMAGE=openmetadata/ingestion:1.12.10 \
+OPENMETADATA_EXTENSION_DIR=/mnt/lc/open_metadata/extensions/ingestion-1.12.10 \
+  tools/openmetadata/verify-ingestion-extensions.sh
+```
+
+### 后续增加扩展
+
+在同一个宿主机目录中按约定增加文件即可：
+
+- 新的顶层 connector 放到 `connectors/<package>/`；
+- 新的 OM CustomDatabase 子包放到 `python/metadata/ingestion/source/database/customdatabase/<package>/`；
+- JDBC 驱动放到 `drivers/<name>/`；
+- Python 依赖的包目录和对应 `*.dist-info` 放到 `python/`；
+- 新 connector 从 `OPENMETADATA_EXTENSION_ROOT` 拼出自己的驱动路径；需要固定环境变量时，
+  在同目录的 `python/sitecustomize.py` 增加默认值。
+
+更新 bind 目录后不需要重打镜像；如果 Airflow/ingestion 进程已经缓存了旧模块，重启
+ingestion 容器或重新创建对应 pipeline 进程即可。
+
+不要把扩展目录挂载到 `/opt`、`/home/airflow/.local/lib/python3.10/site-packages`
+等非专用路径，否则会遮蔽基础镜像已有文件。Docker 的 bind mount 默认可写，本方案使用
+`:ro` 保证容器不能修改宿主机扩展文件。
+
+## 兼容旧方案：只挂 CustomDatabase 目录
 
 当前部署通过 `openmetadata_ingestion` 的只读 bind mount 加载
 `customdatabase-om-1.12.10.0`，扩展 Python 包不需要重新构建 ingestion 镜像。
@@ -101,7 +201,9 @@ export SMOKE_PROFILER_TABLE_FILTER='^table$'
 }
 ```
 
-Doris、PostgreSQL 使用 OpenMetadata 1.12.10 spec 中对应的 connection schema；Oracle 与 Dameng/Kingbase 当前延期，不要把 Kingbase 连接配置改写为 PostgreSQL 来取得假通过。
+Doris、PostgreSQL 使用 OpenMetadata 1.12.10 spec 中对应的 connection schema。Kingbase、Dameng、
+Vastbase 使用当前 CustomDatabase 扩展和各自的 `sourcePythonClass`；不要把它们改写成 PostgreSQL
+连接来取得假通过。Oracle 仍按其单独验收状态处理。
 
 脚本步骤：
 
@@ -142,6 +244,7 @@ tools/openmetadata/smoke-test.sh
 
 `docs/openmetadata/openmetadata-1.12.10-api-contract.md`
 
-## Gate 结果原则
+## 历史 Gate 记录
 
-当前硬 Gate 为 MySQL、PostgreSQL、Doris，三库必须各自有可复现的真实闭环证据。Oracle、Dameng、Kingbase 按用户范围确认记为 `DEFERRED`，不使用 `CustomDatabase`/`Postgres` 兼容配置冒充通过；延后项不阻塞 Sprint 1，但不代表这些数据库已支持或 MVP 已全部完成。
+下面的 MySQL/PostgreSQL/Doris Gate 范围是早期 Sprint 0 的历史记录；当前 Kingbase、Dameng、Vastbase
+扩展及其真实验收情况以本文件开头的扩展清单和对应验收报告为准。历史延期结论不代表当前支持矩阵。
