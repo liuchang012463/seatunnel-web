@@ -1,6 +1,8 @@
 package org.apache.seatunnel.web.api.message;
 
 import lombok.Data;
+import org.apache.seatunnel.plugin.messaging.api.MessageConnectionParam;
+import org.apache.seatunnel.plugin.messaging.api.MessageException;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -8,10 +10,14 @@ import org.springframework.stereotype.Component;
  * Configuration for the generic message push/pull endpoints.
  *
  * <p>
- * Bound from the {@code seatunnel.message.*} block. Every value has an
- * environment-variable override so operators can tune the service without
- * rebuilding, and so the API key never has to be committed to
- * {@code application.yml}.
+ * Bound from the {@code seatunnel.message.*} block. Broker credentials live
+ * here (and in environment overrides) — callers no longer pass {@code connection}
+ * on each request.
+ * </p>
+ *
+ * <p>
+ * These endpoints do not use an API key. Access control, if needed, belongs
+ * outside this service (network policy, reverse proxy, etc.).
  * </p>
  */
 @Data
@@ -20,15 +26,9 @@ import org.springframework.stereotype.Component;
 public class MessageProperties {
 
     /**
-     * Shared secret required in the {@code X-Api-Key} header.
-     *
-     * <p><b>Blank means authentication is disabled entirely</b> (design
-     * decision F1). That keeps local development frictionless, but it also
-     * means an unconfigured deployment exposes these endpoints to anyone who
-     * can reach them. Production deployments must set
-     * {@code SEATUNNEL_MESSAGE_API_KEY}.</p>
+     * Platform-owned RabbitMQ broker used by push/pull.
      */
-    private String apiKey = "";
+    private Broker broker = new Broker();
 
     /**
      * Maximum accepted payload size in bytes. Default 1 MB (decision D2).
@@ -64,9 +64,52 @@ public class MessageProperties {
     private int maxNumberLength = 1000;
 
     /**
-     * Whether authentication is active.
+     * Whether the configured broker has the minimum fields to attempt a connect.
      */
-    public boolean isAuthEnabled() {
-        return apiKey != null && !apiKey.isBlank();
+    public boolean isBrokerConfigured() {
+        return broker != null
+                && broker.getHost() != null && !broker.getHost().isBlank()
+                && broker.getUsername() != null && !broker.getUsername().isBlank();
+    }
+
+    /**
+     * Build the connection param used by the messaging SPI.
+     *
+     * @throws MessageException when host/username are missing
+     */
+    public MessageConnectionParam toConnectionParam() {
+        if (!isBrokerConfigured()) {
+            throw new MessageException("消息队列未配置");
+        }
+        MessageConnectionParam param = new MessageConnectionParam();
+        param.setHost(broker.getHost().trim());
+        param.setPort(broker.getPort());
+        param.setVirtualHost(broker.getVirtualHost());
+        param.setUsername(broker.getUsername().trim());
+        param.setPassword(broker.getPassword());
+        param.setSslEnabled(broker.getSslEnabled());
+        param.setConnectionTimeoutMs(broker.getConnectionTimeoutMs());
+        return param;
+    }
+
+    /**
+     * RabbitMQ broker connection settings under {@code seatunnel.message.broker}.
+     */
+    @Data
+    public static class Broker {
+
+        private String host = "127.0.0.1";
+
+        private Integer port = 5672;
+
+        private String virtualHost = "/";
+
+        private String username = "guest";
+
+        private String password = "guest";
+
+        private Boolean sslEnabled = Boolean.FALSE;
+
+        private Integer connectionTimeoutMs = 10_000;
     }
 }

@@ -1,16 +1,18 @@
 package org.apache.seatunnel.web.api.controller.message;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import org.apache.seatunnel.plugin.messaging.api.MessageConnectionParam;
 
 import java.util.Map;
 
 /**
  * Request body for {@code POST /api/v1/message/push}.
+ *
+ * <p>
+ * Broker credentials come from {@code seatunnel.message.broker} on the server.
+ * The caller only supplies the destination and payload.
+ * </p>
  *
  * <p>
  * {@link #message} is typed as {@link JsonNode} on purpose: the payload
@@ -21,14 +23,6 @@ import java.util.Map;
  */
 @Data
 public class MessagePushRequest {
-
-    /**
-     * Target broker connection. Full credentials are supplied per request
-     * (design decision A3) — the platform stores no broker credentials.
-     */
-    @NotNull(message = "connection 不能为空")
-    @Valid
-    private MessageConnectionParam connection;
 
     /**
      * Broker type resolved against the SPI registry.
@@ -72,7 +66,7 @@ public class MessagePushRequest {
     /**
      * Default broker type when the caller does not specify one.
      *
-     * <p>Not annotated with {@link NotBlank} because a blank value is meant to
+     * <p>Not annotated with {@code NotBlank} because a blank value is meant to
      * fall back rather than fail.</p>
      */
     public String resolveClientType() {

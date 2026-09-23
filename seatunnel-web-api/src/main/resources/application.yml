@@ -151,15 +151,17 @@ seatunnel:
       fixed-delay-ms: 60000
 
   # Generic message push/pull endpoints (/api/v1/message/**).
-  #
-  # SECURITY: api-key intentionally defaults to EMPTY, which disables
-  # authentication on these endpoints. That is fine for local development but
-  # unacceptable in production — set SEATUNNEL_MESSAGE_API_KEY there.
-  # Never commit the real key into this file; the default must stay blank so a
-  # misconfigured deployment fails closed-by-explicit-choice rather than by
-  # shipping a known secret.
+  # No API key: these endpoints are open to any caller that can reach the port.
+  # Broker credentials come from this block (or env overrides), not from the request body.
   message:
-    api-key: ${SEATUNNEL_MESSAGE_API_KEY:sk-common-interface}
+    broker:
+      host: ${SEATUNNEL_MESSAGE_BROKER_HOST:127.0.0.1}
+      port: ${SEATUNNEL_MESSAGE_BROKER_PORT:5672}
+      virtual-host: ${SEATUNNEL_MESSAGE_BROKER_VHOST:/}
+      username: ${SEATUNNEL_MESSAGE_BROKER_USERNAME:admin}
+      password: ${SEATUNNEL_MESSAGE_BROKER_PASSWORD:admin123}
+      ssl-enabled: ${SEATUNNEL_MESSAGE_BROKER_SSL_ENABLED:false}
+      connection-timeout-ms: ${SEATUNNEL_MESSAGE_BROKER_CONNECTION_TIMEOUT_MS:10000}
     # Maximum accepted payload size: 1MB
     max-body-bytes: ${SEATUNNEL_MESSAGE_MAX_BODY_BYTES:1048576}
     # Hard ceiling on one pull, regardless of what the caller requests
@@ -201,6 +203,12 @@ seatunnel:
         path-style-access: ${SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_PATH_STYLE_ACCESS:true}
         connect-timeout-ms: ${SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_CONNECT_TIMEOUT_MS:10000}
         request-timeout-ms: ${SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_REQUEST_TIMEOUT_MS:30000}
+    # Best-effort MQ notify after file-resource upload (exchange + routing key).
+    # Broker connection uses seatunnel.message.broker.
+    file-mq:
+      enabled: ${SEATUNNEL_WEB_FILE_MQ_ENABLED:true}
+      exchange: ${SEATUNNEL_WEB_FILE_MQ_EXCHANGE:}
+      routing-key: ${SEATUNNEL_WEB_FILE_MQ_ROUTING_KEY:order.sync}
 
 # OpenMetadata Server connection is managed only in 运行运维 → 探查引擎管理.
 # The metadata.openmetadata.* fields below are unused at runtime (legacy shape

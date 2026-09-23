@@ -16,7 +16,7 @@
 1. **推送**：把一段 JSON 消息写进 RabbitMQ
 2. **拉取**：从 RabbitMQ 取出一批 JSON 消息
 
-约束：调用方在请求中同时传入**目标 RabbitMQ 的连接配置**；消息为 **JSON 格式但内部结构不固定**。
+约束：RabbitMQ 连接由服务端 YAML / 环境变量配置（`seatunnel.message.broker`）；调用方只传队列与载荷；消息为 **JSON 格式但内部结构不固定**。
 
 ---
 
@@ -25,13 +25,14 @@
 | # | 决策项 | 结论 | 影响 |
 | --- | --- | --- | --- |
 | A | 调用方 | **外部系统**（推 + 拉双向） | 定位为对外开放通道，需准入控制 |
-| A3 | 配置传递 | 调用方传**完整**连接配置（含用户名密码） | 接口签名含连接信息；不做 host 白名单 |
+| A3 | 配置传递 | **服务端 YAML 配置**唯一 broker（含用户名密码） | 请求体不再含 `connection` |
 | A4 | 防护 | 仅做**可达性校验**，不做 SSRF 防护 | 已知风险，见 §9 |
-| F1 | 鉴权 | **API Key，可配；未配置则不校验** | 见 §7.3 |
+| F1 | 鉴权 | **不做 API Key**；接口开放 | 准入依赖网络层 |
+
 | B1 | 批量 | `maxMessages` 调用方指定，服务端**硬截断**（默认 100） | 防内存耗尽 |
 | B2 | ack | 只做两个接口，**AUTO 模式** | **接受 at-most-once，可能丢消息** |
 | B3 | 取数 | `basicGet` 循环 + deadline | 请求响应式，非常驻消费者 |
-| C1 | 连接 | **每请求新建、请求内释放** | 抽 `MessageConnectionResources` 接口 |
+| C1 | 连接 | **共享 Connection，每请求借 Channel**（YAML 单 broker 后已实现复用） | `RabbitConnectionManager` |
 | C2 | 错误信息 | **脱敏**返回，完整信息只进服务端日志 | 不外泄内网拓扑 |
 | D1 | 入向格式 | **对象写法**（调用方直接嵌 JSON） | 服务端解析，需防护 |
 | D2 | 大小上限 | **1 MB** | 超限拒绝 |
@@ -42,7 +43,7 @@
 | F3 | 数据源体系 | **不纳入**，不修改 `DbType` 枚举 | 独立工具，非作业组件 |
 | F4 | 客户端版本 | `com.rabbitmq:amqp-client` **5.36.0** | 见 §4.2 |
 
-**一句话定位**：一个对外开放的、尽力而为的消息中继 —— 调用方自带 MQ 配置，平台代其推 / 拉 JSON，**不保证消息不丢**，以 API Key 作为最低限度准入。
+**一句话定位**：一个对外开放的、尽力而为的消息中继 —— 平台用 YAML 配置的 broker 代外部系统推 / 拉 JSON，**不保证消息不丢**，不要求 API Key。
 
 ---
 
@@ -66,7 +67,7 @@ seatunnel-web-messaging-plugins/                 ← 新建聚合模块（packag
 │   └── org.apache.seatunnel.plugin.messaging.rabbitmq
 │       ├── RabbitMessageClientFactory.java      @AutoService(MessageClientFactory.class)
 │       ├── RabbitMessageClient.java             basicPublish / basicGet
-│       └── RabbitConnectionResources.java       每请求新建连接
+│       └── RabbitConnectionManager.java         共享 Connection + 借还 Channel
 └── seatunnel-web-messaging-all/                 ← 运行时聚合（packaging=jar，无源码）
     └── 依赖 messaging-rabbitmq，保证实现进入运行时 classpath
 ```
@@ -79,15 +80,15 @@ seatunnel-web-messaging-plugins/                 ← 新建聚合模块（packag
 
 ```
 org.apache.seatunnel.web.api.message
-├── MessageProperties.java             配置绑定（seatunnel.message.*）
+├── MessageProperties.java             配置绑定（seatunnel.message.*，含 broker）
 └── plugin/MessagePluginManager.java   照搬 AlarmPluginManager（约 70 行）
 
 org.apache.seatunnel.web.api.controller.message
-├── MessagePushRequest.java            接口层请求体（含 connection）
+├── MessagePushRequest.java            接口层请求体（无 connection）
 └── MessagePullRequest.java
 
 org.apache.seatunnel.web.api.controller
-└── MessageController.java             两个接口 + 内部 API Key 校验
+└── MessageController.java             两个接口（不做 API Key 校验）
 ```
 
 **为什么不放进现有模块**（依据 [`code-analysis-2026-09-21.md`](code-analysis-2026-09-21.md) §2）：
@@ -161,21 +162,11 @@ org.apache.seatunnel.web.api.controller
 
 ```http
 POST /api/v1/message/push
-X-Api-Key: <api-key>            # 仅当配置了 seatunnel.message.api-key 时必填
 Content-Type: application/json
 ```
 
 ```json
 {
-  "connection": {
-    "host": "10.0.0.1",
-    "port": 5672,
-    "virtualHost": "/",
-    "username": "guest",
-    "password": "guest",
-    "sslEnabled": false,
-    "connectionTimeoutMs": 10000
-  },
   "exchange": "",
   "queue": "order.sync",
   "routingKey": "order.sync",
@@ -189,20 +180,14 @@ Content-Type: application/json
 
 | 字段 | 必填 | 默认 | 说明 |
 | --- | --- | --- | --- |
-| `connection` | 是 | — | RabbitMQ 连接配置 |
-| `connection.host` | 是 | — | MQ 主机 |
-| `connection.port` | 否 | `5672` | MQ 端口 |
-| `connection.virtualHost` | 否 | `/` | 虚拟主机 |
-| `connection.username` | 是 | — | 用户名 |
-| `connection.password` | 是 | — | 密码 |
-| `connection.sslEnabled` | 否 | `false` | 是否启用 TLS |
-| `connection.connectionTimeoutMs` | 否 | `10000` | 连接超时 |
 | `exchange` | 否 | `""` | 留空 → 走默认交换机，用 `queue` 当 routingKey 直投 |
 | `queue` | 视情况 | — | `exchange` 为空时必填 |
 | `routingKey` | 否 | 取 `queue` | 走交换机时使用 |
 | `message` | 是 | — | 任意 JSON 对象，服务端解析后原样转发 |
 | `persistent` | 否 | `true` | `true` → `deliveryMode=2` |
 | `headers` | 否 | — | 透传为 AMQP header |
+
+> Broker 连接由 `seatunnel.message.broker` 配置，请求体不再含 `connection`。
 
 **响应**
 
@@ -218,7 +203,6 @@ POST /api/v1/message/pull
 
 ```json
 {
-  "connection": { "...": "同上" },
   "queue": "order.sync",
   "maxMessages": 10,
   "timeoutMs": 3000
@@ -319,18 +303,23 @@ while (items.size() < limit && System.currentTimeMillis() < deadline) {
 - `autoAck = true` 即 AUTO 模式：**拿到即确认，消息出队**
 - `truncated` = `items.size() == limit`
 
-### 6.3 连接生命周期（对应 C1）
+### 6.3 连接生命周期（对应 C1，已演进为复用）
+
+平台 YAML 固定单一 broker 后，RabbitMQ 插件通过 `RabbitConnectionManager`：
+
+- **按 broker 指纹共享一条 AMQP Connection**
+- **每次 push/pull 借用一个 Channel**，`close()` 只关 Channel
+- **`verify`（`queueDeclarePassive`）仅在新建 / 重建 Connection 时执行一次**
+- 传输失败时 `invalidate`，下次请求自动重连
 
 ```java
-public interface MessageConnectionResources extends AutoCloseable {
-    Channel channel();
-    @Override void close();
-}
+try (MessageConnectionResources res = connections.borrow(param)) {
+    Channel channel = (Channel) res.channel();
+    ...
+} // close → 归还 Channel，保留共享 Connection
 ```
 
-`RabbitMessageClient` 内部通过 `try (MessageConnectionResources res = open(param)) { ... }` 使用，保证 `finally` 关闭。
-
-将来若需连接池，新增 `PooledConnectionResources` 实现即可，业务逻辑不动。**本次不实现池。**
+**不再每请求做 TCP+AMQP 握手。** Channel 级借还成本远低于握手。
 
 ### 6.4 错误处理（对应 C2）
 
@@ -340,7 +329,6 @@ public interface MessageConnectionResources extends AutoCloseable {
 | 连接失败 / 认证失败 | 200 | `MQ 连接失败，请检查配置` |
 | 队列不存在 | 200 | `目标队列不存在` |
 | 消息超限 | 200 | `消息体超过 1MB 限制` |
-| API Key 错误或缺失 | 401 | 鉴权失败 |
 
 - **不用 HTTP 5xx**：外部 HTTP 客户端普遍对 5xx 自动重试，而认证失败重试无意义
 - 完整异常（含 host、底层原因）**只写服务端日志**，详略分界见 §6.4.2
@@ -360,7 +348,7 @@ public interface MessageConnectionResources extends AutoCloseable {
 
 具体地：
 
-- `RabbitConnectionResources.verify()` 里「连接/通道已关闭」那条**必须挂 cause** —— 死连接是运营失败
+- `RabbitConnectionManager` 建连探针失败且属「连接已关闭」时**必须挂 cause** —— 死连接是运营失败
 - `RabbitMessageClient.open()` 里 `useSslProtocol()` 失败那条**必须不挂 cause** —— 属配置问题
 
 #### 6.4.2 日志详略的分界（实现阶段补充）
@@ -415,40 +403,24 @@ public String toString() {
 ```yaml
 seatunnel:
   message:
-    api-key: ${SEATUNNEL_MESSAGE_API_KEY:}                                # 空 = 不校验鉴权
+    broker:
+      host: ${SEATUNNEL_MESSAGE_BROKER_HOST:127.0.0.1}
+      port: ${SEATUNNEL_MESSAGE_BROKER_PORT:5672}
+      virtual-host: ${SEATUNNEL_MESSAGE_BROKER_VHOST:/}
+      username: ${SEATUNNEL_MESSAGE_BROKER_USERNAME:guest}
+      password: ${SEATUNNEL_MESSAGE_BROKER_PASSWORD:guest}
+      ssl-enabled: ${SEATUNNEL_MESSAGE_BROKER_SSL_ENABLED:false}
+      connection-timeout-ms: ${SEATUNNEL_MESSAGE_BROKER_CONNECTION_TIMEOUT_MS:10000}
     max-body-bytes: ${SEATUNNEL_MESSAGE_MAX_BODY_BYTES:1048576}           # 1MB
     max-batch-size: ${SEATUNNEL_MESSAGE_MAX_BATCH_SIZE:100}               # 单次 pull 上限
     pull-default-timeout-ms: ${SEATUNNEL_MESSAGE_PULL_DEFAULT_TIMEOUT_MS:3000}
     max-nesting-depth: ${SEATUNNEL_MESSAGE_MAX_NESTING_DEPTH:200}
 ```
 
-### 7.2 环境变量（`.env`，已在 `.gitignore` 中）
+### 7.2 鉴权
 
-```bash
-SEATUNNEL_MESSAGE_API_KEY=st-web-mq-a0b46efa9725c9bdde6031ae1a346c03b4013e980022b604
-```
+消息推拉接口**不做 API Key 校验**，不要求登录。准入依赖部署侧网络策略。Broker 凭据仅来自上述 YAML / 环境变量，不在请求体中传递。
 
-> **禁止**把该值写进 `application.yml` 的默认值 —— 否则重犯 [`code-analysis-2026-09-21.md`](code-analysis-2026-09-21.md) 中 R1 的明文凭据问题。
-
-### 7.3 API Key 校验行为
-
-在 `MessageController` 内用一个私有方法校验（**不改动 `WebMvcConfig.java`**，改动面更小）：
-
-```java
-private void assertApiKey(String providedKey) {
-    if (StringUtils.isBlank(configuredApiKey)) {
-        return;                      // 未配置 → 完全放行
-    }
-    if (!configuredApiKey.equals(providedKey)) {
-        throw new ServiceException(Status.UNAUTHORIZED);   // → HTTP 401
-    }
-}
-```
-
-- 未配置 → 行为与不加鉴权完全一致，本地开发零影响
-- 配置后 → 仅影响 `/api/v1/message/**`，不影响任何现有功能
-
----
 
 ## 8. 实施步骤
 
@@ -487,7 +459,7 @@ private void assertApiKey(String providedKey) {
 | --- | --- |
 | `RabbitMessageClientFactory` | `@AutoService(MessageClientFactory.class)`；`name()` 返回 `"RABBITMQ"`；`create()` 返回 `new RabbitMessageClient()`；`params()` 返回表单字段 |
 | `RabbitMessageClient` | `push()` / `pull()` 实现，§6.2 §6.3 逻辑 |
-| `RabbitConnectionResources` | 实现 `MessageConnectionResources`，持有 `Connection` + `Channel` |
+| `RabbitConnectionManager` | 共享 Connection；每次借 Channel；建连时 verify |
 
 **要点**
 
@@ -512,7 +484,7 @@ private void assertApiKey(String providedKey) {
 
 **实现阶段确认的两点**
 
-1. **鉴权失败走 HTTP 401，其余一律 200。** 共享的 `Status` 枚举里没有鉴权相关条目（已核对全表），因此 `MessageController` 内定义了私有异常 `UnauthorizedException` + 局部 `@ExceptionHandler`，返回 `ResponseEntity.status(401)`。**不改动全局的 `ApiExceptionHandler` / `CustomGlobalExceptionHandler`** —— 那两个是 `@RestControllerAdvice`，改它们会影响全部 45 个 controller。局部 handler 只作用于本 controller。
+1. **业务失败一律 HTTP 200**（`Result.code != 0`）。不做 API Key / 401。
 
 2. **Jackson 解析防护落在接口层**（契约层刻意不引 Jackson）。实现在 `MessagePayloadValidator`：
 `maxNestingDepth=200`、`maxStringLength=1MB`、`maxNumberLength=1000`。1MB 体积校验在**进入 MQ 逻辑之前**完成。
@@ -532,14 +504,14 @@ private void assertApiKey(String providedKey) {
    - `RabbitMessageClientTest`（13）：入参校验、`exchange`/`queue` 组合校验、不可达 broker 返回脱敏失败、错误信息不含 host 与凭据、Result 工厂、任意结构 JSON 往返
    - `MessageConnectionParamTest`（6）：`toString()` 不含明文密码、保留排查字段、默认值回退、null/空白/0 处理
    - `MessagePayloadValidatorTest`（11）：**1MB 上限回归防护**（超限/略超限/未超限/自定义上限）、null 与显式 JSON null、任意嵌套结构、数组根节点、空对象、序列化往返、嵌套深度上限低于 Jackson 默认
-   - `MessageControllerTest`（15）：HTTP 层。鉴权（缺 key / 错 key / 对 key / 未配 key 时跳过）、1MB 超限在进入 MQ 逻辑前被拒、push 的 exchange/queue/routingKey/payload 透传、未知 clientType、pull 的 parseable/不可解析消息整形、`maxMessages` 上限钳制与非正数拒绝、失败不返回 5xx；**异常路径与日志详略**（见 §6.4.2）—— 无 cause 的 `MessageException` 记单行且 `getThrowableProxy()` 为 null，意外异常保留堆栈且内部细节不回传调用方
+   - `MessageControllerTest`：HTTP 层。无 API Key 即可调用、1MB 超限在进入 MQ 逻辑前被拒、push 的 exchange/queue/routingKey/payload 透传、未知 clientType、pull 的 parseable/不可解析消息整形、`maxMessages` 上限钳制与非正数拒绝、失败不返回 5xx；**异常路径与日志详略**（见 §6.4.2）—— 无 cause 的 `MessageException` 记单行且 `getThrowableProxy()` 为 null，意外异常保留堆栈且内部细节不回传调用方
 
    **B. 依赖真实 broker（11 个，**默认不运行**，需显式开启）**
 
    | 测试类 | 用例数 | 覆盖 |
    | --- | --- | --- |
    | `RabbitMessageClientLiveIT` | 6 | MQ 层：任意嵌套 JSON 往返（含中文与 emoji）、空队列、`maxMessages` 边界且剩余消息仍在队列、错误凭据返回脱敏失败而非抛异常、队列不存在给出可读原因、非 JSON 消息降级为 `rawBody` |
-   | `MessageEndpointLiveIT` | 5 | 全链路 HTTP：push→pull 往返、**超限消息体确实未进 broker（回读队列为 0 条）**、错误密码脱敏、缺 key 返回真实 401、未知队列不返回 5xx |
+   | `MessageEndpointLiveIT` | 全链路 HTTP：push→pull 往返、**超限消息体确实未进 broker（回读队列为 0 条）**、错误密码脱敏、未知队列不返回 5xx |
 
    开启方式（两个 IT 均以 `@EnabledIfSystemProperty` 门控，未开启时连测试选择都命中不到，绝不会让无 broker 的机器变红）：
 
@@ -567,7 +539,6 @@ private void assertApiKey(String providedKey) {
 | push → pull 内容一致 | `MessageEndpointLiveIT.pushThenPullOverHttpRoundTripsArbitraryJson` | 通过。任意嵌套 JSON 逐字段一致（树级比对），中文与 emoji 无损 |
 | 超限消息体被拒 **且未进 broker** | `MessageEndpointLiveIT.oversizePayloadIsRejectedBeforeItReachesTheBroker` | 通过。回读队列 0 条——这是 mock 无法伪造的证明 |
 | 错误凭据返回脱敏文案 | `MessageEndpointLiveIT.wrongPasswordIsReportedAsASanitizedFailure` | 通过。响应不含密码、不含异常类名 |
-| 配好 key 后不带 header → 401 | `MessageEndpointLiveIT.missingApiKeyIsRejectedWithAReal401` | 通过。真实 HTTP 401 |
 | `maxMessages` 边界与剩余消息保留 | `RabbitMessageClientLiveIT.pullHonoursMaxMessagesAndLeavesTheRestBehind` | 通过。拉 3 留 2，再次拉取得 2 |
 | 非 JSON 消息降级 | `RabbitMessageClientLiveIT.nonJsonBodyIsReturnedAsRawTextInsteadOfFailing` | 通过。`parseable=false`，`rawBody` 原样 |
 
@@ -582,7 +553,7 @@ private void assertApiKey(String providedKey) {
 
 1. 准备 MySQL（或授权启动 Compose）并生成 `.env`
 2. `scripts/dev-up.sh` 启动后端
-3. 用 `scripts/message-api-demo.sh` 走通：`push` / `pull` / `push-err` / `oversize` / 无 header → 401
+3. 用 `scripts/message-api-demo.sh` 走通：`push` / `pull` / `push-err` / `oversize`
 
 > 注：`scripts/dev-up.sh` 内部调用 `./mvnw`。仓库里 `mvnw` / `mvnw.cmd` 曾是 3.1.0 时代的脚本，
 > 与 `maven-wrapper.properties` 声明的 `wrapperVersion=3.3.4` + `distributionType=only-script` 不一致
@@ -606,8 +577,8 @@ private void assertApiKey(String providedKey) {
 | 2 | **无 SSRF 防护**（A4）。调用方可传任意 host，含 `169.254.169.254` 等元数据地址；「可达性校验」拦不住 | **已接受** |
 | 3 | **密码明文经 HTTP body 传输**（A3）。会进入 body 日志 / 异常堆栈（`toString()` 掩码只解决后者） | **已接受**。建议生产启用 HTTPS |
 | 4 | 无消息持久化 / 审计记录。无法回答「谁在什么时候发了什么」 | 已接受（仅日志可查） |
-| 5 | 每请求新建 AMQP 连接，高频场景会拖慢服务端 | 已接受（C1）。单次握手约 10–50 ms |
-| 6 | API Key 为静态共享密钥，无法区分具体对接方 | 已接受。将来可扩展为多 Key |
+| 5 | 每请求新建 AMQP 连接曾拖慢高频场景 | **已缓解**：共享 Connection，仅建连时 verify；稳态去掉 10–50ms 握手 |
+| 6 | 接口开放、无 API Key | 已接受。准入依赖网络层 |
 
 > **这些不是遗漏，是有意为之。** 后续维护者请勿擅自「修复」，如需变更请先修订本文档 §2。
 
@@ -646,7 +617,6 @@ private void assertApiKey(String providedKey) {
 - [ ] 确认 `amqp-client` 版本 `5.36.0`
 - [ ] 确认不纳入数据源体系（不修改 `DbType`）
 - [ ] 向对接方确认其 RabbitMQ 的 `max_message_size` 未被调小到 1MB 以下
-- [ ] 确认 `.env` 中已加入 `SEATUNNEL_MESSAGE_API_KEY`
 - [ ] 确认本地/测试环境有可用的 RabbitMQ 实例（联调阶段需要）
 
 ---

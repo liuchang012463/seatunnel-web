@@ -4,12 +4,10 @@ package org.apache.seatunnel.plugin.messaging.api;
  * Connection resources owned by a single push/pull attempt.
  *
  * <p>
- * Per the design decision (C1) each request opens its own connection and
- * releases it before returning. Abstracting the resource handle behind this
- * interface keeps {@link MessageClient} implementations free of any assumption
- * about connection reuse: today every call constructs a fresh
- * implementation; later a pooled variant can be introduced without touching
- * business logic.
+ * Implementations may open a fresh transport or borrow from a shared pool.
+ * The RabbitMQ plugin shares one AMQP connection per broker fingerprint and
+ * lends a channel per call; {@link #close()} releases only what that attempt
+ * owns (typically the channel).
  * </p>
  *
  * <p>
@@ -46,15 +44,17 @@ public interface MessageConnectionResources extends AutoCloseable {
     /**
      * Verify the connection is actually usable.
      *
-     * <p>Opening a socket is not proof of a working broker session, so the
-     * reachability check (design decision A4) performs a minimal round-trip
-     * through this method. Implementations should throw
-     * {@link MessageException} when the check fails.</p>
+     * <p>Pooled implementations may no-op here when the shared session was
+     * already probed at connect time. Opening a socket alone is not proof of a
+     * working broker session, so a first-time connect still performs a minimal
+     * round-trip. Implementations should throw {@link MessageException} when
+     * the check fails.</p>
      */
     void verify();
 
     /**
-     * Release all underlying resources.
+     * Release resources owned by this attempt (not necessarily the shared
+     * connection underneath).
      *
      * <p>Must be idempotent and must swallow individual release failures so
      * that one failed close does not mask another.</p>

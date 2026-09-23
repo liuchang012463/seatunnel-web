@@ -1,24 +1,18 @@
 package org.apache.seatunnel.web.api.controller.message;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import org.apache.seatunnel.plugin.messaging.api.MessageConnectionParam;
 
 /**
  * Request body for {@code POST /api/v1/message/pull}.
+ *
+ * <p>
+ * Broker credentials come from {@code seatunnel.message.broker} on the server.
+ * The caller only supplies the queue and batch limits.
+ * </p>
  */
 @Data
 public class MessagePullRequest {
-
-    /**
-     * Source broker connection. Full credentials are supplied per request
-     * (design decision A3).
-     */
-    @NotNull(message = "connection 不能为空")
-    @Valid
-    private MessageConnectionParam connection;
 
     /**
      * Broker type resolved against the SPI registry.

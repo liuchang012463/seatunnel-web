@@ -99,8 +99,23 @@ class RabbitMessageClientTest {
         MessagePushResult result = client.push(valid(), command);
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getMessage().contains("queue"),
-                "缺少 queue 时错误信息应指明该字段，实际: " + result.getMessage());
+        assertTrue(result.getMessage().contains("queue") || result.getMessage().contains("routingKey"),
+                "缺少 queue/routingKey 时错误信息应指明该字段，实际: " + result.getMessage());
+    }
+
+    @Test
+    void pushShouldAcceptEmptyExchangeWhenRoutingKeyPresent() {
+        MessagePushCommand command = MessagePushCommand.builder()
+                .exchange("")
+                .routingKey("order.sync")
+                .payload(payload())
+                .build();
+
+        // Unreachable broker still fails open, but target resolution must not reject first.
+        MessagePushResult result = client.push(unreachable(), command);
+        assertFalse(result.isSuccess());
+        assertFalse(result.getMessage().contains("queue 或 routingKey"),
+                "有 routingKey 时不应因缺少 queue 被拒，实际: " + result.getMessage());
     }
 
     @Test
