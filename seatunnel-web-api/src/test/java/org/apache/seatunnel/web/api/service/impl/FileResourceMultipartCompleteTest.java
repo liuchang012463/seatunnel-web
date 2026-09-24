@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.FileResource;
 import org.apache.seatunnel.web.dao.entity.FileUploadRecord;
+import org.apache.seatunnel.web.dao.mapper.UserMapper;
 import org.apache.seatunnel.web.dao.repository.FileResourceDao;
 import org.apache.seatunnel.web.dao.repository.FileUploadRecordDao;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartCompleteRequestDTO;
@@ -51,6 +52,7 @@ class FileResourceMultipartCompleteTest {
 
     private FileResourceDao fileResourceDao;
     private FileUploadRecordDao fileUploadRecordDao;
+    private UserMapper userMapper;
     private FileUploadRecordPersistenceService persistenceService;
     private CurrentUserProvider currentUserProvider;
     private FileResourceStorageProvider storageProvider;
@@ -61,6 +63,7 @@ class FileResourceMultipartCompleteTest {
     void setUp() {
         fileResourceDao = mock(FileResourceDao.class);
         fileUploadRecordDao = mock(FileUploadRecordDao.class);
+        userMapper = mock(UserMapper.class);
         persistenceService = mock(FileUploadRecordPersistenceService.class);
         currentUserProvider = mock(CurrentUserProvider.class);
         storageProvider = mock(FileResourceStorageProvider.class);
@@ -70,6 +73,7 @@ class FileResourceMultipartCompleteTest {
                 mock(ObjectProvider.class);
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(OWNER_ID);
+        when(userMapper.selectIdForUpdate(OWNER_ID)).thenReturn(OWNER_ID);
         when(storageProvider.providerType()).thenReturn("S3_COMPATIBLE");
         when(storageProvider.bucket()).thenReturn("demo-bucket");
         when(storageProvider.objectKey(anyString())).thenAnswer(invocation ->
@@ -90,6 +94,7 @@ class FileResourceMultipartCompleteTest {
         service = new FileResourceServiceImpl();
         ReflectionTestUtils.setField(service, "fileResourceDao", fileResourceDao);
         ReflectionTestUtils.setField(service, "fileUploadRecordDao", fileUploadRecordDao);
+        ReflectionTestUtils.setField(service, "userMapper", userMapper);
         ReflectionTestUtils.setField(service, "fileUploadRecordPersistenceService", persistenceService);
         ReflectionTestUtils.setField(service, "currentUserProvider", currentUserProvider);
         ReflectionTestUtils.setField(service, "storageProvider", storageProvider);
@@ -148,7 +153,7 @@ class FileResourceMultipartCompleteTest {
         assertTrue(error.getMessage() != null && error.getMessage().contains("大小与申报不一致"),
                 () -> "unexpected message: " + error.getMessage());
         verify(storageProvider).delete(record.getObjectKey());
-        verify(persistenceService).markFailed(eq(record), anyString());
+        verify(persistenceService).markFailed(eq(RECORD_ID), anyString());
         verify(mqNotifier, never()).notifyUploaded(any(), anyLong());
         assertTrue(TransactionSynchronizationManager.getSynchronizations().isEmpty());
     }
@@ -207,7 +212,7 @@ class FileResourceMultipartCompleteTest {
         assertThrows(ServiceException.class,
                 () -> service.completeMultipartUpload(RECORD_ID, completeRequest(1, "\"part-1\"")));
         verify(storageProvider).abortMultipartUpload(record.getObjectKey(), record.getMultipartUploadId());
-        verify(persistenceService).markFailed(eq(record), anyString());
+        verify(persistenceService).markFailed(eq(RECORD_ID), anyString());
         verify(storageProvider, never()).completeMultipartUpload(anyString(), anyString(), anyList());
         verify(mqNotifier, never()).notifyUploaded(any(), anyLong());
     }

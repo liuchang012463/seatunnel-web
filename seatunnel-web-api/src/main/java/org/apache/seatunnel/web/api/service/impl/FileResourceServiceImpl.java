@@ -28,6 +28,7 @@ import org.apache.seatunnel.web.core.fileresource.FileResourceReference;
 import org.apache.seatunnel.web.core.fileresource.FileResourceResolver;
 import org.apache.seatunnel.web.dao.entity.FileResource;
 import org.apache.seatunnel.web.dao.entity.FileUploadRecord;
+import org.apache.seatunnel.web.dao.mapper.UserMapper;
 import org.apache.seatunnel.web.dao.repository.FileResourceDao;
 import org.apache.seatunnel.web.dao.repository.FileUploadRecordDao;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceDirectoryDTO;
@@ -47,6 +48,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
@@ -107,6 +110,9 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
 
     @Resource
     private FileUploadRecordDao fileUploadRecordDao;
+
+    @Resource
+    private UserMapper userMapper;
 
     @Resource
     private FileUploadRecordPersistenceService fileUploadRecordPersistenceService;
@@ -271,6 +277,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             throw invalid("分片上传文件大小必须在 1 字节到 5 TiB 之间");
         }
         Integer ownerId = currentUserId();
+        lockMultipartUploadOwner(ownerId);
         String targetPath = FileResourcePathUtils.normalizePath(request.getPath());
         String relativePath = FileResourcePathUtils.normalizeRelativePath(request.getRelativePath());
         String logicalPath = FileResourcePathUtils.join(targetPath, relativePath);
@@ -333,6 +340,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public List<FileResourceMultipartPartUrlVO> presignMultipartUploadParts(
             Long uploadRecordId, FileResourceMultipartPartsRequestDTO request) {
         FileUploadRecord record = requireOwnedMultipartUpload(uploadRecordId);
@@ -357,6 +365,10 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
                             partNumber,
                             PRESIGNED_PART_URL_TTL_MILLIS)));
         }
+        record.setUpdateTime(new Date());
+        if (!fileUploadRecordDao.updateById(record)) {
+            throw invalid("分片上传会话已结束或不存在");
+        }
         return urls;
     }
 
@@ -364,6 +376,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     @Transactional(rollbackFor = Exception.class)
     public FileResourceVO completeMultipartUpload(
             Long uploadRecordId, FileResourceMultipartCompleteRequestDTO request) {
+        lockMultipartUploadOwner(currentUserId());
         FileUploadRecord record = requireOwnedUploadRecordForUpdate(uploadRecordId);
         if (SUCCESS.equalsIgnoreCase(record.getStatus())) {
             FileResource existing = fileResourceDao.queryByOwnerAndLogicalPath(
@@ -474,6 +487,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void abortMultipartUpload(Long uploadRecordId) {
+        lockMultipartUploadOwner(currentUserId());
         FileUploadRecord record = requireOwnedUploadRecordForUpdate(uploadRecordId);
         if (!UPLOADING.equalsIgnoreCase(record.getStatus())) {
             return;
@@ -661,7 +675,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     }
 
     private FileUploadRecord requireOwnedMultipartUpload(Long uploadRecordId) {
-        FileUploadRecord record = requireOwnedUploadRecord(uploadRecordId);
+        FileUploadRecord record = requireOwnedUploadRecordForUpdate(uploadRecordId);
         expireIfStaleMultipartUpload(record);
         if (!UPLOADING.equalsIgnoreCase(record.getStatus())
                 || StringUtils.isBlank(record.getMultipartUploadId())
@@ -696,6 +710,12 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             throw invalid("上传会话不存在");
         }
         return record;
+    }
+
+    private void lockMultipartUploadOwner(Integer ownerId) {
+        if (ownerId == null || userMapper.selectIdForUpdate(ownerId) == null) {
+            throw invalid("当前用户不存在");
+        }
     }
 
     private void validateMultipartUploadPath(
@@ -739,6 +759,15 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             query.ne(FileUploadRecord::getId, currentUploadRecordId);
         }
         for (FileUploadRecord candidate : fileUploadRecordDao.selectList(query)) {
+            if (!UPLOADING.equalsIgnoreCase(candidate.getStatus())) {
+                continue;
+            }
+            if (isMultipartSessionExpired(candidate)) {
+                candidate = fileUploadRecordDao.queryByIdForUpdate(candidate.getId());
+                if (candidate == null || !UPLOADING.equalsIgnoreCase(candidate.getStatus())) {
+                    continue;
+                }
+            }
             if (expireIfStaleMultipartUpload(candidate)) {
                 continue;
             }
@@ -988,11 +1017,30 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     }
 
     private void markFailedUploadRecord(FileUploadRecord record, String errorMessage) {
+        if (record == null || record.getId() == null) {
+            return;
+        }
+        String truncatedError = truncate(errorMessage);
+        Runnable persist = () -> persistFailedUploadRecord(record.getId(), truncatedError);
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    persist.run();
+                }
+            });
+            return;
+        }
+        persist.run();
+    }
+
+    private void persistFailedUploadRecord(Long uploadRecordId, String errorMessage) {
         try {
-            fileUploadRecordPersistenceService.markFailed(record, truncate(errorMessage));
+            fileUploadRecordPersistenceService.markFailed(uploadRecordId, errorMessage);
         } catch (Exception e) {
             log.warn("Failed to persist failed file resource upload record, recordId={}",
-                    record.getId(), e);
+                    uploadRecordId, e);
         }
     }
 

@@ -55,4 +55,14 @@
         FOR UPDATE
     </select>
 
+    <update id="markFailedIfUploading">
+        UPDATE t_seatunnel_web_file_upload_record
+        SET status = 'FAILED',
+            error_message = #{errorMessage},
+            finish_time = #{finishTime},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND status = 'UPLOADING'
+    </update>
+
 </mapper>

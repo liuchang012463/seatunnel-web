@@ -11,6 +11,8 @@ import org.apache.seatunnel.web.dao.repository.FileUploadRecordDao;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceUploadRecordQueryDTO;
 import org.springframework.stereotype.Repository;
 
+import java.util.Date;
+
 @Repository
 public class FileUploadRecordDaoImpl extends BaseDao<FileUploadRecord, FileUploadRecordMapper>
         implements FileUploadRecordDao {
@@ -46,5 +48,11 @@ public class FileUploadRecordDaoImpl extends BaseDao<FileUploadRecord, FileUploa
             return null;
         }
         return mapper.selectByIdForUpdate(id);
+    }
+
+    @Override
+    public boolean markFailedIfUploading(
+            Long id, String errorMessage, Date finishTime, Date updateTime) {
+        return mapper.markFailedIfUploading(id, errorMessage, finishTime, updateTime) > 0;
     }
 }

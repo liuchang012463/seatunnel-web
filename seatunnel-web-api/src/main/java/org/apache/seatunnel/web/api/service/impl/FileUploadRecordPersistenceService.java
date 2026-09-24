@@ -16,8 +16,6 @@ import java.util.Date;
 @Service
 public class FileUploadRecordPersistenceService {
 
-    private static final String FAILED = "FAILED";
-
     private final FileUploadRecordDao fileUploadRecordDao;
 
     public FileUploadRecordPersistenceService(FileUploadRecordDao fileUploadRecordDao) {
@@ -30,11 +28,8 @@ public class FileUploadRecordPersistenceService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markFailed(FileUploadRecord record, String errorMessage) {
-        record.setStatus(FAILED);
-        record.setErrorMessage(errorMessage);
-        record.setFinishTime(new Date());
-        record.setUpdateTime(new Date());
-        fileUploadRecordDao.updateById(record);
+    public void markFailed(Long uploadRecordId, String errorMessage) {
+        Date now = new Date();
+        fileUploadRecordDao.markFailedIfUploading(uploadRecordId, errorMessage, now, now);
     }
 }

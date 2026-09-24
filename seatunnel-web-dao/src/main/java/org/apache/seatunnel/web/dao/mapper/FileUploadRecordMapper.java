@@ -6,6 +6,8 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.seatunnel.web.dao.entity.FileUploadRecord;
 
+import java.util.Date;
+
 @Mapper
 public interface FileUploadRecordMapper extends BaseMapper<FileUploadRecord> {
 
@@ -17,4 +19,10 @@ public interface FileUploadRecordMapper extends BaseMapper<FileUploadRecord> {
 
     /** Locks one upload-record row for the duration of the current transaction. */
     FileUploadRecord selectByIdForUpdate(@Param("id") Long id);
+
+    int markFailedIfUploading(
+            @Param("id") Long id,
+            @Param("errorMessage") String errorMessage,
+            @Param("finishTime") Date finishTime,
+            @Param("updateTime") Date updateTime);
 }
