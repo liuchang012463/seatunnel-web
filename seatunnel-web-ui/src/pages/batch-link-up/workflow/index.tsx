@@ -100,9 +100,8 @@ const mergeExternalWorkflowState = (
     const nextConfig = node?.data?.config || {};
     const isSource = node?.data?.nodeType === 'source';
     const isSink = node?.data?.nodeType === 'sink';
-    const preserveExternalFileSourceConfig =
-      isSource &&
-      String(previousConfig?.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
+    // Canvas writes are the source of truth; only restore resource keys that a
+    // rebuilt next graph lost, never clobber a fresh canvas selection.
     const preserveResource =
       isSource &&
       previousConfig?.sourceMode === 'FILE_RESOURCE' &&
@@ -111,11 +110,7 @@ const mergeExternalWorkflowState = (
     const preserveTargetDataSource =
       isSink && previousConfig?.dataSourceId && !nextConfig?.dataSourceId;
 
-    if (
-      !preserveExternalFileSourceConfig &&
-      !preserveResource &&
-      !preserveTargetDataSource
-    ) {
+    if (!preserveResource && !preserveTargetDataSource) {
       return node;
     }
 
@@ -124,23 +119,21 @@ const mergeExternalWorkflowState = (
       data: {
         ...previousNode.data,
         ...node.data,
-        config: preserveExternalFileSourceConfig
-          ? { ...nextConfig, ...previousConfig }
-          : {
-              ...previousConfig,
-              ...nextConfig,
-              ...(preserveResource
-                ? {
-                    fileResourceId: previousConfig.fileResourceId,
-                    fileResource: previousConfig.fileResource,
-                    objectKey: previousConfig.objectKey,
-                    path: previousConfig.path,
-                  }
-                : {}),
-              ...(preserveTargetDataSource
-                ? { dataSourceId: previousConfig.dataSourceId }
-                : {}),
-            },
+        config: {
+          ...previousConfig,
+          ...nextConfig,
+          ...(preserveResource
+            ? {
+                fileResourceId: previousConfig.fileResourceId,
+                fileResource: previousConfig.fileResource,
+                objectKey: previousConfig.objectKey,
+                path: previousConfig.path,
+              }
+            : {}),
+          ...(preserveTargetDataSource
+            ? { dataSourceId: previousConfig.dataSourceId }
+            : {}),
+        },
       },
     };
   });
