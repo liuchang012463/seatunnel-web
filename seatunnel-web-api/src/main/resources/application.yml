@@ -172,6 +172,12 @@ seatunnel:
     max-nesting-depth: ${SEATUNNEL_MESSAGE_MAX_NESTING_DEPTH:200}
     max-string-length: ${SEATUNNEL_MESSAGE_MAX_STRING_LENGTH:1048576}
     max-number-length: ${SEATUNNEL_MESSAGE_MAX_NUMBER_LENGTH:1000}
+    # Best-effort MQ notify after file-resource upload.
+    # Empty exchange = AMQP default exchange (routing key = queue name).
+    file-mq:
+      enabled: ${SEATUNNEL_MESSAGE_FILE_MQ_ENABLED:true}
+      exchange: ${SEATUNNEL_MESSAGE_FILE_MQ_EXCHANGE:}
+      routing-key: ${SEATUNNEL_MESSAGE_FILE_MQ_ROUTING_KEY:order.sync}
 
   web:
     database:
@@ -204,12 +210,6 @@ seatunnel:
         path-style-access: ${SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_PATH_STYLE_ACCESS:true}
         connect-timeout-ms: ${SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_CONNECT_TIMEOUT_MS:10000}
         request-timeout-ms: ${SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_REQUEST_TIMEOUT_MS:30000}
-    # Best-effort MQ notify after file-resource upload (exchange + routing key).
-    # Broker connection uses seatunnel.message.broker.
-    file-mq:
-      enabled: ${SEATUNNEL_WEB_FILE_MQ_ENABLED:true}
-      exchange: ${SEATUNNEL_WEB_FILE_MQ_EXCHANGE:}
-      routing-key: ${SEATUNNEL_WEB_FILE_MQ_ROUTING_KEY:order.sync}
 
 # OpenMetadata Server connection is managed only in 运行运维 → 探查引擎管理.
 # The metadata.openmetadata.* fields below are unused at runtime (legacy shape

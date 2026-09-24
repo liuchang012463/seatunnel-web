@@ -7,12 +7,14 @@ import org.springframework.stereotype.Component;
 /**
  * Destination for best-effort MQ notifications after file-resource uploads.
  *
- * <p>Broker credentials stay in {@code seatunnel.message.broker}. This block
- * only selects whether to publish and which exchange / routing key to use.</p>
+ * <p>Lives under {@code seatunnel.message.file-mq} next to the shared broker
+ * settings. Broker credentials stay in {@code seatunnel.message.broker}; this
+ * block only selects whether to publish and which exchange / routing key to
+ * use.</p>
  */
 @Data
 @Component
-@ConfigurationProperties(prefix = "seatunnel.web.file-mq")
+@ConfigurationProperties(prefix = "seatunnel.message.file-mq")
 public class FileMqProperties {
 
     /**
