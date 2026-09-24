@@ -8,4 +8,7 @@ public interface FileUploadRecordDao extends IDao<FileUploadRecord> {
 
     IPage<FileUploadRecord> queryPage(
             Integer ownerId, FileResourceUploadRecordQueryDTO queryDTO);
+
+    /** Row-lock the upload record so concurrent complete/abort cannot race. */
+    FileUploadRecord queryByIdForUpdate(Long id);
 }

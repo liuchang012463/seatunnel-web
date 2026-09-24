@@ -159,7 +159,7 @@ seatunnel:
       port: ${SEATUNNEL_MESSAGE_BROKER_PORT:5672}
       virtual-host: ${SEATUNNEL_MESSAGE_BROKER_VHOST:/}
       username: ${SEATUNNEL_MESSAGE_BROKER_USERNAME:admin}
-      password: ${SEATUNNEL_MESSAGE_BROKER_PASSWORD:admin123}
+      password: ${SEATUNNEL_MESSAGE_BROKER_PASSWORD:rabbitmq123}
       ssl-enabled: ${SEATUNNEL_MESSAGE_BROKER_SSL_ENABLED:false}
       connection-timeout-ms: ${SEATUNNEL_MESSAGE_BROKER_CONNECTION_TIMEOUT_MS:10000}
     # Maximum accepted payload size: 1MB

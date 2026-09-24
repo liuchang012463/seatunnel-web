@@ -31,4 +31,28 @@
         ORDER BY create_time DESC, id DESC
     </select>
 
+    <select id="selectByIdForUpdate"
+            resultType="org.apache.seatunnel.web.dao.entity.FileUploadRecord">
+        SELECT id,
+               owner_id,
+               provider_type,
+               bucket,
+               target_path,
+               logical_path,
+               object_key,
+               content_type,
+               multipart_upload_id,
+               part_size,
+               total_files,
+               total_size,
+               status,
+               error_message,
+               create_time,
+               update_time,
+               finish_time
+        FROM t_seatunnel_web_file_upload_record
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
 </mapper>

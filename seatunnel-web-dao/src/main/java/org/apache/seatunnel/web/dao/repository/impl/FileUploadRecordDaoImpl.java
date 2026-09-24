@@ -39,4 +39,12 @@ public class FileUploadRecordDaoImpl extends BaseDao<FileUploadRecord, FileUploa
                 StringUtils.trimToNull(dto.getStatus()),
                 StringUtils.trimToNull(dto.getTargetPath()));
     }
+
+    @Override
+    public FileUploadRecord queryByIdForUpdate(Long id) {
+        if (id == null || id <= 0) {
+            return null;
+        }
+        return mapper.selectByIdForUpdate(id);
+    }
 }

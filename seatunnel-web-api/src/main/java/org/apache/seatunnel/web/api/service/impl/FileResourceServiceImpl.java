@@ -17,6 +17,7 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.seatunnel.web.api.fileresource.FileResourceMqNotifier;
 import org.apache.seatunnel.web.api.fileresource.FileResourcePathUtils;
 import org.apache.seatunnel.web.api.fileresource.FileResourceReferenceChecker;
+import org.apache.seatunnel.web.api.fileresource.FileResourceUploadCommitHooks;
 import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProvider;
 import org.apache.seatunnel.web.api.fileresource.storage.StorageObjectMetadata;
 import org.apache.seatunnel.web.api.fileresource.storage.StorageUploadPart;
@@ -98,6 +99,8 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     private static final long MAX_OBJECT_SIZE = 5L * 1024L * 1024L * 1024L * 1024L;
     private static final int MAX_PRESIGNED_PARTS_PER_REQUEST = 128;
     private static final long PRESIGNED_PART_URL_TTL_MILLIS = 60L * 60L * 1000L;
+    /** Stale UPLOADING sessions stop blocking paths after twice the part-URL TTL. */
+    private static final long MULTIPART_UPLOAD_SESSION_TTL_MILLIS = 2L * PRESIGNED_PART_URL_TTL_MILLIS;
 
     @Resource
     private FileResourceDao fileResourceDao;
@@ -237,7 +240,8 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
                     mutations.add(new ResourceMutation(resource.getId(),
                             previousStatus));
                 }
-                fileResourceMqNotifier.notifyUploaded(resource, record.getId());
+                FileResourceUploadCommitHooks.runAfterCommit(
+                        () -> fileResourceMqNotifier.notifyUploaded(resource, record.getId()));
             }
             markUploadRecord(record, SUCCESS, null);
             return items.stream()
@@ -360,7 +364,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     @Transactional(rollbackFor = Exception.class)
     public FileResourceVO completeMultipartUpload(
             Long uploadRecordId, FileResourceMultipartCompleteRequestDTO request) {
-        FileUploadRecord record = requireOwnedUploadRecord(uploadRecordId);
+        FileUploadRecord record = requireOwnedUploadRecordForUpdate(uploadRecordId);
         if (SUCCESS.equalsIgnoreCase(record.getStatus())) {
             FileResource existing = fileResourceDao.queryByOwnerAndLogicalPath(
                     record.getOwnerId(), record.getLogicalPath());
@@ -369,6 +373,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             }
             throw invalid("上传记录已完成，但文件资源不存在");
         }
+        expireIfStaleMultipartUpload(record);
         if (!UPLOADING.equalsIgnoreCase(record.getStatus())
                 || StringUtils.isBlank(record.getMultipartUploadId())) {
             throw invalid("分片上传会话已结束");
@@ -412,6 +417,21 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             String etag = storageProvider.completeMultipartUpload(
                     record.getObjectKey(), record.getMultipartUploadId(), parts);
             storageCompleted = true;
+
+            StorageObjectMetadata metadata = storageProvider.head(record.getObjectKey());
+            if (metadata == null || metadata.size() == null) {
+                throw invalid("无法读取已上传对象大小");
+            }
+            if (!metadata.size().equals(record.getTotalSize())) {
+                throw invalid("上传对象大小与申报不一致");
+            }
+            if (metadata.size() > MAX_OBJECT_SIZE) {
+                throw invalid("上传对象超过 5 TiB 限制");
+            }
+            if (StringUtils.isNotBlank(metadata.etag())) {
+                etag = metadata.etag();
+            }
+
             ensureParentDirectories(record.getOwnerId(), record.getLogicalPath(), mutations);
             String previousStatus = existing == null ? null : existing.getStatus();
             FileResource resource = saveResource(
@@ -420,14 +440,15 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
                     record.getLogicalPath(),
                     record.getObjectKey(),
                     FILE,
-                    record.getTotalSize(),
+                    metadata.size(),
                     record.getContentType(),
                     etag);
             if (existing == null || DELETED.equalsIgnoreCase(previousStatus)) {
                 mutations.add(new ResourceMutation(resource.getId(), previousStatus));
             }
-            fileResourceMqNotifier.notifyUploaded(resource, record.getId());
             markUploadRecord(record, SUCCESS, null);
+            FileResourceUploadCommitHooks.runAfterCommit(
+                    () -> fileResourceMqNotifier.notifyUploaded(resource, record.getId()));
             return toVO(resource);
         } catch (Exception e) {
             if (!storageCompleted) {
@@ -451,8 +472,9 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void abortMultipartUpload(Long uploadRecordId) {
-        FileUploadRecord record = requireOwnedUploadRecord(uploadRecordId);
+        FileUploadRecord record = requireOwnedUploadRecordForUpdate(uploadRecordId);
         if (!UPLOADING.equalsIgnoreCase(record.getStatus())) {
             return;
         }
@@ -640,6 +662,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
 
     private FileUploadRecord requireOwnedMultipartUpload(Long uploadRecordId) {
         FileUploadRecord record = requireOwnedUploadRecord(uploadRecordId);
+        expireIfStaleMultipartUpload(record);
         if (!UPLOADING.equalsIgnoreCase(record.getStatus())
                 || StringUtils.isBlank(record.getMultipartUploadId())
                 || StringUtils.isBlank(record.getObjectKey())
@@ -663,14 +686,29 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         return record;
     }
 
+    private FileUploadRecord requireOwnedUploadRecordForUpdate(Long uploadRecordId) {
+        if (uploadRecordId == null || uploadRecordId <= 0) {
+            throw invalid("上传会话不存在");
+        }
+        Integer ownerId = currentUserId();
+        FileUploadRecord record = fileUploadRecordDao.queryByIdForUpdate(uploadRecordId);
+        if (record == null || ownerId == null || !ownerId.equals(record.getOwnerId())) {
+            throw invalid("上传会话不存在");
+        }
+        return record;
+    }
+
     private void validateMultipartUploadPath(
             Integer ownerId, String logicalPath, Long currentUploadRecordId) {
         FileResource existing = fileResourceDao.queryByOwnerAndLogicalPath(ownerId, logicalPath);
         if (isActive(existing)) {
             throw invalid("文件资源已存在: " + logicalPath);
         }
+        if (hasConflictingActiveDescendant(ownerId, logicalPath)) {
+            throw invalid("路径下已有文件资源: " + logicalPath);
+        }
         if (hasInProgressMultipartUpload(ownerId, logicalPath, currentUploadRecordId)) {
-            throw invalid("该路径已有文件正在上传: " + logicalPath);
+            throw invalid("该路径或其上下级路径有文件正在上传: " + logicalPath);
         }
 
         String parent = FileResourcePathUtils.parent(logicalPath);
@@ -679,24 +717,75 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             if (isActive(parentResource) && FILE.equalsIgnoreCase(parentResource.getResourceType())) {
                 throw invalid("文件路径与已有文件冲突: " + parent);
             }
-            if (hasInProgressMultipartUpload(ownerId, parent, currentUploadRecordId)) {
-                throw invalid("父路径有文件正在上传: " + parent);
-            }
             parent = FileResourcePathUtils.parent(parent);
         }
+    }
+
+    private boolean hasConflictingActiveDescendant(Integer ownerId, String logicalPath) {
+        return fileResourceDao.queryActiveByOwnerId(ownerId).stream()
+                .anyMatch(candidate -> candidate.getLogicalPath() != null
+                        && !logicalPath.equals(candidate.getLogicalPath())
+                        && FileResourcePathUtils.isSameOrDescendant(
+                                candidate.getLogicalPath(), logicalPath));
     }
 
     private boolean hasInProgressMultipartUpload(
             Integer ownerId, String logicalPath, Long currentUploadRecordId) {
         LambdaQueryWrapper<FileUploadRecord> query = new LambdaQueryWrapper<FileUploadRecord>()
                 .eq(FileUploadRecord::getOwnerId, ownerId)
-                .eq(FileUploadRecord::getLogicalPath, logicalPath)
-                .eq(FileUploadRecord::getStatus, UPLOADING);
+                .eq(FileUploadRecord::getStatus, UPLOADING)
+                .isNotNull(FileUploadRecord::getLogicalPath);
         if (currentUploadRecordId != null) {
             query.ne(FileUploadRecord::getId, currentUploadRecordId);
         }
-        query.last("LIMIT 1");
-        return !fileUploadRecordDao.selectList(query).isEmpty();
+        for (FileUploadRecord candidate : fileUploadRecordDao.selectList(query)) {
+            if (expireIfStaleMultipartUpload(candidate)) {
+                continue;
+            }
+            String candidatePath = candidate.getLogicalPath();
+            if (StringUtils.isBlank(candidatePath)) {
+                continue;
+            }
+            if (FileResourcePathUtils.isSameOrDescendant(candidatePath, logicalPath)
+                    || FileResourcePathUtils.isSameOrDescendant(logicalPath, candidatePath)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isMultipartSessionExpired(FileUploadRecord record) {
+        if (record == null || !UPLOADING.equalsIgnoreCase(record.getStatus())) {
+            return false;
+        }
+        Date basis = record.getUpdateTime() != null ? record.getUpdateTime() : record.getCreateTime();
+        if (basis == null) {
+            return false;
+        }
+        return System.currentTimeMillis() - basis.getTime() > MULTIPART_UPLOAD_SESSION_TTL_MILLIS;
+    }
+
+    /**
+     * Lazily fails expired UPLOADING sessions so they stop blocking paths.
+     *
+     * @return true when the record was expired and marked failed
+     */
+    private boolean expireIfStaleMultipartUpload(FileUploadRecord record) {
+        if (!isMultipartSessionExpired(record)) {
+            return false;
+        }
+        try {
+            if (StringUtils.isNotBlank(record.getMultipartUploadId())
+                    && StringUtils.isNotBlank(record.getObjectKey())) {
+                storageProvider.abortMultipartUpload(
+                        record.getObjectKey(), record.getMultipartUploadId());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to abort expired multipart upload, recordId={}", record.getId(), e);
+        }
+        markFailedUploadRecord(record, "上传会话已过期");
+        record.setStatus(FAILED);
+        return true;
     }
 
     private long multipartPartSize(long size) {

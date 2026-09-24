@@ -14,4 +14,7 @@ public interface FileUploadRecordMapper extends BaseMapper<FileUploadRecord> {
             @Param("ownerId") Integer ownerId,
             @Param("status") String status,
             @Param("targetPath") String targetPath);
+
+    /** Locks one upload-record row for the duration of the current transaction. */
+    FileUploadRecord selectByIdForUpdate(@Param("id") Long id);
 }
