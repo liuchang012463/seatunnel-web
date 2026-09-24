@@ -54,7 +54,7 @@ public class FileResourceMqNotifier {
         }
         try {
             if (!fileMqProperties.isEnabled()) {
-                log.debug("Skip file-resource MQ notify: seatunnel.web.file-mq.enabled=false");
+                log.debug("Skip file-resource MQ notify: seatunnel.message.file-mq.enabled=false");
                 return;
             }
             if (!fileMqProperties.isDestinationConfigured()) {
