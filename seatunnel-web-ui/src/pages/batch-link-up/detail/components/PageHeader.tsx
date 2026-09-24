@@ -3,9 +3,15 @@ import { Button } from "antd";
 
 interface Props {
   onBack: () => void;
+  title?: string;
+  description?: string;
 }
 
-const PageHeader: React.FC<Props> = ({ onBack }) => {
+const PageHeader: React.FC<Props> = ({
+  onBack,
+  title = "物理路由配置",
+  description = "配置引接链路的物理路由：数据源、目标端与执行客户端等接入路径。",
+}) => {
   return (
     <div className="border-b border-[#F2F4F7] bg-white">
       <div className="mx-auto flex max-w-[1540px] items-center justify-between gap-4 px-6 py-5">
@@ -15,11 +21,9 @@ const PageHeader: React.FC<Props> = ({ onBack }) => {
           </div>
 
           <div className="min-w-0">
-            <div className="text-[22px] font-semibold leading-8 text-[#101828]">
-              物理路由配置
-            </div>
+            <div className="text-[22px] font-semibold leading-8 text-[#101828]">{title}</div>
             <div className="mt-1 text-[14px] leading-6 text-[color:var(--st-color-text-secondary)]">
-              配置引接链路的物理路由：数据源、目标端与执行客户端等接入路径。
+              {description}
             </div>
           </div>
         </div>

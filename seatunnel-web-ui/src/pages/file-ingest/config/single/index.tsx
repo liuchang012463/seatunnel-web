@@ -1,19 +1,15 @@
 import { history, useLocation, useParams } from '@umijs/max';
 import { App, Empty, Spin } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Workflow from '@/pages/batch-link-up/workflow';
-import { fileResourceApi } from '../../api';
-import FileSourceConfigPanel from '../../FileSourceConfigPanel';
 import { FILE_RESOURCE_SOURCE, fileTaskDraftKey } from '../../types';
+import { fileIngestTaskApi } from '../../api';
 import {
   defaultScheduleConfig,
-  getSourceConfig,
   mergeEnvConfig,
   mergeScheduleConfig,
   normalizeWorkflowGraph,
-  patchSourceConfig,
 } from '../runtime';
-import { fileIngestTaskApi } from '../../api';
 import '../../index.less';
 
 const defaultTargetType = {
@@ -152,60 +148,6 @@ const FileIngestConfigPage: React.FC = () => {
     sessionStorage.setItem(fileTaskDraftKey('FILE_INGEST', id), JSON.stringify(params));
   }, [id, params, scene]);
 
-  const sourceConfig = useMemo(() => getSourceConfig(params), [params]);
-
-  const updateSourceConfig = useCallback(
-    (patch: Record<string, any>) => {
-      setParams((previous: any) => {
-        if (!previous) return previous;
-        return {
-          ...previous,
-          sourceType: FILE_RESOURCE_SOURCE,
-          workflow: patchSourceConfig(previous, patch),
-        };
-      });
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const resourceId = new URLSearchParams(location.search).get('fileResourceId');
-    if (!resourceId || String(sourceConfig?.fileResourceId || '') === resourceId) return;
-
-    let active = true;
-    fileResourceApi
-      .get(resourceId)
-      .then((response) => {
-        if (!active || response?.code !== 0 || !response?.data) return;
-        const resource = response.data;
-        updateSourceConfig({
-          fileResourceId: String(resource.id || resourceId),
-          fileResource: resource,
-          objectKey: resource.objectKey || resource.path,
-          path: resource.path || resource.objectKey,
-        });
-      })
-      .catch(() => message.error('加载返回的文件资源失败'));
-    return () => {
-      active = false;
-    };
-  }, [location.search, sourceConfig?.fileResourceId, updateSourceConfig]);
-
-  const openResourceManager = () => {
-    if (!id || !params) return;
-    sessionStorage.setItem(fileTaskDraftKey('FILE_INGEST', id), JSON.stringify(params));
-    const returnTo = `${window.location.pathname}${window.location.search}`;
-    const resourcePath = String(sourceConfig?.path || sourceConfig?.fileResource?.path || '').trim();
-    const pathSegments = resourcePath.split('/').filter(Boolean);
-    const managerPath = pathSegments.length > 1 ? `/${pathSegments.slice(0, -1).join('/')}` : '/';
-    const query = new URLSearchParams({
-      select: '1',
-      path: managerPath,
-      returnTo,
-    });
-    history.push(`/lake/file-resources?${query.toString()}`);
-  };
-
   const targetType = params?.targetType || defaultTargetType;
   const workflowContextKey = [
     'FILE_INGEST',
@@ -238,40 +180,28 @@ const FileIngestConfigPage: React.FC = () => {
   }
 
   return (
-    <div className="file-task-editor-shell min-h-screen bg-slate-50">
-      <div className="file-task-source-toolbar mx-4 pt-4">
-        <div className="mx-auto max-w-[1540px]">
-          <FileSourceConfigPanel
-            sourceConfig={sourceConfig}
-            onChange={updateSourceConfig}
-            onOpenManager={openResourceManager}
-          />
-        </div>
-      </div>
-
-      <div className="file-task-workflow-shell mt-3">
-        <Workflow
-          pageScene={scene}
-          contextKey={workflowContextKey}
-          params={params}
-          goBack={goBack}
-          sourceType={FILE_RESOURCE_SOURCE}
-          setSourceType={() => undefined}
-          targetType={targetType}
-          setTargetType={(value) => {
-            setParams((previous: any) => ({ ...previous, targetType: value }));
-            setBasicConfig((previous: any) => ({ ...previous, targetType: value?.dbType }));
-          }}
-          basicConfig={basicConfig}
-          setBasicConfig={setBasicConfig}
-          scheduleConfig={scheduleConfig}
-          setScheduleConfig={setScheduleConfig}
-          setParams={setParams}
-          envConfig={envConfig}
-          setEnvConfig={setEnvConfig}
-          showRun={false}
-        />
-      </div>
+    <div className="min-h-screen bg-[#ffffff]">
+      <Workflow
+        pageScene={scene}
+        contextKey={workflowContextKey}
+        params={params}
+        goBack={goBack}
+        sourceType={FILE_RESOURCE_SOURCE}
+        setSourceType={() => undefined}
+        targetType={targetType}
+        setTargetType={(value) => {
+          setParams((previous: any) => ({ ...previous, targetType: value }));
+          setBasicConfig((previous: any) => ({ ...previous, targetType: value?.dbType }));
+        }}
+        basicConfig={basicConfig}
+        setBasicConfig={setBasicConfig}
+        scheduleConfig={scheduleConfig}
+        setScheduleConfig={setScheduleConfig}
+        setParams={setParams}
+        envConfig={envConfig}
+        setEnvConfig={setEnvConfig}
+        showRun={false}
+      />
     </div>
   );
 };

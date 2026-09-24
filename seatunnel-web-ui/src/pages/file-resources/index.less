@@ -169,8 +169,30 @@
   white-space: nowrap;
 }
 
-.file-resource-picker__notice {
+.file-resource-picker__upload {
   margin-bottom: 16px;
+}
+
+.file-resource-picker__upload-tasks {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.file-resource-picker__upload-task {
+  display: grid;
+  grid-template-columns: minmax(120px, 240px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.file-resource-picker__upload-task-name {
+  overflow: hidden;
+  color: var(--st-color-text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-resource-picker__path {

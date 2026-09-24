@@ -110,17 +110,8 @@ export interface FileResourcePickerProps {
   value?: FileResourceEntry | null;
   allowedFormats?: FileResourceFormat[];
   selectionMode?: 'file' | 'file-or-directory';
-  /** Route to return to when the picker is opened from a task editor. */
-  returnTo?: string;
-  /** Opaque selection context preserved in the resource-manager URL. */
-  selection?: string;
-  selectionContext?: FileResourceSelectionContext;
   initialPath?: string;
   title?: ReactNode;
-  /** Override navigation for hosts that use a custom router. */
-  onOpenResourceManager?: (url: string) => void;
-  /** Compatibility callback for task pages that own their manager navigation. */
-  onOpenManager?: () => void;
 }
 
 export interface FileResourceManagerQuery {

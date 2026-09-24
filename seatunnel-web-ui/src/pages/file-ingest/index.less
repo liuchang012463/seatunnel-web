@@ -1,21 +1,3 @@
-.file-task-editor-shell {
-  min-height: 100vh;
-}
-.file-task-source-toolbar {
-  position: relative;
-  z-index: 20;
-}
-
-.file-task-workflow-shell {
-  height: calc(100vh - 194px);
-  min-height: 520px;
-  overflow: hidden;
-}
-
-.file-task-workflow-shell > .workflow-editor-page {
-  height: 100% !important;
-}
-
 // The workflow editor also runs in deployments where the optional Tailwind
 // transform is not enabled. Keep the structural layout explicit so the
 // canvas never collapses to zero height and both file editors remain usable.
@@ -208,12 +190,5 @@
   .generic-workflow-editor-page__canvas-col {
     flex-basis: 76%;
     max-width: 76%;
-  }
-}
-
-@media (max-width: 900px) {
-  .file-task-workflow-shell {
-    height: calc(100vh - 250px);
-    min-height: 460px;
   }
 }

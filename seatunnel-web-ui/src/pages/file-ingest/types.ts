@@ -70,7 +70,6 @@ export interface FileResourcePickerProps {
   title?: string;
   onCancel: () => void;
   onSelect: (resource: FileResource) => void;
-  onOpenManager?: () => void;
 }
 
 export interface FileTaskDetailConfig {

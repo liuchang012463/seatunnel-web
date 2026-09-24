@@ -1,5 +1,4 @@
 import { Button, DatePicker, Divider, Segmented, Select, Tooltip } from 'antd';
-import { history } from '@umijs/max';
 import { BarChart3, Database, Eye, FileCode2, Table2 } from 'lucide-react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
@@ -123,14 +122,23 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
     };
 
     return (
-      <FileSourceConfigPanel
-        sourceConfig={selectedNode?.data?.config || {}}
-        onChange={updateFileResourceNode}
-        onOpenManager={() => {
-          const returnTo = `${window.location.pathname}${window.location.search}`;
-          history.push(`/lake/file-resources?select=1&returnTo=${encodeURIComponent(returnTo)}`);
-        }}
-      />
+      <PanelShell
+        eyebrow="Source Config"
+        title="来源配置"
+        badge="输入节点"
+        desc="上传或选择湖文件区中的文件，配置解析参数与字段 Schema。"
+        heroTitle={title}
+        heroDesc={description}
+        heroTag="SOURCE"
+        dbType={dbType}
+        onClose={onClose}
+        footer={<button type="button" className="workflow-panel__btn workflow-panel__btn--ghost" onClick={onClose}>关闭</button>}
+      >
+        <FileSourceConfigPanel
+          sourceConfig={selectedNode?.data?.config || {}}
+          onChange={updateFileResourceNode}
+        />
+      </PanelShell>
     );
   }
 

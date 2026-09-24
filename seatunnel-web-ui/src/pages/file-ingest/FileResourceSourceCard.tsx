@@ -1,4 +1,4 @@
-import { FileOutlined, FolderOpenOutlined, LinkOutlined } from '@ant-design/icons';
+import { FileOutlined, FolderOpenOutlined } from '@ant-design/icons';
 import { Alert, Button, Tag } from 'antd';
 import { useEffect, useState } from 'react';
 import { fileResourceApi } from './api';
@@ -8,7 +8,6 @@ import type { FileFormat, FileResource, FileResourcePickerProps } from './types'
 interface FileResourceSourceCardProps {
   sourceConfig: Record<string, any>;
   onChange: (patch: Record<string, any>) => void;
-  onOpenManager?: () => void;
   selectionMode?: FileResourcePickerProps['selectionMode'];
   allowedFormats?: FileFormat[];
   title?: string;
@@ -19,7 +18,6 @@ interface FileResourceSourceCardProps {
 const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
   sourceConfig,
   onChange,
-  onOpenManager,
   selectionMode = 'file',
   allowedFormats,
   title = '湖文件来源',
@@ -105,20 +103,13 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
             className="mt-4"
             type={resource ? 'success' : 'warning'}
             showIcon
-            message={resource ? '已选择湖文件' : '文件需先上传到湖文件区'}
+            message={resource ? '已选择湖文件' : '尚未选择湖文件'}
             description={
               resource
                 ? binary
                   ? '当前任务将直接同步这个二进制对象到目标端，不解析文件内容。'
-                  : '当前任务将从这个对象读取结构化数据，并按下方解析配置写入目标表。'
-                : binary
-                  ? '文件同步任务只搬运二进制对象，不解析 CSV、Excel、JSON 或 TXT 内容。'
-                  : '选择一个湖文件后，任务将保存资源 ID 和对象存储引用。'
-            }
-            action={
-              <Button type="link" icon={<LinkOutlined />} onClick={onOpenManager}>
-                前往湖文件管理
-              </Button>
+                  : '当前任务将从这个对象读取结构化数据，并按解析配置写入目标表。'
+                : '点击下方按钮，在弹窗中直接上传或选择一个文件。'
             }
           />
 
@@ -146,7 +137,6 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
         title={binary ? '选择二进制文件资源' : '选择结构化文件资源'}
         onCancel={() => setPickerOpen(false)}
         onSelect={selectResource}
-        onOpenManager={onOpenManager}
       />
     </section>
   );

@@ -1,5 +1,5 @@
 import { DeleteOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
-import { App, Button, Input, InputNumber, Modal, Select, Switch } from 'antd';
+import { App, Button, Collapse, Input, InputNumber, Modal, Select, Switch, Table } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import FileResourceSourceCard from './FileResourceSourceCard';
 import { buildFileResourcePreviewOptions, fileResourceApi } from './api';
@@ -37,7 +37,6 @@ const TYPE_OPTIONS = [
 interface FileSourceConfigPanelProps {
   sourceConfig: Record<string, any>;
   onChange: (patch: Record<string, any>) => void;
-  onOpenManager?: () => void;
   onPreview?: (resource: FileResource, options: Record<string, any>) => Promise<unknown>;
 }
 
@@ -88,7 +87,6 @@ const getFormat = (value: unknown): FileFormat => {
 const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
   sourceConfig,
   onChange,
-  onOpenManager,
   onPreview,
 }) => {
   const { message } = App.useApp();
@@ -170,12 +168,166 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
     }
   };
 
+  const advancedItems = [
+    {
+      key: 'parse',
+      label: (
+        <span className="text-sm font-medium text-slate-800">
+          高级配置
+          <span className="ml-2 text-xs font-normal text-slate-400">
+            已按默认值处理，通常无需修改
+          </span>
+        </span>
+      ),
+      children: (
+        <div className="grid grid-cols-1 gap-3">
+          <label className="text-xs text-slate-600">
+            <span className="mb-1 block">编码</span>
+            <Input
+              value={sourceConfig?.encoding || 'UTF-8'}
+              onChange={(event) => onChange({ encoding: event.target.value })}
+              placeholder="UTF-8"
+            />
+          </label>
+          {format === 'csv' ? (
+            <>
+              <label className="text-xs text-slate-600">
+                <span className="mb-1 block">跳过行数</span>
+                <InputNumber
+                  className="w-full"
+                  min={0}
+                  value={sourceConfig?.skipHeaderRowNumber ?? 0}
+                  onChange={(value) => onChange({ skipHeaderRowNumber: value ?? 0 })}
+                />
+              </label>
+              <label className="text-xs text-slate-600">
+                <span className="mb-1 block">引号字符</span>
+                <Input
+                  maxLength={1}
+                  value={sourceConfig?.quoteChar ?? '"'}
+                  onChange={(event) => onChange({ quoteChar: event.target.value })}
+                  placeholder='"'
+                />
+              </label>
+              <label className="text-xs text-slate-600">
+                <span className="mb-1 block">转义字符</span>
+                <Input
+                  maxLength={1}
+                  value={sourceConfig?.escapeChar ?? ''}
+                  onChange={(event) => onChange({ escapeChar: event.target.value })}
+                  placeholder="\\"
+                />
+              </label>
+            </>
+          ) : null}
+          {format === 'text' ? (
+            <>
+              <label className="text-xs text-slate-600">
+                <span className="mb-1 block">行分隔符</span>
+                <Input
+                  value={sourceConfig?.rowDelimiter ?? '\\n'}
+                  onChange={(event) => onChange({ rowDelimiter: event.target.value })}
+                  placeholder="\\n"
+                />
+              </label>
+              <label className="text-xs text-slate-600">
+                <span className="mb-1 block">跳过行数</span>
+                <InputNumber
+                  className="w-full"
+                  min={0}
+                  value={sourceConfig?.skipHeaderRowNumber ?? 0}
+                  onChange={(value) => onChange({ skipHeaderRowNumber: value ?? 0 })}
+                />
+              </label>
+              <label className="text-xs text-slate-600">
+                <span className="mb-1 block">空值标记</span>
+                <Input
+                  value={sourceConfig?.nullFormat ?? ''}
+                  onChange={(event) => onChange({ nullFormat: event.target.value })}
+                  placeholder="留空表示默认"
+                />
+              </label>
+            </>
+          ) : null}
+          {format === 'excel' ? (
+            <label className="text-xs text-slate-600">
+              <span className="mb-1 block">Excel 引擎</span>
+              <Select
+                className="w-full"
+                value={sourceConfig?.excelEngine ?? 'POI'}
+                options={[{ value: 'POI', label: 'POI' }, { value: 'EasyExcel', label: 'EasyExcel' }]}
+                onChange={(value) => onChange({ excelEngine: value })}
+              />
+            </label>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: 'schema',
+      label: (
+        <span className="text-sm font-medium text-slate-800">
+          字段 Schema
+          <span className="ml-2 text-xs font-normal text-slate-400">
+            {Object.keys(fields).length
+              ? `已配置 ${Object.keys(fields).length} 个字段`
+              : '未配置，将按默认方式读取'}
+          </span>
+        </span>
+      ),
+      children: (
+        <div className="space-y-3">
+          {format === 'json' || format === 'excel' ? (
+            <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
+              {format === 'json'
+                ? 'JSON/NDJSON 建议明确字段 Schema，避免类型推断造成目标字段不稳定。'
+                : 'Excel 建议明确字段 Schema；任务执行由 SeaTunnel 直接读取对象存储，预览仅读取受限样本。'}
+            </div>
+          ) : null}
+          <div className="flex justify-end">
+            <Button size="small" icon={<PlusOutlined />} onClick={addField}>
+              添加字段
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {Object.entries(fields).map(([name, type]) => (
+              <div key={name} className="grid grid-cols-[minmax(0,1fr)_130px_32px] gap-2">
+                <SchemaFieldNameInput
+                  name={name}
+                  existingNames={Object.keys(fields).filter((field) => field !== name)}
+                  onCommit={renameField}
+                />
+                <Select
+                  value={type}
+                  aria-label={`字段类型 ${name}`}
+                  options={TYPE_OPTIONS}
+                  onChange={(nextType) => updateSchema({ ...fields, [name]: nextType })}
+                />
+                <Button
+                  type="text"
+                  danger
+                  aria-label={`删除字段 ${name}`}
+                  icon={<DeleteOutlined />}
+                  onClick={() => removeField(name)}
+                />
+              </div>
+            ))}
+            {!Object.keys(fields).length ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
+                尚未配置字段。保持默认即可；如需固定字段名或字段类型，可在此添加。
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-3">
       <FileResourceSourceCard
         sourceConfig={sourceConfig}
         onChange={onChange}
-        onOpenManager={onOpenManager}
         allowedFormats={[format]}
         selectionMode="file"
         title="文件资源来源"
@@ -186,7 +338,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-semibold text-slate-900">文件格式与解析</div>
-            <div className="mt-1 text-xs text-slate-500">四种格式共用一套 File Source 配置。</div>
+            <div className="mt-1 text-xs text-slate-500">选择格式即可，其余参数使用默认值。</div>
           </div>
           <Button
             size="small"
@@ -199,33 +351,25 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
           </Button>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-3">
           <label className="text-xs text-slate-600">
             <span className="mb-1 block">格式</span>
             <Select className="w-full" value={format} options={FORMAT_OPTIONS} onChange={changeFormat} />
           </label>
 
-          <label className="text-xs text-slate-600">
-            <span className="mb-1 block">编码</span>
-            <Input
-              value={sourceConfig?.encoding || 'UTF-8'}
-              onChange={(event) => onChange({ encoding: event.target.value })}
-              placeholder="UTF-8"
-            />
-          </label>
-        </div>
-
-        {format === 'csv' ? (
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {format === 'csv' || format === 'text' ? (
             <label className="text-xs text-slate-600">
               <span className="mb-1 block">字段分隔符</span>
               <Input
-                value={sourceConfig?.fieldDelimiter ?? ','}
+                value={sourceConfig?.fieldDelimiter ?? (format === 'csv' ? ',' : '\\001')}
                 onChange={(event) => onChange({ fieldDelimiter: event.target.value })}
-                placeholder=","
+                placeholder={format === 'csv' ? ',' : '\\001'}
               />
             </label>
-            <label className="flex items-center gap-2 pt-6 text-xs text-slate-600">
+          ) : null}
+
+          {format === 'csv' ? (
+            <label className="flex items-center gap-2 text-xs text-slate-600">
               <Switch
                 size="small"
                 checked={sourceConfig?.csvUseHeaderLine !== false && sourceConfig?.skipHeader !== false}
@@ -233,149 +377,16 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
               />
               首行作为表头
             </label>
-            <label className="text-xs text-slate-600">
-              <span className="mb-1 block">跳过行数</span>
-              <InputNumber
-                className="w-full"
-                min={0}
-                value={sourceConfig?.skipHeaderRowNumber ?? 0}
-                onChange={(value) => onChange({ skipHeaderRowNumber: value ?? 0 })}
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              <span className="mb-1 block">引号</span>
-              <Input
-                maxLength={1}
-                value={sourceConfig?.quoteChar ?? '"'}
-                onChange={(event) => onChange({ quoteChar: event.target.value })}
-                placeholder='"'
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              <span className="mb-1 block">转义</span>
-              <Input
-                maxLength={1}
-                value={sourceConfig?.escapeChar ?? ''}
-                onChange={(event) => onChange({ escapeChar: event.target.value })}
-                placeholder="\\"
-              />
-            </label>
-          </div>
-        ) : null}
+          ) : null}
 
-        {format === 'excel' ? (
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="text-xs text-slate-600">
-              <span className="mb-1 block">工作表</span>
-              <Input
-                value={sourceConfig?.sheetName ?? ''}
-                onChange={(event) => onChange({ sheetName: event.target.value })}
-                placeholder="例如 Sheet1"
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              <span className="mb-1 block">Excel 引擎</span>
-              <Select
-                className="w-full"
-                value={sourceConfig?.excelEngine ?? 'POI'}
-                options={[{ value: 'POI', label: 'POI' }, { value: 'EasyExcel', label: 'EasyExcel' }]}
-                onChange={(value) => onChange({ excelEngine: value })}
-              />
-            </label>
-          </div>
-        ) : null}
-
-        {format === 'text' ? (
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="text-xs text-slate-600">
-              <span className="mb-1 block">字段分隔符</span>
-              <Input
-                value={sourceConfig?.fieldDelimiter ?? '\\001'}
-                onChange={(event) => onChange({ fieldDelimiter: event.target.value })}
-                placeholder="\\001"
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              <span className="mb-1 block">行分隔符</span>
-              <Input
-                value={sourceConfig?.rowDelimiter ?? '\\n'}
-                onChange={(event) => onChange({ rowDelimiter: event.target.value })}
-                placeholder="\\n"
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              <span className="mb-1 block">跳过行数</span>
-              <InputNumber
-                className="w-full"
-                min={0}
-                value={sourceConfig?.skipHeaderRowNumber ?? 0}
-                onChange={(value) => onChange({ skipHeaderRowNumber: value ?? 0 })}
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              <span className="mb-1 block">空值标记</span>
-              <Input
-                value={sourceConfig?.nullFormat ?? ''}
-                onChange={(event) => onChange({ nullFormat: event.target.value })}
-                placeholder="留空表示默认"
-              />
-            </label>
-          </div>
-        ) : null}
-
-        {format === 'json' ? (
-          <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
-            JSON/NDJSON 需要明确字段 Schema，避免推断类型造成目标字段不稳定。
-          </div>
-        ) : null}
-
-        {format === 'excel' ? (
-          <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
-            Excel 需要明确字段 Schema；任务执行由 SeaTunnel 直接读取对象存储，预览仅读取受限样本。
-          </div>
-        ) : null}
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-slate-900">字段 Schema</div>
-            <div className="mt-1 text-xs text-slate-500">字段映射会复用此 Schema 作为上游字段。</div>
-          </div>
-          <Button size="small" icon={<PlusOutlined />} onClick={addField}>
-            添加字段
-          </Button>
-        </div>
-
-        <div className="mt-3 space-y-2">
-          {Object.entries(fields).map(([name, type]) => (
-            <div key={name} className="grid grid-cols-[minmax(0,1fr)_130px_32px] gap-2">
-              <SchemaFieldNameInput
-                name={name}
-                existingNames={Object.keys(fields).filter((field) => field !== name)}
-                onCommit={renameField}
-              />
-              <Select
-                value={type}
-                aria-label={`字段类型 ${name}`}
-                options={TYPE_OPTIONS}
-                onChange={(nextType) => updateSchema({ ...fields, [name]: nextType })}
-              />
-              <Button
-                type="text"
-                danger
-                aria-label={`删除字段 ${name}`}
-                icon={<DeleteOutlined />}
-                onClick={() => removeField(name)}
-              />
-            </div>
-          ))}
-          {!Object.keys(fields).length ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
-              尚未配置字段。请添加字段，或在后续字段解析后补充 Schema。
+          {format === 'json' || format === 'excel' ? (
+            <div className="flex items-end pb-1 text-xs leading-5 text-slate-400">
+              无需额外解析参数，保持默认即可；字段 Schema 可在下方高级配置中维护。
             </div>
           ) : null}
         </div>
+
+        <Collapse className="mt-3" items={advancedItems} defaultActiveKey={[]} />
       </section>
 
       <Modal
@@ -385,11 +396,27 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         footer={<Button onClick={() => setPreviewOpen(false)}>关闭</Button>}
         onCancel={() => setPreviewOpen(false)}
       >
-        <pre className="max-h-[480px] overflow-auto rounded-xl bg-slate-950 p-4 text-xs leading-5 text-emerald-200">
-          {typeof previewContent === 'string'
-            ? previewContent
-            : JSON.stringify(previewContent, null, 2)}
-        </pre>
+        {previewContent && Array.isArray((previewContent as any)?.columns) ? (
+          <Table
+            size="small"
+            rowKey={(_, index) => String(index)}
+            columns={(previewContent as any).columns.map((column: string) => ({
+              title: column,
+              dataIndex: column,
+              key: column,
+              ellipsis: true,
+            }))}
+            dataSource={(previewContent as any).rows || []}
+            pagination={false}
+            scroll={{ y: 360 }}
+          />
+        ) : (
+          <pre className="max-h-[480px] overflow-auto rounded-xl bg-slate-950 p-4 text-xs leading-5 text-emerald-200">
+            {typeof previewContent === 'string'
+              ? previewContent
+              : JSON.stringify(previewContent, null, 2)}
+          </pre>
+        )}
       </Modal>
     </div>
   );

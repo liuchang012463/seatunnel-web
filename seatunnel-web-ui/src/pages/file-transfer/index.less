@@ -1,24 +1,3 @@
-.file-task-editor-shell {
-  min-height: 100vh;
-}
-.file-task-source-toolbar {
-  position: relative;
-  z-index: 20;
-}
-
-.file-task-workflow-shell {
-  height: calc(100vh - 194px);
-  min-height: 520px;
-  overflow: hidden;
-}
-
-.file-task-workflow-shell > .workflow-editor-page {
-  height: 100% !important;
-}
-
-@media (max-width: 900px) {
-  .file-task-workflow-shell {
-    height: calc(100vh - 250px);
-    min-height: 460px;
-  }
-}
+/* File-transfer list page keeps batch-link-up list styling via TaskListAdapter.
+   The config editor renders the shared FileWorkflow fullscreen (batch style),
+   so no shell overrides are needed here. */
