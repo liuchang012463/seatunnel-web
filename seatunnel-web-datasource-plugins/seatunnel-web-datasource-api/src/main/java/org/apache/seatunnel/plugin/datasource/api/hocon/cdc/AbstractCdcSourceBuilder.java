@@ -19,7 +19,6 @@ public abstract class AbstractCdcSourceBuilder implements DataSourceHoconBuilder
     protected static final String PORT = "port";
     protected static final String USERNAME = "username";
     protected static final String PASSWORD = "password";
-    protected static final String URL = "url";
     protected static final String DEBEZIUM = "debezium";
 
     protected static final String DATABASE_NAMES = "database-names";
@@ -86,15 +85,32 @@ public abstract class AbstractCdcSourceBuilder implements DataSourceHoconBuilder
     }
 
     protected void appendConnectionOptions(Config conn, Config node, Map<String, Object> map) {
-        putIfPresent(conn, URL, map);
+        // The 2.3.13 CDC base options only know hostname/port/username/password;
+        // emitting url would be an unknown key on the engine.
         putAliasIfPresent(conn, "user", USERNAME, map);
         putIfPresent(conn, USERNAME, map);
         putIfPresent(conn, PASSWORD, map);
         putIfPresent(conn, HOSTNAME, map);
-        putIfPresent(conn, PORT, map);
+        putPortIfPresent(conn, map);
 
         // datasource 里面常见字段是 host，这里转成 SeaTunnel CDC 需要的 hostname
         putAliasIfPresent(conn, "host", HOSTNAME, map);
+    }
+
+    /** The CDC engine declares port as an integer option. */
+    protected void putPortIfPresent(Config conn, Map<String, Object> map) {
+        if (conn == null || !conn.hasPath(PORT)) {
+            return;
+        }
+        Object value = conn.getValue(PORT).unwrapped();
+        if (isEmptyValue(value)) {
+            return;
+        }
+        try {
+            map.put(PORT, Integer.valueOf(String.valueOf(value).trim()));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid CDC source port: " + value);
+        }
     }
 
     protected void appendCaptureOptions(Config conn, Config node, Map<String, Object> map) {
@@ -103,6 +119,7 @@ public abstract class AbstractCdcSourceBuilder implements DataSourceHoconBuilder
 
         putIfPresent(node, SERVER_ID, map);
         putIfPresent(node, SERVER_TIME_ZONE, map);
+        putAliasIfPresent(node, "serverTimeZone", SERVER_TIME_ZONE, map);
 
         if (node != null && node.hasPath(TABLE_NAMES_CONFIG)) {
             map.put(TABLE_NAMES_CONFIG, node.getValue(TABLE_NAMES_CONFIG).unwrapped());

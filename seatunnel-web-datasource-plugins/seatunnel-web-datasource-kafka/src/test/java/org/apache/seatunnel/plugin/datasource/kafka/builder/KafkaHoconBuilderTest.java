@@ -49,6 +49,16 @@ class KafkaHoconBuilderTest {
     }
 
     @Test
+    void shouldMigrateLegacyPatternRegexIntoTopic() {
+        // 2.3.13 treats pattern as a boolean switch and expects the regex in
+        // topic; legacy payloads carrying the regex in pattern are migrated.
+        Config config = builder.buildSourceHocon(context(Map.of("pattern", "orders-.*")));
+
+        assertEquals("orders-.*", config.getString("topic"));
+        assertTrue(config.getBoolean("pattern"));
+    }
+
+    @Test
     void shouldValidateExactlyOnceAndPartitionExclusivity() {
         assertThrows(IllegalArgumentException.class,
                 () -> builder.buildSinkHocon(context(Map.of("topic", "orders", "semantics", "EXACTLY_ONCE"))));

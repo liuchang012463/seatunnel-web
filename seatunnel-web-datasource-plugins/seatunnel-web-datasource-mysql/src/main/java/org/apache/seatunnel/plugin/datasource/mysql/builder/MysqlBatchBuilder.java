@@ -10,7 +10,7 @@ public class MysqlBatchBuilder extends AbstractJdbcBatchBuilder {
     
     @Override
     protected String defaultDriver() {
-        return DataSourceConstants.COM_MYSQL_JDBC_DRIVER;
+        return DataSourceConstants.COM_MYSQL_CJ_JDBC_DRIVER;
     }
     
     @Override

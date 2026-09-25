@@ -224,6 +224,7 @@ public class GuideMultiHoconBuildService {
         if (isMySqlCdc(source)) {
             putIfNotBlank(config, "server-id", source.getServerId());
             putIfNotBlank(config, "serverIdMode", source.getServerIdMode());
+            putIfNotBlank(config, "startup.mode", source.getStartupMode());
         }
 
         if (isPostgreSqlCdc(source)) {

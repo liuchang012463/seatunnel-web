@@ -42,8 +42,9 @@ public class KafkaHoconBuilder implements DataSourceHoconBuilder {
         Map<String, Object> node = nodeValues(context);
         Map<String, Object> result = baseConfig(context, node);
         appendExtraParams(result, node, SOURCE_RESERVED);
+        normalizePatternSubscription(node);
         putStructured(result, node, "topic", "topic");
-        putStructured(result, node, "pattern", "pattern");
+        putPattern(result, node);
         putStructured(result, node, "consumerGroup", "consumer.group");
         putStructured(result, node, "startMode", "start_mode");
         putStructured(result, node, "startModeOffsets", "start_mode.offsets");
@@ -120,16 +121,62 @@ public class KafkaHoconBuilder implements DataSourceHoconBuilder {
         }
     }
 
+    /**
+     * Older Web payloads carried the regex expression itself in "pattern".
+     * SeaTunnel 2.3.13 treats "pattern" as a boolean switch and expects the
+     * regex in "topic", so migrate legacy values instead of emitting them.
+     */
+    private void normalizePatternSubscription(Map<String, Object> node) {
+        Object pattern = node.get("pattern");
+        if (pattern instanceof Boolean) {
+            return;
+        }
+        if (pattern instanceof String) {
+            String text = ((String) pattern).trim();
+            if (text.isEmpty()) {
+                node.remove("pattern");
+                return;
+            }
+            if ("true".equalsIgnoreCase(text)) {
+                node.put("pattern", Boolean.TRUE);
+                return;
+            }
+            if ("false".equalsIgnoreCase(text)) {
+                node.remove("pattern");
+                return;
+            }
+            // Legacy regex expression: move it to topic and enable the switch;
+            // an existing topic makes the intent ambiguous.
+            if (hasText(node.get("topic"))) {
+                throw new IllegalArgumentException(
+                        "Kafka Source has both topic and a legacy pattern expression; keep the regex in topic only");
+            }
+            node.put("topic", text);
+        }
+        node.put("pattern", Boolean.TRUE);
+    }
+
+    private void putPattern(Map<String, Object> target, Map<String, Object> node) {
+        if (Boolean.TRUE.equals(node.get("pattern"))) {
+            target.put("pattern", true);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> asMap(Object value) {
         return value instanceof Map ? new LinkedHashMap<>((Map<String, Object>) value) : Collections.emptyMap();
     }
 
     private void validateSource(Map<String, Object> config) {
-        boolean hasTopic = hasText(config.get("topic"));
-        boolean hasPattern = hasText(config.get("pattern"));
-        if (hasTopic == hasPattern) {
-            throw new IllegalArgumentException("Kafka Source must configure exactly one of topic or pattern");
+        // SeaTunnel 2.3.13: topic is mandatory; pattern is only a boolean switch
+        // that makes the engine interpret topic as a regex.
+        if (!hasText(config.get("topic"))) {
+            throw new IllegalArgumentException(
+                    "Kafka Source topic is required; for regex subscription set pattern=true and put the regex in topic");
+        }
+        Object pattern = config.get("pattern");
+        if (pattern != null && !Boolean.TRUE.equals(pattern)) {
+            throw new IllegalArgumentException("Kafka Source pattern must be a boolean true");
         }
         String startMode = String.valueOf(config.get("start_mode"));
         if ("specific_offsets".equals(startMode) && config.get("start_mode.offsets") == null) {

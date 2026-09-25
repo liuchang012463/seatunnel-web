@@ -15,6 +15,7 @@ import static org.apache.seatunnel.plugin.datasource.api.hocon.JdbcBatchConstant
 import static org.apache.seatunnel.plugin.datasource.api.hocon.JdbcBatchConstants.TABLE_PATH;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class JdbcSourceTargetBuilderTest {
 
@@ -35,7 +36,9 @@ class JdbcSourceTargetBuilderTest {
                 map,
                 HoconBuildStage.DEFINITION);
 
-        assertEquals("st_test", map.get(DATABASE));
+        // 2.3.13 JDBC source option table has no database key; the database
+        // only lives inside table_path.
+        assertNull(map.get(DATABASE));
         assertEquals("st_test.st_src.issue108_user", map.get(TABLE_PATH));
     }
 
@@ -49,7 +52,9 @@ class JdbcSourceTargetBuilderTest {
                 map,
                 HoconBuildStage.DEFINITION);
 
-        assertEquals("st_test", map.get(DATABASE));
+        // 2.3.13 JDBC source option table has no database key; the database
+        // only lives inside table_path.
+        assertNull(map.get(DATABASE));
         assertEquals("st_test.st_src.issue108_user", map.get(TABLE_PATH));
     }
 
@@ -63,7 +68,7 @@ class JdbcSourceTargetBuilderTest {
                 map,
                 HoconBuildStage.DEFINITION);
 
-        assertEquals("test", map.get(DATABASE));
+        assertNull(map.get(DATABASE));
         assertEquals("test.public.sys_user", map.get(TABLE_PATH));
     }
 
@@ -77,7 +82,7 @@ class JdbcSourceTargetBuilderTest {
                 map,
                 HoconBuildStage.DEFINITION);
 
-        assertEquals("test_db", map.get(DATABASE));
+        assertNull(map.get(DATABASE));
         assertEquals("test_db.user_info", map.get(TABLE_PATH));
     }
 
@@ -91,7 +96,7 @@ class JdbcSourceTargetBuilderTest {
                 map,
                 HoconBuildStage.DEFINITION);
 
-        assertEquals("st_test", map.get(DATABASE));
+        assertNull(map.get(DATABASE));
         assertEquals("st_src.issue108_user", map.get(TABLE_PATH));
     }
 
@@ -139,7 +144,7 @@ class JdbcSourceTargetBuilderTest {
                 map,
                 HoconBuildStage.DEFINITION);
 
-        assertEquals("XE", map.get(DATABASE));
+        assertNull(map.get(DATABASE));
         assertEquals("APP.USER_INFO", map.get(TABLE_PATH));
     }
 
@@ -153,7 +158,7 @@ class JdbcSourceTargetBuilderTest {
                 map,
                 HoconBuildStage.DEFINITION);
 
-        assertEquals("XE", map.get(DATABASE));
+        assertNull(map.get(DATABASE));
         assertEquals("APP.USER_INFO", map.get(TABLE_PATH));
     }
 
@@ -220,7 +225,7 @@ class JdbcSourceTargetBuilderTest {
                 map,
                 HoconBuildStage.DEFINITION);
 
-        assertEquals("test_db", map.get(DATABASE));
+        assertNull(map.get(DATABASE));
         assertEquals("test_db.analytics.user_info", map.get(TABLE_PATH));
     }
 

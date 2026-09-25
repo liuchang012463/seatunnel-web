@@ -12,12 +12,20 @@ import static org.apache.seatunnel.plugin.datasource.api.hocon.JdbcBatchConstant
 public class JdbcExtraOptionAppender {
 
     public void append(Config config, Map<String, Object> map) {
+        append(config, map, false);
+    }
+
+    public void append(Config config, Map<String, Object> map, boolean sinkSide) {
         appendPluginRelation(config, map);
 
         JdbcConfigReaders.appendConfigObject(config, CONFIG, map);
         JdbcConfigReaders.parseParamsArray(config, map);
         appendExtraParams(config, map);
-        appendDirectWhereCondition(config, map);
+        // The 2.3.13 JDBC sink has no where_condition option; the predicate is
+        // a source-side filter and must not leak into sink configs.
+        if (!sinkSide) {
+            appendDirectWhereCondition(config, map);
+        }
     }
 
     /**

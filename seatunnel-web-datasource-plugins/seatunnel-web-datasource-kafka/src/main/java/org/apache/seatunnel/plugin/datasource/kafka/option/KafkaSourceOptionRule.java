@@ -12,13 +12,10 @@ public class KafkaSourceOptionRule implements SourceOptionRule {
     @Override
     public OptionRule sourceOptionRule() {
         return OptionRule.builder()
-                .required(BOOTSTRAP_SERVERS)
-                .optional(TOPIC, PATTERN, CONSUMER_GROUP, START_MODE, START_OFFSETS,
+                .required(BOOTSTRAP_SERVERS, TOPIC)
+                .optional(PATTERN, CONSUMER_GROUP, START_MODE, START_OFFSETS,
                         START_TIMESTAMP, END_TIMESTAMP, COMMIT_ON_CHECKPOINT, POLL_TIMEOUT,
                         FORMAT, KAFKA_CONFIG, SCHEMA, FIELD_DELIMITER)
-                // OptionRule.exclusive requires exactly one option and rejects a valid
-                // rule declaration when both alternatives are optional. KafkaHoconBuilder
-                // validates that exactly one of topic or pattern is configured.
                 .build();
     }
 

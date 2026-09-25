@@ -10,7 +10,7 @@ public final class KafkaOptions {
 
     public static final Option<String> BOOTSTRAP_SERVERS = Options.key("bootstrap.servers").stringType().noDefaultValue();
     public static final Option<String> TOPIC = Options.key("topic").stringType().noDefaultValue();
-    public static final Option<String> PATTERN = Options.key("pattern").stringType().noDefaultValue();
+    public static final Option<Boolean> PATTERN = Options.key("pattern").booleanType().noDefaultValue();
     public static final Option<String> CONSUMER_GROUP = Options.key("consumer.group").stringType().noDefaultValue();
     public static final Option<String> START_MODE = Options.key("start_mode").stringType().defaultValue("group_offsets");
     public static final Option<String> START_OFFSETS = Options.key("start_mode.offsets").stringType().noDefaultValue();

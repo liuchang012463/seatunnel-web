@@ -49,9 +49,8 @@ public class JdbcSingleSourceTargetBuilder implements JdbcSourceTargetBuilder {
                     "Missing source table, one of query/table_path/table/table_list is required");
         }
 
-        if (StringUtils.isNotBlank(database)) {
-            map.put(DATABASE, database.trim());
-        }
+        // table_path already carries the database; the 2.3.13 JDBC source
+        // option table has no `database` key, so it must not be emitted.
         map.put(TABLE_PATH, tablePath);
     }
 

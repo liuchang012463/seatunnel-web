@@ -144,9 +144,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
                 map.put("doris.filter.query", filterQuery);
             }
             return;
-        }
-
-        // 按表模式：检查是否有直接的 doris.filter.query
+        }        // 按表模式：检查是否有直接的 doris.filter.query
         String filterQuery = JdbcConfigReaders.getString(config, "doris.filter.query", "");
         if (!filterQuery.isEmpty()) {
             map.put("doris.filter.query", filterQuery);
@@ -233,7 +231,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
 
         String password = JdbcConfigReaders.getString(conn, "password", "");
         if (!password.isEmpty()) {
-            map.put("password", PasswordUtils.decodePassword(password));
+            map.put("password", PasswordUtils.decodeIfEncrypted(password));
         }
     }
 
@@ -264,19 +262,75 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
     // ======================== WHERE Extraction ========================
 
     /**
-     * 从 SQL 中简单截取 WHERE 关键字后的内容作为过滤条件。
-     * 不处理子查询、ORDER BY 等复杂语法。
+     * 从 SQL 中提取顶层 WHERE 子句内容作为过滤条件。
+     *
+     * <p>仅在括号深度为零、且不在字符串字面量内时匹配关键字，
+     * 避免把子查询里的 WHERE 或含 WHERE 的字符串常量误判为顶层过滤；
+     * 同时截掉 WHERE 之后的 ORDER BY / GROUP BY / HAVING / LIMIT 子句。</p>
      */
     private String extractWhereClause(String sql) {
         if (StringUtils.isBlank(sql)) {
             return "";
         }
-        String upperSql = sql.trim().toUpperCase();
-        int whereIdx = upperSql.lastIndexOf("WHERE");
+        String trimmed = sql.trim();
+        int whereIdx = findTopLevelKeyword(trimmed, "WHERE", 0);
         if (whereIdx < 0) {
             return "";
         }
-        return sql.trim().substring(whereIdx + 5).trim();
+        int start = whereIdx + "WHERE".length();
+        int end = trimmed.length();
+        for (String keyword : new String[] {"ORDER BY", "GROUP BY", "HAVING", "LIMIT"}) {
+            int idx = findTopLevelKeyword(trimmed, keyword, start);
+            if (idx >= 0 && idx < end) {
+                end = idx;
+            }
+        }
+        return trimmed.substring(start, end).trim();
+    }
+
+    /**
+     * Locate a SQL keyword at parenthesis depth zero outside string literals,
+     * starting at or after {@code from}.
+     */
+    private int findTopLevelKeyword(String sql, String keyword, int from) {
+        String upper = sql.toUpperCase();
+        int depth = 0;
+        char quote = 0;
+        for (int i = 0; i < upper.length(); i++) {
+            char c = upper.charAt(i);
+            if (quote != 0) {
+                if (c == quote) {
+                    quote = 0;
+                }
+                continue;
+            }
+            if (c == '\'' || c == '"' || c == '`') {
+                quote = c;
+                continue;
+            }
+            if (c == '(') {
+                depth++;
+                continue;
+            }
+            if (c == ')') {
+                depth = Math.max(0, depth - 1);
+                continue;
+            }
+            if (depth > 0 || i < from || !upper.startsWith(keyword, i)) {
+                continue;
+            }
+            boolean wordStart = i == 0 || !isSqlWordChar(upper.charAt(i - 1));
+            boolean wordEnd = i + keyword.length() >= upper.length()
+                    || !isSqlWordChar(upper.charAt(i + keyword.length()));
+            if (wordStart && wordEnd) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isSqlWordChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_' || c == '@' || c == '$';
     }
 
     /**
@@ -315,21 +369,28 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
      * 前端通用表单可能不传 sink.label-prefix / doris.config，后端自动填充默认值。
      */
     private void putDorisSinkConfig(Config config, Map<String, Object> map, HoconBuildContext context) {
-        // sink.label-prefix — 必填，前端未传则自动生成
-        String labelPrefix = JdbcConfigReaders.getString(config, "sink.label-prefix", "");
-        if (labelPrefix.isEmpty()) {
-            labelPrefix = "seatunnel_" + System.currentTimeMillis();
-        }
-        map.put("sink.label-prefix", labelPrefix);
-
+        // sink.enable-2pc — 输出布尔值。开启 2pc 时 label-prefix 必须是任务级
+        // 稳定值：故障恢复期需要按前缀追踪预提交事务，不接受每次构建重新生成。
         Boolean enable2pc = JdbcConfigReaders.getBoolean(config, "sink.enable-2pc", false);
-        if (enable2pc) {
-            map.put("sink.enable-2pc", "true");
+        String labelPrefix = JdbcConfigReaders.getString(config, "sink.label-prefix", "");
+        if (Boolean.TRUE.equals(enable2pc)) {
+            map.put("sink.enable-2pc", true);
+            if (StringUtils.isBlank(labelPrefix)) {
+                throw new IllegalArgumentException(
+                        "sink.label-prefix is required when sink.enable-2pc is enabled; "
+                                + "use a stable task-level value");
+            }
+            map.put("sink.label-prefix", labelPrefix);
+        } else {
+            // 非 2pc 下 label 仅用于导入去重展示，前端未传则自动生成
+            map.put("sink.label-prefix", StringUtils.isNotBlank(labelPrefix)
+                    ? labelPrefix
+                    : "seatunnel_" + System.currentTimeMillis());
         }
 
         Boolean enableDelete = JdbcConfigReaders.getBoolean(config, "sink.enable-delete", null);
         if (enableDelete != null) {
-            map.put("sink.enable-delete", enableDelete.toString());
+            map.put("sink.enable-delete", enableDelete);
         }
 
         // schema_save_mode — 默认 CREATE_SCHEMA_WHEN_NOT_EXIST
@@ -366,17 +427,46 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
         map.put("doris.config", dorisConfig);
 
         // save_mode_create_template — 条件守卫：仅在需要建表时注入模板
-        // 模板优先级：用户显式填写 > Doris 默认模板 > 不输出
+        // 模板优先级：用户显式填写 > 按主键选择的默认模板 > 不输出
         if ("CREATE_SCHEMA_WHEN_NOT_EXIST".equals(schemaSaveMode)
                 || "RECREATE_SCHEMA".equals(schemaSaveMode)) {
             String template = JdbcConfigReaders.getString(config, "save_mode_create_template", "");
             if (template.isEmpty()) {
-                template = defaultCreateTableTemplate();
+                template = hasConfiguredPrimaryKeys(config)
+                        ? defaultCreateTableTemplate()
+                        : duplicateKeyCreateTableTemplate();
             }
             if (template != null && !template.isEmpty()) {
                 map.put("save_mode_create_template", template);
             }
         }
+    }
+
+    /**
+     * 无主键表不能使用 UNIQUE KEY 模板：${rowtype_primary_key} 展开为空会
+     * 生成非法 DDL。回退到引擎支持的 ${rowtype_duplicate_key} 占位符。
+     */
+    private String duplicateKeyCreateTableTemplate() {
+        return "CREATE TABLE IF NOT EXISTS `${database}`.`${table_name}` (\n"
+                + "    ${rowtype_fields}\n"
+                + ") ENGINE=OLAP\n"
+                + "    DUPLICATE KEY (${rowtype_duplicate_key})\n"
+                + "    COMMENT '${comment}'\n"
+                + "    DISTRIBUTED BY HASH (${rowtype_duplicate_key})\n"
+                + "    PROPERTIES (\n"
+                + "        \"replication_allocation\" = \"tag.location.default: 1\",\n"
+                + "        \"in_memory\" = \"false\",\n"
+                + "        \"storage_format\" = \"V2\",\n"
+                + "        \"disable_auto_compaction\" = \"false\"\n"
+                + "    )";
+    }
+
+    private boolean hasConfiguredPrimaryKeys(Config config) {
+        String primaryKey = JdbcConfigReaders.getString(config, "primaryKey", "");
+        if (StringUtils.isBlank(primaryKey)) {
+            primaryKey = JdbcConfigReaders.getString(config, "primary_keys", "");
+        }
+        return StringUtils.isNotBlank(primaryKey);
     }
 
     @Override
@@ -399,7 +489,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
                 + "    database = \"demo\"\n"
                 + "    table = \"user_sink\"\n"
                 + "    sink.label-prefix = \"test\"\n"
-                + "    sink.enable-2pc = \"true\"\n"
+                + "    sink.enable-2pc = true\n"
                 + "    doris.config {\n"
                 + "      format = \"json\"\n"
                 + "      read_json_by_line = \"true\"\n"
@@ -408,7 +498,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
     }
 
     /**
-     * Doris OLAP 专属建表模板。
+     * Doris OLAP 专属建表模板（有主键表，UNIQUE KEY 支持 upsert 语义）。
      *
      * <p>与 JDBC 关系型模板完全不同：
      * <ul>

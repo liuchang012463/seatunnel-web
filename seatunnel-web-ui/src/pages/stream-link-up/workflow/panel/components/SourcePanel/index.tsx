@@ -107,6 +107,7 @@ function SourcePanel({
   const startupTimestamp = sourceConfig.startupTimestamp;
   const serverIdMode = sourceConfig.serverIdMode || "MANUAL";
   const serverId = sourceConfig.serverId || sourceConfig["server-id"] || "";
+  const serverTimeZone = sourceConfig.serverTimeZone || "";
   const slotName = sourceConfig.slotName || sourceConfig["slot.name"] || "";
   const publicationName = sourceConfig.publicationName || "";
 
@@ -454,6 +455,24 @@ function SourcePanel({
             />
           </div>
           )}
+
+          <div className="space-y-1.5">
+            <div className="text-[13px] font-semibold text-slate-400 tracking-wide">
+              Server 时区
+            </div>
+            <Tooltip title="数据库服务器时区（server-time-zone），引擎默认 UTC；跨时区部署时建议显式指定">
+              <div>
+                <Input
+                  value={serverTimeZone}
+                  placeholder="例如 Asia/Shanghai"
+                  onChange={(e) =>
+                    updateNode({ serverTimeZone: e.target.value.trim() || undefined })
+                  }
+                  allowClear
+                />
+              </div>
+            </Tooltip>
+          </div>
 
           <div className="h-px bg-slate-100" />
 

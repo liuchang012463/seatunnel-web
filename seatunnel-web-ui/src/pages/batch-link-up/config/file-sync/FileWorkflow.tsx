@@ -121,7 +121,7 @@ const defaultFileSourceConfig = (
     filenameExtension: undefined,
     binaryChunkSize: 1048576,
     binaryCompleteFileMode: false,
-    updateStrategy: 'only_add',
+    updateStrategy: 'distcp',
     compareMode: 'len_mtime',
     uploadedAssets: [],
   };
