@@ -28,10 +28,24 @@ public abstract class AbstractRemoteFileHoconBuilder implements DataSourceHoconB
         put(result, node, "binaryCompleteFileMode", "binary_complete_file_mode");
         result.put("file_format_type", "binary");
         if ("INCREMENTAL".equalsIgnoreCase(string(node.get("syncType")))) {
-            result.put("read_update_info", true);
+            // SeaTunnel 2.3.13 incremental semantics: sync_mode="update" plus
+            // target_path/update_strategy/compare_mode. The engine only knows
+            // update_strategy=distcp|strict and compare_mode=len_mtime|checksum.
+            result.put("sync_mode", "update");
             put(result, node, "targetPath", "target_path");
-            result.put("update_strategy", defaultString(node.get("updateStrategy"), "only_add"));
-            result.put("file_details_info", defaultString(node.get("compareMode"), "len_mtime"));
+            String updateStrategy = enumValue(node.get("updateStrategy"), "distcp");
+            if (!"distcp".equals(updateStrategy) && !"strict".equals(updateStrategy)) {
+                throw new IllegalArgumentException(
+                        "Unsupported file update_strategy: " + updateStrategy + " (distcp or strict)");
+            }
+            result.put("update_strategy", updateStrategy);
+            String compareMode = enumValue(node.get("compareMode"), "len_mtime");
+            if (!"len_mtime".equals(compareMode) && !"checksum".equals(compareMode)) {
+                throw new IllegalArgumentException(
+                        "Unsupported file compare_mode: " + compareMode + " (len_mtime or checksum)");
+            }
+            result.put("compare_mode", compareMode);
+            require(result, "target_path");
         }
         appendExtras(result, node);
         require(result, "path");
@@ -59,11 +73,24 @@ public abstract class AbstractRemoteFileHoconBuilder implements DataSourceHoconB
                 ? new LinkedHashMap<>() : new LinkedHashMap<>(context.getConnectionConfig().root().unwrapped());
         Map<String, Object> result = new LinkedHashMap<>();
         put(result, connection, "host", "host");
-        put(result, connection, "port", "port");
+        putPort(result, connection);
         put(result, connection, "user", "user");
         put(result, connection, "password", "password");
         appendProtocolConnection(result, connection);
         return result;
+    }
+
+    /** The engine declares FTP/SFTP port as an integer option. */
+    private void putPort(Map<String, Object> result, Map<String, Object> connection) {
+        String port = string(connection.get("port"));
+        if (port.isEmpty()) {
+            return;
+        }
+        try {
+            result.put("port", Integer.valueOf(port));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid file source port: " + port);
+        }
     }
 
     private Map<String, Object> nodeValues(HoconBuildContext context) {
