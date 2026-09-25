@@ -38,6 +38,7 @@ export interface FileResourcePreviewOptions {
   fileFormatType?: FileFormat;
   encoding?: string;
   fieldDelimiter?: string;
+  sheetName?: string;
 }
 
 export interface FileResourceApi {

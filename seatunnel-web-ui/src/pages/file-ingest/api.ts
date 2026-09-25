@@ -93,7 +93,12 @@ export const fileTransferTaskApi = {
 
 export const buildFileResourcePreviewOptions = (
   fileFormatType: string,
+  sourceConfig?: Record<string, any>,
 ): FileResourcePreviewOptions => ({
   limit: 20,
   fileFormatType: fileFormatType as FileResourcePreviewOptions['fileFormatType'],
+  encoding: sourceConfig?.encoding || undefined,
+  fieldDelimiter:
+    fileFormatType === 'csv' ? sourceConfig?.fieldDelimiter || undefined : undefined,
+  sheetName: fileFormatType === 'excel' ? sourceConfig?.sheetName || undefined : undefined,
 });

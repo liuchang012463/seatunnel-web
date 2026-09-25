@@ -1,6 +1,11 @@
-import { DeleteOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined,
+  EyeOutlined,
+  FileSearchOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import { App, Button, Collapse, Input, InputNumber, Modal, Select, Switch, Table } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import FileResourceSourceCard from './FileResourceSourceCard';
 import { buildFileResourcePreviewOptions, fileResourceApi } from './api';
 import type { FileFormat, FileResource } from './types';
@@ -18,6 +23,8 @@ const FORMAT_OPTIONS: Array<{ value: FileFormat; label: string }> = [
   { value: 'json', label: 'JSON（建议 NDJSON）' },
   { value: 'text', label: 'TEXT / TXT' },
 ];
+
+const PICKER_ALLOWED_FORMATS: FileFormat[] = ['csv', 'excel', 'json', 'text'];
 
 const TYPE_OPTIONS = [
   'string',
@@ -84,6 +91,86 @@ const getFormat = (value: unknown): FileFormat => {
   return isLocalFileFormat(normalized) ? normalized : 'csv';
 };
 
+const detectFormatFromName = (name?: string): FileFormat | undefined => {
+  const extension = String(name || '').split('.').pop()?.toLowerCase();
+  if (extension === 'csv') return 'csv';
+  if (extension === 'xls' || extension === 'xlsx') return 'excel';
+  if (extension === 'json') return 'json';
+  if (extension === 'txt' || extension === 'text') return 'text';
+  return undefined;
+};
+
+/** Decode the delimiter as the engine would ('\\001' -> \x01, '\\t' -> tab). */
+const decodeEscapeSequence = (value: unknown): string => {
+  const raw = String(value ?? '');
+  if (/^\\[0-7]{1,3}$/.test(raw)) {
+    return String.fromCharCode(parseInt(raw.slice(1), 8));
+  }
+  return raw.replace(/\\t/g, '\t').replace(/\\n/g, '\n');
+};
+
+const inferTypeFromSamples = (values: unknown[]): string => {
+  const samples = values
+    .filter((value) => value !== null && value !== undefined && String(value).trim() !== '')
+    .map((value) => String(value).trim());
+  if (!samples.length) return 'string';
+  if (samples.every((value) => /^[+-]?\d+$/.test(value))) return 'int';
+  // 小数列允许混入整数值（如 1.5 与 2），只要存在小数点即建议 double。
+  if (samples.every((value) => /^[+-]?\d+(\.\d+)?$/.test(value)) && samples.some((value) => value.includes('.'))) {
+    return 'double';
+  }
+  return 'string';
+};
+
+/**
+ * Build the schema fields from a preview response. Column names come from the
+ * file itself (header row / JSON keys); text files have no names, so they fall
+ * back to positional field_N columns split by the configured delimiter.
+ */
+const deriveFieldsFromPreview = (
+  data: any,
+  format: FileFormat,
+  hasHeader: boolean,
+  fieldDelimiter: unknown,
+): Record<string, string> => {
+  const columns: string[] = Array.isArray(data?.columns)
+    ? data.columns.map((column: any) => String(column))
+    : [];
+  const rows: any[] = Array.isArray(data?.rows) ? data.rows : [];
+
+  if (format === 'text') {
+    const delimiter = decodeEscapeSequence(fieldDelimiter || '\t') || '\t';
+    const lines = rows.map((row) => String(Array.isArray(row) ? row[0] : row?.value ?? ''));
+    const width = Math.max(
+      1,
+      ...lines.slice(0, 5).map((line) => line.split(delimiter).length),
+    );
+    const fields: Record<string, string> = {};
+    for (let index = 0; index < width; index += 1) {
+      fields[`field_${index + 1}`] = inferTypeFromSamples(
+        lines.slice(0, 20).map((line) => line.split(delimiter)[index]),
+      );
+    }
+    return fields;
+  }
+
+  const namedColumns = hasHeader && columns.length > 0;
+  const fields: Record<string, string> = {};
+  columns.forEach((column, index) => {
+    let fieldName = namedColumns && column.trim() ? column.trim() : `field_${index + 1}`;
+    let suffix = 2;
+    while (fields[fieldName]) {
+      fieldName = `${namedColumns && column.trim() ? column.trim() : `field_${index + 1}`}_${suffix}`;
+      suffix += 1;
+    }
+    // 预览行按后端返回的列名键控（关闭表头时列名仅用于取值，不作为字段名）。
+    fields[fieldName] = inferTypeFromSamples(
+      rows.map((row) => (Array.isArray(row) ? row[index] : row?.[column])),
+    );
+  });
+  return fields;
+};
+
 const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
   sourceConfig,
   onChange,
@@ -95,8 +182,12 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewContent, setPreviewContent] = useState<unknown>();
+  const [recognizing, setRecognizing] = useState(false);
+  const recognizeSeqRef = useRef(0);
 
   const fields = useMemo(() => getSchemaFields(sourceConfig?.schema), [sourceConfig?.schema]);
+  const hasHeader =
+    sourceConfig?.csvUseHeaderLine !== false && sourceConfig?.skipHeader !== false;
 
   const updateSchema = (nextFields: Record<string, string>) => {
     const schema = { fields: nextFields };
@@ -148,6 +239,78 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
     updateSchema(nextFields);
   };
 
+  const recognizeFields = async (config: Record<string, any>) => {
+    const targetResource = (config.fileResource || config.resource) as FileResource | undefined;
+    if (!targetResource?.id) {
+      message.warning('请先选择文件资源');
+      return;
+    }
+    const nextFormat = getFormat(config.fileFormatType);
+    const seq = (recognizeSeqRef.current += 1);
+    setRecognizing(true);
+    try {
+      const result = onPreview
+        ? await onPreview(targetResource, buildFileResourcePreviewOptions(nextFormat, config))
+        : await fileResourceApi.preview(
+            targetResource.id,
+            buildFileResourcePreviewOptions(nextFormat, config),
+          );
+      if (seq !== recognizeSeqRef.current) return;
+      const payload = (result as any)?.data ?? result;
+      const nextFields = deriveFieldsFromPreview(
+        payload,
+        nextFormat,
+        config.csvUseHeaderLine !== false && config.skipHeader !== false,
+        config.fieldDelimiter,
+      );
+      if (!Object.keys(nextFields).length) {
+        message.warning('未能从文件识别出字段，请手动添加');
+        return;
+      }
+      updateSchema(nextFields);
+    } catch (error: any) {
+      if (seq === recognizeSeqRef.current) {
+        message.error(error?.message || '字段识别失败，请手动配置');
+      }
+    } finally {
+      if (seq === recognizeSeqRef.current) {
+        setRecognizing(false);
+      }
+    }
+  };
+
+  const handleSourceChange = (patch: Record<string, any>) => {
+    const nextResourceId = patch.fileResourceId ? String(patch.fileResourceId) : undefined;
+    const prevResourceId = resource?.id ? String(resource.id) : undefined;
+    const nextResource = (patch.fileResource || (nextResourceId ? resource : undefined)) as
+      | FileResource
+      | undefined;
+    const detectedFormat = nextResourceId
+      ? detectFormatFromName(nextResource?.name || nextResource?.path)
+      : undefined;
+
+    if (detectedFormat && detectedFormat !== format) {
+      // 新选择的文件带出了不同的格式：跟随文件，无需用户先选格式再选文件；
+      // 分隔符随格式重置为对应默认值，避免沿用上一格式的分隔符。
+      patch = {
+        ...patch,
+        fileFormatType: detectedFormat,
+        sourceMode: 'FILE_RESOURCE',
+        dbType: 'MINIO',
+        connectorType: 'S3File',
+        pluginName: 'S3File',
+        ...(detectedFormat === 'csv' ? { fieldDelimiter: ',' } : {}),
+        ...(detectedFormat === 'text' ? { fieldDelimiter: '\\001' } : {}),
+      };
+    }
+
+    onChange(patch);
+
+    if (nextResourceId && nextResourceId !== prevResourceId) {
+      void recognizeFields({ ...sourceConfig, ...patch });
+    }
+  };
+
   const handlePreview = async () => {
     if (!resource?.id) {
       message.warning('请先选择文件资源');
@@ -156,8 +319,11 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
     setPreviewLoading(true);
     try {
       const result = onPreview
-        ? await onPreview(resource, buildFileResourcePreviewOptions(format))
-        : await fileResourceApi.preview(resource.id, buildFileResourcePreviewOptions(format));
+        ? await onPreview(resource, buildFileResourcePreviewOptions(format, sourceConfig))
+        : await fileResourceApi.preview(
+            resource.id,
+            buildFileResourcePreviewOptions(format, sourceConfig),
+          );
       const payload = (result as any)?.data ?? result;
       setPreviewContent(payload);
       setPreviewOpen(true);
@@ -250,74 +416,26 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
             </>
           ) : null}
           {format === 'excel' ? (
-            <label className="text-xs text-slate-600">
-              <span className="mb-1 block">Excel 引擎</span>
-              <Select
-                className="w-full"
-                value={sourceConfig?.excelEngine ?? 'POI'}
-                options={[{ value: 'POI', label: 'POI' }, { value: 'EasyExcel', label: 'EasyExcel' }]}
-                onChange={(value) => onChange({ excelEngine: value })}
-              />
-            </label>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      key: 'schema',
-      label: (
-        <span className="text-sm font-medium text-slate-800">
-          字段 Schema
-          <span className="ml-2 text-xs font-normal text-slate-400">
-            {Object.keys(fields).length
-              ? `已配置 ${Object.keys(fields).length} 个字段`
-              : '未配置，将按默认方式读取'}
-          </span>
-        </span>
-      ),
-      children: (
-        <div className="space-y-3">
-          {format === 'json' || format === 'excel' ? (
-            <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
-              {format === 'json'
-                ? 'JSON/NDJSON 建议明确字段 Schema，避免类型推断造成目标字段不稳定。'
-                : 'Excel 建议明确字段 Schema；任务执行由 SeaTunnel 直接读取对象存储，预览仅读取受限样本。'}
-            </div>
-          ) : null}
-          <div className="flex justify-end">
-            <Button size="small" icon={<PlusOutlined />} onClick={addField}>
-              添加字段
-            </Button>
-          </div>
-          <div className="space-y-2">
-            {Object.entries(fields).map(([name, type]) => (
-              <div key={name} className="grid grid-cols-[minmax(0,1fr)_130px_32px] gap-2">
-                <SchemaFieldNameInput
-                  name={name}
-                  existingNames={Object.keys(fields).filter((field) => field !== name)}
-                  onCommit={renameField}
+            <>
+              <label className="text-xs text-slate-600">
+                <span className="mb-1 block">工作表</span>
+                <Input
+                  value={sourceConfig?.sheetName ?? ''}
+                  onChange={(event) => onChange({ sheetName: event.target.value })}
+                  placeholder="留空读取第一个工作表"
                 />
+              </label>
+              <label className="text-xs text-slate-600">
+                <span className="mb-1 block">Excel 引擎</span>
                 <Select
-                  value={type}
-                  aria-label={`字段类型 ${name}`}
-                  options={TYPE_OPTIONS}
-                  onChange={(nextType) => updateSchema({ ...fields, [name]: nextType })}
+                  className="w-full"
+                  value={sourceConfig?.excelEngine ?? 'POI'}
+                  options={[{ value: 'POI', label: 'POI' }, { value: 'EasyExcel', label: 'EasyExcel' }]}
+                  onChange={(value) => onChange({ excelEngine: value })}
                 />
-                <Button
-                  type="text"
-                  danger
-                  aria-label={`删除字段 ${name}`}
-                  icon={<DeleteOutlined />}
-                  onClick={() => removeField(name)}
-                />
-              </div>
-            ))}
-            {!Object.keys(fields).length ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
-                尚未配置字段。保持默认即可；如需固定字段名或字段类型，可在此添加。
-              </div>
-            ) : null}
-          </div>
+              </label>
+            </>
+          ) : null}
         </div>
       ),
     },
@@ -327,11 +445,11 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
     <div className="space-y-3">
       <FileResourceSourceCard
         sourceConfig={sourceConfig}
-        onChange={onChange}
-        allowedFormats={[format]}
+        onChange={handleSourceChange}
+        allowedFormats={PICKER_ALLOWED_FORMATS}
         selectionMode="file"
         title="文件资源来源"
-        description="仅支持单个文件；SeaTunnel 执行节点将直接读取 S3File 对象。"
+        description="选择或上传文件后，格式与字段将自动识别。"
       />
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -372,21 +490,83 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
             <label className="flex items-center gap-2 text-xs text-slate-600">
               <Switch
                 size="small"
-                checked={sourceConfig?.csvUseHeaderLine !== false && sourceConfig?.skipHeader !== false}
+                checked={hasHeader}
                 onChange={(checked) => onChange({ csvUseHeaderLine: checked, skipHeader: checked })}
               />
-              首行作为表头
+              首行作为表头（关闭后字段名按 field_1..N 识别）
             </label>
           ) : null}
 
           {format === 'json' || format === 'excel' ? (
             <div className="flex items-end pb-1 text-xs leading-5 text-slate-400">
-              无需额外解析参数，保持默认即可；字段 Schema 可在下方高级配置中维护。
+              无需额外解析参数，保持默认即可；字段将在选择文件后自动识别。
             </div>
           ) : null}
         </div>
 
         <Collapse className="mt-3" items={advancedItems} defaultActiveKey={[]} />
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-slate-900">
+              字段 Schema
+              <span className="ml-2 text-xs font-normal text-slate-400">
+                {Object.keys(fields).length
+                  ? `已配置 ${Object.keys(fields).length} 个字段`
+                  : '尚未识别'}
+              </span>
+            </div>
+            <div className="mt-1 text-xs text-slate-500">
+              自动读取文件字段名，类型默认 string，请逐个下拉确认。
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              size="small"
+              icon={<FileSearchOutlined />}
+              loading={recognizing}
+              disabled={!resource?.id}
+              onClick={() => void recognizeFields(sourceConfig)}
+            >
+              从文件识别
+            </Button>
+            <Button size="small" icon={<PlusOutlined />} onClick={addField}>
+              添加字段
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-3 max-h-[260px] space-y-2 overflow-y-auto">
+          {Object.entries(fields).map(([name, type]) => (
+            <div key={name} className="grid grid-cols-[minmax(0,1fr)_120px_32px] gap-2">
+              <SchemaFieldNameInput
+                name={name}
+                existingNames={Object.keys(fields).filter((field) => field !== name)}
+                onCommit={renameField}
+              />
+              <Select
+                value={type}
+                aria-label={`字段类型 ${name}`}
+                options={TYPE_OPTIONS}
+                onChange={(nextType) => updateSchema({ ...fields, [name]: nextType })}
+              />
+              <Button
+                type="text"
+                danger
+                aria-label={`删除字段 ${name}`}
+                icon={<DeleteOutlined />}
+                onClick={() => removeField(name)}
+              />
+            </div>
+          ))}
+          {!Object.keys(fields).length ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
+              选择文件后将自动识别字段；也可点击「从文件识别」或手动添加。
+            </div>
+          ) : null}
+        </div>
       </section>
 
       <Modal
