@@ -1,5 +1,10 @@
 package org.apache.seatunnel.web.core.utils;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * Utility class for generating SeaTunnel job configuration text.
  *
@@ -12,6 +17,14 @@ package org.apache.seatunnel.web.core.utils;
 public class SeaTunnelConfigUtil {
 
     private static final String INDENT = "    ";
+
+    /**
+     * Placeholders are matched in a single pass so user-provided block
+     * content is never re-scanned: a script or SQL block that itself
+     * contains a placeholder literal must stay untouched.
+     */
+    private static final Pattern PLACEHOLDER = Pattern.compile(
+            "env_placeholder|source_placeholder|transform_placeholder|sink_placeholder");
 
     /**
      * Base SeaTunnel configuration template.
@@ -55,11 +68,22 @@ public class SeaTunnelConfigUtil {
             String transforms,
             String sinks
     ) {
-        return CONFIG_TEMPLATE
-                .replace("env_placeholder", indentBlock(env))
-                .replace("source_placeholder", indentBlock(sources))
-                .replace("transform_placeholder", indentBlock(transforms))
-                .replace("sink_placeholder", indentBlock(sinks));
+        Map<String, String> blocks = new LinkedHashMap<>();
+        blocks.put("env_placeholder", indentBlock(env));
+        blocks.put("source_placeholder", indentBlock(sources));
+        blocks.put("transform_placeholder", indentBlock(transforms));
+        blocks.put("sink_placeholder", indentBlock(sinks));
+
+        Matcher matcher = PLACEHOLDER.matcher(CONFIG_TEMPLATE);
+        StringBuilder builder = new StringBuilder();
+        while (matcher.find()) {
+            String block = blocks.getOrDefault(matcher.group(), "");
+            // Quote the replacement so block content like ${table_name}
+            // is never interpreted as a regex group reference.
+            matcher.appendReplacement(builder, Matcher.quoteReplacement(block));
+        }
+        matcher.appendTail(builder);
+        return builder.toString();
     }
 
     /**
