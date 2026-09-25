@@ -2,6 +2,7 @@ package org.apache.seatunnel.plugin.datasource.api.jdbc;
 
 import com.typesafe.config.Config;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 
 import java.util.Map;
 import static org.apache.seatunnel.plugin.datasource.api.hocon.JdbcBatchConstants.*;
@@ -11,8 +12,12 @@ public abstract class AbstractJdbcHoconBuilder {
 
     protected abstract String defaultDriver();
 
+    /**
+     * Keep the JDBC family on the same password chain as Doris: decrypt
+     * encrypted values, pass plain values through unchanged.
+     */
     protected String processPassword(String rawPassword) {
-        return rawPassword;
+        return PasswordUtils.decodeIfEncrypted(rawPassword);
     }
 
     protected void putConnCommon(Config conn, Map<String, Object> map) {

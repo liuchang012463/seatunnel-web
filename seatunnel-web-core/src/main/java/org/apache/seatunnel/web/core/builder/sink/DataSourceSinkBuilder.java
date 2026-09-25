@@ -75,8 +75,11 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
         Long dataSourceId = parseDataSourceId(config);
         DataSource dataSource = getRequiredDataSource(dataSourceId);
 
-        DbType dbType = parseDbType(data);
-        String pluginName = getRequiredPluginName(data);
+        // Source nodes resolve dbType/pluginName from the resolved node config;
+        // some payload shapes only carry them on data, so read config first and
+        // fall back instead of failing with "Missing required field 'dbType'".
+        DbType dbType = parseDbType(config.hasPath(KEY_DB_TYPE) ? config : data);
+        String pluginName = getRequiredPluginName(config.hasPath(KEY_PLUGIN_NAME) ? config : data);
 
         config = overrideLakeDatabase(config, context, dataSourceId, dataSource, dbType, pluginName);
 

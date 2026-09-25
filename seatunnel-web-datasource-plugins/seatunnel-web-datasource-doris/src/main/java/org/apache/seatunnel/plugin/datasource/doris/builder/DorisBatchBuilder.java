@@ -231,7 +231,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
 
         String password = JdbcConfigReaders.getString(conn, "password", "");
         if (!password.isEmpty()) {
-            map.put("password", PasswordUtils.decodePassword(password));
+            map.put("password", PasswordUtils.decodeIfEncrypted(password));
         }
     }
 

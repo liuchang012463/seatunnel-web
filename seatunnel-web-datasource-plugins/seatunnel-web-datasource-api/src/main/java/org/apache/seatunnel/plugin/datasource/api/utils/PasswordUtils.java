@@ -80,6 +80,30 @@ public class PasswordUtils {
         return new String(BASE64.decode(passwordWithSalt.substring(DATASOURCE_ENCRYPTION_SALT_DEFAULT.length())), StandardCharsets.UTF_8);
     }
 
+    /**
+     * Decrypt for HOCON builders: encrypted values (AES-GCM or legacy salted
+     * Base64) are decrypted, plain values pass through unchanged and silently.
+     */
+    public static String decodeIfEncrypted(String password) {
+        if (StringUtils.isEmpty(password)) {
+            return StringUtils.EMPTY;
+        }
+        if (password.startsWith(AES_GCM_PREFIX)) {
+            return decodePassword(password);
+        }
+        try {
+            String passwordWithSalt = new String(BASE64.decode(password), StandardCharsets.UTF_8);
+            if (passwordWithSalt.startsWith(DATASOURCE_ENCRYPTION_SALT_DEFAULT)) {
+                return new String(
+                        BASE64.decode(passwordWithSalt.substring(DATASOURCE_ENCRYPTION_SALT_DEFAULT.length())),
+                        StandardCharsets.UTF_8);
+            }
+        } catch (Exception ignored) {
+            // Not decodable input — treat it as a plain password.
+        }
+        return password;
+    }
+
     private static byte[] resolveKey() throws Exception {
         String configuredKey = System.getenv(DATASOURCE_MASTER_KEY_ENV);
         if (StringUtils.isBlank(configuredKey)) {
