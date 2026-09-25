@@ -23,8 +23,11 @@ class RemoteFileHoconBuilderTest {
                 .connectionConfig(connection).connectionParam("{}").nodeConfig(node).build());
         assertEquals("binary", result.getString("file_format_type"));
         assertEquals("passive_local", result.getString("connection_mode"));
-        assertTrue(result.getBoolean("read_update_info"));
-        assertEquals("len_mtime", result.getString("file_details_info"));
+        assertEquals(21, result.getInt("port"));
+        assertEquals("update", result.getString("sync_mode"));
+        assertEquals("/archive", result.getString("target_path"));
+        assertEquals("distcp", result.getString("update_strategy"));
+        assertEquals("len_mtime", result.getString("compare_mode"));
         assertFalse(result.hasPath("syncType"));
     }
 

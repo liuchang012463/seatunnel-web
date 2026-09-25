@@ -145,10 +145,13 @@ public class KafkaHoconBuilder implements DataSourceHoconBuilder {
                 node.remove("pattern");
                 return;
             }
-            // Legacy regex expression: move it to topic and enable the switch.
-            if (!hasText(node.get("topic"))) {
-                node.put("topic", text);
+            // Legacy regex expression: move it to topic and enable the switch;
+            // an existing topic makes the intent ambiguous.
+            if (hasText(node.get("topic"))) {
+                throw new IllegalArgumentException(
+                        "Kafka Source has both topic and a legacy pattern expression; keep the regex in topic only");
             }
+            node.put("topic", text);
         }
         node.put("pattern", Boolean.TRUE);
     }
