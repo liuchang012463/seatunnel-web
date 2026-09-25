@@ -8,7 +8,7 @@ import {
 } from "@/pages/data-source/dataSourceRegistry";
 import { message } from "antd";
 import { Table2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface SourcePanelLogicProps {
   selectedNode: any;
@@ -65,6 +65,12 @@ export function useSourcePanelLogic({
     schemaError: "",
   };
 
+  // Async callbacks (e.g. field recognition) capture updateNode from an older
+  // render; always build on the latest node data so late updates never revert
+  // newer config written in between.
+  const nodeDataRef = useRef(nodeData);
+  nodeDataRef.current = nodeData;
+
   const updateNode = useCallback(
     (
       configPatch?: Record<string, any>,
@@ -72,21 +78,22 @@ export function useSourcePanelLogic({
       metaPatch?: Record<string, any>
     ) => {
       if (!nodeId) return;
+      const latestNodeData = nodeDataRef.current;
 
       onNodeDataChange(nodeId, {
-        ...nodeData,
+        ...latestNodeData,
         ...(extraNodeDataPatch || {}),
         config: {
-          ...(nodeData?.config || {}),
+          ...(latestNodeData?.config || {}),
           ...(configPatch || {}),
         },
         meta: {
-          ...(nodeData?.meta || {}),
+          ...(latestNodeData?.meta || {}),
           ...(metaPatch || {}),
         },
       });
     },
-    [nodeId, nodeData, onNodeDataChange]
+    [nodeId, onNodeDataChange]
   );
 
   const currentDataSource = useMemo(() => {
