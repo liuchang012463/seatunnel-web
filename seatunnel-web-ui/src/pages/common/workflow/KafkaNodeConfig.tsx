@@ -70,7 +70,12 @@ export default function KafkaNodeConfig({
   onChange,
 }: Props) {
   const source = role === 'source';
-  const subscription = config.pattern ? 'pattern' : 'topic';
+  // Legacy payloads stored the regex expression itself in `pattern`; the engine
+  // now expects pattern=true with the regex in topic. Migrate on display.
+  const legacyPattern =
+    typeof config.pattern === 'string' &&
+    !['true', 'false'].includes(config.pattern.trim());
+  const subscription = config.pattern === true || legacyPattern ? 'pattern' : 'topic';
   const startMode = config.startMode || 'group_offsets';
   const format = config.format || 'json';
   const semantics = config.semantics || 'NON';
@@ -102,7 +107,7 @@ export default function KafkaNodeConfig({
               options={[{ label: 'Topic', value: 'topic' }, { label: '正则', value: 'pattern' }]}
               onChange={(value) => onChange(value === 'topic'
                 ? { pattern: undefined }
-                : { topic: undefined })}
+                : { pattern: true, ...(legacyPattern ? { topic: config.pattern } : {}) })}
             />
           </Field>
           {subscription === 'topic' ? (
@@ -110,9 +115,9 @@ export default function KafkaNodeConfig({
           ) : (
             <Field label="Topic 正则">
               <Input
-                value={config.pattern}
+                value={legacyPattern ? config.pattern : config.topic}
                 placeholder="例如 orders-.*"
-                onChange={(event) => onChange({ pattern: event.target.value })}
+                onChange={(event) => onChange({ topic: event.target.value, pattern: true })}
               />
             </Field>
           )}
