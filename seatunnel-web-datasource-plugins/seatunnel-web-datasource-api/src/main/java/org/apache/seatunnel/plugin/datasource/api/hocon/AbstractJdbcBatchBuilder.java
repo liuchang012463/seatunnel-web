@@ -91,7 +91,7 @@ public abstract class AbstractJdbcBatchBuilder extends AbstractJdbcHoconBuilder
 
         sinkTargetRouter.build(config, conn, map);
         sinkOptionAppender.append(config, map);
-        extraOptionAppender.append(config, map);
+        extraOptionAppender.append(config, map, true);
 
         return ConfigFactory.parseMap(map);
     }

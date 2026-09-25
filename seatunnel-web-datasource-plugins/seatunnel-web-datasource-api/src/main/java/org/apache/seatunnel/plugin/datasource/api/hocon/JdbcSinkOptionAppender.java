@@ -74,11 +74,13 @@ public class JdbcSinkOptionAppender {
             throw new IllegalArgumentException("Primary key is required when writeMode is upsert");
         }
 
-        boolean enableUpsert = configuredEnableUpsert != null
-                ? configuredEnableUpsert
-                : true;
-
-        map.put("enable_upsert", enableUpsert);
+        // The engine defaults enable_upsert to true; only emit it when the user
+        // configured it explicitly or upsert semantics must be forced.
+        if (configuredEnableUpsert != null) {
+            map.put(ENABLE_UPSERT, configuredEnableUpsert);
+        } else if (writeModeIsUpsert) {
+            map.put(ENABLE_UPSERT, true);
+        }
 
         if (!primaryKeys.isEmpty()) {
             map.put("primary_keys", primaryKeys);
@@ -101,12 +103,44 @@ public class JdbcSinkOptionAppender {
         }
 
         if (config.hasPath("exactlyOnce")) {
-            map.put("is_exactly_once", JdbcConfigReaders.getBoolean(config, "exactlyOnce", false));
+            appendExactlyOnce(config, map, JdbcConfigReaders.getBoolean(config, "exactlyOnce", false));
         }
 
         if (config.hasPath("is_exactly_once")) {
-            map.put("is_exactly_once", JdbcConfigReaders.getBoolean(config, "is_exactly_once", false));
+            appendExactlyOnce(config, map, JdbcConfigReaders.getBoolean(config, "is_exactly_once", false));
+        } else if ("true".equalsIgnoreCase(extraParam(config, "is_exactly_once"))) {
+            appendExactlyOnce(config, map, true);
         }
+    }
+
+    /**
+     * The engine rejects exactly-once jobs without an XA data source class, so
+     * fail at build time with an actionable message instead.
+     */
+    private void appendExactlyOnce(Config config, Map<String, Object> map, boolean exactlyOnce) {
+        map.put(IS_EXACTLY_ONCE, exactlyOnce);
+        if (exactlyOnce && StringUtils.isBlank(extraParam(config, "xa_data_source_class_name"))
+                && StringUtils.isBlank(JdbcConfigReaders.getString(config, "xa_data_source_class_name", ""))) {
+            throw new IllegalArgumentException(
+                    "xa_data_source_class_name is required when is_exactly_once is enabled (e.g. com.mysql.cj.jdbc.MysqlXADataSource)");
+        }
+    }
+
+    private String extraParam(Config config, String key) {
+        if (config == null || !config.hasPath(EXTRA_PARAMS)) {
+            return "";
+        }
+        try {
+            for (Config item : config.getConfigList(EXTRA_PARAMS)) {
+                if (key.equalsIgnoreCase(JdbcConfigReaders.getString(item, KEY, ""))) {
+                    Object value = item.hasPath(VALUE) ? item.getValue(VALUE).unwrapped() : "";
+                    return value == null ? "" : String.valueOf(value).trim();
+                }
+            }
+        } catch (Exception ignored) {
+            // A malformed extraParams list is handled by the generic appender.
+        }
+        return "";
     }
 
     private List<String> resolvePrimaryKeys(Config config) {
