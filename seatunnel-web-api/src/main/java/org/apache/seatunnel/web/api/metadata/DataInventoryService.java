@@ -575,7 +575,8 @@ public class DataInventoryService {
     }
 
     private static boolean isSupported(DbType dbType) {
-        return dbType == DbType.MYSQL || dbType == DbType.POSTGRE_SQL || dbType == DbType.JDBC
+        return dbType == DbType.MYSQL || dbType == DbType.POSTGRE_SQL || dbType == DbType.ZEONEDB
+                || dbType == DbType.JDBC
                 || dbType == DbType.DORIS || dbType == DbType.ORACLE
                 || dbType == DbType.DAMENG || dbType == DbType.KINGBASE
                 || dbType == DbType.VASTBASE;

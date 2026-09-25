@@ -43,6 +43,12 @@ export const sourceList = [
       },
       {
         onlyDiScript: false,
+        dbType: "ZEONEDB",
+        type: "ZEONEDB",
+        connectorType: "Jdbc"
+      },
+      {
+        onlyDiScript: false,
         dbType: "VASTBASE",
         type: "VASTBASE",
         connectorType: "Jdbc"

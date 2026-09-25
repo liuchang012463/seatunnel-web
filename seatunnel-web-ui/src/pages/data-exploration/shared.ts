@@ -131,6 +131,7 @@ export const DEFAULT_EXPLORATION_TASK_CATEGORY: ExplorationTaskCategoryKey = 'RE
 export const OM_PROFILER_DB_TYPES = [
   'MYSQL',
   'POSTGRE_SQL',
+  'ZEONEDB',
   'VASTBASE',
   'JDBC',
   'DORIS',

@@ -20,6 +20,7 @@ import StarRocksIcon from './StarRocksIcon';
 import TiDBIcon from './TiDBIcon';
 import ConnectorIcon from './ConnectorIcon';
 import VastbaseIcon from './VastbaseIcon';
+import zeoneDbIcon from './zeonedb.png';
 
 interface DatabaseIconsProps {
   dbType?: string;
@@ -54,6 +55,17 @@ const DatabaseIcons = ({
     case 'postgre_sql':
     case 'postgresql':
       return <PsSqlIcon width={width} height={height} />;
+    case 'zeonedb':
+    case 'zeonedb_d':
+      return (
+        <img
+          src={zeoneDbIcon}
+          alt=""
+          width={width}
+          height={height}
+          style={{ display: 'block', objectFit: 'contain' }}
+        />
+      );
     case 'opengauss':
       return <OpenGaussIcon width={width} height={height} />;
     case 'sqlite':

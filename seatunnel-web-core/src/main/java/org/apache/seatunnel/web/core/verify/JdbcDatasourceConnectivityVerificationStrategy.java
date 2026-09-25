@@ -25,6 +25,7 @@ public class JdbcDatasourceConnectivityVerificationStrategy
             DbType.JDBC,
             DbType.MYSQL,
             DbType.POSTGRE_SQL,
+            DbType.ZEONEDB,
             DbType.ORACLE,
             DbType.DORIS,
             DbType.KINGBASE,

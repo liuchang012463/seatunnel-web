@@ -22,6 +22,7 @@ public class JdbcConnectivityTestJobDefinitionBuilder implements ConnectivityTes
             DbType.JDBC,
             DbType.MYSQL,
             DbType.POSTGRE_SQL,
+            DbType.ZEONEDB,
             DbType.KINGBASE,
             DbType.DAMENG,
             DbType.VASTBASE,

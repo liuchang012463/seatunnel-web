@@ -11,6 +11,7 @@ public class ConnectivitySourceBuilderResolver {
             case JDBC -> "JDBC-JDBC";
             case MYSQL -> "JDBC-MYSQL";
             case POSTGRE_SQL -> "JDBC-POSTGRESQL";
+            case ZEONEDB -> "JDBC-POSTGRESQL";
             case KINGBASE -> "JDBC-KINGBASE";
             case DAMENG -> "JDBC-DAMENG";
             case VASTBASE -> "JDBC-VASTBASE";

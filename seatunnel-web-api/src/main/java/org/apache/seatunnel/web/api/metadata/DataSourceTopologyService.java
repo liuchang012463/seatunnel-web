@@ -220,7 +220,7 @@ public class DataSourceTopologyService {
         if (!supported(source.getDbType())) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.CONNECTOR_NOT_SUPPORTED,
-                    "OpenMetadata 1.12.10 topology is supported only for MYSQL, POSTGRE_SQL, JDBC(PostgreSQL), DORIS, ORACLE, DAMENG, KINGBASE and VASTBASE");
+                    "OpenMetadata 1.12.10 topology is supported only for MYSQL, POSTGRE_SQL, ZEONEDB, JDBC(PostgreSQL), DORIS, ORACLE, DAMENG, KINGBASE and VASTBASE");
         }
         MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
         if (binding == null || binding.getDesiredState() != MetadataDesiredState.ACTIVE
@@ -269,7 +269,8 @@ public class DataSourceTopologyService {
     }
 
     private static boolean supported(DbType dbType) {
-        return dbType == DbType.MYSQL || dbType == DbType.POSTGRE_SQL || dbType == DbType.JDBC
+        return dbType == DbType.MYSQL || dbType == DbType.POSTGRE_SQL || dbType == DbType.ZEONEDB
+                || dbType == DbType.JDBC
                 || dbType == DbType.DORIS || dbType == DbType.ORACLE
                 || dbType == DbType.DAMENG || dbType == DbType.KINGBASE
                 || dbType == DbType.VASTBASE;

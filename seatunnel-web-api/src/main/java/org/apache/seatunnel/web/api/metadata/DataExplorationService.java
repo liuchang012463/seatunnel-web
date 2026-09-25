@@ -797,6 +797,7 @@ public class DataExplorationService {
         }
         if (source.getDbType() != DbType.MYSQL
                 && source.getDbType() != DbType.POSTGRE_SQL
+                && source.getDbType() != DbType.ZEONEDB
                 && source.getDbType() != DbType.JDBC
                 && source.getDbType() != DbType.DORIS
                 && source.getDbType() != DbType.ORACLE
@@ -805,7 +806,7 @@ public class DataExplorationService {
                 && source.getDbType() != DbType.VASTBASE) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.CONNECTOR_NOT_SUPPORTED,
-                    "OpenMetadata 1.12.10 exploration is supported only for MYSQL, POSTGRE_SQL, JDBC(PostgreSQL), DORIS, ORACLE, DAMENG, KINGBASE and VASTBASE");
+                    "OpenMetadata 1.12.10 exploration is supported only for MYSQL, POSTGRE_SQL, ZEONEDB, JDBC(PostgreSQL), DORIS, ORACLE, DAMENG, KINGBASE and VASTBASE");
         }
         MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
         if (binding == null
