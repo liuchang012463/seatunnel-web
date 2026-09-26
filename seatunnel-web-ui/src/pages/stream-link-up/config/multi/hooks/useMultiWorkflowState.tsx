@@ -265,8 +265,12 @@ export function useMultiWorkflowState({
         ...(postgreSqlCdc && formValues.publicationName
           ? { publicationName: String(formValues.publicationName).trim() }
           : {}),
-        ...(postgreSqlCdc && formValues.startupMode
-          ? { 'startup.mode': formValues.startupMode }
+        ...(mysqlCdc || postgreSqlCdc
+          ? {
+              'startup.mode': formValues.startupMode || 'initial',
+              serverTimeZone:
+                String(formValues.serverTimeZone || '').trim() || undefined,
+            }
           : {}),
       },
       target: {
@@ -403,6 +407,10 @@ export function useMultiWorkflowState({
             workflow?.source?.['startup.mode'] ??
             workflow?.source?.startupMode ??
             'initial',
+          serverTimeZone:
+            workflow?.source?.serverTimeZone ??
+            workflow?.source?.['server-time-zone'] ??
+            '',
 
           splitSize:
             workflow?.source?.splitSize ?? DEFAULT_FORM_VALUES.splitSize,

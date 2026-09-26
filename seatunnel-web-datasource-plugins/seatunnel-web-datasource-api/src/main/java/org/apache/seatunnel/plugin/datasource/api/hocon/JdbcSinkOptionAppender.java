@@ -74,12 +74,16 @@ public class JdbcSinkOptionAppender {
             throw new IllegalArgumentException("Primary key is required when writeMode is upsert");
         }
 
-        // The engine defaults enable_upsert to true; only emit it when the user
-        // configured it explicitly or upsert semantics must be forced.
+        // The engine defaults enable_upsert to true, so append mode must emit
+        // false unless the user explicitly selects upsert behavior.
         if (configuredEnableUpsert != null) {
             map.put(ENABLE_UPSERT, configuredEnableUpsert);
         } else if (writeModeIsUpsert) {
             map.put(ENABLE_UPSERT, true);
+        } else {
+            // The engine defaults this option to true. Emit false explicitly
+            // for append mode so append jobs do not silently become upserts.
+            map.put(ENABLE_UPSERT, false);
         }
 
         if (!primaryKeys.isEmpty()) {

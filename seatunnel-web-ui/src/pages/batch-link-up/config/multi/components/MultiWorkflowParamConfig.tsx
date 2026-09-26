@@ -1,12 +1,24 @@
 import React from "react";
-import { Col, Form, InputNumber, Row, Select, Switch } from "antd";
+import { Col, Form, Input, InputNumber, Row, Select, Switch } from "antd";
+import type { DbTypeValue } from "../types";
 import {
   DATA_SAVE_MODE_OPTIONS,
   FIELD_IDE_OPTIONS,
   SCHEMA_SAVE_MODE_OPTIONS,
 } from "../config";
 
-const MultiWorkflowParamConfig: React.FC = () => {
+type MultiWorkflowParamConfigProps = {
+  sourceType?: DbTypeValue;
+  targetType?: DbTypeValue;
+};
+
+const MultiWorkflowParamConfig: React.FC<MultiWorkflowParamConfigProps> = ({
+  sourceType,
+  targetType,
+}) => {
+  const isJdbcSource = sourceType?.connectorType?.toLowerCase() === "jdbc";
+  const isDorisTarget = targetType?.dbType?.toUpperCase() === "DORIS";
+
   return (
     <div className="mt-6 rounded-2xl bg-white" style={{ marginBottom: 40 }}>
       <div className="mb-5 text-base font-semibold text-slate-800">参数设置</div>
@@ -28,6 +40,23 @@ const MultiWorkflowParamConfig: React.FC = () => {
           >
             <InputNumber min={1} style={{ width: "100%" }} placeholder="8096" />
           </Form.Item>
+
+          {isJdbcSource && (
+            <>
+              <Form.Item label="分区列（Partition Column）" name="partitionColumn">
+                <Input placeholder="可选；自定义 SQL 分片读取时填写" allowClear />
+              </Form.Item>
+              <Form.Item label="分区下界" name="partitionLowerBound">
+                <Input placeholder="可选" allowClear />
+              </Form.Item>
+              <Form.Item label="分区上界" name="partitionUpperBound">
+                <Input placeholder="可选" allowClear />
+              </Form.Item>
+              <Form.Item label="分区数（Partition Num）" name="partitionNum">
+                <InputNumber min={1} style={{ width: "100%" }} placeholder="可选" />
+              </Form.Item>
+            </>
+          )}
         </Col>
 
         <Col span={12}>
@@ -80,6 +109,45 @@ const MultiWorkflowParamConfig: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
+
+          {isDorisTarget && (
+            <>
+              <Form.Item
+                label="启用 Doris 2PC"
+                name="dorisEnable2pc"
+                valuePropName="checked"
+              >
+                <Switch />
+              </Form.Item>
+              <Form.Item
+                label="Doris 2PC 稳定标签前缀"
+                name="dorisLabelPrefix"
+                dependencies={["dorisEnable2pc"]}
+                extra="开启 2PC 时必填；请使用稳定的任务级值，重建配置时保持不变。"
+                rules={[
+                  ({ getFieldValue }) => ({
+                    validator: async (_, value) => {
+                      if (
+                        getFieldValue("dorisEnable2pc") &&
+                        !String(value || "").trim()
+                      ) {
+                        throw new Error("开启 Doris 2PC 时必须填写稳定标签前缀");
+                      }
+                    },
+                  }),
+                ]}
+              >
+                <Input placeholder="例如：orders_sync" allowClear />
+              </Form.Item>
+              <Form.Item
+                label="Doris 表副本数"
+                name="dorisReplicaCount"
+                rules={[{ required: true, message: "请输入 Doris 表副本数" }]}
+              >
+                <InputNumber min={1} style={{ width: "100%" }} />
+              </Form.Item>
+            </>
+          )}
         </Col>
       </Row>
     </div>

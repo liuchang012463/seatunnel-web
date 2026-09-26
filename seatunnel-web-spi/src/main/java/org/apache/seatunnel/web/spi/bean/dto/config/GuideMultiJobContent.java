@@ -36,6 +36,11 @@ public class GuideMultiJobContent {
         private String schemaName;
         private Integer fetchSize;
         private Integer splitSize;
+        private String serverTimeZone;
+        private String partitionColumn;
+        private String partitionLowerBound;
+        private String partitionUpperBound;
+        private Integer partitionNum;
         private String serverIdMode;
         @JsonProperty("server-id")
         private String serverId;
@@ -76,6 +81,9 @@ public class GuideMultiJobContent {
         private String schemaSaveMode;
         private Boolean enableUpsert;
         private String fieldIde;
+        private Boolean dorisEnable2pc;
+        private String dorisLabelPrefix;
+        private Integer dorisReplicaCount;
         private String topic;
         private String format;
         private String semantics;

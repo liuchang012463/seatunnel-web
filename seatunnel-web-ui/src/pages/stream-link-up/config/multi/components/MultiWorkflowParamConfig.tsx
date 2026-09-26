@@ -67,6 +67,31 @@ const MultiWorkflowParamConfig: React.FC<MultiWorkflowParamConfigProps> = ({
             </Form.Item>
           </>}
 
+          {isMySqlCdc && (
+            <Form.Item
+              label="启动模式"
+              name="startupMode"
+              rules={[{ required: true, message: "请选择启动模式" }]}
+            >
+              <Select
+                options={[
+                  { label: "initial（快照 + 增量）", value: "initial" },
+                  { label: "latest（从当前位点开始）", value: "latest" },
+                ]}
+              />
+            </Form.Item>
+          )}
+
+          {(isMySqlCdc || isPostgreSqlCdc) && (
+            <Form.Item
+              label="数据库服务器时区"
+              name="serverTimeZone"
+              extra="跨时区部署时请填写数据库服务器时区；留空使用引擎默认 UTC。"
+            >
+              <Input placeholder="例如 Asia/Shanghai" allowClear />
+            </Form.Item>
+          )}
+
           <Form.Item
             label="读取分片大小（Split Size）"
             name="splitSize"

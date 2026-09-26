@@ -400,6 +400,12 @@ export function useMultiWorkflowState({
         schemaName: String(formValues.sourceSchemaName || sourceSchemaName || "").trim() || undefined,
         fetchSize: formValues.fetchSize,
         splitSize: formValues.splitSize,
+        partitionColumn: String(formValues.partitionColumn || "").trim() || undefined,
+        partitionLowerBound:
+          String(formValues.partitionLowerBound || "").trim() || undefined,
+        partitionUpperBound:
+          String(formValues.partitionUpperBound || "").trim() || undefined,
+        partitionNum: formValues.partitionNum,
       },
       target: {
         dbType: targetType?.dbType,
@@ -415,6 +421,14 @@ export function useMultiWorkflowState({
         schemaSaveMode: formValues.schemaSaveMode,
         enableUpsert: formValues.enableUpsert,
         fieldIde: formValues.fieldIde,
+        ...(String(targetType?.dbType || "").toUpperCase() === "DORIS"
+          ? {
+              dorisEnable2pc: formValues.dorisEnable2pc,
+              dorisLabelPrefix:
+                String(formValues.dorisLabelPrefix || "").trim() || undefined,
+              dorisReplicaCount: formValues.dorisReplicaCount,
+            }
+          : {}),
       },
       tableMatch: {
         mode: matchMode,
@@ -615,6 +629,26 @@ export function useMultiWorkflowState({
           splitSize:
             workflow?.source?.splitSize ?? DEFAULT_FORM_VALUES.splitSize,
 
+          partitionColumn:
+            workflow?.source?.partitionColumn ??
+            workflow?.source?.partition_column ??
+            undefined,
+
+          partitionLowerBound:
+            workflow?.source?.partitionLowerBound ??
+            workflow?.source?.partition_lower_bound ??
+            undefined,
+
+          partitionUpperBound:
+            workflow?.source?.partitionUpperBound ??
+            workflow?.source?.partition_upper_bound ??
+            undefined,
+
+          partitionNum:
+            workflow?.source?.partitionNum ??
+            workflow?.source?.partition_num ??
+            undefined,
+
           schemaSaveMode:
             workflow?.target?.schemaSaveMode ??
             DEFAULT_FORM_VALUES.schemaSaveMode,
@@ -630,6 +664,19 @@ export function useMultiWorkflowState({
 
           fieldIde:
             workflow?.target?.fieldIde ?? DEFAULT_FORM_VALUES.fieldIde,
+
+          dorisEnable2pc:
+            workflow?.target?.dorisEnable2pc ??
+            workflow?.target?.["sink.enable-2pc"] ??
+            false,
+
+          dorisLabelPrefix:
+            workflow?.target?.dorisLabelPrefix ??
+            workflow?.target?.["sink.label-prefix"] ??
+            "",
+
+          dorisReplicaCount:
+            workflow?.target?.dorisReplicaCount ?? 1,
         });
 
         if (sourceId) {

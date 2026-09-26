@@ -6,6 +6,8 @@ import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DorisBatchBuilderTest {
 
@@ -51,6 +53,29 @@ class DorisBatchBuilderTest {
         assertEquals("orders", config.getConfigList("table_list").get(0).getString("table"));
         assertEquals("ods", config.getConfigList("table_list").get(1).getString("database"));
         assertEquals("customers", config.getConfigList("table_list").get(1).getString("table"));
+    }
+
+    @Test
+    void appliesConfiguredReplicaCountToDefaultCreateTableTemplate() {
+        Config config = builder.buildSinkHocon(context(
+                "targetTableName = orders\n"
+                        + "dorisReplicaCount = 3"));
+
+        assertTrue(config.getString("save_mode_create_template")
+                .contains("replication_allocation\" = \"tag.location.default: 3"));
+    }
+
+    @Test
+    void requiresStableLabelPrefixWhenTwoPhaseCommitIsEnabled() {
+        assertThrows(IllegalArgumentException.class,
+                () -> builder.buildSinkHocon(context("sink.enable-2pc = true")));
+
+        Config config = builder.buildSinkHocon(context(
+                "sink.enable-2pc = true\n"
+                        + "sink.label-prefix = stable_orders_job"));
+
+        assertTrue(config.getBoolean("sink.enable-2pc"));
+        assertEquals("stable_orders_job", config.getString("sink.label-prefix"));
     }
 
     private HoconBuildContext context(String nodeConfig) {

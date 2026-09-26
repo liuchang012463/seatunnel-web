@@ -432,9 +432,13 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
                 || "RECREATE_SCHEMA".equals(schemaSaveMode)) {
             String template = JdbcConfigReaders.getString(config, "save_mode_create_template", "");
             if (template.isEmpty()) {
+                Integer replicaCount = JdbcConfigReaders.getInteger(config, "dorisReplicaCount", 1);
+                if (replicaCount == null || replicaCount <= 0) {
+                    throw new IllegalArgumentException("dorisReplicaCount must be greater than zero");
+                }
                 template = hasConfiguredPrimaryKeys(config)
-                        ? defaultCreateTableTemplate()
-                        : duplicateKeyCreateTableTemplate();
+                        ? defaultCreateTableTemplate(replicaCount)
+                        : duplicateKeyCreateTableTemplate(replicaCount);
             }
             if (template != null && !template.isEmpty()) {
                 map.put("save_mode_create_template", template);
@@ -446,7 +450,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
      * 无主键表不能使用 UNIQUE KEY 模板：${rowtype_primary_key} 展开为空会
      * 生成非法 DDL。回退到引擎支持的 ${rowtype_duplicate_key} 占位符。
      */
-    private String duplicateKeyCreateTableTemplate() {
+    private String duplicateKeyCreateTableTemplate(int replicaCount) {
         return "CREATE TABLE IF NOT EXISTS `${database}`.`${table_name}` (\n"
                 + "    ${rowtype_fields}\n"
                 + ") ENGINE=OLAP\n"
@@ -454,7 +458,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
                 + "    COMMENT '${comment}'\n"
                 + "    DISTRIBUTED BY HASH (${rowtype_duplicate_key})\n"
                 + "    PROPERTIES (\n"
-                + "        \"replication_allocation\" = \"tag.location.default: 1\",\n"
+                + "        \"replication_allocation\" = \"tag.location.default: " + replicaCount + "\",\n"
                 + "        \"in_memory\" = \"false\",\n"
                 + "        \"storage_format\" = \"V2\",\n"
                 + "        \"disable_auto_compaction\" = \"false\"\n"
@@ -509,6 +513,10 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
      * </ul>
      */
     public String defaultCreateTableTemplate() {
+        return defaultCreateTableTemplate(1);
+    }
+
+    private String defaultCreateTableTemplate(int replicaCount) {
         return "CREATE TABLE IF NOT EXISTS `${database}`.`${table_name}` (\n"
                 + "    ${rowtype_primary_key},\n"
                 + "    ${rowtype_fields}\n"
@@ -517,7 +525,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
                 + "    COMMENT '${comment}'\n"
                 + "    DISTRIBUTED BY HASH (${rowtype_primary_key})\n"
                 + "    PROPERTIES (\n"
-                + "        \"replication_allocation\" = \"tag.location.default: 1\",\n"
+                + "        \"replication_allocation\" = \"tag.location.default: " + replicaCount + "\",\n"
                 + "        \"in_memory\" = \"false\",\n"
                 + "        \"storage_format\" = \"V2\",\n"
                 + "        \"disable_auto_compaction\" = \"false\"\n"

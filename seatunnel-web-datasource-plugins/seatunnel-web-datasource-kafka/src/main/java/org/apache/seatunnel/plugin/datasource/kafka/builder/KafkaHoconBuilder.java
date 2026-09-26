@@ -128,7 +128,7 @@ public class KafkaHoconBuilder implements DataSourceHoconBuilder {
      */
     private void normalizePatternSubscription(Map<String, Object> node) {
         Object pattern = node.get("pattern");
-        if (pattern instanceof Boolean) {
+        if (pattern == null || pattern instanceof Boolean) {
             return;
         }
         if (pattern instanceof String) {
@@ -152,8 +152,10 @@ public class KafkaHoconBuilder implements DataSourceHoconBuilder {
                         "Kafka Source has both topic and a legacy pattern expression; keep the regex in topic only");
             }
             node.put("topic", text);
+            node.put("pattern", Boolean.TRUE);
+            return;
         }
-        node.put("pattern", Boolean.TRUE);
+        throw new IllegalArgumentException("Kafka Source pattern must be a boolean or a legacy regex string");
     }
 
     private void putPattern(Map<String, Object> target, Map<String, Object> node) {
@@ -175,8 +177,8 @@ public class KafkaHoconBuilder implements DataSourceHoconBuilder {
                     "Kafka Source topic is required; for regex subscription set pattern=true and put the regex in topic");
         }
         Object pattern = config.get("pattern");
-        if (pattern != null && !Boolean.TRUE.equals(pattern)) {
-            throw new IllegalArgumentException("Kafka Source pattern must be a boolean true");
+        if (pattern != null && !(pattern instanceof Boolean)) {
+            throw new IllegalArgumentException("Kafka Source pattern must be a boolean");
         }
         String startMode = String.valueOf(config.get("start_mode"));
         if ("specific_offsets".equals(startMode) && config.get("start_mode.offsets") == null) {

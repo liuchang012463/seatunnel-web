@@ -42,8 +42,7 @@ public class JdbcSourceOptionAppender {
 
         for (String[] bound : new String[][] {
                 {"partitionUpperBound", "partition_upper_bound"},
-                {"partitionLowerBound", "partition_lower_bound"},
-                {"partitionNum", "partition_num"}}) {
+                {"partitionLowerBound", "partition_lower_bound"}}) {
             String value = JdbcConfigReaders.getString(config, bound[0], "");
             if (StringUtils.isBlank(value)) {
                 value = JdbcConfigReaders.getString(config, bound[1], "");
@@ -51,6 +50,17 @@ public class JdbcSourceOptionAppender {
             if (StringUtils.isNotBlank(value)) {
                 map.put(bound[1], value);
             }
+        }
+
+        Integer partitionNum = JdbcConfigReaders.getInteger(config, "partitionNum", null);
+        if (partitionNum == null) {
+            partitionNum = JdbcConfigReaders.getInteger(config, "partition_num", null);
+        }
+        if (partitionNum != null) {
+            if (partitionNum <= 0) {
+                throw new IllegalArgumentException("partition_num must be greater than zero");
+            }
+            map.put("partition_num", partitionNum);
         }
     }
 }

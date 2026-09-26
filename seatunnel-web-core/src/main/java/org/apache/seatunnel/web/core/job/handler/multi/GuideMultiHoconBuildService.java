@@ -221,16 +221,25 @@ public class GuideMultiHoconBuildService {
             config.put("splitSize", source.getSplitSize());
         }
 
+        if ("Jdbc".equalsIgnoreCase(StringUtils.trimToEmpty(source.getConnectorType()))) {
+            putIfNotBlank(config, "partitionColumn", source.getPartitionColumn());
+            putIfNotBlank(config, "partitionLowerBound", source.getPartitionLowerBound());
+            putIfNotBlank(config, "partitionUpperBound", source.getPartitionUpperBound());
+            putIfNotNull(config, "partitionNum", source.getPartitionNum());
+        }
+
         if (isMySqlCdc(source)) {
             putIfNotBlank(config, "server-id", source.getServerId());
             putIfNotBlank(config, "serverIdMode", source.getServerIdMode());
             putIfNotBlank(config, "startup.mode", source.getStartupMode());
+            putIfNotBlank(config, "serverTimeZone", source.getServerTimeZone());
         }
 
         if (isPostgreSqlCdc(source)) {
             putIfNotBlank(config, "slot.name", source.getSlotName());
             putIfNotBlank(config, "publicationName", source.getPublicationName());
             putIfNotBlank(config, "startup.mode", source.getStartupMode());
+            putIfNotBlank(config, "serverTimeZone", source.getServerTimeZone());
         }
 
         if (kafka) {
@@ -334,6 +343,12 @@ public class GuideMultiHoconBuildService {
         if (target.getEnableUpsert() != null) {
             config.put("enableUpsert", target.getEnableUpsert());
             config.put("enable_upsert", target.getEnableUpsert());
+        }
+
+        if (isDoris(target.getDbType())) {
+            putIfNotNull(config, "sink.enable-2pc", target.getDorisEnable2pc());
+            putIfNotBlank(config, "sink.label-prefix", target.getDorisLabelPrefix());
+            putIfNotNull(config, "dorisReplicaCount", target.getDorisReplicaCount());
         }
 
         if (kafka) {

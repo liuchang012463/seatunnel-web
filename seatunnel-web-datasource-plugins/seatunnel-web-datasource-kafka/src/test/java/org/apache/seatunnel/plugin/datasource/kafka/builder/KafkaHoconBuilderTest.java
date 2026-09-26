@@ -33,7 +33,18 @@ class KafkaHoconBuilderTest {
         assertEquals("lz4", config.getString("kafka.config.\"compression.type\""));
         assertEquals("ok", config.getString("custom.option"));
         assertFalse(config.hasPath("pluginName"));
+        assertFalse(config.hasPath("pattern"));
         assertEquals("json", config.getString("format"));
+    }
+
+    @Test
+    void shouldTreatExplicitFalseAsARegularTopicSubscription() {
+        Config config = builder.buildSourceHocon(context(Map.of(
+                "topic", "orders.eu",
+                "pattern", false)));
+
+        assertEquals("orders.eu", config.getString("topic"));
+        assertFalse(config.hasPath("pattern"));
     }
 
     @Test
