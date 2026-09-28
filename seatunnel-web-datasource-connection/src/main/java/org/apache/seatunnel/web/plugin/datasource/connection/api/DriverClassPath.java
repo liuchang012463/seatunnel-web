@@ -13,4 +13,3 @@ public final class DriverClassPath implements Serializable {
 
     public List<URL> getUrls() { return urls; }
 }
-

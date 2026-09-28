@@ -10,4 +10,3 @@ public interface ConnectionManager {
 
     void shutdown();
 }
-

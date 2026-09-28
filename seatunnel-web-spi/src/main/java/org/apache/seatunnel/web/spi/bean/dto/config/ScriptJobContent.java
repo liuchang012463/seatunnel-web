@@ -18,4 +18,3 @@ public class ScriptJobContent {
     private String hoconContent;
 
 }
-

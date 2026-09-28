@@ -45,4 +45,3 @@ public final class DataSourceConfig implements Serializable {
         return info;
     }
 }
-

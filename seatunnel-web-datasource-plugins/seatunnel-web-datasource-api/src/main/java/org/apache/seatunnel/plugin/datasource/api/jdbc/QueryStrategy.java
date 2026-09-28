@@ -63,4 +63,3 @@ public interface QueryStrategy {
      */
     String buildSelectColumnsSql(AbstractJdbcCatalog catalog, QueryRequest request);
 }
-

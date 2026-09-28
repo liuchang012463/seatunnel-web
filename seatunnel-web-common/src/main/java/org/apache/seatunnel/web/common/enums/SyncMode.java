@@ -23,4 +23,3 @@ public enum SyncMode {
                         new IllegalArgumentException("Unsupported sync mode: " + code));
     }
 }
-

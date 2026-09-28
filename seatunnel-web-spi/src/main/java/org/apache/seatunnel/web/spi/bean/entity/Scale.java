@@ -12,4 +12,3 @@ public class Scale {
     private String unit;
 
 }
-

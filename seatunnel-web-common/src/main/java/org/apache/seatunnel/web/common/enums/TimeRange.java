@@ -26,5 +26,3 @@ public enum TimeRange {
         return granularity;
     }
 }
-
-

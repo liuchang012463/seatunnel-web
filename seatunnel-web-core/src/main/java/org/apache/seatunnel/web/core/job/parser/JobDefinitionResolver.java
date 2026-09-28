@@ -9,4 +9,3 @@ public interface JobDefinitionResolver {
 
     NodeTypes resolveWholeSync(String jobInfo);
 }
-

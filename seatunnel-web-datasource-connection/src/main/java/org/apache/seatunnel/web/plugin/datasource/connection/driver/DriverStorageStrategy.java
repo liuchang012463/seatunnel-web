@@ -18,4 +18,3 @@ public interface DriverStorageStrategy extends Serializable {
 
     void shutdown();
 }
-
