@@ -21,12 +21,14 @@
     "JAVA_HOME": "/opt/jdk-21.0.11+10",
     "PATH": "/opt/jdk-21.0.11+10/bin:${env:PATH}"
   },
-  "java.compile.nullAnalysis.mode": "automatic",
+  // Maven does not enforce JDT null analysis; automatic mode floods this project
+  // with nullness warnings that are not calibrated to its annotation contracts.
+  "java.compile.nullAnalysis.mode": "disabled",
 
   // 5. 开启递归自动检测所有子目录中的 package.json
   "npm.autoDetect": "on",
   // 开启 package.json 文件内的 CodeLens（直接在文件里显示 Run 按钮）
   "npm.enableRunFromFolder": true,
   "maven.view": "hierarchical",
-  "java.configuration.updateBuildConfiguration": "interactive"
+  "java.configuration.updateBuildConfiguration": "automatic"
 }
