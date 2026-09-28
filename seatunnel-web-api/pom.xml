@@ -182,6 +182,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
                 <configuration>
                     <includeSystemScope>true</includeSystemScope>
                     <mainClass>org.apache.seatunnel.web.api.SeaTunnelWebApplication</mainClass>
