@@ -3,7 +3,6 @@ package org.apache.seatunnel.web.api.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.service.BatchJobDefinitionService;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
@@ -142,7 +141,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             JobDefinitionEntity entity;
             int nextVersion;
 
-            if (ObjectUtils.isEmpty(existing)) {
+            if (existing == null) {
                 entity = jobDefinitionAssembler.create(command, analysis);
                 entity.setCreateUserId(currentUserId);
                 entity.setUpdateUserId(currentUserId);

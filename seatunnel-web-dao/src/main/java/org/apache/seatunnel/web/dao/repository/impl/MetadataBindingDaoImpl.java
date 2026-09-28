@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
 import org.apache.seatunnel.web.dao.mapper.MetadataSourceBindingMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.Date;
@@ -29,7 +30,7 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
     @Override
     public MetadataSourceBinding queryByDataSourceId(Long dataSourceId) {
         return metadataSourceBindingMapper.selectOne(new LambdaQueryWrapper<MetadataSourceBinding>()
-                .eq(MetadataSourceBinding::getDataSourceId, dataSourceId));
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getDataSourceId), dataSourceId));
     }
 
     @Override
@@ -38,32 +39,32 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
             return java.util.Collections.emptyList();
         }
         return metadataSourceBindingMapper.selectList(new LambdaQueryWrapper<MetadataSourceBinding>()
-                .in(MetadataSourceBinding::getDataSourceId, dataSourceIds));
+                .in(MyBatisColumn.getter(MetadataSourceBinding::getDataSourceId), dataSourceIds));
     }
 
     @Override
     public int deleteByDataSourceId(Long dataSourceId) {
         return metadataSourceBindingMapper.delete(new LambdaQueryWrapper<MetadataSourceBinding>()
-                .eq(MetadataSourceBinding::getDataSourceId, dataSourceId));
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getDataSourceId), dataSourceId));
     }
 
     @Override
     public List<MetadataSourceBinding> queryReconcileCandidates(Date now, Date staleClaimBefore, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 1000));
         return metadataSourceBindingMapper.selectList(new LambdaQueryWrapper<MetadataSourceBinding>()
-                .in(MetadataSourceBinding::getDesiredState, MetadataDesiredState.ACTIVE, MetadataDesiredState.DELETED)
-                .and(wrapper -> wrapper.in(MetadataSourceBinding::getSyncStatus,
+                .in(MyBatisColumn.getter(MetadataSourceBinding::getDesiredState), MetadataDesiredState.ACTIVE, MetadataDesiredState.DELETED)
+                .and(wrapper -> wrapper.in(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus),
                                 MetadataSyncStatus.PENDING,
                                 MetadataSyncStatus.ERROR,
                                 MetadataSyncStatus.DELETING,
                                 MetadataSyncStatus.WAITING)
-                        .or(stale -> stale.eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)
-                                .le(MetadataSourceBinding::getUpdateTime, staleClaimBefore)))
-                .and(wrapper -> wrapper.ne(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.ERROR)
+                        .or(stale -> stale.eq(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.SYNCING)
+                                .le(MyBatisColumn.getter(MetadataSourceBinding::getUpdateTime), staleClaimBefore)))
+                .and(wrapper -> wrapper.ne(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.ERROR)
                         .or()
-                        .isNotNull(MetadataSourceBinding::getNextRetryTime)
-                        .le(MetadataSourceBinding::getNextRetryTime, now))
-                .orderByAsc(MetadataSourceBinding::getNextRetryTime)
+                        .isNotNull(MyBatisColumn.getter(MetadataSourceBinding::getNextRetryTime))
+                        .le(MyBatisColumn.getter(MetadataSourceBinding::getNextRetryTime), now))
+                .orderByAsc(MyBatisColumn.getter(MetadataSourceBinding::getNextRetryTime))
                 .last("LIMIT " + safeLimit));
     }
 
@@ -73,21 +74,21 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
             return false;
         }
         return metadataSourceBindingMapper.update(null, new LambdaUpdateWrapper<MetadataSourceBinding>()
-                .eq(MetadataSourceBinding::getId, id)
-                .eq(MetadataSourceBinding::getVersion, expectedVersion)
-                .and(wrapper -> wrapper.in(MetadataSourceBinding::getSyncStatus,
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getId), id)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion)
+                .and(wrapper -> wrapper.in(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus),
                                 MetadataSyncStatus.PENDING,
                                 MetadataSyncStatus.ERROR,
                                 MetadataSyncStatus.DELETING,
                                 MetadataSyncStatus.WAITING)
-                        .or(stale -> stale.eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)
-                                .le(MetadataSourceBinding::getUpdateTime, staleClaimBefore)))
-                .and(wrapper -> wrapper.ne(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.ERROR)
-                        .or(retry -> retry.isNotNull(MetadataSourceBinding::getNextRetryTime)
-                                .le(MetadataSourceBinding::getNextRetryTime, now)))
-                .set(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)
-                .set(MetadataSourceBinding::getVersion, expectedVersion + 1L)
-                .set(MetadataSourceBinding::getUpdateTime, now)) > 0;
+                        .or(stale -> stale.eq(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.SYNCING)
+                                .le(MyBatisColumn.getter(MetadataSourceBinding::getUpdateTime), staleClaimBefore)))
+                .and(wrapper -> wrapper.ne(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.ERROR)
+                        .or(retry -> retry.isNotNull(MyBatisColumn.getter(MetadataSourceBinding::getNextRetryTime))
+                                .le(MyBatisColumn.getter(MetadataSourceBinding::getNextRetryTime), now)))
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.SYNCING)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion + 1L)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getUpdateTime), now)) > 0;
     }
 
     @Override
@@ -96,9 +97,9 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
             return false;
         }
         return metadataSourceBindingMapper.update(binding, new LambdaUpdateWrapper<MetadataSourceBinding>()
-                .eq(MetadataSourceBinding::getId, binding.getId())
-                .eq(MetadataSourceBinding::getVersion, expectedVersion)
-                .eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)) > 0;
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getId), binding.getId())
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.SYNCING)) > 0;
     }
 
     @Override
@@ -107,24 +108,24 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
             return false;
         }
         return metadataSourceBindingMapper.delete(new LambdaQueryWrapper<MetadataSourceBinding>()
-                .eq(MetadataSourceBinding::getId, id)
-                .eq(MetadataSourceBinding::getVersion, expectedVersion)
-                .eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.SYNCING)) > 0;
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getId), id)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.SYNCING)) > 0;
     }
 
     @Override
     public List<MetadataSourceBinding> queryStatusRefreshCandidates(Date olderThan, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 1000));
         return metadataSourceBindingMapper.selectList(new LambdaQueryWrapper<MetadataSourceBinding>()
-                .eq(MetadataSourceBinding::getDesiredState, MetadataDesiredState.ACTIVE)
-                .in(MetadataSourceBinding::getSyncStatus,
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getDesiredState), MetadataDesiredState.ACTIVE)
+                .in(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus),
                         MetadataSyncStatus.READY,
                         MetadataSyncStatus.WAITING,
                         MetadataSyncStatus.ERROR,
                         MetadataSyncStatus.DELETING)
-                .and(wrapper -> wrapper.isNull(MetadataSourceBinding::getLastStatusRefreshTime)
-                        .or(stale -> stale.le(MetadataSourceBinding::getLastStatusRefreshTime, olderThan)))
-                .orderByAsc(MetadataSourceBinding::getLastStatusRefreshTime)
+                .and(wrapper -> wrapper.isNull(MyBatisColumn.getter(MetadataSourceBinding::getLastStatusRefreshTime))
+                        .or(stale -> stale.le(MyBatisColumn.getter(MetadataSourceBinding::getLastStatusRefreshTime), olderThan)))
+                .orderByAsc(MyBatisColumn.getter(MetadataSourceBinding::getLastStatusRefreshTime))
                 .last("LIMIT " + safeLimit));
     }
 
@@ -135,27 +136,27 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
             return false;
         }
         LambdaUpdateWrapper<MetadataSourceBinding> update = new LambdaUpdateWrapper<MetadataSourceBinding>()
-                .eq(MetadataSourceBinding::getId, id)
-                .eq(MetadataSourceBinding::getVersion, expectedVersion)
-                .eq(MetadataSourceBinding::getDesiredState, MetadataDesiredState.ACTIVE)
-                .eq(MetadataSourceBinding::getSyncStatus, MetadataSyncStatus.READY)
-                .set(MetadataSourceBinding::getVersion, expectedVersion + 1L)
-                .set(MetadataSourceBinding::getUpdateTime, now);
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getId), id)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getDesiredState), MetadataDesiredState.ACTIVE)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.READY)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion + 1L)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getUpdateTime), now);
         if (metadataScan) {
-            update.notIn(MetadataSourceBinding::getScanStatus, MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
-                    .notIn(MetadataSourceBinding::getProfileStatus, MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
-                    .set(MetadataSourceBinding::getScanStatus, MetadataRunStatus.QUEUED)
-                    .set(MetadataSourceBinding::getScanLastRunTime, now)
-                    .set(MetadataSourceBinding::getScanLastError, null);
+            update.notIn(MyBatisColumn.getter(MetadataSourceBinding::getScanStatus), MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
+                    .notIn(MyBatisColumn.getter(MetadataSourceBinding::getProfileStatus), MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
+                    .set(MyBatisColumn.getter(MetadataSourceBinding::getScanStatus), MetadataRunStatus.QUEUED)
+                    .set(MyBatisColumn.getter(MetadataSourceBinding::getScanLastRunTime), now)
+                    .set(MyBatisColumn.getter(MetadataSourceBinding::getScanLastError), null);
             if (metadataTriggeredVersion != null) {
-                update.set(MetadataSourceBinding::getMetadataTriggeredVersion, metadataTriggeredVersion);
+                update.set(MyBatisColumn.getter(MetadataSourceBinding::getMetadataTriggeredVersion), metadataTriggeredVersion);
             }
         } else {
-            update.notIn(MetadataSourceBinding::getScanStatus, MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
-                    .notIn(MetadataSourceBinding::getProfileStatus, MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
-                    .set(MetadataSourceBinding::getProfileStatus, MetadataRunStatus.QUEUED)
-                    .set(MetadataSourceBinding::getProfileLastRunTime, now)
-                    .set(MetadataSourceBinding::getProfileLastError, null);
+            update.notIn(MyBatisColumn.getter(MetadataSourceBinding::getScanStatus), MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
+                    .notIn(MyBatisColumn.getter(MetadataSourceBinding::getProfileStatus), MetadataRunStatus.QUEUED, MetadataRunStatus.RUNNING)
+                    .set(MyBatisColumn.getter(MetadataSourceBinding::getProfileStatus), MetadataRunStatus.QUEUED)
+                    .set(MyBatisColumn.getter(MetadataSourceBinding::getProfileLastRunTime), now)
+                    .set(MyBatisColumn.getter(MetadataSourceBinding::getProfileLastError), null);
         }
         return metadataSourceBindingMapper.update(null, update) > 0;
     }
@@ -166,7 +167,7 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
             return false;
         }
         return metadataSourceBindingMapper.update(binding, new LambdaUpdateWrapper<MetadataSourceBinding>()
-                .eq(MetadataSourceBinding::getId, binding.getId())
-                .eq(MetadataSourceBinding::getVersion, expectedVersion)) > 0;
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getId), binding.getId())
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion)) > 0;
     }
 }

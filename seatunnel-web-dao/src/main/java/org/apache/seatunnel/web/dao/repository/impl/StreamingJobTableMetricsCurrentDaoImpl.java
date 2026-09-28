@@ -6,6 +6,7 @@ import lombok.NonNull;
 import org.apache.seatunnel.web.dao.entity.StreamingJobTableMetricsCurrent;
 import org.apache.seatunnel.web.dao.mapper.StreamingJobTableMetricsCurrentMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.StreamingJobTableMetricsCurrentDao;
 import org.springframework.stereotype.Repository;
 
@@ -42,10 +43,10 @@ public class StreamingJobTableMetricsCurrentDaoImpl
 
         return streamingJobTableMetricsCurrentMapper.selectList(
                 new LambdaQueryWrapper<StreamingJobTableMetricsCurrent>()
-                        .eq(StreamingJobTableMetricsCurrent::getJobInstanceId, instanceId)
-                        .orderByAsc(StreamingJobTableMetricsCurrent::getPipelineId)
-                        .orderByAsc(StreamingJobTableMetricsCurrent::getSourceTable)
-                        .orderByAsc(StreamingJobTableMetricsCurrent::getSinkTable)
+                        .eq(MyBatisColumn.getter(StreamingJobTableMetricsCurrent::getJobInstanceId), instanceId)
+                        .orderByAsc(MyBatisColumn.getter(StreamingJobTableMetricsCurrent::getPipelineId))
+                        .orderByAsc(MyBatisColumn.getter(StreamingJobTableMetricsCurrent::getSourceTable))
+                        .orderByAsc(MyBatisColumn.getter(StreamingJobTableMetricsCurrent::getSinkTable))
         );
     }
 
@@ -57,7 +58,7 @@ public class StreamingJobTableMetricsCurrentDaoImpl
 
         streamingJobTableMetricsCurrentMapper.delete(
                 new LambdaQueryWrapper<StreamingJobTableMetricsCurrent>()
-                        .eq(StreamingJobTableMetricsCurrent::getJobInstanceId, instanceId)
+                        .eq(MyBatisColumn.getter(StreamingJobTableMetricsCurrent::getJobInstanceId), instanceId)
         );
     }
 
@@ -69,7 +70,7 @@ public class StreamingJobTableMetricsCurrentDaoImpl
 
         streamingJobTableMetricsCurrentMapper.delete(
                 new LambdaQueryWrapper<StreamingJobTableMetricsCurrent>()
-                        .eq(StreamingJobTableMetricsCurrent::getJobDefinitionId, definitionId)
+                        .eq(MyBatisColumn.getter(StreamingJobTableMetricsCurrent::getJobDefinitionId), definitionId)
         );
     }
 }

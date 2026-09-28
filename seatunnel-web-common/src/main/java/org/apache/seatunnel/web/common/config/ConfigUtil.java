@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
@@ -70,7 +71,7 @@ public class ConfigUtil {
                             .collect(Collectors.toList());
         }
         return Arrays.stream(rawValue.toString().split(","))
-                .map(String::trim)
+                .map(NonNullFunctions.from(String::trim))
                 .map(value -> convertValue(value, clazz))
                 .collect(Collectors.toList());
     }

@@ -11,6 +11,7 @@ import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.apache.seatunnel.web.spi.bean.vo.TimeVariableRenderVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -119,7 +120,7 @@ public class TimeVariableJdbcSqlRenderService {
                         : renderVO.getVariables()
                         .stream()
                         .collect(Collectors.toMap(
-                                TimeVariableRenderVO.VariableItem::getName,
+                                NonNullFunctions.from(TimeVariableRenderVO.VariableItem::getName),
                                 item -> item,
                                 (first, second) -> first
                         ));
@@ -171,7 +172,7 @@ public class TimeVariableJdbcSqlRenderService {
         return variables.stream()
                 .filter(item -> StringUtils.isNotBlank(item.getParamName()))
                 .collect(Collectors.toMap(
-                        TimeVariable::getParamName,
+                        NonNullFunctions.from(TimeVariable::getParamName),
                         item -> item,
                         (first, second) -> first,
                         LinkedHashMap::new
@@ -188,7 +189,7 @@ public class TimeVariableJdbcSqlRenderService {
                 .stream()
                 .filter(item -> item != null && StringUtils.isNotBlank(item.getParamName()))
                 .collect(Collectors.toMap(
-                        JobScheduleConfig.ScheduleParamItem::getParamName,
+                        NonNullFunctions.from(JobScheduleConfig.ScheduleParamItem::getParamName),
                         item -> item,
                         (first, second) -> first,
                         LinkedHashMap::new
@@ -245,7 +246,7 @@ public class TimeVariableJdbcSqlRenderService {
             expression = variable.getDefaultValue();
         }
 
-        if (StringUtils.isBlank(expression)) {
+        if (expression == null || expression.isBlank()) {
             throw new ServiceException(
                     Status.REQUEST_PARAMS_NOT_VALID_ERROR,
                     "时间变量未配置有效表达式：" + variableName

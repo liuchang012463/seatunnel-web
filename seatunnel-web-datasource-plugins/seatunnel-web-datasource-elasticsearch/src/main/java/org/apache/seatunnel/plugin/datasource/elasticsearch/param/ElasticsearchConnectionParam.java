@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.form.FieldType;
 import org.apache.seatunnel.web.spi.form.FormField;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -108,7 +109,7 @@ public class ElasticsearchConnectionParam implements ConnectionParam {
         if (value.startsWith("[") && value.endsWith("]")) {
             try {
                 return JSONUtils.toList(value, String.class).stream()
-                        .map(String::trim)
+                        .map(NonNullFunctions.from(String::trim))
                         .filter(StringUtils::isNotBlank)
                         .map(ElasticsearchConnectionParam::normalizeHost)
                         .collect(Collectors.toList());
@@ -118,7 +119,7 @@ public class ElasticsearchConnectionParam implements ConnectionParam {
         }
 
         return Arrays.stream(value.split("[,;\\r\\n]"))
-                .map(String::trim)
+                .map(NonNullFunctions.from(String::trim))
                 .filter(StringUtils::isNotBlank)
                 .map(ElasticsearchConnectionParam::normalizeHost)
                 .collect(Collectors.toList());

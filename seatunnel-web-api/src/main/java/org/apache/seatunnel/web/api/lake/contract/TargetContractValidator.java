@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.lake.contract;
 
 import org.apache.seatunnel.web.api.lake.DorisIdentifier;
 import org.apache.seatunnel.web.common.enums.LakeTableModel;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -75,7 +76,7 @@ public final class TargetContractValidator {
                 throw new IllegalArgumentException("Physical ordinals must be contiguous");
             }
         }
-        columns.sort(Comparator.comparing(TargetColumn::getPhysicalOrdinal));
+        columns.sort(NonNullFunctions.comparing(TargetColumn::getPhysicalOrdinal));
 
         List<String> keyColumns = normalizeNames(contract.getKeyColumns(), "key column");
         if (keyColumns.isEmpty()) {
@@ -114,7 +115,7 @@ public final class TargetContractValidator {
         }
         List<String> physicalKeys = columns.stream()
                 .filter(column -> Boolean.TRUE.equals(column.getKey()))
-                .map(TargetColumn::getTargetName)
+                .map(NonNullFunctions.from(TargetColumn::getTargetName))
                 .toList();
         if (!physicalKeys.equals(keyColumns)) {
             throw new IllegalArgumentException("keyColumns order must match physical key order");

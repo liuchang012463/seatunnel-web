@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
 import org.apache.seatunnel.web.dao.mapper.JobDefinitionMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.spi.bean.dto.BatchJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
 import org.springframework.stereotype.Repository;
@@ -84,7 +85,7 @@ public class JobDefinitionDaoImpl
         }
 
         LambdaQueryWrapper<JobDefinitionEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(JobDefinitionEntity::getId, validIds);
+        wrapper.in(MyBatisColumn.getter(JobDefinitionEntity::getId), validIds);
 
         List<JobDefinitionEntity> records = jobDefinitionMapper.selectList(wrapper);
         if (records == null || records.isEmpty()) {
@@ -101,13 +102,13 @@ public class JobDefinitionDaoImpl
         }
 
         LambdaQueryWrapper<JobDefinitionEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.select(JobDefinitionEntity::getId)
+        wrapper.select(MyBatisColumn.getter(JobDefinitionEntity::getId))
                 // 只有运行状态的任务存在时不允许操作
-                .eq(JobDefinitionEntity::getReleaseState, ReleaseState.ONLINE)
+                .eq(MyBatisColumn.getter(JobDefinitionEntity::getReleaseState), ReleaseState.ONLINE)
                 .and(w -> w
-                        .eq(JobDefinitionEntity::getSourceDatasourceId, datasourceId)
+                        .eq(MyBatisColumn.getter(JobDefinitionEntity::getSourceDatasourceId), datasourceId)
                         .or()
-                        .eq(JobDefinitionEntity::getSinkDatasourceId, datasourceId)
+                        .eq(MyBatisColumn.getter(JobDefinitionEntity::getSinkDatasourceId), datasourceId)
                 )
                 .last("LIMIT 1");
 
@@ -131,13 +132,13 @@ public class JobDefinitionDaoImpl
 
         LambdaQueryWrapper<JobDefinitionEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.select(
-                JobDefinitionEntity::getSourceDatasourceId,
-                JobDefinitionEntity::getSinkDatasourceId
+                MyBatisColumn.getter(JobDefinitionEntity::getSourceDatasourceId),
+                MyBatisColumn.getter(JobDefinitionEntity::getSinkDatasourceId)
         )
                 .and(w -> w
-                        .in(JobDefinitionEntity::getSourceDatasourceId, validIds)
+                        .in(MyBatisColumn.getter(JobDefinitionEntity::getSourceDatasourceId), validIds)
                         .or()
-                        .in(JobDefinitionEntity::getSinkDatasourceId, validIds)
+                        .in(MyBatisColumn.getter(JobDefinitionEntity::getSinkDatasourceId), validIds)
                 );
 
         List<JobDefinitionEntity> records = jobDefinitionMapper.selectList(wrapper);
@@ -162,8 +163,8 @@ public class JobDefinitionDaoImpl
         }
 
         LambdaQueryWrapper<JobDefinitionEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.select(JobDefinitionEntity::getId)
-                .eq(JobDefinitionEntity::getClientId, clientId)
+        wrapper.select(MyBatisColumn.getter(JobDefinitionEntity::getId))
+                .eq(MyBatisColumn.getter(JobDefinitionEntity::getClientId), clientId)
                 .last("LIMIT 1");
 
         return jobDefinitionMapper.selectOne(wrapper) != null;

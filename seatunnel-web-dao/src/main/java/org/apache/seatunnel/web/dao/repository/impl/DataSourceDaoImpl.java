@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.mapper.DataSourceMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.springframework.stereotype.Repository;
 
@@ -31,15 +32,15 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
     @Override
     public boolean checkName(String name) {
         LambdaQueryWrapper<DataSource> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(DataSource::getName, name.trim());
+        wrapper.eq(MyBatisColumn.getter(DataSource::getName), name.trim());
         return dataSourceMapper.selectCount(wrapper) > 0;
     }
 
     @Override
     public boolean checkNameExcludeId(String name, Long id) {
         LambdaQueryWrapper<DataSource> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(DataSource::getName, name.trim())
-                .ne(id != null, DataSource::getId, id);
+        wrapper.eq(MyBatisColumn.getter(DataSource::getName), name.trim())
+                .ne(id != null, MyBatisColumn.getter(DataSource::getId), id);
         return dataSourceMapper.selectCount(wrapper) > 0;
     }
 
@@ -70,28 +71,27 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
 
     static LambdaQueryWrapper<DataSource> buildQueryWrapper(
             DataSourceDTO dto, Collection<Long> businessSystemIds) {
-        boolean hasSystemIds = businessSystemIds != null;
         LambdaQueryWrapper<DataSource> wrapper = new LambdaQueryWrapper<DataSource>()
-                .like(StringUtils.isNotBlank(dto.getName()), DataSource::getName,
+                .like(StringUtils.isNotBlank(dto.getName()), MyBatisColumn.getter(DataSource::getName),
                         StringUtils.trimToEmpty(dto.getName()))
                 .in(dto.getDbTypes() != null && !dto.getDbTypes().isEmpty(),
-                        DataSource::getDbType, dto.getDbTypes())
+                        MyBatisColumn.getter(DataSource::getDbType), dto.getDbTypes())
                 .eq((dto.getDbTypes() == null || dto.getDbTypes().isEmpty())
                                 && dto.getDbType() != null,
-                        DataSource::getDbType, dto.getDbType())
+                        MyBatisColumn.getter(DataSource::getDbType), dto.getDbType())
                 .eq(StringUtils.isNotBlank(dto.getDataSourceUnit()),
-                        DataSource::getDataSourceUnit, StringUtils.trimToEmpty(dto.getDataSourceUnit()))
+                        MyBatisColumn.getter(DataSource::getDataSourceUnit), StringUtils.trimToEmpty(dto.getDataSourceUnit()))
                 .eq(dto.getBusinessSystemId() != null,
-                        DataSource::getBusinessSystemId, dto.getBusinessSystemId())
-                .in(hasSystemIds && !businessSystemIds.isEmpty(),
-                        DataSource::getBusinessSystemId, businessSystemIds)
-                .eq(hasSystemIds && businessSystemIds.isEmpty(), DataSource::getId, -1L)
-                .eq(dto.getStatus() != null, DataSource::getStatus, dto.getStatus())
-                .eq(dto.getEnvironment() != null, DataSource::getEnvironment, dto.getEnvironment())
-                .orderByDesc(DataSource::getCreateTime);
+                        MyBatisColumn.getter(DataSource::getBusinessSystemId), dto.getBusinessSystemId())
+                .in(businessSystemIds != null && !businessSystemIds.isEmpty(),
+                        MyBatisColumn.getter(DataSource::getBusinessSystemId), businessSystemIds)
+                .eq(businessSystemIds != null && businessSystemIds.isEmpty(), MyBatisColumn.getter(DataSource::getId), -1L)
+                .eq(dto.getStatus() != null, MyBatisColumn.getter(DataSource::getStatus), dto.getStatus())
+                .eq(dto.getEnvironment() != null, MyBatisColumn.getter(DataSource::getEnvironment), dto.getEnvironment())
+                .orderByDesc(MyBatisColumn.getter(DataSource::getCreateTime));
         if (Boolean.TRUE.equals(dto.getExcludeSystemManaged())) {
-            wrapper.and(query -> query.eq(DataSource::getSystemManaged, false)
-                    .or().isNull(DataSource::getSystemManaged));
+            wrapper.and(query -> query.eq(MyBatisColumn.getter(DataSource::getSystemManaged), false)
+                    .or().isNull(MyBatisColumn.getter(DataSource::getSystemManaged)));
         }
         return wrapper;
     }
@@ -99,7 +99,7 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
     @Override
     public List<DataSource> queryByDbType(String dbType) {
         LambdaQueryWrapper<DataSource> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(StringUtils.isNotBlank(dbType), DataSource::getDbType, dbType);
+        wrapper.eq(StringUtils.isNotBlank(dbType), MyBatisColumn.getter(DataSource::getDbType), dbType);
         return dataSourceMapper.selectList(wrapper);
     }
 
@@ -107,7 +107,7 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
     public DataSource queryBySystemKey(String systemKey) {
         return systemKey == null ? null : dataSourceMapper.selectOne(
                 new LambdaQueryWrapper<DataSource>()
-                        .eq(DataSource::getSystemKey, systemKey));
+                        .eq(MyBatisColumn.getter(DataSource::getSystemKey), systemKey));
     }
 
     @Override
@@ -126,6 +126,6 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
     @Override
     public boolean existsByBusinessSystemId(Long businessSystemId) {
         return dataSourceMapper.selectCount(new LambdaQueryWrapper<DataSource>()
-                .eq(DataSource::getBusinessSystemId, businessSystemId)) > 0;
+                .eq(MyBatisColumn.getter(DataSource::getBusinessSystemId), businessSystemId)) > 0;
     }
 }

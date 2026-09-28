@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.dao.entity.AlarmChannelEntity;
 import org.apache.seatunnel.web.dao.mapper.AlarmChannelMapper;
 import org.apache.seatunnel.web.dao.repository.AlarmChannelDao;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -24,7 +25,7 @@ public class AlarmChannelDaoImpl extends BaseDao<AlarmChannelEntity, AlarmChanne
     @Override
     public List<AlarmChannelEntity> listEnabled() {
         LambdaQueryWrapper<AlarmChannelEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(AlarmChannelEntity::getEnabled, 1);
+        wrapper.eq(MyBatisColumn.getter(AlarmChannelEntity::getEnabled), 1);
         return mybatisMapper.selectList(wrapper);
     }
 
@@ -34,8 +35,8 @@ public class AlarmChannelDaoImpl extends BaseDao<AlarmChannelEntity, AlarmChanne
             return Collections.emptyList();
         }
         LambdaQueryWrapper<AlarmChannelEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(AlarmChannelEntity::getId, ids)
-                .eq(AlarmChannelEntity::getEnabled, 1);
+        wrapper.in(MyBatisColumn.getter(AlarmChannelEntity::getId), ids)
+                .eq(MyBatisColumn.getter(AlarmChannelEntity::getEnabled), 1);
         return mybatisMapper.selectList(wrapper);
     }
 }

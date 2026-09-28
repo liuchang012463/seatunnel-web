@@ -113,7 +113,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
             return reopenFailedBatch(control, retry, incremental.getTimeFormat());
         }
 
-        LocalDateTime start = bootstrap
+        LocalDateTime start = control == null
                 ? parseDateTime(incremental.getInitialWatermark())
                 : toLocalDateTime(control.getCommittedWatermark());
         LocalDateTime sourceNow = querySourceNow(definition);
@@ -126,8 +126,9 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
             return skipped("no safely committed source data is available");
         }
 
-        if (bootstrap) {
-            control = createControl(jobDefinitionId, start);
+        if (control == null) {
+            control = java.util.Objects.requireNonNull(
+                    createControl(jobDefinitionId, start), "incremental control");
         }
 
         String batchId = buildBatchId(jobDefinitionId, window.start(), window.end());

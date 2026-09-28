@@ -73,7 +73,7 @@ public class LakeJobRelationBridgeService {
             }
         }
 
-        if (create) {
+        if (relation == null) {
             relation = new LakeJobRelation();
         }
 

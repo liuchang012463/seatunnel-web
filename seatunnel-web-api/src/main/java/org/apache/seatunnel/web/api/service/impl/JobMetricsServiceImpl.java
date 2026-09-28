@@ -105,25 +105,25 @@ public class JobMetricsServiceImpl implements JobMetricsService {
             readQpsByPipeline.merge(
                     pipelineId,
                     defaultDecimal(item.getReadQps()),
-                    BigDecimal::add
+                    (left, right) -> defaultDecimal(left).add(defaultDecimal(right))
             );
 
             writeQpsByPipeline.merge(
                     pipelineId,
                     defaultDecimal(item.getWriteQps()),
-                    BigDecimal::add
+                    (left, right) -> defaultDecimal(left).add(defaultDecimal(right))
             );
 
             readBpsByPipeline.merge(
                     pipelineId,
                     defaultDecimal(item.getReadBps()),
-                    BigDecimal::add
+                    (left, right) -> defaultDecimal(left).add(defaultDecimal(right))
             );
 
             writeBpsByPipeline.merge(
                     pipelineId,
                     defaultDecimal(item.getWriteBps()),
-                    BigDecimal::add
+                    (left, right) -> defaultDecimal(left).add(defaultDecimal(right))
             );
         }
 

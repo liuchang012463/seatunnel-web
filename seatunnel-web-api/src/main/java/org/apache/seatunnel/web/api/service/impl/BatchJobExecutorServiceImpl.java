@@ -24,6 +24,7 @@ import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Collections;
 import java.util.Date;
@@ -251,7 +252,8 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         Map<Long, List<JobInstance>> instanceMap = Optional.ofNullable(runningInstances)
                 .orElse(Collections.emptyList())
                 .stream()
-                .collect(Collectors.groupingBy(JobInstance::getJobDefinitionId));
+                .filter(instance -> instance != null && instance.getJobDefinitionId() != null)
+                .collect(Collectors.groupingBy(NonNullFunctions.from(JobInstance::getJobDefinitionId)));
 
         validateAllJobsRunning(distinctIds, instanceMap);
 
@@ -305,7 +307,7 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         }
 
         Set<Long> existsIds = definitions.stream()
-                .map(BatchJobDefinitionVO::getId)
+                .map(NonNullFunctions.from(BatchJobDefinitionVO::getId))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
@@ -329,7 +331,7 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
     private void validateAllJobsOnline(List<BatchJobDefinitionVO> definitions) {
         List<Long> offlineIds = definitions.stream()
                 .filter(item -> !isOnline(item.getReleaseState()))
-                .map(BatchJobDefinitionVO::getId)
+                .map(NonNullFunctions.from(BatchJobDefinitionVO::getId))
                 .collect(Collectors.toList());
 
         if (CollectionUtils.isNotEmpty(offlineIds)) {

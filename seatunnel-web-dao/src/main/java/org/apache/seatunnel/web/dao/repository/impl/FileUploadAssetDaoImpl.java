@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.dao.entity.FileUploadAsset;
 import org.apache.seatunnel.web.dao.mapper.FileUploadAssetMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.FileUploadAssetDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
@@ -29,8 +30,8 @@ public class FileUploadAssetDaoImpl
             return Collections.emptyList();
         }
         return mapper.selectList(new LambdaQueryWrapper<FileUploadAsset>()
-                .eq(FileUploadAsset::getSessionId, sessionId)
-                .orderByAsc(FileUploadAsset::getRelativePath));
+                .eq(MyBatisColumn.getter(FileUploadAsset::getSessionId), sessionId)
+                .orderByAsc(MyBatisColumn.getter(FileUploadAsset::getRelativePath)));
     }
 
     @Override
@@ -40,8 +41,8 @@ public class FileUploadAssetDaoImpl
             return null;
         }
         return mapper.selectOne(new LambdaQueryWrapper<FileUploadAsset>()
-                .eq(FileUploadAsset::getSessionId, sessionId)
-                .eq(FileUploadAsset::getRelativePath, relativePath));
+                .eq(MyBatisColumn.getter(FileUploadAsset::getSessionId), sessionId)
+                .eq(MyBatisColumn.getter(FileUploadAsset::getRelativePath), relativePath));
     }
 
     @Override
@@ -50,6 +51,6 @@ public class FileUploadAssetDaoImpl
             return;
         }
         mapper.delete(new LambdaQueryWrapper<FileUploadAsset>()
-                .eq(FileUploadAsset::getSessionId, sessionId));
+                .eq(MyBatisColumn.getter(FileUploadAsset::getSessionId), sessionId));
     }
 }

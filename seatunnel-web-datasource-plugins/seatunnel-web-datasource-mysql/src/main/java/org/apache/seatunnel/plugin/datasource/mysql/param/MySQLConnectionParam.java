@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.common.deserializer.KeyValuePairListDeserializer
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.form.FieldType;
 import org.apache.seatunnel.web.spi.form.FormField;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.HashMap;
 import java.util.List;
@@ -43,7 +44,7 @@ public class MySQLConnectionParam extends BaseConnectionParam {
         }
         return other.stream()
                 .filter(item -> item != null && item.getKey() != null && item.getValue() != null)
-                .collect(Collectors.toMap(KeyValuePair::getKey, KeyValuePair::getValue));
+                .collect(Collectors.toMap(NonNullFunctions.from(KeyValuePair::getKey), NonNullFunctions.from(KeyValuePair::getValue)));
     }
 
     @Override

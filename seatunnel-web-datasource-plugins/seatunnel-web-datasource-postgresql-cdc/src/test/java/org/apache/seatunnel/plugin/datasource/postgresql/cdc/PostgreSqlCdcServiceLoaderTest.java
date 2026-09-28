@@ -6,6 +6,7 @@ import org.apache.seatunnel.plugin.datasource.api.jdbc.SourceOptionRule;
 import org.apache.seatunnel.plugin.datasource.postgresql.cdc.builder.PostgreSqlCdcSourceBuilder;
 import org.apache.seatunnel.plugin.datasource.postgresql.cdc.option.PostgreSqlCdcSourceOptionRule;
 import org.junit.jupiter.api.Test;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.ServiceLoader;
 
@@ -21,13 +22,13 @@ class PostgreSqlCdcServiceLoaderTest {
         assertEquals("POSTGRESQL-CDC", new PostgreSqlCdcSourceOptionRule().pluginName());
 
         assertTrue(ServiceLoader.load(DataSourceHoconBuilder.class).stream()
-                .map(ServiceLoader.Provider::get)
+                .map(NonNullFunctions.from(ServiceLoader.Provider::get)).filter(item -> item != null)
                 .anyMatch(PostgreSqlCdcSourceBuilder.class::isInstance));
         assertTrue(ServiceLoader.load(SourceOptionRule.class).stream()
-                .map(ServiceLoader.Provider::get)
+                .map(NonNullFunctions.from(ServiceLoader.Provider::get)).filter(item -> item != null)
                 .anyMatch(PostgreSqlCdcSourceOptionRule.class::isInstance));
         assertTrue(ServiceLoader.load(CdcDatasourcePrecheckProvider.class).stream()
-                .map(ServiceLoader.Provider::get)
+                .map(NonNullFunctions.from(ServiceLoader.Provider::get)).filter(item -> item != null)
                 .anyMatch(PostgreSqlCdcPrecheckProvider.class::isInstance));
     }
 

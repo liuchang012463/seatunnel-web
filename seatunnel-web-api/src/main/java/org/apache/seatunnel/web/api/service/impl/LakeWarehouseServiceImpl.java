@@ -32,6 +32,7 @@ import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -268,7 +269,8 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         result.setHttpPort("8030");
         result.setCheckedAt(Instant.now().toString());
 
-        if (!configured) {
+        if (config == null || StringUtils.isBlank(config.getJdbcUrl())
+                || StringUtils.isBlank(config.getUsername()) || StringUtils.isBlank(config.getPassword())) {
             result.setStatus("NOT_CONFIGURED");
             result.setMessage("请先完成 Doris 数据湖连接配置");
             return result;
@@ -333,7 +335,8 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         boolean configured = config != null && StringUtils.isNotBlank(config.getJdbcUrl())
                 && StringUtils.isNotBlank(config.getUsername())
                 && StringUtils.isNotBlank(config.getPassword());
-        if (!configured) {
+        if (config == null || StringUtils.isBlank(config.getJdbcUrl())
+                || StringUtils.isBlank(config.getUsername()) || StringUtils.isBlank(config.getPassword())) {
             result.setStatus("NOT_CONFIGURED");
             result.setMessage("请先完成 Doris 数据湖连接配置");
             return result;
@@ -833,7 +836,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         }
         return row.entrySet().stream()
                 .filter(entry -> entry.getKey().equalsIgnoreCase(key))
-                .map(Map.Entry::getValue)
+                .map(NonNullFunctions.from(Map.Entry::getValue))
                 .findFirst()
                 .orElse(null);
     }

@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.dao.entity.JobDefinitionContentEntity;
 import org.apache.seatunnel.web.dao.mapper.JobDefinitionContentMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.JobDefinitionContentDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -32,7 +33,7 @@ public class JobDefinitionContentDaoImpl
     @Override
     public List<JobDefinitionContentEntity> queryByJobDefinitionId(Long jobDefinitionId) {
         LambdaQueryWrapper<JobDefinitionContentEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(JobDefinitionContentEntity::getJobDefinitionId, jobDefinitionId);
+        wrapper.eq(MyBatisColumn.getter(JobDefinitionContentEntity::getJobDefinitionId), jobDefinitionId);
         return jobDefinitionContentMapper.selectList(wrapper);
     }
 
@@ -40,8 +41,8 @@ public class JobDefinitionContentDaoImpl
     public JobDefinitionContentEntity queryLatestByJobDefinitionId(Long jobDefinitionId) {
         return jobDefinitionContentMapper.selectOne(
                 new LambdaQueryWrapper<JobDefinitionContentEntity>()
-                        .eq(JobDefinitionContentEntity::getJobDefinitionId, jobDefinitionId)
-                        .orderByDesc(JobDefinitionContentEntity::getVersion)
+                        .eq(MyBatisColumn.getter(JobDefinitionContentEntity::getJobDefinitionId), jobDefinitionId)
+                        .orderByDesc(MyBatisColumn.getter(JobDefinitionContentEntity::getVersion))
                         .last("limit 1")
         );
     }
@@ -57,7 +58,7 @@ public class JobDefinitionContentDaoImpl
     public void deleteByJobDefinitionId(Long jobDefinitionId) {
         jobDefinitionContentMapper.delete(
                 new LambdaQueryWrapper<JobDefinitionContentEntity>()
-                        .eq(JobDefinitionContentEntity::getJobDefinitionId, jobDefinitionId)
+                        .eq(MyBatisColumn.getter(JobDefinitionContentEntity::getJobDefinitionId), jobDefinitionId)
         );
     }
 }

@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.ObjectProvider;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -144,12 +145,12 @@ class JobLogFaultDiagnosisServiceTest {
         ).streamDiagnose(instanceId, mode).collectList().block();
 
         assertEquals(List.of("status", "status", "delta", "delta", "result", "done"),
-                events.stream().map(JobLogDiagnosisStreamEvent::type).toList());
+                events.stream().map(NonNullFunctions.from(JobLogDiagnosisStreamEvent::type)).toList());
         assertEquals("正在读取失败任务的日志、数据快照和执行流程...", events.get(0).content());
         assertEquals("模型服务响应超时或不可用，正在使用规则证据完成定位...", events.get(1).content());
         List<String> deltas = events.stream()
                 .filter(event -> "delta".equals(event.type()))
-                .map(JobLogDiagnosisStreamEvent::content)
+                .map(NonNullFunctions.from(JobLogDiagnosisStreamEvent::content))
                 .collect(Collectors.toList());
         assertTrue(deltas.size() > 1);
         assertEquals("已完成规则分析，故障归因：传输链路。采集端与引接目标之间的传输链路异常或超时",

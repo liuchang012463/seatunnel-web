@@ -7,6 +7,7 @@ import lombok.NonNull;
 import org.apache.seatunnel.web.dao.entity.SeaTunnelClient;
 import org.apache.seatunnel.web.dao.mapper.SeaTunnelClientMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.SeaTunnelClientDao;
 import org.springframework.stereotype.Repository;
 
@@ -34,10 +35,10 @@ public class SeaTunnelClientDaoImpl
     @Override
     public List<SeaTunnelClient> listProbeClients() {
         LambdaQueryWrapper<SeaTunnelClient> wrapper = new LambdaQueryWrapper<>();
-        wrapper.isNotNull(SeaTunnelClient::getId)
-                .isNotNull(SeaTunnelClient::getBaseUrl)
-                .ne(SeaTunnelClient::getBaseUrl, "")
-                .orderByDesc(SeaTunnelClient::getCreateTime);
+        wrapper.isNotNull(MyBatisColumn.getter(SeaTunnelClient::getId))
+                .isNotNull(MyBatisColumn.getter(SeaTunnelClient::getBaseUrl))
+                .ne(MyBatisColumn.getter(SeaTunnelClient::getBaseUrl), "")
+                .orderByDesc(MyBatisColumn.getter(SeaTunnelClient::getCreateTime));
 
         List<SeaTunnelClient> records = seaTunnelClientMapper.selectList(wrapper);
         return records == null ? Collections.emptyList() : records;
@@ -50,11 +51,11 @@ public class SeaTunnelClientDaoImpl
         }
 
         LambdaUpdateWrapper<SeaTunnelClient> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(SeaTunnelClient::getId, clientId)
-                .set(SeaTunnelClient::getHealthStatus, healthStatus);
+        wrapper.eq(MyBatisColumn.getter(SeaTunnelClient::getId), clientId)
+                .set(MyBatisColumn.getter(SeaTunnelClient::getHealthStatus), healthStatus);
 
         if (heartbeatTime != null) {
-            wrapper.set(SeaTunnelClient::getHeartbeatTime, heartbeatTime);
+            wrapper.set(MyBatisColumn.getter(SeaTunnelClient::getHeartbeatTime), heartbeatTime);
         }
 
         return seaTunnelClientMapper.update(null, wrapper);

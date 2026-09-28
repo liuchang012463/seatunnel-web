@@ -31,6 +31,7 @@ import org.apache.seatunnel.plugin.datasource.s3.param.ObjectStorageConnectionPa
 import org.apache.seatunnel.plugin.datasource.s3.param.ObjectStorageCredentialMode;
 import org.apache.seatunnel.web.spi.bean.vo.FileEntryVO;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.io.InputStream;
 import java.io.IOException;
@@ -328,7 +329,7 @@ public class S3ObjectStorageClient implements ObjectStorageClient {
                         .withPrefix(prefix)
                         .withContinuationToken(continuationToken));
                 List<String> keys = page.getObjectSummaries().stream()
-                        .map(S3ObjectSummary::getKey)
+                        .map(NonNullFunctions.from(S3ObjectSummary::getKey))
                         .filter(key -> key != null && key.startsWith(prefix))
                         .toList();
                 if (!keys.isEmpty()) {

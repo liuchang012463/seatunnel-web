@@ -5,6 +5,7 @@ import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.form.FormFieldConfig;
 import org.junit.jupiter.api.Test;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -45,7 +46,7 @@ class JdbcConnectionParamConverterTest {
     void formUsesJdbcUrlInsteadOfHostAndPort() {
         List<String> keys = ReflectionFormGenerator.generate(JdbcConnectionParam.class)
                 .stream()
-                .map(FormFieldConfig::getKey)
+                .map(NonNullFunctions.from(FormFieldConfig::getKey))
                 .collect(Collectors.toList());
 
         assertTrue(keys.contains("url"));

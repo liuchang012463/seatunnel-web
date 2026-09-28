@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.form.FieldType;
 import org.apache.seatunnel.web.spi.form.FormFieldConfig;
 import org.junit.jupiter.api.Test;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.List;
 import java.util.ServiceLoader;
@@ -19,13 +20,13 @@ class S3SpiTest {
     @Test
     void discoversBothProcessorsAndSharedBuilder() {
         assertTrue(ServiceLoader.load(DataSourceProcessor.class).stream()
-                .map(ServiceLoader.Provider::get)
+                .map(NonNullFunctions.from(ServiceLoader.Provider::get)).filter(item -> item != null)
                 .anyMatch(item -> item.getDbType() == DbType.S3));
         assertTrue(ServiceLoader.load(DataSourceProcessor.class).stream()
-                .map(ServiceLoader.Provider::get)
+                .map(NonNullFunctions.from(ServiceLoader.Provider::get)).filter(item -> item != null)
                 .anyMatch(item -> item.getDbType() == DbType.MINIO));
         assertTrue(ServiceLoader.load(DataSourceHoconBuilder.class).stream()
-                .map(ServiceLoader.Provider::get)
+                .map(NonNullFunctions.from(ServiceLoader.Provider::get)).filter(item -> item != null)
                 .anyMatch(item -> "S3File".equals(item.pluginName())));
         assertNotNull(new S3DataSourceProcessor().getJobDefinitionAnalyzer());
         assertNotNull(new MinioDataSourceProcessor().getJobDefinitionAnalyzer());

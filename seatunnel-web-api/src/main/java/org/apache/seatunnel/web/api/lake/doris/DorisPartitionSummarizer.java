@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.lake.doris;
 
 import org.apache.seatunnel.web.api.lake.contract.TargetContract;
 import org.apache.seatunnel.web.common.enums.LakePartitionGranularity;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -129,11 +130,11 @@ public final class DorisPartitionSummarizer {
                 }
             }
         }
-        historicalNames.sort(Comparator.comparing(NamedPartition::upper)
-                .thenComparing(NamedPartition::name));
+        historicalNames.sort(NonNullFunctions.comparing(NamedPartition::upper)
+                .thenComparing(NonNullFunctions.comparing(NamedPartition::name)));
         return new DorisPartitionSummary(values.size(), historical, current, future, unknown,
                 new ArrayList<>(names), observedAt,
-                historicalNames.stream().map(NamedPartition::name).toList(),
+                historicalNames.stream().map(NonNullFunctions.from(NamedPartition::name)).toList(),
                 new ArrayList<>(currentNames), new ArrayList<>(futureNames), new ArrayList<>(unknownNames));
     }
 

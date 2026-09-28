@@ -5,6 +5,7 @@ import org.apache.seatunnel.plugin.messaging.api.MessageClient;
 import org.apache.seatunnel.plugin.messaging.api.MessageClientFactory;
 import org.apache.seatunnel.web.spi.plugin.PrioritySPIFactory;
 import org.springframework.stereotype.Component;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,8 +65,9 @@ public class MessagePluginManager {
         }
         // Tolerate lowercase input from callers.
         return clientMap.entrySet().stream()
-                .filter(e -> e.getKey().equalsIgnoreCase(name))
-                .map(Map.Entry::getValue)
+                .filter(e -> e != null && e.getKey() != null && e.getKey().equalsIgnoreCase(name))
+                .map(NonNullFunctions.from(Map.Entry::getValue))
+                .filter(client -> client != null)
                 .findFirst()
                 .orElse(null);
     }

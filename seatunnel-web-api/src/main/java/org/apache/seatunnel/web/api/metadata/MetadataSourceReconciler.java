@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.springframework.stereotype.Service;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.time.Instant;
 import java.util.Date;
@@ -173,7 +174,7 @@ public class MetadataSourceReconciler {
         String resolvedId = id;
         if (resolvedId == null || resolvedId.isBlank()) {
             resolvedId = openMetadataClient.findIngestionPipeline(fqn)
-                    .map(OpenMetadataEntity::id)
+                    .map(NonNullFunctions.from(OpenMetadataEntity::id))
                     .orElse(null);
         }
         if (resolvedId == null || resolvedId.isBlank()) {

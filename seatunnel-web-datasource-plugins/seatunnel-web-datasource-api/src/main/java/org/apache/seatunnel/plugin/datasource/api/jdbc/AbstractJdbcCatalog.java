@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.common.QueryResult;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -265,7 +266,7 @@ public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
         }
 
         String columnSql = columns.stream()
-                .map(DataSourceTableColumn::getColumnName)
+                .map(NonNullFunctions.from(DataSourceTableColumn::getColumnName))
                 .filter(StringUtils::isNotBlank)
                 .map(this::quoteIdentifier)
                 .collect(Collectors.joining(", "));
@@ -279,7 +280,7 @@ public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
         }
 
         String[] parts = Arrays.stream(tablePath.split("\\."))
-                .map(String::trim)
+                .map(NonNullFunctions.from(String::trim))
                 .filter(StringUtils::isNotBlank)
                 .toArray(String[]::new);
 
@@ -353,7 +354,7 @@ public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
             throw new IllegalArgumentException("tablePath must not be blank");
         }
         return Arrays.stream(tablePath.split("\\."))
-                .map(String::trim)
+                .map(NonNullFunctions.from(String::trim))
                 .filter(StringUtils::isNotBlank)
                 .map(this::quoteIdentifier)
                 .collect(Collectors.joining("."));

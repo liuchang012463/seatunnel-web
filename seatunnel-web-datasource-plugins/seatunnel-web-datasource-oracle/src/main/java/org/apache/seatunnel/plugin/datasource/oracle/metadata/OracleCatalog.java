@@ -7,6 +7,7 @@ import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.TablePath;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -118,7 +119,7 @@ public class OracleCatalog extends AbstractJdbcCatalog {
     @Override
     protected String getSpecifiedColumnSql(TablePath tablePath, List<DataSourceTableColumn> columns) {
         List<String> columnNames = columns.stream()
-                .map(DataSourceTableColumn::getColumnName)
+                .map(NonNullFunctions.from(DataSourceTableColumn::getColumnName))
                 .collect(Collectors.toList());
 
         String quotedColumnNames = columnNames.stream()

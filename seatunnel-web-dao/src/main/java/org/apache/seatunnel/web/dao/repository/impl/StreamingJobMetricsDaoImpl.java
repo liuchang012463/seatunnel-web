@@ -6,6 +6,7 @@ import lombok.NonNull;
 import org.apache.seatunnel.web.dao.entity.StreamingJobMetrics;
 import org.apache.seatunnel.web.dao.mapper.StreamingJobMetricsMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.StreamingJobMetricsDao;
 import org.springframework.stereotype.Repository;
 
@@ -32,8 +33,8 @@ public class StreamingJobMetricsDaoImpl
 
         return streamingJobMetricsMapper.selectOne(
                 new LambdaQueryWrapper<StreamingJobMetrics>()
-                        .eq(StreamingJobMetrics::getJobInstanceId, instanceId)
-                        .orderByDesc(StreamingJobMetrics::getCollectTimeMs)
+                        .eq(MyBatisColumn.getter(StreamingJobMetrics::getJobInstanceId), instanceId)
+                        .orderByDesc(MyBatisColumn.getter(StreamingJobMetrics::getCollectTimeMs))
                         .last("LIMIT 1")
         );
     }
@@ -48,18 +49,18 @@ public class StreamingJobMetricsDaoImpl
 
         LambdaQueryWrapper<StreamingJobMetrics> wrapper =
                 new LambdaQueryWrapper<StreamingJobMetrics>()
-                        .eq(StreamingJobMetrics::getJobInstanceId, instanceId);
+                        .eq(MyBatisColumn.getter(StreamingJobMetrics::getJobInstanceId), instanceId);
 
         if (startTimeMs != null) {
-            wrapper.ge(StreamingJobMetrics::getCollectTimeMs, startTimeMs);
+            wrapper.ge(MyBatisColumn.getter(StreamingJobMetrics::getCollectTimeMs), startTimeMs);
         }
 
         if (endTimeMs != null) {
-            wrapper.le(StreamingJobMetrics::getCollectTimeMs, endTimeMs);
+            wrapper.le(MyBatisColumn.getter(StreamingJobMetrics::getCollectTimeMs), endTimeMs);
         }
 
-        wrapper.orderByAsc(StreamingJobMetrics::getCollectTimeMs)
-                .orderByAsc(StreamingJobMetrics::getPipelineId);
+        wrapper.orderByAsc(MyBatisColumn.getter(StreamingJobMetrics::getCollectTimeMs))
+                .orderByAsc(MyBatisColumn.getter(StreamingJobMetrics::getPipelineId));
 
         return streamingJobMetricsMapper.selectList(wrapper);
     }
@@ -74,9 +75,9 @@ public class StreamingJobMetricsDaoImpl
 
         List<StreamingJobMetrics> rows = streamingJobMetricsMapper.selectList(
                 new LambdaQueryWrapper<StreamingJobMetrics>()
-                        .eq(StreamingJobMetrics::getJobInstanceId, instanceId)
-                        .orderByDesc(StreamingJobMetrics::getCollectTimeMs)
-                        .orderByAsc(StreamingJobMetrics::getPipelineId)
+                        .eq(MyBatisColumn.getter(StreamingJobMetrics::getJobInstanceId), instanceId)
+                        .orderByDesc(MyBatisColumn.getter(StreamingJobMetrics::getCollectTimeMs))
+                        .orderByAsc(MyBatisColumn.getter(StreamingJobMetrics::getPipelineId))
                         .last("LIMIT " + finalLimit)
         );
 
@@ -95,7 +96,7 @@ public class StreamingJobMetricsDaoImpl
 
         streamingJobMetricsMapper.delete(
                 new LambdaQueryWrapper<StreamingJobMetrics>()
-                        .eq(StreamingJobMetrics::getJobInstanceId, instanceId)
+                        .eq(MyBatisColumn.getter(StreamingJobMetrics::getJobInstanceId), instanceId)
         );
     }
 
@@ -107,7 +108,7 @@ public class StreamingJobMetricsDaoImpl
 
         streamingJobMetricsMapper.delete(
                 new LambdaQueryWrapper<StreamingJobMetrics>()
-                        .eq(StreamingJobMetrics::getJobDefinitionId, definitionId)
+                        .eq(MyBatisColumn.getter(StreamingJobMetrics::getJobDefinitionId), definitionId)
         );
     }
 
@@ -119,7 +120,7 @@ public class StreamingJobMetricsDaoImpl
 
         streamingJobMetricsMapper.delete(
                 new LambdaQueryWrapper<StreamingJobMetrics>()
-                        .lt(StreamingJobMetrics::getCollectTimeMs, collectTimeMs)
+                        .lt(MyBatisColumn.getter(StreamingJobMetrics::getCollectTimeMs), collectTimeMs)
         );
     }
 }

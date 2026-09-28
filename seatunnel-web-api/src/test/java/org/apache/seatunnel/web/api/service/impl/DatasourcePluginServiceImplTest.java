@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.form.FormFieldConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.List;
 import java.util.Map;
@@ -89,7 +90,8 @@ class DatasourcePluginServiceImplTest {
 
         List<FormFieldConfig> fields = service.getPluginConfig("DAMENG").getFormFields();
         Map<String, FormFieldConfig> fieldsByKey = fields.stream()
-                .collect(Collectors.toMap(FormFieldConfig::getKey, Function.identity()));
+                .filter(field -> field != null && field.getKey() != null)
+                .collect(Collectors.toMap(NonNullFunctions.from(FormFieldConfig::getKey), Function.identity()));
 
         assertEquals("数据库实例", fieldsByKey.get("database").getLabel());
         assertEquals("模式/Owner", fieldsByKey.get("schemaName").getLabel());

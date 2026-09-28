@@ -35,7 +35,10 @@ public class EmailAlarmChannel implements AlarmChannel {
 
     @Override
     public AlarmResult process(AlarmInfo info) {
-        Map<String, String> params = info == null ? null : info.getAlarmParams();
+        if (info == null) {
+            return AlarmResult.fail("email alarm info is empty");
+        }
+        Map<String, String> params = info.getAlarmParams();
         if (params == null || params.isEmpty()) {
             return AlarmResult.fail("email alarm params is empty");
         }

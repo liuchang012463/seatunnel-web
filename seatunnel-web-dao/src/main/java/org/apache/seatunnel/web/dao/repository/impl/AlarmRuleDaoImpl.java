@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.dao.entity.AlarmRuleEntity;
 import org.apache.seatunnel.web.dao.mapper.AlarmRuleMapper;
 import org.apache.seatunnel.web.dao.repository.AlarmRuleDao;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -20,7 +21,7 @@ public class AlarmRuleDaoImpl extends BaseDao<AlarmRuleEntity, AlarmRuleMapper> 
     @Override
     public List<AlarmRuleEntity> listEnabled() {
         LambdaQueryWrapper<AlarmRuleEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(AlarmRuleEntity::getEnabled, 1);
+        wrapper.eq(MyBatisColumn.getter(AlarmRuleEntity::getEnabled), 1);
         return mybatisMapper.selectList(wrapper);
     }
 }

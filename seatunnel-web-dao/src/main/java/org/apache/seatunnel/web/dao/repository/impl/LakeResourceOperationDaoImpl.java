@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.dao.entity.LakeResourceOperation;
 import org.apache.seatunnel.web.dao.mapper.LakeResourceOperationMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.LakeResourceOperationDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
@@ -29,7 +30,7 @@ public class LakeResourceOperationDaoImpl
     @Override
     public LakeResourceOperation queryByOperationToken(String operationToken) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeResourceOperation>()
-                .eq(LakeResourceOperation::getOperationToken, operationToken));
+                .eq(MyBatisColumn.getter(LakeResourceOperation::getOperationToken), operationToken));
     }
 
     @Override
@@ -38,9 +39,9 @@ public class LakeResourceOperationDaoImpl
             return Collections.emptyList();
         }
         return mapper.selectList(new LambdaQueryWrapper<LakeResourceOperation>()
-                .eq(LakeResourceOperation::getResourceType, resourceType)
-                .eq(LakeResourceOperation::getResourceId, resourceId)
-                .orderByDesc(LakeResourceOperation::getStartedAt));
+                .eq(MyBatisColumn.getter(LakeResourceOperation::getResourceType), resourceType)
+                .eq(MyBatisColumn.getter(LakeResourceOperation::getResourceId), resourceId)
+                .orderByDesc(MyBatisColumn.getter(LakeResourceOperation::getStartedAt)));
     }
 
     @Override
@@ -49,8 +50,8 @@ public class LakeResourceOperationDaoImpl
             return Collections.emptyList();
         }
         return mapper.selectList(new LambdaQueryWrapper<LakeResourceOperation>()
-                .eq(LakeResourceOperation::getStatus, status)
-                .orderByAsc(LakeResourceOperation::getStartedAt));
+                .eq(MyBatisColumn.getter(LakeResourceOperation::getStatus), status)
+                .orderByAsc(MyBatisColumn.getter(LakeResourceOperation::getStartedAt)));
     }
 
     @Override
@@ -69,22 +70,22 @@ public class LakeResourceOperationDaoImpl
         }
         Date now = new Date();
         LambdaUpdateWrapper<LakeResourceOperation> wrapper = new LambdaUpdateWrapper<LakeResourceOperation>()
-                .eq(LakeResourceOperation::getId, id)
-                .eq(LakeResourceOperation::getOperationToken, operationToken);
+                .eq(MyBatisColumn.getter(LakeResourceOperation::getId), id)
+                .eq(MyBatisColumn.getter(LakeResourceOperation::getOperationToken), operationToken);
         if (expectedStatus != null) {
-            wrapper.eq(LakeResourceOperation::getStatus, expectedStatus);
+            wrapper.eq(MyBatisColumn.getter(LakeResourceOperation::getStatus), expectedStatus);
         } else {
             // The legacy overload has no caller-supplied expected state.  It
             // is therefore restricted to an open state and can never rewrite
             // a terminal journal row.
-            wrapper.in(LakeResourceOperation::getStatus,
+            wrapper.in(MyBatisColumn.getter(LakeResourceOperation::getStatus),
                     LakeOperationStatus.PENDING, LakeOperationStatus.RUNNING);
         }
         return mapper.update(null, wrapper
-                .set(LakeResourceOperation::getStatus, status)
-                .set(LakeResourceOperation::getErrorCode, errorCode)
-                .set(LakeResourceOperation::getErrorSummary, errorSummary)
-                .set(LakeResourceOperation::getFinishedAt,
+                .set(MyBatisColumn.getter(LakeResourceOperation::getStatus), status)
+                .set(MyBatisColumn.getter(LakeResourceOperation::getErrorCode), errorCode)
+                .set(MyBatisColumn.getter(LakeResourceOperation::getErrorSummary), errorSummary)
+                .set(MyBatisColumn.getter(LakeResourceOperation::getFinishedAt),
                         status == LakeOperationStatus.PENDING || status == LakeOperationStatus.RUNNING ? null : now)) > 0;
     }
 }

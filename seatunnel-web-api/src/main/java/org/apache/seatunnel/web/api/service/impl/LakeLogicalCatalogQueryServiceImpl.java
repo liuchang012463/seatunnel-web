@@ -377,8 +377,11 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
         }
         List<LakeQueryColumnMetadata> columns = new ArrayList<>();
         for (DorisColumnMetadata column : metadata) {
-            String name = column == null ? null : column.name();
-            if (StringUtils.isBlank(name)) {
+            if (column == null) {
+                continue;
+            }
+            String name = column.name();
+            if (name == null || name.isBlank()) {
                 continue;
             }
             String type = column.type() == null ? "" : column.type().toLowerCase(Locale.ROOT);

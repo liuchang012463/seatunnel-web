@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.dao.entity.LakeLifecyclePolicy;
 import org.apache.seatunnel.web.dao.mapper.LakeLifecyclePolicyMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.LakeLifecyclePolicyDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.spi.bean.dto.LakeLifecyclePolicyPageDTO;
 import org.springframework.stereotype.Repository;
 
@@ -29,14 +30,14 @@ public class LakeLifecyclePolicyDaoImpl extends BaseDao<LakeLifecyclePolicy, Lak
     @Override
     public LakeLifecyclePolicy queryByPolicyName(String policyName) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeLifecyclePolicy>()
-                .eq(LakeLifecyclePolicy::getPolicyName, policyName));
+                .eq(MyBatisColumn.getter(LakeLifecyclePolicy::getPolicyName), policyName));
     }
 
     @Override
     public LakeLifecyclePolicy queryByPolicyNameExcludeId(String policyName, Long id) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeLifecyclePolicy>()
-                .eq(LakeLifecyclePolicy::getPolicyName, policyName)
-                .ne(id != null, LakeLifecyclePolicy::getId, id));
+                .eq(MyBatisColumn.getter(LakeLifecyclePolicy::getPolicyName), policyName)
+                .ne(id != null, MyBatisColumn.getter(LakeLifecyclePolicy::getId), id));
     }
 
     @Override
@@ -52,12 +53,12 @@ public class LakeLifecyclePolicyDaoImpl extends BaseDao<LakeLifecyclePolicy, Lak
         LakeLifecyclePolicyStatus status = request == null ? null : request.getStatus();
         LakePartitionGranularity granularity = request == null ? null : request.getGranularity();
         return new LambdaQueryWrapper<LakeLifecyclePolicy>()
-                .like(StringUtils.isNotBlank(policyName), LakeLifecyclePolicy::getPolicyName,
+                .like(StringUtils.isNotBlank(policyName), MyBatisColumn.getter(LakeLifecyclePolicy::getPolicyName),
                         StringUtils.trimToEmpty(policyName))
-                .eq(status != null, LakeLifecyclePolicy::getStatus, status)
-                .eq(granularity != null, LakeLifecyclePolicy::getGranularity, granularity)
-                .orderByDesc(LakeLifecyclePolicy::getUpdateTime)
-                .orderByDesc(LakeLifecyclePolicy::getId);
+                .eq(status != null, MyBatisColumn.getter(LakeLifecyclePolicy::getStatus), status)
+                .eq(granularity != null, MyBatisColumn.getter(LakeLifecyclePolicy::getGranularity), granularity)
+                .orderByDesc(MyBatisColumn.getter(LakeLifecyclePolicy::getUpdateTime))
+                .orderByDesc(MyBatisColumn.getter(LakeLifecyclePolicy::getId));
     }
 
     @Override
@@ -66,17 +67,17 @@ public class LakeLifecyclePolicyDaoImpl extends BaseDao<LakeLifecyclePolicy, Lak
             return false;
         }
         return mapper.update(null, new LambdaUpdateWrapper<LakeLifecyclePolicy>()
-                .eq(LakeLifecyclePolicy::getId, entity.getId())
-                .eq(LakeLifecyclePolicy::getVersion, expectedVersion)
-                .set(LakeLifecyclePolicy::getPolicyName, entity.getPolicyName())
-                .set(LakeLifecyclePolicy::getVersion, entity.getVersion())
-                .set(LakeLifecyclePolicy::getStatus, entity.getStatus())
-                .set(LakeLifecyclePolicy::getGranularity, entity.getGranularity())
-                .set(LakeLifecyclePolicy::getRetentionCount, entity.getRetentionCount())
-                .set(LakeLifecyclePolicy::getDescription, entity.getDescription())
-                .set(LakeLifecyclePolicy::getCreateUserId, entity.getCreateUserId())
-                .set(LakeLifecyclePolicy::getUpdateUserId, entity.getUpdateUserId())
-                .set(LakeLifecyclePolicy::getCreateTime, entity.getCreateTime())
-                .set(LakeLifecyclePolicy::getUpdateTime, entity.getUpdateTime())) > 0;
+                .eq(MyBatisColumn.getter(LakeLifecyclePolicy::getId), entity.getId())
+                .eq(MyBatisColumn.getter(LakeLifecyclePolicy::getVersion), expectedVersion)
+                .set(MyBatisColumn.getter(LakeLifecyclePolicy::getPolicyName), entity.getPolicyName())
+                .set(MyBatisColumn.getter(LakeLifecyclePolicy::getVersion), entity.getVersion())
+                .set(MyBatisColumn.getter(LakeLifecyclePolicy::getStatus), entity.getStatus())
+                .set(MyBatisColumn.getter(LakeLifecyclePolicy::getGranularity), entity.getGranularity())
+                .set(MyBatisColumn.getter(LakeLifecyclePolicy::getRetentionCount), entity.getRetentionCount())
+                .set(MyBatisColumn.getter(LakeLifecyclePolicy::getDescription), entity.getDescription())
+                .set(MyBatisColumn.getter(LakeLifecyclePolicy::getCreateUserId), entity.getCreateUserId())
+                .set(MyBatisColumn.getter(LakeLifecyclePolicy::getUpdateUserId), entity.getUpdateUserId())
+                .set(MyBatisColumn.getter(LakeLifecyclePolicy::getCreateTime), entity.getCreateTime())
+                .set(MyBatisColumn.getter(LakeLifecyclePolicy::getUpdateTime), entity.getUpdateTime())) > 0;
     }
 }

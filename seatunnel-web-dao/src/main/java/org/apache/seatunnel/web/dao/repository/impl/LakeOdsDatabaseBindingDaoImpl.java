@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 import org.apache.seatunnel.web.dao.mapper.LakeOdsDatabaseBindingMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -26,8 +27,8 @@ public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBindin
             return null;
         }
         return mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
-                .eq(LakeOdsDatabaseBinding::getId, id)
-                .eq(LakeOdsDatabaseBinding::getDeleted, false));
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getId), id)
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getDeleted), false));
     }
 
     @Override
@@ -38,23 +39,23 @@ public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBindin
     @Override
     public LakeOdsDatabaseBinding queryBySourceDataSourceId(Long sourceDataSourceId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
-                .eq(LakeOdsDatabaseBinding::getSourceDataSourceId, sourceDataSourceId)
-                .eq(LakeOdsDatabaseBinding::getDeleted, false));
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getSourceDataSourceId), sourceDataSourceId)
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getDeleted), false));
     }
 
     @Override
     public LakeOdsDatabaseBinding queryBySourceDataSourceIdIncludingDeleted(Long sourceDataSourceId) {
         return sourceDataSourceId == null ? null : mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
-                .eq(LakeOdsDatabaseBinding::getSourceDataSourceId, sourceDataSourceId));
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getSourceDataSourceId), sourceDataSourceId));
     }
 
     @Override
     public LakeOdsDatabaseBinding queryByLakeDataSourceIdAndDatabaseName(
             Long lakeDataSourceId, String databaseName) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
-                .eq(LakeOdsDatabaseBinding::getLakeDataSourceId, lakeDataSourceId)
-                .eq(LakeOdsDatabaseBinding::getDatabaseName, databaseName)
-                .eq(LakeOdsDatabaseBinding::getDeleted, false));
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getLakeDataSourceId), lakeDataSourceId)
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getDatabaseName), databaseName)
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getDeleted), false));
     }
 
     @Override
@@ -62,22 +63,22 @@ public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBindin
             Long lakeDataSourceId, String databaseName) {
         return lakeDataSourceId == null || databaseName == null ? null : mapper.selectOne(
                 new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
-                        .eq(LakeOdsDatabaseBinding::getLakeDataSourceId, lakeDataSourceId)
-                        .eq(LakeOdsDatabaseBinding::getDatabaseName, databaseName));
+                        .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getLakeDataSourceId), lakeDataSourceId)
+                        .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getDatabaseName), databaseName));
     }
 
     @Override
     public boolean existsActiveBySourceDataSourceId(Long sourceDataSourceId) {
         return sourceDataSourceId != null && mapper.selectCount(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
-                .eq(LakeOdsDatabaseBinding::getSourceDataSourceId, sourceDataSourceId)
-                .eq(LakeOdsDatabaseBinding::getDeleted, false)) > 0;
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getSourceDataSourceId), sourceDataSourceId)
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getDeleted), false)) > 0;
     }
 
     @Override
     public boolean existsActiveByLakeDataSourceId(Long lakeDataSourceId) {
         return lakeDataSourceId != null && mapper.selectCount(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
-                .eq(LakeOdsDatabaseBinding::getLakeDataSourceId, lakeDataSourceId)
-                .eq(LakeOdsDatabaseBinding::getDeleted, false)) > 0;
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getLakeDataSourceId), lakeDataSourceId)
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getDeleted), false)) > 0;
     }
 
     @Override
@@ -99,15 +100,15 @@ public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBindin
         }
         entity.setLockVersion(lockVersion + 1);
         LambdaUpdateWrapper<LakeOdsDatabaseBinding> wrapper = new LambdaUpdateWrapper<LakeOdsDatabaseBinding>()
-                .eq(LakeOdsDatabaseBinding::getId, entity.getId())
-                .eq(LakeOdsDatabaseBinding::getLockVersion, lockVersion);
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getId), entity.getId())
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getLockVersion), lockVersion);
         if (activeOnly) {
-            wrapper.eq(LakeOdsDatabaseBinding::getDeleted, false);
+            wrapper.eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getDeleted), false);
         }
         if (operationToken == null) {
-            wrapper.isNull(LakeOdsDatabaseBinding::getOperationToken);
+            wrapper.isNull(MyBatisColumn.getter(LakeOdsDatabaseBinding::getOperationToken));
         } else {
-            wrapper.eq(LakeOdsDatabaseBinding::getOperationToken, operationToken);
+            wrapper.eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getOperationToken), operationToken);
         }
         return mapper.update(entity, wrapper) > 0;
     }

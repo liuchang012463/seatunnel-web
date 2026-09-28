@@ -64,7 +64,7 @@ public class StreamingJobResultHandler {
             return;
         }
 
-        if (realStatus == JobStatus.CANCELED) {
+        if (jobResult != null && jobResult.getStatus() == JobStatus.CANCELED) {
             handleCanceled(jobInstanceId, jobResult.getError());
             return;
         }

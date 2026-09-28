@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataColumn;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTable;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTableConstraint;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -72,10 +73,9 @@ public final class SourceSchemaCanonicalizer {
                     constraint,
                     nullable));
         }
-        columns.sort(Comparator
-                .comparing(SourceColumnSnapshot::ordinal,
-                        Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(SourceColumnSnapshot::name));
+        columns.sort(NonNullFunctions
+                .comparing(SourceColumnSnapshot::ordinal, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(NonNullFunctions.comparing(SourceColumnSnapshot::name)));
 
         List<SourceConstraintSnapshot> constraints = new ArrayList<>();
         for (OpenMetadataTableConstraint constraint : sourceConstraints) {

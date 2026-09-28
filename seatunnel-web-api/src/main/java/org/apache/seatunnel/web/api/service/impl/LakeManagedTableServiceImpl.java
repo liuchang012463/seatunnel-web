@@ -71,6 +71,7 @@ import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTablePreviewDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Comparator;
 import java.util.List;
@@ -704,7 +705,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         LakeTableLifecycleBinding lifecycle = lifecycleBindingDao.queryByTableMappingId(mapping.getId());
         boolean lifecycleBound = lifecycle != null;
         result.setLifecycleBound(lifecycleBound);
-        if (lifecycleBound && lifecycle.getStatus() != LakeLifecycleBindingStatus.DISABLED) {
+        if (lifecycle != null && lifecycle.getStatus() != LakeLifecycleBindingStatus.DISABLED) {
             result.getBlockers().add("An active lifecycle binding must be disabled first");
         }
         List<LakeJobRelation> relations = jobRelationDao.queryByOdsDatabaseBindingId(binding.getId());
@@ -988,7 +989,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             String actualValue = actual.entrySet().stream()
                     .filter(item -> item.getKey() != null
                             && item.getKey().trim().equalsIgnoreCase(entry.getKey()))
-                    .map(java.util.Map.Entry::getValue)
+                    .map(NonNullFunctions.from(java.util.Map.Entry::getValue))
                     .findFirst()
                     .orElse(null);
             if (actualValue == null || !actualValue.trim().equals(entry.getValue().trim())) {
@@ -1092,7 +1093,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             throw conflict("OpenMetadata table already has an active MANAGED mapping");
         }
         boolean rebuild = mapping != null;
-        if (rebuild && !targetTableName.equalsIgnoreCase(mapping.getTargetTableName())) {
+        if (mapping != null && !targetTableName.equalsIgnoreCase(mapping.getTargetTableName())) {
             throw conflict("A deleted MANAGED mapping cannot be renamed during rebuild");
         }
         if (!rebuild) {
@@ -1108,10 +1109,11 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             return mapping;
         }
         if (rebuild) {
-            mapping.setDeleted(false);
-            mapping.setResourceStatus(LakeResourceStatus.PENDING_CREATE);
-            mapping.setOperationToken(null);
-            if (!tableMappingDao.updateById(mapping)) {
+            LakeOdsTableMapping existingMapping = Objects.requireNonNull(mapping, "mapping");
+            existingMapping.setDeleted(false);
+            existingMapping.setResourceStatus(LakeResourceStatus.PENDING_CREATE);
+            existingMapping.setOperationToken(null);
+            if (!tableMappingDao.updateById(existingMapping)) {
                 throw conflict("Deleted MANAGED mapping could not be reopened");
             }
         } else {
@@ -1278,10 +1280,11 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
 
     private LakeResourceOperation latestOpenOperation(LakeOdsTableMapping mapping) {
         return coordinator.queryByResource(LakeResourceTypes.ODS_TABLE_MAPPING, mapping.getId()).stream()
+                .filter(Objects::nonNull)
                 .filter(operation -> Objects.equals(operation.getOperationToken(), mapping.getOperationToken())
                         && (operation.getStatus() == LakeOperationStatus.PENDING
                         || operation.getStatus() == LakeOperationStatus.RUNNING))
-                .max(Comparator.comparing(LakeResourceOperation::getStartedAt,
+                .max(NonNullFunctions.comparing(LakeResourceOperation::getStartedAt,
                         Comparator.nullsFirst(Comparator.naturalOrder())))
                 .orElse(null);
     }
@@ -1377,7 +1380,8 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 .append(impact.isLifecycleBound()).append('\u0000')
                 .append(impact.isAllowed()).append('\u0000');
         impact.getRelations().stream()
-                .sorted(Comparator.comparing(LakeManagedTableRelationImpactVO::getRelationId,
+                .filter(Objects::nonNull)
+                .sorted(NonNullFunctions.comparing(LakeManagedTableRelationImpactVO::getRelationId,
                         Comparator.nullsFirst(Comparator.naturalOrder())))
                 .forEach(relation -> value.append(relation.getRelationId()).append(':')
                         .append(relation.getJobId()).append(':').append(relation.getJobVersion()).append(':')

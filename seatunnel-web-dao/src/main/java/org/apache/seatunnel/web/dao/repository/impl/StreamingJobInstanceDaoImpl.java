@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.common.utils.JobStatusHelper;
 import org.apache.seatunnel.web.dao.entity.StreamingJobInstance;
 import org.apache.seatunnel.web.dao.mapper.StreamingJobInstanceMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.spi.bean.dto.SeaTunnelJobInstanceDTO;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
@@ -52,12 +53,12 @@ public class StreamingJobInstanceDaoImpl
         Date now = new Date();
 
         LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(StreamingJobInstance::getClientId, clientId)
-                .in(StreamingJobInstance::getJobStatus, JobStatusHelper.runningLikeStatuses())
-                .set(StreamingJobInstance::getJobStatus, JobStatus.FAILED)
-                .set(StreamingJobInstance::getErrorMessage, truncate(errorMessage, 2000))
-                .set(StreamingJobInstance::getEndTime, now)
-                .set(StreamingJobInstance::getUpdateTime, now);
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getClientId), clientId)
+                .in(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatusHelper.runningLikeStatuses())
+                .set(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatus.FAILED)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getErrorMessage), truncate(errorMessage, 2000))
+                .set(MyBatisColumn.getter(StreamingJobInstance::getEndTime), now)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), now);
 
         return streamingJobInstanceMapper.update(null, wrapper);
     }
@@ -65,7 +66,7 @@ public class StreamingJobInstanceDaoImpl
     @Override
     public List<StreamingJobInstance> listRunningLikeInstances() {
         LambdaQueryWrapper<StreamingJobInstance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(StreamingJobInstance::getJobStatus,
+        wrapper.in(MyBatisColumn.getter(StreamingJobInstance::getJobStatus),
                 JobStatus.INITIALIZING,
                 JobStatus.CREATED,
                 JobStatus.PENDING,
@@ -74,7 +75,7 @@ public class StreamingJobInstanceDaoImpl
                 JobStatus.FAILING,
                 JobStatus.DOING_SAVEPOINT,
                 JobStatus.CANCELING)
-                .orderByDesc(StreamingJobInstance::getCreateTime);
+                .orderByDesc(MyBatisColumn.getter(StreamingJobInstance::getCreateTime));
 
         List<StreamingJobInstance> records = streamingJobInstanceMapper.selectList(wrapper);
         return records == null ? Collections.emptyList() : records;
@@ -95,8 +96,8 @@ public class StreamingJobInstanceDaoImpl
         }
 
         LambdaQueryWrapper<StreamingJobInstance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(StreamingJobInstance::getJobDefinitionId, definitionId)
-                .in(StreamingJobInstance::getJobStatus,
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getJobDefinitionId), definitionId)
+                .in(MyBatisColumn.getter(StreamingJobInstance::getJobStatus),
                         JobStatus.INITIALIZING,
                         JobStatus.CREATED,
                         JobStatus.PENDING,
@@ -114,7 +115,7 @@ public class StreamingJobInstanceDaoImpl
     @Override
     public void deleteByDefinitionId(Long definitionId) {
         LambdaQueryWrapper<StreamingJobInstance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(StreamingJobInstance::getJobDefinitionId, definitionId);
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getJobDefinitionId), definitionId);
         streamingJobInstanceMapper.delete(wrapper);
     }
 
@@ -124,16 +125,16 @@ public class StreamingJobInstanceDaoImpl
         Date now = new Date();
 
         LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(StreamingJobInstance::getId, instanceId)
-                .set(StreamingJobInstance::getJobStatus, status)
-                .set(StreamingJobInstance::getUpdateTime, now);
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), status)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), now);
 
         if (errorMessage != null && !errorMessage.isBlank()) {
-            wrapper.set(StreamingJobInstance::getErrorMessage, truncate(errorMessage, 2000));
+            wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getErrorMessage), truncate(errorMessage, 2000));
         }
 
         if (endState) {
-            wrapper.set(StreamingJobInstance::getEndTime, now);
+            wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getEndTime), now);
         }
 
         streamingJobInstanceMapper.update(null, wrapper);
@@ -145,16 +146,16 @@ public class StreamingJobInstanceDaoImpl
         Date now = new Date();
 
         LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(StreamingJobInstance::getId, instanceId)
-                .set(StreamingJobInstance::getJobStatus, status)
-                .set(StreamingJobInstance::getUpdateTime, now);
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), status)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), now);
 
         if (engineJobId != null) {
-            wrapper.set(StreamingJobInstance::getEngineJobId, engineJobId);
+            wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), engineJobId);
         }
 
         if (endState) {
-            wrapper.set(StreamingJobInstance::getEndTime, now);
+            wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getEndTime), now);
         }
 
         streamingJobInstanceMapper.update(null, wrapper);
@@ -182,9 +183,9 @@ public class StreamingJobInstanceDaoImpl
     @Override
     public List<JobInstanceVO> listRunning() {
         LambdaQueryWrapper<StreamingJobInstance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.isNotNull(StreamingJobInstance::getClientId)
-                .isNotNull(StreamingJobInstance::getEngineJobId)
-                .in(StreamingJobInstance::getJobStatus,
+        wrapper.isNotNull(MyBatisColumn.getter(StreamingJobInstance::getClientId))
+                .isNotNull(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId))
+                .in(MyBatisColumn.getter(StreamingJobInstance::getJobStatus),
                         JobStatus.INITIALIZING,
                         JobStatus.CREATED,
                         JobStatus.PENDING,
@@ -211,8 +212,8 @@ public class StreamingJobInstanceDaoImpl
             return null;
         }
         LambdaQueryWrapper<StreamingJobInstance> wrapperLast = new LambdaQueryWrapper<>();
-        wrapperLast.eq(StreamingJobInstance::getJobDefinitionId, definitionId)
-                .orderByDesc(StreamingJobInstance::getUpdateTime)
+        wrapperLast.eq(MyBatisColumn.getter(StreamingJobInstance::getJobDefinitionId), definitionId)
+                .orderByDesc(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime))
                 .last("limit 1");
         return streamingJobInstanceMapper.selectOne(wrapperLast);
     }

@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
 import org.apache.seatunnel.web.dao.mapper.StreamingJobDefinitionMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.StreamingJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.vo.StreamingJobDefinitionVO;
@@ -75,10 +76,10 @@ public class StreamingJobDefinitionDaoImpl
         }
 
         LambdaUpdateWrapper<StreamingJobDefinitionEntity> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(StreamingJobDefinitionEntity::getId, id)
-                .set(StreamingJobDefinitionEntity::getReleaseState, releaseState)
-                .set(StreamingJobDefinitionEntity::getUpdateUserId, updateUserId)
-                .set(StreamingJobDefinitionEntity::getUpdateTime,
+        wrapper.eq(MyBatisColumn.getter(StreamingJobDefinitionEntity::getId), id)
+                .set(MyBatisColumn.getter(StreamingJobDefinitionEntity::getReleaseState), releaseState)
+                .set(MyBatisColumn.getter(StreamingJobDefinitionEntity::getUpdateUserId), updateUserId)
+                .set(MyBatisColumn.getter(StreamingJobDefinitionEntity::getUpdateTime),
                         updateTime == null ? new Date() : updateTime);
 
         return streamingJobDefinitionMapper.update(null, wrapper) > 0;
@@ -115,13 +116,13 @@ public class StreamingJobDefinitionDaoImpl
         }
 
         LambdaQueryWrapper<StreamingJobDefinitionEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.select(StreamingJobDefinitionEntity::getId)
+        wrapper.select(MyBatisColumn.getter(StreamingJobDefinitionEntity::getId))
                 // 只有运行状态的任务存在时不允许操作
-                .eq(StreamingJobDefinitionEntity::getReleaseState, ReleaseState.ONLINE)
+                .eq(MyBatisColumn.getter(StreamingJobDefinitionEntity::getReleaseState), ReleaseState.ONLINE)
                 .and(w -> w
-                        .eq(StreamingJobDefinitionEntity::getSourceDatasourceId, datasourceId)
+                        .eq(MyBatisColumn.getter(StreamingJobDefinitionEntity::getSourceDatasourceId), datasourceId)
                         .or()
-                        .eq(StreamingJobDefinitionEntity::getSinkDatasourceId, datasourceId)
+                        .eq(MyBatisColumn.getter(StreamingJobDefinitionEntity::getSinkDatasourceId), datasourceId)
                 )
                 .last("LIMIT 1");
 
@@ -145,13 +146,13 @@ public class StreamingJobDefinitionDaoImpl
 
         LambdaQueryWrapper<StreamingJobDefinitionEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.select(
-                StreamingJobDefinitionEntity::getSourceDatasourceId,
-                StreamingJobDefinitionEntity::getSinkDatasourceId
+                MyBatisColumn.getter(StreamingJobDefinitionEntity::getSourceDatasourceId),
+                MyBatisColumn.getter(StreamingJobDefinitionEntity::getSinkDatasourceId)
         )
                 .and(w -> w
-                        .in(StreamingJobDefinitionEntity::getSourceDatasourceId, validIds)
+                        .in(MyBatisColumn.getter(StreamingJobDefinitionEntity::getSourceDatasourceId), validIds)
                         .or()
-                        .in(StreamingJobDefinitionEntity::getSinkDatasourceId, validIds)
+                        .in(MyBatisColumn.getter(StreamingJobDefinitionEntity::getSinkDatasourceId), validIds)
                 );
 
         List<StreamingJobDefinitionEntity> records = streamingJobDefinitionMapper.selectList(wrapper);
@@ -176,8 +177,8 @@ public class StreamingJobDefinitionDaoImpl
         }
 
         LambdaQueryWrapper<StreamingJobDefinitionEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.select(StreamingJobDefinitionEntity::getId)
-                .eq(StreamingJobDefinitionEntity::getClientId, clientId)
+        wrapper.select(MyBatisColumn.getter(StreamingJobDefinitionEntity::getId))
+                .eq(MyBatisColumn.getter(StreamingJobDefinitionEntity::getClientId), clientId)
                 .last("LIMIT 1");
 
         return streamingJobDefinitionMapper.selectOne(wrapper) != null;

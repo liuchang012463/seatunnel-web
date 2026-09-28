@@ -21,9 +21,8 @@
     "JAVA_HOME": "/opt/jdk-21.0.11+10",
     "PATH": "/opt/jdk-21.0.11+10/bin:${env:PATH}"
   },
-  // Maven does not enforce JDT null analysis; automatic mode floods this project
-  // with nullness warnings that are not calibrated to its annotation contracts.
-  "java.compile.nullAnalysis.mode": "disabled",
+  // Keep JDT null analysis enabled so null-safety issues remain visible.
+  "java.compile.nullAnalysis.mode": "automatic",
 
   // 5. 开启递归自动检测所有子目录中的 package.json
   "npm.autoDetect": "on",

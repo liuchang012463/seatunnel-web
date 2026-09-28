@@ -11,6 +11,7 @@ import org.apache.seatunnel.plugin.datasource.elasticsearch.param.ElasticsearchA
 import org.apache.seatunnel.plugin.datasource.elasticsearch.param.ElasticsearchConnectionParam;
 import org.apache.seatunnel.plugin.datasource.elasticsearch.param.ElasticsearchConnectionParamConverter;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -266,7 +267,7 @@ public class ElasticsearchHoconBuilder implements DataSourceHoconBuilder {
 
     private List<String> splitList(String text) {
         return Arrays.stream(text.split(","))
-                .map(String::trim)
+                .map(NonNullFunctions.from(String::trim))
                 .filter(StringUtils::isNotBlank)
                 .collect(java.util.stream.Collectors.toList());
     }

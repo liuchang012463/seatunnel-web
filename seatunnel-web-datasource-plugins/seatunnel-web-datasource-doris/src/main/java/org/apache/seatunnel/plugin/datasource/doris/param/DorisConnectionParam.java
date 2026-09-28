@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.common.deserializer.KeyValuePairListDeserializer
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.form.FieldType;
 import org.apache.seatunnel.web.spi.form.FormField;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -98,7 +99,7 @@ public class DorisConnectionParam extends BaseConnectionParam {
             return List.of();
         }
         return Arrays.stream(fenodes.split(","))
-                .map(String::trim)
+                .map(NonNullFunctions.from(String::trim))
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toList());
     }
@@ -152,7 +153,7 @@ public class DorisConnectionParam extends BaseConnectionParam {
         }
         return other.stream()
                 .filter(item -> item != null && item.getKey() != null && item.getValue() != null)
-                .collect(Collectors.toMap(KeyValuePair::getKey, KeyValuePair::getValue));
+                .collect(Collectors.toMap(NonNullFunctions.from(KeyValuePair::getKey), NonNullFunctions.from(KeyValuePair::getValue)));
     }
 
     @Override

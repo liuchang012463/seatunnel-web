@@ -7,13 +7,13 @@ import org.apache.seatunnel.web.spi.form.FormField;
 import org.apache.seatunnel.web.spi.form.FormFieldConfig;
 import org.apache.seatunnel.web.spi.form.Option;
 import org.apache.seatunnel.web.spi.form.Rule;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,12 +75,7 @@ public final class ReflectionFormGenerator {
             formFields.add(config);
         }
 
-        formFields.sort(
-                Comparator.comparing(
-                        FormFieldConfig::getOrder,
-                        Comparator.nullsLast(Integer::compareTo)
-                )
-        );
+        formFields.sort(NonNullFunctions.comparing(FormFieldConfig::getOrder));
 
         return formFields;
     }

@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.dao.entity.LakeJdbcDriver;
 import org.apache.seatunnel.web.dao.mapper.LakeJdbcDriverMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.LakeJdbcDriverDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -25,15 +26,15 @@ public class LakeJdbcDriverDaoImpl
     @Override
     public LakeJdbcDriver queryByAdapter(String adapter) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeJdbcDriver>()
-                .eq(LakeJdbcDriver::getAdapter, adapter));
+                .eq(MyBatisColumn.getter(LakeJdbcDriver::getAdapter), adapter));
     }
 
     @Override
     public List<LakeJdbcDriver> queryEnabled() {
         return mapper.selectList(new LambdaQueryWrapper<LakeJdbcDriver>()
-                .eq(LakeJdbcDriver::getEnabled, true)
-                .orderByAsc(LakeJdbcDriver::getAdapter)
-                .orderByDesc(LakeJdbcDriver::getUpdateTime));
+                .eq(MyBatisColumn.getter(LakeJdbcDriver::getEnabled), true)
+                .orderByAsc(MyBatisColumn.getter(LakeJdbcDriver::getAdapter))
+                .orderByDesc(MyBatisColumn.getter(LakeJdbcDriver::getUpdateTime)));
     }
 
     @Override

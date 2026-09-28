@@ -6,6 +6,7 @@ import org.apache.seatunnel.plugin.datasource.api.jdbc.SourceOptionRule;
 import org.apache.seatunnel.plugin.datasource.mysql.cdc.builder.MysqlCdcSourceBuilder;
 import org.apache.seatunnel.plugin.datasource.mysql.cdc.option.MySQLCDCSourceOptionRule;
 import org.junit.jupiter.api.Test;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.List;
 import java.util.ServiceLoader;
@@ -41,7 +42,7 @@ class MysqlCdcServiceLoaderTest {
     void dataSourceHoconBuilderIsRegistered() {
         List<DataSourceHoconBuilder> builders =
                 ServiceLoader.load(DataSourceHoconBuilder.class).stream()
-                        .map(ServiceLoader.Provider::get)
+                        .map(NonNullFunctions.from(ServiceLoader.Provider::get)).filter(item -> item != null)
                         .toList();
 
         assertNotNull(builders);
@@ -55,7 +56,7 @@ class MysqlCdcServiceLoaderTest {
     void sourceOptionRuleIsRegistered() {
         List<SourceOptionRule> rules =
                 ServiceLoader.load(SourceOptionRule.class).stream()
-                        .map(ServiceLoader.Provider::get)
+                        .map(NonNullFunctions.from(ServiceLoader.Provider::get)).filter(item -> item != null)
                         .toList();
 
         assertNotNull(rules);
@@ -68,7 +69,7 @@ class MysqlCdcServiceLoaderTest {
     void cdcDatasourcePrecheckProviderIsRegistered() {
         List<CdcDatasourcePrecheckProvider> providers =
                 ServiceLoader.load(CdcDatasourcePrecheckProvider.class).stream()
-                        .map(ServiceLoader.Provider::get)
+                        .map(NonNullFunctions.from(ServiceLoader.Provider::get)).filter(item -> item != null)
                         .toList();
 
         assertNotNull(providers);

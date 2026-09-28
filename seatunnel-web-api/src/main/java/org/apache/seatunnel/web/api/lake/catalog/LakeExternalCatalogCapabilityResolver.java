@@ -102,12 +102,11 @@ public class LakeExternalCatalogCapabilityResolver {
             LakeCatalogScope scope,
             boolean lakeDorisReachable,
             boolean sourceNetworkReachable) {
-        boolean sourceFound = source != null;
-        boolean sourceTypeMatches = sourceFound && matchesAdapter(source.getDbType(), adapter);
-        boolean sourceEnabled = sourceFound
+        boolean sourceTypeMatches = source != null && matchesAdapter(source.getDbType(), adapter);
+        boolean sourceEnabled = source != null
                 && (source.getStatus() == null
                 || source.getStatus() == DataSourceLifecycleStatus.ENABLED);
-        boolean sourceConfigComplete = sourceFound
+        boolean sourceConfigComplete = source != null
                 && sourceTypeMatches
                 && sourceEnabled
                 && StringUtils.isNotBlank(source.getConnectionParams());
@@ -116,7 +115,7 @@ public class LakeExternalCatalogCapabilityResolver {
                 adapter, driverRegistry, scope, sourceConfigComplete,
                 lakeDorisReachable, sourceNetworkReachable);
         List<String> reasons = new ArrayList<>();
-        if (!sourceFound) {
+        if (source == null) {
             reasons.add(LakeCatalogCapabilityReason.SOURCE_NOT_FOUND);
         } else {
             if (!sourceEnabled) {

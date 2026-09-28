@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.common.constants.Constants;
 import org.apache.seatunnel.web.dao.entity.Session;
 import org.apache.seatunnel.web.dao.entity.User;
 import org.apache.seatunnel.web.dao.mapper.SessionMapper;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -57,7 +58,7 @@ public class SessionServiceImpl implements SessionService {
         Session Session = null;
 
         LambdaQueryWrapper<Session> sessionLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        sessionLambdaQueryWrapper.eq(org.apache.seatunnel.web.dao.entity.Session::getUserId, User.getId());
+        sessionLambdaQueryWrapper.eq(MyBatisColumn.getter(org.apache.seatunnel.web.dao.entity.Session::getUserId), User.getId());
         // logined
         List<Session> SessionList = sessionMapper.selectList(sessionLambdaQueryWrapper);
 
@@ -111,8 +112,8 @@ public class SessionServiceImpl implements SessionService {
              * query session by user id and ip
              */
             LambdaQueryWrapper<Session> sessionLambdaQueryWrapper = new LambdaQueryWrapper<>();
-            sessionLambdaQueryWrapper.eq(Session::getUserId, loginUser.getId());
-            sessionLambdaQueryWrapper.eq(Session::getIp, ip);
+            sessionLambdaQueryWrapper.eq(MyBatisColumn.getter(Session::getUserId), loginUser.getId());
+            sessionLambdaQueryWrapper.eq(MyBatisColumn.getter(Session::getIp), ip);
             Session Session = sessionMapper.selectOne(sessionLambdaQueryWrapper);
 
             //delete session

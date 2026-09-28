@@ -7,6 +7,7 @@ import lombok.NonNull;
 import org.apache.seatunnel.web.dao.entity.SeaTunnelClientNode;
 import org.apache.seatunnel.web.dao.mapper.SeaTunnelClientNodeMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.SeaTunnelClientNodeDao;
 import org.springframework.stereotype.Repository;
 
@@ -33,10 +34,10 @@ public class SeaTunnelClientNodeDaoImpl
         }
 
         LambdaQueryWrapper<SeaTunnelClientNode> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SeaTunnelClientNode::getClientId, clientId)
-                .orderByAsc(SeaTunnelClientNode::getNodeRole)
-                .orderByDesc(SeaTunnelClientNode::getActiveMaster)
-                .orderByAsc(SeaTunnelClientNode::getId);
+        wrapper.eq(MyBatisColumn.getter(SeaTunnelClientNode::getClientId), clientId)
+                .orderByAsc(MyBatisColumn.getter(SeaTunnelClientNode::getNodeRole))
+                .orderByDesc(MyBatisColumn.getter(SeaTunnelClientNode::getActiveMaster))
+                .orderByAsc(MyBatisColumn.getter(SeaTunnelClientNode::getId));
 
         List<SeaTunnelClientNode> records = seaTunnelClientNodeMapper.selectList(wrapper);
         return records == null ? Collections.emptyList() : records;
@@ -52,11 +53,11 @@ public class SeaTunnelClientNodeDaoImpl
         }
 
         LambdaQueryWrapper<SeaTunnelClientNode> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SeaTunnelClientNode::getClientId, clientId)
-                .eq(SeaTunnelClientNode::getNodeRole, nodeRole.trim())
-                .orderByDesc(SeaTunnelClientNode::getActiveMaster)
-                .orderByAsc(SeaTunnelClientNode::getHealthStatus)
-                .orderByAsc(SeaTunnelClientNode::getId);
+        wrapper.eq(MyBatisColumn.getter(SeaTunnelClientNode::getClientId), clientId)
+                .eq(MyBatisColumn.getter(SeaTunnelClientNode::getNodeRole), nodeRole.trim())
+                .orderByDesc(MyBatisColumn.getter(SeaTunnelClientNode::getActiveMaster))
+                .orderByAsc(MyBatisColumn.getter(SeaTunnelClientNode::getHealthStatus))
+                .orderByAsc(MyBatisColumn.getter(SeaTunnelClientNode::getId));
 
         List<SeaTunnelClientNode> records = seaTunnelClientNodeMapper.selectList(wrapper);
         return records == null ? Collections.emptyList() : records;
@@ -69,7 +70,7 @@ public class SeaTunnelClientNodeDaoImpl
         }
 
         LambdaQueryWrapper<SeaTunnelClientNode> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SeaTunnelClientNode::getClientId, clientId);
+        wrapper.eq(MyBatisColumn.getter(SeaTunnelClientNode::getClientId), clientId);
 
         seaTunnelClientNodeMapper.delete(wrapper);
     }
@@ -81,10 +82,10 @@ public class SeaTunnelClientNodeDaoImpl
         }
 
         LambdaUpdateWrapper<SeaTunnelClientNode> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(SeaTunnelClientNode::getClientId, clientId)
-                .eq(SeaTunnelClientNode::getNodeRole, "MASTER")
-                .set(SeaTunnelClientNode::getActiveMaster, false)
-                .set(SeaTunnelClientNode::getUpdateTime, new Date());
+        wrapper.eq(MyBatisColumn.getter(SeaTunnelClientNode::getClientId), clientId)
+                .eq(MyBatisColumn.getter(SeaTunnelClientNode::getNodeRole), "MASTER")
+                .set(MyBatisColumn.getter(SeaTunnelClientNode::getActiveMaster), false)
+                .set(MyBatisColumn.getter(SeaTunnelClientNode::getUpdateTime), new Date());
 
         seaTunnelClientNodeMapper.update(null, wrapper);
     }

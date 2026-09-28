@@ -444,7 +444,10 @@ public class DataExplorationService {
             }
         }
         for (OpenMetadataTableConstraint constraint : safe(table.getTableConstraints())) {
-            String constraintType = normalizeConstraint(constraint == null ? null : constraint.getConstraintType());
+            if (constraint == null) {
+                continue;
+            }
+            String constraintType = normalizeConstraint(constraint.getConstraintType());
             if (constraintType.isBlank()) {
                 continue;
             }

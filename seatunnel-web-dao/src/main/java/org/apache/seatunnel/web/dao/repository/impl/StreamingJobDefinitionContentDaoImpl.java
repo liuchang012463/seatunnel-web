@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import jakarta.annotation.Resource;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionContentEntity;
 import org.apache.seatunnel.web.dao.mapper.StreamingJobDefinitionContentMapper;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionContentDao;
 import org.springframework.stereotype.Repository;
 
@@ -29,8 +30,8 @@ public class StreamingJobDefinitionContentDaoImpl implements StreamingJobDefinit
         }
 
         LambdaQueryWrapper<StreamingJobDefinitionContentEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(StreamingJobDefinitionContentEntity::getJobDefinitionId, jobDefinitionId)
-                .orderByDesc(StreamingJobDefinitionContentEntity::getVersion)
+        wrapper.eq(MyBatisColumn.getter(StreamingJobDefinitionContentEntity::getJobDefinitionId), jobDefinitionId)
+                .orderByDesc(MyBatisColumn.getter(StreamingJobDefinitionContentEntity::getVersion))
                 .last("LIMIT 1");
 
         return streamingJobDefinitionContentMapper.selectOne(wrapper);
@@ -50,7 +51,7 @@ public class StreamingJobDefinitionContentDaoImpl implements StreamingJobDefinit
         }
 
         LambdaUpdateWrapper<StreamingJobDefinitionContentEntity> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(StreamingJobDefinitionContentEntity::getJobDefinitionId, jobDefinitionId);
+        wrapper.eq(MyBatisColumn.getter(StreamingJobDefinitionContentEntity::getJobDefinitionId), jobDefinitionId);
 
         streamingJobDefinitionContentMapper.delete(wrapper);
     }

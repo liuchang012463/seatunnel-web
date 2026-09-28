@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -119,8 +120,10 @@ public class AlarmController {
     @GetMapping("/rules/{id}/channels")
     @Operation(summary = "listRuleChannels", description = "List channel ids linked to a rule")
     public Result<List<Long>> listRuleChannels(@PathVariable("id") Long id) {
-        List<Long> ids = alarmRuleService.listChannels(id).stream()
-                .map(AlarmRuleChannelEntity::getChannelId)
+        List<AlarmRuleChannelEntity> channels = alarmRuleService.listChannels(id);
+        List<Long> ids = channels == null ? List.of() : channels.stream()
+                .filter(channel -> channel != null && channel.getChannelId() != null)
+                .map(NonNullFunctions.from(AlarmRuleChannelEntity::getChannelId))
                 .collect(Collectors.toList());
         return Result.buildSuc(ids);
     }

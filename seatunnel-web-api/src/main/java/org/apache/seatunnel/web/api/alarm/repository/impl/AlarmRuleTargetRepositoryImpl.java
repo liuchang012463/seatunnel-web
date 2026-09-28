@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.dao.repository.AlarmRecordDao;
 import org.apache.seatunnel.web.dao.repository.AlarmRuleChannelDao;
 import org.apache.seatunnel.web.dao.repository.AlarmRuleDao;
 import org.springframework.stereotype.Repository;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,6 +51,7 @@ public class AlarmRuleTargetRepositoryImpl implements AlarmRuleTargetRepository 
         }
 
         List<AlarmRuleEntity> matched = rules.stream()
+                .filter(rule -> rule != null && rule.getId() != null)
                 .filter(r -> statusMatches(r.getTriggerStatuses(), newStatus))
                 .filter(r -> targetJobsMatches(r.getTargetJobs(), jobDefinitionId))
                 .filter(r -> !excludesContains(r.getExcludes(), jobDefinitionId))
@@ -58,7 +60,10 @@ public class AlarmRuleTargetRepositoryImpl implements AlarmRuleTargetRepository 
             return Collections.emptyList();
         }
 
-        List<Long> ruleIds = matched.stream().map(AlarmRuleEntity::getId).collect(Collectors.toList());
+        List<Long> ruleIds = matched.stream()
+                .map(NonNullFunctions.from(AlarmRuleEntity::getId))
+                .filter(ruleId -> ruleId != null)
+                .collect(Collectors.toList());
 
         List<AlarmRuleChannelEntity> links = ruleChannelDao.listByRuleIds(ruleIds);
         if (links == null || links.isEmpty()) {
@@ -66,15 +71,21 @@ public class AlarmRuleTargetRepositoryImpl implements AlarmRuleTargetRepository 
         }
 
         Map<Long, List<AlarmRuleChannelEntity>> linksByRule = links.stream()
-                .collect(Collectors.groupingBy(AlarmRuleChannelEntity::getRuleId));
+                .filter(link -> link != null && link.getRuleId() != null)
+                .collect(Collectors.groupingBy(NonNullFunctions.from(AlarmRuleChannelEntity::getRuleId)));
 
         Set<Long> channelIds = links.stream()
-                .map(AlarmRuleChannelEntity::getChannelId)
+                .filter(link -> link != null && link.getChannelId() != null)
+                .map(NonNullFunctions.from(AlarmRuleChannelEntity::getChannelId))
                 .collect(Collectors.toSet());
 
         List<AlarmChannelEntity> channels = channelDao.listEnabledByIds(channelIds);
+        if (channels == null || channels.isEmpty()) {
+            return Collections.emptyList();
+        }
         Map<Long, AlarmChannelEntity> channelMap = channels.stream()
-                .collect(Collectors.toMap(AlarmChannelEntity::getId, c -> c));
+                .filter(channel -> channel != null && channel.getId() != null)
+                .collect(Collectors.toMap(NonNullFunctions.from(AlarmChannelEntity::getId), c -> c));
 
         return matched.stream()
                 .map(rule -> buildTarget(rule, linksByRule.getOrDefault(rule.getId(), Collections.emptyList()),
@@ -96,7 +107,8 @@ public class AlarmRuleTargetRepositoryImpl implements AlarmRuleTargetRepository 
                                     List<AlarmRuleChannelEntity> links,
                                     Map<Long, AlarmChannelEntity> channelMap) {
         List<AlarmTarget.AlarmTargetChannel> channels = links.stream()
-                .map(AlarmRuleChannelEntity::getChannelId)
+                .filter(link -> link != null && link.getChannelId() != null)
+                .map(NonNullFunctions.from(AlarmRuleChannelEntity::getChannelId))
                 .map(channelMap::get)
                 .filter(c -> c != null)
                 .map(c -> AlarmTarget.AlarmTargetChannel.builder()
@@ -119,7 +131,7 @@ public class AlarmRuleTargetRepositoryImpl implements AlarmRuleTargetRepository 
             return false;
         }
         return Arrays.stream(triggerStatuses.split(","))
-                .map(String::trim)
+                .map(NonNullFunctions.from(String::trim))
                 .anyMatch(newStatus::equals);
     }
 
@@ -128,7 +140,7 @@ public class AlarmRuleTargetRepositoryImpl implements AlarmRuleTargetRepository 
             return false;
         }
         return Arrays.stream(excludes.split(","))
-                .map(String::trim)
+                .map(NonNullFunctions.from(String::trim))
                 .filter(s -> !s.isEmpty())
                 .anyMatch(s -> s.equals(jobDefinitionId.toString()));
     }
@@ -146,7 +158,7 @@ public class AlarmRuleTargetRepositoryImpl implements AlarmRuleTargetRepository 
             return false;
         }
         return Arrays.stream(targetJobs.split(","))
-                .map(String::trim)
+                .map(NonNullFunctions.from(String::trim))
                 .filter(s -> !s.isEmpty())
                 .anyMatch(s -> s.equals(jobDefinitionId.toString()));
     }

@@ -30,6 +30,7 @@ import org.apache.seatunnel.web.spi.bean.vo.DataInventorySummaryVO;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -570,7 +571,9 @@ public class DataInventoryService {
         return status == null ? MetadataRunStatus.NEVER.name() : status.name();
     }
 
-    private static <T> T value(OpenMetadataColumnProfile profile, Function<OpenMetadataColumnProfile, T> getter) {
+    private static <T> T value(
+            OpenMetadataColumnProfile profile,
+            NonNullFunctions.NonNullFunction<OpenMetadataColumnProfile, T> getter) {
         return profile == null ? null : getter.apply(profile);
     }
 
@@ -775,9 +778,12 @@ public class DataInventoryService {
                 item.setCount(bucket.count());
                 result.add(item);
             }
-            result.sort(Comparator.comparingLong(DataInventoryDistributionVO::getCount)
-                    .reversed().thenComparing(DataInventoryDistributionVO::getName,
-                            Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+            result.sort(Comparator.nullsLast(
+                    Comparator.comparingLong((DataInventoryDistributionVO item) ->
+                                    item == null ? 0L : item.getCount())
+                            .reversed()
+                            .thenComparing(item -> item == null ? null : item.getName(),
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))));
             return List.copyOf(result);
         }
 

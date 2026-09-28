@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.dao.entity.LakeExternalCatalogBinding;
 import org.apache.seatunnel.web.dao.mapper.LakeExternalCatalogBindingMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.LakeExternalCatalogBindingDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -28,8 +29,8 @@ public class LakeExternalCatalogBindingDaoImpl
             return null;
         }
         return mapper.selectOne(new LambdaQueryWrapper<LakeExternalCatalogBinding>()
-                .eq(LakeExternalCatalogBinding::getId, id)
-                .eq(LakeExternalCatalogBinding::getDeleted, false));
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getId), id)
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getDeleted), false));
     }
 
     @Override
@@ -43,8 +44,8 @@ public class LakeExternalCatalogBindingDaoImpl
             return null;
         }
         return mapper.selectOne(new LambdaQueryWrapper<LakeExternalCatalogBinding>()
-                .eq(LakeExternalCatalogBinding::getSourceDataSourceId, sourceDataSourceId)
-                .eq(LakeExternalCatalogBinding::getDeleted, false));
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getSourceDataSourceId), sourceDataSourceId)
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getDeleted), false));
     }
 
     @Override
@@ -52,7 +53,7 @@ public class LakeExternalCatalogBindingDaoImpl
             Long sourceDataSourceId) {
         return sourceDataSourceId == null ? null : mapper.selectOne(
                 new LambdaQueryWrapper<LakeExternalCatalogBinding>()
-                        .eq(LakeExternalCatalogBinding::getSourceDataSourceId, sourceDataSourceId));
+                        .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getSourceDataSourceId), sourceDataSourceId));
     }
 
     @Override
@@ -62,9 +63,9 @@ public class LakeExternalCatalogBindingDaoImpl
             return null;
         }
         return mapper.selectOne(new LambdaQueryWrapper<LakeExternalCatalogBinding>()
-                .eq(LakeExternalCatalogBinding::getLakeDataSourceId, lakeDataSourceId)
-                .eq(LakeExternalCatalogBinding::getCatalogName, catalogName)
-                .eq(LakeExternalCatalogBinding::getDeleted, false));
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getLakeDataSourceId), lakeDataSourceId)
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getCatalogName), catalogName)
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getDeleted), false));
     }
 
     @Override
@@ -72,8 +73,8 @@ public class LakeExternalCatalogBindingDaoImpl
             Long lakeDataSourceId, String catalogName) {
         return lakeDataSourceId == null || catalogName == null ? null : mapper.selectOne(
                 new LambdaQueryWrapper<LakeExternalCatalogBinding>()
-                        .eq(LakeExternalCatalogBinding::getLakeDataSourceId, lakeDataSourceId)
-                        .eq(LakeExternalCatalogBinding::getCatalogName, catalogName));
+                        .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getLakeDataSourceId), lakeDataSourceId)
+                        .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getCatalogName), catalogName));
     }
 
     @Override
@@ -90,27 +91,27 @@ public class LakeExternalCatalogBindingDaoImpl
         }
         LambdaQueryWrapper<LakeExternalCatalogBinding> wrapper =
                 new LambdaQueryWrapper<LakeExternalCatalogBinding>()
-                        .eq(LakeExternalCatalogBinding::getDeleted, false);
+                        .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getDeleted), false);
         if (lakeDataSourceId != null) {
-            wrapper.eq(LakeExternalCatalogBinding::getLakeDataSourceId, lakeDataSourceId);
+            wrapper.eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getLakeDataSourceId), lakeDataSourceId);
         }
         if (sourceDataSourceId != null) {
-            wrapper.eq(LakeExternalCatalogBinding::getSourceDataSourceId, sourceDataSourceId);
+            wrapper.eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getSourceDataSourceId), sourceDataSourceId);
         }
         if (catalogName != null && !catalogName.isBlank()) {
-            wrapper.like(LakeExternalCatalogBinding::getCatalogName, catalogName.trim());
+            wrapper.like(MyBatisColumn.getter(LakeExternalCatalogBinding::getCatalogName), catalogName.trim());
         }
         if (adapter != null && !adapter.isBlank()) {
-            wrapper.eq(LakeExternalCatalogBinding::getAdapter, adapter.trim());
+            wrapper.eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getAdapter), adapter.trim());
         }
         if (resourceStatus != null && !resourceStatus.isBlank()) {
-            wrapper.eq(LakeExternalCatalogBinding::getResourceStatus, resourceStatus.trim());
+            wrapper.eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getResourceStatus), resourceStatus.trim());
         }
         if (validationStatus != null && !validationStatus.isBlank()) {
-            wrapper.eq(LakeExternalCatalogBinding::getValidationStatus, validationStatus.trim());
+            wrapper.eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getValidationStatus), validationStatus.trim());
         }
-        wrapper.orderByDesc(LakeExternalCatalogBinding::getUpdateTime)
-                .orderByDesc(LakeExternalCatalogBinding::getId);
+        wrapper.orderByDesc(MyBatisColumn.getter(LakeExternalCatalogBinding::getUpdateTime))
+                .orderByDesc(MyBatisColumn.getter(LakeExternalCatalogBinding::getId));
         return mapper.selectPage(page, wrapper);
     }
 
@@ -118,17 +119,17 @@ public class LakeExternalCatalogBindingDaoImpl
     public boolean existsActiveBySourceDataSourceId(Long sourceDataSourceId) {
         return sourceDataSourceId != null
                 && mapper.selectCount(new LambdaQueryWrapper<LakeExternalCatalogBinding>()
-                .eq(LakeExternalCatalogBinding::getSourceDataSourceId, sourceDataSourceId)
-                .eq(LakeExternalCatalogBinding::getDeleted, false)) > 0;
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getSourceDataSourceId), sourceDataSourceId)
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getDeleted), false)) > 0;
     }
 
     @Override
     public boolean existsActiveByTarget(Long lakeDataSourceId, String catalogName) {
         return lakeDataSourceId != null && catalogName != null
                 && mapper.selectCount(new LambdaQueryWrapper<LakeExternalCatalogBinding>()
-                .eq(LakeExternalCatalogBinding::getLakeDataSourceId, lakeDataSourceId)
-                .eq(LakeExternalCatalogBinding::getCatalogName, catalogName)
-                .eq(LakeExternalCatalogBinding::getDeleted, false)) > 0;
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getLakeDataSourceId), lakeDataSourceId)
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getCatalogName), catalogName)
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getDeleted), false)) > 0;
     }
 
     @Override
@@ -150,15 +151,15 @@ public class LakeExternalCatalogBindingDaoImpl
         }
         entity.setLockVersion(lockVersion + 1);
         LambdaUpdateWrapper<LakeExternalCatalogBinding> wrapper = new LambdaUpdateWrapper<LakeExternalCatalogBinding>()
-                .eq(LakeExternalCatalogBinding::getId, entity.getId())
-                .eq(LakeExternalCatalogBinding::getLockVersion, lockVersion);
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getId), entity.getId())
+                .eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getLockVersion), lockVersion);
         if (activeOnly) {
-            wrapper.eq(LakeExternalCatalogBinding::getDeleted, false);
+            wrapper.eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getDeleted), false);
         }
         if (operationToken == null) {
-            wrapper.isNull(LakeExternalCatalogBinding::getOperationToken);
+            wrapper.isNull(MyBatisColumn.getter(LakeExternalCatalogBinding::getOperationToken));
         } else {
-            wrapper.eq(LakeExternalCatalogBinding::getOperationToken, operationToken);
+            wrapper.eq(MyBatisColumn.getter(LakeExternalCatalogBinding::getOperationToken), operationToken);
         }
         return mapper.update(entity, wrapper) > 0;
     }

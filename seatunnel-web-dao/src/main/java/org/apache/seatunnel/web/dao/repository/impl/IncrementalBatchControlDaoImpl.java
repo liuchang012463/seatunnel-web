@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.dao.entity.IncrementalBatchControl;
 import org.apache.seatunnel.web.dao.mapper.IncrementalBatchControlMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.IncrementalBatchControlDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.Date;
@@ -26,7 +27,7 @@ public class IncrementalBatchControlDaoImpl
     @Override
     public IncrementalBatchControl queryByDefinitionIdForUpdate(Long jobDefinitionId) {
         return mapper.selectOne(new LambdaQueryWrapper<IncrementalBatchControl>()
-                .eq(IncrementalBatchControl::getJobDefinitionId, jobDefinitionId)
+                .eq(MyBatisColumn.getter(IncrementalBatchControl::getJobDefinitionId), jobDefinitionId)
                 .last("LIMIT 1 FOR UPDATE"));
     }
 
@@ -35,28 +36,28 @@ public class IncrementalBatchControlDaoImpl
                                    Date committedWatermark,
                                    String lastSuccessBatchId) {
         LambdaUpdateWrapper<IncrementalBatchControl> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(IncrementalBatchControl::getId, control.getId())
-                .eq(IncrementalBatchControl::getVersionNo, control.getVersionNo())
-                .set(IncrementalBatchControl::getCommittedWatermark, committedWatermark)
-                .set(IncrementalBatchControl::getLastSuccessBatchId, lastSuccessBatchId)
-                .set(IncrementalBatchControl::getTaskStatus, "READY")
-                .set(IncrementalBatchControl::getVersionNo, control.getVersionNo() + 1)
-                .set(IncrementalBatchControl::getUpdateTime, new Date());
+        wrapper.eq(MyBatisColumn.getter(IncrementalBatchControl::getId), control.getId())
+                .eq(MyBatisColumn.getter(IncrementalBatchControl::getVersionNo), control.getVersionNo())
+                .set(MyBatisColumn.getter(IncrementalBatchControl::getCommittedWatermark), committedWatermark)
+                .set(MyBatisColumn.getter(IncrementalBatchControl::getLastSuccessBatchId), lastSuccessBatchId)
+                .set(MyBatisColumn.getter(IncrementalBatchControl::getTaskStatus), "READY")
+                .set(MyBatisColumn.getter(IncrementalBatchControl::getVersionNo), control.getVersionNo() + 1)
+                .set(MyBatisColumn.getter(IncrementalBatchControl::getUpdateTime), new Date());
         return mapper.update(null, wrapper) > 0;
     }
 
     @Override
     public boolean updateStatus(Long id, String taskStatus, Date updateTime) {
         LambdaUpdateWrapper<IncrementalBatchControl> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(IncrementalBatchControl::getId, id)
-                .set(IncrementalBatchControl::getTaskStatus, taskStatus)
-                .set(IncrementalBatchControl::getUpdateTime, updateTime);
+        wrapper.eq(MyBatisColumn.getter(IncrementalBatchControl::getId), id)
+                .set(MyBatisColumn.getter(IncrementalBatchControl::getTaskStatus), taskStatus)
+                .set(MyBatisColumn.getter(IncrementalBatchControl::getUpdateTime), updateTime);
         return mapper.update(null, wrapper) > 0;
     }
 
     @Override
     public boolean deleteByDefinitionId(Long jobDefinitionId) {
         return mapper.delete(new LambdaQueryWrapper<IncrementalBatchControl>()
-                .eq(IncrementalBatchControl::getJobDefinitionId, jobDefinitionId)) > 0;
+                .eq(MyBatisColumn.getter(IncrementalBatchControl::getJobDefinitionId), jobDefinitionId)) > 0;
     }
 }

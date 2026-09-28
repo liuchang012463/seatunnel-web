@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.dao.entity.DataSourcePluginConfig;
 import org.apache.seatunnel.web.dao.mapper.DatasourcePluginConfigMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.DataSourcePluginConfigDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Repository;
 
@@ -26,7 +27,7 @@ public class DataSourcePluginConfigDaoImpl
     public DataSourcePluginConfig queryByPluginType(DbType pluginType) {
         return datasourcePluginConfigMapper.selectOne(
                 new LambdaQueryWrapper<DataSourcePluginConfig>()
-                        .eq(DataSourcePluginConfig::getPluginType, pluginType)
+                        .eq(MyBatisColumn.getter(DataSourcePluginConfig::getPluginType), pluginType)
         );
     }
 
@@ -34,7 +35,7 @@ public class DataSourcePluginConfigDaoImpl
     public boolean existsByPluginType(DbType pluginType) {
         Long count = datasourcePluginConfigMapper.selectCount(
                 new LambdaQueryWrapper<DataSourcePluginConfig>()
-                        .eq(DataSourcePluginConfig::getPluginType, pluginType)
+                        .eq(MyBatisColumn.getter(DataSourcePluginConfig::getPluginType), pluginType)
         );
         return count != null && count > 0;
     }

@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.dao.entity.BusinessSystem;
 import org.apache.seatunnel.web.dao.mapper.BusinessSystemMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.BusinessSystemDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.spi.bean.dto.BusinessSystemDTO;
 import org.springframework.stereotype.Repository;
 
@@ -28,17 +29,17 @@ public class BusinessSystemDaoImpl extends BaseDao<BusinessSystem, BusinessSyste
     @Override
     public boolean checkCode(Long unitId, String systemCode, Long excludeId) {
         return businessSystemMapper.selectCount(new LambdaQueryWrapper<BusinessSystem>()
-                .eq(BusinessSystem::getUnitId, unitId)
-                .eq(BusinessSystem::getSystemCode, systemCode)
-                .ne(excludeId != null, BusinessSystem::getId, excludeId)) > 0;
+                .eq(MyBatisColumn.getter(BusinessSystem::getUnitId), unitId)
+                .eq(MyBatisColumn.getter(BusinessSystem::getSystemCode), systemCode)
+                .ne(excludeId != null, MyBatisColumn.getter(BusinessSystem::getId), excludeId)) > 0;
     }
 
     @Override
     public boolean checkName(Long unitId, String systemName, Long excludeId) {
         return businessSystemMapper.selectCount(new LambdaQueryWrapper<BusinessSystem>()
-                .eq(BusinessSystem::getUnitId, unitId)
-                .eq(BusinessSystem::getSystemName, systemName)
-                .ne(excludeId != null, BusinessSystem::getId, excludeId)) > 0;
+                .eq(MyBatisColumn.getter(BusinessSystem::getUnitId), unitId)
+                .eq(MyBatisColumn.getter(BusinessSystem::getSystemName), systemName)
+                .ne(excludeId != null, MyBatisColumn.getter(BusinessSystem::getId), excludeId)) > 0;
     }
 
     @Override
@@ -48,25 +49,25 @@ public class BusinessSystemDaoImpl extends BaseDao<BusinessSystem, BusinessSyste
 
     static LambdaQueryWrapper<BusinessSystem> buildQueryWrapper(BusinessSystemDTO dto) {
         return new LambdaQueryWrapper<BusinessSystem>()
-                .eq(dto.getUnitId() != null, BusinessSystem::getUnitId, dto.getUnitId())
-                .like(StringUtils.isNotBlank(dto.getSystemCode()), BusinessSystem::getSystemCode,
+                .eq(dto.getUnitId() != null, MyBatisColumn.getter(BusinessSystem::getUnitId), dto.getUnitId())
+                .like(StringUtils.isNotBlank(dto.getSystemCode()), MyBatisColumn.getter(BusinessSystem::getSystemCode),
                         StringUtils.trimToEmpty(dto.getSystemCode()))
-                .like(StringUtils.isNotBlank(dto.getSystemName()), BusinessSystem::getSystemName,
+                .like(StringUtils.isNotBlank(dto.getSystemName()), MyBatisColumn.getter(BusinessSystem::getSystemName),
                         StringUtils.trimToEmpty(dto.getSystemName()))
-                .eq(dto.getStatus() != null, BusinessSystem::getStatus, dto.getStatus())
-                .orderByDesc(BusinessSystem::getCreateTime);
+                .eq(dto.getStatus() != null, MyBatisColumn.getter(BusinessSystem::getStatus), dto.getStatus())
+                .orderByDesc(MyBatisColumn.getter(BusinessSystem::getCreateTime));
     }
 
     @Override
     public List<BusinessSystem> queryByUnitId(Long unitId) {
         return businessSystemMapper.selectList(new LambdaQueryWrapper<BusinessSystem>()
-                .eq(BusinessSystem::getUnitId, unitId)
-                .orderByAsc(BusinessSystem::getSystemName));
+                .eq(MyBatisColumn.getter(BusinessSystem::getUnitId), unitId)
+                .orderByAsc(MyBatisColumn.getter(BusinessSystem::getSystemName)));
     }
 
     @Override
     public boolean existsByUnitId(Long unitId) {
         return businessSystemMapper.selectCount(new LambdaQueryWrapper<BusinessSystem>()
-                .eq(BusinessSystem::getUnitId, unitId)) > 0;
+                .eq(MyBatisColumn.getter(BusinessSystem::getUnitId), unitId)) > 0;
     }
 }

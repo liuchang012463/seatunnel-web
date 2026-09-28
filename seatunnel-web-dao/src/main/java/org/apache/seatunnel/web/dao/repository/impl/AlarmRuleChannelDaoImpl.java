@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.dao.entity.AlarmRuleChannelEntity;
 import org.apache.seatunnel.web.dao.mapper.AlarmRuleChannelMapper;
 import org.apache.seatunnel.web.dao.repository.AlarmRuleChannelDao;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -27,7 +28,7 @@ public class AlarmRuleChannelDaoImpl extends BaseDao<AlarmRuleChannelEntity, Ala
             return Collections.emptyList();
         }
         LambdaQueryWrapper<AlarmRuleChannelEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(AlarmRuleChannelEntity::getRuleId, ruleId);
+        wrapper.eq(MyBatisColumn.getter(AlarmRuleChannelEntity::getRuleId), ruleId);
         return mybatisMapper.selectList(wrapper);
     }
 
@@ -37,7 +38,7 @@ public class AlarmRuleChannelDaoImpl extends BaseDao<AlarmRuleChannelEntity, Ala
             return Collections.emptyList();
         }
         LambdaQueryWrapper<AlarmRuleChannelEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(AlarmRuleChannelEntity::getRuleId, ruleIds);
+        wrapper.in(MyBatisColumn.getter(AlarmRuleChannelEntity::getRuleId), ruleIds);
         return mybatisMapper.selectList(wrapper);
     }
 
@@ -47,7 +48,7 @@ public class AlarmRuleChannelDaoImpl extends BaseDao<AlarmRuleChannelEntity, Ala
             return;
         }
         LambdaQueryWrapper<AlarmRuleChannelEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(AlarmRuleChannelEntity::getRuleId, ruleId);
+        wrapper.eq(MyBatisColumn.getter(AlarmRuleChannelEntity::getRuleId), ruleId);
         mybatisMapper.delete(wrapper);
     }
 
@@ -57,7 +58,7 @@ public class AlarmRuleChannelDaoImpl extends BaseDao<AlarmRuleChannelEntity, Ala
             return;
         }
         LambdaQueryWrapper<AlarmRuleChannelEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(AlarmRuleChannelEntity::getChannelId, channelId);
+        wrapper.eq(MyBatisColumn.getter(AlarmRuleChannelEntity::getChannelId), channelId);
         mybatisMapper.delete(wrapper);
     }
 }

@@ -215,7 +215,7 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
         String value = environment == null
                 ? null
                 : environment.getProperty("seatunnel.lake.data-source-id");
-        if (StringUtils.isBlank(value)) {
+        if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("Lake Doris data source is not configured");
         }
         try {

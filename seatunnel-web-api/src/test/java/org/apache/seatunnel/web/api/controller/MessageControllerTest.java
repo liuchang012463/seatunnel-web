@@ -339,7 +339,11 @@ class MessageControllerTest {
 
     @AfterEach
     void detachLogAppenders() {
-        logDetachers.forEach(Runnable::run);
+        logDetachers.forEach(task -> {
+            if (task != null) {
+                task.run();
+            }
+        });
         logDetachers.clear();
     }
 

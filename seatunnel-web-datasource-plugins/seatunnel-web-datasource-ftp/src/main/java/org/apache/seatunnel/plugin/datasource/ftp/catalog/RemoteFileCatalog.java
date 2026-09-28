@@ -5,6 +5,7 @@ import org.apache.seatunnel.plugin.datasource.ftp.client.RemoteFileClient;
 import org.apache.seatunnel.plugin.datasource.ftp.param.RemoteFileConnectionParam;
 import org.apache.seatunnel.web.spi.bean.vo.FileEntryVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Comparator;
 import java.util.List;
@@ -22,8 +23,9 @@ public class RemoteFileCatalog implements FileDataSourceCatalog {
     @Override
     public List<FileEntryVO> listEntries(String path) {
         return client.listEntries(param, path).stream()
-                .sorted(Comparator.comparing((FileEntryVO item) -> !"DIRECTORY".equals(item.getType()))
-                        .thenComparing(FileEntryVO::getName, String.CASE_INSENSITIVE_ORDER))
+                .sorted(NonNullFunctions.comparing((FileEntryVO item) -> !"DIRECTORY".equals(item.getType()))
+                        .thenComparing(NonNullFunctions.comparing(
+                                FileEntryVO::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))))
                 .collect(Collectors.toList());
     }
 

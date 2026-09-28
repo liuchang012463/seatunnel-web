@@ -36,9 +36,16 @@ public class WebhookAlarmChannel implements AlarmChannel {
 
     @Override
     public AlarmResult process(AlarmInfo info) {
-        Map<String, String> params = info == null ? null : info.getAlarmParams();
+        if (info == null) {
+            return AlarmResult.fail("alarm info is empty");
+        }
+        Map<String, String> params = info.getAlarmParams();
         if (params == null) {
             return AlarmResult.fail("alarm params is empty");
+        }
+        AlarmData data = info.getAlarmData();
+        if (data == null) {
+            return AlarmResult.fail("alarm data is empty");
         }
         String url = params.get("url");
         if (url == null || url.isBlank()) {
@@ -50,8 +57,8 @@ public class WebhookAlarmChannel implements AlarmChannel {
         Map<String, Object> headers = parseHeaders(params.get("headers"));
         String bodyTemplate = params.get("bodyTemplate");
         String body = (bodyTemplate != null && !bodyTemplate.isBlank())
-                ? renderTemplate(bodyTemplate, info.getAlarmData())
-                : buildBody(info.getAlarmData());
+                ? renderTemplate(bodyTemplate, data)
+                : buildBody(data);
 
         HttpURLConnection conn = null;
         try {

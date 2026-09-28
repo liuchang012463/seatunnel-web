@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
 import org.apache.seatunnel.web.dao.mapper.LakeJobRelationMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.LakeJobRelationDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
@@ -31,8 +32,8 @@ public class LakeJobRelationDaoImpl extends BaseDao<LakeJobRelation, LakeJobRela
             return Collections.emptyList();
         }
         return mapper.selectList(new LambdaQueryWrapper<LakeJobRelation>()
-                .eq(LakeJobRelation::getOdsDatabaseBindingId, odsDatabaseBindingId)
-                .orderByDesc(LakeJobRelation::getUpdateTime));
+                .eq(MyBatisColumn.getter(LakeJobRelation::getOdsDatabaseBindingId), odsDatabaseBindingId)
+                .orderByDesc(MyBatisColumn.getter(LakeJobRelation::getUpdateTime)));
     }
 
     @Override
@@ -41,17 +42,17 @@ public class LakeJobRelationDaoImpl extends BaseDao<LakeJobRelation, LakeJobRela
             return Collections.emptyList();
         }
         return mapper.selectList(new LambdaQueryWrapper<LakeJobRelation>()
-                .eq(LakeJobRelation::getJobId, jobId)
-                .eq(LakeJobRelation::getRelationStatus, LakeRelationStatus.ACTIVE));
+                .eq(MyBatisColumn.getter(LakeJobRelation::getJobId), jobId)
+                .eq(MyBatisColumn.getter(LakeJobRelation::getRelationStatus), LakeRelationStatus.ACTIVE));
     }
 
     @Override
     public LakeJobRelation queryByBindingJobAndScope(
             Long odsDatabaseBindingId, Long jobId, LakeRelationScope relationScope) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeJobRelation>()
-                .eq(LakeJobRelation::getOdsDatabaseBindingId, odsDatabaseBindingId)
-                .eq(LakeJobRelation::getJobId, jobId)
-                .eq(LakeJobRelation::getRelationScope, relationScope));
+                .eq(MyBatisColumn.getter(LakeJobRelation::getOdsDatabaseBindingId), odsDatabaseBindingId)
+                .eq(MyBatisColumn.getter(LakeJobRelation::getJobId), jobId)
+                .eq(MyBatisColumn.getter(LakeJobRelation::getRelationScope), relationScope));
     }
 
     @Override
@@ -60,8 +61,8 @@ public class LakeJobRelationDaoImpl extends BaseDao<LakeJobRelation, LakeJobRela
             return false;
         }
         return mapper.update(null, new LambdaUpdateWrapper<LakeJobRelation>()
-                .eq(LakeJobRelation::getJobId, jobId)
-                .eq(LakeJobRelation::getRelationStatus, LakeRelationStatus.ACTIVE)
-                .set(LakeJobRelation::getRelationStatus, LakeRelationStatus.STALE)) > 0;
+                .eq(MyBatisColumn.getter(LakeJobRelation::getJobId), jobId)
+                .eq(MyBatisColumn.getter(LakeJobRelation::getRelationStatus), LakeRelationStatus.ACTIVE)
+                .set(MyBatisColumn.getter(LakeJobRelation::getRelationStatus), LakeRelationStatus.STALE)) > 0;
     }
 }

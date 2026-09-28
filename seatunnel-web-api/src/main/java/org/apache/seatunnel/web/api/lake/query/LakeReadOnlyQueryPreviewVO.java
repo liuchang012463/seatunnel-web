@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.lake.query;
 
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 import java.util.List;
 
 /**
@@ -23,7 +24,7 @@ public record LakeReadOnlyQueryPreviewVO(
     public static LakeReadOnlyQueryPreviewVO from(LakeReadOnlyQueryPlan plan, String sql) {
         return new LakeReadOnlyQueryPreviewVO(
                 sql,
-                plan.outputColumns().stream().map(LakeQueryOutputColumn::outputAlias).toList(),
+                plan.outputColumns().stream().map(NonNullFunctions.from(LakeQueryOutputColumn::outputAlias)).toList(),
                 plan.effectiveLimit(),
                 plan.explain(),
                 plan.isJoin() ? plan.joinType() : null);

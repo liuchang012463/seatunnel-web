@@ -33,6 +33,7 @@ import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -358,7 +359,10 @@ public class LakeTableDriftEvaluator {
             results.add(evaluateRelation(mapping, relation));
         }
         LakeConsistencyStatus status = aggregateStatus(
-                results.stream().map(TaskRelationResult::status).toList());
+                results.stream()
+                        .filter(result -> result != null)
+                        .map(NonNullFunctions.from(TaskRelationResult::status))
+                        .toList());
         return new TaskEvaluation(taskResult(status), results);
     }
 

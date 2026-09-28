@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.dao.entity.LakeTableLifecycleBinding;
 import org.apache.seatunnel.web.dao.mapper.LakeTableLifecycleBindingMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.LakeTableLifecycleBindingDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -24,7 +25,7 @@ public class LakeTableLifecycleBindingDaoImpl
     @Override
     public LakeTableLifecycleBinding queryByTableMappingId(Long tableMappingId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeTableLifecycleBinding>()
-                .eq(LakeTableLifecycleBinding::getTableMappingId, tableMappingId));
+                .eq(MyBatisColumn.getter(LakeTableLifecycleBinding::getTableMappingId), tableMappingId));
     }
 
     @Override
@@ -35,12 +36,12 @@ public class LakeTableLifecycleBindingDaoImpl
         }
         entity.setLockVersion(lockVersion + 1);
         LambdaUpdateWrapper<LakeTableLifecycleBinding> wrapper = new LambdaUpdateWrapper<LakeTableLifecycleBinding>()
-                .eq(LakeTableLifecycleBinding::getId, entity.getId())
-                .eq(LakeTableLifecycleBinding::getLockVersion, lockVersion);
+                .eq(MyBatisColumn.getter(LakeTableLifecycleBinding::getId), entity.getId())
+                .eq(MyBatisColumn.getter(LakeTableLifecycleBinding::getLockVersion), lockVersion);
         if (operationToken == null) {
-            wrapper.isNull(LakeTableLifecycleBinding::getOperationToken);
+            wrapper.isNull(MyBatisColumn.getter(LakeTableLifecycleBinding::getOperationToken));
         } else {
-            wrapper.eq(LakeTableLifecycleBinding::getOperationToken, operationToken);
+            wrapper.eq(MyBatisColumn.getter(LakeTableLifecycleBinding::getOperationToken), operationToken);
         }
         return mapper.update(entity, wrapper) > 0;
     }

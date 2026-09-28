@@ -17,6 +17,7 @@ import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 
 import org.springframework.util.StringUtils;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -338,10 +339,10 @@ public abstract class AbstractJdbcConnectionProvider<
 
         List<String> jarPaths =
                 Arrays.stream(driverLocation.split(","))
-                        .map(String::trim)
+                        .map(NonNullFunctions.from(String::trim))
                         .filter(StringUtils::hasText)
                         .map(this::resolveDriverPath)
-                        .map(Path::toString)
+                        .map(NonNullFunctions.from(Path::toString))
                         .collect(Collectors.toList());
 
         if (jarPaths.isEmpty()) {

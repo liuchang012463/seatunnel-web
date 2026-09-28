@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.List;
 
@@ -78,9 +79,9 @@ class LakePhysicalTableInventoryServiceImplTest {
         assertEquals("ODS", result.getDatabaseName());
         assertEquals(List.of("alpha", "Orders", "USERS"), result.getActualTableNames());
         assertEquals(List.of("missing", "orders", "USERS"), result.getRegisteredTables().stream()
-                .map(LakePhysicalTableInventoryTableVO::getTargetTableName).toList());
+                .map(NonNullFunctions.from(LakePhysicalTableInventoryTableVO::getTargetTableName)).toList());
         assertEquals(List.of("alpha"), result.getDiscoveredTables().stream()
-                .map(LakePhysicalTableInventoryTableVO::getTargetTableName).toList());
+                .map(NonNullFunctions.from(LakePhysicalTableInventoryTableVO::getTargetTableName)).toList());
         assertFalse(result.getRegisteredTables().get(0).getActualExists());
         assertTrue(result.getRegisteredTables().get(1).getActualExists());
         assertEquals(LakeManagementLevel.UNMANAGED,
@@ -115,9 +116,9 @@ class LakePhysicalTableInventoryServiceImplTest {
         LakePhysicalTableInventoryVO result = service.inventory(41L);
 
         assertEquals(List.of(6L, 7L), result.getTableRelations().stream()
-                .map(LakePhysicalTableInventoryRelationVO::getJobId).toList());
+                .map(NonNullFunctions.from(LakePhysicalTableInventoryRelationVO::getJobId)).toList());
         assertEquals(List.of(8L), result.getNamespaceRelations().stream()
-                .map(LakePhysicalTableInventoryRelationVO::getJobId).toList());
+                .map(NonNullFunctions.from(LakePhysicalTableInventoryRelationVO::getJobId)).toList());
         LakePhysicalTableInventoryRelationVO first = result.getTableRelations().get(1);
         assertEquals(LakeRelationScope.TABLE, first.getRelationScope());
         assertEquals(LakeJobRuntimeType.BATCH, first.getJobRuntimeType());
@@ -186,7 +187,7 @@ class LakePhysicalTableInventoryServiceImplTest {
 
         assertEquals(List.of("LEGACY.TABLE"), result.getActualTableNames());
         assertEquals(List.of("LEGACY.TABLE"), result.getDiscoveredTables().stream()
-                .map(LakePhysicalTableInventoryTableVO::getTargetTableName).toList());
+                .map(NonNullFunctions.from(LakePhysicalTableInventoryTableVO::getTargetTableName)).toList());
         assertEquals(LakeManagementLevel.UNMANAGED,
                 result.getDiscoveredTables().get(0).getManagementLevel());
         assertFalse(result.getDiscoveredTables().get(0).getSourceBound());

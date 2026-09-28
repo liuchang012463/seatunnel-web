@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.spi.enums;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import lombok.Getter;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -32,7 +33,7 @@ public enum DbType {
     ;
 
     private static final Map<String, DbType> DB_TYPE_MAP =
-            Arrays.stream(DbType.values()).collect(toMap(DbType::getCode, Function.identity()));
+            Arrays.stream(DbType.values()).collect(toMap(NonNullFunctions.from(DbType::getCode), Function.identity()));
 
     @EnumValue
     private final String code;

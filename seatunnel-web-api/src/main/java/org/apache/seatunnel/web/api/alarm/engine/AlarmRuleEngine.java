@@ -63,8 +63,11 @@ public class AlarmRuleEngine {
     }
 
     public void dispatch(JobStatusChangedEvent event) {
+        if (event == null) {
+            return;
+        }
         try {
-            if (event == null || event.getNewStatus() == null || event.getJobInstanceId() == null) {
+            if (event.getNewStatus() == null || event.getJobInstanceId() == null) {
                 return;
             }
 

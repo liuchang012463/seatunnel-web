@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,6 +22,7 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.HexFormat;
@@ -158,9 +160,9 @@ public class JobLogService {
         List<JobLogEntry> entries = parseEntries(instanceId, requestedMode);
         List<JobLogReplaySection> sections = replaySections(entries);
         Long durationMs = entries.stream()
-                .map(JobLogEntry::elapsedMs)
+                .map(NonNullFunctions.from(JobLogEntry::elapsedMs))
                 .filter(Objects::nonNull)
-                .max(Long::compareTo)
+                .max(Comparator.naturalOrder())
                 .orElse(null);
         int totalSteps = sections.stream().mapToInt(section -> section.steps().size()).sum();
         return new JobLogReplayResult(
@@ -258,8 +260,8 @@ public class JobLogService {
                 .toList();
         JobLogStructuredRecord record = records.get(0);
         String operation = records.size() == 1 ? record.operation() : sectionTitle(record.category());
-        String target = distinctValues(records.stream().map(JobLogStructuredRecord::target).toList(), "-");
-        String source = distinctValues(records.stream().map(JobLogStructuredRecord::source).toList(), "-");
+        String target = distinctValues(records.stream().map(NonNullFunctions.from(JobLogStructuredRecord::target)).toList(), "-");
+        String source = distinctValues(records.stream().map(NonNullFunctions.from(JobLogStructuredRecord::source)).toList(), "-");
         String detail = records.size() == 1
                 ? record.detail()
                 : "本阶段包含 " + entries.size() + " 条日志，右侧保留该阶段全部原始日志。";
@@ -276,7 +278,10 @@ public class JobLogService {
                 aggregateStatus(records),
                 detail,
                 sectionTitle(record.category()),
-                entries.stream().map(JobLogEntry::raw).toList()
+                entries.stream()
+                        .filter(entry -> entry != null)
+                        .map(NonNullFunctions.from(JobLogEntry::raw))
+                        .toList()
         );
     }
 

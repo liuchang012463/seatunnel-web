@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.dao.entity.FileUploadSession;
 import org.apache.seatunnel.web.dao.mapper.FileUploadSessionMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.FileUploadSessionDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -26,6 +27,6 @@ public class FileUploadSessionDaoImpl
             return null;
         }
         return mapper.selectOne(new LambdaQueryWrapper<FileUploadSession>()
-                .eq(FileUploadSession::getJobDefinitionId, jobDefinitionId));
+                .eq(MyBatisColumn.getter(FileUploadSession::getJobDefinitionId), jobDefinitionId));
     }
 }

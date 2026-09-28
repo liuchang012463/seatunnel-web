@@ -21,6 +21,7 @@ import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsTableMappingDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -41,32 +42,24 @@ import java.util.TreeMap;
 public class LakePhysicalTableInventoryServiceImpl implements LakePhysicalTableInventoryService {
 
     private static final Comparator<LakePhysicalTableInventoryTableVO> TABLE_ORDER =
-            Comparator.comparing(
+            NonNullFunctions.comparing(
                     LakePhysicalTableInventoryTableVO::getTargetTableName,
                     Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-                    .thenComparing(
-                            LakePhysicalTableInventoryTableVO::getTargetTableName,
-                            Comparator.nullsLast(Comparator.naturalOrder()))
-                    .thenComparing(
-                            LakePhysicalTableInventoryTableVO::getMappingId,
-                            Comparator.nullsLast(Comparator.naturalOrder()));
+                    .thenComparing(NonNullFunctions.comparing(
+                            LakePhysicalTableInventoryTableVO::getTargetTableName))
+                    .thenComparing(NonNullFunctions.comparing(
+                            LakePhysicalTableInventoryTableVO::getMappingId));
 
     private static final Comparator<LakePhysicalTableInventoryRelationVO> RELATION_ORDER =
-            Comparator.comparing(
-                    LakePhysicalTableInventoryRelationVO::getJobId,
-                    Comparator.nullsLast(Comparator.naturalOrder()))
-                    .thenComparing(
-                            relation -> enumName(relation.getJobRuntimeType()),
-                            Comparator.nullsLast(String::compareTo))
-                    .thenComparing(
-                            LakePhysicalTableInventoryRelationVO::getJobVersion,
-                            Comparator.nullsLast(Comparator.naturalOrder()))
-                    .thenComparing(
-                            LakePhysicalTableInventoryRelationVO::getRelationId,
-                            Comparator.nullsLast(Comparator.naturalOrder()))
-                    .thenComparing(
-                            LakePhysicalTableInventoryRelationVO::getTableMappingId,
-                            Comparator.nullsLast(Comparator.naturalOrder()));
+            NonNullFunctions.comparing(LakePhysicalTableInventoryRelationVO::getJobId)
+                    .thenComparing(NonNullFunctions.comparing(
+                            relation -> enumName(relation.getJobRuntimeType())))
+                    .thenComparing(NonNullFunctions.comparing(
+                            LakePhysicalTableInventoryRelationVO::getJobVersion))
+                    .thenComparing(NonNullFunctions.comparing(
+                            LakePhysicalTableInventoryRelationVO::getRelationId))
+                    .thenComparing(NonNullFunctions.comparing(
+                            LakePhysicalTableInventoryRelationVO::getTableMappingId));
 
     private final LakeOdsDatabaseBindingDao bindingDao;
     private final LakeOdsTableMappingDao tableMappingDao;

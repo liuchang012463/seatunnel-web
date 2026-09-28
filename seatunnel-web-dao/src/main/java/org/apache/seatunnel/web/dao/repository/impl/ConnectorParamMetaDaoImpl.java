@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.dao.entity.ConnectorParamMetaEntity;
 import org.apache.seatunnel.web.dao.mapper.ConnectorParamMetaMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.ConnectorParamMetaDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.spi.bean.dto.ConnectorParamMetaQueryDTO;
 import org.springframework.stereotype.Repository;
 
@@ -30,30 +31,30 @@ public class ConnectorParamMetaDaoImpl
     @Override
     public boolean checkDuplicate(String type, String connectorName, String paramName) {
         LambdaQueryWrapper<ConnectorParamMetaEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ConnectorParamMetaEntity::getType, type)
-                .eq(ConnectorParamMetaEntity::getConnectorName, connectorName)
-                .eq(ConnectorParamMetaEntity::getParamName, paramName);
+        wrapper.eq(MyBatisColumn.getter(ConnectorParamMetaEntity::getType), type)
+                .eq(MyBatisColumn.getter(ConnectorParamMetaEntity::getConnectorName), connectorName)
+                .eq(MyBatisColumn.getter(ConnectorParamMetaEntity::getParamName), paramName);
         return connectorParamMetaMapper.selectCount(wrapper) > 0;
     }
 
     @Override
     public boolean checkDuplicateExcludeId(String type, String connectorName, String paramName, Long id) {
         LambdaQueryWrapper<ConnectorParamMetaEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ConnectorParamMetaEntity::getType, type)
-                .eq(ConnectorParamMetaEntity::getConnectorName, connectorName)
-                .eq(ConnectorParamMetaEntity::getParamName, paramName)
-                .ne(id != null, ConnectorParamMetaEntity::getId, id);
+        wrapper.eq(MyBatisColumn.getter(ConnectorParamMetaEntity::getType), type)
+                .eq(MyBatisColumn.getter(ConnectorParamMetaEntity::getConnectorName), connectorName)
+                .eq(MyBatisColumn.getter(ConnectorParamMetaEntity::getParamName), paramName)
+                .ne(id != null, MyBatisColumn.getter(ConnectorParamMetaEntity::getId), id);
         return connectorParamMetaMapper.selectCount(wrapper) > 0;
     }
 
     @Override
     public IPage<ConnectorParamMetaEntity> queryPage(ConnectorParamMetaQueryDTO dto) {
         LambdaQueryWrapper<ConnectorParamMetaEntity> wrapper = new LambdaQueryWrapper<ConnectorParamMetaEntity>()
-                .eq(StringUtils.isNotBlank(dto.getType()), ConnectorParamMetaEntity::getType, dto.getType())
-                .eq(StringUtils.isNotBlank(dto.getConnectorName()), ConnectorParamMetaEntity::getConnectorName, dto.getConnectorName())
-                .like(StringUtils.isNotBlank(dto.getParamName()), ConnectorParamMetaEntity::getParamName, dto.getParamName())
-                .orderByDesc(ConnectorParamMetaEntity::getUpdateTime)
-                .orderByDesc(ConnectorParamMetaEntity::getId);
+                .eq(StringUtils.isNotBlank(dto.getType()), MyBatisColumn.getter(ConnectorParamMetaEntity::getType), dto.getType())
+                .eq(StringUtils.isNotBlank(dto.getConnectorName()), MyBatisColumn.getter(ConnectorParamMetaEntity::getConnectorName), dto.getConnectorName())
+                .like(StringUtils.isNotBlank(dto.getParamName()), MyBatisColumn.getter(ConnectorParamMetaEntity::getParamName), dto.getParamName())
+                .orderByDesc(MyBatisColumn.getter(ConnectorParamMetaEntity::getUpdateTime))
+                .orderByDesc(MyBatisColumn.getter(ConnectorParamMetaEntity::getId));
 
         IPage<ConnectorParamMetaEntity> page = new Page<>(dto.getPageNum(), dto.getPageSize());
         return connectorParamMetaMapper.selectPage(page, wrapper);
@@ -62,10 +63,10 @@ public class ConnectorParamMetaDaoImpl
     @Override
     public List<ConnectorParamMetaEntity> queryList(String connectorName, String type) {
         LambdaQueryWrapper<ConnectorParamMetaEntity> wrapper = new LambdaQueryWrapper<ConnectorParamMetaEntity>()
-                .eq(StringUtils.isNotBlank(connectorName), ConnectorParamMetaEntity::getConnectorName, connectorName)
-                .eq(StringUtils.isNotBlank(type), ConnectorParamMetaEntity::getType, type)
-                .orderByAsc(ConnectorParamMetaEntity::getParamName)
-                .orderByAsc(ConnectorParamMetaEntity::getId);
+                .eq(StringUtils.isNotBlank(connectorName), MyBatisColumn.getter(ConnectorParamMetaEntity::getConnectorName), connectorName)
+                .eq(StringUtils.isNotBlank(type), MyBatisColumn.getter(ConnectorParamMetaEntity::getType), type)
+                .orderByAsc(MyBatisColumn.getter(ConnectorParamMetaEntity::getParamName))
+                .orderByAsc(MyBatisColumn.getter(ConnectorParamMetaEntity::getId));
 
         return connectorParamMetaMapper.selectList(wrapper);
     }
@@ -79,17 +80,17 @@ public class ConnectorParamMetaDaoImpl
         LambdaQueryWrapper<ConnectorParamMetaEntity> wrapper =
                 new LambdaQueryWrapper<ConnectorParamMetaEntity>()
                         .eq(StringUtils.isNotBlank(type),
-                                ConnectorParamMetaEntity::getType,
+                                MyBatisColumn.getter(ConnectorParamMetaEntity::getType),
                                 type)
                         .eq(StringUtils.isNotBlank(connectorName),
-                                ConnectorParamMetaEntity::getConnectorName,
+                                MyBatisColumn.getter(ConnectorParamMetaEntity::getConnectorName),
                                 connectorName)
                         .eq(StringUtils.isNotBlank(connectorType),
-                                ConnectorParamMetaEntity::getConnectorType,
+                                MyBatisColumn.getter(ConnectorParamMetaEntity::getConnectorType),
                                 connectorType)
-                        .orderByDesc(ConnectorParamMetaEntity::getRequiredFlag)
-                        .orderByAsc(ConnectorParamMetaEntity::getParamName)
-                        .orderByAsc(ConnectorParamMetaEntity::getId);
+                        .orderByDesc(MyBatisColumn.getter(ConnectorParamMetaEntity::getRequiredFlag))
+                        .orderByAsc(MyBatisColumn.getter(ConnectorParamMetaEntity::getParamName))
+                        .orderByAsc(MyBatisColumn.getter(ConnectorParamMetaEntity::getId));
 
         return connectorParamMetaMapper.selectList(wrapper);
     }

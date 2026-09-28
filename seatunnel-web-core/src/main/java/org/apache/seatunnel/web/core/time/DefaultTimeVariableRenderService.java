@@ -11,6 +11,7 @@ import org.apache.seatunnel.web.spi.bean.dto.TimeVariableRenderReq;
 import org.apache.seatunnel.web.spi.bean.vo.TimeVariableRenderVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -51,7 +52,7 @@ public class DefaultTimeVariableRenderService implements TimeVariableRenderServi
             Map<String, TimeVariable> variableMap = getAllEnabledVariables()
                     .stream()
                     .collect(Collectors.toMap(
-                            TimeVariable::getParamName,
+                            NonNullFunctions.from(TimeVariable::getParamName),
                             item -> item,
                             (first, second) -> first,
                             LinkedHashMap::new

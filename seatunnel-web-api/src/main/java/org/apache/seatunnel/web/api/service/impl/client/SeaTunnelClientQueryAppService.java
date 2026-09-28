@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.common.enums.SeaTunnelClientNodeRole;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.SeaTunnelClient;
 import org.apache.seatunnel.web.dao.entity.SeaTunnelClientNode;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.SeaTunnelClientDao;
 import org.apache.seatunnel.web.dao.repository.SeaTunnelClientNodeDao;
 import org.apache.seatunnel.web.spi.bean.dto.SeaTunnelClientEndpointDTO;
@@ -52,10 +53,10 @@ public class SeaTunnelClientQueryAppService {
     public List<OptionVO> option() {
         LambdaQueryWrapper<SeaTunnelClient> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(
-                SeaTunnelClient::getHealthStatus,
+                MyBatisColumn.getter(SeaTunnelClient::getHealthStatus),
                 SeaTunnelClientHealthStatusEnum.LIVE.getCode()
         );
-        wrapper.orderByDesc(SeaTunnelClient::getCreateTime);
+        wrapper.orderByDesc(MyBatisColumn.getter(SeaTunnelClient::getCreateTime));
 
         List<SeaTunnelClient> entities = seaTunnelClientDao.selectList(wrapper);
 
@@ -87,7 +88,7 @@ public class SeaTunnelClientQueryAppService {
                 : dto.getPageSize();
 
         LambdaQueryWrapper<SeaTunnelClient> wrapper = new LambdaQueryWrapper<>();
-        wrapper.orderByDesc(SeaTunnelClient::getCreateTime);
+        wrapper.orderByDesc(MyBatisColumn.getter(SeaTunnelClient::getCreateTime));
 
         IPage<SeaTunnelClient> page =
                 seaTunnelClientDao.selectPage(new Page<>(pageNo, pageSize), wrapper);

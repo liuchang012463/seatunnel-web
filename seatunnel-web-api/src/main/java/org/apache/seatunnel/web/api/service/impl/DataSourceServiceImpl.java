@@ -40,6 +40,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -238,7 +239,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             Collection<Long> systemIds = null;
             if (dto.getUnitId() != null) {
                 systemIds = businessSystemDao.queryByUnitId(dto.getUnitId()).stream()
-                        .map(BusinessSystem::getId)
+                        .map(NonNullFunctions.from(BusinessSystem::getId))
                         .filter(java.util.Objects::nonNull)
                         .collect(Collectors.toList());
             }
@@ -860,7 +861,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
     private Map<Long, BusinessSystem> loadBusinessSystems(List<DataSource> entities) {
         List<Long> ids = entities.stream()
-                .map(DataSource::getBusinessSystemId)
+                .map(NonNullFunctions.from(DataSource::getBusinessSystemId))
                 .filter(java.util.Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
@@ -868,24 +869,26 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             return Collections.emptyMap();
         }
         return businessSystemDao.queryByIds(ids).stream()
-                .collect(Collectors.toMap(BusinessSystem::getId, item -> item, (left, right) -> left));
+                .filter(system -> system != null && system.getId() != null)
+                .collect(Collectors.toMap(NonNullFunctions.from(BusinessSystem::getId), item -> item, (left, right) -> left));
     }
 
     private Map<Long, MetadataSourceBinding> loadMetadataBindings(List<DataSource> entities) {
         List<Long> ids = entities.stream()
-                .map(DataSource::getId)
+                .map(NonNullFunctions.from(DataSource::getId))
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
         if (ids.isEmpty()) {
             return Collections.emptyMap();
         }
         return metadataBindingDao.queryByDataSourceIds(ids).stream()
-                .collect(Collectors.toMap(MetadataSourceBinding::getDataSourceId, item -> item, (left, right) -> left));
+                .filter(binding -> binding != null && binding.getDataSourceId() != null)
+                .collect(Collectors.toMap(NonNullFunctions.from(MetadataSourceBinding::getDataSourceId), item -> item, (left, right) -> left));
     }
 
     private Map<Long, DataSourceUnit> loadUnits(Map<Long, BusinessSystem> systems) {
         List<Long> ids = systems.values().stream()
-                .map(BusinessSystem::getUnitId)
+                .map(NonNullFunctions.from(BusinessSystem::getUnitId))
                 .filter(java.util.Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
@@ -893,7 +896,8 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             return Collections.emptyMap();
         }
         return dataSourceUnitDao.queryByIds(ids).stream()
-                .collect(Collectors.toMap(DataSourceUnit::getId, item -> item, (left, right) -> left));
+                .filter(unit -> unit != null && unit.getId() != null)
+                .collect(Collectors.toMap(NonNullFunctions.from(DataSourceUnit::getId), item -> item, (left, right) -> left));
     }
 
     private record BusinessSystemOwnership(BusinessSystem system, DataSourceUnit unit) {

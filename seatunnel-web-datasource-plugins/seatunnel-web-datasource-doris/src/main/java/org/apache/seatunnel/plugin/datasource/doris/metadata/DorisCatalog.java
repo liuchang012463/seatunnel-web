@@ -10,6 +10,7 @@ import org.apache.seatunnel.plugin.datasource.api.jdbc.TablePath;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -147,7 +148,7 @@ public class DorisCatalog extends AbstractJdbcCatalog implements HierarchicalJdb
     @Override
     protected String getSpecifiedColumnSql(TablePath tablePath, List<DataSourceTableColumn> columns) {
         List<String> columnNames = columns.stream()
-                .map(DataSourceTableColumn::getColumnName)
+                .map(NonNullFunctions.from(DataSourceTableColumn::getColumnName))
                 .toList();
 
         String quotedColumnNames = columnNames.stream()
@@ -172,7 +173,7 @@ public class DorisCatalog extends AbstractJdbcCatalog implements HierarchicalJdb
         }
 
         String[] parts = Arrays.stream(tablePath.split("\\."))
-                .map(String::trim)
+                .map(NonNullFunctions.from(String::trim))
                 .filter(StringUtils::isNotBlank)
                 .toArray(String[]::new);
         if (parts.length == 1) {

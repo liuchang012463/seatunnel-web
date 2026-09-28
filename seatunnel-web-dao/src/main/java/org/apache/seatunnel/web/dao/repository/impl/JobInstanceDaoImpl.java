@@ -14,6 +14,7 @@ import org.apache.seatunnel.web.dao.entity.JobInstance;
 import org.apache.seatunnel.web.dao.mapper.JobInstanceMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.spi.bean.dto.SeaTunnelJobInstanceDTO;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.springframework.stereotype.Repository;
@@ -53,12 +54,12 @@ public class JobInstanceDaoImpl
         Date now = new Date();
 
         LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(JobInstance::getClientId, clientId)
-                .in(JobInstance::getJobStatus, JobStatusHelper.runningLikeStatuses())
-                .set(JobInstance::getJobStatus, JobStatus.FAILED)
-                .set(JobInstance::getErrorMessage, truncate(errorMessage, 2000))
-                .set(JobInstance::getEndTime, now)
-                .set(JobInstance::getUpdateTime, now);
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getClientId), clientId)
+                .in(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatusHelper.runningLikeStatuses())
+                .set(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatus.FAILED)
+                .set(MyBatisColumn.getter(JobInstance::getErrorMessage), truncate(errorMessage, 2000))
+                .set(MyBatisColumn.getter(JobInstance::getEndTime), now)
+                .set(MyBatisColumn.getter(JobInstance::getUpdateTime), now);
 
         return jobInstanceMapper.update(null, wrapper);
     }
@@ -75,8 +76,8 @@ public class JobInstanceDaoImpl
     @Override
     public boolean existsRunningInstance(Long definitionId) {
         LambdaQueryWrapper<JobInstance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(JobInstance::getJobDefinitionId, definitionId)
-                .in(JobInstance::getJobStatus,
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getJobDefinitionId), definitionId)
+                .in(MyBatisColumn.getter(JobInstance::getJobStatus),
                         JobStatus.INITIALIZING,
                         JobStatus.CREATED,
                         JobStatus.PENDING,
@@ -93,14 +94,14 @@ public class JobInstanceDaoImpl
     @Override
     public void deleteByDefinitionId(Long definitionId) {
         LambdaQueryWrapper<JobInstance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(JobInstance::getJobDefinitionId, definitionId);
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getJobDefinitionId), definitionId);
         jobInstanceMapper.delete(wrapper);
     }
 
     @Override
     public List<JobInstance> listRunningLikeInstances() {
         LambdaQueryWrapper<JobInstance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(JobInstance::getJobStatus,
+        wrapper.in(MyBatisColumn.getter(JobInstance::getJobStatus),
                 JobStatus.INITIALIZING,
                 JobStatus.CREATED,
                 JobStatus.PENDING,
@@ -109,7 +110,7 @@ public class JobInstanceDaoImpl
                 JobStatus.FAILING,
                 JobStatus.DOING_SAVEPOINT,
                 JobStatus.CANCELING)
-                .orderByDesc(JobInstance::getCreateTime);
+                .orderByDesc(MyBatisColumn.getter(JobInstance::getCreateTime));
 
         List<JobInstance> records = jobInstanceMapper.selectList(wrapper);
         return records == null ? Collections.emptyList() : records;
@@ -121,15 +122,15 @@ public class JobInstanceDaoImpl
         Date now = new Date();
 
         LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(JobInstance::getId, instanceId)
-                .set(JobInstance::getJobStatus, status)
-                .set(JobInstance::getUpdateTime, now);
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
+                .set(MyBatisColumn.getter(JobInstance::getJobStatus), status)
+                .set(MyBatisColumn.getter(JobInstance::getUpdateTime), now);
 
         if (errorMessage != null && !errorMessage.isBlank()) {
-            wrapper.set(JobInstance::getErrorMessage, truncate(errorMessage, 2000));
+            wrapper.set(MyBatisColumn.getter(JobInstance::getErrorMessage), truncate(errorMessage, 2000));
         }
         if (endState) {
-            wrapper.set(JobInstance::getEndTime, now);
+            wrapper.set(MyBatisColumn.getter(JobInstance::getEndTime), now);
         }
 
         jobInstanceMapper.update(null, wrapper);
@@ -141,15 +142,15 @@ public class JobInstanceDaoImpl
         Date now = new Date();
 
         LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(JobInstance::getId, instanceId)
-                .set(JobInstance::getJobStatus, status)
-                .set(JobInstance::getUpdateTime, now);
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
+                .set(MyBatisColumn.getter(JobInstance::getJobStatus), status)
+                .set(MyBatisColumn.getter(JobInstance::getUpdateTime), now);
 
         if (engineJobId != null && !engineJobId.isBlank()) {
-            wrapper.set(JobInstance::getEngineJobId, engineJobId);
+            wrapper.set(MyBatisColumn.getter(JobInstance::getEngineJobId), engineJobId);
         }
         if (endState) {
-            wrapper.set(JobInstance::getEndTime, now);
+            wrapper.set(MyBatisColumn.getter(JobInstance::getEndTime), now);
         }
 
         jobInstanceMapper.update(null, wrapper);
@@ -181,10 +182,10 @@ public class JobInstanceDaoImpl
         }
 
         LambdaQueryWrapper<JobInstance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(JobInstance::getJobMode, jobMode)
-                .isNotNull(JobInstance::getClientId)
-                .isNotNull(JobInstance::getEngineJobId)
-                .in(JobInstance::getJobStatus,
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getJobMode), jobMode)
+                .isNotNull(MyBatisColumn.getter(JobInstance::getClientId))
+                .isNotNull(MyBatisColumn.getter(JobInstance::getEngineJobId))
+                .in(MyBatisColumn.getter(JobInstance::getJobStatus),
                         JobStatus.INITIALIZING,
                         JobStatus.CREATED,
                         JobStatus.PENDING,
@@ -221,8 +222,8 @@ public class JobInstanceDaoImpl
         }
 
         LambdaQueryWrapper<JobInstance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(JobInstance::getJobDefinitionId, validDefinitionIds)
-                .in(JobInstance::getJobStatus,
+        wrapper.in(MyBatisColumn.getter(JobInstance::getJobDefinitionId), validDefinitionIds)
+                .in(MyBatisColumn.getter(JobInstance::getJobStatus),
                         JobStatus.INITIALIZING,
                         JobStatus.CREATED,
                         JobStatus.PENDING,
@@ -231,7 +232,7 @@ public class JobInstanceDaoImpl
                         JobStatus.FAILING,
                         JobStatus.DOING_SAVEPOINT,
                         JobStatus.CANCELING)
-                .orderByDesc(JobInstance::getCreateTime);
+                .orderByDesc(MyBatisColumn.getter(JobInstance::getCreateTime));
 
         List<JobInstance> records = jobInstanceMapper.selectList(wrapper);
         if (records == null || records.isEmpty()) {

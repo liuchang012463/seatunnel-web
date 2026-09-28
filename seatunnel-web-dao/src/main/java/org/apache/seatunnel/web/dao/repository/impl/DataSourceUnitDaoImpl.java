@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.dao.entity.DataSourceUnit;
 import org.apache.seatunnel.web.dao.mapper.DataSourceUnitMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceUnitDTO;
 import org.springframework.stereotype.Repository;
 
@@ -28,15 +29,15 @@ public class DataSourceUnitDaoImpl extends BaseDao<DataSourceUnit, DataSourceUni
     @Override
     public boolean checkCode(String unitCode, Long excludeId) {
         return dataSourceUnitMapper.selectCount(new LambdaQueryWrapper<DataSourceUnit>()
-                .eq(DataSourceUnit::getUnitCode, unitCode)
-                .ne(excludeId != null, DataSourceUnit::getId, excludeId)) > 0;
+                .eq(MyBatisColumn.getter(DataSourceUnit::getUnitCode), unitCode)
+                .ne(excludeId != null, MyBatisColumn.getter(DataSourceUnit::getId), excludeId)) > 0;
     }
 
     @Override
     public boolean checkName(String unitName, Long excludeId) {
         return dataSourceUnitMapper.selectCount(new LambdaQueryWrapper<DataSourceUnit>()
-                .eq(DataSourceUnit::getUnitName, unitName)
-                .ne(excludeId != null, DataSourceUnit::getId, excludeId)) > 0;
+                .eq(MyBatisColumn.getter(DataSourceUnit::getUnitName), unitName)
+                .ne(excludeId != null, MyBatisColumn.getter(DataSourceUnit::getId), excludeId)) > 0;
     }
 
     @Override
@@ -46,18 +47,18 @@ public class DataSourceUnitDaoImpl extends BaseDao<DataSourceUnit, DataSourceUni
 
     static LambdaQueryWrapper<DataSourceUnit> buildQueryWrapper(DataSourceUnitDTO dto) {
         return new LambdaQueryWrapper<DataSourceUnit>()
-                .like(StringUtils.isNotBlank(dto.getUnitCode()), DataSourceUnit::getUnitCode,
+                .like(StringUtils.isNotBlank(dto.getUnitCode()), MyBatisColumn.getter(DataSourceUnit::getUnitCode),
                         StringUtils.trimToEmpty(dto.getUnitCode()))
-                .like(StringUtils.isNotBlank(dto.getUnitName()), DataSourceUnit::getUnitName,
+                .like(StringUtils.isNotBlank(dto.getUnitName()), MyBatisColumn.getter(DataSourceUnit::getUnitName),
                         StringUtils.trimToEmpty(dto.getUnitName()))
-                .eq(dto.getStatus() != null, DataSourceUnit::getStatus, dto.getStatus())
-                .orderByDesc(DataSourceUnit::getCreateTime);
+                .eq(dto.getStatus() != null, MyBatisColumn.getter(DataSourceUnit::getStatus), dto.getStatus())
+                .orderByDesc(MyBatisColumn.getter(DataSourceUnit::getCreateTime));
     }
 
     @Override
     public List<DataSourceUnit> queryActive() {
         return dataSourceUnitMapper.selectList(new LambdaQueryWrapper<DataSourceUnit>()
-                .eq(DataSourceUnit::getStatus, 1)
-                .orderByAsc(DataSourceUnit::getUnitName));
+                .eq(MyBatisColumn.getter(DataSourceUnit::getStatus), 1)
+                .orderByAsc(MyBatisColumn.getter(DataSourceUnit::getUnitName)));
     }
 }

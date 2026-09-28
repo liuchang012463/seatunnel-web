@@ -16,9 +16,9 @@ import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTableColumnDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTableDistributionDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTablePartitionDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTablePreviewDTO;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -100,8 +100,8 @@ public final class LakeManagedTableContractFactory {
         }
         List<TargetColumn> valueColumns = bySource.values().stream()
                 .filter(column -> !Boolean.TRUE.equals(column.getKey()))
-                .sorted(Comparator.comparing(TargetColumn::getSourceOrdinal)
-                        .thenComparing(TargetColumn::getSourceName))
+                .sorted(NonNullFunctions.comparing(TargetColumn::getSourceOrdinal)
+                        .thenComparing(NonNullFunctions.comparing(TargetColumn::getSourceName)))
                 .toList();
         for (TargetColumn column : valueColumns) {
             physicalColumns.add(copyWithPhysicalOrdinal(column, physicalOrdinal++));
@@ -109,7 +109,7 @@ public final class LakeManagedTableContractFactory {
 
         List<String> targetKeyOrder = keyOrder.stream()
                 .map(bySource::get)
-                .map(TargetColumn::getTargetName)
+                .map(NonNullFunctions.from(TargetColumn::getTargetName))
                 .toList();
 
         TargetContract contract = new TargetContract(
@@ -149,7 +149,7 @@ public final class LakeManagedTableContractFactory {
     public List<LakeManagedTableFieldMapping> fieldMappings(TargetContract contract) {
         TargetContract normalized = TargetContractValidator.validateAndNormalize(contract);
         return normalized.getColumns().stream()
-                .sorted(Comparator.comparing(TargetColumn::getSourceOrdinal))
+                .sorted(NonNullFunctions.comparing(TargetColumn::getSourceOrdinal))
                 .map(column -> new LakeManagedTableFieldMapping(
                         column.getSourceName(), column.getTargetName(), renderType(column.getTargetType())))
                 .toList();

@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.dao.entity.JobMetrics;
 import org.apache.seatunnel.web.dao.mapper.JobMetricsMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.JobMetricsDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -53,7 +54,7 @@ public class JobMetricsDaoImpl
     public void deleteByDefinitionId(Long definitionId) {
         jobMetricsMapper.delete(
                 new LambdaQueryWrapper<JobMetrics>()
-                        .eq(JobMetrics::getJobDefinitionId, definitionId)
+                        .eq(MyBatisColumn.getter(JobMetrics::getJobDefinitionId), definitionId)
         );
     }
 }

@@ -189,7 +189,7 @@ public class MetadataStatusSynchronizer {
                 ? null
                 : MetadataPipelineOperationService.fromOmTimestamp(
                         run.timestamp() == null ? run.startDate() : run.timestamp());
-        Date successTime = status == MetadataRunStatus.SUCCESS
+        Date successTime = run != null && status == MetadataRunStatus.SUCCESS
                 ? MetadataPipelineOperationService.fromOmTimestamp(
                         run.endDate() == null ? run.timestamp() : run.endDate())
                 : null;

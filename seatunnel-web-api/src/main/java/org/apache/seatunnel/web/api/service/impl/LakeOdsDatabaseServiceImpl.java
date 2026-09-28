@@ -47,6 +47,7 @@ import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Comparator;
 import java.util.List;
@@ -151,7 +152,7 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
         Set<Long> activeBindingIds = bindings == null ? Set.of() : bindings.stream()
                 .filter(Objects::nonNull)
                 .filter(binding -> !Boolean.TRUE.equals(binding.getDeleted()))
-                .map(LakeOdsDatabaseBinding::getId)
+                .map(NonNullFunctions.from(LakeOdsDatabaseBinding::getId))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         LakePhysicalSummaryVO result = new LakePhysicalSummaryVO();
@@ -531,11 +532,12 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
 
     private LakeResourceOperation latestOpenOperation(LakeOdsDatabaseBinding binding) {
         return coordinator.queryByResource(LakeResourceTypes.ODS_DATABASE_BINDING, binding.getId()).stream()
+                .filter(Objects::nonNull)
                 .filter(operation -> operation.getOperationToken() != null
                         && Objects.equals(operation.getOperationToken(), binding.getOperationToken())
                         && (operation.getStatus() == LakeOperationStatus.PENDING
                         || operation.getStatus() == LakeOperationStatus.RUNNING))
-                .max(Comparator.comparing(LakeResourceOperation::getStartedAt,
+                .max(NonNullFunctions.comparing(LakeResourceOperation::getStartedAt,
                         Comparator.nullsFirst(Comparator.naturalOrder())))
                 .orElse(null);
     }

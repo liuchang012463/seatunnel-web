@@ -69,6 +69,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -428,7 +429,7 @@ class LakeManagedTableServiceImplTest {
 
         assertFalse(impact.isAllowed());
         assertEquals(List.of(805L), impact.getRelations().stream()
-                .map(LakeManagedTableRelationImpactVO::getRelationId).toList());
+                .map(NonNullFunctions.from(LakeManagedTableRelationImpactVO::getRelationId)).toList());
         assertTrue(impact.getBlockers().stream()
                 .anyMatch(blocker -> blocker.contains("online")));
         verify(jobScheduleDao).queryByJobDefinitionId(905L);

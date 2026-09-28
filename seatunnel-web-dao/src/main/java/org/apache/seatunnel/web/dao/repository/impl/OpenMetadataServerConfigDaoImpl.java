@@ -5,6 +5,7 @@ import lombok.NonNull;
 import org.apache.seatunnel.web.dao.entity.OpenMetadataServerConfig;
 import org.apache.seatunnel.web.dao.mapper.OpenMetadataServerConfigMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.OpenMetadataServerConfigDao;
 import org.springframework.stereotype.Repository;
 
@@ -25,7 +26,7 @@ public class OpenMetadataServerConfigDaoImpl
     @Override
     public OpenMetadataServerConfig querySingleton() {
         return mapper.selectOne(new LambdaQueryWrapper<OpenMetadataServerConfig>()
-                .eq(OpenMetadataServerConfig::getConfigKey, CONFIG_KEY));
+                .eq(MyBatisColumn.getter(OpenMetadataServerConfig::getConfigKey), CONFIG_KEY));
     }
 
     @Override

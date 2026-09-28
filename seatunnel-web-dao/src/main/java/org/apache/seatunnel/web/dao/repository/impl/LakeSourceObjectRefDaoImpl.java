@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.dao.entity.LakeSourceObjectRef;
 import org.apache.seatunnel.web.dao.mapper.LakeSourceObjectRefMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -26,8 +27,8 @@ public class LakeSourceObjectRefDaoImpl extends BaseDao<LakeSourceObjectRef, Lak
             return null;
         }
         return mapper.selectOne(new LambdaQueryWrapper<LakeSourceObjectRef>()
-                .eq(LakeSourceObjectRef::getId, id)
-                .eq(LakeSourceObjectRef::getDeleted, false));
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getId), id)
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getDeleted), false));
     }
 
     @Override
@@ -38,23 +39,23 @@ public class LakeSourceObjectRefDaoImpl extends BaseDao<LakeSourceObjectRef, Lak
     @Override
     public LakeSourceObjectRef queryByOmEntityId(String omEntityId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeSourceObjectRef>()
-                .eq(LakeSourceObjectRef::getOmEntityId, omEntityId)
-                .eq(LakeSourceObjectRef::getDeleted, false));
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getOmEntityId), omEntityId)
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getDeleted), false));
     }
 
     @Override
     public LakeSourceObjectRef queryByOmEntityIdIncludingDeleted(String omEntityId) {
         return omEntityId == null ? null : mapper.selectOne(new LambdaQueryWrapper<LakeSourceObjectRef>()
-                .eq(LakeSourceObjectRef::getOmEntityId, omEntityId));
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getOmEntityId), omEntityId));
     }
 
     @Override
     public LakeSourceObjectRef queryBySourceDataSourceIdAndOmEntityId(
             Long sourceDataSourceId, String omEntityId) {
         return mapper.selectOne(new LambdaQueryWrapper<LakeSourceObjectRef>()
-                .eq(LakeSourceObjectRef::getSourceDataSourceId, sourceDataSourceId)
-                .eq(LakeSourceObjectRef::getOmEntityId, omEntityId)
-                .eq(LakeSourceObjectRef::getDeleted, false));
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getSourceDataSourceId), sourceDataSourceId)
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getOmEntityId), omEntityId)
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getDeleted), false));
     }
 
     @Override
@@ -76,15 +77,15 @@ public class LakeSourceObjectRefDaoImpl extends BaseDao<LakeSourceObjectRef, Lak
         }
         entity.setLockVersion(lockVersion + 1);
         LambdaUpdateWrapper<LakeSourceObjectRef> wrapper = new LambdaUpdateWrapper<LakeSourceObjectRef>()
-                .eq(LakeSourceObjectRef::getId, entity.getId())
-                .eq(LakeSourceObjectRef::getLockVersion, lockVersion);
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getId), entity.getId())
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getLockVersion), lockVersion);
         if (activeOnly) {
-            wrapper.eq(LakeSourceObjectRef::getDeleted, false);
+            wrapper.eq(MyBatisColumn.getter(LakeSourceObjectRef::getDeleted), false);
         }
         if (operationToken == null) {
-            wrapper.isNull(LakeSourceObjectRef::getOperationToken);
+            wrapper.isNull(MyBatisColumn.getter(LakeSourceObjectRef::getOperationToken));
         } else {
-            wrapper.eq(LakeSourceObjectRef::getOperationToken, operationToken);
+            wrapper.eq(MyBatisColumn.getter(LakeSourceObjectRef::getOperationToken), operationToken);
         }
         return mapper.update(entity, wrapper) > 0;
     }

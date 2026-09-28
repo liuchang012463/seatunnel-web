@@ -6,6 +6,7 @@ import lombok.NonNull;
 import org.apache.seatunnel.web.dao.entity.StreamingJobMetricsCurrent;
 import org.apache.seatunnel.web.dao.mapper.StreamingJobMetricsCurrentMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.StreamingJobMetricsCurrentDao;
 import org.springframework.stereotype.Repository;
 
@@ -39,7 +40,7 @@ public class StreamingJobMetricsCurrentDaoImpl
 
         return streamingJobMetricsCurrentMapper.selectOne(
                 new LambdaQueryWrapper<StreamingJobMetricsCurrent>()
-                        .eq(StreamingJobMetricsCurrent::getJobInstanceId, instanceId)
+                        .eq(MyBatisColumn.getter(StreamingJobMetricsCurrent::getJobInstanceId), instanceId)
                         .last("LIMIT 1")
         );
     }
@@ -52,7 +53,7 @@ public class StreamingJobMetricsCurrentDaoImpl
 
         streamingJobMetricsCurrentMapper.delete(
                 new LambdaQueryWrapper<StreamingJobMetricsCurrent>()
-                        .eq(StreamingJobMetricsCurrent::getJobInstanceId, instanceId)
+                        .eq(MyBatisColumn.getter(StreamingJobMetricsCurrent::getJobInstanceId), instanceId)
         );
     }
 
@@ -64,7 +65,7 @@ public class StreamingJobMetricsCurrentDaoImpl
 
         streamingJobMetricsCurrentMapper.delete(
                 new LambdaQueryWrapper<StreamingJobMetricsCurrent>()
-                        .eq(StreamingJobMetricsCurrent::getJobDefinitionId, definitionId)
+                        .eq(MyBatisColumn.getter(StreamingJobMetricsCurrent::getJobDefinitionId), definitionId)
         );
     }
 }

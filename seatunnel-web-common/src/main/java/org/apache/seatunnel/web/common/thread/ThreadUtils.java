@@ -22,6 +22,9 @@ public class ThreadUtils {
      * @return ExecutorService
      */
     public static ExecutorService newDaemonFixedThreadExecutor(String threadName, int threadsNum) {
+        if (threadName == null || threadName.isBlank()) {
+            throw new IllegalArgumentException("threadName must not be blank");
+        }
         ThreadFactory threadFactory = new ThreadFactoryBuilder().setDaemon(true).setNameFormat(threadName).build();
         return Executors.newFixedThreadPool(threadsNum, threadFactory);
     }

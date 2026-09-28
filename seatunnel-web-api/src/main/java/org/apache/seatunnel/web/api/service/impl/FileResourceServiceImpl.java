@@ -32,6 +32,7 @@ import org.apache.seatunnel.web.dao.entity.FileUploadRecord;
 import org.apache.seatunnel.web.dao.mapper.UserMapper;
 import org.apache.seatunnel.web.dao.repository.FileResourceDao;
 import org.apache.seatunnel.web.dao.repository.FileUploadRecordDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceDirectoryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartCompleteRequestDTO;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartPartETagDTO;
@@ -52,6 +53,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -142,15 +144,17 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         Integer ownerId = currentUserId();
         String normalizedPath = FileResourcePathUtils.normalizePath(path);
         return fileResourceDao.queryActiveByOwnerId(ownerId).stream()
-                .filter(resource -> isDirectChild(resource.getLogicalPath(), normalizedPath))
+                .filter(resource -> resource != null
+                        && isDirectChild(resource.getLogicalPath(), normalizedPath))
                 .map(this::toVO)
-                .sorted(Comparator.comparing(
+                .filter(resource -> resource != null)
+                .sorted(Comparator.nullsLast(Comparator.comparing(
                                 (FileResourceVO resource) ->
                                         DIRECTORY.equalsIgnoreCase(resource.getResourceType()) ? 0 : 1)
-                        .thenComparing(FileResourceVO::getName,
-                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-                        .thenComparing(FileResourceVO::getId,
-                                Comparator.nullsLast(Comparator.naturalOrder())))
+                        .thenComparing(NonNullFunctions.comparing(
+                                FileResourceVO::getName,
+                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                        .thenComparing(NonNullFunctions.comparing(FileResourceVO::getId))))
                 .toList();
     }
 
@@ -795,11 +799,11 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     private boolean hasInProgressMultipartUpload(
             Integer ownerId, String logicalPath, Long currentUploadRecordId) {
         LambdaQueryWrapper<FileUploadRecord> query = new LambdaQueryWrapper<FileUploadRecord>()
-                .eq(FileUploadRecord::getOwnerId, ownerId)
-                .eq(FileUploadRecord::getStatus, UPLOADING)
-                .isNotNull(FileUploadRecord::getLogicalPath);
+                .eq(MyBatisColumn.getter(FileUploadRecord::getOwnerId), ownerId)
+                .eq(MyBatisColumn.getter(FileUploadRecord::getStatus), UPLOADING)
+                .isNotNull(MyBatisColumn.getter(FileUploadRecord::getLogicalPath));
         if (currentUploadRecordId != null) {
-            query.ne(FileUploadRecord::getId, currentUploadRecordId);
+            query.ne(MyBatisColumn.getter(FileUploadRecord::getId), currentUploadRecordId);
         }
         for (FileUploadRecord candidate : fileUploadRecordDao.selectList(query)) {
             if (!UPLOADING.equalsIgnoreCase(candidate.getStatus())) {
@@ -873,7 +877,13 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     }
 
     private void validateUploadItems(Integer ownerId, List<UploadItem> items) {
-        Set<String> filePaths = items.stream().map(UploadItem::logicalPath).collect(java.util.stream.Collectors.toSet());
+        Set<String> filePaths = new HashSet<>();
+        for (UploadItem item : items) {
+            if (item == null || item.file() == null || item.logicalPath() == null) {
+                throw invalid("上传文件条目无效");
+            }
+            filePaths.add(item.logicalPath());
+        }
         for (UploadItem item : items) {
             FileResource existing = fileResourceDao.queryByOwnerAndLogicalPath(ownerId, item.logicalPath());
             if (isActive(existing)) {
@@ -1324,7 +1334,8 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         int count = Math.min(rawColumns.size(), MAX_PREVIEW_COLUMNS);
         for (int index = 0; index < count; index++) {
             String base = StringUtils.defaultIfBlank(rawColumns.get(index), "field_" + (index + 1));
-            int occurrence = seen.merge(base, 1, Integer::sum);
+            int occurrence = seen.merge(base, 1, (left, right) ->
+                    (left == null ? 0 : left) + (right == null ? 0 : right));
             columns.add(occurrence == 1 ? base : base + "_" + occurrence);
         }
         return columns;

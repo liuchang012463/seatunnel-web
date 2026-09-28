@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.core.utils.SeaTunnelConfigUtil;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobEnvConfig;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.springframework.stereotype.Component;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.HashMap;
 import java.util.List;
@@ -122,7 +123,7 @@ public class HoconConfigBuilder {
 
     private String render(List<RenderedItem> items) {
         return items.stream()
-                .map(RenderedItem::toHocon)
+                .map(NonNullFunctions.from(RenderedItem::toHocon))
                 .collect(Collectors.joining("\n"));
     }
 }

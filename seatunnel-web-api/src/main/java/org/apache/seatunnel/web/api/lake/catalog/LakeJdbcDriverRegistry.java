@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.dao.entity.LakeJdbcDriver;
 import org.apache.seatunnel.web.dao.repository.LakeJdbcDriverDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -59,7 +60,7 @@ public final class LakeJdbcDriverRegistry {
     public String registryRevision() {
         if (driverDao == null) {
             return staticRegistrations.values().stream()
-                    .map(DriverRegistration::registryRevision)
+                    .map(NonNullFunctions.from(DriverRegistration::registryRevision))
                     .filter(StringUtils::isNotBlank)
                     .findFirst().orElse(null);
         }

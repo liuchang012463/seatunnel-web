@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.dao.entity.LakeWarehouseConfig;
 import org.apache.seatunnel.web.dao.mapper.LakeWarehouseConfigMapper;
 import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.LakeWarehouseConfigDao;
+import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -23,7 +24,7 @@ public class LakeWarehouseConfigDaoImpl
     @Override
     public LakeWarehouseConfig querySingleton() {
         return mapper.selectOne(new LambdaQueryWrapper<LakeWarehouseConfig>()
-                .eq(LakeWarehouseConfig::getConfigKey, "ODS_DORIS"));
+                .eq(MyBatisColumn.getter(LakeWarehouseConfig::getConfigKey), "ODS_DORIS"));
     }
 
     @Override

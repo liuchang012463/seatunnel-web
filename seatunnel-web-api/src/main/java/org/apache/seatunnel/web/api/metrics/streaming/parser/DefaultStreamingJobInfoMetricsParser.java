@@ -290,10 +290,14 @@ public class DefaultStreamingJobInfoMetricsParser implements StreamingJobInfoMet
         for (StreamingTableMetrics item : tableMetrics) {
             Integer pipelineId = item.getPipelineId() == null ? 0 : item.getPipelineId();
 
-            readQps.merge(pipelineId, defaultDecimal(item.getReadQps()), BigDecimal::add);
-            writeQps.merge(pipelineId, defaultDecimal(item.getWriteQps()), BigDecimal::add);
-            readBps.merge(pipelineId, defaultDecimal(item.getReadBps()), BigDecimal::add);
-            writeBps.merge(pipelineId, defaultDecimal(item.getWriteBps()), BigDecimal::add);
+            readQps.merge(pipelineId, defaultDecimal(item.getReadQps()),
+                    (left, right) -> defaultDecimal(left).add(defaultDecimal(right)));
+            writeQps.merge(pipelineId, defaultDecimal(item.getWriteQps()),
+                    (left, right) -> defaultDecimal(left).add(defaultDecimal(right)));
+            readBps.merge(pipelineId, defaultDecimal(item.getReadBps()),
+                    (left, right) -> defaultDecimal(left).add(defaultDecimal(right)));
+            writeBps.merge(pipelineId, defaultDecimal(item.getWriteBps()),
+                    (left, right) -> defaultDecimal(left).add(defaultDecimal(right)));
         }
 
         for (Map.Entry<Integer, StreamingPipelineMetrics> entry : pipelineMetrics.entrySet()) {

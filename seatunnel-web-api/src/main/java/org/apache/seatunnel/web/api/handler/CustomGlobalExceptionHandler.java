@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MultipartException;
+import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -51,7 +52,7 @@ public class CustomGlobalExceptionHandler {
 
         // Convert error messages into a single comma-separated string
         List<String> errorList = fieldErrorList.stream()
-                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .map(NonNullFunctions.from(DefaultMessageSourceResolvable::getDefaultMessage))
                 .collect(Collectors.toList());
 
         return Result.buildFromRSAndMsg(
