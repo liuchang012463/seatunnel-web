@@ -114,7 +114,7 @@ public class ZetaJobStatusHandler {
 
         for (Object item : runningJobs) {
             Long jobId = extractJobId(item);
-            if (!Objects.equals(jobId, engineJobId)) {
+            if (!matchesJobId(jobId, engineJobId)) {
                 continue;
             }
 
@@ -218,7 +218,7 @@ public class ZetaJobStatusHandler {
 
         for (Object item : finishedJobs) {
             Long jobId = extractJobId(item);
-            if (!Objects.equals(jobId, engineJobId)) {
+            if (!matchesJobId(jobId, engineJobId)) {
                 continue;
             }
 
@@ -435,6 +435,10 @@ public class ZetaJobStatusHandler {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private boolean matchesJobId(Long jobId, String engineJobId) {
+        return jobId != null && Objects.equals(jobId, parseLong(engineJobId));
     }
 
     private String rootCauseMessage(Throwable throwable) {
