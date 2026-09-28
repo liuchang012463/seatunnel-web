@@ -3,7 +3,6 @@ package org.apache.seatunnel.web.api.controller;
 import org.apache.seatunnel.web.api.lake.lifecycle.LakeLifecycleValidateVO;
 import org.apache.seatunnel.web.api.service.LakeLifecycleValidationService;
 import org.apache.seatunnel.web.spi.bean.dto.LakeLifecycleValidateDTO;
-import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;

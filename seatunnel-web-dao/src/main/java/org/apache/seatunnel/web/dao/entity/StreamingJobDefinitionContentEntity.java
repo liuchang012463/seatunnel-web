@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 
-import java.util.Date;
 
 @Data
 @Builder

@@ -13,7 +13,6 @@ import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.ClientDatasourceVerifyVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.SeaTunnelClientMetricsVO;
-import org.apache.seatunnel.web.spi.bean.vo.SeaTunnelClientVO;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

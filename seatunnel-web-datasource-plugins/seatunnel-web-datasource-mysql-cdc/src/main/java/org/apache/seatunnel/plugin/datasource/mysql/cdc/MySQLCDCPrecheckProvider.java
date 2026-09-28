@@ -3,7 +3,6 @@ package org.apache.seatunnel.plugin.datasource.mysql.cdc;
 import com.google.auto.service.AutoService;
 import org.apache.seatunnel.plugin.datasource.api.cdc.CdcDatasourcePrecheckProvider;
 import org.apache.seatunnel.plugin.datasource.api.cdc.CdcDatasourcePrecheckResult;
-import org.apache.seatunnel.plugin.datasource.mysql.cdc.MysqlCdcPrecheckService;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
 @AutoService(CdcDatasourcePrecheckProvider.class)

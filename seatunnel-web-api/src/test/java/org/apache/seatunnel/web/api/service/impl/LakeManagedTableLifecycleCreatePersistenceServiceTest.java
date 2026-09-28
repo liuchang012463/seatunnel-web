@@ -1,7 +1,6 @@
 package org.apache.seatunnel.web.api.service.impl;
 
 import org.apache.seatunnel.web.api.lake.operation.LakeOperationTransactionBoundary;
-import org.apache.seatunnel.web.api.lake.operation.LakeManagedTableOperationPublication;
 import org.apache.seatunnel.web.api.lake.operation.LakeResourceTypes;
 import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
 import org.apache.seatunnel.web.common.enums.LakeLifecycleBindingStatus;

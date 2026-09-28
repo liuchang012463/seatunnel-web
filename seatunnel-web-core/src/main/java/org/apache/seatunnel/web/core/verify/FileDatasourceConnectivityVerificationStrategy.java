@@ -8,7 +8,6 @@ import org.apache.seatunnel.web.core.verify.modal.DatasourceVerifyContext;
 import org.apache.seatunnel.web.spi.bean.vo.ClientDatasourceVerifyItemVO;
 import org.apache.seatunnel.web.spi.bean.vo.ClientDatasourceVerifyVO;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
-import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;

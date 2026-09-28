@@ -6,7 +6,6 @@ import org.apache.seatunnel.web.spi.bean.dto.LakeLifecyclePolicyDisableDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeLifecyclePolicyPageDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeLifecyclePolicyUpdateDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
-import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.LakeLifecyclePolicyVO;
 import org.junit.jupiter.api.Test;
 

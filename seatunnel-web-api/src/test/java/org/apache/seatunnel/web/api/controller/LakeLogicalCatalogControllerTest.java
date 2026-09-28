@@ -5,7 +5,6 @@ import org.apache.seatunnel.web.api.lake.catalog.LakeLogicalCapabilityVO;
 import org.apache.seatunnel.web.api.service.LakeLogicalCatalogService;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 import org.apache.seatunnel.web.spi.bean.dto.LakeExternalCatalogCreateDTO;
-import org.apache.seatunnel.web.spi.bean.dto.LakeExternalCatalogPageDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.LakeExternalCatalogVO;

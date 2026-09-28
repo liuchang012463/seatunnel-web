@@ -31,7 +31,6 @@ import org.apache.seatunnel.web.api.lake.table.LakePreviewTokenService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.LakeManagedTableService;
 import org.apache.seatunnel.web.common.enums.LakeConsistencyStatus;
-import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.LakeLifecycleBindingStatus;
 import org.apache.seatunnel.web.common.enums.LakeLifecyclePolicyStatus;
 import org.apache.seatunnel.web.common.enums.LakePartitionGranularity;
@@ -73,7 +72,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;

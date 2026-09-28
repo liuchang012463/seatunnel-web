@@ -13,7 +13,6 @@ import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTableProfile;
 import org.apache.seatunnel.web.common.QueryResult;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
-import org.apache.seatunnel.web.common.enums.MetadataRunStatus;
 import org.apache.seatunnel.web.common.enums.MetadataSyncStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;

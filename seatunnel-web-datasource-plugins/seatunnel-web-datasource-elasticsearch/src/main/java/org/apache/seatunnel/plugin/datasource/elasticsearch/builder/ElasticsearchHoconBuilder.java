@@ -12,10 +12,8 @@ import org.apache.seatunnel.plugin.datasource.elasticsearch.param.ElasticsearchC
 import org.apache.seatunnel.plugin.datasource.elasticsearch.param.ElasticsearchConnectionParamConverter;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;

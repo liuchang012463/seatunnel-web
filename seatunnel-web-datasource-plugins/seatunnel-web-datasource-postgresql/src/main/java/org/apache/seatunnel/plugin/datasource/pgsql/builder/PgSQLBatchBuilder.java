@@ -2,23 +2,14 @@ package org.apache.seatunnel.plugin.datasource.pgsql.builder;
 
 import com.google.auto.service.AutoService;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.constants.DataSourceConstants;
 import org.apache.seatunnel.plugin.datasource.api.hocon.AbstractJdbcBatchBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.JdbcBatchConstants;
-import org.apache.seatunnel.plugin.datasource.api.hocon.table.JdbcMultiSinkTargetBuilder;
-import org.apache.seatunnel.plugin.datasource.api.hocon.table.JdbcMultiSourceTargetBuilder;
-import org.apache.seatunnel.plugin.datasource.api.hocon.table.JdbcSingleSinkTargetBuilder;
-import org.apache.seatunnel.plugin.datasource.api.hocon.table.JdbcSingleSourceTargetBuilder;
-import org.apache.seatunnel.plugin.datasource.api.hocon.table.JdbcSinkTargetBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.table.JdbcSourceTargetBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.table.JdbcTableNameResolver;
-import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
-import org.apache.seatunnel.web.common.enums.HoconBuildStage;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @AutoService(DataSourceHoconBuilder.class)

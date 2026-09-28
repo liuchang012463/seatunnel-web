@@ -5,7 +5,6 @@ import lombok.EqualsAndHashCode;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.spi.bean.dto.command.ScriptJobContentCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.StreamingJobSaveCommand;
-import org.apache.seatunnel.web.spi.bean.dto.config.CheckpointConfig;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobBasicConfig;
 import org.apache.seatunnel.web.spi.bean.dto.config.ScriptJobContent;
 import org.apache.seatunnel.web.spi.bean.dto.config.StreamingJobEnvConfig;

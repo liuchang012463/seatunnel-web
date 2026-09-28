@@ -9,8 +9,6 @@ import org.apache.seatunnel.web.common.enums.UserType;
 import org.apache.seatunnel.web.dao.entity.User;
 import org.apache.seatunnel.web.spi.bean.dto.UserDTO;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 

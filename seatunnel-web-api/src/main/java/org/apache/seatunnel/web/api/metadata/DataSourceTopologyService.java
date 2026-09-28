@@ -2,9 +2,7 @@ package org.apache.seatunnel.web.api.metadata;
 
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
-import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabaseSchema;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPage;
-import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTable;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
 import org.apache.seatunnel.web.common.enums.MetadataSyncStatus;

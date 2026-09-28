@@ -7,7 +7,6 @@ import org.apache.seatunnel.web.dao.repository.SeaTunnelClientDao;
 import org.apache.seatunnel.web.engine.client.modal.SeaTunnelClientAuth;
 import org.springframework.stereotype.Component;
 
-import static org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils.decodePassword;
 
 @Component
 public class SeaTunnelClientResolver {

@@ -14,7 +14,6 @@ import org.apache.seatunnel.web.dao.repository.TimeVariableDao;
 import org.apache.seatunnel.web.spi.bean.dto.*;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.TimeVariablePreviewVO;
-import org.apache.seatunnel.web.spi.bean.vo.TimeVariableRenderVO;
 import org.apache.seatunnel.web.spi.bean.vo.TimeVariableVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.beans.BeanUtils;
@@ -24,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 

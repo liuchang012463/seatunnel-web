@@ -15,7 +15,6 @@ import org.apache.seatunnel.web.common.config.OptionRule;
 import org.apache.seatunnel.web.common.config.Option;
 import org.apache.seatunnel.web.common.config.Options;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
-import org.apache.seatunnel.web.spi.enums.DbType;
 
 import java.util.Optional;
 

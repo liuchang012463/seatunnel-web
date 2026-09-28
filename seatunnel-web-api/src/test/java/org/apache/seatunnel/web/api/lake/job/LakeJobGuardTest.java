@@ -1,6 +1,5 @@
 package org.apache.seatunnel.web.api.lake.job;
 
-import com.typesafe.config.ConfigFactory;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeProperties;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;

@@ -18,7 +18,6 @@ import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogOperationResult;
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogValidationResult;
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogCredentialRevisionService;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
-import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcCatalogDdlBuilder;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcDriverRegistry;
 import org.apache.seatunnel.web.api.lake.catalog.LakeLogicalCapabilityVO;
 import org.apache.seatunnel.web.api.lake.catalog.LakeSourceNetworkProbeCache;

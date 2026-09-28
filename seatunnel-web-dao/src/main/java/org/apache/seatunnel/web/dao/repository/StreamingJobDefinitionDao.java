@@ -2,7 +2,6 @@ package org.apache.seatunnel.web.dao.repository;
 
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
-import org.apache.seatunnel.web.dao.entity.TimeVariable;
 import org.apache.seatunnel.web.spi.bean.dto.StreamingJobDefinitionQueryDTO;
 import org.apache.seatunnel.web.spi.bean.vo.StreamingJobDefinitionVO;
 

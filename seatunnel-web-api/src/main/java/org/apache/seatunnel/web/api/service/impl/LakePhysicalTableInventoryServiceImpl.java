@@ -12,7 +12,6 @@ import org.apache.seatunnel.web.api.lake.inventory.LakePhysicalTableInventoryVO;
 import org.apache.seatunnel.web.api.service.LakePhysicalTableInventoryService;
 import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.LakeRelationScope;
-import org.apache.seatunnel.web.common.enums.LakeRelationStatus;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;

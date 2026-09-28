@@ -18,7 +18,6 @@ import org.apache.seatunnel.web.api.lake.operation.LakeResourceOperationCoordina
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogOperationResult;
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogValidationResult;
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogValidationStatus;
-import org.apache.seatunnel.web.common.enums.LakeOperationType;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;

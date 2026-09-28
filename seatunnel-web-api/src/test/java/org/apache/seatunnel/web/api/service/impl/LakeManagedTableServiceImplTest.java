@@ -45,7 +45,6 @@ import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 import org.apache.seatunnel.web.dao.entity.LakeOdsTableMapping;
 import org.apache.seatunnel.web.dao.entity.LakeSourceObjectRef;
-import org.apache.seatunnel.web.dao.entity.LakeTableLifecycleBinding;
 import org.apache.seatunnel.web.dao.entity.LakeLifecyclePolicy;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;

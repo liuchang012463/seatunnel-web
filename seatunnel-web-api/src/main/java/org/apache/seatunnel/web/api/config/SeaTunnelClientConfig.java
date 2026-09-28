@@ -1,8 +1,6 @@
 package org.apache.seatunnel.web.api.config;
 
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelClientProperties;
-import org.apache.seatunnel.web.engine.client.rest.SeaTunnelClientResolver;
-import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -3,7 +3,6 @@ package org.apache.seatunnel.web.api.controller;
 import org.apache.seatunnel.web.api.lake.table.LakeManagedTableVO;
 import org.apache.seatunnel.web.api.service.LakeUnmanagedTableBindingService;
 import org.apache.seatunnel.web.spi.bean.dto.LakeUnmanagedTableBindDTO;
-import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

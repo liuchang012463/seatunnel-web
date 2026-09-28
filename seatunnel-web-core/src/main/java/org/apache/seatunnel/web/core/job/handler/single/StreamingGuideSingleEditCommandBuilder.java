@@ -7,7 +7,6 @@ import org.apache.seatunnel.web.core.job.handler.StreamingJobEditCommandBuilder;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionContentEntity;
 import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
-import org.apache.seatunnel.web.spi.bean.dto.config.CheckpointConfig;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobBasicConfig;
 import org.apache.seatunnel.web.spi.bean.dto.config.StreamingJobEnvConfig;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingGuideSingleJobSaveCommand;

@@ -10,7 +10,6 @@ import org.apache.seatunnel.web.core.builder.source.SourceNodeConfigBuilder;
 import org.apache.seatunnel.web.core.builder.transform.TransformNodeConfigBuilder;
 import org.apache.seatunnel.web.core.dag.DagGraph;
 import org.apache.seatunnel.web.core.utils.SeaTunnelConfigUtil;
-import org.apache.seatunnel.web.spi.bean.dto.config.BatchJobEnvConfig;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobEnvConfig;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.springframework.stereotype.Component;

@@ -2,7 +2,6 @@ package org.apache.seatunnel.web.api.lake.job;
 
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
-import org.apache.seatunnel.web.common.enums.LakeRelationScope;
 import org.apache.seatunnel.web.common.enums.LakeRelationStatus;
 import org.apache.seatunnel.web.core.job.bridge.LakeJobBindingResolver;
 import org.apache.seatunnel.web.dao.entity.LakeJobRelation;

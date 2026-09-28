@@ -9,9 +9,7 @@ import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
 import java.net.URI;
-import java.util.HashSet;
 import java.util.Locale;
-import java.util.Set;
 
 public class ElasticsearchConnectionParamConverter implements ConnectionParamConverter {
 

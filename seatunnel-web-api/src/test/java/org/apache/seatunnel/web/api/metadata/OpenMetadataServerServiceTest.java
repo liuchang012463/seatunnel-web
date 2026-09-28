@@ -1,9 +1,5 @@
 package org.apache.seatunnel.web.api.metadata;
 
-import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
-import org.apache.seatunnel.web.api.metadata.MetadataIntegrationHealthService;
-import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
-import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.impl.OpenMetadataServerServiceImpl;
 import org.apache.seatunnel.web.common.enums.ConnStatus;

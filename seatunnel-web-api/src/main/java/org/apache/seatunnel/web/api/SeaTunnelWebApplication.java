@@ -1,9 +1,6 @@
 package org.apache.seatunnel.web.api;
 
-import jakarta.annotation.Resource;
 import org.apache.seatunnel.plugin.datasource.api.plugin.DataSourceProcessorProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

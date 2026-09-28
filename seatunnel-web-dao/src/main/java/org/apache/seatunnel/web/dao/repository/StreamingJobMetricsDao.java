@@ -1,6 +1,5 @@
 package org.apache.seatunnel.web.dao.repository;
 
-import org.apache.ibatis.annotations.Param;
 import org.apache.seatunnel.web.dao.entity.StreamingJobMetrics;
 
 import java.util.List;

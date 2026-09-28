@@ -1,6 +1,5 @@
 package org.apache.seatunnel.web.api.service;
 
-import org.apache.seatunnel.web.core.time.TimeVariableRenderService;
 import org.apache.seatunnel.web.spi.bean.dto.TimeVariableCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.TimeVariablePageReq;
 import org.apache.seatunnel.web.spi.bean.dto.TimeVariablePreviewReq;
