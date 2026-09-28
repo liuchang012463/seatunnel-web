@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.seatunnel.plugin.datasource.postgresql.cdc;
 
 import com.typesafe.config.Config;
@@ -23,6 +40,8 @@ class PostgreSqlCdcSourceBuilderTest {
         Config config = builder.buildSourceHocon(HoconBuildContext.builder()
                 .connectionConfig(ConfigFactory.parseString("""
                         url = \"jdbc:postgresql://localhost:5432/orders\"
+                        hostname = \"localhost\"
+                        port = 5432
                         user = \"cdc\"
                         password = \"secret\"
                         database = \"orders\"
@@ -41,8 +60,12 @@ class PostgreSqlCdcSourceBuilderTest {
                         """))
                 .build());
 
-        assertEquals("jdbc:postgresql://localhost:5432/orders", config.getString("url"));
+        assertEquals("localhost", config.getString("hostname"));
+        assertEquals(5432, config.getInt("port"));
         assertEquals("cdc", config.getString("username"));
+        assertEquals("orders", config.getStringList("database-names").get(0));
+        assertFalse(config.hasPath("url"));
+        assertFalse(config.hasPath("database"));
         assertEquals("orders.sales.invoices", config.getStringList("table-names").get(0));
         assertEquals("sales", config.getStringList("schema-names").get(0));
         assertEquals("orders_slot", config.getString("slot.name"));

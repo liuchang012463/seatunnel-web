@@ -15,29 +15,4 @@
  * limitations under the License.
  */
 
-import { configUmiAlias, createConfig } from '@umijs/max/test.js';
-
-export default async (): Promise<any> => {
-  const config = await configUmiAlias({
-    ...createConfig({
-      target: 'browser',
-    }),
-  });
-  return {
-    ...config,
-    moduleNameMapper: {
-      ...(config.moduleNameMapper || {}),
-      '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$':
-        '<rootDir>/tests/fileMock.js',
-    },
-    testEnvironmentOptions: {
-      ...(config?.testEnvironmentOptions || {}),
-      url: 'http://localhost:8000',
-    },
-    setupFiles: [...(config.setupFiles || []), './tests/setupTests.jsx'],
-    globals: {
-      ...config.globals,
-      localStorage: null,
-    },
-  };
-};
+module.exports = 'test-file-stub';
