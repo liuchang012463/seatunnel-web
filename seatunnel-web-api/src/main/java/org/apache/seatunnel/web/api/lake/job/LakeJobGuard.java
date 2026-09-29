@@ -399,6 +399,12 @@ public class LakeJobGuard {
             return null;
         }
         if (StringUtils.isBlank(details.targetTableName())) {
+            if (isQueryWriteSink(details.sinkConfig())) {
+                // A custom-write-SQL sink names no lake table, so there is no
+                // table-level mapping to enforce; the job stays an ordinary
+                // structured job and creates no table relation.
+                return null;
+            }
             throw invalid();
         }
         if (tableMappingDao == null) {
@@ -421,6 +427,16 @@ public class LakeJobGuard {
             throw invalid();
         }
         return historical;
+    }
+
+    /** A custom-write-SQL sink targets no single named lake table. */
+    private boolean isQueryWriteSink(Map<String, Object> sinkConfig) {
+        if (sinkConfig == null || sinkConfig.isEmpty()) {
+            return false;
+        }
+        String targetMode = firstText(sinkConfig.get("targetMode"), sinkConfig.get("target_mode"));
+        return "sql".equalsIgnoreCase(targetMode)
+                || StringUtils.isNotBlank(firstText(sinkConfig.get("sql")));
     }
 
     private void validateActiveRelations(

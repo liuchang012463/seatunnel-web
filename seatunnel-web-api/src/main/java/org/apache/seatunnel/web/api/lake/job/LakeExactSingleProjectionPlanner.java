@@ -172,8 +172,22 @@ public final class LakeExactSingleProjectionPlanner {
             return ProjectionPlan.notApplicable();
         }
 
+        // The endpoint shape decides whether this planner applies at all.  A
+        // query/selector source or a custom-write-SQL sink names no single
+        // table, so the job stays an ordinary single job instead of being
+        // rejected.  An exact single-table job that still names no target
+        // table is a malformed request.
+        if (!isExactTableSource(parsed.source())) {
+            return ProjectionPlan.notApplicable();
+        }
+        if (parsed.sink().querySink()) {
+            return ProjectionPlan.notApplicable();
+        }
+        if (StringUtils.isBlank(parsed.sink().tableLocator())) {
+            throw invalid();
+        }
+
         validateSchemaMode(parsed.sink());
-        validateExactSource(parsed.source());
 
         Long bindingId = resolveBindingId(command, parsed.sink());
         LakeOdsDatabaseBinding binding = readBinding(bindingId);
@@ -381,15 +395,14 @@ public final class LakeExactSingleProjectionPlanner {
     /**
      * A source table is exact only when its endpoint names one table.  A
      * query, a table list, or a selector can produce a different projection
-     * on every run, so it is intentionally rejected before any local or
+     * on every run, so it is intentionally declined before any local or
      * Doris state is consulted.
      */
-    private void validateExactSource(EndpointValues source) {
-        if (source == null || !source.exactSource()
-                || StringUtils.isBlank(source.tableLocator())
-                || !isExactTableLocator(source.tableLocator())) {
-            throw invalid();
-        }
+    private boolean isExactTableSource(EndpointValues source) {
+        return source != null
+                && source.exactSource()
+                && StringUtils.isNotBlank(source.tableLocator())
+                && isExactTableLocator(source.tableLocator());
     }
 
     private boolean isExactTableLocator(String locator) {
@@ -502,16 +515,24 @@ public final class LakeExactSingleProjectionPlanner {
         }
 
         Long sourceDataSourceId = readLong(source, DATA_SOURCE_KEYS, true);
-        String sourceTable = readText(source, SOURCE_TABLE_KEYS, true);
+        // Optional: a SQL or non-relational source legitimately has no table,
+        // and the exactness decision below is what declines the projection.
+        String sourceTable = readText(source, SOURCE_TABLE_KEYS, false);
         String sourceOmEntityId = readText(source, OM_ENTITY_ID_KEYS, false);
         Long sinkDataSourceId = readLong(sink, DATA_SOURCE_KEYS, true);
-        String targetTable = readText(sink, TARGET_TABLE_KEYS, true);
+        // Optional: a custom-write-SQL sink legitimately names no table, and
+        // the querySink decision below is what declines the projection.
+        String targetTable = readText(sink, TARGET_TABLE_KEYS, false);
+        String sinkTargetMode = readText(sink, new String[]{"targetMode", "target_mode"}, false);
+        String sinkSql = readText(sink, new String[]{"sql"}, false);
         String dbType = readText(sink, new String[]{"dbType", "db_type", "databaseType"}, false);
         String pluginName = readText(sink, new String[]{"pluginName", "plugin_name"}, false);
         String connectorType = readText(
                 sink, new String[]{"connectorType", "connector_type"}, false);
         String schemaMode = readText(sink, SCHEMA_MODE_KEYS, false);
         Long nestedBindingId = readLong(sink, BINDING_KEYS, false);
+        boolean querySink = "sql".equalsIgnoreCase(StringUtils.trimToEmpty(sinkTargetMode))
+                || StringUtils.isNotBlank(sinkSql);
 
         EndpointValues sourceEndpoint = new EndpointValues(
                 sourceDataSourceId, sourceTable, sourceOmEntityId, null, null,
@@ -521,8 +542,12 @@ public final class LakeExactSingleProjectionPlanner {
                 targetTable,
                 null,
                 nestedBindingId,
-                normalizeSchemaMode(schemaMode));
-        sinkEndpoint = sinkEndpoint.withDoris(dbType, pluginName, connectorType);
+                normalizeSchemaMode(schemaMode),
+                dbType,
+                pluginName,
+                connectorType,
+                true,
+                querySink);
         LakeJobRuntimeType runtimeType = runtimeType(command);
         if (runtimeType == null) {
             throw invalid();
@@ -876,17 +901,8 @@ public final class LakeExactSingleProjectionPlanner {
             String dbType,
             String pluginName,
             String connectorType,
-            boolean exactSource) {
-
-        private EndpointValues(
-                Long dataSourceId,
-                String tableLocator,
-                String omEntityId,
-                Long bindingId,
-                String normalizedSchemaSaveMode) {
-            this(dataSourceId, tableLocator, omEntityId, bindingId,
-                    normalizedSchemaSaveMode, null, null, null, true);
-        }
+            boolean exactSource,
+            boolean querySink) {
 
         private EndpointValues(
                 Long dataSourceId,
@@ -896,20 +912,7 @@ public final class LakeExactSingleProjectionPlanner {
                 String normalizedSchemaSaveMode,
                 boolean exactSource) {
             this(dataSourceId, tableLocator, omEntityId, bindingId,
-                    normalizedSchemaSaveMode, null, null, null, exactSource);
-        }
-
-        private EndpointValues withDoris(String dbType, String pluginName, String connectorType) {
-            return new EndpointValues(
-                    dataSourceId,
-                    tableLocator,
-                    omEntityId,
-                    bindingId,
-                    normalizedSchemaSaveMode,
-                    dbType,
-                    pluginName,
-                    connectorType,
-                    exactSource);
+                    normalizedSchemaSaveMode, null, null, null, exactSource, false);
         }
 
         private boolean isConfiguredDorisTarget() {

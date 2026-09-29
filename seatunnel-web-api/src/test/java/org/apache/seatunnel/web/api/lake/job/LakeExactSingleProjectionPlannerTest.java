@@ -154,16 +154,14 @@ class LakeExactSingleProjectionPlannerTest {
     }
 
     @Test
-    void rejectsNonExactSourceEndpointWithoutConsultingState() {
+    void declinesNonExactSourceEndpointWithoutConsultingState() {
         BatchGuideSingleJobSaveCommand command = singleCommand();
         sourceConfig(command).put("query", "select * from orders");
 
-        LakeServiceException exception = assertThrows(
-                LakeServiceException.class, () -> planner.plan(command));
+        LakeExactSingleProjectionPlanner.ProjectionPlan plan = planner.plan(command);
 
-        assertEquals(LakeErrorCode.LAKE_REQUEST_INVALID, exception.getLakeErrorCode());
-        assertNull(exception.getCause());
-        verifyNoMoreInteractions(bindingDao, mappingDao, provider, doris);
+        assertEquals(LakeExactSingleProjectionPlanner.Decision.NOT_APPLICABLE, plan.decision());
+        verifyNoInteractions(bindingDao, mappingDao, provider, doris);
     }
 
     @Test
@@ -237,6 +235,78 @@ class LakeExactSingleProjectionPlannerTest {
         LakeExactSingleProjectionPlanner.ProjectionPlan plan = planner.plan(command);
 
         assertEquals(LakeExactSingleProjectionPlanner.Decision.NOT_APPLICABLE, plan.decision());
+        verifyNoInteractions(bindingDao, mappingDao, provider, doris);
+    }
+
+    @Test
+    void sqlModeSourceIsNotApplicable() {
+        BatchGuideSingleJobSaveCommand command = singleCommand();
+        Map<String, Object> source = sourceConfig(command);
+        source.remove("table_path");
+        source.put("readMode", "sql");
+        source.put("sql", "select id, cast(create_time as timestamp) from orders");
+
+        LakeExactSingleProjectionPlanner.ProjectionPlan plan = planner.plan(command);
+
+        assertEquals(LakeExactSingleProjectionPlanner.Decision.NOT_APPLICABLE, plan.decision());
+        verifyNoInteractions(bindingDao, mappingDao, provider, doris);
+    }
+
+    @Test
+    void tablelessNonRelationalSourceIsNotApplicable() {
+        BatchGuideSingleJobSaveCommand command = singleCommand();
+        Map<String, Object> source = sourceConfig(command);
+        source.remove("table_path");
+        source.put("dbType", "HTTP");
+        source.put("pluginName", "Http");
+
+        LakeExactSingleProjectionPlanner.ProjectionPlan plan = planner.plan(command);
+
+        assertEquals(LakeExactSingleProjectionPlanner.Decision.NOT_APPLICABLE, plan.decision());
+        verifyNoInteractions(bindingDao, mappingDao, provider, doris);
+    }
+
+    @Test
+    void sqlModeSourceWithNonLakeSinkIsNotApplicable() {
+        BatchGuideSingleJobSaveCommand command = singleCommand();
+        Map<String, Object> source = sourceConfig(command);
+        source.remove("table_path");
+        source.put("readMode", "sql");
+        source.put("sql", "select id, cast(create_time as timestamp) from orders");
+        Map<String, Object> sink = sinkConfig(command);
+        sink.remove("targetTableName");
+        sink.put("dbType", "POSTGRE_SQL");
+        sink.put("pluginName", "JDBC-POSTGRESQL");
+        sink.put("autoCreateTable", true);
+        sink.put("targetTableName", "equipment_kingbase_sync");
+
+        LakeExactSingleProjectionPlanner.ProjectionPlan plan = planner.plan(command);
+
+        assertEquals(LakeExactSingleProjectionPlanner.Decision.NOT_APPLICABLE, plan.decision());
+        verifyNoInteractions(bindingDao, mappingDao, provider, doris);
+    }
+
+    @Test
+    void sqlModeSinkIsNotApplicable() {
+        BatchGuideSingleJobSaveCommand command = singleCommand();
+        Map<String, Object> sink = sinkConfig(command);
+        sink.remove("targetTableName");
+        sink.put("targetMode", "sql");
+        sink.put("sql", "INSERT INTO ods_orders_ext SELECT id, name FROM orders");
+
+        LakeExactSingleProjectionPlanner.ProjectionPlan plan = planner.plan(command);
+
+        assertEquals(LakeExactSingleProjectionPlanner.Decision.NOT_APPLICABLE, plan.decision());
+        verifyNoInteractions(bindingDao, mappingDao, provider, doris);
+    }
+
+    @Test
+    void sinkWithoutTableOrSqlIsStillInvalid() {
+        BatchGuideSingleJobSaveCommand command = singleCommand();
+        Map<String, Object> sink = sinkConfig(command);
+        sink.remove("targetTableName");
+
+        assertThrows(LakeServiceException.class, () -> planner.plan(command));
         verifyNoInteractions(bindingDao, mappingDao, provider, doris);
     }
 
