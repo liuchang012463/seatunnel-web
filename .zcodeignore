@@ -1,0 +1,117 @@
+# Package Files #
+*.jar
+!/jdbc-drivers/
+!/jdbc-drivers/*.jar
+*.zip
+*.tar.gz
+
+# see JDK-8214300
+.attach_pid*
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+# build targets
+target/
+
+# Log file
+*.log
+/logs
+logs.zip
+
+# Intellij Idea files
+.idea/
+*.iml
+.idea/*
+
+.DS_Store
+
+metastore_db/
+
+work_dir
+
+all-dependencies.txt
+self-modules.txt
+third-party-dependencies.txt
+
+*.keytab
+/derby.log
+
+dependency-reduced-pom.xml
+
+apidoc
+
+# Python
+*.py[cod]
+
+
+spark-warehouse
+*.flattened-pom.xml
+/seatunnel-ui/package-lock.json
+/seatunnel-ui/node
+/seatunnel-ui/node/*
+/seatunnel-ui/node_modules
+/seatunnel-ui/node_modules/*
+/seatunnel-web-it/profile/*
+/deploy/docker/dist/
+/node_modules/.yarn-integrity
+
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local CodeGraph index and configuration
+.codegraph/
+
+profile/
+jdbc-drivers/
+
+.vscode/
+.mavenrc
+tmp/
+
+.zcode/.playwright-mcp/
+.zcode/
+batch-*.png
+file-*.png
+datasource-*.png
+ftp-*.png
+preview-request.json
+.playwright-mcp/
+.cursor/
+# Local AI assistant workspace (memory, caches); not part of the build
+.workbuddy-ai/
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+node_modules/
+bower_components/
+jspm_packages/
+__pycache__/
+site-packages/
+venv/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.egg-info/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）
