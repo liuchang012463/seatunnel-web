@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.metadata;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -29,10 +30,13 @@ import java.util.function.Supplier;
  * several backend instances the same rebuild may run twice; that wastes one
  * walk but stays consistent because the last writer wins.</p>
  */
+@Slf4j
 public class RedisMetadataInventoryCache implements MetadataInventoryCache {
 
     private static final String EPOCH_KEY = "stweb:inv:epoch";
     private static final String SNAPSHOT_PREFIX = "stweb:inv:snap:";
+    /** How many earlier epochs a miss may fall back to for a stale snapshot. */
+    private static final int EPOCH_LOOKBACK = 5;
 
     private final StringRedisMetadataStore store;
     private final long softTtlMs;
@@ -52,13 +56,23 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
 
     @Override
     public InventorySnapshotPayload getOrCompute(String key, Supplier<InventorySnapshotPayload> supplier) {
-        SnapshotEnvelope cached = readSnapshot(key);
+        String digest = digest(key);
+        SnapshotEnvelope cached = readSnapshot(currentEpoch(), digest);
         if (cached != null && System.currentTimeMillis() - cached.computedAt() <= softTtlMs) {
             return cached.payload();
         }
         if (cached != null) {
             startAsyncRebuild(key, supplier);
             return cached.payload();
+        }
+        // The epoch was bumped by an invalidation, so the snapshot for the
+        // current epoch is still being built.  Serve the newest snapshot of a
+        // previous epoch (it expires by the stale TTL) instead of making the
+        // caller wait for the walk; only a genuinely empty cache builds sync.
+        SnapshotEnvelope previous = readPreviousSnapshot(digest);
+        if (previous != null) {
+            startAsyncRebuild(key, supplier);
+            return previous.payload();
         }
         return compute(key, supplier);
     }
@@ -69,14 +83,31 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
         inFlight.clear();
     }
 
-    private SnapshotEnvelope readSnapshot(String key) {
-        String raw = store.getString(snapshotKey(key)).orElse(null);
+    private SnapshotEnvelope readSnapshot(long epoch, String digest) {
+        String raw = store.getString(SNAPSHOT_PREFIX + epoch + ":" + digest).orElse(null);
         if (raw == null) {
             return null;
         }
         return store.<SnapshotEnvelope>readJson(raw, envelopeType())
                 .filter(envelope -> envelope.payload() != null)
                 .orElse(null);
+    }
+
+    /** Newest snapshot written under an earlier epoch, or null when too old. */
+    private SnapshotEnvelope readPreviousSnapshot(String digest) {
+        long epoch = currentEpoch();
+        for (int back = 1; back <= EPOCH_LOOKBACK && epoch - back >= 0; back++) {
+            SnapshotEnvelope candidate = readSnapshot(epoch - back, digest);
+            if (candidate != null
+                    && System.currentTimeMillis() - candidate.computedAt() <= staleTtlMs) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private long currentEpoch() {
+        return store.current(EPOCH_KEY);
     }
 
     /** Rebuilds an expired-but-present snapshot off the request thread. */
@@ -86,11 +117,15 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
             return;
         }
         CompletableFuture<Void> mine = inFlight.get(key);
+        String digest = digest(key);
+        long buildEpoch = currentEpoch();
         rebuildExecutor.submit(() -> {
             try {
-                storeSnapshot(key, supplier);
+                storeSnapshot(buildEpoch, digest, supplier);
                 mine.complete(null);
             } catch (RuntimeException | Error error) {
+                log.warn("Inventory snapshot background rebuild failed: key={}, type={}",
+                        key, error.getClass().getSimpleName());
                 mine.completeExceptionally(error);
             } finally {
                 inFlight.remove(key, mine);
@@ -99,6 +134,8 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
     }
 
     private InventorySnapshotPayload compute(String key, Supplier<InventorySnapshotPayload> supplier) {
+        String digest = digest(key);
+        long buildEpoch = currentEpoch();
         CompletableFuture<Void> promise = inFlight.putIfAbsent(key, new CompletableFuture<>());
         if (promise != null) {
             try {
@@ -106,13 +143,13 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
             } catch (CompletionException ignored) {
                 // The other build failed; fall through and rebuild here.
             }
-            SnapshotEnvelope cached = readSnapshot(key);
+            SnapshotEnvelope cached = readSnapshot(buildEpoch, digest);
             if (cached != null) {
                 return cached.payload();
             }
         }
         try {
-            return storeSnapshot(key, supplier);
+            return storeSnapshot(buildEpoch, digest, supplier);
         } finally {
             CompletableFuture<Void> mine = inFlight.get(key);
             if (mine != null) {
@@ -122,16 +159,18 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
         }
     }
 
-    /** Runs the supplier and stores the result; caller owns the in-flight slot. */
-    private InventorySnapshotPayload storeSnapshot(String key, Supplier<InventorySnapshotPayload> supplier) {
+    /**
+     * Runs the supplier and stores the result under the epoch captured when
+     * the build started, so a build that raced an invalidation cannot present
+     * itself as fresh for the new epoch.
+     */
+    private InventorySnapshotPayload storeSnapshot(
+            long epoch, String digest, Supplier<InventorySnapshotPayload> supplier) {
         InventorySnapshotPayload value = supplier.get();
         store.writeJson(new SnapshotEnvelope(System.currentTimeMillis(), value),
-                snapshotKey(key), Duration.ofMillis(Math.max(staleTtlMs, 1_000L)));
+                SNAPSHOT_PREFIX + epoch + ":" + digest,
+                Duration.ofMillis(Math.max(staleTtlMs, 1_000L)));
         return value;
-    }
-
-    private String snapshotKey(String key) {
-        return SNAPSHOT_PREFIX + store.current(EPOCH_KEY) + ":" + digest(key);
     }
 
     private JavaType envelopeType() {

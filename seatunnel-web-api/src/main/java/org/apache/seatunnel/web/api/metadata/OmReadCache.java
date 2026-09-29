@@ -53,6 +53,13 @@ public class OmReadCache {
     private final StringRedisMetadataStore store;
     private final Duration pageTtl;
     private final Duration profileTtl;
+    /**
+     * One-round-trip-per-walk optimization: the per-service epoch is stable
+     * between invalidations, so reads within a short window reuse the value
+     * seen locally instead of GET-ing it for every entry.
+     */
+    private final java.util.concurrent.ConcurrentHashMap<String, long[]> localEpochs =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     private OmReadCache(StringRedisMetadataStore store, Duration pageTtl, Duration profileTtl) {
         this.store = store;
@@ -98,8 +105,8 @@ public class OmReadCache {
         if (store == null) {
             return loader.get();
         }
-        String key = PROFILE_PREFIX + store.current(PROFILE_EPOCH_PREFIX + digest(tableServiceFqn(tableFqn)))
-                + ":" + digest(tableFqn);
+        String epochKey = PROFILE_EPOCH_PREFIX + digest(tableServiceFqn(tableFqn));
+        String key = PROFILE_PREFIX + epochOf(epochKey) + ":" + digest(tableFqn);
         String raw = store.getString(key).orElse(null);
         if (raw != null) {
             JavaType type = TypeFactory.defaultInstance().constructType(ProfileEnvelope.class);
@@ -134,7 +141,8 @@ public class OmReadCache {
         if (store == null) {
             return loader.get();
         }
-        String key = baseKey + ":" + store.current(EPOCH_PREFIX + digest(serviceOf(baseKey)))
+        String epochKey = EPOCH_PREFIX + digest(serviceOf(baseKey));
+        String key = baseKey + ":" + epochOf(epochKey)
                 + ":" + (after == null ? "first" : digest(after));
         String raw = store.getString(key).orElse(null);
         if (raw != null) {
@@ -148,6 +156,18 @@ public class OmReadCache {
         if (value != null) {
             store.writeJson(new PageEnvelope<>(value.data(), value.total(), value.after()), key, pageTtl);
         }
+        return value;
+    }
+
+    /** Epoch read with a one-second local reuse window (see {@link #localEpochs}). */
+    private long epochOf(String epochKey) {
+        long[] entry = localEpochs.get(epochKey);
+        long now = System.currentTimeMillis();
+        if (entry != null && now - entry[1] <= 1_000L) {
+            return entry[0];
+        }
+        long value = store.current(epochKey);
+        localEpochs.put(epochKey, new long[]{value, now});
         return value;
     }
 
