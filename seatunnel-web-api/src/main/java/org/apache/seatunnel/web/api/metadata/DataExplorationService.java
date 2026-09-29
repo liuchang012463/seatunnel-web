@@ -76,6 +76,7 @@ public class DataExplorationService {
     private final DataSourceCatalogService dataSourceCatalogService;
     private final OpenMetadataConfigResolver configResolver;
     private final MetadataExtensionClient metadataExtensionClient;
+    private final OmReadCache omReadCache;
 
     /** Constructor used by the Spring application. */
     @Autowired
@@ -85,13 +86,15 @@ public class DataExplorationService {
             OpenMetadataClient openMetadataClient,
             DataSourceCatalogService dataSourceCatalogService,
             OpenMetadataConfigResolver configResolver,
-            MetadataExtensionClient metadataExtensionClient) {
+            MetadataExtensionClient metadataExtensionClient,
+            OmReadCache omReadCache) {
         this.dataSourceDao = dataSourceDao;
         this.metadataBindingDao = metadataBindingDao;
         this.openMetadataClient = openMetadataClient;
         this.dataSourceCatalogService = dataSourceCatalogService;
         this.configResolver = configResolver;
         this.metadataExtensionClient = metadataExtensionClient;
+        this.omReadCache = omReadCache == null ? OmReadCache.disabled() : omReadCache;
     }
 
     /** Compatibility constructor for callers that do not use completion jobs. */
@@ -102,7 +105,7 @@ public class DataExplorationService {
             DataSourceCatalogService dataSourceCatalogService,
             OpenMetadataConfigResolver configResolver) {
         this(dataSourceDao, metadataBindingDao, openMetadataClient, dataSourceCatalogService,
-                configResolver, null);
+                configResolver, null, OmReadCache.disabled());
     }
 
     /** Backward-compatible constructor that accepts env-style properties. */
@@ -113,7 +116,7 @@ public class DataExplorationService {
             DataSourceCatalogService dataSourceCatalogService,
             OpenMetadataProperties openMetadataProperties) {
         this(dataSourceDao, metadataBindingDao, openMetadataClient, dataSourceCatalogService,
-                OpenMetadataConfigResolver.fixed(openMetadataProperties), null);
+                OpenMetadataConfigResolver.fixed(openMetadataProperties), null, OmReadCache.disabled());
     }
 
     /** Test-friendly constructor that enables the explicitly requested facade. */
@@ -123,14 +126,17 @@ public class DataExplorationService {
             OpenMetadataClient openMetadataClient,
             DataSourceCatalogService dataSourceCatalogService) {
         this(dataSourceDao, metadataBindingDao, openMetadataClient, dataSourceCatalogService,
-                OpenMetadataConfigResolver.fixed(enabledProperties()), null);
+                OpenMetadataConfigResolver.fixed(enabledProperties()), null, OmReadCache.disabled());
     }
 
     public List<DataExplorationDatabaseVO> listDatabases(Long dataSourceId) {
         ExplorationContext context = context(dataSourceId);
         List<DataExplorationDatabaseVO> result = new ArrayList<>();
         for (OpenMetadataDatabase database : collectPages(
-                after -> openMetadataClient.listDatabasesPage(context.serviceFqn(), MAX_OM_PAGE_SIZE, after))) {
+                after -> omReadCache.databases(
+                        context.serviceFqn(), after,
+                        () -> openMetadataClient.listDatabasesPage(
+                                context.serviceFqn(), MAX_OM_PAGE_SIZE, after)))) {
             if (database == null || !context.serviceFqn().equals(database.serviceFullyQualifiedName())) {
                 continue;
             }
@@ -148,8 +154,10 @@ public class DataExplorationService {
         OpenMetadataDatabase database = requireOwnedDatabase(context, databaseFqn);
         List<DataExplorationSchemaVO> result = new ArrayList<>();
         for (OpenMetadataDatabaseSchema schema : collectPages(
-                after -> openMetadataClient.listSchemasPage(
-                        database.fullyQualifiedName(), MAX_OM_PAGE_SIZE, after))) {
+                after -> omReadCache.schemas(
+                        database.fullyQualifiedName(), after,
+                        () -> openMetadataClient.listSchemasPage(
+                                database.fullyQualifiedName(), MAX_OM_PAGE_SIZE, after)))) {
             if (schema == null
                     || !database.fullyQualifiedName().equals(schema.getDatabaseFullyQualifiedName())
                     || !context.serviceFqn().equals(schema.getServiceFullyQualifiedName())) {
@@ -184,8 +192,10 @@ public class DataExplorationService {
         String after = null;
         Set<String> seen = new HashSet<>();
         for (int pageNumber = 0; pageNumber < MAX_OM_PAGES; pageNumber++) {
-            OpenMetadataPage<OpenMetadataTable> page = openMetadataClient.listTablesPage(
-                    schemaFqn, true, pageLimit, after);
+            final String cursor = after;
+            OpenMetadataPage<OpenMetadataTable> page = omReadCache.tables(
+                    schemaFqn, true, cursor,
+                    () -> openMetadataClient.listTablesPage(schemaFqn, true, pageLimit, cursor));
             if (page == null) {
                 break;
             }
@@ -307,12 +317,15 @@ public class DataExplorationService {
         OpenMetadataDatabase database = requireOwnedDatabase(context, databaseFqn);
         List<OpenMetadataTable> tables;
         if (schemaFqn == null || schemaFqn.isBlank()) {
-            tables = collectPages(after -> openMetadataClient.listTablesByDatabasePage(
-                    database.fullyQualifiedName(), true, MAX_OM_PAGE_SIZE, after));
+            tables = collectPages(after -> omReadCache.tablesByDatabase(
+                    database.fullyQualifiedName(), true, after,
+                    () -> openMetadataClient.listTablesByDatabasePage(
+                            database.fullyQualifiedName(), true, MAX_OM_PAGE_SIZE, after)));
         } else {
             requireOwnedSchema(context, database, schemaFqn);
-            tables = collectPages(after -> openMetadataClient.listTablesPage(
-                    schemaFqn, true, MAX_OM_PAGE_SIZE, after));
+            tables = collectPages(after -> omReadCache.tables(
+                    schemaFqn, true, after,
+                    () -> openMetadataClient.listTablesPage(schemaFqn, true, MAX_OM_PAGE_SIZE, after)));
         }
 
         Map<String, OpenMetadataTable> tablesByFqn = new LinkedHashMap<>();
@@ -385,7 +398,9 @@ public class DataExplorationService {
     public DataExplorationProfileVO getProfile(Long dataSourceId, String tableId) {
         ExplorationContext context = context(dataSourceId);
         OpenMetadataTable table = requireOwnedTable(context, tableId);
-        OpenMetadataTableProfile profile = openMetadataClient.getLatestTableProfile(table.getFullyQualifiedName());
+        OpenMetadataTableProfile profile = omReadCache.latestProfile(
+                table.getFullyQualifiedName(),
+                () -> openMetadataClient.getLatestTableProfile(table.getFullyQualifiedName()));
         return toProfile(table, profile);
     }
 

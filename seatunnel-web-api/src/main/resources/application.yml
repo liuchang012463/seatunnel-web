@@ -19,6 +19,15 @@ springdoc:
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:mysql}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:26379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT_MS:3000}
+      lettuce:
+        pool:
+          enabled: ${REDIS_POOL_ENABLED:false}
   banner:
     charset: UTF-8
   jackson:
@@ -239,3 +248,15 @@ metadata:
     batch-size: ${METADATA_STATUS_BATCH_SIZE:50}
     idle-refresh-seconds: ${METADATA_STATUS_IDLE_REFRESH_SECONDS:60}
     trigger-grace-seconds: ${METADATA_STATUS_TRIGGER_GRACE_SECONDS:60}
+  # Shared cache for OpenMetadata reads and data-inventory aggregates.
+  # type=redis keeps snapshots across restarts and processes; type=memory
+  # preserves the old process-local behavior (used by unit tests).
+  inventory:
+    cache-type: ${METADATA_INVENTORY_CACHE_TYPE:memory}
+    soft-ttl-ms: ${METADATA_INVENTORY_SOFT_TTL_MS:300000}
+    stale-ttl-ms: ${METADATA_INVENTORY_STALE_TTL_MS:1800000}
+    warm-interval-ms: ${METADATA_INVENTORY_WARM_INTERVAL_MS:60000}
+  om-read-cache:
+    enabled: ${METADATA_OM_READ_CACHE_ENABLED:true}
+    page-ttl-ms: ${METADATA_OM_READ_CACHE_PAGE_TTL_MS:600000}
+    profile-ttl-ms: ${METADATA_OM_READ_CACHE_PROFILE_TTL_MS:900000}

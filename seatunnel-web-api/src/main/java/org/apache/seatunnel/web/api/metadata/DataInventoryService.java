@@ -80,6 +80,7 @@ public class DataInventoryService {
     private final MetadataBindingDao metadataBindingDao;
     private final OpenMetadataClient openMetadataClient;
     private final MetadataInventoryCache cache;
+    private final OmReadCache omReadCache;
 
     @Autowired
     public DataInventoryService(
@@ -88,16 +89,18 @@ public class DataInventoryService {
             BusinessSystemDao businessSystemDao,
             MetadataBindingDao metadataBindingDao,
             OpenMetadataClient openMetadataClient,
-            MetadataInventoryCache cache) {
+            MetadataInventoryCache cache,
+            OmReadCache omReadCache) {
         this.dataSourceDao = dataSourceDao;
         this.dataSourceUnitDao = dataSourceUnitDao;
         this.businessSystemDao = businessSystemDao;
         this.metadataBindingDao = metadataBindingDao;
         this.openMetadataClient = openMetadataClient;
         this.cache = cache;
+        this.omReadCache = omReadCache;
     }
 
-    /** Test-friendly constructor with a real short-lived cache. */
+    /** Test-friendly constructor with a real short-lived cache and no read cache. */
     public DataInventoryService(
             DataSourceDao dataSourceDao,
             DataSourceUnitDao dataSourceUnitDao,
@@ -105,7 +108,7 @@ public class DataInventoryService {
             MetadataBindingDao metadataBindingDao,
             OpenMetadataClient openMetadataClient) {
         this(dataSourceDao, dataSourceUnitDao, businessSystemDao, metadataBindingDao,
-                openMetadataClient, new MetadataInventoryCache());
+                openMetadataClient, new LocalMetadataInventoryCache(), OmReadCache.disabled());
     }
 
     public DataInventorySummaryVO summary(DataInventoryFilterDTO request) {
@@ -114,7 +117,7 @@ public class DataInventoryService {
 
     /** Returns summary and profile coverage from one shared aggregate build. */
     public DataInventoryOverviewVO overview(DataInventoryFilterDTO request) {
-        AggregateSnapshot aggregate = snapshot(normalize(request));
+        InventorySnapshotPayload aggregate = snapshot(normalize(request));
         DataInventoryOverviewVO result = new DataInventoryOverviewVO();
         result.setSummary(aggregate.summary());
         result.setCoverage(aggregate.coverage());
@@ -140,7 +143,7 @@ public class DataInventoryService {
 
     /** Invalidated after a successful scan/profile status refresh. */
     public void invalidateDataSource(Long dataSourceId) {
-        cache.invalidateDataSource(dataSourceId);
+        cache.invalidateAllSnapshots();
     }
 
     /**
@@ -210,12 +213,12 @@ public class DataInventoryService {
         }
     }
 
-    private AggregateSnapshot snapshot(InventoryFilter filter) {
+    private InventorySnapshotPayload snapshot(InventoryFilter filter) {
         String key = filter.cacheKey();
         return cache.getOrCompute(key, () -> buildSnapshot(filter));
     }
 
-    private AggregateSnapshot buildSnapshot(InventoryFilter filter) {
+    private InventorySnapshotPayload buildSnapshot(InventoryFilter filter) {
         AggregateBuilder aggregate = new AggregateBuilder();
         SourceCatalog catalog = loadSources(filter);
         aggregate.addMasterData(catalog.unitIds(), catalog.systemIds());
@@ -227,8 +230,10 @@ public class DataInventoryService {
             try {
                 long[] matchedDatabases = {0L};
                 long databaseTotal = walkPages(
-                        after -> openMetadataClient.listDatabasesPage(
-                                serviceFqn(source), PAGE_SIZE, after),
+                        after -> omReadCache.databases(
+                                serviceFqn(source), after,
+                                () -> openMetadataClient.listDatabasesPage(
+                                        serviceFqn(source), PAGE_SIZE, after)),
                         database -> {
                             if (!matchesDatabase(filter, database)) {
                                 return;
@@ -236,8 +241,10 @@ public class DataInventoryService {
                             matchedDatabases[0]++;
                             long[] matchedSchemas = {0L};
                             long schemaTotal = walkPages(
-                                    after -> openMetadataClient.listSchemasPage(
-                                            database.fullyQualifiedName(), PAGE_SIZE, after),
+                                    after -> omReadCache.schemas(
+                                            database.fullyQualifiedName(), after,
+                                            () -> openMetadataClient.listSchemasPage(
+                                                    database.fullyQualifiedName(), PAGE_SIZE, after)),
                                     schema -> {
                                         if (!matchesSchema(filter, schema)) {
                                             return;
@@ -260,8 +267,7 @@ public class DataInventoryService {
                 log.warn("Inventory aggregation skipped OpenMetadata source {}", source.source().getId(), error);
             }
         }
-        AggregateSnapshot result = aggregate.freeze();
-        return result;
+        return aggregate.freeze();
     }
 
     /**
@@ -280,8 +286,11 @@ public class DataInventoryService {
         long total = 0L;
         long local = 0L;
         for (int pageNumber = 0; pageNumber < MAX_PAGES; pageNumber++) {
-            OpenMetadataPage<OpenMetadataTable> page = openMetadataClient.listTablesPage(
-                    schema.getFullyQualifiedName(), true, PAGE_SIZE, after);
+            final String cursor = after;
+            OpenMetadataPage<OpenMetadataTable> page = omReadCache.tables(
+                    schema.getFullyQualifiedName(), true, cursor,
+                    () -> openMetadataClient.listTablesPage(
+                            schema.getFullyQualifiedName(), true, PAGE_SIZE, cursor));
             if (page == null) {
                 break;
             }
@@ -482,7 +491,9 @@ public class DataInventoryService {
             return null;
         }
         try {
-            return openMetadataClient.getLatestTableProfile(table.getFullyQualifiedName());
+            return omReadCache.latestProfile(
+                    table.getFullyQualifiedName(),
+                    () -> openMetadataClient.getLatestTableProfile(table.getFullyQualifiedName()));
         } catch (Exception error) {
             log.debug("Could not read profile for table {}", table.getFullyQualifiedName(), error);
             return null;
@@ -663,14 +674,6 @@ public class DataInventoryService {
             List<SourceContext> sources, Set<Long> unitIds, Set<Long> systemIds) {
     }
 
-    private record AggregateSnapshot(
-            DataInventorySummaryVO summary,
-            List<DataInventoryDistributionVO> sourceTypes,
-            List<DataInventoryDistributionVO> units,
-            List<DataInventoryDistributionVO> businessSystems,
-            DataInventoryProfileCoverageVO coverage) {
-    }
-
     private static final class AggregateBuilder {
         private final Set<Long> unitIds = new HashSet<>();
         private final Set<Long> systemIds = new HashSet<>();
@@ -736,7 +739,7 @@ public class DataInventoryService {
             }
         }
 
-        AggregateSnapshot freeze() {
+        InventorySnapshotPayload freeze() {
             DataInventorySummaryVO summary = new DataInventorySummaryVO();
             summary.setUnitCount(unitIds.size());
             summary.setBusinessSystemCount(systemIds.size());
@@ -757,7 +760,7 @@ public class DataInventoryService {
             coverage.setKnownRowCount(knownRowCount);
             coverage.setKnownSizeInByte(knownSizeInByte);
             coverage.setTableCoveragePercent(tableCount == 0 ? 0D : profiledTableCount * 100D / tableCount);
-            return new AggregateSnapshot(
+            return new InventorySnapshotPayload(
                     summary,
                     freezeBuckets(sourceTypes),
                     freezeBuckets(units),

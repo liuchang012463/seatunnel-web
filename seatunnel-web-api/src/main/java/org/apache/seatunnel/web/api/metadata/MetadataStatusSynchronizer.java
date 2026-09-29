@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPipelineRun;
 import org.apache.seatunnel.web.common.enums.MetadataRunStatus;
+import org.apache.seatunnel.web.common.utils.MetadataStableName;
 import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.springframework.stereotype.Service;
@@ -22,10 +23,19 @@ public class MetadataStatusSynchronizer {
     private final OpenMetadataClient openMetadataClient;
     private final MetadataStatusProperties properties;
     private final MetadataPipelineOperationService operationService;
+    /** Injected when the shared cache is active; tests fall back to pass-through. */
+    private volatile OmReadCache omReadCache = OmReadCache.disabled();
 
     /** Optional to keep existing unit-test constructors and lightweight deployments compatible. */
     @Autowired(required = false)
     private MetadataInventoryCache metadataInventoryCache;
+
+    @Autowired(required = false)
+    void setOmReadCache(OmReadCache omReadCache) {
+        if (omReadCache != null) {
+            this.omReadCache = omReadCache;
+        }
+    }
 
     public MetadataStatusSynchronizer(
             MetadataBindingDao metadataBindingDao,
@@ -62,22 +72,53 @@ public class MetadataStatusSynchronizer {
             if (!owned(latest, candidate.getVersion())) {
                 return;
             }
+            MetadataRunStatus scanStatusBefore = latest.getScanStatus();
+            Date scanSuccessBefore = latest.getScanLastSuccessTime();
+            MetadataRunStatus profileStatusBefore = latest.getProfileStatus();
+            Date profileSuccessBefore = latest.getProfileLastSuccessTime();
             applyRun(latest, true, latestRun(scanRuns), now);
             applyRun(latest, false, latestRun(profileRuns), now);
+            boolean scanChanged = runOutcomeChanged(scanStatusBefore, scanSuccessBefore,
+                    latest.getScanStatus(), latest.getScanLastSuccessTime());
+            boolean profileChanged = runOutcomeChanged(profileStatusBefore, profileSuccessBefore,
+                    latest.getProfileStatus(), latest.getProfileLastSuccessTime());
             latest.setLastStatusRefreshTime(now);
             latest.setStatusRefreshError(null);
             long version = latest.getVersion();
             latest.setVersion(version + 1L);
             latest.initUpdate();
             if (metadataBindingDao.updateIfVersion(latest, version)) {
-                if (metadataInventoryCache != null) {
-                    metadataInventoryCache.invalidateDataSource(candidate.getDataSourceId());
+                if (scanChanged || profileChanged) {
+                    // A finished run changes the catalog; idle refreshes that
+                    // observe no state change must not drop warm caches.
+                    omReadCache.invalidateService(serviceFqnOf(latest), scanChanged, profileChanged);
+                    if (metadataInventoryCache != null) {
+                        metadataInventoryCache.invalidateAllSnapshots();
+                    }
                 }
                 operationService.triggerPendingMetadataScan(latest);
             }
         } catch (Exception e) {
             markUnknown(candidate, now);
         }
+    }
+
+    private static boolean runOutcomeChanged(
+            MetadataRunStatus statusBefore, Date successBefore,
+            MetadataRunStatus statusAfter, Date successAfter) {
+        if (statusBefore == null ? statusAfter != null : !statusBefore.equals(statusAfter)) {
+            return true;
+        }
+        return successBefore == null
+                ? successAfter != null
+                : !successBefore.equals(successAfter);
+    }
+
+    private String serviceFqnOf(MetadataSourceBinding binding) {
+        String configured = binding.getOmServiceFqn();
+        return configured == null || configured.isBlank()
+                ? MetadataStableName.serviceFqn(binding.getDataSourceId())
+                : configured;
     }
 
     private void markUnknown(MetadataSourceBinding candidate, Date now) {
