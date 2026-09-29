@@ -15,6 +15,7 @@ import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideMultiJobSaveCommand
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleIncrementalJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchGuideSingleJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.batch.BatchScriptJobSaveCommand;
+import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.streaming.StreamingGuideSingleJobSaveCommand;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -345,27 +346,98 @@ class LakeExactSingleProjectionPlannerTest {
                 planner.plan(streaming).runtimeType());
     }
 
+    /**
+     * Batch, incremental micro-batch and streaming single jobs share this
+     * planner, so a SQL endpoint must decline the projection for every
+     * family instead of failing the save.
+     */
+    @Test
+    void sqlEndpointsAreNotApplicableForEverySingleCommandFamily() {
+        List<JobDefinitionSaveCommand> commands = List.of(
+                batchSingle(sqlSourceWorkflow()),
+                incrementalSingle(sqlSourceWorkflow()),
+                streamingSingle(sqlSourceWorkflow()),
+                batchSingle(sqlSinkWorkflow()),
+                incrementalSingle(sqlSinkWorkflow()),
+                streamingSingle(sqlSinkWorkflow()));
+
+        for (JobDefinitionSaveCommand command : commands) {
+            assertEquals(
+                    LakeExactSingleProjectionPlanner.Decision.NOT_APPLICABLE,
+                    planner.plan(command).decision(),
+                    command.getClass().getSimpleName());
+        }
+        verifyNoInteractions(bindingDao, mappingDao, provider, doris);
+    }
+
     private BatchGuideSingleJobSaveCommand singleCommand() {
+        return batchSingle(workflow());
+    }
+
+    private BatchGuideSingleJobSaveCommand batchSingle(Map<String, Object> workflow) {
         BatchGuideSingleJobSaveCommand command = new BatchGuideSingleJobSaveCommand();
         command.setOdsDatabaseBindingId(BINDING_ID);
-        command.setWorkflow(workflow());
+        command.setWorkflow(workflow);
+        return command;
+    }
+
+    private BatchGuideSingleIncrementalJobSaveCommand incrementalSingle(
+            Map<String, Object> workflow) {
+        BatchGuideSingleIncrementalJobSaveCommand command =
+                new BatchGuideSingleIncrementalJobSaveCommand();
+        command.setOdsDatabaseBindingId(BINDING_ID);
+        command.setWorkflow(workflow);
+        return command;
+    }
+
+    private StreamingGuideSingleJobSaveCommand streamingSingle(Map<String, Object> workflow) {
+        StreamingGuideSingleJobSaveCommand command = new StreamingGuideSingleJobSaveCommand();
+        command.setOdsDatabaseBindingId(BINDING_ID);
+        command.setWorkflow(workflow);
         return command;
     }
 
     private Map<String, Object> workflow() {
-        Map<String, Object> source = new HashMap<>(Map.of(
+        return workflowWith(tableSourceConfig(), lakeSinkConfig());
+    }
+
+    private Map<String, Object> workflowWith(
+            Map<String, Object> sourceConfig, Map<String, Object> sinkConfig) {
+        return new HashMap<>(Map.of(
+                "nodes", List.of(node("source", sourceConfig), node("sink", sinkConfig))));
+    }
+
+    private Map<String, Object> tableSourceConfig() {
+        return new HashMap<>(Map.of(
                 "dataSourceId", String.valueOf(SOURCE_DATA_SOURCE_ID),
                 "dbType", "MYSQL",
                 "pluginName", "MYSQL",
                 "table_path", "orders"));
-        Map<String, Object> sink = new HashMap<>(Map.of(
+    }
+
+    private Map<String, Object> lakeSinkConfig() {
+        return new HashMap<>(Map.of(
                 "dataSourceId", String.valueOf(LAKE_DATA_SOURCE_ID),
                 "dbType", "DORIS",
                 "pluginName", "DORIS",
                 "targetTableName", "ods_orders",
                 "schemaSaveMode", "CREATE_SCHEMA_WHEN_NOT_EXIST"));
-        return new HashMap<>(Map.of(
-                "nodes", List.of(node("source", source), node("sink", sink))));
+    }
+
+    private Map<String, Object> sqlSourceWorkflow() {
+        Map<String, Object> source = tableSourceConfig();
+        source.remove("table_path");
+        source.put("readMode", "sql");
+        source.put("sql", "select id, cast(create_time as timestamp) from orders");
+        return workflowWith(source, lakeSinkConfig());
+    }
+
+    private Map<String, Object> sqlSinkWorkflow() {
+        Map<String, Object> sink = lakeSinkConfig();
+        sink.remove("targetTableName");
+        sink.put("targetMode", "sql");
+        sink.put("sql", "INSERT INTO ods_orders_ext SELECT id, name FROM orders");
+        return workflowWith(tableSourceConfig(), sink);
     }
 
     private Map<String, Object> node(String type, Map<String, Object> config) {

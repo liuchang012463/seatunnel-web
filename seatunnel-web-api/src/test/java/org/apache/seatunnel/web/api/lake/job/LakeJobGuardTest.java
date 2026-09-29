@@ -169,16 +169,26 @@ class LakeJobGuardTest {
 
     @Test
     void saveAcceptsQueryWriteSinkWithoutTargetTable() {
-        BatchGuideSingleJobSaveCommand command = new BatchGuideSingleJobSaveCommand();
-        command.setOdsDatabaseBindingId(BINDING_ID);
+        BatchGuideSingleJobSaveCommand batch = new BatchGuideSingleJobSaveCommand();
+        batch.setOdsDatabaseBindingId(BINDING_ID);
+        batch.setWorkflow(querySinkWorkflow());
+
+        assertDoesNotThrow(() -> guard.validateBeforeSave(batch));
+
+        StreamingGuideSingleJobSaveCommand streaming = new StreamingGuideSingleJobSaveCommand();
+        streaming.setOdsDatabaseBindingId(BINDING_ID);
+        streaming.setWorkflow(querySinkWorkflow());
+
+        assertDoesNotThrow(() -> guard.validateBeforeSave(streaming));
+    }
+
+    private Map<String, Object> querySinkWorkflow() {
         Map<String, Object> workflow = singleWorkflow("CREATE_SCHEMA_WHEN_NOT_EXIST");
         Map<String, Object> sink = sinkConfig(workflow);
         sink.remove("targetTableName");
         sink.put("targetMode", "sql");
         sink.put("sql", "INSERT INTO ods_orders_ext SELECT id, name FROM orders");
-        command.setWorkflow(workflow);
-
-        assertDoesNotThrow(() -> guard.validateBeforeSave(command));
+        return workflow;
     }
 
     @Test
