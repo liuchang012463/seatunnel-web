@@ -1,4 +1,4 @@
-import HttpUtils from '@/utils/HttpUtils';
+import HttpUtils, { type RequestOptions } from '@/utils/HttpUtils';
 import type {
   BusinessSystemOption,
   CommonApiResponse,
@@ -33,6 +33,9 @@ const DATA_SOURCE_UNIT_API_PREFIX = '/api/v1/data-source-units';
 const BUSINESS_SYSTEM_API_PREFIX = '/api/v1/business-systems';
 const DATA_EXPLORATION_API_PREFIX = '/api/v1/data-exploration';
 const DATA_INVENTORY_API_PREFIX = '/api/v1/data-inventory';
+// Metadata aggregates rebuild on the server after cache invalidation; give
+// these reads room beyond the global 15s default instead of aborting them.
+const METADATA_REQUEST_OPTIONS: RequestOptions = { timeout: 60_000 };
 const DATA_SOURCE_TOPOLOGY_API_PREFIX = '/api/v1/data-source-topology';
 
 export type MasterDataList<T> =
@@ -179,7 +182,7 @@ export async function fetchDataSourceMetadataRuns(
 export async function fetchDataExplorationDatabases(
   id: string,
 ): Promise<CommonApiResponse<DataExplorationDatabase[]>> {
-  return HttpUtils.get(`${DATA_EXPLORATION_API_PREFIX}/databases?dataSourceId=${encodeURIComponent(id)}`);
+  return HttpUtils.get(`${DATA_EXPLORATION_API_PREFIX}/databases?dataSourceId=${encodeURIComponent(id)}`, METADATA_REQUEST_OPTIONS);
 }
 
 export async function fetchDataExplorationSchemas(
@@ -188,6 +191,7 @@ export async function fetchDataExplorationSchemas(
 ): Promise<CommonApiResponse<DataExplorationSchema[]>> {
   return HttpUtils.get(
     `${DATA_EXPLORATION_API_PREFIX}/schemas?dataSourceId=${encodeURIComponent(id)}&databaseFqn=${encodeURIComponent(databaseFqn)}`,
+    METADATA_REQUEST_OPTIONS,
   );
 }
 
@@ -205,7 +209,7 @@ export async function fetchDataExplorationTables(
     pageNo: String(pageNo),
     pageSize: String(pageSize),
   });
-  return HttpUtils.get(`${DATA_EXPLORATION_API_PREFIX}/tables?${query.toString()}`);
+  return HttpUtils.get(`${DATA_EXPLORATION_API_PREFIX}/tables?${query.toString()}`, METADATA_REQUEST_OPTIONS);
 }
 
 export async function fetchDataExplorationTable(
@@ -291,7 +295,7 @@ export async function fetchDataInventorySummary(
     }
   });
   const suffix = query.toString() ? `?${query.toString()}` : '';
-  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/summary${suffix}`);
+  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/summary${suffix}`, METADATA_REQUEST_OPTIONS);
 }
 
 export async function fetchDataInventoryOverview(
@@ -302,7 +306,7 @@ export async function fetchDataInventoryOverview(
     if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
   });
   const suffix = query.toString() ? `?${query.toString()}` : '';
-  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/overview${suffix}`);
+  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/overview${suffix}`, METADATA_REQUEST_OPTIONS);
 }
 
 export async function fetchDataInventorySourceTypes(
@@ -333,7 +337,7 @@ export async function fetchDataInventoryProfileCoverage(
     }
   });
   const suffix = query.toString() ? `?${query.toString()}` : '';
-  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/profile-coverage${suffix}`);
+  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/profile-coverage${suffix}`, METADATA_REQUEST_OPTIONS);
 }
 
 async function fetchInventoryDistribution(
@@ -347,7 +351,7 @@ async function fetchInventoryDistribution(
     }
   });
   const suffix = query.toString() ? `?${query.toString()}` : '';
-  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/distribution/${dimension}${suffix}`);
+  return HttpUtils.get(`${DATA_INVENTORY_API_PREFIX}/distribution/${dimension}${suffix}`, METADATA_REQUEST_OPTIONS);
 }
 
 /** Kept for reopen after DATA_EXPLORATION_EXPORT_ENABLED; UI entry points are temporarily hidden. */

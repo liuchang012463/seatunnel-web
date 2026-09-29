@@ -1,5 +1,8 @@
 import request, { ApiResponse } from "@/utils/request";
 
+/** umi-request accepts per-request options that extend RequestInit. */
+export type RequestOptions = RequestInit & { timeout?: number };
+
 class HttpUtils {
   public static async post<T>(
     url: string,
@@ -44,7 +47,7 @@ class HttpUtils {
 
   public static async get<T>(
     url: string,
-    options?: RequestInit
+    options?: RequestOptions
   ): Promise<ApiResponse<T>> {
     return request<ApiResponse<T>>(url, {
       method: "GET",
