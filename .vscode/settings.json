@@ -29,5 +29,6 @@
   // 开启 package.json 文件内的 CodeLens（直接在文件里显示 Run 按钮）
   "npm.enableRunFromFolder": true,
   "maven.view": "hierarchical",
-  "java.configuration.updateBuildConfiguration": "automatic"
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms4G -Xlog:disable"
 }
