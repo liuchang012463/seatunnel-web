@@ -13,12 +13,12 @@
 export default {
   dev: {
     '/api/': {
-      target: 'http://localhost:9527',
+      target: 'http://localhost:19527',
       changeOrigin: true,
       pathRewrite: { '^/api': '/api' },
     },
     '/v3/': {
-      target: 'http://192.168.100.95:9527',
+      target: 'http://localhost:19527',
       changeOrigin: true,
     },
     '/profile/avatar/': {

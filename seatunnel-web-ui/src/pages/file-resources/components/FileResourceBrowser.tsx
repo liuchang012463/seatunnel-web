@@ -2,6 +2,7 @@ import {
   CheckOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  EyeOutlined,
   FileOutlined,
   FolderOpenOutlined,
   ReloadOutlined,
@@ -9,7 +10,7 @@ import {
 } from '@ant-design/icons';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-components';
-import { Alert, Button, Empty, Input, Popconfirm, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Empty, Input, Popconfirm, Select, Space, Tag, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchFileResourcePage } from '../service';
 import type { FileResourceEntry, FileResourceId, FileResourcePagination } from '../types';
@@ -17,10 +18,34 @@ import {
   formatBytes,
   formatResourceTime,
   isDirectoryResource,
+  isDocumentPreviewable,
   resourceId,
+  resourceMatchesExtensionGroup,
   resourceName,
   resourcePath,
 } from '../utils';
+
+type ResourceTypeFilter = 'ALL' | 'DIRECTORY' | 'TXT' | 'CSV' | 'JSON' | 'EXCEL' | 'PDF' | 'WORD';
+
+const RESOURCE_TYPE_OPTIONS: { label: string; value: ResourceTypeFilter }[] = [
+  { label: '全部类型', value: 'ALL' },
+  { label: '文件夹', value: 'DIRECTORY' },
+  { label: 'TXT', value: 'TXT' },
+  { label: 'CSV', value: 'CSV' },
+  { label: 'JSON', value: 'JSON' },
+  { label: 'Excel', value: 'EXCEL' },
+  { label: 'PDF', value: 'PDF' },
+  { label: 'Word', value: 'WORD' },
+];
+
+const RESOURCE_TYPE_EXTENSIONS: Record<Exclude<ResourceTypeFilter, 'ALL' | 'DIRECTORY'>, string[]> = {
+  TXT: ['txt', 'text'],
+  CSV: ['csv'],
+  JSON: ['json'],
+  EXCEL: ['xls', 'xlsx'],
+  PDF: ['pdf'],
+  WORD: ['doc', 'docx'],
+};
 
 export interface FileResourceBrowserProps {
   path: string;
@@ -31,6 +56,7 @@ export interface FileResourceBrowserProps {
   onSelect?: (resource: FileResourceEntry) => void;
   canSelect?: (resource: FileResourceEntry) => boolean;
   onDownload?: (resource: FileResourceEntry) => void | Promise<void>;
+  onPreview?: (resource: FileResourceEntry) => void | Promise<void>;
   onDelete?: (resource: FileResourceEntry) => void | Promise<void>;
   notice?: React.ReactNode;
   compact?: boolean;
@@ -65,6 +91,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
   onSelect,
   canSelect,
   onDownload,
+  onPreview,
   onDelete,
   notice,
   compact = false,
@@ -72,6 +99,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
 }) => {
   const [searchText, setSearchText] = useState('');
   const [keyword, setKeyword] = useState('');
+  const [resourceTypeFilter, setResourceTypeFilter] = useState<ResourceTypeFilter>('ALL');
   const [resources, setResources] = useState<FileResourceEntry[]>([]);
   const [pagination, setPagination] = useState<FileResourcePagination>({ pageNo: 1, pageSize, total: 0 });
   const [loading, setLoading] = useState(false);
@@ -81,6 +109,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
   useEffect(() => {
     setSearchText('');
     setKeyword('');
+    setResourceTypeFilter('ALL');
     setPagination((current) => ({ ...current, pageNo: 1, pageSize }));
   }, [path, pageSize]);
 
@@ -119,11 +148,18 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
 
   const visibleResources = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLocaleLowerCase();
-    if (!normalizedKeyword) return resources;
-    return resources.filter((resource) =>
-      resourceName(resource).toLocaleLowerCase().includes(normalizedKeyword),
-    );
-  }, [keyword, resources]);
+    return resources.filter((resource) => {
+      if (resourceTypeFilter === 'DIRECTORY') {
+        if (!isDirectoryResource(resource)) return false;
+      } else if (resourceTypeFilter !== 'ALL') {
+        if (!resourceMatchesExtensionGroup(resource, RESOURCE_TYPE_EXTENSIONS[resourceTypeFilter])) {
+          return false;
+        }
+      }
+      if (!normalizedKeyword) return true;
+      return resourceName(resource).toLocaleLowerCase().includes(normalizedKeyword);
+    });
+  }, [keyword, resourceTypeFilter, resources]);
 
   const columns = useMemo<ProColumns<FileResourceEntry>[]>(() => {
     const result: ProColumns<FileResourceEntry>[] = [
@@ -198,12 +234,12 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
       },
     ];
 
-    if (selectable || onDownload || onDelete) {
+    if (selectable || onDownload || onPreview || onDelete) {
       result.push({
         title: '操作',
         key: 'option',
         valueType: 'option',
-        width: 180,
+        width: onPreview ? 240 : 180,
         fixed: 'right',
         render: (_, record) => {
           const directory = isDirectoryResource(record);
@@ -246,6 +282,19 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
               </Button>,
             );
           }
+          if (!directory && onPreview && isDocumentPreviewable(record)) {
+            actions.push(
+              <Button
+                key="preview"
+                type="link"
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => void onPreview(record)}
+              >
+                预览
+              </Button>,
+            );
+          }
           if (!directory && onDownload) {
             actions.push(
               <Button
@@ -282,28 +331,44 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
     }
 
     return result;
-  }, [canSelect, compact, onDelete, onDownload, onPathChange, onSelect, path, selectable, selectedId]);
+  }, [canSelect, compact, onDelete, onDownload, onPathChange, onPreview, onSelect, path, selectable, selectedId]);
 
   const applySearch = (value: string) => {
     setPagination((current) => ({ ...current, pageNo: 1 }));
     setKeyword(value.trim());
   };
 
-  const emptyDescription = keyword ? '当前目录没有匹配的资源' : '当前目录为空，先上传文件或新建目录';
+  const hasActiveFilter = Boolean(keyword) || resourceTypeFilter !== 'ALL';
+  const emptyDescription = hasActiveFilter
+    ? '当前目录没有匹配的资源'
+    : '当前目录为空，先上传文件或新建目录';
 
   return (
     <div className={`file-resource-browser${compact ? ' file-resource-browser--compact' : ''}`}>
       {notice}
       <div className="file-resource-browser__search">
-        <Input.Search
+        <Input
           allowClear
           value={searchText}
           prefix={<SearchOutlined />}
           placeholder="搜索当前目录"
-          enterButton="搜索"
           onChange={(event) => setSearchText(event.target.value)}
-          onSearch={applySearch}
+          onPressEnter={() => applySearch(searchText)}
         />
+        <Select
+          className="file-resource-browser__type-filter"
+          value={resourceTypeFilter}
+          options={RESOURCE_TYPE_OPTIONS}
+          popupMatchSelectWidth={false}
+          aria-label="按文件类型筛选"
+          onChange={(value: ResourceTypeFilter) => {
+            setPagination((current) => ({ ...current, pageNo: 1 }));
+            setResourceTypeFilter(value);
+          }}
+        />
+        <Button type="primary" onClick={() => applySearch(searchText)}>
+          搜索
+        </Button>
         <Button
           aria-label="刷新文件资源"
           icon={<ReloadOutlined />}
@@ -335,7 +400,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
         pagination={{
           current: pagination.pageNo,
           pageSize: pagination.pageSize,
-          total: keyword ? visibleResources.length : pagination.total,
+          total: hasActiveFilter ? visibleResources.length : pagination.total,
           showSizeChanger: true,
           showTotal: (total) => `共 ${total} 项`,
           onChange: (page, size) => setPagination((current) => ({ ...current, pageNo: page, pageSize: size || current.pageSize })),

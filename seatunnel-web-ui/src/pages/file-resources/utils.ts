@@ -60,9 +60,17 @@ export function resourceId(resource: FileResourceEntry): FileResourceId | undefi
   return resource.objectKey || resource.path;
 }
 
+export function getResourceExtension(resource: FileResourceEntry): string {
+  if (isDirectoryResource(resource)) return '';
+  const name = resourceName(resource);
+  const dotIndex = name.lastIndexOf('.');
+  if (dotIndex <= 0 || dotIndex === name.length - 1) return '';
+  return name.slice(dotIndex + 1).toLowerCase();
+}
+
 export function resourceMatchesFormats(resource: FileResourceEntry, formats?: FileResourceFormat[]): boolean {
   if (!formats?.length) return true;
-  const extension = resourceName(resource).split('.').pop()?.toLowerCase();
+  const extension = getResourceExtension(resource);
   if (!extension) return false;
   const extensions: Record<FileResourceFormat, string[]> = {
     csv: ['csv'],
@@ -71,6 +79,29 @@ export function resourceMatchesFormats(resource: FileResourceEntry, formats?: Fi
     text: ['txt', 'text'],
   };
   return formats.some((format) => extensions[format]?.includes(extension));
+}
+
+export function resourceMatchesExtensionGroup(
+  resource: FileResourceEntry,
+  extensions: string[],
+): boolean {
+  if (!extensions.length) return true;
+  const extension = getResourceExtension(resource);
+  return Boolean(extension) && extensions.includes(extension);
+}
+
+export function isDocumentPreviewable(resource: FileResourceEntry): boolean {
+  return resourceMatchesExtensionGroup(resource, ['pdf', 'doc', 'docx']);
+}
+
+export function previewMimeType(resource: FileResourceEntry): string {
+  const extension = getResourceExtension(resource);
+  if (extension === 'pdf') return 'application/pdf';
+  if (extension === 'doc') return 'application/msword';
+  if (extension === 'docx') {
+    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  }
+  return 'application/octet-stream';
 }
 
 export function getUploadRelativePath(file: File): string {

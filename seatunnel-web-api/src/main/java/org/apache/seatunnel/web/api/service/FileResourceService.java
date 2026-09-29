@@ -43,6 +43,14 @@ public interface FileResourceService {
 
     void download(Long id, OutputStream output) throws IOException;
 
+    /**
+     * Convert a Word document resource into a PDF stream for browser preview.
+     *
+     * @param id file resource id
+     * @param output PDF output stream
+     */
+    void previewAsPdf(Long id, OutputStream output) throws IOException;
+
     Map<String, Object> preview(Long id, FileResourcePreviewDTO request);
 
     PaginationResult<FileUploadRecordVO> pageUploadRecords(FileResourceUploadRecordQueryDTO query);

@@ -33,6 +33,7 @@ import type { TableColumnsType } from 'antd';
 import { history, useLocation } from '@umijs/max';
 import React, { useEffect, useMemo, useState } from 'react';
 import FileResourceBrowser from './components/FileResourceBrowser';
+import FileResourcePreviewModal from './components/FileResourcePreviewModal';
 import ResourceBreadcrumb from './components/ResourceBreadcrumb';
 import {
   appendResourceSelection,
@@ -109,6 +110,8 @@ const FileResourcesPage: React.FC = () => {
   const [recordsModalOpen, setRecordsModalOpen] = useState(false);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [records, setRecords] = useState<FileResourceUploadRecordPage>(emptyUploadRecords);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewResource, setPreviewResource] = useState<FileResourceEntry | null>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<Record<string, {
     name: string;
@@ -242,6 +245,11 @@ const FileResourcesPage: React.FC = () => {
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '文件下载失败');
     }
+  };
+
+  const handlePreview = (resource: FileResourceEntry) => {
+    setPreviewResource(resource);
+    setPreviewOpen(true);
   };
 
   const loadUploadRecords = async (pageNo = 1, pageSize = 10) => {
@@ -406,6 +414,7 @@ const FileResourcesPage: React.FC = () => {
           refreshToken={refreshToken}
           selectable={selectionMode}
           onSelect={selectionMode ? handleSelectForReturn : undefined}
+          onPreview={handlePreview}
           onDownload={handleDownload}
           onDelete={handleDelete}
           notice={
@@ -416,6 +425,15 @@ const FileResourcesPage: React.FC = () => {
           }
         />
       </Card>
+
+      <FileResourcePreviewModal
+        open={previewOpen}
+        resource={previewResource}
+        onCancel={() => {
+          setPreviewOpen(false);
+          setPreviewResource(null);
+        }}
+      />
 
       <Modal
         title="新建目录"

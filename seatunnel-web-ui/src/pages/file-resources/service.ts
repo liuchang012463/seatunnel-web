@@ -265,6 +265,13 @@ export function downloadFileResource(resource: Pick<FileResourceEntry, 'id' | 'p
   return HttpUtils.download(`${FILE_RESOURCE_API_PREFIX}/download${queryString({ path: resource.path || resource.objectKey })}`);
 }
 
+export function previewFileResourceAsPdf(resource: Pick<FileResourceEntry, 'id'>): Promise<unknown> {
+  if (resource.id === undefined || resource.id === null || String(resource.id) === '') {
+    return Promise.reject(new Error('缺少文件资源 ID，无法预览'));
+  }
+  return HttpUtils.download(`${FILE_RESOURCE_API_PREFIX}/${encodeURIComponent(String(resource.id))}/preview-pdf`);
+}
+
 export async function fetchFileResourceUploadRecords(
   params: Pick<FileResourceListParams, 'pageNo' | 'pageSize' | 'keyword'> = {},
 ): Promise<FileResourceUploadRecordPage> {
@@ -285,6 +292,7 @@ export const fileResourceApi = {
   upload: uploadFileResources,
   delete: deleteFileResource,
   download: downloadFileResource,
+  previewAsPdf: previewFileResourceAsPdf,
   uploadRecords: fetchFileResourceUploadRecords,
 };
 

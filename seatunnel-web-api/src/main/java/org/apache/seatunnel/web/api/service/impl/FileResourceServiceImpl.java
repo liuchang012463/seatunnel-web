@@ -18,6 +18,7 @@ import org.apache.seatunnel.web.api.fileresource.FileResourceMqNotifier;
 import org.apache.seatunnel.web.api.fileresource.FileResourcePathUtils;
 import org.apache.seatunnel.web.api.fileresource.FileResourceReferenceChecker;
 import org.apache.seatunnel.web.api.fileresource.FileResourceUploadCommitHooks;
+import org.apache.seatunnel.web.api.fileresource.FileResourceWordPdfConverter;
 import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProvider;
 import org.apache.seatunnel.web.api.fileresource.storage.StorageObjectMetadata;
 import org.apache.seatunnel.web.api.fileresource.storage.StorageUploadPart;
@@ -97,6 +98,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     private static final int MAX_PREVIEW_ROWS = 100;
     private static final int MAX_PREVIEW_COLUMNS = 200;
     private static final int MAX_PREVIEW_BYTES = 8 * 1024 * 1024;
+    private static final int MAX_WORD_PREVIEW_BYTES = 20 * 1024 * 1024;
     private static final long DEFAULT_MULTIPART_PART_SIZE = 64L * 1024L * 1024L;
     private static final long MAX_MULTIPART_PARTS = 10_000L;
     private static final long MAX_OBJECT_SIZE = 5L * 1024L * 1024L * 1024L * 1024L;
@@ -122,6 +124,9 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
 
     @Resource
     private FileResourceStorageProvider storageProvider;
+
+    @Resource
+    private FileResourceWordPdfConverter wordPdfConverter;
 
     @Resource
     private ObjectMapper objectMapper;
@@ -550,6 +555,44 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         } catch (Exception e) {
             log.error("Download file resource failed, resourceId={}", id, e);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, "文件下载失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void previewAsPdf(Long id, OutputStream output) throws IOException {
+        if (output == null) {
+            throw invalid("output");
+        }
+        FileResource resource = requireActiveResource(id);
+        if (!FILE.equalsIgnoreCase(resource.getResourceType())) {
+            throw invalid("只能预览文件资源");
+        }
+        if (!wordPdfConverter.supports(resource.getName())) {
+            throw invalid("仅支持将 doc/docx 转换为 PDF 预览");
+        }
+        try {
+            StorageObjectMetadata metadata = storageProvider.head(resource.getObjectKey());
+            if (metadata == null || metadata.size() == null) {
+                throw new IllegalStateException("无法读取文件大小");
+            }
+            if (metadata.size() > MAX_WORD_PREVIEW_BYTES) {
+                throw invalid("Word 预览文件不能超过 " + (MAX_WORD_PREVIEW_BYTES / 1024 / 1024) + " MB");
+            }
+            ByteArrayOutputStream source = new ByteArrayOutputStream(
+                    Math.max(0, Math.min(metadata.size().intValue(), MAX_WORD_PREVIEW_BYTES)));
+            storageProvider.download(resource.getObjectKey(), source);
+            wordPdfConverter.convert(resource.getName(), source.toByteArray(), output);
+        } catch (ServiceException e) {
+            throw e;
+        } catch (IllegalArgumentException e) {
+            throw invalid(StringUtils.defaultIfBlank(e.getMessage(), "Word 预览失败"));
+        } catch (IOException e) {
+            log.error("Preview word resource as PDF failed, resourceId={}", id, e);
+            throw e;
+        } catch (Exception e) {
+            log.error("Preview word resource as PDF failed, resourceId={}", id, e);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
+                    "Word 转 PDF 预览失败: " + StringUtils.defaultIfBlank(e.getMessage(), "文件格式不正确"));
         }
     }
 

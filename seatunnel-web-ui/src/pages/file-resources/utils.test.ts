@@ -1,9 +1,13 @@
 import {
   appendResourceSelection,
+  getResourceExtension,
   getUploadRelativePath,
   isDirectoryResource,
+  isDocumentPreviewable,
   joinResourcePath,
   normalizeResourcePath,
+  previewMimeType,
+  resourceMatchesExtensionGroup,
   resourceMatchesFormats,
 } from './utils';
 
@@ -24,6 +28,21 @@ describe('file resource path helpers', () => {
     expect(isDirectoryResource({ resourceType: 'DIRECTORY', name: 'daily' })).toBe(true);
     expect(resourceMatchesFormats({ name: 'users.xlsx' }, ['excel'])).toBe(true);
     expect(resourceMatchesFormats({ name: 'users.xlsx' }, ['csv'])).toBe(false);
+  });
+
+  it('matches browser extension filters by file suffix', () => {
+    expect(getResourceExtension({ name: 'report.PDF' })).toBe('pdf');
+    expect(getResourceExtension({ resourceType: 'DIRECTORY', name: 'daily' })).toBe('');
+    expect(resourceMatchesExtensionGroup({ name: 'users.xlsx' }, ['xls', 'xlsx'])).toBe(true);
+    expect(resourceMatchesExtensionGroup({ name: 'users.csv' }, ['xls', 'xlsx'])).toBe(false);
+  });
+
+  it('marks pdf and word documents as previewable', () => {
+    expect(isDocumentPreviewable({ name: '复盘报告.pdf' })).toBe(true);
+    expect(isDocumentPreviewable({ name: '复盘报告.doc' })).toBe(true);
+    expect(isDocumentPreviewable({ name: '复盘报告.docx' })).toBe(true);
+    expect(isDocumentPreviewable({ name: 'users.csv' })).toBe(false);
+    expect(previewMimeType({ name: '复盘报告.pdf' })).toBe('application/pdf');
   });
 
   it('serializes an internal return route with the selected resource context', () => {

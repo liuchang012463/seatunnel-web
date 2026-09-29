@@ -131,6 +131,23 @@ public class FileResourceController {
         return ResponseEntity.ok().headers(headers).body(body);
     }
 
+    @GetMapping("/{id}/preview-pdf")
+    @Operation(summary = "previewFileResourceAsPdf", description = "将 Word 文档转换为 PDF 预览")
+    public ResponseEntity<StreamingResponseBody> previewPdf(@PathVariable("id") Long id) {
+        FileResourceVO resource = fileResourceService.get(id);
+        if (!"FILE".equalsIgnoreCase(resource.getResourceType())) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "只能预览文件资源");
+        }
+        StreamingResponseBody body = output -> fileResourceService.previewAsPdf(id, output);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        String previewName = resource.getName() == null ? "preview.pdf" : resource.getName().replaceAll("(?i)\\.docx?$", "") + ".pdf";
+        headers.setContentDisposition(ContentDisposition.inline()
+                .filename(previewName, StandardCharsets.UTF_8)
+                .build());
+        return ResponseEntity.ok().headers(headers).body(body);
+    }
+
     @PostMapping("/{id}/preview")
     @Operation(summary = "previewFileResource", description = "预览文件资源的有限数据")
     public Result<Map<String, Object>> preview(
