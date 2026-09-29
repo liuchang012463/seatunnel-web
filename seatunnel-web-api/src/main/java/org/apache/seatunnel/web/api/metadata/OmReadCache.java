@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
@@ -41,6 +42,8 @@ public class OmReadCache {
     private static final String SCHEMA_PAGE_PREFIX = "stweb:om:sch:";
     private static final String TABLE_PAGE_PREFIX = "stweb:om:tab:";
     private static final String PROFILE_PREFIX = "stweb:om:prof:";
+    /** Local reuse window for the per-service epoch counter. */
+    private static final long EPOCH_CACHE_MS = 1_000L;
 
     /** Deserialization-safe envelope for {@link OpenMetadataPage} records. */
     public record PageEnvelope<T>(List<T> data, long total, String after) {
@@ -53,13 +56,7 @@ public class OmReadCache {
     private final StringRedisMetadataStore store;
     private final Duration pageTtl;
     private final Duration profileTtl;
-    /**
-     * One-round-trip-per-walk optimization: the per-service epoch is stable
-     * between invalidations, so reads within a short window reuse the value
-     * seen locally instead of GET-ing it for every entry.
-     */
-    private final java.util.concurrent.ConcurrentHashMap<String, long[]> localEpochs =
-            new java.util.concurrent.ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, long[]> localEpochs = new ConcurrentHashMap<>();
 
     private OmReadCache(StringRedisMetadataStore store, Duration pageTtl, Duration profileTtl) {
         this.store = store;
@@ -77,27 +74,29 @@ public class OmReadCache {
     }
 
     public OpenMetadataPage<OpenMetadataDatabase> databases(
-            String serviceFqn, String after, Supplier<OpenMetadataPage<OpenMetadataDatabase>> loader) {
-        return page(DB_PAGE_PREFIX + serviceFqn, after, OpenMetadataDatabase.class, loader);
+            String serviceFqn, int limit, String after,
+            Supplier<OpenMetadataPage<OpenMetadataDatabase>> loader) {
+        return page(DB_PAGE_PREFIX + serviceFqn, limit, after, OpenMetadataDatabase.class, loader);
     }
 
     public OpenMetadataPage<OpenMetadataDatabaseSchema> schemas(
-            String databaseFqn, String after, Supplier<OpenMetadataPage<OpenMetadataDatabaseSchema>> loader) {
-        return page(SCHEMA_PAGE_PREFIX + databaseFqn, after, OpenMetadataDatabaseSchema.class, loader);
+            String databaseFqn, int limit, String after,
+            Supplier<OpenMetadataPage<OpenMetadataDatabaseSchema>> loader) {
+        return page(SCHEMA_PAGE_PREFIX + databaseFqn, limit, after, OpenMetadataDatabaseSchema.class, loader);
     }
 
     public OpenMetadataPage<OpenMetadataTable> tables(
-            String schemaFqn, boolean includeColumns, String after,
+            String schemaFqn, boolean includeColumns, int limit, String after,
             Supplier<OpenMetadataPage<OpenMetadataTable>> loader) {
         return page(TABLE_PAGE_PREFIX + schemaFqn + ":" + (includeColumns ? "cols" : "bare"),
-                after, OpenMetadataTable.class, loader);
+                limit, after, OpenMetadataTable.class, loader);
     }
 
     public OpenMetadataPage<OpenMetadataTable> tablesByDatabase(
-            String databaseFqn, boolean includeColumns, String after,
+            String databaseFqn, boolean includeColumns, int limit, String after,
             Supplier<OpenMetadataPage<OpenMetadataTable>> loader) {
         return page(TABLE_PAGE_PREFIX + databaseFqn + ":db:" + (includeColumns ? "cols" : "bare"),
-                after, OpenMetadataTable.class, loader);
+                limit, after, OpenMetadataTable.class, loader);
     }
 
     public OpenMetadataTableProfile latestProfile(
@@ -116,7 +115,6 @@ public class OmReadCache {
             if (envelope.isPresent()) {
                 return envelope.get().profile();
             }
-            return loader.get();
         }
         OpenMetadataTableProfile value = loader.get();
         store.writeJson(new ProfileEnvelope(value), key, profileTtl);
@@ -129,28 +127,39 @@ public class OmReadCache {
             return;
         }
         if (structureChanged) {
-            store.increment(EPOCH_PREFIX + digest(serviceFqn));
+            bumpEpoch(EPOCH_PREFIX + digest(serviceFqn));
         }
         if (profileChanged) {
-            store.increment(PROFILE_EPOCH_PREFIX + digest(serviceFqn));
+            bumpEpoch(PROFILE_EPOCH_PREFIX + digest(serviceFqn));
         }
     }
 
+    /** INCRs the epoch and seeds the local cache so this process sees it at once. */
+    private void bumpEpoch(String epochKey) {
+        long next = store.increment(epochKey);
+        localEpochs.put(epochKey, new long[]{next, System.currentTimeMillis()});
+    }
+
     private <T> OpenMetadataPage<T> page(
-            String baseKey, String after, Class<T> elementType, Supplier<OpenMetadataPage<T>> loader) {
+            String baseKey, int limit, String after, Class<T> elementType,
+            Supplier<OpenMetadataPage<T>> loader) {
         if (store == null) {
             return loader.get();
         }
         String epochKey = EPOCH_PREFIX + digest(serviceOf(baseKey));
-        String key = baseKey + ":" + epochOf(epochKey)
+        String key = baseKey + ":l" + limit + ":" + epochOf(epochKey)
                 + ":" + (after == null ? "first" : digest(after));
         String raw = store.getString(key).orElse(null);
         if (raw != null) {
             JavaType envelopeType = TypeFactory.defaultInstance().constructParametricType(
                     PageEnvelope.class, elementType);
-            return store.<PageEnvelope<T>>readJson(raw, envelopeType)
-                    .map(envelope -> new OpenMetadataPage<>(envelope.data(), envelope.total(), envelope.after()))
-                    .orElse(null);
+            Optional<PageEnvelope<T>> envelope = store.readJson(raw, envelopeType);
+            if (envelope.isPresent()) {
+                PageEnvelope<T> cached = envelope.get();
+                return new OpenMetadataPage<>(cached.data(), cached.total(), cached.after());
+            }
+            // An unreadable cached page must fall back to the loader instead of
+            // looking like the end of pagination to the walk.
         }
         OpenMetadataPage<T> value = loader.get();
         if (value != null) {
@@ -163,7 +172,7 @@ public class OmReadCache {
     private long epochOf(String epochKey) {
         long[] entry = localEpochs.get(epochKey);
         long now = System.currentTimeMillis();
-        if (entry != null && now - entry[1] <= 1_000L) {
+        if (entry != null && now - entry[1] <= EPOCH_CACHE_MS) {
             return entry[0];
         }
         long value = store.current(epochKey);

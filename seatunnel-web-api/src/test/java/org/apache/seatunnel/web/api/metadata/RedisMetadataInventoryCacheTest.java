@@ -102,23 +102,38 @@ class RedisMetadataInventoryCacheTest {
     }
 
     @Test
-    void invalidationBumpsEpochSoNextReadRecomputes() {
-        when(ops.get(anyString())).thenReturn(null);
+    void invalidationServesStaleSnapshotAndRebuildsInBackground() throws Exception {
+        AtomicReference<String> stored = new AtomicReference<>();
+        when(ops.get(anyString())).thenAnswer(invocation -> stored.get());
+        org.mockito.Mockito.doAnswer(invocation -> {
+            stored.set(invocation.getArgument(1));
+            return null;
+        }).when(ops).set(anyString(), anyString(), any(Duration.class));
+        when(ops.increment("stweb:inv:epoch")).thenReturn(1L);
         RedisMetadataInventoryCache cache = newCache();
 
-        InventorySnapshotPayload first = cache.getOrCompute("k", () -> payload(1L));
-        assertEquals(1L, first.summary().getDataSourceCount());
+        cache.getOrCompute("k", () -> payload(1L));
 
-        when(ops.increment("stweb:inv:epoch")).thenReturn(1L);
+        // Invalidate: the epoch moves and the stored snapshot is now stale.
         when(ops.get("stweb:inv:epoch")).thenReturn("1");
         cache.invalidateAllSnapshots();
 
         AtomicInteger builds = new AtomicInteger();
-        InventorySnapshotPayload second = cache.getOrCompute("k", () -> {
+        InventorySnapshotPayload served = cache.getOrCompute("k", () -> {
             builds.incrementAndGet();
             return payload(5L);
         });
-        assertEquals(5L, second.summary().getDataSourceCount());
+        // The pre-invalidation snapshot is served immediately; the rebuild
+        // happens off the request thread.
+        assertEquals(1L, served.summary().getDataSourceCount());
+        assertEquals(0, builds.get());
+
+        awaitTrue(2_000, () -> builds.get() == 1);
+        awaitTrue(2_000, () -> stored.get() != null && stored.get().contains("\"dataSourceCount\":5"));
+
+        // The next read sees the refreshed snapshot.
+        assertEquals(5L, cache.getOrCompute("k", () -> payload(6L))
+                .summary().getDataSourceCount());
         assertEquals(1, builds.get());
     }
 

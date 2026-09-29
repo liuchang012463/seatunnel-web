@@ -126,10 +126,10 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
     private InventorySnapshotPayload compute(String key, Supplier<InventorySnapshotPayload> supplier) {
         String digest = digest(key);
         long buildEpoch = currentEpoch();
-        CompletableFuture<Void> promise = inFlight.putIfAbsent(key, new CompletableFuture<>());
-        if (promise != null) {
+        CompletableFuture<Void> mine = inFlight.putIfAbsent(key, new CompletableFuture<>());
+        if (mine != null) {
             try {
-                promise.join();
+                mine.join();
             } catch (CompletionException ignored) {
                 // The other build failed; fall through and rebuild here.
             }
@@ -141,10 +141,13 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
         try {
             return storeSnapshot(buildEpoch, digest, supplier);
         } finally {
-            CompletableFuture<Void> mine = inFlight.get(key);
-            if (mine != null) {
-                mine.complete(null);
-                inFlight.remove(key, mine);
+            if (mine == null) {
+                // We own the in-flight slot created above.
+                CompletableFuture<Void> owned = inFlight.get(key);
+                if (owned != null) {
+                    owned.complete(null);
+                    inFlight.remove(key, owned);
+                }
             }
         }
     }

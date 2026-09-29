@@ -141,11 +141,6 @@ public class DataInventoryService {
         return snapshot(normalize(request)).coverage();
     }
 
-    /** Invalidated after a successful scan/profile status refresh. */
-    public void invalidateDataSource(Long dataSourceId) {
-        cache.invalidateAllSnapshots();
-    }
-
     /**
      * Collects only the rows required by the normalized XLSX export.  This is
      * intentionally uncached so an export always reflects the current OM
@@ -231,7 +226,7 @@ public class DataInventoryService {
                 long[] matchedDatabases = {0L};
                 long databaseTotal = walkPages(
                         after -> omReadCache.databases(
-                                serviceFqn(source), after,
+                                serviceFqn(source), PAGE_SIZE, after,
                                 () -> openMetadataClient.listDatabasesPage(
                                         serviceFqn(source), PAGE_SIZE, after)),
                         database -> {
@@ -242,7 +237,7 @@ public class DataInventoryService {
                             long[] matchedSchemas = {0L};
                             long schemaTotal = walkPages(
                                     after -> omReadCache.schemas(
-                                            database.fullyQualifiedName(), after,
+                                            database.fullyQualifiedName(), PAGE_SIZE, after,
                                             () -> openMetadataClient.listSchemasPage(
                                                     database.fullyQualifiedName(), PAGE_SIZE, after)),
                                     schema -> {
@@ -288,7 +283,7 @@ public class DataInventoryService {
         for (int pageNumber = 0; pageNumber < MAX_PAGES; pageNumber++) {
             final String cursor = after;
             OpenMetadataPage<OpenMetadataTable> page = omReadCache.tables(
-                    schema.getFullyQualifiedName(), true, cursor,
+                    schema.getFullyQualifiedName(), true, PAGE_SIZE, cursor,
                     () -> openMetadataClient.listTablesPage(
                             schema.getFullyQualifiedName(), true, PAGE_SIZE, cursor));
             if (page == null) {

@@ -38,10 +38,6 @@ public class StringRedisMetadataStore {
         }, null);
     }
 
-    public boolean putIfAbsent(String key, String value, Duration ttl) {
-        return call(() -> Boolean.TRUE.equals(redis.opsForValue().setIfAbsent(key, value, ttl)), false);
-    }
-
     public long increment(String key) {
         return call(() -> redis.opsForValue().increment(key), 0L);
     }
@@ -78,10 +74,6 @@ public class StringRedisMetadataStore {
                     error.getClass().getSimpleName());
             return Optional.empty();
         }
-    }
-
-    public ObjectMapper mapper() {
-        return mapper;
     }
 
     private <T> T call(java.util.function.Supplier<T> action, T fallback) {

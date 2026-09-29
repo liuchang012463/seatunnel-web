@@ -134,7 +134,7 @@ public class DataExplorationService {
         List<DataExplorationDatabaseVO> result = new ArrayList<>();
         for (OpenMetadataDatabase database : collectPages(
                 after -> omReadCache.databases(
-                        context.serviceFqn(), after,
+                        context.serviceFqn(), MAX_OM_PAGE_SIZE, after,
                         () -> openMetadataClient.listDatabasesPage(
                                 context.serviceFqn(), MAX_OM_PAGE_SIZE, after)))) {
             if (database == null || !context.serviceFqn().equals(database.serviceFullyQualifiedName())) {
@@ -155,7 +155,7 @@ public class DataExplorationService {
         List<DataExplorationSchemaVO> result = new ArrayList<>();
         for (OpenMetadataDatabaseSchema schema : collectPages(
                 after -> omReadCache.schemas(
-                        database.fullyQualifiedName(), after,
+                        database.fullyQualifiedName(), MAX_OM_PAGE_SIZE, after,
                         () -> openMetadataClient.listSchemasPage(
                                 database.fullyQualifiedName(), MAX_OM_PAGE_SIZE, after)))) {
             if (schema == null
@@ -194,7 +194,7 @@ public class DataExplorationService {
         for (int pageNumber = 0; pageNumber < MAX_OM_PAGES; pageNumber++) {
             final String cursor = after;
             OpenMetadataPage<OpenMetadataTable> page = omReadCache.tables(
-                    schemaFqn, true, cursor,
+                    schemaFqn, true, pageLimit, cursor,
                     () -> openMetadataClient.listTablesPage(schemaFqn, true, pageLimit, cursor));
             if (page == null) {
                 break;
@@ -318,13 +318,13 @@ public class DataExplorationService {
         List<OpenMetadataTable> tables;
         if (schemaFqn == null || schemaFqn.isBlank()) {
             tables = collectPages(after -> omReadCache.tablesByDatabase(
-                    database.fullyQualifiedName(), true, after,
+                    database.fullyQualifiedName(), true, MAX_OM_PAGE_SIZE, after,
                     () -> openMetadataClient.listTablesByDatabasePage(
                             database.fullyQualifiedName(), true, MAX_OM_PAGE_SIZE, after)));
         } else {
             requireOwnedSchema(context, database, schemaFqn);
             tables = collectPages(after -> omReadCache.tables(
-                    schemaFqn, true, after,
+                    schemaFqn, true, MAX_OM_PAGE_SIZE, after,
                     () -> openMetadataClient.listTablesPage(schemaFqn, true, MAX_OM_PAGE_SIZE, after)));
         }
 

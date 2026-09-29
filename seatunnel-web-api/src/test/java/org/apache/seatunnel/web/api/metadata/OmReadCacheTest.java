@@ -13,13 +13,15 @@ import org.springframework.data.redis.core.ValueOperations;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,7 +57,7 @@ class OmReadCacheTest {
 
         for (int i = 0; i < 3; i++) {
             OpenMetadataPage<OpenMetadataDatabase> page =
-                    cache.databases("svc", null, () -> {
+                    cache.databases("svc", 100, null, () -> {
                         loads.incrementAndGet();
                         return databasePage("db" + loads.get());
                     });
@@ -66,23 +68,24 @@ class OmReadCacheTest {
 
     @Test
     void cachesPagesAndBypassesLoaderOnHit() {
-        when(ops.get(anyString())).thenReturn(null);
+        AtomicReference<String> stored = new AtomicReference<>();
+        when(ops.get(anyString())).thenAnswer(invocation -> stored.get());
+        doAnswer(invocation -> {
+            stored.set(invocation.getArgument(1));
+            return null;
+        }).when(ops).set(anyString(), anyString(), any(Duration.class));
         OmReadCache cache = newRedisCache();
         AtomicInteger loads = new AtomicInteger();
 
         OpenMetadataPage<OpenMetadataDatabase> first =
-                cache.databases("svc", null, () -> {
+                cache.databases("svc", 100, null, () -> {
                     loads.incrementAndGet();
                     return databasePage("db");
                 });
         assertEquals(1, loads.get());
 
-        ArgumentCaptor<String> stored = ArgumentCaptor.forClass(String.class);
-        verify(ops).set(contains("stweb:om:db:svc"), stored.capture(), any(Duration.class));
-        when(ops.get(anyString())).thenReturn(stored.getValue());
-
         OpenMetadataPage<OpenMetadataDatabase> second =
-                cache.databases("svc", null, () -> {
+                cache.databases("svc", 100, null, () -> {
                     loads.incrementAndGet();
                     return databasePage("other");
                 });
@@ -91,12 +94,53 @@ class OmReadCacheTest {
     }
 
     @Test
+    void unreadableCachedPageFallsBackToLoader() {
+        when(ops.get(anyString())).thenReturn("{\"data\":\"not-a-page\",");
+        OmReadCache cache = newRedisCache();
+        AtomicInteger loads = new AtomicInteger();
+
+        OpenMetadataPage<OpenMetadataDatabase> page =
+                cache.databases("svc", 100, null, () -> {
+                    loads.incrementAndGet();
+                    return databasePage("db");
+                });
+        assertEquals(1, loads.get());
+        assertEquals("svc.db", page.data().get(0).fullyQualifiedName());
+    }
+
+    @Test
+    void pageCacheKeysSeparateLimitAndColumnVariants() {
+        when(ops.get(anyString())).thenReturn(null);
+        OmReadCache cache = newRedisCache();
+        AtomicInteger loads = new AtomicInteger();
+
+        cache.tables("svc.db.s", true, 1000, null, () -> {
+            loads.incrementAndGet();
+            return new OpenMetadataPage<>(List.of(new OpenMetadataTable()), 0L, null);
+        });
+        cache.tables("svc.db.s", false, 1000, null, () -> {
+            loads.incrementAndGet();
+            return new OpenMetadataPage<>(List.of(), 0L, null);
+        });
+        cache.tables("svc.db.s", true, 20, null, () -> {
+            loads.incrementAndGet();
+            return new OpenMetadataPage<>(List.of(new OpenMetadataTable()), 0L, null);
+        });
+        assertEquals(3, loads.get());
+
+        ArgumentCaptor<String> keys = ArgumentCaptor.forClass(String.class);
+        verify(ops).set(contains("stweb:om:tab:svc.db.s:cols:l1000"), keys.capture(), any(Duration.class));
+        // Three distinct keys were written for the three distinct variants.
+        verify(ops, org.mockito.Mockito.times(3)).set(anyString(), anyString(), any(Duration.class));
+    }
+
+    @Test
     void structureInvalidationForcesReloadThroughNewEpoch() {
         when(ops.get(anyString())).thenReturn(null);
         OmReadCache cache = newRedisCache();
         AtomicInteger loads = new AtomicInteger();
 
-        cache.databases("svc", null, () -> {
+        cache.databases("svc", 100, null, () -> {
             loads.incrementAndGet();
             return databasePage("db");
         });
@@ -106,7 +150,7 @@ class OmReadCacheTest {
         when(ops.get("stweb:om:ep:" + OmReadCache.digest("svc"))).thenReturn("1");
         cache.invalidateService("svc", true, false);
 
-        cache.databases("svc", null, () -> {
+        cache.databases("svc", 100, null, () -> {
             loads.incrementAndGet();
             return databasePage("db2");
         });
@@ -115,7 +159,12 @@ class OmReadCacheTest {
 
     @Test
     void absentProfilesAreNegativelyCached() {
-        when(ops.get(anyString())).thenReturn(null);
+        AtomicReference<String> stored = new AtomicReference<>();
+        when(ops.get(anyString())).thenAnswer(invocation -> stored.get());
+        doAnswer(invocation -> {
+            stored.set(invocation.getArgument(1));
+            return null;
+        }).when(ops).set(anyString(), anyString(), any(Duration.class));
         OmReadCache cache = newRedisCache();
         AtomicInteger loads = new AtomicInteger();
 
@@ -124,10 +173,6 @@ class OmReadCacheTest {
             return null;
         }));
         assertEquals(1, loads.get());
-
-        ArgumentCaptor<String> stored = ArgumentCaptor.forClass(String.class);
-        verify(ops).set(contains("stweb:om:prof:"), stored.capture(), any(Duration.class));
-        when(ops.get(anyString())).thenReturn(stored.getValue());
 
         assertNull(cache.latestProfile("svc.db.s.tbl", () -> {
             loads.incrementAndGet();
@@ -137,23 +182,30 @@ class OmReadCacheTest {
     }
 
     @Test
-    void tablePageKeysSeparateColumnVariants() {
+    void profileEpochBumpDropsCachedProfiles() {
         when(ops.get(anyString())).thenReturn(null);
         OmReadCache cache = newRedisCache();
         AtomicInteger loads = new AtomicInteger();
 
-        OpenMetadataPage<OpenMetadataTable> withColumns = cache.tables(
-                "svc.db.s", true, null, () -> {
-                    loads.incrementAndGet();
-                    return new OpenMetadataPage<>(List.of(new OpenMetadataTable()), 0L, null);
-                });
-        OpenMetadataPage<OpenMetadataTable> bare = cache.tables(
-                "svc.db.s", false, null, () -> {
-                    loads.incrementAndGet();
-                    return new OpenMetadataPage<>(List.of(), 0L, null);
-                });
+        cache.latestProfile("svc.db.s.tbl", () -> {
+            loads.incrementAndGet();
+            return null;
+        });
+        assertEquals(1, loads.get());
+
+        when(ops.increment("stweb:om:ep:prof:" + OmReadCache.digest("svc"))).thenReturn(1L);
+        when(ops.get("stweb:om:ep:prof:" + OmReadCache.digest("svc"))).thenReturn("1");
+        cache.invalidateService("svc", false, true);
+
+        cache.latestProfile("svc.db.s.tbl", () -> {
+            loads.incrementAndGet();
+            return null;
+        });
         assertEquals(2, loads.get());
-        assertSame(withColumns, withColumns);
-        assertEquals(0, bare.data().size());
+    }
+
+    @Test
+    void differentServicesDigestToDifferentEpochKeys() {
+        assertNotEquals(OmReadCache.digest("svc-a"), OmReadCache.digest("svc-b"));
     }
 }
