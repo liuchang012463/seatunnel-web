@@ -83,7 +83,7 @@ class RedisMetadataInventoryCacheTest {
         long oldComputedAt = System.currentTimeMillis() - SOFT_TTL_MS - 1_000L;
         RedisMetadataInventoryCache cache = newCache();
         stored.set(mapper.writeValueAsString(
-                new RedisMetadataInventoryCache.SnapshotEnvelope(oldComputedAt, payload(1L))));
+                new RedisMetadataInventoryCache.SnapshotEnvelope(oldComputedAt, 0L, payload(1L))));
 
         AtomicInteger builds = new AtomicInteger();
         InventorySnapshotPayload served = cache.getOrCompute("k", () -> {

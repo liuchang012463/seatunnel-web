@@ -18,13 +18,13 @@ import java.util.function.Supplier;
 /**
  * Redis-backed cache for data-inventory aggregate snapshots.
  *
- * <p>Entries are addressed by an epoch counter so invalidation is O(1):
- * {@link #invalidateAllSnapshots()} only increments {@code stweb:inv:epoch}
- * and old-epoch entries expire by TTL.  Within an entry, freshness is judged
- * by the stored {@code computedAt}: requests served after the soft TTL
- * receive the previous snapshot immediately while a background rebuild
- * refreshes it (stale-while-revalidate), so users never wait for an
- * OpenMetadata walk.</p>
+ * <p>Each snapshot lives under one key per filter digest, stamped with the
+ * invalidation epoch it was built for; invalidation is O(1) (increment of
+ * {@code stweb:inv:epoch}).  A snapshot is "fresh" while it is both current
+ * for the epoch and younger than the soft TTL.  Anything younger than the
+ * stale TTL — soft-expired or orphaned by later epoch bumps — is served
+ * immediately while a background rebuild refreshes it, so users never wait
+ * for an OpenMetadata walk; only a genuinely empty cache builds synchronously.</p>
  *
  * <p>Concurrent builds of the same key are deduplicated per process.  With
  * several backend instances the same rebuild may run twice; that wastes one
@@ -35,8 +35,6 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
 
     private static final String EPOCH_KEY = "stweb:inv:epoch";
     private static final String SNAPSHOT_PREFIX = "stweb:inv:snap:";
-    /** How many earlier epochs a miss may fall back to for a stale snapshot. */
-    private static final int EPOCH_LOOKBACK = 5;
 
     private final StringRedisMetadataStore store;
     private final long softTtlMs;
@@ -57,22 +55,18 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
     @Override
     public InventorySnapshotPayload getOrCompute(String key, Supplier<InventorySnapshotPayload> supplier) {
         String digest = digest(key);
-        SnapshotEnvelope cached = readSnapshot(currentEpoch(), digest);
-        if (cached != null && System.currentTimeMillis() - cached.computedAt() <= softTtlMs) {
+        long epoch = currentEpoch();
+        SnapshotEnvelope cached = readEnvelope(digest);
+        if (cached != null && isCurrent(cached, epoch)
+                && System.currentTimeMillis() - cached.computedAt() <= softTtlMs) {
             return cached.payload();
         }
-        if (cached != null) {
+        if (cached != null && withinStaleWindow(cached)) {
+            // Either soft-expired, or invalidated after later epoch bumps: the
+            // stored snapshot is still the freshest data available, so return
+            // it immediately and refresh off the request thread.
             startAsyncRebuild(key, supplier);
             return cached.payload();
-        }
-        // The epoch was bumped by an invalidation, so the snapshot for the
-        // current epoch is still being built.  Serve the newest snapshot of a
-        // previous epoch (it expires by the stale TTL) instead of making the
-        // caller wait for the walk; only a genuinely empty cache builds sync.
-        SnapshotEnvelope previous = readPreviousSnapshot(digest);
-        if (previous != null) {
-            startAsyncRebuild(key, supplier);
-            return previous.payload();
         }
         return compute(key, supplier);
     }
@@ -83,27 +77,23 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
         inFlight.clear();
     }
 
-    private SnapshotEnvelope readSnapshot(long epoch, String digest) {
-        String raw = store.getString(SNAPSHOT_PREFIX + epoch + ":" + digest).orElse(null);
+    private boolean isCurrent(SnapshotEnvelope cached, long epoch) {
+        return cached.epoch() != null && cached.epoch() == epoch;
+    }
+
+    private boolean withinStaleWindow(SnapshotEnvelope cached) {
+        return cached.computedAt() != null
+                && System.currentTimeMillis() - cached.computedAt() <= staleTtlMs;
+    }
+
+    private SnapshotEnvelope readEnvelope(String digest) {
+        String raw = store.getString(SNAPSHOT_PREFIX + digest).orElse(null);
         if (raw == null) {
             return null;
         }
         return store.<SnapshotEnvelope>readJson(raw, envelopeType())
                 .filter(envelope -> envelope.payload() != null)
                 .orElse(null);
-    }
-
-    /** Newest snapshot written under an earlier epoch, or null when too old. */
-    private SnapshotEnvelope readPreviousSnapshot(String digest) {
-        long epoch = currentEpoch();
-        for (int back = 1; back <= EPOCH_LOOKBACK && epoch - back >= 0; back++) {
-            SnapshotEnvelope candidate = readSnapshot(epoch - back, digest);
-            if (candidate != null
-                    && System.currentTimeMillis() - candidate.computedAt() <= staleTtlMs) {
-                return candidate;
-            }
-        }
-        return null;
     }
 
     private long currentEpoch() {
@@ -143,8 +133,8 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
             } catch (CompletionException ignored) {
                 // The other build failed; fall through and rebuild here.
             }
-            SnapshotEnvelope cached = readSnapshot(buildEpoch, digest);
-            if (cached != null) {
+            SnapshotEnvelope cached = readEnvelope(digest);
+            if (cached != null && isCurrent(cached, buildEpoch)) {
                 return cached.payload();
             }
         }
@@ -160,15 +150,15 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
     }
 
     /**
-     * Runs the supplier and stores the result under the epoch captured when
-     * the build started, so a build that raced an invalidation cannot present
-     * itself as fresh for the new epoch.
+     * Runs the supplier and stores the result stamped with the epoch captured
+     * when the build started, so a build that raced an invalidation cannot
+     * present itself as fresh for the new epoch.
      */
     private InventorySnapshotPayload storeSnapshot(
             long epoch, String digest, Supplier<InventorySnapshotPayload> supplier) {
         InventorySnapshotPayload value = supplier.get();
-        store.writeJson(new SnapshotEnvelope(System.currentTimeMillis(), value),
-                SNAPSHOT_PREFIX + epoch + ":" + digest,
+        store.writeJson(new SnapshotEnvelope(System.currentTimeMillis(), epoch, value),
+                SNAPSHOT_PREFIX + digest,
                 Duration.ofMillis(Math.max(staleTtlMs, 1_000L)));
         return value;
     }
@@ -186,7 +176,10 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
         }
     }
 
-    /** Stored envelope; freshness is judged by computedAt, expiry by Redis TTL. */
-    record SnapshotEnvelope(Long computedAt, InventorySnapshotPayload payload) {
+    /**
+     * Stored envelope; freshness is judged by computedAt, and epoch marks the
+     * invalidation generation the snapshot was built for.
+     */
+    record SnapshotEnvelope(Long computedAt, Long epoch, InventorySnapshotPayload payload) {
     }
 }
