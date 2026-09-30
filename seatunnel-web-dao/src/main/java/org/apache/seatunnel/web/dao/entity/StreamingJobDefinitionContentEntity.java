@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 
 
 @Data
+@EqualsAndHashCode(callSuper = false)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
