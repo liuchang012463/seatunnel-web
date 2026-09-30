@@ -196,13 +196,8 @@
     line-height: 1.6;
   }
 
-  .sync-task-name-cell__title,
-  .sync-task-name-cell__id {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
+  /* 标题必须是块级元素：flex 容器上 text-overflow 不生效，
+     长任务名会被硬切在列边界（半个字），而不是统一显示省略号。 */
   .sync-task-name-cell__title {
     max-width: 100%;
     overflow: hidden;
@@ -214,6 +209,9 @@
   }
 
   .sync-task-name-cell__id {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     margin-top: 2px;
     color: var(--st-color-text-muted);
     font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
@@ -326,14 +324,24 @@
     word-break: break-all;
   }
 
-  /* 内联指标组（DESIGN.md §5.3）：label 弱化、数值等宽右读，行高减半 */
+  /* 内联指标组（DESIGN.md §5.3）：label 弱化、数值等宽右读，行高减半。
+     指标固定成若干行（每个 __line 只占一行），行数不随数据长短变化，
+     否则同一列表里每个任务的行高都不一样。 */
   .task-metric-group {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 12px;
-    min-width: 140px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    min-width: 0;
     line-height: 20px;
+  }
+
+  .task-metric-group__line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    white-space: nowrap;
   }
 
   .task-metric-group__badge {
@@ -357,21 +365,26 @@
   }
 
   .task-metric {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 4px;
+    min-width: 0;
   }
 
   .task-metric__label {
+    flex: 0 0 auto;
     color: var(--st-color-text-muted);
     font-size: 12px;
   }
 
   .task-metric__value {
+    min-width: 0;
+    overflow: hidden;
     color: var(--st-color-text-primary);
     font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
     font-variant-numeric: tabular-nums;
     font-size: 12px;
+    text-overflow: ellipsis;
 
     &.is-success {
       color: var(--st-color-success);
@@ -385,9 +398,11 @@
   }
 
   .task-metric__link {
+    overflow: hidden;
     color: var(--st-color-accent);
     font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
     font-size: 12px;
+    text-overflow: ellipsis;
   }
 
   .sync-task-status-cell {
@@ -396,7 +411,6 @@
 
   .sync-task-time {
     display: inline-block;
-    min-width: 132px;
     color: var(--st-color-text-secondary);
     font-size: 12px;
     line-height: 20px;

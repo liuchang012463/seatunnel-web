@@ -7,6 +7,7 @@ import { useIntl } from '@umijs/max';
 import { fileIngestTaskApi, fileTransferTaskApi } from './api';
 import type { FileTaskType } from './types';
 import type { TaskSortField, TaskSortOrder } from '@/pages/common/components/TaskSortControls';
+import { TASK_TABLE_COLUMN_WIDTHS } from '@/pages/common/components/taskTableLayout';
 import AdvancedSearchForm, {
   TaskFilterOption,
 } from '@/pages/batch-link-up/components/SyncTaskList/components/AdvancedSearchForm';
@@ -154,7 +155,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '链路名称/ID',
         }),
         dataIndex: 'jobName',
-        width: 208,
+        width: TASK_TABLE_COLUMN_WIDTHS.name,
         ellipsis: true,
         sorter: true,
         sortOrder: sort.field === 'name' ? (sort.order === 'asc' ? 'ascend' : 'descend') : undefined,
@@ -188,7 +189,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '健康状态',
         }),
         dataIndex: 'lastJobStatus',
-        width: 112,
+        width: TASK_TABLE_COLUMN_WIDTHS.status,
         render: (_value: unknown, record: any) => (
           <div className="sync-task-status-cell flex w-full justify-center">
             <TaskStatus status={record?.lastJobStatus} errorMessage={record?.lastErrorMessage} />
@@ -201,7 +202,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '数据源同步方案',
         }),
         key: 'syncPlan',
-        width: 198,
+        width: TASK_TABLE_COLUMN_WIDTHS.plan,
         render: (_value: unknown, record: any) => <DataSourceSyncPlan record={record} />,
       },
       {
@@ -210,7 +211,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '执行概况',
         }),
         key: 'execution',
-        width: 156,
+        width: TASK_TABLE_COLUMN_WIDTHS.execution,
         render: (_value: unknown, record: any) => <ExecutionStatus record={record} />,
       },
       {
@@ -219,7 +220,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '链路动态调度',
         }),
         key: 'schedule',
-        width: 154,
+        width: TASK_TABLE_COLUMN_WIDTHS.schedule,
         render: (_value: unknown, record: any) => <ScheduleInfo record={record} />,
       },
       {
@@ -228,7 +229,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '创建时间',
         }),
         dataIndex: 'createTime',
-        width: 136,
+        width: TASK_TABLE_COLUMN_WIDTHS.createTime,
         sorter: true,
         sortOrder: sort.field === 'createTime' ? (sort.order === 'asc' ? 'ascend' : 'descend') : undefined,
         render: (value: string) => <span className="sync-task-time">{value || '-'}</span>,
@@ -239,7 +240,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
           defaultMessage: '操作',
         }),
         key: 'action',
-        width: 224,
+        width: TASK_TABLE_COLUMN_WIDTHS.action,
         fixed: 'right',
         render: (_value: unknown, record: any) => (
           <ActionColumn record={record} cbk={() => void fetchTaskList()} goDetail={goDetail} />

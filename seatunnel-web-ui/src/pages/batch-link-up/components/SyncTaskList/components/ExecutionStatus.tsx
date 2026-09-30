@@ -4,65 +4,76 @@ interface ExecutionStatusProps {
   record: any;
 }
 
-/** 执行概况内联指标组（DESIGN.md §5.3）：去掉逐行 label 冒号，等宽数字。 */
+/**
+ * 执行概况内联指标组（DESIGN.md §5.3）：去掉逐行 label 冒号，等宽数字。
+ *
+ * 指标按固定三行排布（自动/手动+耗时 · 行数+QPS · 大小），不依赖容器宽度自动折行：
+ * 自动折行会随数据长短产生 2~4 行，同一列表里每行高度不一致。
+ */
 const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
   const intl = useIntl();
   const isManual = record?.runMode === "MANUAL";
 
   return (
     <div className="task-metric-group">
-      <span
-        className={`task-metric-group__badge ${
-          isManual ? "is-manual" : "is-auto"
-        }`}
-      >
-        {isManual ? "手动" : "自动"}
-      </span>
-      <span className="task-metric">
-        <span className="task-metric__label">
-          {intl.formatMessage({
-            id: "pages.job.execution.time",
-            defaultMessage: "耗时",
-          })}
+      <div className="task-metric-group__line">
+        <span
+          className={`task-metric-group__badge ${
+            isManual ? "is-manual" : "is-auto"
+          }`}
+        >
+          {isManual ? "手动" : "自动"}
         </span>
-        <span className="task-metric__value">
-          {record?.duration || "-"}
-          {intl.formatMessage({
-            id: "pages.job.execution.unit.seconds",
-            defaultMessage: "s",
-          })}
+        <span className="task-metric">
+          <span className="task-metric__label">
+            {intl.formatMessage({
+              id: "pages.job.execution.time",
+              defaultMessage: "耗时",
+            })}
+          </span>
+          <span className="task-metric__value">
+            {record?.duration || "-"}
+            {intl.formatMessage({
+              id: "pages.job.execution.unit.seconds",
+              defaultMessage: "s",
+            })}
+          </span>
         </span>
-      </span>
-      <span className="task-metric">
-        <span className="task-metric__label">
-          {intl.formatMessage({
-            id: "pages.job.execution.amount",
-            defaultMessage: "行数",
-          })}
+      </div>
+      <div className="task-metric-group__line">
+        <span className="task-metric">
+          <span className="task-metric__label">
+            {intl.formatMessage({
+              id: "pages.job.execution.amount",
+              defaultMessage: "行数",
+            })}
+          </span>
+          <span className="task-metric__value">
+            {record?.readRowCount ?? 0}
+          </span>
         </span>
-        <span className="task-metric__value">
-          {record?.readRowCount ?? 0}
+        <span className="task-metric">
+          <span className="task-metric__label">QPS</span>
+          <span className="task-metric__value">
+            {record?.qps ?? 0}
+            {intl.formatMessage({
+              id: "pages.job.execution.unit.rowsPerSecond",
+              defaultMessage: "行/秒",
+            })}
+          </span>
         </span>
-      </span>
-      <span className="task-metric">
-        <span className="task-metric__label">QPS</span>
-        <span className="task-metric__value">
-          {record?.qps ?? 0}
-          {intl.formatMessage({
-            id: "pages.job.execution.unit.rowsPerSecond",
-            defaultMessage: "行/秒",
-          })}
+      </div>
+      <div className="task-metric-group__line">
+        <span className="task-metric">
+          <span className="task-metric__label">
+            {intl.formatMessage({
+              id: "pages.job.execution.size",
+              defaultMessage: "大小",
+            })}
+          </span>
+          <span className="task-metric__value">{record?.syncSize || "-"}</span>
         </span>
-      </span>
-      <span className="task-metric">
-        <span className="task-metric__label">
-          {intl.formatMessage({
-            id: "pages.job.execution.size",
-            defaultMessage: "大小",
-          })}
-        </span>
-        <span className="task-metric__value">{record?.syncSize || "-"}</span>
-      </span>
+      </div>
     </div>
   );
 };

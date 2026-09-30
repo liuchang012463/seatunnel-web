@@ -6,6 +6,7 @@ import React from "react";
 import { CopyOutlined } from "@ant-design/icons";
 
 import type { TaskSortField, TaskSortOrder } from "@/pages/common/components/TaskSortControls";
+import { TASK_TABLE_COLUMN_WIDTHS } from "@/pages/common/components/taskTableLayout";
 import DataSourceSyncPlan from "@/pages/batch-link-up/components/SyncTaskList/components/DataSourceSyncPlan";
 import ScheduleInfo from "@/pages/batch-link-up/components/SyncTaskList/components/ScheduleInfo";
 import ExecutionStatus from "@/pages/batch-link-up/components/SyncTaskList/components/ExecutionStatus";
@@ -101,7 +102,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "链路名称/ID",
       }),
       dataIndex: "jobName",
-      width: 208,
+      width: TASK_TABLE_COLUMN_WIDTHS.name,
       ellipsis: true,
       sorter: true,
       sortOrder: sort?.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
@@ -137,7 +138,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "健康状态",
       }),
       dataIndex: "taskParams",
-      width: 110,
+      width: TASK_TABLE_COLUMN_WIDTHS.status,
       render: (_content, record) => (
         <div className="stream-link-status-cell">
           <TaskStatus
@@ -154,7 +155,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "数据源同步方案",
       }),
       dataIndex: "",
-      width: 198,
+      width: TASK_TABLE_COLUMN_WIDTHS.plan,
       ellipsis: true,
       render: (_content, record) => (
         <div className="sync-task-plan-cell">
@@ -169,7 +170,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "执行概况",
       }),
       dataIndex: "",
-      width: 156,
+      width: TASK_TABLE_COLUMN_WIDTHS.execution,
       render: (_content, record) => <ExecutionStatus record={record} />,
     },
     {
@@ -179,7 +180,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "链路动态调度",
       }),
       dataIndex: "",
-      width: 154,
+      width: TASK_TABLE_COLUMN_WIDTHS.schedule,
       render: (_content, record) => <ScheduleInfo record={record} />,
     },
     {
@@ -191,7 +192,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       dataIndex: "createTime",
       sorter: true,
       sortOrder: sort?.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
-      width: 136,
+      width: TASK_TABLE_COLUMN_WIDTHS.createTime,
       ellipsis: true,
       render: (value: string | undefined) => (
         <span className="sync-task-time">{formatDateTime(value)}</span>
@@ -204,7 +205,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         defaultMessage: "操作",
       }),
       dataIndex: "",
-      width: 224,
+      width: TASK_TABLE_COLUMN_WIDTHS.action,
       fixed: "right",
       render: (_content, record) => (
         <RealtimeTaskActionColumn
@@ -245,7 +246,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       rowSelection={{
         selectedRowKeys,
         onChange: onSelectedRowKeysChange,
-        columnWidth: 42,
+        columnWidth: TASK_TABLE_COLUMN_WIDTHS.selection,
         getCheckboxProps: (record) => ({
           'aria-label': `选择任务 ${record?.jobName || record?.id || ''}`,
         } as any),

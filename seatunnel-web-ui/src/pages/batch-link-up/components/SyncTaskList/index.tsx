@@ -10,6 +10,7 @@ import BatchCreateJobModal, {
   BatchCreateValues,
 } from "@/pages/common/components/BatchCreateJobModal";
 import type { TaskSortField, TaskSortOrder } from "@/pages/common/components/TaskSortControls";
+import { TASK_TABLE_COLUMN_WIDTHS } from "@/pages/common/components/taskTableLayout";
 import { batchJobExecutorApi } from "../../type";
 import ActionColumn from "./components/ActionColumn";
 import AdvancedSearchForm from "./components/AdvancedSearchForm";
@@ -244,7 +245,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Name",
       }),
       dataIndex: "jobName",
-      width: 208,
+      width: TASK_TABLE_COLUMN_WIDTHS.name,
       ellipsis: true,
       sorter: true,
       sortOrder: sort.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
@@ -278,7 +279,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Status",
       }),
       dataIndex: "taskParams",
-      width: 112,
+      width: TASK_TABLE_COLUMN_WIDTHS.status,
       render: (_content: any, record: any) => (
         <div className="sync-task-status-cell flex w-full justify-center">
           <TaskStatus
@@ -294,7 +295,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Sync Plan",
       }),
       dataIndex: "",
-      width: 198,
+      width: TASK_TABLE_COLUMN_WIDTHS.plan,
       render: (_content: any, record: any) => (
         <div className="sync-task-plan-cell">
           <DataSourceSyncPlan record={record} />
@@ -307,7 +308,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Execution",
       }),
       dataIndex: "执行概况",
-      width: 156,
+      width: TASK_TABLE_COLUMN_WIDTHS.execution,
       render: (_content: any, record: any) => <ExecutionStatus record={record} />,
     },
     {
@@ -316,7 +317,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Schedule",
       }),
       dataIndex: "taskName",
-      width: 154,
+      width: TASK_TABLE_COLUMN_WIDTHS.schedule,
       render: (_content: any, record: any) => <ScheduleInfo record={record} />,
     },
     {
@@ -325,7 +326,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "CreateTime",
       }),
       dataIndex: "createTime",
-      width: 136,
+      width: TASK_TABLE_COLUMN_WIDTHS.createTime,
       sorter: true,
       sortOrder: sort.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (createTime: string) => (
@@ -338,7 +339,7 @@ const App: React.FC<Props> = ({
         defaultMessage: "Operate",
       }),
       dataIndex: "",
-      width: 224,
+      width: TASK_TABLE_COLUMN_WIDTHS.action,
       fixed: "right",
       render: (_content: any, record: any) => (
         <ActionColumn record={record} cbk={fetchTaskList} goDetail={goDetail} />
@@ -827,7 +828,7 @@ const App: React.FC<Props> = ({
             pagination={false}
             loading={loading}
             tableLayout="fixed"
-            rowSelection={{ ...rowSelection, type: "checkbox", columnWidth: 44 }}
+            rowSelection={{ ...rowSelection, type: "checkbox", columnWidth: TASK_TABLE_COLUMN_WIDTHS.selection }}
             onChange={(_pagination, _filters, sorter) => {
               const active = Array.isArray(sorter) ? sorter[0] : sorter;
               if (!active?.order) return;
