@@ -143,14 +143,17 @@ describe('data source service', () => {
     expect(HttpUtils.get).toHaveBeenNthCalledWith(
       1,
       '/api/v1/data-exploration/databases?dataSourceId=42',
+      { timeout: 60000 },
     );
     expect(HttpUtils.get).toHaveBeenNthCalledWith(
       2,
       '/api/v1/data-exploration/schemas?dataSourceId=42&databaseFqn=st_ds_42.orders',
+      { timeout: 60000 },
     );
     expect(HttpUtils.get).toHaveBeenNthCalledWith(
       3,
       '/api/v1/data-exploration/tables?dataSourceId=42&databaseFqn=st_ds_42.orders&schemaFqn=st_ds_42.orders.public&pageNo=1&pageSize=20',
+      { timeout: 60000 },
     );
     expect(HttpUtils.get).toHaveBeenNthCalledWith(
       4,
