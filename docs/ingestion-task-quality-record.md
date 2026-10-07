@@ -169,3 +169,4 @@ Luna Max 复审发现 HOCON 预览原先可能返回 ES API key/TLS 密码、HTT
 - 未添加新的持久数据源记录，未保留测试 Engine 作业或数据表；没有执行 Compose、容器部署或重启。
 - 先前四类任务端到端记录仍有效；其专用连接、表、任务和文件资源已按上文清理记录处理。本补记没有重新运行这四类任务，因此不把列表页和指标页复核当作端到端运行证据。
 - 只读检查了 `/mnt/lc` 和 `91:/root/lc` 中的部署清单；本机可见 MySQL、PostgreSQL、Oracle、Kafka、Elasticsearch、Doris、MinIO 等测试服务，91 上有 Kingbase 相关部署文件，两个位置均未发现 ZeoneDB 安装包、服务或 JDBC 驱动。本次没有修改这些部署。
+- 追补 Kafka 只读探测：本机 `kafka0` 容器状态为 running，映射端口 19092 接受 TCP 连接；使用容器内配置的 SASL PLAIN 测试凭据执行 topic 列举请求，15 秒内未返回。该结果只证明端口可达，不能证明认证、topic 元数据或 SeaTunnel Engine 可用；未修改或重启容器。
