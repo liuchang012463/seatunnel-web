@@ -674,7 +674,9 @@ public class JobMetricsServiceImpl implements JobMetricsService {
 
             item.setDate(String.valueOf(row.get("date")));
 
-            long raw = toLong(row.get("value"));
+            double raw = kind == UnitKind.RAW
+                    ? toDouble(row.get("value"))
+                    : toLong(row.get("value"));
             double shown = raw / scale.getFactor();
 
             item.setValue(round2(shown));
@@ -688,6 +690,25 @@ public class JobMetricsServiceImpl implements JobMetricsService {
 
     private double round2(double value) {
         return Math.round(value * 100.0) / 100.0;
+    }
+
+    private double toDouble(Object value) {
+        if (value == null) {
+            return 0d;
+        }
+
+        try {
+            if (value instanceof Number) {
+                return ((Number) value).doubleValue();
+            }
+
+            String str = String.valueOf(value).trim();
+            return str.isEmpty() || "null".equalsIgnoreCase(str)
+                    ? 0d
+                    : Double.parseDouble(str);
+        } catch (Exception e) {
+            return 0d;
+        }
     }
 
     private TimeWindow parseTimeRange(TimeRange timeRange) {
