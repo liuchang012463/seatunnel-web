@@ -1,22 +1,22 @@
 import React from "react";
 import { BulbOutlined } from "@ant-design/icons";
 import { Typography } from "antd";
-import { BLUE, TEXT_SECONDARY } from "../constants/ui";
+import { BLUE } from "../constants/ui";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const PageHeader: React.FC = () => {
   return (
     <div
       style={{
         display: "flex",
-        alignItems: "flex-start",
+        alignItems: "center",
         justifyContent: "space-between",
         gap: 16,
-        marginBottom: 20,
+        marginBottom: 16,
       }}
     >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <div
           style={{
             width: 48,
@@ -46,16 +46,6 @@ const PageHeader: React.FC = () => {
           >
             知识管理
           </Title>
-          <Text
-            style={{
-              display: "block",
-              marginTop: 4,
-              color: TEXT_SECONDARY,
-              fontSize: 14,
-            }}
-          >
-            统一维护参数解释、时间变量与规则配置，帮助系统更准确地生成任务配置。
-          </Text>
         </div>
       </div>
     </div>

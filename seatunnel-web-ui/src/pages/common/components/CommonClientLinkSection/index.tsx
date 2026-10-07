@@ -484,6 +484,8 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
     source?: string;
     target?: string;
   }>({});
+  const connectivityRequestIdRef = useRef({ source: 0, target: 0 });
+  const dataSourceOptionsRequestIdRef = useRef({ source: 0, target: 0 });
 
   const sourceDataSourceTypeOptions = useMemo(
     () => customSourceTypeOptions ?? generateSourceDataSourceOptions(),
@@ -510,14 +512,26 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   const [confirmLoading, setConfirmLoading] = useState(false);
 
   const resetSourceTestStatus = useCallback(() => {
+    connectivityRequestIdRef.current.source += 1;
     setSourceTestStatus("idle");
     setSourceVerifyItems([]);
   }, [setSourceTestStatus]);
 
   const resetTargetTestStatus = useCallback(() => {
+    connectivityRequestIdRef.current.target += 1;
     setTargetTestStatus("idle");
     setTargetVerifyItems([]);
   }, [setTargetTestStatus]);
+
+  useEffect(
+    () => () => {
+      connectivityRequestIdRef.current.source += 1;
+      connectivityRequestIdRef.current.target += 1;
+      dataSourceOptionsRequestIdRef.current.source += 1;
+      dataSourceOptionsRequestIdRef.current.target += 1;
+    },
+    []
+  );
 
   const loadClientOptions = useCallback(async () => {
     try {
@@ -542,7 +556,9 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
 
   const loadSourceOptions = useCallback(
     async (dbType?: string) => {
+      const requestId = ++dataSourceOptionsRequestIdRef.current.source;
       if (sourceManaged) {
+        setSourceLoading(false);
         setSourceDataSources([]);
         setSourceDataSourceId(undefined);
         form.setFieldValue("sourceId", undefined);
@@ -551,6 +567,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
         return [];
       }
       if (!dbType) {
+        setSourceLoading(false);
         setSourceDataSources([]);
         setSourceDataSourceId(undefined);
         form.setFieldValue("sourceId", undefined);
@@ -559,21 +576,30 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
         return [];
       }
 
+      setSourceDataSources([]);
       try {
         setSourceLoading(true);
 
         const res = await fetchDataSourceOptions(dbType);
         const nextData = Array.isArray(res?.data) ? res.data : [];
 
+        if (dataSourceOptionsRequestIdRef.current.source !== requestId) {
+          return [];
+        }
         setSourceDataSources(nextData);
         return nextData;
       } catch (error) {
+        if (dataSourceOptionsRequestIdRef.current.source !== requestId) {
+          return [];
+        }
         console.error("加载来源数据源失败:", error);
         setSourceDataSources([]);
         message.error("加载来源数据源失败");
         return [];
       } finally {
-        setSourceLoading(false);
+        if (dataSourceOptionsRequestIdRef.current.source === requestId) {
+          setSourceLoading(false);
+        }
       }
     },
     [form, resetSourceTestStatus, setSourceDataSourceId, sourceManaged]
@@ -581,7 +607,9 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
 
   const loadTargetOptions = useCallback(
     async (dbType?: string) => {
+      const requestId = ++dataSourceOptionsRequestIdRef.current.target;
       if (!dbType) {
+        setTargetLoading(false);
         setTargetDataSources([]);
         setTargetDataSourceId(undefined);
         form.setFieldValue("targetId", undefined);
@@ -590,21 +618,30 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
         return [];
       }
 
+      setTargetDataSources([]);
       try {
         setTargetLoading(true);
 
         const res = await fetchDataSourceOptions(dbType);
         const nextData = Array.isArray(res?.data) ? res.data : [];
 
+        if (dataSourceOptionsRequestIdRef.current.target !== requestId) {
+          return [];
+        }
         setTargetDataSources(nextData);
         return nextData;
       } catch (error) {
+        if (dataSourceOptionsRequestIdRef.current.target !== requestId) {
+          return [];
+        }
         console.error("加载目标数据源失败:", error);
         setTargetDataSources([]);
         message.error("加载目标数据源失败");
         return [];
       } finally {
-        setTargetLoading(false);
+        if (dataSourceOptionsRequestIdRef.current.target === requestId) {
+          setTargetLoading(false);
+        }
       }
     },
     [form, resetTargetTestStatus, setTargetDataSourceId]
@@ -679,6 +716,9 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
       }
 
       const startedAt = Date.now();
+      const requestId = ++connectivityRequestIdRef.current[type];
+      const isCurrentRequest = () =>
+        connectivityRequestIdRef.current[type] === requestId;
       const triggerMode = options?.triggerMode || "MANUAL";
 
       const minLoadingDuration =
@@ -698,6 +738,8 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
       }
 
       const showLoading = () => {
+        if (!isCurrentRequest()) return;
+
         if (type === "source") {
           setSourceTestStatus("loading");
           if (!isAuto) setSourceVerifyItems([]);
@@ -739,12 +781,16 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
           clearTimeout(loadingTimer);
         }
 
+        if (!isCurrentRequest()) return false;
+
         const elapsed = Date.now() - startedAt;
         const remain = minLoadingDuration - elapsed;
 
         if (remain > 0) {
           await sleep(remain);
         }
+
+        if (!isCurrentRequest()) return false;
 
         const success = !!res?.data?.success;
         const items = Array.isArray(res?.data?.items) ? res.data.items : [];
@@ -767,12 +813,16 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
           clearTimeout(loadingTimer);
         }
 
+        if (!isCurrentRequest()) return false;
+
         const elapsed = Date.now() - startedAt;
         const remain = minLoadingDuration - elapsed;
 
         if (remain > 0) {
           await sleep(remain);
         }
+
+        if (!isCurrentRequest()) return false;
 
         const errorItem: VerifyItem = {
           code: "REQUEST_ERROR",
@@ -1192,6 +1242,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
             </div>
           </div>
 
+          <Form form={form} layout="vertical">
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 xl:gap-6">
             <SectionCard
               title={sourceTitle}
@@ -1214,8 +1265,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                 </Button>
               ) : undefined}
             >
-              <Form form={form} layout="vertical">
-                <div className="space-y-4">
+              <div className="space-y-4">
                   <Form.Item name="sourceType" label="数据源类型" required>
                     <Select
                       value={sourceType?.dbType}
@@ -1243,8 +1293,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                       </div>
                     </div>
                   ) : renderDataSourceSelect("source")}
-                </div>
-              </Form>
+              </div>
             </SectionCard>
 
             <SectionCard
@@ -1312,8 +1361,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                 </Button>
               }
             >
-              <Form form={form} layout="vertical">
-                <div className="space-y-4">
+              <div className="space-y-4">
                   <Form.Item name="targetType" label="数据源类型" required>
                     <Select
                       value={targetType?.dbType}
@@ -1332,10 +1380,10 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                   </Form.Item>
 
                   {renderDataSourceSelect("target")}
-                </div>
-              </Form>
+              </div>
             </SectionCard>
           </div>
+          </Form>
         </div>
       </div>
 

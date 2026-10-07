@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.api.service.StreamingJobDefinitionService;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
 import org.apache.seatunnel.web.api.service.StreamingJobMetricsService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
+import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
 import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
@@ -190,7 +191,7 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
                 );
             }
 
-            return hocon;
+            return HoconSensitiveMaskUtil.maskSensitiveInfo(hocon);
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {

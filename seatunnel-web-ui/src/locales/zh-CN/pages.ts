@@ -270,6 +270,8 @@ export default {
   'pages.job.config.source.extraParams.tip': '配置额外的自定义参数',
 
   'pages.quality.preview.title': '数据预览（最多展示10条数据）',
+  'pages.quality.preview.desc': '预览当前查询结果中的样例数据',
+  'pages.quality.preview.empty': '暂无预览数据',
 
   'pages.job.config.sourceFields.title': '字段信息',
   'pages.job.config.sourceFields.col.index': '编号',

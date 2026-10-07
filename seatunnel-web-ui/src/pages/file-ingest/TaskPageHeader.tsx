@@ -6,7 +6,6 @@ import TaskListPageHeader from '@/components/TaskListPageHeader';
 interface TaskPageHeaderProps {
   icon: ReactNode;
   title: string;
-  subtitle: ReactNode;
   createText: string;
   onCreate: () => void;
 }
@@ -14,14 +13,12 @@ interface TaskPageHeaderProps {
 const TaskPageHeader: React.FC<TaskPageHeaderProps> = ({
   icon,
   title,
-  subtitle,
   createText,
   onCreate,
 }) => (
   <TaskListPageHeader
     icon={icon}
     title={title}
-    subtitle={subtitle}
     actions={
       <Button
         type="primary"

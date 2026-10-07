@@ -50,6 +50,7 @@ const DetailPage = () => {
   if (!params) {
     // 深链兜底态：任务数据经列表页缓存进入，缺失时给页壳 + 返回 + 引导（审计 G10）。
     return (
+      <Form form={form} layout="vertical">
       <div
         style={{
           display: "flex",
@@ -69,6 +70,7 @@ const DetailPage = () => {
           返回任务列表
         </Button>
       </div>
+      </Form>
     );
   }
 
@@ -219,8 +221,13 @@ const DetailPage = () => {
           style={{ height: "calc(100vh - 260px)", overflow: "auto" }}
         >
           <Form form={form} layout="vertical">
-            <div className="overflow-hidden rounded-[24px] border border-[#EAECF0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-              {isBaseStep && (
+            <div
+              className={[
+                "overflow-hidden rounded-[24px] border border-[#EAECF0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]",
+                activeStep === "base" ? "" : "hidden",
+              ].join(" ")}
+            >
+              {activeStep === "base" && (
                 <BaseInfoSection
                   sourceType={sourceType}
                   targetType={targetType}
@@ -230,32 +237,34 @@ const DetailPage = () => {
                   setMode={handleModeChange}
                 />
               )}
-
-              {isClientStep && (
-                <ClientLinkSection
-                  sectionRef={clientSectionRef}
-                  activeStep={activeStep}
-                  sourceType={sourceType}
-                  targetType={targetType}
-                  sourceLabel={sourceLabel}
-                  targetLabel={targetLabel}
-                  clientId={clientId}
-                  setClientId={setClientId}
-                  handleSourceChange={handleSourceChange}
-                  handleTargetChange={handleTargetChange}
-                  sourceDataSourceId={sourceDataSourceId}
-                  targetDataSourceId={targetDataSourceId}
-                  setSourceDataSourceId={setSourceDataSourceId}
-                  setTargetDataSourceId={setTargetDataSourceId}
-                  sourceTestStatus={sourceTestStatus}
-                  targetTestStatus={targetTestStatus}
-                  setSourceTestStatus={setSourceTestStatus}
-                  setTargetTestStatus={setTargetTestStatus}
-                  sourceManaged={sourceManaged}
-                />
-              )}
             </div>
           </Form>
+
+          {activeStep === "client" && (
+            <div className="overflow-hidden rounded-[24px] border border-[#EAECF0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <ClientLinkSection
+                sectionRef={clientSectionRef}
+                activeStep={activeStep}
+                sourceType={sourceType}
+                targetType={targetType}
+                sourceLabel={sourceLabel}
+                targetLabel={targetLabel}
+                clientId={clientId}
+                setClientId={setClientId}
+                handleSourceChange={handleSourceChange}
+                handleTargetChange={handleTargetChange}
+                sourceDataSourceId={sourceDataSourceId}
+                targetDataSourceId={targetDataSourceId}
+                setSourceDataSourceId={setSourceDataSourceId}
+                setTargetDataSourceId={setTargetDataSourceId}
+                sourceTestStatus={sourceTestStatus}
+                targetTestStatus={targetTestStatus}
+                setSourceTestStatus={setSourceTestStatus}
+                setTargetTestStatus={setTargetTestStatus}
+                sourceManaged={sourceManaged}
+              />
+            </div>
+          )}
         </div>
       </div>
 

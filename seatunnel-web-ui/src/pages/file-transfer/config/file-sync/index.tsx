@@ -3,69 +3,14 @@ import { App, Empty, Spin } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import FileWorkflow from '@/pages/batch-link-up/config/file-sync/FileWorkflow';
 import { fileTransferTaskApi } from '../../../file-ingest/api';
-import { FILE_RESOURCE_SOURCE, fileTaskDraftKey } from '../../../file-ingest/types';
+import { fileTaskDraftKey } from '../../../file-ingest/types';
 import {
   defaultScheduleConfig,
   mergeEnvConfig,
   mergeScheduleConfig,
-  normalizeWorkflowGraph,
 } from '../../../file-ingest/config/runtime';
+import { buildPageParams, defaultTargetType } from './pageParams';
 import '../../index.less';
-
-const defaultTargetType = {
-  dbType: 'FTP',
-  connectorType: 'FtpFile',
-  pluginName: 'FtpFile',
-};
-
-const sourceTypeFromData = (data: any) => {
-  const sourceNode = data?.workflow?.nodes?.find((node: any) => node?.data?.nodeType === 'source');
-  const sourceConfig = sourceNode?.data?.config || {};
-  const sourceMode = String(sourceConfig?.sourceMode || '').toUpperCase();
-  if (sourceMode === 'WEB_UPLOAD' || sourceMode === 'FILE_RESOURCE') return FILE_RESOURCE_SOURCE;
-  return data?.workflow?.sourceType || {
-    dbType: sourceConfig?.dbType || 'FTP',
-    connectorType: sourceConfig?.connectorType || 'FtpFile',
-    pluginName: sourceConfig?.pluginName || 'FtpFile',
-  };
-};
-
-const buildPageParams = (data: any, id: string, scene: 'create' | 'edit') => {
-  const sourceType = scene === 'create' ? FILE_RESOURCE_SOURCE : sourceTypeFromData(data);
-  const targetType = data?.targetType || data?.workflow?.targetType || defaultTargetType;
-  return {
-    ...data,
-    id,
-    taskType: 'FILE_TRANSFER',
-    mode: 'FILE_SYNC',
-    runtimeType: 'BATCH',
-    sourceType,
-    targetType,
-    workflow: normalizeWorkflowGraph(
-      data?.workflow,
-      'FILE_TRANSFER',
-      sourceType,
-      targetType,
-      data?.sourceDataSourceId,
-      data?.targetDataSourceId,
-    ),
-    __pageScene: scene,
-    state:
-      scene === 'edit'
-        ? {
-            editorSyncState: 'SYNCED',
-            releaseState: data?.releaseState || data?.state?.releaseState || 'OFFLINE',
-            jobVersion: data?.jobVersion ?? data?.state?.jobVersion ?? null,
-            contentVersion: data?.contentVersion ?? data?.state?.contentVersion ?? null,
-          }
-        : {
-            editorSyncState: 'UNPUBLISHED',
-            releaseState: 'OFFLINE',
-            jobVersion: null,
-            contentVersion: null,
-          },
-  };
-};
 
 const FileTransferConfigPage: React.FC = () => {
   const { message } = App.useApp();
@@ -80,7 +25,7 @@ const FileTransferConfigPage: React.FC = () => {
     mode: 'FILE_SYNC',
     taskType: 'FILE_TRANSFER',
     sourceType: 'FILE_RESOURCE',
-    targetType: 'FTP',
+    targetType: 'MINIO',
   });
   const [scheduleConfig, setScheduleConfig] = useState(defaultScheduleConfig);
   const [envConfig, setEnvConfig] = useState(mergeEnvConfig());
@@ -111,7 +56,7 @@ const FileTransferConfigPage: React.FC = () => {
           mode: 'FILE_SYNC',
           taskType: 'FILE_TRANSFER',
           sourceType: nextParams.sourceType?.dbType,
-          targetType: nextParams.targetType?.dbType || 'FTP',
+          targetType: nextParams.targetType?.dbType || 'MINIO',
         });
         setScheduleConfig(mergeScheduleConfig(data?.schedule));
         setEnvConfig(mergeEnvConfig(data?.env));
@@ -138,7 +83,7 @@ const FileTransferConfigPage: React.FC = () => {
           mode: 'FILE_SYNC',
           taskType: 'FILE_TRANSFER',
           sourceType: nextParams.sourceType?.dbType,
-          targetType: nextParams.targetType?.dbType || 'FTP',
+          targetType: nextParams.targetType?.dbType || 'MINIO',
         });
         setScheduleConfig(mergeScheduleConfig(data?.schedule));
         setEnvConfig(mergeEnvConfig(data?.env));

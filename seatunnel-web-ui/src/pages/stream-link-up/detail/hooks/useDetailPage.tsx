@@ -58,9 +58,7 @@ export default function useDetailPage() {
     const currentMode = data?.mode || "GUIDE_SINGLE";
 
     form.setFieldsValue({
-      jobName:
-        data?.jobName ||
-        `${data?.sourceType?.dbType?.toLowerCase()}2${data?.targetType?.dbType?.toLowerCase()}`,
+      jobName: data?.jobName || '',
       description: data?.description || "",
       mode: currentMode,
     });
@@ -85,6 +83,8 @@ export default function useDetailPage() {
       connectorType: option?.connectorType,
       pluginName: option?.pluginName,
     });
+    setSourceDataSourceId(undefined);
+    setSourceTestStatus('idle');
   };
 
   const handleTargetChange = (value: string, option: any) => {
@@ -93,6 +93,8 @@ export default function useDetailPage() {
       connectorType: option?.connectorType,
       pluginName: option?.pluginName,
     });
+    setTargetDataSourceId(undefined);
+    setTargetTestStatus('idle');
   };
 
   const handleModeChange = (value: string) => {

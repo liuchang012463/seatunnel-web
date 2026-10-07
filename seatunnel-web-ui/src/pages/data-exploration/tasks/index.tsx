@@ -587,7 +587,6 @@ const DataExplorationTasksPage: React.FC = () => {
       <TaskListPageHeader
         icon={<PlayCircleOutlined />}
         title="探查任务配置"
-        subtitle="按数据源配置一次性探查任务；本页不包含定时调度，执行后可在结果展示页查看结构与画像。"
         actions={<Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button>}
       />
 

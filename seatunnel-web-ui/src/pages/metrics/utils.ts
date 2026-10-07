@@ -8,6 +8,11 @@ export const transformChartData = (trendData: ChartDataItem[], timeRange: TimeRa
   };
 };
 
+export const calculateSuccessRate = (successTasks: number, completedTasks: number) => {
+  if (completedTasks <= 0) return null;
+  return Math.round((successTasks / completedTasks) * 100);
+};
+
 export const timeRangeMap = {
   '最近12小时': 'H12' as TimeRange,
   '最近一周': 'D7' as TimeRange,
@@ -16,7 +21,7 @@ export const timeRangeMap = {
 
 export const taskTypeOptions = [
   { label: '批量数据引接', value: 'BATCH' },
-  { label: '实时数据引接', value: 'STREAM', disabled: true },
-  { label: '离线文件导入', value: 'FILE_INGEST', disabled: true },
-  { label: '文件同步任务', value: 'FILE_TRANSFER', disabled: true },
+  { label: '实时数据引接', value: 'STREAM' },
+  { label: '离线文件导入', value: 'FILE_INGEST' },
+  { label: '文件同步任务', value: 'FILE_TRANSFER' },
 ];

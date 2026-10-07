@@ -1,10 +1,15 @@
 package org.apache.seatunnel.plugin.datasource.mysql.cdc;
 
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import org.apache.seatunnel.plugin.datasource.api.cdc.CdcDatasourcePrecheckProvider;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
+import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.SourceOptionRule;
 import org.apache.seatunnel.plugin.datasource.mysql.cdc.builder.MysqlCdcSourceBuilder;
 import org.apache.seatunnel.plugin.datasource.mysql.cdc.option.MySQLCDCSourceOptionRule;
+import org.apache.seatunnel.web.common.config.ConfigValidator;
+import org.apache.seatunnel.web.common.config.ReadonlyConfig;
 import org.junit.jupiter.api.Test;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
@@ -12,6 +17,7 @@ import java.util.List;
 import java.util.ServiceLoader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,6 +42,38 @@ class MysqlCdcServiceLoaderTest {
     @Test
     void sourceOptionRuleExposesUppercasePluginName() {
         assertEquals("MYSQL-CDC", new MySQLCDCSourceOptionRule().pluginName());
+    }
+
+    @Test
+    void sourceConfigIncludesRequiredJdbcUrlAndOnlyDocumentedConnectionFields() {
+        Config connection = ConfigFactory.parseString("""
+                url = "jdbc:mysql://127.0.0.1:3306/testdb"
+                username = "test_user"
+                password = "test_password"
+                hostname = "127.0.0.1"
+                port = 3306
+                database = "testdb"
+                """);
+        Config node = ConfigFactory.parseString("""
+                table = "testdb.orders"
+                tableNames = ["testdb.orders"]
+                startupMode = "initial"
+                serverId = "5400-5408"
+                serverTimeZone = "Asia/Shanghai"
+                """);
+
+        Config source = new MysqlCdcSourceBuilder().buildSourceHocon(HoconBuildContext.builder()
+                .connectionParam(connection.root().render())
+                .connectionConfig(connection)
+                .nodeConfig(node)
+                .build());
+
+        assertEquals("jdbc:mysql://127.0.0.1:3306/testdb", source.getString("url"));
+        assertTrue(source.hasPath("table-names"));
+        assertFalse(source.hasPath("hostname"));
+        assertFalse(source.hasPath("port"));
+        ConfigValidator.of(ReadonlyConfig.fromConfig(source))
+                .validate(new MySQLCDCSourceOptionRule().sourceOptionRule());
     }
 
     @Test

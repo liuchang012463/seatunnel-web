@@ -4,7 +4,6 @@ import "./index.less";
 type TaskListPageHeaderProps = {
   icon: React.ReactNode;
   title: React.ReactNode;
-  subtitle: React.ReactNode;
   actions?: React.ReactNode;
   children?: React.ReactNode;
   className?: string;
@@ -13,7 +12,6 @@ type TaskListPageHeaderProps = {
 const TaskListPageHeader: React.FC<TaskListPageHeaderProps> = ({
   icon,
   title,
-  subtitle,
   actions,
   children,
   className = "",
@@ -30,7 +28,6 @@ const TaskListPageHeader: React.FC<TaskListPageHeaderProps> = ({
 
           <div className="task-list-page-header__text">
             <h1 className="task-list-page-header__title">{title}</h1>
-            <p className="task-list-page-header__subtitle">{subtitle}</p>
           </div>
         </div>
 

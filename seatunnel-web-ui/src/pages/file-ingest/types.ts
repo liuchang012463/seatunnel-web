@@ -79,7 +79,6 @@ export interface FileTaskDetailConfig {
   listPath: string;
   configPath: string;
   title: string;
-  description: string;
   sourceOptions: Array<{
     value: string;
     label: React.ReactNode;

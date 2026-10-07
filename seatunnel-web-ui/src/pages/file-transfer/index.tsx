@@ -24,7 +24,7 @@ const FileTransferPage: React.FC = () => {
           taskType: 'FILE_TRANSFER',
           mode: 'FILE_SYNC',
           sourceType: FILE_RESOURCE_SOURCE,
-          targetType: { dbType: 'FTP', connectorType: 'FtpFile', pluginName: 'FtpFile' },
+          targetType: { dbType: 'MINIO', connectorType: 'S3File', pluginName: 'S3File' },
         }),
       );
       history.push(`/sync/file-transfer/${id}/detail?scene=create`);
@@ -52,7 +52,6 @@ const FileTransferPage: React.FC = () => {
       <TaskPageHeader
         icon={<FileSyncOutlined />}
         title="文件同步任务"
-        subtitle="在湖文件与 FTP、SFTP、S3、MinIO 之间同步二进制对象，不解析文件内容。"
         createText="创建文件同步"
         onCreate={() => void createTask()}
       />

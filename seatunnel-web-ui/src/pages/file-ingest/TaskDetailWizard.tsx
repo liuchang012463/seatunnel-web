@@ -60,7 +60,6 @@ export const FILE_INGEST_DETAIL_CONFIG: FileTaskDetailConfig = {
   listPath: '/sync/file-ingest',
   configPath: '/sync/file-ingest/:id/config/single',
   title: '离线文件导入',
-  description: '上传或选择结构化文件，配置单表解析与入库链路。',
   sourceOptions: [fileResourceOption],
   targetOptions: generateDataSourceOptions(),
   defaultSource: FILE_RESOURCE_SOURCE,
@@ -77,14 +76,13 @@ export const FILE_TRANSFER_DETAIL_CONFIG: FileTaskDetailConfig = {
   listPath: '/sync/file-transfer',
   configPath: '/sync/file-transfer/:id/config/file-sync',
   title: '文件同步任务',
-  description: '以二进制方式在湖文件与远端文件系统之间同步对象。',
   sourceOptions: [fileResourceOption, ...remoteFileOptions],
   targetOptions: remoteFileOptions,
   defaultSource: FILE_RESOURCE_SOURCE,
   defaultTarget: {
-    dbType: 'FTP',
-    connectorType: 'FtpFile',
-    pluginName: 'FtpFile',
+    dbType: 'MINIO',
+    connectorType: 'S3File',
+    pluginName: 'S3File',
   },
 };
 
@@ -254,6 +252,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
   if (!params) {
     // 深链兜底态：任务数据经列表页缓存进入，缺失时给页壳 + 返回 + 引导。
     return (
+      <Form form={form} layout="vertical">
       <div
         style={{
           display: 'flex',
@@ -273,6 +272,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
           返回任务列表
         </Button>
       </div>
+      </Form>
     );
   }
 
@@ -304,7 +304,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
 
   return (
     <div className="min-h-screen bg-white">
-      <PageHeader onBack={goBack} title={config.title} description={config.description} />
+      <PageHeader onBack={goBack} title={config.title} />
 
       <div className="mx-auto max-w-[1540px] px-6 pb-28 pt-6">
         <div className="sticky top-0 z-20 mb-6 bg-white/95 pt-1 backdrop-blur">
@@ -364,7 +364,12 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
           style={{ height: 'calc(100vh - 260px)', overflow: 'auto' }}
         >
           <Form form={form} layout="vertical">
-            <div className="overflow-hidden rounded-[24px] border border-[#EAECF0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <div
+              className={[
+                'overflow-hidden rounded-[24px] border border-[#EAECF0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]',
+                isBaseStep ? '' : 'hidden',
+              ].join(' ')}
+            >
               {isBaseStep && (
                 <div className="p-6">
                   <div className="space-y-6 rounded-[24px] bg-white shadow-sm">
@@ -428,8 +433,12 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
                 </div>
               )}
 
-              {isClientStep && (
-                <CommonClientLinkSection
+            </div>
+          </Form>
+
+          {isClientStep && (
+            <div className="overflow-hidden rounded-[24px] border border-[#EAECF0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <CommonClientLinkSection
                   activeStep={activeStep}
                   sourceType={sourceType}
                   targetType={targetType}
@@ -456,10 +465,9 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
                   targetTitle={targetLabel}
                   sourceCreateText="新建来源数据源"
                   targetCreateText="新建去向数据源"
-                />
-              )}
+              />
             </div>
-          </Form>
+          )}
         </div>
       </div>
 

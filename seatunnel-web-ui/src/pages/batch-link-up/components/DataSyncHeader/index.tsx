@@ -33,10 +33,6 @@ const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
         id: "pages.datasync.header.title",
         defaultMessage: "批量数据引接",
       })}
-      subtitle={intl.formatMessage({
-        id: "pages.datasync.header.subtitle",
-        defaultMessage: "统一管理采集引接链路：配置、调度与健康状态监测",
-      })}
       actions={
         <Button
           type="primary"

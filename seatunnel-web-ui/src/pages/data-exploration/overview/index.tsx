@@ -229,9 +229,7 @@ const DataExplorationOverviewPage: React.FC = () => {
     <div className="data-exploration-page data-exploration-overview">
       <header className="overview-page-header">
         <div className="overview-page-header__copy">
-          <span className="overview-kicker">数据探查 / OVERVIEW</span>
           <h1>探查概览</h1>
-          <p>查看当前数据探查规模、元数据与数据画像的探查覆盖情况。</p>
         </div>
         <Button
           className="overview-refresh"

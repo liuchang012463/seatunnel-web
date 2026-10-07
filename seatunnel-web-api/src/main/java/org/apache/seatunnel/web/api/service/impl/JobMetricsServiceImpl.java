@@ -11,6 +11,7 @@ import org.apache.seatunnel.web.dao.entity.JobMetrics;
 import org.apache.seatunnel.web.dao.entity.JobTableMetrics;
 import org.apache.seatunnel.web.dao.repository.JobMetricsDao;
 import org.apache.seatunnel.web.dao.repository.JobTableMetricsDao;
+import org.apache.seatunnel.web.dao.repository.StreamingJobMetricsDao;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelEngineRestClient;
 import org.apache.seatunnel.web.spi.bean.entity.Scale;
 import org.apache.seatunnel.web.spi.bean.entity.TimeWindow;
@@ -48,6 +49,9 @@ public class JobMetricsServiceImpl implements JobMetricsService {
 
     @Resource
     private JobTableMetricsDao jobTableMetricsDao;
+
+    @Resource
+    private StreamingJobMetricsDao streamingJobMetricsDao;
 
     private static final ZoneId ZONE_ID = ZoneId.of("Asia/Shanghai");
 
@@ -500,11 +504,18 @@ public class JobMetricsServiceImpl implements JobMetricsService {
     public OverviewSummaryVO summary(TimeRange timeRange, String taskType) {
         TimeWindow w = parseTimeRange(timeRange);
 
-        Map<String, Object> row = jobMetricsDao.selectOverviewSummary(
-                w.getStart().format(DT),
-                w.getEnd().format(DT),
-                taskType
-        );
+        Map<String, Object> row;
+        if ("STREAM".equalsIgnoreCase(taskType)) {
+            row = streamingJobMetricsDao.selectOverviewSummary(
+                    w.getStart().atZone(ZONE_ID).toInstant().toEpochMilli(),
+                    w.getEnd().atZone(ZONE_ID).toInstant().toEpochMilli());
+        } else {
+            row = jobMetricsDao.selectOverviewSummary(
+                    w.getStart().format(DT),
+                    w.getEnd().format(DT),
+                    taskType
+            );
+        }
 
         OverviewSummaryVO dto = new OverviewSummaryVO();
 
@@ -512,15 +523,19 @@ public class JobMetricsServiceImpl implements JobMetricsService {
         long totalBytes = toLong(row.get("totalBytes"));
 
         Scale recordsScale = pickScaleForSummary(totalRecords, UnitKind.RECORDS);
-        dto.setTotalRecords((long) round2(totalRecords / recordsScale.getFactor()));
+        dto.setTotalRecords(round2(totalRecords / recordsScale.getFactor()));
         dto.setTotalRecordsUnit(recordsScale.getUnit());
 
         Scale bytesScale = pickScaleForSummary(totalBytes, UnitKind.BYTES);
-        dto.setTotalBytes((long) round2(totalBytes / bytesScale.getFactor()));
+        dto.setTotalBytes(round2(totalBytes / bytesScale.getFactor()));
         dto.setTotalBytesUnit(bytesScale.getUnit());
 
         dto.setTotalTasks(toLong(row.get("totalTasks")));
-        dto.setSuccessTasks(dto.getTotalTasks());
+        dto.setSuccessTasks(toLong(row.get("successTasks")));
+        dto.setFailedTasks(toLong(row.get("failedTasks")));
+        dto.setRunningTasks(toLong(row.get("runningTasks")));
+        dto.setStoppedTasks(toLong(row.get("stoppedTasks")));
+        dto.setAvgRecordDelay(toLong(row.get("avgRecordDelay")));
 
         return dto;
     }
@@ -529,6 +544,19 @@ public class JobMetricsServiceImpl implements JobMetricsService {
     public OverviewChartsVO charts(TimeRange timeRange, String taskType) {
         TimeWindow w = parseTimeRange(timeRange);
         String granularity = pickGranularity(timeRange);
+
+        if ("STREAM".equalsIgnoreCase(taskType)) {
+            List<Map<String, Object>> rows = streamingJobMetricsDao.selectOverviewTrend(
+                    w.getStart().atZone(ZONE_ID).toInstant().toEpochMilli(),
+                    w.getEnd().atZone(ZONE_ID).toInstant().toEpochMilli(),
+                    granularity);
+            OverviewChartsVO dto = new OverviewChartsVO();
+            dto.setRecordsTrend(toChartItems(selectChartValues(rows, "recordsValue"), UnitKind.RECORDS));
+            dto.setBytesTrend(toChartItems(selectChartValues(rows, "bytesValue"), UnitKind.BYTES));
+            dto.setRecordsSpeedTrend(toChartItems(selectChartValues(rows, "recordsSpeed"), UnitKind.RAW));
+            dto.setBytesSpeedTrend(toChartItems(selectChartValues(rows, "bytesSpeed"), UnitKind.RAW));
+            return dto;
+        }
 
         List<Map<String, Object>> recordsTrendRows =
                 jobMetricsDao.selectRecordsTrend(
@@ -571,6 +599,17 @@ public class JobMetricsServiceImpl implements JobMetricsService {
         return dto;
     }
 
+    private List<Map<String, Object>> selectChartValues(List<Map<String, Object>> rows, String valueField) {
+        List<Map<String, Object>> values = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("date", row.get("date"));
+            item.put("value", row.get(valueField));
+            values.add(item);
+        }
+        return values;
+    }
+
     private Scale pickScaleForSummary(long value, UnitKind kind) {
         if (kind == UnitKind.RECORDS) {
             if (value >= 100_000_000L) {
@@ -608,48 +647,21 @@ public class JobMetricsServiceImpl implements JobMetricsService {
     }
 
     private Scale pickScale(UnitKind kind, List<Map<String, Object>> rows) {
-        long max = 0L;
+        long total = 0L;
 
         for (Map<String, Object> row : rows) {
             long value = toLong(row.get("value"));
-            if (value > max) {
-                max = value;
+            if (value > 0L) {
+                total = total > Long.MAX_VALUE - value ? Long.MAX_VALUE : total + value;
             }
         }
 
+        Scale scale = pickScaleForSummary(total, kind);
         if (kind == UnitKind.RECORDS) {
-            if (max >= 100_000_000L) {
-                return new Scale(100_000_000d, "100M records");
-            }
-
-            if (max >= 10_000L) {
-                return new Scale(10_000d, "万 records");
-            }
-
-            return new Scale(1d, "records");
+            String unit = scale.getUnit().isEmpty() ? "records" : scale.getUnit() + " records";
+            return new Scale(scale.getFactor(), unit);
         }
-
-        if (kind == UnitKind.BYTES) {
-            if (max >= (1L << 40)) {
-                return new Scale((double) (1L << 40), "TB");
-            }
-
-            if (max >= (1L << 30)) {
-                return new Scale((double) (1L << 30), "GB");
-            }
-
-            if (max >= (1L << 20)) {
-                return new Scale((double) (1L << 20), "MB");
-            }
-
-            if (max >= (1L << 10)) {
-                return new Scale((double) (1L << 10), "KB");
-            }
-
-            return new Scale(1d, "B");
-        }
-
-        return new Scale(1d, "");
+        return scale;
     }
 
     private List<ChartDataItemVO> toChartItems(List<Map<String, Object>> rows,

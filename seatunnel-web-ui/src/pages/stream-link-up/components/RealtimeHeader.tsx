@@ -20,7 +20,6 @@ const RealtimeHeader: React.FC<RealtimeHeaderProps> = ({
     <TaskListPageHeader
       icon={<ThunderboltOutlined />}
       title="实时数据引接"
-      subtitle="持续采集与实时处理数据流，统一管理实时数据引接任务"
       actions={
         <Button
           type="primary"

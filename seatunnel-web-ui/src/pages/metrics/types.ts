@@ -20,6 +20,10 @@ export interface SummaryData {
   totalBytes: number;
   totalTasks: number;
   successTasks: number;
+  failedTasks: number;
+  runningTasks: number;
+  stoppedTasks: number;
+  avgRecordDelay: number;
   totalBytesUnit: any;
   totalRecordsUnit: any;
 }

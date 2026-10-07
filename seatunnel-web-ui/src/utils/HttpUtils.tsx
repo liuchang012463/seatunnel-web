@@ -1,7 +1,10 @@
 import request, { ApiResponse } from "@/utils/request";
 
 /** umi-request accepts per-request options that extend RequestInit. */
-export type RequestOptions = RequestInit & { timeout?: number };
+export type RequestOptions = RequestInit & {
+  timeout?: number;
+  skipErrorHandler?: boolean;
+};
 
 class HttpUtils {
   public static async post<T>(

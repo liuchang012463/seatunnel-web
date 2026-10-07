@@ -1,6 +1,6 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Button, Col, Form, message, Popover, Row, Space, Tooltip } from "antd";
-import { Blocks, Braces, Database, Eye, Upload } from "lucide-react";
+import { Blocks, Braces, Database, Eye, Save } from "lucide-react";
 import {
   useEffect,
   useMemo,
@@ -230,21 +230,30 @@ export default function Workflow({
 
   const publishStatusView = {
     UNPUBLISHED: {
-      text: "未发布",
-      tooltip: "当前实时任务还没有发布到数据库",
+      text: "配置未保存",
+      tooltip: "当前配置尚未保存到任务定义",
       className: "border-amber-200 bg-amber-50 text-amber-600",
     },
     SYNCED: {
-      text: "已发布",
-      tooltip: "当前内容已同步到数据库",
+      text: "配置已保存",
+      tooltip: "当前配置已保存到数据库",
       className: "border-emerald-200 bg-emerald-50 text-emerald-600",
     },
     DIRTY: {
-      text: "已修改，未发布",
-      tooltip: "当前页面内容已变更，需要重新发布",
+      text: "有未保存的修改",
+      tooltip: "当前页面内容已变更，请先保存配置",
       className: "border-blue-200 bg-blue-50 text-blue-600",
     },
   }[editorSyncState];
+
+  const isOnline =
+    String(definitionState?.releaseState || "OFFLINE").toUpperCase() === "ONLINE";
+  const releaseStatusView = isOnline
+    ? { text: "任务已上线", tooltip: "任务已上线，可以启动" }
+    : {
+        text: "任务未上线",
+        tooltip: "保存配置后，返回任务列表点击“上线”即可启动",
+      };
 
   const { checkStat, checkGroups } = useFlowChecks(workflowGraph.nodes || []);
 
@@ -394,7 +403,7 @@ export default function Workflow({
       const nextJobDefinitionId = saveData.id ?? finalPayload.id;
 
       if (!nextJobDefinitionId) {
-        message.error("发布失败：未获取到任务定义ID");
+        message.error("保存失败：未获取到任务定义ID");
         return;
       }
 
@@ -426,9 +435,13 @@ export default function Workflow({
         clientId: nextBasic?.clientId ?? prev?.clientId,
       }));
 
-      message.success("发布成功");
+      message.success(
+        String(nextState?.releaseState || "OFFLINE").toUpperCase() === "ONLINE"
+          ? "配置已保存"
+          : "配置已保存。任务尚未上线，请返回任务列表点击“上线”后再启动。",
+      );
     } catch (error: any) {
-      message.error(error?.message || "发布失败");
+      message.error(error?.message || "保存配置失败");
     } finally {
       setPublishLoading(false);
     }
@@ -461,8 +474,9 @@ export default function Workflow({
     "inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[13px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0";
 
   return (
-    <div className="workflow-editor-page flex h-screen flex-col overflow-hidden bg-white">
-      <div className="shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5">
+    <Form form={form} component={false}>
+      <div className="workflow-editor-page flex h-screen flex-col overflow-hidden bg-white">
+      <div className="shrink-0 border-b border-slate-100 bg-white px-6 py-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3.5">
             <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-indigo-50 text-indigo-600">
@@ -472,9 +486,6 @@ export default function Workflow({
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
                 逻辑关系配置（单表实时任务）
-              </div>
-              <div className="text-[14px] leading-6 text-slate-500">
-                配置同步链路、字段映射与运行参数，在一个页面完成创建与调试。
               </div>
             </div>
           </div>
@@ -550,14 +561,27 @@ export default function Workflow({
                       </span>
                     </Tooltip>
 
+                    <Tooltip title={releaseStatusView.tooltip}>
+                      <span
+                        className={[
+                          "inline-flex h-[34px] select-none items-center justify-center rounded-full border px-3 text-[13px] font-medium leading-none",
+                          isOnline
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                            : "border-amber-200 bg-amber-50 text-amber-600",
+                        ].join(" ")}
+                      >
+                        {releaseStatusView.text}
+                      </span>
+                    </Tooltip>
+
                     <Button
                       type="default"
-                      icon={<Upload size={15} strokeWidth={1.9} />}
+                      icon={<Save size={15} strokeWidth={1.9} />}
                       onClick={handleSave}
                       loading={publishLoading}
                       className="!inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
                     >
-                      发布
+                      保存配置
                     </Button>
                   </Space>
                 </div>
@@ -686,6 +710,7 @@ export default function Workflow({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </Form>
   );
 }

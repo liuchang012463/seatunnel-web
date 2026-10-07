@@ -57,7 +57,7 @@ export default function useDetailPage() {
     const currentMode = normalizeOfflineMode(data?.sourceType, data?.mode) as SyncMode;
 
     form.setFieldsValue({
-      jobName: data?.jobName || `${data?.sourceType?.dbType?.toLowerCase()}2${data?.targetType?.dbType?.toLowerCase()}`,
+      jobName: data?.jobName || '',
       jobDesc: data?.jobDesc || '',
       mode: currentMode,
     });
@@ -92,6 +92,8 @@ export default function useDetailPage() {
       sourceManaged: option?.sourceManaged,
     };
     setSourceType(nextSourceType);
+    setSourceDataSourceId(undefined);
+    setSourceTestStatus('idle');
     if (isWebUploadSource(nextSourceType)) {
       setMode('GUIDE_SINGLE');
       form.setFieldValue('mode', 'GUIDE_SINGLE');
@@ -104,6 +106,8 @@ export default function useDetailPage() {
       connectorType: option?.connectorType,
       pluginName: option?.pluginName,
     });
+    setTargetDataSourceId(undefined);
+    setTargetTestStatus('idle');
   };
 
   const handleModeChange = (value: string) => {

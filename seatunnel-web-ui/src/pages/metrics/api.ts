@@ -6,7 +6,8 @@ export const fetchSummaryData = async (
   taskType: TaskType
 ): Promise<SummaryData> => {
   const response = await HttpUtils.get<SummaryData>(
-    `/api/v1/job/metrics/summary?timeRange=${timeRange}&taskType=${taskType}`
+    `/api/v1/job/metrics/summary?timeRange=${timeRange}&taskType=${taskType}`,
+    { skipErrorHandler: true }
   );
 
   if (response?.code === 0) {
@@ -20,7 +21,8 @@ export const fetchChartData = async (
   taskType: TaskType
 ): Promise<ChartData> => {
   const response = await HttpUtils.get<ChartData>(
-    `/api/v1/job/metrics/charts?timeRange=${timeRange}&taskType=${taskType}`
+    `/api/v1/job/metrics/charts?timeRange=${timeRange}&taskType=${taskType}`,
+    { skipErrorHandler: true }
   );
 
   if (response?.code === 0) {

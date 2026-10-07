@@ -268,6 +268,8 @@ export default {
   'pages.job.config.source.extraParams.tip': 'Configure extra custom parameters',
 
   'pages.quality.preview.title': 'Data Preview (max 10 rows)',
+  'pages.quality.preview.desc': 'Preview sample rows for the current query result',
+  'pages.quality.preview.empty': 'No preview data',
 
   'pages.job.config.sourceFields.title': 'Field Info',
   'pages.job.config.sourceFields.col.index': 'Index',

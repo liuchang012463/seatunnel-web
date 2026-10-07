@@ -252,8 +252,10 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
       title="来源配置（文件）"
       badge="输入节点"
       desc={isWebUpload ? '选择本地文件或文件夹，作为同步来源' : '配置远程文件来源目录'}
-      heroTitle={isWebUpload ? '本地文件' : fileDataSourceLabel(config.dbType) || '来源'}
-      heroDesc={isWebUpload ? `${assets.length} 个文件已准备` : config.path || '未选择目录'}
+      heroTitle={isWebUpload ? '本地文件' : isFileResource ? '湖文件' : fileDataSourceLabel(config.dbType) || '来源'}
+      heroDesc={isWebUpload
+        ? `${assets.length} 个文件已准备`
+        : config.path || (isFileResource ? '未选择湖文件' : '未选择目录')}
       heroTag="SOURCE"
       dbType={isWebUpload ? undefined : config.dbType}
       icon={isWebUpload ? <FileOutlined /> : undefined}

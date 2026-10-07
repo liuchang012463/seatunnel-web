@@ -4,10 +4,14 @@ import lombok.Data;
 
 @Data
 public class OverviewSummaryVO {
-    private long totalRecords;
-    private long totalBytes;
+    private double totalRecords;
+    private double totalBytes;
     private long totalTasks;
     private long successTasks;
+    private long failedTasks;
+    private long runningTasks;
+    private long stoppedTasks;
+    private long avgRecordDelay;
     private String totalRecordsUnit;
     private String totalBytesUnit;
 

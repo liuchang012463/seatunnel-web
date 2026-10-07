@@ -32,6 +32,17 @@ const QualityDetail = forwardRef((_: any, ref: any) => {
   const tableWidth = useMemo(() => {
     return (columns?.length || 0) * 180;
   }, [columns]);
+  const tableData = useMemo(
+    () => data.map((record, index) => {
+      const row = record && typeof record === "object" ? { ...record } : { value: record };
+      Object.defineProperty(row, "__seatunnelPreviewRowKey", {
+        value: `query-preview-${index}`,
+        enumerable: false,
+      });
+      return row;
+    }),
+    [data]
+  );
 
   return (
     <Drawer
@@ -90,9 +101,9 @@ const QualityDetail = forwardRef((_: any, ref: any) => {
 
         <div className="quality-detail-drawer__table-wrap">
           <Table
-            rowKey={(_, index) => String(index)}
+            rowKey="__seatunnelPreviewRowKey"
             columns={columns}
-            dataSource={data}
+            dataSource={tableData}
             pagination={false}
             scroll={{ x: tableWidth, y: 360 }}
             locale={{

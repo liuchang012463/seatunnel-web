@@ -237,7 +237,7 @@ export default function MultiWorkflow({
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white">
-      <div className="shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5">
+      <div className="shrink-0 border-b border-slate-100 bg-white px-6 py-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3.5">
             <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-indigo-50 text-indigo-600">
@@ -247,9 +247,6 @@ export default function MultiWorkflow({
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
                 逻辑关系配置（多表离线任务）
-              </div>
-              <div className="text-[14px] leading-6 text-slate-500">
-                配置多表同步链路、表匹配规则与运行参数，在一个页面完成创建与调试。
               </div>
             </div>
           </div>
@@ -350,12 +347,12 @@ export default function MultiWorkflow({
                   <div className="h-full overflow-auto px-3 py-2">
                     <Form
                       form={form}
+                      initialValues={{ matchMode: "1" }}
                       layout="vertical"
                       onValuesChange={markCurrentDefinitionDirty}
                     >
                       <div className="rounded-2xl">
                         <WholeSyncForm
-                          form={form}
                           sourceOption={sourceOption}
                           targetOption={targetOption}
                           sourceType={sourceType}

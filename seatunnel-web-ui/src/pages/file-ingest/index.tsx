@@ -56,7 +56,6 @@ const FileIngestPage: React.FC = () => {
       <TaskPageHeader
         icon={<FileTextOutlined />}
         title="离线文件导入"
-        subtitle="上传或选择 CSV、Excel、JSON、TXT，完成单表解析、字段映射和目标端入库。"
         createText="创建文件导入"
         onCreate={() => void createTask()}
       />

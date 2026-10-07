@@ -8,7 +8,6 @@ import {
 const { TextArea } = Input;
 
 interface Props {
-  form: any;
   sourceOption: any[];
   targetOption: any[];
   sourceType?: any;
@@ -38,7 +37,6 @@ interface Props {
 const formItemClass = "[&_.ant-form-item-label>label]:text-[13px] [&_.ant-form-item-label>label]:text-slate-600";
 
 const MultiSyncForm: React.FC<Props> = ({
-  form,
   sourceOption,
   targetOption,
   sourceType,
@@ -73,11 +71,6 @@ const MultiSyncForm: React.FC<Props> = ({
 
   return (
     <div className="rounded-2xl ">
-      <Form
-        form={form}
-        initialValues={{ matchMode: "1" }}
-        layout="vertical"
-      >
         <Row gutter={20}>
           <Col span={12}>
             <Form.Item
@@ -240,7 +233,6 @@ const MultiSyncForm: React.FC<Props> = ({
             />
           </Form.Item>
         )}
-      </Form>
     </div>
   );
 };

@@ -186,6 +186,18 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
   const recognizeSeqRef = useRef(0);
 
   const fields = useMemo(() => getSchemaFields(sourceConfig?.schema), [sourceConfig?.schema]);
+  const previewRows = useMemo(() => {
+    const rows = (previewContent as any)?.rows;
+    if (!Array.isArray(rows)) return [];
+    return rows.map((row: Record<string, unknown>, index: number) => {
+      const previewRow = row && typeof row === 'object' ? { ...row } : { value: row };
+      Object.defineProperty(previewRow, '__seatunnelPreviewRowKey', {
+        value: `file-preview-${index}`,
+        enumerable: false,
+      });
+      return previewRow;
+    });
+  }, [previewContent]);
   const hasHeader =
     sourceConfig?.csvUseHeaderLine !== false && sourceConfig?.skipHeader !== false;
 
@@ -579,14 +591,14 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         {previewContent && Array.isArray((previewContent as any)?.columns) ? (
           <Table
             size="small"
-            rowKey={(_, index) => String(index)}
+            rowKey="__seatunnelPreviewRowKey"
             columns={(previewContent as any).columns.map((column: string) => ({
               title: column,
               dataIndex: column,
               key: column,
               ellipsis: true,
             }))}
-            dataSource={(previewContent as any).rows || []}
+            dataSource={previewRows}
             pagination={false}
             scroll={{ y: 360 }}
           />

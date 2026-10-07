@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public class StreamingJobMetricsDaoImpl
@@ -37,6 +38,16 @@ public class StreamingJobMetricsDaoImpl
                         .orderByDesc(MyBatisColumn.getter(StreamingJobMetrics::getCollectTimeMs))
                         .last("LIMIT 1")
         );
+    }
+
+    @Override
+    public Map<String, Object> selectOverviewSummary(long startTimeMs, long endTimeMs) {
+        return streamingJobMetricsMapper.selectOverviewSummary(startTimeMs, endTimeMs);
+    }
+
+    @Override
+    public List<Map<String, Object>> selectOverviewTrend(long startTimeMs, long endTimeMs, String granularity) {
+        return streamingJobMetricsMapper.selectOverviewTrend(startTimeMs, endTimeMs, granularity);
     }
 
     @Override

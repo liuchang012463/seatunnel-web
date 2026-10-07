@@ -129,9 +129,9 @@ const defaultFileSourceConfig = (
 
 const defaultFileSinkConfig = (targetType: any, targetDataSourceId?: string) => ({
   dataSourceId: targetDataSourceId || undefined,
-  dbType: targetType?.dbType || 'FTP',
-  pluginName: targetType?.pluginName || 'FtpFile',
-  connectorType: targetType?.connectorType || 'FtpFile',
+  dbType: targetType?.dbType || 'MINIO',
+  pluginName: targetType?.pluginName || 'S3File',
+  connectorType: targetType?.connectorType || 'S3File',
   targetPath: undefined,
 });
 
@@ -143,7 +143,7 @@ const buildGraph = (params: any) => {
   const sinkId = 'file-sink';
 
   const sourceDbType = params?.sourceType?.dbType || 'WEB_UPLOAD';
-  const sinkDbType = params?.targetType?.dbType || 'FTP';
+  const sinkDbType = params?.targetType?.dbType || 'MINIO';
   const isWebUpload = sourceDbType === 'WEB_UPLOAD';
 
   const nodes = [
@@ -646,7 +646,7 @@ export default function FileWorkflow({
 
   return (
     <div className="workflow-editor-page file-workflow-editor-page flex h-full min-h-0 flex-col overflow-hidden bg-white">
-      <div className="file-workflow-editor-page__header shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5">
+      <div className="file-workflow-editor-page__header shrink-0 border-b border-slate-100 bg-white px-6 py-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3.5">
             <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-indigo-50 text-indigo-600">
@@ -656,11 +656,6 @@ export default function FileWorkflow({
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
                 逻辑关系配置（{isFileTransfer ? '文件同步' : '离线文件导入'}任务）
-              </div>
-              <div className="text-[14px] leading-6 text-slate-500">
-                {isFileTransfer
-                  ? '配置文件同步链路与运行参数，在一个页面完成创建、资源选择与调试。'
-                  : '配置文件解析、字段映射与目标入库，在一个页面完成创建、预览与调试。'}
               </div>
             </div>
           </div>

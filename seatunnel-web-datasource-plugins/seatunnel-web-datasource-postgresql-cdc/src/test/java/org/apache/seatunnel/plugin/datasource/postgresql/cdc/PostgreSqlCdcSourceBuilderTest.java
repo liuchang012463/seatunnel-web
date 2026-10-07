@@ -60,11 +60,11 @@ class PostgreSqlCdcSourceBuilderTest {
                         """))
                 .build());
 
-        assertEquals("localhost", config.getString("hostname"));
-        assertEquals(5432, config.getInt("port"));
+        assertEquals("jdbc:postgresql://localhost:5432/orders", config.getString("url"));
+        assertFalse(config.hasPath("hostname"));
+        assertFalse(config.hasPath("port"));
         assertEquals("cdc", config.getString("username"));
         assertEquals("orders", config.getStringList("database-names").get(0));
-        assertFalse(config.hasPath("url"));
         assertFalse(config.hasPath("database"));
         assertEquals("orders.sales.invoices", config.getStringList("table-names").get(0));
         assertEquals("sales", config.getStringList("schema-names").get(0));

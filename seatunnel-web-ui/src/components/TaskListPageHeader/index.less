@@ -1,9 +1,9 @@
 .task-list-page-header {
-  padding: 20px 24px 18px;
+  padding: 12px 0;
   color: var(--st-color-text-secondary);
-  background: var(--st-color-bg-panel);
-  border: 1px solid var(--st-color-border);
-  border-radius: var(--st-radius-md, 4px);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   box-shadow: none;
 
   &__top {
@@ -25,9 +25,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
     color: var(--st-color-accent);
     font-size: 18px;
     line-height: 1;
@@ -58,13 +58,6 @@
     opacity: 1 !important;
   }
 
-  &__subtitle {
-    margin: 2px 0 0;
-    color: var(--st-color-text-secondary) !important;
-    font-size: var(--st-type-content-sm-size, 13px) !important;
-    line-height: var(--st-type-content-sm-line, 20px) !important;
-  }
-
   &__actions {
     flex-shrink: 0;
 
@@ -79,8 +72,8 @@
 
 @media (max-width: 768px) {
   .task-list-page-header {
-    margin: 8px 8px 0;
-    padding: 20px 16px 0;
+    margin: 0;
+    padding: 12px 0;
 
     &__top {
       flex-direction: column;

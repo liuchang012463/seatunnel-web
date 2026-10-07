@@ -71,7 +71,13 @@ const normalizeResourceSourceConfig = (rawConfig: any, taskType: FileTaskType) =
   const legacyUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
   const resourceMode = taskType === 'FILE_INGEST' || legacyUpload || String(config.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
 
-  if (!resourceMode) return config;
+  if (!resourceMode) {
+    // File transfer copies the bytes as-is. The S3 connector requires a schema
+    // for structured formats such as CSV, which does not apply to this task.
+    return taskType === 'FILE_TRANSFER'
+      ? { ...config, fileFormatType: 'binary' }
+      : config;
+  }
 
   return {
     ...config,
@@ -159,8 +165,9 @@ export const normalizeWorkflowGraph = (
       dbType: sourceType?.dbType === 'FILE_RESOURCE' ? 'MINIO' : sourceType?.dbType,
       connectorType: sourceType?.dbType === 'FILE_RESOURCE' ? 'S3File' : sourceType?.connectorType,
       pluginName: sourceType?.dbType === 'FILE_RESOURCE' ? 'S3File' : sourceType?.pluginName,
+      dataSourceId: sourceType?.dbType === 'FILE_RESOURCE' ? undefined : sourceDataSourceId,
       readMode: taskType === 'FILE_TRANSFER' ? 'resource' : 'file',
-      fileFormatType: 'csv',
+      fileFormatType: taskType === 'FILE_TRANSFER' ? 'binary' : 'csv',
       syncType: 'FULL',
       pluginOutput: sourceId,
     },
