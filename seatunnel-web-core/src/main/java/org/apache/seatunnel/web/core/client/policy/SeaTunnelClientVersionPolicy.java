@@ -21,13 +21,15 @@ public class SeaTunnelClientVersionPolicy {
     /**
      * Supported SeaTunnel client versions.
      *
-     * <p>Currently only SeaTunnel 2.3.13 is supported. More versions can be added
-     * here after compatibility verification.</p>
+     * <p>SeaTunnel 3.0.0 compatibility has been verified against the Zeta REST API v2
+     * (submit-job, job-info, finished-jobs, stop-job, logs, checkpoints). More versions
+     * can be added here after compatibility verification.</p>
      */
     private final Set<String> supportedVersions =
             new HashSet<>(Arrays.asList(
 //                    "2.3.12",
-                    "2.3.13"
+                    "2.3.13",
+                    "3.0.0"
             ));
 
     /**
