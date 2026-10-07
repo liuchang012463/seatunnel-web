@@ -10,8 +10,7 @@ public final class HoconSensitiveMaskUtil {
     private static final String MASK = "******";
 
     /**
-     * 敏感字段，可按需扩展
-     * 统一使用小写，匹配时忽略大小写
+     * 已知敏感字段名。isSensitiveKey 还会匹配包含凭证词根的变体，例如 api_key_encoded。
      */
     private static final Set<String> SENSITIVE_KEYS = new HashSet<>(Arrays.asList(
             "password",
@@ -21,8 +20,21 @@ public final class HoconSensitiveMaskUtil {
             "secretkey",
             "accesskey",
             "accesskeysecret",
-            "token"
+            "token",
+            "credential",
+            "credentials",
+            "authorization",
+            "signature"
     ));
+
+    private static final Pattern URL_USER_INFO = Pattern.compile("(?i)(://)[^/?#]+@");
+    private static final Pattern URL_CREDENTIAL_PARAMETER = Pattern.compile(
+            "(?i)([?&;,](?:[a-z0-9_.-]*(?:password|passwd|pwd|secret|token|credential"
+                    + "|access[_-]?key|api[_-]?key|private[_-]?key|authorization|user(?:name)?|signature|key|auth)"
+                    + "[a-z0-9_.-]*)=)(\\{[^}]*\\}|\"[^\"]*\"|'(?:''|[^'])*'|[^&#;,]*)");
+
+    private static final String INVALID_HOCON_MASKED_MESSAGE =
+            "# HOCON parsing failed; configuration values were fully masked.";
 
     /**
      * SeaTunnel HOCON 顶层固定顺序
@@ -61,8 +73,8 @@ public final class HoconSensitiveMaskUtil {
 
             return renderValue(maskedRoot);
         } catch (Exception e) {
-            // 解析失败兜底，至少保证敏感字段不泄露
-            return maskByRegex(hoconText);
+            // 无法解析时无法识别任意自定义请求头等凭证，失败时隐藏整段配置。
+            return INVALID_HOCON_MASKED_MESSAGE;
         }
     }
 
@@ -79,6 +91,10 @@ public final class HoconSensitiveMaskUtil {
                 return maskObject((ConfigObject) value);
             case LIST:
                 return maskList((ConfigList) value);
+            case STRING:
+                String original = (String) value.unwrapped();
+                String masked = maskInlineCredentials(original);
+                return original.equals(masked) ? value : ConfigValueFactory.fromAnyRef(masked);
             default:
                 return value;
         }
@@ -94,7 +110,7 @@ public final class HoconSensitiveMaskUtil {
             String key = entry.getKey();
             ConfigValue childValue = entry.getValue();
 
-            if (isSensitiveKey(key)) {
+            if (isSensitiveContainerKey(key) || isSensitiveKey(key)) {
                 result = result.withValue(key, ConfigValueFactory.fromAnyRef(MASK));
             } else {
                 ConfigValue maskedChild = maskValue(childValue);
@@ -186,58 +202,55 @@ public final class HoconSensitiveMaskUtil {
         if (key == null) {
             return false;
         }
-        return SENSITIVE_KEYS.contains(normalizeKey(key));
+        String normalized = normalizeKey(key);
+        if (SENSITIVE_KEYS.contains(normalized)) {
+            return true;
+        }
+        return normalized.contains("password")
+                || normalized.contains("passwd")
+                || normalized.contains("secret")
+                || normalized.contains("credential")
+                || normalized.contains("apikey")
+                || normalized.contains("accesskey")
+                || normalized.contains("privatekey")
+                || normalized.contains("jaas")
+                || normalized.contains("signature")
+                || normalized.endsWith("authorization")
+                || normalized.endsWith("token");
+    }
+
+    private static String maskInlineCredentials(String value) {
+        String masked = URL_USER_INFO.matcher(value).replaceAll("$1" + MASK + "@");
+        masked = maskOracleThinCredentials(masked);
+        return URL_CREDENTIAL_PARAMETER.matcher(masked).replaceAll("$1" + MASK);
+    }
+
+    private static String maskOracleThinCredentials(String value) {
+        String prefix = "jdbc:oracle:thin:";
+        int prefixStart = value.toLowerCase(Locale.ROOT).indexOf(prefix);
+        if (prefixStart < 0) {
+            return value;
+        }
+        int credentialStart = prefixStart + prefix.length();
+        int passwordSeparator = value.indexOf('/', credentialStart);
+        int credentialsEnd = value.lastIndexOf('@');
+        if (passwordSeparator <= credentialStart || credentialsEnd <= passwordSeparator + 1) {
+            return value;
+        }
+        return value.substring(0, credentialStart) + MASK + value.substring(credentialsEnd);
     }
 
     /**
-     * key 标准化：
-     * 1. trim
-     * 2. 转小写
-     * 3. 去掉下划线/中划线/空格，兼容 accessKeySecret / access_key_secret / access-key-secret
+     * 任意 HTTP 请求头都可能携带认证信息，因此隐藏整个 headers 对象，包括自定义头。
+     */
+    private static boolean isSensitiveContainerKey(String key) {
+        return key != null && normalizeKey(key).endsWith("headers");
+    }
+
+    /**
+     * key 标准化并忽略大小写及分隔符，兼容 camelCase、snake_case、kebab-case 和点分路径。
      */
     private static String normalizeKey(String key) {
-        return key.trim()
-                .toLowerCase(Locale.ROOT)
-                .replace("_", "")
-                .replace("-", "")
-                .replace(" ", "");
-    }
-
-    /**
-     * HOCON 解析失败时的兜底方案
-     * <p>
-     * 兼容：
-     * password="xxx"
-     * password = "xxx"
-     * "password"=xxx
-     * password=xxx
-     * access_key_secret = abc
-     */
-    private static String maskByRegex(String text) {
-        if (text == null || text.isEmpty()) {
-            return text;
-        }
-
-        String result = text;
-        for (String key : SENSITIVE_KEYS) {
-            String keyPattern = buildRegexKeyPattern(key);
-            result = result.replaceAll(
-                    "(?im)(\"?" + keyPattern + "\"?\\s*[=:]\\s*)(\"[^\"]*\"|[^\\s\\r\\n}]+)",
-                    "$1\"******\""
-            );
-        }
-        return result;
-    }
-
-    /**
-     * 为正则兜底构造 key 匹配：
-     * accesskeysecret -> access[_\\-\\s]*key[_\\-\\s]*secret
-     * password -> password
-     */
-    private static String buildRegexKeyPattern(String normalizedKey) {
-        if ("accesskeysecret".equals(normalizedKey)) {
-            return "access[_\\-\\s]*key[_\\-\\s]*secret";
-        }
-        return Pattern.quote(normalizedKey);
+        return key.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 }
