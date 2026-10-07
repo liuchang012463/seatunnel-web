@@ -116,7 +116,7 @@ class MetadataStatusSynchronizerTest {
         when(bindingDao.queryById(1L)).thenReturn(live);
         when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1))
                 .thenReturn(List.of(new OpenMetadataPipelineRun(
-                        "previous-scan", "success", 1_700_000_000L, 1_700_000_000L, 1_700_000_020L, 0)));
+                        "previous-scan", "success", 1_700_000_000L, 1_700_000_100L, 1_700_000_020L, 0)));
         when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1)).thenReturn(List.of());
         when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
 

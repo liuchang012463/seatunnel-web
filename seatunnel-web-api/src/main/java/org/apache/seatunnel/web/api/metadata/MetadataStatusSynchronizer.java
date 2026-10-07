@@ -165,14 +165,14 @@ public class MetadataStatusSynchronizer {
     }
 
     private static OpenMetadataPipelineRun latestRun(List<OpenMetadataPipelineRun> runs) {
-        return runs.stream().max(Comparator.comparing(run -> timestamp(run))).orElse(null);
+        return runs.stream().max(Comparator.comparing(run -> executionTimestamp(run))).orElse(null);
     }
 
-    private static long timestamp(OpenMetadataPipelineRun run) {
-        if (run.timestamp() != null) {
-            return run.timestamp();
+    private static long executionTimestamp(OpenMetadataPipelineRun run) {
+        if (run.startDate() != null) {
+            return run.startDate();
         }
-        return run.startDate() == null ? 0L : run.startDate();
+        return run.timestamp() == null ? 0L : run.timestamp();
     }
 
     private void applyRun(MetadataSourceBinding binding, boolean scan, OpenMetadataPipelineRun run, Date now) {
@@ -245,10 +245,12 @@ public class MetadataStatusSynchronizer {
         Date runTime = run == null
                 ? null
                 : MetadataPipelineOperationService.fromOmTimestamp(
-                        run.timestamp() == null ? run.startDate() : run.timestamp());
+                        run.startDate() == null ? run.timestamp() : run.startDate());
         Date successTime = run != null && status == MetadataRunStatus.SUCCESS
                 ? MetadataPipelineOperationService.fromOmTimestamp(
-                        run.endDate() == null ? run.timestamp() : run.endDate())
+                        run.endDate() != null
+                                ? run.endDate()
+                                : run.startDate() == null ? run.timestamp() : run.startDate())
                 : null;
         if (scan) {
             binding.setScanStatus(status);
@@ -284,7 +286,9 @@ public class MetadataStatusSynchronizer {
         if (currentStatus == null || currentStatus == MetadataRunStatus.NEVER || currentLastRunTime == null) {
             return false;
         }
-        Long timestamp = run.timestamp() == null ? run.startDate() : run.timestamp();
+        // OpenMetadata timestamp is an execution identifier in 2.0.x, not a wall clock.
+        // Compare actual startDate first so an older OM run cannot mask a newer local reservation.
+        Long timestamp = run.startDate() == null ? run.timestamp() : run.startDate();
         Date runTime = MetadataPipelineOperationService.fromOmTimestamp(timestamp);
         // OM timestamps are commonly second-precision; allow a small clock/precision skew.
         return runTime != null && runTime.getTime() + 5_000L < currentLastRunTime.getTime();

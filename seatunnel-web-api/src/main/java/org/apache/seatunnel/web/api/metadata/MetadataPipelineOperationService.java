@@ -738,7 +738,7 @@ public class MetadataPipelineOperationService {
 
     private static MetadataRunStatus latestStatus(List<OpenMetadataPipelineRun> runs) {
         return runs.stream()
-                .max(Comparator.comparing(run -> firstNonNull(run.timestamp(), run.startDate(), 0L)))
+                .max(Comparator.comparing(run -> firstNonNull(run.startDate(), run.timestamp(), 0L)))
                 .map(run -> OpenMetadataRunStatusMapper.fromPipelineState(run.pipelineState()))
                 .orElse(MetadataRunStatus.NEVER);
     }
