@@ -35,6 +35,7 @@
 | CFG-11 | 文件同步新建向导选择 FTP、SFTP、Amazon S3 等来源后，初始化仍把来源类型重置为湖文件。 | 创建配置从向导所选来源类型初始化；页面参数构建器回归测试覆盖 FTP、SFTP、S3 三种来源。 | 已修复；FTP、SFTP、S3 浏览器端任务均完成传输 |
 | CFG-12 | 新建远端来源节点没有带上所选数据源 ID，生成的 Engine 配置缺少连接引用。 | 新建图节点写入 dataSourceId；编辑和新建图都保留数据源引用。 | 已修复；S3 任务发布、运行成功 |
 | CFG-13 | 文件同步的 Amazon S3 source 使用 CSV 格式但没有 schema，SeaTunnel Engine 以 schema 必填拒绝任务。 | 文件同步 source 和 sink 使用 binary 格式，按文件传输处理，不再要求结构化 schema。 | 已修复；S3 文件传输成功，源和目标 SHA-256 一致 |
+| CFG-14 | HTTP 数据源连接测试把表单提交的 JSON 文本 `defaultHeaders` 当成对象反序列化，合法请求头导致测试失败。 | 转换器兼容 JSON 对象、JSON 文本和空白文本；非法 JSON 返回明确参数错误。 | 已修复；保留原有 converter 覆盖并新增 5 项回归测试（4 项 Headers 解析、1 项 JSON 文本 Authorization 拒绝，共 13 项）；Chrome 浏览器使用强制要求自定义 Header 的本地 fixture，JSON 文本默认 Headers 连接测试成功，未保存临时数据源 |
 
 ## 数据源覆盖
 
@@ -44,31 +45,31 @@
 | --- | --- |
 | JDBC | 临时通用 JDBC 数据源通过管理端和本地 Engine 客户端连接测试；使用 MySQL JDBC driver class 与 `/mnt/lc/seatunnel/arm64/lib/mysql-connector-java-8.0.27.jar` 完成 JDBC→JDBC 批量任务，3 行数据成功写入。临时数据源和数据库已删除。 |
 | MYSQL | 持久连接管理页测试通过；Engine 批量来源/目标可用；完成 MySQL→MySQL 批量写入和 MySQL CDC→MySQL 增量写入；也作为离线文件导入目标。 |
-| POSTGRESQL（内部类型 POSTGRE_SQL） | 开发环境持久连接的管理端测试通过；此前 PostgreSQL→Kingbase 批量任务完成并写入 22 行。本次新建批量链路的 Engine 来源连通性测试失败，日志显示 Engine 加载了 Vastbase JDBC jar，详见复核补记。 |
-| ORACLE | 持久连接管理页测试通过；批量来源 Engine 检查复测通过，初次检查失败后重试成功；未做端到端写入。 |
-| ZEONEDB-D | 向导可选；无已配置实例，且本轮在本机 /mnt/lc 和 192.168.100.91:/root/lc 未发现可用服务或已验证驱动，未能连接测试或运行任务。 |
-| VASTBASE | 旧记录中的连接测试失败发生在测试容器停止期间；本次按授权启动容器后，管理页连接测试通过，收尾时恢复为停止状态。批量来源 Engine 检查此前重试通过；本轮未重新运行端到端写入。 |
-| KINGBASE | 持久连接管理页测试和批量来源 Engine 连接检查通过；执行期内 PostgreSQL→Kingbase 批量任务有 22 行端到端写入证据（仅作为 sink），未完成 Kingbase 作为 source 的端到端任务。 |
-| DAMENG | 持久连接管理页测试和批量来源 Engine 连接检查通过；未做端到端写入。 |
-| DORIS | 持久连接管理页测试和批量来源 Engine 连接检查通过；未做端到端写入。 |
-| ELASTICSEARCH | 持久连接管理页测试通过；批量 source/sink 和实时 source Engine 检查通过；未做端到端写入。 |
-| KAFKA | 持久连接管理页测试通过；批量 source/sink 和实时 source 的 Engine 检查均在提交作业时失败（Engine 无法访问 topic）；未做端到端任务。 |
+| POSTGRESQL（内部类型 POSTGRE_SQL） | 开发环境持久连接的管理端测试通过；历史 PostgreSQL→Kingbase 与 Kingbase→PostgreSQL 批量任务均完成并各写入 22 行。本次新建 PostgreSQL→MySQL 链路的 Engine 来源连通性测试失败，日志显示 Engine 加载了 Vastbase JDBC jar，详见复核补记。 |
+| ORACLE | 持久连接管理页测试通过；批量来源 Engine 检查复测通过，初次检查失败后重试成功；历史 Oracle→PostgreSQL 批量任务完成并写入 2 行。 |
+| ZEONEDB-D | 向导可选；本轮复查本机 `/mnt/lc` 和 `192.168.100.91:/root/lc` 的部署目录、运行容器及本地驱动后，仍未发现可用服务或已验证驱动。厂商公开产品页列出 ZeoneDB-S/H/M 产品信息，但未找到可公开获取的部署包或 JDBC 驱动；因此未连接测试或运行任务。 |
+| VASTBASE | 旧记录中的连接测试失败发生在测试容器停止期间；本次按授权启动容器后，管理页连接测试通过，收尾时恢复为停止状态。批量来源 Engine 检查通过；历史 Dameng→Vastbase、Vastbase→Vastbase 批量任务分别完成并写入 3 行、1 行。 |
+| KINGBASE | 持久连接管理页测试和批量来源 Engine 连接检查通过；历史 PostgreSQL→Kingbase 与 Kingbase→PostgreSQL 批量任务均完成并各写入 22 行，已验证 source 和 sink 两种角色。 |
+| DAMENG | 持久连接管理页测试和批量来源 Engine 连接检查通过；历史 Dameng→Vastbase 批量任务完成并写入 3 行。 |
+| DORIS | 持久连接管理页测试和批量来源 Engine 连接检查通过；本次 Doris→MySQL 批量任务完成并写入 2 行。 |
+| ELASTICSEARCH | 持久连接管理页测试通过；批量 source/sink 和实时 source Engine 检查通过；本次 Elasticsearch→MySQL 实时任务完成并写入 2 行。 |
+| KAFKA | 持久连接管理页测试通过；修复 Kafka HOCON 中带点配置键被嵌套的问题后，Kafka→MySQL 单表实时任务成功运行，2 条测试消息写入目标表。批量 Kafka source/sink 仍没有端到端执行证据。 |
 | FTP | 临时连接的浏览器连接测试通过；文件同步→MinIO 实际传输两个文件记录，目标内容与源文件 SHA-256 一致；临时连接已删除。 |
 | SFTP | 临时连接的浏览器连接测试通过；文件同步→MinIO 实际传输两个文件记录，目标内容与源文件 SHA-256 一致；临时连接已删除。 |
 | AMAZON S3 | 临时连接的浏览器连接测试通过；修复 binary 格式后完成 S3→MinIO 文件同步，目标 33 字节且 SHA-256 与源相同；临时连接和测试服务已删除。 |
-| MINIO | 持久连接管理页测试通过；作为湖文件、FTP、SFTP、Amazon S3 文件同步的目标，所有本轮输出均已按测试前缀核对并清理。 |
-| HTTP | 持久连接管理页测试通过；批量来源和实时来源的 Engine 连接检查通过；HTTP 仅适用作来源，本轮未做端到端任务。 |
+| MINIO | 持久连接管理页测试通过；作为湖文件、FTP、SFTP、Amazon S3 文件同步的目标；另完成 MinIO→MinIO 文件同步，目标对象 42 字节且 ETag 与来源一致。全部本轮输出均已按测试前缀核对并清理。 |
+| HTTP | 本次使用临时连接完成 HTTP→MySQL 批量任务并写入 2 行；请求为 GET/JSON，配置查询参数、自定义 Header、`$.data.*` 内容字段、`id=int`/`name=string` Schema、3 次重试和连接/读取超时。另用必须收到自定义 Header 的 fixture 在浏览器验证 defaultHeaders JSON 文本连接测试成功。HTTP 仅适用作来源，临时连接和服务已清理。 |
 
-覆盖判断：16 种 connector 类型均在向导选项和适用性矩阵中逐项登记；15 种类型至少完成了连接测试或 Engine 侧配置检查。真实任务执行证据包括 JDBC→JDBC、MySQL→MySQL、MySQL CDC→MySQL、PostgreSQL→Kingbase（Kingbase 仅作为 sink）、以及湖文件/FTP/SFTP/Amazon S3→MinIO。ZEONEDB-D 没有可用实例/驱动；Kafka 的 Engine 检查因无法访问 topic 失败；PostgreSQL 普通 JDBC Engine 检查疑似受共享驱动冲突影响，尚未隔离复测，PostgreSQL CDC 仅验证配置生成、未运行 Engine 任务。其余数据库与消息源未以全量数据写入任务作验证，因此不能据此宣称所有 connector 的所有功能都已端到端通过。
+覆盖判断：16 种 connector 类型均在向导选项和适用性矩阵中逐项登记，配置表单字段和必填性也逐项盘点。除没有可用服务或已验证驱动的 ZEONEDB-D 外，其余 15 种类型均有成功的真实任务执行证据，覆盖 JDBC→JDBC、MySQL/CDC、Oracle、PostgreSQL 与 Kingbase 双向、Dameng/Vastbase、Doris、Elasticsearch、Kafka、HTTP，以及湖文件/FTP/SFTP/Amazon S3/MinIO 文件传输。这里的“覆盖”表示各类型至少有一条适用链路成功，不表示每一种 source/sink 方向、任务类型或可选参数组合都已执行。PostgreSQL 普通 JDBC Engine 检查另有共享驱动冲突疑点，尚未隔离复测；PostgreSQL CDC 本轮仅验证配置生成，未运行 Engine 任务。各连接器尚有未跑的字段值、认证方式、TLS、分页、格式、重试和故障组合，不能据此宣称所有功能都已端到端通过。
 
 ## 四种任务类型端到端验收
 
 | 任务类型 | 实际执行 | 用户可配置项与参数覆盖 | 结果 |
 | --- | --- | --- | --- |
-| 批量数据引接 | MySQL→MySQL；任务 codex-audit-mysql-batch-20261001。通用 JDBC→通用 JDBC；任务 codex-generic-jdbc-batch-20261001。 | 新建单表链路、来源/目标连接和表选择、发布、上线、手动运行；MySQL 任务验证 5 行数据及中文字符，通用 JDBC 任务验证 3 行数据（中文、带引号文本、小数）。通用驱动参数使用 `com.mysql.cj.jdbc.Driver`、Engine 挂载的 8.0.27 驱动 jar、批量写入默认 batch size 1000 和追加模式。多表配置另做浏览器配置路径检查，未执行多表数据迁移。 | 两个 Engine 作业均完成；源与目标行值一致。临时任务、数据源和通用 JDBC 专用数据库已清理。 |
-| 实时数据引接 | MySQL CDC→MySQL；任务 codex-audit-mysql-cdc-20261001-2。 | CDC 来源表和目标表选择、初始快照加运行期增量；启动后向来源插入一行，目标出现该行。未覆盖 SSL、GTID/server-id 边界及故障恢复组合。 | 初始 2 行和新增第 3 行均到达目标；任务下线并删除，专用表已清理。 |
+| 批量数据引接 | MySQL→MySQL；任务 codex-audit-mysql-batch-20261001。通用 JDBC→通用 JDBC；任务 codex-generic-jdbc-batch-20261001。另有 Doris→MySQL、HTTP→MySQL 实际任务。 | 新建单表链路、来源/目标连接和表选择、发布、上线、手动运行；MySQL 任务验证 5 行及中文，通用 JDBC 任务验证 3 行（中文、带引号文本、小数），Doris 与 HTTP 各验证 2 行。通用驱动使用 `com.mysql.cj.jdbc.Driver`、Engine 挂载的 8.0.27 驱动 jar、默认 batch size 1000 和追加模式。HTTP 覆盖 GET/JSON、`/api/rows`、Query Params、Header、`$.data.*`、`id=int`/`name=string`、重试 3 次、退避 1000/10000ms、连接/读取超时 5000/15000ms；Doris 覆盖 FE 地址、HTTP/Query 端口、数据库、表和 MySQL 目标追加写入。多表路径另做浏览器检查，未执行多表迁移。 | 四个 Engine 作业均完成，目标数据核对一致。临时任务、数据源和专用数据表已清理。 |
+| 实时数据引接 | MySQL CDC→MySQL；任务 codex-audit-mysql-cdc-20261001-2。另有 Kafka→MySQL 和 Elasticsearch→MySQL 实际任务。 | CDC 来源表和目标表选择、初始快照加运行期增量；启动后向来源插入一行，目标出现该行。Kafka 覆盖 topic、消费组、`earliest`、checkpoint、Poll Timeout、JSON schema 和任务级 client 配置；Elasticsearch 覆盖 HTTP endpoint、Basic auth、index、fields、`match_all` DSL、SCROLL、scroll time/size 和 MySQL 追加写入。未覆盖 CDC 的 SSL、GTID/server-id 边界及故障恢复组合。 | MySQL CDC 初始 2 行和新增第 3 行、Kafka 2 行、Elasticsearch 2 行均到达目标；任务与专用资源已清理。 |
 | 离线文件导入 | 湖文件 uitest-sample.csv→MySQL；任务 codex-audit-file-ingest-20261001。 | 文件选择、CSV 格式/字段识别、目标数据源和自动建表写入；本次采用默认 CSV 解析参数。另浏览器走查 JSON、TXT、工作簿的识别与预览，但未将这些格式全部导入目标表。 | 3 行数据写入并核对；任务与专用目标表已清理。 |
-| 文件同步任务 | 湖文件→MinIO、FTP→MinIO、SFTP→MinIO、Amazon S3→MinIO，各执行一次。 | 文件同步来源类型、来源 dataSourceId、远端连接参数、目录/对象前缀、正则文件名过滤、扩展名 csv、二进制文件格式、chunk size 1024、整文件传输、MinIO 目标前缀。S3 覆盖 endpoint、region us-east-1、bucket、root prefix、STATIC 认证、path-style access、连接超时 10000ms、请求超时 30000ms；密钥从未写入记录。FTP/SFTP 覆盖连接测试、远端文件选择和认证字段，使用的账号值不留存。 | 四条链路均完成；FTP/SFTP/S3 的目标文件与源内容 SHA-256 一致。任务、临时连接、对象及临时服务已清理。 |
+| 文件同步任务 | 湖文件→MinIO、FTP→MinIO、SFTP→MinIO、Amazon S3→MinIO、MinIO→MinIO，各执行一次。 | 文件同步来源类型、来源 dataSourceId、远端连接参数、目录/对象前缀、正则文件名过滤、扩展名 csv、二进制文件格式、chunk size 1024、整文件传输、MinIO 目标前缀。S3 覆盖 endpoint、region us-east-1、bucket、root prefix、STATIC 认证、path-style access、连接超时 10000ms、请求超时 30000ms；密钥从未写入记录。FTP/SFTP 覆盖连接测试、远端文件选择和认证字段，使用的账号值不留存。MinIO→MinIO 使用 CSV 后缀过滤，源与目标对象 ETag 相同。 | 五条链路均完成；FTP/SFTP/S3/MinIO 的目标文件与源内容 SHA-256 或 ETag 一致。任务、临时连接、对象及临时服务已清理。 |
 
 ## 修复的任务体验问题
 
@@ -82,16 +83,18 @@
 
 ## 参数覆盖边界
 
-本轮参数覆盖依据产品表单中走过的实际路径，不是对 Engine connector 的所有可选参数做排列组合。已实际改变或验证的参数包括来源类型/连接引用、数据库表、通用 JDBC driver class/jar 路径及 batch size/追加模式、CDC 源表/目标表、文件选择和格式、远端 endpoint/region/bucket/root prefix、静态认证类型、path-style access、超时、正则匹配、扩展名、chunk size、整文件模式和目标目录。未覆盖的可选配置包括连接器专属 TLS/代理、复杂格式 schema、并行度极值、失败重试组合、断点续传故障注入及大文件压力测试。它们不影响本轮已执行路径的结论，但仍是后续 connector 验收项。
+本轮参数覆盖依据产品表单中走过的实际路径，不是对 Engine connector 的所有可选参数做排列组合。已实际改变或验证的参数包括来源类型/连接引用、数据库表、通用 JDBC driver class/jar 路径及 batch size/追加模式、CDC 源表/目标表、HTTP method/format/path/query/header/defaultHeaders/schema/retry/timeout、Elasticsearch auth/index/fields/DSL/scroll、文件选择和格式、远端 endpoint/region/bucket/root prefix、静态认证类型、path-style access、超时、正则匹配、扩展名、chunk size、整文件模式和目标目录。未覆盖的可选配置包括连接器专属 TLS/代理、复杂格式 schema、并行度极值、失败重试故障组合、分页边界、断点续传故障注入及大文件压力测试。它们不影响本轮已执行路径的结论，但仍是后续 connector 验收项。
 
 ## 测试数据与资源清理
 
 - 已删除本轮创建的批量、实时 CDC、离线导入、湖文件/FTP/SFTP/S3 文件同步任务定义；未删除列表原有的 验收-文件传输-MinIO-20260916 和 test_sync_minio。
 - 已删除测试数据库 codex_ingest_audit_20261001 以及 seatunnel_web 中三张 codex_audit_* 专用测试表。
-- 已删除 MinIO 中本轮使用的四个唯一输出前缀及 Engine 临时前缀；保留共享 MinIO 服务和原有对象。
+- 已删除 MinIO 中本轮使用的唯一输出前缀及 Engine 临时前缀；保留共享 MinIO 服务和原有对象。2026-10-07 MinIO→MinIO 复测的源前缀、目标前缀、任务与临时 `mc` alias 也已删除，并验证三个专用对象键均不存在。
 - 已删除通用 JDBC 验收任务 `codex-generic-jdbc-batch-20261001`、临时数据源 `codex-generic-jdbc-audit-20261001` 以及仅含两张 `codex_jdbc_*` 测试表的数据库 `codex_generic_jdbc_20261001_1329`。
+- 已删除本次 Doris、Elasticsearch、HTTP 复测的任务定义和专用输出表；已删除 Elasticsearch 测试 index、两个临时 HTTP fixture 目录和进程；HTTP 任务数据源已删除，defaultHeaders 浏览器回归使用的数据源仅为未保存草稿。HTTP 首次试跑因 fixture 将 query string 当作路径导致 404，修正 fixture 后同一定义运行成功。
 - 已删除三条临时 FTP/SFTP/Amazon S3 数据源连接、S3 测试容器、FTP/SFTP 测试容器和 /mnt/lc/test/codex-ingest-audit-20261001 测试文件目录。共享 MinIO 容器里为本轮建立的两个 mc alias 也已删除。
-- 测试任务和测试资源只使用隔离名称/前缀；没有清空其他会话数据，没有触碰 .91:/root/lc 下的资源，也没有执行 Compose 或重启容器。
+- Kafka 复测前的任务和资源只使用隔离名称/前缀；没有清空其他会话数据或触碰 91:/root/lc。Kafka 复测期间仅按下文修改本机 Kafka advertised listener 并重建三个测试 broker，专用 topic、表和任务随后均已删除。
+- MinIO→MinIO 复测使用独立的源/目标 prefix 和文件；任务离线、删除后已核验并删除三个专用对象键及临时 alias。
 
 ## 自动化验证与浏览器验收
 
@@ -102,23 +105,22 @@
 | 前端 Jest（全量） | 28 个 Jest 套件、129 个测试全部通过；文件同步回归测试通过实际页面参数构建器覆盖 FTP、SFTP、S3 向导来源类型及 source/sink 数据源引用、binary 文件格式；指标页面测试覆盖旧请求不能覆盖新筛选结果。 |
 | 前端 TypeScript | 通过。 |
 | 前端生产构建 | Mako 生产构建成功。 |
-| 后端回归测试 | 41 个 Maven reactor 模块构建成功；JobMetrics、MySQL CDC、PostgreSQL CDC 的 18 个测试和 HOCON 脱敏器的 7 个测试通过。 |
+| 后端回归测试 | 41 个 Maven reactor 模块构建成功；JobMetrics、MySQL CDC、PostgreSQL CDC 的 18 个测试、HOCON 脱敏器的 7 个测试和 HTTP Headers converter 的 13 个测试通过。 |
 | 四类任务概览 summary API | MySQL 临时实例行验证 batch、stream、file-ingest、file-transfer 对 `FAILING`/保存点活动状态的分类和计数；夹具已删除。 |
 | git diff --check | 通过。 |
 
-2026-10-07 再次执行：前端全量 Jest 仍为 28 个套件、129 个测试通过；`yarn tsc` 和 Mako 生产构建通过。后端 41 个 Maven reactor 模块构建成功，18 个选定回归测试通过（JobMetrics 6、MySQL CDC 6、PostgreSQL CDC 6）；另运行 HOCON 脱敏器回归测试 7 项，全部通过。
+2026-10-07 再次执行：前端全量 Jest 仍为 28 个套件、129 个测试通过；`yarn tsc` 和 Mako 生产构建通过。后端 41 个 Maven reactor 模块构建成功，18 个选定回归测试通过（JobMetrics 6、MySQL CDC 6、PostgreSQL CDC 6）；另运行 HOCON 脱敏器 7 项、HTTP Headers converter 13 项和 Kafka HOCON builder、连通性探针 source builder、最终 HOCON assembler 定向回归测试，均通过。
 
 ## 外部限制
 
-- Kafka 管理页连接测试通过，但批量 source/sink 与实时 source 的 Engine 提交检查失败，提示 Engine 无法访问 topic；未修改持久 Kafka 连接参数。
 - PostgreSQL 管理端连接测试通过；本次新建批量链路的 Engine 来源连通性测试失败，详见 2026-10-07 复核补记；未改变持久数据源参数。
 - Vastbase 的旧管理页连接测试返回 11003，而批量 source Engine 检查重试通过；复核时启动原本停止的测试容器后管理页连接测试成功，并在收尾时停止该容器。仍未做本轮端到端数据写入。
 - 通用 JDBC 已通过连接检查和 JDBC→JDBC 批量任务；ZEONEDB-D 仍没有可用实例或已验证驱动，本轮没有任务执行证据。
-- HTTP 本轮只作为来源检查；各数据库适用的任务类型并不相同，所以未把 source/sink 不兼容组合强行算作覆盖。
+- HTTP、Doris 和 Elasticsearch 本轮均有真实任务执行；各数据库/连接器适用的任务类型并不相同，所以未把不适用的 source/sink 组合强行算作覆盖。
 
 ## 2026-10-07 复核补记
 
-重新对照目标检查后，之前的质量记录不足以证明“所有数据源及所有配置参数均已端到端覆盖”：四种任务类型有实际运行证据，但参数仅覆盖常用成功路径；ZeoneDB-D 无可用实例/驱动，Kafka Engine 检查失败，PostgreSQL 普通 JDBC Engine 检查疑似受共享驱动冲突影响且尚未隔离复测。PostgreSQL CDC 仅检查了配置生成，未运行 Engine 任务。下面补充本次浏览器、API、Engine 与回归测试证据，并修正 PostgreSQL 普通批量检查的旧记录。
+重新对照目标检查后，之前的质量记录不足以证明“所有数据源及所有配置参数均已端到端覆盖”：四种任务类型有实际运行证据，但每个数据源字段值与字段组合没有全部执行实测。ZEONEDB-D 无可用实例/驱动；本次将 Kafka 从早先连接失败推进到 Kafka→MySQL 实时任务成功，但批量 Kafka source/sink 仍未运行；PostgreSQL 普通 JDBC 新链路 Engine 检查仍疑似受共享驱动冲突影响且尚未隔离复测。PostgreSQL CDC 仅检查了配置生成，未运行 Engine 任务。下面补充 Doris、Elasticsearch、HTTP 的任务实跑、HTTP Headers 修复以及回归证据。
 
 ### 数据源配置表单字段盘点
 
@@ -167,6 +169,40 @@
 - 对应开发环境失败请求连接 `192.168.100.95:15432/test` 时，JDBC 堆栈从 `/opt/seatunnel/lib/Vastbase-G100-2.16_pg_2026062910.jar` 加载 `org.postgresql.Driver`；同一 Engine 共享 `lib` 目录也有 PostgreSQL JDBC jar。Web 的 JDBC HOCON builder 只生成 URL、用户、driver 类名和密码，不生成表单里的 `driverLocation`。这指向 Engine 共享类路径中的同名驱动冲突，但还没有通过隔离 Engine 类路径复测，不能当作已修复。未创建作业。
 - SeaTunnel 2.3.13 PostgreSQL CDC builder 的回归断言已按当前配置生成的 `url` 字段更新，并断言不再生成旧的 `hostname`、`port` 字段。PostgreSQL CDC 插件模块及依赖模块测试共 6 项通过；这验证配置生成，不替代 Engine 连接成功。
 
+### Kafka 实时链路复测
+
+- 使用持久 Kafka 测试连接创建单表实时任务，来源为 Kafka、目标为 MySQL。配置并验证了 Topic、消费组、`earliest` 起点、Checkpoint Offset 提交开关、Poll Timeout、JSON schema 和任务级 `kafka.config`（`compression.type=lz4`）；配置预览中的 SASL 配置仍保持脱敏，带点的 Kafka client 配置键保持为扁平键。
+- 在浏览器检查了 Topic/正则订阅切换、`specific_offsets` 与 `timestamp` 条件字段、Checkpoint 开关及 text 格式的分隔符条件字段，最终恢复为 Topic、`earliest` 和 JSON 后保存。JSON、text、csv、avro、protobuf 出现在格式菜单中；本次真实数据任务只运行 JSON。
+- 最初 Engine consumer 能读取 topic 元数据，却因 Kafka broker advertised listener 返回外部地址而连接超时。为本机测试环境将 `/mnt/lc/kafka/docker-compose.yml` 三个 broker 的 advertised listener 改为 SeaTunnel 测试节点可达的内网地址，并逐个重建 kafka0/kafka1/kafka2；没有改动仓库内或持久数据源连接参数。修复后 Engine consumer 成功读到两条隔离测试消息，MySQL 目标表查询确认写入 2 行。
+- 此流程同时复现并修复了两处配置问题：Kafka 连通性探针的 JSON source 缺少 schema；`kafka.config` 和最终任务 HOCON 组装把 `sasl.jaas.config` 等带点键误解析为嵌套对象。新增 builder 与 assembler 回归测试覆盖 schema 和扁平键行为。
+- 测试 Kafka topic、MySQL 目标表和实时任务均已停止并删除；本次没有保留测试记录。UI 列表中的行数指标仍显示 0，因此写入验收以目标表查询结果为准。
+
+### MinIO 文件同步来源复测
+
+- 在本机测试 MinIO 桶中建立唯一的 42 字节 CSV 文件，使用文件同步任务从 MinIO 读取到 MinIO 的另一个隔离 prefix；浏览器的来源、目标和客户端连通性检查均通过，配置校验 0 项。
+- 配置了 `/crminio07` 来源目录、`source\\.csv` 文件名正则、`csv` 扩展名、binary 格式、1024 字节分块和完整文件模式；预览 HOCON 中 endpoint、path-style、桶和路径正确，凭证保持脱敏。
+- 任务运行成功，列表显示 2 条记录；目标 `source.csv` 为 42 字节，ETag 与来源相同。任务下线并删除后，源/目标 prefix、初始长名 prefix 和临时 `mc` alias 均已删除，并核验对应对象不存在。
+
+### Doris 批量来源复测
+
+- 使用本机 Doris 测试实例创建 `test.codex_review_doris_20261007` 两行源表和 MySQL 目标表 `seatunnel_web.codex_review_doris_sink_20261007`；任务 `codex-review-doris-source-20261007`（definition `23284887163232`）的 Doris→MySQL 连接检查通过、配置校验 0 项。
+- Engine 首次连接超时是因为 Doris BE 所在 Docker 网络未与 SeaTunnel worker 共享。仅将 `seatunnel_worker_1`、`seatunnel_worker_2` 临时加入 `doris_doris-net` 后，9060/8060 端口连通；任务实例 `23284956123232` 完成，Engine 指标 read/write 各 2 行，MySQL 目标表查询确认两条记录。
+- 任务下线并删除，源/目标表已删除；worker 已从 Doris 网络断开。未修改 Compose 文件。
+
+### Elasticsearch 实时来源复测
+
+- 创建隔离 index `codex_review_es_20261007`，包含 `id/name` 两条文档；任务 `codex-review-es-source-20261007`（definition `23284990872032`）选择 Elasticsearch→MySQL，客户端、来源和目标连接检查均通过，配置校验 0 项。
+- 配置 Basic auth、HTTP host `192.168.100.95:9201`、index、`id/name` fields、`{"match_all":{}}` DSL、SCROLL、scroll time `2m` 和 scroll size `100`；目标使用 MySQL append。实例 `23285023813600` 结束状态为 FINISHED，API 指标 read/write 各 2 行，目标表查询确认两条数据。
+- 下线并删除任务，删除目标表和 index，分别核验目标行数为 0、index 删除成功。任务列表当时显示的行数仍为 0，验收依据是实例 API 指标和目标表查询。
+
+### HTTP 批量来源复测
+
+- 在本机测试目录启动只返回两条固定 JSON 记录的 HTTP fixture，并创建临时数据源 `codex-review-http-source-20261007`。连接参数为 Base URL `http://192.168.100.95:18109`、健康检查 `/health`、NONE 认证、连接/读取超时 5000/15000ms；客户端和 MySQL 目标连通检查通过。
+- HTTP source 配置 GET `/api/rows`、JSON、Query Param `source=review`、Header `X-Codex-Review=http-source`，解析选择 `$.data.*`，schema 为 `id=int`、`name=string`；缺失字段返回 null 开启，分页不启用，重试 3 次、退避 1000/10000ms。配置校验 0 项，预览响应中的 headers 和 JDBC password 保持脱敏。
+- 首次 Engine 运行返回 404，原因是临时 fixture 错把含 query string 的请求目标当作路径比较；fixture 改为按 URL path 路由后，同一任务实例 `23285204580576` 运行 FINISHED，read/write 各 2 行，MySQL 目标表逐行核对为 `1/http-source-one`、`2/http-source-two`。失败实例 `23285187262688` 的日志记录了首次 404。
+- HTTP 默认 Headers 文本输入另发现转换问题：表单 JSON 字符串被直接按对象反序列化。转换器现兼容 JSON 对象、JSON 字符串和空白字符串，并对非法 JSON 返回明确错误；保留原有认证必填、URL 校验、凭证脱敏与表单配置用例，新增 5 项用例（4 项 Headers 解析、1 项 JSON 文本 Authorization 拒绝）后共 13 项 converter 回归测试通过。后端重启后另用临时 header-enforcing fixture 实际走过浏览器连接测试，数据源默认 Headers JSON 字符串被成功带到 `/health`；临时数据源未保存。任务执行使用空的数据源默认 Headers，并以任务级 Header 验证 HTTP source 请求头。
+- 任务定义已下线并删除；目标 MySQL 表、HTTP 数据源和 fixture 进程/目录均已清理。
+
 ### HOCON 预览凭证脱敏复测
 
 Luna Max 复审发现 HOCON 预览原先可能返回 ES API key/TLS 密码、HTTP 请求头、Kafka SASL JAAS 内容，以及 JDBC/HTTP URL 和 ES `hosts` 中嵌入的凭证。脱敏器现按敏感字段名遮蔽凭证、遮蔽整个 HTTP headers 对象，并清理所有字符串中的 URL user-info 和敏感 query/分号参数；HOCON 解析失败时返回固定的全遮蔽提示。
@@ -176,7 +212,7 @@ Luna Max 复审发现 HOCON 预览原先可能返回 ES API key/TLS 密码、HTT
 ### 本次复核清理
 
 - PostgreSQL 探针专用表和 publication 已删除并核实不存在；两个 PostgreSQL 新建流程均取消，未保存草稿。
-- 未添加新的持久数据源记录，未保留测试 Engine 作业或数据表；没有执行 Compose、容器部署或重启。
-- 先前四类任务端到端记录仍有效；其专用连接、表、任务和文件资源已按上文清理记录处理。本补记没有重新运行这四类任务，因此不把列表页和指标页复核当作端到端运行证据。
-- 只读检查了 `/mnt/lc` 和 `91:/root/lc` 中的部署清单；本机可见 MySQL、PostgreSQL、Oracle、Kafka、Elasticsearch、Doris、MinIO 等测试服务，91 上有 Kingbase 相关部署文件，两个位置均未发现 ZeoneDB 安装包、服务或 JDBC 驱动。本次没有修改这些部署。
-- 追补 Kafka 只读探测：本机 `kafka0` 容器状态为 running，映射端口 19092 接受 TCP 连接；使用容器内配置的 SASL PLAIN 测试凭据执行 topic 列举请求，15 秒内未返回。该结果只证明端口可达，不能证明认证、topic 元数据或 SeaTunnel Engine 可用；未修改或重启容器。
+- 未添加新的持久数据源记录；Kafka 测试任务已删除，专用 topic 和 MySQL 目标表已删除。为解决本机 Kafka broker advertised listener 的网络问题，本次在 `/mnt/lc/kafka/docker-compose.yml` 更新内网 advertised listener 并逐个重建三个测试 Kafka broker；没有触碰 91:/root/lc 的部署。
+- 先前批量、离线导入和文件同步任务端到端记录仍有效；本次另新增 Kafka→MySQL 实时端到端证据。测试资源均按上文清理记录处理，列表页和指标页复核不替代真实运行证据。
+- 检查了 `/mnt/lc` 和 `91:/root/lc` 中的部署目录与运行容器；本机可见 MySQL、PostgreSQL、Oracle、Kafka、Elasticsearch、Doris、MinIO 等测试服务，91 上有 Kingbase、ArangoDB 等服务，两个位置均未发现 ZeoneDB 安装包、服务或 JDBC 驱动。另核对了[厂商公开产品页](https://www.zeonedb.com/)和[ZeoneDB-M 介绍](https://www.zeonedb.com/zeonedb-m/)；页面介绍 ZeoneDB-S/H/M 产品，但没有可公开获取的部署包或 JDBC 驱动下载入口。Apache SeaTunnel 2.3.13 JDBC 文档说明自定义驱动需放入连接器依赖目录；未找到厂商驱动，不能用别的数据库服务冒充 ZeoneDB 验收。Kafka 复测只修改本机 Kafka advertised listener；没有在 91 部署或修改 ZeoneDB。
+- Kafka 复测前，映射端口 19092 接受 TCP 连接，但 SeaTunnel consumer 无法连接 broker 元数据提供的外部 advertised listener；更新内网地址并重建后，Kafka→MySQL 实时消息链路运行通过。该修复只针对本机测试部署网络，不代表 Kafka 批量 source/sink 已完成实测。
