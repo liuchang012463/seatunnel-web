@@ -1,6 +1,24 @@
 # SeaTunnel 2.3.13 → 3.0.0 升级记录
 
-日期：2026-10-07 ｜ 执行分支：`feat/seatunnel-3.0-engine-support`
+日期：2026-10-07 ｜ 执行分支：`feat/seatunnel-3.0-engine-support`（已快进合入 develop，ef6f64bb → e3bbd7ce）
+
+## 〇、切换结果（P4，2026-10-07 已执行）
+
+- docker 栈整体升级完成：`libs/seatunnel-web-api.jar`、`conf/application.yml`、`web/`（`yarn build` 重新构建，含 index.html）替换；`conf/nginx/`（.htpasswd）保留原样；Flyway 自动迁移 1.0.20 → 1.0.34（14 个，全部成功）；LLM 环境变量（SPRING_AI_*，MiniMax）接入 compose
+- 引擎 client（t_seatunnel_web_client id=1）baseUrl：`http://192.168.100.95:8081` → `http://192.168.100.95:8083`；web api 容器每 30s 对 3.0 引擎探活（实测连接确认）；`client_version` 字段待 UI 下次探活后刷新显示
+- **端到端验证**：经 web 提交的 MySQL→MySQL 批任务在 3.0 上完成解析、执行、写入全链路（Jdbc source → Jdbc sink generate_sink_sql，INSERT 到达 MySQL）
+- 回退资产：`dist/seatunnel-web-1.0.0.bak-20261007131303`、`/mnt/lc/seatunnel-web-docker-new/seatunnel_web-backup-20261007131303.sql`（mysqldump）、2.3.13 引擎栈原样未动
+- 注意：仓库 `seatunnel-web-ui/dist` 曾缺 index.html（陈旧残缺产物），本次已用 `yarn build` 重建；后续发布前端务必走完整构建
+
+### 切换中发现的两个定时任务失败（均为切换前既有问题，非 3.0 回归）
+
+1. **PG 任务（jobDefineId=22424944663776，cron 每 5 分钟）**：自 2026-09-23 18:15 起在 2.3.13 上持续失败（2.3.13 引擎日志含 66 处同签名错误），切换前后失败一致。根因：目标 PG 数据源（82.157.22.233:15432/test）建连失败 —— `org.postgresql.util.PSQLException: Protocol error. Session setup failed.`（PostgresCatalog 阶段失败，疑似该服务端 9-23 前后变更了协议/实例）。**需修复数据源侧连通性，与引擎版本无关**。
+2. **MySQL 任务（jobDefineId=22580774258016）**：在 3.0 上提交/解析/执行全链路成功，最终 FAILED 是 `Duplicate entry '1' for key 'equipment.PRIMARY'` —— 任务配置 `data_save_mode=APPEND_DATA` 写入已有数据的表，重复执行必撞主键（任务幂等设计问题，2.3.13 重复执行同样会失败）。
+
+### 切换中发现的 3.0 行为差异（非缺陷，已记录）
+
+- 3.0 的 `FactoryException`（API-06）响应与日志均不携带根因 cause；可用 3.0 新增的运行时日志接口 `POST /loggers/{name}?level=TRACE&scope=cluster` 开 DEBUG 后复现取根因（本次即用此法定位 PG 连接问题；该覆盖重启后失效，无需清理）
+- 3.0 镜像默认注释 `rootLogger.appenderRef.file.ref = routingAppender`（混合日志模式），需按第一章配置启用按任务分文件（/mnt/lc/seatunnel-300/config 已配置）
 
 ## 一、升级决策
 
@@ -77,21 +95,24 @@
 2. 2.3.13 栈未动，任务从其原有 savepoint/checkpoint 目录恢复
 3. （可选）`cd /mnt/lc/seatunnel-300 && docker-compose down` 停止 3.0 栈
 
-## 六、AI CLI 试点（P5）
+## 六、AI CLI 试点（P5，2026-10-07 已执行 ✅）
 
 - 3.0.0 镜像内含 `bin/seatunnel-ai.sh` + `cli/`（Python ≥3.10），但引擎容器自带 Python 3.9、宿主仅 3.7，均不满足要求
-- 已部署 sidecar 方案：CLI 提取至 `/mnt/lc/seatunnel-300/ai-cli/`（含持久 .venv），经 `/mnt/lc/seatunnel-300/run-ai-cli.sh`（python:3.12-slim，已加入 seatunnel-300 网络）运行；CLI 启动、--help、无 key 优雅报错均验证通过
-- MiniMax 环境变量配置指导（写入 `~/.bashrc`，不进仓库/.env）：
+- sidecar 方案：CLI 提取至 `/mnt/lc/seatunnel-300/ai-cli/`（含持久 .venv），经 `/mnt/lc/seatunnel-300/run-ai-cli.sh`（python:3.12-slim，已加入 seatunnel-300 网络）运行
+- **宿主内核 4.19 无 clone3 系统调用，旧 Docker seccomp 对未知系统调用返回 EPERM，导致新 glibc（python:3.12-slim）容器内无法创建线程**（"can't start new thread"）；已通过 `--security-opt seccomp=unconfined` 解决（run-ai-cli.sh 已内置；已 docker exec 验证引擎容器不受影响）
+- 试点结果（AI_PROVIDER=openai + MiniMax-M3，key 来自 repo .env 的 SPRING_AI_API_KEY）：
+  - 单次生成模式：自然语言生成 FakeSource→Console 批任务配置，137s 完成，含自动校验-修正循环（自行把 schema 调整为 tables_configs 多表写法）
+  - 生成配置经 REST 提交 3.0 引擎：**FINISHED，SourceReceivedCount=40**（20 行 × parallelism 2）✅
+- 环境变量约定（写入 `~/.bashrc`，不进仓库/.env）：
 
   ```bash
   export OPENAI_API_KEY=<MiniMax Subscription Key>       # 必填
-  export OPENAI_BASE_URL=https://api.minimaxi.com/v1     # 国际站 https://api.minimax.io/v1
-  export OPENAI_MODEL=MiniMax-M2
+  export OPENAI_BASE_URL=https://api.minimaxi.com/v1     # 国际站 https://api.minimax.io/v1（注意 CLI 需带 /v1）
+  export OPENAI_MODEL=MiniMax-M3
   ```
 
-  （CLI 的 openai provider 读取 `OPENAI_API_KEY`/`OPENAI_BASE_URL`/`OPENAI_MODEL`/`OPENAI_SMALL_FAST_MODEL`，已在 llm_provider.py 确认）
-- 待用户配置 key 后执行验收：自然语言生成 fake→console 配置 → `/check` → `/run` 提交到 3.0 引擎
-- 已知限制：sidecar 内无 SeaTunnel 发行版，引擎级 dry-run 校验不可用（CLI 仅做 LLM 侧校验）；若 MiniMax 与 CLI 的 chat-completions 用法不兼容，记录结论不阻塞升级
+  （CLI 的 openai provider 读取 `OPENAI_API_KEY`/`OPENAI_BASE_URL`/`OPENAI_MODEL`/`OPENAI_SMALL_FAST_MODEL`，见 cli/seatunnel_cli/llm_provider.py）
+- 已知限制：sidecar 内无 SeaTunnel 发行版，引擎级 dry-run 校验不可用（CLI 仅做 LLM 侧校验，最终以引擎提交结果为准）
 
 ## 七、遗留事项
 
