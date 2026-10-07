@@ -1,6 +1,6 @@
 # OpenMetadata 2.0.4 升级计划
 
-更新日期：2026-10-07
+更新日期：2026-10-08
 
 ## 版本调研
 
@@ -112,3 +112,13 @@ staging 浏览器验证发现：同 URL 保存新 JWT 且不勾选重建，会�
 - 生产 ingestion 已部署重建镜像 `sha256:beca492a9e92cf3f9c1ec5ffc7fd86590f141e704ec9574d558798eb651199b8`。在 Kingbase `public` schema 的新 exploration run `7d66dca8-bf19-48f7-9b25-79cb0d4b6bab` 于 00:00:26 启动、00:00:51 完成 `SUCCESS`，0 warnings。SeaTunnel Web profile API 返回 `equipment_sync` 表 22 行、9 列和实际列指标；Airflow 没有遗留运行任务。
 - 测试使用临时 `public` schema 范围。随后调用 `metadata-sync/reconcile` 恢复默认 profiler pipeline 配置；生产 binding 为 `READY`，`config_version/synced_config_version=7/7`，profile 状态为 `SUCCESS`，pipeline FQN 为 `st_ds_22642998680672.st_ds_22642998680672_profiler`。
 - 共享 Chrome 尚未完成生产 UI happy path：`127.0.0.1:39001` 的 Basic Auth 拒绝当前会话。表列表 API 对这 9 张表仍返回 `profileAvailable=false`，但直接 profile API 已返回新 profile；待登录后还需核实页面展示和该列表标记。
+
+## OM 2.0.4 探查兼容性复测（2026-10-08）
+
+- 生产 Web API 只读盘点：18/18 数据源 binding 为 `READY`；12 条数据库绑定均已自动建立 profiler pipeline。Profiler pipeline 未配置定时 schedule，代码将其定义为手动触发，因此“自动建 pipeline”通过，“自动周期执行”不适用。此时 10/12 数据库源有 `SUCCESS` 探查，另 2 条为 `NEVER`：一个 MySQL schema 有 82 张表，另一个 Vastbase 实际源没有可探查表。非数据库源没有 profiler pipeline，`NEVER` 是预期状态。所有源无 `QUEUED/RUNNING`。
+- 经 SeaTunnel Web `/api/v1/data-source/{id}/explore` 按 schema 范围触发的新增复测均以 `SUCCESS`、0 warnings 结束：Kingbase `de392297-8bc2-454c-9709-3b4a7a39750b`（9 张表）；MySQL `cdf9e7a9-6ece-4aa6-bab7-e7106db47607`（12 张表）、`3a2aa1b9-f087-4eab-92c8-cac1e96d93cf`（22 张表）；PostgreSQL `beb7be35-2829-4b82-a576-b68afa53b3cc`（11 张表）、`6debbe31-8ec1-4df2-9dc8-18c06798420a`（18 张表）、`7b424638-4a4a-4e8f-9f49-bfb1c4cff629`（11 张表）；JDBC `b4e26770-1282-4ed8-b845-3d2e2b96d588`（18 张表）；Doris `ebe138f5-b8c7-4a9d-b0d1-19355daba6a8`（7 张表）。另有既有 Dameng、Oracle 成功记录，以及 Kingbase 既有成功 run `7d66dca8-bf19-48f7-9b25-79cb0d4b6bab`。Vastbase 的 staging-only adapter 复测已在上文记录；生产 Vastbase 源没有 table 结果。
+- profile 详情 API 对 Kingbase、MySQL、PostgreSQL、JDBC、Doris 均返回 2.0.4 time-series profile 时间戳及列级指标。示例：Kingbase 22 行/9 列/9 项列指标；MySQL 20 行/7 列/7 项指标；Doris 20 行/6 列/6 项指标。PostgreSQL/JDBC 的抽样表中部分 `rowCount=-1`（PostgreSQL 11 张中 10 张、JDBC 18 张中 17 张），同时列指标存在；这是 OM profiler 返回的未知统计值，不应作为负数展示或纳入总量。
+- 生产 `/api/v1/data-inventory/overview` 复测返回 18 数据源、12 数据库、125 schema、2,072 表、25,870 列、9 个有 profile 的数据库、110 张已探查表、已知行数 1,171、已知体积 2,259,585 字节。聚合逻辑已排除负数行数/体积。
+- 发现结果列表的兼容问题：Kingbase `public` 的 9 条 table list 均为 `profileAvailable=false`，但最新 profile detail 已返回 22 行、9 列及列指标。OM 2.0.4 将 profile 存于 `EntityProfile` time-series；普通 table list 不含最新 profile。SeaTunnel Web 本地修复会对当前页缺少 profile 的表通过官方 SDK 并发读取 latest profile（最多 8 路），复用 `OmReadCache`，读取失败时保留列表响应；另把负数 table metrics 映射成未知值，避免 UI 显示 `-1`。`DataExplorationServiceTest` 10 项通过，且使用 `-DskipTests=false` 确认实际执行；本地 API JAR 已构建，SHA-256 `0f430e0d66a16da2cd811185385905ee77054539cadf1e119ac28d65130b71b8`。该 Web API JAR 尚未部署，生产 table list 标记仍待更新后验收。
+- 聚合方案评估：OM 2.0.4 的 `GET /v1/entity/profiles/{entityType}` 是隐藏接口，要求 `startTs/endTs`，可选 `profileType`，返回所选时间窗内跨实体的 profile 历史；接口没有分页和 service/schema 过滤，不适合作为全目录“每表最新 profile”汇总。现有 Web 汇总按分页枚举数据库/schema/table，再经官方 SDK 读取 latest profile；并发上限 8、`OmReadCache` 按 service/table 缓存，且只汇总非负已知统计。保留该语义比切换到无分页历史聚合接口更稳妥。
+- 共享 Chrome 生产 UI happy path 仍待完成：尝试提供的 OM 用户名/密码组合后，`127.0.0.1:39001` 仍被 Nginx Basic Auth 拒绝。Basic Auth 与 OpenMetadata 应用账号是两层认证；需在共享浏览器中完成代理登录后，验收 profile 指示和详情展示。

@@ -36,7 +36,10 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -96,6 +99,56 @@ class DataExplorationServiceTest {
     }
 
     @Test
+    void mapsProfileAvailabilityFromTheLatestTimeSeriesProfile() {
+        stubReadySource();
+        OpenMetadataTable table = table("table-id", "orders");
+        String databaseFqn = "st_ds_42.orders";
+        String schemaFqn = "st_ds_42.orders.public";
+        when(openMetadataClient.findDatabase(databaseFqn))
+                .thenReturn(Optional.of(new OpenMetadataDatabase("db-id", databaseFqn, "st_ds_42")));
+        doReturn(new OpenMetadataPage<>(List.of(schema("schema-id", schemaFqn)), 1L, null))
+                .when(openMetadataClient).listSchemasPage(databaseFqn, 1000, null);
+        doReturn(new OpenMetadataPage<>(List.of(table), 1L, null))
+                .when(openMetadataClient).listTablesPage(schemaFqn, true, 20, null);
+        OpenMetadataTableProfile profile = new OpenMetadataTableProfile();
+        profile.setTimestamp(1700000000000L);
+        when(openMetadataClient.getLatestTableProfile(table.getFullyQualifiedName())).thenReturn(profile);
+
+        DataExplorationTableVO row = service()
+                .listTables(42L, databaseFqn, schemaFqn, 1, 20)
+                .getRecords()
+                .get(0);
+
+        assertTrue(row.isProfileAvailable());
+        assertEquals(1700000000000L, row.getProfileTime());
+        verify(openMetadataClient).getLatestTableProfile(table.getFullyQualifiedName());
+    }
+
+    @Test
+    void keepsTableListAvailableWhenLatestProfileLookupFails() {
+        stubReadySource();
+        OpenMetadataTable table = table("table-id", "orders");
+        String databaseFqn = "st_ds_42.orders";
+        String schemaFqn = "st_ds_42.orders.public";
+        when(openMetadataClient.findDatabase(databaseFqn))
+                .thenReturn(Optional.of(new OpenMetadataDatabase("db-id", databaseFqn, "st_ds_42")));
+        doReturn(new OpenMetadataPage<>(List.of(schema("schema-id", schemaFqn)), 1L, null))
+                .when(openMetadataClient).listSchemasPage(databaseFqn, 1000, null);
+        doReturn(new OpenMetadataPage<>(List.of(table), 1L, null))
+                .when(openMetadataClient).listTablesPage(schemaFqn, true, 20, null);
+        when(openMetadataClient.getLatestTableProfile(table.getFullyQualifiedName()))
+                .thenThrow(new IllegalStateException("OpenMetadata unavailable"));
+
+        DataExplorationTableVO row = service()
+                .listTables(42L, databaseFqn, schemaFqn, 1, 20)
+                .getRecords()
+                .get(0);
+
+        assertFalse(row.isProfileAvailable());
+        assertNull(row.getProfileTime());
+    }
+
+    @Test
     void mapsLatestProfileMetricsAndDelegatesPreviewAfterOwnershipCheck() {
         stubReadySource();
         OpenMetadataTable table = table("table-id", "orders");
@@ -137,6 +190,26 @@ class DataExplorationServiceTest {
         ArgumentCaptor<Map<String, Object>> request = ArgumentCaptor.forClass(Map.class);
         verify(catalogService).getTop20Data(eq(42L), request.capture());
         assertEquals("orders", request.getValue().get("table_path"));
+    }
+
+    @Test
+    void hidesNegativeTableMetricsAsUnknown() {
+        stubReadySource();
+        OpenMetadataTable table = table("table-id", "orders");
+        table.setServiceFullyQualifiedName("st_ds_42");
+        OpenMetadataTableProfile omProfile = new OpenMetadataTableProfile();
+        omProfile.setTimestamp(1700000000000L);
+        omProfile.setRowCount(-1L);
+        omProfile.setColumnCount(7L);
+        omProfile.setSizeInByte(-1L);
+        when(openMetadataClient.getTable("table-id")).thenReturn(table);
+        when(openMetadataClient.getLatestTableProfile(table.getFullyQualifiedName())).thenReturn(omProfile);
+
+        DataExplorationProfileVO profile = service().getProfile(42L, "table-id");
+
+        assertNull(profile.getTable().getRowCount());
+        assertEquals(7L, profile.getTable().getColumnCount());
+        assertNull(profile.getTable().getSizeInByte());
     }
 
     @Test

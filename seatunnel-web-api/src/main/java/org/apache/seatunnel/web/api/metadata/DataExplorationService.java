@@ -55,6 +55,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -69,6 +72,14 @@ public class DataExplorationService {
 
     private static final int MAX_OM_PAGE_SIZE = 1000;
     private static final int MAX_OM_PAGES = 10_000;
+    private static final int PROFILE_LOOKUP_CONCURRENCY = 8;
+    private static final ExecutorService PROFILE_LOOKUP_EXECUTOR = Executors.newFixedThreadPool(
+            PROFILE_LOOKUP_CONCURRENCY,
+            runnable -> {
+                Thread thread = new Thread(runnable, "metadata-exploration-profile");
+                thread.setDaemon(true);
+                return thread;
+            });
 
     private final DataSourceDao dataSourceDao;
     private final MetadataBindingDao metadataBindingDao;
@@ -186,7 +197,7 @@ public class DataExplorationService {
         int safePageSize = Math.max(1, Math.min(pageSize, 100));
         int offset = (safePageNo - 1) * safePageSize;
         int pageLimit = Math.min(MAX_OM_PAGE_SIZE, Math.max(safePageSize, safePageNo * safePageSize));
-        List<DataExplorationTableVO> records = new ArrayList<>();
+        List<OpenMetadataTable> selectedTables = new ArrayList<>();
         long[] matched = {0L};
         long[] total = {0L};
         String after = null;
@@ -204,17 +215,25 @@ public class DataExplorationService {
                 if (table == null || !context.serviceFqn().equals(table.getServiceFullyQualifiedName())) {
                     continue;
                 }
-                if (matched[0] >= offset && records.size() < safePageSize) {
-                    records.add(toTable(table));
+                if (matched[0] >= offset && selectedTables.size() < safePageSize) {
+                    selectedTables.add(table);
                 }
                 matched[0]++;
             }
             String next = page.after();
-            boolean enough = records.size() >= safePageSize && total[0] > 0;
+            boolean enough = selectedTables.size() >= safePageSize && total[0] > 0;
             if (enough || next == null || next.isBlank() || !seen.add(next)) {
                 break;
             }
             after = next;
+        }
+        List<CompletableFuture<DataExplorationTableVO>> tableRows = selectedTables.stream()
+                .map(table -> CompletableFuture.supplyAsync(
+                        () -> toTable(table, latestProfile(table)), PROFILE_LOOKUP_EXECUTOR))
+                .toList();
+        List<DataExplorationTableVO> records = new ArrayList<>(tableRows.size());
+        for (CompletableFuture<DataExplorationTableVO> tableRow : tableRows) {
+            records.add(tableRow.join());
         }
         DataExplorationTablePageVO page = new DataExplorationTablePageVO();
         page.setRecords(records);
@@ -426,7 +445,7 @@ public class DataExplorationService {
         return dataSourceCatalogService.getTop20Data(dataSourceId, request);
     }
 
-    private DataExplorationTableVO toTable(OpenMetadataTable table) {
+    private DataExplorationTableVO toTable(OpenMetadataTable table, OpenMetadataTableProfile profile) {
         DataExplorationTableVO result = new DataExplorationTableVO();
         result.setId(table.getId());
         result.setName(table.getName());
@@ -435,9 +454,29 @@ public class DataExplorationService {
         result.setTableType(table.getTableType());
         result.setDescription(table.getDescription());
         result.setColumnCount(table.getColumns() == null ? 0 : table.getColumns().size());
-        result.setProfileAvailable(table.getProfile() != null && table.getProfile().getTimestamp() != null);
-        result.setProfileTime(table.getProfile() == null ? null : table.getProfile().getTimestamp());
+        result.setProfileAvailable(profile != null && profile.getTimestamp() != null);
+        result.setProfileTime(profile == null ? null : profile.getTimestamp());
         return result;
+    }
+
+    private OpenMetadataTableProfile latestProfile(OpenMetadataTable table) {
+        OpenMetadataTableProfile profile = table.getProfile();
+        if (profile != null && profile.getTimestamp() != null) {
+            return profile;
+        }
+        String fullyQualifiedName = table.getFullyQualifiedName();
+        if (fullyQualifiedName == null || fullyQualifiedName.isBlank()) {
+            return null;
+        }
+        try {
+            return omReadCache.latestProfile(
+                    fullyQualifiedName,
+                    () -> openMetadataClient.getLatestTableProfile(fullyQualifiedName));
+        } catch (Exception error) {
+            log.warn("OpenMetadata table profile lookup failed: tableId={}, errorType={}",
+                    table.getId(), error.getClass().getSimpleName());
+            return null;
+        }
     }
 
     private DataExplorationErNodeVO toErNode(OpenMetadataTable table) {
@@ -695,9 +734,9 @@ public class DataExplorationService {
         } else {
             result.setProfileTime(profile.getTimestamp());
             DataExplorationTableMetricsVO tableMetrics = new DataExplorationTableMetricsVO();
-            tableMetrics.setRowCount(profile.getRowCount());
-            tableMetrics.setColumnCount(profile.getColumnCount());
-            tableMetrics.setSizeInByte(profile.getSizeInByte());
+            tableMetrics.setRowCount(knownMetric(profile.getRowCount()));
+            tableMetrics.setColumnCount(knownMetric(profile.getColumnCount()));
+            tableMetrics.setSizeInByte(knownMetric(profile.getSizeInByte()));
             result.setTable(tableMetrics);
         }
 
@@ -722,6 +761,10 @@ public class DataExplorationService {
             }
         }
         return result;
+    }
+
+    private static Long knownMetric(Long value) {
+        return value == null || value < 0 ? null : value;
     }
 
     private DataExplorationColumnProfileVO toColumnProfile(
@@ -898,6 +941,8 @@ public class DataExplorationService {
     private static OpenMetadataProperties enabledProperties() {
         OpenMetadataProperties properties = new OpenMetadataProperties();
         properties.setEnabled(true);
+        properties.setBaseUrl("http://openmetadata.test/api");
+        properties.setToken("test-token");
         return properties;
     }
 
