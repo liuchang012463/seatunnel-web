@@ -1,17 +1,19 @@
 package org.apache.seatunnel.plugin.datasource.http.param;
 
 import org.apache.seatunnel.plugin.datasource.api.form.ReflectionFormGenerator;
+import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.form.FieldType;
 import org.apache.seatunnel.web.spi.form.FormFieldConfig;
-import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HttpConnectionParamConverterTest {
 
@@ -71,6 +73,15 @@ class HttpConnectionParamConverterTest {
     }
 
     @Test
+    void shouldRejectAuthorizationHeaderSubmittedAsJsonText() {
+        HttpConnectionParam header = converter.createConnectionParams(
+                "{\"baseUrl\":\"https://api.example.com\","
+                        + "\"defaultHeaders\":\"{\\\"Authorization\\\":\\\"secret\\\"}\"}");
+
+        assertThrows(IllegalArgumentException.class, () -> converter.checkDatasourceParam(header));
+    }
+
+    @Test
     void shouldNotExposeSecretsInToString() {
         HttpConnectionParam param = converter.createConnectionParams(
                 "{\"baseUrl\":\"https://api.example.com\","
@@ -114,6 +125,45 @@ class HttpConnectionParamConverterTest {
         assertEquals(FieldType.INPUT, openApiField.getType());
         assertEquals(12, openApiField.getOrder());
         assertNull(openApiField.getRules());
+    }
+
+    @Test
+    void parsesDefaultHeadersSubmittedAsJsonTextByForm() {
+        HttpConnectionParam param = converter.createConnectionParams(
+                "{\"baseUrl\":\"http://localhost:18109\","
+                        + "\"defaultHeaders\":\"{\\\"X-Test\\\":\\\"value\\\"}\"}");
+
+        assertEquals("value", param.getDefaultHeaders().get("X-Test"));
+        converter.checkDatasourceParam(param);
+    }
+
+    @Test
+    void keepsDefaultHeadersAlreadyStoredAsObject() {
+        HttpConnectionParam param = converter.createConnectionParams(
+                "{\"baseUrl\":\"http://localhost:18109\","
+                        + "\"defaultHeaders\":{\"X-Test\":\"value\"}}");
+
+        assertEquals("value", param.getDefaultHeaders().get("X-Test"));
+    }
+
+    @Test
+    void treatsBlankDefaultHeadersTextAsEmptyMap() {
+        HttpConnectionParam param = converter.createConnectionParams(
+                "{\"baseUrl\":\"http://localhost:18109\",\"defaultHeaders\":\"  \"}");
+
+        assertNotNull(param.getDefaultHeaders());
+        assertTrue(param.getDefaultHeaders().isEmpty());
+    }
+
+    @Test
+    void rejectsInvalidDefaultHeadersJsonWithFieldContext() {
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> converter.createConnectionParams(
+                        "{\"baseUrl\":\"http://localhost:18109\","
+                                + "\"defaultHeaders\":\"not-json\"}"));
+
+        assertEquals("HTTP defaultHeaders must contain a valid JSON object", error.getMessage());
     }
 
     private FormFieldConfig field(List<FormFieldConfig> fields, String key) {

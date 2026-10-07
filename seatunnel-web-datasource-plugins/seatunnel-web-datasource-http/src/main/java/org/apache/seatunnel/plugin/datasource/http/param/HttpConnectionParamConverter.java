@@ -1,5 +1,7 @@
 package org.apache.seatunnel.plugin.datasource.http.param;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.datasource.ConnectionParamConverter;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
@@ -16,7 +18,7 @@ public class HttpConnectionParamConverter implements ConnectionParamConverter {
     @Override
     public HttpConnectionParam createConnectionParams(String connectionJson) {
         HttpConnectionParam param = JSONUtils.parseObject(
-                sanitizeEmptyMapFields(connectionJson), HttpConnectionParam.class);
+                normalizeDefaultHeaders(connectionJson), HttpConnectionParam.class);
         if (param == null) {
             throw new IllegalArgumentException("HTTP connection param must not be null");
         }
@@ -104,12 +106,35 @@ public class HttpConnectionParamConverter implements ConnectionParamConverter {
         }
     }
 
-    private String sanitizeEmptyMapFields(String json) {
-        if (StringUtils.isEmpty(json)) {
+    private String normalizeDefaultHeaders(String json) {
+        if (StringUtils.isBlank(json)) {
             return json;
         }
-        return json.replaceAll(
-                "\"defaultHeaders\"\\s*:\\s*\"\"",
-                "\"defaultHeaders\":{}");
+
+        ObjectNode connection = JSONUtils.parseObject(json);
+        JsonNode rawHeaders = connection.get("defaultHeaders");
+        if (rawHeaders == null || rawHeaders.isNull() || rawHeaders.isObject()) {
+            return json;
+        }
+        if (!rawHeaders.isTextual()) {
+            throw new IllegalArgumentException(
+                    "HTTP defaultHeaders must be an object or a JSON string containing an object");
+        }
+
+        String headersJson = rawHeaders.asText();
+        if (StringUtils.isBlank(headersJson)) {
+            connection.set("defaultHeaders", JSONUtils.createObjectNode());
+            return JSONUtils.toJsonString(connection);
+        }
+
+        ObjectNode headers;
+        try {
+            headers = JSONUtils.parseObject(headersJson);
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(
+                    "HTTP defaultHeaders must contain a valid JSON object", e);
+        }
+        connection.set("defaultHeaders", headers);
+        return JSONUtils.toJsonString(connection);
     }
 }
