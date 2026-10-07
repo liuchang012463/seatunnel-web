@@ -139,7 +139,7 @@ The following environment is supported or recommended for the current version:
 
 | Component        | Supported or Recommended Version |
 | ---------------- | -------------------------------- |
-| Apache SeaTunnel | 2.3.13                           |
+| Apache SeaTunnel | 2.3.13 (production), 3.0.0 (validated in parallel) |
 | Java             | JDK/JRE 21                       |
 | Node.js          | 20 or later, source builds only  |
 | Yarn             | Yarn Classic 1.x                 |
@@ -491,7 +491,7 @@ containers while preserving the named volumes (`seatunnel-web-logs`,
 After SeaTunnel Web starts:
 
 1. Open the SeaTunnel client management page.
-2. Add an Apache SeaTunnel 2.3.13 engine address.
+2. Add an Apache SeaTunnel 2.3.13 / 3.0.0 engine address.
 3. Test the connection.
 4. Create a data source.
 5. Create and publish a synchronization job.
@@ -594,7 +594,8 @@ Roadmap priorities may change based on community feedback and actual usage scena
 
 Before using the current version, please note:
 
-* The currently validated SeaTunnel version is 2.3.13.
+* The validated SeaTunnel versions are 2.3.13 (production) and 3.0.0
+  (parallel validation stack; the ArangoDB custom connector is 2.3.13 only).
 * MySQL 8.0 is recommended for the SeaTunnel Web metadata database.
 * Some advanced SeaTunnel connector parameters may still require script-mode configuration.
 * Production deployment should use secure database credentials, persistent volumes, and controlled network access.

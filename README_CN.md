@@ -139,7 +139,7 @@ SeaTunnel Web 适合有以下需求的团队：
 
 | 组件 | 支持或推荐版本 |
 | --- | --- |
-| Apache SeaTunnel | 2.3.13 |
+| Apache SeaTunnel | 2.3.13（生产）、3.0.0（并行验证） |
 | Java | JDK/JRE 21 |
 | Node.js | 20 及以上，仅源码构建时需要 |
 | Yarn | Yarn Classic 1.x |
@@ -346,7 +346,7 @@ seatunnel-web-<version>/
 SeaTunnel Web 启动后：
 
 1. 打开 SeaTunnel 客户端管理页面。
-2. 添加 Apache SeaTunnel 2.3.13 引擎地址。
+2. 添加 Apache SeaTunnel 2.3.13 / 3.0.0 引擎地址。
 3. 测试连接。
 4. 创建数据源。
 5. 创建并发布数据同步任务。
@@ -449,7 +449,8 @@ http://111.230.213.87:8000
 
 使用当前版本前，请注意：
 
-* 当前已完成验证的 SeaTunnel 版本为 2.3.13。
+* 当前已完成验证的 SeaTunnel 版本为 2.3.13（生产）与 3.0.0（并行验证栈，自维护
+  ArangoDB connector 仅支持 2.3.13）。
 * SeaTunnel Web 元数据库推荐使用 MySQL 8.0。
 * 部分高级 SeaTunnel Connector 参数仍可能需要通过脚本模式进行配置。
 * 生产环境部署时，请使用安全的数据库密码、持久化数据卷，并限制网络访问范围。
