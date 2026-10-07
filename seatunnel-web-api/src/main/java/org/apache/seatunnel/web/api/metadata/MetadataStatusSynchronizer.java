@@ -181,6 +181,22 @@ public class MetadataStatusSynchronizer {
         if (run != null && isOlderThanLocalRun(run, currentStatus, currentLastRunTime)) {
             // A user-triggered run is reserved locally before OpenMetadata registers it.
             // Do not replace a newer local run state with the previous run returned by OM.
+            // If OM never registered a queued scan, reopen that reservation after the same
+            // grace period used for a missing run so the version-driven trigger can retry it.
+            if (scan
+                    && currentStatus == MetadataRunStatus.QUEUED
+                    && currentLastRunTime != null
+                    && now.getTime() - currentLastRunTime.getTime()
+                            >= properties.getTriggerGraceSeconds() * 1000L
+                    && binding.getSyncedConfigVersion() != null
+                    && binding.getSyncedConfigVersion() > 0
+                    && binding.getMetadataTriggeredVersion() != null) {
+                long syncedVersion = binding.getSyncedConfigVersion();
+                if (binding.getMetadataTriggeredVersion() >= syncedVersion) {
+                    binding.setMetadataTriggeredVersion(syncedVersion - 1L);
+                }
+                binding.setScanStatus(MetadataRunStatus.NEVER);
+            }
             return;
         }
         if (run == null

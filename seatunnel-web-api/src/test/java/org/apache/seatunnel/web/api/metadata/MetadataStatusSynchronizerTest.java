@@ -100,6 +100,36 @@ class MetadataStatusSynchronizerTest {
     }
 
     @Test
+    void reopensAQueuedScanWhenOpenMetadataOnlyReturnsAnOlderRun() {
+        Date reservationTime = new Date(1_700_000_100_000L);
+        MetadataSourceBinding candidate = binding(0L);
+        candidate.setScanStatus(MetadataRunStatus.QUEUED);
+        candidate.setScanLastRunTime(reservationTime);
+        candidate.setMetadataTriggeredVersion(3L);
+        candidate.setSyncedConfigVersion(3L);
+        MetadataSourceBinding live = binding(0L);
+        live.setScanStatus(MetadataRunStatus.QUEUED);
+        live.setScanLastRunTime(reservationTime);
+        live.setMetadataTriggeredVersion(3L);
+        live.setSyncedConfigVersion(3L);
+        when(bindingDao.queryStatusRefreshCandidates(any(Date.class), eq(50))).thenReturn(List.of(candidate));
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "previous-scan", "success", 1_700_000_000L, 1_700_000_000L, 1_700_000_020L, 0)));
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1)).thenReturn(List.of());
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
+
+        synchronizer().refreshStatuses();
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateIfVersion(saved.capture(), eq(0L));
+        assertEquals(MetadataRunStatus.NEVER, saved.getValue().getScanStatus());
+        assertEquals(2L, saved.getValue().getMetadataTriggeredVersion());
+        verify(operationService).triggerPendingMetadataScan(saved.getValue());
+    }
+
+    @Test
     void preservesAQueuedExplorationWhenOpenMetadataOnlyReturnsThePreviousRun() {
         Date reservationTime = new Date(1_700_001_000_000L);
         MetadataSourceBinding candidate = binding(0L);
