@@ -36,6 +36,7 @@ export type OpenMetadataServerPayload = {
   token?: string;
   connectTimeoutMs?: number;
   readTimeoutMs?: number;
+  rebuildBindings?: boolean;
 };
 
 const SERVER = '/api/v1/metadata/server';

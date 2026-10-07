@@ -38,13 +38,13 @@ class OpenMetadataRestClientTest {
         AtomicReference<String> deployMethod = new AtomicReference<>();
         AtomicReference<String> deployBody = new AtomicReference<>();
         server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/api/v1/system/version", exchange -> respond(exchange, 200, "{\"version\":\"1.12.10\"}"));
+        server.createContext("/api/v1/system/version", exchange -> respond(exchange, 200, "{\"version\":\"2.0.4\"}"));
         server.createContext("/api/v1/services/ingestionPipelines/status",
-                exchange -> respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"1.12.10.0\"}"));
+                exchange -> respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"2.0.4.0\"}"));
         server.createContext("/api/v1/services/ingestionPipelines/deploy/pipeline-id", exchange -> {
             deployMethod.set(exchange.getRequestMethod());
             deployBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-            respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"1.12.10.0\"}");
+            respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"2.0.4.0\"}");
         });
         server.start();
 
@@ -68,9 +68,9 @@ class OpenMetadataRestClientTest {
     @Test
     void rejectsAnIngestionManagedBuildOutsideTheFixedPatch() throws Exception {
         server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/api/v1/system/version", exchange -> respond(exchange, 200, "{\"version\":\"1.12.10\"}"));
+        server.createContext("/api/v1/system/version", exchange -> respond(exchange, 200, "{\"version\":\"2.0.4\"}"));
         server.createContext("/api/v1/services/ingestionPipelines/status",
-                exchange -> respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"1.12.10.1\"}"));
+                exchange -> respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"2.0.4.1\"}"));
         server.start();
 
         OpenMetadataRestClient client = new OpenMetadataRestClient(
@@ -86,11 +86,11 @@ class OpenMetadataRestClientTest {
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/system/version", exchange -> {
             versionPath.set(exchange.getRequestURI().getPath());
-            respond(exchange, 200, "{\"version\":\"1.12.10\"}");
+            respond(exchange, 200, "{\"version\":\"2.0.4\"}");
         });
         server.createContext("/api/v1/services/ingestionPipelines/status", exchange -> {
             statusPath.set(exchange.getRequestURI().getPath());
-            respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"1.12.10.0\"}");
+            respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"2.0.4.0\"}");
         });
         server.start();
 
@@ -101,8 +101,8 @@ class OpenMetadataRestClientTest {
 
         assertEquals("/api/v1/system/version", versionPath.get());
         assertEquals("/api/v1/services/ingestionPipelines/status", statusPath.get());
-        assertEquals("1.12.10", health.serverVersion());
-        assertEquals("1.12.10.0", health.ingestionVersion());
+        assertEquals("2.0.4", health.serverVersion());
+        assertEquals("2.0.4.0", health.ingestionVersion());
         org.junit.jupiter.api.Assertions.assertTrue(health.openMetadataUp());
         org.junit.jupiter.api.Assertions.assertTrue(health.orchestratorUp());
     }
@@ -114,11 +114,11 @@ class OpenMetadataRestClientTest {
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/services/ingestionPipelines/trigger/pipeline-id", exchange -> {
             triggerBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-            respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"1.12.10.0\"}");
+            respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"2.0.4.0\"}");
         });
         server.createContext("/api/v1/services/ingestionPipelines/kill/pipeline-id", exchange -> {
             killBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-            respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"1.12.10.0\"}");
+            respond(exchange, 200, "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"2.0.4.0\"}");
         });
         server.createContext("/api/v1/services/ingestionPipelines/st_ds_42.st_ds_42_metadata/pipelineStatus", exchange ->
                 respond(exchange, 200,
@@ -179,7 +179,7 @@ class OpenMetadataRestClientTest {
     void rejectsAnHttpSuccessWhoseManagedClientResponseReportsFailure() throws Exception {
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/services/ingestionPipelines/trigger/pipeline-id",
-                exchange -> respond(exchange, 200, "{\"code\":500,\"platform\":\"Airflow\",\"version\":\"1.12.10.0\"}"));
+                exchange -> respond(exchange, 200, "{\"code\":500,\"platform\":\"Airflow\",\"version\":\"2.0.4.0\"}"));
         server.start();
 
         OpenMetadataRestClient client = new OpenMetadataRestClient(

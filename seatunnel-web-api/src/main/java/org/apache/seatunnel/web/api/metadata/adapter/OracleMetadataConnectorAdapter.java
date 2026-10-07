@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Fixed OpenMetadata 1.12.10 Oracle connection schema adapter. */
+/** Fixed OpenMetadata 2.0.4 Oracle connection schema adapter. */
 @Component
 public class OracleMetadataConnectorAdapter extends AbstractDatabaseMetadataConnectorAdapter {
 
@@ -117,7 +117,7 @@ public class OracleMetadataConnectorAdapter extends AbstractDatabaseMetadataConn
     private static MetadataIntegrationException invalidConnection() {
         return new MetadataIntegrationException(
                 MetadataErrorCode.SOURCE_CONNECTION_ERROR,
-                "Oracle connection cannot be converted to the OpenMetadata 1.12.10 schema");
+                "Oracle connection cannot be converted to the OpenMetadata 2.0.4 schema");
     }
 
     private record OracleValues(

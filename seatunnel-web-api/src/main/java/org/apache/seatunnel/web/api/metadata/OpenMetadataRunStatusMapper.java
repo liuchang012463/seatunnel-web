@@ -2,7 +2,7 @@ package org.apache.seatunnel.web.api.metadata;
 
 import org.apache.seatunnel.web.common.enums.MetadataRunStatus;
 
-/** Maps only the PipelineStatus.pipelineState values in OpenMetadata 1.12.10. */
+/** Maps only the PipelineStatus.pipelineState values in OpenMetadata 2.0.4. */
 public final class OpenMetadataRunStatusMapper {
 
     private OpenMetadataRunStatusMapper() {

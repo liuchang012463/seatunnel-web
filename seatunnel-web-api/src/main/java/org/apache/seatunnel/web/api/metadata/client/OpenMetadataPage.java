@@ -3,7 +3,7 @@ package org.apache.seatunnel.web.api.metadata.client;
 import java.util.List;
 
 /**
- * A small projection of OpenMetadata 1.12.10 paging responses.
+ * A small projection of OpenMetadata 2.0.4 paging responses.
  *
  * <p>The {@code after} token is intentionally kept opaque.  Callers must
  * pass it back to the same collection endpoint and must not manufacture a

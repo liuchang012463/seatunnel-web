@@ -7,8 +7,8 @@ package org.apache.seatunnel.web.api.metadata;
  */
 public final class OpenMetadataRuntimeConfig {
 
-    public static final String DEFAULT_SERVER_VERSION = "1.12.10";
-    public static final String DEFAULT_INGESTION_PATCH = "1.12.10.0";
+    public static final String DEFAULT_SERVER_VERSION = "2.0.4";
+    public static final String DEFAULT_INGESTION_PATCH = "2.0.4.0";
 
     private final String baseUrl;
     private final String token;

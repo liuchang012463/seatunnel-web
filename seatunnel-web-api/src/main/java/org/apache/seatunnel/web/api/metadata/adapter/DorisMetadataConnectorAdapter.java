@@ -6,7 +6,7 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
-/** Fixed OpenMetadata 1.12.10 Doris connection schema adapter. */
+/** Fixed OpenMetadata 2.0.4 Doris connection schema adapter. */
 @Component
 public class DorisMetadataConnectorAdapter extends AbstractDatabaseMetadataConnectorAdapter {
 
@@ -28,7 +28,7 @@ public class DorisMetadataConnectorAdapter extends AbstractDatabaseMetadataConne
         config.put("type", "Doris");
         config.put("scheme", "doris");
         config.put("username", source.username());
-        // Doris 1.12.10 uses a direct password property, unlike Mysql/Postgres authType.
+        // Doris 2.0.4 uses a direct password property, unlike Mysql/Postgres authType.
         if (isBlank(source.password())) {
             throw new org.apache.seatunnel.web.api.metadata.MetadataIntegrationException(
                     org.apache.seatunnel.web.api.metadata.MetadataErrorCode.SOURCE_CONNECTION_ERROR,

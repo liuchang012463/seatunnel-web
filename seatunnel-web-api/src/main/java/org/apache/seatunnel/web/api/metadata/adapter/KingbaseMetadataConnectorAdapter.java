@@ -3,7 +3,7 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
-/** Uses the verified CustomDatabase KingbaseSource shipped in the 1.12.10.x image. */
+/** Uses the verified CustomDatabase KingbaseSource shipped in the 2.0.4.x image. */
 @Component
 public class KingbaseMetadataConnectorAdapter extends CustomDatabaseMetadataConnectorAdapter {
 

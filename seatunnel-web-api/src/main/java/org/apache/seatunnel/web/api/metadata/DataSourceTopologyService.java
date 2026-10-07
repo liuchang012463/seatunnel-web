@@ -218,7 +218,7 @@ public class DataSourceTopologyService {
         if (!supported(source.getDbType())) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.CONNECTOR_NOT_SUPPORTED,
-                    "OpenMetadata 1.12.10 topology is supported only for MYSQL, POSTGRE_SQL, ZEONEDB, JDBC(PostgreSQL), DORIS, ORACLE, DAMENG, KINGBASE and VASTBASE");
+                    "OpenMetadata 2.0.4 topology is supported only for MYSQL, POSTGRE_SQL, ZEONEDB, JDBC(PostgreSQL), DORIS, ORACLE, DAMENG, KINGBASE and VASTBASE");
         }
         MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
         if (binding == null || binding.getDesiredState() != MetadataDesiredState.ACTIVE

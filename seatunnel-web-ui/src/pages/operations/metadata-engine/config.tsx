@@ -6,7 +6,7 @@ import {
   LinkOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
-import { Button, Form, Input, InputNumber, Space, Tag, Typography, message } from 'antd';
+import { Button, Checkbox, Form, Input, InputNumber, Space, Tag, Typography, message } from 'antd';
 import { history } from '@umijs/max';
 import React, { useEffect, useState } from 'react';
 import {
@@ -26,6 +26,7 @@ type FormValues = {
   token?: string;
   connectTimeoutMs: number;
   readTimeoutMs: number;
+  rebuildBindings: boolean;
 };
 
 type TestResult = {
@@ -41,6 +42,7 @@ const toPayload = (values: FormValues): OpenMetadataServerPayload => ({
   token: values.token?.trim() || undefined,
   connectTimeoutMs: values.connectTimeoutMs,
   readTimeoutMs: values.readTimeoutMs,
+  rebuildBindings: values.rebuildBindings,
 });
 
 const MetadataEngineConfigPage: React.FC = () => {
@@ -69,6 +71,7 @@ const MetadataEngineConfigPage: React.FC = () => {
           token: undefined,
           connectTimeoutMs: data?.connectTimeoutMs || 10000,
           readTimeoutMs: data?.readTimeoutMs || 60000,
+          rebuildBindings: false,
         });
       } catch (error) {
         if (active) message.error(error instanceof Error ? error.message : '读取探查引擎配置失败');
@@ -139,8 +142,8 @@ const MetadataEngineConfigPage: React.FC = () => {
     }
   };
 
-  const expectedServer = config?.expectedServerVersion || '1.12.10';
-  const expectedIngestion = config?.expectedIngestionPatch || '1.12.10.0';
+  const expectedServer = config?.expectedServerVersion || '2.0.4';
+  const expectedIngestion = config?.expectedIngestionPatch || '2.0.4.0';
 
   return (
     <div className="meta-engine-config-page">
@@ -222,6 +225,14 @@ const MetadataEngineConfigPage: React.FC = () => {
                 autoComplete="new-password"
               />
             </Form.Item>
+            <Form.Item name="rebuildBindings" valuePropName="checked" initialValue={false}>
+              <Checkbox>
+                此地址对应一个新的 OpenMetadata 实例，重建现有数据源绑定
+              </Checkbox>
+            </Form.Item>
+            <Text type="secondary">
+              勾选后，保存会在新 OM 中重新创建 ACTIVE 数据源服务和探查管道；删除中的数据源仍按删除状态清理。仅轮换 Token 时不要勾选。
+            </Text>
             <div className="meta-engine-timeout-row">
               <Form.Item
                 name="connectTimeoutMs"

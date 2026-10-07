@@ -6,12 +6,15 @@ import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
 import org.apache.seatunnel.web.common.enums.MetadataRunStatus;
 import org.apache.seatunnel.web.common.enums.MetadataSyncStatus;
+import org.apache.seatunnel.web.common.utils.MetadataStableName;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /** Local metadata-binding primitive. External work is delegated to the reconciler. */
 @Slf4j
@@ -87,6 +90,49 @@ public class MetadataBindingCommandServiceImpl implements MetadataBindingCommand
         binding.initUpdate();
         metadataBindingDao.updateById(binding);
         return binding;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int resetForOpenMetadataInstanceChange() {
+        List<MetadataSourceBinding> bindings = metadataBindingDao.queryAll();
+        int resetCount = 0;
+        for (MetadataSourceBinding binding : bindings) {
+            if (binding.getDesiredState() != MetadataDesiredState.ACTIVE
+                    && binding.getDesiredState() != MetadataDesiredState.DELETED) {
+                continue;
+            }
+
+            boolean active = binding.getDesiredState() == MetadataDesiredState.ACTIVE;
+            binding.setSyncStatus(active ? MetadataSyncStatus.PENDING : MetadataSyncStatus.DELETING);
+            if (active) {
+                binding.setConfigVersion((binding.getConfigVersion() == null ? 0L : binding.getConfigVersion()) + 1L);
+                binding.setOmServiceFqn(null);
+                binding.setOmMetadataPipelineFqn(null);
+                binding.setOmProfilerPipelineFqn(null);
+            } else {
+                binding.setOmServiceFqn(MetadataStableName.serviceFqn(binding.getDataSourceId()));
+                binding.setOmMetadataPipelineFqn(MetadataStableName.metadataPipelineFqn(binding.getDataSourceId()));
+                binding.setOmProfilerPipelineFqn(MetadataStableName.profilerPipelineFqn(binding.getDataSourceId()));
+            }
+            // IDs belong to the previous endpoint. Active reconciliation upserts by stable FQN;
+            // deleted reconciliation resolves the retained FQN on the new endpoint.
+            binding.setOmServiceId(null);
+            binding.setOmMetadataPipelineId(null);
+            binding.setOmProfilerPipelineId(null);
+            binding.setRetryCount(0);
+            binding.setNextRetryTime(null);
+            binding.setLastSyncErrorCode(null);
+            binding.setLastSyncError(null);
+            binding.setVersion((binding.getVersion() == null ? 0L : binding.getVersion()) + 1L);
+            binding.initUpdate();
+            if (!metadataBindingDao.updateById(binding)) {
+                throw new IllegalStateException(
+                        "Could not reset metadata binding for dataSourceId=" + binding.getDataSourceId());
+            }
+            resetCount++;
+        }
+        return resetCount;
     }
 
     @Override

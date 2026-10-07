@@ -114,7 +114,7 @@ public abstract class AbstractNonDatabaseMetadataConnectorAdapter implements Met
     protected static MetadataIntegrationException invalidConnectionFailure() {
         return new MetadataIntegrationException(
                 MetadataErrorCode.SOURCE_CONNECTION_ERROR,
-                "Data source connection cannot be converted to the OpenMetadata 1.12.10 schema");
+                "Data source connection cannot be converted to the OpenMetadata 2.0.4 schema");
     }
 
     /** Returns the persisted SeaTunnel connection JSON for connector-specific options. */

@@ -77,11 +77,13 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         }
         config.put("useFqnForFiltering", true);
         config.put("includeViews", false);
-        config.put("computeMetrics", true);
         config.put("computeTableMetrics", true);
         config.put("computeColumnMetrics", true);
-        config.put("profileSampleType", "PERCENTAGE");
-        config.put("profileSample", 100);
+        ObjectNode profileSampleConfig = config.putObject("profileSampleConfig");
+        profileSampleConfig.put("sampleConfigType", "STATIC");
+        ObjectNode staticSamplingConfig = profileSampleConfig.putObject("config");
+        staticSamplingConfig.put("profileSample", 100);
+        staticSamplingConfig.put("profileSampleType", "PERCENTAGE");
         // The profiler is user-triggered only in this MVP.
         return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config, null);
     }
@@ -151,7 +153,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         // Exploration is explicitly user-triggered in this product. Keep the
         // pipeline unpaused so a managed trigger can execute, but omit a cron
         // expression so Airflow cannot create a schedule behind the operator's
-        // back.  A paused DAG accepts a trigger in 1.12.10 but leaves the run
+        // back.  A paused DAG accepts a trigger in 2.0.4 but leaves the run
         // permanently queued.
         airflow.put("pausePipeline", false);
         airflow.put("concurrency", 1);
@@ -222,7 +224,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
     protected static MetadataIntegrationException invalidConnectionFailure() {
         return new MetadataIntegrationException(
                 MetadataErrorCode.SOURCE_CONNECTION_ERROR,
-                "Data source connection cannot be converted to the OpenMetadata 1.12.10 schema");
+                "Data source connection cannot be converted to the OpenMetadata 2.0.4 schema");
     }
 
     private void ensureProfilerSupported() {

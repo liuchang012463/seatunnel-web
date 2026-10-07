@@ -41,7 +41,7 @@ import java.util.function.Function;
 
 /**
  * User and scheduler operations on the existing DataSource binding. Every external
- * request goes through OpenMetadata Server 1.12.10; no Airflow client exists here.
+ * request goes through OpenMetadata Server 2.0.4; no Airflow client exists here.
  */
 @Slf4j
 @Service

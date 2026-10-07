@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
 /**
- * Known OpenMetadata 1.12.10 column-profile metrics. Unknown metrics are
+ * Known OpenMetadata 2.0.4 column-profile metrics. Unknown metrics are
  * intentionally not represented and therefore cannot be fabricated as zeroes.
  */
 @Data

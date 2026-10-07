@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 
-/** Shared OpenMetadata 1.12.10 S3 StorageService mapping for S3-compatible sources. */
+/** Shared OpenMetadata 2.0.4 S3 StorageService mapping for S3-compatible sources. */
 abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonDatabaseMetadataConnectorAdapter {
 
     @Override

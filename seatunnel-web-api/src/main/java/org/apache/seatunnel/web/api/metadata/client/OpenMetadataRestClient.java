@@ -42,11 +42,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * OpenMetadata 1.12.10 boundary backed exclusively by the official
- * {@code org.open-metadata:openmetadata-sdk:1.12.10} Java SDK.
+ * OpenMetadata 2.0.4 boundary backed exclusively by the official
+ * {@code org.open-metadata:openmetadata-sdk:2.0.4} Java SDK.
  *
  * <p>The SDK exposes typed entity services for normal CRUD and collection
- * operations. A few 1.12.10 control-plane operations (version, pipeline
+ * operations. A few 2.0.4 control-plane operations (version, pipeline
  * deploy/trigger/status and the latest-profile extension) are not surfaced as
  * typed methods by that SDK release; those calls still use the SDK's official
  * {@link org.openmetadata.sdk.network.HttpClient}, never a second HTTP client
@@ -135,7 +135,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     /**
-     * Verifies the fixed OpenMetadata 1.12.10 server and managed ingestion patch.
+     * Verifies the fixed OpenMetadata 2.0.4 server and managed ingestion patch.
      * Throws {@link MetadataIntegrationException} with {@code OM_CONNECTION_ERROR}
      * when the remote version or PipelineServiceClient health does not match.
      */
@@ -158,7 +158,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     actualVersion);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
-                    "OpenMetadata Server version does not match the fixed 1.12.10 contract");
+                    "OpenMetadata Server version does not match the fixed 2.0.4 contract");
         }
         JsonNode ingestionServiceStatus = sdkRequest(
                 "GET", "/v1/services/ingestionPipelines/status", null, false);
@@ -178,7 +178,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     actualIngestionVersion);
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
-                    "OpenMetadata IngestionPipeline managed build does not match the fixed 1.12.10.0 contract");
+                    "OpenMetadata IngestionPipeline managed build does not match the fixed 2.0.4.0 contract");
         }
         versionVerified.set(true);
         log.info("OpenMetadata version check passed: server={}, ingestion={}",
@@ -283,7 +283,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             ListResponse<Database> response = sdk().databases().list(params);
             List<OpenMetadataDatabase> data = new ArrayList<>();
             for (Database database : safeList(response == null ? null : response.getData())) {
-                // The collection response in some OpenMetadata 1.12.10 deployments
+                // The collection response in some OpenMetadata 2.0.4 deployments
                 // omits the service reference even though the request is filtered
                 // by service. Keep the requested service as the ownership context.
                 OpenMetadataDatabase parsed = toDatabase(database, serviceFullyQualifiedName);
@@ -320,7 +320,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             List<OpenMetadataDatabaseSchema> data = new ArrayList<>();
             for (DatabaseSchema schema : safeList(response == null ? null : response.getData())) {
                 // The collection response is already filtered by database. Some
-                // OpenMetadata 1.12.10 deployments omit the database reference.
+                // OpenMetadata 2.0.4 deployments omit the database reference.
                 OpenMetadataDatabaseSchema parsed = toSchema(schema, databaseFullyQualifiedName);
                 if (parsed != null) {
                     data.add(parsed);
@@ -448,7 +448,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public JsonNode getTableProfilerConfig(String tableId) {
-        // 1.12.10's official SDK exposes the typed update operation but not
+        // 2.0.4's official SDK exposes the typed update operation but not
         // the corresponding GET extension, so use its own HttpClient for this
         // exact server path rather than introducing a second HTTP client.
         return sdkRequest(
@@ -463,7 +463,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     "OpenMetadata table profiler config cannot be empty");
         }
         // The GET/PUT extension is not modelled as a dedicated typed method in
-        // SDK 1.12.10. The request is still executed by the SDK client and
+        // SDK 2.0.4. The request is still executed by the SDK client and
         // therefore inherits its authentication, timeout and error handling.
         return sdkRequest(
                 "PUT", "/v1/tables/" + encode(tableId) + "/tableProfilerConfig",
@@ -479,7 +479,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public OpenMetadataEntity upsertService(MetadataServiceCategory category, JsonNode request) {
         validateBaseUrl();
         try {
-            // SDK 1.12.10's generic upsert accepts an entity, whose generated
+            // SDK 2.0.4's generic upsert accepts an entity, whose generated
             // defaults include read-only fields (version/deleted/entityStatus).
             // The Server PUT contract deserializes Create*Service and rejects
             // those fields. Resolve by name, then use the SDK's typed create/
@@ -526,7 +526,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         try {
             // As with DatabaseService, use the SDK's create request for the
             // create path. The entity upsert serializer includes server-only
-            // fields that OpenMetadata 1.12.10 does not accept on create.
+            // fields that OpenMetadata 2.0.4 does not accept on create.
             CreateIngestionPipeline createRequest =
                     OBJECT_MAPPER.treeToValue(request, CreateIngestionPipeline.class);
             org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline existing =
@@ -737,7 +737,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             findIngestionPipelineEntity(CreateIngestionPipeline desired) {
         String name = desired.getName();
         // IngestionPipeline FQNs are scoped by their service in OpenMetadata
-        // 1.12.10 (serviceFqn.pipelineName).  The generated create DTO keeps
+        // 2.0.4 (serviceFqn.pipelineName).  The generated create DTO keeps
         // the short name, so resolving by that short name would always miss an
         // existing pipeline and attempt a duplicate create on every reconcile.
         // Fall back to the short name for callers that intentionally omit the
@@ -791,7 +791,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         try {
             org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline pipeline =
                     sdk().ingestionPipelines().get(id);
-            // OpenMetadata 1.12.10's managed deploy creates a DAG with the
+            // OpenMetadata 2.0.4's managed deploy creates a DAG with the
             // requested pause-on-creation value, but it does not unpause an
             // already existing DagModel. Toggle through the OM resource so
             // the official PipelineServiceClient calls its /enable operation.
@@ -913,7 +913,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     errorCode,
                     "OpenMetadata PipelineServiceClient did not accept the pipeline operation");
         }
-        // The 1.12.10 deploy/trigger/kill response contains code/platform and
+        // The 2.0.4 deploy/trigger/kill response contains code/platform and
         // does not consistently echo the managed-ingestion version.  The
         // version was already verified by assertFixedVersion before a
         // reconciliation or user operation.  If a response does echo a
@@ -922,12 +922,12 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         if (!version.isBlank() && !current().getExpectedIngestionPatch().equals(version)) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_CONNECTION_ERROR,
-                    "OpenMetadata IngestionPipeline managed build does not match the fixed 1.12.10.0 contract");
+                    "OpenMetadata IngestionPipeline managed build does not match the fixed 2.0.4.0 contract");
         }
     }
 
     /**
-     * Execute an unsupported-by-1.12.10 operation through the SDK network client.
+     * Execute an unsupported-by-2.0.4 operation through the SDK network client.
      * Logs method, path, duration and failure type; never logs tokens or auth headers.
      */
     private JsonNode sdkRequest(String method, String path, Object body, boolean absentOn404) {

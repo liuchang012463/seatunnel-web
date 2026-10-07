@@ -307,7 +307,7 @@ public class DataExplorationService {
     /**
      * Builds the same ER projection as the open_metadata_extension service,
      * but keeps the OpenMetadata call inside this application's official
-     * 1.12.10 SDK boundary. Omitting the schema uses the Database table
+     * 2.0.4 SDK boundary. Omitting the schema uses the Database table
      * collection directly, exactly as the extension endpoint does; a schema
      * FQN may be supplied for a smaller view.
      */
@@ -824,7 +824,7 @@ public class DataExplorationService {
                 && source.getDbType() != DbType.VASTBASE) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.CONNECTOR_NOT_SUPPORTED,
-                    "OpenMetadata 1.12.10 exploration is supported only for MYSQL, POSTGRE_SQL, ZEONEDB, JDBC(PostgreSQL), DORIS, ORACLE, DAMENG, KINGBASE and VASTBASE");
+                    "OpenMetadata 2.0.4 exploration is supported only for MYSQL, POSTGRE_SQL, ZEONEDB, JDBC(PostgreSQL), DORIS, ORACLE, DAMENG, KINGBASE and VASTBASE");
         }
         MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
         if (binding == null

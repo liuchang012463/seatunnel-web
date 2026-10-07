@@ -9,7 +9,7 @@ import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter for historical JDBC rows. The current 1.12.10 ingestion image only
+ * Adapter for historical JDBC rows. The current 2.0.4 ingestion image only
  * has a verified first-class PostgreSQL connector for the deployed JDBC row;
  * unknown JDBC drivers remain explicitly unsupported.
  */
@@ -32,13 +32,13 @@ public class JdbcMetadataConnectorAdapter extends AbstractDatabaseMetadataConnec
         if (url == null || !url.toLowerCase(java.util.Locale.ROOT).startsWith("jdbc:postgresql:")) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.CONNECTOR_NOT_SUPPORTED,
-                    "OpenMetadata 1.12.10 has no verified first-class connector for this JDBC driver");
+                    "OpenMetadata 2.0.4 has no verified first-class connector for this JDBC driver");
         }
         ConnectionValues source = connectionValues(dataSource);
         if (isBlank(source.database())) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.SOURCE_CONNECTION_ERROR,
-                    "Postgres JDBC requires a database for the OpenMetadata 1.12.10 connection schema");
+                    "Postgres JDBC requires a database for the OpenMetadata 2.0.4 connection schema");
         }
         ObjectNode root = baseServiceRequest(dataSource, stableServiceName);
         ObjectNode config = root.putObject("connection").putObject("config");

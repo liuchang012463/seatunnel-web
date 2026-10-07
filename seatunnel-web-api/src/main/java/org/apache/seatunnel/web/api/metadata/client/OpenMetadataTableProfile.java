@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Latest table profile plus the column profiles embedded by the 1.12.10 API. */
+/** Latest table profile plus the column profiles embedded by the 2.0.4 API. */
 @Data
 public class OpenMetadataTableProfile {
 

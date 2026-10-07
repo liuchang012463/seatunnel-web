@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataHealth;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataRestClient;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
+import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.api.service.OpenMetadataServerService;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
 import org.apache.seatunnel.web.dao.entity.OpenMetadataServerConfig;
@@ -35,16 +36,20 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
     private final OpenMetadataConfigResolver configResolver;
     private final MetadataIntegrationHealthService healthService;
     private final CurrentUserProvider currentUserProvider;
+    private final MetadataBindingCommandService metadataBindingCommandService;
 
     public OpenMetadataServerServiceImpl(
             OpenMetadataServerConfigDao configDao,
             OpenMetadataConfigResolver configResolver,
             MetadataIntegrationHealthService healthService,
-            CurrentUserProvider currentUserProvider) {
+            CurrentUserProvider currentUserProvider,
+            MetadataBindingCommandService metadataBindingCommandService) {
         this.configDao = Objects.requireNonNull(configDao, "configDao");
         this.configResolver = Objects.requireNonNull(configResolver, "configResolver");
         this.healthService = Objects.requireNonNull(healthService, "healthService");
         this.currentUserProvider = Objects.requireNonNull(currentUserProvider, "currentUserProvider");
+        this.metadataBindingCommandService = Objects.requireNonNull(
+                metadataBindingCommandService, "metadataBindingCommandService");
     }
 
     @Override
@@ -62,6 +67,10 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
     public OpenMetadataServerConfigVO saveConfig(OpenMetadataServerConfigDTO request) {
         ValidConfig valid = validate(request, false);
         OpenMetadataServerConfig current = configDao.querySingleton();
+        boolean endpointChanged = current == null
+                || !normalizeBaseUrl(current.getBaseUrl()).equals(normalizeBaseUrl(valid.baseUrl()));
+        boolean rebuildBindings = endpointChanged
+                || (request != null && Boolean.TRUE.equals(request.getRebuildBindings()));
         String token = resolveToken(current, request == null ? null : request.getToken());
         if (StringUtils.isBlank(token)) {
             throw invalid("token");
@@ -94,6 +103,8 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         target.setToken(token);
         target.setConnectTimeoutMs(valid.connectTimeoutMs());
         target.setReadTimeoutMs(valid.readTimeoutMs());
+        target.setExpectedServerVersion(OpenMetadataRuntimeConfig.DEFAULT_SERVER_VERSION);
+        target.setExpectedIngestionPatch(OpenMetadataRuntimeConfig.DEFAULT_INGESTION_PATCH);
         target.setConnStatus(ConnStatus.CONNECTED_SUCCESS);
         target.setLastError(null);
         target.setUpdateUserId(currentUserId());
@@ -104,6 +115,10 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
             configDao.updateSingleton(target);
         }
         configResolver.invalidate();
+        if (rebuildBindings) {
+            int resetCount = metadataBindingCommandService.resetForOpenMetadataInstanceChange();
+            log.info("OpenMetadata binding reset requested; queued {} metadata bindings for reconciliation", resetCount);
+        }
         log.info("OpenMetadata server config saved: baseUrl={}, configVersion={}",
                 sanitizeUrl(target.getBaseUrl()), target.getConfigVersion());
         OpenMetadataServerConfigVO vo = toVO(target);
@@ -285,6 +300,14 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         } catch (IllegalArgumentException ignored) {
             return baseUrl.toLowerCase(Locale.ROOT).replaceAll("(?i)(token|password)=[^&]*", "$1=***");
         }
+    }
+
+    private static String normalizeBaseUrl(String baseUrl) {
+        String normalized = StringUtils.trimToEmpty(baseUrl);
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     private record ValidConfig(String baseUrl, int connectTimeoutMs, int readTimeoutMs) {

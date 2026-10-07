@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
-/** OpenMetadata 1.12.10 S3 StorageService adapter (prefix-level metadata only). */
+/** OpenMetadata 2.0.4 S3 StorageService adapter (prefix-level metadata only). */
 @Component
 public class S3MetadataConnectorAdapter extends AbstractS3CompatibleMetadataConnectorAdapter {
 

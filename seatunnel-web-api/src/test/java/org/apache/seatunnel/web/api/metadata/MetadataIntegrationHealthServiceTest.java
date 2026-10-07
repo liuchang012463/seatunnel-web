@@ -18,14 +18,14 @@ class MetadataIntegrationHealthServiceTest {
     void reportsHealthyOnlyWhenServerAndManagedBuildMatch() {
         OpenMetadataProperties properties = properties(true);
         OpenMetadataClient client = mock(OpenMetadataClient.class);
-        when(client.health()).thenReturn(new OpenMetadataHealth(true, true, "1.12.10", "1.12.10.0"));
+        when(client.health()).thenReturn(new OpenMetadataHealth(true, true, "2.0.4", "2.0.4.0"));
 
         MetadataIntegrationHealthVO result = new MetadataIntegrationHealthService(properties, client).health();
 
         assertEquals("UP", result.getOpenMetadata());
         assertEquals("UP", result.getOrchestrator());
         assertTrue(result.isVersionCompatible());
-        assertEquals("1.12.10.x", result.getExpectedVersionLine());
+        assertEquals("2.0.4.x", result.getExpectedVersionLine());
     }
 
     @Test
@@ -56,8 +56,12 @@ class MetadataIntegrationHealthServiceTest {
     private static OpenMetadataProperties properties(boolean enabled) {
         OpenMetadataProperties properties = new OpenMetadataProperties();
         properties.setEnabled(enabled);
-        properties.setExpectedServerVersion("1.12.10");
-        properties.setExpectedIngestionPatch("1.12.10.0");
+        if (enabled) {
+            properties.setBaseUrl("http://127.0.0.1:8585/api");
+            properties.setToken("test-token");
+        }
+        properties.setExpectedServerVersion("2.0.4");
+        properties.setExpectedIngestionPatch("2.0.4.0");
         return properties;
     }
 }

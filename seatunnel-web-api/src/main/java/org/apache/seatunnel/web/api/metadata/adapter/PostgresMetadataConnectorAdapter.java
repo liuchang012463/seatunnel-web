@@ -8,7 +8,7 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
-/** Fixed OpenMetadata 1.12.10 Postgres connection schema adapter. */
+/** Fixed OpenMetadata 2.0.4 Postgres connection schema adapter. */
 @Component
 public class PostgresMetadataConnectorAdapter extends AbstractDatabaseMetadataConnectorAdapter {
 
@@ -28,7 +28,7 @@ public class PostgresMetadataConnectorAdapter extends AbstractDatabaseMetadataCo
         if (isBlank(source.database())) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.SOURCE_CONNECTION_ERROR,
-                    "Postgres requires a database for the OpenMetadata 1.12.10 connection schema");
+                    "Postgres requires a database for the OpenMetadata 2.0.4 connection schema");
         }
         ObjectNode root = baseServiceRequest(dataSource, stableServiceName);
         ObjectNode config = root.putObject("connection").putObject("config");

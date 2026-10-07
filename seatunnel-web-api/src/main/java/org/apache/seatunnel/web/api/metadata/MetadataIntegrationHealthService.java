@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class MetadataIntegrationHealthService {
 
-    private static final String EXPECTED_INGESTION_LINE = "1.12.10.x";
+    private static final String EXPECTED_INGESTION_LINE = "2.0.4.x";
 
     private final OpenMetadataConfigResolver configResolver;
     private final OpenMetadataClient openMetadataClient;

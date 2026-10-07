@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Minimal Table projection returned by OpenMetadata 1.12.10 APIs. */
+/** Minimal Table projection returned by OpenMetadata 2.0.4 APIs. */
 @Data
 public class OpenMetadataTable {
 

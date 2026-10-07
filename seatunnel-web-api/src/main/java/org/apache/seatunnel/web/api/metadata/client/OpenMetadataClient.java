@@ -11,7 +11,7 @@ public interface OpenMetadataClient {
 
     void assertFixedVersion();
 
-    /** Reads Server and managed-ingestion health through OpenMetadata 1.12.10. */
+    /** Reads Server and managed-ingestion health through OpenMetadata 2.0.4. */
     OpenMetadataHealth health();
 
     Optional<OpenMetadataEntity> findDatabaseService(String fullyQualifiedName);
@@ -22,7 +22,7 @@ public interface OpenMetadataClient {
 
     List<OpenMetadataDatabase> listDatabases(String serviceFullyQualifiedName, int limit);
 
-    /** Reads one cursor page from the OpenMetadata 1.12.10 database collection. */
+    /** Reads one cursor page from the OpenMetadata 2.0.4 database collection. */
     default OpenMetadataPage<OpenMetadataDatabase> listDatabasesPage(
             String serviceFullyQualifiedName, int limit, String after) {
         List<OpenMetadataDatabase> data = listDatabases(serviceFullyQualifiedName, limit);
@@ -32,7 +32,7 @@ public interface OpenMetadataClient {
     /** Lists non-deleted schemas belonging to one OpenMetadata Database FQN. */
     List<OpenMetadataDatabaseSchema> listSchemas(String databaseFullyQualifiedName, int limit);
 
-    /** Reads one cursor page from the OpenMetadata 1.12.10 schema collection. */
+    /** Reads one cursor page from the OpenMetadata 2.0.4 schema collection. */
     default OpenMetadataPage<OpenMetadataDatabaseSchema> listSchemasPage(
             String databaseFullyQualifiedName, int limit, String after) {
         List<OpenMetadataDatabaseSchema> data = listSchemas(databaseFullyQualifiedName, limit);
@@ -40,13 +40,13 @@ public interface OpenMetadataClient {
     }
 
     /**
-     * Lists non-deleted tables for one schema. The 1.12.10 contract uses the
+     * Lists non-deleted tables for one schema. The 2.0.4 contract uses the
      * fields query parameter to request columns and table constraints.
      */
     List<OpenMetadataTable> listTables(
             String schemaFullyQualifiedName, boolean includeColumns, int limit);
 
-    /** Reads one cursor page from the OpenMetadata 1.12.10 table collection. */
+    /** Reads one cursor page from the OpenMetadata 2.0.4 table collection. */
     default OpenMetadataPage<OpenMetadataTable> listTablesPage(
             String schemaFullyQualifiedName, boolean includeColumns, int limit, String after) {
         List<OpenMetadataTable> data = listTables(schemaFullyQualifiedName, includeColumns, limit);
@@ -69,7 +69,7 @@ public interface OpenMetadataClient {
      */
     OpenMetadataTableProfile getLatestTableProfile(String tableFullyQualifiedName);
 
-    /** Reads column profiles in the timestamp range required by OpenMetadata 1.12.10. */
+    /** Reads column profiles in the timestamp range required by OpenMetadata 2.0.4. */
     List<OpenMetadataColumnProfile> listColumnProfiles(
             String columnOrTableFullyQualifiedName, long startTs, long endTs);
 
@@ -119,18 +119,18 @@ public interface OpenMetadataClient {
     void deployIngestionPipeline(String id);
 
     /**
-     * Ensures the managed Airflow DAG is enabled through OpenMetadata 1.12.10.
+     * Ensures the managed Airflow DAG is enabled through OpenMetadata 2.0.4.
      * This is deliberately not an Airflow client operation.
      */
     void enableIngestionPipeline(String id);
 
-    /** OpenMetadata 1.12.10 trigger endpoint; it intentionally has no request body. */
+    /** OpenMetadata 2.0.4 trigger endpoint; it intentionally has no request body. */
     void triggerIngestionPipeline(String id);
 
     /** Reads PipelineStatus from OpenMetadata, never from an Airflow endpoint. */
     List<OpenMetadataPipelineRun> listIngestionPipelineRuns(String fullyQualifiedName, int limit);
 
-    /** OpenMetadata 1.12.10 kill endpoint; it intentionally has no request body. */
+    /** OpenMetadata 2.0.4 kill endpoint; it intentionally has no request body. */
     void killIngestionPipeline(String id);
 
     /** OM 404 is already the desired state and returns normally. */

@@ -229,8 +229,8 @@ metadata:
     token:
     connect-timeout-ms: 10000
     read-timeout-ms: 60000
-    expected-server-version: 1.12.10
-    expected-ingestion-patch: 1.12.10.0
+    expected-server-version: 2.0.4
+    expected-ingestion-patch: 2.0.4.0
   # Optional server-side adapter for /mnt/lc/open_metadata_extension/project.
   # Set the base URL to the extension's /omext route, not its OpenMetadata URL.
   extension:

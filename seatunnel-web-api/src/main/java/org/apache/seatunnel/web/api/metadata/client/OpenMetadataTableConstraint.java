@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Table-level constraint from the OpenMetadata 1.12.10 Table entity. */
+/** Table-level constraint from the OpenMetadata 2.0.4 Table entity. */
 @Data
 public class OpenMetadataTableConstraint {
 

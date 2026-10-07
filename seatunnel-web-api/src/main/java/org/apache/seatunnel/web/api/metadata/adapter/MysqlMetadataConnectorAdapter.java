@@ -6,7 +6,7 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
-/** Fixed OpenMetadata 1.12.10 Mysql connection schema adapter. */
+/** Fixed OpenMetadata 2.0.4 Mysql connection schema adapter. */
 @Component
 public class MysqlMetadataConnectorAdapter extends AbstractDatabaseMetadataConnectorAdapter {
 

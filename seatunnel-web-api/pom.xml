@@ -183,11 +183,11 @@
             <version>2.15.1</version>
         </dependency>
 
-        <!-- Official OpenMetadata Java SDK, pinned to the deployed 1.12.10 server line. -->
+        <!-- Official OpenMetadata Java SDK, pinned to the deployed 2.0.4 server line. -->
         <dependency>
             <groupId>org.open-metadata</groupId>
             <artifactId>openmetadata-sdk</artifactId>
-            <version>1.12.10</version>
+            <version>2.0.4</version>
         </dependency>
 
     </dependencies>

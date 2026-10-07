@@ -7,7 +7,7 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
-/** Fixed OpenMetadata 1.12.10 Kafka messaging service adapter. */
+/** Fixed OpenMetadata 2.0.4 Kafka messaging service adapter. */
 @Component
 public class KafkaMetadataConnectorAdapter extends AbstractNonDatabaseMetadataConnectorAdapter {
 

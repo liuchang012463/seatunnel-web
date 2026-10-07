@@ -13,6 +13,13 @@ public interface MetadataBindingCommandService {
     MetadataSourceBinding markConfigurationChanged(Long dataSourceId);
 
     /**
+     * Requeues local bindings after the configured OpenMetadata endpoint changes.
+     * Active bindings are rebuilt by the reconciler; deleted bindings keep their
+     * tombstone state and are cleaned by FQN against the new endpoint.
+     */
+    int resetForOpenMetadataInstanceChange();
+
+    /**
      * Records that a local data source was removed. The binding is deliberately
      * retained so the later reconciler can remove the corresponding OM assets.
      */

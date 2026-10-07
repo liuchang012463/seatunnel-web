@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  * Server-side adapter for the optional open_metadata_extension API.  This is
  * deliberately separate from the OpenMetadata client: ER data is built by
- * the official 1.12.10 SDK in {@link DataExplorationService}, while this
+ * the official 2.0.4 SDK in {@link DataExplorationService}, while this
  * client only submits and observes the extension's asynchronous description
  * generation task.
  *

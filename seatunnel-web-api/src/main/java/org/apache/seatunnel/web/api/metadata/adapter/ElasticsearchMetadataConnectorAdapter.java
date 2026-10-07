@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Fixed OpenMetadata 1.12.10 ElasticSearch search service adapter. */
+/** Fixed OpenMetadata 2.0.4 ElasticSearch search service adapter. */
 @Component
 public class ElasticsearchMetadataConnectorAdapter extends AbstractNonDatabaseMetadataConnectorAdapter {
 

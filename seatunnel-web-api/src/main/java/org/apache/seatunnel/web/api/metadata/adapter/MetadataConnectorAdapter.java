@@ -5,7 +5,7 @@ import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
-/** Converts one supported SeaTunnel source to fixed OpenMetadata 1.12.10 DTO shapes. */
+/** Converts one supported SeaTunnel source to fixed OpenMetadata 2.0.4 DTO shapes. */
 public interface MetadataConnectorAdapter {
 
     DbType dataSourceType();
@@ -38,7 +38,7 @@ public interface MetadataConnectorAdapter {
     JsonNode profilerPipelineRequest(String pipelineName, String serviceId, String serviceFqn);
 
     /**
-     * 1.12.10 profiler runs are scoped by an OM Database FQN. Existing reconciliation
+     * 2.0.4 profiler runs are scoped by an OM Database FQN. Existing reconciliation
      * continues to create the reusable pipeline with an empty filter.
      */
     default JsonNode profilerPipelineRequest(

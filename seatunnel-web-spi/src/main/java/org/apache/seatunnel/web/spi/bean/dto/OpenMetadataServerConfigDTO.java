@@ -16,4 +16,7 @@ public class OpenMetadataServerConfigDTO {
     private Integer connectTimeoutMs;
 
     private Integer readTimeoutMs;
+
+    /** Explicitly rebuild existing datasource bindings when this endpoint serves a new OM instance. */
+    private Boolean rebuildBindings;
 }

@@ -6,7 +6,7 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 
 /**
  * Adapter for the CustomDatabase extension point shipped with the deployed
- * OpenMetadata 1.12.10.x ingestion image.  The image loads the connector's
+ * OpenMetadata 2.0.4.x ingestion image.  The image loads the connector's
  * module-level get_connection function from sourcePythonClass, so this class
  * deliberately emits the documented CustomDatabase connection shape instead
  * of pretending the connector is a 1.13 built-in.
@@ -46,7 +46,7 @@ abstract class CustomDatabaseMetadataConnectorAdapter extends AbstractDatabaseMe
             config.set("schemaFilterPattern", filterPattern(schema));
         }
         config.put("supportsMetadataExtraction", true);
-        // CustomDatabaseConnection allows extension fields in 1.12.10.  The
+        // CustomDatabaseConnection allows extension fields in 2.0.4.  The
         // flag lets the profiler workflow treat this source as profileable.
         config.put("supportsProfiler", true);
         return root;

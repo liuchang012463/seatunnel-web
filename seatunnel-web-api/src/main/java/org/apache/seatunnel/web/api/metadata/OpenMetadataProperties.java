@@ -22,7 +22,7 @@ public class OpenMetadataProperties {
 
     private int readTimeoutMs = 60_000;
 
-    private String expectedServerVersion = "1.12.10";
+    private String expectedServerVersion = "2.0.4";
 
-    private String expectedIngestionPatch = "1.12.10.0";
+    private String expectedIngestionPatch = "2.0.4.0";
 }

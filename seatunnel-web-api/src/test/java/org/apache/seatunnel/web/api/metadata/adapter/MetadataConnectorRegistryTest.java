@@ -170,6 +170,14 @@ class MetadataConnectorRegistryTest {
         assertEquals(true, pipeline.at("/sourceConfig/config/useFqnForFiltering").asBoolean());
         assertEquals("^st_ds_7\\.orders$",
                 pipeline.at("/sourceConfig/config/databaseFilterPattern/includes/0").asText());
+        assertTrue(pipeline.at("/sourceConfig/config/computeMetrics").isMissingNode());
+        assertTrue(pipeline.at("/sourceConfig/config/profileSample").isMissingNode());
+        assertTrue(pipeline.at("/sourceConfig/config/profileSampleType").isMissingNode());
+        assertEquals(true, pipeline.at("/sourceConfig/config/computeTableMetrics").asBoolean());
+        assertEquals(true, pipeline.at("/sourceConfig/config/computeColumnMetrics").asBoolean());
+        assertEquals("STATIC", pipeline.at("/sourceConfig/config/profileSampleConfig/sampleConfigType").asText());
+        assertEquals(100, pipeline.at("/sourceConfig/config/profileSampleConfig/config/profileSample").asInt());
+        assertEquals("PERCENTAGE", pipeline.at("/sourceConfig/config/profileSampleConfig/config/profileSampleType").asText());
     }
 
     @Test

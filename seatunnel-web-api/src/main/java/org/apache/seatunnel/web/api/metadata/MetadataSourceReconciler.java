@@ -104,7 +104,7 @@ public class MetadataSourceReconciler {
         MetadataConnectorAdapter adapter = resolved.get();
         String serviceName = MetadataStableName.serviceName(dataSource.getId());
 
-        // PUT is the documented 1.12.10 upsert, so this also converges changed source configuration.
+        // PUT is the documented 2.0.4 upsert, so this also converges changed source configuration.
         OpenMetadataEntity service = openMetadataClient.upsertService(
                 adapter.serviceCategory(), adapter.serviceRequest(dataSource, serviceName));
         OpenMetadataEntity metadataPipeline = openMetadataClient.upsertIngestionPipeline(
@@ -119,7 +119,7 @@ public class MetadataSourceReconciler {
                             MetadataStableName.profilerPipelineName(dataSource.getId()),
                             service.id(), service.fullyQualifiedName()));
         }
-        // The 1.12.10 deploy endpoints deliberately have no request body.
+        // The 2.0.4 deploy endpoints deliberately have no request body.
         openMetadataClient.deployIngestionPipeline(metadataPipeline.id());
         openMetadataClient.enableIngestionPipeline(metadataPipeline.id());
         if (profilerPipeline != null) {

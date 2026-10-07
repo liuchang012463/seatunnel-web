@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
-/** OpenMetadata 1.12.10 S3-compatible StorageService adapter for MinIO. */
+/** OpenMetadata 2.0.4 S3-compatible StorageService adapter for MinIO. */
 @Component
 public class MinioMetadataConnectorAdapter extends AbstractS3CompatibleMetadataConnectorAdapter {
 

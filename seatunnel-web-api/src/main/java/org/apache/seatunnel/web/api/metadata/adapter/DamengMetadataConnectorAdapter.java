@@ -3,7 +3,7 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
-/** Uses the verified CustomDatabase DamengSource shipped in the 1.12.10.x image. */
+/** Uses the verified CustomDatabase DamengSource shipped in the 2.0.4.x image. */
 @Component
 public class DamengMetadataConnectorAdapter extends CustomDatabaseMetadataConnectorAdapter {
 
@@ -19,7 +19,7 @@ public class DamengMetadataConnectorAdapter extends CustomDatabaseMetadataConnec
 
     @Override
     protected boolean includeDatabase() {
-        // Dameng's 1.12.10 custom connector treats the database option as a
+        // Dameng's 2.0.4 custom connector treats the database option as a
         // JDBC schema and rejects the conventional DAMENG URL segment.
         return false;
     }

@@ -32,6 +32,6 @@ public class MetadataConnectorRegistry {
     public MetadataConnectorAdapter require(DbType dbType) {
         return find(dbType).orElseThrow(() -> new MetadataIntegrationException(
                 MetadataErrorCode.CONNECTOR_NOT_SUPPORTED,
-                "OpenMetadata 1.12.10 connector is not enabled for this data source type"));
+                "OpenMetadata 2.0.4 connector is not enabled for this data source type"));
     }
 }

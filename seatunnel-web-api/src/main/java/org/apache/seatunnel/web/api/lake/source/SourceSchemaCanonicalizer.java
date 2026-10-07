@@ -19,7 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-/** Canonical source schema identity for OpenMetadata 1.12.10 Table results. */
+/** Canonical source schema identity for OpenMetadata 2.0.4 Table results. */
 public final class SourceSchemaCanonicalizer {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

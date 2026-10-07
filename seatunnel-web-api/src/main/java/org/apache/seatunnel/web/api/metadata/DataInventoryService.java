@@ -51,7 +51,7 @@ import java.util.function.Function;
 
 /**
  * Aggregates the existing SeaTunnel master data with cursor-paged projections
- * from OpenMetadata 1.12.10.  It deliberately does not persist Database,
+ * from OpenMetadata 2.0.4.  It deliberately does not persist Database,
  * Schema, Table or Column mirrors.
  */
 @Slf4j
