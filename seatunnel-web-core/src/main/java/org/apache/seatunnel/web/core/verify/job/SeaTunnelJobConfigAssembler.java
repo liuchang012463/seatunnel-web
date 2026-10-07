@@ -5,8 +5,6 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-
 @Component
 public class SeaTunnelJobConfigAssembler {
 
@@ -31,21 +29,11 @@ public class SeaTunnelJobConfigAssembler {
     }
 
     private Config wrapPlugin(String pluginName, Config pluginConfig) {
-        return ConfigFactory.parseMap(
-                Collections.<String, Object>singletonMap(
-                        pluginName,
-                        pluginConfig.root().unwrapped()
-                )
-        );
+        return ConfigFactory.empty().withValue(pluginName, pluginConfig.root());
     }
 
     private String renderSection(String sectionName, Config sectionConfig) {
-        Config wrapped = ConfigFactory.parseMap(
-                Collections.<String, Object>singletonMap(
-                        sectionName,
-                        sectionConfig.root().unwrapped()
-                )
-        );
+        Config wrapped = ConfigFactory.empty().withValue(sectionName, sectionConfig.root());
         return render(wrapped);
     }
 

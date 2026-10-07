@@ -45,12 +45,7 @@ public class KafkaConnectivityTestJobDefinitionBuilder implements ConnectivityTe
         ConnectionParam param = DataSourceUtils.buildConnectionParams(DbType.KAFKA, datasource.getConnectionParams());
         String topic = StringUtils.defaultIfBlank(requestedTopic, firstTopic(processor, param));
 
-        Map<String, Object> node = new LinkedHashMap<>();
-        node.put("topic", topic);
-        node.put("consumerGroup", "seatunnel-web-connectivity-" + UUID.randomUUID());
-        node.put("startMode", "latest");
-        node.put("commitOnCheckpoint", false);
-        node.put("format", "json");
+        Map<String, Object> node = buildConnectivitySourceNode(topic);
 
         Config connectionConfig = ConfigFactory.parseString(datasource.getConnectionParams());
         DataSourceHoconBuilder sourceBuilder = processor.getQueryBuilder("KAFKA");
@@ -65,6 +60,17 @@ public class KafkaConnectivityTestJobDefinitionBuilder implements ConnectivityTe
                 testJobEnvConfigBuilder.buildBatchEnv(), "Kafka", source,
                 consoleSinkHoconBuilder.pluginName(), consoleSinkHoconBuilder.build());
         return new ConnectivityTestJob(jobName, jobConfig, "hocon", true);
+    }
+
+    static Map<String, Object> buildConnectivitySourceNode(String topic) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("topic", topic);
+        node.put("consumerGroup", "seatunnel-web-connectivity-" + UUID.randomUUID());
+        node.put("startMode", "latest");
+        node.put("commitOnCheckpoint", false);
+        node.put("format", "json");
+        node.put("schema", Map.of("fields", Map.of("connectivity_probe", "string")));
+        return node;
     }
 
     private String firstTopic(DataSourceProcessor processor, ConnectionParam param) {

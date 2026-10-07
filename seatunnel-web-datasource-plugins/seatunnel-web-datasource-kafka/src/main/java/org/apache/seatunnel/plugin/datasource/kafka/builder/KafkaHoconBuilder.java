@@ -3,6 +3,8 @@ package org.apache.seatunnel.plugin.datasource.kafka.builder;
 import com.google.auto.service.AutoService;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigObject;
+import com.typesafe.config.ConfigValueFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
@@ -94,7 +96,7 @@ public class KafkaHoconBuilder implements DataSourceHoconBuilder {
         });
         kafkaConfig.putAll(flattenKafkaConfig(asMap(node.get("kafkaConfig"))));
         if (!kafkaConfig.isEmpty()) {
-            result.put("kafka.config", quoteDottedKeys(kafkaConfig));
+            result.put("kafka.config", kafkaConfig);
         }
         return result;
     }
@@ -212,18 +214,27 @@ public class KafkaHoconBuilder implements DataSourceHoconBuilder {
 
     private Config toConfig(Map<String, Object> values) {
         Map<String, Object> hoconValues = new LinkedHashMap<>();
-        values.forEach((key, value) -> hoconValues.put(
-                key.startsWith("start_mode.") ? "\"" + key + "\"" : key,
-                value));
-        return ConfigFactory.parseMap(hoconValues);
-    }
+        Map<?, ?> kafkaConfig = null;
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
+            if ("kafka.config".equals(entry.getKey()) && entry.getValue() instanceof Map) {
+                kafkaConfig = (Map<?, ?>) entry.getValue();
+            } else {
+                String key = entry.getKey();
+                hoconValues.put(key.startsWith("start_mode.") ? "\"" + key + "\"" : key, entry.getValue());
+            }
+        }
 
-    private Map<String, Object> quoteDottedKeys(Map<String, Object> values) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        values.forEach((key, value) -> result.put(
-                key.contains(".") ? "\"" + key + "\"" : key,
-                value));
-        return result;
+        Config config = ConfigFactory.parseMap(hoconValues);
+        if (kafkaConfig == null) {
+            return config;
+        }
+
+        ConfigObject kafkaConfigObject = ConfigFactory.empty().root();
+        for (Map.Entry<?, ?> entry : kafkaConfig.entrySet()) {
+            kafkaConfigObject = kafkaConfigObject.withValue(
+                    String.valueOf(entry.getKey()), ConfigValueFactory.fromAnyRef(entry.getValue()));
+        }
+        return config.withValue("kafka.config", kafkaConfigObject);
     }
 
     private Map<String, Object> flattenKafkaConfig(Map<String, Object> values) {

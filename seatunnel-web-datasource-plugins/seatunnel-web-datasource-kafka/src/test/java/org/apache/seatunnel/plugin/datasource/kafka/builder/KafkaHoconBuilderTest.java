@@ -2,6 +2,7 @@ package org.apache.seatunnel.plugin.datasource.kafka.builder;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigObject;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.junit.jupiter.api.Test;
 
@@ -31,10 +32,34 @@ class KafkaHoconBuilderTest {
         assertEquals("orders-web", config.getString("consumer.group"));
         assertEquals(42, config.getObject("\"start_mode.offsets\"").get("0").unwrapped());
         assertEquals("lz4", config.getString("kafka.config.\"compression.type\""));
+        ConfigObject kafkaConfig = config.getObject("kafka.config");
+        assertEquals("lz4", kafkaConfig.get("compression.type").unwrapped());
+        assertTrue(kafkaConfig.containsKey("client.id"));
+        assertTrue(kafkaConfig.containsKey("request.timeout.ms"));
+        assertTrue(kafkaConfig.containsKey("security.protocol"));
+        assertFalse(kafkaConfig.containsKey("compression"));
+        assertFalse(kafkaConfig.containsKey("client"));
         assertEquals("ok", config.getString("custom.option"));
         assertFalse(config.hasPath("pluginName"));
         assertFalse(config.hasPath("pattern"));
         assertEquals("json", config.getString("format"));
+    }
+
+    @Test
+    void shouldKeepSaslPropertiesAsFlatStringKeys() {
+        String connection = "{\"bootstrapServers\":\"broker:9092\","
+                + "\"securityProtocol\":\"SASL_PLAINTEXT\","
+                + "\"saslMechanism\":\"PLAIN\","
+                + "\"username\":\"user\",\"password\":\"test\","
+                + "\"clientId\":\"web\",\"requestTimeoutMs\":8000,\"kafkaConfig\":{}}";
+        Config config = builder.buildSourceHocon(context(Map.of("topic", "orders"), connection));
+        ConfigObject kafkaConfig = config.getObject("kafka.config");
+
+        assertTrue(kafkaConfig.containsKey("security.protocol"));
+        assertTrue(kafkaConfig.containsKey("sasl.mechanism"));
+        assertTrue(kafkaConfig.containsKey("sasl.jaas.config"));
+        assertFalse(kafkaConfig.containsKey("security"));
+        assertFalse(kafkaConfig.containsKey("sasl"));
     }
 
     @Test
@@ -91,6 +116,10 @@ class KafkaHoconBuilderTest {
                 + "\"clientId\":\"web\","
                 + "\"requestTimeoutMs\":10000,"
                 + "\"kafkaConfig\":{\"compression.type\":\"gzip\"}}";
+        return context(node, connection);
+    }
+
+    private HoconBuildContext context(Map<String, Object> node, String connection) {
         return HoconBuildContext.builder()
                 .connectionParam(connection)
                 .connectionConfig(ConfigFactory.parseString(connection))
