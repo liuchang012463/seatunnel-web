@@ -26,6 +26,8 @@ import type {
   DataSourceMetadataStatus,
   DataSourceCatalogFileEntry,
   DataSourceCatalogOption,
+  DataSourceOmResourceDetail,
+  DataSourceOmResourcePage,
 } from './types';
 
 const DATA_SOURCE_API_PREFIX = '/api/v1/data-source';
@@ -442,6 +444,45 @@ export async function fetchDataSourceCatalogFiles(
 ): Promise<CommonApiResponse<DataSourceCatalogFileEntry[]>> {
   const query = path ? `?path=${encodeURIComponent(path)}` : '';
   return HttpUtils.get(`${apiPrefixCatalog}/files/${encodeURIComponent(id)}${query}`);
+}
+
+/**
+ * OpenMetadata-side assets of a non-database data source. These come from the
+ * metadata server (schema plus any collected sample payload), not from the
+ * connector catalog, so they can be shown beside the live catalog listing.
+ */
+export async function fetchDataSourceOmResources(
+  id: string,
+  resourceType?: string,
+  limit?: number,
+): Promise<CommonApiResponse<DataSourceOmResourcePage>> {
+  const params = new URLSearchParams();
+  if (resourceType) params.set('resourceType', resourceType);
+  if (limit) params.set('limit', String(limit));
+  const query = params.toString();
+  return HttpUtils.get(
+    `${DATA_SOURCE_API_PREFIX}/${encodeURIComponent(id)}/om-resources${query ? `?${query}` : ''}`,
+  );
+}
+
+export async function fetchDataSourceOmResourceDetail(
+  id: string,
+  resourceId: string,
+  resourceType: string,
+): Promise<CommonApiResponse<DataSourceOmResourceDetail>> {
+  return HttpUtils.get(
+    `${DATA_SOURCE_API_PREFIX}/${encodeURIComponent(id)}/om-resources/${encodeURIComponent(resourceId)}`
+      + `?resourceType=${encodeURIComponent(resourceType)}`,
+  );
+}
+
+export async function updateDataSourceSampleData(
+  id: string,
+  enabled: boolean,
+): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.post(
+    `${DATA_SOURCE_API_PREFIX}/${encodeURIComponent(id)}/sample-data?enabled=${enabled}`,
+  );
 }
 
 export const dataSourceCatalogApi = {

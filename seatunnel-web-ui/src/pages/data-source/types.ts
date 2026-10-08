@@ -83,8 +83,46 @@ export interface DataSourceMetadataRunState {
 
 export interface DataSourceMetadataStatus {
   syncStatus?: string;
+  /** Whether this data source type can collect OpenMetadata sample data at all. */
+  sampleDataSupported?: boolean;
+  /** Operator decision for OpenMetadata sample-data collection. */
+  sampleDataEnabled?: boolean;
   scan?: DataSourceMetadataRunState;
   exploration?: DataSourceMetadataRunState;
+}
+
+/** One non-relational OpenMetadata asset of a data source. */
+export interface DataSourceOmResource {
+  id?: string;
+  name?: string;
+  fullyQualifiedName?: string;
+  entityType?: string;
+  entityLabel?: string;
+  description?: string;
+  fieldCount?: number;
+  tags?: string[];
+}
+
+export interface DataSourceOmResourceField {
+  name?: string;
+  dataType?: string;
+  description?: string;
+  tags?: string[];
+}
+
+export interface DataSourceOmResourceDetail {
+  resource?: DataSourceOmResource;
+  fields?: DataSourceOmResourceField[];
+  sampleDataAvailable?: boolean;
+  sampleColumns?: string[];
+  sampleRows?: Array<Array<string | null>>;
+  messages?: string[];
+}
+
+export interface DataSourceOmResourcePage {
+  resources?: DataSourceOmResource[];
+  entityTypes?: string[];
+  truncated?: boolean;
 }
 
 export interface DataSourcePageResult {
