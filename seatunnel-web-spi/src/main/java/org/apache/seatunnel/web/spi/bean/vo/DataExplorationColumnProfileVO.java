@@ -6,7 +6,7 @@ import org.apache.seatunnel.web.spi.enums.ExplorationQualityStatus;
 
 import java.math.BigDecimal;
 
-/** Known column metrics mapped from the OpenMetadata 1.12.10 profile contract. */
+/** Known column metrics mapped from the OpenMetadata 2.0.4 profile contract. */
 @Data
 public class DataExplorationColumnProfileVO {
     private String name;
