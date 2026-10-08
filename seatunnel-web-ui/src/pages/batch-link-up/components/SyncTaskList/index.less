@@ -269,12 +269,11 @@
     color: var(--st-color-text-secondary);
   }
 
-  /* Show both configured endpoints; keep detailed table information in Tooltip. */
+  /* 同步方案紧凑单元格：只到「源类型 → 目标类型」，细节进 Tooltip */
   .sync-plan-compact {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     max-width: 100%;
     cursor: default;
   }
@@ -291,43 +290,30 @@
   }
 
   .sync-plan-compact__flow {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
     font-size: 13px;
   }
 
-  .sync-plan-compact__endpoint {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    min-width: 0;
-    line-height: 18px;
-  }
-
-  .sync-plan-compact__endpoint-label {
-    flex: 0 0 24px;
-    padding-top: 1px;
-    color: var(--st-color-text-muted);
-    font-size: 11px;
-  }
-
   .sync-plan-compact__icon {
-    flex: 0 0 auto;
-    margin-top: 1px;
     color: var(--st-color-accent);
     font-size: 16px;
   }
 
-  .sync-plan-compact__name {
-    flex: 1 1 auto;
-    min-width: 0;
+  .sync-plan-compact__type {
+    overflow: hidden;
     color: var(--st-color-text-primary);
     font-weight: 500;
-    overflow-wrap: anywhere;
-    white-space: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sync-plan-compact__arrow {
+    flex: 0 0 auto;
+    color: var(--st-color-accent, #4dd2ff);
+    font-size: 11px;
   }
 
   .sync-plan-tooltip {

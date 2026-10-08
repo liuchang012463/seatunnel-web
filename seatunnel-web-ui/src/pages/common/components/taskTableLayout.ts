@@ -9,7 +9,7 @@ export const TASK_TABLE_COLUMN_WIDTHS = {
   selection: 44,
   name: 208,
   status: 112,
-  plan: 260,
+  plan: 198,
   execution: 156,
   schedule: 154,
   createTime: 136,
