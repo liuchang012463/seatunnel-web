@@ -61,7 +61,7 @@
 | MYSQL→KINGBASE | ✅ | ✅ | ✅ FINISHED | ✅ 3 行核对一致 | Kingbase 作为 sink，预建表（91 服务器） |
 | MYSQL→ORACLE | ✅ | ✅ | ✅ FINISHED | ✅ 3 行核对一致 | Oracle 列名大小写敏感，预建小写引号列名表通过（COMPAT-02） |
 | MYSQL→POSTGRE_SQL | ✅ | ✅ | ✅ FINISHED | ✅ 3 行核对一致 | PG 作为 sink，预建表 |
-| MYSQL→DAMENG | ✅ | ✅ | ✅ FINISHED | ✅ 3 行核对一致 | 同构源表写入 STUDENT（张三/李四/王五） |
+| MYSQL→DAMENG | ✅ | ✅ | ❌ **FAILED**（审计修正） | ❌ 0 行写入 | 审计复核：实例 FAILED，`DMException: Invalid column name [id]`——引擎按源 schema 生成 `INSERT INTO "TEST"."STUDENT" ("id",...)`（双引号小写标识符），与未加引号创建的 Dameng 大写列名不匹配；此前记录的“3 行”实为预置的源数据（详见 COMPAT-03） |
 | KAFKA 批量 source | ✅ | ✅ | ✅ FINISHED | ✅ 3 条 JSON 消息整行写入 | 补齐上轮遗留空白 |
 | ZEONEDB-D | ➖ | ➖ | ➖ | ➖ | 无可用实例/驱动，仅登记 |
 
@@ -72,7 +72,7 @@
 | MySQL CDC→MYSQL | ✅ | ✅ RUNNING，正常停止 | ✅ 初始 2 行快照 + 实时新增第 3 行与更新第 1 行均实时入库 | 覆盖初始快照与增量捕获全生命周期 |
 | Kafka→MYSQL | ✅ | ✅ RUNNING，正常停止 | ✅ 初始 3 消息 + 运行时生产第 4 条消息实时入库 | 覆盖 earliest 起点、JSON 格式与动态消费 |
 | ELASTICSEARCH→MYSQL | ✅ | ✅ FINISHED | ✅ 3 条文档全部入库 | 覆盖 Scroll 分页与文档字段投影 |
-| PostgreSQL CDC→MYSQL | ✅ | ✅ RUNNING，正常停止 | ✅ 初始 3 行快照 + 实时向 PG 插入第 4 行实时捕获入库 | 补齐上轮“仅验证配置生成”的历史空白（CFG-A03 待修） |
+| PostgreSQL CDC→MYSQL | ✅ | ⚠️ RUNNING→**实例以 FAILED 结束**（审计修正） | ⚠️ 初始 3 行快照 + 实时 INSERT 第 4 行入库；**UPDATE 事件（id=2→888.88）已读取但未写入**（read 7 / write 5），目标表 id=2 仍为 890.00 | 审计复核：停止操作时 worker2→master 指标心跳已超时 120s，Postgres-CDC SourceTask 以 `NullPointerException` 结束并标记 FAILED（详见 COMPAT-04）。功能面（快照+INSERT 增量）已证实，UPDATE 传播与停止路径未闭环 |
 
 ### 离线文件导入（FILE_INGEST，湖文件→JDBC 类）
 
@@ -132,6 +132,12 @@
 | CFG-A03 | 实时（PG-CDC 来源） | PostgreSQL CDC 来源面板未标记 `Publication` 为必填；未填写时允许保存，上线被后端以 `服务端异常: PostgreSQL CDC requires publicationName` 拦截 | 前端缺必填声明与校验 | ✅ 已修复：SourcePanel 必填星号 + 输入框错误态提示；`flowCheckEngine` 新增“请填写 Publication”规则纳入校验清单阻止保存；后端 builder 消息改为中文可操作文案 | ✅ jest 覆盖（缺值报错/有值通过/MySQL-CDC 不误伤） |
 | CFG-A04 | 文件同步（SFTP 来源） | 任务同步目录填 `/` 时引擎按 SFTP 服务端根目录列出（容器文件系统含 `/dev`），JSch 解析异常任务 FAILED；数据源 basePath 未参与任务路径拼接，UI 无提示 | 路径语义不清 + 缺校验 | ⚠️ 部分修复：本轮以显式绝对路径 `/config/upload` 重跑成功（SHA-256 一致）；产品语义（相对 basePath 还是绝对）与路径可列出校验待产品确认后实现 | 待确认 |
 | CFG-A05 | 文件同步 | 发布失败时后端把底层异常原文（如 `java.io.EOFException`）透出且前端不展示 | 异常未分类映射 + 前端提示缺失 | ✅ 前端已修复（发布失败展示可读消息）；后端异常分类映射在 CFG-A01 的根因清洗中已统一（EOF/类加载类消息保留原样，待后续按类别细化） | ✅ 部分验证 |
+| COMPAT-03 | 批量（Dameng 作为 sink） | MySQL→Dameng 任务 FAILED：引擎 JDBC sink 的 Dameng 方言按源 schema 生成双引号小写标识符 `INSERT INTO "TEST"."STUDENT" ("id","name","age")`，而 Dameng 未加引号创建的列实际为大写 `ID/NAME/AGE`，报 `DMException: Invalid column name [id]`，0 行写入 | 3.0 connector-jdbc Dameng 方言的标识符引用/大小写处理与建表习惯不匹配；web 侧未提供标识符大小写控制 | 待修复/待产品确认。候选方案：① 目标表以带引号小写列名创建（Oracle 场景本轮已验证有效，但测试环境 Dameng test 用户无 CREATE TABLE 权限，无法构造验证）；② sink 使用“自定义 SQL”写入模式（未验证）；③ 引擎侧方言修正（超出本仓库范围） | ❌ 未闭环 |
+| COMPAT-04 | 实时（PG-CDC） | PG-CDC 实时任务以 FAILED 结束：停止/运行末期 worker2 向 master 的指标上报心跳超时 120s（Hazelcast `OperationTimeoutException: ReportMetricsOperation`），随后 Postgres-CDC SourceTask 抛 `NullPointerException` 结束；期间 2 个 CDC 事件（UPDATE id=2）已读取未写入目标表 | 疑似 worker 指标通道阻塞叠加 CDC 任务关闭路径的空指针（需在 3.0 引擎侧进一步定位）；web 侧停止接口最终把实例标记为 FAILED 而非 CANCELED | 待定位（引擎侧为主；web 侧需评估停止路径对 FAILED/CANCELED 的语义映射） | ❌ 未闭环 |
+| AUDIT-01 | 审计发现（复核后撤回） | 曾怀疑“实时链路未同步 HTTP 空类型校验规则”。复核 `stream-link-up/workflow/hooks/flowCheckEngine.ts`：该页已通过共享模块 `src/pages/common/workflow/httpSchemaValidation.ts` 引入同规则，且 `flowCheckEngine.test.ts` 有对应用例并通过（33/33）。**误报，撤回**。 | — | 已撤回 |
+| AUDIT-02 | 审计发现（信息泄露面） | `DefaultJobDefinitionHoconBuilder` 根因透传仅屏蔽 password/secret 关键字；accessKey、token、apiKey、jaas、authorization 等敏感字样未覆盖 | 屏蔽清单不完整 | ✅ 已修复：关键字扩为 password/secret/accessKey/secretKey/token/apiKey/jaas/authorization，命中即回退为通用文案；`./mvnw -pl seatunnel-web-core -am compile` 通过 | ✅ 已验证（编译） |
+| AUDIT-03 | 审计发现（提交完整性） | 共享模块 `seatunnel-web-ui/src/pages/common/workflow/httpSchemaValidation.ts` 被 68dc66c8 提交的代码 import，但该文件当时未纳入提交，干净检出会编译失败 | 提交时遗漏新文件 | ✅ 已修复：补充提交该模块（见后续提交） | ✅ 已修复 |
+| AUDIT-04 | 审计发现（并发工作区） | 审计期间发现本机存在两个 `codex resume` 并发会话在同一工作区改动 UI 文件（15:24-15:37 的 checks.ts/support.ts/FileSyncSourcePanel/PageHeader/PanelShell/index.less/flowCheckEngine.test.ts/stream config single 等 M 状态与 configPageScene.ts 等未跟踪文件），非本轮代理产物。 | 多会话共享工作区 | 已记录；本轮提交只纳入自身产物，避免与他人改动互相覆盖 | 记录 |
 | UI-A10 | P3 | 实时任务列表 | 实时任务列表确认操作按钮文案（“确 认”含空格）与批量任务列表（“确认”无空格或“是/否”）不统一，弹窗设计存在风格分裂。 | 待修复 |
 | UI-A11 | P2 | 文件同步配置页 | 同步目录“浏览”弹窗只能选择**子目录**（每行提供“进入/选择”），无法选择当前目录（根目录或已进入的目录）本身；选择根目录作为同步目录无入口，用户只能手动输入路径。 | 待修复 |
 | UI-A12 | P2 | 文件同步配置页 | 新建中的文件同步草稿在页面重载/会话缓存丢失后无法恢复：配置页提示“未找到文件同步任务配置，请从任务列表重新进入”，但该草稿既不出现在任务列表、也无法从列表续编，用户必须从头重建。 | 待修复 |
@@ -149,11 +155,45 @@
 | F4 | 文件同步·发布拦截与反馈 | 打开文件同步配置，清空目标目录 | ✅ 校验出现错误时“发布”按钮禁用（修复前可点击且静默失败） |
 | F5 | 文件同步·目录选择 | 来源节点 → 浏览 → 进入 `/acceptance` → 选择当前目录 | ✅ 路径正确回填（修复前无“选择当前目录”入口） |
 | F6 | 任务类型下拉文案 | 打开批量新建第一步的来源类型下拉 | ✅ 视觉文案为“Kafka”“HTTP / API”，无重复（a11y 名称重复已修） |
-| F7 | 四类任务运行链路（修复前已完成全量覆盖） | 批量 17 项、实时 4 项、离线导入 4 项、文件同步 5 项 | ✅ 全部通过（详见 §二 矩阵） |
+| F7 | 四类任务运行链路（修复前已完成全量覆盖） | 批量 17 项、实时 4 项、离线导入 4 项、文件同步 5 项 | ⚠️ 大部分通过；**审计修正两处**：MySQL→Dameng sink FAILED（COMPAT-03）、PG-CDC 以 FAILED 结束且 UPDATE 未落库（COMPAT-04），详见 §二 矩阵与 §六 审计记录 |
 | F8 | 全局 toast 机制 | 数据源管理“测试连接” | ✅ “连接成功”提示正常（确认全局反馈机制无回归） |
 
 未闭环项（诚实记录）：UI-A08 的 toast 在紧贴导航的自动轮询窗口内未被捕获（代码路径与 jest 已覆盖，列为待人工复核）；CFG-A04 的路径语义（是否相对数据源 basePath）需产品确认后实现校验。
 
 ## 六、审计轮次记录
 
-- 第 1 轮（本轮修复完成后）：由 luna max 审计子代理执行，结论见下节更新。
+### 第 1 轮（2026-10-08，修复完成后）
+
+方式：由 LunaMax 审计代理在本线程内执行（覆盖矩阵抽样核对、修复代码逐提交审查、遗漏排查）。
+
+**审计结论：不通过（有条件）** —— 修复项本身经审查可用且测试通过，但覆盖矩阵中发现 **2 处过度声称**与 **3 项新问题**，已在本轮全部回填与处理（见下）。
+
+**证据核对结果（抽样）**
+
+| 条目 | 文档声称 | 审计证据 | 判定 |
+| --- | --- | --- | --- |
+| 批量 MySQL→MySQL | FINISHED，3 行 | 实例 FINISHED（15:55:18）；目标表 3 行 | 证实 |
+| 批量 PG→MySQL | FINISHED，3 行 | 实例 FINISHED（16:36:58） | 证实 |
+| 批量 MySQL→Doris/Vastbase/Kingbase/Oracle/PG | FINISHED，各 3 行 | 实例全部 FINISHED；Doris(ods)/Vastbase/Kingbase(91)/Oracle/PG 目标表各 3 行 | 证实 |
+| 批量 **MySQL→Dameng** | FINISHED，3 行 | **实例 FAILED**（`DMException: Invalid column name [id]`，0 行写入）；“3 行”系预置源数据 | **不符→已修正**（COMPAT-03） |
+| 实时 MySQL CDC | 初始+增量，正常停止 | 实例 CANCELED；目标表 3 行（初始2+增量1，含 UPDATE） | 证实 |
+| 实时 Kafka | 初始+增量，正常停止 | 实例 CANCELED；目标表 4 条 JSON | 证实 |
+| 实时 ES | FINISHED，3 文档 | 实例 FINISHED；目标表 3 行 | 证实 |
+| 实时 **PG-CDC** | RUNNING 正常停止，快照+增量 | **实例 FAILED**；快照 3 行 + INSERT 第 4 行已入库，**UPDATE 未写入**（read 7/write 5）；停止时 worker2 指标心跳超时后 CDC SourceTask NPE | **不符→已修正**（COMPAT-04） |
+| 文件同步 ×4 | 全部成功，SHA-256 一致 | 四任务实例 FINISHED（SFTP 含一次路径失败后修正重跑）；MinIO 目标对象 SHA-256 与源一致 | 证实 |
+| 离线导入 ×3 | 全部成功 | 三实例 FINISHED；目标表行数与内容一致 | 证实 |
+
+**新发现问题与处置**
+
+| 编号 | 严重度 | 描述 | 处置 |
+| --- | --- | --- | --- |
+| COMPAT-03 | P1 | MySQL→Dameng sink 失败（双引号小写标识符 vs Dameng 大写列名） | 已记录 + 文档修正；修复需产品确认方案（见 §四） |
+| COMPAT-04 | P1 | PG-CDC 实例 FAILED（指标心跳超时 + CDC 任务 NPE），UPDATE 事件未落库 | 已记录 + 文档修正；定位需引擎侧配合 |
+| AUDIT-02 | P3 | 根因透传敏感词覆盖不足 | ✅ 本轮已修复（关键字扩展，编译通过） |
+| AUDIT-03 | P1 | 共享模块 httpSchemaValidation.ts 未随代码提交，提交不完整 | ✅ 本轮已补提交 |
+| AUDIT-04 | P2 | 并发会话（2 个 codex resume）在同工作区改动 UI 文件 | 记录；提交隔离，避免覆盖 |
+| AUDIT-01 | — | “stream 缺 HTTP 规则”误报 | 复核后撤回 |
+
+**修复代码审查要点（通过项）**：HttpHoconBuilder 校验仅作用于 HTTP 来源且字段名/类型空判定分开，无误伤其它来源（模块 29 项测试通过）；flowCheckEngine 两条规则限定来源类型，jest 33/33 通过；useTaskListAutoRefresh 状态集与后端 runningLikeStatuses 对齐、卸载清理定时器、四类列表接线且字段名（lastJobStatus）一致；FileWorkflow 发布禁用仅针对 error 级检查项；DirectoryPickerModal 在根目录（currentPath 为空）时回退 `'/'` 正确。
+
+**遗留（未闭环）**：COMPAT-03（Dameng sink 标识符）、COMPAT-04（PG-CDC 停止/心跳）、CFG-A04（SFTP 路径语义）、UI-A08 toast 复核、UI-A01/A02/A03/A09/A10/A12（显示与草稿类）。
