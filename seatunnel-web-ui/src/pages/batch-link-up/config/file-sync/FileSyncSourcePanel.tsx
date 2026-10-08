@@ -10,6 +10,7 @@ import { canUseIncrementalFileSync, fileDataSourceLabel } from './support';
 import DirectoryPickerModal from './DirectoryPickerModal';
 import type { FileDataSourceType } from './support';
 import { splitUploadBatches, type PickedFile } from './uploadUtils';
+import './index.less';
 import '@/pages/batch-link-up/workflow/panel/components/PanelShell/index.less';
 import '@/pages/batch-link-up/workflow/panel/components/SourcePanel/index.less';
 
@@ -461,6 +462,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
           <div className="workflow-panel__field workflow-panel__field--full">
             <div className="mb-1 text-xs text-slate-500">同步方式</div>
             <Radio.Group
+              className="file-sync-type-radio"
               value={isWebUpload ? 'FULL' : config.syncType || 'FULL'}
               onChange={(event) => {
                 if (!isWebUpload) updateConfig({ syncType: event.target.value });
