@@ -61,7 +61,9 @@ public class PostgreSqlCdcSourceBuilder extends AbstractCdcSourceBuilder {
 
         String publicationName = getString(context.getNodeConfig(), PUBLICATION_NAME);
         if (StringUtils.isBlank(publicationName)) {
-            throw new IllegalArgumentException("PostgreSQL CDC requires publicationName");
+            throw new IllegalArgumentException(
+                    "PostgreSQL CDC 需要填写 Publication 名称（在来源节点的 Publication 字段），"
+                            + "且需由 DBA 预先在数据库创建");
         }
 
         options.put(TABLE_NAMES, tables);

@@ -40,8 +40,31 @@ public class DefaultJobDefinitionHoconBuilder implements JobDefinitionHoconBuild
             throw e;
         } catch (Exception e) {
             log.error("Build job hocon config failed, command={}", command, e);
-            throw new ServiceException(Status.BUILD_JOB_INSTANCE_CONFIG_ERROR);
+            throw new ServiceException(
+                    Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getCode(),
+                    Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getMsg()
+                            + ": " + rootCauseMessage(e));
         }
+    }
+
+    /**
+     * Extract the deepest root cause message for the user, without leaking credentials.
+     */
+    private String rootCauseMessage(Throwable error) {
+        Throwable root = error;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String message = root.getMessage();
+        if (StringUtils.isBlank(message)) {
+            return root.getClass().getSimpleName();
+        }
+        String sanitized = message.replaceAll("\\s+", " ").trim();
+        if (StringUtils.containsIgnoreCase(sanitized, "password")
+                || StringUtils.containsIgnoreCase(sanitized, "secret")) {
+            return "请检查任务配置";
+        }
+        return StringUtils.abbreviate(sanitized, 200);
     }
 
     /**

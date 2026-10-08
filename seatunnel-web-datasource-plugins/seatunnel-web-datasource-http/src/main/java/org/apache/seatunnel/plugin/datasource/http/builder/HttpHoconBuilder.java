@@ -123,9 +123,13 @@ public class HttpHoconBuilder implements DataSourceHoconBuilder {
                     "HTTP Source schema.fields must contain at least one field");
         }
         fields.forEach((name, type) -> {
-            if (StringUtils.isBlank(name) || StringUtils.isBlank(stringValue(type))) {
+            if (StringUtils.isBlank(name)) {
                 throw new IllegalArgumentException(
-                        "HTTP Source schema.fields requires a type for every field");
+                        "HTTP Source schema.fields requires a name for every field");
+            }
+            if (StringUtils.isBlank(stringValue(type))) {
+                throw new IllegalArgumentException(
+                        "HTTP 来源 Schema 字段 [" + name + "] 未设置类型，请在来源节点配置中选择字段类型");
             }
         });
     }
