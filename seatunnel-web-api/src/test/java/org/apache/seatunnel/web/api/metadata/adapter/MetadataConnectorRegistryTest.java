@@ -193,6 +193,28 @@ class MetadataConnectorRegistryTest {
                 pipeline.at("/sourceConfig/config/schemaFilterPattern/includes/0").asText());
     }
 
+    @Test
+    void autoClassificationPipelineStoresSamplesWithoutMetricsOrClassification() {
+        JsonNode pipeline = registry.require(DbType.KINGBASE).autoClassificationPipelineRequest(
+                "st_ds_10_auto_classification",
+                "uuid-1",
+                "st_ds_10",
+                "st_ds_10.kingbase",
+                "st_ds_10.kingbase.public");
+
+        assertEquals("autoClassification", pipeline.path("pipelineType").asText());
+        assertEquals("AutoClassification", pipeline.at("/sourceConfig/config/type").asText());
+        assertEquals(true, pipeline.at("/sourceConfig/config/storeSampleData").asBoolean());
+        assertEquals(false, pipeline.at("/sourceConfig/config/enableAutoClassification").asBoolean());
+        assertEquals(100, pipeline.at("/sourceConfig/config/sampleDataCount").asInt());
+        assertEquals("^st_ds_10\\.kingbase$",
+                pipeline.at("/sourceConfig/config/databaseFilterPattern/includes/0").asText());
+        assertEquals("^st_ds_10\\.kingbase\\.public$",
+                pipeline.at("/sourceConfig/config/schemaFilterPattern/includes/0").asText());
+        assertTrue(pipeline.at("/sourceConfig/config/computeTableMetrics").isMissingNode());
+        assertTrue(pipeline.at("/sourceConfig/config/computeColumnMetrics").isMissingNode());
+    }
+
     private static DataSource source(Long id, DbType dbType, String connectionParams) {
         DataSource dataSource = new DataSource();
         dataSource.setId(id);

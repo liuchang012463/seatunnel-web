@@ -5,6 +5,7 @@ import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
+import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPipelineRun;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
 import org.apache.seatunnel.web.common.enums.MetadataSyncStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
@@ -56,11 +57,15 @@ class MetadataSourceReconcilerTest {
         when(adapter.serviceRequest(eq(source), eq("st_ds_42"))).thenReturn(JSON.createObjectNode());
         when(adapter.profilerPipelineRequest(eq("st_ds_42_profiler"), eq("svc"), eq("st_ds_42")))
                 .thenReturn(JSON.createObjectNode());
+        when(adapter.autoClassificationPipelineRequest(
+                eq("st_ds_42_auto_classification"), eq("svc"), eq("st_ds_42")))
+                .thenReturn(JSON.createObjectNode());
         when(openMetadataClient.upsertService(eq(MetadataServiceCategory.DATABASE), any()))
                 .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
         when(openMetadataClient.upsertIngestionPipeline(any()))
                 .thenReturn(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata"))
-                .thenReturn(new OpenMetadataEntity("prof", "st_ds_42.st_ds_42_profiler"));
+                .thenReturn(new OpenMetadataEntity("prof", "st_ds_42.st_ds_42_profiler"))
+                .thenReturn(new OpenMetadataEntity("sample", "st_ds_42.st_ds_42_auto_classification"));
 
         reconciler().reconcilePendingBindings();
 
@@ -74,6 +79,8 @@ class MetadataSourceReconcilerTest {
         verify(openMetadataClient).enableIngestionPipeline("meta");
         verify(openMetadataClient).deployIngestionPipeline("prof");
         verify(openMetadataClient).enableIngestionPipeline("prof");
+        verify(openMetadataClient).deployIngestionPipeline("sample");
+        verify(openMetadataClient).enableIngestionPipeline("sample");
     }
 
     @Test
@@ -89,11 +96,13 @@ class MetadataSourceReconcilerTest {
         when(adapter.metadataPipelineRequest(eq(source), any(), any(), any())).thenReturn(JSON.createObjectNode());
         when(adapter.serviceRequest(any(), any())).thenReturn(JSON.createObjectNode());
         when(adapter.profilerPipelineRequest(any(), any(), any())).thenReturn(JSON.createObjectNode());
+        when(adapter.autoClassificationPipelineRequest(any(), any(), any())).thenReturn(JSON.createObjectNode());
         when(openMetadataClient.upsertService(eq(MetadataServiceCategory.DATABASE), any()))
                 .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
         when(openMetadataClient.upsertIngestionPipeline(any()))
                 .thenReturn(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata"))
-                .thenReturn(new OpenMetadataEntity("prof", "st_ds_42.st_ds_42_profiler"));
+                .thenReturn(new OpenMetadataEntity("prof", "st_ds_42.st_ds_42_profiler"))
+                .thenReturn(new OpenMetadataEntity("sample", "st_ds_42.st_ds_42_auto_classification"));
 
         reconciler().reconcilePendingBindings();
 
@@ -178,12 +187,22 @@ class MetadataSourceReconcilerTest {
         candidate.setOmProfilerPipelineId("prof");
         candidate.setOmServiceId("svc");
         stubCandidate(candidate, null);
+        when(openMetadataClient.findIngestionPipeline("st_ds_42.st_ds_42_auto_classification"))
+                .thenReturn(Optional.of(new OpenMetadataEntity(
+                        "sample", "st_ds_42.st_ds_42_auto_classification")));
+        when(openMetadataClient.listIngestionPipelineRuns(any(), eq(1))).thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns(
+                "st_ds_42.st_ds_42_auto_classification", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "sample-run", "running", 1_700_000_000L, 1_700_000_010L, null, 0)));
         when(bindingDao.deleteClaimed(1L, 1L)).thenReturn(true);
 
         reconciler().reconcilePendingBindings();
 
         verify(openMetadataClient).deleteIngestionPipeline("meta");
         verify(openMetadataClient).deleteIngestionPipeline("prof");
+        verify(openMetadataClient).deleteIngestionPipeline("sample");
+        verify(openMetadataClient).killIngestionPipeline("sample");
         verify(openMetadataClient).deleteDatabaseServiceRecursively("svc");
         verify(dataSourceDao).deleteById(42L);
     }
@@ -196,6 +215,9 @@ class MetadataSourceReconcilerTest {
                 .thenReturn(Optional.of(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata")));
         when(openMetadataClient.findIngestionPipeline("st_ds_42.st_ds_42_profiler"))
                 .thenReturn(Optional.of(new OpenMetadataEntity("prof", "st_ds_42.st_ds_42_profiler")));
+        when(openMetadataClient.findIngestionPipeline("st_ds_42.st_ds_42_auto_classification"))
+                .thenReturn(Optional.of(new OpenMetadataEntity(
+                        "sample", "st_ds_42.st_ds_42_auto_classification")));
         when(openMetadataClient.findDatabaseService("st_ds_42"))
                 .thenReturn(Optional.of(new OpenMetadataEntity("svc", "st_ds_42")));
         when(bindingDao.deleteClaimed(1L, 1L)).thenReturn(true);
@@ -204,6 +226,7 @@ class MetadataSourceReconcilerTest {
 
         verify(openMetadataClient).deleteIngestionPipeline("meta");
         verify(openMetadataClient).deleteIngestionPipeline("prof");
+        verify(openMetadataClient).deleteIngestionPipeline("sample");
         verify(openMetadataClient).deleteDatabaseServiceRecursively("svc");
         verify(dataSourceDao).deleteById(42L);
     }

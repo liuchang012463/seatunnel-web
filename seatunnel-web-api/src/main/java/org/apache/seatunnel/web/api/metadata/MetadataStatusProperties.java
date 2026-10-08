@@ -14,6 +14,12 @@ public class MetadataStatusProperties {
 
     private long idleRefreshSeconds = 60L;
 
-    /** Lets OpenMetadata register a just-triggered run before local QUEUED is reconsidered. */
-    private long triggerGraceSeconds = 60L;
+    /** Waits for pipeline runs to appear after both initial trigger calls complete. */
+    private long triggerGraceSeconds = 120L;
+
+    /** Bounds an abandoned exploration while its pipelines are prepared and initial triggers/retries run. */
+    private long explorationPreparationTimeoutSeconds = 1_800L;
+
+    /** Upper bound for retrying transient trigger HTTP 400 responses. */
+    private long explorationTriggerRetryTimeoutSeconds = 1_200L;
 }

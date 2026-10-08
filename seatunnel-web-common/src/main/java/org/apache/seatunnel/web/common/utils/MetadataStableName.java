@@ -37,6 +37,14 @@ public final class MetadataStableName {
         return serviceFqn(dataSourceId) + "." + profilerPipelineName(dataSourceId);
     }
 
+    public static String autoClassificationPipelineName(Long dataSourceId) {
+        return serviceName(dataSourceId) + "_auto_classification";
+    }
+
+    public static String autoClassificationPipelineFqn(Long dataSourceId) {
+        return serviceFqn(dataSourceId) + "." + autoClassificationPipelineName(dataSourceId);
+    }
+
     private static long requireId(Long dataSourceId) {
         if (dataSourceId == null || dataSourceId <= 0) {
             throw new IllegalArgumentException("dataSourceId must be positive");

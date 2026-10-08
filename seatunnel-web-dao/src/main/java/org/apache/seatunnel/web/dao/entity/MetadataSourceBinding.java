@@ -57,6 +57,16 @@ public class MetadataSourceBinding extends BaseEntity {
 
     private String profileLastError;
 
+    private String profileRunReservationToken;
+
+    private String profileProfilerRunIdBaseline;
+
+    private String profileSampleRunIdBaseline;
+
+    private Boolean profileRunBaselineCaptured;
+
+    private Date profileRunBaselineCapturedAt;
+
     private Integer retryCount;
 
     private Date nextRetryTime;

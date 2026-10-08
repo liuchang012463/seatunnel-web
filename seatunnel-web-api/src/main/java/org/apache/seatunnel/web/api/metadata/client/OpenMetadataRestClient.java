@@ -906,12 +906,14 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     private void pipelineControl(String path, MetadataErrorCode errorCode) {
-        JsonNode response = sdkRequest("POST", path, null, false);
+        JsonNode response = sdkRequest("POST", path, null, false, errorCode);
         int code = response.path("code").asInt(-1);
         if (code < 200 || code >= 300) {
             throw new MetadataIntegrationException(
                     errorCode,
-                    "OpenMetadata PipelineServiceClient did not accept the pipeline operation");
+                    "OpenMetadata PipelineServiceClient did not accept the pipeline operation",
+                    null,
+                    code > 0 ? code : null);
         }
         // The 2.0.4 deploy/trigger/kill response contains code/platform and
         // does not consistently echo the managed-ingestion version.  The
@@ -931,6 +933,15 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
      * Logs method, path, duration and failure type; never logs tokens or auth headers.
      */
     private JsonNode sdkRequest(String method, String path, Object body, boolean absentOn404) {
+        return sdkRequest(method, path, body, absentOn404, MetadataErrorCode.OM_CONNECTION_ERROR);
+    }
+
+    private JsonNode sdkRequest(
+            String method,
+            String path,
+            Object body,
+            boolean absentOn404,
+            MetadataErrorCode failureCode) {
         validateBaseUrl();
         long started = System.currentTimeMillis();
         String safeBase = sanitizeBaseUrl(current().getBaseUrl());
@@ -958,8 +969,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     error.getClass().getSimpleName(),
                     error.getMessage(),
                     System.currentTimeMillis() - started);
-            throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR,
-                    "OpenMetadata SDK request failed", error);
+            throw new MetadataIntegrationException(
+                    failureCode, "OpenMetadata SDK request failed", error, error.getStatusCode());
         } catch (Exception error) {
             log.warn("OpenMetadata SDK response unreadable: method={}, path={}, baseUrl={}, type={}, message={}, elapsedMs={}",
                     method,
@@ -998,7 +1009,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 cause == null ? -1 : cause.getStatusCode(),
                 cause == null ? "null" : cause.getClass().getSimpleName(),
                 cause == null ? null : cause.getMessage());
-        return new MetadataIntegrationException(code, message, cause);
+        return new MetadataIntegrationException(
+                code, message, cause, cause == null ? null : cause.getStatusCode());
     }
 
     private static OpenMetadataEntity entity(

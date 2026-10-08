@@ -175,7 +175,14 @@ export async function fetchDataSourceMetadataRuns(
   id: string,
   type: 'SCAN' | 'EXPLORATION',
   limit = 5,
-): Promise<CommonApiResponse<Array<{ runId: string; status: string; startTime?: string; endTime?: string }>>> {
+): Promise<CommonApiResponse<Array<{
+  runId: string;
+  pipelineType?: string;
+  status: string;
+  startTime?: string;
+  endTime?: string;
+  errorMessage?: string;
+}>>> {
   return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/runs?type=${type}&limit=${limit}`);
 }
 

@@ -113,10 +113,15 @@ public class MetadataSourceReconciler {
                         MetadataStableName.metadataPipelineName(dataSource.getId()),
                         service.id(), service.fullyQualifiedName()));
         OpenMetadataEntity profilerPipeline = null;
+        OpenMetadataEntity samplePipeline = null;
         if (adapter.supportsProfiler()) {
             profilerPipeline = openMetadataClient.upsertIngestionPipeline(
                     adapter.profilerPipelineRequest(
                             MetadataStableName.profilerPipelineName(dataSource.getId()),
+                            service.id(), service.fullyQualifiedName()));
+            samplePipeline = openMetadataClient.upsertIngestionPipeline(
+                    adapter.autoClassificationPipelineRequest(
+                            MetadataStableName.autoClassificationPipelineName(dataSource.getId()),
                             service.id(), service.fullyQualifiedName()));
         }
         // The 2.0.4 deploy endpoints deliberately have no request body.
@@ -125,6 +130,10 @@ public class MetadataSourceReconciler {
         if (profilerPipeline != null) {
             openMetadataClient.deployIngestionPipeline(profilerPipeline.id());
             openMetadataClient.enableIngestionPipeline(profilerPipeline.id());
+        }
+        if (samplePipeline != null) {
+            openMetadataClient.deployIngestionPipeline(samplePipeline.id());
+            openMetadataClient.enableIngestionPipeline(samplePipeline.id());
         }
 
         MetadataSourceBinding latest = metadataBindingDao.queryById(claimed.getId());
@@ -153,8 +162,10 @@ public class MetadataSourceReconciler {
         String profilerFqn = defaultIfBlank(
                 claimed.getOmProfilerPipelineFqn(),
                 MetadataStableName.profilerPipelineFqn(claimed.getDataSourceId()));
+        String sampleFqn = MetadataStableName.autoClassificationPipelineFqn(claimed.getDataSourceId());
         deletePipeline(claimed.getOmMetadataPipelineId(), metadataFqn);
         deletePipeline(claimed.getOmProfilerPipelineId(), profilerFqn);
+        deletePipeline(null, sampleFqn);
         MetadataServiceCategory category = resolveServiceCategory(claimed);
         String serviceId = claimed.getOmServiceId();
         String serviceFqn = defaultIfBlank(
