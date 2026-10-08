@@ -59,6 +59,7 @@ const SimpleIcon = ({ slug, color, width, height }: SimpleIconProps) => {
   return (
     <svg
       role="img"
+      aria-hidden="true"
       aria-label={config.title}
       viewBox="0 0 24 24"
       width={width}

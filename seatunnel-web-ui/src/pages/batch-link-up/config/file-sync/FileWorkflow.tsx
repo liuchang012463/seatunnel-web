@@ -621,7 +621,7 @@ export default function FileWorkflow({
     try {
       const finalPayload = buildSavePayload();
       const res = await seatunnelJobDefinitionApi.saveOrUpdateFileSync(finalPayload);
-      if (res?.code !== 0) throw new Error(res?.message || '发布失败');
+      if (res?.code !== 0) throw new Error(res?.message || res?.msg || '发布失败，请稍后重试');
 
       const saveData = getSaveResponseData(res);
       if (!saveData.id && !jobDefinitionId) {
@@ -635,7 +635,12 @@ export default function FileWorkflow({
 
       message.success('发布成功');
     } catch (error: any) {
-      message.error(error?.message || '发布失败');
+      message.error(
+        error?.response?.data?.message ||
+          error?.response?.data?.msg ||
+          error?.message ||
+          '发布失败，请稍后重试',
+      );
     } finally {
       setPublishLoading(false);
     }
@@ -735,6 +740,7 @@ export default function FileWorkflow({
                       icon={<Upload size={15} strokeWidth={1.9} />}
                       onClick={handleSave}
                       loading={publishLoading}
+                      disabled={checkStat.errors.length > 0}
                       className="file-workflow-editor-page__publish-button !inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
                     >
                       发布
