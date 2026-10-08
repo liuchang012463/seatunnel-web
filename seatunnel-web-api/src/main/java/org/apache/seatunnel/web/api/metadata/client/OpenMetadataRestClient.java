@@ -6,11 +6,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
+import org.apache.seatunnel.web.api.metadata.OmResourceType;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
+import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Directory;
+import org.openmetadata.schema.entity.data.File;
+import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDriveService;
@@ -18,10 +26,17 @@ import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateSearchService;
 import org.openmetadata.schema.api.services.CreateStorageService;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.ContainerDataModel;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableProfile;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
@@ -387,6 +402,295 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         } catch (OpenMetadataException error) {
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR, failureMessage, error);
         }
+    }
+
+    @Override
+    public OpenMetadataPage<OpenMetadataResource> listResourcesPage(
+            OmResourceType type, String serviceFullyQualifiedName, int limit, String after) {
+        validateBaseUrl();
+        int safeLimit = safeLimit(limit, 1000);
+        ListParams params = new ListParams()
+                .setService(serviceFullyQualifiedName)
+                .setFields(type.listFields())
+                .setLimit(safeLimit)
+                .addQueryParam("include", "non-deleted");
+        if (after != null && !after.isBlank()) {
+            params.setAfter(after);
+        }
+        try {
+            ListResponse<?> response = listResourceEntities(type, params);
+            List<OpenMetadataResource> data = new ArrayList<>();
+            for (Object entity : safeList(response == null ? null : response.getData())) {
+                OpenMetadataResource parsed = toResource(type, entity, serviceFullyQualifiedName);
+                if (parsed != null) {
+                    data.add(parsed);
+                }
+            }
+            return page(response, data);
+        } catch (OpenMetadataException error) {
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata " + type.entityType() + " collection lookup failed", error);
+        }
+    }
+
+    @Override
+    public OpenMetadataResourceDetail getResourceDetail(OmResourceType type, String resourceId) {
+        validateBaseUrl();
+        try {
+            Object entity = getResourceEntity(type, resourceId, type.detailFields());
+            return toResourceDetail(type, entity);
+        } catch (OpenMetadataException error) {
+            // Reading sample data is a separate OpenMetadata permission. A caller without
+            // VIEW_SAMPLE_DATA still gets the schema instead of a failed request.
+            try {
+                Object entity = getResourceEntity(type, resourceId, type.detailFieldsWithoutSampleData());
+                return toResourceDetail(type, entity);
+            } catch (OpenMetadataException retryError) {
+                if (isNotFound(retryError)) {
+                    return null;
+                }
+                throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                        "OpenMetadata " + type.entityType() + " detail lookup failed", retryError);
+            }
+        }
+    }
+
+    private ListResponse<?> listResourceEntities(OmResourceType type, ListParams params)
+            throws OpenMetadataException {
+        return switch (type) {
+            case TOPIC -> (ListResponse<?>) sdk().topics().list(params);
+            case CONTAINER -> (ListResponse<?>) sdk().containers().list(params);
+            case DIRECTORY -> (ListResponse<?>) sdk().directories().list(params);
+            case FILE -> (ListResponse<?>) sdk().files().list(params);
+            case API_COLLECTION -> (ListResponse<?>) sdk().apiCollections().list(params);
+            case API_ENDPOINT -> (ListResponse<?>) sdk().apiEndpoints().list(params);
+            case SEARCH_INDEX -> (ListResponse<?>) sdk().searchIndexes().list(params);
+        };
+    }
+
+    private Object getResourceEntity(OmResourceType type, String resourceId, String fields)
+            throws OpenMetadataException {
+        return switch (type) {
+            case TOPIC -> sdk().topics().get(resourceId, fields, "non-deleted");
+            case CONTAINER -> sdk().containers().get(resourceId, fields, "non-deleted");
+            case DIRECTORY -> sdk().directories().get(resourceId, fields, "non-deleted");
+            case FILE -> sdk().files().get(resourceId, fields, "non-deleted");
+            case API_COLLECTION -> sdk().apiCollections().get(resourceId, fields, "non-deleted");
+            case API_ENDPOINT -> sdk().apiEndpoints().get(resourceId, fields, "non-deleted");
+            case SEARCH_INDEX -> sdk().searchIndexes().get(resourceId, fields, "non-deleted");
+        };
+    }
+
+    private static OpenMetadataResource toResource(
+            OmResourceType type, Object entity, String serviceFullyQualifiedName) {
+        if (entity instanceof Topic topic) {
+            return new OpenMetadataResource(
+                    uuid(topic.getId()), topic.getName(), topic.getFullyQualifiedName(), type.entityType(),
+                    topic.getDescription(), fieldCount(topic.getMessageSchema()), tagNames(topic.getTags()),
+                    referenceFqn(topic.getService(), serviceFullyQualifiedName));
+        }
+        if (entity instanceof Container container) {
+            return new OpenMetadataResource(
+                    uuid(container.getId()), container.getName(), container.getFullyQualifiedName(),
+                    type.entityType(), container.getDescription(), columnCount(container.getDataModel()),
+                    tagNames(container.getTags()),
+                    referenceFqn(container.getService(), serviceFullyQualifiedName));
+        }
+        if (entity instanceof Directory directory) {
+            return new OpenMetadataResource(
+                    uuid(directory.getId()), directory.getName(), directory.getFullyQualifiedName(),
+                    type.entityType(), directory.getDescription(), null, tagNames(directory.getTags()),
+                    referenceFqn(directory.getService(), serviceFullyQualifiedName));
+        }
+        if (entity instanceof File file) {
+            return new OpenMetadataResource(
+                    uuid(file.getId()), file.getName(), file.getFullyQualifiedName(), type.entityType(),
+                    file.getDescription(), size(file.getColumns()), tagNames(file.getTags()),
+                    referenceFqn(file.getService(), serviceFullyQualifiedName));
+        }
+        if (entity instanceof APICollection collection) {
+            return new OpenMetadataResource(
+                    uuid(collection.getId()), collection.getName(), collection.getFullyQualifiedName(),
+                    type.entityType(), collection.getDescription(), size(collection.getApiEndpoints()),
+                    tagNames(collection.getTags()),
+                    referenceFqn(collection.getService(), serviceFullyQualifiedName));
+        }
+        if (entity instanceof APIEndpoint endpoint) {
+            return new OpenMetadataResource(
+                    uuid(endpoint.getId()), endpoint.getName(), endpoint.getFullyQualifiedName(),
+                    type.entityType(), endpoint.getDescription(),
+                    size(endpoint.getRequestSchema() == null ? null : endpoint.getRequestSchema().getSchemaFields())
+                            + size(endpoint.getResponseSchema() == null
+                                    ? null : endpoint.getResponseSchema().getSchemaFields()),
+                    tagNames(endpoint.getTags()),
+                    referenceFqn(endpoint.getService(), serviceFullyQualifiedName));
+        }
+        if (entity instanceof SearchIndex searchIndex) {
+            return new OpenMetadataResource(
+                    uuid(searchIndex.getId()), searchIndex.getName(), searchIndex.getFullyQualifiedName(),
+                    type.entityType(), searchIndex.getDescription(), size(searchIndex.getFields()),
+                    tagNames(searchIndex.getTags()),
+                    referenceFqn(searchIndex.getService(), serviceFullyQualifiedName));
+        }
+        return null;
+    }
+
+    private static OpenMetadataResourceDetail toResourceDetail(OmResourceType type, Object entity) {
+        OpenMetadataResource resource = toResource(type, entity, null);
+        if (resource == null) {
+            return null;
+        }
+        if (entity instanceof Topic topic) {
+            List<String> messages = topic.getSampleData() == null
+                    ? List.of() : safeList(topic.getSampleData().getMessages());
+            return new OpenMetadataResourceDetail(
+                    resource, fieldModels(topic.getMessageSchema()), !messages.isEmpty(),
+                    List.of(), List.of(), messages);
+        }
+        if (entity instanceof Container container) {
+            TableData sample = container.getSampleData();
+            List<OpenMetadataResourceField> columns = columns(
+                    container.getDataModel() == null ? null : container.getDataModel().getColumns());
+            return new OpenMetadataResourceDetail(
+                    resource, columns, hasRows(sample), sampleColumns(sample), sampleRows(sample), List.of());
+        }
+        if (entity instanceof File file) {
+            TableData sample = file.getSampleData();
+            return new OpenMetadataResourceDetail(
+                    resource, columns(file.getColumns()), hasRows(sample),
+                    sampleColumns(sample), sampleRows(sample), List.of());
+        }
+        if (entity instanceof APIEndpoint endpoint) {
+            List<OpenMetadataResourceField> fields = new ArrayList<>(
+                    fieldModels(endpoint.getRequestSchema()));
+            fields.addAll(fieldModels(endpoint.getResponseSchema()));
+            return new OpenMetadataResourceDetail(
+                    resource, fields, false, List.of(), List.of(), List.of());
+        }
+        if (entity instanceof SearchIndex searchIndex) {
+            List<OpenMetadataResourceField> fields = new ArrayList<>();
+            for (SearchIndexField field : safeList(searchIndex.getFields())) {
+                if (field != null) {
+                    fields.add(new OpenMetadataResourceField(
+                            field.getName(),
+                            field.getDataTypeDisplay() != null
+                                    ? field.getDataTypeDisplay() : enumValue(field.getDataType()),
+                            field.getDescription(), tagNames(field.getTags())));
+                }
+            }
+            return new OpenMetadataResourceDetail(
+                    resource, fields, false, List.of(), List.of(), List.of());
+        }
+        return new OpenMetadataResourceDetail(resource, List.of(), false, List.of(), List.of(), List.of());
+    }
+
+    private static List<OpenMetadataResourceField> fieldModels(MessageSchema schema) {
+        List<OpenMetadataResourceField> fields = new ArrayList<>();
+        for (org.openmetadata.schema.type.Field field : schema == null ? List.<org.openmetadata.schema.type.Field>of()
+                : safeList(schema.getSchemaFields())) {
+            if (field != null) {
+                fields.add(new OpenMetadataResourceField(
+                        field.getName(),
+                        field.getDataTypeDisplay() != null
+                                ? field.getDataTypeDisplay() : enumValue(field.getDataType()),
+                        field.getDescription(), tagNames(field.getTags())));
+            }
+        }
+        return fields;
+    }
+
+    private static List<OpenMetadataResourceField> fieldModels(APISchema schema) {
+        List<OpenMetadataResourceField> fields = new ArrayList<>();
+        for (org.openmetadata.schema.type.Field field : schema == null ? List.<org.openmetadata.schema.type.Field>of()
+                : safeList(schema.getSchemaFields())) {
+            if (field != null) {
+                fields.add(new OpenMetadataResourceField(
+                        field.getName(),
+                        field.getDataTypeDisplay() != null
+                                ? field.getDataTypeDisplay() : enumValue(field.getDataType()),
+                        field.getDescription(), tagNames(field.getTags())));
+            }
+        }
+        return fields;
+    }
+
+    private static List<OpenMetadataResourceField> columns(List<Column> columns) {
+        List<OpenMetadataResourceField> fields = new ArrayList<>();
+        for (Column column : safeList(columns)) {
+            if (column != null) {
+                fields.add(new OpenMetadataResourceField(
+                        column.getName(),
+                        column.getDataTypeDisplay() != null
+                                ? column.getDataTypeDisplay() : enumValue(column.getDataType()),
+                        column.getDescription(), tagNames(column.getTags())));
+            }
+        }
+        return fields;
+    }
+
+    private static List<String> tagNames(List<TagLabel> tags) {
+        List<String> names = new ArrayList<>();
+        for (TagLabel tag : safeList(tags)) {
+            if (tag != null && !blank(tag.getTagFQN())) {
+                names.add(tag.getTagFQN());
+            }
+        }
+        return names;
+    }
+
+    private static List<String> sampleColumns(TableData sample) {
+        return sample == null ? List.of() : safeList(sample.getColumns());
+    }
+
+    private static List<List<String>> sampleRows(TableData sample) {
+        List<List<String>> rows = new ArrayList<>();
+        if (sample == null) {
+            return rows;
+        }
+        for (List<Object> row : safeList(sample.getRows())) {
+            List<String> cells = new ArrayList<>();
+            for (Object cell : safeList(row)) {
+                cells.add(cell == null ? null : String.valueOf(cell));
+            }
+            rows.add(cells);
+        }
+        return rows;
+    }
+
+    private static boolean hasRows(TableData sample) {
+        return sample != null && sample.getRows() != null && !sample.getRows().isEmpty();
+    }
+
+    private static Integer fieldCount(MessageSchema schema) {
+        return schema == null ? null : size(schema.getSchemaFields());
+    }
+
+    private static Integer columnCount(ContainerDataModel dataModel) {
+        return dataModel == null ? null : size(dataModel.getColumns());
+    }
+
+    private static Integer size(List<?> values) {
+        return values == null ? null : values.size();
+    }
+
+    private static String uuid(java.util.UUID value) {
+        return value == null ? null : value.toString();
+    }
+
+    private static String referenceFqn(EntityReference reference, String fallback) {
+        return reference == null || blank(reference.getFullyQualifiedName())
+                ? fallback : reference.getFullyQualifiedName();
+    }
+
+    private static String enumValue(Enum<?> value) {
+        if (value == null) {
+            return null;
+        }
+        return value instanceof org.openmetadata.schema.type.FieldDataType fieldDataType
+                ? fieldDataType.value()
+                : value instanceof org.openmetadata.schema.type.ColumnDataType columnDataType
+                        ? columnDataType.value()
+                        : value.toString();
     }
 
     @Override

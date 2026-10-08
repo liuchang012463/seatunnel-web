@@ -3,9 +3,12 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
+import org.apache.seatunnel.web.api.metadata.OmResourceType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /** Fixed OpenMetadata 2.0.4 SFTP drive service adapter. */
 @Component
@@ -27,7 +30,23 @@ public class SftpMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCon
     }
 
     @Override
+    public List<OmResourceType> resourceTypes() {
+        return List.of(OmResourceType.DIRECTORY, OmResourceType.FILE);
+    }
+
+    @Override
+    public boolean supportsSampleData() {
+        return true;
+    }
+
+    @Override
     public JsonNode serviceRequest(DataSource dataSource, String stableServiceName) {
+        return serviceRequest(dataSource, stableServiceName, false);
+    }
+
+    @Override
+    public JsonNode serviceRequest(
+            DataSource dataSource, String stableServiceName, boolean sampleDataEnabled) {
         JsonNode source = rawConnection(dataSource);
         String host = connectionText(source, "host");
         String username = connectionText(source, "user");
@@ -58,6 +77,8 @@ public class SftpMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCon
             basePath = "/";
         }
         config.withArray("rootDirectories").add(basePath);
+        // Off by default: collecting file rows downloads file content into OpenMetadata.
+        config.put("extractSampleData", sampleDataEnabled);
         config.put("supportsMetadataExtraction", true);
         return root;
     }

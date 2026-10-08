@@ -94,6 +94,27 @@ public class MetadataBindingCommandServiceImpl implements MetadataBindingCommand
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public MetadataSourceBinding markSampleDataChanged(Long dataSourceId, boolean enabled) {
+        validateDataSourceId(dataSourceId);
+
+        MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
+        if (binding == null) {
+            binding = createForDataSource(dataSourceId);
+        }
+        if (Boolean.valueOf(enabled).equals(binding.getSampleDataEnabled())) {
+            return binding;
+        }
+        binding.setSampleDataEnabled(enabled);
+        binding.setConfigVersion((binding.getConfigVersion() == null ? 0L : binding.getConfigVersion()) + 1L);
+        binding.setSyncStatus(MetadataSyncStatus.PENDING);
+        binding.setVersion((binding.getVersion() == null ? 0L : binding.getVersion()) + 1L);
+        binding.initUpdate();
+        metadataBindingDao.updateById(binding);
+        return binding;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public int resetForOpenMetadataInstanceChange() {
         List<MetadataSourceBinding> bindings = metadataBindingDao.queryAll();
         int resetCount = 0;

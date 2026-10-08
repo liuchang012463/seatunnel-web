@@ -41,6 +41,9 @@ public class MetadataSourceBinding extends BaseEntity {
 
     private String omProfilerPipelineFqn;
 
+    /** Operator decision for OpenMetadata sample-data collection; off by default. */
+    private Boolean sampleDataEnabled;
+
     private MetadataRunStatus scanStatus;
 
     private Date scanLastRunTime;

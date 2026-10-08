@@ -11,14 +11,17 @@ import org.apache.seatunnel.web.api.exceptions.ApiException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.api.service.DataSourceService;
 import org.apache.seatunnel.web.api.metadata.MetadataPipelineOperationService;
+import org.apache.seatunnel.web.api.metadata.NonRelationalExplorationService;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceExploreDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.bean.vo.DBOptionVO;
-import org.apache.seatunnel.web.spi.bean.vo.DataSourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceMetadataStatusVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataSourceResourceDetailVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataSourceResourcePageVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataSourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.MetadataPipelineRunVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.enums.Status;
@@ -43,6 +46,9 @@ public class DataSourceController {
 
     @Resource
     private MetadataPipelineOperationService metadataPipelineOperationService;
+
+    @Resource
+    private NonRelationalExplorationService nonRelationalExplorationService;
 
     /**
      * Creates a new data source.
@@ -210,6 +216,27 @@ public class DataSourceController {
         return Result.buildSuc(metadataPipelineOperationService.getCachedStatus(id));
     }
 
+    @GetMapping("/{id}/om-resources")
+    @Operation(summary = "listDataSourceOmResources",
+            description = "List the OpenMetadata topics, containers, files, API assets or indexes of a data source")
+    public Result<DataSourceResourcePageVO> omResources(
+            @PathVariable("id") Long id,
+            @RequestParam(value = "resourceType", required = false) String resourceType,
+            @RequestParam(value = "limit", required = false) Integer limit) {
+        return Result.buildSuc(nonRelationalExplorationService.listResources(id, resourceType, limit));
+    }
+
+    @GetMapping("/{id}/om-resources/{resourceId}")
+    @Operation(summary = "getDataSourceOmResource",
+            description = "Read one OpenMetadata asset with its schema and collected sample payload")
+    public Result<DataSourceResourceDetailVO> omResource(
+            @PathVariable("id") Long id,
+            @PathVariable("resourceId") String resourceId,
+            @RequestParam("resourceType") String resourceType) {
+        return Result.buildSuc(
+                nonRelationalExplorationService.getResourceDetail(id, resourceType, resourceId));
+    }
+
     @GetMapping("/{id}/metadata-databases")
     @Operation(summary = "listDataSourceMetadataDatabases", description = "List discovered OpenMetadata databases for exploration")
     public Result<List<OptionVO>> metadataDatabases(@PathVariable("id") Long id) {
@@ -244,6 +271,15 @@ public class DataSourceController {
     @Operation(summary = "reconcileDataSourceMetadata", description = "Request an OpenMetadata desired-state reconciliation")
     public Result<Boolean> reconcileMetadata(@PathVariable("id") Long id) {
         return Result.buildSuc(metadataPipelineOperationService.reconcileMetadata(id));
+    }
+
+    @PostMapping("/{id}/sample-data")
+    @Operation(summary = "updateDataSourceSampleData",
+            description = "Enable or disable OpenMetadata sample-data collection for this data source")
+    public Result<Boolean> updateSampleData(
+            @PathVariable("id") Long id,
+            @RequestParam(value = "enabled", defaultValue = "false") boolean enabled) {
+        return Result.buildSuc(metadataPipelineOperationService.updateSampleDataCollection(id, enabled));
     }
 
     /**

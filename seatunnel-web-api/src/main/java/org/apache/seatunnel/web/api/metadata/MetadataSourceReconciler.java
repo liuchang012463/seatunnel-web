@@ -103,15 +103,20 @@ public class MetadataSourceReconciler {
         }
         MetadataConnectorAdapter adapter = resolved.get();
         String serviceName = MetadataStableName.serviceName(dataSource.getId());
+        boolean sampleDataEnabled = Boolean.TRUE.equals(claimed.getSampleDataEnabled())
+                && adapter.supportsSampleData();
 
         // PUT is the documented 2.0.4 upsert, so this also converges changed source configuration.
         OpenMetadataEntity service = openMetadataClient.upsertService(
-                adapter.serviceCategory(), adapter.serviceRequest(dataSource, serviceName));
+                adapter.serviceCategory(),
+                adapter.serviceRequest(dataSource, serviceName, sampleDataEnabled));
         OpenMetadataEntity metadataPipeline = openMetadataClient.upsertIngestionPipeline(
                 adapter.metadataPipelineRequest(
                         dataSource,
                         MetadataStableName.metadataPipelineName(dataSource.getId()),
-                        service.id(), service.fullyQualifiedName()));
+                        service.id(),
+                        service.fullyQualifiedName(),
+                        sampleDataEnabled));
         OpenMetadataEntity profilerPipeline = null;
         if (adapter.supportsProfiler()) {
             profilerPipeline = openMetadataClient.upsertIngestionPipeline(

@@ -13,6 +13,13 @@ public interface MetadataBindingCommandService {
     MetadataSourceBinding markConfigurationChanged(Long dataSourceId);
 
     /**
+     * Records the operator's OpenMetadata sample-data decision for one data source and
+     * requeues the binding so the reconciler re-upserts the service and metadata
+     * pipeline with the new value.
+     */
+    MetadataSourceBinding markSampleDataChanged(Long dataSourceId, boolean enabled);
+
+    /**
      * Requeues local bindings after the configured OpenMetadata endpoint changes.
      * Active bindings are rebuilt by the reconciler; deleted bindings keep their
      * tombstone state and are cleaned by FQN against the new endpoint.

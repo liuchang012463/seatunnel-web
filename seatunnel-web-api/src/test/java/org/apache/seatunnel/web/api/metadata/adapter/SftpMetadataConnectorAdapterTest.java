@@ -2,12 +2,16 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
+import org.apache.seatunnel.web.api.metadata.OmResourceType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SftpMetadataConnectorAdapterTest {
 
@@ -34,6 +38,21 @@ class SftpMetadataConnectorAdapterTest {
         assertFalse(adapter.supportsProfiler());
         assertEquals("DriveMetadata", pipeline.at("/sourceConfig/config/type").asText());
         assertEquals("driveService", pipeline.at("/service/type").asText());
+    }
+
+    @Test
+    void extractsFileSampleDataOnlyWhenTheOperatorOptedIn() {
+        DataSource dataSource = source(
+                "{\"host\":\"sftp.example.com\",\"user\":\"reader\",\"password\":\"secret\"}");
+
+        JsonNode disabled = adapter.serviceRequest(dataSource, "st_ds_40", false);
+        JsonNode enabled = adapter.serviceRequest(dataSource, "st_ds_40", true);
+
+        assertEquals(false, disabled.at("/connection/config/extractSampleData").asBoolean());
+        assertEquals(true, enabled.at("/connection/config/extractSampleData").asBoolean());
+        assertTrue(adapter.supportsSampleData());
+        assertEquals(
+                List.of(OmResourceType.DIRECTORY, OmResourceType.FILE), adapter.resourceTypes());
     }
 
     private static DataSource source(String connectionParams) {

@@ -3,7 +3,10 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
+import org.apache.seatunnel.web.api.metadata.OmResourceType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
+
+import java.util.List;
 
 /** Shared OpenMetadata 2.0.4 S3 StorageService mapping for S3-compatible sources. */
 abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonDatabaseMetadataConnectorAdapter {
@@ -11,6 +14,11 @@ abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonD
     @Override
     public MetadataServiceCategory serviceCategory() {
         return MetadataServiceCategory.STORAGE;
+    }
+
+    @Override
+    public List<OmResourceType> resourceTypes() {
+        return List.of(OmResourceType.CONTAINER);
     }
 
     @Override

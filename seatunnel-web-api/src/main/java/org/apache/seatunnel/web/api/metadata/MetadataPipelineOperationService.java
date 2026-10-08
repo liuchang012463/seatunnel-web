@@ -121,6 +121,23 @@ public class MetadataPipelineOperationService {
         return true;
     }
 
+    /**
+     * Records the operator decision for OpenMetadata sample-data collection. Enabling it
+     * lets the ingestion pipeline read real payloads (Kafka topic messages, SFTP file
+     * rows) into OpenMetadata; it stays off unless this is called explicitly.
+     */
+    public boolean updateSampleDataCollection(Long dataSourceId, boolean enabled) {
+        requireEnabled();
+        DataSource dataSource = requireActiveDataSource(dataSourceId);
+        MetadataConnectorAdapter adapter = connectorRegistry.find(dataSource.getDbType())
+                .orElseThrow(() -> invalid("metadata connector is not supported for this data source type"));
+        if (!adapter.supportsSampleData()) {
+            throw invalid("sample data collection is not supported for this data source type");
+        }
+        metadataBindingCommandService.markSampleDataChanged(dataSourceId, enabled);
+        return true;
+    }
+
     public boolean triggerScan(Long dataSourceId) {
         requireActiveDataSource(dataSourceId);
         MetadataSourceBinding binding = requireBinding(dataSourceId);
@@ -293,13 +310,16 @@ public class MetadataPipelineOperationService {
     public DataSourceMetadataStatusVO getCachedStatus(Long dataSourceId) {
         MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
         DataSourceMetadataStatusVO status = new DataSourceMetadataStatusVO();
+        status.setSampleDataSupported(supportsSampleData(dataSourceId));
         if (binding == null) {
             status.setSyncStatus("NOT_INITIALIZED");
+            status.setSampleDataEnabled(false);
             status.setScan(runState(MetadataRunStatus.NEVER, null, null, null));
             status.setExploration(runState(MetadataRunStatus.NEVER, null, null, null));
             return status;
         }
         status.setSyncStatus(MetadataSyncStatusView.project(binding));
+        status.setSampleDataEnabled(Boolean.TRUE.equals(binding.getSampleDataEnabled()));
         status.setScan(runState(
                 effectiveRunStatus(binding.getScanStatus(), binding.getScanLastError(), binding.getScanLastRunTime()),
                 binding.getScanLastRunTime(),
@@ -648,8 +668,18 @@ public class MetadataPipelineOperationService {
         return binding;
     }
 
-    private DataSource requireActiveDataSource(Long dataSourceId) {
-        if (dataSourceId == null || dataSourceId <= 0) {
+    /** True when the adapter of this data source can collect OpenMetadata sample data. */
+    private boolean supportsSampleData(Long dataSourceId) {
+        DataSource source = dataSourceDao.queryById(dataSourceId);
+        if (source == null) {
+            return false;
+        }
+        return connectorRegistry.find(source.getDbType())
+                .map(MetadataConnectorAdapter::supportsSampleData)
+                .orElse(false);
+    }
+
+    private DataSource requireActiveDataSource(Long dataSourceId) {        if (dataSourceId == null || dataSourceId <= 0) {
             throw invalid("dataSourceId");
         }
         DataSource source = dataSourceDao.queryById(dataSourceId);
