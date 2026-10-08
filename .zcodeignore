@@ -19,15 +19,13 @@ target/
 /logs
 logs.zip
 
-# Intellij Idea files
+# IDE
 .idea/
 *.iml
-.idea/*
-
+.vscode/
 .DS_Store
 
 metastore_db/
-
 work_dir
 
 all-dependencies.txt
@@ -38,23 +36,20 @@ third-party-dependencies.txt
 /derby.log
 
 dependency-reduced-pom.xml
-
 apidoc
 
 # Python
 *.py[cod]
 
-
 spark-warehouse
 *.flattened-pom.xml
-/seatunnel-ui/package-lock.json
-/seatunnel-ui/node
-/seatunnel-ui/node/*
-/seatunnel-ui/node_modules
-/seatunnel-ui/node_modules/*
-/seatunnel-web-it/profile/*
+
+# Frontend / Node
+node_modules/
+/seatunnel-web-ui/package-lock.json
 /deploy/docker/dist/
-/node_modules/.yarn-integrity
+playwright-report/
+test-results/
 
 # Local environment files
 .env
@@ -62,27 +57,26 @@ spark-warehouse
 !.env.example
 !.env.*.example
 
-# Local CodeGraph index and configuration
+# Local tooling / caches
 .codegraph/
-
+.cursor/
+.zcode/
+.playwright-mcp/
+.workbuddy-ai/
+.mavenrc
+tmp/
 profile/
 jdbc-drivers/
 
-.vscode/
-.mavenrc
-tmp/
-
-.zcode/.playwright-mcp/
-.zcode/
+# Local / agent screenshots at repo root
 batch-*.png
 file-*.png
 datasource-*.png
 ftp-*.png
 preview-request.json
-.playwright-mcp/
-.cursor/
-# Local AI assistant workspace (memory, caches); not part of the build
-.workbuddy-ai/
+
+# Project docs & reference binaries (kept locally, not versioned)
+/docs/
 
 # ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
 .git/
