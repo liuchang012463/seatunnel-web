@@ -1,3 +1,8 @@
+import {
+  getHttpSchemaFieldNamesWithoutType,
+  isHttpSourceNode,
+} from '@/pages/common/workflow/httpSchemaValidation';
+
 export type CheckLevel = "error" | "warning";
 
 export interface CheckItem {
@@ -173,6 +178,21 @@ const sourceRules: NodeCheckRule[] = [
     return null;
   },
   (node) => {
+    if (!isHttpSourceNode(node)) {
+      return null;
+    }
+    const config = getConfig(node);
+    const fieldNames = getHttpSchemaFieldNamesWithoutType(config.schema);
+    if (fieldNames.length > 0) {
+      return buildError(
+        node,
+        "schema",
+        `HTTP 来源字段 [${fieldNames.join(", ")}] 未设置类型，请在来源节点 Schema 中逐个选择类型`,
+      );
+    }
+    return null;
+  },
+  (node) => {
     const config = getConfig(node);
     if (!config.pluginOutput) {
       return buildWarning(node, "pluginOutput", "缺少 source 输出标识");
@@ -183,7 +203,6 @@ const sourceRules: NodeCheckRule[] = [
 
 const transformRules: NodeCheckRule[] = [
   (node) => {
-    console.log(node)
     const config = getConfig(node);
     if (!config.pluginInput) {
       return buildWarning(node, "pluginInput", "缺少上游输入配置");
