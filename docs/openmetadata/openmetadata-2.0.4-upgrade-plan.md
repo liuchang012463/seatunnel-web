@@ -135,3 +135,10 @@ staging 浏览器验证发现：同 URL 保存新 JWT 且不勾选重建，会�
 - MySQL 数据源 `22416910285280` 当前 binding 为 `READY`，scan 与 exploration 均为 `SUCCESS`、无错误；exploration run `3efc3b66-10aa-4a42-a7de-7409d3b2413d` 于 01:24:20 开始、01:51:46 结束，0 warnings。82 表 schema 的 table list API 仍返回总数 82；抽样 3 张表均为 `profileAvailable=true` 并带 `profileTime`。抽样表 profile detail 返回 0 行、4 列及实际 profile 时间戳。Inventory overview 仍为 18 数据源、12 数据库、2,072 表、192 张已探查表。
 - 生产 table-list API 对抽样行返回 `profileAvailable=true` 和 `profileTime`；详情接口 `/tables/{tableId}` 不含 `profileAvailable`，所以详情头部检查该字段的 `Profile 已就绪` 徽标不会显示。Profile 标签页通过独立的 `/tables/{tableId}/profile` API 读取指标，该 API 已确认返回最新 profile 时间、表指标和列指标。Chrome UI happy path 尚未验收：当前共享会话仍被 Nginx Basic Auth 拒绝；OpenMetadata 应用账号及 token 不能替代代理 Basic Auth。用户提供的 token 未写入仓库、部署文件或命令行。
 - 本地开发服务连接的 OM 为 `1.12.10`，不用于 2.0.4 验收。API 模块相关 Maven reactor 回归使用 `-am` 执行，119 项通过；不带 `-am` 的第一次尝试因加载旧 SPI 类出现 2 项 `NoSuchMethodError`，reactor 构建依赖后消失。
+
+### 详情页 Profile 状态复核（2026-10-08）
+
+- 复核发现，列表 DTO 已通过 OM latest profile 接口填充 `profileAvailable/profileTime`，详情 DTO 未包含这两个字段；前端详情头部依赖 `profileAvailable` 显示“Profile 已就绪”。现已在 `DataExplorationTableDetailVO` 增加字段，并在详情映射中复用同一 latest-profile/`OmReadCache` 读取逻辑。Profile 查询失败时详情结构仍正常返回，状态保留为不可用。
+- 新增详情状态回归用例。使用 JDK 21.0.11 和 `-DskipTests=false` 执行 metadata/OpenMetadata Maven reactor：112 项通过，0 failures/errors；单独 `DataExplorationServiceTest`：11 项通过。`-DskipTests=false` 是必要参数，仓库默认属性会跳过测试。随后 `-DskipTests package` 构建成功；本地待验收 API JAR SHA-256 为 `e26656617b61d17afa3909197a405ef2ece753a7d7e1ca9318e0a780aa90d23c`，尚未部署。
+- Luna Max 独立复核没有发现本次 Profile 映射或已审代码中的具体缺陷；复核结论为 test-system 验收仍未完成。当前本地开发 UI/API（端口 8000/9527）的健康响应连接 OM `1.12.10`、期望 `2.0.4`，`versionCompatible=false`，不能作为新 OM 验收。生产 Web API 的 2.0.4 运行记录见上文，但其既有部署包不含本轮详情 DTO 修复。
+- Playwright 可加载本地数据源列表和健康接口；生产 UI 代理入口 `127.0.0.1:39001` 仍因 Nginx Basic Auth 返回 `ERR_INVALID_AUTH_CREDENTIALS`，浏览器点击/脚本交互也被当前工具审批策略拒绝。因此本轮没有完成 test-system 的受影响页面 happy path。需要让目标 Web 实例连接 OM `2.0.4` / ingestion `2.0.4.0`，确认健康接口兼容，并在可用的代理认证会话下验收表详情 Profile 标记与指标页，才能关闭该目标。
