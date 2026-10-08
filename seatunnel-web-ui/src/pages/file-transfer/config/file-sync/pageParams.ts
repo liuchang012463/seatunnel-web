@@ -39,6 +39,7 @@ export const buildPageParams = (data: any, id: string, scene: 'create' | 'edit')
       targetType,
       data?.sourceDataSourceId,
       data?.targetDataSourceId,
+      scene === 'create',
     ),
     __pageScene: scene,
     state:

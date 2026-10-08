@@ -110,26 +110,61 @@ export const normalizeWorkflowGraph = (
   targetType: any,
   sourceDataSourceId?: string | number,
   targetDataSourceId?: string | number,
+  syncEndpointSelection = false,
 ) => {
   const rawNodes = Array.isArray(workflow?.nodes) ? workflow.nodes : [];
   if (rawNodes.length > 0) {
     return {
       nodes: rawNodes.map((node: any, index: number) => {
         const isSource = node?.data?.nodeType === 'source';
+        const syncFileTransferSelection = taskType === 'FILE_TRANSFER' && syncEndpointSelection;
+        const selectedSourceIsResource = sourceType?.dbType === 'FILE_RESOURCE';
+        const existingConfig = node?.data?.config || {};
         const baseConfig = isSource
-          ? normalizeResourceSourceConfig(node?.data?.config, taskType)
-          : node?.data?.config || {};
+          ? normalizeResourceSourceConfig(
+              syncFileTransferSelection
+                ? selectedSourceIsResource
+                  ? {
+                      ...existingConfig,
+                      sourceMode: 'FILE_RESOURCE',
+                      dbType: 'MINIO',
+                      pluginName: 'S3File',
+                      connectorType: 'S3File',
+                      dataSourceId: undefined,
+                      readMode: 'resource',
+                    }
+                  : {
+                      ...existingConfig,
+                      sourceMode: undefined,
+                      dbType: sourceType?.dbType,
+                      pluginName: sourceType?.pluginName,
+                      connectorType: sourceType?.connectorType,
+                      dataSourceId: sourceDataSourceId,
+                    }
+                : existingConfig,
+              taskType,
+            )
+          : existingConfig;
         const config = isSource
           ? baseConfig.sourceMode === 'FILE_RESOURCE'
             ? { ...baseConfig, pluginOutput: baseConfig.pluginOutput || node?.id }
             : {
                 ...baseConfig,
-                dataSourceId: baseConfig.dataSourceId || sourceDataSourceId,
+                dataSourceId: syncFileTransferSelection
+                  ? sourceDataSourceId
+                  : baseConfig.dataSourceId || sourceDataSourceId,
                 pluginOutput: baseConfig.pluginOutput || node?.id,
               }
           : {
               ...baseConfig,
-              dataSourceId: baseConfig.dataSourceId || targetDataSourceId,
+              ...(syncFileTransferSelection
+                ? {
+                    dbType: targetType?.dbType,
+                    pluginName: targetType?.pluginName,
+                    connectorType: targetType?.connectorType,
+                    dataSourceId: targetDataSourceId,
+                  }
+                : { dataSourceId: baseConfig.dataSourceId || targetDataSourceId }),
               pluginInput: baseConfig.pluginInput || node?.id,
             };
         return {
@@ -148,7 +183,15 @@ export const normalizeWorkflowGraph = (
                   pluginName: config.pluginName,
                   connectorType: config.connectorType,
                 }
-              : {}),
+              : syncFileTransferSelection
+                ? {
+                    title: config.dbType || '目标端',
+                    description: '写入二进制文件对象',
+                    dbType: config.dbType,
+                    pluginName: config.pluginName,
+                    connectorType: config.connectorType,
+                  }
+                : {}),
             config,
           },
         };
