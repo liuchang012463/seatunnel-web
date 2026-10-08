@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
+import org.apache.seatunnel.web.api.metadata.adapter.MetadataSyncOptions;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
@@ -609,6 +610,43 @@ public class MetadataPipelineOperationService {
             triggerMetadata(binding, false);
         } catch (ServiceException e) {
             log.warn("Automatic metadata scan was not triggered: dataSourceId={}", binding.getDataSourceId());
+        }
+    }
+
+    /**
+     * Collects sample rows for object storage after a successful metadata scan.
+     *
+     * <p>The storage metadata pipeline cannot collect samples and the sample agent has no
+     * schedule, so nothing would ever run it. Triggering it once per completed scan keeps
+     * the collection bounded and makes the operator's sample-data switch take effect on
+     * the next scan, as the UI states.</p>
+     */
+    void triggerStorageSampleCollection(MetadataSourceBinding binding) {
+        if (binding == null || !Boolean.TRUE.equals(binding.getSampleDataEnabled())) {
+            return;
+        }
+        DataSource dataSource = dataSourceDao.queryById(binding.getDataSourceId());
+        if (dataSource == null) {
+            return;
+        }
+        MetadataConnectorAdapter adapter = connectorRegistry.find(dataSource.getDbType()).orElse(null);
+        if (adapter == null || !adapter.collectsSampleDataViaAutoClassification()) {
+            return;
+        }
+        try {
+            openMetadataClient.assertFixedVersion();
+            OpenMetadataEntity pipeline = openMetadataClient.upsertIngestionPipeline(
+                    adapter.autoClassificationPipelineRequest(
+                            MetadataStableName.autoClassificationPipelineName(binding.getDataSourceId()),
+                            requireProfilerServiceId(binding, binding.getDataSourceId()),
+                            requireServiceFqn(binding, binding.getDataSourceId()),
+                            new MetadataSyncOptions(true, binding.getStorageManifestConfig())));
+            openMetadataClient.deployIngestionPipeline(pipeline.id());
+            openMetadataClient.enableIngestionPipeline(pipeline.id());
+            openMetadataClient.triggerIngestionPipeline(pipeline.id());
+        } catch (Exception e) {
+            log.warn("Storage sample collection was not triggered: dataSourceId={}, type={}",
+                    binding.getDataSourceId(), e.getClass().getSimpleName());
         }
     }
 

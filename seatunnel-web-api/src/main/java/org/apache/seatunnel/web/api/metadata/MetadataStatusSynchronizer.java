@@ -106,6 +106,11 @@ public class MetadataStatusSynchronizer {
                     }
                 }
                 operationService.triggerPendingMetadataScan(latest);
+                if (scanChanged && latest.getScanStatus() == MetadataRunStatus.SUCCESS) {
+                    // One trigger per completed scan: the version guard above means only
+                    // the node that recorded the change does this.
+                    operationService.triggerStorageSampleCollection(latest);
+                }
             }
         } catch (Exception e) {
             markUnknown(candidate, now);

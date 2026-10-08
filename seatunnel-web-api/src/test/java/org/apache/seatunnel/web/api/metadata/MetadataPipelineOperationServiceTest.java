@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metadata;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
+import org.apache.seatunnel.web.api.metadata.adapter.MetadataSyncOptions;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
@@ -974,6 +975,66 @@ class MetadataPipelineOperationServiceTest {
         service().updateStorageManifest(42L, "{\"entries\":[]}");
 
         verify(metadataBindingCommandService).markStorageManifestChanged(42L, "{\"entries\":[]}");
+    }
+
+    @Test
+    void storageSampleCollectionIsTriggeredForEnabledStorageSources() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setSampleDataEnabled(true);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.collectsSampleDataViaAutoClassification()).thenReturn(true);
+        when(connectorAdapter.autoClassificationPipelineRequest(
+                anyString(), anyString(), anyString(), any(MetadataSyncOptions.class)))
+                .thenReturn(JSON.createObjectNode());
+        when(openMetadataClient.upsertIngestionPipeline(any()))
+                .thenReturn(new OpenMetadataEntity("sample", "st_ds_42.st_ds_42_auto_classification"));
+
+        service().triggerStorageSampleCollection(binding);
+
+        verify(openMetadataClient).deployIngestionPipeline("sample");
+        verify(openMetadataClient).enableIngestionPipeline("sample");
+        verify(openMetadataClient).triggerIngestionPipeline("sample");
+    }
+
+    @Test
+    void storageSampleCollectionIsSkippedWhenTheOperatorDidNotOptIn() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setSampleDataEnabled(false);
+
+        service().triggerStorageSampleCollection(binding);
+
+        verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
+    }
+
+    @Test
+    void storageSampleCollectionIsSkippedForConnectorsWithTheirOwnSampleFlag() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setSampleDataEnabled(true);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.collectsSampleDataViaAutoClassification()).thenReturn(false);
+
+        service().triggerStorageSampleCollection(binding);
+
+        verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
+    }
+
+    @Test
+    void storageSampleCollectionNeverFailsTheStatusRefresh() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setSampleDataEnabled(true);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.collectsSampleDataViaAutoClassification()).thenReturn(true);
+        when(connectorAdapter.autoClassificationPipelineRequest(
+                anyString(), anyString(), anyString(), any(MetadataSyncOptions.class)))
+                .thenThrow(new MetadataIntegrationException(
+                        MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR, "rejected"));
+
+        service().triggerStorageSampleCollection(binding);
+
+        verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
     }
 
     private void stubReady(MetadataSourceBinding binding, MetadataSourceBinding reserved) {
