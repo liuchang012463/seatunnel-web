@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.common.enums.TaskExecutionMode;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.job.handler.JobDefinitionModeHandler;
+import org.apache.seatunnel.web.core.job.handler.JobRuntimeContextFactory;
 import org.apache.seatunnel.web.core.job.bridge.LakeManagedMappingPrefillService;
 import org.apache.seatunnel.web.core.time.IncrementalConfigResolver;
 import org.apache.seatunnel.web.spi.bean.dto.command.GuideSingleJobContentCommand;
@@ -38,6 +39,9 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
     @jakarta.annotation.Resource
     private LakeManagedMappingPrefillService lakeManagedMappingPrefillService;
 
+    @jakarta.annotation.Resource
+    private JobRuntimeContextFactory jobRuntimeContextFactory;
+
     public GuideSingleJobDefinitionHandler(
             GuideSingleWorkflowValidator workflowValidator,
             GuideSingleWorkflowAnalyzer workflowAnalyzer,
@@ -65,7 +69,7 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
                 LocalFileSourceValidator.validateBinaryFileResource(
                         findMergedConfig(cmd.getWorkflow(), "source"));
             }
-            validateFileSync(cmd.getWorkflow());
+            validateFileSync(cmd.getWorkflow(), command);
         }
         if (command.getMode() == JobDefinitionMode.GUIDE_SINGLE) {
             validateWebUploadSingleSource(cmd.getWorkflow());
@@ -121,7 +125,7 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
     }
 
     @SuppressWarnings("unchecked")
-    private void validateFileSync(Map<String, Object> workflow) {
+    private void validateFileSync(Map<String, Object> workflow, JobDefinitionSaveCommand command) {
         Object rawNodes = workflow.get("nodes");
         if (!(rawNodes instanceof List)) {
             throw new IllegalArgumentException("FILE_SYNC workflow nodes are required");
@@ -175,7 +179,29 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
                 throw new IllegalArgumentException(
                         "FILE_SYNC incremental mode requires the same source and target datasource");
             }
+            if (isObjectStorageDbType(sourceDbType) || isObjectStorageDbType(sinkDbType)) {
+                requireSeaTunnel300(command);
+            }
         }
+    }
+
+    private void requireSeaTunnel300(JobDefinitionSaveCommand command) {
+        String engineVersion = resolveEngineVersion(command);
+        if (!"3.0.0".equals(engineVersion)) {
+            throw new IllegalArgumentException(
+                    "S3File incremental update sync requires SeaTunnel Engine 3.0.0");
+        }
+    }
+
+    private String resolveEngineVersion(JobDefinitionSaveCommand command) {
+        if (jobRuntimeContextFactory == null || command == null) {
+            return null;
+        }
+        return jobRuntimeContextFactory.create(command).getEngineVersion();
+    }
+
+    private static boolean isObjectStorageDbType(String dbType) {
+        return "S3".equalsIgnoreCase(dbType) || "MINIO".equalsIgnoreCase(dbType);
     }
 
     private void requireFileDbType(Map<String, Object> config, String role) {

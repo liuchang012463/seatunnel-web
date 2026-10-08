@@ -22,11 +22,39 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 class DefaultJobDefinitionHoconBuilderTest {
 
     @Test
-    void hidesUnexpectedFailureDetailsFromApiAndLogs() {
+    void redactsCredentialBearingFailuresFromApiAndLogs() {
         String credential = "pwd=supersecret";
+        CapturedFailure failure = captureFailure(credential);
+
+        assertEquals(Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getCode(), failure.exception().getCode());
+        assertTrue(failure.exception().getMessage().endsWith(": 请检查任务配置"));
+        assertFalse(failure.exception().getMessage().contains(credential));
+        assertFalse(failure.logMessages().stream().anyMatch(message -> message.contains(credential)));
+        assertEquals(
+                "Build job hocon config failed, mode=GUIDE_SINGLE, failureType=IllegalArgumentException, cause=请检查任务配置",
+                failure.logMessages().get(0));
+    }
+
+    @Test
+    void surfacesSanitizedActionableRootCause() {
+        CapturedFailure failure = captureFailure(
+                "S3File incremental update sync requires SeaTunnel Engine 3.0.0");
+
+        assertEquals(Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getCode(), failure.exception().getCode());
+        assertTrue(failure.exception().getMessage().contains(
+                "S3File incremental update sync requires SeaTunnel Engine 3.0.0"));
+        assertEquals(
+                "Build job hocon config failed, mode=GUIDE_SINGLE, failureType=IllegalArgumentException,"
+                        + " cause=S3File incremental update sync requires SeaTunnel Engine 3.0.0",
+                failure.logMessages().get(0));
+    }
+
+    private CapturedFailure captureFailure(String validateMessage) {
         JobBasicConfig basic = new JobBasicConfig();
         basic.setJobName("test-job");
         JobDefinitionSaveCommand command = new JobDefinitionSaveCommand() {
@@ -63,7 +91,7 @@ class DefaultJobDefinitionHoconBuilderTest {
 
             @Override
             public void validate(JobDefinitionSaveCommand ignored) {
-                throw new IllegalArgumentException(credential);
+                throw new IllegalArgumentException(validateMessage);
             }
 
             @Override
@@ -90,18 +118,17 @@ class DefaultJobDefinitionHoconBuilderTest {
         logger.addAppender(appender);
         try {
             DefaultJobDefinitionHoconBuilder builder = new DefaultJobDefinitionHoconBuilder(registry);
-            ServiceException failure = assertThrows(ServiceException.class, () -> builder.build(command));
-
-            assertEquals(Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getCode(), failure.getCode());
-            assertFalse(failure.getMessage().contains(credential));
-            assertFalse(appender.list.stream()
+            ServiceException exception = assertThrows(ServiceException.class, () -> builder.build(command));
+            List<String> messages = appender.list.stream()
                     .map(ILoggingEvent::getFormattedMessage)
-                    .anyMatch(message -> message.contains(credential)));
-            assertEquals("Build job hocon config failed, mode=GUIDE_SINGLE, failureType=IllegalArgumentException",
-                    appender.list.get(0).getFormattedMessage());
+                    .toList();
+            return new CapturedFailure(exception, messages);
         } finally {
             logger.detachAppender(appender);
             appender.stop();
         }
+    }
+
+    private record CapturedFailure(ServiceException exception, List<String> logMessages) {
     }
 }
