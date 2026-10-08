@@ -151,7 +151,7 @@ public class MetadataPipelineOperationService {
             throw invalid("databaseFqn");
         }
         MetadataSourceBinding binding = requireReadyBinding(dataSourceId);
-        DataSource dataSource = requireActiveDataSource(dataSourceId);
+        DataSource dataSource = requireProfilerCapableDataSource(dataSourceId);
         String serviceFqn = requireServiceFqn(binding, dataSourceId);
         OpenMetadataDatabase database = openMetadataClient.findDatabase(databaseFqn)
                 .orElseThrow(() -> invalid("databaseFqn does not exist"));
@@ -206,7 +206,7 @@ public class MetadataPipelineOperationService {
         }
         requireEnabled();
         MetadataSourceBinding binding = requireReadyBinding(dataSourceId);
-        requireActiveDataSource(dataSourceId);
+        requireProfilerCapableDataSource(dataSourceId);
         long initialVersion = requireVersion(binding);
         Date now = new Date();
         if (!metadataBindingDao.reserveRun(binding.getId(), initialVersion, false, null, now)) {
@@ -655,6 +655,21 @@ public class MetadataPipelineOperationService {
         DataSource source = dataSourceDao.queryById(dataSourceId);
         if (source == null || source.getStatus() == DataSourceLifecycleStatus.REVOKED) {
             throw invalid("data source is unavailable");
+        }
+        return source;
+    }
+
+    /**
+     * Exploration is a table-scoped OpenMetadata capability. Rejecting it here keeps
+     * non-relational sources (Kafka, S3, SFTP, HTTP, Elasticsearch) from reserving a
+     * run that can only fail later inside the profiler pipeline request.
+     */
+    private DataSource requireProfilerCapableDataSource(Long dataSourceId) {
+        DataSource source = requireActiveDataSource(dataSourceId);
+        MetadataConnectorAdapter adapter = connectorRegistry.find(source.getDbType())
+                .orElseThrow(() -> invalid("metadata connector is not supported for this data source type"));
+        if (!adapter.supportsProfiler()) {
+            throw invalid("exploration is not supported for this data source type");
         }
         return source;
     }

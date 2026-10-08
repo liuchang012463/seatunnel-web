@@ -33,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -88,6 +89,7 @@ class MetadataPipelineOperationServiceTest {
         MetadataSourceBinding binding = binding(0L);
         when(dataSourceDao.queryById(42L)).thenReturn(source());
         when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        stubProfilerCapable();
         when(openMetadataClient.findDatabase("another_service.orders")).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> service().triggerExploration(42L, "another_service.orders"));
@@ -98,10 +100,34 @@ class MetadataPipelineOperationServiceTest {
         MetadataSourceBinding binding = binding(0L);
         when(dataSourceDao.queryById(42L)).thenReturn(source());
         when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        stubProfilerCapable();
         when(openMetadataClient.findDatabase("other_service.orders"))
                 .thenReturn(Optional.of(new OpenMetadataDatabase("database-id", "other_service.orders", "other_service")));
 
         assertThrows(RuntimeException.class, () -> service().triggerExploration(42L, "other_service.orders"));
+    }
+
+    @Test
+    void explorationReservationRejectsDataSourcesWithoutAProfiler() {
+        MetadataSourceBinding binding = binding(0L);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.supportsProfiler()).thenReturn(false);
+
+        assertThrows(RuntimeException.class, () -> service().reserveExploration(42L, "st_ds_42.orders"));
+        verify(bindingDao, never()).reserveRun(anyLong(), anyLong(), anyBoolean(), any(), any());
+    }
+
+    @Test
+    void explorationReservationRejectsDataSourcesWithoutAConnector() {
+        MetadataSourceBinding binding = binding(0L);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class, () -> service().reserveExploration(42L, "st_ds_42.orders"));
+        verify(bindingDao, never()).reserveRun(anyLong(), anyLong(), anyBoolean(), any(), any());
     }
 
     @Test
@@ -111,6 +137,7 @@ class MetadataPipelineOperationServiceTest {
         reserved.setProfileStatus(MetadataRunStatus.QUEUED);
         DataSource source = source();
         stubReady(binding, reserved);
+        stubProfilerCapable();
         when(openMetadataClient.findDatabase("st_ds_42.orders"))
                 .thenReturn(Optional.of(new OpenMetadataDatabase("database-id", "st_ds_42.orders", "st_ds_42")));
         when(bindingDao.reserveRun(eq(1L), eq(0L), eq(false), isNull(), any())).thenReturn(true);
@@ -134,6 +161,7 @@ class MetadataPipelineOperationServiceTest {
         MetadataSourceBinding reserved = binding(1L);
         reserved.setProfileStatus(MetadataRunStatus.QUEUED);
         stubReady(binding, reserved);
+        stubProfilerCapable();
         String databaseFqn = "st_ds_42.kingbase";
         String schemaFqn = databaseFqn + ".public";
         when(openMetadataClient.findDatabase(databaseFqn))
@@ -167,6 +195,7 @@ class MetadataPipelineOperationServiceTest {
         MetadataSourceBinding binding = binding(0L);
         when(dataSourceDao.queryById(42L)).thenReturn(source());
         when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        stubProfilerCapable();
         when(bindingDao.reserveRun(eq(1L), eq(0L), eq(false), isNull(), any())).thenReturn(true);
 
         MetadataPipelineOperationService.ExplorationReservation reservation =
@@ -317,6 +346,12 @@ class MetadataPipelineOperationServiceTest {
         when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
         when(openMetadataClient.listIngestionPipelineRuns(anyString(), eq(1))).thenReturn(List.of());
         when(bindingDao.queryById(1L)).thenReturn(reserved);
+    }
+
+    /** Exploration only reaches the profiler pipeline request for relational adapters. */
+    private void stubProfilerCapable() {
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.supportsProfiler()).thenReturn(true);
     }
 
     private MetadataPipelineOperationService service() {
