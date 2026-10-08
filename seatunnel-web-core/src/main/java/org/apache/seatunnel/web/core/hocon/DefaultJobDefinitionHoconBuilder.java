@@ -10,8 +10,6 @@ import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Component;
 
-import java.util.Locale;
-
 /**
  * Default hocon builder implementation based on mode handlers.
  */
@@ -41,46 +39,20 @@ public class DefaultJobDefinitionHoconBuilder implements JobDefinitionHoconBuild
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Build job hocon config failed, mode={}, cause={}",
-                    command.getMode(), rootCauseMessage(e));
+            log.error("Build job hocon config failed, mode={}, failureType={}",
+                    command.getMode(), rootCauseType(e));
             throw new ServiceException(
                     Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getCode(),
-                    Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getMsg()
-                            + ": " + rootCauseMessage(e));
+                    Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getMsg());
         }
     }
 
-    /**
-     * Extract the deepest root cause message for the user, without leaking credentials.
-     */
-    private String rootCauseMessage(Throwable error) {
+    private String rootCauseType(Throwable error) {
         Throwable root = error;
         while (root.getCause() != null && root.getCause() != root) {
             root = root.getCause();
         }
-        String message = root.getMessage();
-        if (StringUtils.isBlank(message)) {
-            return root.getClass().getSimpleName();
-        }
-        String sanitized = message.replaceAll("\\s+", " ").trim();
-        if (containsSensitiveKeyword(sanitized)) {
-            return "请检查任务配置";
-        }
-        return StringUtils.abbreviate(sanitized, 200);
-    }
-
-    private static final String[] SENSITIVE_KEYWORDS = {
-            "password", "secret", "accesskey", "secretkey", "token", "apikey", "jaas", "authorization"
-    };
-
-    private boolean containsSensitiveKeyword(String message) {
-        String normalizedMessage = message.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
-        for (String keyword : SENSITIVE_KEYWORDS) {
-            if (normalizedMessage.contains(keyword)) {
-                return true;
-            }
-        }
-        return false;
+        return root.getClass().getSimpleName();
     }
 
     /**
