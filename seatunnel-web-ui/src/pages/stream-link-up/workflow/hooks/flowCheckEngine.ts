@@ -78,6 +78,23 @@ const buildWarning = (node: any, field: string, message: string): CheckItem => (
   message,
 });
 
+const buildError = (node: any, field: string, message: string): CheckItem => ({
+  ...getNodeMeta(node),
+  level: "error",
+  field,
+  message,
+});
+
+const isPostgresCdcSourceNode = (node: any) => {
+  const config = getConfig(node);
+  return (
+    String(config.pluginName || node?.data?.pluginName || "") ===
+      "PostgreSQL-CDC" ||
+    String(node?.data?.dbType || config.dbType || "").toUpperCase() ===
+      "POSTGRE_SQL"
+  );
+};
+
 export const groupCheckListByNode = (
   list: CheckItem[]
 ): NodeCheckGroup[] => {
@@ -142,6 +159,16 @@ const sourceRules: NodeCheckRule[] = [
     }
     if (config.readMode === "sql" && !String(config.sql || "").trim()) {
       return buildWarning(node, "sql", "自定义 SQL 不能为空");
+    }
+    return null;
+  },
+  (node) => {
+    if (!isPostgresCdcSourceNode(node)) {
+      return null;
+    }
+    const config = getConfig(node);
+    if (!String(config.publicationName || "").trim()) {
+      return buildError(node, "publicationName", "请填写 Publication");
     }
     return null;
   },

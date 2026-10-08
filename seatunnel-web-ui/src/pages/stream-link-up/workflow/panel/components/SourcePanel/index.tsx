@@ -110,6 +110,7 @@ function SourcePanel({
   const serverTimeZone = sourceConfig.serverTimeZone || "";
   const slotName = sourceConfig.slotName || sourceConfig["slot.name"] || "";
   const publicationName = sourceConfig.publicationName || "";
+  const publicationMissing = !String(publicationName).trim();
 
   const resetSchemaMeta = {
     outputSchema: [],
@@ -402,12 +403,18 @@ function SourcePanel({
                 />
               </div>
               <div className="space-y-1.5">
-                <div className="text-[13px] font-semibold text-slate-400 tracking-wide">Publication</div>
+                <div className="text-[13px] font-semibold text-slate-400 tracking-wide">
+                  <span className="mr-1 text-rose-500">*</span>Publication
+                </div>
                 <Input
                   value={publicationName}
                   placeholder="aircas_orders_pub"
+                  status={publicationMissing ? "error" : undefined}
                   onChange={(e) => updateNode({ publicationName: e.target.value })}
                 />
+                {publicationMissing && (
+                  <div className="text-xs text-rose-500">请填写 Publication</div>
+                )}
               </div>
               <div className="col-span-2 text-xs text-slate-400">
                 使用预先创建的 pgoutput slot 与 publication；任务不会自动创建或删除它们。

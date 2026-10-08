@@ -245,6 +245,16 @@ const buildPageParamsForEdit = (editData?: any) => {
   };
 };
 
+const ONLY_OFFLINE_JOB_EDITABLE_ERROR =
+  "only offline job definition can be edited";
+const EDIT_DETAIL_FALLBACK_MESSAGE = "获取编辑详情失败";
+const EDIT_ONLINE_BLOCKED_MESSAGE = "任务已上线，请先下线任务再编辑配置";
+
+const isOnlyOfflineJobEditableError = (rawMessage?: unknown) =>
+  String(rawMessage || "")
+    .toLowerCase()
+    .includes(ONLY_OFFLINE_JOB_EDITABLE_ERROR);
+
 export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {}) {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -314,7 +324,12 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
 
         const res = await seatunnelJobDefinitionApi.selectEditDetail(id);
         if (res?.code !== 0 || !res?.data) {
-          message.error(res?.message || res?.msg || "获取编辑详情失败");
+          const rawMessage = res?.message || res?.msg;
+          message.error(
+            isOnlyOfflineJobEditableError(rawMessage)
+              ? EDIT_ONLINE_BLOCKED_MESSAGE
+              : rawMessage || EDIT_DETAIL_FALLBACK_MESSAGE,
+          );
           setParams(null);
           return;
         }
@@ -329,7 +344,15 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
         setScheduleConfig(buildInitialScheduleConfigForEdit(data, modeOverride));
         setEnvConfig(buildInitialEnvConfigForEdit(data));
       } catch (error) {
-        message.error("获取编辑详情失败");
+        const rawMessage =
+          (error as any)?.message ||
+          (error as any)?.response?.msg ||
+          (error as any)?.response?.message;
+        message.error(
+          isOnlyOfflineJobEditableError(rawMessage)
+            ? EDIT_ONLINE_BLOCKED_MESSAGE
+            : EDIT_DETAIL_FALLBACK_MESSAGE,
+        );
         setParams(null);
       } finally {
         setLoading(false);

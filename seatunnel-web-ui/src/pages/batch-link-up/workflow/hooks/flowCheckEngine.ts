@@ -93,6 +93,38 @@ const buildWarning = (node: any, field: string, message: string): CheckItem => (
   message,
 });
 
+const buildError = (node: any, field: string, message: string): CheckItem => ({
+  ...getNodeMeta(node),
+  level: "error",
+  field,
+  message,
+});
+
+const isHttpSourceNode = (node: any) => {
+  const config = getConfig(node);
+  return [
+    node?.data?.dbType,
+    node?.data?.pluginName,
+    node?.data?.connectorType,
+    config.pluginName,
+    config.connectorType,
+  ].some((marker) => String(marker || "").toUpperCase() === "HTTP");
+};
+
+/** HTTP 来源 schema.fields 中类型为空的字段名。 */
+const getSchemaFieldNamesWithoutType = (schema: any): string[] => {
+  const fields = schema?.fields;
+  if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
+    return [];
+  }
+  return Object.entries(fields)
+    .filter(
+      ([name, type]) =>
+        String(name || "").trim() && !String(type ?? "").trim()
+    )
+    .map(([name]) => String(name));
+};
+
 export const groupCheckListByNode = (
   list: CheckItem[]
 ): NodeCheckGroup[] => {
@@ -192,6 +224,21 @@ const sourceRules: NodeCheckRule[] = [
     }
     if (config.readMode === "sql" && !String(config.sql || "").trim()) {
       return buildWarning(node, "sql", "自定义 SQL 不能为空");
+    }
+    return null;
+  },
+  (node) => {
+    if (!isHttpSourceNode(node)) {
+      return null;
+    }
+    const config = getConfig(node);
+    const fieldNames = getSchemaFieldNamesWithoutType(config.schema);
+    if (fieldNames.length > 0) {
+      return buildError(
+        node,
+        "schema",
+        `HTTP 来源字段 [${fieldNames.join(", ")}] 未设置类型，请在来源节点 Schema 中逐个选择类型`
+      );
     }
     return null;
   },
