@@ -17,6 +17,7 @@ import ExecutionStatus from '@/pages/batch-link-up/components/SyncTaskList/compo
 import ScheduleInfo from '@/pages/batch-link-up/components/SyncTaskList/components/ScheduleInfo';
 import TaskStatus from '@/pages/batch-link-up/components/SyncTaskList/components/TaskStatus';
 import CustomPagination from '@/pages/batch-link-up/CustomPagination';
+import useTaskListAutoRefresh from '@/pages/common/hooks/useTaskListAutoRefresh';
 import { withTimeout } from '@/utils/withTimeout';
 import '@/pages/batch-link-up/components/SyncTaskList/index.less';
 
@@ -99,6 +100,11 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
   useEffect(() => {
     void fetchTaskList();
   }, [fetchTaskList]);
+
+  // 存在运行中任务时自动刷新当前页，全部终态后停止。
+  useTaskListAutoRefresh(taskList, () => {
+    void fetchTaskList();
+  });
 
   const handleSearch = (values: any) => {
     setSearchParams(values);

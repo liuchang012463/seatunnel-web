@@ -20,6 +20,7 @@ import BatchCreateJobModal, {
   BatchCreateValues,
 } from '@/pages/common/components/BatchCreateJobModal';
 import type { TaskSortField, TaskSortOrder } from '@/pages/common/components/TaskSortControls';
+import useTaskListAutoRefresh from '@/pages/common/hooks/useTaskListAutoRefresh';
 import './index.less';
 import { withTimeout } from '@/utils/withTimeout';
 
@@ -341,6 +342,9 @@ const RealtimeSyncPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // 存在运行中任务时自动刷新当前页，全部终态后停止。
+  useTaskListAutoRefresh(dataSource, loadData);
 
   const handleCreate = async () => {
     if (!sourceType?.dbType) {

@@ -9,6 +9,7 @@ import { seatunnelJobDefinitionApi } from "../../api";
 import BatchCreateJobModal, {
   BatchCreateValues,
 } from "@/pages/common/components/BatchCreateJobModal";
+import useTaskListAutoRefresh from "@/pages/common/hooks/useTaskListAutoRefresh";
 import type { TaskSortField, TaskSortOrder } from "@/pages/common/components/TaskSortControls";
 import { TASK_TABLE_COLUMN_WIDTHS } from "@/pages/common/components/taskTableLayout";
 import { batchJobExecutorApi } from "../../type";
@@ -237,6 +238,11 @@ const App: React.FC<Props> = ({
   useEffect(() => {
     void fetchTaskList();
   }, [searchParams, pagination.current, pagination.pageSize, sort]);
+
+  // 存在运行中任务时自动刷新当前页，全部终态后停止。
+  useTaskListAutoRefresh(taskList, () => {
+    void fetchTaskList();
+  });
 
   const baseColumns = [
     {
