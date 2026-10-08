@@ -236,6 +236,7 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
                 .connectionConfig(connectionConfig)
                 .nodeConfig(nodeConfig)
                 .scheduleConfig(dagContext == null ? null : dagContext.getScheduleConfig())
+                .engineVersion(dagContext == null ? null : dagContext.getEngineVersion())
                 .stage(HoconBuildStage.INSTANCE)
                 .build();
     }

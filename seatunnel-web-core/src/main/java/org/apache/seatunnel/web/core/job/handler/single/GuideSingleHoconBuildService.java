@@ -54,7 +54,8 @@ public class GuideSingleHoconBuildService {
                 dagGraph,
                 runtimeContext.getEnv(),
                 runtimeContext.getSchedule(),
-                LakeJobBindingResolver.resolve(command)
+                LakeJobBindingResolver.resolve(command),
+                runtimeContext.getEngineVersion()
         );
     }
 }

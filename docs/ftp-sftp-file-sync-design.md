@@ -9,6 +9,8 @@
 | FTP | `FTP` | `FtpFile` | Source / Sink |
 | SFTP | `SFTP` | `SftpFile` | Source / Sink |
 
+SeaTunnel 2.3.13 与 3.0.0 均使用 `sync_mode=update`、`target_path`、`update_strategy` 和 `compare_mode` 实现增量更新（[2.3.13 FtpFile](https://seatunnel.apache.org/docs/2.3.13/connectors/source/FtpFile/)、[2.3.13 SftpFile](https://seatunnel.apache.org/docs/2.3.13/connectors/source/SftpFile/)、[3.0.0 FtpFile](https://seatunnel.apache.org/docs/3.0.0/connectors/source/FtpFile/)、[3.0.0 SftpFile](https://seatunnel.apache.org/docs/3.0.0/connectors/source/SftpFile/)）。下文这些字段适用于两个版本；较早草稿中的 `read_update_info`、`only_add` 和 `file_details_info` 不属于这两个版本的官方 FtpFile/SftpFile 参数。
+
 任务模式固定为 `FILE_SYNC`，只用于批任务。页面采用来源端点、文件策略、去向端点三段式设计，不进入原单表/多表页面。
 
 ## 2. 生命周期
@@ -23,7 +25,7 @@
 ## 3. 同步语义
 
 - 全量：支持 FTP/SFTP 任意组合。
-- 增量：使用 SeaTunnel 2.3.13 `read_update_info=true`、`update_strategy=only_add`、`file_details_info=len_mtime`；来源和目标必须是同一个数据源。
+- 增量：仅支持二进制模式，使用 `sync_mode=update`、`target_path`、`update_strategy=distcp|strict` 和 `compare_mode=len_mtime|checksum`；`checksum` 只允许与 `strict` 搭配。当前 Web 只允许来源和目标使用同一数据源，避免 Engine 无法读取目标端认证配置。
 - 目标端只复制新增或长度/修改时间发生变化的文件，不删除已有文件。
 - `file_format_type` 固定为 `binary`，Sink 开启事务并使用独立临时目录。
 - 数据源根目录是浏览安全边界；拒绝 `..` 和边界外绝对路径。
@@ -32,8 +34,8 @@
 
 - 密码不会写入日志或 `toString()`。
 - FTP 固定进入二进制传输模式，支持主动/被动连接及远端校验开关。
-- 当前 SFTP 与 SeaTunnel 2.3.13 Connector 能力对齐，仅支持密码认证。Web 目录浏览当前关闭主机密钥严格校验，因此生产环境应通过受控网络和可信主机接入；后续若升级 Connector 再统一增加密钥与 known_hosts。
-- Web 直连测试成功只代表 Web 节点可访问远端；实际执行仍要求所有 SeaTunnel Engine 节点部署 2.3.13 对应的 `connector-file-ftp`/`connector-file-sftp` 插件并具备网络权限。
+- Web 的 SFTP 表单目前只支持密码认证；3.0.0 Connector 还支持私钥 `keyfile`，但此能力尚未接入 Web。Web 目录浏览当前关闭主机密钥严格校验，因此生产环境应通过受控网络和可信主机接入。
+- Web 直连测试成功只代表 Web 节点可访问远端；实际执行仍要求所有 SeaTunnel Engine 节点部署与所选 Engine 版本匹配的 `connector-file-ftp`/`connector-file-sftp` 插件并具备网络权限。
 
 ## 5. 验收清单
 
@@ -45,5 +47,5 @@
 - [ ] HOCON 中固定为 `binary`，且不包含 Web 内部字段。
 - [ ] 手动执行和 Cron 调度均可保存。
 - [ ] 页面无数据库表、字段映射和 SQL 控件。
-- [ ] 在真实 SeaTunnel 2.3.13 Engine 上完成至少一次二进制文件校验（大小及哈希一致）。
+- [ ] 在真实 SeaTunnel 2.3.13 和 3.0.0 Engine 上分别完成至少一次二进制文件校验（大小及哈希一致）。
 

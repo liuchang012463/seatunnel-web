@@ -45,8 +45,16 @@ public class HoconConfigBuilder {
                         JobEnvConfig envConfig,
                         JobScheduleConfig scheduleConfig,
                         Long odsDatabaseBindingId) {
+        return build(dagGraph, envConfig, scheduleConfig, odsDatabaseBindingId, null);
+    }
+
+    public String build(DagGraph dagGraph,
+                        JobEnvConfig envConfig,
+                        JobScheduleConfig scheduleConfig,
+                        Long odsDatabaseBindingId,
+                        String engineVersion) {
         DagBuildContext context = DagBuildContext.from(
-                dagGraph, scheduleConfig, odsDatabaseBindingId);
+                dagGraph, scheduleConfig, odsDatabaseBindingId, engineVersion);
 
         NodeGroup group = groupNodes(dagGraph.getNodesAsConfig(), context);
 

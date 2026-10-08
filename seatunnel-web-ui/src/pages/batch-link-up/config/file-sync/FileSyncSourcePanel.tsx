@@ -33,6 +33,9 @@ interface FileSyncSourcePanelProps {
     connectorType?: string;
   }>;
   jobDefinitionId?: string | number;
+  engineVersion?: string;
+  targetDataSourceId?: string | number;
+  targetDbType?: FileDataSourceType;
 }
 
 const formatSize = (size?: number) => {
@@ -114,6 +117,9 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
   onNodeDataChange,
   datasourceOptions,
   jobDefinitionId,
+  engineVersion,
+  targetDataSourceId,
+  targetDbType,
 }) => {
   const { message } = App.useApp();
   const config = selectedNode?.data?.config || {};
@@ -243,7 +249,10 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
     ? false
     : canUseIncrementalFileSync(
         config.dbType as FileDataSourceType,
-        config.targetDbType as FileDataSourceType,
+        targetDbType,
+        engineVersion,
+        config.dataSourceId,
+        targetDataSourceId,
       );
 
   return (
@@ -506,7 +515,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
           </div>
           {isRemote && config.syncType === 'INCREMENTAL' && (
             <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-600">
-              增量模式要求来源与去向为同一数据源；比较方式固定为文件长度 + 修改时间。
+              增量模式要求来源与去向为同一数据源；S3 / MinIO 还要求 SeaTunnel Engine 3.0.0。
             </div>
           )}
         </div>

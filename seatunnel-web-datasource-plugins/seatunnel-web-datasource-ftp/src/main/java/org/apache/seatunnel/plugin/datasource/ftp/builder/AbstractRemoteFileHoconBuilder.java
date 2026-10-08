@@ -28,7 +28,7 @@ public abstract class AbstractRemoteFileHoconBuilder implements DataSourceHoconB
         put(result, node, "binaryCompleteFileMode", "binary_complete_file_mode");
         result.put("file_format_type", "binary");
         if ("INCREMENTAL".equalsIgnoreCase(string(node.get("syncType")))) {
-            // SeaTunnel 2.3.13 incremental semantics: sync_mode="update" plus
+            // The 2.3.13 and 3.0.0 update-mode contract uses sync_mode="update" plus
             // target_path/update_strategy/compare_mode. The engine only knows
             // update_strategy=distcp|strict and compare_mode=len_mtime|checksum.
             result.put("sync_mode", "update");
@@ -43,6 +43,10 @@ public abstract class AbstractRemoteFileHoconBuilder implements DataSourceHoconB
             if (!"len_mtime".equals(compareMode) && !"checksum".equals(compareMode)) {
                 throw new IllegalArgumentException(
                         "Unsupported file compare_mode: " + compareMode + " (len_mtime or checksum)");
+            }
+            if ("checksum".equals(compareMode) && !"strict".equals(updateStrategy)) {
+                throw new IllegalArgumentException(
+                        "File compare_mode=checksum requires update_strategy=strict");
             }
             result.put("compare_mode", compareMode);
             require(result, "target_path");

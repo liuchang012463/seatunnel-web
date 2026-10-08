@@ -76,7 +76,8 @@ public class GuideMultiHoconBuildService {
                 dagGraph,
                 runtimeContext.getEnv(),
                 runtimeContext.getSchedule(),
-                LakeJobBindingResolver.resolve(command));
+                LakeJobBindingResolver.resolve(command),
+                runtimeContext.getEngineVersion());
     }
 
     private Map<String, Object> buildWorkflow(

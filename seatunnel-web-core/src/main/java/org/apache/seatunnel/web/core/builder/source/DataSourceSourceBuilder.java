@@ -115,6 +115,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
                 .connectionConfig(connectionConfig)
                 .nodeConfig(nodeConfig)
                 .scheduleConfig(dagContext.getScheduleConfig())
+                .engineVersion(dagContext.getEngineVersion())
                 .stage(HoconBuildStage.INSTANCE)
                 .build();
 
@@ -412,6 +413,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
                 .connectionConfig(connectionConfig)
                 .nodeConfig(nodeConfig)
                 .scheduleConfig(dagContext == null ? null : dagContext.getScheduleConfig())
+                .engineVersion(dagContext == null ? null : dagContext.getEngineVersion())
                 .stage(HoconBuildStage.INSTANCE)
                 .build();
 

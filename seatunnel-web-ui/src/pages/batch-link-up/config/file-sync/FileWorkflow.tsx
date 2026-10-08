@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { applyNodeChanges } from 'reactflow';
 import { fetchDataSourceAll } from '@/pages/data-source/service';
+import { seatunnelClientApi } from '@/pages/client/api';
 import { fileUploadApi, seatunnelJobDefinitionApi } from '../../api';
 import RightConfigPanel from '../../workflow/RightConfigPanel';
 import { CheckListPopover } from '../../workflow/components/CheckListPopover';
@@ -299,6 +300,30 @@ export default function FileWorkflow({
   >([]);
 
   const jobDefinitionId = params?.id;
+  const selectedClientId = basicConfig?.clientId || params?.basic?.clientId || params?.clientId;
+  const [engineVersion, setEngineVersion] = useState<string>();
+
+  useEffect(() => {
+    if (!selectedClientId || !/^\d+$/.test(String(selectedClientId))) {
+      setEngineVersion(undefined);
+      return;
+    }
+
+    let active = true;
+    seatunnelClientApi
+      .version(Number(selectedClientId))
+      .then((response) => {
+        if (!active) return;
+        setEngineVersion(response?.code === 0 ? response.data : undefined);
+      })
+      .catch(() => {
+        if (active) setEngineVersion(undefined);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedClientId]);
 
   useEffect(() => {
     if (contextRef.current === contextKey) return;
@@ -419,7 +444,10 @@ export default function FileWorkflow({
       ? 'DIRTY'
       : 'SYNCED';
 
-  const checkList = useMemo(() => generateFileSyncCheckList(graph.nodes || []), [graph.nodes]);
+  const checkList = useMemo(
+    () => generateFileSyncCheckList(graph.nodes || [], engineVersion),
+    [graph.nodes, engineVersion],
+  );
   const checkStat = useMemo(() => classifyFileSyncCheckResult(checkList), [checkList]);
   const checkGroups = useMemo(() => groupFileSyncCheckListByNode(checkList), [checkList]);
 
@@ -518,8 +546,11 @@ export default function FileWorkflow({
   const buildSavePayload = () => {
     const currentSourceNode = graph.nodes.find((node) => node?.data?.nodeType === 'source');
     const sinkNode = graph.nodes.find((node) => node?.data?.nodeType === 'sink');
-    const sourceConfig = currentSourceNode?.data?.config || {};
     const sinkConfig = sinkNode?.data?.config || {};
+    const configuredSource = currentSourceNode?.data?.config || {};
+    const sourceConfig = String(configuredSource.syncType || '').toUpperCase() === 'INCREMENTAL'
+      ? { ...configuredSource, targetPath: sinkConfig.targetPath }
+      : configuredSource;
 
     // 数据源列表记录不带 connectorType，按 dbType 兜底推导，保证后端可路由到插件 builder。
     const withConnector = (config: Record<string, any>) => ({
@@ -783,6 +814,7 @@ export default function FileWorkflow({
                           onNodeDataChange={handleNodeDataChange}
                           datasourceOptions={datasourceOptions}
                           jobDefinitionId={jobDefinitionId}
+                          engineVersion={engineVersion}
                         />
                     </div>
                   </div>

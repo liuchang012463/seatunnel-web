@@ -49,4 +49,6 @@ public class HoconBuildContext {
     private final String dataSourceName;
 
     private final String dbType;
+
+    private final String engineVersion;
 }

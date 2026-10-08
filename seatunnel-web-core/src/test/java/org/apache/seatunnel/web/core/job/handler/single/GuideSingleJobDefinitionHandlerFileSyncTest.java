@@ -29,13 +29,13 @@ class GuideSingleJobDefinitionHandlerFileSyncTest {
     }
 
     @Test
-    void rejectsObjectStorageIncrementalMode() {
+    void rejectsIncrementalAcrossDifferentObjectStorageTypes() {
         IllegalArgumentException exception =
                 assertThrows(
                         IllegalArgumentException.class,
                         () -> handler.validate(command("S3", "1", "MINIO", "2", "INCREMENTAL")));
 
-        assertTrue(exception.getMessage().contains("supports FTP/SFTP only"));
+        assertTrue(exception.getMessage().contains("same source and target datasource type"));
         assertThrows(
                 IllegalArgumentException.class,
                 () -> handler.validate(command("FTP", "1", "MINIO", "1", "INCREMENTAL")));
@@ -49,6 +49,16 @@ class GuideSingleJobDefinitionHandlerFileSyncTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> handler.validate(command("FTP", "1", "SFTP", "2", "INCREMENTAL")));
+    }
+
+    @Test
+    void rejectsIncrementalAcrossDifferentFileProtocolsEvenWhenDatasourceIdMatches() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> handler.validate(command("FTP", "1", "SFTP", "1", "INCREMENTAL")));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> handler.validate(command("SFTP", "1", "FTP", "1", "INCREMENTAL")));
     }
 
     @Test

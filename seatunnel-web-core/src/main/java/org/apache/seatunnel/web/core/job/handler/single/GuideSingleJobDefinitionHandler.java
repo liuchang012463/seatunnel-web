@@ -164,6 +164,12 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
             }
             requireIncrementalDbType(source, "source");
             requireIncrementalDbType(sink, "sink");
+            String sourceDbType = firstNonBlank(source.get("dbType"));
+            String sinkDbType = firstNonBlank(sink.get("dbType"));
+            if (!sourceDbType.equalsIgnoreCase(sinkDbType)) {
+                throw new IllegalArgumentException(
+                        "FILE_SYNC incremental mode requires the same source and target datasource type");
+            }
             if (!String.valueOf(source.get("dataSourceId"))
                     .equals(String.valueOf(sink.get("dataSourceId")))) {
                 throw new IllegalArgumentException(
@@ -185,9 +191,12 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
 
     private void requireIncrementalDbType(Map<String, Object> config, String role) {
         String dbType = String.valueOf(config.get("dbType"));
-        if (!"FTP".equalsIgnoreCase(dbType) && !"SFTP".equalsIgnoreCase(dbType)) {
+        if (!"FTP".equalsIgnoreCase(dbType)
+                && !"SFTP".equalsIgnoreCase(dbType)
+                && !"S3".equalsIgnoreCase(dbType)
+                && !"MINIO".equalsIgnoreCase(dbType)) {
             throw new IllegalArgumentException(
-                    "SeaTunnel 2.3.13 FILE_SYNC incremental mode supports FTP/SFTP only; "
+                    "FILE_SYNC incremental mode supports FTP, SFTP, S3, or MINIO; "
                             + role + " dbType=" + dbType);
         }
     }

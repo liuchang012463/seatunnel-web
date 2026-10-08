@@ -26,15 +26,24 @@ describe('file sync datasource support', () => {
 
   it.each([
     ['FTP', 'FTP', true],
-    ['FTP', 'SFTP', true],
-    ['SFTP', 'FTP', true],
+    ['FTP', 'SFTP', false],
+    ['SFTP', 'FTP', false],
+    ['SFTP', 'SFTP', true],
     ['S3', 'FTP', false],
     ['FTP', 'MINIO', false],
-    ['S3', 'MINIO', false],
+    ['S3', 'S3', false],
   ] as const)(
     'evaluates incremental support for %s to %s',
     (sourceType, sinkType, supported) => {
-      expect(canUseIncrementalFileSync(sourceType, sinkType)).toBe(supported)
+      expect(canUseIncrementalFileSync(sourceType, sinkType, undefined, '12', '12')).toBe(supported)
     },
   )
+
+  it('allows same-datasource S3File incremental update only on SeaTunnel 3.0.0', () => {
+    expect(canUseIncrementalFileSync('S3', 'S3', '2.3.13', '12', '12')).toBe(false)
+    expect(canUseIncrementalFileSync('S3', 'S3', '3.0.0', '12', '12')).toBe(true)
+    expect(canUseIncrementalFileSync('S3', 'MINIO', '3.0.0', '12', '12')).toBe(false)
+    expect(canUseIncrementalFileSync('S3', 'S3', '3.0.0', '12', '34')).toBe(false)
+    expect(canUseIncrementalFileSync('S3', 'S3', '3.0.0')).toBe(false)
+  })
 })

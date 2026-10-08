@@ -10,6 +10,10 @@
 
 本规范以本仓库已落地的通用 JDBC Source/Sink 为首个样例。后续新增数据源必须先完成本文的设计清单，再进入编码。
 
+### SeaTunnel 版本兼容约定
+
+SeaTunnel 2.3.13 是本指南通用连接器参数的历史基线；SeaTunnel 3.0.0 也在项目版本策略中受支持。任何只在 3.0.0 验证或新增的参数都必须按所选 Engine 版本显式门控，不能直接覆盖 2.3.13 配置。文件同步的 FTP/SFTP 与 S3/MinIO 版本差异见 [FTP/SFTP 文件同步设计](ftp-sftp-file-sync-design.md) 和 [S3/MinIO 文件同步设计](s3-minio-file-sync-design.md)；全量数据源审查记录见 [2026-10-08 兼容性审计](upgrade-audit-2026-10-08/issue-log.md)。
+
 “SeaTunnel Web 支持一个数据源”不等于只在页面上增加一个选项。完整能力至少包含：
 
 1. 数据源连接参数、校验、密码保存和连接测试；

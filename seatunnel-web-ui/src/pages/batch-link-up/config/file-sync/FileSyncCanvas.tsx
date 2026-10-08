@@ -13,6 +13,7 @@ interface FileSyncCanvasProps {
   onNodeDataChange: (nodeId: string, data: any) => void;
   datasourceOptions: Array<{ label: string; value: string; dbType: string }>;
   jobDefinitionId?: string | number;
+  engineVersion?: string;
 }
 
 /** 内部画布：使用 ReactFlowProvider 让 fitView 在容器渲染后稳定地触发。 */
@@ -23,6 +24,7 @@ const FileSyncCanvasInner: React.FC<FileSyncCanvasProps> = ({
   onNodeDataChange,
   datasourceOptions,
   jobDefinitionId,
+  engineVersion,
 }) => {
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -68,6 +70,8 @@ const FileSyncCanvasInner: React.FC<FileSyncCanvasProps> = ({
 
   const nodeTypes = useMemo(() => ({ custom: CustomNode }), []);
   const edgeTypes = useMemo(() => ({ custom: CustomEdge }), []);
+  const sinkNode = nodes.find((node) => node?.data?.nodeType === 'sink');
+  const sinkConfig = sinkNode?.data?.config || {};
 
   const handleNodeClick = useCallback((_: any, node: any) => {
     setSelectedNode(node);
@@ -127,6 +131,9 @@ const FileSyncCanvasInner: React.FC<FileSyncCanvasProps> = ({
           onNodeDataChange={onNodeDataChange}
           datasourceOptions={datasourceOptions}
           jobDefinitionId={jobDefinitionId}
+          engineVersion={engineVersion}
+          targetDataSourceId={sinkConfig.dataSourceId}
+          targetDbType={sinkConfig.dbType}
         />
       )}
 

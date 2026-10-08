@@ -2,7 +2,7 @@
 
 ## 1. 范围与版本基线
 
-本设计面向 SeaTunnel Web 的 `FILE_SYNC` 模式，目标运行时固定为 SeaTunnel Engine 2.3.13。
+本设计面向 SeaTunnel Web 的 `FILE_SYNC` 模式。SeaTunnel 2.3.13 是全量同步基线；SeaTunnel 3.0.0 另支持受限的 S3File 增量同步。
 
 首版范围：
 
@@ -12,7 +12,7 @@
 - 复用数据源 CRUD、连接测试、文件 Catalog、FILE_SYNC 保存与预览接口；
 - Catalog 只执行读操作，不创建、删除或覆盖对象。
 
-SeaTunnel 2.3.13 的 S3File 支持 binary Source/Sink，但增量 update 未覆盖 S3File。因此只要任一端是 S3 或 MINIO，任务必须使用 `FULL`；FTP/SFTP 现有的同数据源增量语义保持不变。
+SeaTunnel 2.3.13 的 S3File 仅在本项目中按全量同步使用；只要任一端是 S3 或 MINIO，任务必须使用 `FULL` ([2.3.13 S3File options](https://seatunnel.apache.org/docs/2.3.13/connectors/source/S3File/))。SeaTunnel 3.0.0 支持二进制 `sync_mode=update`，Web 仅开放来源和目标为同一数据源、同一存储类型的情况，并将目标路径传给来源端；跨 S3/MinIO、跨凭据或跨数据源的增量同步会被拒绝，因为当前构建上下文没有目标文件系统的独立认证配置。`compare_mode=checksum` 仅可与 `update_strategy=strict` 搭配（[3.0.0 S3File options](https://seatunnel.apache.org/docs/3.0.0/connectors/source/S3File/)）。FTP/SFTP 的增量能力见对应设计文档。
 
 ## 2. 固定标识与模块
 

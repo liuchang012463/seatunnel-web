@@ -134,6 +134,51 @@ class S3FileHoconBuilderTest {
     }
 
     @Test
+    void buildsS3UpdateSourceForSeaTunnel300() {
+        Config result = new S3FileHoconBuilder().buildSourceHocon(context(
+                Map.of(
+                        "dbType", "S3",
+                        "endpoint", "https://s3.us-east-1.amazonaws.com",
+                        "bucket", "archive",
+                        "basePath", "/safe",
+                        "accessKey", "access",
+                        "secretKey", "secret"),
+                Map.of(
+                        "path", "/safe/source",
+                        "targetPath", "/safe/archive",
+                        "syncType", "INCREMENTAL",
+                        "updateStrategy", "strict",
+                        "compareMode", "checksum"),
+                "3.0.0"));
+
+        assertEquals("update", result.getString("sync_mode"));
+        assertEquals("/safe/archive", result.getString("target_path"));
+        assertEquals("strict", result.getString("update_strategy"));
+        assertEquals("checksum", result.getString("compare_mode"));
+        assertEquals("binary", result.getString("file_format_type"));
+    }
+
+    @Test
+    void rejectsChecksumComparisonUnlessStrictStrategyIsSelected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new S3FileHoconBuilder().buildSourceHocon(context(
+                        Map.of(
+                                "dbType", "S3",
+                                "endpoint", "https://s3.us-east-1.amazonaws.com",
+                                "bucket", "archive",
+                                "basePath", "/safe",
+                                "accessKey", "access",
+                                "secretKey", "secret"),
+                        Map.of(
+                                "path", "/safe/source",
+                                "targetPath", "/safe/archive",
+                                "syncType", "INCREMENTAL",
+                                "updateStrategy", "distcp",
+                                "compareMode", "checksum"),
+                        "3.0.0")));
+    }
+
+    @Test
     void rejectsIncrementalAndPathsOutsideRoot() {
         Map<String, Object> connection = Map.of(
                 "dbType", "S3",
@@ -156,10 +201,18 @@ class S3FileHoconBuilderTest {
     private HoconBuildContext context(
             Map<String, Object> connection,
             Map<String, Object> node) {
+        return context(connection, node, null);
+    }
+
+    private HoconBuildContext context(
+            Map<String, Object> connection,
+            Map<String, Object> node,
+            String engineVersion) {
         return HoconBuildContext.builder()
                 .connectionConfig(ConfigFactory.parseMap(connection))
                 .connectionParam(ConfigFactory.parseMap(connection).root().render())
                 .nodeConfig(ConfigFactory.parseMap(node))
+                .engineVersion(engineVersion)
                 .build();
     }
 }

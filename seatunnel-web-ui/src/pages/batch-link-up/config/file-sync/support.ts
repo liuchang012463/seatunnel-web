@@ -37,12 +37,25 @@ export const connectorForFileType = (
 export const canUseIncrementalFileSync = (
   sourceType?: FileDataSourceType,
   targetType?: FileDataSourceType,
+  engineVersion?: string,
+  sourceDataSourceId?: string | number,
+  targetDataSourceId?: string | number,
 ): boolean =>
-  ![sourceType, targetType].some((type) => {
-    if (!type) return false;
-    // SeaTunnel 2.3.13 的 S3File 不支持 FILE_SYNC 的增量 update。
-    return type === 'WEB_UPLOAD' || type === 'S3' || type === 'MINIO';
-  });
+  Boolean(sourceDataSourceId)
+  && Boolean(targetDataSourceId)
+  && String(sourceDataSourceId) === String(targetDataSourceId)
+  && sourceType !== 'WEB_UPLOAD'
+  && targetType !== 'WEB_UPLOAD'
+  && (() => {
+    const isObjectStorage = (type?: FileDataSourceType) => type === 'S3' || type === 'MINIO';
+    const sourceIsObjectStorage = isObjectStorage(sourceType);
+    const targetIsObjectStorage = isObjectStorage(targetType);
+    if (sourceIsObjectStorage || targetIsObjectStorage) {
+      return sourceType === targetType && engineVersion === '3.0.0';
+    }
+    return sourceType === targetType
+      && (sourceType === 'FTP' || sourceType === 'SFTP');
+  })();
 
 export const fileDataSourceLabel = (type?: string): string => {
   switch (type) {

@@ -27,7 +27,6 @@ public class S3FileHoconBuilder implements DataSourceHoconBuilder {
     @Override
     public Config buildSourceHocon(HoconBuildContext context) {
         Map<String, Object> node = values(context.getNodeConfig());
-        rejectIncremental(node);
         Map<String, Object> result = connectionValues(context);
         String path = resolveNodePath(context, node, "path");
         result.put("path", path);
@@ -60,13 +59,13 @@ public class S3FileHoconBuilder implements DataSourceHoconBuilder {
         put(result, node, "binaryChunkSize", "binary_chunk_size");
         put(result, node, "binaryCompleteFileMode", "binary_complete_file_mode");
         result.putIfAbsent("file_format_type", "binary");
+        appendIncrementalSourceOptions(context, node, result);
         return toConfig(result);
     }
 
     @Override
     public Config buildSinkHocon(HoconBuildContext context) {
         Map<String, Object> node = values(context.getNodeConfig());
-        rejectIncremental(node);
         Map<String, Object> result = connectionValues(context);
         String targetPath = resolveNodePath(context, node, "targetPath");
         result.put("path", targetPath);
@@ -121,11 +120,44 @@ public class S3FileHoconBuilder implements DataSourceHoconBuilder {
         return ObjectStoragePathUtils.resolveWithinBase(basePath, require(node, nodeKey));
     }
 
-    private void rejectIncremental(Map<String, Object> node) {
-        if ("INCREMENTAL".equalsIgnoreCase(String.valueOf(node.get("syncType")))) {
-            throw new IllegalArgumentException(
-                    "SeaTunnel 2.3.13 S3File does not support incremental update sync");
+    private void appendIncrementalSourceOptions(
+            HoconBuildContext context,
+            Map<String, Object> node,
+            Map<String, Object> result) {
+        if (!"INCREMENTAL".equalsIgnoreCase(String.valueOf(node.get("syncType")))) {
+            return;
         }
+        if (!"3.0.0".equals(context.getEngineVersion())) {
+            throw new IllegalArgumentException(
+                    "S3File incremental update sync requires SeaTunnel Engine 3.0.0");
+        }
+        if (!"binary".equalsIgnoreCase(String.valueOf(result.get("file_format_type")))) {
+            throw new IllegalArgumentException(
+                    "S3File incremental update sync only supports binary file format");
+        }
+
+        result.put("sync_mode", "update");
+        result.put("target_path", resolveNodePath(context, node, "targetPath"));
+
+        String updateStrategy = defaultString(node.get("updateStrategy"), "distcp")
+                .toLowerCase(Locale.ROOT);
+        if (!"distcp".equals(updateStrategy) && !"strict".equals(updateStrategy)) {
+            throw new IllegalArgumentException(
+                    "Unsupported S3File update_strategy: " + updateStrategy + " (distcp or strict)");
+        }
+        result.put("update_strategy", updateStrategy);
+
+        String compareMode = defaultString(node.get("compareMode"), "len_mtime")
+                .toLowerCase(Locale.ROOT);
+        if (!"len_mtime".equals(compareMode) && !"checksum".equals(compareMode)) {
+            throw new IllegalArgumentException(
+                    "Unsupported S3File compare_mode: " + compareMode + " (len_mtime or checksum)");
+        }
+        if ("checksum".equals(compareMode) && !"strict".equals(updateStrategy)) {
+            throw new IllegalArgumentException(
+                    "S3File compare_mode=checksum requires update_strategy=strict");
+        }
+        result.put("compare_mode", compareMode);
     }
 
     private Config toConfig(Map<String, Object> values) {

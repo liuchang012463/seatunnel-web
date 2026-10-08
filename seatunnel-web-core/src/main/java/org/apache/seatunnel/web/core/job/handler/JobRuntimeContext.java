@@ -16,6 +16,8 @@ public class JobRuntimeContext {
 
     private JobScheduleConfig schedule;
 
+    private String engineVersion;
+
     public boolean isBatch() {
         return JobRuntimeType.BATCH == runtimeType;
     }

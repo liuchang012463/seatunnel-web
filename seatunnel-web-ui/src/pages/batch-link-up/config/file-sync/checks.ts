@@ -71,17 +71,6 @@ const sourceRules: ((node: any) => CheckItem | null)[] = [
     }
     return null;
   },
-  (node) => {
-    const config = getConfig(node);
-    const dbType = String(config.dbType || '').toUpperCase();
-    if (
-      String(config.syncType || 'FULL') === 'INCREMENTAL' &&
-      (dbType === 'S3' || dbType === 'MINIO' || dbType === 'WEB_UPLOAD')
-    ) {
-      return buildError(node, 'syncType', '该文件来源不支持增量 update，请改用全量复制');
-    }
-    return null;
-  },
 ];
 
 const sinkRules: ((node: any) => CheckItem | null)[] = [
@@ -101,7 +90,10 @@ const sinkRules: ((node: any) => CheckItem | null)[] = [
   },
 ];
 
-export const generateFileSyncCheckList = (nodes: any[]): CheckItem[] => {
+export const generateFileSyncCheckList = (
+  nodes: any[],
+  engineVersion?: string,
+): CheckItem[] => {
   const result: CheckItem[] = [];
 
   (nodes || []).forEach((node) => {
@@ -122,6 +114,38 @@ export const generateFileSyncCheckList = (nodes: any[]): CheckItem[] => {
       }
     });
   });
+
+  const source = (nodes || []).find((node) => node?.data?.nodeType === 'source');
+  const sink = (nodes || []).find((node) => node?.data?.nodeType === 'sink');
+  const sourceConfig = getConfig(source);
+  const sinkConfig = getConfig(sink);
+  if (String(sourceConfig.syncType || 'FULL').toUpperCase() === 'INCREMENTAL' && source) {
+    const sourceType = String(sourceConfig.dbType || '').toUpperCase();
+    const sinkType = String(sinkConfig.dbType || '').toUpperCase();
+    const sourceIsObjectStorage = sourceType === 'S3' || sourceType === 'MINIO';
+    const sinkIsObjectStorage = sinkType === 'S3' || sinkType === 'MINIO';
+    const sourceMode = String(sourceConfig.sourceMode || '').toUpperCase();
+
+    if (sourceMode === 'WEB_UPLOAD' || sourceMode === 'FILE_RESOURCE') {
+      result.push(buildError(source, 'syncType', '本地文件和湖文件来源只支持全量复制'));
+    } else if (sourceIsObjectStorage || sinkIsObjectStorage) {
+      if (!sourceIsObjectStorage || !sinkIsObjectStorage || sourceType !== sinkType) {
+        result.push(buildError(source, 'syncType', 'S3File 增量 update 要求来源和去向使用同一 S3 / MinIO 数据源'));
+      } else if (engineVersion !== '3.0.0') {
+        result.push(buildError(source, 'syncType', 'S3File 增量 update 需要 SeaTunnel Engine 3.0.0'));
+      }
+    } else if (sourceType && sinkType && sourceType !== sinkType) {
+      result.push(buildError(source, 'syncType', '增量模式要求来源与去向使用相同文件协议'));
+    }
+
+    if (
+      sourceConfig.dataSourceId &&
+      sinkConfig.dataSourceId &&
+      String(sourceConfig.dataSourceId) !== String(sinkConfig.dataSourceId)
+    ) {
+      result.push(buildError(source, 'syncType', '增量模式要求来源与去向使用同一数据源'));
+    }
+  }
 
   return result;
 };

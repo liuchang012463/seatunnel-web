@@ -9,6 +9,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RemoteFileHoconBuilderTest {
@@ -41,5 +42,20 @@ class RemoteFileHoconBuilderTest {
         assertEquals("/archive-seatunnel-tmp", result.getString("tmp_path"));
         assertTrue(result.getBoolean("is_enable_transaction"));
         assertFalse(result.hasPath("sink_columns"));
+    }
+
+    @Test void rejectsChecksumComparisonWithDistcpStrategy() {
+        Config connection = ConfigFactory.parseMap(Map.of(
+                "host", "sftp.example.com", "port", 22, "user", "sync", "password", "secret"));
+        Config node = ConfigFactory.parseMap(Map.of(
+                "path", "/incoming",
+                "targetPath", "/archive",
+                "syncType", "INCREMENTAL",
+                "updateStrategy", "distcp",
+                "compareMode", "checksum"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new SftpFileHoconBuilder().buildSourceHocon(HoconBuildContext.builder()
+                        .connectionConfig(connection).connectionParam("{}").nodeConfig(node).build()));
     }
 }
