@@ -519,9 +519,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             return new OpenMetadataResource(
                     uuid(endpoint.getId()), endpoint.getName(), endpoint.getFullyQualifiedName(),
                     type.entityType(), endpoint.getDescription(),
-                    size(endpoint.getRequestSchema() == null ? null : endpoint.getRequestSchema().getSchemaFields())
-                            + size(endpoint.getResponseSchema() == null
-                                    ? null : endpoint.getResponseSchema().getSchemaFields()),
+                    fieldCount(endpoint.getRequestSchema()) + fieldCount(endpoint.getResponseSchema()),
                     tagNames(endpoint.getTags()),
                     referenceFqn(endpoint.getService(), serviceFullyQualifiedName));
         }
@@ -663,6 +661,12 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     private static Integer fieldCount(MessageSchema schema) {
         return schema == null ? null : size(schema.getSchemaFields());
+    }
+
+    /** API endpoints always carry both schemas, so an absent list counts as zero. */
+    private static int fieldCount(APISchema schema) {
+        Integer count = schema == null ? null : size(schema.getSchemaFields());
+        return count == null ? 0 : count;
     }
 
     private static Integer columnCount(ContainerDataModel dataModel) {
