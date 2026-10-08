@@ -34,6 +34,8 @@ class LakeStructuredHoconBindingPropagationTest {
 
     private static final long BINDING_ID = 17L;
 
+    private static final String ENGINE_VERSION = "3.0.0";
+
     @Test
     void singleHoconBuilderReceivesBinding() {
         BatchGuideSingleJobSaveCommand command = new BatchGuideSingleJobSaveCommand();
@@ -86,10 +88,15 @@ class LakeStructuredHoconBindingPropagationTest {
         JobRuntimeContext context = JobRuntimeContext.builder()
                 .env(new JobEnvConfig())
                 .schedule(schedule)
+                .engineVersion(ENGINE_VERSION)
                 .build();
         when(runtimeContextFactory.create(command)).thenReturn(context);
         when(hoconBuilder.build(
-                any(DagGraph.class), any(JobEnvConfig.class), nullable(JobScheduleConfig.class), eq(BINDING_ID)))
+                any(DagGraph.class),
+                any(JobEnvConfig.class),
+                nullable(JobScheduleConfig.class),
+                eq(BINDING_ID),
+                eq(ENGINE_VERSION)))
                 .thenReturn("single-hocon");
 
         GuideSingleHoconBuildService service = new GuideSingleHoconBuildService();
@@ -101,7 +108,11 @@ class LakeStructuredHoconBindingPropagationTest {
         assertEquals("single-hocon", service.build(workflow, command));
 
         verify(hoconBuilder).build(
-                any(DagGraph.class), any(JobEnvConfig.class), nullable(JobScheduleConfig.class), eq(BINDING_ID));
+                any(DagGraph.class),
+                any(JobEnvConfig.class),
+                nullable(JobScheduleConfig.class),
+                eq(BINDING_ID),
+                eq(ENGINE_VERSION));
     }
 
     private void assertMultiHoconBinding(BatchGuideMultiJobSaveCommand command) {
@@ -112,9 +123,14 @@ class LakeStructuredHoconBindingPropagationTest {
         when(tableMatchResolver.resolveSinkTables(command.getContent())).thenReturn(List.of("orders"));
         when(runtimeContextFactory.create(command)).thenReturn(JobRuntimeContext.builder()
                 .env(new BatchJobEnvConfig())
+                .engineVersion(ENGINE_VERSION)
                 .build());
         when(hoconBuilder.build(
-                any(DagGraph.class), any(JobEnvConfig.class), nullable(JobScheduleConfig.class), eq(BINDING_ID)))
+                any(DagGraph.class),
+                any(JobEnvConfig.class),
+                nullable(JobScheduleConfig.class),
+                eq(BINDING_ID),
+                eq(ENGINE_VERSION)))
                 .thenReturn("multi-hocon");
 
         GuideMultiHoconBuildService service = new GuideMultiHoconBuildService();
@@ -124,7 +140,11 @@ class LakeStructuredHoconBindingPropagationTest {
 
         assertEquals("multi-hocon", service.build(command.getContent(), command));
         verify(hoconBuilder).build(
-                any(DagGraph.class), any(JobEnvConfig.class), nullable(JobScheduleConfig.class), eq(BINDING_ID));
+                any(DagGraph.class),
+                any(JobEnvConfig.class),
+                nullable(JobScheduleConfig.class),
+                eq(BINDING_ID),
+                eq(ENGINE_VERSION));
     }
 
     private Map<String, Object> singleWorkflow() {
