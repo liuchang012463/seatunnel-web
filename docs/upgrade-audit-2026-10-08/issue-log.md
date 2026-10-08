@@ -6,10 +6,10 @@ Scope: OpenMetadata 2.0.4 integration, SeaTunnel Engine 3.0.0 compatibility, all
 
 ## Evidence and review limits
 
-- Review-only screenshots were captured for the datasource list, OpenMetadata status, file-transfer list, batch list, and the original existing-job edit failure. They contain internal host addresses, datasource identifiers, or task IDs, so they are intentionally excluded from the committed report.
+- Review screenshots were captured for the datasource list, OpenMetadata status, file-transfer list, batch list, and the original existing-job edit failure. A fresh interactive Chrome rerun captured the file-sync source panel, empty checklist, valid S3→S3 config, pre-fix incremental selection, and corrected selection in `screenshots-rerun/`; these files remain local because they contain internal datasource names and temporary test paths.
 - The existing 2026-10-07 compatibility report records Engine 3.0.0 runs for batch, realtime, file ingest, and file transfer. Those are inherited test records, not reruns from this review.
 - The current local OpenMetadata status screen reports Server `2.0.4` and ingestion `2.0.4.0` as compatible.
-- The interactive browser tools rejected click and form actions with `approval policy is never`. This review therefore does not claim new browser happy-path acceptance.
+- Browser interaction was initially blocked. After the user switched to an interactive session, Chrome clicks, form entry, keyboard radio selection, navigation, and screenshots all worked; the S3→S3 create flow was exercised without publishing.
 - No Compose stack was started, stopped, or restarted for this review.
 
 ## Data-source coverage inventory
@@ -51,6 +51,8 @@ Scope: OpenMetadata 2.0.4 integration, SeaTunnel Engine 3.0.0 compatibility, all
 | COMPAT-03 | P1 | MySQL→Dameng | Sink fails with `Invalid column name [id]`: SeaTunnel emits quoted lowercase source columns while the existing Dameng table has unquoted uppercase columns. | User-updated 2026-10-08 compatibility matrix. The environment user lacks CREATE TABLE permission, so the alternative lowercase quoted target schema cannot be verified. The current evidence points to Engine dialect / target-schema behavior; do not claim fixed in this Web repository. |
 | COMPAT-04 | P1 | PostgreSQL CDC→MySQL | Snapshot and INSERT land, but UPDATE does not reach the target; the task later ends FAILED after worker-to-master metrics heartbeats time out and the CDC source throws `NullPointerException`. | User-updated 2026-10-08 compatibility matrix. The failure is primarily in the Engine 3.0 runtime/cluster. The task's sink write mode and primary-key config must also be checked before attributing UPDATE loss to the Engine. |
 | UX-14 | P2 | File-sync publish checklist | After the UI and backend began rejecting FTP↔SFTP incremental sync, the pre-publish checklist still failed to identify stale or hand-edited cross-protocol configurations. | Luna Max second-pass review. The publish action could reach the server and fail late; the checklist now reports the protocol mismatch before publish. |
+| DATA-02 | P1 | File-sync create draft hydration | A restored create draft could show the wizard's selected S3 target while the canvas and sink panel still used a stale MinIO workflow node and datasource ID. Publishing could send the wrong endpoint. | Fresh Chrome S3→S3 flow before fix; the top-level selection and normalized workflow node disagreed. |
+| UX-15 | P2 | File-sync sync-mode selector | The selected Full/Incremental radio label used the same foreground and background color, making the selected mode appear blank. | Fresh Chrome screenshot `screenshots-rerun/04-incremental-enabled.png`; computed selected text/background colors matched. |
 
 ## Other reviewed boundaries
 
@@ -66,7 +68,7 @@ Scope: OpenMetadata 2.0.4 integration, SeaTunnel Engine 3.0.0 compatibility, all
 | --- | --- | --- |
 | UX-01 | Fixed | Datasource labels now wrap to two lines and clamp, so long names remain distinguishable in the card list. |
 | UX-02 | Fixed | Batch, realtime, and file task rows show source/target datasource names with task-type labels. The plan column is widened to 260 px and names wrap to display their full value without relying on hover. |
-| UX-03 | Fixed in code | Editing an online task now shows the offline-only restriction with a Back action instead of an empty “configuration not found” state. Browser click-through remains unverified because the current browser tool denies interactions. |
+| UX-03 | Fixed and browser verified | Editing an online task now shows the offline-only restriction with a Back action instead of an empty “configuration not found” state. Chrome returned to the task list successfully. |
 | DATA-01 | Fixed | A config URL without `scene` now uses edit mode and loads the saved server definition; a stale creation cache cannot take precedence. Explicit create routes retain `scene=create`. |
 | HTTP-01 | Fixed | Shared batch/realtime validation rejects HTTP schema fields with missing types before save/publish. The earlier claim that realtime lacked this rule was a separate false positive and remains withdrawn. |
 | FILE-01 | Fixed | File-sync source HOCON receives the sink path; incremental capability requires the same datasource and protocol (FTP→FTP, SFTP→SFTP, S3→S3, or MinIO→MinIO). S3/MinIO additionally requires Engine 3.0.0. Validation rejects unsupported formats and `checksum` without `strict`. |
@@ -76,8 +78,10 @@ Scope: OpenMetadata 2.0.4 integration, SeaTunnel Engine 3.0.0 compatibility, all
 | COVERAGE-01/02/03 | Open, bounded | ZeoneDB-D lacks a usable Engine/driver test instance; FTP has no OM adapter; H2 is internal and non-creatable. These are not reported as passing user-configurable OM integrations. |
 | COMPAT-03/04 | Open, external | Dameng identifier case behavior and PG-CDC UPDATE/stop failures remain outside a safe Web-only fix; the updated compatibility matrix records their actual failed outcomes. |
 | UX-A12 | Open | Recovering an unsaved file-sync draft across reload still needs server-side draft persistence; persisting connection-bearing configuration in browser storage is unsafe. |
-| UX-A13 | Fixed in code, browser check pending | File-sync validation blocks publish when errors exist and the publish path surfaces save failures; the checklist also catches cross-protocol incremental configs. Interaction could not be exercised in this browser session. |
+| UX-A13 | Fixed in code; validation UI browser verified | Chrome showed both missing-directory warnings with Publish disabled, then cleared them and enabled Publish after temporary valid paths were entered. The cross-protocol incremental check has bidirectional regression tests. Publish was not clicked, so task creation and the save/publish failure presentation were not verified in the browser. |
 | UX-14 | Fixed in second review iteration | The publish checklist now rejects FTP→SFTP and SFTP→FTP incremental configurations even when the datasource ID matches; tests cover both directions. |
+| DATA-02 | Fixed and browser verified | Create-mode workflow normalization now applies the wizard's selected source/target types and datasource IDs to existing draft nodes while retaining directory paths. Edit-mode workflows still preserve their persisted endpoint definitions. Regression tests cover stale FTP/MinIO nodes restored as S3→S3 and edit-mode preservation; the Chrome canvas, source/sink panels, and session draft all showed S3 with the same current datasource ID. |
+| UX-15 | Fixed and browser verified | File-sync mode radios now use the existing segmented-control treatment. On the dark palette, selected text contrast is 4.76:1 at rest and 4.70:1 while hovered. Chrome confirmed the selection label is visible and arrow keys switch Full/Incremental. |
 | SFTP key authentication | Known limitation | SeaTunnel 3.0.0 supports a `keyfile`, but the Web datasource form still exposes password authentication only. This remains outside the compatibility patch. |
 
 ## Luna Max review iterations
@@ -85,7 +89,7 @@ Scope: OpenMetadata 2.0.4 integration, SeaTunnel Engine 3.0.0 compatibility, all
 - Review 1: **FAIL**. Found exception-message leakage and FTP↔SFTP incremental configurations that could pass when datasource IDs matched. Both were fixed in the backend, and the UI capability predicate and regression tests were updated.
 - Review 2: **FAIL**. Found that the file-sync publish checklist did not report the cross-protocol mismatch on stale or hand-edited workflows. Added a pre-publish error and bidirectional tests. The same review also found that long task-list datasource names were still truncated.
 - Review 3: **PASS**. Widened the shared task-list sync-plan column from 198 px to 260 px and allowed endpoint names to wrap fully. Luna Max confirmed the prior fixes and offline package had no regressions.
-- The reviewer did not claim browser acceptance: the current Chrome/Playwright session still rejects interaction actions with `approval policy is never`. No Compose deployment was run.
+- Review 3 was performed before an interactive browser session was available; Chrome/Playwright interaction was then blocked by `approval policy is never`, so that review made no browser-acceptance claim. After the user switched sessions, the later rerun completed the file-sync configuration and validation flow, but did not click Publish. No Compose deployment was run.
 
 ## User-view flow and accessibility notes
 
@@ -93,15 +97,16 @@ Scope: OpenMetadata 2.0.4 integration, SeaTunnel Engine 3.0.0 compatibility, all
 2. **Check OpenMetadata connectivity** — the local review screenshot showed Server, ingestion, orchestrator, and fixed-version compatibility in one status view; the token was not echoed.
 3. **Review file-transfer tasks** — the local review screenshot showed task state, source/target connector types, run state, schedule, and actions. Rows are information-dense.
 4. **Review batch tasks** — the local review screenshot showed that status and run controls are easy to locate; source/target labels and secondary values were too truncated before the row-layout fix.
-5. **Edit an online task** — the local screenshot records the original misleading empty state. The live post-fix page snapshot now displays “任务已上线，请先下线任务再编辑配置” and a “返回任务列表” action. A fresh screenshot could not be saved because the browser tool rejected its output path.
+5. **Edit an online task** — the original screenshot records the misleading empty state. The post-fix Chrome page showed “任务已上线，请先下线任务再编辑配置” and “返回任务列表”; clicking Back returned to the task list.
+6. **Create a same-source S3 file sync** — screenshot `01-s3-source-panel.png` shows the S3→S3 canvas and selected source; `02-empty-checklist.png` shows both required-directory warnings and a disabled Publish button; `03-valid-config.png` shows the warnings cleared and Publish enabled after temporary paths were entered. The button was not clicked. `04-incremental-enabled.png` records the invisible selected label before the styling fix; `05-incremental-readable.png` shows the corrected label and the SeaTunnel 3.0.0 incremental requirement. The draft was removed from sessionStorage afterward, and the task list remained at six records.
 
-Small table text and dense rows are visible accessibility risks in screenshots. Keyboard focus order, screen-reader names for icon actions, zoom reflow, and measured color contrast still need browser or assistive-technology checks; screenshots alone do not establish WCAG conformance.
+Small table text and dense rows remain visible accessibility risks. The file-sync radio group was keyboard-tested with arrow keys, and selected-state contrast was measured at 4.76:1. Full focus order, all icon-action names, zoom reflow, and screen-reader behavior still need broader checks; screenshots and this targeted keyboard pass do not establish WCAG conformance.
 
 ## Verification and delivery status
 
-- Frontend targeted Jest: the earlier 4 suites/33 tests passed; the latest file-sync checklist and protocol matrix pass (2 suites/20 tests). `npm run tsc` passed after the final UI/style changes.
+- Frontend targeted Jest: the earlier 4 suites/33 tests passed; the latest page-parameter/runtime regression suites pass (2 suites/7 tests). `npm run tsc` passed after the workflow and radio-style changes.
 - Maven clean reactor for core, FTP, and S3: 16 earlier focused tests passed (version policy 4, sanitized error 1, FTP builder 3, S3 builder 8). The latest focused core reactor passes 7 tests, including generic error redaction and cross-protocol FILE_SYNC rejection. Main API reactor compile with test compilation skipped passed.
 - API test compilation is blocked by unrelated existing test-source errors in the API module (`LakePhysicalDataSourcePageDTO` setters and a `LakeProjectionSaveWiringTest` type mismatch). The new client-version service test could not be executed in that module; the production API code compiles.
 - Compose YAML syntax parses successfully; all required substitutions are represented in `.env.example`. No Compose command or container lifecycle action was run.
-- Browser screenshots and the current page snapshot support the visual findings. Chrome `click` was rejected with `approval policy is never`, even after switching to the interactive session; no new UI happy path is claimed as accepted.
+- Current Chrome screenshots and browser interactions support the file-sync happy-path findings. The Publish control became enabled after valid draft paths were entered but was not clicked; no task was saved or launched. The temporary session draft was cleared, and the list still showed six existing tasks.
 - The offline Compose and deployment guide are staged in `deploy/offline/seatunnel-om-2026-10-08/` and copied to `/mnt/lc/tmp/seatunnel-om-offline-20261008/`. Its image archive contains the six Compose images (OM 2.0.4 DB/server/official ingestion, custom 2.0.4 ingestion, Elasticsearch 9.3.0, and SeaTunnel 3.0.0), each verified as `linux/arm64`; the SeaTunnel connector/runtime archive includes `connectors/` and `lib/`. `SHA256SUMS` was generated and all six package files verified. The package has placeholders only and contains no `.env`, datasource credentials, database volumes, or task configuration.
