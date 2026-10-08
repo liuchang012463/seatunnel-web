@@ -119,9 +119,9 @@ OM 2.0.4 的 DQ 限定 TABLE/COLUMN，主题/容器/文件/API 无测试定义�
 5. 候选 F/G 在文档与 UI 上明确标注不支持，避免把 `supportsProfiler` 误读成 profiler。
 6. 顺手修 `reserveExploration` 缺少能力校验的问题，让非数据库源触发探查返回明确错误。
 
-## 6.1 实施结果（2026-10-08）
+## 6.1 实施结果（2026-10-08/09）
 
-已实现候选 A、B、D 与第 6 条修复，候选 C、E、F、G 未实现。
+已实现候选 A、B、C、D 与第 6 条修复，候选 E 未实现；候选 F 经复核后按"用 OM 的能力"实现，候选 G 确认不可行。
 
 **候选 A —— OM 非数据库资产读取**
 
@@ -129,36 +129,57 @@ OM 2.0.4 的 DQ 限定 TABLE/COLUMN，主题/容器/文件/API 无测试定义�
 - `OpenMetadataClient` 新增 `listResourcesPage` / `getResourceDetail`，由官方 SDK 2.0.4 读取身份、schema 与样本数据；样本字段只在详情读取，列表不取样本，避免大列表携带负载。
 - 详情读取在缺少 `VIEW_SAMPLE_DATA` 权限时自动降级为"仅 schema"，而不是整体失败。
 - 接口：`GET /api/v1/data-source/{id}/om-resources`、`GET /api/v1/data-source/{id}/om-resources/{resourceId}?resourceType=`。
-- 前端：非数据库探查抽屉新增 "OpenMetadata" 页签，按名称匹配当前选中资源，展示 schema、样本行/主题消息与标签；未匹配时显示"未收录"并列出 OM 已有资源。
+
+**候选 F —— HTTP 用 OM 的能力（复核修正）**
+
+最初判断 HTTP "无内容可加"是不准确的：OM 已从 OpenAPI 文档抽取每个接口的请求与响应结构，这就是 HTTP 的探查内容。现实现为：
+
+- `apiEndpoint` 详情把请求结构与响应结构分开返回（`requestFields` / `responseFields`），不再合并进 `fields`。
+- 前端在 HTTP 数据源的 OpenMetadata 页签内提供 **OM 接口目录**：直接列出 OM 的 15 个接口（名称、描述、字段数），选中后展示请求/响应结构表格。不再依赖与连接器 catalog 的名称匹配，因此不会再出现"OM 明明有接口却显示未收录"。
+- `apiCollection` 的计数语义修正为"接口数"（`childCount`），不再误标为"字段数"。
+
+**候选 C —— S3/MinIO 结构化容器**
+
+- 清单存放在绑定表 `storage_manifest_config`（迁移 `V1_0_38__add_storage_manifest_config.sql`），不进入 SeaTunnel 连接参数。
+- 适配器把它注入元数据 pipeline 的 `sourceConfig.config.defaultManifest`。
+- **关键约束（实测发现）**：OM 按 `ManifestMetadataConfig` 校验 `defaultManifest`，并只保留 `containerName` 等于当前 bucket 的条目；缺省该字段的条目会被静默丢弃。数据源已固定 bucket，因此适配器在注入时自动补 `containerName`，操作者只需写 `dataPath` / `structureFormat`。
+- `dataPath` 是**目录前缀**（`_get_sample_file_prefix` 会补 `/`），指向单个文件不会匹配到任何对象；页面提示与实测均按目录语义。
+- 结构化容器由元数据扫描创建：实测 MinIO 桶 `seatunnel-web-sync` 下生成子容器 `sync`，并从 CSV 推断出列 `湖文件兼容测试-行一` (STRING)。
+- 容器样本数据需要 auto-classification 代理，且该代理无调度。为此在**每次元数据扫描成功后触发一次**（`MetadataStatusSynchronizer` 检测到扫描结果变化时触发，乐观版本号保证只有一个节点执行），使开关的"下次扫描后采集"对对象存储同样成立。
 
 **候选 B/D —— 样本数据开关**
 
-- 开关落在绑定表 `t_seatunnel_web_metadata_binding.sample_data_enabled`，默认 0；迁移为 `V1_0_37__add_metadata_sample_data_flag.sql`。
-- 决策一（治理）：默认关闭，按数据源显式开启；只有 `supportsSampleData()` 为 true 的适配器（Kafka、SFTP）会生效，其余类型即使置位也无效。
-- 决策二（成本）：不提供全局开启。Kafka 走元数据 pipeline 的 `generateSampleData`，OM 自身把采样限制为每主题 10 次 poll、总时长 10 秒；SFTP 走连接级 `extractSampleData`（OM 默认关闭的原因正是会下载文件内容），两者都不做批量或全量采样。
-- 接口：`POST /api/v1/data-source/{id}/sample-data?enabled=`；开关状态经 `metadata-status` 的 `sampleDataSupported` / `sampleDataEnabled` 暴露给前端。
-- 开关保存会递增 `config_version` 并置 PENDING，由协调器重写 service/pipeline；由此可能触发一次该数据源的元数据扫描，这属于既有自动扫描语义。
+- 开关落在绑定表 `sample_data_enabled`，默认 0；迁移为 `V1_0_37__add_metadata_sample_data_flag.sql`。
+- 决策一（治理）：默认关闭，按数据源显式开启；只有 `supportsSampleData()` 为 true 的适配器（Kafka、SFTP、S3/MinIO）生效。
+- 决策二（成本）：不提供全局开启。Kafka 走元数据 pipeline 的 `generateSampleData`，OM 自身把采样限制为每主题 10 次 poll、总时长 10 秒；SFTP 走连接级 `extractSampleData`；对象存储每次扫描触发一次 auto-classification，且 `enableAutoClassification=false`，只采样本不打 PII 标签。
+- 接口：`POST /api/v1/data-source/{id}/sample-data?enabled=`；开关状态经 `metadata-status` 暴露。
 
 **第 6 条修复**
 
-`MetadataPipelineOperationService.reserveExploration` 与 `triggerExploration` 现在先校验适配器的 profiler 能力，非关系型数据源返回明确的请求错误，而不是异步失败。
+`reserveExploration` / `triggerExploration` 先校验适配器的 profiler 能力，非关系型数据源返回明确的请求错误。无适配器的类型交由 READY 绑定门禁拦截（这类绑定永远不会 READY），避免重复判定。
 
 **未实现部分与原因**
 
-- 候选 C（S3/MinIO 结构化容器）：需要先确定 manifest（`dataPath` / `structureFormat` / 分区 / 排除项）的录入形态，且采样会下载对象文件；作为独立迭代。
-- 候选 E（AutoClassification PII）：涉及 PII 标签写入 OM 后的下游治理动作，单独评估。
-- 候选 F/G：HTTP 在 OM 侧没有样本数据/profiler/DQ 可加；DQ 在 2.0.4 仅支持 TABLE/COLUMN。两者在实现中明确返回不支持。
+- 候选 E（AutoClassification PII）：涉及 PII 标签写入 OM 后的下游治理动作，单独评估。当前实现刻意保持 `enableAutoClassification=false`。
+- 候选 G（数据质量）：OM 2.0.4 的 DQ 仅支持 TABLE/COLUMN，主题/容器/文件/API 无测试定义与执行路径。
 
 **验证**
 
-- 单元测试：metadata 包 130 项通过（含新增的适配器、协调器、客户端映射与探查守卫用例）；前端 service 测试 14 项通过，`tsc` 无错误。
-- 实机验证（OM 2.0.4、独立 schema、真实数据源）：Kafka/MinIO/Elasticsearch/HTTP 的资源列表与详情读取成功，FTP 正确返回不支持；浏览器完成 Kafka 与 SFTP 两条抽屉路径，OM 页签渲染 schema/样本区域与开关。
-- 开关链路实测：置位后 OM 中该 Kafka 元数据 pipeline 的 `sourceConfig.config.generateSampleData` 变为 `true`，扫描 SUCCESS。该测试主题在采样窗口内没有产出样本消息，因此页面按设计显示"暂无样本数据"。
+- 单元测试：metadata 包 169 项通过（含适配器、协调器、客户端映射、探查守卫、清单校验与存储采样触发用例）；前端 service 测试 15 项通过，`tsc` 无错误。
+- 实机验证（OM 2.0.4、独立 schema、真实数据源）：Kafka/MinIO/Elasticsearch/HTTP 的资源列表与详情读取成功，FTP 正确返回不支持；浏览器走通 Kafka、SFTP、HTTP、MinIO 四条抽屉路径。
+- HTTP 实测：选中 `/omext/mock/seatunnel-http/post` 后正确显示请求结构（`start_time`、`end_time`）与响应结构（`code`、`message`、`data`、`meta`）。
+- 结构化容器实测：清单 `{"entries":[{"dataPath":"sync","structureFormat":"csv"}]}` 保存后，OM 中该 pipeline 的 `defaultManifest` 带上了自动补齐的 `containerName`，扫描后生成带列的结构化子容器。
+- 未观测到的环节：容器样本数据的实际采集未在本次实机验证中跑通，原因是共享开发环境的 OM 2.0.4 ingestion/Airflow 容器已退出（`Unable to connect to Airflow APIs`），无法触发任何 pipeline 运行；该触发逻辑有 4 项单元测试覆盖，但需要在 ingestion 恢复后复测。
 - 期间修复：无 schema 的 API 端点在列表映射时把 null 字段数拆箱导致 NPE，已改为按 0 计。
 
 **迁移版本协调**
 
-样本数据开关的迁移最初使用 1.0.36，但共享开发库 `seatunnel_web_dev_20260906` 已被另一并行工作流应用了同版本的 `V1_0_36__add_metadata_exploration_run_baseline.sql`，导致 Flyway 校验失败。按"禁止重复版本"的约束，本迁移改号为 **1.0.37**。验证在独立克隆 schema 中进行，未向共享开发库写入该列，也未修改其历史表。若其他工作流继续新增迁移，需在 1.0.37 之后取号。
+样本数据开关的迁移最初使用 1.0.36，但共享开发库 `seatunnel_web_dev_20260906` 已被另一并行工作流应用了同版本的 `V1_0_36__add_metadata_exploration_run_baseline.sql`，导致 Flyway 校验失败。按"禁止重复版本"的约束，本迁移改号为 **1.0.37**，清单迁移为 **1.0.38**。验证在独立克隆 schema 中进行，未向共享开发库写入这两列，也未修改其历史表。
+
+**与并行工作流的合并**
+
+`origin/develop` 的 `48907f2a`（sample-only OM exploration pipeline）与本工作在同一批文件上冲突，已合并：`MetadataStableName` 采用对方的 `_auto_classification` 后缀（已有同名 pipeline 存在）；协调器统一为一个 sample pipeline 变量、两条互斥创建路径（数据库源随 profiler 创建，存储源按开关创建）。
+
 
 
 
