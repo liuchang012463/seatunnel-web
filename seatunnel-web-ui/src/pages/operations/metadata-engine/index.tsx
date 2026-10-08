@@ -114,8 +114,8 @@ const MetadataEngineOverviewPage: React.FC = () => {
   const clusterStatus = useMemo(() => statusMeta(config), [config]);
   const health = config?.health;
   const configured = Boolean(config?.configured);
-  const expectedServer = config?.expectedServerVersion || '1.12.10';
-  const expectedIngestion = config?.expectedIngestionPatch || '1.12.10.0';
+  const expectedServer = config?.expectedServerVersion || '2.0.4';
+  const expectedIngestion = config?.expectedIngestionPatch || '2.0.4.0';
   const versionTone: StatusTone = !configured
     ? 'muted'
     : health?.versionCompatible

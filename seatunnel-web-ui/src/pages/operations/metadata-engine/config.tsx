@@ -209,7 +209,7 @@ const MetadataEngineConfigPage: React.FC = () => {
                 },
               ]}
             >
-              <Input placeholder="http://openmetadata:8585/api" />
+              <Input placeholder="http://<om-2.0.4-host>:<port>/api" />
             </Form.Item>
             <Form.Item
               name="token"
