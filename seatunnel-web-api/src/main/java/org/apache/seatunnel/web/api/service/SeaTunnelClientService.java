@@ -17,6 +17,8 @@ public interface SeaTunnelClientService {
 
     SeaTunnelClientMetricsVO metrics(Long id);
 
+    String version(Long clientId);
+
      List<OptionVO> option();
 
     IPage<SeaTunnelClient> page(SeaTunnelClientPageDTO dto);

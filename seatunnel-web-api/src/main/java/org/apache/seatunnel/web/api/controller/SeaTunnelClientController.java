@@ -42,6 +42,11 @@ public class SeaTunnelClientController {
         return Result.buildSuc(seatunnelClientService.metrics(clientId));
     }
 
+    @GetMapping("/{clientId}/version")
+    public Result<String> version(@PathVariable("clientId") Long clientId) {
+        return Result.buildSuc(seatunnelClientService.version(clientId));
+    }
+
     @GetMapping("/option")
     public Result<List<OptionVO>> option() {
         return Result.buildSuc(seatunnelClientService.option());

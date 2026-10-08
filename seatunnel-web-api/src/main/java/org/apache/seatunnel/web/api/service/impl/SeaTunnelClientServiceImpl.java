@@ -71,6 +71,11 @@ public class SeaTunnelClientServiceImpl implements SeaTunnelClientService {
     }
 
     @Override
+    public String version(Long clientId) {
+        return queryAppService.version(clientId);
+    }
+
+    @Override
     public String logsByInstanceId(Long instanceId, String jobMode) {
         return runtimeAppService.logsByInstanceId(instanceId, jobMode);
     }

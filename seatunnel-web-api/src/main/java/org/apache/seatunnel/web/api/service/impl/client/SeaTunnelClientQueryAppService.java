@@ -69,6 +69,12 @@ public class SeaTunnelClientQueryAppService {
                 .collect(Collectors.toList());
     }
 
+    /** Returns only the engine version for UI capability gating. */
+    public String version(Long clientId) {
+        SeaTunnelClient client = getEntity(clientId);
+        return client.getClientVersion();
+    }
+
     /**
      * Queries SeaTunnel clients by page.
      *

@@ -92,6 +92,12 @@ export const seatunnelClientApi = {
     return HttpUtils.get(`${apiPrefix}/${id}`);
   },
 
+  version: (
+    id: number,
+  ): Promise<{ code: number; data: string; message?: string }> => {
+    return HttpUtils.get(`${apiPrefix}/${id}/version`);
+  },
+
   delete: (id: number) => {
     return HttpUtils.delete(`${apiPrefix}/${id}`);
   },
