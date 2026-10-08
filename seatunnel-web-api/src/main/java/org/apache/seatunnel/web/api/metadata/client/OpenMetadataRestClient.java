@@ -511,8 +511,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         if (entity instanceof APICollection collection) {
             return new OpenMetadataResource(
                     uuid(collection.getId()), collection.getName(), collection.getFullyQualifiedName(),
-                    type.entityType(), collection.getDescription(), size(collection.getApiEndpoints()),
-                    tagNames(collection.getTags()),
+                    type.entityType(), collection.getDescription(), null,
+                    size(collection.getApiEndpoints()), tagNames(collection.getTags()),
                     referenceFqn(collection.getService(), serviceFullyQualifiedName));
         }
         if (entity instanceof APIEndpoint endpoint) {
@@ -559,11 +559,14 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     sampleColumns(sample), sampleRows(sample), List.of());
         }
         if (entity instanceof APIEndpoint endpoint) {
-            List<OpenMetadataResourceField> fields = new ArrayList<>(
-                    fieldModels(endpoint.getRequestSchema()));
-            fields.addAll(fieldModels(endpoint.getResponseSchema()));
+            // The OpenAPI contract is the exploration payload for an API endpoint, so the
+            // request and response schemas stay separate instead of being merged.
             return new OpenMetadataResourceDetail(
-                    resource, fields, false, List.of(), List.of(), List.of());
+                    resource,
+                    List.of(),
+                    fieldModels(endpoint.getRequestSchema()),
+                    fieldModels(endpoint.getResponseSchema()),
+                    false, List.of(), List.of(), List.of());
         }
         if (entity instanceof SearchIndex searchIndex) {
             List<OpenMetadataResourceField> fields = new ArrayList<>();

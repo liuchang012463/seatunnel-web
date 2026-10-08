@@ -41,12 +41,13 @@ public class SftpMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCon
 
     @Override
     public JsonNode serviceRequest(DataSource dataSource, String stableServiceName) {
-        return serviceRequest(dataSource, stableServiceName, false);
+        return serviceRequest(dataSource, stableServiceName, MetadataSyncOptions.DEFAULT);
     }
 
     @Override
     public JsonNode serviceRequest(
-            DataSource dataSource, String stableServiceName, boolean sampleDataEnabled) {
+            DataSource dataSource, String stableServiceName, MetadataSyncOptions options) {
+        boolean sampleDataEnabled = options != null && options.sampleDataEnabled();
         JsonNode source = rawConnection(dataSource);
         String host = connectionText(source, "host");
         String username = connectionText(source, "user");

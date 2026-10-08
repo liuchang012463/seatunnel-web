@@ -15,6 +15,12 @@ public class DataSourceMetadataStatusVO {
     /** Operator decision for OpenMetadata sample-data collection; off by default. */
     private boolean sampleDataEnabled;
 
+    /** Whether this data source type derives container data models from a manifest. */
+    private boolean storageManifestSupported;
+
+    /** Configured object-storage manifest JSON; null when none is set. */
+    private String storageManifest;
+
     private MetadataRunStateVO scan;
 
     private MetadataRunStateVO exploration;

@@ -1,6 +1,8 @@
 package org.apache.seatunnel.web.api.metadata;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
@@ -136,6 +138,43 @@ public class MetadataPipelineOperationService {
         }
         metadataBindingCommandService.markSampleDataChanged(dataSourceId, enabled);
         return true;
+    }
+
+    /**
+     * Records the operator's object-storage manifest. It is what turns a plain container
+     * into a structured one with a data model, and it stays OpenMetadata-only.
+     */
+    public boolean updateStorageManifest(Long dataSourceId, String manifest) {
+        requireEnabled();
+        DataSource dataSource = requireActiveDataSource(dataSourceId);
+        MetadataConnectorAdapter adapter = connectorRegistry.find(dataSource.getDbType())
+                .orElseThrow(() -> invalid("metadata connector is not supported for this data source type"));
+        if (!adapter.supportsStorageManifest()) {
+            throw invalid("object storage manifests are not supported for this data source type");
+        }
+        metadataBindingCommandService.markStorageManifestChanged(
+                dataSourceId, normalizeStorageManifest(manifest));
+        return true;
+    }
+
+    /**
+     * Accepts either an empty value (clear the manifest) or the JSON a bucket-level
+     * {@code openmetadata.json} would hold: an object with an {@code entries} array.
+     */
+    static String normalizeStorageManifest(String manifest) {
+        if (manifest == null || manifest.isBlank()) {
+            return null;
+        }
+        JsonNode parsed;
+        try {
+            parsed = new ObjectMapper().readTree(manifest);
+        } catch (JsonProcessingException error) {
+            throw invalid("storage manifest must be valid JSON");
+        }
+        if (parsed == null || !parsed.isObject() || !parsed.path("entries").isArray()) {
+            throw invalid("storage manifest must be an object with an entries array");
+        }
+        return parsed.toString();
     }
 
     public boolean triggerScan(Long dataSourceId) {
@@ -311,6 +350,7 @@ public class MetadataPipelineOperationService {
         MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
         DataSourceMetadataStatusVO status = new DataSourceMetadataStatusVO();
         status.setSampleDataSupported(supportsSampleData(dataSourceId));
+        status.setStorageManifestSupported(supportsStorageManifest(dataSourceId));
         if (binding == null) {
             status.setSyncStatus("NOT_INITIALIZED");
             status.setSampleDataEnabled(false);
@@ -320,6 +360,7 @@ public class MetadataPipelineOperationService {
         }
         status.setSyncStatus(MetadataSyncStatusView.project(binding));
         status.setSampleDataEnabled(Boolean.TRUE.equals(binding.getSampleDataEnabled()));
+        status.setStorageManifest(binding.getStorageManifestConfig());
         status.setScan(runState(
                 effectiveRunStatus(binding.getScanStatus(), binding.getScanLastError(), binding.getScanLastRunTime()),
                 binding.getScanLastRunTime(),
@@ -676,6 +717,17 @@ public class MetadataPipelineOperationService {
         }
         return connectorRegistry.find(source.getDbType())
                 .map(MetadataConnectorAdapter::supportsSampleData)
+                .orElse(false);
+    }
+
+    /** True when the adapter of this data source derives containers from a manifest. */
+    private boolean supportsStorageManifest(Long dataSourceId) {
+        DataSource source = dataSourceDao.queryById(dataSourceId);
+        if (source == null) {
+            return false;
+        }
+        return connectorRegistry.find(source.getDbType())
+                .map(MetadataConnectorAdapter::supportsStorageManifest)
                 .orElse(false);
     }
 

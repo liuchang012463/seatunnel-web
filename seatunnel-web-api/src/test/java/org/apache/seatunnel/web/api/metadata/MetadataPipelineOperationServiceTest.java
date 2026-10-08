@@ -341,6 +341,54 @@ class MetadataPipelineOperationServiceTest {
         verify(bindingDao, never()).updateIfVersion(any(MetadataSourceBinding.class), anyLong());
     }
 
+    @Test
+    void storageManifestAcceptsBucketManifestJsonAndClearsOnBlank() {
+        String manifest = "{\"entries\":[{\"dataPath\":\"orders/**\",\"structureFormat\":\"parquet\"}]}";
+
+        assertEquals(
+                "{\"entries\":[{\"dataPath\":\"orders/**\",\"structureFormat\":\"parquet\"}]}",
+                MetadataPipelineOperationService.normalizeStorageManifest(manifest));
+        assertNull(MetadataPipelineOperationService.normalizeStorageManifest("  "));
+        assertNull(MetadataPipelineOperationService.normalizeStorageManifest(null));
+    }
+
+    @Test
+    void storageManifestRejectsJsonWithoutEntries() {
+        assertThrows(
+                RuntimeException.class,
+                () -> MetadataPipelineOperationService.normalizeStorageManifest("{\"foo\":1}"));
+        assertThrows(
+                RuntimeException.class,
+                () -> MetadataPipelineOperationService.normalizeStorageManifest("not-json"));
+        assertThrows(
+                RuntimeException.class,
+                () -> MetadataPipelineOperationService.normalizeStorageManifest("[1,2]"));
+    }
+
+    @Test
+    void storageManifestIsRejectedForDataSourcesThatCannotUseIt() {
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.supportsStorageManifest()).thenReturn(false);
+
+        assertThrows(
+                RuntimeException.class,
+                () -> service().updateStorageManifest(42L, "{\"entries\":[]}"));
+        verify(metadataBindingCommandService, never()).markStorageManifestChanged(anyLong(), any());
+    }
+
+    @Test
+    void storageManifestIsPersistedForStorageConnectors() {
+        MetadataSourceBinding binding = binding(0L);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.supportsStorageManifest()).thenReturn(true);
+
+        service().updateStorageManifest(42L, "{\"entries\":[]}");
+
+        verify(metadataBindingCommandService).markStorageManifestChanged(42L, "{\"entries\":[]}");
+    }
+
     private void stubReady(MetadataSourceBinding binding, MetadataSourceBinding reserved) {
         when(dataSourceDao.queryById(42L)).thenReturn(source());
         when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);

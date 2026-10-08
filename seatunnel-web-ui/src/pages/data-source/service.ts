@@ -485,6 +485,20 @@ export async function updateDataSourceSampleData(
   );
 }
 
+/**
+ * Saves the object-storage manifest that turns a plain container into a structured one
+ * with a data model. An empty value clears it.
+ */
+export async function updateDataSourceStorageManifest(
+  id: string,
+  manifest: string,
+): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.post(
+    `${DATA_SOURCE_API_PREFIX}/${encodeURIComponent(id)}/storage-manifest`,
+    { manifest },
+  );
+}
+
 export const dataSourceCatalogApi = {
   listFiles: (id: string, path?: string): Promise<{ code: number; data: any[]; message?: string }> => {
     const query = path ? `?path=${encodeURIComponent(path)}` : '';

@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metadata;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
+import org.apache.seatunnel.web.api.metadata.adapter.MetadataSyncOptions;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
@@ -24,7 +25,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -35,6 +35,8 @@ import static org.mockito.Mockito.when;
 class MetadataSourceReconcilerTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final MetadataSyncOptions DISABLED = new MetadataSyncOptions(false, null);
+    private static final MetadataSyncOptions SAMPLE_ENABLED = new MetadataSyncOptions(true, null);
 
     @Mock private MetadataBindingDao bindingDao;
     @Mock private DataSourceDao dataSourceDao;
@@ -53,9 +55,9 @@ class MetadataSourceReconcilerTest {
         when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.DATABASE);
         when(adapter.supportsProfiler()).thenReturn(true);
         when(adapter.metadataPipelineRequest(
-                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(false)))
+                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(DISABLED)))
                 .thenReturn(JSON.createObjectNode());
-        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(false)))
+        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(DISABLED)))
                 .thenReturn(JSON.createObjectNode());
         when(adapter.profilerPipelineRequest(eq("st_ds_42_profiler"), eq("svc"), eq("st_ds_42")))
                 .thenReturn(JSON.createObjectNode());
@@ -89,9 +91,10 @@ class MetadataSourceReconcilerTest {
         when(registry.find(DbType.MYSQL)).thenReturn(Optional.of(adapter));
         when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.DATABASE);
         when(adapter.supportsProfiler()).thenReturn(true);
-        when(adapter.metadataPipelineRequest(eq(source), any(), any(), any(), anyBoolean()))
+        when(adapter.metadataPipelineRequest(eq(source), any(), any(), any(), any(MetadataSyncOptions.class)))
                 .thenReturn(JSON.createObjectNode());
-        when(adapter.serviceRequest(any(), any(), anyBoolean())).thenReturn(JSON.createObjectNode());
+        when(adapter.serviceRequest(any(), any(), any(MetadataSyncOptions.class)))
+                .thenReturn(JSON.createObjectNode());
         when(adapter.profilerPipelineRequest(any(), any(), any())).thenReturn(JSON.createObjectNode());
         when(openMetadataClient.upsertService(eq(MetadataServiceCategory.DATABASE), any()))
                 .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
@@ -133,7 +136,7 @@ class MetadataSourceReconcilerTest {
         when(dataSourceDao.queryById(42L)).thenReturn(source());
         when(registry.find(DbType.MYSQL)).thenReturn(Optional.of(adapter));
         doThrow(new MetadataIntegrationException(MetadataErrorCode.SOURCE_CONNECTION_ERROR, "bad connection"))
-                .when(adapter).serviceRequest(any(), any(), anyBoolean());
+                .when(adapter).serviceRequest(any(), any(), any(MetadataSyncOptions.class));
         when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.DATABASE);
 
         reconciler().reconcilePendingBindings();
@@ -155,10 +158,10 @@ class MetadataSourceReconcilerTest {
         when(registry.find(DbType.MYSQL)).thenReturn(Optional.of(adapter));
         when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.MESSAGING);
         when(adapter.supportsProfiler()).thenReturn(false);
-        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(false)))
+        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(DISABLED)))
                 .thenReturn(JSON.createObjectNode());
         when(adapter.metadataPipelineRequest(
-                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(false)))
+                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(DISABLED)))
                 .thenReturn(JSON.createObjectNode());
         when(openMetadataClient.upsertService(eq(MetadataServiceCategory.MESSAGING), any()))
                 .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
@@ -190,10 +193,10 @@ class MetadataSourceReconcilerTest {
         when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.MESSAGING);
         when(adapter.supportsProfiler()).thenReturn(false);
         when(adapter.supportsSampleData()).thenReturn(true);
-        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(true)))
+        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(SAMPLE_ENABLED)))
                 .thenReturn(JSON.createObjectNode());
         when(adapter.metadataPipelineRequest(
-                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(true)))
+                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(SAMPLE_ENABLED)))
                 .thenReturn(JSON.createObjectNode());
         when(openMetadataClient.upsertService(eq(MetadataServiceCategory.MESSAGING), any()))
                 .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
@@ -202,9 +205,9 @@ class MetadataSourceReconcilerTest {
 
         reconciler().reconcilePendingBindings();
 
-        verify(adapter).serviceRequest(eq(source), eq("st_ds_42"), eq(true));
+        verify(adapter).serviceRequest(eq(source), eq("st_ds_42"), eq(SAMPLE_ENABLED));
         verify(adapter).metadataPipelineRequest(
-                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(true));
+                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(SAMPLE_ENABLED));
     }
 
     @Test
@@ -220,10 +223,10 @@ class MetadataSourceReconcilerTest {
         when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.DATABASE);
         when(adapter.supportsProfiler()).thenReturn(true);
         when(adapter.supportsSampleData()).thenReturn(false);
-        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(false)))
+        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(DISABLED)))
                 .thenReturn(JSON.createObjectNode());
         when(adapter.metadataPipelineRequest(
-                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(false)))
+                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(DISABLED)))
                 .thenReturn(JSON.createObjectNode());
         when(adapter.profilerPipelineRequest(eq("st_ds_42_profiler"), eq("svc"), eq("st_ds_42")))
                 .thenReturn(JSON.createObjectNode());
@@ -235,9 +238,71 @@ class MetadataSourceReconcilerTest {
 
         reconciler().reconcilePendingBindings();
 
-        verify(adapter).serviceRequest(eq(source), eq("st_ds_42"), eq(false));
+        verify(adapter).serviceRequest(eq(source), eq("st_ds_42"), eq(DISABLED));
         verify(adapter).metadataPipelineRequest(
-                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(false));
+                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(DISABLED));
+    }
+
+    @Test
+    void createsTheSampleCollectionPipelineForStorageConnectors() {
+        MetadataSourceBinding candidate = binding(1L, MetadataDesiredState.ACTIVE, 1L, 0L);
+        candidate.setSampleDataEnabled(true);
+        MetadataSourceBinding live = binding(1L, MetadataDesiredState.ACTIVE, 1L, 1L);
+        live.setSampleDataEnabled(true);
+        DataSource source = source();
+        stubCandidate(candidate, live);
+        when(dataSourceDao.queryById(42L)).thenReturn(source);
+        when(registry.find(DbType.MYSQL)).thenReturn(Optional.of(adapter));
+        when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.STORAGE);
+        when(adapter.supportsProfiler()).thenReturn(false);
+        when(adapter.supportsSampleData()).thenReturn(true);
+        when(adapter.collectsSampleDataViaAutoClassification()).thenReturn(true);
+        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(SAMPLE_ENABLED)))
+                .thenReturn(JSON.createObjectNode());
+        when(adapter.metadataPipelineRequest(
+                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(SAMPLE_ENABLED)))
+                .thenReturn(JSON.createObjectNode());
+        when(adapter.autoClassificationPipelineRequest(
+                eq("st_ds_42_autoclassification"), eq("svc"), eq("st_ds_42"), eq(SAMPLE_ENABLED)))
+                .thenReturn(JSON.createObjectNode());
+        when(openMetadataClient.upsertService(eq(MetadataServiceCategory.STORAGE), any()))
+                .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
+        when(openMetadataClient.upsertIngestionPipeline(any()))
+                .thenReturn(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata"))
+                .thenReturn(new OpenMetadataEntity("auto", "st_ds_42.st_ds_42_autoclassification"));
+
+        reconciler().reconcilePendingBindings();
+
+        verify(adapter).autoClassificationPipelineRequest(
+                eq("st_ds_42_autoclassification"), eq("svc"), eq("st_ds_42"), eq(SAMPLE_ENABLED));
+        verify(openMetadataClient).deployIngestionPipeline("auto");
+        verify(openMetadataClient).enableIngestionPipeline("auto");
+    }
+
+    @Test
+    void skipsTheSampleCollectionPipelineWhenSampleDataIsOff() {
+        MetadataSourceBinding candidate = binding(1L, MetadataDesiredState.ACTIVE, 1L, 0L);
+        MetadataSourceBinding live = binding(1L, MetadataDesiredState.ACTIVE, 1L, 1L);
+        DataSource source = source();
+        stubCandidate(candidate, live);
+        when(dataSourceDao.queryById(42L)).thenReturn(source);
+        when(registry.find(DbType.MYSQL)).thenReturn(Optional.of(adapter));
+        when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.STORAGE);
+        when(adapter.supportsProfiler()).thenReturn(false);
+        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(DISABLED)))
+                .thenReturn(JSON.createObjectNode());
+        when(adapter.metadataPipelineRequest(
+                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(DISABLED)))
+                .thenReturn(JSON.createObjectNode());
+        when(openMetadataClient.upsertService(eq(MetadataServiceCategory.STORAGE), any()))
+                .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
+        when(openMetadataClient.upsertIngestionPipeline(any()))
+                .thenReturn(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata"));
+
+        reconciler().reconcilePendingBindings();
+
+        verify(adapter, never()).autoClassificationPipelineRequest(any(), any(), any(), any());
+        verify(openMetadataClient, never()).deployIngestionPipeline("auto");
     }
 
     @Test

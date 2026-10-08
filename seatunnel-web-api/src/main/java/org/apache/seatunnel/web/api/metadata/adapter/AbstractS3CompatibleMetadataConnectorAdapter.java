@@ -22,6 +22,61 @@ abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonD
     }
 
     @Override
+    public boolean supportsSampleData() {
+        return true;
+    }
+
+    /**
+     * The storage metadata pipeline has no sample-data flag: container rows are only
+     * collected by the auto-classification agent, so sample collection needs its own
+     * pipeline.
+     */
+    @Override
+    public boolean collectsSampleDataViaAutoClassification() {
+        return true;
+    }
+
+    @Override
+    public boolean supportsStorageManifest() {
+        return true;
+    }
+
+    /**
+     * Injects the operator's manifest as the pipeline's {@code defaultManifest}. It is the
+     * same JSON a bucket-level {@code openmetadata.json} would hold, which is what turns a
+     * plain container into a structured one with a data model.
+     */
+    @Override
+    public JsonNode metadataPipelineRequest(
+            DataSource dataSource,
+            String pipelineName,
+            String serviceId,
+            String serviceFqn,
+            MetadataSyncOptions options) {
+        ObjectNode request = (ObjectNode) metadataPipelineRequest(pipelineName, serviceId, serviceFqn);
+        if (options != null && options.hasStorageManifest()) {
+            request.withObject("/sourceConfig/config")
+                    .put("defaultManifest", options.storageManifest());
+        }
+        return request;
+    }
+
+    /**
+     * Sample-only auto-classification pipeline. PII classification stays disabled: the
+     * operator asked for sample data, not for tag writes.
+     */
+    @Override
+    public JsonNode autoClassificationPipelineRequest(
+            String pipelineName, String serviceId, String serviceFqn, MetadataSyncOptions options) {
+        ObjectNode config = OBJECT_MAPPER.createObjectNode();
+        config.put("type", "AutoClassification");
+        config.put("storeSampleData", options != null && options.sampleDataEnabled());
+        config.put("enableAutoClassification", false);
+        return pipelineRequest(
+                pipelineName, serviceId, serviceFqn, "autoClassification", config, null);
+    }
+
+    @Override
     public String openMetadataServiceType() {
         return "S3";
     }

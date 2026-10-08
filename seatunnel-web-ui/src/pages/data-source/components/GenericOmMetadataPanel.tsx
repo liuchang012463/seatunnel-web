@@ -1,4 +1,4 @@
-import { Alert, Button, Empty, Space, Spin, Switch, Table, Tag, message } from 'antd';
+import { Alert, Button, Empty, Input, Space, Spin, Switch, Table, Tag, message } from 'antd';
 import type { TableColumnsType } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -6,6 +6,7 @@ import {
   fetchDataSourceOmResourceDetail,
   fetchDataSourceOmResources,
   updateDataSourceSampleData,
+  updateDataSourceStorageManifest,
 } from '../service';
 import type {
   DataSourceOmResource,
@@ -22,6 +23,8 @@ interface GenericOmMetadataPanelProps {
   resourcePath?: string;
 }
 
+const API_FAMILY_TYPES = ['apiCollection', 'apiEndpoint'];
+
 function lastSegment(value?: string): string {
   const text = String(value ?? '').trim().replace(/\/+$/, '');
   if (!text) return '';
@@ -37,13 +40,21 @@ function matches(resource: DataSourceOmResource, name: string): boolean {
     .some((value) => value !== '' && value === candidate);
 }
 
+const fieldColumns: TableColumnsType<DataSourceOmResourceField> = [
+  { title: '字段', dataIndex: 'name', key: 'name', ellipsis: true },
+  { title: '类型', dataIndex: 'dataType', key: 'dataType', width: 160, ellipsis: true },
+  { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
+];
+
 /**
  * OpenMetadata view of one non-database asset: the schema the metadata pipeline
  * extracted, any sample payload it collected, and the switch that decides whether
  * this data source may collect sample payload at all.
  *
  * Kafka, object storage and file-transfer assets have no OpenMetadata profiler, so
- * this panel deliberately shows schema and samples instead of metrics.
+ * this panel deliberately shows schema and samples instead of metrics. HTTP sources
+ * are browsed through OpenMetadata's own API collections and endpoints, because the
+ * connector catalog only lists request paths.
  */
 const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
   dataSourceId,
@@ -53,13 +64,18 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [resources, setResources] = useState<DataSourceOmResource[]>([]);
+  const [entityTypes, setEntityTypes] = useState<string[]>([]);
   const [truncated, setTruncated] = useState(false);
   const [detail, setDetail] = useState<DataSourceOmResourceDetail>();
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string>();
+  const [selectedId, setSelectedId] = useState<string>();
   const [sampleDataSupported, setSampleDataSupported] = useState(false);
   const [sampleDataEnabled, setSampleDataEnabled] = useState(false);
   const [sampleDataSaving, setSampleDataSaving] = useState(false);
+  const [storageManifestSupported, setStorageManifestSupported] = useState(false);
+  const [storageManifest, setStorageManifest] = useState('');
+  const [storageManifestSaving, setStorageManifestSaving] = useState(false);
 
   const loadStatus = useCallback(async () => {
     if (!dataSourceId) return;
@@ -68,10 +84,13 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
       if (response.code === 0) {
         setSampleDataSupported(Boolean(response.data?.sampleDataSupported));
         setSampleDataEnabled(Boolean(response.data?.sampleDataEnabled));
+        setStorageManifestSupported(Boolean(response.data?.storageManifestSupported));
+        setStorageManifest(response.data?.storageManifest || '');
       }
     } catch {
-      // The status call only drives the switch; the asset listing still works.
+      // The status call only drives the switches; the asset listing still works.
       setSampleDataSupported(false);
+      setStorageManifestSupported(false);
     }
   }, [dataSourceId]);
 
@@ -87,6 +106,7 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
         return;
       }
       setResources(response.data?.resources || []);
+      setEntityTypes(response.data?.entityTypes || []);
       setTruncated(Boolean(response.data?.truncated));
     } catch (requestError: any) {
       setResources([]);
@@ -98,26 +118,40 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
 
   useEffect(() => {
     setResources([]);
+    setEntityTypes([]);
     setDetail(undefined);
     setError(undefined);
     setDetailError(undefined);
+    setSelectedId(undefined);
     void loadStatus();
     void loadResources();
   }, [loadResources, loadStatus]);
 
+  const apiFamily = entityTypes.some((type) => API_FAMILY_TYPES.includes(type));
+  const apiEndpoints = useMemo(
+    () => resources.filter((resource) => resource.entityType === 'apiEndpoint'),
+    [resources],
+  );
   const matchName = lastSegment(resourceName || resourcePath);
   const matched = useMemo(
-    () => resources.find((resource) => matches(resource, matchName)),
-    [matchName, resources],
+    () => (apiFamily ? undefined : resources.find((resource) => matches(resource, matchName))),
+    [apiFamily, matchName, resources],
   );
+
+  // HTTP sources browse OpenMetadata's own endpoint list, so the selection is driven
+  // by the panel instead of by a name match against the connector catalog.
+  const activeId = apiFamily ? selectedId : matched?.id;
+  const activeEntityType = apiFamily
+    ? 'apiEndpoint'
+    : matched?.entityType;
 
   useEffect(() => {
     let cancelled = false;
     setDetail(undefined);
     setDetailError(undefined);
-    if (!dataSourceId || !matched?.id || !matched.entityType) return () => { cancelled = true; };
+    if (!dataSourceId || !activeId || !activeEntityType) return () => { cancelled = true; };
     setDetailLoading(true);
-    fetchDataSourceOmResourceDetail(dataSourceId, String(matched.id), matched.entityType)
+    fetchDataSourceOmResourceDetail(dataSourceId, String(activeId), activeEntityType)
       .then((response) => {
         if (cancelled) return;
         if (response.code !== 0) {
@@ -134,7 +168,7 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
         if (!cancelled) setDetailLoading(false);
       });
     return () => { cancelled = true; };
-  }, [dataSourceId, matched?.id, matched?.entityType]);
+  }, [dataSourceId, activeId, activeEntityType]);
 
   const toggleSampleData = async (next: boolean) => {
     if (!dataSourceId) return;
@@ -155,11 +189,42 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
     }
   };
 
-  const fieldColumns: TableColumnsType<DataSourceOmResourceField> = [
-    { title: '字段', dataIndex: 'name', key: 'name', ellipsis: true },
-    { title: '类型', dataIndex: 'dataType', key: 'dataType', width: 160, ellipsis: true },
-    { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
-  ];
+  const saveStorageManifest = async () => {
+    if (!dataSourceId) return;
+    setStorageManifestSaving(true);
+    try {
+      const response = await updateDataSourceStorageManifest(dataSourceId, storageManifest);
+      if (response.code !== 0) {
+        message.error(response.message || '对象存储清单保存失败');
+        return;
+      }
+      message.success('已保存清单，下次扫描后按清单生成结构化容器');
+      void loadStatus();
+      void loadResources();
+    } catch (requestError: any) {
+      message.error(requestError?.response?.data?.message || requestError?.message || '对象存储清单保存失败');
+    } finally {
+      setStorageManifestSaving(false);
+    }
+  };
+
+  const active = apiFamily
+    ? apiEndpoints.find((resource) => resource.id === selectedId)
+    : matched;
+
+  const renderFields = (fields: DataSourceOmResourceField[] | undefined, emptyText: string) => (
+    (fields || []).length > 0 ? (
+      <Table
+        size="small"
+        rowKey={(row) => String(row.name)}
+        columns={fieldColumns}
+        dataSource={fields || []}
+        pagination={false}
+      />
+    ) : (
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyText} />
+    )
+  );
 
   const sampleColumns = detail?.sampleColumns || [];
   const sampleRows = detail?.sampleRows || [];
@@ -182,6 +247,10 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择数据源" />;
   }
 
+  const matchedLabel = apiFamily
+    ? (apiEndpoints.length > 0 ? `${apiEndpoints.length} 个接口` : '无接口')
+    : (matched ? '已收录' : '未收录');
+
   return (
     <div className="generic-exploration__tab-pane">
       <div className="generic-exploration__tab-title">
@@ -190,8 +259,8 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
           <strong>元数据与样本数据</strong>
         </div>
         <Space size={4}>
-          <Tag color={matched ? 'blue' : 'default'}>{matched ? '已收录' : '未收录'}</Tag>
-          {matched?.entityLabel && <Tag>{matched.entityLabel}</Tag>}
+          <Tag color={apiFamily ? 'blue' : matched ? 'blue' : 'default'}>{matchedLabel}</Tag>
+          {active?.entityLabel && <Tag>{active.entityLabel}</Tag>}
         </Space>
       </div>
 
@@ -218,14 +287,91 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
             <span>{sampleDataEnabled ? '已开启' : '未开启（默认）'}</span>
           </Space>
           <p>
-            开启后，采集任务会读取真实内容（Kafka 主题消息、SFTP 文件行）并写入 OpenMetadata，
+            开启后，采集任务会读取真实内容（Kafka 主题消息、对象存储与 SFTP 文件行）并写入 OpenMetadata，
             拥有查看样本数据权限的账号可读取。保存后需重新扫描该数据源才会采集。
           </p>
         </div>
       )}
 
+      {storageManifestSupported && (
+        <div className="generic-exploration__description">
+          <span>结构化容器清单</span>
+          <p>
+            OpenMetadata 用这份清单把普通容器识别成有 Schema 的结构化容器。内容与放在桶里的
+            <code> openmetadata.json </code>相同，必须包含 entries 数组，例如
+            {' '}<code>{'{"entries":[{"dataPath":"orders/**","structureFormat":"parquet"}]}'}</code>。
+            保存后需重新扫描该数据源；留空表示清除清单。
+          </p>
+          <Input.TextArea
+            value={storageManifest}
+            onChange={(event) => setStorageManifest(event.target.value)}
+            autoSize={{ minRows: 3, maxRows: 8 }}
+            placeholder={'{"entries":[]}'}
+            spellCheck={false}
+          />
+          <Space>
+            <Button size="small" type="primary" loading={storageManifestSaving} onClick={() => void saveStorageManifest()}>
+              保存清单
+            </Button>
+            <Button
+              size="small"
+              disabled={storageManifestSaving}
+              onClick={() => {
+                setStorageManifest('');
+                void (async () => {
+                  if (!dataSourceId) return;
+                  setStorageManifestSaving(true);
+                  try {
+                    const response = await updateDataSourceStorageManifest(dataSourceId, '');
+                    if (response.code !== 0) {
+                      message.error(response.message || '清除清单失败');
+                      return;
+                    }
+                    message.success('已清除清单');
+                    void loadStatus();
+                  } catch (requestError: any) {
+                    message.error(requestError?.response?.data?.message || requestError?.message || '清除清单失败');
+                  } finally {
+                    setStorageManifestSaving(false);
+                  }
+                })();
+              }}
+            >
+              清除
+            </Button>
+          </Space>
+        </div>
+      )}
+
+      {apiFamily && apiEndpoints.length > 0 && (
+        <div className="generic-exploration__om-endpoints">
+          <div className="generic-exploration__section-title">OpenMetadata 接口目录</div>
+          <div className="generic-exploration__nav-list">
+            {apiEndpoints.map((endpoint) => {
+              const key = String(endpoint.id || endpoint.name);
+              return (
+                <button
+                  type="button"
+                  className={`generic-exploration__asset-item${key === selectedId ? ' is-selected' : ''}`}
+                  key={key}
+                  onClick={() => setSelectedId(key)}
+                >
+                  <span className="generic-exploration__asset-item-copy">
+                    <strong title={endpoint.name}>{endpoint.name}</strong>
+                    <small title={endpoint.fullyQualifiedName}>
+                      {endpoint.description || 'OpenAPI 接口'}
+                      {typeof endpoint.fieldCount === 'number' ? ` · ${endpoint.fieldCount} 个字段` : ''}
+                    </small>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <Spin spinning={loading || detailLoading}>
-        {!matched ? (
+        {!apiFamily && !matched ? (
           <div className="generic-exploration__state">
             <strong>OpenMetadata 中未找到该资源</strong>
             <span>
@@ -242,6 +388,7 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
                       <small title={resource.fullyQualifiedName}>
                         {resource.entityLabel || resource.entityType}
                         {typeof resource.fieldCount === 'number' ? ` · ${resource.fieldCount} 个字段` : ''}
+                        {typeof resource.childCount === 'number' ? ` · ${resource.childCount} 个子项` : ''}
                       </small>
                     </span>
                   </div>
@@ -249,6 +396,15 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
                 {truncated && <div className="generic-exploration__nav-footer">仅显示前 20 项</div>}
               </div>
             )}
+          </div>
+        ) : apiFamily && !active ? (
+          <div className="generic-exploration__state">
+            <strong>选择一个接口查看 OpenAPI 结构</strong>
+            <span>
+              {apiEndpoints.length > 0
+                ? 'OpenMetadata 已从 OpenAPI 文档抽取请求与响应结构。'
+                : 'OpenMetadata 中还没有接口，请先完成一次元数据扫描。'}
+            </span>
           </div>
         ) : (
           <>
@@ -262,34 +418,40 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
               />
             )}
             <dl className="generic-exploration__property-list">
-              <div><dt>名称</dt><dd>{matched.name}</dd></div>
-              <div><dt>唯一名称</dt><dd><code>{matched.fullyQualifiedName}</code></dd></div>
-              <div><dt>类型</dt><dd>{matched.entityLabel || matched.entityType}</dd></div>
-              <div><dt>字段数</dt><dd>{typeof matched.fieldCount === 'number' ? matched.fieldCount : '—'}</dd></div>
-              {matched.description && <div><dt>描述</dt><dd>{matched.description}</dd></div>}
-              {matched.tags && matched.tags.length > 0 && (
+              <div><dt>名称</dt><dd>{active?.name}</dd></div>
+              <div><dt>唯一名称</dt><dd><code>{active?.fullyQualifiedName}</code></dd></div>
+              <div><dt>类型</dt><dd>{active?.entityLabel || active?.entityType}</dd></div>
+              {typeof active?.fieldCount === 'number' && (
+                <div><dt>字段数</dt><dd>{active.fieldCount}</dd></div>
+              )}
+              {typeof active?.childCount === 'number' && (
+                <div><dt>接口数</dt><dd>{active.childCount}</dd></div>
+              )}
+              {active?.description && <div><dt>描述</dt><dd>{active.description}</dd></div>}
+              {active?.tags && active.tags.length > 0 && (
                 <div>
                   <dt>标签</dt>
                   <dd>
                     <Space size={4} wrap>
-                      {matched.tags.map((tag) => <Tag key={tag} color="purple">{tag}</Tag>)}
+                      {active.tags.map((tag) => <Tag key={tag} color="purple">{tag}</Tag>)}
                     </Space>
                   </dd>
                 </div>
               )}
             </dl>
 
-            <div className="generic-exploration__section-title">Schema</div>
-            {(detail?.fields || []).length > 0 ? (
-              <Table
-                size="small"
-                rowKey={(row) => String(row.name)}
-                columns={fieldColumns}
-                dataSource={detail?.fields || []}
-                pagination={false}
-              />
+            {activeEntityType === 'apiEndpoint' ? (
+              <>
+                <div className="generic-exploration__section-title">请求结构</div>
+                {renderFields(detail?.requestFields, 'OpenAPI 文档未定义请求结构')}
+                <div className="generic-exploration__section-title">响应结构</div>
+                {renderFields(detail?.responseFields, 'OpenAPI 文档未定义响应结构')}
+              </>
             ) : (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="OpenMetadata 尚未抽取到字段" />
+              <>
+                <div className="generic-exploration__section-title">Schema</div>
+                {renderFields(detail?.fields, 'OpenMetadata 尚未抽取到字段')}
+              </>
             )}
 
             <div className="generic-exploration__section-title">样本数据</div>

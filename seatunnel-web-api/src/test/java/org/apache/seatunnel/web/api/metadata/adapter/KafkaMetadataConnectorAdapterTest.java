@@ -75,9 +75,11 @@ class KafkaMetadataConnectorAdapterTest {
         DataSource dataSource = source("{\"bootstrapServers\":\"kafka.example:9092\"}");
 
         JsonNode disabled = adapter.metadataPipelineRequest(
-                dataSource, "st_ds_20_metadata", "uuid-1", "st_ds_20", false);
+                dataSource, "st_ds_20_metadata", "uuid-1", "st_ds_20",
+                new MetadataSyncOptions(false, null));
         JsonNode enabled = adapter.metadataPipelineRequest(
-                dataSource, "st_ds_20_metadata", "uuid-1", "st_ds_20", true);
+                dataSource, "st_ds_20_metadata", "uuid-1", "st_ds_20",
+                new MetadataSyncOptions(true, null));
 
         assertEquals(false, disabled.at("/sourceConfig/config/generateSampleData").asBoolean());
         assertEquals(true, enabled.at("/sourceConfig/config/generateSampleData").asBoolean());

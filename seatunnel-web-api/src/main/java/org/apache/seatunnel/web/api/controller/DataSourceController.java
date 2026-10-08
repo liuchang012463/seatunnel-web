@@ -14,6 +14,7 @@ import org.apache.seatunnel.web.api.metadata.MetadataPipelineOperationService;
 import org.apache.seatunnel.web.api.metadata.NonRelationalExplorationService;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceExploreDTO;
+import org.apache.seatunnel.web.spi.bean.dto.DataSourceStorageManifestDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.dao.entity.DataSource;
@@ -280,6 +281,16 @@ public class DataSourceController {
             @PathVariable("id") Long id,
             @RequestParam(value = "enabled", defaultValue = "false") boolean enabled) {
         return Result.buildSuc(metadataPipelineOperationService.updateSampleDataCollection(id, enabled));
+    }
+
+    @PostMapping("/{id}/storage-manifest")
+    @Operation(summary = "updateDataSourceStorageManifest",
+            description = "Save the OpenMetadata object-storage manifest used for structured containers")
+    public Result<Boolean> updateStorageManifest(
+            @PathVariable("id") Long id,
+            @RequestBody(required = false) DataSourceStorageManifestDTO dto) {
+        return Result.buildSuc(metadataPipelineOperationService.updateStorageManifest(
+                id, dto == null ? null : dto.getManifest()));
     }
 
     /**

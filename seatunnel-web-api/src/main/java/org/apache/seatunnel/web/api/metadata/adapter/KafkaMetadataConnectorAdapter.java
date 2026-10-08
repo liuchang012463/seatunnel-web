@@ -51,9 +51,10 @@ public class KafkaMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCo
             String pipelineName,
             String serviceId,
             String serviceFqn,
-            boolean sampleDataEnabled) {
+            MetadataSyncOptions options) {
         ObjectNode request = (ObjectNode) metadataPipelineRequest(pipelineName, serviceId, serviceFqn);
-        request.withObject("/sourceConfig/config").put("generateSampleData", sampleDataEnabled);
+        request.withObject("/sourceConfig/config")
+                .put("generateSampleData", options != null && options.sampleDataEnabled());
         return request;
     }
 

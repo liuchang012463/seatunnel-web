@@ -164,6 +164,7 @@ public class NonRelationalExplorationService {
         vo.setEntityLabel(type.label());
         vo.setDescription(resource.description());
         vo.setFieldCount(resource.fieldCount());
+        vo.setChildCount(resource.childCount());
         vo.setTags(resource.tags());
         return vo;
     }
@@ -182,11 +183,26 @@ public class NonRelationalExplorationService {
             fields.add(fieldVo);
         }
         vo.setFields(fields);
+        vo.setRequestFields(toFieldVos(detail.requestFields()));
+        vo.setResponseFields(toFieldVos(detail.responseFields()));
         vo.setSampleDataAvailable(detail.sampleDataAvailable());
         vo.setSampleColumns(detail.sampleColumns());
         vo.setSampleRows(detail.sampleRows());
         vo.setMessages(detail.messages());
         return vo;
+    }
+
+    private static List<DataSourceResourceFieldVO> toFieldVos(List<OpenMetadataResourceField> source) {
+        List<DataSourceResourceFieldVO> fields = new ArrayList<>();
+        for (OpenMetadataResourceField field : source) {
+            DataSourceResourceFieldVO fieldVo = new DataSourceResourceFieldVO();
+            fieldVo.setName(field.name());
+            fieldVo.setDataType(field.dataType());
+            fieldVo.setDescription(field.description());
+            fieldVo.setTags(field.tags());
+            fields.add(fieldVo);
+        }
+        return fields;
     }
 
     private static ServiceException invalid(String reason) {

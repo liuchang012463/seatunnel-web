@@ -37,6 +37,18 @@ public final class MetadataStableName {
         return serviceFqn(dataSourceId) + "." + profilerPipelineName(dataSourceId);
     }
 
+    /**
+     * Storage services collect sample data through the auto-classification agent, because
+     * their metadata pipeline has no sample-data flag.
+     */
+    public static String autoClassificationPipelineName(Long dataSourceId) {
+        return serviceName(dataSourceId) + "_autoclassification";
+    }
+
+    public static String autoClassificationPipelineFqn(Long dataSourceId) {
+        return serviceFqn(dataSourceId) + "." + autoClassificationPipelineName(dataSourceId);
+    }
+
     private static long requireId(Long dataSourceId) {
         if (dataSourceId == null || dataSourceId <= 0) {
             throw new IllegalArgumentException("dataSourceId must be positive");

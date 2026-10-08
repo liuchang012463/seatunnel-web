@@ -45,8 +45,10 @@ class SftpMetadataConnectorAdapterTest {
         DataSource dataSource = source(
                 "{\"host\":\"sftp.example.com\",\"user\":\"reader\",\"password\":\"secret\"}");
 
-        JsonNode disabled = adapter.serviceRequest(dataSource, "st_ds_40", false);
-        JsonNode enabled = adapter.serviceRequest(dataSource, "st_ds_40", true);
+        JsonNode disabled = adapter.serviceRequest(
+                dataSource, "st_ds_40", new MetadataSyncOptions(false, null));
+        JsonNode enabled = adapter.serviceRequest(
+                dataSource, "st_ds_40", new MetadataSyncOptions(true, null));
 
         assertEquals(false, disabled.at("/connection/config/extractSampleData").asBoolean());
         assertEquals(true, enabled.at("/connection/config/extractSampleData").asBoolean());

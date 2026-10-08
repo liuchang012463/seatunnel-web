@@ -18,6 +18,7 @@ import {
   fetchDataSourceOmResourceDetail,
   fetchDataSourceOmResources,
   updateDataSourceSampleData,
+  updateDataSourceStorageManifest,
   previewDataExplorationTable,
   triggerDataSourceExploration,
   triggerDataSourceScan,
@@ -152,6 +153,19 @@ describe('data source service', () => {
     await expect(updateDataSourceSampleData('42', true)).resolves.toBe(response);
 
     expect(HttpUtils.post).toHaveBeenCalledWith('/api/v1/data-source/42/sample-data?enabled=true');
+  });
+
+  it('saves the object-storage manifest as a JSON body', async () => {
+    const response = { code: 0, data: true };
+    (HttpUtils.post as jest.Mock).mockResolvedValue(response);
+    const manifest = '{"entries":[]}';
+
+    await expect(updateDataSourceStorageManifest('42', manifest)).resolves.toBe(response);
+
+    expect(HttpUtils.post).toHaveBeenCalledWith(
+      '/api/v1/data-source/42/storage-manifest',
+      { manifest },
+    );
   });
 
   it('reads the two product-facing run histories through the existing data-source route', async () => {

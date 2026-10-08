@@ -39,17 +39,34 @@ public interface MetadataConnectorAdapter {
         return false;
     }
 
+    /**
+     * Whether sample collection runs as its own auto-classification pipeline. Storage
+     * services need this because their metadata pipeline has no sample-data flag;
+     * connectors that carry the flag themselves (Kafka) leave it false.
+     */
+    default boolean collectsSampleDataViaAutoClassification() {
+        return false;
+    }
+
+    /**
+     * Whether this connector derives a container data model from an object-storage
+     * manifest supplied by the operator.
+     */
+    default boolean supportsStorageManifest() {
+        return false;
+    }
+
     /** Preferred entry; default delegates to databaseServiceRequest for DB adapters. */
     default JsonNode serviceRequest(DataSource dataSource, String stableServiceName) {
         return databaseServiceRequest(dataSource, stableServiceName);
     }
 
     /**
-     * Service request with the operator's sample-data decision applied. Only connectors
-     * whose sample collection is a connection flag (SFTP) override this overload.
+     * Service request with the operator's decisions applied. Only connectors whose sample
+     * collection is a connection flag (SFTP) override this overload.
      */
     default JsonNode serviceRequest(
-            DataSource dataSource, String stableServiceName, boolean sampleDataEnabled) {
+            DataSource dataSource, String stableServiceName, MetadataSyncOptions options) {
         return serviceRequest(dataSource, stableServiceName);
     }
 
@@ -64,16 +81,26 @@ public interface MetadataConnectorAdapter {
     }
 
     /**
-     * Metadata pipeline request with the operator's sample-data decision applied. Only
-     * connectors whose sample collection is a pipeline flag (Kafka) override this.
+     * Metadata pipeline request with the operator's decisions applied. Connectors whose
+     * pipeline shape depends on them (Kafka sample data, storage manifest) override this.
      */
     default JsonNode metadataPipelineRequest(
             DataSource dataSource,
             String pipelineName,
             String serviceId,
             String serviceFqn,
-            boolean sampleDataEnabled) {
+            MetadataSyncOptions options) {
         return metadataPipelineRequest(dataSource, pipelineName, serviceId, serviceFqn);
+    }
+
+    /**
+     * Auto-classification pipeline used only to collect sample data. The connector keeps
+     * PII classification off; Web does not run the classification agent.
+     */
+    default JsonNode autoClassificationPipelineRequest(
+            String pipelineName, String serviceId, String serviceFqn, MetadataSyncOptions options) {
+        throw new UnsupportedOperationException(
+                "Auto-classification pipelines are not supported by this connector");
     }
 
     JsonNode profilerPipelineRequest(String pipelineName, String serviceId, String serviceFqn);
