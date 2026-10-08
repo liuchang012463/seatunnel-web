@@ -132,6 +132,13 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
     @Override
     public boolean reserveRun(
             Long id, Long expectedVersion, boolean metadataScan, Long metadataTriggeredVersion, Date now) {
+        return reserveRun(id, expectedVersion, metadataScan, metadataTriggeredVersion, now, null);
+    }
+
+    @Override
+    public boolean reserveRun(
+            Long id, Long expectedVersion, boolean metadataScan, Long metadataTriggeredVersion,
+            Date now, String profileRunReservationToken) {
         if (id == null || expectedVersion == null) {
             return false;
         }
@@ -157,6 +164,13 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
                     .set(MyBatisColumn.getter(MetadataSourceBinding::getProfileStatus), MetadataRunStatus.QUEUED)
                     .set(MyBatisColumn.getter(MetadataSourceBinding::getProfileLastRunTime), now)
                     .set(MyBatisColumn.getter(MetadataSourceBinding::getProfileLastError), null);
+            if (profileRunReservationToken != null) {
+                update.set(MyBatisColumn.getter(MetadataSourceBinding::getProfileRunReservationToken), profileRunReservationToken)
+                        .set(MyBatisColumn.getter(MetadataSourceBinding::getProfileProfilerRunIdBaseline), null)
+                        .set(MyBatisColumn.getter(MetadataSourceBinding::getProfileSampleRunIdBaseline), null)
+                        .set(MyBatisColumn.getter(MetadataSourceBinding::getProfileRunBaselineCaptured), false)
+                        .set(MyBatisColumn.getter(MetadataSourceBinding::getProfileRunBaselineCapturedAt), null);
+            }
         }
         return metadataSourceBindingMapper.update(null, update) > 0;
     }

@@ -42,9 +42,12 @@ abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonD
     }
 
     /**
-     * Injects the operator's manifest as the pipeline's {@code defaultManifest}. It is the
-     * same JSON a bucket-level {@code openmetadata.json} would hold, which is what turns a
-     * plain container into a structured one with a data model.
+     * Injects the operator's manifest as the pipeline's {@code defaultManifest}.
+     *
+     * <p>OpenMetadata validates it as a multi-bucket manifest and keeps only the entries
+     * whose {@code containerName} equals the bucket being processed, so an entry without
+     * one is silently dropped. The data source already fixes the bucket, so it is filled
+     * in here instead of asking the operator to repeat it.</p>
      */
     @Override
     public JsonNode metadataPipelineRequest(
@@ -55,10 +58,35 @@ abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonD
             MetadataSyncOptions options) {
         ObjectNode request = (ObjectNode) metadataPipelineRequest(pipelineName, serviceId, serviceFqn);
         if (options != null && options.hasStorageManifest()) {
-            request.withObject("/sourceConfig/config")
-                    .put("defaultManifest", options.storageManifest());
+            request.withObject("/sourceConfig/config").put(
+                    "defaultManifest", withContainerName(options.storageManifest(), dataSource));
         }
         return request;
+    }
+
+    /** Adds the configured bucket to manifest entries that do not name a container. */
+    String withContainerName(String manifest, DataSource dataSource) {
+        JsonNode raw = rawConnection(dataSource);
+        String bucket = text(raw, "bucket");
+        if (isBlank(bucket)) {
+            return manifest;
+        }
+        try {
+            JsonNode parsed = OBJECT_MAPPER.readTree(manifest);
+            JsonNode entries = parsed.path("entries");
+            if (!entries.isArray()) {
+                return manifest;
+            }
+            for (JsonNode entry : entries) {
+                if (entry.isObject() && isBlank(entry.path("containerName").asText(null))) {
+                    ((ObjectNode) entry).put("containerName", bucket);
+                }
+            }
+            return parsed.toString();
+        } catch (Exception error) {
+            // Validation already rejected malformed JSON; keep the stored value untouched.
+            return manifest;
+        }
     }
 
     /**

@@ -247,7 +247,9 @@ metadata:
     interval-ms: ${METADATA_STATUS_INTERVAL_MS:10000}
     batch-size: ${METADATA_STATUS_BATCH_SIZE:50}
     idle-refresh-seconds: ${METADATA_STATUS_IDLE_REFRESH_SECONDS:60}
-    trigger-grace-seconds: ${METADATA_STATUS_TRIGGER_GRACE_SECONDS:60}
+    trigger-grace-seconds: ${METADATA_STATUS_TRIGGER_GRACE_SECONDS:120}
+    exploration-preparation-timeout-seconds: ${METADATA_STATUS_EXPLORATION_PREPARATION_TIMEOUT_SECONDS:1800}
+    exploration-trigger-retry-timeout-seconds: ${METADATA_STATUS_EXPLORATION_TRIGGER_RETRY_TIMEOUT_SECONDS:1200}
   # Shared cache for OpenMetadata reads and data-inventory aggregates.
   # type=redis keeps snapshots across restarts and processes; type=memory
   # preserves the old process-local behavior (used by unit tests).

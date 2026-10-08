@@ -42,7 +42,7 @@ public final class MetadataStableName {
      * their metadata pipeline has no sample-data flag.
      */
     public static String autoClassificationPipelineName(Long dataSourceId) {
-        return serviceName(dataSourceId) + "_autoclassification";
+        return serviceName(dataSourceId) + "_auto_classification";
     }
 
     public static String autoClassificationPipelineFqn(Long dataSourceId) {

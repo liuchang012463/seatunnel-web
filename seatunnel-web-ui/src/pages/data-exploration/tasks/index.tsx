@@ -65,6 +65,7 @@ const DEFAULT_PAGINATION: PaginationInfo = { pageNo: 1, pageSize: 10, total: 0 }
 
 type RunRecord = {
   runId: string;
+  pipelineType?: string;
   status: string;
   startTime?: string;
   endTime?: string;
@@ -110,6 +111,14 @@ function runStatusLabel(status?: string) {
   if (status === 'FAILED') return '失败';
   if (status === 'RUNNING' || status === 'QUEUED') return '执行中';
   return status || '-';
+}
+
+function runPipelineLabel(pipelineType?: string) {
+  if (pipelineType === 'PROFILER') return '指标统计';
+  if (pipelineType === 'AUTO_CLASSIFICATION') return '采样数据';
+  if (pipelineType === 'METADATA') return '元数据扫描';
+  if (pipelineType === 'LOCAL') return '本地触发';
+  return pipelineType;
 }
 
 function schemaPlaceholder() {
@@ -781,9 +790,19 @@ const DataExplorationTasksPage: React.FC = () => {
         ) : (
           <div className="max-h-[420px] overflow-auto py-2">
             {runRecords.map((run) => (
-              <div key={run.runId} className="exploration-run-item mb-2 rounded-md px-3 py-2 text-sm">
+              <div
+                key={`${run.pipelineType || 'RUN'}:${run.runId}`}
+                className="exploration-run-item mb-2 rounded-md px-3 py-2 text-sm"
+              >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium">{runStatusLabel(run.status)}</span>
+                  <span className="font-medium">
+                    {runStatusLabel(run.status)}
+                    {run.pipelineType && (
+                      <span className="ml-2 text-xs font-normal text-[var(--st-color-text-muted)]">
+                        {runPipelineLabel(run.pipelineType)}
+                      </span>
+                    )}
+                  </span>
                   <span className="text-xs text-[var(--st-color-text-muted)]">{run.runId}</span>
                 </div>
                 <div className="mt-1 text-xs text-[var(--st-color-text-muted)]">

@@ -4,13 +4,13 @@
 
 ## 版本与范围
 
-* SeaTunnel Web：`1.0.0`；SeaTunnel Engine：`2.3.13`。
+* SeaTunnel Web：`1.0.0`；SeaTunnel Engine：`3.0.0`。
 * OpenMetadata Server / Java SDK：`2.0.4`；ingestion / managed APIs 仅使用已验证的 `2.0.4.x` 版本线。
 * Spring Boot：`3.3.13`；部署 MySQL：`8.0.39`。
 * Java 使用 `/opt/jdk-21.0.11+10`；Maven 使用仓库内 `./mvnw`。
 * 前端使用 Node `24.19.0`、npm `11.17.0`、Yarn Classic `1.22.22`。
 * 本项目仅涉及 Web 端；不要实现、适配或验收任何移动端功能或移动端 UI。
-* JDBC 驱动与连接器参数以 SeaTunnel Engine `2.3.13` 为准。
+* JDBC 驱动与连接器参数以 SeaTunnel Engine `3.0.0` 为准。
 
 ## 本地环境
 

@@ -120,16 +120,19 @@ public class MetadataSourceReconciler {
                         service.fullyQualifiedName(),
                         options));
         OpenMetadataEntity profilerPipeline = null;
+        OpenMetadataEntity samplePipeline = null;
         if (adapter.supportsProfiler()) {
             profilerPipeline = openMetadataClient.upsertIngestionPipeline(
                     adapter.profilerPipelineRequest(
                             MetadataStableName.profilerPipelineName(dataSource.getId()),
                             service.id(), service.fullyQualifiedName()));
-        }
-        // Storage services collect sample rows only through the auto-classification agent.
-        OpenMetadataEntity autoClassificationPipeline = null;
-        if (options.sampleDataEnabled() && adapter.collectsSampleDataViaAutoClassification()) {
-            autoClassificationPipeline = openMetadataClient.upsertIngestionPipeline(
+            samplePipeline = openMetadataClient.upsertIngestionPipeline(
+                    adapter.autoClassificationPipelineRequest(
+                            MetadataStableName.autoClassificationPipelineName(dataSource.getId()),
+                            service.id(), service.fullyQualifiedName()));
+        } else if (options.sampleDataEnabled() && adapter.collectsSampleDataViaAutoClassification()) {
+            // Storage services collect sample rows only through the auto-classification agent.
+            samplePipeline = openMetadataClient.upsertIngestionPipeline(
                     adapter.autoClassificationPipelineRequest(
                             MetadataStableName.autoClassificationPipelineName(dataSource.getId()),
                             service.id(), service.fullyQualifiedName(), options));
@@ -141,9 +144,9 @@ public class MetadataSourceReconciler {
             openMetadataClient.deployIngestionPipeline(profilerPipeline.id());
             openMetadataClient.enableIngestionPipeline(profilerPipeline.id());
         }
-        if (autoClassificationPipeline != null) {
-            openMetadataClient.deployIngestionPipeline(autoClassificationPipeline.id());
-            openMetadataClient.enableIngestionPipeline(autoClassificationPipeline.id());
+        if (samplePipeline != null) {
+            openMetadataClient.deployIngestionPipeline(samplePipeline.id());
+            openMetadataClient.enableIngestionPipeline(samplePipeline.id());
         }
 
         MetadataSourceBinding latest = metadataBindingDao.queryById(claimed.getId());
@@ -172,12 +175,12 @@ public class MetadataSourceReconciler {
         String profilerFqn = defaultIfBlank(
                 claimed.getOmProfilerPipelineFqn(),
                 MetadataStableName.profilerPipelineFqn(claimed.getDataSourceId()));
+        String sampleFqn = MetadataStableName.autoClassificationPipelineFqn(claimed.getDataSourceId());
         deletePipeline(claimed.getOmMetadataPipelineId(), metadataFqn);
         deletePipeline(claimed.getOmProfilerPipelineId(), profilerFqn);
         // The sample-collection pipeline has no local ID: it is resolved by its stable FQN,
         // which also covers bindings that never recorded one.
-        deletePipeline(
-                null, MetadataStableName.autoClassificationPipelineFqn(claimed.getDataSourceId()));
+        deletePipeline(null, sampleFqn);
         MetadataServiceCategory category = resolveServiceCategory(claimed);
         String serviceId = claimed.getOmServiceId();
         String serviceFqn = defaultIfBlank(

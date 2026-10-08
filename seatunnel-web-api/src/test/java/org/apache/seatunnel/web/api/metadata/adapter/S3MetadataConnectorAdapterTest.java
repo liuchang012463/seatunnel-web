@@ -113,7 +113,12 @@ class S3MetadataConnectorAdapterTest {
                 new MetadataSyncOptions(false, manifest));
 
         assertTrue(withoutManifest.at("/sourceConfig/config/defaultManifest").isMissingNode());
-        assertEquals(manifest, withManifest.at("/sourceConfig/config/defaultManifest").asText());
+        // OpenMetadata drops entries whose containerName does not match the bucket, so the
+        // configured bucket is filled in for entries that leave it out.
+        assertEquals(
+                "{\"entries\":[{\"dataPath\":\"orders/**\",\"structureFormat\":\"parquet\","
+                        + "\"containerName\":\"lake\"}]}",
+                withManifest.at("/sourceConfig/config/defaultManifest").asText());
         // The metadata pipeline contract must stay intact around the new field.
         assertEquals("StorageMetadata", withManifest.at("/sourceConfig/config/type").asText());
         assertEquals("storageService", withManifest.at("/service/type").asText());

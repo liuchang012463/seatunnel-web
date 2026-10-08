@@ -88,6 +88,36 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config, null);
     }
 
+    @Override
+    public JsonNode autoClassificationPipelineRequest(
+            String pipelineName, String serviceId, String serviceFqn) {
+        return autoClassificationPipelineRequest(pipelineName, serviceId, serviceFqn, null, null);
+    }
+
+    @Override
+    public JsonNode autoClassificationPipelineRequest(
+            String pipelineName,
+            String serviceId,
+            String serviceFqn,
+            String databaseFqn,
+            String schemaFqn) {
+        ensureProfilerSupported();
+        ObjectNode config = OBJECT_MAPPER.createObjectNode();
+        config.put("type", "AutoClassification");
+        config.set("databaseFilterPattern", filterPattern(databaseFqn));
+        if (!isBlank(schemaFqn)) {
+            config.set("schemaFilterPattern", filterPattern(schemaFqn));
+        }
+        config.put("useFqnForFiltering", true);
+        config.put("includeViews", false);
+        config.put("storeSampleData", true);
+        config.put("sampleDataCount", 100);
+        // AutoClassificationWorkflow still runs its sampler when classification is disabled.
+        config.put("enableAutoClassification", false);
+        return pipelineRequest(pipelineName, serviceId, serviceFqn,
+                "autoClassification", config, null);
+    }
+
     protected ObjectNode baseServiceRequest(DataSource dataSource, String stableServiceName) {
         ObjectNode root = OBJECT_MAPPER.createObjectNode();
         root.put("name", stableServiceName);

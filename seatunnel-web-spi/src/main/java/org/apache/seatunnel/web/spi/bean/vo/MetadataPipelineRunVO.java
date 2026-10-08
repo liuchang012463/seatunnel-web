@@ -12,6 +12,9 @@ public class MetadataPipelineRunVO {
 
     private String runId;
 
+    /** Pipeline that produced this run: METADATA, PROFILER, AUTO_CLASSIFICATION, or LOCAL. */
+    private String pipelineType;
+
     private MetadataRunStatus status;
 
     @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")

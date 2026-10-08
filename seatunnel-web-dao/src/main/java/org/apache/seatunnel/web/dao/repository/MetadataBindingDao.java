@@ -31,6 +31,11 @@ public interface MetadataBindingDao extends IDao<MetadataSourceBinding> {
     boolean reserveRun(
             Long id, Long expectedVersion, boolean metadataScan, Long metadataTriggeredVersion, Date now);
 
+    /** Reserves a new profiler exploration generation with an immutable identity token. */
+    boolean reserveRun(
+            Long id, Long expectedVersion, boolean metadataScan, Long metadataTriggeredVersion,
+            Date now, String profileRunReservationToken);
+
     /** Persists a run state only if no competing request changed the binding in the meantime. */
     boolean updateIfVersion(MetadataSourceBinding binding, Long expectedVersion);
 }

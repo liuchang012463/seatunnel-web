@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.metadata.client;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.OmResourceType;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
@@ -57,6 +58,24 @@ class OpenMetadataRestClientTest {
 
         assertEquals("POST", deployMethod.get());
         assertEquals("", deployBody.get());
+    }
+
+    @Test
+    void retainsTriggerErrorCodeAndHttpStatusFromOpenMetadata() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/services/ingestionPipelines/trigger/pipeline-id",
+                exchange -> respond(exchange, 400, "{\"message\":\"Failed to trigger IngestionPipeline\"}"));
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        MetadataIntegrationException error = assertThrows(
+                MetadataIntegrationException.class,
+                () -> client.triggerIngestionPipeline("pipeline-id"));
+
+        assertEquals(MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR, error.getErrorCode());
+        assertEquals(400, error.getHttpStatusCode());
     }
 
     @Test

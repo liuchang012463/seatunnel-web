@@ -133,4 +133,26 @@ public interface MetadataConnectorAdapter {
         }
         throw new UnsupportedOperationException("Schema-scoped profiler is not implemented by this connector");
     }
+
+    /** Builds the separate sample-only workflow used to persist native OM sample data. */
+    default JsonNode autoClassificationPipelineRequest(
+            String pipelineName, String serviceId, String serviceFqn) {
+        throw new UnsupportedOperationException(
+                "AutoClassification pipelines are not implemented by this connector");
+    }
+
+    /** Builds a sample-only workflow scoped to the same database and schema as exploration. */
+    default JsonNode autoClassificationPipelineRequest(
+            String pipelineName,
+            String serviceId,
+            String serviceFqn,
+            String databaseFqn,
+            String schemaFqn) {
+        if ((databaseFqn == null || databaseFqn.isBlank())
+                && (schemaFqn == null || schemaFqn.isBlank())) {
+            return autoClassificationPipelineRequest(pipelineName, serviceId, serviceFqn);
+        }
+        throw new UnsupportedOperationException(
+                "Scoped AutoClassification pipelines are not implemented by this connector");
+    }
 }

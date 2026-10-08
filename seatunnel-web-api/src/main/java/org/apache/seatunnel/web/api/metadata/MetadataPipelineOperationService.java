@@ -34,11 +34,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
@@ -52,6 +54,39 @@ public class MetadataPipelineOperationService {
     private static final int MAX_OM_PAGE_SIZE = 1000;
     private static final int MAX_OM_PAGES = 10_000;
     private static final long RESERVATION_TIME_TOLERANCE_MILLIS = 5_000L;
+    private static final int MAX_PIPELINE_TRIGGER_ATTEMPTS = 32;
+    private static final long INITIAL_PIPELINE_TRIGGER_RETRY_DELAY_MILLIS = 2_000L;
+    private static final long MAX_PIPELINE_TRIGGER_RETRY_DELAY_MILLIS = 60_000L;
+    private static final long MAX_PIPELINE_TRIGGER_RETRY_BUDGET_MILLIS = 1_200_000L;
+    private static final long PIPELINE_TRIGGER_DEADLINE_MARGIN_MILLIS = 20_000L;
+
+    private record ExplorationRunBaseline(String profilerRunId, String sampleRunId) {}
+
+    private record PipelineTriggerBudget(
+            long retryStartDeadlineNanos,
+            long preparationDeadlineNanos,
+            long requestTimeoutNanos) {}
+
+    private static final class PendingPipelineTrigger {
+        private final String pipelineType;
+        private final String pipelineId;
+        private final String pipelineFqn;
+        private final String baselineRunId;
+        private MetadataIntegrationException lastFailure;
+
+        private PendingPipelineTrigger(
+                String pipelineType,
+                String pipelineId,
+                String pipelineFqn,
+                String baselineRunId,
+                MetadataIntegrationException lastFailure) {
+            this.pipelineType = pipelineType;
+            this.pipelineId = pipelineId;
+            this.pipelineFqn = pipelineFqn;
+            this.baselineRunId = baselineRunId;
+            this.lastFailure = lastFailure;
+        }
+    }
 
     /** Local reservation returned before the potentially slow OpenMetadata work starts. */
     public record ExplorationReservation(
@@ -60,7 +95,19 @@ public class MetadataPipelineOperationService {
             String databaseFqn,
             String schemaFqn,
             long reservedVersion,
-            Date reservedAt) {
+            Date reservedAt,
+            String reservationToken) {
+
+        /** Keeps callers that already pass a schema source-compatible. */
+        public ExplorationReservation(
+                Long bindingId,
+                Long dataSourceId,
+                String databaseFqn,
+                String schemaFqn,
+                long reservedVersion,
+                Date reservedAt) {
+            this(bindingId, dataSourceId, databaseFqn, schemaFqn, reservedVersion, reservedAt, null);
+        }
 
         /** Keeps callers that do not select a schema source-compatible. */
         public ExplorationReservation(
@@ -69,7 +116,7 @@ public class MetadataPipelineOperationService {
                 String databaseFqn,
                 long reservedVersion,
                 Date reservedAt) {
-            this(bindingId, dataSourceId, databaseFqn, null, reservedVersion, reservedAt);
+            this(bindingId, dataSourceId, databaseFqn, null, reservedVersion, reservedAt, null);
         }
     }
 
@@ -79,6 +126,10 @@ public class MetadataPipelineOperationService {
     private final MetadataConnectorRegistry connectorRegistry;
     private final OpenMetadataClient openMetadataClient;
     private final MetadataBindingCommandService metadataBindingCommandService;
+    private volatile OmReadCache omReadCache = OmReadCache.disabled();
+
+    private MetadataStatusProperties metadataStatusProperties = new MetadataStatusProperties();
+    private MetadataInventoryCache metadataInventoryCache;
 
     @Autowired
     public MetadataPipelineOperationService(
@@ -94,6 +145,25 @@ public class MetadataPipelineOperationService {
         this.connectorRegistry = connectorRegistry;
         this.openMetadataClient = openMetadataClient;
         this.metadataBindingCommandService = metadataBindingCommandService;
+    }
+
+    @Autowired(required = false)
+    void setOmReadCache(OmReadCache omReadCache) {
+        if (omReadCache != null) {
+            this.omReadCache = omReadCache;
+        }
+    }
+
+    @Autowired(required = false)
+    void setMetadataInventoryCache(MetadataInventoryCache metadataInventoryCache) {
+        this.metadataInventoryCache = metadataInventoryCache;
+    }
+
+    @Autowired(required = false)
+    void setMetadataStatusProperties(MetadataStatusProperties metadataStatusProperties) {
+        if (metadataStatusProperties != null) {
+            this.metadataStatusProperties = metadataStatusProperties;
+        }
     }
 
     /** Backward-compatible constructor for unit tests that still pass properties. */
@@ -219,30 +289,27 @@ public class MetadataPipelineOperationService {
         ensureNoRunningPipeline(binding);
         long initialVersion = requireVersion(binding);
         Date now = new Date();
-        if (!metadataBindingDao.reserveRun(binding.getId(), initialVersion, false, null, now)) {
+        String token = UUID.randomUUID().toString();
+        if (!metadataBindingDao.reserveRun(binding.getId(), initialVersion, false, null, now, token)) {
             throw invalid("a scan or exploration is already running");
         }
-        long reservedVersion = initialVersion + 1L;
+        ExplorationReservation reservation = new ExplorationReservation(
+                binding.getId(), dataSourceId, databaseFqn, schemaFqn,
+                initialVersion + 1L, now, token);
         try {
             MetadataConnectorAdapter adapter = connectorRegistry.require(dataSource.getDbType());
-            OpenMetadataEntity pipeline = openMetadataClient.upsertIngestionPipeline(
-                    profilerPipelineRequest(
-                            adapter,
-                            MetadataStableName.profilerPipelineName(dataSourceId),
-                            requireProfilerServiceId(binding, dataSourceId),
-                            serviceFqn,
-                            databaseFqn,
-                            schemaFqn));
-            openMetadataClient.deployIngestionPipeline(pipeline.id());
-            openMetadataClient.enableIngestionPipeline(pipeline.id());
-            openMetadataClient.triggerIngestionPipeline(pipeline.id());
-            completeReservation(binding.getId(), reservedVersion, false, null);
+            if (!triggerExplorationPipelines(
+                    adapter, dataSourceId, requireProfilerServiceId(binding, dataSourceId),
+                    serviceFqn, databaseFqn, schemaFqn, reservation)) {
+                return false;
+            }
+            completeExplorationReservation(reservation);
             return true;
         } catch (MetadataIntegrationException e) {
-            failReservation(binding.getId(), reservedVersion, false, null, e.getErrorCode());
+            failExplorationReservation(reservation, e.getErrorCode());
             throw operationFailure("data-source exploration could not be triggered");
         } catch (Exception e) {
-            failReservation(binding.getId(), reservedVersion, false, null, MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR);
+            failExplorationReservation(reservation, MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR);
             throw operationFailure("data-source exploration could not be triggered");
         }
     }
@@ -265,11 +332,13 @@ public class MetadataPipelineOperationService {
         requireProfilerCapableDataSource(dataSourceId);
         long initialVersion = requireVersion(binding);
         Date now = new Date();
-        if (!metadataBindingDao.reserveRun(binding.getId(), initialVersion, false, null, now)) {
+        String token = UUID.randomUUID().toString();
+        if (!metadataBindingDao.reserveRun(binding.getId(), initialVersion, false, null, now, token)) {
             throw invalid("a scan or exploration is already running");
         }
         return new ExplorationReservation(
-                binding.getId(), dataSourceId, databaseFqn, schemaFqn, initialVersion + 1L, now);
+                binding.getId(), dataSourceId, databaseFqn, schemaFqn,
+                initialVersion + 1L, now, token);
     }
 
     /**
@@ -279,10 +348,13 @@ public class MetadataPipelineOperationService {
      */
     @Async("metadataExplorationExecutor")
     public void executeExploration(ExplorationReservation reservation) {
-        if (reservation == null) {
+        if (reservation == null || reservation.reservationToken() == null
+                || reservation.reservationToken().isBlank()) {
+            log.warn("Ignoring metadata exploration without a reservation token");
             return;
         }
         try {
+            requireCurrentExplorationReservation(reservation);
             MetadataSourceBinding binding = metadataBindingDao.queryById(reservation.bindingId());
             if (binding == null) {
                 throw invalid("metadata binding is not initialized");
@@ -299,17 +371,12 @@ public class MetadataPipelineOperationService {
             ensureNoRunningPipelineForReservedExploration(binding);
 
             MetadataConnectorAdapter adapter = connectorRegistry.require(dataSource.getDbType());
-            OpenMetadataEntity pipeline = openMetadataClient.upsertIngestionPipeline(
-                    profilerPipelineRequest(
-                            adapter,
-                            MetadataStableName.profilerPipelineName(reservation.dataSourceId()),
-                            requireProfilerServiceId(binding, reservation.dataSourceId()),
-                            serviceFqn,
-                            reservation.databaseFqn(),
-                            reservation.schemaFqn()));
-            openMetadataClient.deployIngestionPipeline(pipeline.id());
-            openMetadataClient.enableIngestionPipeline(pipeline.id());
-            openMetadataClient.triggerIngestionPipeline(pipeline.id());
+            if (!triggerExplorationPipelines(
+                    adapter, reservation.dataSourceId(),
+                    requireProfilerServiceId(binding, reservation.dataSourceId()),
+                    serviceFqn, reservation.databaseFqn(), reservation.schemaFqn(), reservation)) {
+                return;
+            }
             completeExplorationReservation(reservation);
             log.info("Data-source exploration triggered: dataSourceId={}, databaseFqn={}, schemaFqn={}",
                     reservation.dataSourceId(), reservation.databaseFqn(), reservation.schemaFqn());
@@ -392,8 +459,8 @@ public class MetadataPipelineOperationService {
         if (!exploration && !"SCAN".equalsIgnoreCase(type)) {
             throw invalid("type must be SCAN or EXPLORATION");
         }
-        String fqn = exploration ? binding.getOmProfilerPipelineFqn() : binding.getOmMetadataPipelineFqn();
-        if (fqn == null || fqn.isBlank()) {
+        String pipelineFqn = exploration ? binding.getOmProfilerPipelineFqn() : binding.getOmMetadataPipelineFqn();
+        if (pipelineFqn == null || pipelineFqn.isBlank()) {
             // Non-database connectors never create a profiler pipeline. Return an empty
             // exploration history instead of failing callers that still ask for it.
             if (exploration) {
@@ -404,21 +471,34 @@ public class MetadataPipelineOperationService {
         openMetadataClient.assertFixedVersion();
         int safeLimit = Math.max(1, limit);
         List<MetadataPipelineRunVO> result = new ArrayList<>();
-        for (OpenMetadataPipelineRun run : openMetadataClient.listIngestionPipelineRuns(fqn, safeLimit)) {
+        result.addAll(toRunViews(pipelineFqn, safeLimit, exploration ? "PROFILER" : "METADATA"));
+        if (exploration) {
+            String sampleFqn = MetadataStableName.autoClassificationPipelineFqn(dataSourceId);
+            result.addAll(toRunViews(sampleFqn, safeLimit, "AUTO_CLASSIFICATION"));
+        }
+        MetadataPipelineRunVO localFailure = localFailureRun(binding, exploration);
+        if (localFailure != null && !hasMatchingOmFailure(result, localFailure)) {
+            result.add(localFailure);
+        }
+        result.sort(Comparator.comparing(
+                MetadataPipelineRunVO::getStartTime,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+        return result.size() > safeLimit
+                ? new ArrayList<>(result.subList(0, safeLimit))
+                : result;
+    }
+
+    private List<MetadataPipelineRunVO> toRunViews(String fqn, int limit, String pipelineType) {
+        List<MetadataPipelineRunVO> result = new ArrayList<>();
+        for (OpenMetadataPipelineRun run : openMetadataClient.listIngestionPipelineRuns(fqn, limit)) {
             MetadataPipelineRunVO item = new MetadataPipelineRunVO();
             item.setRunId(run.runId());
+            item.setPipelineType(pipelineType);
             item.setStatus(OpenMetadataRunStatusMapper.fromPipelineState(run.pipelineState()));
             item.setStartTime(fromOmTimestamp(firstNonNull(run.startDate(), run.timestamp())));
             item.setEndTime(fromOmTimestamp(run.endDate()));
             item.setWarningsCount(run.warningsCount());
             result.add(item);
-        }
-        MetadataPipelineRunVO localFailure = localFailureRun(binding, exploration);
-        if (localFailure != null && !hasMatchingOmFailure(result, localFailure)) {
-            result.add(0, localFailure);
-            if (result.size() > safeLimit) {
-                result = new ArrayList<>(result.subList(0, safeLimit));
-            }
         }
         return result;
     }
@@ -440,6 +520,7 @@ public class MetadataPipelineOperationService {
         }
         MetadataPipelineRunVO item = new MetadataPipelineRunVO();
         item.setRunId(exploration ? "local-exploration-failure" : "local-scan-failure");
+        item.setPipelineType("LOCAL");
         item.setStatus(MetadataRunStatus.FAILED);
         item.setStartTime(lastRunTime);
         item.setEndTime(lastRunTime);
@@ -568,7 +649,10 @@ public class MetadataPipelineOperationService {
         }
         List<OpenMetadataPipelineRun> scanRuns = runs(binding.getOmMetadataPipelineFqn());
         List<OpenMetadataPipelineRun> profileRuns = runs(binding.getOmProfilerPipelineFqn());
-        if (isRunning(latestStatus(scanRuns)) || isRunning(latestStatus(profileRuns))) {
+        List<OpenMetadataPipelineRun> sampleRuns = runs(
+                MetadataStableName.autoClassificationPipelineFqn(binding.getDataSourceId()));
+        if (isRunning(latestStatus(scanRuns)) || isRunning(latestStatus(profileRuns))
+                || isRunning(latestStatus(sampleRuns))) {
             throw invalid("a scan or exploration is already running");
         }
     }
@@ -580,9 +664,380 @@ public class MetadataPipelineOperationService {
         }
         List<OpenMetadataPipelineRun> scanRuns = runs(binding.getOmMetadataPipelineFqn());
         List<OpenMetadataPipelineRun> profileRuns = runs(binding.getOmProfilerPipelineFqn());
-        if (isRunning(latestStatus(scanRuns)) || isRunning(latestStatus(profileRuns))) {
+        List<OpenMetadataPipelineRun> sampleRuns = runs(
+                MetadataStableName.autoClassificationPipelineFqn(binding.getDataSourceId()));
+        if (isRunning(latestStatus(scanRuns)) || isRunning(latestStatus(profileRuns))
+                || isRunning(latestStatus(sampleRuns))) {
             throw invalid("a scan or exploration is already running");
         }
+    }
+
+    private boolean triggerExplorationPipelines(
+            MetadataConnectorAdapter adapter,
+            Long dataSourceId,
+            String serviceId,
+            String serviceFqn,
+            String databaseFqn,
+            String schemaFqn,
+            ExplorationReservation reservation) {
+        requireCurrentExplorationReservation(reservation);
+        OpenMetadataEntity profilerPipeline = openMetadataClient.upsertIngestionPipeline(
+                profilerPipelineRequest(adapter,
+                        MetadataStableName.profilerPipelineName(dataSourceId),
+                        serviceId, serviceFqn, databaseFqn, schemaFqn));
+        OpenMetadataEntity samplePipeline = openMetadataClient.upsertIngestionPipeline(
+                adapter.autoClassificationPipelineRequest(
+                        MetadataStableName.autoClassificationPipelineName(dataSourceId),
+                        serviceId, serviceFqn, databaseFqn, schemaFqn));
+
+        // Prepare both reusable pipelines before triggering either one. OM has no
+        // transaction spanning the two triggers, so callers record partial failures.
+        openMetadataClient.deployIngestionPipeline(profilerPipeline.id());
+        openMetadataClient.enableIngestionPipeline(profilerPipeline.id());
+        openMetadataClient.deployIngestionPipeline(samplePipeline.id());
+        openMetadataClient.enableIngestionPipeline(samplePipeline.id());
+
+        ExplorationRunBaseline baseline = captureExplorationRunBaseline(reservation);
+        if (baseline == null) {
+            return false;
+        }
+        requireCurrentExplorationReservation(reservation);
+        MetadataIntegrationException profilerInitialFailure = triggerPipelineInitially(
+                "PROFILER",
+                profilerPipeline.id(),
+                reservation);
+        requireCurrentExplorationReservation(reservation);
+        MetadataIntegrationException sampleInitialFailure = triggerPipelineInitially(
+                "AUTO_CLASSIFICATION",
+                samplePipeline.id(),
+                reservation);
+        triggerPipelinesWithRetry(
+                profilerPipeline, baseline.profilerRunId(), profilerInitialFailure,
+                samplePipeline, baseline.sampleRunId(), sampleInitialFailure,
+                reservation);
+        return true;
+    }
+
+    private ExplorationRunBaseline captureExplorationRunBaseline(ExplorationReservation reservation) {
+        String profilerFqn = MetadataStableName.profilerPipelineFqn(reservation.dataSourceId());
+        String sampleFqn = MetadataStableName.autoClassificationPipelineFqn(reservation.dataSourceId());
+        String profilerBaseline = latestRunId(runs(profilerFqn));
+        String sampleBaseline = latestRunId(runs(sampleFqn));
+        Date baselineCapturedAt = new Date();
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            MetadataSourceBinding latest = metadataBindingDao.queryById(reservation.bindingId());
+            if (!ownsExplorationReservation(latest, reservation)
+                    || latest.getProfileStatus() == MetadataRunStatus.FAILED
+                    || latest.getProfileStatus() == MetadataRunStatus.SUCCESS) {
+                throw new IllegalStateException("exploration reservation is no longer active");
+            }
+            if (Boolean.TRUE.equals(latest.getProfileRunBaselineCaptured())) {
+                return null;
+            }
+            long expectedVersion = latest.getVersion();
+            latest.setProfileProfilerRunIdBaseline(profilerBaseline);
+            latest.setProfileSampleRunIdBaseline(sampleBaseline);
+            latest.setProfileRunBaselineCaptured(true);
+            latest.setProfileRunBaselineCapturedAt(baselineCapturedAt);
+            latest.setVersion(expectedVersion + 1L);
+            latest.initUpdate();
+            if (metadataBindingDao.updateIfVersion(latest, expectedVersion)) {
+                return new ExplorationRunBaseline(profilerBaseline, sampleBaseline);
+            }
+        }
+        throw new IllegalStateException("exploration run baseline changed concurrently");
+    }
+
+    private MetadataIntegrationException triggerPipelineInitially(
+            String pipelineType,
+            String pipelineId,
+            ExplorationReservation reservation) {
+        long startedAt = monotonicNowNanos();
+        try {
+            openMetadataClient.triggerIngestionPipeline(pipelineId);
+            log.info(
+                    "OpenMetadata pipeline trigger accepted: dataSourceId={}, pipelineType={}, attempt=1, elapsedMs={}",
+                    reservation.dataSourceId(), pipelineType,
+                    (monotonicNowNanos() - startedAt) / 1_000_000L);
+            return null;
+        } catch (MetadataIntegrationException error) {
+            boolean retryable = error.getErrorCode() == MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR
+                    && Integer.valueOf(400).equals(error.getHttpStatusCode());
+            if (!retryable) {
+                log.warn(
+                        "OpenMetadata pipeline trigger failed: dataSourceId={}, pipelineType={}, attempts=1, status={}, errorCode={}, elapsedMs={}",
+                        reservation.dataSourceId(), pipelineType, error.getHttpStatusCode(), error.getErrorCode(),
+                        (monotonicNowNanos() - startedAt) / 1_000_000L);
+                throw error;
+            }
+            log.warn(
+                    "OpenMetadata pipeline trigger returned HTTP 400; deferring bounded retry until both initial triggers finish: dataSourceId={}, pipelineType={}, elapsedMs={}",
+                    reservation.dataSourceId(), pipelineType,
+                    (monotonicNowNanos() - startedAt) / 1_000_000L);
+            return error;
+        }
+    }
+
+    private void triggerPipelinesWithRetry(
+            OpenMetadataEntity profilerPipeline,
+            String profilerBaselineRunId,
+            MetadataIntegrationException profilerInitialFailure,
+            OpenMetadataEntity samplePipeline,
+            String sampleBaselineRunId,
+            MetadataIntegrationException sampleInitialFailure,
+            ExplorationReservation reservation) {
+        List<PendingPipelineTrigger> pending = new ArrayList<>(2);
+        if (profilerInitialFailure != null) {
+            pending.add(new PendingPipelineTrigger(
+                    "PROFILER", profilerPipeline.id(), profilerPipeline.fullyQualifiedName(),
+                    profilerBaselineRunId, profilerInitialFailure));
+        }
+        if (sampleInitialFailure != null) {
+            pending.add(new PendingPipelineTrigger(
+                    "AUTO_CLASSIFICATION", samplePipeline.id(), samplePipeline.fullyQualifiedName(),
+                    sampleBaselineRunId, sampleInitialFailure));
+        }
+        if (pending.isEmpty()) {
+            return;
+        }
+
+        long startedAt = monotonicNowNanos();
+        PipelineTriggerBudget budget = pipelineTriggerBudget(reservation);
+        for (int attempt = 2; !pending.isEmpty() && attempt <= MAX_PIPELINE_TRIGGER_ATTEMPTS; attempt++) {
+            long delayMillis = pipelineTriggerRetryDelayMillis(attempt - 1);
+            PendingPipelineTrigger firstPending = pending.get(0);
+            ensureRetryWindowBudget(
+                    budget, firstPending, reservation, attempt, startedAt, delayMillis);
+            for (PendingPipelineTrigger retry : pending) {
+                log.warn(
+                        "OpenMetadata pipeline trigger retry scheduled: dataSourceId={}, pipelineType={}, attempt={}, delayMs={}, elapsedMs={}",
+                        reservation.dataSourceId(), retry.pipelineType, attempt, delayMillis,
+                        (monotonicNowNanos() - startedAt) / 1_000_000L);
+            }
+            waitBeforePipelineTriggerRetry(delayMillis);
+            ensureRetryWindowBudget(budget, firstPending, reservation, attempt, startedAt, 0L);
+
+            List<PendingPipelineTrigger> retryRound = new ArrayList<>(pending);
+            if (retryRound.size() > 1 && attempt % 2 == 0) {
+                // Give both pipelines a turn before either can consume the shared window.
+                Collections.reverse(retryRound);
+            }
+            for (PendingPipelineTrigger retry : retryRound) {
+                if (!pending.contains(retry)) {
+                    continue;
+                }
+                ensurePreparationRequestBudget(
+                        budget, retry, reservation, attempt, startedAt);
+                requireCurrentExplorationReservation(reservation);
+                if (hasPipelineRunAfterBaseline(retry.pipelineFqn, retry.baselineRunId)) {
+                    log.info(
+                            "OpenMetadata pipeline run appeared before retry: dataSourceId={}, pipelineType={}, attempt={}",
+                            reservation.dataSourceId(), retry.pipelineType, attempt);
+                    pending.remove(retry);
+                    continue;
+                }
+                ensurePreparationRequestBudget(
+                        budget, retry, reservation, attempt, startedAt);
+                try {
+                    openMetadataClient.triggerIngestionPipeline(retry.pipelineId);
+                    log.info(
+                            "OpenMetadata pipeline trigger accepted: dataSourceId={}, pipelineType={}, attempt={}, elapsedMs={}",
+                            reservation.dataSourceId(), retry.pipelineType, attempt,
+                            (monotonicNowNanos() - startedAt) / 1_000_000L);
+                    pending.remove(retry);
+                } catch (MetadataIntegrationException error) {
+                    retry.lastFailure = error;
+                    boolean retryable = error.getErrorCode() == MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR
+                            && Integer.valueOf(400).equals(error.getHttpStatusCode());
+                    if (!retryable || attempt == MAX_PIPELINE_TRIGGER_ATTEMPTS) {
+                        log.warn(
+                                "OpenMetadata pipeline trigger failed: dataSourceId={}, pipelineType={}, attempts={}, status={}, errorCode={}, elapsedMs={}",
+                                reservation.dataSourceId(), retry.pipelineType, attempt,
+                                error.getHttpStatusCode(), error.getErrorCode(),
+                                (monotonicNowNanos() - startedAt) / 1_000_000L);
+                        throw error;
+                    }
+                }
+            }
+        }
+        if (!pending.isEmpty()) {
+            PendingPipelineTrigger retry = pending.get(0);
+            logPipelineTriggerBudgetExhausted(
+                    retry.pipelineType, reservation, MAX_PIPELINE_TRIGGER_ATTEMPTS,
+                    startedAt, retry.lastFailure);
+            throw retry.lastFailure;
+        }
+    }
+
+    private PipelineTriggerBudget pipelineTriggerBudget(ExplorationReservation reservation) {
+        OpenMetadataRuntimeConfig runtime = configResolver.resolve();
+        long preparationTimeoutSeconds = Math.max(
+                0L, metadataStatusProperties.getExplorationPreparationTimeoutSeconds());
+        long preparationTimeoutMillis = preparationTimeoutSeconds > Long.MAX_VALUE / 1_000L
+                ? Long.MAX_VALUE
+                : preparationTimeoutSeconds * 1_000L;
+        long reservationAgeMillis = elapsedMillisSince(reservation.reservedAt(), System.currentTimeMillis());
+        long remainingPreparationMillis = Math.max(0L, preparationTimeoutMillis - reservationAgeMillis);
+        long requestTimeoutMillis = Math.max(0, runtime.getConnectTimeoutMs())
+                + (long) Math.max(0, runtime.getReadTimeoutMs());
+        long requestTimeoutNanos = millisToNanos(requestTimeoutMillis);
+        long tailRequestBudgetNanos = Math.min(Long.MAX_VALUE, requestTimeoutNanos * 2L);
+        long retryWindowSeconds = Math.max(
+                0L, metadataStatusProperties.getExplorationTriggerRetryTimeoutSeconds());
+        long configuredRetryWindowMillis = retryWindowSeconds > Long.MAX_VALUE / 1_000L
+                ? Long.MAX_VALUE
+                : retryWindowSeconds * 1_000L;
+        long retryWindowNanos = millisToNanos(Math.min(
+                MAX_PIPELINE_TRIGGER_RETRY_BUDGET_MILLIS, configuredRetryWindowMillis));
+        long remainingPreparationNanos = millisToNanos(remainingPreparationMillis);
+        long availableRetryStartNanos = Math.max(
+                0L, remainingPreparationNanos - tailRequestBudgetNanos
+                        - PIPELINE_TRIGGER_DEADLINE_MARGIN_MILLIS * 1_000_000L);
+        long nowNanos = monotonicNowNanos();
+        return new PipelineTriggerBudget(
+                nowNanos + Math.min(retryWindowNanos, availableRetryStartNanos),
+                nowNanos + remainingPreparationNanos,
+                requestTimeoutNanos);
+    }
+
+    private void ensureRetryWindowBudget(
+            PipelineTriggerBudget budget,
+            PendingPipelineTrigger retry,
+            ExplorationReservation reservation,
+            int attempt,
+            long startedAt,
+            long additionalDelayMillis) {
+        long remainingNanos = budget.retryStartDeadlineNanos() - monotonicNowNanos();
+        long requiredNanos = PIPELINE_TRIGGER_DEADLINE_MARGIN_MILLIS * 1_000_000L
+                + millisToNanos(Math.max(0L, additionalDelayMillis));
+        if (remainingNanos >= requiredNanos) {
+            return;
+        }
+        failForExhaustedPipelineTriggerBudget(retry, reservation, attempt, startedAt);
+    }
+
+    private void ensurePreparationRequestBudget(
+            PipelineTriggerBudget budget,
+            PendingPipelineTrigger retry,
+            ExplorationReservation reservation,
+            int attempt,
+            long startedAt) {
+        long remainingNanos = budget.preparationDeadlineNanos() - monotonicNowNanos();
+        long requiredNanos = budget.requestTimeoutNanos()
+                + PIPELINE_TRIGGER_DEADLINE_MARGIN_MILLIS * 1_000_000L;
+        if (remainingNanos >= requiredNanos) {
+            return;
+        }
+        failForExhaustedPipelineTriggerBudget(retry, reservation, attempt, startedAt);
+    }
+
+    private void failForExhaustedPipelineTriggerBudget(
+            PendingPipelineTrigger retry,
+            ExplorationReservation reservation,
+            int attempt,
+            long startedAt) {
+        logPipelineTriggerBudgetExhausted(
+                retry.pipelineType, reservation, Math.max(1, attempt - 1), startedAt, retry.lastFailure);
+        if (retry.lastFailure != null) {
+            throw retry.lastFailure;
+        }
+        throw new MetadataIntegrationException(
+                MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR,
+                "OpenMetadata pipeline trigger deadline was exhausted");
+    }
+
+    private static long millisToNanos(long millis) {
+        if (millis <= 0L) {
+            return 0L;
+        }
+        return millis > Long.MAX_VALUE / 1_000_000L
+                ? Long.MAX_VALUE
+                : millis * 1_000_000L;
+    }
+
+    private static long elapsedMillisSince(Date start, long nowMillis) {
+        if (start == null) {
+            return 0L;
+        }
+        long elapsed;
+        try {
+            elapsed = Math.subtractExact(nowMillis, start.getTime());
+        } catch (ArithmeticException overflow) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(0L, elapsed);
+    }
+
+    private void logPipelineTriggerBudgetExhausted(
+            String pipelineType,
+            ExplorationReservation reservation,
+            int attempt,
+            long startedAt,
+            MetadataIntegrationException lastTriggerFailure) {
+        log.warn(
+                "OpenMetadata pipeline trigger retry budget exhausted: dataSourceId={}, pipelineType={}, attempts={}, status={}, errorCode={}, elapsedMs={}",
+                reservation.dataSourceId(), pipelineType, attempt,
+                lastTriggerFailure == null ? null : lastTriggerFailure.getHttpStatusCode(),
+                lastTriggerFailure == null ? MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR : lastTriggerFailure.getErrorCode(),
+                (monotonicNowNanos() - startedAt) / 1_000_000L);
+    }
+
+    long monotonicNowNanos() {
+        return System.nanoTime();
+    }
+
+    private boolean hasPipelineRunAfterBaseline(String pipelineFqn, String baselineRunId) {
+        String latestRunId = latestRunId(runs(pipelineFqn));
+        return latestRunId != null && !latestRunId.equals(baselineRunId);
+    }
+
+    private static long pipelineTriggerRetryDelayMillis(int failedAttempt) {
+        long delay = INITIAL_PIPELINE_TRIGGER_RETRY_DELAY_MILLIS;
+        for (int i = 1; i < failedAttempt && delay < MAX_PIPELINE_TRIGGER_RETRY_DELAY_MILLIS; i++) {
+            delay = Math.min(delay * 2L, MAX_PIPELINE_TRIGGER_RETRY_DELAY_MILLIS);
+        }
+        return delay;
+    }
+
+    void waitBeforePipelineTriggerRetry(long delayMillis) {
+        try {
+            Thread.sleep(delayMillis);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR,
+                    "OpenMetadata pipeline trigger retry was interrupted",
+                    interrupted);
+        }
+    }
+
+    private static String latestRunId(List<OpenMetadataPipelineRun> runs) {
+        return runs.stream()
+                .max(Comparator.comparing(run -> run.startDate() == null
+                        ? run.timestamp() == null ? 0L : run.timestamp()
+                        : run.startDate()))
+                .map(OpenMetadataPipelineRun::runId)
+                .orElse(null);
+    }
+
+    private void requireCurrentExplorationReservation(ExplorationReservation reservation) {
+        if (!ownsExplorationReservation(
+                metadataBindingDao.queryById(reservation.bindingId()), reservation)) {
+            throw new IllegalStateException("exploration reservation has been superseded");
+        }
+    }
+
+    private static boolean ownsExplorationReservation(
+            MetadataSourceBinding binding, ExplorationReservation reservation) {
+        return binding != null
+                && binding.getVersion() != null
+                && isReservationRun(binding.getProfileLastRunTime(), reservation.reservedAt())
+                && binding.getProfileStatus() != MetadataRunStatus.SUCCESS
+                && binding.getProfileStatus() != MetadataRunStatus.FAILED
+                && reservation.reservationToken() != null
+                && !reservation.reservationToken().isBlank()
+                && reservation.reservationToken().equals(binding.getProfileRunReservationToken());
     }
 
     private List<OpenMetadataPipelineRun> runs(String fqn) {
@@ -609,7 +1064,7 @@ public class MetadataPipelineOperationService {
         for (int attempt = 0; attempt < 3; attempt++) {
             MetadataSourceBinding latest = metadataBindingDao.queryById(reservation.bindingId());
             if (latest == null || latest.getVersion() == null
-                    || !isReservationRun(latest.getProfileLastRunTime(), reservation.reservedAt())) {
+                    || !ownsExplorationReservation(latest, reservation)) {
                 return;
             }
             if (latest.getProfileStatus() == MetadataRunStatus.SUCCESS
@@ -618,6 +1073,8 @@ public class MetadataPipelineOperationService {
             }
             long expectedVersion = latest.getVersion();
             latest.setProfileStatus(MetadataRunStatus.RUNNING);
+            // Run-registration grace starts after both trigger control-plane calls complete.
+            latest.setProfileRunBaselineCapturedAt(new Date());
             latest.setProfileLastError(null);
             latest.setVersion(expectedVersion + 1L);
             latest.initUpdate();
@@ -660,7 +1117,7 @@ public class MetadataPipelineOperationService {
                 return;
             }
             Date lastRunTime = latest.getProfileLastRunTime();
-            if (!isReservationRun(lastRunTime, reservation.reservedAt())
+            if (!ownsExplorationReservation(latest, reservation)
                     || latest.getProfileStatus() == MetadataRunStatus.SUCCESS
                     || latest.getProfileStatus() == MetadataRunStatus.FAILED) {
                 return;
@@ -671,11 +1128,30 @@ public class MetadataPipelineOperationService {
             latest.setVersion(expectedVersion + 1L);
             latest.initUpdate();
             if (metadataBindingDao.updateIfVersion(latest, expectedVersion)) {
+                invalidateCachesAfterExplorationFailure(latest);
                 return;
             }
         }
         log.warn("Could not persist failed exploration state after concurrent updates: dataSourceId={}",
                 reservation.dataSourceId());
+    }
+
+    private void invalidateCachesAfterExplorationFailure(MetadataSourceBinding binding) {
+        try {
+            String serviceFqn = requireServiceFqn(binding, binding.getDataSourceId());
+            omReadCache.invalidateService(serviceFqn, false, true);
+        } catch (Exception e) {
+            log.warn("Could not invalidate OpenMetadata profile cache after exploration failure: dataSourceId={}, type={}",
+                    binding.getDataSourceId(), e.getClass().getSimpleName());
+        }
+        if (metadataInventoryCache != null) {
+            try {
+                metadataInventoryCache.invalidateAllSnapshots();
+            } catch (Exception e) {
+                log.warn("Could not invalidate metadata inventory after exploration failure: dataSourceId={}, type={}",
+                        binding.getDataSourceId(), e.getClass().getSimpleName());
+            }
+        }
     }
 
     /**
@@ -745,14 +1221,17 @@ public class MetadataPipelineOperationService {
      * Exploration is a table-scoped OpenMetadata capability. Rejecting it here keeps
      * non-relational sources (Kafka, S3, SFTP, HTTP, Elasticsearch) from reserving a
      * run that can only fail later inside the profiler pipeline request.
+     *
+     * <p>A data source type without any connector is left to the caller: such bindings
+     * never reach READY, so the binding gate already blocks them.</p>
      */
     private DataSource requireProfilerCapableDataSource(Long dataSourceId) {
         DataSource source = requireActiveDataSource(dataSourceId);
-        MetadataConnectorAdapter adapter = connectorRegistry.find(source.getDbType())
-                .orElseThrow(() -> invalid("metadata connector is not supported for this data source type"));
-        if (!adapter.supportsProfiler()) {
-            throw invalid("exploration is not supported for this data source type");
-        }
+        connectorRegistry.find(source.getDbType())
+                .filter(adapter -> !adapter.supportsProfiler())
+                .ifPresent(adapter -> {
+                    throw invalid("exploration is not supported for this data source type");
+                });
         return source;
     }
 
