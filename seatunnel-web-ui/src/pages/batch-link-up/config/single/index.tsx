@@ -1,8 +1,12 @@
 import { history, useLocation, useParams } from "@umijs/max";
-import { Empty, message, Spin } from "antd";
+import { Button, Empty, Spin } from "antd";
 import { useEffect, useState } from "react";
 import { seatunnelJobDefinitionApi } from "../../api";
 import Workflow from "../../workflow";
+import {
+  resolveConfigPageScene,
+  type ConfigPageScene,
+} from "@/pages/common/utils/configPageScene";
 import {
   BasicConfig,
   defaultEnvConfig,
@@ -11,7 +15,7 @@ import {
   ScheduleConfig,
 } from "../../workflow/components/ScheduleConfigContent/types";
 
-type PageScene = "create" | "edit";
+type PageScene = ConfigPageScene;
 
 type EditorSyncState = "UNPUBLISHED" | "SYNCED" | "DIRTY";
 
@@ -269,7 +273,8 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
   const [envConfig, setEnvConfig] = useState<EnvConfig>(defaultEnvConfig);
   const [basicConfig, setBasicConfig] =
     useState<BasicConfig>(defaultBasicConfig);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [loadError, setLoadError] = useState<string>();
 
   const buildInitialEnvConfigForCreate = (rawData?: any): EnvConfig => {
     return {
@@ -294,10 +299,13 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
 
     const initCreate = () => {
       setPageScene("create");
+      setLoading(false);
+      setLoadError(undefined);
 
       const cache = sessionStorage.getItem(cacheKey);
       if (!cache) {
         setParams(null);
+        setLoadError("创建草稿已失效，请返回任务详情重新进入配置。");
         return;
       }
 
@@ -311,21 +319,22 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
         setBasicConfig(buildInitialBasicConfigForCreate(data, modeOverride));
         setScheduleConfig(buildInitialScheduleConfigForCreate(data, modeOverride));
         setEnvConfig(buildInitialEnvConfigForCreate(data));
-      } catch (error) {
-        message.error("读取配置缓存失败，请返回重新选择数据源");
+      } catch {
         setParams(null);
+        setLoadError("创建配置读取失败，请返回任务详情重新进入配置。");
       }
     };
 
     const initEdit = async () => {
       try {
         setLoading(true);
+        setLoadError(undefined);
         setPageScene("edit");
 
         const res = await seatunnelJobDefinitionApi.selectEditDetail(id);
         if (res?.code !== 0 || !res?.data) {
           const rawMessage = res?.message || res?.msg;
-          message.error(
+          setLoadError(
             isOnlyOfflineJobEditableError(rawMessage)
               ? EDIT_ONLINE_BLOCKED_MESSAGE
               : rawMessage || EDIT_DETAIL_FALLBACK_MESSAGE,
@@ -348,7 +357,7 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
           (error as any)?.message ||
           (error as any)?.response?.msg ||
           (error as any)?.response?.message;
-        message.error(
+        setLoadError(
           isOnlyOfflineJobEditableError(rawMessage)
             ? EDIT_ONLINE_BLOCKED_MESSAGE
             : EDIT_DETAIL_FALLBACK_MESSAGE,
@@ -359,29 +368,21 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
       }
     };
 
-    if (scene === "edit") {
-      initEdit();
-      return;
-    }
-
-    if (scene === "create") {
+    if (resolveConfigPageScene(scene) === "create") {
       initCreate();
       return;
     }
 
-    const cache = sessionStorage.getItem(cacheKey);
-    if (cache) {
-      initCreate();
-    } else {
-      initEdit();
-    }
+    // Missing scene values are legacy edit links. Never let a stale create
+    // draft in sessionStorage replace the saved definition from the server.
+    initEdit();
   }, [id, location.search]);
 
   const goBack = () => {
     const searchParams = new URLSearchParams(location.search);
     const scene = searchParams.get("scene");
 
-    if (scene === "edit") {
+    if (resolveConfigPageScene(scene) === "edit") {
       history.push(`/sync/batch-link-up`);
       return;
     }
@@ -398,9 +399,16 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
   }
 
   if (!params) {
+    const isCreateScene = resolveConfigPageScene(
+      new URLSearchParams(location.search).get("scene"),
+    ) === "create";
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
-        <Empty description="未找到配置数据，请检查任务是否存在" />
+        <Empty description={loadError || "任务配置加载失败，请返回列表重试。"}>
+          <Button type="primary" onClick={goBack}>
+            {isCreateScene ? "返回任务详情" : "返回任务列表"}
+          </Button>
+        </Empty>
       </div>
     );
   }

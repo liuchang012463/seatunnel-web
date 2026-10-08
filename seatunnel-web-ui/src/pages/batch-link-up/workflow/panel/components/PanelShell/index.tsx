@@ -1,5 +1,5 @@
 import DatabaseIcons from "@/pages/data-source/icon/DatabaseIcons";
-import type { PropsWithChildren, ReactNode } from "react";
+import { useEffect, useRef, type PropsWithChildren, type ReactNode } from "react";
 import CloseIcon from "../../../icon/CloseIcon";
 import "./index.less";
 
@@ -31,11 +31,28 @@ export default function PanelShell({
   onClose,
   children,
 }: PanelShellProps) {
+  const drawerRef = useRef<HTMLElement>(null);
   const showMiniMeta = Boolean(heroTitle || heroDesc || heroTag || dbType || icon);
+
+  useEffect(() => {
+    const handleCanvasPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        !drawerRef.current?.contains(target) &&
+        target.closest(".react-flow__pane")
+      ) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("pointerdown", handleCanvasPointerDown);
+    return () => document.removeEventListener("pointerdown", handleCanvasPointerDown);
+  }, [onClose]);
 
   return (
     <div className="workflow-panel">
-      <aside className="workflow-panel__drawer">
+      <aside className="workflow-panel__drawer" ref={drawerRef}>
         <div className="workflow-panel__header">
           <div className="workflow-panel__header-main">
            
@@ -63,7 +80,6 @@ export default function PanelShell({
               </div>
             ) : null}
           </div>
-{/* 
           <button
             type="button"
             className="workflow-panel__close"
@@ -71,7 +87,7 @@ export default function PanelShell({
             aria-label="关闭面板"
           >
             <CloseIcon />
-          </button> */}
+          </button>
         </div>
 
         <div className="workflow-panel__body">{children}</div>

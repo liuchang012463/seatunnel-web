@@ -1,5 +1,5 @@
 import { DATA_SOURCE_REGISTRY } from "@/pages/data-source/dataSourceRegistry";
-import { DoubleRightOutlined, FileOutlined } from "@ant-design/icons";
+import { FileOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
 import DatabaseIcons from "../../../../data-source/icon/DatabaseIcons";
 
@@ -7,7 +7,7 @@ interface DataSourceSyncPlanProps {
   record: any;
 }
 
-/** 单元格只展示「源数据源类型 → 目标数据源类型」，数据源名与表清单收敛进悬浮提示。 */
+/** Keep the configured endpoint names visible in the list; put table details in the tooltip. */
 const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   const isFileSync = record?.mode === "FILE_SYNC";
   const taskType = String(record?.taskType || "").toUpperCase();
@@ -134,43 +134,44 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   const sinkSummary = `${record?.sinkDatasourceName || "-"} · ${getTableSummary(
     record?.sinkTable
   )}`;
+  const sourceTypeLabel = isManagedFileSource
+    ? isFileResourceSource
+      ? "湖文件"
+      : "本地文件"
+    : getTypeLabel(record?.sourceType);
+  const sinkTypeLabel = getTypeLabel(record?.sinkType);
+  const sourceName = isManagedFileSource
+    ? isFileResourceSource
+      ? "湖文件"
+      : "本地文件"
+    : record?.sourceDatasourceName || sourceTypeLabel;
+  const sinkName = record?.sinkDatasourceName || sinkTypeLabel;
 
   return (
     <Tooltip
       title={
         <div className="sync-plan-tooltip">
-          <div>
-            来源：{sourceSummary}
-          </div>
-          <div>
-            目标：{sinkSummary}
-          </div>
+          <div>来源：{sourceTypeLabel} · {sourceSummary}</div>
+          <div>目标：{sinkTypeLabel} · {sinkSummary}</div>
         </div>
       }
     >
       <div className="sync-plan-compact">
         <span className="sync-plan-compact__badge">{getPlanTitle()}</span>
         <span className="sync-plan-compact__flow">
-          {isManagedFileSource ? (
-            <FileOutlined className="sync-plan-compact__icon" />
-          ) : (
-            <DatabaseIcons
-              dbType={record?.sourceType}
-              width="16"
-              height="16"
-            />
-          )}
-          <span className="sync-plan-compact__type">
-            {isManagedFileSource
-              ? isFileResourceSource
-                ? "湖文件"
-                : "本地文件"
-              : getTypeLabel(record?.sourceType)}
+          <span className="sync-plan-compact__endpoint" role="group" aria-label={`来源 ${sourceTypeLabel} ${sourceName}`}>
+            <span className="sync-plan-compact__endpoint-label">源</span>
+            {isManagedFileSource ? (
+              <FileOutlined className="sync-plan-compact__icon" aria-hidden="true" />
+            ) : (
+              <DatabaseIcons dbType={record?.sourceType} width="16" height="16" />
+            )}
+            <span className="sync-plan-compact__name" title={sourceName}>{sourceName}</span>
           </span>
-          <DoubleRightOutlined className="sync-plan-compact__arrow" />
-          <DatabaseIcons dbType={record?.sinkType} width="16" height="16" />
-          <span className="sync-plan-compact__type">
-            {getTypeLabel(record?.sinkType)}
+          <span className="sync-plan-compact__endpoint" role="group" aria-label={`目标 ${sinkTypeLabel} ${sinkName}`}>
+            <span className="sync-plan-compact__endpoint-label">目标</span>
+            <DatabaseIcons dbType={record?.sinkType} width="16" height="16" />
+            <span className="sync-plan-compact__name" title={sinkName}>{sinkName}</span>
           </span>
         </span>
       </div>

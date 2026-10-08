@@ -2,6 +2,10 @@ import {
   hasSchemaFields,
   isLocalFileFormat,
 } from '../panel/components/SourcePanel/localFile';
+import {
+  getHttpSchemaFieldNamesWithoutType,
+  isHttpSourceNode,
+} from '@/pages/common/workflow/httpSchemaValidation';
 
 export type CheckLevel = "error" | "warning";
 
@@ -99,31 +103,6 @@ const buildError = (node: any, field: string, message: string): CheckItem => ({
   field,
   message,
 });
-
-const isHttpSourceNode = (node: any) => {
-  const config = getConfig(node);
-  return [
-    node?.data?.dbType,
-    node?.data?.pluginName,
-    node?.data?.connectorType,
-    config.pluginName,
-    config.connectorType,
-  ].some((marker) => String(marker || "").toUpperCase() === "HTTP");
-};
-
-/** HTTP 来源 schema.fields 中类型为空的字段名。 */
-const getSchemaFieldNamesWithoutType = (schema: any): string[] => {
-  const fields = schema?.fields;
-  if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
-    return [];
-  }
-  return Object.entries(fields)
-    .filter(
-      ([name, type]) =>
-        String(name || "").trim() && !String(type ?? "").trim()
-    )
-    .map(([name]) => String(name));
-};
 
 export const groupCheckListByNode = (
   list: CheckItem[]
@@ -232,7 +211,7 @@ const sourceRules: NodeCheckRule[] = [
       return null;
     }
     const config = getConfig(node);
-    const fieldNames = getSchemaFieldNamesWithoutType(config.schema);
+    const fieldNames = getHttpSchemaFieldNamesWithoutType(config.schema);
     if (fieldNames.length > 0) {
       return buildError(
         node,

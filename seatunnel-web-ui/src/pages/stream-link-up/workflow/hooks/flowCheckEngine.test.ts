@@ -69,4 +69,16 @@ describe('stream flow check engine source targets', () => {
       ])
     ).toEqual([]);
   });
+
+  it('requires types for every selected HTTP schema field', () => {
+    expect(generateCheckList([sourceNode('HTTP', {
+      schema: { fields: { id: 'int', name: '' } },
+    })])).toEqual([
+      expect.objectContaining({
+        level: 'error',
+        field: 'schema',
+        message: 'HTTP 来源字段 [name] 未设置类型，请在来源节点 Schema 中逐个选择类型',
+      }),
+    ]);
+  });
 });

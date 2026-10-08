@@ -8,7 +8,7 @@ interface Props {
 
 const PageHeader: React.FC<Props> = ({
   onBack,
-  title = "物理路由配置",
+  title = "批量数据引接 · 基础配置",
 }) => {
   return (
     <div className="border-b border-[#F2F4F7] bg-white">

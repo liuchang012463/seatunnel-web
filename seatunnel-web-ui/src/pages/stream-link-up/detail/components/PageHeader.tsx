@@ -16,7 +16,7 @@ const PageHeader: React.FC<Props> = ({ onBack }) => {
 
           <div className="min-w-0">
             <div className="text-[22px] font-semibold leading-8 text-[#101828]">
-              创建实时数据引接 · 物理路由配置
+              创建实时数据引接 · 基础配置
             </div>
           </div>
         </div>
