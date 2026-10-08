@@ -590,6 +590,9 @@ public class DataExplorationService {
         result.setServiceFullyQualifiedName(table.getServiceFullyQualifiedName());
         result.setDatabaseFullyQualifiedName(table.getDatabaseFullyQualifiedName());
         result.setSchemaFullyQualifiedName(table.getSchemaFullyQualifiedName());
+        OpenMetadataTableProfile profile = latestProfile(table);
+        result.setProfileAvailable(profile != null && profile.getTimestamp() != null);
+        result.setProfileTime(profile == null ? null : profile.getTimestamp());
         result.setTags(new ArrayList<>(safe(table.getTags())));
         result.setDomains(new ArrayList<>(safe(table.getDomains())));
         List<DataExplorationColumnVO> columns = new ArrayList<>();

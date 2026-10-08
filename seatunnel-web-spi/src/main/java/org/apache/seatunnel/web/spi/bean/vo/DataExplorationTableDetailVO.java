@@ -18,6 +18,8 @@ public class DataExplorationTableDetailVO {
     private String serviceFullyQualifiedName;
     private String databaseFullyQualifiedName;
     private String schemaFullyQualifiedName;
+    private boolean profileAvailable;
+    private Long profileTime;
     private List<DataExplorationColumnVO> columns = new ArrayList<>();
     private List<DataExplorationConstraintVO> tableConstraints = new ArrayList<>();
     private List<String> tags = new ArrayList<>();

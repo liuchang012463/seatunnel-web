@@ -96,6 +96,8 @@ class DataExplorationServiceTest {
         assertEquals(1, item.getColumnCount());
         assertEquals("table-id", detail.getId());
         assertEquals("PRIMARY_KEY", detail.getColumns().get(0).getConstraint());
+        assertFalse(detail.isProfileAvailable());
+        assertNull(detail.getProfileTime());
     }
 
     @Test
@@ -122,6 +124,21 @@ class DataExplorationServiceTest {
         assertTrue(row.isProfileAvailable());
         assertEquals(1700000000000L, row.getProfileTime());
         verify(openMetadataClient).getLatestTableProfile(table.getFullyQualifiedName());
+    }
+
+    @Test
+    void mapsLatestProfileAvailabilityIntoTableDetail() {
+        stubReadySource();
+        OpenMetadataTable table = table("table-id", "orders");
+        when(openMetadataClient.getTable("table-id")).thenReturn(table);
+        OpenMetadataTableProfile profile = new OpenMetadataTableProfile();
+        profile.setTimestamp(1700000000000L);
+        when(openMetadataClient.getLatestTableProfile(table.getFullyQualifiedName())).thenReturn(profile);
+
+        DataExplorationTableDetailVO detail = service().getTable(42L, "table-id");
+
+        assertTrue(detail.isProfileAvailable());
+        assertEquals(1700000000000L, detail.getProfileTime());
     }
 
     @Test
