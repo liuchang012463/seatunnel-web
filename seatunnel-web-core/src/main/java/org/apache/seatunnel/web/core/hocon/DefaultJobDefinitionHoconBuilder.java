@@ -20,7 +20,8 @@ import java.util.Locale;
 public class DefaultJobDefinitionHoconBuilder implements JobDefinitionHoconBuilder {
 
     private static final String[] SENSITIVE_KEYWORDS = {
-            "password", "secret", "accesskey", "secretkey", "token", "apikey", "jaas", "authorization"
+            "password", "passwd", "pwd", "secret", "accesskey", "secretkey", "token", "apikey",
+            "jaas", "authorization", "credential", "privatekey", "signature", "bearer", "sasl"
     };
 
     private final JobDefinitionModeHandlerRegistry handlerRegistry;

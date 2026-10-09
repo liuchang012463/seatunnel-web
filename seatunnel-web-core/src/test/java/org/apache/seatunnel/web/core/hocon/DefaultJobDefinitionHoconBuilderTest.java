@@ -28,7 +28,8 @@ class DefaultJobDefinitionHoconBuilderTest {
 
     @Test
     void redactsCredentialBearingFailuresFromApiAndLogs() {
-        String credential = "pwd=supersecret";
+        // The value carries no sensitive keyword of its own, so only the key filter can mask it.
+        String credential = "pwd=hunter2";
         CapturedFailure failure = captureFailure(credential);
 
         assertEquals(Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getCode(), failure.exception().getCode());
