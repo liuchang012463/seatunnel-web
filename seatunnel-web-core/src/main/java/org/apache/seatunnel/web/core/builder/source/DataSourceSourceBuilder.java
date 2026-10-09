@@ -250,6 +250,8 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         if (FILE_RESOURCE.equalsIgnoreCase(sourceMode)
                 && "duckdb".equalsIgnoreCase(getFirstTrimmedString(
                 resolveNodeConfig(data), "fileFormatType", "file_format_type"))) {
+            // The engine registers no DuckDB plugin; the generated url/driver/query config is
+            // served by the JDBC connector, whose factory identifier is "Jdbc".
             return "Jdbc";
         }
         if (WEB_UPLOAD.equalsIgnoreCase(sourceMode)

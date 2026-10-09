@@ -190,6 +190,20 @@ class DataSourceSourceBuilderFileResourceTest {
     }
 
     @Test
+    void usesTheJdbcPluginForDuckDbFileResources() {
+        DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
+
+        // The engine registers no DuckDB plugin, so the generated JDBC-shaped config has to be
+        // submitted under the JDBC connector's factory identifier.
+        assertEquals("Jdbc", sourceBuilder.connectorName(ConfigFactory.parseMap(Map.of(
+                "sourceMode", "FILE_RESOURCE",
+                "fileFormatType", "duckdb"))));
+        assertEquals("S3File", sourceBuilder.connectorName(ConfigFactory.parseMap(Map.of(
+                "sourceMode", "FILE_RESOURCE",
+                "fileFormatType", "csv"))));
+    }
+
+    @Test
     void rejectsFileResourceWithoutResourceIdBeforeResolving() {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
 
