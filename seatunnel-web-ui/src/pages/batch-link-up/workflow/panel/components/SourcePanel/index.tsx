@@ -15,6 +15,7 @@ import HttpNodeConfig from '@/pages/common/workflow/HttpNodeConfig';
 import ElasticsearchNodeConfig from '@/pages/common/workflow/ElasticsearchNodeConfig';
 import LocalFileSourcePanel from './LocalFileSourcePanel';
 import FileSourceConfigPanel from '@/pages/file-ingest/FileSourceConfigPanel';
+import DuckDbFileSourcePanel from './DuckDbFileSourcePanel';
 import {
   supportsDatabaseScope,
   supportsSchemaScope,
@@ -114,12 +115,27 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
           delete configPatch[key];
         }
       });
+      const format = configPatch.fileFormatType ?? selectedNode?.data?.config?.fileFormatType;
       updateNode(
         configPatch,
-        undefined,
+        {
+          description: String(format || '').toLowerCase() === 'duckdb'
+            ? '读取 DuckDB 表'
+            : '读取结构化文件',
+        },
         Object.keys(metaPatch).length > 0 ? metaPatch : undefined,
       );
     };
+
+    if (String(selectedNode?.data?.config?.fileFormatType || '').toLowerCase() === 'duckdb') {
+      return (
+        <DuckDbFileSourcePanel
+          sourceConfig={selectedNode?.data?.config || {}}
+          onChange={updateFileResourceNode}
+          onClose={onClose}
+        />
+      );
+    }
 
     return (
       <PanelShell

@@ -68,6 +68,8 @@ const normalizeStructuredFileDefaults = (config: Record<string, any>) => ({
 
 const normalizeResourceSourceConfig = (rawConfig: any, taskType: FileTaskType) => {
   const config = rawConfig || {};
+  const duckDbSource = taskType === 'FILE_INGEST'
+    && String(config.fileFormatType || '').toLowerCase() === 'duckdb';
   const legacyUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
   const resourceMode = taskType === 'FILE_INGEST' || legacyUpload || String(config.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
 
@@ -83,8 +85,8 @@ const normalizeResourceSourceConfig = (rawConfig: any, taskType: FileTaskType) =
     ...config,
     sourceMode: 'FILE_RESOURCE',
     dbType: 'MINIO',
-    pluginName: 'S3File',
-    connectorType: 'S3File',
+    pluginName: duckDbSource ? 'DuckDB' : 'S3File',
+    connectorType: duckDbSource ? 'DuckDB' : 'S3File',
     readMode: taskType === 'FILE_TRANSFER' ? 'resource' : 'file',
     syncType: 'FULL',
     fileResourceId:
@@ -177,7 +179,11 @@ export const normalizeWorkflowGraph = (
             ...(isSource
               ? {
                   title: config.sourceMode === 'FILE_RESOURCE' ? '文件资源' : config.dbType,
-                  description: taskType === 'FILE_TRANSFER' ? '读取二进制文件对象' : '读取结构化文件',
+                  description: taskType === 'FILE_TRANSFER'
+                    ? '读取二进制文件对象'
+                    : String(config.fileFormatType || '').toLowerCase() === 'duckdb'
+                      ? '读取 DuckDB 表'
+                      : '读取结构化文件',
                   sourceMode: config.sourceMode,
                   dbType: config.dbType,
                   pluginName: config.pluginName,
@@ -292,8 +298,12 @@ export const patchSourceConfig = (params: any, patch: Record<string, any>) => {
         ...patch,
         sourceMode: 'FILE_RESOURCE',
         dbType: 'MINIO',
-        pluginName: 'S3File',
-        connectorType: 'S3File',
+        pluginName: String(patch.fileFormatType || node?.data?.config?.fileFormatType || '').toLowerCase() === 'duckdb'
+          ? 'DuckDB'
+          : 'S3File',
+        connectorType: String(patch.fileFormatType || node?.data?.config?.fileFormatType || '').toLowerCase() === 'duckdb'
+          ? 'DuckDB'
+          : 'S3File',
       };
       return {
         ...node,

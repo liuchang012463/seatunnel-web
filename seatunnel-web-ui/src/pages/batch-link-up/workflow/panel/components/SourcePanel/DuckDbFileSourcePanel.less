@@ -1,0 +1,62 @@
+.duckdb-source__resource-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.duckdb-source__resource-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--st-color-text-primary);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.duckdb-source__resource-trigger:hover {
+  color: var(--st-color-accent);
+}
+
+.duckdb-source__resource-name {
+  overflow: hidden;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duckdb-source__resource-path {
+  overflow: hidden;
+  margin: 5px 0 0 48px;
+  color: var(--st-color-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duckdb-source__read-head {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.duckdb-source__read-actions {
+  display: flex;
+  align-items: center;
+}
+
+.duckdb-source__table-meta {
+  margin-top: 2px;
+  color: var(--st-color-text-muted);
+  font-size: 12px;
+}
+
+.duckdb-source__error {
+  margin-top: 12px;
+  border-radius: 10px;
+}

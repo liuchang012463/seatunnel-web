@@ -4,7 +4,7 @@ import {
   FileSearchOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import { App, Button, Collapse, Input, InputNumber, Modal, Select, Switch, Table } from 'antd';
+import { Alert, App, Button, Collapse, Input, InputNumber, Modal, Select, Switch, Table } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FileResourceSourceCard from './FileResourceSourceCard';
 import { buildFileResourcePreviewOptions, fileResourceApi } from './api';
@@ -13,7 +13,6 @@ import {
   buildOutputSchema,
   getSchemaFields,
   hasSchemaFields,
-  isLocalFileFormat,
   localFileExtensionMatches,
 } from '@/pages/batch-link-up/workflow/panel/components/SourcePanel/localFile';
 
@@ -22,9 +21,10 @@ const FORMAT_OPTIONS: Array<{ value: FileFormat; label: string }> = [
   { value: 'excel', label: 'Excel' },
   { value: 'json', label: 'JSON（建议 NDJSON）' },
   { value: 'text', label: 'TEXT / TXT' },
+  { value: 'duckdb', label: 'DuckDB（.db / .duckdb）' },
 ];
 
-const PICKER_ALLOWED_FORMATS: FileFormat[] = ['csv', 'excel', 'json', 'text'];
+const PICKER_ALLOWED_FORMATS: FileFormat[] = ['csv', 'excel', 'json', 'text', 'duckdb'];
 
 const TYPE_OPTIONS = [
   'string',
@@ -88,7 +88,9 @@ const SchemaFieldNameInput: React.FC<SchemaFieldNameInputProps> = ({
 
 const getFormat = (value: unknown): FileFormat => {
   const normalized = String(value || '').toLowerCase();
-  return isLocalFileFormat(normalized) ? normalized : 'csv';
+  return FORMAT_OPTIONS.some((option) => option.value === normalized)
+    ? normalized as FileFormat
+    : 'csv';
 };
 
 const detectFormatFromName = (name?: string): FileFormat | undefined => {
@@ -97,8 +99,21 @@ const detectFormatFromName = (name?: string): FileFormat | undefined => {
   if (extension === 'xls' || extension === 'xlsx') return 'excel';
   if (extension === 'json') return 'json';
   if (extension === 'txt' || extension === 'text') return 'text';
+  if (extension === 'db' || extension === 'duckdb') return 'duckdb';
   return undefined;
 };
+
+const resourceMatchesFormat = (name: string, format: FileFormat) => {
+  const extension = String(name || '').toLowerCase().split('.').pop() || '';
+  return format === 'duckdb'
+    ? extension === 'db' || extension === 'duckdb'
+    : localFileExtensionMatches(name, format);
+};
+
+const sourcePluginForFormat = (format: FileFormat) =>
+  format === 'duckdb'
+    ? { dbType: 'MINIO', connectorType: 'DuckDB', pluginName: 'DuckDB' }
+    : { dbType: 'MINIO', connectorType: 'S3File', pluginName: 'S3File' };
 
 /** Decode the delimiter as the engine would ('\\001' -> \x01, '\\t' -> tab). */
 const decodeEscapeSequence = (value: unknown): string => {
@@ -212,16 +227,14 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
   };
 
   const changeFormat = (nextFormat: FileFormat) => {
-    if (resource && !localFileExtensionMatches(resource.name || resource.path || '', nextFormat)) {
+    if (resource && !resourceMatchesFormat(resource.name || resource.path || '', nextFormat)) {
       message.warning('切换格式前请先选择后缀匹配的文件资源');
       return;
     }
     onChange({
       fileFormatType: nextFormat,
       sourceMode: 'FILE_RESOURCE',
-      dbType: 'MINIO',
-      connectorType: 'S3File',
-      pluginName: 'S3File',
+      ...sourcePluginForFormat(nextFormat),
     });
   };
 
@@ -258,6 +271,10 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       return;
     }
     const nextFormat = getFormat(config.fileFormatType);
+    if (nextFormat === 'duckdb') {
+      message.info('DuckDB 表结构由 SeaTunnel Engine 查询；请填写表名，需要时手动配置字段映射');
+      return;
+    }
     const seq = (recognizeSeqRef.current += 1);
     setRecognizing(true);
     try {
@@ -301,16 +318,13 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       ? detectFormatFromName(nextResource?.name || nextResource?.path)
       : undefined;
 
-    if (detectedFormat && detectedFormat !== format) {
-      // 新选择的文件带出了不同的格式：跟随文件，无需用户先选格式再选文件；
-      // 分隔符随格式重置为对应默认值，避免沿用上一格式的分隔符。
+    if (detectedFormat) {
+      // 文件后缀决定来源类型；更换文件时同步更新对应的 SeaTunnel connector。
       patch = {
         ...patch,
         fileFormatType: detectedFormat,
         sourceMode: 'FILE_RESOURCE',
-        dbType: 'MINIO',
-        connectorType: 'S3File',
-        pluginName: 'S3File',
+        ...sourcePluginForFormat(detectedFormat),
         ...(detectedFormat === 'csv' ? { fieldDelimiter: ',' } : {}),
         ...(detectedFormat === 'text' ? { fieldDelimiter: '\\001' } : {}),
       };
@@ -319,7 +333,12 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
     onChange(patch);
 
     if (nextResourceId && nextResourceId !== prevResourceId) {
-      void recognizeFields({ ...sourceConfig, ...patch });
+      if (detectedFormat === 'duckdb') {
+        recognizeSeqRef.current += 1;
+        setRecognizing(false);
+      } else {
+        void recognizeFields({ ...sourceConfig, ...patch });
+      }
     }
   };
 
@@ -461,24 +480,34 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         allowedFormats={PICKER_ALLOWED_FORMATS}
         selectionMode="file"
         title="文件资源来源"
-        description="选择或上传文件后，格式与字段将自动识别。"
+        description={format === 'duckdb'
+          ? '选择或上传 MinIO 文件区中的 DuckDB 数据库文件。'
+          : '选择或上传文件后，格式与字段将自动识别。'}
       />
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-slate-900">文件格式与解析</div>
-            <div className="mt-1 text-xs text-slate-500">选择格式即可，其余参数使用默认值。</div>
+            <div className="text-sm font-semibold text-slate-900">
+              {format === 'duckdb' ? 'DuckDB 数据库与表' : '文件格式与解析'}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">
+              {format === 'duckdb'
+                ? 'DuckDB 文件通过 SeaTunnel Engine 的 JDBC source 只读查询。'
+                : '选择格式即可，其余参数使用默认值。'}
+            </div>
           </div>
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            loading={previewLoading}
-            disabled={!resource?.id}
-            onClick={() => void handlePreview()}
-          >
-            数据预览
-          </Button>
+          {format !== 'duckdb' ? (
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              loading={previewLoading}
+              disabled={!resource?.id}
+              onClick={() => void handlePreview()}
+            >
+              数据预览
+            </Button>
+          ) : null}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3">
@@ -486,6 +515,25 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
             <span className="mb-1 block">格式</span>
             <Select className="w-full" value={format} options={FORMAT_OPTIONS} onChange={changeFormat} />
           </label>
+
+          {format === 'duckdb' ? (
+            <>
+              <label className="text-xs text-slate-600">
+                <span className="mb-1 block">DuckDB 表名</span>
+                <Input
+                  value={sourceConfig?.duckdbTable ?? ''}
+                  onChange={(event) => onChange({ duckdbTable: event.target.value })}
+                  placeholder="orders 或 main.orders"
+                />
+              </label>
+              <Alert
+                type="info"
+                showIcon
+                message="SeaTunnel Engine 运行要求"
+                description="Engine 需要 DuckDB JDBC 驱动和 httpfs 扩展；Web 与所有 Engine 节点还需挂载同一路径的 DuckDB 初始化 SQL 共享目录。"
+              />
+            </>
+          ) : null}
 
           {format === 'csv' || format === 'text' ? (
             <label className="text-xs text-slate-600">
@@ -516,7 +564,9 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
           ) : null}
         </div>
 
-        <Collapse className="mt-3" items={advancedItems} defaultActiveKey={[]} />
+        {format !== 'duckdb' ? (
+          <Collapse className="mt-3" items={advancedItems} defaultActiveKey={[]} />
+        ) : null}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -531,19 +581,23 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
               </span>
             </div>
             <div className="mt-1 text-xs text-slate-500">
-              自动读取文件字段名，类型默认 string，请逐个下拉确认。
+              {format === 'duckdb'
+                ? 'SeaTunnel Engine 会读取查询结果的字段类型；如需固定目标端字段映射，可在此手动配置。'
+                : '自动读取文件字段名，类型默认 string，请逐个下拉确认。'}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Button
-              size="small"
-              icon={<FileSearchOutlined />}
-              loading={recognizing}
-              disabled={!resource?.id}
-              onClick={() => void recognizeFields(sourceConfig)}
-            >
-              从文件识别
-            </Button>
+            {format !== 'duckdb' ? (
+              <Button
+                size="small"
+                icon={<FileSearchOutlined />}
+                loading={recognizing}
+                disabled={!resource?.id}
+                onClick={() => void recognizeFields(sourceConfig)}
+              >
+                从文件识别
+              </Button>
+            ) : null}
             <Button size="small" icon={<PlusOutlined />} onClick={addField}>
               添加字段
             </Button>
@@ -575,7 +629,9 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
           ))}
           {!Object.keys(fields).length ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
-              选择文件后将自动识别字段；也可点击「从文件识别」或手动添加。
+              {format === 'duckdb'
+                ? 'DuckDB 表结构由 SeaTunnel Engine 查询；如需显式字段映射，可手动添加。'
+                : '选择文件后将自动识别字段；也可点击「从文件识别」或手动添加。'}
             </div>
           ) : null}
         </div>

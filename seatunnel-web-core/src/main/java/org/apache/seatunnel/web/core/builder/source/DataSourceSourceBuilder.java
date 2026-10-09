@@ -26,6 +26,8 @@ import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +61,9 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
     @Resource
     private FileResourceResolver fileResourceResolver;
+
+    @Resource
+    private DuckDbSourceInitSqlFileService duckDbSourceInitSqlFileService;
 
     @Resource
     private DorisTaskScopeValidator dorisTaskScopeValidator;
@@ -234,6 +239,11 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         if (StringUtils.isBlank(sourceMode)) {
             sourceMode = getTrimmedString(data, KEY_SOURCE_MODE);
         }
+        if (FILE_RESOURCE.equalsIgnoreCase(sourceMode)
+                && "duckdb".equalsIgnoreCase(getFirstTrimmedString(
+                resolveNodeConfig(data), "fileFormatType", "file_format_type"))) {
+            return "DuckDB";
+        }
         if (WEB_UPLOAD.equalsIgnoreCase(sourceMode)
                 || FILE_RESOURCE.equalsIgnoreCase(sourceMode)) {
             return "S3File";
@@ -295,6 +305,10 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
                     "File resource does not exist or is not available, fileResourceId=" + resourceId);
         }
 
+        if ("duckdb".equalsIgnoreCase(configuredFormat)) {
+            return buildDuckDbFileSource(resourceId, reference, nodeConfig);
+        }
+
         Map<String, Object> connection = new HashMap<>();
         connection.put("dbType", hoconDbType(reference));
         connection.put("endpoint", reference.getEndpoint());
@@ -329,6 +343,129 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
                 effectiveNodeConfig,
                 dagContext,
                 reference.getProviderType());
+    }
+
+    private Config buildDuckDbFileSource(Long resourceId,
+                                         FileResourceReference reference,
+                                         Config nodeConfig) {
+        String objectKey = resolveFileResourcePath(reference);
+        String normalizedKey = objectKey.startsWith("/") ? objectKey.substring(1) : objectKey;
+        String normalizedKeyLower = normalizedKey.toLowerCase(Locale.ROOT);
+        if (!normalizedKeyLower.endsWith(".db") && !normalizedKeyLower.endsWith(".duckdb")) {
+            throw new IllegalArgumentException("DuckDB source requires a .db or .duckdb file resource");
+        }
+        if (!"STATIC".equalsIgnoreCase(reference.getCredentialMode())
+                || StringUtils.isBlank(reference.getAccessKey())
+                || StringUtils.isBlank(reference.getSecretKey())) {
+            throw new IllegalArgumentException("DuckDB source requires static MinIO access credentials");
+        }
+
+        String tableName = getFirstTrimmedString(nodeConfig, "duckdbTable", "duckdb_table", "tableName");
+        String schemaName = getFirstTrimmedString(nodeConfig, "duckdbSchema", "duckdb_schema");
+        String readMode = getFirstTrimmedString(nodeConfig, "readMode", "read_mode");
+        String query;
+        if ("sql".equalsIgnoreCase(readMode)) {
+            query = getFirstTrimmedString(nodeConfig, "sql", "query");
+            if (StringUtils.isBlank(query)) {
+                throw new IllegalArgumentException("DuckDB custom SQL cannot be empty");
+            }
+        } else {
+            query = "SELECT * FROM duckdb_source." + renderDuckDbTableName(schemaName, tableName);
+        }
+        DuckDbEndpoint endpoint = parseDuckDbEndpoint(reference.getEndpoint());
+        String remoteDatabase = buildDuckDbObjectUri(reference.getBucket(), normalizedKey);
+        String defaultSchema = StringUtils.defaultIfBlank(schemaName, "main");
+        String initSql = String.join("\n",
+                "INSTALL httpfs;",
+                "LOAD httpfs;",
+                "SET s3_region = " + sqlLiteral(reference.getRegion()) + ";",
+                "SET s3_endpoint = " + sqlLiteral(endpoint.hostAndPort()) + ";",
+                "SET s3_use_ssl = " + endpoint.ssl() + ";",
+                "SET s3_url_style = " + sqlLiteral(reference.isPathStyleAccess() ? "path" : "vhost") + ";",
+                "SET s3_access_key_id = " + sqlLiteral(reference.getAccessKey()) + ";",
+                "SET s3_secret_access_key = " + sqlLiteral(reference.getSecretKey()) + ";",
+                "ATTACH " + sqlLiteral(remoteDatabase)
+                        + " AS duckdb_source (TYPE DUCKDB, READ_ONLY);",
+                "USE " + quoteDuckDbIdentifier("duckdb_source")
+                        + "." + quoteDuckDbIdentifier(defaultSchema) + ";");
+        String initSqlFile = duckDbSourceInitSqlFileService.write(resourceId, initSql);
+
+        Map<String, Object> source = new HashMap<>();
+        source.put("url", "jdbc:duckdb:;session_init_sql_file=" + initSqlFile);
+        source.put("driver", "org.duckdb.DuckDBDriver");
+        source.put("query", query);
+        source.put("connection_check_timeout_sec", 30);
+        if (nodeConfig.hasPath("plugin_output")) {
+            source.put("plugin_output", nodeConfig.getString("plugin_output"));
+        }
+        return ConfigFactory.parseMap(source).resolve();
+    }
+
+    private String renderDuckDbTableName(String schemaName, String tableName) {
+        if (StringUtils.isBlank(tableName)) {
+            throw new IllegalArgumentException("DuckDB source requires a table name");
+        }
+        String schema = StringUtils.trimToEmpty(schemaName);
+        String table = tableName.trim();
+        if (schema.isEmpty()) {
+            String[] parts = table.split("\\.", -1);
+            if (parts.length == 1) {
+                schema = "main";
+                table = parts[0];
+            } else if (parts.length == 2) {
+                schema = parts[0].trim();
+                table = parts[1].trim();
+            } else {
+                throw new IllegalArgumentException("DuckDB table name must be table or schema.table");
+            }
+        }
+        return quoteDuckDbIdentifier(schema) + "." + quoteDuckDbIdentifier(table);
+    }
+
+    private String quoteDuckDbIdentifier(String value) {
+        String part = value.trim();
+        if (part.isEmpty() || part.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException("DuckDB table name contains an invalid identifier");
+        }
+        return "\"" + part.replace("\"", "\"\"") + "\"";
+    }
+
+    private DuckDbEndpoint parseDuckDbEndpoint(String endpoint) {
+        String value = endpoint.trim();
+        URI uri;
+        try {
+            uri = new URI(value.contains("://") ? value : "http://" + value);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("MinIO endpoint is invalid for DuckDB S3 access", e);
+        }
+        String scheme = StringUtils.defaultString(uri.getScheme()).toLowerCase(Locale.ROOT);
+        String authority = uri.getRawAuthority();
+        String path = uri.getRawPath();
+        if ((!"http".equals(scheme) && !"https".equals(scheme))
+                || StringUtils.isBlank(authority)
+                || uri.getRawUserInfo() != null
+                || (StringUtils.isNotBlank(path) && !"/".equals(path))
+                || uri.getRawQuery() != null
+                || uri.getRawFragment() != null) {
+            throw new IllegalArgumentException(
+                    "MinIO endpoint for DuckDB must be an http(s) host and port without a path");
+        }
+        return new DuckDbEndpoint(authority, "https".equals(scheme));
+    }
+
+    private String buildDuckDbObjectUri(String bucket, String objectKey) {
+        try {
+            return new URI("s3", bucket, "/" + objectKey, null, null).toASCIIString();
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("DuckDB file resource path is invalid", e);
+        }
+    }
+
+    private String sqlLiteral(String value) {
+        return "'" + value.replace("'", "''") + "'";
+    }
+
+    private record DuckDbEndpoint(String hostAndPort, boolean ssl) {
     }
 
     private boolean isBinaryFileResource(Config nodeConfig, String fileFormatType) {

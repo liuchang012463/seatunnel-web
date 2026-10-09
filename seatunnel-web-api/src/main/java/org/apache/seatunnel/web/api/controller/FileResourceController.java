@@ -4,6 +4,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.apache.seatunnel.web.api.service.FileResourceService;
+import org.apache.seatunnel.web.api.fileresource.duckdb.DuckDbCatalogVO;
+import org.apache.seatunnel.web.api.fileresource.duckdb.DuckDbPreviewRequest;
+import org.apache.seatunnel.web.api.fileresource.duckdb.DuckDbPreviewVO;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceDirectoryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.FileResourceMultipartCompleteRequestDTO;
@@ -154,6 +157,20 @@ public class FileResourceController {
             @PathVariable("id") Long id,
             @RequestBody(required = false) FileResourcePreviewDTO request) {
         return Result.buildSuc(fileResourceService.preview(id, request));
+    }
+
+    @GetMapping("/{id}/duckdb-catalog")
+    @Operation(summary = "inspectDuckDbFileResource", description = "读取 DuckDB 文件的 schema、表和列结构")
+    public Result<DuckDbCatalogVO> inspectDuckDb(@PathVariable("id") Long id) {
+        return Result.buildSuc(fileResourceService.inspectDuckDb(id));
+    }
+
+    @PostMapping("/{id}/duckdb-preview")
+    @Operation(summary = "previewDuckDbFileResource", description = "预览 DuckDB 文件查询结果")
+    public Result<DuckDbPreviewVO> previewDuckDb(
+            @PathVariable("id") Long id,
+            @RequestBody(required = false) DuckDbPreviewRequest request) {
+        return Result.buildSuc(fileResourceService.previewDuckDb(id, request));
     }
 
     @GetMapping("/upload-records")

@@ -11,6 +11,9 @@ import type {
   FileResourceUploadRecord,
   FileResourceUploadRecordPage,
   FileResourceUploadResponse,
+  DuckDbCatalog,
+  DuckDbPreviewRequest,
+  DuckDbPreviewResult,
 } from './types';
 import { normalizeResourcePath } from './utils';
 
@@ -286,6 +289,34 @@ export async function fetchFileResourceUploadRecords(
   return normalizeUploadRecordPage(response.data, params);
 }
 
+export async function inspectDuckDbFileResource(
+  id: string | number,
+): Promise<DuckDbCatalog> {
+  const response = await HttpUtils.get<DuckDbCatalog>(
+    `${FILE_RESOURCE_API_PREFIX}/${encodeURIComponent(String(id))}/duckdb-catalog`,
+  );
+  if (response.code !== 0) throw responseError(response, 'DuckDB 数据库结构读取失败');
+  if (!response.data || !Array.isArray(response.data.schemas)) {
+    throw new Error('DuckDB 数据库结构响应无效');
+  }
+  return response.data;
+}
+
+export async function previewDuckDbFileResource(
+  id: string | number,
+  request: DuckDbPreviewRequest,
+): Promise<DuckDbPreviewResult> {
+  const response = await HttpUtils.post<DuckDbPreviewResult>(
+    `${FILE_RESOURCE_API_PREFIX}/${encodeURIComponent(String(id))}/duckdb-preview`,
+    request,
+  );
+  if (response.code !== 0) throw responseError(response, 'DuckDB 查询失败');
+  if (!response.data || !Array.isArray(response.data.columns) || !Array.isArray(response.data.data)) {
+    throw new Error('DuckDB 查询响应无效');
+  }
+  return response.data;
+}
+
 export const fileResourceApi = {
   list: fetchFileResourcePage,
   createDirectory: createFileResourceDirectory,
@@ -293,6 +324,8 @@ export const fileResourceApi = {
   delete: deleteFileResource,
   download: downloadFileResource,
   previewAsPdf: previewFileResourceAsPdf,
+  inspectDuckDb: inspectDuckDbFileResource,
+  previewDuckDb: previewDuckDbFileResource,
   uploadRecords: fetchFileResourceUploadRecords,
 };
 

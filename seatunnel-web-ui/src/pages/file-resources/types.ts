@@ -4,7 +4,48 @@ export type FileResourceId = string | number;
 
 export type FileResourceKind = 'FILE' | 'DIRECTORY';
 
-export type FileResourceFormat = 'csv' | 'excel' | 'json' | 'text';
+export type FileResourceFormat = 'csv' | 'excel' | 'json' | 'text' | 'duckdb';
+
+export interface DuckDbColumn {
+  name: string;
+  type: string;
+  nullable: boolean;
+}
+
+export interface DuckDbTable {
+  name: string;
+  type: string;
+  columns: DuckDbColumn[];
+}
+
+export interface DuckDbSchema {
+  name: string;
+  tables: DuckDbTable[];
+}
+
+export interface DuckDbCatalog {
+  databaseName: string;
+  schemas: DuckDbSchema[];
+}
+
+export interface DuckDbPreviewRequest {
+  readMode: 'table' | 'sql';
+  schemaName: string;
+  tableName?: string;
+  query?: string;
+  limit?: number;
+}
+
+export interface DuckDbPreviewResult {
+  columns: Array<{
+    name: string;
+    key: string;
+    type: string;
+    nullable: boolean;
+  }>;
+  data: Array<Record<string, unknown>>;
+  total: number;
+}
 
 export type FileResourceStatus = 'READY' | 'UPLOADING' | 'FAILED' | 'DELETED' | string;
 

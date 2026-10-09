@@ -19,12 +19,17 @@ import org.apache.seatunnel.web.api.fileresource.FileResourcePathUtils;
 import org.apache.seatunnel.web.api.fileresource.FileResourceReferenceChecker;
 import org.apache.seatunnel.web.api.fileresource.FileResourceUploadCommitHooks;
 import org.apache.seatunnel.web.api.fileresource.FileResourceWordPdfConverter;
+import org.apache.seatunnel.web.api.fileresource.duckdb.DuckDbCatalogReader;
+import org.apache.seatunnel.web.api.fileresource.duckdb.DuckDbCatalogVO;
+import org.apache.seatunnel.web.api.fileresource.duckdb.DuckDbPreviewRequest;
+import org.apache.seatunnel.web.api.fileresource.duckdb.DuckDbPreviewVO;
 import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProvider;
 import org.apache.seatunnel.web.api.fileresource.storage.StorageObjectMetadata;
 import org.apache.seatunnel.web.api.fileresource.storage.StorageUploadPart;
 import org.apache.seatunnel.web.api.service.FileResourceService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.core.builder.source.DuckDbSourceInitSqlFileService;
 import org.apache.seatunnel.web.core.fileresource.FileResourceReference;
 import org.apache.seatunnel.web.core.fileresource.FileResourceResolver;
 import org.apache.seatunnel.web.dao.entity.FileResource;
@@ -128,6 +133,9 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     private FileResourceStorageProvider storageProvider;
 
     @Resource
+    private DuckDbCatalogReader duckDbCatalogReader;
+
+    @Resource
     private FileResourceWordPdfConverter wordPdfConverter;
 
     @Resource
@@ -135,6 +143,9 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
 
     @Resource
     private ObjectProvider<FileResourceReferenceChecker> referenceCheckers;
+
+    @Resource
+    private DuckDbSourceInitSqlFileService duckDbSourceInitSqlFileService;
 
     @Resource
     private FileResourceMqNotifier fileResourceMqNotifier;
@@ -537,6 +548,14 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             target.setStatus(DELETED);
             target.setUpdateTime(now);
             fileResourceDao.updateById(target);
+            if (duckDbSourceInitSqlFileService != null) {
+                try {
+                    duckDbSourceInitSqlFileService.delete(target.getId());
+                } catch (IOException e) {
+                    log.warn("Failed to remove DuckDB init SQL for deleted file resource, resourceId={}",
+                            target.getId(), e);
+                }
+            }
         }
     }
 
@@ -654,6 +673,44 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
                     "文件预览失败: " + StringUtils.defaultIfBlank(e.getMessage(), "文件格式不正确"));
         }
+    }
+
+    @Override
+    public DuckDbCatalogVO inspectDuckDb(Long id) {
+        FileResource resource = requireDuckDbFile(id);
+        try {
+            return duckDbCatalogReader.inspect(resource);
+        } catch (Exception error) {
+            log.warn("Read DuckDB catalog failed, resourceId={}", id, error);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
+                    "无法读取 DuckDB 数据库，请确认文件完整且格式有效");
+        }
+    }
+
+    @Override
+    public DuckDbPreviewVO previewDuckDb(Long id, DuckDbPreviewRequest request) {
+        FileResource resource = requireDuckDbFile(id);
+        try {
+            return duckDbCatalogReader.preview(resource, request);
+        } catch (IllegalArgumentException error) {
+            throw invalid(error.getMessage());
+        } catch (Exception error) {
+            log.warn("Preview DuckDB file resource failed, resourceId={}", id, error);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
+                    "DuckDB 查询失败: " + StringUtils.defaultIfBlank(error.getMessage(), "请检查读取配置"));
+        }
+    }
+
+    private FileResource requireDuckDbFile(Long id) {
+        FileResource resource = requireActiveResource(id);
+        if (!FILE.equalsIgnoreCase(resource.getResourceType())) {
+            throw invalid("只能读取 DuckDB 文件资源");
+        }
+        String name = StringUtils.defaultString(resource.getName()).toLowerCase(Locale.ROOT);
+        if (!name.endsWith(".db") && !name.endsWith(".duckdb")) {
+            throw invalid("DuckDB 元数据读取只支持 .db 和 .duckdb 文件");
+        }
+        return resource;
     }
 
     @Override

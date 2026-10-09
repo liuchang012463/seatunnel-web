@@ -9,7 +9,7 @@ import java.util.Set;
 /** Validation shared by legacy Web Upload and reusable structured file sources. */
 public final class LocalFileSourceValidator {
 
-    private static final Set<String> STRUCTURED_FORMATS = Set.of("csv", "excel", "json", "text");
+    private static final Set<String> STRUCTURED_FORMATS = Set.of("csv", "excel", "json", "text", "duckdb");
 
     private LocalFileSourceValidator() {
     }
@@ -94,6 +94,11 @@ public final class LocalFileSourceValidator {
                 && !hasSchema(source.get("schema"))) {
             throw new IllegalArgumentException(
                     normalized.toUpperCase(Locale.ROOT) + " " + sourceLabel + "必须配置字段 Schema");
+        }
+
+        if ("duckdb".equals(normalized)
+                && StringUtils.isBlank(firstNonBlank(source, "duckdbTable", "duckdb_table", "tableName"))) {
+            throw new IllegalArgumentException(sourceLabel + "必须填写 DuckDB 表名");
         }
 
         return normalized;

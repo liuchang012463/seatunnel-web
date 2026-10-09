@@ -26,6 +26,7 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
 }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const isResourceSource = String(sourceConfig?.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
+  const isDuckDbSource = String(sourceConfig?.fileFormatType || '').toLowerCase() === 'duckdb';
   const resource = (sourceConfig?.fileResource || sourceConfig?.resource) as FileResource | undefined;
 
   useEffect(() => {
@@ -86,7 +87,9 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
             <div className="mt-1 text-xs leading-5 text-slate-500">{description}</div>
           </div>
         </div>
-        <Tag color="blue">{binary ? '二进制对象' : '结构化文件'}</Tag>
+        <Tag color="blue">
+          {binary ? '二进制对象' : isDuckDbSource ? 'DuckDB 文件' : '结构化文件'}
+        </Tag>
       </div>
 
       {!isResourceSource ? (
@@ -103,12 +106,16 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
             className="mt-4"
             type={resource ? 'success' : 'warning'}
             showIcon
-            message={resource ? '已选择湖文件' : '尚未选择湖文件'}
+            message={resource
+              ? isDuckDbSource ? '已选择 DuckDB 文件' : '已选择湖文件'
+              : isDuckDbSource ? '尚未选择 DuckDB 文件' : '尚未选择湖文件'}
             description={
               resource
                 ? binary
                   ? '当前任务将直接同步这个二进制对象到目标端，不解析文件内容。'
-                  : '当前任务将从这个对象读取结构化数据，并按解析配置写入目标表。'
+                  : isDuckDbSource
+                    ? 'SeaTunnel Engine 将以只读方式挂载该 DuckDB 对象，并查询指定表。'
+                    : '当前任务将从这个对象读取结构化数据，并按解析配置写入目标表。'
                 : '点击下方按钮，在弹窗中直接上传或选择一个文件。'
             }
           />
@@ -134,7 +141,7 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
         value={resource}
         allowedFormats={allowedFormats}
         selectionMode={selectionMode}
-        title={binary ? '选择二进制文件资源' : '选择结构化文件资源'}
+        title={binary ? '选择二进制文件资源' : isDuckDbSource ? '选择 DuckDB 文件' : '选择结构化文件资源'}
         onCancel={() => setPickerOpen(false)}
         onSelect={selectResource}
       />

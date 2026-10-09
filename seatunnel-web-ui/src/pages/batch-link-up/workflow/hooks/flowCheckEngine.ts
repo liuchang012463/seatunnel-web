@@ -170,8 +170,18 @@ const sourceRules: NodeCheckRule[] = [
   (node) => {
     const config = getConfig(node);
     if (isManagedFileSourceNode(node)) {
-      if (!isLocalFileFormat(config.fileFormatType)) {
-        return buildWarning(node, 'fileFormatType', '请选择 CSV、Excel、JSON 或 Text 文件格式');
+      const format = String(config.fileFormatType || '').toLowerCase();
+      const validFormat = isFileResourceSourceNode(node)
+        ? ['csv', 'excel', 'json', 'text', 'duckdb'].includes(format)
+        : isLocalFileFormat(format);
+      if (!validFormat) {
+        return buildWarning(
+          node,
+          'fileFormatType',
+          isFileResourceSourceNode(node)
+            ? '请选择 CSV、Excel、JSON、Text 或 DuckDB 文件格式'
+            : '请选择 CSV、Excel、JSON 或 Text 文件格式',
+        );
       }
       return null;
     }

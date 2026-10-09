@@ -52,7 +52,10 @@ export default function PanelShell({
 
   return (
     <div className="workflow-panel">
-      <aside className="workflow-panel__drawer" ref={drawerRef}>
+      <aside
+        className="workflow-panel__drawer"
+        ref={drawerRef}
+      >
         <div className="workflow-panel__header">
           <div className="workflow-panel__header-main">
            

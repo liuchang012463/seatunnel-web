@@ -77,6 +77,7 @@ export function resourceMatchesFormats(resource: FileResourceEntry, formats?: Fi
     excel: ['xls', 'xlsx'],
     json: ['json'],
     text: ['txt', 'text'],
+    duckdb: ['db', 'duckdb'],
   };
   return formats.some((format) => extensions[format]?.includes(extension));
 }

@@ -11,6 +11,9 @@ import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceMultipartPartUrlVO;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceMultipartUploadVO;
 import org.apache.seatunnel.web.spi.bean.vo.FileUploadRecordVO;
+import org.apache.seatunnel.web.api.fileresource.duckdb.DuckDbCatalogVO;
+import org.apache.seatunnel.web.api.fileresource.duckdb.DuckDbPreviewRequest;
+import org.apache.seatunnel.web.api.fileresource.duckdb.DuckDbPreviewVO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -52,6 +55,10 @@ public interface FileResourceService {
     void previewAsPdf(Long id, OutputStream output) throws IOException;
 
     Map<String, Object> preview(Long id, FileResourcePreviewDTO request);
+
+    DuckDbCatalogVO inspectDuckDb(Long id);
+
+    DuckDbPreviewVO previewDuckDb(Long id, DuckDbPreviewRequest request);
 
     PaginationResult<FileUploadRecordVO> pageUploadRecords(FileResourceUploadRecordQueryDTO query);
 }

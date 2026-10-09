@@ -19,6 +19,7 @@ interface Props {
   onGenerateSql: () => void;
   onResolveSqlPreview: () => void;
   onOpenResolvePopover: (open: boolean) => void;
+  showResolvePreview?: boolean;
 }
 
 export default function SqlEditorSection(props: Props) {
@@ -39,6 +40,7 @@ export default function SqlEditorSection(props: Props) {
     onGenerateSql,
     onResolveSqlPreview,
     onOpenResolvePopover,
+    showResolvePreview = true,
   } = props;
 
   const sqlPopoverContent = (
@@ -146,16 +148,18 @@ export default function SqlEditorSection(props: Props) {
         </div>
 
         <Space size={8}>
-          <Popover
-            content={resolvePopoverContent}
-            title="变量解析预览"
-            placement="leftTop"
-            trigger="click"
-            open={resolvePopoverOpen}
-            onOpenChange={onOpenResolvePopover}
-          >
-            <Button size="small" type="text" disabled={!sourceDataSourceId || !sql} icon={<Variable size={14} />} />
-          </Popover>
+          {showResolvePreview ? (
+            <Popover
+              content={resolvePopoverContent}
+              title="变量解析预览"
+              placement="leftTop"
+              trigger="click"
+              open={resolvePopoverOpen}
+              onOpenChange={onOpenResolvePopover}
+            >
+              <Button size="small" type="text" disabled={!sourceDataSourceId || !sql} icon={<Variable size={14} />} />
+            </Popover>
+          ) : null}
 
           <Popover
             content={sqlPopoverContent}

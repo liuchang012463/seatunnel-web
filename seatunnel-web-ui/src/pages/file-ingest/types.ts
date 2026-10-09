@@ -3,7 +3,7 @@ import type { ApiResponse } from '@/utils/HttpUtils';
 /** Stable business task types. JobMode remains the SeaTunnel runtime mode. */
 export type FileTaskType = 'FILE_INGEST' | 'FILE_TRANSFER';
 
-export type FileFormat = 'csv' | 'excel' | 'json' | 'text';
+export type FileFormat = 'csv' | 'excel' | 'json' | 'text' | 'duckdb';
 
 export type FileResourceKind = 'FILE' | 'DIRECTORY';
 
