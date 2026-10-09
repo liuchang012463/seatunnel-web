@@ -93,6 +93,7 @@ describe('batch flow check engine source targets', () => {
 
   it('requires types for every selected HTTP schema field', () => {
     expect(generateCheckList([sourceNode('HTTP', {
+      format: 'json',
       schema: { fields: { id: 'int', name: '' } },
     })])).toEqual([
       expect.objectContaining({
@@ -101,5 +102,25 @@ describe('batch flow check engine source targets', () => {
         message: 'HTTP 来源字段 [name] 未设置类型，请在来源节点 Schema 中逐个选择类型',
       }),
     ]);
+  });
+
+  it('requires types for a legacy flat HTTP schema', () => {
+    expect(generateCheckList([sourceNode('HTTP', {
+      format: 'json',
+      schema: { id: 'int', name: '' },
+    })])).toEqual([
+      expect.objectContaining({
+        level: 'error',
+        field: 'schema',
+        message: 'HTTP 来源字段 [name] 未设置类型，请在来源节点 Schema 中逐个选择类型',
+      }),
+    ]);
+  });
+
+  it('does not block a text HTTP source whose schema editor is hidden', () => {
+    expect(generateCheckList([sourceNode('HTTP', {
+      format: 'text',
+      schema: { fields: { id: 'int', name: '' } },
+    })])).toEqual([]);
   });
 });

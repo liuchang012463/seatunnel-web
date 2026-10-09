@@ -1,6 +1,6 @@
 import {
   getHttpSchemaFieldNamesWithoutType,
-  isHttpSourceNode,
+  isHttpJsonSourceNode,
 } from '@/pages/common/workflow/httpSchemaValidation';
 
 export type CheckLevel = "error" | "warning";
@@ -178,7 +178,7 @@ const sourceRules: NodeCheckRule[] = [
     return null;
   },
   (node) => {
-    if (!isHttpSourceNode(node)) {
+    if (!isHttpJsonSourceNode(node)) {
       return null;
     }
     const config = getConfig(node);
