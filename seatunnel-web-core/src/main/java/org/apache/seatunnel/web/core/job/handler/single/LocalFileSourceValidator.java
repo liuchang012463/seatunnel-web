@@ -96,6 +96,7 @@ public final class LocalFileSourceValidator {
                     normalized.toUpperCase(Locale.ROOT) + " " + sourceLabel + "必须配置字段 Schema");
         }
 
+        // The custom-SQL mode carries its own query and clears the table selection.
         if ("duckdb".equals(normalized)) {
             String readMode = firstNonBlank(source, "readMode", "read_mode");
             if ("sql".equalsIgnoreCase(readMode)) {

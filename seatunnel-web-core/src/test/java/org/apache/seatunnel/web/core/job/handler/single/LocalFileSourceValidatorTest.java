@@ -72,4 +72,23 @@ class LocalFileSourceValidatorTest {
 
         assertTrue(exception.getMessage().contains("fileResourceId"));
     }
+
+    @Test
+    void requiresDuckDbTableOnlyInTableMode() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                LocalFileSourceValidator.validate(Map.of(
+                        "fileFormatType", "duckdb",
+                        "readMode", "table")));
+
+        assertTrue(exception.getMessage().contains("DuckDB 表名"));
+
+        assertEquals("duckdb", LocalFileSourceValidator.validate(Map.of(
+                "fileFormatType", "duckdb",
+                "readMode", "table",
+                "duckdbTable", "main.orders")));
+        assertEquals("duckdb", LocalFileSourceValidator.validate(Map.of(
+                "fileFormatType", "duckdb",
+                "readMode", "sql",
+                "sql", "select * from duckdb_source.main.orders")));
+    }
 }
