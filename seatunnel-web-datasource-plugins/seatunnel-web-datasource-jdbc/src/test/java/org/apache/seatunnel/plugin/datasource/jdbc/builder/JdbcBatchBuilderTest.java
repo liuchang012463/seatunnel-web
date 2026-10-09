@@ -4,8 +4,13 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JdbcBatchBuilderTest {
@@ -32,7 +37,35 @@ class JdbcBatchBuilderTest {
         assertEquals("APPEND_DATA", config.getString("data_save_mode"));
     }
 
+    @Test
+    void emitsDriverLocationOfAnExistingDriverJar(@TempDir Path dir) throws Exception {
+        Path driverJar = Files.createFile(dir.resolve("vendor-driver.jar"));
+
+        Config config =
+                builder.buildSourceHocon(
+                        context(
+                                "sql = \"select 1\"",
+                                "driverLocation = \"" + driverJar + "\""));
+
+        assertEquals(driverJar.toString(), config.getString("driver_location"));
+    }
+
+    @Test
+    void omitsDriverLocationOfAnUnreadableDriverJar(@TempDir Path dir) {
+        Config config =
+                builder.buildSourceHocon(
+                        context(
+                                "sql = \"select 1\"",
+                                "driverLocation = \"" + dir.resolve("absent.jar") + "\""));
+
+        assertFalse(config.hasPath("driver_location"));
+    }
+
     private HoconBuildContext context(String nodeConfig) {
+        return context(nodeConfig, "");
+    }
+
+    private HoconBuildContext context(String nodeConfig, String extraConnectionConfig) {
         return HoconBuildContext.builder()
                 .connectionConfig(ConfigFactory.parseString(
                         "url = \"jdbc:vendor://localhost:1234/catalog\"\n"
@@ -40,7 +73,8 @@ class JdbcBatchBuilderTest {
                                 + "user = test\n"
                                 + "password = test\n"
                                 + "database = catalog\n"
-                                + "schemaName = public"))
+                                + "schemaName = public\n"
+                                + extraConnectionConfig))
                 .nodeConfig(ConfigFactory.parseString(nodeConfig))
                 .build();
     }

@@ -26,6 +26,17 @@ public final class JdbcBatchConstants {
     public static final String SCHEMA = "schema";
     public static final String SCHEMA_NAME = "schemaName";
 
+    /**
+     * Engine option holding the jars of the driver named by {@link #DRIVER}. The engine attaches
+     * them to the job class loader, so the job runs with the driver the Web validated with.
+     */
+    public static final String DRIVER_LOCATION = "driver_location";
+
+    /**
+     * Web-side connection parameter holding the driver jar of the data source.
+     */
+    public static final String DRIVER_LOCATION_CAMEL = "driverLocation";
+
     // =========================
     // SeaTunnel official common keys
     // =========================
