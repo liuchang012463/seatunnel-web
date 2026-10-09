@@ -9,7 +9,7 @@ import {
   mergeEnvConfig,
   mergeScheduleConfig,
 } from '../../../file-ingest/config/runtime';
-import { buildPageParams, defaultTargetType } from './pageParams';
+import { buildPageParams, defaultTargetType, endpointSelectionFromGraph, sameEndpointSelection } from './pageParams';
 import '../../index.less';
 
 const FileTransferConfigPage: React.FC = () => {
@@ -103,6 +103,17 @@ const FileTransferConfigPage: React.FC = () => {
     if (!id || scene !== 'create' || !params) return;
     sessionStorage.setItem(fileTaskDraftKey('FILE_TRANSFER', id), JSON.stringify(params));
   }, [id, params, scene]);
+
+  // The create scene hydrates the canvas from the draft-level endpoints, so the endpoints have to
+  // follow a canvas change as well; otherwise the next hydration reverts it.
+  useEffect(() => {
+    if (scene !== 'create' || !params) return;
+
+    const selection = endpointSelectionFromGraph(params?.workflow);
+    if (!selection || sameEndpointSelection(params, selection)) return;
+
+    setParams((previous: any) => ({ ...previous, ...selection }));
+  }, [params, scene]);
 
   const targetType = params?.targetType || defaultTargetType;
   const workflowContextKey = ['FILE_TRANSFER', id || 'unknown', params?.state?.editorSyncState || 'UNPUBLISHED'].join('-');

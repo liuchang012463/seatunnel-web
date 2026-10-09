@@ -7,6 +7,57 @@ export const defaultTargetType = {
   pluginName: 'S3File',
 };
 
+const MANAGED_SOURCE_MODES = ['FILE_RESOURCE', 'WEB_UPLOAD'];
+
+/**
+ * The canvas owns the endpoints once the graph exists, so the draft-level selection has to follow
+ * the graph. Without this the next hydration would reset the canvas to the selection the wizard
+ * made before the user changed it, silently reverting the change.
+ */
+export const endpointSelectionFromGraph = (workflow: any) => {
+  const nodes = Array.isArray(workflow?.nodes) ? workflow.nodes : [];
+  const sourceConfig = nodes.find((node: any) => node?.data?.nodeType === 'source')?.data?.config;
+  const sinkConfig = nodes.find((node: any) => node?.data?.nodeType === 'sink')?.data?.config;
+
+  if (!sourceConfig?.dbType || !sinkConfig?.dbType) {
+    return null;
+  }
+
+  const managedSource = MANAGED_SOURCE_MODES.includes(
+    String(sourceConfig.sourceMode || '').toUpperCase(),
+  );
+
+  return {
+    sourceType: managedSource
+      ? FILE_RESOURCE_SOURCE
+      : {
+          dbType: sourceConfig.dbType,
+          connectorType: sourceConfig.connectorType,
+          pluginName: sourceConfig.pluginName,
+        },
+    sourceDataSourceId: managedSource ? undefined : sourceConfig.dataSourceId,
+    targetType: {
+      dbType: sinkConfig.dbType,
+      connectorType: sinkConfig.connectorType,
+      pluginName: sinkConfig.pluginName,
+    },
+    targetDataSourceId: sinkConfig.dataSourceId,
+  };
+};
+
+const sameText = (left: any, right: any) => String(left ?? '') === String(right ?? '');
+
+const sameType = (left: any, right: any) =>
+  sameText(left?.dbType, right?.dbType) &&
+  sameText(left?.connectorType, right?.connectorType) &&
+  sameText(left?.pluginName, right?.pluginName);
+
+export const sameEndpointSelection = (page: any, selection: any) =>
+  sameType(page?.sourceType, selection?.sourceType) &&
+  sameText(page?.sourceDataSourceId, selection?.sourceDataSourceId) &&
+  sameType(page?.targetType, selection?.targetType) &&
+  sameText(page?.targetDataSourceId, selection?.targetDataSourceId);
+
 const sourceTypeFromData = (data: any) => {
   const sourceNode = data?.workflow?.nodes?.find((node: any) => node?.data?.nodeType === 'source');
   const sourceConfig = sourceNode?.data?.config || {};
