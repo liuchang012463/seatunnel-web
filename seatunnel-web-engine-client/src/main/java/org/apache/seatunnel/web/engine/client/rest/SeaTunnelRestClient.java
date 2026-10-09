@@ -82,6 +82,10 @@ public class SeaTunnelRestClient {
         return headers(clientId, MediaType.MULTIPART_FORM_DATA);
     }
 
+    private HttpHeaders octetStreamHeaders(Long clientId) {
+        return headers(clientId, MediaType.APPLICATION_OCTET_STREAM);
+    }
+
     private HttpHeaders getHeaders(Long clientId) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
@@ -509,6 +513,43 @@ public class SeaTunnelRestClient {
             return response.getBody();
         } catch (Exception e) {
             throw wrap(e, "POST /submit-job/upload failed");
+        }
+    }
+
+    /**
+     * Uploads a JDBC driver jar to the engine. The engine stores it and pushes it to every cluster
+     * member; the returned path is what a job has to declare in {@code driver_location}.
+     */
+    public String uploadDriverJar(Long clientId, byte[] jarBytes, String fileName) {
+        try {
+            UriComponentsBuilder builder =
+                    UriComponentsBuilder.fromHttpUrl(url(clientId, "/driver-jar/upload"))
+                            .queryParam("fileName", fileName);
+
+            Map response = post(
+                    clientId,
+                    builder.build(true).toUriString(),
+                    jarBytes == null ? new byte[0] : jarBytes,
+                    octetStreamHeaders(clientId),
+                    Map.class,
+                    "POST /driver-jar/upload failed"
+            );
+
+            Object path = response == null ? null : response.get("path");
+            if (path == null || isBlank(String.valueOf(path))) {
+                throw new SeaTunnelClientException(
+                        "The engine did not return a driver jar path",
+                        -1,
+                        "",
+                        null
+                );
+            }
+
+            return String.valueOf(path);
+        } catch (SeaTunnelClientException e) {
+            throw e;
+        } catch (Exception e) {
+            throw wrap(e, "POST /driver-jar/upload failed");
         }
     }
 
