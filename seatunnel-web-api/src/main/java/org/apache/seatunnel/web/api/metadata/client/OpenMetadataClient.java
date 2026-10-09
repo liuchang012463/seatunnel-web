@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.metadata.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
+import org.apache.seatunnel.web.api.metadata.OmResourceType;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +18,19 @@ public interface OpenMetadataClient {
     Optional<OpenMetadataEntity> findDatabaseService(String fullyQualifiedName);
 
     Optional<OpenMetadataEntity> findService(MetadataServiceCategory category, String fullyQualifiedName);
+
+    /**
+     * Reads one page of a non-relational asset collection (topics, containers,
+     * directories, files, API collections/endpoints, search indexes) for one service.
+     */
+    OpenMetadataPage<OpenMetadataResource> listResourcesPage(
+            OmResourceType type, String serviceFullyQualifiedName, int limit, String after);
+
+    /**
+     * Reads one non-relational asset together with its schema and sample payload.
+     * Sample data stays empty when the entity has none or the caller may not view it.
+     */
+    OpenMetadataResourceDetail getResourceDetail(OmResourceType type, String resourceId);
 
     Optional<OpenMetadataDatabase> findDatabase(String fullyQualifiedName);
 

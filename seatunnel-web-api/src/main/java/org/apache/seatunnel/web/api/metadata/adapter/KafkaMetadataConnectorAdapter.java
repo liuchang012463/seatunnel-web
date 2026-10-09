@@ -3,9 +3,12 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
+import org.apache.seatunnel.web.api.metadata.OmResourceType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /** Fixed OpenMetadata 2.0.4 Kafka messaging service adapter. */
 @Component
@@ -24,6 +27,35 @@ public class KafkaMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCo
     @Override
     public MetadataServiceCategory serviceCategory() {
         return MetadataServiceCategory.MESSAGING;
+    }
+
+    @Override
+    public List<OmResourceType> resourceTypes() {
+        return List.of(OmResourceType.TOPIC);
+    }
+
+    @Override
+    public boolean supportsSampleData() {
+        return true;
+    }
+
+    /**
+     * The metadata pipeline is the sample-data carrier for Kafka: with
+     * {@code generateSampleData} the ingestion source polls a bounded number of
+     * messages per topic (10 polls inside a 10 second window) and stores them on the
+     * topic entity.
+     */
+    @Override
+    public JsonNode metadataPipelineRequest(
+            DataSource dataSource,
+            String pipelineName,
+            String serviceId,
+            String serviceFqn,
+            MetadataSyncOptions options) {
+        ObjectNode request = (ObjectNode) metadataPipelineRequest(pipelineName, serviceId, serviceFqn);
+        request.withObject("/sourceConfig/config")
+                .put("generateSampleData", options != null && options.sampleDataEnabled());
+        return request;
     }
 
     @Override

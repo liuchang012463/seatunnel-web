@@ -91,6 +91,60 @@ class S3MetadataConnectorAdapterTest {
         assertTrue(service.at("/connection/config/awsConfig/awsSecretAccessKey").isMissingNode());
     }
 
+    @Test
+    void injectsTheOperatorManifestAsThePipelineDefaultManifest() {
+        DataSource dataSource = source(24L, """
+                {
+                  "endpoint": "http://192.168.100.95:9000",
+                  "region": "us-east-1",
+                  "bucket": "lake",
+                  "credentialMode": "STATIC",
+                  "accessKey": "access-id",
+                  "secretKey": "plain-secret"
+                }
+                """);
+        String manifest = "{\"entries\":[{\"dataPath\":\"orders/**\",\"structureFormat\":\"parquet\"}]}";
+
+        JsonNode withoutManifest = adapter.metadataPipelineRequest(
+                dataSource, "st_ds_24_metadata", "uuid-1", "st_ds_24",
+                new MetadataSyncOptions(false, null));
+        JsonNode withManifest = adapter.metadataPipelineRequest(
+                dataSource, "st_ds_24_metadata", "uuid-1", "st_ds_24",
+                new MetadataSyncOptions(false, manifest));
+
+        assertTrue(withoutManifest.at("/sourceConfig/config/defaultManifest").isMissingNode());
+        // OpenMetadata drops entries whose containerName does not match the bucket, so the
+        // configured bucket is filled in for entries that leave it out.
+        assertEquals(
+                "{\"entries\":[{\"dataPath\":\"orders/**\",\"structureFormat\":\"parquet\","
+                        + "\"containerName\":\"lake\"}]}",
+                withManifest.at("/sourceConfig/config/defaultManifest").asText());
+        // The metadata pipeline contract must stay intact around the new field.
+        assertEquals("StorageMetadata", withManifest.at("/sourceConfig/config/type").asText());
+        assertEquals("storageService", withManifest.at("/service/type").asText());
+        assertTrue(adapter.supportsStorageManifest());
+    }
+
+    @Test
+    void buildsASampleOnlyAutoClassificationPipeline() {
+        JsonNode pipeline = adapter.autoClassificationPipelineRequest(
+                "st_ds_25_autoclassification", "uuid-2", "st_ds_25",
+                new MetadataSyncOptions(true, null));
+        JsonNode disabled = adapter.autoClassificationPipelineRequest(
+                "st_ds_25_autoclassification", "uuid-2", "st_ds_25",
+                new MetadataSyncOptions(false, null));
+
+        assertEquals("autoClassification", pipeline.at("/pipelineType").asText());
+        assertEquals("AutoClassification", pipeline.at("/sourceConfig/config/type").asText());
+        assertEquals(true, pipeline.at("/sourceConfig/config/storeSampleData").asBoolean());
+        // Web collects sample rows only; PII classification stays off.
+        assertEquals(false, pipeline.at("/sourceConfig/config/enableAutoClassification").asBoolean());
+        assertEquals(false, disabled.at("/sourceConfig/config/storeSampleData").asBoolean());
+        assertEquals("storageService", pipeline.at("/service/type").asText());
+        assertTrue(adapter.collectsSampleDataViaAutoClassification());
+        assertTrue(adapter.supportsSampleData());
+    }
+
     private static DataSource source(Long id, String connectionParams) {
         DataSource dataSource = new DataSource();
         dataSource.setId(id);

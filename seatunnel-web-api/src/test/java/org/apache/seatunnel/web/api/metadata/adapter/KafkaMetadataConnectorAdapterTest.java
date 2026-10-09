@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
+import org.apache.seatunnel.web.api.metadata.OmResourceType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
@@ -67,6 +68,26 @@ class KafkaMetadataConnectorAdapterTest {
                 () -> adapter.serviceRequest(dataSource, "st_ds_22"));
 
         assertEquals(MetadataErrorCode.SOURCE_CONNECTION_ERROR, error.getErrorCode());
+    }
+
+    @Test
+    void enablesTopicSampleDataOnlyWhenTheOperatorOptedIn() {
+        DataSource dataSource = source("{\"bootstrapServers\":\"kafka.example:9092\"}");
+
+        JsonNode disabled = adapter.metadataPipelineRequest(
+                dataSource, "st_ds_20_metadata", "uuid-1", "st_ds_20",
+                new MetadataSyncOptions(false, null));
+        JsonNode enabled = adapter.metadataPipelineRequest(
+                dataSource, "st_ds_20_metadata", "uuid-1", "st_ds_20",
+                new MetadataSyncOptions(true, null));
+
+        assertEquals(false, disabled.at("/sourceConfig/config/generateSampleData").asBoolean());
+        assertEquals(true, enabled.at("/sourceConfig/config/generateSampleData").asBoolean());
+        // The metadata pipeline contract must stay intact around the new flag.
+        assertEquals("MessagingMetadata", enabled.at("/sourceConfig/config/type").asText());
+        assertEquals("messagingService", enabled.at("/service/type").asText());
+        assertTrue(adapter.supportsSampleData());
+        assertTrue(adapter.resourceTypes().contains(OmResourceType.TOPIC));
     }
 
     private static DataSource source(String connectionParams) {

@@ -1,9 +1,12 @@
 package org.apache.seatunnel.web.api.metadata;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
+import org.apache.seatunnel.web.api.metadata.adapter.MetadataSyncOptions;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
@@ -191,6 +194,60 @@ public class MetadataPipelineOperationService {
         return true;
     }
 
+    /**
+     * Records the operator decision for OpenMetadata sample-data collection. Enabling it
+     * lets the ingestion pipeline read real payloads (Kafka topic messages, SFTP file
+     * rows) into OpenMetadata; it stays off unless this is called explicitly.
+     */
+    public boolean updateSampleDataCollection(Long dataSourceId, boolean enabled) {
+        requireEnabled();
+        DataSource dataSource = requireActiveDataSource(dataSourceId);
+        MetadataConnectorAdapter adapter = connectorRegistry.find(dataSource.getDbType())
+                .orElseThrow(() -> invalid("metadata connector is not supported for this data source type"));
+        if (!adapter.supportsSampleData()) {
+            throw invalid("sample data collection is not supported for this data source type");
+        }
+        metadataBindingCommandService.markSampleDataChanged(dataSourceId, enabled);
+        return true;
+    }
+
+    /**
+     * Records the operator's object-storage manifest. It is what turns a plain container
+     * into a structured one with a data model, and it stays OpenMetadata-only.
+     */
+    public boolean updateStorageManifest(Long dataSourceId, String manifest) {
+        requireEnabled();
+        DataSource dataSource = requireActiveDataSource(dataSourceId);
+        MetadataConnectorAdapter adapter = connectorRegistry.find(dataSource.getDbType())
+                .orElseThrow(() -> invalid("metadata connector is not supported for this data source type"));
+        if (!adapter.supportsStorageManifest()) {
+            throw invalid("object storage manifests are not supported for this data source type");
+        }
+        metadataBindingCommandService.markStorageManifestChanged(
+                dataSourceId, normalizeStorageManifest(manifest));
+        return true;
+    }
+
+    /**
+     * Accepts either an empty value (clear the manifest) or the JSON a bucket-level
+     * {@code openmetadata.json} would hold: an object with an {@code entries} array.
+     */
+    static String normalizeStorageManifest(String manifest) {
+        if (manifest == null || manifest.isBlank()) {
+            return null;
+        }
+        JsonNode parsed;
+        try {
+            parsed = new ObjectMapper().readTree(manifest);
+        } catch (JsonProcessingException error) {
+            throw invalid("storage manifest must be valid JSON");
+        }
+        if (parsed == null || !parsed.isObject() || !parsed.path("entries").isArray()) {
+            throw invalid("storage manifest must be an object with an entries array");
+        }
+        return parsed.toString();
+    }
+
     public boolean triggerScan(Long dataSourceId) {
         requireActiveDataSource(dataSourceId);
         MetadataSourceBinding binding = requireBinding(dataSourceId);
@@ -221,7 +278,7 @@ public class MetadataPipelineOperationService {
             throw invalid("databaseFqn");
         }
         MetadataSourceBinding binding = requireReadyBinding(dataSourceId);
-        DataSource dataSource = requireActiveDataSource(dataSourceId);
+        DataSource dataSource = requireProfilerCapableDataSource(dataSourceId);
         String serviceFqn = requireServiceFqn(binding, dataSourceId);
         OpenMetadataDatabase database = openMetadataClient.findDatabase(databaseFqn)
                 .orElseThrow(() -> invalid("databaseFqn does not exist"));
@@ -273,7 +330,7 @@ public class MetadataPipelineOperationService {
         }
         requireEnabled();
         MetadataSourceBinding binding = requireReadyBinding(dataSourceId);
-        requireActiveDataSource(dataSourceId);
+        requireProfilerCapableDataSource(dataSourceId);
         long initialVersion = requireVersion(binding);
         Date now = new Date();
         String token = UUID.randomUUID().toString();
@@ -360,13 +417,18 @@ public class MetadataPipelineOperationService {
     public DataSourceMetadataStatusVO getCachedStatus(Long dataSourceId) {
         MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
         DataSourceMetadataStatusVO status = new DataSourceMetadataStatusVO();
+        status.setSampleDataSupported(supportsSampleData(dataSourceId));
+        status.setStorageManifestSupported(supportsStorageManifest(dataSourceId));
         if (binding == null) {
             status.setSyncStatus("NOT_INITIALIZED");
+            status.setSampleDataEnabled(false);
             status.setScan(runState(MetadataRunStatus.NEVER, null, null, null));
             status.setExploration(runState(MetadataRunStatus.NEVER, null, null, null));
             return status;
         }
         status.setSyncStatus(MetadataSyncStatusView.project(binding));
+        status.setSampleDataEnabled(Boolean.TRUE.equals(binding.getSampleDataEnabled()));
+        status.setStorageManifest(binding.getStorageManifestConfig());
         status.setScan(runState(
                 effectiveRunStatus(binding.getScanStatus(), binding.getScanLastError(), binding.getScanLastRunTime()),
                 binding.getScanLastRunTime(),
@@ -548,6 +610,43 @@ public class MetadataPipelineOperationService {
             triggerMetadata(binding, false);
         } catch (ServiceException e) {
             log.warn("Automatic metadata scan was not triggered: dataSourceId={}", binding.getDataSourceId());
+        }
+    }
+
+    /**
+     * Collects sample rows for object storage after a successful metadata scan.
+     *
+     * <p>The storage metadata pipeline cannot collect samples and the sample agent has no
+     * schedule, so nothing would ever run it. Triggering it once per completed scan keeps
+     * the collection bounded and makes the operator's sample-data switch take effect on
+     * the next scan, as the UI states.</p>
+     */
+    void triggerStorageSampleCollection(MetadataSourceBinding binding) {
+        if (binding == null || !Boolean.TRUE.equals(binding.getSampleDataEnabled())) {
+            return;
+        }
+        DataSource dataSource = dataSourceDao.queryById(binding.getDataSourceId());
+        if (dataSource == null) {
+            return;
+        }
+        MetadataConnectorAdapter adapter = connectorRegistry.find(dataSource.getDbType()).orElse(null);
+        if (adapter == null || !adapter.collectsSampleDataViaAutoClassification()) {
+            return;
+        }
+        try {
+            openMetadataClient.assertFixedVersion();
+            OpenMetadataEntity pipeline = openMetadataClient.upsertIngestionPipeline(
+                    adapter.autoClassificationPipelineRequest(
+                            MetadataStableName.autoClassificationPipelineName(binding.getDataSourceId()),
+                            requireProfilerServiceId(binding, binding.getDataSourceId()),
+                            requireServiceFqn(binding, binding.getDataSourceId()),
+                            new MetadataSyncOptions(true, binding.getStorageManifestConfig())));
+            openMetadataClient.deployIngestionPipeline(pipeline.id());
+            openMetadataClient.enableIngestionPipeline(pipeline.id());
+            openMetadataClient.triggerIngestionPipeline(pipeline.id());
+        } catch (Exception e) {
+            log.warn("Storage sample collection was not triggered: dataSourceId={}, type={}",
+                    binding.getDataSourceId(), e.getClass().getSimpleName());
         }
     }
 
@@ -1124,14 +1223,53 @@ public class MetadataPipelineOperationService {
         return binding;
     }
 
-    private DataSource requireActiveDataSource(Long dataSourceId) {
-        if (dataSourceId == null || dataSourceId <= 0) {
+    /** True when the adapter of this data source can collect OpenMetadata sample data. */
+    private boolean supportsSampleData(Long dataSourceId) {
+        DataSource source = dataSourceDao.queryById(dataSourceId);
+        if (source == null) {
+            return false;
+        }
+        return connectorRegistry.find(source.getDbType())
+                .map(MetadataConnectorAdapter::supportsSampleData)
+                .orElse(false);
+    }
+
+    /** True when the adapter of this data source derives containers from a manifest. */
+    private boolean supportsStorageManifest(Long dataSourceId) {
+        DataSource source = dataSourceDao.queryById(dataSourceId);
+        if (source == null) {
+            return false;
+        }
+        return connectorRegistry.find(source.getDbType())
+                .map(MetadataConnectorAdapter::supportsStorageManifest)
+                .orElse(false);
+    }
+
+    private DataSource requireActiveDataSource(Long dataSourceId) {        if (dataSourceId == null || dataSourceId <= 0) {
             throw invalid("dataSourceId");
         }
         DataSource source = dataSourceDao.queryById(dataSourceId);
         if (source == null || source.getStatus() == DataSourceLifecycleStatus.REVOKED) {
             throw invalid("data source is unavailable");
         }
+        return source;
+    }
+
+    /**
+     * Exploration is a table-scoped OpenMetadata capability. Rejecting it here keeps
+     * non-relational sources (Kafka, S3, SFTP, HTTP, Elasticsearch) from reserving a
+     * run that can only fail later inside the profiler pipeline request.
+     *
+     * <p>A data source type without any connector is left to the caller: such bindings
+     * never reach READY, so the binding gate already blocks them.</p>
+     */
+    private DataSource requireProfilerCapableDataSource(Long dataSourceId) {
+        DataSource source = requireActiveDataSource(dataSourceId);
+        connectorRegistry.find(source.getDbType())
+                .filter(adapter -> !adapter.supportsProfiler())
+                .ifPresent(adapter -> {
+                    throw invalid("exploration is not supported for this data source type");
+                });
         return source;
     }
 

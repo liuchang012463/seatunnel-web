@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metadata;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
+import org.apache.seatunnel.web.api.metadata.adapter.MetadataSyncOptions;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
@@ -103,15 +104,21 @@ public class MetadataSourceReconciler {
         }
         MetadataConnectorAdapter adapter = resolved.get();
         String serviceName = MetadataStableName.serviceName(dataSource.getId());
+        MetadataSyncOptions options = new MetadataSyncOptions(
+                Boolean.TRUE.equals(claimed.getSampleDataEnabled()) && adapter.supportsSampleData(),
+                claimed.getStorageManifestConfig());
 
         // PUT is the documented 2.0.4 upsert, so this also converges changed source configuration.
         OpenMetadataEntity service = openMetadataClient.upsertService(
-                adapter.serviceCategory(), adapter.serviceRequest(dataSource, serviceName));
+                adapter.serviceCategory(),
+                adapter.serviceRequest(dataSource, serviceName, options));
         OpenMetadataEntity metadataPipeline = openMetadataClient.upsertIngestionPipeline(
                 adapter.metadataPipelineRequest(
                         dataSource,
                         MetadataStableName.metadataPipelineName(dataSource.getId()),
-                        service.id(), service.fullyQualifiedName()));
+                        service.id(),
+                        service.fullyQualifiedName(),
+                        options));
         OpenMetadataEntity profilerPipeline = null;
         OpenMetadataEntity samplePipeline = null;
         if (adapter.supportsProfiler()) {
@@ -123,6 +130,12 @@ public class MetadataSourceReconciler {
                     adapter.autoClassificationPipelineRequest(
                             MetadataStableName.autoClassificationPipelineName(dataSource.getId()),
                             service.id(), service.fullyQualifiedName()));
+        } else if (options.sampleDataEnabled() && adapter.collectsSampleDataViaAutoClassification()) {
+            // Storage services collect sample rows only through the auto-classification agent.
+            samplePipeline = openMetadataClient.upsertIngestionPipeline(
+                    adapter.autoClassificationPipelineRequest(
+                            MetadataStableName.autoClassificationPipelineName(dataSource.getId()),
+                            service.id(), service.fullyQualifiedName(), options));
         }
         // The 2.0.4 deploy endpoints deliberately have no request body.
         openMetadataClient.deployIngestionPipeline(metadataPipeline.id());
@@ -165,6 +178,8 @@ public class MetadataSourceReconciler {
         String sampleFqn = MetadataStableName.autoClassificationPipelineFqn(claimed.getDataSourceId());
         deletePipeline(claimed.getOmMetadataPipelineId(), metadataFqn);
         deletePipeline(claimed.getOmProfilerPipelineId(), profilerFqn);
+        // The sample-collection pipeline has no local ID: it is resolved by its stable FQN,
+        // which also covers bindings that never recorded one.
         deletePipeline(null, sampleFqn);
         MetadataServiceCategory category = resolveServiceCategory(claimed);
         String serviceId = claimed.getOmServiceId();

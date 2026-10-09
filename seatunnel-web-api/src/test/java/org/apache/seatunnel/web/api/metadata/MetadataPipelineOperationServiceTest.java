@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metadata;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
+import org.apache.seatunnel.web.api.metadata.adapter.MetadataSyncOptions;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataEntity;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
@@ -32,10 +33,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -96,6 +99,7 @@ class MetadataPipelineOperationServiceTest {
         MetadataSourceBinding binding = binding(0L);
         when(dataSourceDao.queryById(42L)).thenReturn(source());
         when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        stubProfilerCapable();
         when(openMetadataClient.findDatabase("another_service.orders")).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> service().triggerExploration(42L, "another_service.orders"));
@@ -106,10 +110,36 @@ class MetadataPipelineOperationServiceTest {
         MetadataSourceBinding binding = binding(0L);
         when(dataSourceDao.queryById(42L)).thenReturn(source());
         when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        stubProfilerCapable();
         when(openMetadataClient.findDatabase("other_service.orders"))
                 .thenReturn(Optional.of(new OpenMetadataDatabase("database-id", "other_service.orders", "other_service")));
 
         assertThrows(RuntimeException.class, () -> service().triggerExploration(42L, "other_service.orders"));
+    }
+
+    @Test
+    void explorationReservationRejectsDataSourcesWithoutAProfiler() {
+        MetadataSourceBinding binding = binding(0L);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.supportsProfiler()).thenReturn(false);
+
+        assertThrows(RuntimeException.class, () -> service().reserveExploration(42L, "st_ds_42.orders"));
+        verify(bindingDao, never()).reserveRun(anyLong(), anyLong(), anyBoolean(), any(), any());
+    }
+
+    @Test
+    void explorationReservationLeavesMissingConnectorsToTheBindingGate() {
+        MetadataSourceBinding binding = binding(0L);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.empty());
+        when(bindingDao.reserveRun(eq(1L), eq(0L), eq(false), isNull(), any(), anyString())).thenReturn(true);
+
+        // A type without a connector never reaches a READY binding, so that gate already
+        // blocks it; the profiler guard only rejects adapters that exist and say no.
+        assertNotNull(service().reserveExploration(42L, "st_ds_42.orders"));
     }
 
     @Test
@@ -119,6 +149,7 @@ class MetadataPipelineOperationServiceTest {
         reserved.setProfileStatus(MetadataRunStatus.QUEUED);
         DataSource source = source();
         stubReady(binding, reserved);
+        stubProfilerCapable();
         when(openMetadataClient.findDatabase("st_ds_42.orders"))
                 .thenReturn(Optional.of(new OpenMetadataDatabase("database-id", "st_ds_42.orders", "st_ds_42")));
         when(bindingDao.reserveRun(eq(1L), eq(0L), eq(false), isNull(), any(), anyString()))
@@ -551,6 +582,7 @@ class MetadataPipelineOperationServiceTest {
         MetadataSourceBinding reserved = binding(1L);
         reserved.setProfileStatus(MetadataRunStatus.QUEUED);
         stubReady(binding, reserved);
+        stubProfilerCapable();
         String databaseFqn = "st_ds_42.kingbase";
         String schemaFqn = databaseFqn + ".public";
         when(openMetadataClient.findDatabase(databaseFqn))
@@ -596,6 +628,7 @@ class MetadataPipelineOperationServiceTest {
         MetadataSourceBinding binding = binding(0L);
         when(dataSourceDao.queryById(42L)).thenReturn(source());
         when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
+        stubProfilerCapable();
         when(bindingDao.reserveRun(eq(1L), eq(0L), eq(false), isNull(), any(), anyString())).thenReturn(true);
 
         MetadataPipelineOperationService.ExplorationReservation reservation =
@@ -896,11 +929,125 @@ class MetadataPipelineOperationServiceTest {
         verify(bindingDao, never()).updateIfVersion(any(MetadataSourceBinding.class), anyLong());
     }
 
+    @Test
+    void storageManifestAcceptsBucketManifestJsonAndClearsOnBlank() {
+        String manifest = "{\"entries\":[{\"dataPath\":\"orders/**\",\"structureFormat\":\"parquet\"}]}";
+
+        assertEquals(
+                "{\"entries\":[{\"dataPath\":\"orders/**\",\"structureFormat\":\"parquet\"}]}",
+                MetadataPipelineOperationService.normalizeStorageManifest(manifest));
+        assertNull(MetadataPipelineOperationService.normalizeStorageManifest("  "));
+        assertNull(MetadataPipelineOperationService.normalizeStorageManifest(null));
+    }
+
+    @Test
+    void storageManifestRejectsJsonWithoutEntries() {
+        assertThrows(
+                RuntimeException.class,
+                () -> MetadataPipelineOperationService.normalizeStorageManifest("{\"foo\":1}"));
+        assertThrows(
+                RuntimeException.class,
+                () -> MetadataPipelineOperationService.normalizeStorageManifest("not-json"));
+        assertThrows(
+                RuntimeException.class,
+                () -> MetadataPipelineOperationService.normalizeStorageManifest("[1,2]"));
+    }
+
+    @Test
+    void storageManifestIsRejectedForDataSourcesThatCannotUseIt() {
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.supportsStorageManifest()).thenReturn(false);
+
+        assertThrows(
+                RuntimeException.class,
+                () -> service().updateStorageManifest(42L, "{\"entries\":[]}"));
+        verify(metadataBindingCommandService, never()).markStorageManifestChanged(anyLong(), any());
+    }
+
+    @Test
+    void storageManifestIsPersistedForStorageConnectors() {
+        MetadataSourceBinding binding = binding(0L);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.supportsStorageManifest()).thenReturn(true);
+
+        service().updateStorageManifest(42L, "{\"entries\":[]}");
+
+        verify(metadataBindingCommandService).markStorageManifestChanged(42L, "{\"entries\":[]}");
+    }
+
+    @Test
+    void storageSampleCollectionIsTriggeredForEnabledStorageSources() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setSampleDataEnabled(true);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.collectsSampleDataViaAutoClassification()).thenReturn(true);
+        when(connectorAdapter.autoClassificationPipelineRequest(
+                anyString(), anyString(), anyString(), any(MetadataSyncOptions.class)))
+                .thenReturn(JSON.createObjectNode());
+        when(openMetadataClient.upsertIngestionPipeline(any()))
+                .thenReturn(new OpenMetadataEntity("sample", "st_ds_42.st_ds_42_auto_classification"));
+
+        service().triggerStorageSampleCollection(binding);
+
+        verify(openMetadataClient).deployIngestionPipeline("sample");
+        verify(openMetadataClient).enableIngestionPipeline("sample");
+        verify(openMetadataClient).triggerIngestionPipeline("sample");
+    }
+
+    @Test
+    void storageSampleCollectionIsSkippedWhenTheOperatorDidNotOptIn() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setSampleDataEnabled(false);
+
+        service().triggerStorageSampleCollection(binding);
+
+        verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
+    }
+
+    @Test
+    void storageSampleCollectionIsSkippedForConnectorsWithTheirOwnSampleFlag() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setSampleDataEnabled(true);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.collectsSampleDataViaAutoClassification()).thenReturn(false);
+
+        service().triggerStorageSampleCollection(binding);
+
+        verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
+    }
+
+    @Test
+    void storageSampleCollectionNeverFailsTheStatusRefresh() {
+        MetadataSourceBinding binding = binding(0L);
+        binding.setSampleDataEnabled(true);
+        when(dataSourceDao.queryById(42L)).thenReturn(source());
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.collectsSampleDataViaAutoClassification()).thenReturn(true);
+        when(connectorAdapter.autoClassificationPipelineRequest(
+                anyString(), anyString(), anyString(), any(MetadataSyncOptions.class)))
+                .thenThrow(new MetadataIntegrationException(
+                        MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR, "rejected"));
+
+        service().triggerStorageSampleCollection(binding);
+
+        verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
+    }
+
     private void stubReady(MetadataSourceBinding binding, MetadataSourceBinding reserved) {
         when(dataSourceDao.queryById(42L)).thenReturn(source());
         when(bindingDao.queryByDataSourceId(42L)).thenReturn(binding);
         when(openMetadataClient.listIngestionPipelineRuns(anyString(), eq(1))).thenReturn(List.of());
         when(bindingDao.queryById(1L)).thenReturn(reserved);
+    }
+
+    /** Exploration only reaches the profiler pipeline request for relational adapters. */
+    private void stubProfilerCapable() {
+        when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
+        when(connectorAdapter.supportsProfiler()).thenReturn(true);
     }
 
     private MetadataPipelineOperationService service() {

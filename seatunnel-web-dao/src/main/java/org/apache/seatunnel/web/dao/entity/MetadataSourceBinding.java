@@ -41,6 +41,15 @@ public class MetadataSourceBinding extends BaseEntity {
 
     private String omProfilerPipelineFqn;
 
+    /** Operator decision for OpenMetadata sample-data collection; off by default. */
+    private Boolean sampleDataEnabled;
+
+    /**
+     * OpenMetadata object-storage manifest (the {@code defaultManifest} JSON) used to
+     * derive a container data model; OpenMetadata-only, never part of a SeaTunnel job.
+     */
+    private String storageManifestConfig;
+
     private MetadataRunStatus scanStatus;
 
     private Date scanLastRunTime;

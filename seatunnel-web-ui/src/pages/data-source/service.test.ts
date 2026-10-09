@@ -15,6 +15,10 @@ import {
   fetchDataSourceTopologyTree,
   fetchDataSourceCatalogFiles,
   fetchDataSourceCatalogOptions,
+  fetchDataSourceOmResourceDetail,
+  fetchDataSourceOmResources,
+  updateDataSourceSampleData,
+  updateDataSourceStorageManifest,
   previewDataExplorationTable,
   triggerDataSourceExploration,
   triggerDataSourceScan,
@@ -115,6 +119,53 @@ describe('data source service', () => {
     await expect(fetchDataSourceMetadataStatus('42')).resolves.toBe(response);
 
     expect(HttpUtils.get).toHaveBeenCalledWith('/api/v1/data-source/42/metadata-status');
+  });
+
+  it('reads the OpenMetadata assets of a non-database data source', async () => {
+    const response = { code: 0, data: { resources: [], entityTypes: ['topic'], truncated: false } };
+    (HttpUtils.get as jest.Mock).mockResolvedValue(response);
+
+    await expect(fetchDataSourceOmResources('42')).resolves.toBe(response);
+    await expect(fetchDataSourceOmResources('42', 'topic', 100)).resolves.toBe(response);
+
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(1, '/api/v1/data-source/42/om-resources');
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/data-source/42/om-resources?resourceType=topic&limit=100',
+    );
+  });
+
+  it('reads one OpenMetadata asset with its entity type', async () => {
+    const response = { code: 0, data: { fields: [], messages: [] } };
+    (HttpUtils.get as jest.Mock).mockResolvedValue(response);
+
+    await expect(fetchDataSourceOmResourceDetail('42', 'topic-id', 'topic')).resolves.toBe(response);
+
+    expect(HttpUtils.get).toHaveBeenCalledWith(
+      '/api/v1/data-source/42/om-resources/topic-id?resourceType=topic',
+    );
+  });
+
+  it('records the sample-data decision through the data-source route', async () => {
+    const response = { code: 0, data: true };
+    (HttpUtils.post as jest.Mock).mockResolvedValue(response);
+
+    await expect(updateDataSourceSampleData('42', true)).resolves.toBe(response);
+
+    expect(HttpUtils.post).toHaveBeenCalledWith('/api/v1/data-source/42/sample-data?enabled=true');
+  });
+
+  it('saves the object-storage manifest as a JSON body', async () => {
+    const response = { code: 0, data: true };
+    (HttpUtils.post as jest.Mock).mockResolvedValue(response);
+    const manifest = '{"entries":[]}';
+
+    await expect(updateDataSourceStorageManifest('42', manifest)).resolves.toBe(response);
+
+    expect(HttpUtils.post).toHaveBeenCalledWith(
+      '/api/v1/data-source/42/storage-manifest',
+      { manifest },
+    );
   });
 
   it('reads the two product-facing run histories through the existing data-source route', async () => {

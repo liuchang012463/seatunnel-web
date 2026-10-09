@@ -21,6 +21,7 @@ import type {
   DataSourceCatalogFileEntry,
   DataSourceCatalogOption,
 } from '../types';
+import GenericOmMetadataPanel from './GenericOmMetadataPanel';
 import './GenericDataExplorationDrawer.less';
 
 export const GENERIC_EXPLORATION_DB_TYPES = [
@@ -478,6 +479,17 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
                           {selectedFile && <div><dt>修改时间</dt><dd>{formatTime(selectedFile.modifiedTime)}</dd></div>}
                         </dl>
                       </div>
+                    ),
+                  },
+                  {
+                    key: 'openmetadata',
+                    label: 'OpenMetadata',
+                    children: (
+                      <GenericOmMetadataPanel
+                        dataSourceId={String(dataSourceId)}
+                        resourceName={selectedName}
+                        resourcePath={String(selectedValue)}
+                      />
                     ),
                   },
                 ]}

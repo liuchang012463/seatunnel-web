@@ -3,7 +3,10 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
+import org.apache.seatunnel.web.api.metadata.OmResourceType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
+
+import java.util.List;
 
 /** Shared OpenMetadata 2.0.4 S3 StorageService mapping for S3-compatible sources. */
 abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonDatabaseMetadataConnectorAdapter {
@@ -11,6 +14,94 @@ abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonD
     @Override
     public MetadataServiceCategory serviceCategory() {
         return MetadataServiceCategory.STORAGE;
+    }
+
+    @Override
+    public List<OmResourceType> resourceTypes() {
+        return List.of(OmResourceType.CONTAINER);
+    }
+
+    @Override
+    public boolean supportsSampleData() {
+        return true;
+    }
+
+    /**
+     * The storage metadata pipeline has no sample-data flag: container rows are only
+     * collected by the auto-classification agent, so sample collection needs its own
+     * pipeline.
+     */
+    @Override
+    public boolean collectsSampleDataViaAutoClassification() {
+        return true;
+    }
+
+    @Override
+    public boolean supportsStorageManifest() {
+        return true;
+    }
+
+    /**
+     * Injects the operator's manifest as the pipeline's {@code defaultManifest}.
+     *
+     * <p>OpenMetadata validates it as a multi-bucket manifest and keeps only the entries
+     * whose {@code containerName} equals the bucket being processed, so an entry without
+     * one is silently dropped. The data source already fixes the bucket, so it is filled
+     * in here instead of asking the operator to repeat it.</p>
+     */
+    @Override
+    public JsonNode metadataPipelineRequest(
+            DataSource dataSource,
+            String pipelineName,
+            String serviceId,
+            String serviceFqn,
+            MetadataSyncOptions options) {
+        ObjectNode request = (ObjectNode) metadataPipelineRequest(pipelineName, serviceId, serviceFqn);
+        if (options != null && options.hasStorageManifest()) {
+            request.withObject("/sourceConfig/config").put(
+                    "defaultManifest", withContainerName(options.storageManifest(), dataSource));
+        }
+        return request;
+    }
+
+    /** Adds the configured bucket to manifest entries that do not name a container. */
+    String withContainerName(String manifest, DataSource dataSource) {
+        JsonNode raw = rawConnection(dataSource);
+        String bucket = text(raw, "bucket");
+        if (isBlank(bucket)) {
+            return manifest;
+        }
+        try {
+            JsonNode parsed = OBJECT_MAPPER.readTree(manifest);
+            JsonNode entries = parsed.path("entries");
+            if (!entries.isArray()) {
+                return manifest;
+            }
+            for (JsonNode entry : entries) {
+                if (entry.isObject() && isBlank(entry.path("containerName").asText(null))) {
+                    ((ObjectNode) entry).put("containerName", bucket);
+                }
+            }
+            return parsed.toString();
+        } catch (Exception error) {
+            // Validation already rejected malformed JSON; keep the stored value untouched.
+            return manifest;
+        }
+    }
+
+    /**
+     * Sample-only auto-classification pipeline. PII classification stays disabled: the
+     * operator asked for sample data, not for tag writes.
+     */
+    @Override
+    public JsonNode autoClassificationPipelineRequest(
+            String pipelineName, String serviceId, String serviceFqn, MetadataSyncOptions options) {
+        ObjectNode config = OBJECT_MAPPER.createObjectNode();
+        config.put("type", "AutoClassification");
+        config.put("storeSampleData", options != null && options.sampleDataEnabled());
+        config.put("enableAutoClassification", false);
+        return pipelineRequest(
+                pipelineName, serviceId, serviceFqn, "autoClassification", config, null);
     }
 
     @Override

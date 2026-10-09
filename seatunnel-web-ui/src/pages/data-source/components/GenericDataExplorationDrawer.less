@@ -711,6 +711,21 @@
     }
   }
 
+  // OpenMetadata endpoint browser inside the OpenMetadata tab. The shared nav-list
+  // styling is sized for the left catalog rail, so it is bounded here.
+  .generic-exploration__om-endpoints {
+    margin-bottom: 12px;
+
+    .generic-exploration__nav-list {
+      max-height: 240px;
+      margin-top: 6px;
+      padding: 4px;
+      border: 1px solid var(--generic-line);
+      border-radius: 8px;
+      background: var(--generic-surface-subtle);
+    }
+  }
+
   .generic-exploration__section-title {
     color: var(--generic-text);
     font-size: 12px;

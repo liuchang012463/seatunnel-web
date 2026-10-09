@@ -83,8 +83,57 @@ export interface DataSourceMetadataRunState {
 
 export interface DataSourceMetadataStatus {
   syncStatus?: string;
+  /** Whether this data source type can collect OpenMetadata sample data at all. */
+  sampleDataSupported?: boolean;
+  /** Operator decision for OpenMetadata sample-data collection. */
+  sampleDataEnabled?: boolean;
+  /** Whether this data source type derives container data models from a manifest. */
+  storageManifestSupported?: boolean;
+  /** Configured object-storage manifest JSON; null when none is set. */
+  storageManifest?: string | null;
   scan?: DataSourceMetadataRunState;
   exploration?: DataSourceMetadataRunState;
+}
+
+/** One non-relational OpenMetadata asset of a data source. */
+export interface DataSourceOmResource {
+  id?: string;
+  name?: string;
+  fullyQualifiedName?: string;
+  entityType?: string;
+  entityLabel?: string;
+  description?: string;
+  /** Size of the asset's own schema, when it has one. */
+  fieldCount?: number;
+  /** Number of contained assets, for example an API collection's endpoints. */
+  childCount?: number;
+  tags?: string[];
+}
+
+export interface DataSourceOmResourceField {
+  name?: string;
+  dataType?: string;
+  description?: string;
+  tags?: string[];
+}
+
+export interface DataSourceOmResourceDetail {
+  resource?: DataSourceOmResource;
+  fields?: DataSourceOmResourceField[];
+  /** OpenAPI request schema of an API endpoint. */
+  requestFields?: DataSourceOmResourceField[];
+  /** OpenAPI response schema of an API endpoint. */
+  responseFields?: DataSourceOmResourceField[];
+  sampleDataAvailable?: boolean;
+  sampleColumns?: string[];
+  sampleRows?: Array<Array<string | null>>;
+  messages?: string[];
+}
+
+export interface DataSourceOmResourcePage {
+  resources?: DataSourceOmResource[];
+  entityTypes?: string[];
+  truncated?: boolean;
 }
 
 export interface DataSourcePageResult {
