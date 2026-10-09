@@ -79,7 +79,6 @@ public class StreamingJobSubmitter {
             jobLogger.info("Writing streaming config file...");
             configFile = configFileService.writeConfig(instanceId, hoconConfig);
             jobLogger.info("Streaming config file written to: " + configFile);
-
             jobLogger.info("Submitting streaming job via REST API...");
             log.info(
                     "Submitting streaming job to Zeta, instanceId={}, clientId={}, startWithSavepoint={}, restoreEngineJobId={}",

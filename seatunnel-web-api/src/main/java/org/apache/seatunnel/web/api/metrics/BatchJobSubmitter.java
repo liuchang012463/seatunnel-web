@@ -56,7 +56,6 @@ public class BatchJobSubmitter {
         Long jobDefinitionId = instance.getJobDefinitionId();
         Long clientId = instance.getClientId();
 
-        String hoconConfig = driverJarPublisher.publish(clientId, instance.getRuntimeConfig());
         String logPath = instance.getLogPath();
 
         JobFileLogger jobLogger = new JobFileLogger(logPath);
@@ -65,11 +64,16 @@ public class BatchJobSubmitter {
         jobLogger.info("Batch definitionId: " + jobDefinitionId);
         jobLogger.info("Client id: " + clientId);
 
+        String hoconConfig = null;
         String configFile = null;
         String engineId = null;
         boolean submitted = false;
 
         try {
+            // Inside the try: a driver that cannot be published has to fail the instance through
+            // handleCoreFailure instead of leaving it RUNNING without a job log.
+            hoconConfig = driverJarPublisher.publish(clientId, instance.getRuntimeConfig());
+
             jobLogger.info("Writing batch config file...");
             configFile = configFileService.writeConfig(instanceId, hoconConfig);
             jobLogger.info("Batch config file written to: " + configFile);
