@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.api.metrics.JobRuntimeContext;
 import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 import org.apache.seatunnel.web.common.exception.JobSubmitException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.engine.client.driver.EngineDriverJarPublisher;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.enums.Status;
@@ -24,17 +25,20 @@ public class StreamingJobSubmitter {
 
     private final JobConfigFileService configFileService;
     private final SeaTunnelRestClient restClient;
+    private final EngineDriverJarPublisher driverJarPublisher;
     private final StreamingJobMetricsMonitor streamingJobMetricsMonitor;
     private final StreamingJobResultWatcher streamingJobResultWatcher;
     private final StreamingJobResultHandler streamingJobResultHandler;
 
     public StreamingJobSubmitter(JobConfigFileService configFileService,
                                  SeaTunnelRestClient restClient,
+                                 EngineDriverJarPublisher driverJarPublisher,
                                  StreamingJobMetricsMonitor streamingJobMetricsMonitor,
                                  StreamingJobResultWatcher streamingJobResultWatcher,
                                  StreamingJobResultHandler streamingJobResultHandler) {
         this.configFileService = configFileService;
         this.restClient = restClient;
+        this.driverJarPublisher = driverJarPublisher;
         this.streamingJobMetricsMonitor = streamingJobMetricsMonitor;
         this.streamingJobResultWatcher = streamingJobResultWatcher;
         this.streamingJobResultHandler = streamingJobResultHandler;
@@ -56,7 +60,7 @@ public class StreamingJobSubmitter {
         Long jobDefinitionId = instance.getJobDefinitionId();
         Long clientId = instance.getClientId();
 
-        String hoconConfig = instance.getRuntimeConfig();
+        String hoconConfig = driverJarPublisher.publish(clientId, instance.getRuntimeConfig());
         String logPath = instance.getLogPath();
 
         JobFileLogger jobLogger = new JobFileLogger(logPath);

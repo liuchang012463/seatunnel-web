@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.core.verify.job.ConnectivityTestJob;
 import org.apache.seatunnel.web.dao.entity.SeaTunnelClient;
+import org.apache.seatunnel.web.engine.client.driver.EngineDriverJarPublisher;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,9 @@ public class DefaultSeaTunnelTestJobExecutor implements SeaTunnelTestJobExecutor
 
     @Resource
     private SeaTunnelRestClient seaTunnelRestClient;
+
+    @Resource
+    private EngineDriverJarPublisher driverJarPublisher;
 
     @Resource
     private ConnectivityJobStatusRules statusRules;
@@ -98,7 +102,7 @@ public class DefaultSeaTunnelTestJobExecutor implements SeaTunnelTestJobExecutor
     private String submitTestJob(SeaTunnelClient client, ConnectivityTestJob job) {
         Map submitResponse = seaTunnelRestClient.submitJobText(
                 client.getId(),
-                job.getJobConfig(),
+                driverJarPublisher.publish(client.getId(), job.getJobConfig()),
                 job.getConfigFormat(),
                 null,
                 job.getJobName(),

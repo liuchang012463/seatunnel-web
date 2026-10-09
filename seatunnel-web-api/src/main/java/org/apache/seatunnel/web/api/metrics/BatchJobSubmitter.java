@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 import org.apache.seatunnel.web.common.exception.JobSubmitException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.engine.client.driver.EngineDriverJarPublisher;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.enums.Status;
@@ -29,17 +30,20 @@ public class BatchJobSubmitter {
 
     private final JobConfigFileService configFileService;
     private final SeaTunnelRestClient restClient;
+    private final EngineDriverJarPublisher driverJarPublisher;
     private final JobMetricsMonitor batchMetricsMonitor;
     private final JobResultWatcher batchJobResultWatcher;
     private final JobResultHandler batchJobResultHandler;
 
     public BatchJobSubmitter(JobConfigFileService configFileService,
                              SeaTunnelRestClient restClient,
+                             EngineDriverJarPublisher driverJarPublisher,
                              JobMetricsMonitor batchMetricsMonitor,
                              JobResultWatcher batchJobResultWatcher,
                              JobResultHandler batchJobResultHandler) {
         this.configFileService = configFileService;
         this.restClient = restClient;
+        this.driverJarPublisher = driverJarPublisher;
         this.batchMetricsMonitor = batchMetricsMonitor;
         this.batchJobResultWatcher = batchJobResultWatcher;
         this.batchJobResultHandler = batchJobResultHandler;
@@ -52,7 +56,7 @@ public class BatchJobSubmitter {
         Long jobDefinitionId = instance.getJobDefinitionId();
         Long clientId = instance.getClientId();
 
-        String hoconConfig = instance.getRuntimeConfig();
+        String hoconConfig = driverJarPublisher.publish(clientId, instance.getRuntimeConfig());
         String logPath = instance.getLogPath();
 
         JobFileLogger jobLogger = new JobFileLogger(logPath);
