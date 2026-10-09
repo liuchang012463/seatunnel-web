@@ -290,7 +290,7 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
             <span>{sampleDataEnabled ? '已开启' : '未开启（默认）'}</span>
           </Space>
           <p>
-            开启后，采集任务会读取真实内容（Kafka 主题消息、对象存储与 SFTP 文件行）并写入 OpenMetadata，
+            开启后，采集任务会读取真实内容（Kafka 主题消息、对象存储与 FTP/SFTP 文件行）并写入 OpenMetadata，
             拥有查看样本数据权限的账号可读取。保存后需重新扫描该数据源才会采集。
           </p>
         </div>

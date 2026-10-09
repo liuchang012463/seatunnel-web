@@ -125,7 +125,7 @@ OM 2.0.4 的 DQ 限定 TABLE/COLUMN，主题/容器/文件/API 无测试定义�
 
 **候选 A —— OM 非数据库资产读取**
 
-- 适配器新增 `resourceTypes()`：Kafka→topic、Elasticsearch→searchIndex、HTTP→apiCollection+apiEndpoint、S3/MinIO→container、SFTP→directory+file；FTP 无适配器，返回 `CONNECTOR_NOT_SUPPORTED`。
+- 适配器新增 `resourceTypes()`：Kafka→topic、Elasticsearch→searchIndex、HTTP→apiCollection+apiEndpoint、S3/MinIO→container、SFTP→directory+file；FTP 通过 `CustomDrive` + `ftp_connector.ftp_source.FtpSource`（OM 扩展）对齐 SFTP，资源类型同样为 directory+file。
 - `OpenMetadataClient` 新增 `listResourcesPage` / `getResourceDetail`，由官方 SDK 2.0.4 读取身份、schema 与样本数据；样本字段只在详情读取，列表不取样本，避免大列表携带负载。
 - 详情读取在缺少 `VIEW_SAMPLE_DATA` 权限时自动降级为"仅 schema"，而不是整体失败。
 - 接口：`GET /api/v1/data-source/{id}/om-resources`、`GET /api/v1/data-source/{id}/om-resources/{resourceId}?resourceType=`。

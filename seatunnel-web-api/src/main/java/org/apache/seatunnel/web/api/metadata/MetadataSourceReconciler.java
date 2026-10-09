@@ -97,8 +97,8 @@ public class MetadataSourceReconciler {
         openMetadataClient.assertFixedVersion();
         Optional<MetadataConnectorAdapter> resolved = connectorRegistry.find(dataSource.getDbType());
         if (resolved.isEmpty()) {
-            // FTP and other types without a verified OM connector stay terminal and
-            // must not keep retrying into a user-visible sync failure loop.
+            // Types without a verified OM connector stay terminal and must not
+            // keep retrying into a user-visible sync failure loop.
             saveUnsupported(claimed, claimedVersion);
             return;
         }
