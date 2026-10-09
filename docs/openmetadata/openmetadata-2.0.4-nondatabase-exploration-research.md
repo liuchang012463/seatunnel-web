@@ -145,7 +145,15 @@ OM 2.0.4 的 DQ 限定 TABLE/COLUMN，主题/容器/文件/API 无测试定义�
 - **关键约束（实测发现）**：OM 按 `ManifestMetadataConfig` 校验 `defaultManifest`，并只保留 `containerName` 等于当前 bucket 的条目；缺省该字段的条目会被静默丢弃。数据源已固定 bucket，因此适配器在注入时自动补 `containerName`，操作者只需写 `dataPath` / `structureFormat`。
 - `dataPath` 是**目录前缀**（`_get_sample_file_prefix` 会补 `/`），指向单个文件不会匹配到任何对象；页面提示与实测均按目录语义。
 - 结构化容器由元数据扫描创建：实测 MinIO 桶 `seatunnel-web-sync` 下生成子容器 `sync`，并从 CSV 推断出列 `湖文件兼容测试-行一` (STRING)。
-- 容器样本数据需要 auto-classification 代理，且该代理无调度。为此在**每次元数据扫描成功后触发一次**（`MetadataStatusSynchronizer` 检测到扫描结果变化时触发，乐观版本号保证只有一个节点执行），使开关的"下次扫描后采集"对对象存储同样成立。
+- 容器样本数据需要 auto-classification 代理，且该代理无调度。为此在**每次元数据扫描成功后触发一次**，使开关的"下次扫描后采集"对对象存储同样成立。
+
+实机联调又暴露并修复了三处问题（提交 `cc0d8f8c`）：
+
+1. **触发退化成每轮状态刷新一次**。原本用"扫描成功时间变化"判断新扫描，但该时间由 OM 的毫秒时间戳每次重新计算，而绑定表列是秒精度，两者永不相等（实测 08:52:54 vs 08:52:55），于是每 61 秒触发一次采样。改为以**扫描 run id** 作为标记（新增列 `storage_sample_scan_run_id`，迁移 `V1_0_39`），run id 稳定；实测 6 分钟内不再重复触发。
+2. **容器/文件样本数据读不到**。OM 2.0.4 把容器与文件的样本数据存在 **entity extension**（`storage_container_entity` 的 JSON 里 `sampleData` 为 NULL，PUT 返回 200 但实体字段不落库），必须调用 `GET /v1/containers/{id}/sampleData` 与 `GET /v1/drives/files/{id}/sampleData` 才能读到。此前按实体字段读取，页面因此始终显示无样本。
+3. **面板点选 OM 资源不显示详情**。渲染分支仍以"连接器 catalog 名称匹配"为准；而对象存储的结构化容器对应目录，抽屉对目录是"进入"而非"选中"。现在 OM 资源列表本身可点选（与 HTTP 的接口目录一致），目录类数据源也能打开任意 OM 资产。
+
+容器样本数据需要容器先有 dataModel，否则 OM 直接拒绝写入（`Cannot add sample data to container ... without a dataModel`），所以顺序必须是"先清单建模型、后采样"。
 
 **候选 B/D —— 样本数据开关**
 
@@ -165,11 +173,10 @@ OM 2.0.4 的 DQ 限定 TABLE/COLUMN，主题/容器/文件/API 无测试定义�
 
 **验证**
 
-- 单元测试：metadata 包 169 项通过（含适配器、协调器、客户端映射、探查守卫、清单校验与存储采样触发用例）；前端 service 测试 15 项通过，`tsc` 无错误。
+- 单元测试：metadata 包 173 项通过（含适配器、协调器、客户端映射、探查守卫、清单校验与存储采样触发用例）；前端 service 测试 15 项通过，`tsc` 无错误。
 - 实机验证（OM 2.0.4、独立 schema、真实数据源）：Kafka/MinIO/Elasticsearch/HTTP 的资源列表与详情读取成功，FTP 正确返回不支持；浏览器走通 Kafka、SFTP、HTTP、MinIO 四条抽屉路径。
 - HTTP 实测：选中 `/omext/mock/seatunnel-http/post` 后正确显示请求结构（`start_time`、`end_time`）与响应结构（`code`、`message`、`data`、`meta`）。
-- 结构化容器实测：清单 `{"entries":[{"dataPath":"sync","structureFormat":"csv"}]}` 保存后，OM 中该 pipeline 的 `defaultManifest` 带上了自动补齐的 `containerName`，扫描后生成带列的结构化子容器。
-- 未观测到的环节：容器样本数据的实际采集未在本次实机验证中跑通，原因是共享开发环境的 OM 2.0.4 ingestion/Airflow 容器已退出（`Unable to connect to Airflow APIs`），无法触发任何 pipeline 运行；该触发逻辑有 4 项单元测试覆盖，但需要在 ingestion 恢复后复测。
+- 结构化容器与样本数据实测（OM 2.0.4 全部容器重启后）：清单 `{"entries":[{"dataPath":"sync","structureFormat":"csv"}]}` 保存后，OM 中该 pipeline 的 `defaultManifest` 带上自动补齐的 `containerName`；扫描生成结构化子容器 `sync`（列 `湖文件兼容测试-行一` STRING）；auto-classification 采样成功（Sampler 步骤 records=1、0 errors）后，Web 接口返回 2 行样本（`湖文件兼容测试-行二`、`湖文件兼容测试-行三`），浏览器 OM 页签同时显示 Schema 表与样本数据。
 - 期间修复：无 schema 的 API 端点在列表映射时把 null 字段数拆箱导致 NPE，已改为按 0 计。
 
 **迁移版本协调**

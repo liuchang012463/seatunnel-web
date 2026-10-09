@@ -70,6 +70,7 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string>();
   const [selectedId, setSelectedId] = useState<string>();
+  const [picked, setPicked] = useState<DataSourceOmResource>();
   const [sampleDataSupported, setSampleDataSupported] = useState(false);
   const [sampleDataEnabled, setSampleDataEnabled] = useState(false);
   const [sampleDataSaving, setSampleDataSaving] = useState(false);
@@ -123,6 +124,7 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
     setError(undefined);
     setDetailError(undefined);
     setSelectedId(undefined);
+    setPicked(undefined);
     void loadStatus();
     void loadResources();
   }, [loadResources, loadStatus]);
@@ -138,12 +140,15 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
     [apiFamily, matchName, resources],
   );
 
-  // HTTP sources browse OpenMetadata's own endpoint list, so the selection is driven
-  // by the panel instead of by a name match against the connector catalog.
-  const activeId = apiFamily ? selectedId : matched?.id;
-  const activeEntityType = apiFamily
-    ? 'apiEndpoint'
-    : matched?.entityType;
+  // The panel can drive its own selection: HTTP sources browse OpenMetadata's endpoint
+  // list, and an object-storage container maps to a directory that the connector catalog
+  // navigates into rather than selects.
+  const pickedResource = picked && resources.some((item) => item.id === picked.id) ? picked : undefined;
+  const activeResource = apiFamily
+    ? apiEndpoints.find((resource) => resource.id === selectedId)
+    : pickedResource ?? matched;
+  const activeId = activeResource?.id;
+  const activeEntityType = activeResource?.entityType;
 
   useEffect(() => {
     let cancelled = false;
@@ -208,9 +213,7 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
     }
   };
 
-  const active = apiFamily
-    ? apiEndpoints.find((resource) => resource.id === selectedId)
-    : matched;
+  const active = activeResource;
 
   const renderFields = (fields: DataSourceOmResourceField[] | undefined, emptyText: string) => (
     (fields || []).length > 0 ? (
@@ -249,7 +252,7 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
 
   const matchedLabel = apiFamily
     ? (apiEndpoints.length > 0 ? `${apiEndpoints.length} 个接口` : '无接口')
-    : (matched ? '已收录' : '未收录');
+    : (active ? '已收录' : '未收录');
 
   return (
     <div className="generic-exploration__tab-pane">
@@ -371,7 +374,7 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
       )}
 
       <Spin spinning={loading || detailLoading}>
-        {!apiFamily && !matched ? (
+        {!apiFamily && !active ? (
           <div className="generic-exploration__state">
             <strong>OpenMetadata 中未找到该资源</strong>
             <span>
@@ -380,21 +383,29 @@ const GenericOmMetadataPanel: React.FC<GenericOmMetadataPanelProps> = ({
                 : '该数据源尚未在 OpenMetadata 中产生资源，请先执行扫描。'}
             </span>
             {resources.length > 0 && (
-              <div className="generic-exploration__nav-list">
-                {resources.slice(0, 20).map((resource) => (
-                  <div className="generic-exploration__asset-item" key={resource.id || resource.name}>
-                    <span className="generic-exploration__asset-item-copy">
-                      <strong title={resource.name}>{resource.name}</strong>
-                      <small title={resource.fullyQualifiedName}>
-                        {resource.entityLabel || resource.entityType}
-                        {typeof resource.fieldCount === 'number' ? ` · ${resource.fieldCount} 个字段` : ''}
-                        {typeof resource.childCount === 'number' ? ` · ${resource.childCount} 个子项` : ''}
-                      </small>
-                    </span>
-                  </div>
-                ))}
-                {truncated && <div className="generic-exploration__nav-footer">仅显示前 20 项</div>}
-              </div>
+              <>
+                <div className="generic-exploration__section-title">OpenMetadata 已有资源</div>
+                <div className="generic-exploration__nav-list">
+                  {resources.slice(0, 20).map((resource) => (
+                    <button
+                      type="button"
+                      className="generic-exploration__asset-item"
+                      key={resource.id || resource.name}
+                      onClick={() => setPicked(resource)}
+                    >
+                      <span className="generic-exploration__asset-item-copy">
+                        <strong title={resource.name}>{resource.name}</strong>
+                        <small title={resource.fullyQualifiedName}>
+                          {resource.entityLabel || resource.entityType}
+                          {typeof resource.fieldCount === 'number' ? ` · ${resource.fieldCount} 个字段` : ''}
+                          {typeof resource.childCount === 'number' ? ` · ${resource.childCount} 个子项` : ''}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                  {truncated && <div className="generic-exploration__nav-footer">仅显示前 20 项</div>}
+                </div>
+              </>
             )}
           </div>
         ) : apiFamily && !active ? (

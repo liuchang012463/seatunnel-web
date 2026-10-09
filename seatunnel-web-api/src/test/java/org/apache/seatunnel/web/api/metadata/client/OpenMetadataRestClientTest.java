@@ -627,6 +627,37 @@ class OpenMetadataRestClientTest {
                 () -> client.getResourceDetail(OmResourceType.CONTAINER, "container-id"));
     }
 
+    @Test
+    void readsContainerSampleDataFromItsDedicatedEndpoint() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/containers", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            if (path.endsWith("/sampleData")) {
+                // Sample rows live in an entity extension, so only this endpoint returns them.
+                respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000012\","
+                        + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                        + "\"sampleData\":{\"columns\":[\"id\"],\"rows\":[[\"1\"],[\"2\"]]}}");
+                return;
+            }
+            respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000012\","
+                    + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                    + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                    + "\"dataModel\":{\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\"}]}}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataResourceDetail detail =
+                client.getResourceDetail(OmResourceType.CONTAINER, "container-id");
+
+        assertEquals(1, detail.fields().size());
+        assertTrue(detail.sampleDataAvailable());
+        assertEquals(List.of("id"), detail.sampleColumns());
+        assertEquals(List.of(List.of("1"), List.of("2")), detail.sampleRows());
+    }
+
     private static OpenMetadataProperties properties(String baseUrl) {        OpenMetadataProperties properties = new OpenMetadataProperties();
         properties.setBaseUrl(baseUrl);
         properties.setToken("test-jwt");

@@ -50,6 +50,13 @@ public class MetadataSourceBinding extends BaseEntity {
      */
     private String storageManifestConfig;
 
+    /**
+     * Run id of the metadata scan the object-storage sample agent was last triggered for.
+     * The id is stable, unlike the recomputed scan success time, which drifts between
+     * status refreshes.
+     */
+    private String storageSampleScanRunId;
+
     private MetadataRunStatus scanStatus;
 
     private Date scanLastRunTime;
