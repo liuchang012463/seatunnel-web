@@ -24,7 +24,10 @@ public final class HoconSensitiveMaskUtil {
             "credential",
             "credentials",
             "authorization",
-            "signature"
+            "signature",
+            "passphrase",
+            "jwt",
+            "clientkey"
     ));
 
     private static final Pattern URL_USER_INFO = Pattern.compile("(?i)(://)[^/?#]+@");
@@ -82,15 +85,19 @@ public final class HoconSensitiveMaskUtil {
      * 递归脱敏
      */
     private static ConfigValue maskValue(ConfigValue value) {
+        return maskValue(value, null);
+    }
+
+    private static ConfigValue maskValue(ConfigValue value, String parentKey) {
         if (value == null) {
             return null;
         }
 
         switch (value.valueType()) {
             case OBJECT:
-                return maskObject((ConfigObject) value);
+                return maskObject((ConfigObject) value, parentKey);
             case LIST:
-                return maskList((ConfigList) value);
+                return maskList((ConfigList) value, parentKey);
             case STRING:
                 String original = (String) value.unwrapped();
                 String masked = maskInlineCredentials(original);
@@ -103,17 +110,19 @@ public final class HoconSensitiveMaskUtil {
     /**
      * 脱敏对象
      */
-    private static ConfigValue maskObject(ConfigObject obj) {
+    private static ConfigValue maskObject(ConfigObject obj, String parentKey) {
         ConfigObject result = obj;
 
         for (Map.Entry<String, ConfigValue> entry : obj.entrySet()) {
             String key = entry.getKey();
             ConfigValue childValue = entry.getValue();
 
-            if (isSensitiveContainerKey(key) || isSensitiveKey(key)) {
+            if (isSensitiveContainerKey(key)
+                    || isSensitiveKey(key)
+                    || isCredentialParameterKey(parentKey, key)) {
                 result = result.withValue(key, ConfigValueFactory.fromAnyRef(MASK));
             } else {
-                ConfigValue maskedChild = maskValue(childValue);
+                ConfigValue maskedChild = maskValue(childValue, key);
                 if (maskedChild != childValue) {
                     result = result.withValue(key, maskedChild);
                 }
@@ -126,12 +135,12 @@ public final class HoconSensitiveMaskUtil {
     /**
      * 脱敏列表
      */
-    private static ConfigValue maskList(ConfigList list) {
+    private static ConfigValue maskList(ConfigList list, String parentKey) {
         List<Object> newList = new ArrayList<>(list.size());
         boolean changed = false;
 
         for (ConfigValue item : list) {
-            ConfigValue maskedItem = maskValue(item);
+            ConfigValue maskedItem = maskValue(item, parentKey);
             newList.add(maskedItem == null ? null : maskedItem.unwrapped());
             if (maskedItem != item) {
                 changed = true;
@@ -213,10 +222,26 @@ public final class HoconSensitiveMaskUtil {
                 || normalized.contains("apikey")
                 || normalized.contains("accesskey")
                 || normalized.contains("privatekey")
+                || normalized.contains("clientkey")
+                || normalized.contains("passphrase")
+                || normalized.contains("userinfo")
+                || normalized.contains("jwt")
                 || normalized.contains("jaas")
                 || normalized.contains("signature")
                 || normalized.endsWith("authorization")
-                || normalized.endsWith("token");
+                || normalized.contains("token");
+    }
+
+    /**
+     * HTTP 数据源把查询参数放在 params 中，其中的 key 通常就是 API key。同名的 key 在其它连接器
+     * 里可能只是业务字段，所以只在参数容器内隐藏。
+     */
+    private static boolean isCredentialParameterKey(String parentKey, String key) {
+        if (parentKey == null || !"key".equals(normalizeKey(key))) {
+            return false;
+        }
+        String parent = normalizeKey(parentKey);
+        return "params".equals(parent) || "query".equals(parent) || "queryparams".equals(parent);
     }
 
     private static String maskInlineCredentials(String value) {
