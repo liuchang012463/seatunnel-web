@@ -11,6 +11,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -522,9 +523,15 @@ public class SeaTunnelRestClient {
      */
     public String uploadDriverJar(Long clientId, byte[] jarBytes, String fileName) {
         try {
+            // The name comes from a file on disk, so it has to be encoded before it becomes a query
+            // parameter: a name with '&' or '#' would otherwise split the request.
             UriComponentsBuilder builder =
                     UriComponentsBuilder.fromHttpUrl(url(clientId, "/driver-jar/upload"))
-                            .queryParam("fileName", fileName);
+                            .queryParam(
+                                    "fileName",
+                                    UriUtils.encodeQueryParam(
+                                            fileName == null ? "" : fileName,
+                                            StandardCharsets.UTF_8));
 
             Map response = post(
                     clientId,
