@@ -33,14 +33,22 @@ public interface StreamingJobMetricsMapper extends BaseMapper<StreamingJobMetric
                 WHERE metric.collect_time_ms < #{startTimeMs}
             ),
             relevant_samples AS (
-                SELECT job_instance_id, pipeline_id, collect_time_ms,
-                       write_row_count, write_bytes, 0 AS is_in_range
-                FROM baseline_ranked
-                WHERE row_number_in_baseline = 1
+                SELECT sample.job_instance_id, sample.pipeline_id, sample.collect_time_ms,
+                       sample.write_row_count, sample.write_bytes, 0 AS is_in_range,
+                       CASE WHEN instance.start_time >= FROM_UNIXTIME(#{startTimeMs} / 1000)
+                            THEN 1 ELSE 0 END AS started_in_range
+                FROM baseline_ranked sample
+                LEFT JOIN t_seatunnel_web_streaming_job_instance instance
+                       ON instance.id = sample.job_instance_id
+                WHERE sample.row_number_in_baseline = 1
                 UNION ALL
                 SELECT metric.job_instance_id, metric.pipeline_id, metric.collect_time_ms,
-                       metric.write_row_count, metric.write_bytes, 1 AS is_in_range
+                       metric.write_row_count, metric.write_bytes, 1 AS is_in_range,
+                       CASE WHEN instance.start_time >= FROM_UNIXTIME(#{startTimeMs} / 1000)
+                            THEN 1 ELSE 0 END AS started_in_range
                 FROM t_seatunnel_web_streaming_job_metrics_snapshot metric
+                LEFT JOIN t_seatunnel_web_streaming_job_instance instance
+                       ON instance.id = metric.job_instance_id
                 WHERE metric.collect_time_ms >= #{startTimeMs}
                   AND metric.collect_time_ms <= #{endTimeMs}
             ),
@@ -60,14 +68,21 @@ public interface StreamingJobMetricsMapper extends BaseMapper<StreamingJobMetric
                 SELECT job_instance_id, is_in_range,
                        CASE
                            WHEN is_in_range = 0 THEN 0
-                           WHEN previous_write_row_count IS NULL THEN write_row_count
+                           -- Without a predecessor the cumulative counter can only be
+                           -- attributed to the window when the job itself started in it;
+                           -- otherwise the baseline was pruned and the difference is unknown.
+                           WHEN previous_write_row_count IS NULL AND started_in_range = 1
+                               THEN write_row_count
+                           WHEN previous_write_row_count IS NULL THEN 0
                            WHEN write_row_count >= previous_write_row_count
                                THEN write_row_count - previous_write_row_count
                            ELSE write_row_count
                        END AS records_delta,
                        CASE
                            WHEN is_in_range = 0 THEN 0
-                           WHEN previous_write_bytes IS NULL THEN write_bytes
+                           WHEN previous_write_bytes IS NULL AND started_in_range = 1
+                               THEN write_bytes
+                           WHEN previous_write_bytes IS NULL THEN 0
                            WHEN write_bytes >= previous_write_bytes
                                THEN write_bytes - previous_write_bytes
                            ELSE write_bytes
@@ -152,18 +167,27 @@ public interface StreamingJobMetricsMapper extends BaseMapper<StreamingJobMetric
                 WHERE metric.collect_time_ms < #{startTimeMs}
             ),
             relevant_samples AS (
-                SELECT job_instance_id, pipeline_id, collect_time_ms, collect_time,
-                       write_row_count, write_bytes, 0 AS is_in_range,
+                SELECT sample.job_instance_id, sample.pipeline_id, sample.collect_time_ms,
+                       sample.collect_time,
+                       sample.write_row_count, sample.write_bytes, 0 AS is_in_range,
                        CAST(0 AS DECIMAL(20, 4)) AS write_qps,
-                       CAST(0 AS DECIMAL(20, 4)) AS write_bps
-                FROM baseline_ranked
-                WHERE row_number_in_baseline = 1
+                       CAST(0 AS DECIMAL(20, 4)) AS write_bps,
+                       CASE WHEN instance.start_time >= FROM_UNIXTIME(#{startTimeMs} / 1000)
+                            THEN 1 ELSE 0 END AS started_in_range
+                FROM baseline_ranked sample
+                LEFT JOIN t_seatunnel_web_streaming_job_instance instance
+                       ON instance.id = sample.job_instance_id
+                WHERE sample.row_number_in_baseline = 1
                 UNION ALL
                 SELECT metric.job_instance_id, metric.pipeline_id, metric.collect_time_ms,
                        metric.collect_time,
                        metric.write_row_count, metric.write_bytes, 1 AS is_in_range,
-                       metric.write_qps, metric.write_bps
+                       metric.write_qps, metric.write_bps,
+                       CASE WHEN instance.start_time >= FROM_UNIXTIME(#{startTimeMs} / 1000)
+                            THEN 1 ELSE 0 END AS started_in_range
                 FROM t_seatunnel_web_streaming_job_metrics_snapshot metric
+                LEFT JOIN t_seatunnel_web_streaming_job_instance instance
+                       ON instance.id = metric.job_instance_id
                 WHERE metric.collect_time_ms >= #{startTimeMs}
                   AND metric.collect_time_ms <= #{endTimeMs}
             ),
@@ -183,14 +207,21 @@ public interface StreamingJobMetricsMapper extends BaseMapper<StreamingJobMetric
                 SELECT lagged.*,
                        CASE
                            WHEN is_in_range = 0 THEN 0
-                           WHEN previous_write_row_count IS NULL THEN write_row_count
+                           -- Without a predecessor the cumulative counter can only be
+                           -- attributed to the window when the job itself started in it;
+                           -- otherwise the baseline was pruned and the difference is unknown.
+                           WHEN previous_write_row_count IS NULL AND started_in_range = 1
+                               THEN write_row_count
+                           WHEN previous_write_row_count IS NULL THEN 0
                            WHEN write_row_count >= previous_write_row_count
                                THEN write_row_count - previous_write_row_count
                            ELSE write_row_count
                        END AS records_delta,
                        CASE
                            WHEN is_in_range = 0 THEN 0
-                           WHEN previous_write_bytes IS NULL THEN write_bytes
+                           WHEN previous_write_bytes IS NULL AND started_in_range = 1
+                               THEN write_bytes
+                           WHEN previous_write_bytes IS NULL THEN 0
                            WHEN write_bytes >= previous_write_bytes
                                THEN write_bytes - previous_write_bytes
                            ELSE write_bytes
