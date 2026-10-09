@@ -111,8 +111,19 @@ class EngineDriverJarPublisherTest {
     }
 
     @Test
-    void leavesConfigWithoutDriverLocationUntouched() {
+    void keepsConfigWithoutDriverLocationUntouched() {
         String config = "source { Jdbc { url = \"jdbc:mysql://localhost:3306/demo\" } }";
+
+        assertEquals(config, publisher.publish(CLIENT_ID, config));
+        verify(restClient, never()).uploadDriverJar(any(), any(), any());
+    }
+
+    @Test
+    void doesNotPublishALocalFileThatIsNotAJar(@TempDir Path dir) throws Exception {
+        Path secret = dir.resolve("credentials");
+        Files.write(secret, "secret-bytes".getBytes(StandardCharsets.UTF_8));
+
+        String config = "source { Jdbc { driver_location = \"" + secret + "\" } }";
 
         assertEquals(config, publisher.publish(CLIENT_ID, config));
         verify(restClient, never()).uploadDriverJar(any(), any(), any());

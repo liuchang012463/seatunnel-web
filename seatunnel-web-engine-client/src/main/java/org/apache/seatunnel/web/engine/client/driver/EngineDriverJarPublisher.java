@@ -45,6 +45,12 @@ public class EngineDriverJarPublisher {
 
     private static final String JAR_SEPARATOR = ";";
 
+    /**
+     * Mirrors the limit the engine applies to an uploaded driver jar. A larger jar is left to the
+     * deployment: the engine stores the jar on every member, so it refuses it anyway.
+     */
+    private static final long MAX_DRIVER_JAR_BYTES = 64L * 1024 * 1024;
+
     private final SeaTunnelRestClient restClient;
     private final Map<String, String> engineDriverLocationMappings;
 
@@ -127,7 +133,7 @@ public class EngineDriverJarPublisher {
                 log.info("Using preinstalled JDBC driver {} as {}", jar.getName(), mappedPath);
                 continue;
             }
-            if (!jar.isFile()) {
+            if (!jar.isFile() || !isPublishableJar(jar)) {
                 publishedPaths.add(path);
                 continue;
             }
@@ -181,6 +187,28 @@ public class EngineDriverJarPublisher {
         return Map.copyOf(parsed);
     }
 
+    /**
+     * A job config may name any local file as its driver, so only a jar the engine can store is
+     * read and sent: everything else stays in the config for the engine nodes to resolve.
+     */
+    private boolean isPublishableJar(File jar) {
+        if (!jar.getName().toLowerCase().endsWith(".jar")) {
+            log.warn("Skipped publishing a JDBC driver that is not a jar: {}", jar);
+            return false;
+        }
+
+        if (jar.length() > MAX_DRIVER_JAR_BYTES) {
+            log.warn(
+                    "Skipped publishing the JDBC driver {}: {} bytes exceed the engine limit of {} bytes",
+                    jar,
+                    jar.length(),
+                    MAX_DRIVER_JAR_BYTES);
+            return false;
+        }
+
+        return true;
+    }
+
     private String upload(Long clientId, File jar) {
         try {
             String enginePath =
@@ -190,7 +218,7 @@ public class EngineDriverJarPublisher {
             return enginePath;
         } catch (IOException e) {
             throw new SeaTunnelClientException(
-                    "Cannot read the JDBC driver jar " + jar, -1, "", e);
+                    "Cannot read the JDBC driver jar " + jar.getName(), -1, "", e);
         }
     }
 }
