@@ -111,6 +111,7 @@ const DirectoryPickerModal: React.FC<DirectoryPickerModalProps> = ({
       <div className="mt-4 flex justify-end border-t border-slate-100 pt-3">
         <Button
           type="primary"
+          disabled={loading}
           onClick={() => {
             onSelect(currentPath || '/');
             onCancel();
