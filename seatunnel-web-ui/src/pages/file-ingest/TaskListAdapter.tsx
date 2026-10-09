@@ -89,8 +89,8 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         total: Number(data?.pagination?.total || 0),
       }));
     } catch (fetchError: any) {
-      setTaskList([]);
-      setPagination((previous) => ({ ...previous, total: 0 }));
+      // Keep the rows of the last successful query: the list also refreshes itself while a run is
+      // active, and blanking it would stop that refresh until the operator retries by hand.
       setError(getErrorMessage(fetchError, '查询任务列表失败，请稍后重试'));
     } finally {
       setLoading(false);

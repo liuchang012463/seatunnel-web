@@ -223,8 +223,8 @@ const App: React.FC<Props> = ({
         total: data?.data?.pagination?.total || 0,
       }));
     } catch (error) {
-      setTaskList([]);
-      setPagination((prev) => ({ ...prev, total: 0 }));
+      // Keep the rows of the last successful query: the list also refreshes itself while a run is
+      // active, and blanking it would stop that refresh until the operator retries by hand.
       setListError(getErrorMessage(error, "查询任务列表失败，请稍后重试"));
     } finally {
       setLoading(false);
