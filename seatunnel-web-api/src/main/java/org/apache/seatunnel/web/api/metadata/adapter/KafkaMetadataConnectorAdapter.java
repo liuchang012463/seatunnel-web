@@ -44,6 +44,9 @@ public class KafkaMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCo
      * {@code generateSampleData} the ingestion source polls a bounded number of
      * messages per topic (10 polls inside a 10 second window) and stores them on the
      * topic entity.
+     *
+     * <p>The data-source-aware overload is used on purpose: it omits the cron expression, so
+     * OpenMetadata cannot schedule an ingestion run behind the operator's back.</p>
      */
     @Override
     public JsonNode metadataPipelineRequest(
@@ -52,7 +55,8 @@ public class KafkaMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCo
             String serviceId,
             String serviceFqn,
             MetadataSyncOptions options) {
-        ObjectNode request = (ObjectNode) metadataPipelineRequest(pipelineName, serviceId, serviceFqn);
+        ObjectNode request =
+                (ObjectNode) metadataPipelineRequest(dataSource, pipelineName, serviceId, serviceFqn);
         request.withObject("/sourceConfig/config")
                 .put("generateSampleData", options != null && options.sampleDataEnabled());
         return request;

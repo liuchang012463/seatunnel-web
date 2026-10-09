@@ -48,6 +48,9 @@ abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonD
      * whose {@code containerName} equals the bucket being processed, so an entry without
      * one is silently dropped. The data source already fixes the bucket, so it is filled
      * in here instead of asking the operator to repeat it.</p>
+     *
+     * <p>The data-source-aware overload is used on purpose: it omits the cron expression, so
+     * OpenMetadata cannot schedule an ingestion run behind the operator's back.</p>
      */
     @Override
     public JsonNode metadataPipelineRequest(
@@ -56,7 +59,8 @@ abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonD
             String serviceId,
             String serviceFqn,
             MetadataSyncOptions options) {
-        ObjectNode request = (ObjectNode) metadataPipelineRequest(pipelineName, serviceId, serviceFqn);
+        ObjectNode request =
+                (ObjectNode) metadataPipelineRequest(dataSource, pipelineName, serviceId, serviceFqn);
         if (options != null && options.hasStorageManifest()) {
             request.withObject("/sourceConfig/config").put(
                     "defaultManifest", withContainerName(options.storageManifest(), dataSource));
