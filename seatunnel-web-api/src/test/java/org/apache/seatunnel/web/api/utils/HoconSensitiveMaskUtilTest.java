@@ -36,6 +36,27 @@ class HoconSensitiveMaskUtilTest {
     }
 
     @Test
+    void masksDuckDbMinioCredentialsInJdbcProperties() {
+        String hocon = """
+                source {
+                  Jdbc {
+                    properties {
+                      s3_endpoint = "minio.test:9000"
+                      s3_access_key_id = "duckdb-test-access-key"
+                      s3_secret_access_key = "duckdb-test-secret-key"
+                    }
+                  }
+                }
+                """;
+
+        String masked = HoconSensitiveMaskUtil.maskSensitiveInfo(hocon);
+
+        assertFalse(masked.contains("duckdb-test-access-key"));
+        assertFalse(masked.contains("duckdb-test-secret-key"));
+        assertTrue(masked.contains("minio.test:9000"));
+    }
+
+    @Test
     void masksElasticsearchApiKeysAndTlsPasswords() {
         String hocon = """
                 source {

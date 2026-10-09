@@ -87,7 +87,7 @@ public final class LocalFileSourceValidator {
         String normalized = format.trim().toLowerCase(Locale.ROOT);
         if (!STRUCTURED_FORMATS.contains(normalized)) {
             throw new IllegalArgumentException(
-                    sourceLabel + "只支持 CSV、Excel、JSON 和 Text，当前格式=" + format);
+                    sourceLabel + "只支持 CSV、Excel、JSON、Text 和 DuckDB，当前格式=" + format);
         }
 
         if (("json".equals(normalized) || "excel".equals(normalized))
@@ -96,9 +96,16 @@ public final class LocalFileSourceValidator {
                     normalized.toUpperCase(Locale.ROOT) + " " + sourceLabel + "必须配置字段 Schema");
         }
 
-        if ("duckdb".equals(normalized)
-                && StringUtils.isBlank(firstNonBlank(source, "duckdbTable", "duckdb_table", "tableName"))) {
-            throw new IllegalArgumentException(sourceLabel + "必须填写 DuckDB 表名");
+        if ("duckdb".equals(normalized)) {
+            String readMode = firstNonBlank(source, "readMode", "read_mode");
+            if ("sql".equalsIgnoreCase(readMode)) {
+                if (StringUtils.isBlank(firstNonBlank(source, "sql", "query"))) {
+                    throw new IllegalArgumentException(sourceLabel + "必须填写 DuckDB 自定义 SQL");
+                }
+            } else if (StringUtils.isBlank(
+                    firstNonBlank(source, "duckdbTable", "duckdb_table", "tableName"))) {
+                throw new IllegalArgumentException(sourceLabel + "必须填写 DuckDB 表名");
+            }
         }
 
         return normalized;

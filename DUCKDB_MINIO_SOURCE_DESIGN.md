@@ -36,7 +36,7 @@ DuckDB `.db` / `.duckdb` 文件继续作为 MinIO 文件资源管理，用户仍
 - Web 的 `seatunnel-web-api/pom.xml` 当前声明 DuckDB JDBC `1.3.1.0`。首版以该版本为验证基线，记录实际发布 JAR 的校验和；不能因 `current` 文档更新而隐式升级 driver 或扩展。
 - `JdbcConnectionConfig` 接收 `properties`，`SimpleJdbcConnectionProvider.getOrEstablishConnection()` 将其传入所配置 driver 的 `connect(url, info)`。元数据连接通过 `JdbcCatalogUtils` 使用相同 connection provider。
 - DuckDB dialect 接受 `jdbc:duckdb:` 前缀；元数据查询调用 `Connection.prepareStatement(query).getMetaData()`。单 split 的 `ChunkSplitter` 保留原 query 并准备执行；设置 `enable_concurrent_read=false` 跳过分片分析。现有 [`JDBC source` 文档](https://seatunnel.apache.org/docs/3.0.0/connectors/source/Jdbc/)也提供连接 properties 和该分片开关。
-- `EngineDriverJarPublisher` 已支持 `driver_location` 中以分号分隔的多个本地 JAR，并复用现有上传流程改写为 Engine 路径。推荐路径只需官方 JDBC JAR；包装驱动备选可以分发两个 JAR。
+- `EngineDriverJarPublisher` 已支持 `driver_location` 中以分号分隔的多个本地 JAR，并复用 Engine 上传接口改写路径。但本地 SeaTunnel 3.0.0 REST API 对 `/driver-jar/upload` 返回 404；DuckDB 配置必须指向所有 Engine 节点都可读的预置 JAR 路径。Web 本机 JAR 只有在目标 Engine 明确支持上传接口时才能直接复用。
 
 本次在独立 JShell 进程中使用本机缓存的 `duckdb_jdbc-1.3.1.0.jar` 做了最小能力探测，没有修改项目代码或启动 SeaTunnel：
 
@@ -89,7 +89,7 @@ source {
   Jdbc {
     url = "jdbc:duckdb:"
     driver = "org.duckdb.DuckDBDriver"
-    driver_location = "/web-visible-driver-dir/duckdb_jdbc-1.3.1.0.jar"
+    driver_location = "/opt/seatunnel/lib/duckdb_jdbc-1.3.1.0.jar"
     enable_concurrent_read = false
     properties {
       s3_endpoint = "<host:port>"
@@ -125,7 +125,7 @@ source {
 保留现有 `sourceMode=FILE_RESOURCE`、`fileFormatType=duckdb` 和 `fileResourceId` 工作流：
 
 1. 校验 `.db` / `.duckdb` 文件资源和静态 MinIO AK/SK；从 `FileResourceResolver` 取得 bucket、object key、endpoint、region、TLS 和 path-style 信息，不为任务提交下载数据库。
-2. 插件名生成 `Jdbc`，不生成 `DuckDB { ... }`；配置官方 driver 和 Web 可读的 `driver_location`。
+2. 插件名生成 `Jdbc`，不生成 `DuckDB { ... }`；配置官方 driver 和 Engine 节点可读的 `driver_location`。
 3. 使用 `properties` 传递连接信息，query 中只放系统生成的 `LOAD / ATTACH / USE` 和用户数据查询。endpoint 使用 host:port，TLS 单独配置；不改变共享 JVM 的环境变量或系统属性。
 4. 表模式生成完整 catalog/schema/table SELECT；SQL 模式使用用户原本的单条 SELECT 或 WITH 查询，前置相同的引导段，并通过 USE 设置所选 schema（默认 main）。过滤条件写入最终 SELECT。
 5. 用户提交的 SQL 与最终多语句 query 分开保存。用户仍只能编辑数据查询；初始化段不可编辑。先校验用户查询，再拼固定引导段，不能让用户借该能力提交任意 DDL、ATTACH 或 secret 语句。
@@ -177,7 +177,7 @@ source {
 
 ## 驱动、扩展与快照部署要求
 
-- 建议配置 `seatunnel.web.duckdb.driver-location` / `SEATUNNEL_WEB_DUCKDB_DRIVER_LOCATION` 指向 Web 可读的官方 JAR，后续沿用 `EngineDriverJarPublisher`。已有通用 artifact 路径可用时优先复用，不新增重复上传 UI；不把 Engine 本地路径当作 Web 文件。
+- 配置 `seatunnel.web.duckdb.driver-location` / `SEATUNNEL_WEB_DUCKDB_DRIVER_LOCATION` 为所有 Engine 节点都可读的同一绝对 JAR 路径。标准 SeaTunnel REST API 不提供 `/driver-jar/upload`，因此部署时要把锁定版本的 JAR 预置到共享 Engine `lib`，不能配置 Web 本机 Maven 缓存路径；目标 Engine 明确支持上传接口时才可用 Web 本机路径并复用 `EngineDriverJarPublisher`。
 - “无需 Engine 源码改动”仍包含运行依赖准备：每个可能创建 JDBC 连接的进程/节点都要能加载 JDBC driver、匹配版本与 OS/架构的 `httpfs`，并访问 MinIO DNS、端口及 TLS 证书。按实际提交、规划、执行阶段确定节点范围。
 - httpfs 在受控发布阶段预置到运行用户可发现的扩展目录。任务只 LOAD，关闭自动安装；不能在每个任务中 INSTALL 或依赖外网下载。driver artifact 分发不等于 native extension 分发。
 - 上游生成文件时先完成 checkpoint/正常关闭，再发布不可变对象；只上传 `.db` 不能补齐仍在 `.wal` 中的事务。任务期间禁止覆盖源对象；使用不可变 object key 或已验证的版本固定方式。

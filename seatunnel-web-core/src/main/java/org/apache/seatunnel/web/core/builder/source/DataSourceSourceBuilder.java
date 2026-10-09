@@ -7,6 +7,7 @@ import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
+import org.apache.seatunnel.plugin.datasource.api.utils.SqlValidator;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.web.common.config.ConfigValidator;
@@ -24,10 +25,14 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.apache.seatunnel.web.spi.enums.DbType;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,8 +67,8 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     @Resource
     private FileResourceResolver fileResourceResolver;
 
-    @Resource
-    private DuckDbSourceInitSqlFileService duckDbSourceInitSqlFileService;
+    @Value("${seatunnel.web.duckdb.driver-location:}")
+    private String duckDbDriverLocation;
 
     @Resource
     private DorisTaskScopeValidator dorisTaskScopeValidator;
@@ -242,7 +247,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         if (FILE_RESOURCE.equalsIgnoreCase(sourceMode)
                 && "duckdb".equalsIgnoreCase(getFirstTrimmedString(
                 resolveNodeConfig(data), "fileFormatType", "file_format_type"))) {
-            return "DuckDB";
+            return "Jdbc";
         }
         if (WEB_UPLOAD.equalsIgnoreCase(sourceMode)
                 || FILE_RESOURCE.equalsIgnoreCase(sourceMode)) {
@@ -306,7 +311,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         }
 
         if ("duckdb".equalsIgnoreCase(configuredFormat)) {
-            return buildDuckDbFileSource(resourceId, reference, nodeConfig);
+            return buildDuckDbFileSource(reference, nodeConfig);
         }
 
         Map<String, Object> connection = new HashMap<>();
@@ -345,8 +350,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
                 reference.getProviderType());
     }
 
-    private Config buildDuckDbFileSource(Long resourceId,
-                                         FileResourceReference reference,
+    private Config buildDuckDbFileSource(FileResourceReference reference,
                                          Config nodeConfig) {
         String objectKey = resolveFileResourcePath(reference);
         String normalizedKey = objectKey.startsWith("/") ? objectKey.substring(1) : objectKey;
@@ -363,42 +367,85 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         String tableName = getFirstTrimmedString(nodeConfig, "duckdbTable", "duckdb_table", "tableName");
         String schemaName = getFirstTrimmedString(nodeConfig, "duckdbSchema", "duckdb_schema");
         String readMode = getFirstTrimmedString(nodeConfig, "readMode", "read_mode");
-        String query;
+        String sourceQuery;
         if ("sql".equalsIgnoreCase(readMode)) {
-            query = getFirstTrimmedString(nodeConfig, "sql", "query");
-            if (StringUtils.isBlank(query)) {
+            sourceQuery = getFirstTrimmedString(nodeConfig, "sql", "query");
+            if (StringUtils.isBlank(sourceQuery)) {
                 throw new IllegalArgumentException("DuckDB custom SQL cannot be empty");
             }
+            SqlValidator.validateSelectQuery(sourceQuery);
         } else {
-            query = "SELECT * FROM duckdb_source." + renderDuckDbTableName(schemaName, tableName);
+            sourceQuery = "SELECT * FROM "
+                    + quoteDuckDbIdentifier("duckdb_source")
+                    + "."
+                    + renderDuckDbTableName(schemaName, tableName);
         }
         DuckDbEndpoint endpoint = parseDuckDbEndpoint(reference.getEndpoint());
         String remoteDatabase = buildDuckDbObjectUri(reference.getBucket(), normalizedKey);
         String defaultSchema = StringUtils.defaultIfBlank(schemaName, "main");
-        String initSql = String.join("\n",
-                "INSTALL httpfs;",
+        String query = String.join("\n",
                 "LOAD httpfs;",
-                "SET s3_region = " + sqlLiteral(reference.getRegion()) + ";",
-                "SET s3_endpoint = " + sqlLiteral(endpoint.hostAndPort()) + ";",
-                "SET s3_use_ssl = " + endpoint.ssl() + ";",
-                "SET s3_url_style = " + sqlLiteral(reference.isPathStyleAccess() ? "path" : "vhost") + ";",
-                "SET s3_access_key_id = " + sqlLiteral(reference.getAccessKey()) + ";",
-                "SET s3_secret_access_key = " + sqlLiteral(reference.getSecretKey()) + ";",
-                "ATTACH " + sqlLiteral(remoteDatabase)
-                        + " AS duckdb_source (TYPE DUCKDB, READ_ONLY);",
+                "ATTACH IF NOT EXISTS " + sqlLiteral(remoteDatabase)
+                        + " AS duckdb_source (READ_ONLY);",
                 "USE " + quoteDuckDbIdentifier("duckdb_source")
-                        + "." + quoteDuckDbIdentifier(defaultSchema) + ";");
-        String initSqlFile = duckDbSourceInitSqlFileService.write(resourceId, initSql);
+                        + "." + quoteDuckDbIdentifier(defaultSchema) + ";",
+                sourceQuery);
+
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("s3_endpoint", endpoint.hostAndPort());
+        properties.put("s3_region", reference.getRegion());
+        properties.put("s3_url_style", reference.isPathStyleAccess() ? "path" : "vhost");
+        properties.put("s3_use_ssl", Boolean.toString(endpoint.ssl()));
+        properties.put("s3_access_key_id", reference.getAccessKey());
+        properties.put("s3_secret_access_key", reference.getSecretKey());
+        properties.put("autoinstall_known_extensions", "false");
+        properties.put("threads", "2");
+        properties.put("memory_limit", "512MB");
+        properties.put("jdbc_stream_results", "true");
 
         Map<String, Object> source = new HashMap<>();
-        source.put("url", "jdbc:duckdb:;session_init_sql_file=" + initSqlFile);
+        source.put("url", "jdbc:duckdb:");
         source.put("driver", "org.duckdb.DuckDBDriver");
+        source.put("driver_location", requireDuckDbDriverLocation());
+        source.put("enable_concurrent_read", false);
+        source.put("properties", properties);
         source.put("query", query);
         source.put("connection_check_timeout_sec", 30);
         if (nodeConfig.hasPath("plugin_output")) {
             source.put("plugin_output", nodeConfig.getString("plugin_output"));
         }
         return ConfigFactory.parseMap(source).resolve();
+    }
+
+    private String requireDuckDbDriverLocation() {
+        String configuredPath = StringUtils.trimToEmpty(duckDbDriverLocation);
+        if (configuredPath.isEmpty()) {
+            throw new IllegalStateException(
+                    "DuckDB source requires SEATUNNEL_WEB_DUCKDB_DRIVER_LOCATION to point to the JDBC JAR");
+        }
+        if (configuredPath.contains(";")
+                || configuredPath.contains("\n")
+                || configuredPath.contains("\r")) {
+            throw new IllegalStateException("DuckDB JDBC driver location must be a single JAR path");
+        }
+
+        Path path;
+        try {
+            path = Path.of(configuredPath).normalize();
+        } catch (InvalidPathException e) {
+            throw new IllegalStateException("DuckDB JDBC driver location is invalid", e);
+        }
+        if (!path.isAbsolute()
+                || path.getFileName() == null
+                || !path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar")) {
+            throw new IllegalStateException(
+                    "DuckDB JDBC driver location must be an absolute JAR path visible to SeaTunnel Engine nodes");
+        }
+        if (Files.exists(path) && (!Files.isRegularFile(path) || !Files.isReadable(path))) {
+            throw new IllegalStateException(
+                    "DuckDB JDBC driver location must be a readable JAR when it exists on the Web host");
+        }
+        return path.toString();
     }
 
     private String renderDuckDbTableName(String schemaName, String tableName) {

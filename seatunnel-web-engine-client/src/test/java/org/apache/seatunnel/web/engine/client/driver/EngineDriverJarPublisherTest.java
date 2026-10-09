@@ -50,11 +50,46 @@ class EngineDriverJarPublisherTest {
     }
 
     @Test
+    void publishesQuotedHoconDriverLocation(@TempDir Path dir) throws Exception {
+        Path jar = dir.resolve("duckdb_jdbc.jar");
+        Files.write(jar, "jar-bytes".getBytes(StandardCharsets.UTF_8));
+        when(restClient.uploadDriverJar(eq(CLIENT_ID), any(), eq("duckdb_jdbc.jar")))
+                .thenReturn("/opt/seatunnel/driver-jars/abc-duckdb_jdbc.jar");
+
+        String published = publisher.publish(
+                CLIENT_ID,
+                "source { Jdbc { \"driver_location\"=\"" + jar + "\" } }");
+
+        assertEquals(
+                "source { Jdbc { \"driver_location\"=\"/opt/seatunnel/driver-jars/abc-duckdb_jdbc.jar\" } }",
+                published);
+        verify(restClient).uploadDriverJar(eq(CLIENT_ID), any(), eq("duckdb_jdbc.jar"));
+    }
+
+    @Test
     void keepsValuesThatAreNotLocalFiles(@TempDir Path dir) {
         String enginePath = "/opt/seatunnel/driver-jars/abc-Vastbase.jar";
         String config = "sink { Jdbc { driver_location = \"" + enginePath + "\" } }";
 
         assertEquals(config, publisher.publish(CLIENT_ID, config));
+        verify(restClient, never()).uploadDriverJar(any(), any(), any());
+    }
+
+    @Test
+    void mapsLocalJarToPreinstalledEnginePath(@TempDir Path dir) throws Exception {
+        Path jar = dir.resolve("kingbase8-8.6.1.jar");
+        Files.write(jar, "jar-bytes".getBytes(StandardCharsets.UTF_8));
+        EngineDriverJarPublisher mappedPublisher = new EngineDriverJarPublisher(
+                restClient,
+                "kingbase8-8.6.1.jar=/opt/seatunnel/lib/kingbase8-8.6.0.jar");
+
+        String published = mappedPublisher.publish(
+                CLIENT_ID,
+                "sink { Jdbc { driver_location = \"" + jar + "\" } }");
+
+        assertEquals(
+                "sink { Jdbc { driver_location = \"/opt/seatunnel/lib/kingbase8-8.6.0.jar\" } }",
+                published);
         verify(restClient, never()).uploadDriverJar(any(), any(), any());
     }
 

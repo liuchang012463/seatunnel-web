@@ -220,7 +220,10 @@ seatunnel:
         connect-timeout-ms: ${SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_CONNECT_TIMEOUT_MS:10000}
         request-timeout-ms: ${SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_REQUEST_TIMEOUT_MS:30000}
     duckdb:
+      driver-location: ${SEATUNNEL_WEB_DUCKDB_DRIVER_LOCATION:}
       init-sql-dir: ${SEATUNNEL_WEB_DUCKDB_INIT_SQL_DIR:}
+    engine:
+      driver-location-mappings: ${SEATUNNEL_WEB_ENGINE_DRIVER_LOCATION_MAPPINGS:}
 
 # OpenMetadata Server connection is managed only in 运行运维 → 探查引擎管理.
 # The metadata.openmetadata.* fields below are unused at runtime (legacy shape

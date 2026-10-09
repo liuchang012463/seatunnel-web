@@ -7,6 +7,10 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.Set;
 
 /**
  * Service responsible for managing temporary SeaTunnel job
@@ -27,6 +31,15 @@ public class JobConfigFileService {
      */
     private static final String CONFIG_DIR = "profile";
 
+    private static final Set<PosixFilePermission> DIRECTORY_PERMISSIONS = Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE);
+
+    private static final Set<PosixFilePermission> FILE_PERMISSIONS = Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE);
+
     /**
      * Write job configuration content to a local file.
      *
@@ -36,14 +49,14 @@ public class JobConfigFileService {
      */
     public String writeConfig(Long jobDefineId, String jobConfig) {
         String filePath = buildFilePath(jobDefineId);
-        File file = new File(filePath);
+        Path path = Path.of(filePath);
 
         try {
-            // Ensure parent directory exists
-            FileUtils.forceMkdirParent(file);
-
-            // Write configuration content using UTF-8 encoding
-            FileUtils.writeStringToFile(file, jobConfig, StandardCharsets.UTF_8);
+            Path parent = path.getParent();
+            Files.createDirectories(parent);
+            setPermissions(parent, DIRECTORY_PERMISSIONS);
+            Files.writeString(path, jobConfig, StandardCharsets.UTF_8);
+            setPermissions(path, FILE_PERMISSIONS);
 
             log.info("Job config written to: {}", filePath);
             return filePath;
@@ -78,5 +91,13 @@ public class JobConfigFileService {
         return System.getProperty("user.dir")
                 + File.separator + CONFIG_DIR
                 + File.separator + jobDefineId + ".conf";
+    }
+
+    private void setPermissions(Path path, Set<PosixFilePermission> permissions) throws IOException {
+        try {
+            Files.setPosixFilePermissions(path, permissions);
+        } catch (UnsupportedOperationException ignored) {
+            // Keep local non-POSIX development usable.
+        }
     }
 }

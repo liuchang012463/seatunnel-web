@@ -48,6 +48,24 @@ class LocalFileSourceValidatorTest {
     }
 
     @Test
+    void allowsDuckDbCustomSqlWithoutASelectedTable() {
+        assertEquals(42L, LocalFileSourceValidator.validateFileResource(Map.of(
+                "fileResourceId", "42",
+                "fileFormatType", "duckdb",
+                "readMode", "sql",
+                "sql", "SELECT 1")));
+    }
+
+    @Test
+    void requiresDuckDbTableOutsideCustomSqlMode() {
+        assertThrows(IllegalArgumentException.class, () ->
+                LocalFileSourceValidator.validateFileResource(Map.of(
+                        "fileResourceId", "42",
+                        "fileFormatType", "duckdb",
+                        "readMode", "table")));
+    }
+
+    @Test
     void requiresFileResourceId() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 LocalFileSourceValidator.validateFileResource(Map.of("fileFormatType", "csv")));
