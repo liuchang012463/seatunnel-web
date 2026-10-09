@@ -133,7 +133,7 @@
         SELECT
         <include refid="BucketExpr"/>
         AS date,
-        CAST(AVG(metric.write_qps) AS SIGNED) AS value
+        CAST(AVG(metric.write_qps) AS DECIMAL(20, 4)) AS value
         FROM t_seatunnel_web_job_metrics metric
         JOIN t_seatunnel_web_job_instance instance
           ON instance.id = metric.job_instance_id
@@ -150,7 +150,7 @@
         SELECT
         <include refid="BucketExpr"/>
         AS date,
-        CAST(AVG(metric.write_bps) AS SIGNED) AS value
+        CAST(AVG(metric.write_bps) AS DECIMAL(20, 4)) AS value
         FROM t_seatunnel_web_job_metrics metric
         JOIN t_seatunnel_web_job_instance instance
           ON instance.id = metric.job_instance_id
