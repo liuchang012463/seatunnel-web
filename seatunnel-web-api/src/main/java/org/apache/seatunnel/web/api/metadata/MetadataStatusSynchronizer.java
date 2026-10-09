@@ -85,7 +85,8 @@ public class MetadataStatusSynchronizer {
             Date scanSuccessBefore = latest.getScanLastSuccessTime();
             MetadataRunStatus profileStatusBefore = latest.getProfileStatus();
             Date profileSuccessBefore = latest.getProfileLastSuccessTime();
-            applyRun(latest, true, latestRun(scanRuns), now);
+            OpenMetadataPipelineRun latestScanRun = latestRun(scanRuns);
+            applyRun(latest, true, latestScanRun, now);
             applyExplorationRuns(latest, profileRuns, sampleRuns, now);
             boolean scanChanged = runOutcomeChanged(scanStatusBefore, scanSuccessBefore,
                     latest.getScanStatus(), latest.getScanLastSuccessTime());
@@ -93,6 +94,12 @@ public class MetadataStatusSynchronizer {
                     latest.getProfileStatus(), latest.getProfileLastSuccessTime());
             latest.setLastStatusRefreshTime(now);
             latest.setStatusRefreshError(null);
+            // Decide before the update so the marker is written with the same version, and
+            // trigger after it so only the node that won the update runs the sample agent.
+            boolean collectStorageSamples = storageSampleCollectionDue(latest, latestScanRun);
+            if (collectStorageSamples) {
+                latest.setStorageSampleScanRunId(latestScanRun.runId());
+            }
             long version = latest.getVersion();
             latest.setVersion(version + 1L);
             latest.initUpdate();
@@ -106,15 +113,33 @@ public class MetadataStatusSynchronizer {
                     }
                 }
                 operationService.triggerPendingMetadataScan(latest);
-                if (scanChanged && latest.getScanStatus() == MetadataRunStatus.SUCCESS) {
-                    // One trigger per completed scan: the version guard above means only
-                    // the node that recorded the change does this.
+                if (collectStorageSamples) {
                     operationService.triggerStorageSampleCollection(latest);
                 }
             }
         } catch (Exception e) {
             markUnknown(candidate, now);
         }
+    }
+
+    /**
+     * True when the latest successful scan has not been sampled for yet.
+     *
+     * <p>The scan run id is the marker, not the success time: the binding keeps timestamps
+     * at second precision while OpenMetadata reports milliseconds, and the recomputed
+     * success time was observed to drift by a second between refreshes, which made every
+     * refresh look like a new scan.</p>
+     */
+    private static boolean storageSampleCollectionDue(
+            MetadataSourceBinding binding, OpenMetadataPipelineRun latestScanRun) {
+        if (!Boolean.TRUE.equals(binding.getSampleDataEnabled())
+                || binding.getScanStatus() != MetadataRunStatus.SUCCESS
+                || latestScanRun == null
+                || latestScanRun.runId() == null
+                || latestScanRun.runId().isBlank()) {
+            return false;
+        }
+        return !latestScanRun.runId().equals(binding.getStorageSampleScanRunId());
     }
 
     private static boolean runOutcomeChanged(

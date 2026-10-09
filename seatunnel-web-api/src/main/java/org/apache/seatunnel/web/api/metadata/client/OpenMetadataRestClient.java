@@ -438,13 +438,13 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         validateBaseUrl();
         try {
             Object entity = getResourceEntity(type, resourceId, type.detailFields());
-            return toResourceDetail(type, entity);
+            return toResourceDetail(type, entity, extensionSampleData(type, resourceId));
         } catch (OpenMetadataException error) {
             // Reading sample data is a separate OpenMetadata permission. A caller without
             // VIEW_SAMPLE_DATA still gets the schema instead of a failed request.
             try {
                 Object entity = getResourceEntity(type, resourceId, type.detailFieldsWithoutSampleData());
-                return toResourceDetail(type, entity);
+                return toResourceDetail(type, entity, extensionSampleData(type, resourceId));
             } catch (OpenMetadataException retryError) {
                 if (isNotFound(retryError)) {
                     return null;
@@ -452,6 +452,35 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
                         "OpenMetadata " + type.entityType() + " detail lookup failed", retryError);
             }
+        }
+    }
+
+    /**
+     * Container and file sample data live in an OpenMetadata entity extension rather than
+     * on the entity, so the entity read never carries it and the dedicated endpoint is the
+     * only way to see it. Failures degrade to "no sample data": the schema still matters.
+     */
+    private TableData extensionSampleData(OmResourceType type, String resourceId) {
+        String path = switch (type) {
+            case CONTAINER -> "/v1/containers/" + resourceId + "/sampleData";
+            case FILE -> "/v1/drives/files/" + resourceId + "/sampleData";
+            default -> null;
+        };
+        if (path == null) {
+            return null;
+        }
+        try {
+            JsonNode response = sdkRequest(
+                    "GET", path, null, true, MetadataErrorCode.OM_SERVICE_SYNC_ERROR);
+            JsonNode sample = response == null ? null : response.get("sampleData");
+            if (sample == null || sample.isNull()) {
+                return null;
+            }
+            return OBJECT_MAPPER.treeToValue(sample, TableData.class);
+        } catch (Exception error) {
+            log.debug("OpenMetadata sample data read skipped: type={}, id={}, type={}",
+                    type.entityType(), resourceId, error.getClass().getSimpleName());
+            return null;
         }
     }
 
@@ -533,7 +562,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         return null;
     }
 
-    private static OpenMetadataResourceDetail toResourceDetail(OmResourceType type, Object entity) {
+    private static OpenMetadataResourceDetail toResourceDetail(
+            OmResourceType type, Object entity, TableData extensionSample) {
         OpenMetadataResource resource = toResource(type, entity, null);
         if (resource == null) {
             return null;
@@ -546,14 +576,14 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     List.of(), List.of(), messages);
         }
         if (entity instanceof Container container) {
-            TableData sample = container.getSampleData();
+            TableData sample = extensionSample != null ? extensionSample : container.getSampleData();
             List<OpenMetadataResourceField> columns = columns(
                     container.getDataModel() == null ? null : container.getDataModel().getColumns());
             return new OpenMetadataResourceDetail(
                     resource, columns, hasRows(sample), sampleColumns(sample), sampleRows(sample), List.of());
         }
         if (entity instanceof File file) {
-            TableData sample = file.getSampleData();
+            TableData sample = extensionSample != null ? extensionSample : file.getSampleData();
             return new OpenMetadataResourceDetail(
                     resource, columns(file.getColumns()), hasRows(sample),
                     sampleColumns(sample), sampleRows(sample), List.of());
