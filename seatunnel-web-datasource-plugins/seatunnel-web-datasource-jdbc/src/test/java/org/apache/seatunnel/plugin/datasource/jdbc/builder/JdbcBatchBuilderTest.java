@@ -42,10 +42,30 @@ class JdbcBatchBuilderTest {
         Path driverJar = Files.createFile(dir.resolve("vendor-driver.jar"));
 
         Config config =
-                builder.buildSourceHocon(
-                        context(
-                                "sql = \"select 1\"",
-                                "driverLocation = \"" + driverJar + "\""));
+                withDriverDirectory(
+                        dir,
+                        () ->
+                                builder.buildSourceHocon(
+                                        context(
+                                                "sql = \"select 1\"",
+                                                "driverLocation = \"" + driverJar + "\"")));
+
+        assertEquals(driverJar.toString(), config.getString("driver_location"));
+    }
+
+    @Test
+    void emitsDriverLocationOfAFileNameRelativeToTheDriverDirectory(@TempDir Path dir)
+            throws Exception {
+        Path driverJar = Files.createFile(dir.resolve("vendor-driver.jar"));
+
+        Config config =
+                withDriverDirectory(
+                        dir,
+                        () ->
+                                builder.buildSourceHocon(
+                                        context(
+                                                "sql = \"select 1\"",
+                                                "driverLocation = \"vendor-driver.jar\"")));
 
         assertEquals(driverJar.toString(), config.getString("driver_location"));
     }
@@ -53,12 +73,59 @@ class JdbcBatchBuilderTest {
     @Test
     void omitsDriverLocationOfAnUnreadableDriverJar(@TempDir Path dir) {
         Config config =
-                builder.buildSourceHocon(
-                        context(
-                                "sql = \"select 1\"",
-                                "driverLocation = \"" + dir.resolve("absent.jar") + "\""));
+                withDriverDirectory(
+                        dir,
+                        () ->
+                                builder.buildSourceHocon(
+                                        context(
+                                                "sql = \"select 1\"",
+                                                "driverLocation = \"" + dir.resolve("absent.jar") + "\"")));
 
         assertFalse(config.hasPath("driver_location"));
+    }
+
+    @Test
+    void omitsDriverLocationOutsideTheDriverDirectory(@TempDir Path dir, @TempDir Path outside)
+            throws Exception {
+        Path outsideJar = Files.createFile(outside.resolve("escape.jar"));
+
+        Config absolute =
+                withDriverDirectory(
+                        dir,
+                        () ->
+                                builder.buildSourceHocon(
+                                        context(
+                                                "sql = \"select 1\"",
+                                                "driverLocation = \"" + outsideJar + "\"")));
+        Config relative =
+                withDriverDirectory(
+                        dir,
+                        () ->
+                                builder.buildSourceHocon(
+                                        context(
+                                                "sql = \"select 1\"",
+                                                "driverLocation = \"../"
+                                                        + outside.getFileName()
+                                                        + "/escape.jar\"")));
+
+        assertFalse(absolute.hasPath("driver_location"));
+        assertFalse(relative.hasPath("driver_location"));
+    }
+
+    private <T> T withDriverDirectory(Path directory, java.util.function.Supplier<T> action) {
+        String property = "seatunnel.web.jdbc-driver-dir";
+        String previous = System.getProperty(property);
+        System.setProperty(property, directory.toString());
+
+        try {
+            return action.get();
+        } finally {
+            if (previous == null) {
+                System.clearProperty(property);
+            } else {
+                System.setProperty(property, previous);
+            }
+        }
     }
 
     private HoconBuildContext context(String nodeConfig) {

@@ -7,7 +7,6 @@ import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +60,8 @@ public abstract class AbstractJdbcHoconBuilder {
      * <p>Paths are emitted as the Web resolves them locally, so engine nodes must expose the Web
      * driver directory at the same path. A jar the Web cannot read locally is skipped: such a data
      * source cannot be connected to from the Web either, and the engine would reject the job
-     * because it validates every declared jar on every node.
+     * because it validates every declared jar on every node. A location outside the shared driver
+     * directory is skipped as well.
      */
     private String resolveEngineDriverLocation(Config conn) {
         String driverLocation =
@@ -91,13 +91,19 @@ public abstract class AbstractJdbcHoconBuilder {
     }
 
     private Path resolveDriverJar(String location) {
-        Path path = Paths.get(location);
+        Path path;
 
-        if (!path.isAbsolute()) {
-            path = JdbcDriverDirectoryResolver.resolveDirectory().resolve(path);
+        try {
+            // Only the shared driver directory may be published, so a data source cannot make the
+            // job pin an arbitrary jar of the Web host.
+            path = JdbcDriverDirectoryResolver.resolveLocalPath(location);
+        } catch (IllegalArgumentException e) {
+            log.warn(
+                    "JDBC driver location is outside the driver directory, the job will not pin it: {} ({})",
+                    location,
+                    e.getMessage());
+            return null;
         }
-
-        path = path.toAbsolutePath().normalize();
 
         if (!Files.isRegularFile(path)
                 || !path.getFileName().toString().toLowerCase().endsWith(".jar")) {
