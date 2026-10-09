@@ -7,24 +7,28 @@ package org.apache.seatunnel.web.api.metadata;
  */
 public enum OmResourceType {
 
-    TOPIC("topic", "主题", "messageSchema", "messageSchema,tags"),
-    CONTAINER("container", "容器", "dataModel", "dataModel,tags"),
-    DIRECTORY("directory", "目录", null, "tags"),
-    FILE("file", "文件", "columns", "columns,tags"),
-    API_COLLECTION("apiCollection", "接口分组", null, "tags"),
-    API_ENDPOINT("apiEndpoint", "接口", null, "requestSchema,responseSchema,tags"),
-    SEARCH_INDEX("searchIndex", "索引", "fields", "fields,tags");
+    TOPIC("topic", "主题", "messageSchema", "messageSchema,tags", true),
+    CONTAINER("container", "容器", "dataModel", "dataModel,tags", true),
+    DIRECTORY("directory", "目录", null, "tags", false),
+    FILE("file", "文件", "columns", "columns,tags", true),
+    API_COLLECTION("apiCollection", "接口分组", null, "tags", false),
+    API_ENDPOINT("apiEndpoint", "接口", null, "requestSchema,responseSchema,tags", false),
+    SEARCH_INDEX("searchIndex", "索引", "fields", "fields,tags", true);
 
     private final String entityType;
     private final String label;
     private final String listFields;
     private final String detailFields;
+    /** OpenMetadata 2.0.4 rejects an unknown field, so only these entities carry sampleData. */
+    private final boolean sampleDataField;
 
-    OmResourceType(String entityType, String label, String listFields, String detailFields) {
+    OmResourceType(String entityType, String label, String listFields, String detailFields,
+                   boolean sampleDataField) {
         this.entityType = entityType;
         this.label = label;
         this.listFields = listFields;
         this.detailFields = detailFields;
+        this.sampleDataField = sampleDataField;
     }
 
     /** OpenMetadata entity name used in the REST contract and in list responses. */
@@ -46,11 +50,12 @@ public enum OmResourceType {
     }
 
     /**
-     * Detail projection including the owning service and the sample payload.
-     * {@code service} is required so callers can enforce data-source ownership.
+     * Detail projection including the owning service and, where OpenMetadata defines it, the
+     * sample payload. {@code service} is required so callers can enforce data-source ownership.
      */
     public String detailFields() {
-        return withService(detailFields) + ",sampleData";
+        String fields = withService(detailFields);
+        return sampleDataField ? fields + ",sampleData" : fields;
     }
 
     /**
