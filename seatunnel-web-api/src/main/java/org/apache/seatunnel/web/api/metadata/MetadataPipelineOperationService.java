@@ -1245,7 +1245,8 @@ public class MetadataPipelineOperationService {
                 .orElse(false);
     }
 
-    private DataSource requireActiveDataSource(Long dataSourceId) {        if (dataSourceId == null || dataSourceId <= 0) {
+    private DataSource requireActiveDataSource(Long dataSourceId) {
+        if (dataSourceId == null || dataSourceId <= 0) {
             throw invalid("dataSourceId");
         }
         DataSource source = dataSourceDao.queryById(dataSourceId);

@@ -658,7 +658,8 @@ class OpenMetadataRestClientTest {
         assertEquals(List.of(List.of("1"), List.of("2")), detail.sampleRows());
     }
 
-    private static OpenMetadataProperties properties(String baseUrl) {        OpenMetadataProperties properties = new OpenMetadataProperties();
+    private static OpenMetadataProperties properties(String baseUrl) {
+        OpenMetadataProperties properties = new OpenMetadataProperties();
         properties.setBaseUrl(baseUrl);
         properties.setToken("test-jwt");
         return properties;
