@@ -67,6 +67,9 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     @Resource
     private FileResourceResolver fileResourceResolver;
 
+    @Resource
+    private DuckDbSourceInitSqlFileService duckDbSourceInitSqlFileService;
+
     @Value("${seatunnel.web.duckdb.driver-location:}")
     private String duckDbDriverLocation;
 
@@ -311,7 +314,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         }
 
         if ("duckdb".equalsIgnoreCase(configuredFormat)) {
-            return buildDuckDbFileSource(reference, nodeConfig);
+            return buildDuckDbFileSource(reference, nodeConfig, resourceId);
         }
 
         Map<String, Object> connection = new HashMap<>();
@@ -351,7 +354,8 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     }
 
     private Config buildDuckDbFileSource(FileResourceReference reference,
-                                         Config nodeConfig) {
+                                         Config nodeConfig,
+                                         Long resourceId) {
         String objectKey = resolveFileResourcePath(reference);
         String normalizedKey = objectKey.startsWith("/") ? objectKey.substring(1) : objectKey;
         String normalizedKeyLower = normalizedKey.toLowerCase(Locale.ROOT);
@@ -383,28 +387,36 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         DuckDbEndpoint endpoint = parseDuckDbEndpoint(reference.getEndpoint());
         String remoteDatabase = buildDuckDbObjectUri(reference.getBucket(), normalizedKey);
         String defaultSchema = StringUtils.defaultIfBlank(schemaName, "main");
-        String query = String.join("\n",
+        String initSql = String.join("\n",
+                "SET autoinstall_known_extensions = false;",
                 "LOAD httpfs;",
+                "CREATE SECRET duckdb_source_minio_secret (",
+                "  TYPE s3,",
+                "  KEY_ID " + sqlLiteral(reference.getAccessKey()) + ",",
+                "  SECRET " + sqlLiteral(reference.getSecretKey()) + ",",
+                "  REGION " + sqlLiteral(reference.getRegion()) + ",",
+                "  ENDPOINT " + sqlLiteral(endpoint.hostAndPort()) + ",",
+                "  URL_STYLE " + sqlLiteral(reference.isPathStyleAccess() ? "path" : "vhost") + ",",
+                "  USE_SSL " + endpoint.ssl() + ",",
+                "  SCOPE " + sqlLiteral(remoteDatabase),
+                ");",
                 "ATTACH IF NOT EXISTS " + sqlLiteral(remoteDatabase)
-                        + " AS duckdb_source (READ_ONLY);",
-                "USE " + quoteDuckDbIdentifier("duckdb_source")
-                        + "." + quoteDuckDbIdentifier(defaultSchema) + ";",
-                sourceQuery);
+                        + " AS duckdb_source (READ_ONLY);");
+        if (duckDbSourceInitSqlFileService == null) {
+            throw new IllegalStateException("DuckDB source initialization SQL service is unavailable");
+        }
+        String initSqlPath = duckDbSourceInitSqlFileService.write(resourceId, initSql);
+        String query = "USE " + quoteDuckDbIdentifier("duckdb_source")
+                + "." + quoteDuckDbIdentifier(defaultSchema) + ";\n" + sourceQuery;
 
         Map<String, Object> properties = new HashMap<>();
-        properties.put("s3_endpoint", endpoint.hostAndPort());
-        properties.put("s3_region", reference.getRegion());
-        properties.put("s3_url_style", reference.isPathStyleAccess() ? "path" : "vhost");
-        properties.put("s3_use_ssl", Boolean.toString(endpoint.ssl()));
-        properties.put("s3_access_key_id", reference.getAccessKey());
-        properties.put("s3_secret_access_key", reference.getSecretKey());
         properties.put("autoinstall_known_extensions", "false");
         properties.put("threads", "2");
         properties.put("memory_limit", "512MB");
         properties.put("jdbc_stream_results", "true");
 
         Map<String, Object> source = new HashMap<>();
-        source.put("url", "jdbc:duckdb:");
+        source.put("url", "jdbc:duckdb:;session_init_sql_file=" + initSqlPath);
         source.put("driver", "org.duckdb.DuckDBDriver");
         source.put("driver_location", requireDuckDbDriverLocation());
         source.put("enable_concurrent_read", false);

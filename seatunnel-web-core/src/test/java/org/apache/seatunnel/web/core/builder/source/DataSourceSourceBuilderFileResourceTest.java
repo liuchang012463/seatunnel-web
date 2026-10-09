@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -83,8 +84,9 @@ class DataSourceSourceBuilderFileResourceTest {
     }
 
     @Test
-    void buildsDuckDbFileResourceAsSingleSplitJdbcSource() {
+    void buildsDuckDbFileResourceAsSingleSplitJdbcSource() throws Exception {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
+        Path initSqlDirectory = configureDuckDbInitSql(sourceBuilder);
         FileResourceResolver resolver = mock(FileResourceResolver.class);
         ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
         String driver = "/opt/seatunnel/lib/duckdb_jdbc-1.3.1.0.jar";
@@ -98,7 +100,7 @@ class DataSourceSourceBuilderFileResourceTest {
                 "resources/weather data.duckdb",
                 "STATIC",
                 "test-access-key",
-                "test-secret-key",
+                "test-secret-'key",
                 true));
 
         Config node = ConfigFactory.parseMap(Map.of(
@@ -113,38 +115,52 @@ class DataSourceSourceBuilderFileResourceTest {
         Config result = sourceBuilder.build(node);
 
         assertEquals("Jdbc", sourceBuilder.connectorName(node));
-        assertEquals("jdbc:duckdb:", result.getString("url"));
+        assertEquals(
+                "jdbc:duckdb:;session_init_sql_file=/opt/seatunnel/lib/duckdb-init/duckdb-resource-42.sql",
+                result.getString("url"));
         assertEquals("org.duckdb.DuckDBDriver", result.getString("driver"));
         assertEquals(driver, result.getString("driver_location"));
         assertTrue(!result.getBoolean("enable_concurrent_read"));
         assertEquals("duckdb-source", result.getString("plugin_output"));
 
         Config properties = result.getConfig("properties");
-        assertEquals("minio.example.com:9000", properties.getString("s3_endpoint"));
-        assertEquals("us-east-1", properties.getString("s3_region"));
-        assertEquals("path", properties.getString("s3_url_style"));
-        assertEquals("true", properties.getString("s3_use_ssl"));
-        assertEquals("test-access-key", properties.getString("s3_access_key_id"));
-        assertEquals("test-secret-key", properties.getString("s3_secret_access_key"));
+        assertFalse(properties.hasPath("s3_access_key_id"));
+        assertFalse(properties.hasPath("s3_secret_access_key"));
+        assertFalse(properties.hasPath("s3_endpoint"));
         assertEquals("false", properties.getString("autoinstall_known_extensions"));
         assertEquals("true", properties.getString("jdbc_stream_results"));
 
         String query = result.getString("query");
-        assertTrue(query.startsWith(
-                "LOAD httpfs;\nATTACH IF NOT EXISTS 's3://archive/resources/weather%20data.duckdb'"));
-        assertTrue(query.contains("READ_ONLY"));
-        assertTrue(query.contains("USE \"duckdb_source\".\"weather schema\";"));
+        assertTrue(query.startsWith("USE \"duckdb_source\".\"weather schema\";\n"));
         assertTrue(query.endsWith(
                 "SELECT * FROM \"duckdb_source\".\"weather schema\".\"daily \"\"summary\"\"\""));
         assertTrue(!query.contains("test-access-key"));
-        assertTrue(!query.contains("test-secret-key"));
+        assertTrue(!query.contains("test-secret-"));
+        assertFalse(query.contains("ATTACH"));
+        assertFalse(query.contains("LOAD httpfs"));
         assertTrue(!query.contains("INSTALL httpfs"));
         assertTrue(!query.contains("TYPE DUCKDB"));
+
+        String initSql = Files.readString(initSqlDirectory.resolve("duckdb-resource-42.sql"));
+        assertTrue(initSql.contains("LOAD httpfs;\nCREATE SECRET duckdb_source_minio_secret ("));
+        assertTrue(initSql.contains("KEY_ID 'test-access-key',"));
+        assertTrue(initSql.contains("SECRET 'test-secret-''key',"));
+        assertTrue(initSql.contains("REGION 'us-east-1',"));
+        assertTrue(initSql.contains("ENDPOINT 'minio.example.com:9000',"));
+        assertTrue(initSql.contains("URL_STYLE 'path',"));
+        assertTrue(initSql.contains("USE_SSL true,"));
+        assertTrue(initSql.contains("SCOPE 's3://archive/resources/weather%20data.duckdb'"));
+        assertFalse(initSql.contains("SET s3_"));
+        assertTrue(initSql.contains(
+                "ATTACH IF NOT EXISTS 's3://archive/resources/weather%20data.duckdb' AS duckdb_source (READ_ONLY);"));
+        assertTrue(Files.getPosixFilePermissions(initSqlDirectory.resolve("duckdb-resource-42.sql"))
+                .stream().allMatch(permission -> permission.name().startsWith("OWNER_")));
     }
 
     @Test
     void validatesAndAppendsOneReadOnlyDuckDbSelect() throws Exception {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
+        configureDuckDbInitSql(sourceBuilder);
         FileResourceResolver resolver = mock(FileResourceResolver.class);
         ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
         Path driver = Files.createFile(tempDir.resolve("duckdb_jdbc.jar"));
@@ -184,6 +200,15 @@ class DataSourceSourceBuilderFileResourceTest {
                         "fileFormatType", "csv"))));
 
         assertTrue(exception.getMessage().contains("fileResourceId"));
+    }
+
+    private Path configureDuckDbInitSql(DataSourceSourceBuilder sourceBuilder) throws Exception {
+        Path initSqlDirectory = Files.createDirectories(tempDir.resolve("duckdb-init"));
+        DuckDbSourceInitSqlFileService initSqlFileService = new DuckDbSourceInitSqlFileService();
+        ReflectionTestUtils.setField(initSqlFileService, "initSqlDirectory", initSqlDirectory.toString());
+        ReflectionTestUtils.setField(initSqlFileService, "engineInitSqlDirectory", "/opt/seatunnel/lib/duckdb-init");
+        ReflectionTestUtils.setField(sourceBuilder, "duckDbSourceInitSqlFileService", initSqlFileService);
+        return initSqlDirectory;
     }
 
     @Test
