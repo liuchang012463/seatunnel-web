@@ -30,6 +30,14 @@ public class MetadataStatusSynchronizer {
     @Autowired(required = false)
     private MetadataInventoryCache metadataInventoryCache;
 
+    /** Bounds the re-triggering of a scan OpenMetadata never registered. */
+    @Autowired(required = false)
+    private MetadataReconcileProperties reconcileProperties;
+
+    private int maxScanTriggerRetries() {
+        return reconcileProperties == null ? 4 : reconcileProperties.getMaxRetryCount();
+    }
+
     @Autowired(required = false)
     void setOmReadCache(OmReadCache omReadCache) {
         if (omReadCache != null) {
@@ -401,6 +409,15 @@ public class MetadataStatusSynchronizer {
                     && binding.getSyncedConfigVersion() > 0
                     && binding.getMetadataTriggeredVersion() != null) {
                 long syncedVersion = binding.getSyncedConfigVersion();
+                int retryCount = (binding.getRetryCount() == null ? 0 : binding.getRetryCount()) + 1;
+                binding.setRetryCount(retryCount);
+                if (retryCount > maxScanTriggerRetries()) {
+                    // The ingestion pipeline never registered the run. Stop re-triggering it and
+                    // leave a visible failure instead of cycling QUEUED/NEVER forever.
+                    binding.setScanStatus(MetadataRunStatus.FAILED);
+                    binding.setScanLastError(MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR.name());
+                    return;
+                }
                 if (binding.getMetadataTriggeredVersion() >= syncedVersion) {
                     binding.setMetadataTriggeredVersion(syncedVersion - 1L);
                 }
