@@ -45,14 +45,27 @@ public enum OmResourceType {
         return listFields;
     }
 
-    /** Detail projection including the sample payload. */
+    /**
+     * Detail projection including the owning service and the sample payload.
+     * {@code service} is required so callers can enforce data-source ownership.
+     */
     public String detailFields() {
-        return detailFields + ",sampleData";
+        return withService(detailFields) + ",sampleData";
     }
 
-    /** Detail projection used when the caller may not read sample data. */
+    /**
+     * Detail projection used when the caller may not read sample data.
+     * Still includes {@code service} for ownership checks.
+     */
     public String detailFieldsWithoutSampleData() {
-        return detailFields;
+        return withService(detailFields);
+    }
+
+    private static String withService(String fields) {
+        if (fields == null || fields.isBlank()) {
+            return "service";
+        }
+        return "service," + fields;
     }
 
     public static OmResourceType fromEntityType(String value) {

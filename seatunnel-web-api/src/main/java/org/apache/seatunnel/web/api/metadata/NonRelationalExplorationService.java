@@ -101,10 +101,11 @@ public class NonRelationalExplorationService {
         if (detail == null || detail.resource() == null) {
             throw invalid("resource does not exist in OpenMetadata");
         }
+        // Fail closed: a missing service reference must not open a cross-data-source read.
         String resourceServiceFqn = detail.resource().serviceFullyQualifiedName();
-        if (resourceServiceFqn != null
-                && !resourceServiceFqn.isBlank()
-                && !context.serviceFqn().equals(resourceServiceFqn)) {
+        if (resourceServiceFqn == null
+                || resourceServiceFqn.isBlank()
+                || !context.serviceFqn().equals(resourceServiceFqn)) {
             throw invalid("resource does not belong to this data source");
         }
         return toVo(type, detail);

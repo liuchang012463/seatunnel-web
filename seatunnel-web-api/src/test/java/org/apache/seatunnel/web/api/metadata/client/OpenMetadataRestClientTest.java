@@ -516,10 +516,12 @@ class OpenMetadataRestClientTest {
     @Test
     void readsNonRelationalAssetsWithSchemaAndSamplePayload() throws Exception {
         AtomicReference<String> topicsUri = new AtomicReference<>();
+        AtomicReference<String> topicDetailUri = new AtomicReference<>();
         AtomicReference<String> apiEndpointsUri = new AtomicReference<>();
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/topics", exchange -> {
             if (exchange.getRequestURI().getPath().endsWith("/topic-id")) {
+                topicDetailUri.set(exchange.getRequestURI().toString());
                 respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000010\",\"name\":\"orders\","
                         + "\"fullyQualifiedName\":\"st_ds_42.orders\",\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
                         + "\"messageSchema\":{\"schemaFields\":[{\"name\":\"id\",\"dataType\":\"INT\"}]},"
@@ -560,21 +562,27 @@ class OpenMetadataRestClientTest {
         assertEquals(1, detail.fields().size());
         assertEquals("id", detail.fields().get(0).name());
         assertEquals("INT", detail.fields().get(0).dataType());
+        assertEquals("st_ds_42", detail.resource().serviceFullyQualifiedName());
         assertTrue(detail.sampleDataAvailable());
         assertEquals(List.of("{\"id\":1}"), detail.messages());
         assertQuery("/api/v1/topics", topicsUri.get(), "service=st_ds_42");
         assertQuery("/api/v1/apiEndpoints", apiEndpointsUri.get(), "service=st_ds_42");
+        assertTrue(topicDetailUri.get().contains("fields=service"));
     }
 
     @Test
     void returnsSchemaWhenTheCallerMayNotReadSampleData() throws Exception {
+        AtomicReference<String> sampleDeniedUri = new AtomicReference<>();
+        AtomicReference<String> schemaOnlyUri = new AtomicReference<>();
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/containers", exchange -> {
             if (exchange.getRequestURI().getPath().endsWith("/container-id")) {
                 if (exchange.getRequestURI().getQuery().contains("sampleData")) {
+                    sampleDeniedUri.set(exchange.getRequestURI().toString());
                     respond(exchange, 403, "{\"message\":\"not allowed\"}");
                     return;
                 }
+                schemaOnlyUri.set(exchange.getRequestURI().toString());
                 respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000012\","
                         + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
                         + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
@@ -593,8 +601,30 @@ class OpenMetadataRestClientTest {
 
         assertEquals(1, detail.fields().size());
         assertEquals("id", detail.fields().get(0).name());
+        assertEquals("st_ds_42", detail.resource().serviceFullyQualifiedName());
         assertEquals(false, detail.sampleDataAvailable());
         assertTrue(detail.sampleRows().isEmpty());
+        assertTrue(sampleDeniedUri.get().contains("fields=service"));
+        assertTrue(schemaOnlyUri.get().contains("fields=service"));
+    }
+
+    @Test
+    void doesNotMaskServerErrorsAsMissingSampleData() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/containers", exchange -> {
+            if (exchange.getRequestURI().getPath().endsWith("/container-id")) {
+                respond(exchange, 500, "{\"message\":\"boom\"}");
+                return;
+            }
+            respond(exchange, 200, "{\"data\":[]}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        assertThrows(MetadataIntegrationException.class,
+                () -> client.getResourceDetail(OmResourceType.CONTAINER, "container-id"));
     }
 
     private static OpenMetadataProperties properties(String baseUrl) {        OpenMetadataProperties properties = new OpenMetadataProperties();

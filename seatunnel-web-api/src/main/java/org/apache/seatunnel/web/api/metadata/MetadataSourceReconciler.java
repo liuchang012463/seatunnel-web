@@ -130,12 +130,18 @@ public class MetadataSourceReconciler {
                     adapter.autoClassificationPipelineRequest(
                             MetadataStableName.autoClassificationPipelineName(dataSource.getId()),
                             service.id(), service.fullyQualifiedName()));
-        } else if (options.sampleDataEnabled() && adapter.collectsSampleDataViaAutoClassification()) {
+        } else if (adapter.collectsSampleDataViaAutoClassification()) {
             // Storage services collect sample rows only through the auto-classification agent.
-            samplePipeline = openMetadataClient.upsertIngestionPipeline(
-                    adapter.autoClassificationPipelineRequest(
-                            MetadataStableName.autoClassificationPipelineName(dataSource.getId()),
-                            service.id(), service.fullyQualifiedName(), options));
+            // When the operator turns the switch off, delete any previously deployed pipeline
+            // so storeSampleData=true does not keep collecting after the opt-out.
+            if (options.sampleDataEnabled()) {
+                samplePipeline = openMetadataClient.upsertIngestionPipeline(
+                        adapter.autoClassificationPipelineRequest(
+                                MetadataStableName.autoClassificationPipelineName(dataSource.getId()),
+                                service.id(), service.fullyQualifiedName(), options));
+            } else {
+                deletePipeline(null, MetadataStableName.autoClassificationPipelineFqn(dataSource.getId()));
+            }
         }
         // The 2.0.4 deploy endpoints deliberately have no request body.
         openMetadataClient.deployIngestionPipeline(metadataPipeline.id());

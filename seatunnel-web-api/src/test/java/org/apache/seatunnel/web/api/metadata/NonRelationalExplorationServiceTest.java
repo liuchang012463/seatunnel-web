@@ -137,6 +137,21 @@ class NonRelationalExplorationServiceTest {
         assertThrows(RuntimeException.class, () -> service().getResourceDetail(42L, "topic", "topic-id"));
     }
 
+    @Test
+    void rejectsAnAssetWhoseOwningServiceIsMissing() {
+        stubSource(DbType.KAFKA);
+        when(connectorRegistry.find(DbType.KAFKA)).thenReturn(Optional.of(adapter));
+        when(adapter.resourceTypes()).thenReturn(List.of(OmResourceType.TOPIC));
+        when(openMetadataClient.getResourceDetail(OmResourceType.TOPIC, "topic-id"))
+                .thenReturn(new OpenMetadataResourceDetail(
+                        new OpenMetadataResource(
+                                "topic-id", "orders", "st_ds_42.orders", "topic",
+                                null, null, List.of(), null),
+                        List.of(), false, List.of(), List.of(), List.of()));
+
+        assertThrows(RuntimeException.class, () -> service().getResourceDetail(42L, "topic", "topic-id"));
+    }
+
     private void stubSource(DbType dbType) {
         when(dataSourceDao.queryById(42L)).thenReturn(source(dbType));
         MetadataSourceBinding binding = new MetadataSourceBinding();

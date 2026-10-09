@@ -440,8 +440,15 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             Object entity = getResourceEntity(type, resourceId, type.detailFields());
             return toResourceDetail(type, entity);
         } catch (OpenMetadataException error) {
-            // Reading sample data is a separate OpenMetadata permission. A caller without
-            // VIEW_SAMPLE_DATA still gets the schema instead of a failed request.
+            if (isNotFound(error)) {
+                return null;
+            }
+            // Only VIEW_SAMPLE_DATA / auth denials fall back to a schema-only read.
+            // Timeouts and 5xx must not be masked as "no sample data".
+            if (!isSampleDataPermissionDenied(error)) {
+                throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                        "OpenMetadata " + type.entityType() + " detail lookup failed", error);
+            }
             try {
                 Object entity = getResourceEntity(type, resourceId, type.detailFieldsWithoutSampleData());
                 return toResourceDetail(type, entity);
@@ -1310,7 +1317,16 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     private static boolean isNotFound(OpenMetadataException error) {
-        return error.getStatusCode() == 404;
+        return error != null && error.getStatusCode() == 404;
+    }
+
+    /** True when OpenMetadata rejected the sampleData field, not the entity itself. */
+    private static boolean isSampleDataPermissionDenied(OpenMetadataException error) {
+        if (error == null) {
+            return false;
+        }
+        int status = error.getStatusCode();
+        return status == 401 || status == 403;
     }
 
     private static MetadataIntegrationException sdkFailure(
