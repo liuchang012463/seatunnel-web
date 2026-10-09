@@ -5,9 +5,9 @@ set -euo pipefail
 # It inspects the ingestion container package metadata when Docker is available.
 
 OM_BASE_URL="${OM_BASE_URL:-http://127.0.0.1:8585/api}"
-EXPECTED_SERVER_VERSION="${EXPECTED_SERVER_VERSION:-1.12.10}"
-EXPECTED_INGESTION_VERSION="${EXPECTED_INGESTION_VERSION:-1.12.10.0}"
-EXPECTED_MANAGED_APIS_VERSION="${EXPECTED_MANAGED_APIS_VERSION:-1.12.10.0}"
+EXPECTED_SERVER_VERSION="${EXPECTED_SERVER_VERSION:-2.0.4}"
+EXPECTED_INGESTION_VERSION="${EXPECTED_INGESTION_VERSION:-2.0.4.0}"
+EXPECTED_MANAGED_APIS_VERSION="${EXPECTED_MANAGED_APIS_VERSION:-2.0.4.0}"
 INGESTION_CONTAINER="${INGESTION_CONTAINER:-openmetadata_ingestion}"
 INGESTION_PYTHON="${INGESTION_PYTHON:-/home/airflow/.local/bin/python}"
 
@@ -57,10 +57,10 @@ managed_version="$(read_runtime_version openmetadata-managed-apis)"
 [[ "$managed_version" == "$EXPECTED_MANAGED_APIS_VERSION" ]] \
   || fail "openmetadata-managed-apis ${managed_version:-<missing>} != ${EXPECTED_MANAGED_APIS_VERSION}"
 
-case "$ingestion_version" in 1.12.10.*) ;; *) fail "ingestion is outside 1.12.10.x" ;; esac
-case "$managed_version" in 1.12.10.*) ;; *) fail "managed APIs are outside 1.12.10.x" ;; esac
+case "$ingestion_version" in 2.0.4.*) ;; *) fail "ingestion is outside 2.0.4.x" ;; esac
+case "$managed_version" in 2.0.4.*) ;; *) fail "managed APIs are outside 2.0.4.x" ;; esac
 
 printf 'Server: %s (revision=%s)\n' "$server_version" "${server_revision:-unknown}"
 printf 'openmetadata-ingestion: %s\n' "$ingestion_version"
 printf 'openmetadata-managed-apis: %s\n' "$managed_version"
-printf 'Version guard: PASS (Server=%s, ingestion/managed line=1.12.10.x)\n' "$EXPECTED_SERVER_VERSION"
+printf 'Version guard: PASS (Server=%s, ingestion/managed line=2.0.4.x)\n' "$EXPECTED_SERVER_VERSION"

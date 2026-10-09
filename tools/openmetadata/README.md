@@ -1,11 +1,11 @@
-# OpenMetadata 1.12.10 工具
+# OpenMetadata 2.0.4 工具
 
 这些脚本用于固定版本核验和重复执行 Sprint 0 smoke。它们只调用 OpenMetadata Server 的 `/api/v1/...` REST API；不会访问 Airflow `:8082`、Airflow `/api` 或任何 managed API。OpenMetadata 自己通过其 PipelineServiceClient 控制编排器，这是本设计允许的边界。
 
 ## 前置条件
 
-- Server 必须是 `openmetadata/server:1.12.10`，不能使用 `latest`、1.12.11+ 或其他版本。
-- `openmetadata-ingestion` 与 `openmetadata-managed-apis` 必须固定为已经验证的 `1.12.10.x` 精确 patch build。本部署已由当前三库 Gate 验证并固定为 `1.12.10.0`。
+- Server 必须是 `openmetadata/server:2.0.4`，不能使用 `latest`、2.0.5+ 或其他版本。
+- `openmetadata-ingestion` 与 `openmetadata-managed-apis` 必须固定为已经验证的 `2.0.4.x` 精确 patch build。本部署已由当前三库 Gate 验证并固定为 `2.0.4.0`。
 - `curl`、`python3` 和有效的 OpenMetadata JWT。
 - 真实 smoke 需要验收方提供一个临时 source connection JSON。该文件可包含密码，但必须放在仓库外，并在执行后移除。
 - 不把 token、密码、真实 JDBC URL query secret、业务数据或完整运行日志提交到仓库。
@@ -18,17 +18,17 @@ tools/openmetadata/verify-version.sh
 
 脚本读取：
 
-1. `GET ${OM_BASE_URL}/v1/system/version`，要求 Server 精确等于 `1.12.10`；
+1. `GET ${OM_BASE_URL}/v1/system/version`，要求 Server 精确等于 `2.0.4`；
 2. 当前 ingestion 容器内 `importlib.metadata` 的 `openmetadata-ingestion` 和 `openmetadata-managed-apis`；
-3. 要求两个 Python 包精确等于期望值且属于 `1.12.10.x`。
+3. 要求两个 Python 包精确等于期望值且属于 `2.0.4.x`。
 
 默认值与当前部署一致：
 
 ```bash
 OM_BASE_URL=http://127.0.0.1:8585/api
 INGESTION_CONTAINER=openmetadata_ingestion
-EXPECTED_INGESTION_VERSION=1.12.10.0
-EXPECTED_MANAGED_APIS_VERSION=1.12.10.0
+EXPECTED_INGESTION_VERSION=2.0.4.0
+EXPECTED_MANAGED_APIS_VERSION=2.0.4.0
 ```
 
 如果不能使用 Docker，可提供 `ACTUAL_INGESTION_VERSION`、`ACTUAL_MANAGED_APIS_VERSION`，但必须保留独立的运行时证据；脚本不会把缺失值当成通过。
@@ -107,7 +107,7 @@ tools/openmetadata/smoke-test.sh
 
 ## Fixtures 与契约
 
-`contracts/` 下的 JSON 是 1.12.10 request/response 形状的脱敏模板。尖括号占位符不是可直接提交的生产凭据。精确 endpoint、DTO 和默认值见：
+`contracts/` 下的 JSON 是 1.12.10 request/response 形状的脱敏模板，尚未按 2.0.4 更新（2.0.4 的 Profiler 配置形状不同）；使用前按目标版本核对。尖括号占位符不是可直接提交的生产凭据。精确 endpoint、DTO 和默认值见：
 
 `docs/openmetadata/openmetadata-1.12.10-api-contract.md`
 
