@@ -231,7 +231,7 @@ const MetadataEngineConfigPage: React.FC = () => {
               </Checkbox>
             </Form.Item>
             <Text type="secondary">
-              勾选后，保存会在新 OM 中重新创建 ACTIVE 数据源服务和探查管道；删除中的数据源仍按删除状态清理。仅轮换 Token 时不要勾选。
+              勾选后，保存会在新 OM 中重新创建 ACTIVE 数据源服务和探查管道；删除中的数据源仍按删除状态清理。轮换 Token 时必须勾选：只保存新 Token 不会更新既有 pipeline 内嵌的旧 Token，会导致 Airflow Unauthorized。
             </Text>
             <div className="meta-engine-timeout-row">
               <Form.Item
