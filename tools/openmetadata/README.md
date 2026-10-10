@@ -107,9 +107,7 @@ tools/openmetadata/smoke-test.sh
 
 ## Fixtures 与契约
 
-`contracts/` 下的 JSON 是 1.12.10 request/response 形状的脱敏模板，尚未按 2.0.4 更新（2.0.4 的 Profiler 配置形状不同）；使用前按目标版本核对。尖括号占位符不是可直接提交的生产凭据。精确 endpoint、DTO 和默认值见：
-
-`docs/openmetadata/openmetadata-1.12.10-api-contract.md`
+`contracts/` 下的 JSON 是 1.12.10 request/response 形状的脱敏模板，尚未按 2.0.4 更新（2.0.4 的 Profiler 配置形状不同）；使用前按目标版本核对。尖括号占位符不是可直接提交的生产凭据。可执行的契约核对以本目录的 `smoke-test.sh` 与 `verify-version.sh` 为准；精确 endpoint、DTO 和默认值以目标版本的 OpenMetadata spec 为准。
 
 ## 历史 Gate 记录
 

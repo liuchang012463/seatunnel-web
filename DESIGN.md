@@ -1,6 +1,6 @@
 # 数据中台引接分系统 · Design System
 
-> 全站设计基线。审计证据见 [`docs/ui-ux-audit.md`](docs/ui-ux-audit.md)。任何新样式只允许引用 §3 令牌。
+> 全站设计基线。任何新样式只允许引用 §3 令牌；令牌名与取值以 `seatunnel-web-ui/src/design-system.less` 的 `:root` 为准，§3 与该文件保持同步。
 
 ## 1. 方向与硬边界
 
@@ -27,38 +27,41 @@
 
 | 令牌 | 值 | 用途 |
 | --- | --- | --- |
-| `--st-bg-app` | `#01151D` | 侧栏、顶栏 |
-| `--st-bg-page` | `#02222D` | 内容画布 |
-| `--st-bg-panel` | `#052F3F` | 一级面板 / 表格容器 |
-| `--st-bg-elevated` | `#0A3D52` | 悬浮、选中基底、弹层 |
-| `--st-bg-control` | `#012530` | 输入框、表内控件、行内代码底 |
-| `--st-bg-hover` | `rgba(63,198,255,.08)` | 行/项 hover |
-| `--st-bg-selected` | `rgba(63,198,255,.14)` | 选中（+ `inset 2px 0 0 accent`） |
+| `--st-color-bg-app` | `#01151D` | 侧栏、顶栏（`--st-color-bg-primary` 为同值别名） |
+| `--st-color-bg-page` | `#02222D` | 内容画布 |
+| `--st-color-bg-panel` | `#052F3F` | 一级面板 / 表格容器（`--st-color-bg-secondary` 为同值别名） |
+| `--st-color-bg-elevated` | `#0A3D52` | 悬浮、选中基底、弹层（`--st-color-bg-interactive` 同值） |
+| `--st-color-bg-control` | `#012530` | 输入框、表内控件、行内代码底 |
+| `--st-color-bg-hover` | `rgba(63,198,255,.08)` | 行/项 hover（旧名 `--st-color-hover`） |
+| `--st-color-bg-selected` | `rgba(63,198,255,.14)` | 选中（+ `inset 2px 0 0 accent`；旧名 `--st-color-selected`） |
 
 ### 3.2 文字
 
 | 令牌 | 值 | 用途 |
 | --- | --- | --- |
-| `--st-text-primary` | `#EDF4F7` | 标题、名称、关键数值 |
-| `--st-text-secondary` | `#AFC4CD` | 正文、表格内容 |
-| `--st-text-muted` | `#6C8792` | 辅助、占位、单位 |
-| 主按钮字 | `#04222D` | primary 上反白（对比度 ≥ 7:1） |
+| `--st-color-text-primary` | `#EDF4F7` | 标题、名称、关键数值 |
+| `--st-color-text-secondary` | `#AFC4CD` | 正文、表格内容 |
+| `--st-color-text-muted` | `#9BB5BD` | 辅助、占位、单位 |
+| `--st-color-on-primary` | `#000D12` | primary 上反白 |
 
 ### 3.3 强调与语义
 
 | 令牌 | 值 | 语义 |
 | --- | --- | --- |
-| `--st-accent` | `#3FC6FF` | 链接、焦点、主操作、进行中 |
-| `--st-accent-strong` | `#7FD8FF` | hover |
-| `--st-primary` | `#1B87A8` | 主按钮底、表头底纹 |
-| `--st-success` | `#3DD68C` | 正常 / 完成 / CONSISTENT |
-| `--st-warning` | `#F5B83D` | 降级 / 漂移 / 待处理（稀缺；「未做过」用 neutral） |
-| `--st-error` | `#FF6B5E` | 失败 / MISSING / 危险动作 |
-| `--st-neutral` | `#6C8792` | 未启用 / 未检测 / UNBOUND |
+| `--st-color-accent` | `#3FC6FF` | 链接、焦点、主操作、进行中 |
+| `--st-color-accent-strong` | `#7FD8FF` | hover |
+| `--st-color-primary` | `#1B87A8` | 主按钮底、表头底纹 |
+| `--st-color-primary-active` | `#117DA0` | 主按钮按下 |
+| `--st-color-success` | `#3DD68C` | 正常 / 完成 / CONSISTENT |
+| `--st-color-warning` | `#F5B83D` | 降级 / 漂移 / 待处理（稀缺；「未做过」用 neutral） |
+| `--st-color-error` | `#FF6B5E` | 失败 / MISSING / 危险动作 |
+| `--st-color-neutral` | `#6C8792` | 未启用 / 未检测 / UNBOUND |
 | 语义底 | 同色 12% 透明 | StatusChip 背景 |
-| `--st-line` | `rgba(126,183,208,.14)` | 发丝线 |
-| `--st-line-strong` | `rgba(126,183,208,.30)` | 分区线、表头底线 |
-| `--st-focus` | `0 0 0 2px rgba(63,198,255,.35)` | 键盘焦点环 |
+| `--st-color-line` | `rgba(126,183,208,.14)` | 发丝线（旧名 `--st-color-divider`；更浅一级 `--st-color-divider-subtle`） |
+| `--st-color-line-strong` | `rgba(126,183,208,.30)` | 分区线、表头底线（旧名 `--st-color-border`） |
+| `--st-color-focus` | `rgba(63,198,255,.35)` | 键盘焦点环颜色，按 `box-shadow: 0 0 0 2px var(--st-color-focus)` 使用 |
+| `--st-color-modal-mask` | `rgba(1,21,29,.88)` | 弹层遮罩 |
+| `--st-panel-shadow` | `0 10px 30px rgba(0,15,21,.35)` | 面板悬浮阴影 |
 
 状态映射（StatusChip 唯一实现）：
 
@@ -75,27 +78,30 @@
 
 | 令牌 | 值 |
 | --- | --- |
-| `--st-font` | `"MiSans","HarmonyOS Sans SC","Source Han Sans SC","Microsoft YaHei",system-ui,sans-serif` |
-| `--st-mono` | `"JetBrains Mono","SFMono-Regular",Consolas,"Liberation Mono",monospace` |
+| `--st-font-family` | `"MiSans","HarmonyOS Sans SC","Source Han Sans SC","Microsoft YaHei","微软雅黑",Arial,sans-serif` |
+| `--st-font-digital` | `"DS-Digital","Microsoft YaHei",sans-serif` |
 
-| 层级 | 字号/行高 | 字重 | 用途 |
-| --- | --- | --- | --- |
-| display | 28/36 | 500 | 仅概览 hero |
-| title | 20/28 | 500 | 页标题 |
-| heading | 16/24 | 500 | 面板 / 弹层标题 |
-| body | 14/22 | 400 | 表单、说明 |
-| body-sm | 13/20 | 400 | 表格、列表默认 |
-| caption | 12/18 | 400 | 单位、时间、眉题（+0.02em） |
+| 令牌 | 字号/行高 |
+| --- | --- |
+| `--st-type-large-title-size/line` | 28/36（仅概览 hero） |
+| `--st-type-title-size/line` | 20/28（页标题） |
+| `--st-type-title-content-size/line` | 16/24（面板 / 弹层标题） |
+| `--st-type-content-lg-size/line` | 16/24 |
+| `--st-type-content-md-size/line` | 14/22（表单、说明） |
+| `--st-type-content-sm-size/line` | 13/20（表格、列表默认） |
+| `--st-type-caption-size/line` | 12/18（单位、时间、眉题 +0.02em） |
+
+标题在实现中统一 `font-weight: 400`：层级靠字号与颜色区分，不加粗。仓库没有 `--st-mono`，等宽场景使用 `--st-font-digital` 并配 `tabular-nums`。
 
 ### 3.5 几何与间距
 
 | 项 | 值 |
 | --- | --- |
-| 圆角 | panel `4px` · control `3px` · chip `2px`（废除胶囊；仅头像圆） |
-| 控件高 | 标准 `32px` · 紧凑 `28px` |
-| 表行高 | 标准 `40px` · 紧凑 `36px`（任务/监控默认紧凑） |
+| 圆角 | `--st-radius-sm: 2px`（chip、控件）· `--st-radius-md: 4px`（面板）；无 3px 档，废除胶囊 |
+| 控件高 | `--st-control-height: 32px` · `--st-control-height-lg: 38px` |
+| 边框 | `--st-border-width: 1px`；同屏只允许面板一层 |
+| 表头 / 表行 | 均 `38px`（`design-system.less` 统一；`density` 切换尚未实现，见 §6 P1） |
 | 间距 | `4/8/12/16/20/24`；页 gutter `20`；面板间距 `12`；面板内边距 `16 20` |
-| 边框 | 一律 `1px`；同屏只允许面板一层 |
 | 侧栏 | 展开 `208` / 收起 `56`（默认展开，记忆） |
 | 顶栏 | `48px` |
 | 动效 | `120ms/160ms ease-out` |
@@ -108,7 +114,7 @@
 
 ### 4.2 DenseTable
 
-- 表头：`#032A37`，13px/500，底线 `--st-line-strong`；不用饱和青色实心带。
+- 表头：底色 `--st-color-primary`（`#2187A8`），13px/400，底线 `--st-color-line-strong`；不用饱和青色实心带。
 - 行：仅发丝分隔；hover / 选中左侧 2px accent；无斑马纹。
 - 列型：名称（主+12px muted 副行）· 状态（StatusChip）· 指标（右对齐等宽+单位）· 代码（等宽+tooltip）· 时间（紧凑格式）· 操作（≤2 + ⋯）。
 - 动作：1 主动作 + 1 次动作 +「更多」；删除/注销仅在「更多」，红字 + 影响确认。
@@ -147,7 +153,7 @@
 
 ## 6. 工程路径
 
-1. **令牌**：`design-system.less` 保留 `--st-*` 名，值按 §3 升级。
+1. **令牌**：`design-system.less` 是 `--st-*` 令牌的唯一实现，§3 与其同步；新增或改值先落 less，再更新 §3。
 2. **antd**：`ConfigProvider` + `theme.darkAlgorithm` 组件 token，逐步替换 `!important`。
 3. **Tailwind**：按域删类名映射层与内联劫持。
 4. **浅色**：修复完成前隐藏切换；v2 用 `defaultAlgorithm` 重做。
