@@ -357,17 +357,33 @@ public abstract class AbstractJdbcConnectionProvider<
     /**
      * 解析单个 JDBC 驱动路径。
      *
-     * <p>绝对路径直接使用，相对路径基于 JDBC 驱动目录解析。</p>
+     * <p>绝对路径和相对路径都必须落在共享驱动目录内：连接会把该 jar 载入 Web 的类加载器，
+     * 与配置/任务侧使用同一个目录约束。</p>
      */
     private Path resolveDriverPath(String driverLocation) {
-        Path path = Paths.get(driverLocation.trim());
+        String value = StringUtils.trimToNull(driverLocation);
+
+        if (value == null || value.contains("://") || value.contains("..")) {
+            throw new IllegalArgumentException(
+                    "JDBC driver location must be a local file"
+            );
+        }
+
+        Path directory = resolveJdbcDriverDirectory();
+
+        Path path = Paths.get(value);
 
         if (!path.isAbsolute()) {
-            path = resolveJdbcDriverDirectory()
-                    .resolve(path);
+            path = directory.resolve(path);
         }
 
         path = path.toAbsolutePath().normalize();
+
+        if (!path.startsWith(directory)) {
+            throw new IllegalArgumentException(
+                    "JDBC driver path is outside the configured directory"
+            );
+        }
 
         if (!Files.exists(path)) {
             throw new IllegalArgumentException(
