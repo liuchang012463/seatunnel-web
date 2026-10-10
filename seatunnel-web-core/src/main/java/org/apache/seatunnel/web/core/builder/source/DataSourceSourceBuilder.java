@@ -73,6 +73,13 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     @Value("${seatunnel.web.duckdb.driver-location:}")
     private String duckDbDriverLocation;
 
+    /**
+     * Optional directory holding the preinstalled DuckDB extensions on every engine node. The
+     * generated init SQL disables auto-install, so without a preinstalled httpfs the LOAD fails.
+     */
+    @Value("${seatunnel.web.duckdb.extension-directory:}")
+    private String duckDbExtensionDirectory;
+
     @Resource
     private DorisTaskScopeValidator dorisTaskScopeValidator;
 
@@ -389,21 +396,26 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         DuckDbEndpoint endpoint = parseDuckDbEndpoint(reference.getEndpoint());
         String remoteDatabase = buildDuckDbObjectUri(reference.getBucket(), normalizedKey);
         String defaultSchema = StringUtils.defaultIfBlank(schemaName, "main");
-        String initSql = String.join("\n",
-                "SET autoinstall_known_extensions = false;",
-                "LOAD httpfs;",
-                "CREATE SECRET duckdb_source_minio_secret (",
-                "  TYPE s3,",
-                "  KEY_ID " + sqlLiteral(reference.getAccessKey()) + ",",
-                "  SECRET " + sqlLiteral(reference.getSecretKey()) + ",",
-                "  REGION " + sqlLiteral(reference.getRegion()) + ",",
-                "  ENDPOINT " + sqlLiteral(endpoint.hostAndPort()) + ",",
-                "  URL_STYLE " + sqlLiteral(reference.isPathStyleAccess() ? "path" : "vhost") + ",",
-                "  USE_SSL " + endpoint.ssl() + ",",
-                "  SCOPE " + sqlLiteral(remoteDatabase),
-                ");",
-                "ATTACH IF NOT EXISTS " + sqlLiteral(remoteDatabase)
-                        + " AS duckdb_source (READ_ONLY);");
+        String extensionDirectory = resolveDuckDbExtensionDirectory();
+        List<String> initSqlStatements = new ArrayList<>();
+        initSqlStatements.add("SET autoinstall_known_extensions = false;");
+        if (extensionDirectory != null) {
+            initSqlStatements.add("SET extension_directory = " + sqlLiteral(extensionDirectory) + ";");
+        }
+        initSqlStatements.add("LOAD httpfs;");
+        initSqlStatements.add("CREATE SECRET duckdb_source_minio_secret (");
+        initSqlStatements.add("  TYPE s3,");
+        initSqlStatements.add("  KEY_ID " + sqlLiteral(reference.getAccessKey()) + ",");
+        initSqlStatements.add("  SECRET " + sqlLiteral(reference.getSecretKey()) + ",");
+        initSqlStatements.add("  REGION " + sqlLiteral(reference.getRegion()) + ",");
+        initSqlStatements.add("  ENDPOINT " + sqlLiteral(endpoint.hostAndPort()) + ",");
+        initSqlStatements.add("  URL_STYLE " + sqlLiteral(reference.isPathStyleAccess() ? "path" : "vhost") + ",");
+        initSqlStatements.add("  USE_SSL " + endpoint.ssl() + ",");
+        initSqlStatements.add("  SCOPE " + sqlLiteral(remoteDatabase) + ",");
+        initSqlStatements.add(");");
+        initSqlStatements.add("ATTACH IF NOT EXISTS " + sqlLiteral(remoteDatabase)
+                + " AS duckdb_source (READ_ONLY);");
+        String initSql = String.join("\n", initSqlStatements);
         if (duckDbSourceInitSqlFileService == null) {
             throw new IllegalStateException("DuckDB source initialization SQL service is unavailable");
         }
@@ -524,6 +536,23 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
     private String sqlLiteral(String value) {
         return "'" + value.replace("'", "''") + "'";
+    }
+
+    private String resolveDuckDbExtensionDirectory() {
+        String value = StringUtils.trimToNull(duckDbExtensionDirectory);
+        if (value == null) {
+            return null;
+        }
+        Path directory = Path.of(value).normalize();
+        if (!directory.isAbsolute()) {
+            throw new IllegalArgumentException("DuckDB extension directory must be an absolute path");
+        }
+        String path = directory.toString();
+        if (path.contains(";") || path.contains("\n") || path.contains("\r")) {
+            throw new IllegalArgumentException(
+                    "DuckDB extension directory path must not contain semicolons or line breaks");
+        }
+        return path;
     }
 
     private record DuckDbEndpoint(String hostAndPort, boolean ssl) {

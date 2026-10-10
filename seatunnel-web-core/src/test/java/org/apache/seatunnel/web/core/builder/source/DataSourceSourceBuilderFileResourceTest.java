@@ -190,6 +190,57 @@ class DataSourceSourceBuilderFileResourceTest {
     }
 
     @Test
+    void writesTheConfiguredExtensionDirectoryIntoTheDuckDbInitSql() throws Exception {
+        DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
+        Path initSqlDirectory = configureDuckDbInitSql(sourceBuilder);
+        ReflectionTestUtils.setField(sourceBuilder, "duckDbExtensionDirectory", "/opt/seatunnel/lib/duckdb-extensions");
+        FileResourceResolver resolver = mock(FileResourceResolver.class);
+        ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
+        ReflectionTestUtils.setField(sourceBuilder, "duckDbDriverLocation", "/opt/seatunnel/lib/duckdb_jdbc-1.3.1.0.jar");
+        when(resolver.resolve(42L)).thenReturn(new FileResourceReference(
+                "MINIO", "https://minio.example.com:9000", "us-east-1", "archive", "/resources",
+                "resources/weather.duckdb", "STATIC", "access", "secret", true));
+
+        sourceBuilder.build(ConfigFactory.parseMap(Map.of(
+                "sourceMode", "FILE_RESOURCE",
+                "fileResourceId", "42",
+                "fileFormatType", "duckdb",
+                "readMode", "table",
+                "duckdbSchema", "main",
+                "duckdbTable", "orders")));
+
+        String initSql = Files.readString(initSqlDirectory.resolve("duckdb-resource-42.sql"));
+        // Auto-install is off, so httpfs has to be preinstalled where the engine is told to look.
+        assertTrue(initSql.contains("SET extension_directory = '/opt/seatunnel/lib/duckdb-extensions';"));
+        assertTrue(initSql.indexOf("SET extension_directory") < initSql.indexOf("LOAD httpfs;"));
+    }
+
+    @Test
+    void rejectsARelativeExtensionDirectory() throws Exception {
+        DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
+        configureDuckDbInitSql(sourceBuilder);
+        ReflectionTestUtils.setField(sourceBuilder, "duckDbExtensionDirectory", "lib/duckdb-extensions");
+        FileResourceResolver resolver = mock(FileResourceResolver.class);
+        ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
+        ReflectionTestUtils.setField(sourceBuilder, "duckDbDriverLocation", "/opt/seatunnel/lib/duckdb_jdbc-1.3.1.0.jar");
+        when(resolver.resolve(42L)).thenReturn(new FileResourceReference(
+                "MINIO", "https://minio.example.com:9000", "us-east-1", "archive", "/resources",
+                "resources/weather.duckdb", "STATIC", "access", "secret", true));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> sourceBuilder.build(ConfigFactory.parseMap(Map.of(
+                        "sourceMode", "FILE_RESOURCE",
+                        "fileResourceId", "42",
+                        "fileFormatType", "duckdb",
+                        "readMode", "table",
+                        "duckdbSchema", "main",
+                        "duckdbTable", "orders"))));
+
+        assertTrue(exception.getMessage().contains("absolute path"));
+    }
+
+    @Test
     void usesTheJdbcPluginForDuckDbFileResources() {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
 

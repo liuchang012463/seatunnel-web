@@ -50,6 +50,9 @@ public class DuckDbSourceInitSqlFileService {
         try {
             Files.createDirectories(directory);
             setPermissions(directory, DIRECTORY_PERMISSIONS);
+            if (isUpToDate(target, sql)) {
+                return engineTarget.toString();
+            }
             temporary = Files.createTempFile(directory, "duckdb-resource-" + fileResourceId + "-", ".tmp");
             Files.writeString(
                     temporary,
@@ -76,6 +79,14 @@ public class DuckDbSourceInitSqlFileService {
                 }
             }
         }
+    }
+
+    /**
+     * The script only changes when the resource, its credentials or the layout change. Leaving an
+     * up-to-date file alone keeps the engine from reading a half-written script.
+     */
+    private boolean isUpToDate(Path target, String sql) throws IOException {
+        return Files.isRegularFile(target) && sql.equals(Files.readString(target, StandardCharsets.UTF_8));
     }
 
     public void delete(Long fileResourceId) throws IOException {

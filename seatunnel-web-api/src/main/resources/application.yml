@@ -223,6 +223,7 @@ seatunnel:
       driver-location: ${SEATUNNEL_WEB_DUCKDB_DRIVER_LOCATION:}
       init-sql-dir: ${SEATUNNEL_WEB_DUCKDB_INIT_SQL_DIR:}
       init-sql-engine-dir: ${SEATUNNEL_WEB_DUCKDB_INIT_SQL_ENGINE_DIR:}
+      extension-directory: ${SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR:}
     engine:
       driver-location-mappings: ${SEATUNNEL_WEB_ENGINE_DRIVER_LOCATION_MAPPINGS:}
 
