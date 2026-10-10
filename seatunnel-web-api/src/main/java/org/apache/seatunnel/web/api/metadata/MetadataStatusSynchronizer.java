@@ -385,13 +385,16 @@ public class MetadataStatusSynchronizer {
         return runs.stream().max(Comparator.comparing(run -> executionTimestamp(run))).orElse(null);
     }
 
+    /**
+     * Ordering key for the runs of one pipeline. Both fields carry epoch milliseconds in the 2.0.4
+     * contract; startDate is preferred because the local reservation is compared against it.
+     */
     private static long executionTimestamp(OpenMetadataPipelineRun run) {
         if (run.startDate() != null) {
             return run.startDate();
         }
         return run.timestamp() == null ? 0L : run.timestamp();
     }
-
     private void applyRun(MetadataSourceBinding binding, boolean scan, OpenMetadataPipelineRun run, Date now) {
         MetadataRunStatus currentStatus = scan ? binding.getScanStatus() : binding.getProfileStatus();
         Date currentLastRunTime = scan ? binding.getScanLastRunTime() : binding.getProfileLastRunTime();
@@ -512,8 +515,11 @@ public class MetadataStatusSynchronizer {
         if (currentStatus == null || currentStatus == MetadataRunStatus.NEVER || currentLastRunTime == null) {
             return false;
         }
-        // OpenMetadata timestamp is an execution identifier in 2.0.x, not a wall clock.
-        // Compare actual startDate first so an older OM run cannot mask a newer local reservation.
+        // OpenMetadata writes startDate and timestamp from the same wall clock: the ingestion
+        // workflow sets both to its start time (workflow_status_mixin._new_pipeline_status) and the
+        // server does the same for a queued run (IngestionPipelineRepository.recordQueuedPipelineStatus).
+        // Prefer startDate so an older OM run cannot mask a newer local reservation; a run that only
+        // carries the execution timestamp is still placed in time instead of being dropped.
         Long timestamp = run.startDate() == null ? run.timestamp() : run.startDate();
         Date runTime = MetadataPipelineOperationService.fromOmTimestamp(timestamp);
         // OM timestamps are commonly second-precision; allow a small clock/precision skew.
