@@ -361,9 +361,9 @@ public abstract class AbstractJdbcConnectionProvider<
      * 与配置/任务侧使用同一个目录约束。</p>
      */
     private Path resolveDriverPath(String driverLocation) {
-        String value = StringUtils.trimToNull(driverLocation);
+        String value = driverLocation == null ? null : driverLocation.trim();
 
-        if (value == null || value.contains("://") || value.contains("..")) {
+        if (!StringUtils.hasText(value) || value.contains("://") || value.contains("..")) {
             throw new IllegalArgumentException(
                     "JDBC driver location must be a local file"
             );
