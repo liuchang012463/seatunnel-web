@@ -2,9 +2,22 @@ import {
   DeleteOutlined,
   EyeOutlined,
   FileSearchOutlined,
+  InfoCircleOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import { Alert, App, Button, Collapse, Input, InputNumber, Modal, Select, Switch, Table } from 'antd';
+import {
+  Alert,
+  App,
+  Button,
+  Collapse,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Switch,
+  Table,
+  Tooltip,
+} from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FileResourceSourceCard from './FileResourceSourceCard';
 import { buildFileResourcePreviewOptions, fileResourceApi } from './api';
@@ -19,7 +32,7 @@ import {
 const FORMAT_OPTIONS: Array<{ value: FileFormat; label: string }> = [
   { value: 'csv', label: 'CSV' },
   { value: 'excel', label: 'Excel' },
-  { value: 'json', label: 'JSON（建议 NDJSON）' },
+  { value: 'json', label: 'JSON' },
   { value: 'text', label: 'TEXT / TXT' },
   { value: 'duckdb', label: 'DuckDB（.db / .duckdb）' },
 ];
@@ -40,6 +53,19 @@ const TYPE_OPTIONS = [
   'timestamp',
   'time',
 ].map((value) => ({ value, label: value }));
+
+const ConfigHint: React.FC<{ label: string; title: string }> = ({ label, title }) => (
+  <Tooltip title={title} trigger={['hover', 'focus']}>
+    <Button
+      type="text"
+      size="small"
+      shape="circle"
+      aria-label={label}
+      icon={<InfoCircleOutlined />}
+      className="!h-6 !w-6 !text-slate-400"
+    />
+  </Tooltip>
+);
 
 interface FileSourceConfigPanelProps {
   sourceConfig: Record<string, any>;
@@ -368,14 +394,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
   const advancedItems = [
     {
       key: 'parse',
-      label: (
-        <span className="text-sm font-medium text-slate-800">
-          高级配置
-          <span className="ml-2 text-xs font-normal text-slate-400">
-            已按默认值处理，通常无需修改
-          </span>
-        </span>
-      ),
+      label: <span className="text-sm font-medium text-slate-800">高级配置</span>,
       children: (
         <div className="grid grid-cols-1 gap-3">
           <label className="text-xs text-slate-600">
@@ -487,15 +506,18 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <div className="flex items-center gap-1">
             <div className="text-sm font-semibold text-slate-900">
               {format === 'duckdb' ? 'DuckDB 数据库与表' : '文件格式与解析'}
             </div>
-            <div className="mt-1 text-xs text-slate-500">
-              {format === 'duckdb'
-                ? 'DuckDB 文件通过 SeaTunnel Engine 的 JDBC source 只读查询。'
-                : '选择格式即可，其余参数使用默认值。'}
-            </div>
+            <ConfigHint
+              label="文件解析说明"
+              title={format === 'duckdb'
+                ? 'DuckDB 文件由 SeaTunnel Engine 以只读方式查询。'
+                : format === 'json'
+                  ? 'JSON 建议使用 NDJSON；常用解析参数已采用默认值，可在高级配置中调整。'
+                  : '常用解析参数已采用默认值，可在高级配置中调整。'}
+            />
           </div>
           {format !== 'duckdb' ? (
             <Button
@@ -547,19 +569,19 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
           ) : null}
 
           {format === 'csv' ? (
-            <label className="flex items-center gap-2 text-xs text-slate-600">
-              <Switch
-                size="small"
-                checked={hasHeader}
-                onChange={(checked) => onChange({ csvUseHeaderLine: checked, skipHeader: checked })}
+            <div className="flex items-center gap-1">
+              <label className="flex items-center gap-2 text-xs text-slate-600">
+                <Switch
+                  size="small"
+                  checked={hasHeader}
+                  onChange={(checked) => onChange({ csvUseHeaderLine: checked, skipHeader: checked })}
+                />
+                首行作为表头
+              </label>
+              <ConfigHint
+                label="首行表头说明"
+                title="关闭后，字段名将使用 field_1、field_2 等默认名称。"
               />
-              首行作为表头（关闭后字段名按 field_1..N 识别）
-            </label>
-          ) : null}
-
-          {format === 'json' || format === 'excel' ? (
-            <div className="flex items-end pb-1 text-xs leading-5 text-slate-400">
-              无需额外解析参数，保持默认即可；字段将在选择文件后自动识别。
             </div>
           ) : null}
         </div>
@@ -570,23 +592,22 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div>
+          <div className="flex items-center gap-1">
             <div className="text-sm font-semibold text-slate-900">
               字段 Schema
-              <span className="ml-2 text-xs font-normal text-slate-400">
-                {Object.keys(fields).length
-                  ? `已配置 ${Object.keys(fields).length} 个字段`
-                  : '尚未识别'}
-              </span>
             </div>
-            <div className="mt-1 text-xs text-slate-500">
-              {format === 'duckdb'
-                ? 'SeaTunnel Engine 会读取查询结果的字段类型；如需固定目标端字段映射，可在此手动配置。'
-                : '自动读取文件字段名，类型默认 string，请逐个下拉确认。'}
-            </div>
+            {Object.keys(fields).length ? (
+              <span className="text-xs text-slate-400">{Object.keys(fields).length} 个字段</span>
+            ) : null}
+            <ConfigHint
+              label="字段 Schema 说明"
+              title={format === 'duckdb'
+                ? 'SeaTunnel Engine 会读取查询结果的字段类型；需要固定目标字段时，可在此手动配置。'
+                : '字段名和类型会按文件内容识别，可在列表中调整。'}
+            />
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="mt-3 flex justify-end gap-2">
             {format !== 'duckdb' ? (
               <Button
                 size="small"
@@ -595,7 +616,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
                 disabled={!resource?.id}
                 onClick={() => void recognizeFields(sourceConfig)}
               >
-                从文件识别
+                识别字段
               </Button>
             ) : null}
             <Button size="small" icon={<PlusOutlined />} onClick={addField}>
@@ -628,11 +649,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
             </div>
           ))}
           {!Object.keys(fields).length ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
-              {format === 'duckdb'
-                ? 'DuckDB 表结构由 SeaTunnel Engine 查询；如需显式字段映射，可手动添加。'
-                : '选择文件后将自动识别字段；也可点击「从文件识别」或手动添加。'}
-            </div>
+            <div className="py-2 text-xs text-slate-400">暂无字段</div>
           ) : null}
         </div>
       </section>

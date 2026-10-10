@@ -1,5 +1,10 @@
-import { FileOutlined, FolderOpenOutlined } from '@ant-design/icons';
-import { Alert, Button, Tag } from 'antd';
+import {
+  CheckCircleFilled,
+  FileOutlined,
+  FolderOpenOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons';
+import { Alert, Button, Tag, Tooltip } from 'antd';
 import { useEffect, useState } from 'react';
 import { fileResourceApi } from './api';
 import FileResourcePicker from './FileResourcePicker';
@@ -28,6 +33,13 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
   const isResourceSource = String(sourceConfig?.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
   const isDuckDbSource = String(sourceConfig?.fileFormatType || '').toLowerCase() === 'duckdb';
   const resource = (sourceConfig?.fileResource || sourceConfig?.resource) as FileResource | undefined;
+  const sourceBehavior = resource && resource.kind !== 'DIRECTORY'
+    ? binary
+      ? '将二进制对象同步到目标端，不解析文件内容。'
+      : isDuckDbSource
+        ? 'SeaTunnel Engine 将以只读方式挂载该 DuckDB 对象，并查询指定表。'
+        : '任务会从所选文件读取结构化数据，并按解析配置写入目标表。'
+    : undefined;
 
   useEffect(() => {
     const resourceId = sourceConfig?.fileResourceId;
@@ -79,17 +91,36 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
     <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
             {resource?.kind === 'DIRECTORY' ? <FolderOpenOutlined /> : <FileOutlined />}
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-900">{title}</div>
-            <div className="mt-1 text-xs leading-5 text-slate-500">{description}</div>
+            <div className="flex items-center gap-1">
+              <div className="text-sm font-semibold text-slate-900">{title}</div>
+              <Tooltip
+                trigger={['hover', 'focus']}
+                title={(
+                  <div className="max-w-[280px] space-y-1">
+                    <div>{description}</div>
+                    {sourceBehavior ? <div>{sourceBehavior}</div> : null}
+                  </div>
+                )}
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  shape="circle"
+                  aria-label="文件资源说明"
+                  icon={<InfoCircleOutlined />}
+                  className="!h-6 !w-6 !text-slate-400"
+                />
+              </Tooltip>
+            </div>
           </div>
         </div>
-        <Tag color="blue">
-          {binary ? '二进制对象' : isDuckDbSource ? 'DuckDB 文件' : '结构化文件'}
-        </Tag>
+        {binary || isDuckDbSource ? (
+          <Tag color="blue">{binary ? '二进制对象' : 'DuckDB 文件'}</Tag>
+        ) : null}
       </div>
 
       {!isResourceSource ? (
@@ -101,39 +132,26 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
           description="如果要使用平台上传的文件，请在来源类型中选择文件资源；远端 FTP/SFTP/S3/MinIO 目录仍在画布来源节点中配置。"
         />
       ) : (
-        <>
-          <Alert
-            className="mt-4"
-            type={resource ? 'success' : 'warning'}
-            showIcon
-            message={resource
-              ? isDuckDbSource ? '已选择 DuckDB 文件' : '已选择湖文件'
-              : isDuckDbSource ? '尚未选择 DuckDB 文件' : '尚未选择湖文件'}
-            description={
-              resource
-                ? binary
-                  ? '当前任务将直接同步这个二进制对象到目标端，不解析文件内容。'
-                  : isDuckDbSource
-                    ? 'SeaTunnel Engine 将以只读方式挂载该 DuckDB 对象，并查询指定表。'
-                    : '当前任务将从这个对象读取结构化数据，并按解析配置写入目标表。'
-                : '点击下方按钮，在弹窗中直接上传或选择一个文件。'
-            }
-          />
-
-          <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3">
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className={resource ? 'text-emerald-500' : 'text-slate-400'}>
+              {resource ? <CheckCircleFilled /> : <FileOutlined />}
+            </div>
             <div className="min-w-0">
               <div className="truncate text-sm font-medium text-slate-800">
-                {resource?.name || '尚未选择湖文件'}
+                {resource?.name || resource?.path || '尚未选择湖文件'}
               </div>
-              <div className="mt-1 truncate text-xs text-slate-500">
-                {resource?.path || resource?.objectKey || '请选择湖文件区中的文件'}
-              </div>
+              {resource ? (
+                <div className="truncate text-xs text-slate-500">
+                  {resource.path || resource.objectKey}
+                </div>
+              ) : null}
             </div>
-            <Button type="primary" ghost onClick={() => setPickerOpen(true)}>
-              {resource ? '更换资源' : '选择资源'}
-            </Button>
           </div>
-        </>
+          <Button type="primary" ghost onClick={() => setPickerOpen(true)}>
+            {resource ? '更换资源' : '选择资源'}
+          </Button>
+        </div>
       )}
 
       <FileResourcePicker
