@@ -224,6 +224,8 @@ seatunnel:
       init-sql-dir: ${SEATUNNEL_WEB_DUCKDB_INIT_SQL_DIR:}
       init-sql-engine-dir: ${SEATUNNEL_WEB_DUCKDB_INIT_SQL_ENGINE_DIR:}
       extension-directory: ${SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR:}
+      catalog-max-bytes: ${SEATUNNEL_WEB_DUCKDB_CATALOG_MAX_BYTES:536870912}
+      catalog-concurrency: ${SEATUNNEL_WEB_DUCKDB_CATALOG_CONCURRENCY:2}
     engine:
       driver-location-mappings: ${SEATUNNEL_WEB_ENGINE_DRIVER_LOCATION_MAPPINGS:}
 

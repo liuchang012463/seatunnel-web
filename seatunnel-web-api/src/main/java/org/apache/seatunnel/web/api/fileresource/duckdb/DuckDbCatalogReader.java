@@ -1,7 +1,9 @@
 package org.apache.seatunnel.web.api.fileresource.duckdb;
 
 import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProvider;
+import org.apache.seatunnel.web.api.fileresource.storage.StorageObjectMetadata;
 import org.apache.seatunnel.web.dao.entity.FileResource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.OutputStream;
@@ -22,6 +24,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.Semaphore;
 import java.util.regex.Pattern;
 
 /** Reads DuckDB catalog metadata from a temporary local copy of an object. */
@@ -35,9 +38,16 @@ public class DuckDbCatalogReader {
             "[^\\s\"']*" + Pattern.quote(TEMPORARY_FILE_PREFIX) + "[^\\s\"']*");
 
     private final FileResourceStorageProvider storageProvider;
+    private final long catalogMaxBytes;
+    private final Semaphore readPermits;
 
-    public DuckDbCatalogReader(FileResourceStorageProvider storageProvider) {
+    public DuckDbCatalogReader(
+            FileResourceStorageProvider storageProvider,
+            @Value("${seatunnel.web.duckdb.catalog-max-bytes:536870912}") long catalogMaxBytes,
+            @Value("${seatunnel.web.duckdb.catalog-concurrency:2}") int catalogConcurrency) {
         this.storageProvider = storageProvider;
+        this.catalogMaxBytes = catalogMaxBytes;
+        this.readPermits = new Semaphore(Math.max(1, catalogConcurrency), true);
     }
 
     /**
@@ -60,6 +70,31 @@ public class DuckDbCatalogReader {
     }
 
     private <T> T withReadOnlyConnection(FileResource resource, ConnectionReader<T> reader) throws Exception {
+        // Every read downloads the whole object and opens it locally, so cap how many run at once.
+        readPermits.acquire();
+        try {
+            return readTemporaryCopy(resource, reader);
+        } finally {
+            readPermits.release();
+        }
+    }
+
+    /**
+     * The read copies the whole object into the Web container's temp directory, so an oversized
+     * object is rejected before the download instead of filling that disk.
+     */
+    private void requireReadableSize(FileResource resource) {
+        StorageObjectMetadata metadata = storageProvider.head(resource.getObjectKey());
+        Long size = metadata == null ? null : metadata.size();
+        if (size != null && size > catalogMaxBytes) {
+            throw new IllegalArgumentException(
+                    "DuckDB 文件大小 " + size + " 字节超过目录浏览上限 " + catalogMaxBytes
+                            + " 字节，请调大 seatunnel.web.duckdb.catalog-max-bytes 或改用更小的文件");
+        }
+    }
+
+    private <T> T readTemporaryCopy(FileResource resource, ConnectionReader<T> reader) throws Exception {
+        requireReadableSize(resource);
         String fileName = resource.getName();
         String suffix = fileName.toLowerCase(Locale.ROOT).endsWith(".duckdb") ? ".duckdb" : ".db";
         Path temporaryDatabase = Files.createTempFile(TEMPORARY_FILE_PREFIX, suffix);
