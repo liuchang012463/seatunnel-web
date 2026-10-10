@@ -21,24 +21,44 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DefaultJobDefinitionHoconBuilderTest {
 
     @Test
-    void redactsCredentialBearingFailuresFromApiAndLogs() {
-        // The value carries no sensitive keyword of its own, so only the key filter can mask it.
+    void masksCredentialValuesInFailuresFromApiAndLogs() {
+        // The credential value carries no sensitive word of its own; only the key identifies it.
         String credential = "pwd=hunter2";
         CapturedFailure failure = captureFailure(credential);
 
         assertEquals(Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getCode(), failure.exception().getCode());
-        assertTrue(failure.exception().getMessage().endsWith(": 请检查任务配置"));
-        assertFalse(failure.exception().getMessage().contains(credential));
-        assertFalse(failure.logMessages().stream().anyMatch(message -> message.contains(credential)));
+        assertTrue(failure.exception().getMessage().endsWith(": pwd=***"));
+        assertFalse(failure.exception().getMessage().contains("hunter2"));
+        assertFalse(failure.logMessages().stream().anyMatch(message -> message.contains("hunter2")));
         assertEquals(
-                "Build job hocon config failed, mode=GUIDE_SINGLE, failureType=IllegalArgumentException, cause=请检查任务配置",
+                "Build job hocon config failed, mode=GUIDE_SINGLE, failureType=IllegalArgumentException, cause=pwd=***",
                 failure.logMessages().get(0));
+        // The original failure is kept as the cause so the handler can log the stack trace.
+        assertInstanceOf(IllegalArgumentException.class, failure.exception().getCause());
+    }
+
+    @Test
+    void masksCompoundCredentialKeysAndQuotedValues() {
+        CapturedFailure failure = captureFailure("Invalid config: accessKeyId = \"AKIAIOSFODNN7EXAMPLE\"");
+
+        assertTrue(failure.exception().getMessage().endsWith(": Invalid config: accessKeyId = ***"));
+        assertFalse(failure.exception().getMessage().contains("AKIAIOSFODNN7EXAMPLE"));
+    }
+
+    @Test
+    void keepsActionableErrorsWhenASensitiveWordIsNotACredentialKey() {
+        String message = "HTTP 来源 Schema 字段 [token] 未设置类型，请在来源节点配置中选择字段类型";
+        CapturedFailure failure = captureFailure(message);
+
+        assertTrue(failure.exception().getMessage().endsWith(": " + message));
+        assertFalse(failure.exception().getMessage().contains("请检查任务配置"));
     }
 
     @Test

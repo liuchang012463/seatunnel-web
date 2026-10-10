@@ -10,7 +10,8 @@ import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Component;
 
-import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Default hocon builder implementation based on mode handlers.
@@ -19,10 +20,20 @@ import java.util.Locale;
 @Component
 public class DefaultJobDefinitionHoconBuilder implements JobDefinitionHoconBuilder {
 
-    private static final String[] SENSITIVE_KEYWORDS = {
-            "password", "passwd", "pwd", "secret", "accesskey", "secretkey", "token", "apikey",
-            "jaas", "authorization", "credential", "privatekey", "signature", "bearer", "sasl"
-    };
+    private static final String CREDENTIAL_MASK = "***";
+
+    /**
+     * Credential keys followed by the value they carry, in the shapes build errors echo:
+     * {@code key=value}, {@code key: value}, {@code key "value"} and an authorization scheme
+     * followed by its token. The key may be a compound such as {@code accessKeyId} or
+     * {@code dbPassword}, so the keyword is matched as a prefix of the key.
+     */
+    private static final Pattern CREDENTIAL_VALUE = Pattern.compile(
+            "(?i)(password|passwd|pwd|secretkey|secret|accesskey|token|apikey|jaas"
+                    + "|authorization|credential|privatekey|signature|bearer|sasl)([\\w.-]*?)"
+                    + "(\\s*[:=]\\s*|\\s+(?=[\"']))"
+                    + "(?:(bearer|basic|digest)\\s+)?"
+                    + "(\"[^\"]*\"|'[^']*'|[^\\s\"']+)");
 
     private final JobDefinitionModeHandlerRegistry handlerRegistry;
 
@@ -48,10 +59,11 @@ public class DefaultJobDefinitionHoconBuilder implements JobDefinitionHoconBuild
         } catch (Exception e) {
             String sanitizedCause = rootCauseMessage(e);
             log.error("Build job hocon config failed, mode={}, failureType={}, cause={}",
-                    command.getMode(), rootCauseType(e), sanitizedCause);
+                    command.getMode(), rootCauseType(e), sanitizedCause, e);
             throw new ServiceException(
                     Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getCode(),
-                    Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getMsg() + ": " + sanitizedCause);
+                    Status.BUILD_JOB_INSTANCE_CONFIG_ERROR.getMsg() + ": " + sanitizedCause,
+                    e);
         }
     }
 
@@ -64,7 +76,9 @@ public class DefaultJobDefinitionHoconBuilder implements JobDefinitionHoconBuild
     }
 
     /**
-     * Extract the deepest root cause message for the user, without leaking credentials.
+     * Extract the deepest root cause message for the user, masking only the values that follow a
+     * credential key. Replacing the whole message would hide actionable text whenever a sensitive
+     * word happens to be part of it, e.g. an HTTP schema field named {@code token}.
      */
     private String rootCauseMessage(Throwable error) {
         Throwable root = error;
@@ -75,21 +89,21 @@ public class DefaultJobDefinitionHoconBuilder implements JobDefinitionHoconBuild
         if (StringUtils.isBlank(message)) {
             return root.getClass().getSimpleName();
         }
-        String sanitized = message.replaceAll("\\s+", " ").trim();
-        if (containsSensitiveKeyword(sanitized)) {
-            return "请检查任务配置";
-        }
+        String sanitized = maskCredentialValues(message.replaceAll("\\s+", " ").trim());
         return StringUtils.abbreviate(sanitized, 200);
     }
 
-    private boolean containsSensitiveKeyword(String message) {
-        String normalizedMessage = message.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
-        for (String keyword : SENSITIVE_KEYWORDS) {
-            if (normalizedMessage.contains(keyword)) {
-                return true;
-            }
+    private String maskCredentialValues(String message) {
+        Matcher matcher = CREDENTIAL_VALUE.matcher(message);
+        StringBuilder masked = new StringBuilder();
+        while (matcher.find()) {
+            String scheme = matcher.group(4);
+            String replacement = matcher.group(1) + matcher.group(2) + matcher.group(3)
+                    + (scheme == null ? "" : scheme + " ") + CREDENTIAL_MASK;
+            matcher.appendReplacement(masked, Matcher.quoteReplacement(replacement));
         }
-        return false;
+        matcher.appendTail(masked);
+        return masked.toString();
     }
 
     /**
