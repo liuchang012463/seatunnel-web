@@ -92,6 +92,13 @@ services:
       SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX:-seatunnel-web-upload}
       SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS:-24}
 
+      # DuckDB file sources: the Web writes the session init SQL into this directory and every
+      # Engine node has to see the same files. Override the engine path when the Engine mounts
+      # the shared volume somewhere else.
+      SEATUNNEL_WEB_DUCKDB_DRIVER_LOCATION: ${SEATUNNEL_WEB_DUCKDB_DRIVER_LOCATION:-}
+      SEATUNNEL_WEB_DUCKDB_INIT_SQL_DIR: ${SEATUNNEL_WEB_DUCKDB_INIT_SQL_DIR:-/opt/seatunnel-web/duckdb-init}
+      SEATUNNEL_WEB_DUCKDB_INIT_SQL_ENGINE_DIR: ${SEATUNNEL_WEB_DUCKDB_INIT_SQL_ENGINE_DIR:-/opt/seatunnel/lib/duckdb-init}
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -102,6 +109,7 @@ services:
       - ./dist/seatunnel-web-1.0.0:/opt/seatunnel-web
       - seatunnel-web-logs:/opt/seatunnel-web/logs
       - seatunnel-web-jdbc-drivers:/opt/seatunnel-web/jdbc-drivers
+      - seatunnel-web-duckdb-init:/opt/seatunnel-web/duckdb-init
 
     healthcheck:
       test:
@@ -148,6 +156,9 @@ volumes:
 
   seatunnel-web-jdbc-drivers:
     name: seatunnel-web-jdbc-drivers
+
+  seatunnel-web-duckdb-init:
+    name: seatunnel-web-duckdb-init
 
 
 networks:

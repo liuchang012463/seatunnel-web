@@ -466,7 +466,8 @@ docker compose --env-file .env.bind -f compose.bind.yaml up -d
 
 No image rebuild is required. Re-running `up -d` recreates the affected
 containers while preserving the named volumes (`seatunnel-web-logs`,
-`seatunnel-web-jdbc-drivers`, and `seatunnel-web-mysql-data` when bundled).
+`seatunnel-web-jdbc-drivers`, `seatunnel-web-duckdb-init`, and
+`seatunnel-web-mysql-data` when bundled).
 
 #### Notes on the bind-mount variant
 
@@ -479,8 +480,10 @@ containers while preserving the named volumes (`seatunnel-web-logs`,
 * The front-end container mounts `dist/seatunnel-web-1.0.0/web` to
   `/usr/share/nginx/html` (read-only) and the project's
   `conf/nginx/default.conf` to `/etc/nginx/conf.d/default.conf` (read-only).
-* Logs and JDBC drivers use named volumes so container writes do not pollute
-  the bind-mounted host directory.
+* Logs, JDBC drivers and the DuckDB session init SQL directory use named
+  volumes so container writes do not pollute the bind-mounted host
+  directory. Every SeaTunnel Engine node has to see the init SQL directory
+  at the path configured by `SEATUNNEL_WEB_DUCKDB_INIT_SQL_ENGINE_DIR`.
 * `dist/seatunnel-web-1.0.0/conf/application.yml` is intentionally not
   read-only-mounted. This allows on-site tuning during development and
   iteration. Production releases should treat the YAML as part of the
