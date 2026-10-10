@@ -127,9 +127,16 @@ public class S3FileHoconBuilder implements DataSourceHoconBuilder {
         if (!"INCREMENTAL".equalsIgnoreCase(String.valueOf(node.get("syncType")))) {
             return;
         }
+        // An unknown version is not an old version: the client may simply have no engine to ask.
+        if (StringUtils.isBlank(context.getEngineVersion())) {
+            throw new IllegalArgumentException(
+                    "S3File incremental update sync requires the SeaTunnel Engine version,"
+                            + " but the client reported none");
+        }
         if (!"3.0.0".equals(context.getEngineVersion())) {
             throw new IllegalArgumentException(
-                    "S3File incremental update sync requires SeaTunnel Engine 3.0.0");
+                    "S3File incremental update sync requires SeaTunnel Engine 3.0.0, not "
+                            + context.getEngineVersion());
         }
         if (!"binary".equalsIgnoreCase(String.valueOf(result.get("file_format_type")))) {
             throw new IllegalArgumentException(

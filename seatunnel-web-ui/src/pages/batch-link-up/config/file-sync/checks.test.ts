@@ -31,6 +31,16 @@ describe('file sync incremental validation', () => {
     ]);
   });
 
+  it('reports an unknown engine version separately from an unsupported one', () => {
+    expect(generateFileSyncCheckList(s3Nodes)).toEqual([
+      expect.objectContaining({
+        nodeId: 'source-1',
+        field: 'syncType',
+        message: '无法确认 SeaTunnel Engine 版本，S3File 增量 update 需要 3.0.0',
+      }),
+    ]);
+  });
+
   it('requires matching object storage types for S3File update sync', () => {
     const nodes = buildNodes(
       { dataSourceId: '12', dbType: 'S3', path: '/source', syncType: 'INCREMENTAL' },

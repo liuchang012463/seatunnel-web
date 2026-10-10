@@ -132,7 +132,16 @@ export const generateFileSyncCheckList = (
       if (!sourceIsObjectStorage || !sinkIsObjectStorage || sourceType !== sinkType) {
         result.push(buildError(source, 'syncType', 'S3File 增量 update 要求来源和去向使用同一 S3 / MinIO 数据源'));
       } else if (engineVersion !== '3.0.0') {
-        result.push(buildError(source, 'syncType', 'S3File 增量 update 需要 SeaTunnel Engine 3.0.0'));
+        // 版本未知（拿不到客户端版本）与版本不满足是两种问题，提示不能混为一谈。
+        result.push(
+          buildError(
+            source,
+            'syncType',
+            engineVersion
+              ? 'S3File 增量 update 需要 SeaTunnel Engine 3.0.0'
+              : '无法确认 SeaTunnel Engine 版本，S3File 增量 update 需要 3.0.0',
+          ),
+        );
       }
     } else if (sourceType && sinkType && sourceType !== sinkType) {
       result.push(buildError(source, 'syncType', '增量模式要求来源与去向使用相同文件协议'));

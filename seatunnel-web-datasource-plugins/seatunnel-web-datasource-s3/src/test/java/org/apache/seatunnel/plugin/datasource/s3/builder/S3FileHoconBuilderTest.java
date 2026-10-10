@@ -188,10 +188,20 @@ class S3FileHoconBuilderTest {
                 "accessKey", "access",
                 "secretKey", "secret");
 
-        assertThrows(IllegalArgumentException.class,
+        Map<String, Object> incrementalNode = Map.of("path", "/safe", "syncType", "INCREMENTAL");
+
+        // An older engine is rejected for its version, not because the version was missing.
+        IllegalArgumentException olderEngine = assertThrows(IllegalArgumentException.class,
                 () -> new S3FileHoconBuilder().buildSourceHocon(context(
-                        connection,
-                        Map.of("path", "/safe", "syncType", "INCREMENTAL"))));
+                        connection, incrementalNode, "2.3.13")));
+        assertTrue(olderEngine.getMessage().contains("not 2.3.13"));
+
+        // A client that reports no engine version at all is a different failure.
+        IllegalArgumentException unknownEngine = assertThrows(IllegalArgumentException.class,
+                () -> new S3FileHoconBuilder().buildSourceHocon(context(
+                        connection, incrementalNode)));
+        assertTrue(unknownEngine.getMessage().contains("reported none"));
+
         assertThrows(IllegalArgumentException.class,
                 () -> new S3FileHoconBuilder().buildSourceHocon(context(
                         connection,
