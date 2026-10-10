@@ -629,10 +629,12 @@ class OpenMetadataRestClientTest {
 
     @Test
     void readsContainerSampleDataFromItsDedicatedEndpoint() throws Exception {
+        AtomicReference<String> samplePath = new AtomicReference<>();
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/containers", exchange -> {
-            String path = exchange.getRequestURI().getPath();
+            String path = exchange.getRequestURI().getRawPath();
             if (path.endsWith("/sampleData")) {
+                samplePath.set(path);
                 // Sample rows live in an entity extension, so only this endpoint returns them.
                 respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000012\","
                         + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
@@ -649,13 +651,16 @@ class OpenMetadataRestClientTest {
         OpenMetadataRestClient client = new OpenMetadataRestClient(
                 properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
 
+        String resourceId = "st_ds_42.orders & more";
         OpenMetadataResourceDetail detail =
-                client.getResourceDetail(OmResourceType.CONTAINER, "container-id");
+                client.getResourceDetail(OmResourceType.CONTAINER, resourceId);
 
         assertEquals(1, detail.fields().size());
         assertTrue(detail.sampleDataAvailable());
         assertEquals(List.of("id"), detail.sampleColumns());
         assertEquals(List.of(List.of("1"), List.of("2")), detail.sampleRows());
+        // The hand-built path has to encode the id; the SDK does it for the entity read itself.
+        assertEquals("/api/v1/containers/st_ds_42.orders%20%26%20more/sampleData", samplePath.get());
     }
 
     private static OpenMetadataProperties properties(String baseUrl) {

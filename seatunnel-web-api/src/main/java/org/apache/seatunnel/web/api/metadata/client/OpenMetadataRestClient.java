@@ -469,8 +469,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
      */
     private TableData extensionSampleData(OmResourceType type, String resourceId) {
         String path = switch (type) {
-            case CONTAINER -> "/v1/containers/" + resourceId + "/sampleData";
-            case FILE -> "/v1/drives/files/" + resourceId + "/sampleData";
+            case CONTAINER -> "/v1/containers/" + encode(resourceId) + "/sampleData";
+            case FILE -> "/v1/drives/files/" + encode(resourceId) + "/sampleData";
             default -> null;
         };
         if (path == null) {
