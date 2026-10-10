@@ -22,7 +22,7 @@ public class VastbaseConnectionParam extends BaseConnectionParam {
             type = FieldType.NUMBER, placeholder = "Please enter the port")
     protected String port;
 
-    @FormField(label = "模式", order = 4, required = false, defaultValue = "public",
+    @FormField(label = "模式", order = 4, required = false, defaultValue = "",
             placeholder = "Please enter the schema name")
     protected String schemaName;
 

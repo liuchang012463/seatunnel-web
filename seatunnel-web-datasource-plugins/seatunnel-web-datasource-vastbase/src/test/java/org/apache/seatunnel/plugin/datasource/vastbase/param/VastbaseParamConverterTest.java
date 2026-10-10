@@ -2,6 +2,7 @@ package org.apache.seatunnel.plugin.datasource.vastbase.param;
 
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
+import org.apache.seatunnel.web.spi.form.FormField;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,5 +19,14 @@ class VastbaseParamConverterTest {
         assertEquals(DbType.VASTBASE, result.getDbType());
         assertEquals("jdbc:postgresql://192.168.100.95:25432/postgres", result.getUrl());
         assertEquals("org.postgresql.Driver", result.getDriver());
+    }
+
+    @Test
+    void schemaFormDefaultsToAllSchemas() throws ReflectiveOperationException {
+        FormField schemaField = VastbaseConnectionParam.class
+                .getDeclaredField("schemaName")
+                .getAnnotation(FormField.class);
+
+        assertEquals("", schemaField.defaultValue());
     }
 }
