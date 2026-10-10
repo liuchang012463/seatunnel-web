@@ -168,11 +168,13 @@ public class MetadataBindingCommandServiceImpl implements MetadataBindingCommand
             binding.setNextRetryTime(null);
             binding.setLastSyncErrorCode(null);
             binding.setLastSyncError(null);
-            binding.setVersion((binding.getVersion() == null ? 0L : binding.getVersion()) + 1L);
+            long expectedVersion = binding.getVersion() == null ? 0L : binding.getVersion();
+            binding.setVersion(expectedVersion + 1L);
             binding.initUpdate();
-            if (!metadataBindingDao.updateById(binding)) {
+            if (!metadataBindingDao.updateIfVersion(binding, expectedVersion)) {
                 throw new IllegalStateException(
-                        "Could not reset metadata binding for dataSourceId=" + binding.getDataSourceId());
+                        "Could not reset metadata binding for dataSourceId=" + binding.getDataSourceId()
+                                + ": the binding changed concurrently");
             }
             resetCount++;
         }

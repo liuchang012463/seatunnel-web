@@ -9,12 +9,16 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
@@ -123,8 +127,8 @@ class MetadataBindingCommandServiceImplTest {
         deleted.setOmMetadataPipelineFqn("retained-pipeline-fqn");
 
         when(metadataBindingDao.queryAll()).thenReturn(List.of(active, deleted));
-        when(metadataBindingDao.updateById(active)).thenReturn(true);
-        when(metadataBindingDao.updateById(deleted)).thenReturn(true);
+        when(metadataBindingDao.updateIfVersion(any(MetadataSourceBinding.class), anyLong()))
+                .thenReturn(true);
 
         int resetCount = service.resetForOpenMetadataInstanceChange();
 
@@ -146,6 +150,26 @@ class MetadataBindingCommandServiceImplTest {
         assertNull(deleted.getOmMetadataPipelineId());
         assertEquals("st_ds_1025", deleted.getOmServiceFqn());
         assertEquals("st_ds_1025.st_ds_1025_metadata", deleted.getOmMetadataPipelineFqn());
-        verify(metadataBindingDao, times(2)).updateById(org.mockito.ArgumentMatchers.any(MetadataSourceBinding.class));
+        // Each reset is written under the version read from the row, like the rest of the subsystem.
+        ArgumentCaptor<Long> expectedVersions = ArgumentCaptor.forClass(Long.class);
+        verify(metadataBindingDao, times(2))
+                .updateIfVersion(any(MetadataSourceBinding.class), expectedVersions.capture());
+        assertEquals(List.of(8L, 9L), expectedVersions.getAllValues());
+    }
+
+    @Test
+    void failsTheResetWhenABindingChangedConcurrently() {
+        MetadataSourceBinding active = new MetadataSourceBinding();
+        active.setId(11L);
+        active.setDataSourceId(1024L);
+        active.setDesiredState(MetadataDesiredState.ACTIVE);
+        active.setSyncStatus(MetadataSyncStatus.READY);
+        active.setConfigVersion(4L);
+        active.setVersion(8L);
+        when(metadataBindingDao.queryAll()).thenReturn(List.of(active));
+        when(metadataBindingDao.updateIfVersion(any(MetadataSourceBinding.class), anyLong()))
+                .thenReturn(false);
+
+        assertThrows(IllegalStateException.class, () -> service.resetForOpenMetadataInstanceChange());
     }
 }
