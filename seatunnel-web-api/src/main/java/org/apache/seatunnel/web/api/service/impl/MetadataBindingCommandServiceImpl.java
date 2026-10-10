@@ -171,7 +171,7 @@ public class MetadataBindingCommandServiceImpl implements MetadataBindingCommand
             long expectedVersion = binding.getVersion() == null ? 0L : binding.getVersion();
             binding.setVersion(expectedVersion + 1L);
             binding.initUpdate();
-            if (!metadataBindingDao.updateIfVersion(binding, expectedVersion)) {
+            if (!metadataBindingDao.resetForInstanceChange(binding, expectedVersion)) {
                 throw new IllegalStateException(
                         "Could not reset metadata binding for dataSourceId=" + binding.getDataSourceId()
                                 + ": the binding changed concurrently");

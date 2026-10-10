@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.dao.repository.impl;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.apache.seatunnel.web.common.enums.MetadataSyncStatus;
@@ -36,23 +37,9 @@ class MetadataBindingDaoImplTest {
 
     @Test
     void reservingAnExplorationAtomicallyResetsItsRunBaseline() {
-        AtomicReference<com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<MetadataSourceBinding>>
-                captured = new AtomicReference<>();
-        MetadataSourceBindingMapper mapper = (MetadataSourceBindingMapper) Proxy.newProxyInstance(
-                MetadataSourceBindingMapper.class.getClassLoader(),
-                new Class<?>[] {MetadataSourceBindingMapper.class},
-                (proxy, method, args) -> {
-                    if ("update".equals(method.getName()) && args != null && args.length == 2) {
-                        @SuppressWarnings("unchecked")
-                        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<MetadataSourceBinding>
-                                update = (com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<MetadataSourceBinding>) args[1];
-                        captured.set(update);
-                        return 1;
-                    }
-                    return method.getReturnType() == int.class ? 0 : null;
-                });
+        AtomicReference<LambdaUpdateWrapper<MetadataSourceBinding>> captured = new AtomicReference<>();
 
-        boolean reserved = new MetadataBindingDaoImpl(mapper)
+        boolean reserved = new MetadataBindingDaoImpl(capturingMapper(captured))
                 .reserveRun(42L, 7L, false, null, new Date(1_700_000_000_000L), "reservation-token");
 
         assertTrue(reserved);
@@ -65,5 +52,50 @@ class MetadataBindingDaoImplTest {
         assertTrue(update.getParamNameValuePairs().containsValue("reservation-token"));
         assertTrue(update.getParamNameValuePairs().containsValue(false));
         assertTrue(update.getParamNameValuePairs().containsValue(null));
+    }
+
+    @Test
+    void resettingForAChangedInstanceClearsThePreviousOmIds() {
+        AtomicReference<LambdaUpdateWrapper<MetadataSourceBinding>> captured = new AtomicReference<>();
+        MetadataSourceBinding binding = new MetadataSourceBinding();
+        binding.setId(11L);
+        binding.setVersion(9L);
+        binding.setSyncStatus(MetadataSyncStatus.PENDING);
+        binding.setConfigVersion(5L);
+        binding.setRetryCount(0);
+        binding.setUpdateTime(new Date(1_700_000_000_000L));
+
+        boolean reset = new MetadataBindingDaoImpl(capturingMapper(captured))
+                .resetForInstanceChange(binding, 8L);
+
+        assertTrue(reset);
+        var update = captured.get();
+        // An entity update would skip these nulls, so the reset has to set them explicitly.
+        assertTrue(update.getSqlSet().contains("om_service_id"));
+        assertTrue(update.getSqlSet().contains("om_metadata_pipeline_id"));
+        assertTrue(update.getSqlSet().contains("om_profiler_pipeline_id"));
+        assertTrue(update.getSqlSet().contains("next_retry_time"));
+        assertTrue(update.getSqlSet().contains("last_sync_error_code"));
+        assertTrue(update.getSqlSet().contains("last_sync_error"));
+        assertTrue(update.getParamNameValuePairs().containsValue(null));
+        assertTrue(update.getParamNameValuePairs().containsValue(9L));
+        assertTrue(update.getParamNameValuePairs().containsValue(MetadataSyncStatus.PENDING));
+    }
+
+    private static MetadataSourceBindingMapper capturingMapper(
+            AtomicReference<LambdaUpdateWrapper<MetadataSourceBinding>> captured) {
+        return (MetadataSourceBindingMapper) Proxy.newProxyInstance(
+                MetadataSourceBindingMapper.class.getClassLoader(),
+                new Class<?>[] {MetadataSourceBindingMapper.class},
+                (proxy, method, args) -> {
+                    if ("update".equals(method.getName()) && args != null && args.length == 2) {
+                        @SuppressWarnings("unchecked")
+                        LambdaUpdateWrapper<MetadataSourceBinding> update =
+                                (LambdaUpdateWrapper<MetadataSourceBinding>) args[1];
+                        captured.set(update);
+                        return 1;
+                    }
+                    return method.getReturnType() == int.class ? 0 : null;
+                });
     }
 }

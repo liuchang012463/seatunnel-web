@@ -38,4 +38,10 @@ public interface MetadataBindingDao extends IDao<MetadataSourceBinding> {
 
     /** Persists a run state only if no competing request changed the binding in the meantime. */
     boolean updateIfVersion(MetadataSourceBinding binding, Long expectedVersion);
+
+    /**
+     * Writes one binding reset for a changed OpenMetadata instance. An entity update skips null
+     * fields, so the ids of the previous instance are cleared explicitly instead.
+     */
+    boolean resetForInstanceChange(MetadataSourceBinding binding, Long expectedVersion);
 }

@@ -127,7 +127,7 @@ class MetadataBindingCommandServiceImplTest {
         deleted.setOmMetadataPipelineFqn("retained-pipeline-fqn");
 
         when(metadataBindingDao.queryAll()).thenReturn(List.of(active, deleted));
-        when(metadataBindingDao.updateIfVersion(any(MetadataSourceBinding.class), anyLong()))
+        when(metadataBindingDao.resetForInstanceChange(any(MetadataSourceBinding.class), anyLong()))
                 .thenReturn(true);
 
         int resetCount = service.resetForOpenMetadataInstanceChange();
@@ -153,7 +153,7 @@ class MetadataBindingCommandServiceImplTest {
         // Each reset is written under the version read from the row, like the rest of the subsystem.
         ArgumentCaptor<Long> expectedVersions = ArgumentCaptor.forClass(Long.class);
         verify(metadataBindingDao, times(2))
-                .updateIfVersion(any(MetadataSourceBinding.class), expectedVersions.capture());
+                .resetForInstanceChange(any(MetadataSourceBinding.class), expectedVersions.capture());
         assertEquals(List.of(8L, 9L), expectedVersions.getAllValues());
     }
 
@@ -167,7 +167,7 @@ class MetadataBindingCommandServiceImplTest {
         active.setConfigVersion(4L);
         active.setVersion(8L);
         when(metadataBindingDao.queryAll()).thenReturn(List.of(active));
-        when(metadataBindingDao.updateIfVersion(any(MetadataSourceBinding.class), anyLong()))
+        when(metadataBindingDao.resetForInstanceChange(any(MetadataSourceBinding.class), anyLong()))
                 .thenReturn(false);
 
         assertThrows(IllegalStateException.class, () -> service.resetForOpenMetadataInstanceChange());

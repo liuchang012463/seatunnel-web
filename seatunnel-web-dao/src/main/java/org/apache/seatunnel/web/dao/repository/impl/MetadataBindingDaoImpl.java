@@ -184,4 +184,30 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
                 .eq(MyBatisColumn.getter(MetadataSourceBinding::getId), binding.getId())
                 .eq(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion)) > 0;
     }
+
+    @Override
+    public boolean resetForInstanceChange(MetadataSourceBinding binding, Long expectedVersion) {
+        if (binding == null || binding.getId() == null || expectedVersion == null) {
+            return false;
+        }
+        return metadataSourceBindingMapper.update(null, new LambdaUpdateWrapper<MetadataSourceBinding>()
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getId), binding.getId())
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getVersion), binding.getVersion())
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getUpdateTime), binding.getUpdateTime())
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), binding.getSyncStatus())
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getConfigVersion), binding.getConfigVersion())
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getOmServiceFqn), binding.getOmServiceFqn())
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getOmMetadataPipelineFqn),
+                        binding.getOmMetadataPipelineFqn())
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getOmProfilerPipelineFqn),
+                        binding.getOmProfilerPipelineFqn())
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getOmServiceId), null)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getOmMetadataPipelineId), null)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getOmProfilerPipelineId), null)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getRetryCount), binding.getRetryCount())
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getNextRetryTime), null)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getLastSyncErrorCode), null)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getLastSyncError), null)) > 0;
+    }
 }
