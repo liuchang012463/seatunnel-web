@@ -22,15 +22,33 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /** Reads DuckDB catalog metadata from a temporary local copy of an object. */
 @Component
 public class DuckDbCatalogReader {
 
+    /** Prefix of the temporary local copy; the resulting path must not reach the API. */
+    public static final String TEMPORARY_FILE_PREFIX = "seatunnel-web-duckdb-catalog-";
+
+    private static final Pattern TEMPORARY_FILE_PATH = Pattern.compile(
+            "[^\\s\"']*" + Pattern.quote(TEMPORARY_FILE_PREFIX) + "[^\\s\"']*");
+
     private final FileResourceStorageProvider storageProvider;
 
     public DuckDbCatalogReader(FileResourceStorageProvider storageProvider) {
         this.storageProvider = storageProvider;
+    }
+
+    /**
+     * The DuckDB driver embeds the path of the temporary copy in its error messages, and callers
+     * surface those messages to the user, who must not learn a server path.
+     */
+    public static String scrubTemporaryPath(String message) {
+        if (message == null) {
+            return null;
+        }
+        return TEMPORARY_FILE_PATH.matcher(message).replaceAll("临时副本");
     }
 
     public DuckDbCatalogVO inspect(FileResource resource) throws Exception {
@@ -44,7 +62,7 @@ public class DuckDbCatalogReader {
     private <T> T withReadOnlyConnection(FileResource resource, ConnectionReader<T> reader) throws Exception {
         String fileName = resource.getName();
         String suffix = fileName.toLowerCase(Locale.ROOT).endsWith(".duckdb") ? ".duckdb" : ".db";
-        Path temporaryDatabase = Files.createTempFile("seatunnel-web-duckdb-catalog-", suffix);
+        Path temporaryDatabase = Files.createTempFile(TEMPORARY_FILE_PREFIX, suffix);
         try {
             try (OutputStream output = Files.newOutputStream(temporaryDatabase)) {
                 storageProvider.download(resource.getObjectKey(), output);

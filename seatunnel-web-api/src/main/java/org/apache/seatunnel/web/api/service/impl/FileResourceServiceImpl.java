@@ -697,7 +697,8 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         } catch (Exception error) {
             log.warn("Preview DuckDB file resource failed, resourceId={}", id, error);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
-                    "DuckDB 查询失败: " + StringUtils.defaultIfBlank(error.getMessage(), "请检查读取配置"));
+                    "DuckDB 查询失败: " + StringUtils.defaultIfBlank(
+                            DuckDbCatalogReader.scrubTemporaryPath(error.getMessage()), "请检查读取配置"));
         }
     }
 
