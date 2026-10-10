@@ -36,8 +36,6 @@ export default function BasicConfigContent({
   const clientId = value?.clientId || "-";
   const modeLabel = getModeLabel(value?.mode);
 
-  console.warn("123" + value)
-
   const handleFieldChange = (field: string, fieldValue: any) => {
     onChange?.((prev: any) => ({
       ...prev,
