@@ -17,7 +17,9 @@ import ExecutionStatus from '@/pages/batch-link-up/components/SyncTaskList/compo
 import ScheduleInfo from '@/pages/batch-link-up/components/SyncTaskList/components/ScheduleInfo';
 import TaskStatus from '@/pages/batch-link-up/components/SyncTaskList/components/TaskStatus';
 import CustomPagination from '@/pages/batch-link-up/CustomPagination';
-import useTaskListAutoRefresh from '@/pages/common/hooks/useTaskListAutoRefresh';
+import useTaskListAutoRefresh, {
+  TASK_LIST_REQUEST_TIMEOUT,
+} from '@/pages/common/hooks/useTaskListAutoRefresh';
 import { withTimeout } from '@/utils/withTimeout';
 import '@/pages/batch-link-up/components/SyncTaskList/index.less';
 
@@ -58,9 +60,11 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
 
   const taskApi = taskType === 'FILE_TRANSFER' ? fileTransferTaskApi : fileIngestTaskApi;
 
-  const fetchTaskList = useCallback(async () => {
-    setLoading(true);
-    setError(undefined);
+  const fetchTaskList = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(undefined);
+    }
     const requestParams: Record<string, any> = {
       ...searchParams,
       taskType,
@@ -78,12 +82,18 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
     }
 
     try {
-      const response = await withTimeout(taskApi.page(requestParams), 10000, '任务列表请求超时，请稍后重试');
+      const response = await withTimeout(
+        taskApi.page(requestParams, { timeout: TASK_LIST_REQUEST_TIMEOUT }),
+        TASK_LIST_REQUEST_TIMEOUT,
+        '任务列表请求超时，请稍后重试'
+      );
       if (response?.code !== undefined && response.code !== 0) {
         throw new Error(response.message || '查询任务列表失败');
       }
       const data = response?.data || {};
       setTaskList(Array.isArray(data?.bizData) ? data.bizData : Array.isArray(data) ? data : []);
+      // A silent poll keeps the previous error visible until it succeeds.
+      setError(undefined);
       setPagination((previous) => ({
         ...previous,
         total: Number(data?.pagination?.total || 0),
@@ -93,7 +103,9 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
       // active, and blanking it would stop that refresh until the operator retries by hand.
       setError(getErrorMessage(fetchError, '查询任务列表失败，请稍后重试'));
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [mode, pagination.current, pagination.pageSize, searchParams, sort.field, sort.order, taskApi, taskType]);
 
@@ -102,8 +114,8 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
   }, [fetchTaskList]);
 
   // 存在运行中任务时自动刷新当前页，全部终态后停止。
-  useTaskListAutoRefresh(taskList, () => {
-    void fetchTaskList();
+  useTaskListAutoRefresh(taskList, (silent) => {
+    void fetchTaskList(silent);
   });
 
   const handleSearch = (values: any) => {

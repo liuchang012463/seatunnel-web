@@ -9,7 +9,9 @@ import { seatunnelJobDefinitionApi } from "../../api";
 import BatchCreateJobModal, {
   BatchCreateValues,
 } from "@/pages/common/components/BatchCreateJobModal";
-import useTaskListAutoRefresh from "@/pages/common/hooks/useTaskListAutoRefresh";
+import useTaskListAutoRefresh, {
+  TASK_LIST_REQUEST_TIMEOUT,
+} from "@/pages/common/hooks/useTaskListAutoRefresh";
 import type { TaskSortField, TaskSortOrder } from "@/pages/common/components/TaskSortControls";
 import { TASK_TABLE_COLUMN_WIDTHS } from "@/pages/common/components/taskTableLayout";
 import { batchJobExecutorApi } from "../../type";
@@ -175,9 +177,11 @@ const App: React.FC<Props> = ({
     });
   };
 
-  const fetchTaskList = async () => {
-    setLoading(true);
-    setListError(undefined);
+  const fetchTaskList = async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setListError(undefined);
+    }
 
     const transformedParams = { ...searchParams };
 
@@ -193,18 +197,21 @@ const App: React.FC<Props> = ({
 
     try {
       const data = await withTimeout(
-        seatunnelJobDefinitionApi.page({
-          ...transformedParams,
-          mode,
-          excludeMode,
-          taskType,
-          sortField: sort.field,
-          sortOrder: sort.order,
-          pageNo: pagination.current,
-          pageSize: pagination.pageSize,
-        }),
-        10000,
-        "批量数据引接任务列表请求超时，请稍后重试",
+        seatunnelJobDefinitionApi.page(
+          {
+            ...transformedParams,
+            mode,
+            excludeMode,
+            taskType,
+            sortField: sort.field,
+            sortOrder: sort.order,
+            pageNo: pagination.current,
+            pageSize: pagination.pageSize,
+          },
+          { timeout: TASK_LIST_REQUEST_TIMEOUT }
+        ),
+        TASK_LIST_REQUEST_TIMEOUT,
+        "批量数据引接任务列表请求超时，请稍后重试"
       );
 
       if (data?.code !== undefined && data.code !== 0) {
@@ -213,6 +220,8 @@ const App: React.FC<Props> = ({
 
       const nextTaskList = data?.data?.bizData || [];
       setTaskList(nextTaskList);
+      // A silent poll keeps the previous error visible until it succeeds.
+      setListError(undefined);
       setSelectedRowKeys((previousKeys) =>
         previousKeys.filter((key) =>
           nextTaskList.some((record: any) => String(record?.id) === String(key)),
@@ -227,7 +236,9 @@ const App: React.FC<Props> = ({
       // active, and blanking it would stop that refresh until the operator retries by hand.
       setListError(getErrorMessage(error, "查询任务列表失败，请稍后重试"));
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -240,8 +251,8 @@ const App: React.FC<Props> = ({
   }, [searchParams, pagination.current, pagination.pageSize, sort]);
 
   // 存在运行中任务时自动刷新当前页，全部终态后停止。
-  useTaskListAutoRefresh(taskList, () => {
-    void fetchTaskList();
+  useTaskListAutoRefresh(taskList, (silent) => {
+    void fetchTaskList(silent);
   });
 
   const baseColumns = [

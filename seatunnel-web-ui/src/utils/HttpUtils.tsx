@@ -10,7 +10,7 @@ class HttpUtils {
   public static async post<T>(
     url: string,
     body?: Record<string, any>,
-    options?: RequestInit
+    options?: RequestOptions
   ): Promise<ApiResponse<T>> {
     return request<ApiResponse<T>>(url, {
       method: "POST",

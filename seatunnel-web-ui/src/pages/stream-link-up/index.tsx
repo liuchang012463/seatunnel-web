@@ -20,7 +20,9 @@ import BatchCreateJobModal, {
   BatchCreateValues,
 } from '@/pages/common/components/BatchCreateJobModal';
 import type { TaskSortField, TaskSortOrder } from '@/pages/common/components/TaskSortControls';
-import useTaskListAutoRefresh from '@/pages/common/hooks/useTaskListAutoRefresh';
+import useTaskListAutoRefresh, {
+  TASK_LIST_REQUEST_TIMEOUT,
+} from '@/pages/common/hooks/useTaskListAutoRefresh';
 import './index.less';
 import { withTimeout } from '@/utils/withTimeout';
 
@@ -266,17 +268,21 @@ const RealtimeSyncPage: React.FC = () => {
     [pagination.current, pagination.pageSize, searchValues, sort],
   );
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (silent = false) => {
     const requestId = latestListRequestRef.current + 1;
     latestListRequestRef.current = requestId;
 
     try {
-      setLoading(true);
-      setListError(undefined);
+      if (!silent) {
+        setLoading(true);
+        setListError(undefined);
+      }
 
       const res = await withTimeout(
-        seatunnelStremJobDefinitionApi.page(queryParams),
-        10000,
+        seatunnelStremJobDefinitionApi.page(queryParams, {
+          timeout: TASK_LIST_REQUEST_TIMEOUT,
+        }),
+        TASK_LIST_REQUEST_TIMEOUT,
         '实时任务列表请求超时，请稍后重试',
       );
 
@@ -291,6 +297,8 @@ const RealtimeSyncPage: React.FC = () => {
       const { records, total: nextTotal } = getPageRecords(res);
 
       setDataSource(records);
+      // A silent poll keeps the previous error visible until it succeeds.
+      setListError(undefined);
       setPagination((prev) => ({ ...prev, total: nextTotal }));
     } catch (error) {
       if (latestListRequestRef.current === requestId) {
@@ -299,7 +307,7 @@ const RealtimeSyncPage: React.FC = () => {
         setListError(getErrorMessage(error, '查询实时任务列表失败，请稍后重试'));
       }
     } finally {
-      if (latestListRequestRef.current === requestId) {
+      if (!silent && latestListRequestRef.current === requestId) {
         setLoading(false);
       }
     }

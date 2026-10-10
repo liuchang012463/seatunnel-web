@@ -1,4 +1,4 @@
-import HttpUtils from '@/utils/HttpUtils';
+import HttpUtils, { RequestOptions } from '@/utils/HttpUtils';
 
 
 export enum Operate {
@@ -87,8 +87,11 @@ export const seatunnelStremJobDefinitionApi = {
     return HttpUtils.post(`${apiPrefix}/batch-create`, data);
   },
 
-  page: (data: any): Promise<{ code: number; data: any; message?: string }> => {
-    return HttpUtils.post(`${apiPrefix}/page`, data);
+  page: (
+    data: any,
+    options?: RequestOptions
+  ): Promise<{ code: number; data: any; message?: string }> => {
+    return HttpUtils.post(`${apiPrefix}/page`, data, options);
   },
 
   /**

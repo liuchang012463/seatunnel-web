@@ -1,4 +1,4 @@
-import HttpUtils from '@/utils/HttpUtils';
+import HttpUtils, { RequestOptions } from '@/utils/HttpUtils';
 import { seatunnelJobDefinitionApi } from '@/pages/batch-link-up/api';
 import {
   FILE_RESOURCE_API_PREFIX,
@@ -65,16 +65,25 @@ export const fileResourceApi: FileResourceApi = {
   }),
 };
 
-const taskPage = (taskType: FileTaskType, mode: 'GUIDE_SINGLE' | 'FILE_SYNC', params: any) =>
-  seatunnelJobDefinitionApi.page({
-    ...params,
-    taskType,
-    mode,
-  });
+const taskPage = (
+  taskType: FileTaskType,
+  mode: 'GUIDE_SINGLE' | 'FILE_SYNC',
+  params: any,
+  options?: RequestOptions
+) =>
+  seatunnelJobDefinitionApi.page(
+    {
+      ...params,
+      taskType,
+      mode,
+    },
+    options
+  );
 
 /** Keep the physical batch-definition API while exposing the new business type. */
 export const fileIngestTaskApi = {
-  page: (params: any = {}) => taskPage('FILE_INGEST', 'GUIDE_SINGLE', params),
+  page: (params: any = {}, options?: RequestOptions) =>
+    taskPage('FILE_INGEST', 'GUIDE_SINGLE', params, options),
   getUniqueId: seatunnelJobDefinitionApi.getUniqueId,
   selectEditDetail: seatunnelJobDefinitionApi.selectEditDetail,
   delete: seatunnelJobDefinitionApi.delete,
@@ -83,7 +92,8 @@ export const fileIngestTaskApi = {
 };
 
 export const fileTransferTaskApi = {
-  page: (params: any = {}) => taskPage('FILE_TRANSFER', 'FILE_SYNC', params),
+  page: (params: any = {}, options?: RequestOptions) =>
+    taskPage('FILE_TRANSFER', 'FILE_SYNC', params, options),
   getUniqueId: seatunnelJobDefinitionApi.getUniqueId,
   selectEditDetail: seatunnelJobDefinitionApi.selectEditDetail,
   delete: seatunnelJobDefinitionApi.delete,
