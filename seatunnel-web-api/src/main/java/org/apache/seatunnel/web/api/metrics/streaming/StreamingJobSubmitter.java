@@ -60,7 +60,6 @@ public class StreamingJobSubmitter {
         Long jobDefinitionId = instance.getJobDefinitionId();
         Long clientId = instance.getClientId();
 
-        String hoconConfig = driverJarPublisher.publish(clientId, instance.getRuntimeConfig());
         String logPath = instance.getLogPath();
 
         JobFileLogger jobLogger = new JobFileLogger(logPath);
@@ -71,11 +70,16 @@ public class StreamingJobSubmitter {
         jobLogger.info("Start with savepoint: " + options.isStartWithSavepoint());
         jobLogger.info("Restore engine job id: " + options.getRestoreEngineJobId());
 
+        String hoconConfig = null;
         String configFile = null;
         String engineId = null;
         boolean submitted = false;
 
         try {
+            // Inside the try: a driver that cannot be published has to fail the instance through
+            // handleCoreFailure instead of leaving it RUNNING without a job log.
+            hoconConfig = driverJarPublisher.publish(clientId, instance.getRuntimeConfig());
+
             jobLogger.info("Writing streaming config file...");
             configFile = configFileService.writeConfig(instanceId, hoconConfig);
             jobLogger.info("Streaming config file written to: " + configFile);
