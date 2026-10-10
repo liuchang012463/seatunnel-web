@@ -16,4 +16,12 @@ public class VastbaseMetadataConnectorAdapter extends CustomDatabaseMetadataConn
     protected String sourcePythonClass() {
         return "metadata.ingestion.source.database.customdatabase.vastbase_connector.vastbase_source.VastbaseSource";
     }
+
+    @Override
+    protected boolean useDatasourceSchemaFilter() {
+        // Existing Vastbase sources may be referenced by SeaTunnel jobs that
+        // rely on their saved schemaName. Keep that setting for jobs, while
+        // allowing OpenMetadata to discover all schemas the account can see.
+        return false;
+    }
 }

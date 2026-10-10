@@ -103,6 +103,8 @@ class MetadataConnectorRegistryTest {
                 service.at("/connection/config/connectionOptions/database").asText());
         assertEquals("PUBLIC",
                 service.at("/connection/config/connectionOptions/schema").asText());
+        assertEquals("^PUBLIC$",
+                service.at("/connection/config/schemaFilterPattern/includes/0").asText());
     }
 
     @Test
@@ -140,8 +142,8 @@ class MetadataConnectorRegistryTest {
                 service.at("/connection/config/connectionOptions/hostPort").asText());
         assertEquals("postgres",
                 service.at("/connection/config/connectionOptions/database").asText());
-        assertEquals("public",
-                service.at("/connection/config/connectionOptions/schema").asText());
+        assertTrue(service.at("/connection/config/connectionOptions/schema").isMissingNode());
+        assertTrue(service.at("/connection/config/schemaFilterPattern").isMissingNode());
     }
 
     @Test

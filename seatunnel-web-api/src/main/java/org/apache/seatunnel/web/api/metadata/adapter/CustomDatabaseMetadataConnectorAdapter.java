@@ -39,11 +39,13 @@ abstract class CustomDatabaseMetadataConnectorAdapter extends AbstractDatabaseMe
         if (includeDatabase() && !isBlank(source.database())) {
             options.put("database", source.database());
         }
-        String schema = firstNonBlank(
-                connectionText(raw, "schemaName"), connectionText(raw, "schema"));
-        if (!isBlank(schema)) {
-            options.put("schema", schema);
-            config.set("schemaFilterPattern", filterPattern(schema));
+        if (useDatasourceSchemaFilter()) {
+            String schema = firstNonBlank(
+                    connectionText(raw, "schemaName"), connectionText(raw, "schema"));
+            if (!isBlank(schema)) {
+                options.put("schema", schema);
+                config.set("schemaFilterPattern", filterPattern(schema));
+            }
         }
         config.put("supportsMetadataExtraction", true);
         // CustomDatabaseConnection allows extension fields in 2.0.4.  The
@@ -58,6 +60,15 @@ abstract class CustomDatabaseMetadataConnectorAdapter extends AbstractDatabaseMe
      * option while keeping the common connection shape.
      */
     protected boolean includeDatabase() {
+        return true;
+    }
+
+    /**
+     * Whether the datasource's schema setting should constrain OpenMetadata
+     * discovery. Subclasses can keep their stored schema for SeaTunnel jobs
+     * while allowing metadata discovery to enumerate every visible schema.
+     */
+    protected boolean useDatasourceSchemaFilter() {
         return true;
     }
 
