@@ -102,12 +102,10 @@ public class MetadataStatusSynchronizer {
                     latest.getProfileStatus(), latest.getProfileLastSuccessTime());
             latest.setLastStatusRefreshTime(now);
             latest.setStatusRefreshError(null);
-            // Decide before the update so the marker is written with the same version, and
-            // trigger after it so only the node that won the update runs the sample agent.
+            // Decide before the update so the marker cannot be read as a fresh scan, and trigger
+            // after it so only the node that won the update runs the sample agent.
             boolean collectStorageSamples = storageSampleCollectionDue(latest, latestScanRun);
-            if (collectStorageSamples) {
-                latest.setStorageSampleScanRunId(latestScanRun.runId());
-            }
+            String storageSampleRunId = collectStorageSamples ? latestScanRun.runId() : null;
             long version = latest.getVersion();
             latest.setVersion(version + 1L);
             latest.initUpdate();
@@ -121,8 +119,9 @@ public class MetadataStatusSynchronizer {
                     }
                 }
                 operationService.triggerPendingMetadataScan(latest);
-                if (collectStorageSamples) {
-                    operationService.triggerStorageSampleCollection(latest);
+                if (storageSampleRunId != null
+                        && operationService.triggerStorageSampleCollection(latest)) {
+                    markStorageSampleTriggered(latest, storageSampleRunId);
                 }
             }
         } catch (Exception e) {
@@ -148,6 +147,20 @@ public class MetadataStatusSynchronizer {
             return false;
         }
         return !latestScanRun.runId().equals(binding.getStorageSampleScanRunId());
+    }
+
+    /**
+     * Records the scan whose samples were collected, after the trigger was accepted. A failed
+     * trigger therefore leaves the binding unsampled and the next refresh retries it.
+     */
+    private void markStorageSampleTriggered(MetadataSourceBinding binding, String runId) {
+        long version = binding.getVersion();
+        binding.setStorageSampleScanRunId(runId);
+        binding.setVersion(version + 1L);
+        binding.initUpdate();
+        if (!metadataBindingDao.updateIfVersion(binding, version)) {
+            log.warn("Could not record the storage sample marker: dataSourceId={}", binding.getDataSourceId());
+        }
     }
 
     private static boolean runOutcomeChanged(

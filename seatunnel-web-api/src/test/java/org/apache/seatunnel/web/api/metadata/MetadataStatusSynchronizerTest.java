@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -647,14 +648,43 @@ class MetadataStatusSynchronizerTest {
         when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1))
                 .thenReturn(List.of());
         when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(1L))).thenReturn(true);
+        when(operationService.triggerStorageSampleCollection(any())).thenReturn(true);
+
+        synchronizer().refreshStatuses();
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        ArgumentCaptor<Long> versions = ArgumentCaptor.forClass(Long.class);
+        verify(bindingDao, times(2)).updateIfVersion(saved.capture(), versions.capture());
+        // The status write comes first; the marker is recorded only after the agent accepted
+        // the trigger, so a failed trigger leaves the scan unsampled for the next refresh.
+        assertEquals(List.of(0L, 1L), versions.getAllValues());
+        assertEquals("scan-2", saved.getValue().getStorageSampleScanRunId());
+        verify(operationService).triggerStorageSampleCollection(saved.getValue());
+    }
+
+    @Test
+    void aFailedStorageSampleTriggerLeavesTheScanUnsampledForTheNextRefresh() {
+        MetadataSourceBinding candidate = binding(0L);
+        MetadataSourceBinding live = binding(0L);
+        live.setSampleDataEnabled(true);
+        live.setStorageSampleScanRunId("scan-1");
+        when(bindingDao.queryStatusRefreshCandidates(any(Date.class), eq(50))).thenReturn(List.of(candidate));
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "scan-2", "success", 1700000600000L, 1700000600000L, 1700000600000L, 0)));
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1))
+                .thenReturn(List.of());
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
+        when(operationService.triggerStorageSampleCollection(any())).thenReturn(false);
 
         synchronizer().refreshStatuses();
 
         ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
         verify(bindingDao).updateIfVersion(saved.capture(), eq(0L));
-        // The marker is written with the same version so a restart cannot re-trigger it.
-        assertEquals("scan-2", saved.getValue().getStorageSampleScanRunId());
-        verify(operationService).triggerStorageSampleCollection(saved.getValue());
+        // scan-2 must not be recorded as sampled, so the next refresh still sees it as due.
+        assertEquals("scan-1", saved.getValue().getStorageSampleScanRunId());
     }
 
     @Test

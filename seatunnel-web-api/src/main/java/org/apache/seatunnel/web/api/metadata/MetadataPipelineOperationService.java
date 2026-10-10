@@ -620,18 +620,21 @@ public class MetadataPipelineOperationService {
      * schedule, so nothing would ever run it. Triggering it once per completed scan keeps
      * the collection bounded and makes the operator's sample-data switch take effect on
      * the next scan, as the UI states.</p>
+     *
+     * @return true when the collection ran or nothing had to run; false when the trigger failed,
+     *         so the caller leaves the scan unsampled and the next status refresh retries it
      */
-    void triggerStorageSampleCollection(MetadataSourceBinding binding) {
+    boolean triggerStorageSampleCollection(MetadataSourceBinding binding) {
         if (binding == null || !Boolean.TRUE.equals(binding.getSampleDataEnabled())) {
-            return;
+            return true;
         }
         DataSource dataSource = dataSourceDao.queryById(binding.getDataSourceId());
         if (dataSource == null) {
-            return;
+            return true;
         }
         MetadataConnectorAdapter adapter = connectorRegistry.find(dataSource.getDbType()).orElse(null);
         if (adapter == null || !adapter.collectsSampleDataViaAutoClassification()) {
-            return;
+            return true;
         }
         try {
             openMetadataClient.assertFixedVersion();
@@ -644,9 +647,11 @@ public class MetadataPipelineOperationService {
             openMetadataClient.deployIngestionPipeline(pipeline.id());
             openMetadataClient.enableIngestionPipeline(pipeline.id());
             openMetadataClient.triggerIngestionPipeline(pipeline.id());
+            return true;
         } catch (Exception e) {
             log.warn("Storage sample collection was not triggered: dataSourceId={}, type={}",
                     binding.getDataSourceId(), e.getClass().getSimpleName());
+            return false;
         }
     }
 

@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -990,7 +991,7 @@ class MetadataPipelineOperationServiceTest {
         when(openMetadataClient.upsertIngestionPipeline(any()))
                 .thenReturn(new OpenMetadataEntity("sample", "st_ds_42.st_ds_42_auto_classification"));
 
-        service().triggerStorageSampleCollection(binding);
+        assertTrue(service().triggerStorageSampleCollection(binding));
 
         verify(openMetadataClient).deployIngestionPipeline("sample");
         verify(openMetadataClient).enableIngestionPipeline("sample");
@@ -1002,7 +1003,7 @@ class MetadataPipelineOperationServiceTest {
         MetadataSourceBinding binding = binding(0L);
         binding.setSampleDataEnabled(false);
 
-        service().triggerStorageSampleCollection(binding);
+        assertTrue(service().triggerStorageSampleCollection(binding));
 
         verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
     }
@@ -1015,7 +1016,7 @@ class MetadataPipelineOperationServiceTest {
         when(connectorRegistry.find(DbType.DORIS)).thenReturn(Optional.of(connectorAdapter));
         when(connectorAdapter.collectsSampleDataViaAutoClassification()).thenReturn(false);
 
-        service().triggerStorageSampleCollection(binding);
+        assertTrue(service().triggerStorageSampleCollection(binding));
 
         verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
     }
@@ -1032,7 +1033,8 @@ class MetadataPipelineOperationServiceTest {
                 .thenThrow(new MetadataIntegrationException(
                         MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR, "rejected"));
 
-        service().triggerStorageSampleCollection(binding);
+        // A failed trigger reports back so the caller leaves the scan unsampled and retries later.
+        assertFalse(service().triggerStorageSampleCollection(binding));
 
         verify(openMetadataClient, never()).triggerIngestionPipeline(anyString());
     }
