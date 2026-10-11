@@ -13,7 +13,9 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -97,5 +99,28 @@ class DatasourcePluginServiceImplTest {
         assertEquals("模式/Owner", fieldsByKey.get("schemaName").getLabel());
         verify(dao).updatePluginConfig(config);
         assertTrue(config.getConfigSchema().contains("数据库实例"));
+    }
+
+    @Test
+    void refreshesStaleVastbaseFormSchemaBeforeReturningIt() {
+        DataSourcePluginConfigDao dao = mock(DataSourcePluginConfigDao.class);
+        DataSourcePluginConfig config = new DataSourcePluginConfig();
+        config.setPluginType(DbType.VASTBASE);
+        config.setConfigSchema("{\"fields\":[{\"key\":\"schemaName\",\"defaultValue\":\"public\"}]}");
+        when(dao.queryByPluginType(DbType.VASTBASE)).thenReturn(config);
+
+        DatasourcePluginServiceImpl service = new DatasourcePluginServiceImpl();
+        ReflectionTestUtils.setField(service, "dataSourcePluginConfigDao", dao);
+
+        List<FormFieldConfig> fields = service.getPluginConfig("VASTBASE").getFormFields();
+        FormFieldConfig schemaField = fields.stream()
+                .filter(field -> "schemaName".equals(field.getKey()))
+                .findFirst()
+                .orElseThrow();
+
+        assertNull(schemaField.getDefaultValue());
+        verify(dao).updatePluginConfig(config);
+        assertTrue(config.getConfigSchema().contains("\"key\":\"schemaName\""));
+        assertFalse(config.getConfigSchema().contains("\"defaultValue\":\"public\""));
     }
 }

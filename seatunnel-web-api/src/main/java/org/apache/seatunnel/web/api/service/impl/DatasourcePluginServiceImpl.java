@@ -47,7 +47,7 @@ public class DatasourcePluginServiceImpl implements DatasourcePluginService {
             return response;
         }
 
-        List<FormFieldConfig> currentFields = refreshDamengFormSchema(dbType, config);
+        List<FormFieldConfig> currentFields = refreshRuntimeFormSchema(dbType, config);
         if (currentFields != null) {
             PluginConfigResponse response = new PluginConfigResponse();
             response.setPluginType(config.getPluginType());
@@ -64,14 +64,13 @@ public class DatasourcePluginServiceImpl implements DatasourcePluginService {
     }
 
     /**
-     * The plugin form schema is persisted when a plugin is installed.  Dameng's
-     * database/owner semantics are part of the runtime contract, so an older
-     * persisted schema must not keep presenting the generic JDBC labels after an
-     * application upgrade.
+     * Plugin form schemas are persisted when installed. Keep the live schemas
+     * for connectors whose defaults or database semantics changed in sync with
+     * their current processor annotations.
      */
-    private List<FormFieldConfig> refreshDamengFormSchema(
+    private List<FormFieldConfig> refreshRuntimeFormSchema(
             DbType dbType, DataSourcePluginConfig config) {
-        if (!DbType.DAMENG.equals(dbType)) {
+        if (!DbType.DAMENG.equals(dbType) && !DbType.VASTBASE.equals(dbType)) {
             return null;
         }
 
@@ -88,7 +87,7 @@ public class DatasourcePluginServiceImpl implements DatasourcePluginService {
             }
             return fields;
         } catch (Exception e) {
-            log.warn("Failed to refresh Dameng plugin form schema; using stored schema", e);
+            log.warn("Failed to refresh {} plugin form schema; using stored schema", dbType, e);
             return null;
         }
     }
