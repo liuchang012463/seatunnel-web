@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.Map;
 
@@ -49,8 +50,20 @@ public class HttpConnectivityVerifier implements ConnectivityVerifier {
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
+            String exceptionName = hasTimeoutCause(e)
+                    ? HttpTimeoutException.class.getSimpleName()
+                    : e.getClass().getSimpleName();
             throw new IllegalStateException(
-                    "HTTP health check failed: " + e.getClass().getSimpleName(), e);
+                    "HTTP health check failed: " + exceptionName, e);
         }
+    }
+
+    private static boolean hasTimeoutCause(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof HttpTimeoutException) {
+                return true;
+            }
+        }
+        return false;
     }
 }
