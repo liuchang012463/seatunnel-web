@@ -753,6 +753,37 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     @Override
+    public OpenMetadataTable getTableByName(String fullyQualifiedName) {
+        validateBaseUrl();
+        try {
+            return toTable(sdk().tables().getByName(
+                    fullyQualifiedName, "columns,tableConstraints,tags,domains"));
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return null;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata table lookup by name failed", error);
+        }
+    }
+
+    @Override
+    public void addLineage(JsonNode lineageRequest) {
+        validateBaseUrl();
+        if (lineageRequest == null || !lineageRequest.path("edge").isObject()) {
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata lineage request must contain an edge");
+        }
+        try {
+            sdk().lineage().addLineage(lineageRequest);
+        } catch (OpenMetadataException error) {
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata lineage write failed", error);
+        }
+    }
+
+    @Override
     public OpenMetadataTable patchTable(String tableId, JsonNode patchDocument) {
         validateBaseUrl();
         if (patchDocument == null || !patchDocument.isArray()) {
