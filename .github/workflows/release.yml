@@ -33,7 +33,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.22.1'
+          node-version: '24.19.0'
           cache: yarn
           cache-dependency-path: seatunnel-web-ui/yarn.lock
       - name: Enable Corepack and set Yarn
@@ -43,10 +43,7 @@ jobs:
       - name: Install frontend dependencies
         working-directory: seatunnel-web-ui
         run: yarn install --frozen-lockfile
-      - name: Build frontend
-        working-directory: seatunnel-web-ui
-        run: yarn build
-      - name: Test and build backend distribution
+      - name: Test and build full distribution
         run: ./mvnw --batch-mode --no-transfer-progress -T 1C clean verify
       - name: Package release payload
         run: |
