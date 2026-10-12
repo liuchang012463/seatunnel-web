@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataColumn;
+import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataTable;
 import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
 import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -21,7 +23,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,22 +51,40 @@ class OpenMetadataJobLineageServiceTest {
     @InjectMocks
     private OpenMetadataJobLineageService service;
 
+    /**
+     * The resolver probes candidate fully qualified names until one is registered, so the
+     * default answer for every lookup is "not registered".
+     */
+    @BeforeEach
+    void defaultLookupsToUnregistered() {
+        lenient().when(openMetadataClient.getTableByName(anyString())).thenReturn(null);
+        lenient().when(openMetadataClient.listDatabases(anyString(), anyInt())).thenReturn(List.of());
+    }
+
+    /**
+     * A MySQL source stores {@code database=seatunnel_web} and
+     * {@code table_path=seatunnel_web.orders}, so OpenMetadata keeps the connected database as
+     * both the database and the schema level.
+     */
     @Test
-    void writesMultipleSourceColumnsToOneTargetColumnAfterBatchSubmission() throws Exception {
+    void resolvesMysqlSourceAndPostgresSinkFqnsAndWritesManyToOneLineage() throws Exception {
         JobInstanceVO instance = instance();
         when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance);
-        when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("sample_service"));
-        when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("sample_service"));
+        when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("st_ds_22964041928224"));
+        when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("st_ds_22978064259872"));
 
         OpenMetadataTable source = table(
-                "source-table-id", "sample_service.db.source_schema.orders",
-                "first_name", "last_name");
+                "source-table-id",
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel",
+                "name", "channel_type", "description");
         OpenMetadataTable target = table(
-                "target-table-id", "sample_service.db.target_schema.orders_summary",
-                "display_name");
-        when(openMetadataClient.getTableByName("sample_service.db.source_schema.orders"))
+                "target-table-id",
+                "st_ds_22978064259872.test.public.test",
+                "name", "category");
+        when(openMetadataClient.getTableByName(
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel"))
                 .thenReturn(source);
-        when(openMetadataClient.getTableByName("sample_service.db.target_schema.orders_summary"))
+        when(openMetadataClient.getTableByName("st_ds_22978064259872.test.public.test"))
                 .thenReturn(target);
 
         service.recordBatchSubmission(instance, "engine-job-42");
@@ -69,13 +92,16 @@ class OpenMetadataJobLineageServiceTest {
         ArgumentCaptor<JsonNode> requestCaptor = ArgumentCaptor.forClass(JsonNode.class);
         verify(openMetadataClient).addLineage(requestCaptor.capture());
         JsonNode edge = requestCaptor.getValue().path("edge");
+        assertEquals("source-table-id", edge.path("fromEntity").path("id").asText());
+        assertEquals("target-table-id", edge.path("toEntity").path("id").asText());
+
         JsonNode columnLineage = edge.path("lineageDetails").path("columnsLineage").get(0);
         assertNotNull(columnLineage);
-        assertEquals("sample_service.db.target_schema.orders_summary.display_name",
+        assertEquals("st_ds_22978064259872.test.public.test.category",
                 columnLineage.path("toColumn").asText());
         assertEquals(List.of(
-                        "sample_service.db.source_schema.orders.first_name",
-                        "sample_service.db.source_schema.orders.last_name"),
+                        "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel.channel_type",
+                        "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel.description"),
                 OBJECT_MAPPER.convertValue(columnLineage.path("fromColumns"),
                         OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, String.class)));
 
@@ -88,17 +114,145 @@ class OpenMetadataJobLineageServiceTest {
         assertEquals("engine-job-42", description.path("run").path("engineJobId").asText());
     }
 
+    /**
+     * A Vastbase/KingBase service is ingested under an OpenMetadata database named
+     * {@code default} although the connector connects to {@code vastbase}: only the databases
+     * reported by OpenMetadata lead to the registered table.
+     */
+    @Test
+    void fallsBackToTheDatabasesReportedByOpenMetadata() {
+        JobInstanceVO instance = instance();
+        instance.setSourceDatasourceId(30L);
+        instance.setSourceTable("test_sync_20260923");
+        instance.setSinkDatasourceId(31L);
+        instance.setSinkTable("test");
+        instance.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        database=vastbase
+                        table_path="vastbase.public.test_sync_20260923"
+                        url="jdbc:postgresql://192.168.100.95:25432/vastbase?ssl=false"
+                    }
+                }
+                transform = [{
+                  FieldMapper {
+                    plugin_input = source
+                    plugin_output = sink
+                    field_mapper {
+                      name = name
+                    }
+                  }
+                }]
+                sink {
+                    Jdbc {
+                        database=vastbase
+                        table="public.test"
+                    }
+                }
+                """);
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance);
+        when(metadataBindingDao.queryByDataSourceId(30L)).thenReturn(binding("st_ds_23132197819872"));
+        when(metadataBindingDao.queryByDataSourceId(31L)).thenReturn(binding("st_ds_23132197819872"));
+        when(openMetadataClient.listDatabases("st_ds_23132197819872", 3)).thenReturn(List.of(
+                new OpenMetadataDatabase("db-id", "st_ds_23132197819872.default", "st_ds_23132197819872")));
+
+        OpenMetadataTable source = table("source-table-id",
+                "st_ds_23132197819872.default.public.test_sync_20260923", "name");
+        OpenMetadataTable target = table("target-table-id",
+                "st_ds_23132197819872.default.public.test", "name");
+        when(openMetadataClient.getTableByName("st_ds_23132197819872.default.public.test_sync_20260923"))
+                .thenReturn(source);
+        when(openMetadataClient.getTableByName("st_ds_23132197819872.default.public.test"))
+                .thenReturn(target);
+
+        service.recordBatchSubmission(instance, "engine-job-42");
+
+        verify(openMetadataClient).addLineage(any(JsonNode.class));
+    }
+
+    /** A MySQL CDC source carries its table in {@code table-names} and its database in the url. */
+    @Test
+    void resolvesStreamingCdcTablesAndWritesLineage() throws Exception {
+        JobInstanceVO instance = instance();
+        instance.setJobType("STREAMING");
+        instance.setRunMode("MANUAL");
+        instance.setRuntimeConfig("""
+                source {
+                    MySQL-CDC {
+                        base-url="jdbc:mysql://192.168.100.95:33306"
+                        "table-names"=["seatunnel_web.t_seatunnel_web_alarm_channel"]
+                    }
+                }
+                transform = [{
+                  FieldMapper {
+                    plugin_input = source
+                    plugin_output = sink
+                    field_mapper {
+                      channel_type = category
+                    }
+                  }
+                }]
+                sink {
+                    Jdbc {
+                        database="seatunnel_web"
+                        table="st3_cdc_sink"
+                    }
+                }
+                """);
+        when(streamingJobInstanceDao.selectDetailById(100L)).thenReturn(instance);
+        when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("st_ds_22964041928224"));
+        when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("st_ds_22964041928224"));
+        when(openMetadataClient.listDatabases("st_ds_22964041928224", 3)).thenReturn(List.of(
+                new OpenMetadataDatabase("db-id", "st_ds_22964041928224.seatunnel_web",
+                        "st_ds_22964041928224")));
+
+        OpenMetadataTable source = table("source-table-id",
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel",
+                "channel_type");
+        OpenMetadataTable target = table("target-table-id",
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.st3_cdc_sink", "category");
+        when(openMetadataClient.getTableByName(
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel"))
+                .thenReturn(source);
+        when(openMetadataClient.getTableByName(
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.st3_cdc_sink"))
+                .thenReturn(target);
+
+        service.recordStreamingSubmission(instance, "engine-job-43");
+
+        ArgumentCaptor<JsonNode> requestCaptor = ArgumentCaptor.forClass(JsonNode.class);
+        verify(openMetadataClient).addLineage(requestCaptor.capture());
+        JsonNode description = OBJECT_MAPPER.readTree(requestCaptor.getValue()
+                .path("edge").path("lineageDetails").path("description").asText());
+        assertEquals("STREAMING", description.path("job").path("kind").asText());
+    }
+
     @Test
     void skipsLineageWhenOpenMetadataHasNotRegisteredTheTables() {
         JobInstanceVO instance = instance();
         when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance);
-        when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("sample_service"));
-        when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("sample_service"));
-        when(openMetadataClient.getTableByName(anyString())).thenReturn(null);
+        when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("st_ds_22964041928224"));
+        when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("st_ds_22978064259872"));
 
         service.recordBatchSubmission(instance, "engine-job-42");
 
-        verify(openMetadataClient, never()).addLineage(org.mockito.ArgumentMatchers.any());
+        verify(openMetadataClient, never()).addLineage(any(JsonNode.class));
+    }
+
+    @Test
+    void skipsLineageForAJobWithoutFieldMappings() {
+        JobInstanceVO instance = instance();
+        instance.setRuntimeConfig("""
+                source { Jdbc { table_path="seatunnel_web.orders" } }
+                transform {}
+                sink { Jdbc { table="public.orders" } }
+                """);
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance);
+
+        service.recordBatchSubmission(instance, "engine-job-42");
+
+        verify(openMetadataClient, never()).getTableByName(anyString());
+        verify(openMetadataClient, never()).addLineage(any(JsonNode.class));
     }
 
     private static JobInstanceVO instance() {
@@ -111,19 +265,32 @@ class OpenMetadataJobLineageServiceTest {
         instance.setRunMode("MANUAL");
         instance.setSourceDatasourceId(10L);
         instance.setSinkDatasourceId(20L);
-        instance.setSourceTable("db.source_schema.orders");
-        instance.setSinkTable("db.target_schema.orders_summary");
+        instance.setSourceTable("t_seatunnel_web_alarm_channel");
+        instance.setSinkTable("test");
         instance.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        database="seatunnel_web"
+                        table_path="seatunnel_web.t_seatunnel_web_alarm_channel"
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web?useSSL=false"
+                    }
+                }
                 transform = [{
                   FieldMapper {
                     plugin_input = source
                     plugin_output = sink
                     field_mapper {
-                      first_name = display_name
-                      last_name = display_name
+                      channel_type = category
+                      description = category
                     }
                   }
                 }]
+                sink {
+                    Jdbc {
+                        database=test
+                        table="public.test"
+                    }
+                }
                 """);
         return instance;
     }
@@ -138,7 +305,7 @@ class OpenMetadataJobLineageServiceTest {
         OpenMetadataTable table = new OpenMetadataTable();
         table.setId(id);
         table.setFullyQualifiedName(fqn);
-        table.setServiceFullyQualifiedName("sample_service");
+        table.setServiceFullyQualifiedName(fqn.substring(0, fqn.indexOf('.')));
         table.setColumns(java.util.Arrays.stream(columns).map(name -> {
             OpenMetadataColumn column = new OpenMetadataColumn();
             column.setName(name);
