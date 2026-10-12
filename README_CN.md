@@ -283,16 +283,16 @@ docker compose   --env-file .env.without-mysql   -f compose.without-mysql.yaml  
 * MySQL 8.0
 * Maven，或项目中自带的 Maven Wrapper
 
-首先构建前端资源：
+首次构建或依赖锁文件变更后，先安装前端依赖：
 
 ```bash
 cd seatunnel-web-ui
 yarn install --frozen-lockfile
-yarn build
 cd ..
 ```
 
-在项目根目录构建完整发行包：
+在项目根目录构建完整发行包。Maven 会在各模块打包前自动执行
+`yarn run build`：
 
 ```bash
 ./mvnw clean package -DskipTests

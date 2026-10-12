@@ -283,16 +283,16 @@ Requirements:
 * MySQL 8.0
 * Maven, or the Maven Wrapper included in the repository
 
-Build the front-end assets first:
+Install front-end dependencies once (and whenever the lockfile changes):
 
 ```bash
 cd seatunnel-web-ui
 yarn install --frozen-lockfile
-yarn build
 cd ..
 ```
 
-Build the complete distribution package from the repository root:
+Build the complete distribution package from the repository root. Maven runs
+`yarn run build` automatically before the reactor modules are packaged:
 
 ```bash
 ./mvnw clean package -DskipTests
