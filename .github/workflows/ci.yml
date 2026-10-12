@@ -52,6 +52,26 @@ jobs:
           java-version: '21.0.11+10.0.LTS'
           cache: maven
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.19.0'
+          cache: yarn
+          cache-dependency-path: seatunnel-web-ui/yarn.lock
+
+      - name: Set npm and Yarn versions
+        run: |
+          npm install --global npm@11.17.0
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+          node --version
+          npm --version
+          yarn --version
+
+      - name: Install frontend dependencies
+        working-directory: seatunnel-web-ui
+        run: yarn install --frozen-lockfile
+
       - name: Grant execute permission
         run: chmod +x mvnw
 
