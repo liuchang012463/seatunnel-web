@@ -98,7 +98,12 @@ public class BatchJobSubmitter {
 
             // The Engine has accepted the instance and returned its job id. Record
             // lineage from this submitted instance before any watcher setup can fail.
-            openMetadataJobLineageService.recordBatchSubmission(instance, engineId);
+            // The write is dispatched to the metadata executor and must never fail the submission.
+            try {
+                openMetadataJobLineageService.recordBatchSubmission(instance, engineId);
+            } catch (Exception lineageError) {
+                log.warn("Could not schedule OpenMetadata lineage for instanceId={}", instanceId, lineageError);
+            }
 
             log.info("Submit batch job response received, instanceId={}, resp={}", instanceId, resp);
             jobLogger.info("Submit batch job response received: " + resp);

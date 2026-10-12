@@ -22,6 +22,7 @@ import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -79,10 +80,16 @@ public class OpenMetadataJobLineageService {
         this.streamingJobInstanceDao = streamingJobInstanceDao;
     }
 
+    /**
+     * Runs on the bounded metadata executor: the Engine has already accepted the job, so the
+     * OpenMetadata round trips must not extend the submission response of the caller.
+     */
+    @Async("metadataExplorationExecutor")
     public void recordBatchSubmission(JobInstanceVO submittedInstance, String engineJobId) {
         recordSubmission(submittedInstance, engineJobId, false);
     }
 
+    @Async("metadataExplorationExecutor")
     public void recordStreamingSubmission(JobInstanceVO submittedInstance, String engineJobId) {
         recordSubmission(submittedInstance, engineJobId, true);
     }
