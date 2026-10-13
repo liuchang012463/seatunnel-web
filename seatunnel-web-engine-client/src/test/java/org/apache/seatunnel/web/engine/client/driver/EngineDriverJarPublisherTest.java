@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.engine.client.driver;
 
+import org.apache.seatunnel.web.engine.client.exceptions.SeaTunnelClientException;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -10,6 +11,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -160,5 +162,27 @@ class EngineDriverJarPublisherTest {
                         "source { Jdbc { driver_location = " + first + ";" + second + " } }");
 
         assertTrue(published.contains("driver_location = /engine/a.jar;/engine/b.jar"));
+    }
+
+    @Test
+    void explainsWhenEngineDoesNotExposeDriverUploadEndpoint(@TempDir Path dir) throws Exception {
+        Path jar = dir.resolve("Vastbase.jar");
+        Files.write(jar, "jar-bytes".getBytes(StandardCharsets.UTF_8));
+        when(restClient.uploadDriverJar(eq(CLIENT_ID), any(), eq("Vastbase.jar")))
+                .thenThrow(
+                        new SeaTunnelClientException(
+                                "POST /driver-jar/upload failed", 404, "Not Found", null));
+
+        SeaTunnelClientException error =
+                assertThrows(
+                        SeaTunnelClientException.class,
+                        () ->
+                                publisher.publish(
+                                        CLIENT_ID,
+                                        "source { Jdbc { driver_location = \"" + jar + "\" } }"));
+
+        assertTrue(error.getMessage().contains("driver-isolation Engine build"));
+        assertTrue(error.getMessage().contains("SEATUNNEL_WEB_ENGINE_DRIVER_LOCATION_MAPPINGS"));
+        assertEquals(404, error.getHttpStatus());
     }
 }

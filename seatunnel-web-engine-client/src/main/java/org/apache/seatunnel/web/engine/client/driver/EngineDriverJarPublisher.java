@@ -51,6 +51,13 @@ public class EngineDriverJarPublisher {
      */
     private static final long MAX_DRIVER_JAR_BYTES = 64L * 1024 * 1024;
 
+    /** The driver upload endpoint is available in the matching driver-isolation Engine build. */
+    private static final String DRIVER_UPLOAD_COMPATIBILITY_MESSAGE =
+            "SeaTunnel Engine does not support JDBC driver upload. "
+                    + "Use the 3.0.0-driver-isolation Engine build, "
+                    + "or configure SEATUNNEL_WEB_ENGINE_DRIVER_LOCATION_MAPPINGS "
+                    + "for jars shared by all Engine nodes.";
+
     private final SeaTunnelRestClient restClient;
     private final Map<String, String> engineDriverLocationMappings;
 
@@ -219,6 +226,16 @@ public class EngineDriverJarPublisher {
         } catch (IOException e) {
             throw new SeaTunnelClientException(
                     "Cannot read the JDBC driver jar " + jar.getName(), -1, "", e);
+        } catch (SeaTunnelClientException e) {
+            if (e.getHttpStatus() == 404) {
+                throw new SeaTunnelClientException(
+                        DRIVER_UPLOAD_COMPATIBILITY_MESSAGE,
+                        e.getHttpStatus(),
+                        e.getResponseBody(),
+                        e);
+            }
+            throw e;
         }
     }
+
 }
