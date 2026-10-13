@@ -52,6 +52,33 @@ class EngineDriverJarPublisherTest {
     }
 
     @Test
+    void publishesPostgresAndVastbaseDriversSeparatelyWhenTheyShareAClassName(
+            @TempDir Path dir) throws Exception {
+        Path postgresJar = dir.resolve("postgresql.jar");
+        Path vastbaseJar = dir.resolve("vastbase.jar");
+        Files.write(postgresJar, "postgresql-driver".getBytes(StandardCharsets.UTF_8));
+        Files.write(vastbaseJar, "vastbase-driver".getBytes(StandardCharsets.UTF_8));
+        when(restClient.uploadDriverJar(eq(CLIENT_ID), any(), eq("postgresql.jar")))
+                .thenReturn("/opt/seatunnel/driver-jars/postgres-hash.jar");
+        when(restClient.uploadDriverJar(eq(CLIENT_ID), any(), eq("vastbase.jar")))
+                .thenReturn("/opt/seatunnel/driver-jars/vastbase-hash.jar");
+
+        String published = publisher.publish(
+                CLIENT_ID,
+                "source { Jdbc { driver = \"org.postgresql.Driver\" driver_location = \""
+                        + postgresJar
+                        + "\" } }\n"
+                        + "sink { Jdbc { driver = \"org.postgresql.Driver\" driver_location = \""
+                        + vastbaseJar
+                        + "\" } }");
+
+        assertTrue(published.contains("driver_location = \"/opt/seatunnel/driver-jars/postgres-hash.jar\""));
+        assertTrue(published.contains("driver_location = \"/opt/seatunnel/driver-jars/vastbase-hash.jar\""));
+        verify(restClient).uploadDriverJar(eq(CLIENT_ID), any(), eq("postgresql.jar"));
+        verify(restClient).uploadDriverJar(eq(CLIENT_ID), any(), eq("vastbase.jar"));
+    }
+
+    @Test
     void publishesQuotedHoconDriverLocation(@TempDir Path dir) throws Exception {
         Path jar = dir.resolve("duckdb_jdbc.jar");
         Files.write(jar, "jar-bytes".getBytes(StandardCharsets.UTF_8));
