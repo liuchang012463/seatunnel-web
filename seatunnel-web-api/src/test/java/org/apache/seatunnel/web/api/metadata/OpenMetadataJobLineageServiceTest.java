@@ -227,6 +227,95 @@ class OpenMetadataJobLineageServiceTest {
         assertEquals("STREAMING", description.path("job").path("kind").asText());
     }
 
+    /**
+     * A many-to-one mapping cannot run as a FieldMapper, so it is submitted as a Sql transform and
+     * the projection of that query is the mapping.
+     */
+    @Test
+    void readsManyToOneMappingsFromTheGeneratedSqlTransform() throws Exception {
+        JobInstanceVO instance = instance();
+        instance.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        database="seatunnel_web"
+                        table_path="seatunnel_web.t_seatunnel_web_alarm_channel"
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web?useSSL=false"
+                    }
+                }
+                transform {
+                    Sql {
+                        "plugin_input"=source-1
+                        "plugin_output"=sink-1
+                        query="SELECT COALESCE(`channel_type`, `description`) AS `province`, `name` AS `user_name` FROM `source-1`"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        database=test
+                        table="public.dwd_user"
+                    }
+                }
+                """);
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance);
+        when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("st_ds_22964041928224"));
+        when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("st_ds_22978064259872"));
+
+        OpenMetadataTable source = table("source-table-id",
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel",
+                // A column named like the SQL function must not be mistaken for a source column.
+                "name", "channel_type", "description", "COALESCE");
+        OpenMetadataTable target = table("target-table-id",
+                "st_ds_22978064259872.test.public.dwd_user", "user_name", "province");
+        when(openMetadataClient.getTableByName(
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel"))
+                .thenReturn(source);
+        when(openMetadataClient.getTableByName("st_ds_22978064259872.test.public.dwd_user"))
+                .thenReturn(target);
+
+        service.recordBatchSubmission(instance, "engine-job-42");
+
+        ArgumentCaptor<JsonNode> requestCaptor = ArgumentCaptor.forClass(JsonNode.class);
+        verify(openMetadataClient).addLineage(requestCaptor.capture());
+        JsonNode columnsLineage = requestCaptor.getValue()
+                .path("edge").path("lineageDetails").path("columnsLineage");
+        JsonNode province = columnsLineage.get(0);
+        assertEquals("st_ds_22978064259872.test.public.dwd_user.province",
+                province.path("toColumn").asText());
+        assertEquals(List.of(
+                        "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel.channel_type",
+                        "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel.description"),
+                OBJECT_MAPPER.convertValue(province.path("fromColumns"),
+                        OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, String.class)));
+    }
+
+    /** A read query on the source connector says nothing about the target table. */
+    @Test
+    void ignoresAQueryConfiguredOnTheSourceConnector() {
+        JobInstanceVO instance = instance();
+        instance.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        readMode="sql"
+                        query="SELECT channel_type FROM seatunnel_web.t_seatunnel_web_alarm_channel"
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web?useSSL=false"
+                    }
+                }
+                transform {}
+                sink {
+                    Jdbc {
+                        database=test
+                        table="public.dwd_user"
+                    }
+                }
+                """);
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance);
+
+        service.recordBatchSubmission(instance, "engine-job-42");
+
+        verify(openMetadataClient, never()).getTableByName(anyString());
+        verify(openMetadataClient, never()).addLineage(any(JsonNode.class));
+    }
+
     @Test
     void skipsLineageWhenOpenMetadataHasNotRegisteredTheTables() {
         JobInstanceVO instance = instance();
