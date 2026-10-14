@@ -344,6 +344,156 @@ class OpenMetadataJobLineageServiceTest {
         verify(openMetadataClient, never()).addLineage(any(JsonNode.class));
     }
 
+    @Test
+    void extractsLineageFromCaseWhenExpressionAndFiltersSqlKeywords() throws Exception {
+        JobInstanceVO instance = instance();
+        instance.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        database="seatunnel_web"
+                        table_path="seatunnel_web.t_seatunnel_web_alarm_channel"
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web?useSSL=false"
+                    }
+                }
+                transform {
+                    Sql {
+                        "plugin_input"=source-1
+                        "plugin_output"=sink-1
+                        query="SELECT CASE WHEN s.channel_type IS NOT NULL THEN s.description ELSE 'default' END AS `category` FROM `source-1` AS s"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        database=test
+                        table="public.dwd_user"
+                    }
+                }
+                """);
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance);
+        when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("st_ds_22964041928224"));
+        when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("st_ds_22978064259872"));
+
+        OpenMetadataTable source = table("source-table-id",
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel",
+                "channel_type", "description", "CASE", "WHEN", "THEN", "ELSE", "END", "IS", "NOT", "NULL");
+        OpenMetadataTable target = table("target-table-id",
+                "st_ds_22978064259872.test.public.dwd_user", "category");
+        when(openMetadataClient.getTableByName(
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel"))
+                .thenReturn(source);
+        when(openMetadataClient.getTableByName("st_ds_22978064259872.test.public.dwd_user"))
+                .thenReturn(target);
+
+        service.recordBatchSubmission(instance, "engine-job-42");
+
+        ArgumentCaptor<JsonNode> requestCaptor = ArgumentCaptor.forClass(JsonNode.class);
+        verify(openMetadataClient).addLineage(requestCaptor.capture());
+        JsonNode columnsLineage = requestCaptor.getValue()
+                .path("edge").path("lineageDetails").path("columnsLineage");
+        assertEquals(1, columnsLineage.size());
+        JsonNode category = columnsLineage.get(0);
+        assertEquals("st_ds_22978064259872.test.public.dwd_user.category",
+                category.path("toColumn").asText());
+        assertEquals(List.of(
+                        "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel.channel_type",
+                        "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel.description"),
+                OBJECT_MAPPER.convertValue(category.path("fromColumns"),
+                        OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, String.class)));
+    }
+
+    @Test
+    void resolvesLegacyTableNamesOptionAndWritesLineage() throws Exception {
+        JobInstanceVO instance = instance();
+        instance.setJobType("STREAMING");
+        instance.setRunMode("MANUAL");
+        instance.setRuntimeConfig("""
+                source {
+                    MySQL-CDC {
+                        base-url="jdbc:mysql://192.168.100.95:33306"
+                        table_names=["seatunnel_web.t_seatunnel_web_alarm_channel"]
+                    }
+                }
+                transform = [{
+                  FieldMapper {
+                    plugin_input = source
+                    plugin_output = sink
+                    field_mapper {
+                      channel_type = category
+                    }
+                  }
+                }]
+                sink {
+                    Jdbc {
+                        database="seatunnel_web"
+                        table="st3_cdc_sink"
+                    }
+                }
+                """);
+        when(streamingJobInstanceDao.selectDetailById(100L)).thenReturn(instance);
+        when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("st_ds_22964041928224"));
+        when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("st_ds_22964041928224"));
+        when(openMetadataClient.listDatabases("st_ds_22964041928224", 3)).thenReturn(List.of(
+                new OpenMetadataDatabase("db-id", "st_ds_22964041928224.seatunnel_web",
+                        "st_ds_22964041928224")));
+
+        OpenMetadataTable source = table("source-table-id",
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel",
+                "channel_type");
+        OpenMetadataTable target = table("target-table-id",
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.st3_cdc_sink", "category");
+        when(openMetadataClient.getTableByName(
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel"))
+                .thenReturn(source);
+        when(openMetadataClient.getTableByName(
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.st3_cdc_sink"))
+                .thenReturn(target);
+
+        service.recordStreamingSubmission(instance, "engine-job-44");
+
+        verify(openMetadataClient).addLineage(any(JsonNode.class));
+    }
+
+    @Test
+    void prefersNativeColumnFullyQualifiedNameWhenPresent() throws Exception {
+        JobInstanceVO instance = instance();
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance);
+        when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("st_ds_22964041928224"));
+        when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("st_ds_22978064259872"));
+
+        OpenMetadataTable source = table(
+                "source-table-id",
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel",
+                "name", "channel_type", "description");
+        source.getColumns().get(1).setFullyQualifiedName("custom.native.channel_type");
+        source.getColumns().get(2).setFullyQualifiedName("custom.native.description");
+
+        OpenMetadataTable target = table(
+                "target-table-id",
+                "st_ds_22978064259872.test.public.test",
+                "name", "category");
+        target.getColumns().get(1).setFullyQualifiedName("custom.native.category");
+
+        when(openMetadataClient.getTableByName(
+                "st_ds_22964041928224.seatunnel_web.seatunnel_web.t_seatunnel_web_alarm_channel"))
+                .thenReturn(source);
+        when(openMetadataClient.getTableByName("st_ds_22978064259872.test.public.test"))
+                .thenReturn(target);
+
+        service.recordBatchSubmission(instance, "engine-job-42");
+
+        ArgumentCaptor<JsonNode> requestCaptor = ArgumentCaptor.forClass(JsonNode.class);
+        verify(openMetadataClient).addLineage(requestCaptor.capture());
+        JsonNode columnLineage = requestCaptor.getValue()
+                .path("edge").path("lineageDetails").path("columnsLineage").get(0);
+        assertNotNull(columnLineage);
+        assertEquals("custom.native.category", columnLineage.path("toColumn").asText());
+        assertEquals(List.of(
+                        "custom.native.channel_type",
+                        "custom.native.description"),
+                OBJECT_MAPPER.convertValue(columnLineage.path("fromColumns"),
+                        OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, String.class)));
+    }
+
     private static JobInstanceVO instance() {
         JobInstanceVO instance = new JobInstanceVO();
         instance.setId(100L);

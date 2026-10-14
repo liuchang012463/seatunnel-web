@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -332,7 +333,14 @@ public class OpenMetadataJobLineageService {
             if (nextNonSpace(text, matcher.end()) == '(') {
                 continue;
             }
-            identifiers.add(matcher.group());
+            String matched = matcher.group();
+            int lastDot = matched.lastIndexOf('.');
+            String column = (lastDot >= 0 ? matched.substring(lastDot + 1) : matched).trim();
+            if (StringUtils.isBlank(column)
+                    || SQL_RESERVED_WORDS.contains(column.toUpperCase(Locale.ROOT))) {
+                continue;
+            }
+            identifiers.add(column);
         }
         return identifiers;
     }
@@ -346,7 +354,32 @@ public class OpenMetadataJobLineageService {
         return 0;
     }
 
-    private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_$]*");
+    private static final Pattern IDENTIFIER =
+            Pattern.compile("[A-Za-z_][A-Za-z0-9_$]*(?:\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_$]*)*");
+
+    private static final Set<String> SQL_RESERVED_WORDS = Set.of(
+            "AND",
+            "AS",
+            "BETWEEN",
+            "CASE",
+            "CAST",
+            "DISTINCT",
+            "ELSE",
+            "END",
+            "FALSE",
+            "FROM",
+            "IN",
+            "IS",
+            "LIKE",
+            "NOT",
+            "NULL",
+            "OR",
+            "SELECT",
+            "THEN",
+            "TRUE",
+            "WHEN",
+            "WHERE"
+    );
 
     private static int indexOfKeyword(String text, String keyword, int fromIndex) {
         int depth = 0;
@@ -489,7 +522,8 @@ public class OpenMetadataJobLineageService {
                 firstOptions = options;
             }
             if (options.containsKey(OPTION_TABLE) || options.containsKey(OPTION_TABLE_PATH)
-                    || options.containsKey(OPTION_TABLE_NAMES)) {
+                    || options.containsKey(OPTION_TABLE_NAMES)
+                    || options.containsKey(OPTION_TABLE_NAMES_LEGACY)) {
                 return options;
             }
         }
@@ -584,7 +618,7 @@ public class OpenMetadataJobLineageService {
                 OpenMetadataTable table = lookupTable(serviceFqn, candidate);
                 if (table != null) {
                     log.debug("Resolved OpenMetadata table {} for dataSourceId={}",
-                            table.getFullyQualifiedName(), dataSourceId);
+                        table.getFullyQualifiedName(), dataSourceId);
                     return table;
                 }
             }
@@ -607,6 +641,7 @@ public class OpenMetadataJobLineageService {
                 options.get(OPTION_TABLE_PATH),
                 options.get(OPTION_TABLE),
                 options.get(OPTION_TABLE_NAMES),
+                options.get(OPTION_TABLE_NAMES_LEGACY),
                 definitionTable);
         String database = firstNonBlank(
                 options.get(OPTION_DATABASE), databaseFromUrl(options.get(OPTION_URL)));
@@ -630,6 +665,7 @@ public class OpenMetadataJobLineageService {
                 options.get(OPTION_TABLE_PATH),
                 options.get(OPTION_TABLE),
                 options.get(OPTION_TABLE_NAMES),
+                options.get(OPTION_TABLE_NAMES_LEGACY),
                 definitionTable);
         suffixes.add(normalizeTableReference(tableReference));
         suffixes.add(lastTwoParts(tableReference));
@@ -814,6 +850,9 @@ public class OpenMetadataJobLineageService {
         for (OpenMetadataColumn column : table.getColumns()) {
             if (column != null
                     && StringUtils.equalsIgnoreCase(normalizedField, normalizeIdentifier(column.getName()))) {
+                if (StringUtils.isNotBlank(column.getFullyQualifiedName())) {
+                    return column.getFullyQualifiedName();
+                }
                 return table.getFullyQualifiedName() + "." + column.getName();
             }
         }
