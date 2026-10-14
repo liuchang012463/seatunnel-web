@@ -26,10 +26,6 @@ const PAGE_COPY: Record<string, { title: string; description: string }> = {
     title: '数据拓扑',
     description: '数据拓扑能力尚未接入当前版本。',
   },
-  '/bi': {
-    title: '引接态势',
-    description: '引接态势能力尚未接入当前版本。',
-  },
   '/operations/protocol': {
     title: '协议管理',
     description: '协议管理能力尚未接入当前版本。',
