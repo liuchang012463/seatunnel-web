@@ -36,6 +36,12 @@ export function render(oldRender: () => void) {
   });
 }
 
+const isIngestionSituationRoute = () => {
+  if (typeof window === 'undefined') return false;
+  const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
+  return pathname === '/bi' || pathname.startsWith('/bi/');
+};
+
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
  * */
@@ -73,7 +79,7 @@ export async function getInitialState(): Promise<{
 
 // ProLayout 支持的api https://procomponents.ant.design/components/layout
 export const layout: RunTimeLayoutConfig = ({ initialState }) => {
-  const hideLayout = shouldHideLayout();
+  const hideLayout = shouldHideLayout() || isIngestionSituationRoute();
   applyLayoutVisibility(hideLayout);
 
   return {
@@ -113,7 +119,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     actionsRender: () => [<Knowledge key="knowledge" />],
     // 业务水印默认关闭；审计/导出场景另行显式开启。
     waterMarkProps: undefined,
-    footerRender: () => <Footer />,
+    footerRender: hideLayout ? false : () => <Footer />,
     links: [],
     // 自定义 403 页面
     // unAccessible: <div>unAccessible</div>,
