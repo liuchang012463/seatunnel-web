@@ -209,7 +209,20 @@
                 </if>
 
                 <if test="dto.jobStatus != null and dto.jobStatus != ''">
-                    AND i.job_status = #{dto.jobStatus}
+                    <choose>
+                        <when test="dto.jobStatus == 'RUNNING'">
+                            AND i.job_status IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
+                        </when>
+                        <when test="dto.jobStatus == 'FAILED'">
+                            AND i.job_status IN ('FAILED', 'UNKNOWABLE', 'CANCELED', 'CANCELLED')
+                        </when>
+                        <when test="dto.jobStatus == 'FINISHED' or dto.jobStatus == 'SUCCESS'">
+                            AND i.job_status IN ('FINISHED', 'SAVEPOINT_DONE', 'SUCCESS')
+                        </when>
+                        <otherwise>
+                            AND i.job_status = #{dto.jobStatus}
+                        </otherwise>
+                    </choose>
                 </if>
 
                 <if test="dto.runMode != null and dto.runMode != ''">

@@ -142,6 +142,7 @@ seatunnel:
       retention-cron: "0 20 3 * * ?"
 
   client:
+    read-timeout-ms: ${SEATUNNEL_CLIENT_READ_TIMEOUT_MS:60000}
     health-check:
       enabled: true
       initial-delay-ms: 15000

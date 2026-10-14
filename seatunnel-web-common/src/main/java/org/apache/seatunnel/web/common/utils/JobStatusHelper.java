@@ -24,11 +24,10 @@ public final class JobStatusHelper {
         );
     }
 
-    /** Statuses that must block another submit, including an ambiguous prior submission. */
+    /** Statuses that must block another submit while the current job is active. */
     public static List<JobStatus> submissionBlockingStatuses() {
         return Arrays.asList(
                 JobStatus.STARTING,
-                JobStatus.SUBMISSION_UNKNOWN,
                 JobStatus.INITIALIZING,
                 JobStatus.CREATED,
                 JobStatus.PENDING,

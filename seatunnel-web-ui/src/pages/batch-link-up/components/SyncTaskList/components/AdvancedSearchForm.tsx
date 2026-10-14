@@ -143,12 +143,12 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
         <span className="inline-flex items-center gap-2">
           <CheckSquareOutlined className="text-emerald-500" />
           {intl.formatMessage({
-            id: "pages.job.status.completed",
-            defaultMessage: "COMPLETED",
+            id: "pages.job.status.success",
+            defaultMessage: "Success",
           })}
         </span>
       ),
-      value: "COMPLETED",
+      value: "FINISHED",
     },
     {
       label: (

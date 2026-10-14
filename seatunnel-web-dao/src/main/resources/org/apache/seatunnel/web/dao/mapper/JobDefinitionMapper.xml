@@ -154,7 +154,20 @@
 
         <where>
             <if test="dto.status != null and dto.status != ''">
-                AND i.job_status = #{dto.status}
+                <choose>
+                    <when test="dto.status == 'RUNNING'">
+                        AND i.job_status IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
+                    </when>
+                    <when test="dto.status == 'FAILED'">
+                        AND i.job_status IN ('FAILED', 'UNKNOWABLE', 'CANCELED', 'CANCELLED')
+                    </when>
+                    <when test="dto.status == 'FINISHED' or dto.status == 'SUCCESS'">
+                        AND i.job_status IN ('FINISHED', 'SAVEPOINT_DONE', 'SUCCESS')
+                    </when>
+                    <otherwise>
+                        AND i.job_status = #{dto.status}
+                    </otherwise>
+                </choose>
             </if>
         </where>
 

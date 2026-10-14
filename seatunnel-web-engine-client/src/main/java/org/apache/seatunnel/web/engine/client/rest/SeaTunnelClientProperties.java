@@ -9,6 +9,6 @@ public class SeaTunnelClientProperties {
 
 
     private int connectTimeoutMs = 2000;
-    private int readTimeoutMs = 10000;
+    private int readTimeoutMs = 60000;
 
 }

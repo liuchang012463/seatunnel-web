@@ -106,7 +106,7 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             if (instanceService.existsRunningInstance(jobDefineId)) {
                 throw new ServiceException(
                         Status.JOB_DEFINITION_EXECUTE_ERROR,
-                        "任务已有运行中或提交结果待确认的实例。任务ID：" + jobDefineId
+                        "任务已有运行中实例。任务ID：" + jobDefineId
                 );
             }
 

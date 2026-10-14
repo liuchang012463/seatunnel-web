@@ -77,28 +77,6 @@ public class JobResultHandler {
     }
 
     /**
-     * Record an ambiguous submit result without claiming that Engine rejected the job.
-     * Retrying such an instance automatically could create a duplicate Engine job.
-     */
-    public void handleSubmissionUnknown(Long jobInstanceId, String message) {
-        if (jobInstanceId == null || jobInstanceId <= 0) {
-            log.warn("Skip recording unknown submission because instanceId is invalid, instanceId={}",
-                    jobInstanceId);
-            return;
-        }
-
-        updateStatus(jobInstanceId, JobStatus.SUBMISSION_UNKNOWN, message);
-
-        try {
-            incrementalBatchService.handleJobResult(
-                    jobInstanceId, JobStatus.SUBMISSION_UNKNOWN, message);
-        } catch (Exception e) {
-            log.error("Update incremental batch after unknown submission failed, instanceId={}",
-                    jobInstanceId, e);
-        }
-    }
-
-    /**
      * Handle job failure based on engine job result.
      *
      * @param jobInstanceId job instance id

@@ -57,7 +57,6 @@ const ENGINE_ACTIVE_STATUS_SET = new Set([
 const EXECUTION_BLOCKING_STATUS_SET = new Set([
   ...ENGINE_ACTIVE_STATUS_SET,
   "STARTING",
-  "SUBMISSION_UNKNOWN",
 ]);
 
 const ActionColumn: React.FC<ActionColumnProps> = ({
@@ -78,15 +77,9 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
   const jobStatus = String(record?.lastJobStatus || "").toUpperCase();
   const isEngineActive = ENGINE_ACTIVE_STATUS_SET.has(jobStatus);
   const isBusy = EXECUTION_BLOCKING_STATUS_SET.has(jobStatus);
-  const isStarting = jobStatus === "STARTING";
-  const isSubmissionUnknown = jobStatus === "SUBMISSION_UNKNOWN";
   const canRun = isOnline && !isBusy;
 
-  const getBusyMessage = () => {
-    if (isStarting) return "任务正在启动中，请稍后再操作";
-    if (isSubmissionUnknown) return "提交结果待确认，请核对 Engine 作业后再操作";
-    return "任务正在运行中，请先终止任务后再操作";
-  };
+  const getBusyMessage = () => "任务正在运行中，请稍后再操作";
   const getRunBlockedMessage = () =>
     isOnline ? getBusyMessage() : "请先上线任务，再执行启动操作";
 
@@ -366,10 +359,10 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       type="button"
       disabled
       className={disabledActionClass}
-      aria-label={`${isStarting ? "任务启动中" : "提交结果待确认"} ${record?.jobName || ""}`}
+      aria-label={`任务运行中 ${record?.jobName || ""}`}
       title={getBusyMessage()}
     >
-      {isStarting ? "启动中" : isSubmissionUnknown ? "待确认" : "运行中"}
+      运行中
     </button>
   ) : (
     <Popconfirm

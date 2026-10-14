@@ -3,6 +3,7 @@ import { HistoryItem } from "@/pages/batch-link-up/type";
 import { message } from "antd";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { normalizeBatchJobStatus } from "@/pages/batch-link-up/utils/normalizeJobStatus";
 
 
 export type TimeRangeType = "最近一天" | "最近三天" | "最近一周" | "自定义";
@@ -122,8 +123,10 @@ export const useTaskHistory = ({
   const statusCountMap = useMemo(() => {
     return historyItems.reduce(
       (acc, item) => {
-        const status = item.jobStatus || "UNKNOWN";
-        acc[status] = (acc[status] || 0) + 1;
+        const status = normalizeBatchJobStatus(item.jobStatus);
+        if (status !== "UNSTARTED") {
+          acc[status] = (acc[status] || 0) + 1;
+        }
         acc.all += 1;
         return acc;
       },
@@ -132,9 +135,6 @@ export const useTaskHistory = ({
         FINISHED: 0,
         FAILED: 0,
         RUNNING: 0,
-        STARTING: 0,
-        SUBMISSION_UNKNOWN: 0,
-        PENDING: 0,
       } as Record<string, number>
     );
   }, [historyItems]);

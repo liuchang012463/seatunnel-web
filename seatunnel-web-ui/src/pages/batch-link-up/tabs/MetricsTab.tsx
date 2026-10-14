@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Card, Empty, Spin, Table, Tag, Tooltip, message } from "antd";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Button, Card, Empty, Spin, Table, Tag, Tooltip, message } from "antd";
 import { useIntl } from "@umijs/max";
 import CountUp from "react-countup";
 import {
@@ -9,10 +9,13 @@ import {
   Database,
   Gauge,
   Layers3,
+  RefreshCw,
   Table2,
   TrendingUp,
 } from "lucide-react";
 import { batchJobInstanceApi } from "../api";
+import { normalizeBatchJobStatus } from "../utils/normalizeJobStatus";
+import { parseEngineOperatorMetrics, type EngineOperatorMetric } from "../utils/engineOperatorMetrics";
 
 
 interface MetricsTabProps {
@@ -247,14 +250,18 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
 
   const [tableMetrics, setTableMetrics] = useState<any[]>([]);
   const [tableMetricsLoading, setTableMetricsLoading] = useState(false);
+  const [operatorMetrics, setOperatorMetrics] = useState<EngineOperatorMetric[]>([]);
+  const [operatorMetricsLoading, setOperatorMetricsLoading] = useState(false);
+  const [operatorMetricsError, setOperatorMetricsError] = useState<string>();
+  const operatorMetricsInFlight = useRef(false);
+  const operatorMetricsRequest = useRef(0);
 
   const t = (id: string, defaultMessage: string) =>
     intl.formatMessage({ id, defaultMessage });
 
   const instanceId = instanceItem?.id;
-  const isTerminal = ["FINISHED", "FAILED", "CANCELED"].includes(
-    String(instanceItem?.jobStatus || "").toUpperCase()
-  );
+  const normalizedStatus = normalizeBatchJobStatus(instanceItem?.jobStatus);
+  const isTerminal = normalizedStatus === "FINISHED" || normalizedStatus === "FAILED";
 
   const readQps = toNumber(instanceItem?.readQps);
   const writeQps = toNumber(instanceItem?.writeQps);
@@ -303,6 +310,60 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
       cancelled = true;
     };
   }, [instanceId]);
+
+  const loadOperatorMetrics = useCallback(async (showLoading = false) => {
+    if (!instanceId || operatorMetricsInFlight.current) return;
+
+    operatorMetricsInFlight.current = true;
+    const requestId = ++operatorMetricsRequest.current;
+    if (showLoading) setOperatorMetricsLoading(true);
+    setOperatorMetricsError(undefined);
+
+    try {
+      const response = await batchJobInstanceApi.engineInfo(instanceId);
+      if (requestId !== operatorMetricsRequest.current) return;
+
+      if (response?.code !== 0) {
+        setOperatorMetricsError(response?.message || response?.msg || "读取算子指标失败");
+        setOperatorMetrics([]);
+        return;
+      }
+
+      setOperatorMetrics(parseEngineOperatorMetrics(response.data));
+    } catch (error: any) {
+      if (requestId === operatorMetricsRequest.current) {
+        setOperatorMetricsError(
+          error?.response?.data?.message || error?.message || "读取算子指标失败",
+        );
+        setOperatorMetrics([]);
+      }
+    } finally {
+      operatorMetricsInFlight.current = false;
+      if (showLoading) setOperatorMetricsLoading(false);
+    }
+  }, [instanceId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | undefined;
+    let firstLoad = true;
+
+    const refresh = async () => {
+      await loadOperatorMetrics(firstLoad);
+      firstLoad = false;
+      if (!cancelled && normalizedStatus === "RUNNING") {
+        timer = window.setTimeout(refresh, 5000);
+      }
+    };
+
+    void refresh();
+
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+      operatorMetricsRequest.current += 1;
+    };
+  }, [loadOperatorMetrics, normalizedStatus]);
 
   const metrics = useMemo(
     () => ({
@@ -433,6 +494,98 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
     [readQpsTitle, writeQpsTitle]
   );
 
+  const operatorMetricColumns = useMemo(
+    () => [
+      {
+        title: "名称",
+        dataIndex: "name",
+        key: "name",
+        fixed: "left" as const,
+        width: 260,
+        render: (value: string) => (
+          <Tooltip title={value}>
+            <span className="block max-w-[250px] truncate font-medium text-slate-800">
+              {value}
+            </span>
+          </Tooltip>
+        ),
+      },
+      {
+        title: "接收字节",
+        dataIndex: "receivedBytes",
+        key: "receivedBytes",
+        width: 120,
+        align: "right" as const,
+        render: (value?: number) => value == null ? "-" : formatNumber(value),
+      },
+      {
+        title: "写入字节",
+        dataIndex: "writeBytes",
+        key: "writeBytes",
+        width: 120,
+        align: "right" as const,
+        render: (value?: number) => value == null ? "-" : formatNumber(value),
+      },
+      {
+        title: "接收数量",
+        dataIndex: "receivedCount",
+        key: "receivedCount",
+        width: 120,
+        align: "right" as const,
+        render: (value?: number) => value == null ? "-" : formatNumber(value),
+      },
+      {
+        title: "写入数量",
+        dataIndex: "writeCount",
+        key: "writeCount",
+        width: 120,
+        align: "right" as const,
+        render: (value?: number) => value == null ? "-" : formatNumber(value),
+      },
+      {
+        title: "接收 QPS",
+        dataIndex: "receivedQps",
+        key: "receivedQps",
+        width: 110,
+        align: "right" as const,
+        render: (value?: number) => value == null ? "-" : formatDecimal(value),
+      },
+      {
+        title: "写入 QPS",
+        dataIndex: "writeQps",
+        key: "writeQps",
+        width: 110,
+        align: "right" as const,
+        render: (value?: number) => value == null ? "-" : formatDecimal(value),
+      },
+      {
+        title: "接收字节/秒",
+        dataIndex: "receivedBytesPerSecond",
+        key: "receivedBytesPerSecond",
+        width: 140,
+        align: "right" as const,
+        render: (value?: number) => value == null ? "-" : formatDecimal(value),
+      },
+      {
+        title: "写入字节/秒",
+        dataIndex: "writeBytesPerSecond",
+        key: "writeBytesPerSecond",
+        width: 140,
+        align: "right" as const,
+        render: (value?: number) => value == null ? "-" : formatDecimal(value),
+      },
+      {
+        title: "Flush Signal QPS",
+        dataIndex: "flushSignalQps",
+        key: "flushSignalQps",
+        width: 150,
+        align: "right" as const,
+        render: (value?: number) => value == null ? "-" : formatDecimal(value),
+      },
+    ],
+    [],
+  );
+
   return (
     <Card
       size="small"
@@ -508,6 +661,55 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
               accentClassName="border-violet-100 bg-violet-50 text-violet-600"
               trendData={metrics.writeRowsTrend}
             />
+          </div>
+        </section>
+
+        <section>
+          <SectionHeader
+            icon={<Layers3 size={16} strokeWidth={1.9} />}
+            title="算子指标"
+            description="查看 Source 与 Sink 算子的处理量和吞吐速率"
+            extra={
+              <Button
+                size="small"
+                icon={<RefreshCw size={14} />}
+                loading={operatorMetricsLoading}
+                onClick={() => void loadOperatorMetrics(true)}
+              >
+                刷新
+              </Button>
+            }
+          />
+
+          {operatorMetricsError && (
+            <Alert
+              className="mb-3"
+              type="warning"
+              showIcon
+              message="算子指标加载失败"
+              description={operatorMetricsError}
+            />
+          )}
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+            <Spin spinning={operatorMetricsLoading}>
+              <Table
+                size="small"
+                rowKey="key"
+                columns={operatorMetricColumns}
+                dataSource={operatorMetrics}
+                pagination={false}
+                scroll={{ x: 1320 }}
+                locale={{
+                  emptyText: (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description={instanceItem?.engineJobId ? "暂无算子指标" : "等待 Engine 作业指标"}
+                    />
+                  ),
+                }}
+              />
+            </Spin>
           </div>
         </section>
 

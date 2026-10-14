@@ -128,7 +128,7 @@ public class BatchJobSubmitter {
             }
 
             if (submitRequestStarted) {
-                handleAmbiguousSubmitFailure(jobLogger, instanceId, e);
+                handleSubmitRequestFailure(jobLogger, instanceId, e);
                 return;
             }
 
@@ -238,23 +238,19 @@ public class BatchJobSubmitter {
                 : new JobSubmitException(JobSubmitStage.SUBMIT, "Submit batch job failed", e);
     }
 
-    private void handleAmbiguousSubmitFailure(JobFileLogger jobLogger,
-                                              Long instanceId,
-                                              Exception e) {
-        String message = "向 SeaTunnel Engine 发起提交后未收到确定回执，任务可能已被 Engine 接收。"
-                + "请先在 Engine 作业列表核对，再决定是否重试。错误："
-                + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
-
-        jobLogger.error("Batch job submit result is unknown; automatic retry is unsafe", e);
+    private void handleSubmitRequestFailure(JobFileLogger jobLogger,
+                                            Long instanceId,
+                                            Exception e) {
+        jobLogger.error("Batch job submission failed before an Engine job id was received", e);
         try {
-            batchJobResultHandler.handleSubmissionUnknown(instanceId, message);
+            batchJobResultHandler.handleFailure(instanceId, e);
         } catch (Exception handlerEx) {
-            log.error("Record ambiguous batch submit result failed, instanceId={}", instanceId, handlerEx);
+            log.error("Record batch submit failure failed, instanceId={}", instanceId, handlerEx);
         }
 
         throw new JobSubmitException(
                 JobSubmitStage.SUBMIT,
-                "Submit batch job result is unknown; verify the job in SeaTunnel Engine before retrying",
+                "Submit batch job failed before an Engine job id was received",
                 e
         );
     }

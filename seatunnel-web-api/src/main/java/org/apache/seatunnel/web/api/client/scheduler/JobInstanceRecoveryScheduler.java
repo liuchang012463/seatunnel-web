@@ -104,9 +104,8 @@ public class JobInstanceRecoveryScheduler {
     }
 
     /**
-     * An in-memory submission queue is lost on process restart. Keep ambiguous submissions
-     * visible and block automatic retries, since Engine may have accepted a request before
-     * the Web process stopped or timed out.
+     * An in-memory submission queue is lost on process restart. Mark any submission without
+     * a stored Engine job id as failed so the instance does not remain active indefinitely.
      */
     private void markInterruptedBatchSubmissions() {
         List<JobInstance> instances = jobInstanceDao.listRunningLikeInstances();
@@ -124,10 +123,9 @@ public class JobInstanceRecoveryScheduler {
                 continue;
             }
 
-            String message = "SeaTunnel Web 在提交任务时重启，未保存到 Engine 作业 ID；任务可能已被 Engine 接收。"
-                    + "请先核对 SeaTunnel Engine 作业列表，再决定是否重新启动。";
-            jobResultHandler.handleSubmissionUnknown(instance.getId(), message);
-            log.warn("Marked interrupted batch submission as unknown, instanceId={}", instance.getId());
+            String message = "SeaTunnel Web 在收到 Engine 作业 ID 前重启，提交按失败处理。";
+            jobResultHandler.handleFailure(instance.getId(), new IllegalStateException(message));
+            log.warn("Marked interrupted batch submission as failed, instanceId={}", instance.getId());
         }
     }
 

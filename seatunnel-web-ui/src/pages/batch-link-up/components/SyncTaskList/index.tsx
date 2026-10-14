@@ -52,7 +52,6 @@ const ENGINE_ACTIVE_STATUS_SET = new Set([
 const EXECUTION_BLOCKING_STATUS_SET = new Set([
   ...ENGINE_ACTIVE_STATUS_SET,
   "STARTING",
-  "SUBMISSION_UNKNOWN",
 ]);
 
 const parseSearchParamsFromUrl = () => {
@@ -491,7 +490,7 @@ const App: React.FC<Props> = ({
         offlineRows
       )}`;
     } else if (busyRows.length > 0) {
-      startTooltip = `存在启动中、运行中或提交结果待确认的任务，请稍后再启动：${buildLimitedJobLabels(
+      startTooltip = `存在运行中任务，请稍后再启动：${buildLimitedJobLabels(
         busyRows
       )}`;
     }
@@ -507,7 +506,7 @@ const App: React.FC<Props> = ({
     }
 
     if (busyRows.length > 0) {
-      offlineTooltip = `存在启动中、运行中或提交结果待确认的任务，请处理后再下线：${buildLimitedJobLabels(
+      offlineTooltip = `存在运行中任务，请处理后再下线：${buildLimitedJobLabels(
         busyRows
       )}`;
     } else if (!offlineDisabled) {
@@ -524,7 +523,7 @@ const App: React.FC<Props> = ({
           ? `已上线任务：${buildLimitedJobLabels(onlineRows)}`
           : "",
         runningRows.length > 0
-          ? `启动中或运行中任务：${buildLimitedJobLabels(runningRows)}`
+          ? `运行中任务：${buildLimitedJobLabels(runningRows)}`
           : "",
       ].filter(Boolean);
       deleteTooltip = `请先下线并终止不可删除任务：${reasons.join("；")}`;
@@ -567,7 +566,7 @@ const App: React.FC<Props> = ({
     const busyRows = selectedRows.filter(isBusy);
     if (busyRows.length > 0) {
       message.warning(
-        `存在启动中、运行中或提交结果待确认的任务，请稍后再启动：${buildLimitedJobLabels(
+        `存在运行中任务，请稍后再启动：${buildLimitedJobLabels(
           busyRows
         )}`
       );
@@ -695,7 +694,7 @@ const App: React.FC<Props> = ({
     const busyRows = selectedRows.filter(isBusy);
     if (busyRows.length > 0) {
       message.warning(
-        `存在启动中、运行中或提交结果待确认的任务，请处理后再下线：${buildLimitedJobLabels(busyRows)}`
+        `存在运行中任务，请处理后再下线：${buildLimitedJobLabels(busyRows)}`
       );
       return;
     }

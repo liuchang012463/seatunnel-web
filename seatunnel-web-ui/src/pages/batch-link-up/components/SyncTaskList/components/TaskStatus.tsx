@@ -2,6 +2,7 @@ import { message, Popover } from "antd";
 import type { MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import StatusChip, { type StatusChipTone } from "@/components/StatusChip";
+import { normalizeBatchJobStatus } from "@/pages/batch-link-up/utils/normalizeJobStatus";
 
 interface TaskStatusProps {
   status?: string;
@@ -9,33 +10,22 @@ interface TaskStatusProps {
 }
 
 const statusConfig: Record<string, { tone: StatusChipTone; label: string }> = {
-  FINISHED: { tone: "success", label: "已完成" },
-  SUCCESS: { tone: "success", label: "已完成" },
-  STARTING: { tone: "processing", label: "启动中" },
-  SUBMISSION_UNKNOWN: { tone: "warning", label: "提交结果待确认" },
+  FINISHED: { tone: "success", label: "成功" },
   RUNNING: { tone: "processing", label: "运行中" },
   FAILED: { tone: "error", label: "失败" },
-  FAILING: { tone: "error", label: "失败中" },
-  PAUSED: { tone: "warning", label: "已暂停" },
-  DOING_SAVEPOINT: { tone: "warning", label: "保存点中" },
-  CANCELED: { tone: "neutral", label: "已取消" },
-  CANCELLED: { tone: "neutral", label: "已取消" },
-  INITIALIZING: { tone: "neutral", label: "初始化中" },
-  CREATED: { tone: "neutral", label: "已创建" },
-  PENDING: { tone: "neutral", label: "等待中" },
-  SCHEDULED: { tone: "neutral", label: "已调度" },
-  CANCELING: { tone: "neutral", label: "取消中" },
 };
 
 const getStatusConfig = (status?: string) => {
-  const normalizedStatus = String(status || "").toUpperCase();
+  const normalizedStatus = normalizeBatchJobStatus(status);
 
-  return (
-    statusConfig[normalizedStatus] || {
+  if (normalizedStatus === "UNSTARTED") {
+    return {
       tone: "neutral" as StatusChipTone,
-      label: status ? "未识别" : "未开始",
-    }
-  );
+      label: "未开始",
+    };
+  }
+
+  return statusConfig[normalizedStatus];
 };
 
 const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
@@ -75,10 +65,9 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
 
   const content = <StatusChip tone={config.tone} label={config.label} />;
 
-  const normalizedStatus = String(status || "").toUpperCase();
-  if (["FAILED", "SUBMISSION_UNKNOWN"].includes(normalizedStatus) && errorMessage) {
+  if (config.label === "失败" && errorMessage) {
     const lines = errorMessage.split("\n");
-    const errorTitle = normalizedStatus === "SUBMISSION_UNKNOWN" ? "提交结果待确认" : "失败原因";
+    const errorTitle = "失败原因";
 
     return (
       <Popover

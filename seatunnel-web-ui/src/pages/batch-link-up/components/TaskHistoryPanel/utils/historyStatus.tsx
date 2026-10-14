@@ -6,11 +6,11 @@ import {
 } from "@ant-design/icons";
 import React from "react";
 import type { IntlShape } from "react-intl";
+import { normalizeBatchJobStatus } from "@/pages/batch-link-up/utils/normalizeJobStatus";
 
 export const getHistoryStatusMeta = (status: string, intl: IntlShape) => {
-  switch (status) {
+  switch (normalizeBatchJobStatus(status)) {
     case "FINISHED":
-    case "SUCCESS":
       return {
         text: intl.formatMessage({
           id: "pages.job.status.success",
@@ -36,26 +36,6 @@ export const getHistoryStatusMeta = (status: string, intl: IntlShape) => {
         icon: <LoadingOutlined style={{ color: "#3b82f6" }} />,
       };
 
-    case "STARTING":
-      return {
-        text: "启动中",
-        color: "#2563eb",
-        tagColor: "#2563eb",
-        dotColor: "#3b82f6",
-        lightBg: "rgba(59, 130, 246, 0.12)",
-        icon: <LoadingOutlined style={{ color: "#3b82f6" }} />,
-      };
-
-    case "SUBMISSION_UNKNOWN":
-      return {
-        text: "提交结果待确认",
-        color: "#b45309",
-        tagColor: "#b45309",
-        dotColor: "#d97706",
-        lightBg: "rgba(217, 119, 6, 0.12)",
-        icon: <StopFilled style={{ color: "#d97706" }} />,
-      };
-
     case "FAILED":
       return {
         text: intl.formatMessage({
@@ -67,20 +47,6 @@ export const getHistoryStatusMeta = (status: string, intl: IntlShape) => {
         dotColor: "#f43f5e",
         lightBg: "rgba(244, 63, 94, 0.12)",
         icon: <CloseCircleFilled style={{ color: "#f43f5e" }} />,
-      };
-
-    case "CANCELED":
-    case "CANCELLED":
-      return {
-        text: intl.formatMessage({
-          id: "pages.job.status.canceled",
-          defaultMessage: "已取消",
-        }),
-        color: "var(--st-color-text-muted)",
-        tagColor: "var(--st-color-text-muted)",
-        dotColor: "var(--st-color-text-muted)",
-        lightBg: "rgba(148, 163, 184, 0.16)",
-        icon: <StopFilled style={{ color: "var(--st-color-text-muted)" }} />,
       };
 
     default:

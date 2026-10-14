@@ -56,7 +56,7 @@
             JOIN t_seatunnel_web_job_definition definition
               ON definition.id = instance.job_definition_id
             WHERE instance.job_status IN
-                  ('STARTING', 'SUBMISSION_UNKNOWN', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
+                  ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
               AND COALESCE(instance.start_time, instance.create_time) &lt;= #{endTime}
             <include refid="TaskTypePredicate"/>
               AND NOT EXISTS (
@@ -75,7 +75,7 @@
                COALESCE(SUM(t.inc_bytes), 0)   AS totalBytes,
                COALESCE(COUNT(1), 0)           AS totalTasks
                , COALESCE(SUM(CASE WHEN UPPER(t.job_status) = 'FINISHED' THEN 1 ELSE 0 END), 0) AS successTasks
-               , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('FAILED', 'UNKNOWABLE', 'SUBMISSION_UNKNOWN') THEN 1 ELSE 0 END), 0) AS failedTasks
+               , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('FAILED', 'UNKNOWABLE') THEN 1 ELSE 0 END), 0) AS failedTasks
                , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING') THEN 1 ELSE 0 END), 0) AS runningTasks
                , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('CANCELED', 'SAVEPOINT_DONE') THEN 1 ELSE 0 END), 0) AS stoppedTasks
         FROM task_summary t

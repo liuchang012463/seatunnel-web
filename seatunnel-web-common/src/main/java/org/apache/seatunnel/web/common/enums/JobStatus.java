@@ -48,10 +48,7 @@ public enum JobStatus {
     FINISHED(EndState.GLOBALLY),
 
     /** Cannot find the JobID or the job status has already been cleared. */
-    UNKNOWABLE(EndState.GLOBALLY),
-
-    /** Submission request may have reached Engine, but Web did not receive a definitive reply. */
-    SUBMISSION_UNKNOWN(EndState.GLOBALLY);
+    UNKNOWABLE(EndState.GLOBALLY);
 
     // --------------------------------------------------------------------------------------------
 
