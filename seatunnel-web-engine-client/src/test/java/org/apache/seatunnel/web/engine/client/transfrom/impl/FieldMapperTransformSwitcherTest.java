@@ -10,6 +10,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FieldMapperTransformSwitcherTest {
@@ -57,6 +58,34 @@ class FieldMapperTransformSwitcherTest {
         assertEquals(
                 "SELECT CONCAT(`channel_type`, '-', `description`) AS `province` FROM `source-1`",
                 config.getString("Sql.query"));
+    }
+
+    @Test
+    void emitsSqlWhenOneSourceFeedsMultipleTargetFields() {
+        Config config = switcher.transform(options(
+                mapping("user_id", "account_id"),
+                mapping("user_id", "member_id")));
+
+        assertTrue(config.hasPath("Sql"));
+        assertFalse(config.hasPath("FieldMapper"));
+        assertEquals(
+                "SELECT `user_id` AS `account_id`, `user_id` AS `member_id` FROM `source-1`",
+                config.getString("Sql.query"));
+        assertEquals("source-1", config.getString("Sql.plugin_input"));
+        assertEquals("sink-1", config.getString("Sql.plugin_output"));
+    }
+
+    @Test
+    void throwsExceptionWhenAllMappingsAreDisabled() {
+        FieldMapperMapping m1 = mapping("user_id", "account_id");
+        m1.setEnabled(false);
+        FieldMapperMapping m2 = mapping("name", "user_name");
+        m2.setEnabled(false);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> switcher.transform(options(m1, m2)));
+        assertEquals("at least one enabled mapping is required", ex.getMessage());
     }
 
     private static FieldMapperTransformOptions options(FieldMapperMapping... mappings) {

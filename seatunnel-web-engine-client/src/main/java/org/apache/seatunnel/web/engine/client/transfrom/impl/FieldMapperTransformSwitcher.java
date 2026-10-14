@@ -15,6 +15,7 @@ import org.apache.seatunnel.web.engine.client.transfrom.domain.TransformOptions;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -160,11 +161,15 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
      */
     private static boolean requiresSqlTransform(List<FieldMapping> mappings) {
         Set<String> targets = new LinkedHashSet<>();
+        Set<String> sources = new HashSet<>();
         for (FieldMapping mapping : mappings) {
             if (mapping.expression() != null) {
                 return true;
             }
             if (!targets.add(mapping.targetField())) {
+                return true;
+            }
+            if (!sources.add(mapping.sourceField())) {
                 return true;
             }
         }
@@ -228,6 +233,9 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
 
     /** The engine resolves identifiers between backticks, which also keeps mixed case intact. */
     private static String quoteIdentifier(String identifier) {
+        if (StringUtils.isBlank(identifier)) {
+            return "";
+        }
         return "`" + identifier.replace("`", "``") + "`";
     }
 
@@ -249,10 +257,12 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
          * Validate new structure first.
          */
         if (CollectionUtils.isNotEmpty(mappings)) {
+            boolean hasEnabled = false;
             for (FieldMapperMapping mapping : mappings) {
                 if (Boolean.FALSE.equals(mapping.getEnabled())) {
                     continue;
                 }
+                hasEnabled = true;
 
                 if (StringUtils.isBlank(mapping.getSourceField())) {
                     throw new IllegalArgumentException("sourceField must not be empty");
@@ -264,6 +274,10 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
                                     + mapping.getSourceField()
                     );
                 }
+            }
+
+            if (!hasEnabled) {
+                throw new IllegalArgumentException("at least one enabled mapping is required");
             }
 
             return;
