@@ -36,12 +36,6 @@ export function render(oldRender: () => void) {
   });
 }
 
-const isIngestionSituationRoute = () => {
-  if (typeof window === 'undefined') return false;
-  const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
-  return pathname === '/bi' || pathname.startsWith('/bi/');
-};
-
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
  * */
@@ -79,7 +73,7 @@ export async function getInitialState(): Promise<{
 
 // ProLayout 支持的api https://procomponents.ant.design/components/layout
 export const layout: RunTimeLayoutConfig = ({ initialState }) => {
-  const hideLayout = shouldHideLayout() || isIngestionSituationRoute();
+  const hideLayout = shouldHideLayout();
   applyLayoutVisibility(hideLayout);
 
   return {
