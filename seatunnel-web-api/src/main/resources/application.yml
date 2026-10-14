@@ -23,6 +23,7 @@ spring:
     redis:
       host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:26379}
+      database: ${REDIS_DATABASE:15}
       password: ${REDIS_PASSWORD:}
       timeout: ${REDIS_TIMEOUT_MS:3000}
       lettuce:
@@ -261,10 +262,10 @@ metadata:
     exploration-preparation-timeout-seconds: ${METADATA_STATUS_EXPLORATION_PREPARATION_TIMEOUT_SECONDS:1800}
     exploration-trigger-retry-timeout-seconds: ${METADATA_STATUS_EXPLORATION_TRIGGER_RETRY_TIMEOUT_SECONDS:1200}
   # Shared cache for OpenMetadata reads and data-inventory aggregates.
-  # type=redis keeps snapshots across restarts and processes; type=memory
-  # preserves the old process-local behavior (used by unit tests).
+  # Redis shares inventory snapshots across restarts and application processes;
+  # set type=memory for isolated tests or lightweight deployments.
   inventory:
-    cache-type: ${METADATA_INVENTORY_CACHE_TYPE:memory}
+    cache-type: ${METADATA_INVENTORY_CACHE_TYPE:redis}
     soft-ttl-ms: ${METADATA_INVENTORY_SOFT_TTL_MS:300000}
     stale-ttl-ms: ${METADATA_INVENTORY_STALE_TTL_MS:1800000}
     warm-interval-ms: ${METADATA_INVENTORY_WARM_INTERVAL_MS:60000}

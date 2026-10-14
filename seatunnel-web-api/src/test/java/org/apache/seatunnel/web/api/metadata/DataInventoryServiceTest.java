@@ -20,6 +20,7 @@ import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.spi.bean.vo.DataInventorySummaryVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataInventoryOverviewVO;
 import org.apache.seatunnel.web.spi.bean.dto.DataInventoryFilterDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,9 +30,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -156,6 +159,45 @@ class DataInventoryServiceTest {
 
         assertEquals(1L, service().summary(new DataInventoryFilterDTO()).getDataSourceCount());
         verify(openMetadataClient).listDatabasesPage(eq("st_ds_42"), any(Integer.class), eq(null));
+    }
+
+    @Test
+    void overviewReturnsAllAggregateDimensionsAndSharesTheCachedSnapshot() {
+        DataSource source = source(42L, org.apache.seatunnel.web.spi.enums.DbType.MYSQL);
+        DataSourceUnit unit = new DataSourceUnit();
+        unit.setId(7L);
+        unit.setUnitName("市局");
+        unit.setStatus(1);
+        BusinessSystem system = new BusinessSystem();
+        system.setId(9L);
+        system.setUnitId(7L);
+        system.setSystemName("订单系统");
+        system.setStatus(1);
+
+        when(dataSourceDao.queryAll()).thenReturn(List.of(source));
+        when(dataSourceUnitDao.queryAll()).thenReturn(List.of(unit));
+        when(businessSystemDao.queryAll()).thenReturn(List.of(system));
+        when(metadataBindingDao.queryAll()).thenReturn(List.of());
+
+        DataInventoryService service = service();
+        DataInventoryOverviewVO result = service.overview(new DataInventoryFilterDTO());
+
+        assertEquals(1L, result.getSummary().getDataSourceCount());
+        assertEquals("MYSQL", result.getSourceTypes().get(0).getKey());
+        assertEquals(1L, result.getSourceTypes().get(0).getCount());
+        assertEquals("市局", result.getUnits().get(0).getName());
+        assertEquals("订单系统", result.getBusinessSystems().get(0).getName());
+        assertTrue(result.getCoverage() != null);
+        assertTrue(result.getGeneratedAt() > 0L);
+
+        // The exploration summary and dimensions must all come from the same
+        // cached inventory build instead of triggering another OpenMetadata walk.
+        service.summary(new DataInventoryFilterDTO());
+        service.sourceTypeDistribution(new DataInventoryFilterDTO());
+        service.unitDistribution(new DataInventoryFilterDTO());
+        service.businessSystemDistribution(new DataInventoryFilterDTO());
+        service.profileCoverage(new DataInventoryFilterDTO());
+        verify(dataSourceDao, times(1)).queryAll();
     }
 
     private DataInventoryService service() {

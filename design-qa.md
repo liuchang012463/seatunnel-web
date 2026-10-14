@@ -22,10 +22,16 @@
 
 - Loaded `/bi` at 1920 × 1080; the application header and left navigation remain visible, and the dashboard fits the remaining content area without horizontal overflow.
 - Confirmed live values rendered from the current APIs, including task count, rows, bytes, data-source count, business systems, task status, and resource coverage.
+- Confirmed the dashboard now requests `/api/v1/data-inventory/overview` once per load; the Redis-warmed request returned HTTP 200 in 157 ms. The data exploration overview also loaded this aggregate endpoint successfully with HTTP 200.
 - Switched the time range to seven days and selected batch tasks; the cards and task breakdown updated to that range/type. Opened source category statistics and confirmed the connector distribution.
 - Used “退出大屏并打开任务概览” to reach `/metrics`, then selected 引接态势 in the left menu and confirmed the dashboard reopened with the shell visible.
-- Browser console had no errors or warnings. All dashboard API requests returned HTTP 200.
-- Production frontend build completed successfully. No test suite was run.
+- Browser console reported no errors or warnings during the final verification. All dashboard API requests returned HTTP 200.
+
+## Automated verification
+
+- The targeted inventory and Redis cache tests passed: 8 tests, 0 failures, 0 errors.
+- The full Maven suite ran 638 tests and reported 8 failures and 5 errors in existing lake/catalog/security tests outside the changed files. The inventory and Redis cache tests passed in that run as well.
+- The production frontend build was rerun against the final source after restoring the unused dashboard component.
 
 ## Findings
 

@@ -493,6 +493,9 @@ export interface DataInventoryProfileCoverage {
 
 export interface DataInventoryOverview {
   summary: DataInventorySummary;
+  sourceTypes?: DataInventoryDistributionItem[];
+  units?: DataInventoryDistributionItem[];
+  businessSystems?: DataInventoryDistributionItem[];
   coverage: DataInventoryProfileCoverage;
   generatedAt?: number;
 }

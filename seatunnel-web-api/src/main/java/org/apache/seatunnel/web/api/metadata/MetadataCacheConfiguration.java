@@ -10,10 +10,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import java.time.Duration;
 
 /**
- * Selects the metadata cache implementation.  {@code metadata.inventory
- * .cache-type=redis} activates the shared Redis cache (the production
- * default through environment configuration); {@code memory} keeps the
- * process-local cache used by unit tests and lightweight deployments.
+ * Selects the metadata cache implementation.  Redis is the application
+ * default; {@code memory} opts into the process-local cache for tests and
+ * lightweight deployments.
  */
 @Configuration
 public class MetadataCacheConfiguration {

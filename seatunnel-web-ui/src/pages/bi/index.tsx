@@ -28,10 +28,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import {
-  fetchDataInventoryBusinessSystems,
-  fetchDataInventoryProfileCoverage,
-  fetchDataInventorySourceTypes,
-  fetchDataInventorySummary,
+  fetchDataInventoryOverview,
 } from '@/pages/data-source/service';
 import type {
   DataInventoryDistributionItem,
@@ -183,6 +180,7 @@ const IngestionSituationPage: React.FC = () => {
   const [taskMetrics, setTaskMetrics] = useState<TaskTypeMetric[] | null>(null);
   const [chartMetrics, setChartMetrics] = useState<TaskTypeChart[]>([]);
   const [inventorySummary, setInventorySummary] = useState<DataInventorySummary | null>(null);
+  const [inventoryLoading, setInventoryLoading] = useState(true);
   const [profileCoverage, setProfileCoverage] = useState<DataInventoryProfileCoverage | null>(null);
   const [sourceTypes, setSourceTypes] = useState<DataInventoryDistributionItem[]>([]);
   const [businessSystems, setBusinessSystems] = useState<DataInventoryDistributionItem[]>([]);
@@ -199,67 +197,76 @@ const IngestionSituationPage: React.FC = () => {
   const loadDashboard = useCallback(async () => {
     const currentRequestId = ++requestId.current;
     setLoading(true);
+    setInventoryLoading(true);
+    const isCurrentRequest = () => currentRequestId === requestId.current;
 
-    const [summaryResult, inventoryResult, chartResult] = await Promise.allSettled([
-      Promise.all(TASK_TYPES.map((taskType) => fetchSummaryData(timeRange, taskType.key))),
-      Promise.all([
-        fetchDataInventorySummary(),
-        fetchDataInventorySourceTypes(),
-        fetchDataInventoryBusinessSystems(),
-        fetchDataInventoryProfileCoverage(),
-      ]),
-      Promise.all(
+    const summaryRequest = Promise.all(TASK_TYPES.map((taskType) => fetchSummaryData(timeRange, taskType.key)))
+      .then((summaries) => {
+        if (!isCurrentRequest()) return;
+        setTaskMetrics(
+          TASK_TYPES.map((taskType, index) => ({
+            ...taskType,
+            summary: summaries[index],
+          })),
+        );
+        setError('');
+      })
+      .catch(() => {
+        if (!isCurrentRequest()) return;
+        setError('任务概览指标暂不可用，请稍后重试。');
+      });
+
+    const inventoryRequest = fetchDataInventoryOverview()
+      .then((response) => {
+        if (!isCurrentRequest()) return;
+        if (response.code === 0 && response.data) {
+          setInventorySummary(response.data.summary || null);
+          setSourceTypes(response.data.sourceTypes || []);
+          setBusinessSystems(response.data.businessSystems || []);
+          setProfileCoverage(response.data.coverage || null);
+          setInventoryError('');
+        } else {
+          setInventorySummary(null);
+          setSourceTypes([]);
+          setBusinessSystems([]);
+          setProfileCoverage(null);
+          setInventoryError('资源目录指标暂不可用');
+        }
+        setInventoryLoading(false);
+      })
+      .catch(() => {
+        if (!isCurrentRequest()) return;
+        setInventorySummary(null);
+        setSourceTypes([]);
+        setBusinessSystems([]);
+        setProfileCoverage(null);
+        setInventoryError('资源目录指标暂不可用');
+        setInventoryLoading(false);
+      });
+
+    const chartRequest = Promise.all(
         TASK_TYPES.map(async (taskType) => ({
           key: taskType.key,
           charts: (await fetchChartData(timeRange, taskType.key)) as unknown as RawOverviewCharts,
         })),
-      ),
-    ] as const);
+      )
+      .then((charts) => {
+        if (!isCurrentRequest()) return;
+        setChartMetrics(charts);
+        setTrendError('');
+      })
+      .catch(() => {
+        if (!isCurrentRequest()) return;
+        setChartMetrics([]);
+        setTrendError('趋势数据暂不可用');
+      });
 
-    if (currentRequestId !== requestId.current) return;
-
-    if (summaryResult.status === 'fulfilled') {
-      setTaskMetrics(
-        TASK_TYPES.map((taskType, index) => ({
-          ...taskType,
-          summary: summaryResult.value[index],
-        })),
-      );
-      setError('');
-    } else {
-      setError('任务概览指标暂不可用，请稍后重试。');
-    }
-
-    if (inventoryResult.status === 'fulfilled') {
-      const [summaryResponse, sourceTypesResponse, systemsResponse, coverageResponse] = inventoryResult.value;
-      setInventorySummary(summaryResponse.code === 0 ? summaryResponse.data || null : null);
-      setSourceTypes(sourceTypesResponse.code === 0 ? sourceTypesResponse.data || [] : []);
-      setBusinessSystems(systemsResponse.code === 0 ? systemsResponse.data || [] : []);
-      setProfileCoverage(coverageResponse.code === 0 ? coverageResponse.data || null : null);
-      setInventoryError(
-        [
-          summaryResponse.code,
-          sourceTypesResponse.code,
-          systemsResponse.code,
-          coverageResponse.code,
-        ].every((code) => code === 0)
-          ? ''
-          : '部分资源目录指标暂不可用',
-      );
-    } else {
-      setInventoryError('资源目录指标暂不可用');
-    }
-
-    if (chartResult.status === 'fulfilled') {
-      setChartMetrics(chartResult.value);
-      setTrendError('');
-    } else {
-      setChartMetrics([]);
-      setTrendError('趋势数据暂不可用');
-    }
-
-    setUpdatedAt(formatTime(new Date()));
-    setLoading(false);
+    const primaryRequests = Promise.all([summaryRequest, chartRequest]).then(() => {
+      if (!isCurrentRequest()) return;
+      setUpdatedAt(formatTime(new Date()));
+      setLoading(false);
+    });
+    await Promise.all([primaryRequests, inventoryRequest]);
   }, [timeRange]);
 
   useEffect(() => {
@@ -597,7 +604,9 @@ const IngestionSituationPage: React.FC = () => {
                     </button>
                   ))}
                   {sourceRows.length === 0 && (
-                    <div className="source-empty">{inventoryError || '暂无数据源类型'}</div>
+                    <div className="source-empty">
+                      {inventoryLoading ? '资源目录加载中…' : inventoryError || '暂无数据源类型'}
+                    </div>
                   )}
                 </div>
               </div>

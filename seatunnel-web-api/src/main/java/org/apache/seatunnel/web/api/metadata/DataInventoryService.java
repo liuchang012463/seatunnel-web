@@ -120,6 +120,9 @@ public class DataInventoryService {
         InventorySnapshotPayload aggregate = snapshot(normalize(request));
         DataInventoryOverviewVO result = new DataInventoryOverviewVO();
         result.setSummary(aggregate.summary());
+        result.setSourceTypes(aggregate.sourceTypes());
+        result.setUnits(aggregate.units());
+        result.setBusinessSystems(aggregate.businessSystems());
         result.setCoverage(aggregate.coverage());
         result.setGeneratedAt(System.currentTimeMillis());
         return result;

@@ -3,6 +3,8 @@ package org.apache.seatunnel.web.api.metadata;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.spi.bean.dto.DataInventoryFilterDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -52,5 +54,10 @@ public class MetadataInventoryWarmupScheduler {
                         error.getClass().getSimpleName(), error.getMessage());
             }
         });
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmAfterStartup() {
+        warm();
     }
 }
