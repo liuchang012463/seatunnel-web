@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.metrics.streaming;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.seatunnel.web.api.metadata.OpenMetadataJobLineageService;
 import org.apache.seatunnel.web.api.metrics.JobConfigFileService;
 import org.apache.seatunnel.web.api.metrics.JobFileLogger;
 import org.apache.seatunnel.web.api.metrics.JobRuntimeContext;
@@ -29,19 +30,22 @@ public class StreamingJobSubmitter {
     private final StreamingJobMetricsMonitor streamingJobMetricsMonitor;
     private final StreamingJobResultWatcher streamingJobResultWatcher;
     private final StreamingJobResultHandler streamingJobResultHandler;
+    private final OpenMetadataJobLineageService openMetadataJobLineageService;
 
     public StreamingJobSubmitter(JobConfigFileService configFileService,
                                  SeaTunnelRestClient restClient,
                                  EngineDriverJarPublisher driverJarPublisher,
                                  StreamingJobMetricsMonitor streamingJobMetricsMonitor,
                                  StreamingJobResultWatcher streamingJobResultWatcher,
-                                 StreamingJobResultHandler streamingJobResultHandler) {
+                                 StreamingJobResultHandler streamingJobResultHandler,
+                                 OpenMetadataJobLineageService openMetadataJobLineageService) {
         this.configFileService = configFileService;
         this.restClient = restClient;
         this.driverJarPublisher = driverJarPublisher;
         this.streamingJobMetricsMonitor = streamingJobMetricsMonitor;
         this.streamingJobResultWatcher = streamingJobResultWatcher;
         this.streamingJobResultHandler = streamingJobResultHandler;
+        this.openMetadataJobLineageService = openMetadataJobLineageService;
     }
 
     public void submit(JobInstanceVO instance) {
@@ -105,6 +109,15 @@ public class StreamingJobSubmitter {
 
             engineId = extractJobId(resp);
             submitted = true;
+
+            // The Engine has accepted the instance and returned its job id. Record
+            // lineage from this submitted instance before any watcher setup can fail.
+            // The write is dispatched to the metadata executor and must never fail the submission.
+            try {
+                openMetadataJobLineageService.recordStreamingSubmission(instance, engineId);
+            } catch (Exception lineageError) {
+                log.warn("Could not schedule OpenMetadata lineage for instanceId={}", instanceId, lineageError);
+            }
 
             log.info("Submit streaming job response received, instanceId={}, resp={}", instanceId, resp);
             jobLogger.info("Submit streaming job response received: " + resp);

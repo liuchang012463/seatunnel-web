@@ -59,7 +59,12 @@ jobs:
         run: ./mvnw --version
 
       - name: Build and verify
-        run: ./mvnw --batch-mode --no-transfer-progress -T 1C -pl '!:seatunnel-web-ui,!:seatunnel-web-dist' -Dskip.frontend.build=true clean verify
+        run: ./mvnw --batch-mode --no-transfer-progress -T 1C -pl '!:seatunnel-web-ui,!:seatunnel-web-dist' -Dskip.frontend.build=true clean install
+
+      # seatunnel-web-api skips its tests by default, so the lineage suite has to be selected
+      # explicitly until the rest of that module's tests are repaired.
+      - name: Run the OpenMetadata lineage suite
+        run: ./mvnw --batch-mode --no-transfer-progress -pl seatunnel-web-api -DskipTests=false -Dtest=OpenMetadataJobLineageServiceTest -DfailIfNoTests=false test
 
   frontend:
     name: Frontend

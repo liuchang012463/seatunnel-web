@@ -38,6 +38,8 @@
         <result property="sinkType" column="sinkType"/>
         <result property="sourceTable" column="sourceTable"/>
         <result property="sinkTable" column="sinkTable"/>
+        <result property="sourceDatasourceId" column="sourceDatasourceId"/>
+        <result property="sinkDatasourceId" column="sinkDatasourceId"/>
 
         <result property="readRowCount" column="readRowCount"/>
         <result property="writeRowCount" column="writeRowCount"/>

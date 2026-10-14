@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.engine.client.driver;
 
+import org.apache.seatunnel.web.engine.client.exceptions.SeaTunnelClientException;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -10,6 +11,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,6 +49,33 @@ class EngineDriverJarPublisherTest {
 
         assertTrue(published.contains("driver_location = \"/opt/seatunnel/driver-jars/abc-Vastbase.jar\""));
         assertFalse(published.contains(jar.toString()));
+    }
+
+    @Test
+    void publishesPostgresAndVastbaseDriversSeparatelyWhenTheyShareAClassName(
+            @TempDir Path dir) throws Exception {
+        Path postgresJar = dir.resolve("postgresql.jar");
+        Path vastbaseJar = dir.resolve("vastbase.jar");
+        Files.write(postgresJar, "postgresql-driver".getBytes(StandardCharsets.UTF_8));
+        Files.write(vastbaseJar, "vastbase-driver".getBytes(StandardCharsets.UTF_8));
+        when(restClient.uploadDriverJar(eq(CLIENT_ID), any(), eq("postgresql.jar")))
+                .thenReturn("/opt/seatunnel/driver-jars/postgres-hash.jar");
+        when(restClient.uploadDriverJar(eq(CLIENT_ID), any(), eq("vastbase.jar")))
+                .thenReturn("/opt/seatunnel/driver-jars/vastbase-hash.jar");
+
+        String published = publisher.publish(
+                CLIENT_ID,
+                "source { Jdbc { driver = \"org.postgresql.Driver\" driver_location = \""
+                        + postgresJar
+                        + "\" } }\n"
+                        + "sink { Jdbc { driver = \"org.postgresql.Driver\" driver_location = \""
+                        + vastbaseJar
+                        + "\" } }");
+
+        assertTrue(published.contains("driver_location = \"/opt/seatunnel/driver-jars/postgres-hash.jar\""));
+        assertTrue(published.contains("driver_location = \"/opt/seatunnel/driver-jars/vastbase-hash.jar\""));
+        verify(restClient).uploadDriverJar(eq(CLIENT_ID), any(), eq("postgresql.jar"));
+        verify(restClient).uploadDriverJar(eq(CLIENT_ID), any(), eq("vastbase.jar"));
     }
 
     @Test
@@ -160,5 +189,27 @@ class EngineDriverJarPublisherTest {
                         "source { Jdbc { driver_location = " + first + ";" + second + " } }");
 
         assertTrue(published.contains("driver_location = /engine/a.jar;/engine/b.jar"));
+    }
+
+    @Test
+    void explainsWhenEngineDoesNotExposeDriverUploadEndpoint(@TempDir Path dir) throws Exception {
+        Path jar = dir.resolve("Vastbase.jar");
+        Files.write(jar, "jar-bytes".getBytes(StandardCharsets.UTF_8));
+        when(restClient.uploadDriverJar(eq(CLIENT_ID), any(), eq("Vastbase.jar")))
+                .thenThrow(
+                        new SeaTunnelClientException(
+                                "POST /driver-jar/upload failed", 404, "Not Found", null));
+
+        SeaTunnelClientException error =
+                assertThrows(
+                        SeaTunnelClientException.class,
+                        () ->
+                                publisher.publish(
+                                        CLIENT_ID,
+                                        "source { Jdbc { driver_location = \"" + jar + "\" } }"));
+
+        assertTrue(error.getMessage().contains("driver-isolation Engine build"));
+        assertTrue(error.getMessage().contains("SEATUNNEL_WEB_ENGINE_DRIVER_LOCATION_MAPPINGS"));
+        assertEquals(404, error.getHttpStatus());
     }
 }

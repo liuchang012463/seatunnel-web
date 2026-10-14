@@ -13,9 +13,13 @@ import org.apache.seatunnel.web.engine.client.transfrom.domain.FieldMapperTransf
 import org.apache.seatunnel.web.engine.client.transfrom.domain.Transform;
 import org.apache.seatunnel.web.engine.client.transfrom.domain.TransformOptions;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @AutoService(TransformConfigSwitcher.class)
@@ -42,6 +46,11 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
 
         String pluginInput = transformOptions.getEffectivePluginInput();
         String pluginOutput = transformOptions.getEffectivePluginOutput();
+
+        List<FieldMapping> mappings = effectiveMappings(transformOptions);
+        if (requiresSqlTransform(mappings)) {
+            return buildSqlTransform(pluginInput, pluginOutput, mappings);
+        }
 
         Map<String, Object> fieldMapper = buildFieldMapper(transformOptions);
 
@@ -115,6 +124,111 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
         }
 
         return fieldMapper;
+    }
+
+    /** One configured mapping row: a source field, its target field and an optional expression. */
+    private record FieldMapping(String sourceField, String targetField, String expression) {
+    }
+
+    private static List<FieldMapping> effectiveMappings(FieldMapperTransformOptions options) {
+        List<FieldMapping> mappings = new ArrayList<>();
+        List<FieldMapperMapping> configured = options.getEffectiveMappings();
+        if (CollectionUtils.isNotEmpty(configured)) {
+            for (FieldMapperMapping mapping : configured) {
+                if (Boolean.FALSE.equals(mapping.getEnabled())) {
+                    continue;
+                }
+                mappings.add(new FieldMapping(
+                        mapping.getSourceField(),
+                        mapping.getTargetField(),
+                        StringUtils.trimToNull(mapping.getExpression())));
+            }
+            return mappings;
+        }
+        if (CollectionUtils.isNotEmpty(options.getTransformColumns())) {
+            for (FieldMapperField field : options.getTransformColumns()) {
+                mappings.add(new FieldMapping(field.getFieldName(), field.getTargetFieldName(), null));
+            }
+        }
+        return mappings;
+    }
+
+    /**
+     * A FieldMapper renames one input field per output field, so the engine refuses a transform
+     * whose output repeats a column name. Several source fields feeding one target field, or a
+     * mapping with its own expression, therefore have to run as SQL.
+     */
+    private static boolean requiresSqlTransform(List<FieldMapping> mappings) {
+        Set<String> targets = new LinkedHashSet<>();
+        for (FieldMapping mapping : mappings) {
+            if (mapping.expression() != null) {
+                return true;
+            }
+            if (!targets.add(mapping.targetField())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Config buildSqlTransform(
+            String pluginInput, String pluginOutput, List<FieldMapping> mappings) {
+        Map<String, List<FieldMapping>> mappingsByTarget = new LinkedHashMap<>();
+        for (FieldMapping mapping : mappings) {
+            mappingsByTarget
+                    .computeIfAbsent(mapping.targetField(), ignored -> new ArrayList<>())
+                    .add(mapping);
+        }
+
+        List<String> selectItems = new ArrayList<>(mappingsByTarget.size());
+        for (Map.Entry<String, List<FieldMapping>> target : mappingsByTarget.entrySet()) {
+            selectItems.add(
+                    selectExpression(target.getValue()) + " AS " + quoteIdentifier(target.getKey()));
+        }
+
+        Map<String, Object> sqlConfig = new LinkedHashMap<>();
+        sqlConfig.put("plugin_input", pluginInput);
+        sqlConfig.put("plugin_output", pluginOutput);
+        sqlConfig.put("query",
+                "SELECT " + String.join(", ", selectItems) + " FROM " + quoteIdentifier(pluginInput));
+
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("Sql", sqlConfig);
+
+        log.info(
+                "Generating Sql transform config for a many-to-one mapping, plugin_input={}, "
+                        + "plugin_output={}, target_fields={}",
+                pluginInput,
+                pluginOutput,
+                mappingsByTarget.keySet()
+        );
+
+        return ConfigFactory.parseMap(root);
+    }
+
+    /**
+     * A single source keeps its value; several sources fall back in the configured order, which is
+     * the only reading of "many source fields, one target field" that invents no data.
+     */
+    private static String selectExpression(List<FieldMapping> mappingsForTarget) {
+        for (FieldMapping mapping : mappingsForTarget) {
+            if (mapping.expression() != null) {
+                return mapping.expression();
+            }
+        }
+        if (mappingsForTarget.size() == 1) {
+            return quoteIdentifier(mappingsForTarget.get(0).sourceField());
+        }
+        List<String> sources = new ArrayList<>(mappingsForTarget.size());
+        for (FieldMapping mapping : mappingsForTarget) {
+            sources.add(quoteIdentifier(mapping.sourceField()));
+        }
+        return "COALESCE(" + String.join(", ", sources) + ")";
+    }
+
+    /** The engine resolves identifiers between backticks, which also keeps mixed case intact. */
+    private static String quoteIdentifier(String identifier) {
+        return "`" + identifier.replace("`", "``") + "`";
     }
 
     private void validate(FieldMapperTransformOptions options) {

@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.metrics;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.seatunnel.web.api.metadata.OpenMetadataJobLineageService;
 import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 import org.apache.seatunnel.web.common.exception.JobSubmitException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -34,19 +35,22 @@ public class BatchJobSubmitter {
     private final JobMetricsMonitor batchMetricsMonitor;
     private final JobResultWatcher batchJobResultWatcher;
     private final JobResultHandler batchJobResultHandler;
+    private final OpenMetadataJobLineageService openMetadataJobLineageService;
 
     public BatchJobSubmitter(JobConfigFileService configFileService,
                              SeaTunnelRestClient restClient,
                              EngineDriverJarPublisher driverJarPublisher,
                              JobMetricsMonitor batchMetricsMonitor,
                              JobResultWatcher batchJobResultWatcher,
-                             JobResultHandler batchJobResultHandler) {
+                             JobResultHandler batchJobResultHandler,
+                             OpenMetadataJobLineageService openMetadataJobLineageService) {
         this.configFileService = configFileService;
         this.restClient = restClient;
         this.driverJarPublisher = driverJarPublisher;
         this.batchMetricsMonitor = batchMetricsMonitor;
         this.batchJobResultWatcher = batchJobResultWatcher;
         this.batchJobResultHandler = batchJobResultHandler;
+        this.openMetadataJobLineageService = openMetadataJobLineageService;
     }
 
     public void submit(JobInstanceVO instance) {
@@ -91,6 +95,15 @@ public class BatchJobSubmitter {
 
             engineId = extractJobId(resp);
             submitted = true;
+
+            // The Engine has accepted the instance and returned its job id. Record
+            // lineage from this submitted instance before any watcher setup can fail.
+            // The write is dispatched to the metadata executor and must never fail the submission.
+            try {
+                openMetadataJobLineageService.recordBatchSubmission(instance, engineId);
+            } catch (Exception lineageError) {
+                log.warn("Could not schedule OpenMetadata lineage for instanceId={}", instanceId, lineageError);
+            }
 
             log.info("Submit batch job response received, instanceId={}, resp={}", instanceId, resp);
             jobLogger.info("Submit batch job response received: " + resp);
