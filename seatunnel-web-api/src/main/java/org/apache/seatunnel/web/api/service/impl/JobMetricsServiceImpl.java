@@ -336,17 +336,17 @@ public class JobMetricsServiceImpl implements JobMetricsService {
             item.setSourceTable(pair.getSourceTable());
             item.setSinkTable(pair.getSinkTable());
 
-            item.setReadRowCount(getLongByKey(sourceCountMap, pair.getSourceTable()));
-            item.setWriteRowCount(getLongByKey(sinkCountMap, pair.getSinkTable()));
+            item.setReadRowCount(toLong(getMetricValueByTable(sourceCountMap, pair.getSourceTable())));
+            item.setWriteRowCount(toLong(getMetricValueByTable(sinkCountMap, pair.getSinkTable())));
 
-            item.setReadQps(toDecimal(sourceQpsMap.get(pair.getSourceTable())));
-            item.setWriteQps(toDecimal(sinkQpsMap.get(pair.getSinkTable())));
+            item.setReadQps(toDecimal(getMetricValueByTable(sourceQpsMap, pair.getSourceTable())));
+            item.setWriteQps(toDecimal(getMetricValueByTable(sinkQpsMap, pair.getSinkTable())));
 
-            item.setReadBytes(getLongByKey(sourceBytesMap, pair.getSourceTable()));
-            item.setWriteBytes(getLongByKey(sinkBytesMap, pair.getSinkTable()));
+            item.setReadBytes(toLong(getMetricValueByTable(sourceBytesMap, pair.getSourceTable())));
+            item.setWriteBytes(toLong(getMetricValueByTable(sinkBytesMap, pair.getSinkTable())));
 
-            item.setReadBps(toDecimal(sourceBpsMap.get(pair.getSourceTable())));
-            item.setWriteBps(toDecimal(sinkBpsMap.get(pair.getSinkTable())));
+            item.setReadBps(toDecimal(getMetricValueByTable(sourceBpsMap, pair.getSourceTable())));
+            item.setWriteBps(toDecimal(getMetricValueByTable(sinkBpsMap, pair.getSinkTable())));
 
             item.setStatus(resolveTableStatus(item));
 
@@ -356,6 +356,49 @@ public class JobMetricsServiceImpl implements JobMetricsService {
         }
 
         return list;
+    }
+
+    /**
+     * SeaTunnel prefixes per-table metric keys with the operator name and index, for example
+     * {@code Source[0].catalog.schema.table}. Match those keys to the table paths from jobDag.
+     * A suffix is only accepted when it identifies one metric entry, so same-named tables in
+     * different catalogs are not accidentally attributed to the wrong row.
+     */
+    private Object getMetricValueByTable(Map<String, Object> map, String tableName) {
+        if (map == null || map.isEmpty() || tableName == null || tableName.trim().isEmpty()) {
+            return null;
+        }
+
+        String normalizedTableName = tableName.trim();
+        if (map.containsKey(normalizedTableName)) {
+            return map.get(normalizedTableName);
+        }
+
+        String tableSuffix = normalizedTableName.toLowerCase(Locale.ROOT);
+        Object matchedValue = null;
+        boolean found = false;
+
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String metricKey = entry.getKey();
+            if (metricKey == null) {
+                continue;
+            }
+
+            String normalizedMetricKey = metricKey.trim().toLowerCase(Locale.ROOT);
+            if (!normalizedMetricKey.equals(tableSuffix)
+                    && !normalizedMetricKey.endsWith("." + tableSuffix)) {
+                continue;
+            }
+
+            if (found) {
+                return null;
+            }
+
+            matchedValue = entry.getValue();
+            found = true;
+        }
+
+        return found ? matchedValue : null;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

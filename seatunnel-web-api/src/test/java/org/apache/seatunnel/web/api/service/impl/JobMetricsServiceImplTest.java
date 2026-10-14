@@ -1,6 +1,9 @@
 package org.apache.seatunnel.web.api.service.impl;
 
+import org.apache.seatunnel.web.api.modal.ParsedJobMetrics;
 import org.apache.seatunnel.web.common.enums.TimeRange;
+import org.apache.seatunnel.web.dao.entity.JobMetrics;
+import org.apache.seatunnel.web.dao.entity.JobTableMetrics;
 import org.apache.seatunnel.web.dao.repository.JobMetricsDao;
 import org.apache.seatunnel.web.dao.repository.JobTableMetricsDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobMetricsDao;
@@ -35,6 +38,59 @@ class JobMetricsServiceImplTest {
     @Mock private StreamingJobMetricsDao streamingJobMetricsDao;
 
     @InjectMocks private JobMetricsServiceImpl service;
+
+    @Test
+    void parsesTableMetricsWithEngineOperatorPrefixes() {
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put("SourceReceivedCount", 10L);
+        metrics.put("SinkWriteCount", 10L);
+        metrics.put("SourceReceivedQPS", 0L);
+        metrics.put("SinkWriteQPS", 0L);
+        metrics.put("TableSourceReceivedCount", Map.of("Source[0].default.default.default", 10L));
+        metrics.put("TableSinkWriteCount", Map.of("Sink[0].test.public.target", 10L));
+        metrics.put("TableSourceReceivedQPS", Map.of("Source[0].default.default.default", 2.5));
+        metrics.put("TableSinkWriteQPS", Map.of("Sink[0].test.public.target", 2.5));
+
+        Map<String, Object> jobInfo = new HashMap<>();
+        jobInfo.put("metrics", metrics);
+        jobInfo.put("jobDag", Map.of("vertexInfoMap", List.of(
+                Map.of("type", "source", "tablePaths", List.of("default.default.default")),
+                Map.of("type", "sink", "tablePaths", List.of("test.public.target"))
+        )));
+        when(engineRestClient.jobInfo(7L, "engine-job-1")).thenReturn(jobInfo);
+
+        ParsedJobMetrics parsed = service.getJobMetricsFromEngine(7L, "engine-job-1");
+
+        JobTableMetrics table = parsed.getTableMetrics().get(0);
+        assertEquals(10L, table.getReadRowCount());
+        assertEquals(10L, table.getWriteRowCount());
+        assertEquals(0, new BigDecimal("2.5").compareTo(table.getReadQps()));
+        assertEquals(0, new BigDecimal("2.5").compareTo(table.getWriteQps()));
+
+        JobMetrics pipeline = parsed.getPipelineMetrics().get(0);
+        assertEquals(0, new BigDecimal("2.5").compareTo(pipeline.getReadQps()));
+        assertEquals(0, new BigDecimal("2.5").compareTo(pipeline.getWriteQps()));
+    }
+
+    @Test
+    void doesNotAttributeAmbiguousTableMetricSuffixes() {
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put("TableSourceReceivedCount", Map.of(
+                "Source[0].catalog_a.schema.same_table", 10L,
+                "Source[1].catalog_b.schema.same_table", 20L
+        ));
+
+        Map<String, Object> jobInfo = new HashMap<>();
+        jobInfo.put("metrics", metrics);
+        jobInfo.put("jobDag", Map.of("vertexInfoMap", List.of(
+                Map.of("type", "source", "tablePaths", List.of("schema.same_table"))
+        )));
+        when(engineRestClient.jobInfo(7L, "engine-job-2")).thenReturn(jobInfo);
+
+        ParsedJobMetrics parsed = service.getJobMetricsFromEngine(7L, "engine-job-2");
+
+        assertEquals(0L, parsed.getTableMetrics().get(0).getReadRowCount());
+    }
 
     @Test
     void summaryUsesJobStatusCountsInsteadOfMarkingEveryTaskSuccessful() {

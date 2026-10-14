@@ -252,11 +252,20 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
     intl.formatMessage({ id, defaultMessage });
 
   const instanceId = instanceItem?.id;
+  const isTerminal = ["FINISHED", "FAILED", "CANCELED"].includes(
+    String(instanceItem?.jobStatus || "").toUpperCase()
+  );
 
   const readQps = toNumber(instanceItem?.readQps);
   const writeQps = toNumber(instanceItem?.writeQps);
   const readRows = toNumber(instanceItem?.readRowCount);
   const writeRows = toNumber(instanceItem?.writeRowCount);
+  const readQpsTitle = isTerminal
+    ? t("pages.job.detail.metrics.averageReadQps", "平均读取 QPS")
+    : t("pages.job.detail.metrics.readQps", "读取 QPS");
+  const writeQpsTitle = isTerminal
+    ? t("pages.job.detail.metrics.averageWriteQps", "平均写入 QPS")
+    : t("pages.job.detail.metrics.writeQps", "写入 QPS");
 
   useEffect(() => {
     let cancelled = false;
@@ -391,7 +400,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         ),
       },
       {
-        title: "读取QPS",
+        title: readQpsTitle,
         dataIndex: "readQps",
         key: "readQps",
         width: 100,
@@ -401,7 +410,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         ),
       },
       {
-        title: "写入QPS",
+        title: writeQpsTitle,
         dataIndex: "writeQps",
         key: "writeQps",
         width: 100,
@@ -421,7 +430,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         },
       },
     ],
-    []
+    [readQpsTitle, writeQpsTitle]
   );
 
   return (
@@ -435,15 +444,20 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
           <SectionHeader
             icon={<Gauge size={16} strokeWidth={1.9} />}
             title={t("pages.job.detail.metrics.throughput", "吞吐速率")}
-            description={t(
-              "pages.job.detail.metrics.throughputDesc",
-              "当前实例的读取与写入处理速度"
-            )}
+            description={isTerminal
+              ? t(
+                  "pages.job.detail.metrics.completedThroughputDesc",
+                  "任务结束后按累计处理行数和运行时长计算的平均速度"
+                )
+              : t(
+                  "pages.job.detail.metrics.throughputDesc",
+                  "当前实例的读取与写入处理速度"
+                )}
           />
 
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             <MetricCard
-              title={t("pages.job.detail.metrics.readQps", "读取 QPS")}
+              title={readQpsTitle}
               value={readQps}
               unit={t("pages.job.detail.metrics.unit.rowsPerSecond", "行/秒")}
               hint={t("pages.job.detail.metrics.recentTrend", "最近趋势")}
@@ -453,7 +467,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
             />
 
             <MetricCard
-              title={t("pages.job.detail.metrics.writeQps", "写入 QPS")}
+              title={writeQpsTitle}
               value={writeQps}
               unit={t("pages.job.detail.metrics.unit.rowsPerSecond", "行/秒")}
               hint={t("pages.job.detail.metrics.recentTrend", "最近趋势")}

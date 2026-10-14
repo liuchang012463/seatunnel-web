@@ -10,6 +10,7 @@ import org.apache.seatunnel.web.api.websocket.WorkflowWebSocketService;
 import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.dao.entity.JobMetrics;
 import org.apache.seatunnel.web.dao.entity.JobTableMetrics;
+import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -169,6 +170,7 @@ public class JobMetricsMonitor {
             );
 
             if (parsed != null && !parsed.isEmpty()) {
+                applyAverageQpsFromRuntime(instanceId, parsed);
                 attachContext(instanceId, context, parsed);
 
                 JobFileLogger logger = getOrCreateLogger(instanceId);
@@ -201,6 +203,22 @@ public class JobMetricsMonitor {
             sendFinalEvent(instanceId, context.getEngineId(), "FAILED");
         } finally {
             cleanup(instanceId);
+        }
+    }
+
+    private void applyAverageQpsFromRuntime(Long instanceId, ParsedJobMetrics parsed) {
+        try {
+            JobInstanceVO instance = instanceService.selectById(instanceId);
+            if (instance == null || instance.getStartTime() == null || instance.getEndTime() == null) {
+                return;
+            }
+
+            long runtimeMillis = instance.getEndTime().getTime() - instance.getStartTime().getTime();
+            JobMetricsRateCalculator.applyAverageQps(parsed, runtimeMillis);
+        } catch (Exception e) {
+            // Keep the Engine snapshot if runtime timestamps are unavailable; metrics finalization
+            // must continue even when the optional average-QPS calculation cannot be performed.
+            log.debug("Could not calculate average QPS from job runtime, instanceId={}", instanceId, e);
         }
     }
 

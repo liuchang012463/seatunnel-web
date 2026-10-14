@@ -368,10 +368,14 @@ export default {
   "pages.job.history.status.pending": "等待中",
 
   "pages.job.detail.metrics.throughput": "吞吐量（QPS）",
+  "pages.job.detail.metrics.throughputDesc": "当前实例的读取与写入处理速度",
+  "pages.job.detail.metrics.completedThroughputDesc": "任务结束后按累计处理行数和运行时长计算的平均速度",
   "pages.job.detail.metrics.totalVolume": "总量统计",
 
   "pages.job.detail.metrics.readQps": "读取 QPS",
   "pages.job.detail.metrics.writeQps": "写入 QPS",
+  "pages.job.detail.metrics.averageReadQps": "平均读取 QPS",
+  "pages.job.detail.metrics.averageWriteQps": "平均写入 QPS",
   "pages.job.detail.metrics.readRows": "读取行数",
   "pages.job.detail.metrics.writeRows": "写入行数",
 

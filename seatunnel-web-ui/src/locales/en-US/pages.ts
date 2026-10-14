@@ -367,10 +367,14 @@ export default {
   "pages.job.history.status.pending": "Pending",
 
   "pages.job.detail.metrics.throughput": "Throughput (QPS)",
+  "pages.job.detail.metrics.throughputDesc": "Current read and write processing speed",
+  "pages.job.detail.metrics.completedThroughputDesc": "Average speed calculated from total rows and runtime after the task finishes",
   "pages.job.detail.metrics.totalVolume": "Total Volume",
 
   "pages.job.detail.metrics.readQps": "Read QPS",
   "pages.job.detail.metrics.writeQps": "Write QPS",
+  "pages.job.detail.metrics.averageReadQps": "Average Read QPS",
+  "pages.job.detail.metrics.averageWriteQps": "Average Write QPS",
   "pages.job.detail.metrics.readRows": "Read Rows",
   "pages.job.detail.metrics.writeRows": "Write Rows",
 

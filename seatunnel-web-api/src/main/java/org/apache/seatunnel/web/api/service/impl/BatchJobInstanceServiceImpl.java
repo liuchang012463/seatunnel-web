@@ -5,10 +5,12 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.log.JobLogService;
+import org.apache.seatunnel.web.api.metrics.JobMetricsRateCalculator;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.support.JobInstanceFactory;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.common.enums.JobMode;
+import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.common.enums.RunMode;
 import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.common.utils.ConvertUtil;
@@ -110,6 +112,7 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
                             record.getDefinitionMode(),
                             record.getJobType(),
                             record.getSourceType()));
+                    applyTerminalAverageQps(record);
                     maskSensitiveFields(record);
                 });
             }
@@ -147,6 +150,7 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
                 throw new ServiceException(Status.BATCH_JOB_INSTANCE_NOT_EXIST);
             }
 
+            applyTerminalAverageQps(vo);
             vo.setTableMetrics(listTableMetrics(id));
 
             vo.setTaskType(TaskTypeResolver.resolve(
@@ -225,11 +229,80 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
         validateInstanceId(instanceId);
 
         try {
-            return jobTableMetricsDao.selectByInstanceId(instanceId);
+            List<JobTableMetricsVO> tableMetrics = jobTableMetricsDao.selectByInstanceId(instanceId);
+            if (tableMetrics == null || tableMetrics.isEmpty() || tableMetrics.size() != 1) {
+                return tableMetrics == null ? List.of() : tableMetrics;
+            }
+
+            JobInstanceVO instance = jobInstanceDao.selectDetailById(instanceId);
+            if (!isTerminalInstance(instance)) {
+                return tableMetrics;
+            }
+
+            JobTableMetricsVO table = tableMetrics.get(0);
+            if (isZero(table.getReadRowCount()) && hasRows(instance.getReadRowCount())) {
+                table.setReadRowCount(instance.getReadRowCount());
+            }
+            if (isZero(table.getWriteRowCount()) && hasRows(instance.getWriteRowCount())) {
+                table.setWriteRowCount(instance.getWriteRowCount());
+            }
+
+            long runtimeMillis = runtimeMillis(instance);
+            if (runtimeMillis > 0) {
+                table.setReadQps(JobMetricsRateCalculator.calculateAverageQps(
+                        table.getReadRowCount(), runtimeMillis));
+                table.setWriteQps(JobMetricsRateCalculator.calculateAverageQps(
+                        table.getWriteRowCount(), runtimeMillis));
+            }
+
+            return tableMetrics;
         } catch (Exception e) {
             log.error("Query table metrics failed, instanceId={}", instanceId, e);
             throw new ServiceException(Status.QUERY_BATCH_JOB_INSTANCE_ERROR);
         }
+    }
+
+    private void applyTerminalAverageQps(JobInstanceVO instance) {
+        if (!isTerminalInstance(instance)) {
+            return;
+        }
+
+        long runtimeMillis = runtimeMillis(instance);
+        if (runtimeMillis <= 0) {
+            return;
+        }
+
+        instance.setReadQps(JobMetricsRateCalculator.calculateAverageQps(
+                instance.getReadRowCount(), runtimeMillis));
+        instance.setWriteQps(JobMetricsRateCalculator.calculateAverageQps(
+                instance.getWriteRowCount(), runtimeMillis));
+    }
+
+    private boolean isTerminalInstance(JobInstanceVO instance) {
+        if (instance == null || instance.getJobStatus() == null) {
+            return false;
+        }
+
+        try {
+            return JobStatus.fromString(instance.getJobStatus()).isEndState();
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private long runtimeMillis(JobInstanceVO instance) {
+        if (instance == null || instance.getStartTime() == null || instance.getEndTime() == null) {
+            return 0L;
+        }
+        return instance.getEndTime().getTime() - instance.getStartTime().getTime();
+    }
+
+    private boolean isZero(Long value) {
+        return value == null || value == 0L;
+    }
+
+    private boolean hasRows(Long value) {
+        return value != null && value > 0L;
     }
 
     @Override
