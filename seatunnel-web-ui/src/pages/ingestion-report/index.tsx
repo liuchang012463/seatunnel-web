@@ -1,346 +1,374 @@
-import { DownloadOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import {
-  Button,
-  Card,
-  Col,
-  DatePicker,
-  Row,
-  Select,
-  Space,
-  Statistic,
-  Table,
-  Tag,
-  message,
-} from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import type { Dayjs } from 'dayjs';
-import dayjs from 'dayjs';
-import React, { useMemo, useState } from 'react';
-import {
-  DATA_SOURCES,
-  REPORT_ROWS,
-  SYSTEMS,
-  TASK_TYPE_LABEL,
-  UNITS,
-} from './mock';
-import type { IngestionReportRow, IngestionTaskType, ReportFilters } from './types';
-import {
-  buildDailyTrend,
-  buildSummary,
-  buildTaskTypeBreakdown,
-  downloadCsv,
-  filterRows,
-  formatBytes,
-  formatCount,
-  formatPercent,
-  rowsToCsv,
-} from './utils';
+import { Alert, Button, Card, Col, Empty, Row, Select, Space, Spin, Statistic } from 'antd';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { fetchChartData, fetchSummaryData } from '@/pages/metrics/api';
+import LineChart from '@/pages/metrics/LineChart';
+import type { ChartData, SummaryData, TaskType, TimeRange } from '@/pages/metrics/types';
+import { calculateSuccessRate, taskTypeOptions, transformChartData } from '@/pages/metrics/utils';
 import './index.less';
 
-const { RangePicker } = DatePicker;
+const timeRangeOptions: { label: string; value: TimeRange }[] = [
+  { label: '最近 24 小时', value: 'H24' },
+  { label: '最近 7 天', value: 'D7' },
+  { label: '最近 30 天', value: 'D30' },
+];
 
-const defaultRange: [Dayjs, Dayjs] = [dayjs().subtract(6, 'day'), dayjs()];
-
-const taskTypeOptions = (Object.keys(TASK_TYPE_LABEL) as IngestionTaskType[]).map((value) => ({
-  value,
-  label: TASK_TYPE_LABEL[value],
-}));
-
-const taskTypeColor: Record<IngestionTaskType, string> = {
-  BATCH: 'blue',
-  STREAM: 'green',
-  FILE: 'orange',
+type MetricCard = {
+  title: string;
+  value: number | string;
+  suffix?: string;
+  note: string;
+  tone: 'blue' | 'cyan' | 'green' | 'orange';
 };
 
-const IngestionReportPage: React.FC = () => {
-  const [unitId, setUnitId] = useState<string>();
-  const [systemId, setSystemId] = useState<string>();
-  const [dataSourceId, setDataSourceId] = useState<string>();
-  const [taskType, setTaskType] = useState<IngestionTaskType>();
-  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>(defaultRange);
-  const [applied, setApplied] = useState<ReportFilters>({
-    dateRange: [defaultRange[0].format('YYYY-MM-DD'), defaultRange[1].format('YYYY-MM-DD')],
-  });
+const IngestionDashboardPage: React.FC = () => {
+  const [taskType, setTaskType] = useState<TaskType>('BATCH');
+  const [timeRange, setTimeRange] = useState<TimeRange>('D30');
+  const [summaryData, setSummaryData] = useState<SummaryData>();
+  const [chartData, setChartData] = useState<ChartData>();
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>();
+  const [updatedAt, setUpdatedAt] = useState<string>();
+  const [loadedQueryKey, setLoadedQueryKey] = useState<string>();
+  const requestGeneration = useRef(0);
 
-  const systemOptions = useMemo(
-    () => SYSTEMS.map((item) => ({ value: item.id, label: item.name })),
-    [],
-  );
+  const refreshData = useCallback(async () => {
+    const generation = requestGeneration.current + 1;
+    requestGeneration.current = generation;
+    setLoading(true);
+    setErrorMessage(undefined);
 
-  const dataSourceOptions = useMemo(() => {
-    const list = systemId
-      ? DATA_SOURCES.filter((item) => item.systemId === systemId)
-      : DATA_SOURCES;
-    return list.map((item) => ({ value: item.id, label: item.name }));
-  }, [systemId]);
+    try {
+      const [summary, apiData] = await Promise.all([
+        fetchSummaryData(timeRange, taskType),
+        fetchChartData(timeRange, taskType),
+      ]);
+      const nextCharts: ChartData = {
+        recordsTrend: transformChartData(apiData.recordsTrend as any, timeRange),
+        bytesTrend: transformChartData(apiData.bytesTrend as any, timeRange),
+        recordsSpeedTrend: transformChartData(apiData.recordsSpeedTrend as any, timeRange),
+        bytesSpeedTrend: transformChartData(apiData.bytesSpeedTrend as any, timeRange),
+      };
 
-  const filteredRows = useMemo(() => filterRows(REPORT_ROWS, applied), [applied]);
-  const summary = useMemo(() => buildSummary(filteredRows), [filteredRows]);
-  const dailyTrend = useMemo(() => buildDailyTrend(filteredRows), [filteredRows]);
-  const breakdown = useMemo(() => buildTaskTypeBreakdown(filteredRows), [filteredRows]);
-  const maxDailyRecords = useMemo(
-    () => Math.max(1, ...dailyTrend.map((item) => item.recordCount)),
-    [dailyTrend],
-  );
-  const maxBreakdownBytes = useMemo(
-    () => Math.max(1, ...breakdown.map((item) => item.byteCount)),
-    [breakdown],
-  );
+      if (requestGeneration.current !== generation) {
+        return;
+      }
 
-  const applyFilters = () => {
-    if (!dateRange?.[0] || !dateRange?.[1]) {
-      message.warning('请选择日期范围');
-      return;
+      setSummaryData(summary);
+      setChartData(nextCharts);
+      setUpdatedAt(new Date().toLocaleTimeString('zh-CN', { hour12: false }));
+      setLoadedQueryKey(`${timeRange}:${taskType}`);
+    } catch (error) {
+      if (requestGeneration.current === generation) {
+        setErrorMessage(error instanceof Error ? error.message : '获取任务概览数据失败，请重试');
+      }
+    } finally {
+      if (requestGeneration.current === generation) {
+        setLoading(false);
+      }
     }
-    setApplied({
-      unitId,
-      systemId,
-      dataSourceId,
-      taskType,
-      dateRange: [dateRange[0].format('YYYY-MM-DD'), dateRange[1].format('YYYY-MM-DD')],
-    });
-  };
+  }, [taskType, timeRange]);
 
-  const resetFilters = () => {
-    setUnitId(undefined);
-    setSystemId(undefined);
-    setDataSourceId(undefined);
-    setTaskType(undefined);
-    setDateRange(defaultRange);
-    setApplied({
-      dateRange: [defaultRange[0].format('YYYY-MM-DD'), defaultRange[1].format('YYYY-MM-DD')],
-    });
-  };
+  useEffect(() => {
+    refreshData();
+    return () => {
+      requestGeneration.current += 1;
+    };
+  }, [refreshData]);
 
-  const handleExport = () => {
-    if (filteredRows.length === 0) {
-      message.warning('当前筛选条件下没有可导出的数据');
-      return;
+  const isStreaming = taskType === 'STREAM';
+  const isFileTransfer = taskType === 'FILE_TRANSFER';
+  const hasData = Boolean(
+    summaryData && chartData && loadedQueryKey === `${timeRange}:${taskType}`,
+  );
+  const completedTasks = summaryData
+    ? summaryData.successTasks + summaryData.failedTasks + summaryData.stoppedTasks
+    : 0;
+  const successRate = summaryData
+    ? calculateSuccessRate(summaryData.successTasks, completedTasks)
+    : null;
+
+  const metricCards = useMemo<MetricCard[]>(() => {
+    if (!summaryData) {
+      return [];
     }
-    const [start, end] = applied.dateRange;
-    const filename = `数据引接报告_${start.replace(/-/g, '')}-${end.replace(/-/g, '')}.csv`;
-    downloadCsv(filename, rowsToCsv(filteredRows));
-    message.success(`已导出 ${filteredRows.length} 条明细`);
-  };
 
-  const columns: ColumnsType<IngestionReportRow> = [
-    { title: '日期', dataIndex: 'date', width: 100 },
-    { title: '单位', dataIndex: 'unitName', width: 100 },
-    { title: '系统', dataIndex: 'systemName', width: 160 },
-    { title: '数据源', dataIndex: 'dataSourceName', width: 160 },
-    {
-      title: '引接任务类型',
-      dataIndex: 'taskType',
-      width: 110,
-      render: (value: IngestionTaskType) => (
-        <Tag color={taskTypeColor[value]}>{TASK_TYPE_LABEL[value]}</Tag>
-      ),
-    },
-    { title: '任务数', dataIndex: 'taskCount', width: 72, align: 'right' },
-    {
-      title: '引接记录数',
-      dataIndex: 'recordCount',
-      width: 100,
-      align: 'right',
-      render: (value: number) => formatCount(value),
-    },
-    {
-      title: '引接数据量',
-      dataIndex: 'byteCount',
-      width: 100,
-      align: 'right',
-      render: (value: number) => formatBytes(value),
-    },
-    {
-      title: '成功率',
-      width: 80,
-      align: 'right',
-      render: (_, row) =>
-        formatPercent(row.taskCount === 0 ? 0 : row.successCount / row.taskCount),
-    },
-  ];
+    if (isStreaming) {
+      return [
+        {
+          title: '写入记录量',
+          value: summaryData.totalRecords || 0,
+          suffix: summaryData.totalRecordsUnit || '条',
+          note: '统计范围内新增写入',
+          tone: 'blue',
+        },
+        {
+          title: '写入数据量',
+          value: summaryData.totalBytes || 0,
+          suffix: summaryData.totalBytesUnit || 'B',
+          note: '统计范围内新增写入',
+          tone: 'cyan',
+        },
+        {
+          title: '运行中任务',
+          value: summaryData.runningTasks || 0,
+          suffix: '个',
+          note: `采集到 ${summaryData.totalTasks || 0} 个任务实例指标`,
+          tone: 'green',
+        },
+        {
+          title: '平均记录延迟',
+          value: summaryData.totalTasks ? summaryData.avgRecordDelay || 0 : '—',
+          suffix: summaryData.totalTasks ? 'ms' : undefined,
+          note: '来自实时任务执行指标',
+          tone: 'orange',
+        },
+      ];
+    }
+
+    if (isFileTransfer) {
+      return [
+        {
+          title: '传输数据量',
+          value: summaryData.totalBytes || 0,
+          suffix: summaryData.totalBytesUnit || 'B',
+          note: '统计范围内完成传输',
+          tone: 'cyan',
+        },
+        {
+          title: '执行任务数',
+          value: summaryData.totalTasks || 0,
+          suffix: '个',
+          note: '有指标记录或仍在运行的实例',
+          tone: 'blue',
+        },
+        {
+          title: '完成任务数',
+          value: summaryData.successTasks || 0,
+          suffix: '个',
+          note: '引擎状态为已完成',
+          tone: 'green',
+        },
+        {
+          title: '失败任务数',
+          value: summaryData.failedTasks || 0,
+          suffix: '个',
+          note: '统计范围内的失败实例',
+          tone: 'orange',
+        },
+      ];
+    }
+
+    return [
+      {
+        title: taskType === 'FILE_INGEST' ? '导入记录量' : '处理记录量',
+        value: summaryData.totalRecords || 0,
+        suffix: summaryData.totalRecordsUnit || '条',
+        note: '统计范围内处理记录',
+        tone: 'blue',
+      },
+      {
+        title: taskType === 'FILE_INGEST' ? '导入数据量' : '处理数据量',
+        value: summaryData.totalBytes || 0,
+        suffix: summaryData.totalBytesUnit || 'B',
+        note: '统计范围内处理数据',
+        tone: 'cyan',
+      },
+      {
+        title: '执行任务数',
+        value: summaryData.totalTasks || 0,
+        suffix: '个',
+        note: '统计范围内的任务执行实例',
+        tone: 'green',
+      },
+      {
+        title: '已结束任务成功率',
+        value: successRate === null ? '—' : successRate,
+        suffix: successRate === null ? undefined : '%',
+        note: completedTasks > 0 ? `已结束 ${completedTasks} 个任务实例` : '当前没有已结束任务',
+        tone: 'orange',
+      },
+    ];
+  }, [completedTasks, isFileTransfer, isStreaming, successRate, summaryData, taskType]);
+
+  const statusItems = summaryData
+    ? [
+        { key: 'success', label: '成功', count: summaryData.successTasks || 0 },
+        { key: 'failed', label: '失败', count: summaryData.failedTasks || 0 },
+        { key: 'running', label: '运行中', count: summaryData.runningTasks || 0 },
+        { key: 'stopped', label: '停止 / 保存点结束', count: summaryData.stoppedTasks || 0 },
+      ]
+    : [];
+  const statusTotal = statusItems.reduce((total, item) => total + item.count, 0);
+
+  const recordsTitle = isStreaming
+    ? '写入记录趋势'
+    : taskType === 'FILE_INGEST'
+      ? '导入记录趋势'
+      : '处理记录趋势';
+  const bytesTitle = isFileTransfer ? '文件传输趋势' : '数据量趋势';
 
   return (
-    <PageContainer className="ingestion-report-page" title={false}>
-      <div className="ingestion-report-body">
-        <Card className="ingestion-report-filters" size="small">
-          <Space wrap size={[8, 8]} className="ingestion-report-filters-row">
-            <Select
-              allowClear
-              placeholder="单位"
-              style={{ width: 140 }}
-              value={unitId}
-              options={UNITS.map((item) => ({ value: item.id, label: item.name }))}
-              onChange={(value) => {
-                setUnitId(value);
-                setSystemId(undefined);
-                setDataSourceId(undefined);
-              }}
-            />
-            <Select
-              allowClear
-              placeholder="系统"
-              style={{ width: 200 }}
-              value={systemId}
-              options={systemOptions}
-              onChange={(value) => {
-                setSystemId(value);
-                setDataSourceId(undefined);
-              }}
-            />
-            <Select
-              allowClear
-              placeholder="数据源"
-              style={{ width: 180 }}
-              value={dataSourceId}
-              options={dataSourceOptions}
-              onChange={setDataSourceId}
-            />
-            <RangePicker
-              value={dateRange}
-              allowClear={false}
-              onChange={(value) => {
-                if (value?.[0] && value?.[1]) {
-                  setDateRange([value[0], value[1]]);
-                }
-              }}
-            />
-            <Select
-              allowClear
-              placeholder="引接任务类型"
-              style={{ width: 140 }}
+    <PageContainer className="ingestion-dashboard-page" title={false}>
+      <div className="ingestion-dashboard-page__body">
+        <header className="ingestion-dashboard-page__header">
+          <div>
+            <h1>引接大屏</h1>
+            <p>查看任务执行、数据处理规模和近期变化</p>
+          </div>
+          <Space className="ingestion-dashboard-page__controls" size={10} wrap>
+            <Select<TaskType>
+              aria-label="任务类型"
               value={taskType}
               options={taskTypeOptions}
               onChange={setTaskType}
+              style={{ width: 156 }}
             />
-            <Button type="primary" icon={<SearchOutlined />} onClick={applyFilters}>
-              查询
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={resetFilters}>
-              重置
+            <Select<TimeRange>
+              aria-label="统计周期"
+              value={timeRange}
+              options={timeRangeOptions}
+              onChange={setTimeRange}
+              style={{ width: 144 }}
+            />
+            <Button icon={<ReloadOutlined />} loading={loading} onClick={refreshData}>
+              刷新数据
             </Button>
           </Space>
-        </Card>
+        </header>
 
-        <Row gutter={[8, 8]} className="ingestion-report-kpi">
-          <Col xs={12} sm={8} lg={4}>
-            <Card size="small">
-              <Statistic title="引接数据量" value={formatBytes(summary.totalBytes)} />
-            </Card>
-          </Col>
-          <Col xs={12} sm={8} lg={4}>
-            <Card size="small">
-              <Statistic title="引接记录数" value={formatCount(summary.totalRecords)} />
-            </Card>
-          </Col>
-          <Col xs={12} sm={8} lg={4}>
-            <Card size="small">
-              <Statistic title="引接任务数" value={summary.totalTasks} />
-            </Card>
-          </Col>
-          <Col xs={12} sm={8} lg={4}>
-            <Card size="small" className="ingestion-report-kpi-success">
-              <Statistic title="任务成功率" value={formatPercent(summary.successRate)} />
-            </Card>
-          </Col>
-          <Col xs={12} sm={8} lg={4}>
-            <Card size="small">
-              <Statistic title="活跃数据源" value={summary.activeDataSources} suffix="个" />
-            </Card>
-          </Col>
-          <Col xs={12} sm={8} lg={4}>
-            <Card size="small">
-              <Statistic title="覆盖单位" value={summary.coveredUnits} suffix="个" />
-            </Card>
-          </Col>
-        </Row>
+        {!hasData && loading && (
+          <div className="ingestion-dashboard-page__loading">
+            <Spin size="large" />
+            <span>正在加载引接任务数据</span>
+          </div>
+        )}
 
-        <Row gutter={[8, 8]} className="ingestion-report-charts">
-          <Col xs={24} lg={14}>
-            <Card title="按日引接记录数趋势" size="small">
-              {dailyTrend.length === 0 ? (
-                <div className="ingestion-report-empty">暂无数据</div>
-              ) : (
-                <div className="ingestion-report-trend">
-                  {dailyTrend.map((item) => (
-                    <div key={item.date} className="ingestion-report-trend-row">
-                      <span className="ingestion-report-trend-date">{item.date.slice(5)}</span>
-                      <div className="ingestion-report-trend-track">
-                        <div
-                          className="ingestion-report-trend-fill"
-                          style={{ width: `${(item.recordCount / maxDailyRecords) * 100}%` }}
-                        />
-                      </div>
-                      <span className="ingestion-report-trend-value">
-                        {formatCount(item.recordCount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </Col>
-          <Col xs={24} lg={10}>
-            <Card title="按任务类型构成（数据量）" size="small">
-              {breakdown.length === 0 ? (
-                <div className="ingestion-report-empty">暂无数据</div>
-              ) : (
-                <div className="ingestion-report-breakdown">
-                  {breakdown.map((item) => (
-                    <div key={item.taskType} className="ingestion-report-breakdown-item">
-                      <div className="ingestion-report-breakdown-head">
-                        <span>
-                          <Tag color={taskTypeColor[item.taskType]}>{item.label}</Tag>
-                          {formatBytes(item.byteCount)}
-                        </span>
-                        <span className="ingestion-report-breakdown-meta">
-                          任务 {item.taskCount} · 成功率 {formatPercent(item.successRate)}
-                        </span>
-                      </div>
-                      <div className="ingestion-report-breakdown-track">
-                        <div
-                          className={`ingestion-report-breakdown-fill ingestion-report-breakdown-fill--${item.taskType}`}
-                          style={{ width: `${(item.byteCount / maxBreakdownBytes) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </Col>
-        </Row>
-
-        <Card
-          className="ingestion-report-table-card"
-          title="引接明细"
-          size="small"
-          extra={
-            <Space size={12}>
-              <span className="ingestion-report-table-extra">共 {filteredRows.length} 条</span>
-              <Button type="primary" icon={<DownloadOutlined />} onClick={handleExport}>
-                导出 CSV
+        {!hasData && !loading && (
+          <Alert
+            type="error"
+            showIcon
+            message="任务概览数据暂不可用"
+            description={errorMessage || '请检查服务连接后重试'}
+            action={
+              <Button size="small" onClick={refreshData}>
+                重试
               </Button>
-            </Space>
-          }
-        >
-          <Table
-            rowKey="id"
-            size="small"
-            columns={columns}
-            dataSource={filteredRows}
-            pagination={{
-              pageSize: 5,
-              size: 'small',
-              showTotal: (total) => `共 ${total} 条`,
-            }}
-            scroll={{ x: 980, y: 200 }}
+            }
           />
-        </Card>
+        )}
+
+        {hasData && errorMessage && (
+          <Alert
+            className="ingestion-dashboard-page__error"
+            type="warning"
+            showIcon
+            message="本次刷新失败，当前展示的是上次成功获取的数据"
+            description={errorMessage}
+          />
+        )}
+
+        {hasData && (
+          <>
+            <Row gutter={[12, 12]} className="ingestion-dashboard-page__metrics">
+              {metricCards.map((item) => (
+                <Col key={item.title} xs={24} sm={12} xl={6}>
+                  <Card
+                    className={`ingestion-dashboard-metric ingestion-dashboard-metric--${item.tone}`}
+                  >
+                    <Statistic title={item.title} value={item.value} suffix={item.suffix} />
+                    <div className="ingestion-dashboard-metric__note">{item.note}</div>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+
+            <Card
+              className="ingestion-dashboard-page__status"
+              title="任务状态"
+              extra={
+                <span className="ingestion-dashboard-page__updated">
+                  {updatedAt ? `最近更新 ${updatedAt}` : '等待更新'}
+                </span>
+              }
+            >
+              <div className="ingestion-dashboard-status-grid">
+                {statusItems.map((item) => {
+                  const percent = statusTotal === 0 ? 0 : (item.count / statusTotal) * 100;
+                  return (
+                    <div
+                      className={`ingestion-dashboard-status ingestion-dashboard-status--${item.key}`}
+                      key={item.key}
+                    >
+                      <div className="ingestion-dashboard-status__label">
+                        <span>{item.label}</span>
+                        <strong>{item.count.toLocaleString()}</strong>
+                      </div>
+                      <div
+                        className="ingestion-dashboard-status__track"
+                        role="progressbar"
+                        aria-label={`${item.label}任务占比`}
+                        aria-valuenow={Math.round(percent)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      >
+                        <div
+                          className="ingestion-dashboard-status__fill"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            <Row gutter={[12, 12]} className="ingestion-dashboard-page__charts">
+              {!isFileTransfer && (
+                <Col xs={24} xl={12}>
+                  <Card className="ingestion-dashboard-chart-card" title={recordsTitle}>
+                    {chartData!.recordsTrend.data.length > 0 ? (
+                      <LineChart
+                        data={chartData!.recordsTrend.data as number[]}
+                        xAxisData={chartData!.recordsTrend.xAxis}
+                        title={recordsTitle}
+                        unit={summaryData!.totalRecordsUnit || '条'}
+                        loading={loading}
+                      />
+                    ) : (
+                      <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description="统计范围内暂无记录数据"
+                      />
+                    )}
+                  </Card>
+                </Col>
+              )}
+              <Col xs={24} xl={isFileTransfer ? 24 : 12}>
+                <Card className="ingestion-dashboard-chart-card" title={bytesTitle}>
+                  {chartData!.bytesTrend.data.length > 0 ? (
+                    <LineChart
+                      data={chartData!.bytesTrend.data as number[]}
+                      xAxisData={chartData!.bytesTrend.xAxis}
+                      title={bytesTitle}
+                      unit={summaryData!.totalBytesUnit || 'B'}
+                      loading={loading}
+                    />
+                  ) : (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description="统计范围内暂无数据量变化"
+                    />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          </>
+        )}
       </div>
     </PageContainer>
   );
 };
 
-export default IngestionReportPage;
+export default IngestionDashboardPage;

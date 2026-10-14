@@ -1,4 +1,4 @@
-.ingestion-report-page {
+.ingestion-dashboard-page {
   height: 100%;
 
   > .ant-pro-page-container-children-container,
@@ -13,232 +13,228 @@
   }
 
   .ant-pro-page-container-children-container {
-    padding-block: 8px !important;
-    padding-inline: 16px !important;
+    padding: 10px 18px 16px !important;
   }
 
-  .ingestion-report-body {
+  &__body {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    height: calc(100vh - 64px);
-    min-height: 0;
-    overflow: hidden;
+    gap: 12px;
+    min-height: calc(100vh - 94px);
   }
 
-  .ingestion-report-filters {
+  &__header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 2px 0 4px;
+
+    h1 {
+      margin: 0;
+      color: var(--st-color-text-primary);
+      font-size: 25px;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+
+    p {
+      margin: 6px 0 0;
+      color: var(--st-color-text-secondary);
+      font-size: 13px;
+    }
+  }
+
+  &__controls {
+    justify-content: flex-end;
+  }
+
+  &__error {
     flex: none;
-
-    .ant-card-body {
-      padding: 8px 12px !important;
-    }
-
-    .ingestion-report-filters-row {
-      width: 100%;
-      flex-wrap: nowrap !important;
-    }
   }
 
-  .ingestion-report-kpi {
+  &__loading {
+    display: flex;
+    min-height: calc(100vh - 100px);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--st-color-text-secondary);
+  }
+
+  &__metrics {
     flex: none;
 
     .ant-col {
       display: flex;
     }
-
-    .ant-card {
-      width: 100%;
-    }
-
-    .ant-card-body {
-      padding: 8px 12px !important;
-    }
-
-    .ant-statistic-title {
-      color: var(--st-color-text-secondary);
-      font-size: 12px;
-      margin-bottom: 2px;
-    }
-
-    .ant-statistic-content {
-      font-size: 20px;
-      line-height: 1.2;
-    }
-
-    .ant-statistic-content,
-    .ant-statistic-content-value,
-    .ant-statistic-content-suffix {
-      color: var(--st-color-text-primary);
-    }
-
-    .ingestion-report-kpi-success .ant-statistic-content,
-    .ingestion-report-kpi-success .ant-statistic-content-value {
-      color: var(--st-color-accent);
-    }
   }
 
-  .ingestion-report-charts {
+  &__status {
     flex: none;
 
     .ant-card-head {
-      min-height: 36px;
-      padding: 0 12px;
+      min-height: 42px;
+      padding: 0 16px;
     }
 
     .ant-card-head-title {
-      padding: 8px 0;
-      font-size: 13px;
+      padding: 10px 0;
+      font-size: 14px;
     }
 
     .ant-card-body {
-      padding: 8px 12px !important;
+      padding: 16px;
     }
   }
 
-  .ingestion-report-empty {
+  &__updated {
     color: var(--st-color-text-muted);
-    padding: 12px;
-  }
-
-  .ingestion-report-trend {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-height: 132px;
-    overflow: auto;
-  }
-
-  .ingestion-report-trend-row {
-    display: grid;
-    grid-template-columns: 48px 1fr 72px;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .ingestion-report-trend-date {
-    color: var(--st-color-text-secondary);
     font-size: 12px;
   }
 
-  .ingestion-report-trend-track {
-    height: 8px;
-    border-radius: 999px;
-    background: var(--st-color-bg-control);
-    overflow: hidden;
-  }
+  &__charts {
+    flex: none;
 
-  .ingestion-report-trend-fill {
+    .ant-col {
+      display: flex;
+    }
+  }
+}
+
+.ingestion-dashboard-metric {
+  width: 100%;
+  min-height: 136px;
+  border-top: 3px solid var(--st-color-primary);
+
+  .ant-card-body {
+    display: flex;
     height: 100%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--st-color-primary), var(--st-color-accent));
-  }
-
-  .ingestion-report-trend-value {
-    text-align: right;
-    font-size: 12px;
-    color: var(--st-color-text-primary);
-  }
-
-  .ingestion-report-breakdown {
-    display: flex;
     flex-direction: column;
-    gap: 8px;
-    max-height: 132px;
-  }
-
-  .ingestion-report-breakdown-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .ingestion-report-breakdown-head {
-    display: flex;
     justify-content: space-between;
-    gap: 8px;
-    font-size: 12px;
+    gap: 12px;
+    padding: 16px 18px;
+  }
+
+  .ant-statistic-title {
+    margin-bottom: 8px;
+    color: var(--st-color-text-secondary);
+    font-size: 13px;
+  }
+
+  .ant-statistic-content {
     color: var(--st-color-text-primary);
+    font-size: clamp(24px, 2vw, 32px);
+    line-height: 1.15;
   }
 
-  .ingestion-report-breakdown-meta {
+  .ant-statistic-content-suffix {
+    margin-inline-start: 5px;
+    color: var(--st-color-text-secondary);
+    font-size: 13px;
+  }
+
+  &__note {
     color: var(--st-color-text-muted);
     font-size: 12px;
   }
 
-  .ingestion-report-breakdown-track {
-    height: 8px;
-    border-radius: 999px;
-    background: var(--st-color-bg-control);
-    overflow: hidden;
+  &--cyan {
+    border-top-color: #23a9c8;
   }
 
-  .ingestion-report-breakdown-fill {
-    height: 100%;
-    border-radius: 999px;
+  &--green {
+    border-top-color: #29a575;
   }
 
-  .ingestion-report-breakdown-fill--BATCH {
-    background: #3b82f6;
+  &--orange {
+    border-top-color: #d59338;
   }
+}
 
-  .ingestion-report-breakdown-fill--STREAM {
-    background: #34d399;
-  }
+.ingestion-dashboard-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+}
 
-  .ingestion-report-breakdown-fill--FILE {
-    background: #fbbf24;
-  }
+.ingestion-dashboard-status {
+  min-width: 0;
 
-  .ingestion-report-table-card {
-    flex: 1;
-    min-height: 0;
+  &__label {
     display: flex;
-    flex-direction: column;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 9px;
+    color: var(--st-color-text-secondary);
+    font-size: 13px;
 
-    .ant-card-head {
-      min-height: 36px;
-      padding: 0 12px;
-      flex: none;
-    }
-
-    .ant-card-head-title {
-      padding: 8px 0;
-      font-size: 13px;
-    }
-
-    .ant-card-body {
-      flex: 1;
-      min-height: 0;
-      padding: 0 12px 8px !important;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .ant-table-wrapper {
-      flex: 1;
-      min-height: 0;
-    }
-
-    .ant-spin-nested-loading,
-    .ant-spin-container,
-    .ant-table,
-    .ant-table-container {
-      height: 100%;
-    }
-
-    .ant-table-container {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .ant-table-body {
-      flex: 1;
-      overflow: auto !important;
+    strong {
+      color: var(--st-color-text-primary);
+      font-size: 20px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
     }
   }
 
-  .ingestion-report-table-extra {
-    color: var(--st-color-text-muted);
+  &__track {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--st-color-bg-control);
+  }
+
+  &__fill {
+    height: 100%;
+    border-radius: inherit;
+    background: #3d91d4;
+    transition: width 180ms ease-out;
+  }
+
+  &--success .ingestion-dashboard-status__fill {
+    background: #29a575;
+  }
+
+  &--failed .ingestion-dashboard-status__fill {
+    background: #d96058;
+  }
+
+  &--stopped .ingestion-dashboard-status__fill {
+    background: #89929d;
+  }
+}
+
+.ingestion-dashboard-chart-card {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+
+  .ant-card-head {
+    min-height: 44px;
+    padding: 0 16px;
+  }
+
+  .ant-card-head-title {
+    padding: 11px 0;
+    color: var(--st-color-text-primary);
+    font-size: 14px;
+  }
+
+  .ant-card-body {
+    display: flex;
+    min-height: 350px;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px 12px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .ingestion-dashboard-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 18px;
   }
 }
