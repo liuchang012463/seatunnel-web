@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 
 // 与后端 JobStatusHelper.runningLikeStatuses 保持一致的非终态任务状态。
 const NON_TERMINAL_STATUS_SET = new Set([
+  'STARTING',
   'INITIALIZING',
   'CREATED',
   'PENDING',
@@ -13,7 +14,7 @@ const NON_TERMINAL_STATUS_SET = new Set([
 ]);
 
 /** 自动轮询间隔：存在非终态任务时按此间隔刷新列表。 */
-export const TASK_LIST_AUTO_REFRESH_INTERVAL = 8000;
+export const TASK_LIST_AUTO_REFRESH_INTERVAL = 5000;
 
 /**
  * 列表请求超时：页面级 withTimeout 与请求本身使用同一个值，
@@ -27,11 +28,11 @@ export const hasNonTerminalTask = (taskList: any[]) =>
   );
 
 /**
- * 任务列表存在运行中（非终态）任务时，每隔 8 秒调用一次 refresh；
+ * 任务列表存在运行中（非终态）任务时，每隔 5 秒调用一次 refresh；
  * 全部为终态后自动停止，卸载时清理定时器。
  *
  * refresh 收到 silent=true 表示这是一次自动轮询：调用方不要切换 loading，
- * 否则表格每 8 秒被遮罩一次；上一轮还没结束时跳过本轮，避免请求叠加。
+ * 否则表格每 5 秒被遮罩一次；上一轮还没结束时跳过本轮，避免请求叠加。
  */
 const useTaskListAutoRefresh = (
   taskList: any[],
@@ -53,9 +54,11 @@ const useTaskListAutoRefresh = (
       if (inFlightRef.current) return;
 
       inFlightRef.current = true;
-      Promise.resolve(refreshRef.current(true)).finally(() => {
-        inFlightRef.current = false;
-      });
+      Promise.resolve(refreshRef.current(true))
+        .catch(() => undefined)
+        .finally(() => {
+          inFlightRef.current = false;
+        });
     }, TASK_LIST_AUTO_REFRESH_INTERVAL);
 
     return () => window.clearInterval(timer);

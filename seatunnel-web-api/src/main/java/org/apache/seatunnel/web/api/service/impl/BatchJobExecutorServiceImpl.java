@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
 import org.apache.seatunnel.web.api.metrics.BatchJobSubmitter;
+import org.apache.seatunnel.web.api.metrics.JobResultHandler;
 import org.apache.seatunnel.web.api.service.BatchJobDefinitionService;
 import org.apache.seatunnel.web.api.service.BatchJobExecutorService;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
@@ -22,11 +23,14 @@ import org.apache.seatunnel.web.spi.bean.vo.BatchJobOperateResultVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +48,9 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
     private final IncrementalBatchService incrementalBatchService;
     private final JobScheduleService jobScheduleService;
     private final LakeJobGuard lakeJobGuard;
+    private final JobResultHandler jobResultHandler;
+    private final TaskExecutor batchJobSubmitExecutor;
+    private final Set<Long> submittingDefinitionIds = ConcurrentHashMap.newKeySet();
 
     @Autowired
     public BatchJobExecutorServiceImpl(BatchJobInstanceService instanceService,
@@ -51,13 +58,17 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                                        BatchJobSubmitter jobSubmitter,
                                        IncrementalBatchService incrementalBatchService,
                                        JobScheduleService jobScheduleService,
-                                       LakeJobGuard lakeJobGuard) {
+                                       LakeJobGuard lakeJobGuard,
+                                       JobResultHandler jobResultHandler,
+                                       @Qualifier("batchJobSubmitExecutor") TaskExecutor batchJobSubmitExecutor) {
         this.instanceService = instanceService;
         this.definitionService = definitionService;
         this.jobSubmitter = jobSubmitter;
         this.incrementalBatchService = incrementalBatchService;
         this.jobScheduleService = jobScheduleService;
         this.lakeJobGuard = lakeJobGuard;
+        this.jobResultHandler = jobResultHandler;
+        this.batchJobSubmitExecutor = batchJobSubmitExecutor;
     }
 
     public BatchJobExecutorServiceImpl(BatchJobInstanceService instanceService,
@@ -66,58 +77,101 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                                        IncrementalBatchService incrementalBatchService,
                                        JobScheduleService jobScheduleService) {
         this(instanceService, definitionService, jobSubmitter, incrementalBatchService,
-                jobScheduleService, null);
+                jobScheduleService, null, null, Runnable::run);
+    }
+
+    public BatchJobExecutorServiceImpl(BatchJobInstanceService instanceService,
+                                       BatchJobDefinitionService definitionService,
+                                       BatchJobSubmitter jobSubmitter,
+                                       IncrementalBatchService incrementalBatchService,
+                                       JobScheduleService jobScheduleService,
+                                       LakeJobGuard lakeJobGuard) {
+        this(instanceService, definitionService, jobSubmitter, incrementalBatchService,
+                jobScheduleService, lakeJobGuard, null, Runnable::run);
     }
 
     @Override
     public Long jobExecute(Long jobDefineId, RunMode runMode) {
         validateJobDefinitionId(jobDefineId);
         validateRunMode(runMode);
-        validateJobDefinitionOnline(jobDefineId);
-        if (lakeJobGuard != null) {
-            lakeJobGuard.validateBeforeExecute(jobDefineId, LakeJobRuntimeType.BATCH);
-        }
 
-        IncrementalBatchExecution incrementalExecution = incrementalBatchService.prepare(jobDefineId);
-        if (incrementalExecution != null && incrementalExecution.isSkipped()) {
-            log.info("Incremental job execution skipped: jobDefineId={}", jobDefineId);
-            return null;
+        if (!submittingDefinitionIds.add(jobDefineId)) {
+            throw new ServiceException(
+                    Status.JOB_DEFINITION_EXECUTE_ERROR,
+                    "任务已在提交队列中，请勿重复启动。任务ID：" + jobDefineId
+            );
         }
-
-        JobInstanceVO instance;
-        try {
-            instance = instanceService.create(jobDefineId, runMode,
-                    incrementalExecution == null ? null : incrementalExecution.getRuntimeParams());
-            if (incrementalExecution != null) {
-                incrementalBatchService.bindInstance(incrementalExecution.getBatchId(), instance.getId());
-            }
-        } catch (Exception e) {
-            if (incrementalExecution != null) {
-                incrementalBatchService.markBatchFailure(incrementalExecution.getBatchId(), e);
-            }
-            throw e;
-        }
-
-        log.info("Job execute requested: jobDefineId={}, runMode={}, instanceId={}",
-                jobDefineId, runMode, instance.getId());
 
         try {
+            if (instanceService.existsRunningInstance(jobDefineId)) {
+                throw new ServiceException(
+                        Status.JOB_DEFINITION_EXECUTE_ERROR,
+                        "任务已有运行中或提交结果待确认的实例。任务ID：" + jobDefineId
+                );
+            }
+
+            validateJobDefinitionOnline(jobDefineId);
             if (lakeJobGuard != null) {
-                lakeJobGuard.validateBeforeSubmit(instance, LakeJobRuntimeType.BATCH);
+                lakeJobGuard.validateBeforeExecute(jobDefineId, LakeJobRuntimeType.BATCH);
             }
-            jobSubmitter.submit(instance);
-        } catch (Exception e) {
-            if (incrementalExecution != null) {
-                incrementalBatchService.markSubmitFailure(instance.getId(), e);
+
+            IncrementalBatchExecution incrementalExecution = incrementalBatchService.prepare(jobDefineId);
+            if (incrementalExecution != null && incrementalExecution.isSkipped()) {
+                log.info("Incremental job execution skipped: jobDefineId={}", jobDefineId);
+                submittingDefinitionIds.remove(jobDefineId);
+                return null;
             }
+
+            JobInstanceVO instance;
+            try {
+                instance = instanceService.create(jobDefineId, runMode,
+                        incrementalExecution == null ? null : incrementalExecution.getRuntimeParams());
+                if (incrementalExecution != null) {
+                    incrementalBatchService.bindInstance(incrementalExecution.getBatchId(), instance.getId());
+                }
+            } catch (Exception e) {
+                if (incrementalExecution != null) {
+                    incrementalBatchService.markBatchFailure(incrementalExecution.getBatchId(), e);
+                }
+                throw e;
+            }
+
+            log.info("Job execute requested: jobDefineId={}, runMode={}, instanceId={}",
+                    jobDefineId, runMode, instance.getId());
+
+            try {
+                if (lakeJobGuard != null) {
+                    lakeJobGuard.validateBeforeSubmit(instance, LakeJobRuntimeType.BATCH);
+                }
+            } catch (Exception e) {
+                failInstance(instance, e);
+                if (incrementalExecution != null) {
+                    incrementalBatchService.markSubmitFailure(instance.getId(), e);
+                }
+                throw e;
+            }
+
+            try {
+                batchJobSubmitExecutor.execute(() -> submitBatchJob(instance, incrementalExecution));
+            } catch (RuntimeException e) {
+                log.error("Queue batch job submission failed: jobDefineId={}, instanceId={}",
+                        jobDefineId, instance.getId(), e);
+                failInstance(instance, e);
+                if (incrementalExecution != null) {
+                    incrementalBatchService.markSubmitFailure(instance.getId(), e);
+                }
+                throw e;
+            }
+
+            if (runMode == RunMode.MANUAL) {
+                updateManualLastScheduleTime(jobDefineId);
+            }
+
+            return instance.getId();
+        } catch (RuntimeException e) {
+            submittingDefinitionIds.remove(jobDefineId);
             throw e;
         }
-
-        if (runMode == RunMode.MANUAL) {
-            updateManualLastScheduleTime(jobDefineId);
-        }
-
-        return instance.getId();
     }
 
     /**
@@ -214,7 +268,7 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         for (Long jobDefinitionId : distinctIds) {
             try {
                 Long jobInstanceId = jobExecute(jobDefinitionId, runMode);
-                result.addSuccess(jobDefinitionId, jobInstanceId, "Job started successfully.");
+                result.addSuccess(jobDefinitionId, jobInstanceId, "Job submission queued.");
 
                 log.info("Batch execute success: jobDefinitionId={}, jobInstanceId={}",
                         jobDefinitionId, jobInstanceId);
@@ -225,6 +279,51 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         }
 
         return result;
+    }
+
+    private void submitBatchJob(JobInstanceVO instance,
+                                IncrementalBatchExecution incrementalExecution) {
+        try {
+            jobSubmitter.submit(instance);
+        } catch (Exception e) {
+            log.error("Asynchronous batch job submission failed: instanceId={}", instance.getId(), e);
+            try {
+                JobInstanceVO latest = instanceService.selectById(instance.getId());
+                if (latest != null && JobStatus.STARTING.name().equalsIgnoreCase(latest.getJobStatus())) {
+                    failInstance(instance, e);
+                }
+            } catch (Exception stateCheckError) {
+                log.warn("Could not inspect batch instance after async submit failure, instanceId={}",
+                        instance.getId(), stateCheckError);
+            }
+
+            if (incrementalExecution != null) {
+                try {
+                    incrementalBatchService.markSubmitFailure(instance.getId(), e);
+                } catch (Exception incrementalError) {
+                    log.error("Mark incremental batch submission failure failed, instanceId={}",
+                            instance.getId(), incrementalError);
+                }
+            }
+        } finally {
+            if (instance.getJobDefinitionId() != null) {
+                submittingDefinitionIds.remove(instance.getJobDefinitionId());
+            }
+        }
+    }
+
+    private void failInstance(JobInstanceVO instance, Throwable error) {
+        if (jobResultHandler != null) {
+            jobResultHandler.handleFailure(instance.getId(), error);
+            return;
+        }
+
+        JobInstance update = new JobInstance();
+        update.setId(instance.getId());
+        update.setJobStatus(JobStatus.FAILED);
+        update.setEndTime(new Date());
+        update.setErrorMessage(error == null ? "Batch job submission failed" : error.getMessage());
+        instanceService.updateById(update);
     }
 
     /**

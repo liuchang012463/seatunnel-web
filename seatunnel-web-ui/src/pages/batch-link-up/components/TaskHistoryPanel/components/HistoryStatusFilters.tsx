@@ -39,6 +39,22 @@ const HistoryStatusFilters: React.FC<HistoryStatusFiltersProps> = ({
         count: statusCountMap.RUNNING || 0,
       },
       {
+        key: "STARTING",
+        label: "Starting",
+        dotClassName: "bg-sky-500",
+        activeClassName: "border-sky-400 bg-sky-50 text-sky-600",
+        hoverClassName: "hover:border-sky-200 hover:bg-sky-50/70",
+        count: statusCountMap.STARTING || 0,
+      },
+      {
+        key: "SUBMISSION_UNKNOWN",
+        label: "Submission needs review",
+        dotClassName: "bg-amber-500",
+        activeClassName: "border-amber-400 bg-amber-50 text-amber-700",
+        hoverClassName: "hover:border-amber-200 hover:bg-amber-50/70",
+        count: statusCountMap.SUBMISSION_UNKNOWN || 0,
+      },
+      {
         key: "FAILED",
         label: intl.formatMessage({
           id: "pages.job.history.status.failed",

@@ -77,6 +77,28 @@ public class JobResultHandler {
     }
 
     /**
+     * Record an ambiguous submit result without claiming that Engine rejected the job.
+     * Retrying such an instance automatically could create a duplicate Engine job.
+     */
+    public void handleSubmissionUnknown(Long jobInstanceId, String message) {
+        if (jobInstanceId == null || jobInstanceId <= 0) {
+            log.warn("Skip recording unknown submission because instanceId is invalid, instanceId={}",
+                    jobInstanceId);
+            return;
+        }
+
+        updateStatus(jobInstanceId, JobStatus.SUBMISSION_UNKNOWN, message);
+
+        try {
+            incrementalBatchService.handleJobResult(
+                    jobInstanceId, JobStatus.SUBMISSION_UNKNOWN, message);
+        } catch (Exception e) {
+            log.error("Update incremental batch after unknown submission failed, instanceId={}",
+                    jobInstanceId, e);
+        }
+    }
+
+    /**
      * Handle job failure based on engine job result.
      *
      * @param jobInstanceId job instance id
@@ -215,6 +237,11 @@ public class JobResultHandler {
         JobInstance po = new JobInstance();
         po.setId(instanceId);
         po.setEngineJobId(engineId);
+        po.setJobStatus(JobStatus.INITIALIZING);
+        Date now = new Date();
+        po.setSubmitTime(now);
+        po.setStartTime(now);
+        po.setUpdateTime(now);
 
         instanceService.updateById(po);
 
@@ -227,7 +254,9 @@ public class JobResultHandler {
         JobInstance po = new JobInstance();
         po.setId(jobInstanceId);
         po.setJobStatus(status);
-        po.setEndTime(new Date());
+        Date now = new Date();
+        po.setEndTime(now);
+        po.setUpdateTime(now);
 
         /*
          * FINISHED is normal success, do not write error_message.

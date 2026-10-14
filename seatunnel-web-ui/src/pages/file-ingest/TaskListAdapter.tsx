@@ -114,9 +114,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
   }, [fetchTaskList]);
 
   // 存在运行中任务时自动刷新当前页，全部终态后停止。
-  useTaskListAutoRefresh(taskList, (silent) => {
-    void fetchTaskList(silent);
-  });
+  useTaskListAutoRefresh(taskList, (silent) => fetchTaskList(silent));
 
   const handleSearch = (values: any) => {
     setSearchParams(values);

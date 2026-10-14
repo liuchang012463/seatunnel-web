@@ -44,6 +44,22 @@ const isReleaseOnline = (releaseState?: string | number) => {
   return releaseState === "ONLINE" || releaseState === 1;
 };
 
+const ENGINE_ACTIVE_STATUS_SET = new Set([
+  "INITIALIZING",
+  "CREATED",
+  "PENDING",
+  "SCHEDULED",
+  "RUNNING",
+  "FAILING",
+  "DOING_SAVEPOINT",
+  "CANCELING",
+]);
+const EXECUTION_BLOCKING_STATUS_SET = new Set([
+  ...ENGINE_ACTIVE_STATUS_SET,
+  "STARTING",
+  "SUBMISSION_UNKNOWN",
+]);
+
 const ActionColumn: React.FC<ActionColumnProps> = ({
   record,
   cbk,
@@ -58,16 +74,28 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
   const [runLoading, setRunLoading] = useState(false);
 
   const isOnline = isReleaseOnline(record?.releaseState);
-  const isRunning = record?.lastJobStatus === "RUNNING";
   const [logOpen, setLogOpen] = useState(false);
-  const canRun = isOnline && !isRunning;
+  const jobStatus = String(record?.lastJobStatus || "").toUpperCase();
+  const isEngineActive = ENGINE_ACTIVE_STATUS_SET.has(jobStatus);
+  const isBusy = EXECUTION_BLOCKING_STATUS_SET.has(jobStatus);
+  const isStarting = jobStatus === "STARTING";
+  const isSubmissionUnknown = jobStatus === "SUBMISSION_UNKNOWN";
+  const canRun = isOnline && !isBusy;
+
+  const getBusyMessage = () => {
+    if (isStarting) return "任务正在启动中，请稍后再操作";
+    if (isSubmissionUnknown) return "提交结果待确认，请核对 Engine 作业后再操作";
+    return "任务正在运行中，请先终止任务后再操作";
+  };
+  const getRunBlockedMessage = () =>
+    isOnline ? getBusyMessage() : "请先上线任务，再执行启动操作";
 
   /**
    * 上线后不能编辑和删除。
    * 运行中一般也不允许编辑和删除。
    */
-  const canEdit = !isOnline && !isRunning;
-  const canDelete = !isOnline && !isRunning;
+  const canEdit = !isOnline && !isBusy;
+  const canDelete = !isOnline && !isBusy;
 
   const stopPropagation = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
@@ -110,8 +138,8 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
   };
 
   const handleOffline = async () => {
-    if (isRunning) {
-      message.warning("任务正在运行中，请先终止任务后再下线");
+    if (isBusy) {
+      message.warning(getBusyMessage());
       return;
     }
 
@@ -149,8 +177,8 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
         return;
       }
 
-      if (isRunning) {
-        message.warning("任务正在运行中，请先终止后再删除");
+      if (isBusy) {
+        message.warning(getBusyMessage());
         return;
       }
     }
@@ -211,8 +239,8 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
         return;
       }
 
-      if (isRunning) {
-        message.warning("任务正在运行中，请先终止后再编辑");
+      if (isBusy) {
+        message.warning(getBusyMessage());
         return;
       }
     }
@@ -275,7 +303,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       icon: <EditOutlined />,
       label: (
         <span style={{ fontWeight: 500 }}>
-          编辑配置{canEdit ? "" : `（请先${isRunning ? "终止任务" : "下线任务"}）`}
+          编辑配置{canEdit ? "" : `（${isBusy ? getBusyMessage() : "请先下线任务"}）`}
         </span>
       ),
       disabled: !canEdit,
@@ -295,7 +323,9 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       label: (
         <span style={{ fontWeight: 500 }}>
           删除任务
-          {!canDelete ? `（请先${isRunning ? "终止并" : ""}下线任务）` : ""}
+          {!canDelete
+            ? `（${isBusy ? getBusyMessage() : "请先下线任务"}）`
+            : ""}
         </span>
       ),
       danger: true,
@@ -303,7 +333,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
     },
   ];
 
-  const primaryAction = isRunning ? (
+  const primaryAction = isEngineActive ? (
     <Popconfirm
       title={intl.formatMessage({
         id: "pages.job.action.stop.title",
@@ -331,6 +361,16 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
         终止
       </button>
     </Popconfirm>
+  ) : isBusy ? (
+    <button
+      type="button"
+      disabled
+      className={disabledActionClass}
+      aria-label={`${isStarting ? "任务启动中" : "提交结果待确认"} ${record?.jobName || ""}`}
+      title={getBusyMessage()}
+    >
+      {isStarting ? "启动中" : isSubmissionUnknown ? "待确认" : "运行中"}
+    </button>
   ) : (
     <Popconfirm
       title={intl.formatMessage({
@@ -340,7 +380,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       open={canRun ? runOpen : false}
       onOpenChange={(open) => {
         if (!canRun) {
-          message.warning("请先上线任务，再执行启动操作");
+          message.warning(getRunBlockedMessage());
           return;
         }
 
@@ -361,7 +401,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       cancelText={noText}
       onConfirm={async () => {
         if (!canRun) {
-          message.warning("请先上线任务，再执行启动操作");
+          message.warning(getRunBlockedMessage());
           return;
         }
 
@@ -371,12 +411,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
           const data = await seatunnelJobExecuteApi.execute(record?.id);
 
           if (data?.code === 0) {
-            message.success(
-              intl.formatMessage({
-                id: "pages.common.success",
-                defaultMessage: "Success",
-              })
-            );
+            message.success("任务已进入启动队列");
             cbk();
             setRunOpen(false);
           } else {
@@ -396,7 +431,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
           event.stopPropagation();
 
           if (!canRun) {
-            message.warning("请先上线任务，再执行启动操作");
+            message.warning(getRunBlockedMessage());
           }
         }}
       >
@@ -422,6 +457,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
     >
       <button
         type="button"
+        disabled={isBusy}
         className={secondaryActionClass}
         aria-label={`下线任务 ${record?.jobName || ""}`}
         onClick={stopPropagation}

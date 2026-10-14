@@ -11,6 +11,8 @@ interface TaskStatusProps {
 const statusConfig: Record<string, { tone: StatusChipTone; label: string }> = {
   FINISHED: { tone: "success", label: "已完成" },
   SUCCESS: { tone: "success", label: "已完成" },
+  STARTING: { tone: "processing", label: "启动中" },
+  SUBMISSION_UNKNOWN: { tone: "warning", label: "提交结果待确认" },
   RUNNING: { tone: "processing", label: "运行中" },
   FAILED: { tone: "error", label: "失败" },
   FAILING: { tone: "error", label: "失败中" },
@@ -73,8 +75,10 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
 
   const content = <StatusChip tone={config.tone} label={config.label} />;
 
-  if (String(status || "").toUpperCase() === "FAILED" && errorMessage) {
+  const normalizedStatus = String(status || "").toUpperCase();
+  if (["FAILED", "SUBMISSION_UNKNOWN"].includes(normalizedStatus) && errorMessage) {
     const lines = errorMessage.split("\n");
+    const errorTitle = normalizedStatus === "SUBMISSION_UNKNOWN" ? "提交结果待确认" : "失败原因";
 
     return (
       <Popover
@@ -93,7 +97,7 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
         content={
           <div className="sync-task-error-popover">
             <div className="sync-task-error-popover__header">
-              <span>失败原因</span>
+              <span>{errorTitle}</span>
 
               <button
                 type="button"

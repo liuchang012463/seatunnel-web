@@ -39,7 +39,7 @@ const DEFAULT_TIME_RANGE: moment.Moment[] = [];
 const DEFAULT_SORT_FIELD: TaskSortField = "createTime";
 const DEFAULT_SORT_ORDER: TaskSortOrder = "desc";
 
-const RUNNING_STATUS_SET = new Set([
+const ENGINE_ACTIVE_STATUS_SET = new Set([
   "INITIALIZING",
   "CREATED",
   "PENDING",
@@ -48,6 +48,11 @@ const RUNNING_STATUS_SET = new Set([
   "FAILING",
   "DOING_SAVEPOINT",
   "CANCELING",
+]);
+const EXECUTION_BLOCKING_STATUS_SET = new Set([
+  ...ENGINE_ACTIVE_STATUS_SET,
+  "STARTING",
+  "SUBMISSION_UNKNOWN",
 ]);
 
 const parseSearchParamsFromUrl = () => {
@@ -251,9 +256,7 @@ const App: React.FC<Props> = ({
   }, [searchParams, pagination.current, pagination.pageSize, sort]);
 
   // 存在运行中任务时自动刷新当前页，全部终态后停止。
-  useTaskListAutoRefresh(taskList, (silent) => {
-    void fetchTaskList(silent);
-  });
+  useTaskListAutoRefresh(taskList, (silent) => fetchTaskList(silent));
 
   const baseColumns = [
     {
@@ -423,11 +426,14 @@ const App: React.FC<Props> = ({
     return String(record?.releaseState || "").toUpperCase() === "ONLINE";
   };
 
-  const isRunning = (record: any) => {
-    return RUNNING_STATUS_SET.has(
+  const isBusy = (record: any) => {
+    return EXECUTION_BLOCKING_STATUS_SET.has(
       String(record?.lastJobStatus || "").toUpperCase()
     );
   };
+
+  const isStoppable = (record: any) =>
+    ENGINE_ACTIVE_STATUS_SET.has(String(record?.lastJobStatus || "").toUpperCase());
 
   const buildJobLabel = (record: any) => {
     return `${record?.jobName || "-"}(${record?.id || "-"})`;
@@ -461,16 +467,17 @@ const App: React.FC<Props> = ({
 
     const offlineRows = selectedRows.filter((item) => !isOnline(item));
     const onlineRows = selectedRows.filter(isOnline);
-    const runningRows = selectedRows.filter(isRunning);
-    const notRunningRows = selectedRows.filter((item) => !isRunning(item));
+    const busyRows = selectedRows.filter(isBusy);
+    const stoppableRows = selectedRows.filter(isStoppable);
+    const notStoppableRows = selectedRows.filter((item) => !isStoppable(item));
     const onlineOrRunningRows = selectedRows.filter(
-      (item) => isOnline(item) || isRunning(item),
+      (item) => isOnline(item) || isBusy(item),
     );
 
-    const startDisabled = offlineRows.length > 0 || runningRows.length > 0;
-    const stopDisabled = notRunningRows.length > 0;
+    const startDisabled = offlineRows.length > 0 || busyRows.length > 0;
+    const stopDisabled = stoppableRows.length === 0 || notStoppableRows.length > 0;
     const onlineDisabled = offlineRows.length === 0;
-    const offlineDisabled = onlineRows.length === 0 || runningRows.length > 0;
+    const offlineDisabled = onlineRows.length === 0 || busyRows.length > 0;
     const deleteDisabled = onlineOrRunningRows.length > 0;
 
     let startTooltip: string | undefined;
@@ -483,15 +490,15 @@ const App: React.FC<Props> = ({
       startTooltip = `存在未上线任务，请先上线后再启动：${buildLimitedJobLabels(
         offlineRows
       )}`;
-    } else if (runningRows.length > 0) {
-      startTooltip = `存在运行中的任务，请只选择未运行任务进行启动：${buildLimitedJobLabels(
-        runningRows
+    } else if (busyRows.length > 0) {
+      startTooltip = `存在启动中、运行中或提交结果待确认的任务，请稍后再启动：${buildLimitedJobLabels(
+        busyRows
       )}`;
     }
 
-    if (notRunningRows.length > 0) {
-      stopTooltip = `存在未运行任务，请只选择运行中的任务进行终止：${buildLimitedJobLabels(
-        notRunningRows
+    if (notStoppableRows.length > 0) {
+      stopTooltip = `所选任务中包含尚未提交完成或未运行的任务，不能批量终止：${buildLimitedJobLabels(
+        notStoppableRows
       )}`;
     }
 
@@ -499,9 +506,9 @@ const App: React.FC<Props> = ({
       onlineTooltip = "所选任务已经全部上线";
     }
 
-    if (runningRows.length > 0) {
-      offlineTooltip = `存在运行中的任务，请先终止后再下线：${buildLimitedJobLabels(
-        runningRows
+    if (busyRows.length > 0) {
+      offlineTooltip = `存在启动中、运行中或提交结果待确认的任务，请处理后再下线：${buildLimitedJobLabels(
+        busyRows
       )}`;
     } else if (!offlineDisabled) {
       offlineTooltip = undefined;
@@ -511,13 +518,13 @@ const App: React.FC<Props> = ({
 
     if (onlineOrRunningRows.length > 0) {
       const onlineRows = onlineOrRunningRows.filter((item) => isOnline(item));
-      const runningRows = onlineOrRunningRows.filter((item) => isRunning(item));
+      const runningRows = onlineOrRunningRows.filter((item) => isBusy(item));
       const reasons = [
         onlineRows.length > 0
           ? `已上线任务：${buildLimitedJobLabels(onlineRows)}`
           : "",
         runningRows.length > 0
-          ? `运行中任务：${buildLimitedJobLabels(runningRows)}`
+          ? `启动中或运行中任务：${buildLimitedJobLabels(runningRows)}`
           : "",
       ].filter(Boolean);
       deleteTooltip = `请先下线并终止不可删除任务：${reasons.join("；")}`;
@@ -557,11 +564,11 @@ const App: React.FC<Props> = ({
       return false;
     }
 
-    const runningRows = selectedRows.filter(isRunning);
-    if (runningRows.length > 0) {
+    const busyRows = selectedRows.filter(isBusy);
+    if (busyRows.length > 0) {
       message.warning(
-        `存在运行中的任务，请只选择未运行任务进行批量启动：${buildLimitedJobLabels(
-          runningRows
+        `存在启动中、运行中或提交结果待确认的任务，请稍后再启动：${buildLimitedJobLabels(
+          busyRows
         )}`
       );
       return false;
@@ -578,11 +585,11 @@ const App: React.FC<Props> = ({
       return false;
     }
 
-    const notRunningRows = selectedRows.filter((item) => !isRunning(item));
-    if (notRunningRows.length > 0) {
+    const notStoppableRows = selectedRows.filter((item) => !isStoppable(item));
+    if (notStoppableRows.length > 0) {
       message.warning(
-        `存在未运行的任务，请只选择运行中的任务进行批量终止：${buildLimitedJobLabels(
-          notRunningRows
+        `所选任务中包含尚未提交完成或未运行的任务，不能批量终止：${buildLimitedJobLabels(
+          notStoppableRows
         )}`
       );
       return false;
@@ -614,7 +621,7 @@ const App: React.FC<Props> = ({
         const result = data?.data;
 
         message.success(
-          `批量启动完成：成功 ${result?.successCount || 0} 个，失败 ${
+          `批量提交已接收：成功 ${result?.successCount || 0} 个进入启动队列，失败 ${
             result?.failedCount || 0
           } 个`
         );
@@ -685,10 +692,10 @@ const App: React.FC<Props> = ({
 
   const onOfflineAll = async () => {
     const selectedRows = getSelectedRows();
-    const runningRows = selectedRows.filter(isRunning);
-    if (runningRows.length > 0) {
+    const busyRows = selectedRows.filter(isBusy);
+    if (busyRows.length > 0) {
       message.warning(
-        `存在运行中的任务，请先终止后再下线：${buildLimitedJobLabels(runningRows)}`
+        `存在启动中、运行中或提交结果待确认的任务，请处理后再下线：${buildLimitedJobLabels(busyRows)}`
       );
       return;
     }
@@ -725,7 +732,7 @@ const App: React.FC<Props> = ({
     }
 
     const blockedRows = selectedRows.filter(
-      (record) => isOnline(record) || isRunning(record),
+      (record) => isOnline(record) || isBusy(record),
     );
     if (blockedRows.length > 0) {
       message.warning(batchActionState.deleteTooltip || "所选任务当前不可删除");

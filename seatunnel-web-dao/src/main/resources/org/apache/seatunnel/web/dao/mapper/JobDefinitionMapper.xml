@@ -135,15 +135,8 @@
         ON i.id = (
         SELECT t1.id
         FROM t_seatunnel_web_job_instance t1
-        INNER JOIN (
-        SELECT job_definition_id, MAX(start_time) AS max_start_time
-        FROM t_seatunnel_web_job_instance
-        GROUP BY job_definition_id
-        ) t2
-        ON t1.job_definition_id = t2.job_definition_id
-        AND t1.start_time = t2.max_start_time
         WHERE t1.job_definition_id = d.id
-        ORDER BY t1.id DESC
+        ORDER BY t1.create_time DESC, t1.id DESC
         LIMIT 1
         )
 
@@ -194,15 +187,8 @@
         ON i.id = (
         SELECT t1.id
         FROM t_seatunnel_web_job_instance t1
-        INNER JOIN (
-        SELECT job_definition_id, MAX(start_time) AS max_start_time
-        FROM t_seatunnel_web_job_instance
-        GROUP BY job_definition_id
-        ) t2
-        ON t1.job_definition_id = t2.job_definition_id
-        AND t1.start_time = t2.max_start_time
         WHERE t1.job_definition_id = d.id
-        ORDER BY t1.id DESC
+        ORDER BY t1.create_time DESC, t1.id DESC
         LIMIT 1
         )
 

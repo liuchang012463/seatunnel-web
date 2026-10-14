@@ -12,6 +12,23 @@ public final class JobStatusHelper {
 
     public static List<JobStatus> runningLikeStatuses() {
         return Arrays.asList(
+                JobStatus.STARTING,
+                JobStatus.INITIALIZING,
+                JobStatus.CREATED,
+                JobStatus.PENDING,
+                JobStatus.SCHEDULED,
+                JobStatus.RUNNING,
+                JobStatus.FAILING,
+                JobStatus.DOING_SAVEPOINT,
+                JobStatus.CANCELING
+        );
+    }
+
+    /** Statuses that must block another submit, including an ambiguous prior submission. */
+    public static List<JobStatus> submissionBlockingStatuses() {
+        return Arrays.asList(
+                JobStatus.STARTING,
+                JobStatus.SUBMISSION_UNKNOWN,
                 JobStatus.INITIALIZING,
                 JobStatus.CREATED,
                 JobStatus.PENDING,

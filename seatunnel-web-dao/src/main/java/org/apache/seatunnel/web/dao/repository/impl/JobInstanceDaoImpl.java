@@ -78,14 +78,7 @@ public class JobInstanceDaoImpl
         LambdaQueryWrapper<JobInstance> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(MyBatisColumn.getter(JobInstance::getJobDefinitionId), definitionId)
                 .in(MyBatisColumn.getter(JobInstance::getJobStatus),
-                        JobStatus.INITIALIZING,
-                        JobStatus.CREATED,
-                        JobStatus.PENDING,
-                        JobStatus.SCHEDULED,
-                        JobStatus.RUNNING,
-                        JobStatus.FAILING,
-                        JobStatus.DOING_SAVEPOINT,
-                        JobStatus.CANCELING);
+                        JobStatusHelper.submissionBlockingStatuses());
 
         Long count = jobInstanceMapper.selectCount(wrapper);
         return count != null && count > 0;
@@ -101,15 +94,7 @@ public class JobInstanceDaoImpl
     @Override
     public List<JobInstance> listRunningLikeInstances() {
         LambdaQueryWrapper<JobInstance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(MyBatisColumn.getter(JobInstance::getJobStatus),
-                JobStatus.INITIALIZING,
-                JobStatus.CREATED,
-                JobStatus.PENDING,
-                JobStatus.SCHEDULED,
-                JobStatus.RUNNING,
-                JobStatus.FAILING,
-                JobStatus.DOING_SAVEPOINT,
-                JobStatus.CANCELING)
+        wrapper.in(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatusHelper.runningLikeStatuses())
                 .orderByDesc(MyBatisColumn.getter(JobInstance::getCreateTime));
 
         List<JobInstance> records = jobInstanceMapper.selectList(wrapper);
@@ -185,15 +170,7 @@ public class JobInstanceDaoImpl
         wrapper.eq(MyBatisColumn.getter(JobInstance::getJobMode), jobMode)
                 .isNotNull(MyBatisColumn.getter(JobInstance::getClientId))
                 .isNotNull(MyBatisColumn.getter(JobInstance::getEngineJobId))
-                .in(MyBatisColumn.getter(JobInstance::getJobStatus),
-                        JobStatus.INITIALIZING,
-                        JobStatus.CREATED,
-                        JobStatus.PENDING,
-                        JobStatus.SCHEDULED,
-                        JobStatus.RUNNING,
-                        JobStatus.FAILING,
-                        JobStatus.DOING_SAVEPOINT,
-                        JobStatus.CANCELING);
+                .in(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatusHelper.runningLikeStatuses());
 
         List<JobInstance> records = jobInstanceMapper.selectList(wrapper);
 
@@ -223,15 +200,7 @@ public class JobInstanceDaoImpl
 
         LambdaQueryWrapper<JobInstance> wrapper = new LambdaQueryWrapper<>();
         wrapper.in(MyBatisColumn.getter(JobInstance::getJobDefinitionId), validDefinitionIds)
-                .in(MyBatisColumn.getter(JobInstance::getJobStatus),
-                        JobStatus.INITIALIZING,
-                        JobStatus.CREATED,
-                        JobStatus.PENDING,
-                        JobStatus.SCHEDULED,
-                        JobStatus.RUNNING,
-                        JobStatus.FAILING,
-                        JobStatus.DOING_SAVEPOINT,
-                        JobStatus.CANCELING)
+                .in(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatusHelper.runningLikeStatuses())
                 .orderByDesc(MyBatisColumn.getter(JobInstance::getCreateTime));
 
         List<JobInstance> records = jobInstanceMapper.selectList(wrapper);

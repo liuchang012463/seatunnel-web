@@ -34,6 +34,9 @@ import java.util.List;
 public class JobInstanceRecoveryScheduler {
 
     private static final String JOB_TYPE_BATCH = "BATCH";
+    // job_instance timestamps use second precision; floor the boundary so a new
+    // request in the same second cannot be mistaken for a previous-process row.
+    private final Date processStartedAt = new Date(System.currentTimeMillis() / 1_000 * 1_000);
 
     @Resource
     private JobInstanceDao jobInstanceDao;
@@ -58,6 +61,7 @@ public class JobInstanceRecoveryScheduler {
 
         log.info("Start recovering running job instances after SeaTunnel Web startup");
 
+        markInterruptedBatchSubmissions();
         recoverBatchInstances();
         recoverStreamingInstances();
 
@@ -99,6 +103,34 @@ public class JobInstanceRecoveryScheduler {
         }
     }
 
+    /**
+     * An in-memory submission queue is lost on process restart. Keep ambiguous submissions
+     * visible and block automatic retries, since Engine may have accepted a request before
+     * the Web process stopped or timed out.
+     */
+    private void markInterruptedBatchSubmissions() {
+        List<JobInstance> instances = jobInstanceDao.listRunningLikeInstances();
+        if (instances == null || instances.isEmpty()) {
+            return;
+        }
+
+        for (JobInstance instance : instances) {
+            if (instance == null
+                    || instance.getId() == null
+                    || !JobStatus.STARTING.equals(instance.getJobStatus())
+                    || (instance.getEngineJobId() != null && !instance.getEngineJobId().isBlank())
+                    || (instance.getCreateTime() != null
+                    && !instance.getCreateTime().before(processStartedAt))) {
+                continue;
+            }
+
+            String message = "SeaTunnel Web 在提交任务时重启，未保存到 Engine 作业 ID；任务可能已被 Engine 接收。"
+                    + "请先核对 SeaTunnel Engine 作业列表，再决定是否重新启动。";
+            jobResultHandler.handleSubmissionUnknown(instance.getId(), message);
+            log.warn("Marked interrupted batch submission as unknown, instanceId={}", instance.getId());
+        }
+    }
+
     private void recoverStreamingInstances() {
         List<StreamingJobInstance> instances = streamingJobInstanceDao.listRunningLikeInstances();
         if (instances == null || instances.isEmpty()) {
@@ -123,6 +155,15 @@ public class JobInstanceRecoveryScheduler {
 
     private void recoverBatchInstance(JobInstance instance) {
         if (instance == null || instance.getId() == null) {
+            return;
+        }
+
+        // A batch submit is still running asynchronously until Engine returns an id.
+        // A missing id at this point is not evidence that the Engine job has failed.
+        if (JobStatus.STARTING.equals(instance.getJobStatus())
+                && (instance.getEngineJobId() == null || instance.getEngineJobId().isBlank())) {
+            log.debug("Skip recovering batch instance while submission is in progress, instanceId={}",
+                    instance.getId());
             return;
         }
 

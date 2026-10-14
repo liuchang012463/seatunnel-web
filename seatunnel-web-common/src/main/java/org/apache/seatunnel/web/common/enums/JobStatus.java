@@ -1,7 +1,10 @@
 package org.apache.seatunnel.web.common.enums;
 
-/** Possible states of a job once it has been accepted by the dispatcher. */
+/** SeaTunnel Engine states and Web-side submission states for a job instance. */
 public enum JobStatus {
+    /** Local state while the asynchronous request is being prepared or submitted. */
+    STARTING(EndState.NOT_END),
+
     /**
      * The job has been received by the Dispatcher, and is waiting for the job manager to receive
      * leadership and to be created.
@@ -45,7 +48,10 @@ public enum JobStatus {
     FINISHED(EndState.GLOBALLY),
 
     /** Cannot find the JobID or the job status has already been cleared. */
-    UNKNOWABLE(EndState.GLOBALLY);
+    UNKNOWABLE(EndState.GLOBALLY),
+
+    /** Submission request may have reached Engine, but Web did not receive a definitive reply. */
+    SUBMISSION_UNKNOWN(EndState.GLOBALLY);
 
     // --------------------------------------------------------------------------------------------
 

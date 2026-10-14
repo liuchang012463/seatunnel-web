@@ -132,6 +132,8 @@ export const useTaskHistory = ({
         FINISHED: 0,
         FAILED: 0,
         RUNNING: 0,
+        STARTING: 0,
+        SUBMISSION_UNKNOWN: 0,
         PENDING: 0,
       } as Record<string, number>
     );

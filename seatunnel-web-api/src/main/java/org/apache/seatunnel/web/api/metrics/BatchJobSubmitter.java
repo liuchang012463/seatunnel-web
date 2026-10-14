@@ -72,10 +72,11 @@ public class BatchJobSubmitter {
         String configFile = null;
         String engineId = null;
         boolean submitted = false;
+        boolean submitRequestStarted = false;
 
         try {
-            // Inside the try: a driver that cannot be published has to fail the instance through
-            // handleCoreFailure instead of leaving it RUNNING without a job log.
+            // A driver publication failure must be handled as a local submission failure instead
+            // of leaving the instance STARTING without a job log.
             hoconConfig = driverJarPublisher.publish(clientId, instance.getRuntimeConfig());
 
             jobLogger.info("Writing batch config file...");
@@ -87,6 +88,7 @@ public class BatchJobSubmitter {
 
             String filename = "batch-job-" + instanceId + ".conf";
 
+            submitRequestStarted = true;
             Map<?, ?> resp = restClient.submitJobUpload(
                     clientId,
                     safeConfig(hoconConfig).getBytes(StandardCharsets.UTF_8),
@@ -122,6 +124,11 @@ public class BatchJobSubmitter {
         } catch (Exception e) {
             if (submitted) {
                 handlePostSubmitFailure(jobLogger, instanceId, engineId, e);
+                return;
+            }
+
+            if (submitRequestStarted) {
+                handleAmbiguousSubmitFailure(jobLogger, instanceId, e);
                 return;
             }
 
@@ -229,6 +236,27 @@ public class BatchJobSubmitter {
         throw (e instanceof JobSubmitException)
                 ? (JobSubmitException) e
                 : new JobSubmitException(JobSubmitStage.SUBMIT, "Submit batch job failed", e);
+    }
+
+    private void handleAmbiguousSubmitFailure(JobFileLogger jobLogger,
+                                              Long instanceId,
+                                              Exception e) {
+        String message = "向 SeaTunnel Engine 发起提交后未收到确定回执，任务可能已被 Engine 接收。"
+                + "请先在 Engine 作业列表核对，再决定是否重试。错误："
+                + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+
+        jobLogger.error("Batch job submit result is unknown; automatic retry is unsafe", e);
+        try {
+            batchJobResultHandler.handleSubmissionUnknown(instanceId, message);
+        } catch (Exception handlerEx) {
+            log.error("Record ambiguous batch submit result failed, instanceId={}", instanceId, handlerEx);
+        }
+
+        throw new JobSubmitException(
+                JobSubmitStage.SUBMIT,
+                "Submit batch job result is unknown; verify the job in SeaTunnel Engine before retrying",
+                e
+        );
     }
 
     private void handlePostSubmitFailure(JobFileLogger jobLogger,
