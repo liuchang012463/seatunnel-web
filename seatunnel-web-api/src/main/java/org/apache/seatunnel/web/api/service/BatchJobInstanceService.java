@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobTableMetricsVO;
+import org.apache.seatunnel.web.spi.bean.vo.EngineJobInfoVO;
 
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,9 @@ public interface BatchJobInstanceService {
     String buildJobConfig(JobDefinitionSaveCommand command);
 
     JobInstanceVO selectById(Long id);
+
+    /** Fetches the whitelisted job-info fields directly from the instance's Engine. */
+    EngineJobInfoVO getEngineJobInfo(Long instanceId);
 
     String getLogContent(Long instanceId);
 

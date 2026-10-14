@@ -233,6 +233,10 @@ export const batchJobInstanceApi = {
     return HttpUtils.get(`/api/v1/job/batch-instance/${id}`);
   },
 
+  engineInfo: (instanceId: string | number) => {
+    return HttpUtils.get(`/api/v1/job/batch-instance/${instanceId}/engine-info`);
+  },
+
   tableMetrics: (instanceId: string | number) => {
     return HttpUtils.get(`/api/v1/job/batch-instance/${instanceId}/table-metrics`);
   },

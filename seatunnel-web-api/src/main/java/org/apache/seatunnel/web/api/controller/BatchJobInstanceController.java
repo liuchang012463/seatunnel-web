@@ -14,6 +14,7 @@ import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobTableMetricsVO;
+import org.apache.seatunnel.web.spi.bean.vo.EngineJobInfoVO;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -51,6 +52,14 @@ public class BatchJobInstanceController {
     @ApiException(BATCH_JOB_INSTANCE_NOT_EXIST)
     public Result<JobInstanceVO> selectById(@PathVariable("id") @NotNull Long id) {
         return Result.buildSuc(seatunnelJobInstanceService.selectById(id));
+    }
+
+    @GetMapping("/{instanceId}/engine-info")
+    @Operation(summary = "queryBatchJobInstanceEngineInfo", description = "QUERY_BATCH_JOB_INSTANCE_ENGINE_INFO_NOTES")
+    @ApiException(QUERY_BATCH_JOB_INSTANCE_ERROR)
+    public Result<EngineJobInfoVO> getEngineJobInfo(
+            @PathVariable("instanceId") @NotNull Long instanceId) {
+        return Result.buildSuc(seatunnelJobInstanceService.getEngineJobInfo(instanceId));
     }
 
     @GetMapping("/{instanceId}/table-metrics")

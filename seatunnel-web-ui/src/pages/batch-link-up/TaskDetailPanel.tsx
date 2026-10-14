@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import BasicInfoSection from "./BasicInfoSection";
 import TaskLogObservability from "./components/TaskLogObservability";
 import HoconTab from "./tabs/HoconTab";
+import EngineJobInfoTab from "./tabs/EngineJobInfoTab";
 import MetricsTab from "./tabs/MetricsTab";
 import ScheduleTab from "./tabs/ScheduleTab";
 import TableTab from "./tabs/TableTab";
@@ -110,6 +111,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
         defaultMessage: "Hocon",
       }),
       children: <HoconTab config={instanceItem.runtimeConfig} />,
+    },
+    {
+      key: "engineInfo",
+      label: "Engine 作业信息",
+      children: <EngineJobInfoTab instanceItem={instanceItem} />,
     },
     {
       key: "metrics",

@@ -22,11 +22,13 @@ import org.apache.seatunnel.web.dao.entity.JobInstance;
 import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.JobMetricsDao;
 import org.apache.seatunnel.web.dao.repository.JobTableMetricsDao;
+import org.apache.seatunnel.web.engine.client.rest.SeaTunnelEngineRestClient;
 import org.apache.seatunnel.web.spi.bean.dto.SeaTunnelJobInstanceDTO;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobTableMetricsVO;
+import org.apache.seatunnel.web.spi.bean.vo.EngineJobInfoVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,7 @@ import java.io.File;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -64,6 +67,9 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
 
     @Resource
     private JobTableMetricsDao jobTableMetricsDao;
+
+    @Resource
+    private SeaTunnelEngineRestClient engineRestClient;
 
     @PostConstruct
     public void init() {
@@ -167,6 +173,55 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
             log.error("Query batch job instance by id failed, id={}", id, e);
             throw new ServiceException(Status.QUERY_BATCH_JOB_INSTANCE_ERROR);
         }
+    }
+
+    @Override
+    public EngineJobInfoVO getEngineJobInfo(Long instanceId) {
+        validateInstanceId(instanceId);
+
+        JobInstanceVO instance = jobInstanceDao.selectDetailById(instanceId);
+        if (instance == null) {
+            throw new ServiceException(Status.BATCH_JOB_INSTANCE_NOT_EXIST);
+        }
+
+        EngineJobInfoVO result = new EngineJobInfoVO();
+        result.setInstanceId(instanceId);
+        result.setEngineJobId(instance.getEngineJobId());
+        result.setLocalStatus(instance.getJobStatus());
+        result.setLocalErrorMessage(instance.getErrorMessage());
+        result.setStatus(instance.getJobStatus());
+
+        if (instance.getClientId() == null
+                || instance.getClientId() <= 0
+                || instance.getEngineJobId() == null
+                || instance.getEngineJobId().isBlank()) {
+            return result;
+        }
+
+        try {
+            Map<String, Object> engineInfo = engineRestClient.jobInfo(
+                    instance.getClientId(), instance.getEngineJobId());
+            if (engineInfo == null || engineInfo.isEmpty()) {
+                return result;
+            }
+
+            result.setStatus(stringValue(engineInfo.get("status"), result.getStatus()));
+            result.setCreateTime(engineInfo.get("createTime"));
+            result.setFinishTime(engineInfo.get("finishTime"));
+            result.setErrorMsg(stringValue(engineInfo.get("errorMsg"), null));
+            result.setJobDag(engineInfo.get("jobDag"));
+            result.setDiagnostics(engineInfo.get("diagnostics"));
+            result.setMetrics(engineInfo.get("metrics"));
+            return result;
+        } catch (Exception e) {
+            log.warn("Fetch Engine job-info failed, instanceId={}, engineJobId={}",
+                    instanceId, instance.getEngineJobId(), e);
+            throw new ServiceException(Status.QUERY_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    private String stringValue(Object value, String fallback) {
+        return value == null ? fallback : Objects.toString(value, fallback);
     }
 
     @Override
