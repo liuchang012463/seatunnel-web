@@ -811,14 +811,6 @@ public class JobMetricsServiceImpl implements JobMetricsService {
         return null;
     }
 
-    private Long getLongByKey(Map<String, Object> map, String key) {
-        if (map == null || key == null) {
-            return 0L;
-        }
-
-        return toLong(map.get(key));
-    }
-
     private Long toLong(Object value) {
         if (value == null) {
             return 0L;
