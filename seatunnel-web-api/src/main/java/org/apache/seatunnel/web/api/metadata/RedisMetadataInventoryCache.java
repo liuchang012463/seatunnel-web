@@ -102,11 +102,12 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
 
     /** Rebuilds an expired-but-present snapshot off the request thread. */
     private void startAsyncRebuild(String key, Supplier<InventorySnapshotPayload> supplier) {
-        CompletableFuture<Void> promise = inFlight.putIfAbsent(key, new CompletableFuture<>());
-        if (promise != null) {
+        // Keep the reference to the future we inserted: a concurrent invalidateAllSnapshots()
+        // clears the map, and re-reading the slot could then hand back null.
+        CompletableFuture<Void> mine = new CompletableFuture<>();
+        if (inFlight.putIfAbsent(key, mine) != null) {
             return;
         }
-        CompletableFuture<Void> mine = inFlight.get(key);
         String digest = digest(key);
         long buildEpoch = currentEpoch();
         rebuildExecutor.submit(() -> {

@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcDriverDirectoryResolver;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
+import org.apache.seatunnel.web.api.metadata.MetadataInventoryCache;
 import org.apache.seatunnel.web.api.metadata.MetadataSyncStatusView;
 import org.apache.seatunnel.web.api.service.DataSourceService;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
@@ -36,6 +37,7 @@ import org.apache.seatunnel.web.spi.bean.vo.DataSourceVO;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.enums.Status;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,6 +90,27 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     @Resource
     private CurrentUserProvider currentUserProvider;
 
+    /** Optional to keep existing unit-test constructors and lightweight deployments compatible. */
+    @Autowired(required = false)
+    private MetadataInventoryCache metadataInventoryCache;
+
+    /**
+     * The inventory aggregates embed data-source master data, so a source change has to drop the
+     * cached snapshots; otherwise the ingestion dashboard keeps serving the pre-change aggregate
+     * until its soft TTL expires.
+     */
+    private void invalidateInventorySnapshots() {
+        if (metadataInventoryCache == null) {
+            return;
+        }
+
+        try {
+            metadataInventoryCache.invalidateAllSnapshots();
+        } catch (Exception e) {
+            log.warn("Invalidate metadata inventory snapshots failed", e);
+        }
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DataSource createDataSource(DataSourceDTO dto) {
@@ -123,6 +146,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
             dataSourceDao.insert(entity);
             metadataBindingCommandService.createForDataSource(entity.getId());
+            invalidateInventorySnapshots();
             return entity;
         } catch (DuplicateKeyException e) {
             log.warn("Create data source failed due to duplicate key, name={}", dto.getName(), e);
@@ -184,6 +208,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
             dataSourceDao.updateById(entity);
             metadataBindingCommandService.markConfigurationChanged(id);
+            invalidateInventorySnapshots();
             return entity;
         } catch (DuplicateKeyException e) {
             log.warn("Update data source failed due to duplicate key, id={}, name={}", id, dto.getName(), e);
@@ -220,6 +245,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         entity.initUpdate();
         dataSourceDao.updateById(entity);
         metadataBindingCommandService.markConfigurationChanged(id);
+        invalidateInventorySnapshots();
         return getDataSourceOrThrow(id);
     }
 
@@ -284,6 +310,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             checkDataSourceNotUsedByLake(datasourceId);
             metadataBindingCommandService.markDeleted(datasourceId);
             markDataSourcePendingDeletion(datasourceId);
+            invalidateInventorySnapshots();
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -338,7 +365,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             entity.setId(id);
             entity.setStatus(status);
             entity.initUpdate();
-            return dataSourceDao.updateById(entity);
+            boolean updated = dataSourceDao.updateById(entity);
+            invalidateInventorySnapshots();
+            return updated;
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -375,6 +404,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
                 metadataBindingCommandService.markDeleted(id);
                 markDataSourcePendingDeletion(id);
             }
+            invalidateInventorySnapshots();
             return true;
         } catch (ServiceException e) {
             throw e;

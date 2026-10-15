@@ -16,7 +16,9 @@ public record InventorySnapshotPayload(
         List<DataInventoryDistributionVO> sourceTypes,
         List<DataInventoryDistributionVO> units,
         List<DataInventoryDistributionVO> businessSystems,
-        DataInventoryProfileCoverageVO coverage) {
+        DataInventoryProfileCoverageVO coverage,
+        /** When this aggregate was built; a cached payload keeps its own build time. */
+        Long computedAt) {
 
     public InventorySnapshotPayload {
         sourceTypes = sourceTypes == null ? List.of() : List.copyOf(sourceTypes);

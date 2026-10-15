@@ -124,7 +124,10 @@ public class DataInventoryService {
         result.setUnits(aggregate.units());
         result.setBusinessSystems(aggregate.businessSystems());
         result.setCoverage(aggregate.coverage());
-        result.setGeneratedAt(System.currentTimeMillis());
+        // Report the snapshot's own build time: a cached aggregate must not look freshly computed.
+        result.setGeneratedAt(aggregate.computedAt() == null
+                ? System.currentTimeMillis()
+                : aggregate.computedAt());
         return result;
     }
 
@@ -763,7 +766,8 @@ public class DataInventoryService {
                     freezeBuckets(sourceTypes),
                     freezeBuckets(units),
                     freezeBuckets(systems),
-                    coverage);
+                    coverage,
+                    System.currentTimeMillis());
         }
 
         private static Bucket bucket(Map<String, Bucket> values, String key, String name) {

@@ -47,7 +47,8 @@ class RedisMetadataInventoryCacheTest {
         DataInventorySummaryVO summary = new DataInventorySummaryVO();
         summary.setDataSourceCount(dataSourceCount);
         summary.setTableCount(dataSourceCount * 10);
-        return new InventorySnapshotPayload(summary, List.of(), List.of(), List.of(), null);
+        return new InventorySnapshotPayload(
+                summary, List.of(), List.of(), List.of(), null, System.currentTimeMillis());
     }
 
     @Test
