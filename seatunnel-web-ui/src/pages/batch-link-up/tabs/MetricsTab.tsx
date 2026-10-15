@@ -11,7 +11,6 @@ import {
   Layers3,
   RefreshCw,
   Table2,
-  TrendingUp,
 } from "lucide-react";
 import { batchJobInstanceApi } from "../api";
 import { normalizeBatchJobStatus } from "../utils/normalizeJobStatus";
@@ -22,18 +21,13 @@ interface MetricsTabProps {
   instanceItem: any;
 }
 
-interface SparkLineProps {
-  data: number[];
-}
-
 interface MetricCardProps {
   title: string;
   value: number;
   unit: string;
-  hint: string;
+  hint?: string;
   icon: React.ReactNode;
   accentClassName: string;
-  trendData: number[];
 }
 
 const toNumber = (value: any) => {
@@ -126,40 +120,6 @@ const getResponseData = (res: any) => {
   return [];
 };
 
-const SparkLine: React.FC<SparkLineProps> = ({ data }) => {
-  const safeData = data.length > 1 ? data : [0, 0];
-  const max = Math.max(...safeData, 1);
-  const min = Math.min(...safeData, 0);
-  const range = Math.max(max - min, 1);
-
-  const points = safeData
-    .map((value, index) => {
-      const x = (index / (safeData.length - 1)) * 100;
-      const y = 34 - ((value - min) / range) * 28;
-      return `${x},${y}`;
-    })
-    .join(" ");
-
-  return (
-    <svg
-      width="100%"
-      height="40"
-      viewBox="0 0 100 40"
-      preserveAspectRatio="none"
-      className="overflow-visible"
-    >
-      <polyline
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={points}
-      />
-    </svg>
-  );
-};
-
 const MetricCard: React.FC<MetricCardProps> = ({
   title,
   value,
@@ -167,7 +127,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
   hint,
   icon,
   accentClassName,
-  trendData,
 }) => {
   return (
     <div className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-all duration-200 hover:border-slate-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.07)]">
@@ -197,16 +156,13 @@ const MetricCard: React.FC<MetricCardProps> = ({
         </div>
       </div>
 
-      <div className="mt-4 flex items-end gap-3">
-        <div className={["h-10 flex-1", accentClassName].join(" ")}>
-          <SparkLine data={trendData} />
+      {hint ? (
+        <div className="mt-4 flex justify-end">
+          <div className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-500">
+            {hint}
+          </div>
         </div>
-
-        <div className="mb-1 inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-500">
-          <TrendingUp size={12} strokeWidth={1.8} />
-          {hint}
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 };
@@ -233,16 +189,6 @@ const SectionHeader: React.FC<{
       {extra}
     </div>
   );
-};
-
-const buildTrend = (value: number, seed = 1) => {
-  const base = Math.max(value, 1);
-
-  return Array.from({ length: 12 }, (_, index) => {
-    const wave = Math.sin((index + seed) * 0.8) * 0.12;
-    const slope = index * 0.015;
-    return Math.max(Math.round(base * (0.82 + wave + slope)), 0);
-  });
 };
 
 const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
@@ -329,6 +275,16 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         return;
       }
 
+      if (response.data?.engineAvailable === false) {
+        setOperatorMetricsError(
+          response.data?.engineJobId
+            ? "SeaTunnel Engine 暂时不可用，无法读取算子指标"
+            : "任务尚未提交到 SeaTunnel Engine，暂无算子指标",
+        );
+        setOperatorMetrics([]);
+        return;
+      }
+
       setOperatorMetrics(parseEngineOperatorMetrics(response.data));
     } catch (error: any) {
       if (requestId === operatorMetricsRequest.current) {
@@ -364,16 +320,6 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
       operatorMetricsRequest.current += 1;
     };
   }, [loadOperatorMetrics, normalizedStatus]);
-
-  const metrics = useMemo(
-    () => ({
-      readQpsTrend: buildTrend(readQps, 1),
-      writeQpsTrend: buildTrend(writeQps, 2),
-      readRowsTrend: buildTrend(readRows, 3),
-      writeRowsTrend: buildTrend(writeRows, 4),
-    }),
-    [readQps, writeQps, readRows, writeRows]
-  );
 
   const tableColumns = useMemo(
     () => [
@@ -613,20 +559,16 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
               title={readQpsTitle}
               value={readQps}
               unit={t("pages.job.detail.metrics.unit.rowsPerSecond", "行/秒")}
-              hint={t("pages.job.detail.metrics.recentTrend", "最近趋势")}
               icon={<ArrowDownToLine size={17} strokeWidth={1.9} />}
               accentClassName="border-blue-100 bg-blue-50 text-blue-600"
-              trendData={metrics.readQpsTrend}
             />
 
             <MetricCard
               title={writeQpsTitle}
               value={writeQps}
               unit={t("pages.job.detail.metrics.unit.rowsPerSecond", "行/秒")}
-              hint={t("pages.job.detail.metrics.recentTrend", "最近趋势")}
               icon={<ArrowUpFromLine size={17} strokeWidth={1.9} />}
               accentClassName="border-emerald-100 bg-emerald-50 text-emerald-600"
-              trendData={metrics.writeQpsTrend}
             />
           </div>
         </section>
@@ -649,7 +591,6 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
               hint={t("pages.job.detail.metrics.accumulated", "累计")}
               icon={<ArrowDownToLine size={17} strokeWidth={1.9} />}
               accentClassName="border-amber-100 bg-amber-50 text-amber-600"
-              trendData={metrics.readRowsTrend}
             />
 
             <MetricCard
@@ -659,7 +600,6 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
               hint={t("pages.job.detail.metrics.accumulated", "累计")}
               icon={<ArrowUpFromLine size={17} strokeWidth={1.9} />}
               accentClassName="border-violet-100 bg-violet-50 text-violet-600"
-              trendData={metrics.writeRowsTrend}
             />
           </div>
         </section>
