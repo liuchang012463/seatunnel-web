@@ -62,7 +62,10 @@ public class LakeDataSourceResolver implements AutoCloseable {
     }
 
     public javax.sql.DataSource resolveConfigured() {
-        return resolve(null, false);
+        // The persisted warehouse configuration is the only source of the id in
+        // production; the legacy property remains the anchor for embedders that
+        // still construct this resolver with an explicit data source dao.
+        return resolve(warehouseService == null ? properties.getDataSourceId() : null, false);
     }
 
     public synchronized javax.sql.DataSource resolve(Long dataSourceId) {
