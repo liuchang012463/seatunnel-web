@@ -55,6 +55,20 @@ public class BatchJobExecutorController {
     }
 
     /**
+     * Resolve an ambiguous submission after an operator confirmed the Engine is not running it.
+     */
+    @PostMapping("/resolve-unknown-submission")
+    @Operation(summary = "resolveUnknownSubmission", description = "RESOLVE_UNKNOWN_SUBMISSION_NOTES")
+    @Parameters({
+            @Parameter(name = "jobInstanceId", description = "JOB_INSTANCE_ID", required = true)
+    })
+    @ApiException(JOB_DEFINITION_EXECUTE_ERROR)
+    public Result<Long> resolveUnknownSubmission(@RequestParam("jobInstanceId") Long jobInstanceId) {
+        Long id = jobExecutorService.resolveUnknownSubmission(jobInstanceId);
+        return Result.buildSuc(id);
+    }
+
+    /**
      * Batch execute SeaTunnel jobs by job definition IDs.
      */
     @PostMapping("/batch-execute")

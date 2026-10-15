@@ -15,6 +15,7 @@ import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.RunMode;
+import org.apache.seatunnel.web.common.exception.JobSubmitException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.JobInstance;
 import org.apache.seatunnel.web.dao.entity.JobSchedule;
@@ -242,6 +243,43 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
     }
 
     /**
+     * Resolve an ambiguous submission after an operator confirmed the Engine is not running it.
+     *
+     * <p>
+     * An instance in {@link JobStatus#SUBMISSION_UNKNOWN} keeps blocking further submits because
+     * the Engine may have accepted a request whose response never arrived. Only an operator can
+     * check the Engine job list, so this is the explicit action that releases the definition.
+     * </p>
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long resolveUnknownSubmission(Long jobInstanceId) {
+        validateInstanceId(jobInstanceId);
+
+        JobInstanceVO instance = instanceService.selectById(jobInstanceId);
+        if (instance == null || instance.getId() == null) {
+            throw new ServiceException(Status.BATCH_JOB_INSTANCE_NOT_EXIST);
+        }
+
+        if (!JobStatus.SUBMISSION_UNKNOWN.name().equalsIgnoreCase(instance.getJobStatus())) {
+            log.info("Job instance is not in an unknown submission state, skip resolving: "
+                    + "instanceId={}, status={}", jobInstanceId, instance.getJobStatus());
+            return jobInstanceId;
+        }
+
+        JobInstance update = new JobInstance();
+        update.setId(jobInstanceId);
+        update.setJobStatus(JobStatus.FAILED);
+        // Keep the end time recorded when the ambiguous outcome was detected: the job never ran,
+        // so the operator's response time must not inflate the reported runtime.
+        update.setErrorMessage("操作员确认 SeaTunnel Engine 未运行该作业，提交结果按失败处理。");
+        instanceService.updateById(update);
+
+        log.info("Resolved unknown batch submission as failed: instanceId={}", jobInstanceId);
+        return jobInstanceId;
+    }
+
+    /**
      * Batch execute jobs by job definition ids.
      *
      * Rules:
@@ -289,7 +327,9 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             log.error("Asynchronous batch job submission failed: instanceId={}", instance.getId(), e);
             try {
                 JobInstanceVO latest = instanceService.selectById(instance.getId());
-                if (latest != null && JobStatus.STARTING.name().equalsIgnoreCase(latest.getJobStatus())) {
+                if (latest != null
+                        && JobStatus.STARTING.name().equalsIgnoreCase(latest.getJobStatus())
+                        && !isSubmitOutcomeUnknown(e)) {
                     failInstance(instance, e);
                 }
             } catch (Exception stateCheckError) {
@@ -310,6 +350,16 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                 submittingDefinitionIds.remove(instance.getJobDefinitionId());
             }
         }
+    }
+
+    /**
+     * An ambiguous submit must not be recorded as a final failure: the Engine may be running the
+     * job, so the instance has to stay blocking until the recovery scheduler or an operator
+     * resolves it.
+     */
+    private static boolean isSubmitOutcomeUnknown(Throwable error) {
+        return error instanceof JobSubmitException
+                && ((JobSubmitException) error).isOutcomeUnknown();
     }
 
     private void failInstance(JobInstanceVO instance, Throwable error) {

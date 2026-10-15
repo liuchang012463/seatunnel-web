@@ -6,6 +6,13 @@ public enum JobStatus {
     STARTING(EndState.NOT_END),
 
     /**
+     * The submit request left the Web without an Engine job id coming back. The Engine may or may
+     * not have accepted the job, so the instance keeps blocking further submits until an operator
+     * confirms the Engine is not running it.
+     */
+    SUBMISSION_UNKNOWN(EndState.GLOBALLY),
+
+    /**
      * The job has been received by the Dispatcher, and is waiting for the job manager to receive
      * leadership and to be created.
      */

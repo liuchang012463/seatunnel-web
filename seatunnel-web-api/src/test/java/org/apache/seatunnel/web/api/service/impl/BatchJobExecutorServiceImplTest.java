@@ -8,21 +8,34 @@ import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.service.JobScheduleService;
 import org.apache.seatunnel.web.api.metrics.JobResultHandler;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.LakeJobRuntimeType;
 import org.apache.seatunnel.web.common.enums.RunMode;
+import org.apache.seatunnel.web.common.exception.JobSubmitException;
+import org.apache.seatunnel.web.dao.entity.JobInstance;
 import org.apache.seatunnel.web.dao.entity.JobSchedule;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.core.task.TaskExecutor;
 
+import java.io.IOException;
+import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -84,5 +97,149 @@ class BatchJobExecutorServiceImplTest {
         verify(lakeJobGuard).validateBeforeSubmit(instance, LakeJobRuntimeType.BATCH);
         verify(incrementalBatchService).prepare(301L);
         verify(instanceService).create(301L, RunMode.MANUAL, null);
+    }
+
+    @Test
+    void ambiguousSubmitFailureStaysBlockingInsteadOfBecomingRetryable() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        BatchJobDefinitionService definitionService = mock(BatchJobDefinitionService.class);
+        BatchJobSubmitter jobSubmitter = mock(BatchJobSubmitter.class);
+        JobResultHandler jobResultHandler = mock(JobResultHandler.class);
+        List<Runnable> queuedSubmissions = new ArrayList<>();
+        TaskExecutor submitExecutor = queuedSubmissions::add;
+
+        BatchJobExecutorServiceImpl executor = new BatchJobExecutorServiceImpl(
+                instanceService,
+                definitionService,
+                jobSubmitter,
+                mock(IncrementalBatchService.class),
+                mock(JobScheduleService.class),
+                mock(LakeJobGuard.class),
+                jobResultHandler,
+                submitExecutor
+        );
+
+        JobInstanceVO instance =
+                queueSubmission(executor, instanceService, definitionService, queuedSubmissions);
+
+        JobInstanceVO stillStarting = new JobInstanceVO();
+        stillStarting.setId(401L);
+        stillStarting.setJobStatus(JobStatus.STARTING.name());
+        when(instanceService.selectById(401L)).thenReturn(stillStarting);
+
+        // The Engine may have accepted the job, so the instance must keep blocking instead of FAILED.
+        doThrow(new JobSubmitException(
+                JobSubmitStage.SUBMIT, "no Engine job id", new IOException("Read timed out"), true))
+                .when(jobSubmitter).submit(instance);
+
+        queuedSubmissions.get(0).run();
+
+        verify(jobResultHandler, never()).handleFailure(anyLong(), any(Throwable.class));
+    }
+
+    @Test
+    void definiteSubmitFailureIsStillRecordedAsFailed() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        BatchJobDefinitionService definitionService = mock(BatchJobDefinitionService.class);
+        BatchJobSubmitter jobSubmitter = mock(BatchJobSubmitter.class);
+        JobResultHandler jobResultHandler = mock(JobResultHandler.class);
+        List<Runnable> queuedSubmissions = new ArrayList<>();
+        TaskExecutor submitExecutor = queuedSubmissions::add;
+
+        BatchJobExecutorServiceImpl executor = new BatchJobExecutorServiceImpl(
+                instanceService,
+                definitionService,
+                jobSubmitter,
+                mock(IncrementalBatchService.class),
+                mock(JobScheduleService.class),
+                mock(LakeJobGuard.class),
+                jobResultHandler,
+                submitExecutor
+        );
+
+        JobInstanceVO instance =
+                queueSubmission(executor, instanceService, definitionService, queuedSubmissions);
+
+        JobInstanceVO stillStarting = new JobInstanceVO();
+        stillStarting.setId(401L);
+        stillStarting.setJobStatus(JobStatus.STARTING.name());
+        when(instanceService.selectById(401L)).thenReturn(stillStarting);
+
+        // A refused connection proves the Engine never accepted the job, so FAILED is correct.
+        doThrow(new JobSubmitException(
+                JobSubmitStage.SUBMIT, "engine unreachable", new ConnectException("Connection refused")))
+                .when(jobSubmitter).submit(instance);
+
+        queuedSubmissions.get(0).run();
+
+        verify(jobResultHandler).handleFailure(eq(401L), any(Throwable.class));
+    }
+
+    @Test
+    void resolvingAnUnknownSubmissionRecordsItAsFailed() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        BatchJobExecutorServiceImpl executor = executorWith(instanceService);
+
+        JobInstanceVO instance = new JobInstanceVO();
+        instance.setId(401L);
+        instance.setJobStatus(JobStatus.SUBMISSION_UNKNOWN.name());
+        when(instanceService.selectById(401L)).thenReturn(instance);
+
+        assertEquals(401L, executor.resolveUnknownSubmission(401L));
+
+        ArgumentCaptor<JobInstance> update = ArgumentCaptor.forClass(JobInstance.class);
+        verify(instanceService).updateById(update.capture());
+        assertEquals(JobStatus.FAILED, update.getValue().getJobStatus());
+        assertNull(update.getValue().getEndTime());
+    }
+
+    @Test
+    void resolvingAnAlreadyResolvedInstanceChangesNothing() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        BatchJobExecutorServiceImpl executor = executorWith(instanceService);
+
+        JobInstanceVO instance = new JobInstanceVO();
+        instance.setId(401L);
+        instance.setJobStatus(JobStatus.FAILED.name());
+        when(instanceService.selectById(401L)).thenReturn(instance);
+
+        assertEquals(401L, executor.resolveUnknownSubmission(401L));
+
+        verify(instanceService, never()).updateById(any(JobInstance.class));
+    }
+
+    private static BatchJobExecutorServiceImpl executorWith(BatchJobInstanceService instanceService) {
+        return new BatchJobExecutorServiceImpl(
+                instanceService,
+                mock(BatchJobDefinitionService.class),
+                mock(BatchJobSubmitter.class),
+                mock(IncrementalBatchService.class),
+                mock(JobScheduleService.class),
+                mock(LakeJobGuard.class),
+                mock(JobResultHandler.class),
+                mock(TaskExecutor.class)
+        );
+    }
+
+    /** Queues one submission through the executor and returns the created instance. */
+    private static JobInstanceVO queueSubmission(BatchJobExecutorServiceImpl executor,
+                                                 BatchJobInstanceService instanceService,
+                                                 BatchJobDefinitionService definitionService,
+                                                 List<Runnable> queuedSubmissions) {
+        BatchJobDefinitionVO definition = new BatchJobDefinitionVO();
+        definition.setId(301L);
+        definition.setReleaseState(ReleaseState.ONLINE);
+
+        JobInstanceVO instance = new JobInstanceVO();
+        instance.setId(401L);
+        instance.setJobDefinitionId(301L);
+
+        when(definitionService.selectById(301L)).thenReturn(definition);
+        when(instanceService.selectById(401L)).thenReturn(instance);
+        when(instanceService.create(301L, RunMode.MANUAL, null)).thenReturn(instance);
+
+        assertEquals(401L, executor.jobExecute(301L, RunMode.MANUAL));
+        assertEquals(1, queuedSubmissions.size());
+        return instance;
     }
 }

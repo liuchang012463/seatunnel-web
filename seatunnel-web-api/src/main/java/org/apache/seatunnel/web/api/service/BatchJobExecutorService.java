@@ -28,6 +28,14 @@ public interface BatchJobExecutorService {
      */
     Long jobPause(Long jobInstanceId);
 
+    /**
+     * Resolve an ambiguous submission after an operator confirmed the Engine is not running it.
+     *
+     * @param jobInstanceId the ID of the job instance in the ambiguous submit state
+     * @return the job instance ID after the resolution
+     */
+    Long resolveUnknownSubmission(Long jobInstanceId);
+
     BatchJobOperateResultVO batchExecute(List<Long> jobDefinitionIds, RunMode runMode);
 
     BatchJobOperateResultVO batchPause(List<Long> jobDefinitionIds);

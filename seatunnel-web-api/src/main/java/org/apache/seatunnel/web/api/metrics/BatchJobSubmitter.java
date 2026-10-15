@@ -7,11 +7,15 @@ import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 import org.apache.seatunnel.web.common.exception.JobSubmitException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.engine.client.driver.EngineDriverJarPublisher;
+import org.apache.seatunnel.web.engine.client.exceptions.SeaTunnelClientException;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Component;
 
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
@@ -28,6 +32,10 @@ import java.util.Map;
 public class BatchJobSubmitter {
 
     private static final String JOB_TYPE_BATCH = "BATCH";
+
+    private static final String SUBMIT_OUTCOME_UNKNOWN_MESSAGE =
+            "SeaTunnel Web 已发出提交请求，但未收到 Engine 作业 ID；任务可能已被 Engine 接收。"
+                    + "请先在 SeaTunnel Engine 作业列表中核对，再确认标记失败后重试。";
 
     private final JobConfigFileService configFileService;
     private final SeaTunnelRestClient restClient;
@@ -241,6 +249,30 @@ public class BatchJobSubmitter {
     private void handleSubmitRequestFailure(JobFileLogger jobLogger,
                                             Long instanceId,
                                             Exception e) {
+        if (isSubmitOutcomeAmbiguous(e)) {
+            /*
+             * The submit request was already sent, so the Engine may have accepted the job even
+             * though no job id came back. Recording FAILED here would immediately unblock a retry
+             * and duplicate the Engine job, so keep the instance in an explicit "outcome unknown"
+             * state until an operator confirms the Engine is not running it.
+             */
+            jobLogger.error("Batch job submission ended without an Engine job id", e);
+            try {
+                batchJobResultHandler.handleSubmissionUnknown(instanceId, SUBMIT_OUTCOME_UNKNOWN_MESSAGE);
+            } catch (Exception handlerEx) {
+                log.error("Record batch unknown submission failed, instanceId={}", instanceId, handlerEx);
+            }
+
+            throw new JobSubmitException(
+                    JobSubmitStage.SUBMIT,
+                    "Submit batch job failed before an Engine job id was received",
+                    e,
+                    // Keep the ambiguity visible to the caller even when the status write failed,
+                    // so it never falls back to a retryable FAILED.
+                    true
+            );
+        }
+
         jobLogger.error("Batch job submission failed before an Engine job id was received", e);
         try {
             batchJobResultHandler.handleFailure(instanceId, e);
@@ -253,6 +285,38 @@ public class BatchJobSubmitter {
                 "Submit batch job failed before an Engine job id was received",
                 e
         );
+    }
+
+    /**
+     * A submit failure is only safe to record as FAILED when the request provably never reached
+     * the Engine: a refused or unresolvable connection, or a request the Engine rejected with a
+     * 4xx. A read timeout, a 5xx or an unknown transport error may have been accepted, so the
+     * outcome stays unknown and the instance keeps blocking further submits.
+     */
+    static boolean isSubmitOutcomeAmbiguous(Throwable error) {
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (current instanceof SeaTunnelClientException) {
+                int httpStatus = ((SeaTunnelClientException) current).getHttpStatus();
+                if (httpStatus >= 400 && httpStatus < 500) {
+                    return false;
+                }
+                if (httpStatus >= 500) {
+                    return true;
+                }
+            }
+
+            if (current instanceof ConnectException
+                    || current instanceof UnknownHostException
+                    || current instanceof NoRouteToHostException) {
+                return false;
+            }
+
+            if (current.getCause() == current) {
+                break;
+            }
+        }
+
+        return true;
     }
 
     private void handlePostSubmitFailure(JobFileLogger jobLogger,

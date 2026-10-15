@@ -34,6 +34,11 @@ import java.util.List;
 public class JobInstanceRecoveryScheduler {
 
     private static final String JOB_TYPE_BATCH = "BATCH";
+    /**
+     * A submission that produced no Engine job id within this window counts as stuck. It is far
+     * above the submit read timeout, so an in-flight submission is never misread as stuck.
+     */
+    private static final long SUBMISSION_GRACE_MS = 10 * 60 * 1000L;
     // job_instance timestamps use second precision; floor the boundary so a new
     // request in the same second cannot be mistaken for a previous-process row.
     private final Date processStartedAt = new Date(System.currentTimeMillis() / 1_000 * 1_000);
@@ -104,8 +109,9 @@ public class JobInstanceRecoveryScheduler {
     }
 
     /**
-     * An in-memory submission queue is lost on process restart. Mark any submission without
-     * a stored Engine job id as failed so the instance does not remain active indefinitely.
+     * An in-memory submission queue is lost on process restart. Keep ambiguous submissions
+     * visible and block automatic retries, since Engine may have accepted a request before
+     * the Web process stopped or timed out.
      */
     private void markInterruptedBatchSubmissions() {
         List<JobInstance> instances = jobInstanceDao.listRunningLikeInstances();
@@ -123,10 +129,17 @@ public class JobInstanceRecoveryScheduler {
                 continue;
             }
 
-            String message = "SeaTunnel Web 在收到 Engine 作业 ID 前重启，提交按失败处理。";
-            jobResultHandler.handleFailure(instance.getId(), new IllegalStateException(message));
-            log.warn("Marked interrupted batch submission as failed, instanceId={}", instance.getId());
+            String message = "SeaTunnel Web 在提交任务时重启，未保存到 Engine 作业 ID；任务可能已被 Engine 接收。"
+                    + "请先核对 SeaTunnel Engine 作业列表，再决定是否重新启动。";
+            jobResultHandler.handleSubmissionUnknown(instance.getId(), message);
+            log.warn("Marked interrupted batch submission as unknown, instanceId={}", instance.getId());
         }
+    }
+
+    private boolean isStaleSubmission(JobInstance instance) {
+        Date createTime = instance.getCreateTime();
+        return createTime != null
+                && createTime.getTime() < System.currentTimeMillis() - SUBMISSION_GRACE_MS;
     }
 
     private void recoverStreamingInstances() {
@@ -157,9 +170,20 @@ public class JobInstanceRecoveryScheduler {
         }
 
         // A batch submit is still running asynchronously until Engine returns an id.
-        // A missing id at this point is not evidence that the Engine job has failed.
+        // A missing id at this point is not evidence that the Engine job has failed, but a
+        // submission that never produced an id within the grace window is stuck: the async task
+        // was lost without a restart (rejected queue, dropped task). Hand it to the operator as
+        // an ambiguous submission instead of leaving it STARTING forever.
         if (JobStatus.STARTING.equals(instance.getJobStatus())
                 && (instance.getEngineJobId() == null || instance.getEngineJobId().isBlank())) {
+            if (isStaleSubmission(instance)) {
+                String message = "SeaTunnel Web 提交该任务后长时间未收到 Engine 作业 ID；"
+                        + "任务可能已被 Engine 接收。请先核对 SeaTunnel Engine 作业列表，再决定是否重新启动。";
+                jobResultHandler.handleSubmissionUnknown(instance.getId(), message);
+                log.warn("Marked stale batch submission as unknown, instanceId={}", instance.getId());
+                return;
+            }
+
             log.debug("Skip recovering batch instance while submission is in progress, instanceId={}",
                     instance.getId());
             return;
