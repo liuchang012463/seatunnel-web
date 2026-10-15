@@ -76,6 +76,38 @@ class JobDefinitionMapperModeFilterTest {
         assertTrue(sql.contains("ORDER BY JOB_NAME ASC"), sql);
     }
 
+    @Test
+    void shouldApplyTheSameStatusBucketToPageAndCountQueries() {
+        BatchJobDefinitionQueryDTO dto = new BatchJobDefinitionQueryDTO();
+        dto.setStatus("RUNNING");
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("dto", dto);
+        params.put("offset", 0);
+        params.put("pageSize", 10);
+
+        // The list buckets a coarse UI status; the count feeds the same pagination total and must
+        // match the same rows, otherwise a filtered page reports a wrong total.
+        assertTrue(pageSql(params).contains("'SUBMISSION_UNKNOWN'"), pageSql(params));
+        assertTrue(countSql(params).contains("'SUBMISSION_UNKNOWN'"), countSql(params));
+        assertTrue(pageSql(params).contains("JOB_STATUS IN ("), pageSql(params));
+        assertTrue(countSql(params).contains("JOB_STATUS IN ("), countSql(params));
+    }
+
+    @Test
+    void shouldKeepAnExactStatusFilterForUnbucketedValues() {
+        BatchJobDefinitionQueryDTO dto = new BatchJobDefinitionQueryDTO();
+        dto.setStatus("CANCELED");
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("dto", dto);
+        params.put("offset", 0);
+        params.put("pageSize", 10);
+
+        assertTrue(pageSql(params).contains("JOB_STATUS = ?"), pageSql(params));
+        assertTrue(countSql(params).contains("JOB_STATUS = ?"), countSql(params));
+    }
+
     private static void assertModePredicates(
             String statementName, Map<String, Object> params) {
         MappedStatement statement = configuration.getMappedStatement(
@@ -92,6 +124,15 @@ class JobDefinitionMapperModeFilterTest {
     private static String pageSql(Map<String, Object> params) {
         MappedStatement statement = configuration.getMappedStatement(
                 JobDefinitionMapper.class.getName() + ".selectPageWithLatestInstance");
+        return statement.getBoundSql(params)
+                .getSql()
+                .replaceAll("\\s+", " ")
+                .toUpperCase();
+    }
+
+    private static String countSql(Map<String, Object> params) {
+        MappedStatement statement = configuration.getMappedStatement(
+                JobDefinitionMapper.class.getName() + ".selectDefinitionCount");
         return statement.getBoundSql(params)
                 .getSql()
                 .replaceAll("\\s+", " ")

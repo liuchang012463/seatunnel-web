@@ -4,6 +4,23 @@
 
 <mapper namespace="org.apache.seatunnel.web.dao.mapper.JobDefinitionMapper">
 
+    <sql id="statusBucketPredicate">
+        <choose>
+            <when test="dto.status == 'RUNNING'">
+                AND i.job_status IN ('STARTING', 'SUBMISSION_UNKNOWN', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
+            </when>
+            <when test="dto.status == 'FAILED'">
+                AND i.job_status IN ('FAILED', 'UNKNOWABLE', 'CANCELED', 'CANCELLED')
+            </when>
+            <when test="dto.status == 'FINISHED' or dto.status == 'SUCCESS'">
+                AND i.job_status IN ('FINISHED', 'SAVEPOINT_DONE', 'SUCCESS')
+            </when>
+            <otherwise>
+                AND i.job_status = #{dto.status}
+            </otherwise>
+        </choose>
+    </sql>
+
     <select id="selectPageWithLatestInstance"
             resultType="org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO">
 
@@ -154,20 +171,7 @@
 
         <where>
             <if test="dto.status != null and dto.status != ''">
-                <choose>
-                    <when test="dto.status == 'RUNNING'">
-                        AND i.job_status IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
-                    </when>
-                    <when test="dto.status == 'FAILED'">
-                        AND i.job_status IN ('FAILED', 'UNKNOWABLE', 'CANCELED', 'CANCELLED')
-                    </when>
-                    <when test="dto.status == 'FINISHED' or dto.status == 'SUCCESS'">
-                        AND i.job_status IN ('FINISHED', 'SAVEPOINT_DONE', 'SUCCESS')
-                    </when>
-                    <otherwise>
-                        AND i.job_status = #{dto.status}
-                    </otherwise>
-                </choose>
+                <include refid="statusBucketPredicate"/>
             </if>
         </where>
 
@@ -223,7 +227,7 @@
             </if>
 
             <if test="dto.status != null and dto.status != ''">
-                AND i.job_status = #{dto.status}
+                <include refid="statusBucketPredicate"/>
             </if>
 
             <if test="dto.sourceType != null and dto.sourceType != ''">
