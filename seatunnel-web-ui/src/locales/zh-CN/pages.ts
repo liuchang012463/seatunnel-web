@@ -1,4 +1,7 @@
 export default {
+  'pages.404.subTitle': '抱歉，您访问的页面不存在。',
+  'pages.404.buttonText': '返回首页',
+
   'pages.datasource.header.title': '数据源列表',
   'pages.datasource.header.desc': '一个统一的数据源治理系统，用于管理连接、访问权限和安全策略',
   'pages.datasource.empty': '暂无数据源',
@@ -222,6 +225,7 @@ export default {
   'pages.job.status.running': '运行中',
   'pages.job.status.completed': '已完成',
   'pages.job.status.failed': '失败',
+  'pages.job.status.success': '成功',
 
   'pages.job.config.basicSetting': '基础配置',
 
@@ -357,9 +361,17 @@ export default {
   "pages.job.detail.tabs.metrics": "指标",
   "pages.job.detail.tabs.schedule": "调度",
   "pages.job.detail.tabs.table": "表信息",
+  "pages.job.detail.tabs.executionFlow": "执行流程日志",
+  "pages.job.detail.tabs.aiDiagnosis": "AI故障定位",
+  "pages.job.detail.tabs.operationRecords": "操作行为记录",
+  "pages.job.detail.tabs.operationTimeline": "操作时序记录",
+  "pages.job.detail.tabs.operationReplay": "操作可视化回放",
+  "pages.job.detail.tabs.dataSnapshots": "数据读取快照",
 
   "pages.job.history.tip.last3days": "仅展示最近三天的运行历史 😊",
   "pages.job.history.status.placeholder": "按状态筛选",
+  "pages.job.history.search.placeholder": "根据任务名称搜索",
+  "pages.job.history.refresh": "刷新",
 
   "pages.job.history.status.all": "全部状态",
   "pages.job.history.status.finished": "成功",

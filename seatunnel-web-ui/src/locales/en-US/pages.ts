@@ -1,4 +1,7 @@
 export default {
+  'pages.404.subTitle': 'Sorry, the page you visited does not exist.',
+  'pages.404.buttonText': 'Back Home',
+
   // DataSource - common
   'pages.datasource.common.title': 'Data Source',
 
@@ -220,6 +223,7 @@ export default {
   'pages.job.status.running': 'RUNNING',
   'pages.job.status.completed': 'COMPLETED',
   'pages.job.status.failed': 'FAILED',
+  'pages.job.status.success': 'SUCCESS',
 
   'pages.job.config.basicSetting': 'Basic Setting',
 
@@ -356,9 +360,17 @@ export default {
   "pages.job.detail.tabs.metrics": "Metrics",
   "pages.job.detail.tabs.schedule": "Scheduled",
   "pages.job.detail.tabs.table": "Table",
+  "pages.job.detail.tabs.executionFlow": "Execution Flow",
+  "pages.job.detail.tabs.aiDiagnosis": "AI Diagnosis",
+  "pages.job.detail.tabs.operationRecords": "Operation Records",
+  "pages.job.detail.tabs.operationTimeline": "Operation Timeline",
+  "pages.job.detail.tabs.operationReplay": "Operation Replay",
+  "pages.job.detail.tabs.dataSnapshots": "Data Snapshots",
 
   "pages.job.history.tip.last3days": "Only show your run history from the past three days",
   "pages.job.history.status.placeholder": "Filter by status",
+  "pages.job.history.search.placeholder": "Search by job name",
+  "pages.job.history.refresh": "Refresh",
 
   "pages.job.history.status.all": "All Status",
   "pages.job.history.status.finished": "Success",
