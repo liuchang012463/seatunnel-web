@@ -205,6 +205,38 @@ public final class HoconSensitiveMaskUtil {
     }
 
     /**
+     * 屏蔽已反序列化负载（例如 SeaTunnel Engine job-info 响应）中的敏感值，保留结构与键名，
+     * 调用方仍可读取非敏感字段。
+     */
+    public static Object maskSensitiveValues(Object value) {
+        if (value instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) value;
+            Map<String, Object> masked = new LinkedHashMap<>(map.size());
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                String key = entry.getKey() == null ? null : entry.getKey().toString();
+                if (key != null && (isSensitiveKey(key) || isSensitiveContainerKey(key))) {
+                    masked.put(key, MASK);
+                    continue;
+                }
+                masked.put(key, maskSensitiveValues(entry.getValue()));
+            }
+            return masked;
+        }
+        if (value instanceof List) {
+            List<?> list = (List<?>) value;
+            List<Object> masked = new ArrayList<>(list.size());
+            for (Object item : list) {
+                masked.add(maskSensitiveValues(item));
+            }
+            return masked;
+        }
+        if (value instanceof String) {
+            return maskInlineCredentials((String) value);
+        }
+        return value;
+    }
+
+    /**
      * 是否敏感字段：忽略大小写
      */
     private static boolean isSensitiveKey(String key) {

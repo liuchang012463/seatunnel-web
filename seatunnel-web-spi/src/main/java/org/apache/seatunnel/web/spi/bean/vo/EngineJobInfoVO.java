@@ -14,6 +14,9 @@ public class EngineJobInfoVO {
 
     private String localErrorMessage;
 
+    /** False when the Engine could not be reached, so only the local fields are populated. */
+    private Boolean engineAvailable;
+
     private String status;
 
     private Object createTime;

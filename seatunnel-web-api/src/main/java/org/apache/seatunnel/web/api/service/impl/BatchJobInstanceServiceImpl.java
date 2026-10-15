@@ -190,6 +190,7 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
         result.setLocalStatus(instance.getJobStatus());
         result.setLocalErrorMessage(instance.getErrorMessage());
         result.setStatus(instance.getJobStatus());
+        result.setEngineAvailable(false);
 
         if (instance.getClientId() == null
                 || instance.getClientId() <= 0
@@ -209,14 +210,21 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
             result.setCreateTime(engineInfo.get("createTime"));
             result.setFinishTime(engineInfo.get("finishTime"));
             result.setErrorMsg(stringValue(engineInfo.get("errorMsg"), null));
-            result.setJobDag(engineInfo.get("jobDag"));
-            result.setDiagnostics(engineInfo.get("diagnostics"));
-            result.setMetrics(engineInfo.get("metrics"));
+            // The Engine payload is copied field by field, so mask it before it leaves the Web.
+            result.setJobDag(HoconSensitiveMaskUtil.maskSensitiveValues(engineInfo.get("jobDag")));
+            result.setDiagnostics(
+                    HoconSensitiveMaskUtil.maskSensitiveValues(engineInfo.get("diagnostics")));
+            result.setMetrics(HoconSensitiveMaskUtil.maskSensitiveValues(engineInfo.get("metrics")));
+            result.setEngineAvailable(true);
             return result;
         } catch (Exception e) {
+            /*
+             * The local instance row already carries the status the caller needs, so an Engine
+             * outage degrades this diagnostics view instead of failing the whole request.
+             */
             log.warn("Fetch Engine job-info failed, instanceId={}, engineJobId={}",
                     instanceId, instance.getEngineJobId(), e);
-            throw new ServiceException(Status.QUERY_BATCH_JOB_INSTANCE_ERROR);
+            return result;
         }
     }
 
