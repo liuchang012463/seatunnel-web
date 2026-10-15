@@ -87,14 +87,14 @@ const App: React.FC = () => {
         fetchChartData(timeRange, taskType),
       ]);
       const processedData: ChartData = {
-        recordsTrend: transformChartData(apiData.recordsTrend as any, timeRange),
-        bytesTrend: transformChartData(apiData.bytesTrend as any, timeRange),
+        recordsTrend: transformChartData(apiData.recordsTrend, timeRange),
+        bytesTrend: transformChartData(apiData.bytesTrend, timeRange),
         recordsSpeedTrend: transformChartData(
-          apiData.recordsSpeedTrend as any,
+          apiData.recordsSpeedTrend,
           timeRange
         ),
         bytesSpeedTrend: transformChartData(
-          apiData.bytesSpeedTrend as any,
+          apiData.bytesSpeedTrend,
           timeRange
         ),
       };

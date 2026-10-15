@@ -36,7 +36,7 @@ import type {
   DataInventorySummary,
 } from '@/pages/data-source/types';
 import { fetchChartData, fetchSummaryData } from '@/pages/metrics/api';
-import type { SummaryData, TaskType, TimeRange } from '@/pages/metrics/types';
+import type { ApiChartData, ChartDataItem, SummaryData, TaskType, TimeRange } from '@/pages/metrics/types';
 import './index.less';
 
 type TaskTypeMeta = {
@@ -51,22 +51,9 @@ type TaskTypeMetric = TaskTypeMeta & {
   summary: SummaryData;
 };
 
-type RawChartPoint = {
-  date: string;
-  value: number | string | null;
-  unit?: string;
-};
-
-type RawOverviewCharts = {
-  recordsTrend?: RawChartPoint[];
-  bytesTrend?: RawChartPoint[];
-  recordsSpeedTrend?: RawChartPoint[];
-  bytesSpeedTrend?: RawChartPoint[];
-};
-
 type TaskTypeChart = {
   key: TaskType;
-  charts: RawOverviewCharts;
+  charts: ApiChartData;
 };
 
 type TrendPoint = {
@@ -122,10 +109,10 @@ const toRecords = (summary: SummaryData) =>
 const toBytes = (summary: SummaryData) =>
   asNumber(summary.totalBytes) * byteFactorForUnit(summary.totalBytesUnit);
 
-const chartRecordsToRaw = (point: RawChartPoint) =>
+const chartRecordsToRaw = (point: ChartDataItem) =>
   asNumber(point.value) * recordFactorForUnit(point.unit);
 
-const chartBytesToRaw = (point: RawChartPoint) =>
+const chartBytesToRaw = (point: ChartDataItem) =>
   asNumber(point.value) * byteFactorForUnit(point.unit);
 
 const formatRecords = (value: number) => {
@@ -203,6 +190,11 @@ const IngestionSituationPage: React.FC = () => {
     const summaryRequest = Promise.all(TASK_TYPES.map((taskType) => fetchSummaryData(timeRange, taskType.key)))
       .then((summaries) => {
         if (!isCurrentRequest()) return;
+        if (summaries.some((summary) => !summary)) {
+          setTaskMetrics(null);
+          setError('任务概览指标暂不可用，请稍后重试。');
+          return;
+        }
         setTaskMetrics(
           TASK_TYPES.map((taskType, index) => ({
             ...taskType,
@@ -247,7 +239,7 @@ const IngestionSituationPage: React.FC = () => {
     const chartRequest = Promise.all(
         TASK_TYPES.map(async (taskType) => ({
           key: taskType.key,
-          charts: (await fetchChartData(timeRange, taskType.key)) as unknown as RawOverviewCharts,
+          charts: await fetchChartData(timeRange, taskType.key),
         })),
       )
       .then((charts) => {
@@ -528,7 +520,7 @@ const IngestionSituationPage: React.FC = () => {
   ];
 
   return (
-    <div className="bi-dashboard app-shell" aria-busy={loading}>
+    <div className="bi-dashboard" aria-busy={loading}>
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
 

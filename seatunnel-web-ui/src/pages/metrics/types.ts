@@ -1,6 +1,7 @@
 export interface ChartDataItem {
   date: string;
-  value: any;
+  value: number | null;
+  unit?: string;
 }
 
 export interface ChartDataSet {
@@ -13,6 +14,14 @@ export interface ChartData {
   bytesTrend: ChartDataSet;
   recordsSpeedTrend: ChartDataSet;
   bytesSpeedTrend: ChartDataSet;
+}
+
+/** `/api/v1/job/metrics/charts` 的原始响应：每个趋势是一组按日期排列的点。 */
+export interface ApiChartData {
+  recordsTrend: ChartDataItem[];
+  bytesTrend: ChartDataItem[];
+  recordsSpeedTrend: ChartDataItem[];
+  bytesSpeedTrend: ChartDataItem[];
 }
 
 export interface SummaryData {
