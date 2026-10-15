@@ -65,7 +65,12 @@ public class OpenMetadataJobLineageService {
      * OpenMetadata reports for the bound service.
      */
     private static final int MAX_TABLE_PROBES = 12;
-    private static final int MAX_SERVICE_DATABASES = 3;
+    /**
+     * The connector-hint ordering runs after the listing, so the page has to be wide enough to
+     * still contain the matching database; a service with more databases than this falls back to
+     * the order OpenMetadata returns.
+     */
+    private static final int MAX_SERVICE_DATABASES = 50;
 
     private final OpenMetadataClient openMetadataClient;
     private final MetadataBindingDao metadataBindingDao;
@@ -165,6 +170,10 @@ public class OpenMetadataJobLineageService {
             details = submittedInstance;
         } else {
             copyMissingValues(submittedInstance, details);
+            // selectDetailById reads the table ids from the definition row, which may have been
+            // edited after this instance was submitted; the submitted values are the ones the
+            // Engine actually ran, so they win wherever the submitter recorded them.
+            preferSubmittedValues(submittedInstance, details);
         }
         // This is the immutable configuration used to submit this instance. Do not
         // derive field mappings from a subsequently edited job definition.
@@ -207,6 +216,21 @@ public class OpenMetadataJobLineageService {
             details.setSourceTable(submitted.getSourceTable());
         }
         if (details.getSinkTable() == null) {
+            details.setSinkTable(submitted.getSinkTable());
+        }
+    }
+
+    private static void preferSubmittedValues(JobInstanceVO submitted, JobInstanceVO details) {
+        if (submitted.getSourceDatasourceId() != null) {
+            details.setSourceDatasourceId(submitted.getSourceDatasourceId());
+        }
+        if (submitted.getSinkDatasourceId() != null) {
+            details.setSinkDatasourceId(submitted.getSinkDatasourceId());
+        }
+        if (StringUtils.isNotBlank(submitted.getSourceTable())) {
+            details.setSourceTable(submitted.getSourceTable());
+        }
+        if (StringUtils.isNotBlank(submitted.getSinkTable())) {
             details.setSinkTable(submitted.getSinkTable());
         }
     }

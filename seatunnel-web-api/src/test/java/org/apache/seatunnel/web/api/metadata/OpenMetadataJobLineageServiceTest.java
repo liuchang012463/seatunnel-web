@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -153,7 +154,7 @@ class OpenMetadataJobLineageServiceTest {
         when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance);
         when(metadataBindingDao.queryByDataSourceId(30L)).thenReturn(binding("st_ds_23132197819872"));
         when(metadataBindingDao.queryByDataSourceId(31L)).thenReturn(binding("st_ds_23132197819872"));
-        when(openMetadataClient.listDatabases("st_ds_23132197819872", 3)).thenReturn(List.of(
+        when(openMetadataClient.listDatabases(eq("st_ds_23132197819872"), anyInt())).thenReturn(List.of(
                 new OpenMetadataDatabase("db-id", "st_ds_23132197819872.default", "st_ds_23132197819872")));
 
         OpenMetadataTable source = table("source-table-id",
@@ -202,7 +203,7 @@ class OpenMetadataJobLineageServiceTest {
         when(streamingJobInstanceDao.selectDetailById(100L)).thenReturn(instance);
         when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("st_ds_22964041928224"));
         when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("st_ds_22964041928224"));
-        when(openMetadataClient.listDatabases("st_ds_22964041928224", 3)).thenReturn(List.of(
+        when(openMetadataClient.listDatabases(eq("st_ds_22964041928224"), anyInt())).thenReturn(List.of(
                 new OpenMetadataDatabase("db-id", "st_ds_22964041928224.seatunnel_web",
                         "st_ds_22964041928224")));
 
@@ -432,7 +433,7 @@ class OpenMetadataJobLineageServiceTest {
         when(streamingJobInstanceDao.selectDetailById(100L)).thenReturn(instance);
         when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("st_ds_22964041928224"));
         when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("st_ds_22964041928224"));
-        when(openMetadataClient.listDatabases("st_ds_22964041928224", 3)).thenReturn(List.of(
+        when(openMetadataClient.listDatabases(eq("st_ds_22964041928224"), anyInt())).thenReturn(List.of(
                 new OpenMetadataDatabase("db-id", "st_ds_22964041928224.seatunnel_web",
                         "st_ds_22964041928224")));
 
