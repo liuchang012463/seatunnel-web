@@ -57,6 +57,7 @@ const ENGINE_ACTIVE_STATUS_SET = new Set([
 const EXECUTION_BLOCKING_STATUS_SET = new Set([
   ...ENGINE_ACTIVE_STATUS_SET,
   "STARTING",
+  "SUBMISSION_UNKNOWN",
 ]);
 
 const ActionColumn: React.FC<ActionColumnProps> = ({
@@ -71,11 +72,13 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
 
   const [runOpen, setRunOpen] = useState(false);
   const [runLoading, setRunLoading] = useState(false);
+  const [resolveLoading, setResolveLoading] = useState(false);
 
   const isOnline = isReleaseOnline(record?.releaseState);
   const [logOpen, setLogOpen] = useState(false);
   const jobStatus = String(record?.lastJobStatus || "").toUpperCase();
   const isEngineActive = ENGINE_ACTIVE_STATUS_SET.has(jobStatus);
+  const isSubmissionUnknown = jobStatus === "SUBMISSION_UNKNOWN";
   const isBusy = EXECUTION_BLOCKING_STATUS_SET.has(jobStatus);
   const canRun = isOnline && !isBusy;
 
@@ -111,6 +114,30 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
         cbk();
       }
     });
+  };
+
+  const handleResolveUnknownSubmission = async () => {
+    const instanceId = record?.instanceId;
+
+    if (instanceId === undefined || instanceId === null) {
+      message.error("任务实例 ID 不存在");
+      return;
+    }
+
+    try {
+      setResolveLoading(true);
+
+      const data = await seatunnelJobExecuteApi.resolveUnknownSubmission(instanceId);
+
+      if (data?.code === 0) {
+        message.success("已按失败处理，可重新启动任务");
+      } else {
+        message.error(data?.msg || "操作失败");
+      }
+    } finally {
+      setResolveLoading(false);
+      cbk();
+    }
   };
 
   const handleOnline = async () => {
@@ -326,7 +353,29 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
     },
   ];
 
-  const primaryAction = isEngineActive ? (
+  const primaryAction = isSubmissionUnknown ? (
+    <Popconfirm
+      title="确认未运行"
+      description={
+        <div style={{ marginRight: 12 }}>
+          请先在 SeaTunnel Engine 作业列表中确认该任务未运行，确认后本实例将按失败处理。
+        </div>
+      }
+      okText={yesText}
+      cancelText={noText}
+      okButtonProps={{ loading: resolveLoading }}
+      onConfirm={handleResolveUnknownSubmission}
+    >
+      <button
+        type="button"
+        className={primaryActionClass}
+        aria-label={`确认未运行 ${record?.jobName || ""}`}
+        onClick={stopPropagation}
+      >
+        确认未运行
+      </button>
+    </Popconfirm>
+  ) : isEngineActive ? (
     <Popconfirm
       title={intl.formatMessage({
         id: "pages.job.action.stop.title",

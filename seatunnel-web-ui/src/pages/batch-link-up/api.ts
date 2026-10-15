@@ -166,6 +166,16 @@ export const seatunnelJobExecuteApi = {
   pause: (jobInstanceId: any) => {
     return HttpUtils.get(`${executeApiPrefix}/pause?jobInstanceId=${jobInstanceId}`);
   },
+
+  /**
+   * Release an ambiguous submission after checking the Engine job list: the instance is
+   * recorded as failed so the task can be started again.
+   */
+  resolveUnknownSubmission: (jobInstanceId: any) => {
+    return HttpUtils.post(
+      `${executeApiPrefix}/resolve-unknown-submission?jobInstanceId=${jobInstanceId}`,
+    );
+  },
 };
 
 const instanceApiPrefix = '/api/v1/job/batch-instance';
@@ -234,7 +244,13 @@ export const batchJobInstanceApi = {
   },
 
   engineInfo: (instanceId: string | number) => {
-    return HttpUtils.get(`/api/v1/job/batch-instance/${instanceId}/engine-info`);
+    return HttpUtils.get<{
+      engineAvailable?: boolean;
+      engineJobId?: string | null;
+      jobDag?: unknown;
+      diagnostics?: unknown;
+      metrics?: unknown;
+    }>(`/api/v1/job/batch-instance/${instanceId}/engine-info`);
   },
 
   tableMetrics: (instanceId: string | number) => {

@@ -20,3 +20,19 @@ export const normalizeBatchJobStatus = (
 
   return "RUNNING";
 };
+
+/**
+ * Statuses whose meaning the coarse category cannot express. A cancelled job is not a
+ * failure, and an ambiguous submission is not running, so both get their own label.
+ */
+const RAW_STATUS_LABELS: Record<string, string> = {
+  SUBMISSION_UNKNOWN: "提交结果待确认",
+  CANCELED: "已取消",
+  CANCELLED: "已取消",
+};
+
+export const rawBatchJobStatusLabel = (status?: string | null) => {
+  const normalized = String(status || "").trim().toUpperCase();
+
+  return RAW_STATUS_LABELS[normalized];
+};
