@@ -223,9 +223,9 @@ class LakeLogicalCatalogServiceImplTest {
     private static LakeCatalogDesiredSpec desired(TestContext context) {
         return new LakeCatalogDesiredSpec(
                 "orders_catalog", 7L, "datasource-7", LakeJdbcAdapterType.MYSQL,
-                LakeCatalogScope.ALL, "jdbc:mysql://db/app", "file:///mysql.jar",
+                LakeCatalogScope.ALL, "jdbc:mysql://db/app", "file:/opt/drivers/mysql.jar",
                 "com.mysql.cj.jdbc.Driver", context.checksum, "registry-v1",
-                "credential-v1", List.of(), List.of(), Map.of());
+                null, List.of(), List.of(), Map.of());
     }
 
     private static final class TestContext {
@@ -286,13 +286,12 @@ class LakeLogicalCatalogServiceImplTest {
             LakeProperties properties = new LakeProperties();
             properties.setEnabled(true);
             properties.setDataSourceId(99L);
-            properties.setCatalogCredentialSecret("catalog-secret");
             LakeProperties.JdbcCatalog catalog = new LakeProperties.JdbcCatalog();
             catalog.setRegistryRevision("registry-v1");
             LakeProperties.Driver mysql = new LakeProperties.Driver();
             mysql.setEnabled(true);
             mysql.setVerified(true);
-            mysql.setUrl("file:///mysql.jar");
+            mysql.setUrl("file:/opt/drivers/mysql.jar");
             mysql.setDriverClass("com.mysql.cj.jdbc.Driver");
             mysql.setChecksum(
                     "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");

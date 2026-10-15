@@ -19,6 +19,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -52,7 +53,7 @@ class LakeExternalCatalogBindingPersistenceServiceTest {
         assertEquals(LakeResourceStatus.PENDING_CREATE, result.getResourceStatus());
         assertEquals(1, result.getGeneration());
         assertEquals(1, result.getLockVersion());
-        assertEquals("credential-v7", result.getCredentialRevision());
+        assertNull(result.getCredentialRevision());
         assertEquals(CHECKSUM, result.getDriverChecksum());
         assertFalse(result.getActualSnapshot().containsKey("password"));
         verify(dao).insert(any(LakeExternalCatalogBinding.class));

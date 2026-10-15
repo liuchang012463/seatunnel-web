@@ -186,7 +186,7 @@ class LakeJdbcCatalogFoundationTest {
                 "catalog;drop", LakeCatalogScope.ALL, List.of(), List.of(), Map.of());
         assertThrows(IllegalArgumentException.class,
                 () -> LakeCatalogDesiredSpecValidator.validateAndNormalize(unsafeName));
-        assertTrue(LakeCatalogDesiredSpecCanonicalizer.canonicalJson(spec(
+        assertFalse(LakeCatalogDesiredSpecCanonicalizer.canonicalJson(spec(
                 "catalog", LakeCatalogScope.ALL, List.of(), List.of(), Map.of()))
                 .contains("credentialRevision"));
     }

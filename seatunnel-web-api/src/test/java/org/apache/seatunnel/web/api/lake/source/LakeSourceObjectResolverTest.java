@@ -111,6 +111,8 @@ class LakeSourceObjectResolverTest {
     private static OpenMetadataProperties enabledProperties() {
         OpenMetadataProperties properties = new OpenMetadataProperties();
         properties.setEnabled(true);
+        properties.setBaseUrl("http://openmetadata.example:8585/api");
+        properties.setToken("unit-test-token");
         return properties;
     }
 

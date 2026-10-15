@@ -68,18 +68,16 @@ class LakeExternalCatalogCapabilityResolverTest {
     }
 
     @Test
-    void resolverReportsStableSafeReasonsForSourceAndControlPlaneState() {
+    void resolverReportsStableSafeReasonsForSourceState() {
         DataSourceDao dao = mock(DataSourceDao.class);
         when(dao.queryById(404L)).thenThrow(new IllegalStateException(
                 "jdbc password=should-not-escape"));
         LakeExternalCatalogCapabilityResolver resolver = resolver(
-                dao, properties(false), new LakeJdbcDriverRegistry(mysqlOnlyVerified()));
+                dao, properties(true), new LakeJdbcDriverRegistry(mysqlOnlyVerified()));
 
         LakeCatalogCapability missing = resolver.resolve(
                 404L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.ALL);
         assertFalse(missing.enabled());
-        assertTrue(missing.reasonCodes().contains(
-                LakeCatalogCapabilityReason.LAKE_CONTROL_PLANE_DISABLED));
         assertTrue(missing.reasonCodes().contains(
                 LakeCatalogCapabilityReason.SOURCE_NOT_FOUND));
         assertFalse(missing.toString().contains("should-not-escape"));

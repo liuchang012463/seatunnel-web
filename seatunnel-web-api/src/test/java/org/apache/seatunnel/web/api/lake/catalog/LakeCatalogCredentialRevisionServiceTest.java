@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
 
+import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,8 +22,8 @@ class LakeCatalogCredentialRevisionServiceTest {
     private static final String PASSWORD = "password-must-not-escape";
 
     @Test
-    void revisionIsStableAndChangesWhenCredentialChanges() {
-        LakeProperties properties = properties();
+    void revisionIsStableAndFollowsTheDurableSourceRow() {
+        LakeProperties properties = new LakeProperties();
         DataSource source = source(17L, DbType.MYSQL);
         AtomicInteger parses = new AtomicInteger();
         BaseConnectionParam parameter = parameter("reader", PASSWORD);
@@ -36,17 +37,18 @@ class LakeCatalogCredentialRevisionServiceTest {
         String second = service.credentialRevision(source, LakeJdbcAdapterType.MYSQL);
         assertEquals(first, second);
         assertEquals(2, parses.get(), "connection params are resolved per execution");
-        assertEquals(64, first.length());
-        assertTrue(first.matches("[0-9a-f]{64}"));
+        assertTrue(first.startsWith("source-config-"));
+        assertTrue(first.substring("source-config-".length()).matches("[0-9a-f]{64}"));
+        assertFalse(first.contains(PASSWORD));
 
-        parameter.setPassword("a-different-password");
+        source.setUpdateTime(new Date(1_700_000_000_000L));
         assertNotEquals(first,
                 service.credentialRevision(source, LakeJdbcAdapterType.MYSQL));
     }
 
     @Test
     void executionCredentialsAndExceptionsDoNotExposeSecrets() throws Exception {
-        LakeProperties properties = properties();
+        LakeProperties properties = new LakeProperties();
         DataSource source = source(18L, DbType.MYSQL);
         LakeCatalogCredentialRevisionService service = new LakeCatalogCredentialRevisionService(
                 properties, ignored -> parameter("reader", PASSWORD));
@@ -74,20 +76,20 @@ class LakeCatalogCredentialRevisionServiceTest {
     }
 
     @Test
-    void credentialRevisionRequiresAConfiguredServerSecret() {
+    void credentialRevisionNeedsNoServerSecretAndStaysSecretFree() {
         LakeProperties properties = new LakeProperties();
         DataSource source = source(19L, DbType.MYSQL);
         LakeCatalogCredentialRevisionService service = new LakeCatalogCredentialRevisionService(
                 properties, ignored -> parameter("reader", PASSWORD));
 
-        IllegalStateException error = assertThrows(IllegalStateException.class,
-                () -> service.credentialRevision(source, LakeJdbcAdapterType.MYSQL));
-        assertEquals("Catalog credential revision secret is not configured", error.getMessage());
+        String revision = service.credentialRevision(source, LakeJdbcAdapterType.MYSQL);
+        assertTrue(revision.startsWith("source-config-"));
+        assertFalse(revision.contains(PASSWORD));
     }
 
     @Test
     void onlyMatchingEnabledJdbcSourcesCanBeResolved() {
-        LakeProperties properties = properties();
+        LakeProperties properties = new LakeProperties();
         LakeCatalogCredentialRevisionService service = new LakeCatalogCredentialRevisionService(
                 properties, ignored -> parameter("reader", PASSWORD));
 
@@ -101,12 +103,6 @@ class LakeCatalogCredentialRevisionServiceTest {
         IllegalArgumentException typeError = assertThrows(IllegalArgumentException.class,
                 () -> service.resolveForExecution(postgres, LakeJdbcAdapterType.MYSQL));
         assertFalse(typeError.toString().contains(PASSWORD));
-    }
-
-    private static LakeProperties properties() {
-        LakeProperties properties = new LakeProperties();
-        properties.setCatalogCredentialSecret("server-only-catalog-secret");
-        return properties;
     }
 
     private static DataSource source(Long id, DbType dbType) {

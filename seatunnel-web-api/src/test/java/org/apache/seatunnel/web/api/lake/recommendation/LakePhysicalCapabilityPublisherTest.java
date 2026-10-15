@@ -1,8 +1,10 @@
 package org.apache.seatunnel.web.api.lake.recommendation;
 
 import org.apache.seatunnel.web.api.lake.LakeProperties;
+import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcDriverRegistry;
 import org.apache.seatunnel.web.api.lake.doris.DorisCapability;
 import org.apache.seatunnel.web.api.lake.doris.DorisCapabilityReason;
+import org.apache.seatunnel.web.api.lake.doris.DorisCapabilityResolver;
 import org.apache.seatunnel.web.api.lake.doris.DorisLakeClient;
 import org.apache.seatunnel.web.api.lake.doris.LakeDorisClientProvider;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
@@ -41,7 +43,8 @@ class LakePhysicalCapabilityPublisherTest {
         when(client.ping()).thenReturn(true);
 
         DorisCapability capability = new LakePhysicalCapabilityPublisher(
-                properties, dataSourceDao, provider).current(42L);
+                properties, dataSourceDao, provider, new DorisCapabilityResolver(), null,
+                verifiedMysqlRegistry()).current(42L);
 
         assertTrue(capability.isPhysicalSupported());
         assertTrue(capability.getReasons().isEmpty());
@@ -142,6 +145,18 @@ class LakePhysicalCapabilityPublisherTest {
 
     private static DataSource dorisSource(Long id) {
         return source(id, DbType.DORIS);
+    }
+
+    private static LakeJdbcDriverRegistry verifiedMysqlRegistry() {
+        LakeProperties.JdbcCatalog configuration = new LakeProperties.JdbcCatalog();
+        configuration.setRegistryRevision("drivers-v1");
+        LakeProperties.Driver mysql = LakeProperties.Driver.mysqlDefaults();
+        mysql.setEnabled(true);
+        mysql.setVerified(true);
+        mysql.setUrl("file:/opt/drivers/mysql-8.0.39.jar");
+        mysql.setChecksum(CHECKSUM);
+        configuration.setMysql(mysql);
+        return new LakeJdbcDriverRegistry(configuration);
     }
 
     private static DataSource source(Long id, DbType dbType) {

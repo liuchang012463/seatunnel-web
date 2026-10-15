@@ -193,6 +193,7 @@ class LakeLifecycleApplyServiceImplTest {
 
         LakeLifecycleRetentionUpdateDTO request = new LakeLifecycleRetentionUpdateDTO();
         request.setPolicyId(901L);
+        request.setConfirmed(true);
         request.setConfirmationToken("decrease-token");
         LakeLifecycleValidateVO result = service.update(501L, request);
 
