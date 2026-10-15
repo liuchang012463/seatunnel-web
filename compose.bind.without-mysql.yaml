@@ -34,6 +34,14 @@ services:
 
       SPRING_FLYWAY_ENABLED: "true"
 
+      # OpenMetadata read cache and data-inventory aggregates. This compose file keeps
+      # MySQL on the host, so it expects Redis there too; the cache degrades to a direct
+      # computation when Redis is unreachable.
+      REDIS_HOST: ${REDIS_HOST:-host.docker.internal}
+      REDIS_PORT: ${REDIS_PORT:-26379}
+      REDIS_DATABASE: ${REDIS_DATABASE:-15}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+
       SEATUNNEL_WEB_DATASOURCE_MASTER_KEY: ${SEATUNNEL_WEB_DATASOURCE_MASTER_KEY:?set SEATUNNEL_WEB_DATASOURCE_MASTER_KEY in .env.without-mysql.bind}
 
       METADATA_OPENMETADATA_EXTENSION_ENABLED: ${METADATA_OPENMETADATA_EXTENSION_ENABLED:-false}
