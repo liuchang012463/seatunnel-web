@@ -517,6 +517,14 @@ Start the back end:
 ./mvnw -pl seatunnel-web-api spring-boot:run
 ```
 
+`package` also runs the production front-end build through `seatunnel-web-ui`. Add
+`-Dskip.frontend.build=true` when you only need the back end (it skips the Node/Yarn
+requirement entirely):
+
+```bash
+./mvnw clean install -DskipTests -Dskip.frontend.build=true
+```
+
 The default back-end port is:
 
 ```text

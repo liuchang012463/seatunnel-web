@@ -25,9 +25,11 @@ if port_listening "$FRONTEND_PORT"; then
   exit 1
 fi
 
-echo "building backend (./mvnw -pl $BACKEND_MODULE -am clean -DskipTests package)"
+echo "building backend (./mvnw -pl $BACKEND_MODULE -am clean -DskipTests -Dskip.frontend.build=true package)"
 : >"$BACKEND_LOG"
-./mvnw -pl "$BACKEND_MODULE" -am clean -DskipTests package >>"$BACKEND_LOG" 2>&1 || {
+# The dev stack serves the UI from the umi dev server, so skip the production
+# frontend build that `package` would otherwise run for the root project.
+./mvnw -pl "$BACKEND_MODULE" -am clean -DskipTests -Dskip.frontend.build=true package >>"$BACKEND_LOG" 2>&1 || {
   echo "error: backend package failed; see $BACKEND_LOG" >&2
   tail -n 80 "$BACKEND_LOG" >&2 || true
   exit 1
