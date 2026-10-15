@@ -62,10 +62,9 @@ jobs:
         run: ./mvnw --batch-mode --no-transfer-progress -T 1C -pl '!:seatunnel-web-ui,!:seatunnel-web-dist' -Dskip.frontend.build=true clean install
 
       # seatunnel-web-api skips its tests by default, so they have to be selected explicitly.
-      # The failing lake suites (Lake*Test) are quarantined until they are repaired; everything
-      # else in the module, including the metadata/lineage and inventory-cache suites, must pass.
+      # The whole module must pass, including the lake, metadata/lineage and inventory-cache suites.
       - name: Run the api module test suite
-        run: ./mvnw --batch-mode --no-transfer-progress -pl seatunnel-web-api -DskipTests=false -Dtest='!Lake*Test' -DfailIfNoTests=false test
+        run: ./mvnw --batch-mode --no-transfer-progress -pl seatunnel-web-api -DskipTests=false test
 
   frontend:
     name: Frontend
