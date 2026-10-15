@@ -76,6 +76,51 @@ class FieldMapperTransformSwitcherTest {
     }
 
     @Test
+    void keepsTheFallbackWhenTheSourcesShareOneDeclaredType() {
+        FieldMapperMapping first = mapping("channel_type", "province");
+        first.setTargetType("STRING");
+        FieldMapperMapping second = mapping("description", "province");
+        second.setTargetType("STRING");
+
+        Config config = switcher.transform(options(first, second));
+
+        assertEquals(
+                "SELECT COALESCE(`channel_type`, `description`) AS `province` FROM `source-1`",
+                config.getString("Sql.query"));
+    }
+
+    @Test
+    void rejectsFallbackAcrossDifferentlyTypedSources() {
+        FieldMapperMapping first = mapping("channel_type", "province");
+        first.setTargetType("INT");
+        FieldMapperMapping second = mapping("description", "province");
+        second.setTargetType("STRING");
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> switcher.transform(options(first, second)));
+        assertEquals(
+                "Multiple source fields of different types feed the target field 'province':"
+                        + " [INT, STRING]. Align their types or map them through an expression.",
+                ex.getMessage());
+    }
+
+    @Test
+    void allowsDifferentlyTypedSourcesWhenAnExpressionIsConfigured() {
+        FieldMapperMapping first = mapping("channel_type", "province");
+        first.setTargetType("INT");
+        first.setExpression("CAST(`channel_type` AS STRING)");
+        FieldMapperMapping second = mapping("description", "province");
+        second.setTargetType("STRING");
+
+        Config config = switcher.transform(options(first, second));
+
+        assertEquals(
+                "SELECT CAST(`channel_type` AS STRING) AS `province` FROM `source-1`",
+                config.getString("Sql.query"));
+    }
+
+    @Test
     void throwsExceptionWhenAllMappingsAreDisabled() {
         FieldMapperMapping m1 = mapping("user_id", "account_id");
         m1.setEnabled(false);

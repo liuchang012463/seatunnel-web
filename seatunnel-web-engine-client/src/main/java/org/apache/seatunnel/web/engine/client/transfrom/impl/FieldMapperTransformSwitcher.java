@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -128,7 +129,7 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
     }
 
     /** One configured mapping row: a source field, its target field and an optional expression. */
-    private record FieldMapping(String sourceField, String targetField, String expression) {
+    private record FieldMapping(String sourceField, String targetField, String expression, String type) {
     }
 
     private static List<FieldMapping> effectiveMappings(FieldMapperTransformOptions options) {
@@ -142,13 +143,15 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
                 mappings.add(new FieldMapping(
                         mapping.getSourceField(),
                         mapping.getTargetField(),
-                        StringUtils.trimToNull(mapping.getExpression())));
+                        StringUtils.trimToNull(mapping.getExpression()),
+                        StringUtils.trimToNull(mapping.getTargetType())));
             }
             return mappings;
         }
         if (CollectionUtils.isNotEmpty(options.getTransformColumns())) {
             for (FieldMapperField field : options.getTransformColumns()) {
-                mappings.add(new FieldMapping(field.getFieldName(), field.getTargetFieldName(), null));
+                mappings.add(new FieldMapping(
+                        field.getFieldName(), field.getTargetFieldName(), null, null));
             }
         }
         return mappings;
@@ -184,6 +187,8 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
                     .computeIfAbsent(mapping.targetField(), ignored -> new ArrayList<>())
                     .add(mapping);
         }
+
+        validateFallbackTypes(mappingsByTarget);
 
         List<String> selectItems = new ArrayList<>(mappingsByTarget.size());
         for (Map.Entry<String, List<FieldMapping>> target : mappingsByTarget.entrySet()) {
@@ -229,6 +234,40 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
             sources.add(quoteIdentifier(mapping.sourceField()));
         }
         return "COALESCE(" + String.join(", ", sources) + ")";
+    }
+
+    /**
+     * The engine takes a COALESCE's type from its first non-void argument and casts the remaining
+     * arguments to it, so a fallback across differently typed columns only fails per row at run
+     * time. Reject that at submit time instead; mappings whose declared types agree (or carry no
+     * type at all) keep the fallback.
+     */
+    private static void validateFallbackTypes(Map<String, List<FieldMapping>> mappingsByTarget) {
+        for (Map.Entry<String, List<FieldMapping>> entry : mappingsByTarget.entrySet()) {
+            List<FieldMapping> mappingsForTarget = entry.getValue();
+            if (mappingsForTarget.size() < 2) {
+                continue;
+            }
+            boolean hasExpression = false;
+            Set<String> declaredTypes = new LinkedHashSet<>();
+            for (FieldMapping mapping : mappingsForTarget) {
+                if (mapping.expression() != null) {
+                    hasExpression = true;
+                    break;
+                }
+                if (mapping.type() != null) {
+                    declaredTypes.add(mapping.type().toUpperCase(Locale.ROOT));
+                }
+            }
+            if (hasExpression || declaredTypes.size() < 2) {
+                continue;
+            }
+
+            throw new IllegalArgumentException(
+                    "Multiple source fields of different types feed the target field '"
+                            + entry.getKey() + "': " + declaredTypes
+                            + ". Align their types or map them through an expression.");
+        }
     }
 
     /** The engine resolves identifiers between backticks, which also keeps mixed case intact. */
