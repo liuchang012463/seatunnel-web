@@ -1,4 +1,3 @@
-import ClickSpark from '@/components/ClickSpark';
 import { useIntl } from '@umijs/max';
 import { motion } from 'framer-motion';
 import React, { useMemo, useState } from 'react';
@@ -76,15 +75,6 @@ const AlarmPage: React.FC = () => {
   };
 
   return (
-    <ClickSpark
-      sparkColor="hsl(231 48% 48%)"
-      sparkSize={10}
-      sparkRadius={15}
-      sparkCount={8}
-      duration={400}
-      easing="ease-out"
-      extraScale={1}
-    >
       <div className="alarm-page w-full pb-12">
         <motion.div
           initial="hidden"
@@ -144,7 +134,6 @@ const AlarmPage: React.FC = () => {
           </motion.div>
         </motion.div>
       </div>
-    </ClickSpark>
   );
 };
 

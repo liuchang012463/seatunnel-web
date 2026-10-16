@@ -844,49 +844,44 @@ const App: React.FC<Props> = ({
           ) : null}
 
           <div className="task-table-shell">
-          <Table
-            columns={baseColumns as any}
-            dataSource={taskList}
-            rowKey="id"
-            pagination={false}
-            loading={loading}
-            tableLayout="fixed"
-            rowSelection={{ ...rowSelection, type: "checkbox", columnWidth: TASK_TABLE_COLUMN_WIDTHS.selection }}
-            onChange={(_pagination, _filters, sorter) => {
-              const active = Array.isArray(sorter) ? sorter[0] : sorter;
-              if (!active?.order) return;
-              handleSortChange(
-                active.field === "createTime" ? "createTime" : "name",
-                active.order === "ascend" ? "asc" : "desc",
-              );
-            }}
-            scroll={{
-              // Keep the fixed action column complete without covering the
-              // adjacent create-time column in the 1440px desktop shell.
-              x: "100%",
-              ...(taskList.length > 0 ? { y: "calc(100vh - 380px)" } : {}),
-            }}
-            className="task-table"
-            locale={{
-              emptyText: (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={listError ? "请重试加载任务列表" : emptyDescription}
+            <Table
+              columns={baseColumns as any}
+              dataSource={taskList}
+              rowKey="id"
+              pagination={false}
+              loading={loading}
+              tableLayout="fixed"
+              rowSelection={{ ...rowSelection, type: "checkbox", columnWidth: TASK_TABLE_COLUMN_WIDTHS.selection }}
+              onChange={(_pagination, _filters, sorter) => {
+                const active = Array.isArray(sorter) ? sorter[0] : sorter;
+                if (!active?.order) return;
+                handleSortChange(
+                  active.field === "createTime" ? "createTime" : "name",
+                  active.order === "ascend" ? "asc" : "desc",
+                );
+              }}
+              scroll={{ x: "100%" }}
+              className="task-table"
+              locale={{
+                emptyText: (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={listError ? "请重试加载任务列表" : emptyDescription}
+                  />
+                ),
+              }}
+            />
+            {pagination.total > 0 ? (
+              <div className="task-pagination">
+                <CustomPagination
+                  total={pagination.total}
+                  current={pagination.current}
+                  pageSize={pagination.pageSize}
+                  onChange={handlePaginationChange}
                 />
-              ),
-            }}
-          />
+              </div>
+            ) : null}
           </div>
-          {pagination.total > 0 ? (
-            <div className="task-pagination">
-              <CustomPagination
-                total={pagination.total}
-                current={pagination.current}
-                pageSize={pagination.pageSize}
-                onChange={handlePaginationChange}
-              />
-            </div>
-          ) : null}
         </div>
       </div>
 

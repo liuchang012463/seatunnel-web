@@ -592,7 +592,7 @@ const DataExplorationTasksPage: React.FC = () => {
   ], []);
 
   return (
-    <div className="data-exploration-page data-exploration-tasks min-h-full px-6 py-5">
+    <div className="data-exploration-page data-exploration-tasks flex h-full min-h-full flex-col px-6 py-5">
       <TaskListPageHeader
         icon={<PlayCircleOutlined />}
         title="探查任务配置"
@@ -697,7 +697,7 @@ const DataExplorationTasksPage: React.FC = () => {
       ) : null}
 
       <Card className="exploration-panel exploration-table-panel mt-3" styles={{ body: { padding: 0 } }}>
-        <Spin spinning={loading}>
+        <Spin spinning={loading} wrapperClassName="h-full">
           <Table<DataSourceRecord>
             rowKey={(record) => String(record.id || record.name)}
             columns={columns}
@@ -708,7 +708,7 @@ const DataExplorationTasksPage: React.FC = () => {
           />
         </Spin>
         {pagination.total > 0 && (
-          <div className="flex justify-end p-4">
+          <div className="exploration-table-panel__pagination flex justify-end p-4">
             <Pagination
               current={pagination.pageNo}
               pageSize={pagination.pageSize}

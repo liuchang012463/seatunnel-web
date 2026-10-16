@@ -85,6 +85,15 @@ interface ResultFilters {
 interface InitialRouteState extends ResultFilters {
   dataSourceId?: string;
   dbType?: string;
+  /** 安全的站内返回路径，例如从数据源页进入详情后关闭应回到 /data-source */
+  returnTo?: string;
+}
+
+function sanitizeReturnTo(value?: string | null): string | undefined {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) {
+    return undefined;
+  }
+  return value;
 }
 
 const GROUP_LABELS: Record<SelectedGroupKey, string> = {
@@ -111,6 +120,7 @@ function readInitialRouteState(): InitialRouteState {
     businessSystemId: params.get('businessSystemId') || undefined,
     dataSourceId: params.get('dataSourceId') || undefined,
     dbType: params.get('dbType') || undefined,
+    returnTo: sanitizeReturnTo(params.get('returnTo')),
   };
 }
 
@@ -315,6 +325,10 @@ const DataExplorationResultsPage: React.FC = () => {
   };
 
   const clearSelection = (nextFilters: ResultFilters = filters) => {
+    if (route.returnTo) {
+      history.push(route.returnTo);
+      return;
+    }
     setSelectedSourceId('');
     setSelectedSourceDbType(undefined);
     syncRoute(nextFilters);
@@ -359,6 +373,7 @@ const DataExplorationResultsPage: React.FC = () => {
           dataSourceId={selectedSourceId}
           dataSourceName={selectedSource?.name}
           dbType={selectedSource?.dbType || selectedSourceDbType}
+          backLabel={route.returnTo === '/data-source' ? '返回数据源' : undefined}
           onClose={() => clearSelection()}
         />
       </div>

@@ -1,6 +1,30 @@
 .stream-link-page {
-  min-height: calc(100vh - 132px);
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  height: auto;
   color: var(--st-color-text-primary);
+  background: var(--st-color-bg-page);
+
+  .task-search-wrap,
+  .ant-divider,
+  .stream-link-list-error {
+    flex: 0 0 auto;
+  }
+
+  .task-table-shell,
+  .stream-link-task-table {
+    display: flex;
+    flex: 1 1 0%;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .stream-link-pagination {
+    flex: 0 0 auto;
+    margin-top: auto !important;
+  }
 }
 
 .stream-link-page.has-selected-tasks { padding-bottom: 112px; }
@@ -477,8 +501,10 @@
 
 .stream-link-pagination {
   display: flex;
+  flex: 0 0 auto;
   justify-content: flex-end;
-  padding: 16px 0;
+  margin-top: auto;
+  padding: 16px 0 12px;
 }
 
 .stream-link-list-error {

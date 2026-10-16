@@ -314,10 +314,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
               });
               setPagination((previous) => ({ ...previous, current: 1 }));
             }}
-            scroll={{
-              x: '100%',
-              ...(taskList.length > 0 ? { y: 'calc(100vh - 380px)' } : {}),
-            }}
+            scroll={{ x: '100%' }}
             className="task-table"
             locale={{
               emptyText: (
@@ -325,19 +322,19 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
               ),
             }}
           />
+          {pagination.total > 0 ? (
+            <div className="task-pagination">
+              <CustomPagination
+                total={pagination.total}
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                onChange={(current, pageSize) => {
+                  setPagination((previous) => ({ ...previous, current, pageSize }));
+                }}
+              />
+            </div>
+          ) : null}
         </div>
-        {pagination.total > 0 ? (
-          <div className="task-pagination">
-            <CustomPagination
-              total={pagination.total}
-              current={pagination.current}
-              pageSize={pagination.pageSize}
-              onChange={(current, pageSize) => {
-                setPagination((previous) => ({ ...previous, current, pageSize }));
-              }}
-            />
-          </div>
-        ) : null}
       </div>
     </div>
   );

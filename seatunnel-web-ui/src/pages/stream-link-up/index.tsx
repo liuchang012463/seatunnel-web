@@ -1027,7 +1027,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   return (
     <>
-      <div className={`stream-link-page sync-task-list min-h-screen${hasSelected ? ' has-selected-tasks' : ''}`}>
+      <div className={`stream-link-page sync-task-list${hasSelected ? ' has-selected-tasks' : ''}`}>
         <RealtimeHeader
           sourceType={sourceType}
           sinkType={sinkType}
@@ -1059,42 +1059,44 @@ const RealtimeSyncPage: React.FC = () => {
           />
         ) : null}
 
-        <RealtimeTaskTable
-          loading={loading}
-          dataSource={dataSource}
-          selectedRowKeys={selectedRowKeys}
-          onSelectedRowKeysChange={setSelectedRowKeys}
-          sort={sort}
-          onSortChange={handleSortChange}
-          onView={handleView}
-          onDetail={handleDetail}
-          onEdit={handleEdit}
-          onRun={handleRun}
-          onStopWithSavepoint={handleStopWithSavepoint}
-          onResumeFromSavepoint={handleResumeFromSavepoint}
-          onStop={handleStop}
-          onOnline={handleOnline}
-          onOffline={handleOffline}
-          onDelete={handleDelete}
-          onLog={handleLog}
-          onCheckpoint={handleCheckpoint}
-          onCreate={() => void handleCreate()}
-        />
+        <div className="stream-link-task-table task-table-shell">
+          <RealtimeTaskTable
+            loading={loading}
+            dataSource={dataSource}
+            selectedRowKeys={selectedRowKeys}
+            onSelectedRowKeysChange={setSelectedRowKeys}
+            sort={sort}
+            onSortChange={handleSortChange}
+            onView={handleView}
+            onDetail={handleDetail}
+            onEdit={handleEdit}
+            onRun={handleRun}
+            onStopWithSavepoint={handleStopWithSavepoint}
+            onResumeFromSavepoint={handleResumeFromSavepoint}
+            onStop={handleStop}
+            onOnline={handleOnline}
+            onOffline={handleOffline}
+            onDelete={handleDelete}
+            onLog={handleLog}
+            onCheckpoint={handleCheckpoint}
+            onCreate={() => void handleCreate()}
+          />
 
-        {pagination.total > 0 ? (
-          <div className="stream-link-pagination">
-            <Pagination
-              size="small"
-              total={pagination.total}
-              current={pagination.current}
-              pageSize={pagination.pageSize}
-              showSizeChanger
-              pageSizeOptions={[10, 20, 50]}
-              onChange={handlePaginationChange}
-              onShowSizeChange={handlePaginationChange}
-            />
-          </div>
-        ) : null}
+          {pagination.total > 0 ? (
+            <div className="stream-link-pagination task-pagination">
+              <Pagination
+                size="small"
+                total={pagination.total}
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                showSizeChanger
+                pageSizeOptions={[10, 20, 50]}
+                onChange={handlePaginationChange}
+                onShowSizeChange={handlePaginationChange}
+              />
+            </div>
+          ) : null}
+        </div>
 
         <BottomActionBar
           selectedCount={selectedRowKeys.length}

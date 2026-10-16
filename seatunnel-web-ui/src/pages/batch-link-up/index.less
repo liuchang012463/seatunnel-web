@@ -15,12 +15,22 @@
 }
 
 .batch-link-up-page {
-  min-height: calc(100vh - 132px);
-  padding: 0 0 24px;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  height: auto;
+  padding: 0;
   color: var(--st-color-text-primary);
+  background: var(--st-color-bg-page);
 
   .config-manage-page {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
     min-width: 0;
+    min-height: 0;
+    height: auto;
   }
 
   .task-search-wrap {
@@ -61,7 +71,11 @@
   }
 
   .task-table-shell {
-    overflow: visible;
+    display: flex;
+    flex: 1 1 0%;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
     background: var(--st-color-bg-panel);
     border: 1px solid var(--st-color-border);
     border-radius: var(--st-radius-md, 4px);
@@ -109,8 +123,10 @@
 
 .task-pagination {
   display: flex;
+  flex: 0 0 auto;
   justify-content: flex-end;
-  padding: 16px 0 0;
+  margin-top: auto;
+  padding: 16px 0 12px;
 }
 
 .task-list-error {

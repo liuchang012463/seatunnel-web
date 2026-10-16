@@ -1,4 +1,3 @@
-import ClickSpark from '@/components/ClickSpark';
 import StatusChip from '@/components/StatusChip';
 import { history, useIntl } from '@umijs/max';
 import { AppstoreOutlined, MoreOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
@@ -325,7 +324,11 @@ const DataSourcePage: React.FC = () => {
     if (!record.id) {
       return;
     }
-    const query = new URLSearchParams({ dataSourceId: String(record.id) });
+    const query = new URLSearchParams({
+      dataSourceId: String(record.id),
+      // 从数据源卡片进入详情后，关闭应回到数据源页而非探查结果列表
+      returnTo: '/data-source',
+    });
     if (record.dbType) query.set('dbType', record.dbType);
     history.push(`/data-exploration/results?${query.toString()}`);
   };
@@ -567,18 +570,14 @@ const DataSourcePage: React.FC = () => {
 
   return (
     <>
-      <ClickSpark
-        sparkColor="#4DD2FF"
-        sparkSize={10}
-        sparkRadius={15}
-        sparkCount={8}
-        duration={400}
-        easing="ease-out"
-        extraScale={1}
-      >
         <div className="datasource-page-container">
           <div className="datasource-page-content">
-            <motion.div initial="hidden" animate="visible" variants={PAGE_ANIMATION.sectionStagger}>
+            <motion.div
+              className="datasource-page-stack"
+              initial="hidden"
+              animate="visible"
+              variants={PAGE_ANIMATION.sectionStagger}
+            >
               <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
                 <SearchBar
                   value={searchKeyword}
@@ -681,8 +680,13 @@ const DataSourcePage: React.FC = () => {
                 />
               ) : null}
 
-              <Spin spinning={loading}>
-                <motion.div variants={PAGE_ANIMATION.cardStagger} initial="hidden" animate="visible">
+              <Spin spinning={loading} className="datasource-page-main" wrapperClassName="datasource-page-main">
+                <motion.div
+                  className="datasource-page-stack"
+                  variants={PAGE_ANIMATION.cardStagger}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {dataSourceList.length > 0 ? (
                     <section className="datasource-catalog-panel">
                       <div className="datasource-catalog-panel__body">
@@ -724,7 +728,7 @@ const DataSourcePage: React.FC = () => {
                   )}
 
                   {pagination.total > 0 && (
-                    <div className="datasource-page-pagination mt-8 flex justify-end">
+                    <div className="datasource-page-pagination flex justify-end">
                       <Pagination
                         current={pagination.pageNo}
                         pageSize={pagination.pageSize}
@@ -755,7 +759,6 @@ const DataSourcePage: React.FC = () => {
             </motion.div>
           </div>
         </div>
-      </ClickSpark>
 
       <AddOrEditDataSourceModal ref={modalRef} onManageMasterData={() => setMasterDataOpen(true)} />
       <Drawer
