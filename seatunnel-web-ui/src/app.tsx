@@ -1,5 +1,4 @@
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
-import { Footer } from '@/components';
 import ThemeConfigProvider from '@/components/ThemeConfigProvider';
 import '@ant-design/v5-patch-for-react-19';
 import { Link, type RequestConfig, type RunTimeLayoutConfig } from '@umijs/max';
@@ -113,7 +112,8 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     actionsRender: () => [<Knowledge key="knowledge" />],
     // 业务水印默认关闭；审计/导出场景另行显式开启。
     waterMarkProps: undefined,
-    footerRender: hideLayout ? false : () => <Footer />,
+    // Footer 为空组件，关闭以免 ProLayout 预留底部空白导致内容区撑不满视口
+    footerRender: false,
     links: [],
     // 自定义 403 页面
     // unAccessible: <div>unAccessible</div>,

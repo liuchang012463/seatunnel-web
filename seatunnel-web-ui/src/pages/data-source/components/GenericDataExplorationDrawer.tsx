@@ -134,6 +134,8 @@ export interface GenericDataExplorationDrawerProps {
   open: boolean;
   /** Render the catalog workspace in the current page instead of an Ant Drawer. */
   inline?: boolean;
+  /** Inline 模式下返回按钮文案，默认「返回探查结果」 */
+  backLabel?: string;
   onClose: () => void;
 }
 
@@ -143,6 +145,7 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
   dbType,
   open,
   inline = false,
+  backLabel = '返回探查结果',
   onClose,
 }) => {
   const normalizedDbType = normalizeExplorationDbType(dbType);
@@ -540,7 +543,7 @@ const GenericDataExplorationDrawer: React.FC<GenericDataExplorationDrawerProps> 
         <section className="generic-exploration generic-exploration--inline" aria-label="数据探查详情">
           <div className="generic-exploration__inline-header">
             {explorationTitle}
-            <Button type="text" icon={<ArrowLeftOutlined />} onClick={onClose}>返回探查结果</Button>
+            <Button type="text" icon={<ArrowLeftOutlined />} onClick={onClose}>{backLabel}</Button>
           </div>
           {workspace}
         </section>

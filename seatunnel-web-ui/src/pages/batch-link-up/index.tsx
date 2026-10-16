@@ -88,7 +88,7 @@ const App = () => {
   };
 
   return (
-    <div>
+    <div className="task-list-page-shell">
       <DataSyncHeader
         goDetail={goDetail}
         sourceType={sourceType}
@@ -97,9 +97,7 @@ const App = () => {
         setTargetType={setTargetType}
       />
 
-      <div>
-        <SyncTaskList goDetail={goEdit} taskType="BATCH" excludeMode="FILE_SYNC" />
-      </div>
+      <SyncTaskList goDetail={goEdit} taskType="BATCH" excludeMode="FILE_SYNC" />
     </div>
   );
 };

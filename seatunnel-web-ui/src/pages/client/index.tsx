@@ -1,5 +1,4 @@
 import React from "react";
-import ClickSpark from "@/components/ClickSpark";
 import AddClientModal from "./components/AddClientModal";
 import ClientPageHeader from "./components/ClientPageHeader";
 import ClientListPanel from "./components/ClientListPanel";
@@ -30,15 +29,6 @@ const ClientPageTailwind: React.FC = () => {
   } = useClientPageState();
 
   return (
-    <ClickSpark
-      sparkColor="hsl(231 48% 48%)"
-      sparkSize={10}
-      sparkRadius={15}
-      sparkCount={8}
-      duration={400}
-      easing="ease-out"
-      extraScale={1}
-    >
       <div
         className="h-[calc(100vh-48px)]"
         style={{ background: PAGE_BG }}
@@ -106,7 +96,6 @@ const ClientPageTailwind: React.FC = () => {
           onSubmit={handleSaveClient}
         />
       </div>
-    </ClickSpark>
   );
 };
 

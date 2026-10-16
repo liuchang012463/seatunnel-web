@@ -48,7 +48,7 @@ const FileTransferPage: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="task-list-page-shell">
       <TaskPageHeader
         icon={<FileSyncOutlined />}
         title="文件同步任务"

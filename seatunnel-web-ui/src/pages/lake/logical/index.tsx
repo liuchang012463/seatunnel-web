@@ -444,7 +444,7 @@ const LogicalAccessPage: React.FC = () => {
     },
   ];
   return (
-    <PageContainer title="逻辑入湖" subTitle="选择已有数据源，按步骤完成 Doris 逻辑挂载">
+    <PageContainer className="lake-logical-page" title="逻辑入湖" subTitle="选择已有数据源，按步骤完成 Doris 逻辑挂载">
       <CapabilityCard sources={sources} initialSourceId={initialSourceId} onSourceChange={setSelectedSourceId} masterNames={masterNames} />
       {sourcesError ? (
         <Alert

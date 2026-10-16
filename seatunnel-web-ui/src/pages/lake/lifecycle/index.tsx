@@ -718,6 +718,7 @@ const LifecyclePage: React.FC = () => {
 
   return (
     <PageContainer
+      className="lake-lifecycle-page-container"
       title="生命周期管理"
       subTitle="按历史分区数维护 ODS 表生命周期策略"
       extra={[<Button key="refresh" icon={<ReloadOutlined />} onClick={reload}>刷新</Button>]}

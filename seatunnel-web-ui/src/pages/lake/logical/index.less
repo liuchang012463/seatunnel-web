@@ -1,3 +1,52 @@
+.lake-logical-page {
+  display: flex !important;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--st-color-bg-page);
+
+  .ant-pro-page-container-children-content {
+    display: flex !important;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .lake-capability-card,
+  .lake-table-alert,
+  .lake-logical-empty {
+    flex: 0 0 auto;
+  }
+
+  .lake-catalog-table {
+    display: flex !important;
+    flex: 1 1 0%;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .lake-catalog-table > .ant-pro-card:has(.ant-pro-query-filter-container),
+  .lake-catalog-table > .ant-pro-card:has(.ant-pro-table-search) {
+    flex: 0 0 auto !important;
+    height: auto !important;
+  }
+
+  .lake-catalog-table > .ant-pro-card:last-of-type,
+  .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper),
+  .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-pro-card-body,
+  .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-wrapper,
+  .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-spin-nested-loading,
+  .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-spin-container {
+    display: flex !important;
+    flex: 1 1 0% !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    height: 100% !important;
+  }
+}
+
 .lake-capability-card {
   margin-bottom: 16px;
   border: 1px solid var(--ant-color-border-secondary);

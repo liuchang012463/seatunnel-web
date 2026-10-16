@@ -68,6 +68,8 @@ export interface DataExplorationDrawerProps {
   open: boolean;
   /** Render the exploration workspace directly in the page instead of an Ant Drawer. */
   inline?: boolean;
+  /** Inline 模式下返回按钮文案，默认「返回探查结果」 */
+  backLabel?: string;
   onClose: () => void;
 }
 
@@ -210,6 +212,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   dataSourceId,
   dataSourceName,
   inline = false,
+  backLabel = '返回探查结果',
   open,
   onClose,
 }) => {
@@ -1192,7 +1195,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
         <section className="exploration-drawer exploration-drawer--inline" aria-label="数据探查详情">
           <div className="exploration-drawer__inline-header">
             {explorationTitle}
-            <Button type="text" icon={<RightOutlined rotate={180} />} onClick={closeExploration}>返回探查结果</Button>
+            <Button type="text" icon={<RightOutlined rotate={180} />} onClick={closeExploration}>{backLabel}</Button>
           </div>
           {workspace}
         </section>

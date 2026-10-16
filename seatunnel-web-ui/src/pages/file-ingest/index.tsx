@@ -52,7 +52,7 @@ const FileIngestPage: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="task-list-page-shell">
       <TaskPageHeader
         icon={<FileTextOutlined />}
         title="离线文件导入"

@@ -227,8 +227,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
   ];
 
   return (
-    <div className="sync-task-list task-table-shell stream-link-task-table">
-      <Table<StreamingJobDefinitionVO>
+    <Table<StreamingJobDefinitionVO>
       rowKey="id"
       loading={loading}
       columns={columns}
@@ -255,10 +254,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
         }),
       }}
       size="middle"
-      scroll={{
-        x: "100%",
-        ...(dataSource.length > 0 ? { y: "calc(100vh - 380px)" } : {}),
-      }}
+      scroll={{ x: "100%" }}
       className="task-table"
       locale={{
         emptyText: (
@@ -278,8 +274,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
           />
         ),
       }}
-      />
-    </div>
+    />
   );
 };
 
