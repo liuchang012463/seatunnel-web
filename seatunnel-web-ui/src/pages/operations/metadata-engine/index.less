@@ -66,6 +66,8 @@
 
 .meta-engine-shell {
   display: grid;
+  /* 页面根节点是定高 flex 列：内容高于视口时禁止压缩，否则 overflow: hidden 会把底部内容裁掉且无法滚动到 */
+  flex: 0 0 auto;
   grid-template-columns: 282px minmax(0, 1fr);
   width: 100%;
   max-width: 1920px;
