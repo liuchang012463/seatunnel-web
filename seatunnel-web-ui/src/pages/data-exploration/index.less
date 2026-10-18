@@ -123,6 +123,34 @@
     min-height: 0;
   }
 
+  /* 表头固定、表体内部滚动，分页始终贴在面板底部 */
+  .exploration-table-panel .ant-table,
+  .exploration-table-panel .ant-table-container {
+    display: flex !important;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .exploration-table-panel .ant-table-content,
+  .exploration-table-panel .ant-table-body {
+    flex: 1 1 0% !important;
+    min-height: min(var(--st-table-body-min-height, 160px), 18vh) !important;
+    /* antd 默认 overflow: auto hidden 会在行多时把表体裁掉 */
+    overflow-y: auto !important;
+  }
+
+  .exploration-table-panel .ant-table-thead > tr > th {
+    position: sticky !important;
+    top: 0;
+    z-index: 3;
+  }
+
+  .exploration-table-panel .ant-table-thead > tr > th.ant-table-cell-fix-left,
+  .exploration-table-panel .ant-table-thead > tr > th.ant-table-cell-fix-right {
+    z-index: 4;
+  }
+
   .exploration-table-panel__pagination {
     flex: 0 0 auto;
     margin-top: auto !important;

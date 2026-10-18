@@ -180,9 +180,9 @@ html[data-hide-header='true'] {
   background-color: var(--st-color-bg-page, #02222d) !important;
 }
 
-/* 页面根节点铺满内容区，并作为纵向 flex 容器，便于内部主区域拉伸、分页贴底。
-   只撑满不压缩（flex-shrink: 0 + height: auto）：内容高于视口时根节点随之增高，
-   由 .ant-pro-layout-content 滚动，避免内部 overflow:hidden 把内容裁掉。 */
+/* 页面根节点铺满内容区，并作为纵向 flex 容器：内容高于视口时随内容增高，
+   由 .ant-pro-layout-content 滚动，避免内部 overflow:hidden 把内容裁掉。
+   列表页外壳（见下）例外：它们定高撑满视口，表体在面板内部滚动。 */
 .ant-pro-layout .ant-pro-layout-content > * {
   box-sizing: border-box;
   display: flex;
@@ -194,36 +194,36 @@ html[data-hide-header='true'] {
   background: var(--st-color-bg-page, #02222d);
 }
 
-/* 任务列表等「顶栏 + 列表」：子项用 flex 占剩余高度，只撑满不压缩 */
+/* 任务列表页外壳定高：面板吃满视口，表头/分页固定，表体内部滚动 */
+.ant-pro-layout .ant-pro-layout-content > .task-list-page-shell,
+.ant-pro-layout .ant-pro-layout-content > .data-exploration-page {
+  height: 100%;
+}
+
+/* 任务列表等「顶栏 + 列表」：子项用 flex 占剩余高度 */
 .ant-pro-layout .ant-pro-layout-content > .task-list-page-shell > *:not(:last-child),
 .task-list-page-shell > .task-list-page-header {
   flex: 0 0 auto;
 }
 
+/* 列表外壳：吃掉顶栏之外的剩余高度，行多时由表体内部滚动，不再把整页撑高 */
 .ant-pro-layout .ant-pro-layout-content > .task-list-page-shell > *:last-child,
 .ant-pro-layout .ant-pro-layout-content .sync-task-list,
-.ant-pro-layout .ant-pro-layout-content .stream-link-page {
-  display: flex !important;
-  flex: 1 0 auto !important;
-  flex-direction: column;
-  min-height: auto !important;
-  height: auto !important;
-}
-
+.ant-pro-layout .ant-pro-layout-content .stream-link-page,
 .ant-pro-layout .ant-pro-layout-content .sync-task-list .config-manage-page {
-  display: flex;
-  flex: 1 0 auto;
+  display: flex !important;
+  flex: 1 1 0% !important;
   flex-direction: column;
-  min-height: auto;
-  height: auto;
+  min-height: 0 !important;
+  height: auto !important;
 }
 
 .ant-pro-layout .ant-pro-layout-content .task-table-shell,
 .ant-pro-layout .ant-pro-layout-content .stream-link-task-table {
   display: flex !important;
-  flex: 1 0 auto !important;
+  flex: 1 1 0% !important;
   flex-direction: column;
-  min-height: auto !important;
+  min-height: 0 !important;
 }
 
 .ant-pro-layout .ant-pro-layout-content .task-table-shell .ant-table-wrapper,
@@ -233,9 +233,9 @@ html[data-hide-header='true'] {
 .ant-pro-layout .ant-pro-layout-content .stream-link-task-table .ant-spin-nested-loading,
 .ant-pro-layout .ant-pro-layout-content .stream-link-task-table .ant-spin-container {
   display: flex !important;
-  flex: 1 0 auto;
+  flex: 1 1 auto;
   flex-direction: column;
-  min-height: auto;
+  min-height: 0;
   height: auto;
 }
 
@@ -246,19 +246,35 @@ html[data-hide-header='true'] {
 .ant-pro-layout .ant-pro-layout-content .task-table-shell .ant-table-content,
 .ant-pro-layout .ant-pro-layout-content .stream-link-task-table .ant-table-content {
   display: flex !important;
-  flex: 1 0 auto !important;
+  flex: 1 1 auto !important;
   flex-direction: column !important;
-  min-height: auto !important;
+  min-height: 0 !important;
   height: auto !important;
 }
 
-/* 无固定 scroll.y：表体随行数增高，行多时由内容区滚动，行少时由面板底色撑满 */
+/* 表头固定、表体内部滚动：行多时在面板内滚动，分页始终贴在面板底部 */
+.ant-pro-layout .ant-pro-layout-content .task-table-shell .ant-table-content,
+.ant-pro-layout .ant-pro-layout-content .stream-link-task-table .ant-table-content,
 .ant-pro-layout .ant-pro-layout-content .task-table-shell .ant-table-body,
-.ant-pro-layout .ant-pro-layout-content .stream-link-task-table .ant-table-body,
-.ant-pro-layout .ant-pro-layout-content .task-table-shell .ant-table-tbody,
-.ant-pro-layout .ant-pro-layout-content .stream-link-task-table .ant-table-tbody {
-  flex: 1 0 auto !important;
-  min-height: auto !important;
+.ant-pro-layout .ant-pro-layout-content .stream-link-task-table .ant-table-body {
+  flex: 1 1 0% !important;
+  min-height: min(var(--st-table-body-min-height, 160px), 18vh) !important;
+  overflow-y: auto !important;
+}
+
+.ant-pro-layout .ant-pro-layout-content .task-table-shell .ant-table-thead > tr > th,
+.ant-pro-layout .ant-pro-layout-content .stream-link-task-table .ant-table-thead > tr > th {
+  position: sticky !important;
+  top: 0;
+  z-index: 3;
+}
+
+/* 固定列的表头要压住固定列的表体单元格 */
+.ant-pro-layout .ant-pro-layout-content .task-table-shell .ant-table-thead > tr > th.ant-table-cell-fix-left,
+.ant-pro-layout .ant-pro-layout-content .task-table-shell .ant-table-thead > tr > th.ant-table-cell-fix-right,
+.ant-pro-layout .ant-pro-layout-content .stream-link-task-table .ant-table-thead > tr > th.ant-table-cell-fix-left,
+.ant-pro-layout .ant-pro-layout-content .stream-link-task-table .ant-table-thead > tr > th.ant-table-cell-fix-right {
+  z-index: 4;
 }
 
 .ant-pro-layout .ant-pro-layout-content .task-table-shell .ant-table-placeholder,
@@ -286,7 +302,7 @@ html[data-hide-header='true'] {
 /* PageContainer 全页：子内容区纵向铺满，主工作区（末个子节点 / ProTable）拉伸 */
 .ant-pro-layout .ant-pro-page-container {
   display: flex !important;
-  flex: 1 0 auto;
+  flex: 1 1 auto;
   flex-direction: column;
   height: auto;
   min-height: 100%;
@@ -297,9 +313,9 @@ html[data-hide-header='true'] {
 .ant-pro-layout .ant-pro-page-container .ant-pro-grid-content-children,
 .ant-pro-layout .ant-pro-page-container-children-content {
   display: flex !important;
-  flex: 1 0 auto !important;
+  flex: 1 1 auto !important;
   flex-direction: column;
-  min-height: auto;
+  min-height: 0;
   height: auto;
   /* Pro 默认 32px 底 padding 会在表格下方留出露白 */
   padding-bottom: 0 !important;
@@ -311,24 +327,30 @@ html[data-hide-header='true'] {
   width: 100%;
 }
 
-.ant-pro-layout .ant-pro-page-container-children-content > .ant-pro-table,
+/* 页面主体（含自定义外壳）作为可压缩的纵向容器：内容多时由内部列表或整页滚动，
+   自身不抢剩余高度（抢高度会把列表挤小） */
+.ant-pro-layout .ant-pro-page-container-children-container > *,
+.ant-pro-layout .ant-pro-page-container-children-content > * {
+  display: flex !important;
+  flex: 0 1 auto !important;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .ant-pro-layout .ant-pro-page-container-children-content > .file-resources-page__workspace,
 .ant-pro-layout .ant-pro-page-container-children-content > .lake-lifecycle-page,
-.ant-pro-layout .ant-pro-page-container-children-content > .lake-catalog-table,
-.ant-pro-layout .ant-pro-page-container-children-content > *:last-child {
-  display: flex !important;
-  flex: 1 0 auto !important;
-  flex-direction: column;
+.ant-pro-layout .ant-pro-page-container-children-content > .lake-catalog-table {
   min-height: auto;
 }
 
-/* ProTable / 列表卡片：只撑满不压缩，行多时由内容区滚动 */
-.ant-pro-layout .ant-pro-table,
-.ant-pro-layout .lake-catalog-table {
+/* 列表型 ProTable 定高：吃掉页面剩余高度，表头/分页固定，表体内部滚动 */
+.ant-pro-layout .ant-pro-page-container-children-container > .ant-pro-table,
+.ant-pro-layout .ant-pro-page-container-children-content > .ant-pro-table,
+.ant-pro-layout .ant-pro-table {
   display: flex !important;
-  flex: 1 0 auto !important;
+  flex: 1 1 0% !important;
   flex-direction: column !important;
-  min-height: auto !important;
+  min-height: 0 !important;
 }
 
 .ant-pro-layout .ant-pro-table > .ant-list-pagination,
@@ -352,10 +374,10 @@ html[data-hide-header='true'] {
 .ant-pro-layout .ant-pro-table .ant-pro-card:has(.ant-table-wrapper),
 .ant-pro-layout .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) {
   display: flex !important;
-  flex: 1 0 auto !important;
+  flex: 1 1 0% !important;
   flex-direction: column !important;
   align-self: stretch !important;
-  min-height: auto !important;
+  min-height: 0 !important;
   height: auto !important;
   background: var(--st-color-bg-panel, #052f3f) !important;
 }
@@ -372,10 +394,41 @@ html[data-hide-header='true'] {
 .ant-pro-layout .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-spin-nested-loading,
 .ant-pro-layout .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-spin-container {
   display: flex !important;
-  flex: 1 0 auto !important;
+  flex: 1 1 auto !important;
   flex-direction: column !important;
-  min-height: auto !important;
+  min-height: 0 !important;
   height: auto !important;
+}
+
+/* ProTable 表头固定、表体内部滚动：分页随卡片固定在底部 */
+.ant-pro-layout .ant-pro-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-content,
+.ant-pro-layout .ant-pro-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-body,
+.ant-pro-layout .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-content,
+.ant-pro-layout .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-body {
+  flex: 1 1 0% !important;
+  min-height: min(var(--st-table-body-min-height, 160px), 18vh) !important;
+  overflow-y: auto !important;
+}
+
+.ant-pro-layout .ant-pro-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-thead > tr > th,
+.ant-pro-layout .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-thead > tr > th {
+  position: sticky !important;
+  top: 0;
+  z-index: 3;
+}
+
+.ant-pro-layout .ant-pro-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-thead > tr > th.ant-table-cell-fix-left,
+.ant-pro-layout .ant-pro-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-thead > tr > th.ant-table-cell-fix-right,
+.ant-pro-layout .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-thead > tr > th.ant-table-cell-fix-left,
+.ant-pro-layout .lake-catalog-table .ant-pro-card:has(.ant-table-wrapper) .ant-table-thead > tr > th.ant-table-cell-fix-right {
+  z-index: 4;
+}
+
+/* ProTable 自带分页：固定在卡片底部，不参与压缩 */
+.ant-pro-layout .ant-pro-table .ant-table-pagination,
+.ant-pro-layout .lake-catalog-table .ant-table-pagination {
+  flex: 0 0 auto !important;
+  margin-top: auto !important;
 }
 
 .ant-pro-layout .ant-pro-table .ant-table-placeholder > td,
@@ -396,17 +449,18 @@ html[data-hide-header='true'] {
   background: var(--st-color-bg-panel, #052f3f) !important;
 }
 
-/* 任务 / 实时列表：表格外壳吃满，分页贴底 */
+/* 任务 / 实时列表：表格外壳占满面板剩余高度，分页贴底 */
 .ant-pro-layout .ant-pro-layout-content .task-table-shell,
 .ant-pro-layout .ant-pro-layout-content .stream-link-task-table {
-  flex: 1 0 auto !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
 }
 
 .ant-pro-layout .ant-pro-layout-content .stream-link-page,
 .ant-pro-layout .ant-pro-layout-content .batch-link-up-page,
 .ant-pro-layout .ant-pro-layout-content .sync-task-list {
-  flex: 1 0 auto !important;
-  min-height: auto !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
 }
 
 /* 湖文件工作区 / 生命周期页主体 */
