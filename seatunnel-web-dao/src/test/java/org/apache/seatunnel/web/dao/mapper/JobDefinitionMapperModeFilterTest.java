@@ -58,7 +58,7 @@ class JobDefinitionMapperModeFilterTest {
 
         String sql = pageSql(params);
 
-        assertTrue(sql.contains("ORDER BY CREATE_TIME DESC"), sql);
+        assertTrue(sql.contains("ORDER BY D0.CREATE_TIME DESC"), sql);
     }
 
     @Test
@@ -73,7 +73,7 @@ class JobDefinitionMapperModeFilterTest {
 
         String sql = pageSql(params);
 
-        assertTrue(sql.contains("ORDER BY JOB_NAME ASC"), sql);
+        assertTrue(sql.contains("ORDER BY D0.JOB_NAME ASC"), sql);
     }
 
     @Test
@@ -92,6 +92,24 @@ class JobDefinitionMapperModeFilterTest {
         assertTrue(countSql(params).contains("'SUBMISSION_UNKNOWN'"), countSql(params));
         assertTrue(pageSql(params).contains("JOB_STATUS IN ("), pageSql(params));
         assertTrue(countSql(params).contains("JOB_STATUS IN ("), countSql(params));
+    }
+
+    @Test
+    void shouldApplyStatusFilterBeforePaging() {
+        BatchJobDefinitionQueryDTO dto = new BatchJobDefinitionQueryDTO();
+        dto.setStatus("RUNNING");
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("dto", dto);
+        params.put("offset", 20);
+        params.put("pageSize", 10);
+
+        String sql = pageSql(params);
+
+        // Filtering the derived page after LIMIT drops matching rows and makes the page disagree
+        // with the count query. The predicate must be part of the paged subquery.
+        assertTrue(sql.indexOf("JOB_STATUS IN (") < sql.indexOf("LIMIT ?"),
+                "status predicate must run before LIMIT: " + sql);
     }
 
     @Test

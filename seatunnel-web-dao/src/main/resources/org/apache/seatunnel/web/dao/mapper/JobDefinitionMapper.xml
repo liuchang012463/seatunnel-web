@@ -7,16 +7,16 @@
     <sql id="statusBucketPredicate">
         <choose>
             <when test="dto.status == 'RUNNING'">
-                AND i.job_status IN ('STARTING', 'SUBMISSION_UNKNOWN', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
+                AND ${alias}.job_status IN ('STARTING', 'SUBMISSION_UNKNOWN', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
             </when>
             <when test="dto.status == 'FAILED'">
-                AND i.job_status IN ('FAILED', 'UNKNOWABLE', 'CANCELED', 'CANCELLED')
+                AND ${alias}.job_status IN ('FAILED', 'UNKNOWABLE', 'CANCELED', 'CANCELLED')
             </when>
             <when test="dto.status == 'FINISHED' or dto.status == 'SUCCESS'">
-                AND i.job_status IN ('FINISHED', 'SAVEPOINT_DONE', 'SUCCESS')
+                AND ${alias}.job_status IN ('FINISHED', 'SAVEPOINT_DONE', 'SUCCESS')
             </when>
             <otherwise>
-                AND i.job_status = #{dto.status}
+                AND ${alias}.job_status = #{dto.status}
             </otherwise>
         </choose>
     </sql>
@@ -82,35 +82,45 @@
 
         FROM
         (
-        SELECT *
-        FROM t_seatunnel_web_job_definition
+        <!-- The status filter must run before LIMIT: filtering the page after it drops matching
+             rows from the page and makes the page size disagree with selectDefinitionCount. -->
+        SELECT d0.*, i0.id AS latest_instance_id
+        FROM t_seatunnel_web_job_definition d0
+        LEFT JOIN t_seatunnel_web_job_instance i0
+        ON i0.id = (
+        SELECT t1.id
+        FROM t_seatunnel_web_job_instance t1
+        WHERE t1.job_definition_id = d0.id
+        ORDER BY t1.create_time DESC, t1.id DESC
+        LIMIT 1
+        )
         <where>
             <if test="dto.id != null">
-                AND id = #{dto.id}
+                AND d0.id = #{dto.id}
             </if>
             <if test="dto.jobName != null and dto.jobName != ''">
-                AND job_name LIKE CONCAT('%', #{dto.jobName}, '%')
+                AND d0.job_name LIKE CONCAT('%', #{dto.jobName}, '%')
             </if>
             <if test="dto.createTimeStart != null">
-                AND create_time <![CDATA[ >= ]]> #{dto.createTimeStart}
+                AND d0.create_time <![CDATA[ >= ]]> #{dto.createTimeStart}
             </if>
             <if test="dto.createTimeEnd != null">
-                AND create_time <![CDATA[ <= ]]> #{dto.createTimeEnd}
+                AND d0.create_time <![CDATA[ <= ]]> #{dto.createTimeEnd}
             </if>
             <if test="dto.sourceType != null and dto.sourceType != ''">
-                AND source_type = #{dto.sourceType}
+                AND d0.source_type = #{dto.sourceType}
             </if>
             <if test="dto.sinkType != null and dto.sinkType != ''">
-                AND sink_type = #{dto.sinkType}
+                AND d0.sink_type = #{dto.sinkType}
             </if>
             <if test="dto.taskType != null">
                 AND (
                     CASE
-                    WHEN task_type IS NOT NULL THEN task_type
-                    WHEN UPPER(COALESCE(mode, '')) = 'FILE_SYNC' THEN 'FILE_TRANSFER'
-                    WHEN UPPER(COALESCE(job_type, '')) = 'STREAMING' THEN 'STREAM'
-                    WHEN UPPER(COALESCE(mode, '')) = 'GUIDE_SINGLE'
-                         AND UPPER(COALESCE(source_type, '')) IN
+                    WHEN d0.task_type IS NOT NULL THEN d0.task_type
+                    WHEN UPPER(COALESCE(d0.mode, '')) = 'FILE_SYNC' THEN 'FILE_TRANSFER'
+                    WHEN UPPER(COALESCE(d0.job_type, '')) = 'STREAMING' THEN 'STREAM'
+                    WHEN UPPER(COALESCE(d0.mode, '')) = 'GUIDE_SINGLE'
+                         AND UPPER(COALESCE(d0.source_type, '')) IN
                              ('WEB_UPLOAD', 'FILE_RESOURCE', 'LOCAL_FILE')
                         THEN 'FILE_INGEST'
                     ELSE 'BATCH'
@@ -118,44 +128,43 @@
                 ) = #{dto.taskType}
             </if>
             <if test="dto.mode != null">
-                AND mode = #{dto.mode}
+                AND d0.mode = #{dto.mode}
             </if>
             <if test="dto.excludeMode != null">
-                AND (mode IS NULL OR mode != #{dto.excludeMode})
+                AND (d0.mode IS NULL OR d0.mode != #{dto.excludeMode})
             </if>
             <if test="dto.sourceTable != null and dto.sourceTable != ''">
-                AND source_table LIKE CONCAT('%', #{dto.sourceTable}, '%')
+                AND d0.source_table LIKE CONCAT('%', #{dto.sourceTable}, '%')
             </if>
             <if test="dto.sinkTable != null and dto.sinkTable != ''">
-                AND sink_table LIKE CONCAT('%', #{dto.sinkTable}, '%')
+                AND d0.sink_table LIKE CONCAT('%', #{dto.sinkTable}, '%')
+            </if>
+            <if test="dto.status != null and dto.status != ''">
+                <include refid="statusBucketPredicate">
+                    <property name="alias" value="i0"/>
+                </include>
             </if>
         </where>
         <choose>
             <when test="dto.sortField == 'name'">
-                ORDER BY job_name
+                ORDER BY d0.job_name
                 <choose>
                     <when test="dto.sortOrder == 'asc' or dto.sortOrder == 'ASC'">ASC</when>
                     <otherwise>DESC</otherwise>
-                </choose>, id DESC
+                </choose>, d0.id DESC
             </when>
             <otherwise>
-                ORDER BY create_time
+                ORDER BY d0.create_time
                 <choose>
                     <when test="dto.sortOrder == 'asc' or dto.sortOrder == 'ASC'">ASC</when>
                     <otherwise>DESC</otherwise>
-                </choose>, id DESC
+                </choose>, d0.id DESC
             </otherwise>
         </choose>
         LIMIT #{offset}, #{pageSize}
         ) d
         LEFT JOIN t_seatunnel_web_job_instance i
-        ON i.id = (
-        SELECT t1.id
-        FROM t_seatunnel_web_job_instance t1
-        WHERE t1.job_definition_id = d.id
-        ORDER BY t1.create_time DESC, t1.id DESC
-        LIMIT 1
-        )
+        ON i.id = d.latest_instance_id
 
         LEFT JOIN t_seatunnel_web_job_metrics m
         ON i.id = m.job_instance_id
@@ -168,12 +177,6 @@
 
         LEFT JOIN t_seatunnel_web_datasource ds_sink
         ON d.sink_datasource_id = ds_sink.id
-
-        <where>
-            <if test="dto.status != null and dto.status != ''">
-                <include refid="statusBucketPredicate"/>
-            </if>
-        </where>
 
         <choose>
             <when test="dto.sortField == 'name'">
@@ -227,7 +230,9 @@
             </if>
 
             <if test="dto.status != null and dto.status != ''">
-                <include refid="statusBucketPredicate"/>
+                <include refid="statusBucketPredicate">
+                    <property name="alias" value="i"/>
+                </include>
             </if>
 
             <if test="dto.sourceType != null and dto.sourceType != ''">

@@ -58,6 +58,7 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
         long epoch = currentEpoch();
         SnapshotEnvelope cached = readEnvelope(digest);
         if (cached != null && isCurrent(cached, epoch)
+                && cached.computedAt() != null
                 && System.currentTimeMillis() - cached.computedAt() <= softTtlMs) {
             return cached.payload();
         }
@@ -127,10 +128,11 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
     private InventorySnapshotPayload compute(String key, Supplier<InventorySnapshotPayload> supplier) {
         String digest = digest(key);
         long buildEpoch = currentEpoch();
-        CompletableFuture<Void> mine = inFlight.putIfAbsent(key, new CompletableFuture<>());
-        if (mine != null) {
+        CompletableFuture<Void> owned = new CompletableFuture<>();
+        CompletableFuture<Void> existing = inFlight.putIfAbsent(key, owned);
+        if (existing != null) {
             try {
-                mine.join();
+                existing.join();
             } catch (CompletionException ignored) {
                 // The other build failed; fall through and rebuild here.
             }
@@ -142,15 +144,19 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
         try {
             return storeSnapshot(buildEpoch, digest, supplier);
         } finally {
-            if (mine == null) {
-                // We own the in-flight slot created above.
-                CompletableFuture<Void> owned = inFlight.get(key);
-                if (owned != null) {
-                    owned.complete(null);
-                    inFlight.remove(key, owned);
-                }
+            if (existing == null) {
+                // Keep the reference we inserted: invalidateAllSnapshots() may clear the map and
+                // another thread may already own the slot. Completing that future would release
+                // its waiters before its own build has finished.
+                owned.complete(null);
+                inFlight.remove(key, owned);
             }
         }
+    }
+
+    /** Releases the background rebuild threads when the Spring context shuts down. */
+    public void close() {
+        rebuildExecutor.shutdownNow();
     }
 
     /**

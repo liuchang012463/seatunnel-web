@@ -19,7 +19,6 @@ import org.apache.seatunnel.web.dao.entity.JobSchedule;
 import org.apache.seatunnel.web.spi.bean.vo.BatchJobDefinitionVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.core.task.TaskExecutor;
 
 import java.io.IOException;
@@ -28,7 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -184,13 +182,20 @@ class BatchJobExecutorServiceImplTest {
         instance.setId(401L);
         instance.setJobStatus(JobStatus.SUBMISSION_UNKNOWN.name());
         when(instanceService.selectById(401L)).thenReturn(instance);
+        when(instanceService.updateStatusIfCurrent(
+                401L,
+                JobStatus.SUBMISSION_UNKNOWN,
+                JobStatus.FAILED,
+                "操作员确认 SeaTunnel Engine 未运行该作业，提交结果按失败处理。"))
+                .thenReturn(true);
 
         assertEquals(401L, executor.resolveUnknownSubmission(401L));
 
-        ArgumentCaptor<JobInstance> update = ArgumentCaptor.forClass(JobInstance.class);
-        verify(instanceService).updateById(update.capture());
-        assertEquals(JobStatus.FAILED, update.getValue().getJobStatus());
-        assertNull(update.getValue().getEndTime());
+        verify(instanceService).updateStatusIfCurrent(
+                401L,
+                JobStatus.SUBMISSION_UNKNOWN,
+                JobStatus.FAILED,
+                "操作员确认 SeaTunnel Engine 未运行该作业，提交结果按失败处理。");
     }
 
     @Test

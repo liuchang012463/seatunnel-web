@@ -17,7 +17,8 @@ public class MetadataTaskExecutorConfig {
         executor.setThreadNamePrefix("metadata-exploration-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(10);
-        executor.initialize();
+        // Spring calls afterPropertiesSet() -> initialize(); doing it here would create a second
+        // executor and leak the first one.
         return executor;
     }
 }

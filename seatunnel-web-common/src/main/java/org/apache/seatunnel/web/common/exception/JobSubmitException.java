@@ -4,6 +4,8 @@ import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 
 public class JobSubmitException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     private final JobSubmitStage stage;
 
     /**

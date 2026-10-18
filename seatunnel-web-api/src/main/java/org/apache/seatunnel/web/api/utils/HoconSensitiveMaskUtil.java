@@ -36,6 +36,15 @@ public final class HoconSensitiveMaskUtil {
                     + "|access[_-]?key|api[_-]?key|private[_-]?key|authorization|user(?:name)?|signature|key|auth)"
                     + "[a-z0-9_.-]*)=)(\\{[^}]*\\}|\"[^\"]*\"|'(?:''|[^'])*'|[^&#;,]*)");
 
+    /**
+     * Credentials also appear as {@code password = "..."} or {@code apiKey: ...} inside error
+     * messages and diagnostics, where there is no URL or HOCON structure to parse.
+     */
+    private static final Pattern KEY_VALUE_CREDENTIAL = Pattern.compile(
+            "(?i)((?:[a-z0-9_.-]*(?:password|passwd|pwd|secret|token|credential"
+                    + "|access[_-]?key|api[_-]?key|private[_-]?key|authorization|signature)"
+                    + "[a-z0-9_.-]*)\\s*[=:]\\s*)(\\{[^}]*\\}|\"[^\"]*\"|'(?:''|[^'])*'|[^\\s,;&#]+)");
+
     private static final String INVALID_HOCON_MASKED_MESSAGE =
             "# HOCON parsing failed; configuration values were fully masked.";
 
@@ -209,16 +218,22 @@ public final class HoconSensitiveMaskUtil {
      * 调用方仍可读取非敏感字段。
      */
     public static Object maskSensitiveValues(Object value) {
+        return maskSensitiveValues(value, null);
+    }
+
+    private static Object maskSensitiveValues(Object value, String parentKey) {
         if (value instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) value;
             Map<String, Object> masked = new LinkedHashMap<>(map.size());
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 String key = entry.getKey() == null ? null : entry.getKey().toString();
-                if (key != null && (isSensitiveKey(key) || isSensitiveContainerKey(key))) {
+                if (key != null && (isSensitiveKey(key)
+                        || isSensitiveContainerKey(key)
+                        || isCredentialParameterKey(parentKey, key))) {
                     masked.put(key, MASK);
                     continue;
                 }
-                masked.put(key, maskSensitiveValues(entry.getValue()));
+                masked.put(key, maskSensitiveValues(entry.getValue(), key));
             }
             return masked;
         }
@@ -226,14 +241,25 @@ public final class HoconSensitiveMaskUtil {
             List<?> list = (List<?>) value;
             List<Object> masked = new ArrayList<>(list.size());
             for (Object item : list) {
-                masked.add(maskSensitiveValues(item));
+                masked.add(maskSensitiveValues(item, parentKey));
             }
             return masked;
         }
         if (value instanceof String) {
-            return maskInlineCredentials((String) value);
+            return maskSensitiveText((String) value);
         }
         return value;
+    }
+
+    /**
+     * Masks credentials embedded in free-form text (Engine diagnostics, error messages). The
+     * original value is returned when nothing matches.
+     */
+    public static String maskSensitiveText(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        return maskInlineCredentials(text);
     }
 
     /**
@@ -279,7 +305,8 @@ public final class HoconSensitiveMaskUtil {
     private static String maskInlineCredentials(String value) {
         String masked = URL_USER_INFO.matcher(value).replaceAll("$1" + MASK + "@");
         masked = maskOracleThinCredentials(masked);
-        return URL_CREDENTIAL_PARAMETER.matcher(masked).replaceAll("$1" + MASK);
+        masked = URL_CREDENTIAL_PARAMETER.matcher(masked).replaceAll("$1" + MASK);
+        return KEY_VALUE_CREDENTIAL.matcher(masked).replaceAll("$1" + MASK);
     }
 
     private static String maskOracleThinCredentials(String value) {

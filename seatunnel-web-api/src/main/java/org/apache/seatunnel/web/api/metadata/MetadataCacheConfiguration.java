@@ -24,7 +24,7 @@ public class MetadataCacheConfiguration {
         return new StringRedisMetadataStore(redisTemplate, mapper);
     }
 
-    @Bean
+    @Bean(destroyMethod = "close")
     @ConditionalOnProperty(name = "metadata.inventory.cache-type", havingValue = "redis")
     public MetadataInventoryCache metadataInventoryCache(
             StringRedisMetadataStore store,

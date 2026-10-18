@@ -349,7 +349,7 @@ public class BatchJobSubmitter {
     private String extractJobId(Map<?, ?> resp) {
         Object jobIdObj = resp == null ? null : resp.get("jobId");
 
-        if (jobIdObj == null) {
+        if (jobIdObj == null || StringUtils.isBlank(jobIdObj.toString())) {
             throw new IllegalStateException("REST submit response missing jobId, resp=" + resp);
         }
 

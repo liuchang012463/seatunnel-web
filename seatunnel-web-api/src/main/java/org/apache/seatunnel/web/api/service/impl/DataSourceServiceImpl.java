@@ -41,6 +41,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
@@ -104,6 +106,26 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             return;
         }
 
+        /*
+         * These calls run inside the write transaction. Invalidating before commit lets a
+         * concurrent dashboard read the old rows and store them under the new epoch, which then
+         * survives the commit. Drop the snapshots only after the data is visible to readers.
+         */
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            doInvalidateInventorySnapshots();
+                        }
+                    });
+            return;
+        }
+
+        doInvalidateInventorySnapshots();
+    }
+
+    private void doInvalidateInventorySnapshots() {
         try {
             metadataInventoryCache.invalidateAllSnapshots();
         } catch (Exception e) {

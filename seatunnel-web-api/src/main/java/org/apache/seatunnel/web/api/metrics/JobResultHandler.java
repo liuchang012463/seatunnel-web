@@ -90,7 +90,20 @@ public class JobResultHandler {
             return;
         }
 
-        updateStatus(jobInstanceId, JobStatus.SUBMISSION_UNKNOWN, message);
+        // Only a STARTING instance can become ambiguous. If the submit response won the race and
+        // already recorded an Engine id, overwriting it would lose the real job reference.
+        boolean updated = instanceService.updateStatusIfCurrent(
+                jobInstanceId,
+                JobStatus.STARTING,
+                JobStatus.SUBMISSION_UNKNOWN,
+                message);
+        if (!updated) {
+            log.warn("Skip recording unknown submission because the instance left STARTING, "
+                    + "instanceId={}", jobInstanceId);
+            return;
+        }
+
+        publishStatusChanged(jobInstanceId, JobStatus.SUBMISSION_UNKNOWN, message);
 
         try {
             incrementalBatchService.handleJobResult(
@@ -239,16 +252,19 @@ public class JobResultHandler {
             return;
         }
 
-        JobInstance po = new JobInstance();
-        po.setId(instanceId);
-        po.setEngineJobId(engineId);
-        po.setJobStatus(JobStatus.INITIALIZING);
         Date now = new Date();
-        po.setSubmitTime(now);
-        po.setStartTime(now);
-        po.setUpdateTime(now);
-
-        instanceService.updateById(po);
+        boolean updated = instanceService.updateEngineIdIfStarting(instanceId, engineId, now);
+        if (!updated) {
+            /*
+             * The instance left STARTING while the submit response was in flight: either the
+             * recovery scheduler or an operator already resolved it as an ambiguous submission.
+             * Overwriting that decision would revive a terminal instance and could allow a
+             * duplicate Engine job, so the late success is reported as a conflict instead.
+             */
+            log.error("Late submission success ignored because the instance is no longer STARTING, "
+                    + "instanceId={}, engineId={}", instanceId, engineId);
+            return;
+        }
 
         log.info("Job submitted. instanceId={}, engineId={}", instanceId, engineId);
     }
@@ -273,6 +289,17 @@ public class JobResultHandler {
 
         instanceService.updateById(po);
 
+        publishStatusChanged(jobInstanceId, status, errorMessage);
+
+        log.info(
+                "Batch job instance final status updated, instanceId={}, status={}, errorMessage={}",
+                jobInstanceId,
+                status,
+                errorMessage
+        );
+    }
+
+    private void publishStatusChanged(Long jobInstanceId, JobStatus status, String errorMessage) {
         // Publish a status-change event so the alarm sub-system (and any other
         // listener) can react. oldStatus / engineJobId are unknown here; the
         // alarm engine enriches them via JobInstanceLookup.
@@ -283,13 +310,6 @@ public class JobResultHandler {
         } catch (Exception e) {
             log.warn("Publish job status change event failed, instanceId={}", jobInstanceId, e);
         }
-
-        log.info(
-                "Batch job instance final status updated, instanceId={}, status={}, errorMessage={}",
-                jobInstanceId,
-                status,
-                errorMessage
-        );
     }
 
     private JobStatus normalizeFinalStatus(JobStatus engineStatus) {

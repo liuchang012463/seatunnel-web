@@ -2,6 +2,10 @@ package org.apache.seatunnel.web.api.utils;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -187,6 +191,44 @@ class HoconSensitiveMaskUtilTest {
         assertFalse(masked.contains("es-url-user"));
         assertFalse(masked.contains("es-url-password"));
         assertTrue(masked.contains("https://******@es.test:9200"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void masksCredentialParametersAndErrorMessagesInEnginePayloadMaps() {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("key", "http-param-api-key");
+        params.put("limit", "10");
+
+        Map<String, Object> query = new LinkedHashMap<>();
+        query.put("key", "http-query-api-key");
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("params", params);
+        payload.put("query", query);
+        payload.put("errorMsg",
+                "connect failed password=\"engine-error-password\" apiKey=engine-error-api-key");
+
+        Map<String, Object> masked =
+                (Map<String, Object>) HoconSensitiveMaskUtil.maskSensitiveValues(payload);
+
+        assertEquals("******", ((Map<String, Object>) masked.get("params")).get("key"));
+        assertEquals("10", ((Map<String, Object>) masked.get("params")).get("limit"));
+        assertEquals("******", ((Map<String, Object>) masked.get("query")).get("key"));
+        String error = String.valueOf(masked.get("errorMsg"));
+        assertFalse(error.contains("engine-error-password"));
+        assertFalse(error.contains("engine-error-api-key"));
+        assertTrue(error.contains("******"));
+    }
+
+    @Test
+    void masksBareKeyValueCredentialsInFreeFormText() {
+        String masked = HoconSensitiveMaskUtil.maskSensitiveText(
+                "failed: password = \"plain-password\"; token=plain-token");
+
+        assertFalse(masked.contains("plain-password"));
+        assertFalse(masked.contains("plain-token"));
+        assertTrue(masked.contains("******"));
     }
 
     @Test

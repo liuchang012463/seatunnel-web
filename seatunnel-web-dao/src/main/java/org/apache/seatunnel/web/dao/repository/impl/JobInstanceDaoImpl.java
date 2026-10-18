@@ -142,6 +142,57 @@ public class JobInstanceDaoImpl
     }
 
     @Override
+    public boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date startTime) {
+        Date now = new Date();
+        LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
+                .eq(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatus.STARTING)
+                .and(condition -> condition
+                        .isNull(MyBatisColumn.getter(JobInstance::getEngineJobId))
+                        .or()
+                        .eq(MyBatisColumn.getter(JobInstance::getEngineJobId), ""))
+                .set(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatus.INITIALIZING)
+                .set(MyBatisColumn.getter(JobInstance::getEngineJobId), engineJobId)
+                .set(MyBatisColumn.getter(JobInstance::getSubmitTime), startTime)
+                .set(MyBatisColumn.getter(JobInstance::getStartTime), startTime)
+                .set(MyBatisColumn.getter(JobInstance::getUpdateTime), now);
+
+        return jobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean updateStatusIfCurrent(Long instanceId,
+                                         JobStatus expectedStatus,
+                                         JobStatus targetStatus,
+                                         String errorMessage) {
+        Date now = new Date();
+        LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
+                .eq(MyBatisColumn.getter(JobInstance::getJobStatus), expectedStatus)
+                .set(MyBatisColumn.getter(JobInstance::getJobStatus), targetStatus)
+                .set(MyBatisColumn.getter(JobInstance::getUpdateTime), now);
+
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            wrapper.set(MyBatisColumn.getter(JobInstance::getErrorMessage), truncate(errorMessage, 2000));
+        }
+        if (targetStatus.isEndState()) {
+            wrapper.set(MyBatisColumn.getter(JobInstance::getEndTime), now);
+        }
+
+        return jobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean touchStartingInstance(Long instanceId) {
+        LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
+                .eq(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatus.STARTING)
+                .set(MyBatisColumn.getter(JobInstance::getUpdateTime), new Date());
+
+        return jobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
     public void updateSubmitResult(Long instanceId, String engineJobId, JobStatus submitStatus, Date submitTime) {
         JobInstance update = new JobInstance();
         update.setId(instanceId);

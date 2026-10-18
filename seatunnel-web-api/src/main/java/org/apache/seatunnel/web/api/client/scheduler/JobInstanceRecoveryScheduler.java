@@ -120,26 +120,38 @@ public class JobInstanceRecoveryScheduler {
         }
 
         for (JobInstance instance : instances) {
-            if (instance == null
-                    || instance.getId() == null
-                    || !JobStatus.STARTING.equals(instance.getJobStatus())
-                    || (instance.getEngineJobId() != null && !instance.getEngineJobId().isBlank())
-                    || (instance.getCreateTime() != null
-                    && !instance.getCreateTime().before(processStartedAt))) {
-                continue;
-            }
+            try {
+                if (instance == null
+                        || instance.getId() == null
+                        || !JobStatus.STARTING.equals(instance.getJobStatus())
+                        || (instance.getEngineJobId() != null && !instance.getEngineJobId().isBlank())
+                        || (instance.getCreateTime() != null
+                        && !instance.getCreateTime().before(processStartedAt))
+                        // A rolling restart can start this instance while another Web instance is
+                        // still submitting an older row. Only a submission with no heartbeat for
+                        // the full grace window is treated as interrupted.
+                        || !isStaleSubmission(instance)) {
+                    continue;
+                }
 
-            String message = "SeaTunnel Web 在提交任务时重启，未保存到 Engine 作业 ID；任务可能已被 Engine 接收。"
-                    + "请先核对 SeaTunnel Engine 作业列表，再决定是否重新启动。";
-            jobResultHandler.handleSubmissionUnknown(instance.getId(), message);
-            log.warn("Marked interrupted batch submission as unknown, instanceId={}", instance.getId());
+                String message = "SeaTunnel Web 在提交任务时重启，未保存到 Engine 作业 ID；任务可能已被 Engine 接收。"
+                        + "请先核对 SeaTunnel Engine 作业列表，再决定是否重新启动。";
+                jobResultHandler.handleSubmissionUnknown(instance.getId(), message);
+                log.warn("Marked interrupted batch submission as unknown, instanceId={}", instance.getId());
+            } catch (Exception e) {
+                // One bad row must not stop the remaining startup recovery steps.
+                log.warn("Mark interrupted batch submission failed, instanceId={}",
+                        instance == null ? null : instance.getId(), e);
+            }
         }
     }
 
     private boolean isStaleSubmission(JobInstance instance) {
-        Date createTime = instance.getCreateTime();
-        return createTime != null
-                && createTime.getTime() < System.currentTimeMillis() - SUBMISSION_GRACE_MS;
+        Date lastActivity = instance.getUpdateTime() != null
+                ? instance.getUpdateTime()
+                : instance.getCreateTime();
+        return lastActivity != null
+                && lastActivity.getTime() < System.currentTimeMillis() - SUBMISSION_GRACE_MS;
     }
 
     private void recoverStreamingInstances() {

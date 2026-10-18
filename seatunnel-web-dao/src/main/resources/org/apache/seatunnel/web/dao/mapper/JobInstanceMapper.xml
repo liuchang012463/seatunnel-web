@@ -90,10 +90,12 @@
         d.release_state AS definitionStatus,
         d.source_type AS sourceType,
         d.sink_type AS sinkType,
-        d.source_table AS sourceTable,
-        d.sink_table AS sinkTable,
-        d.source_datasource_id as sourceDatasourceId,
-        d.sink_datasource_id as sinkDatasourceId,
+        <!-- Prefer the identifiers captured at submission; fall back to the definition for
+             instances created before those columns existed. -->
+        COALESCE(i.source_table, d.source_table) AS sourceTable,
+        COALESCE(i.sink_table, d.sink_table) AS sinkTable,
+        COALESCE(i.source_datasource_id, d.source_datasource_id) AS sourceDatasourceId,
+        COALESCE(i.sink_datasource_id, d.sink_datasource_id) AS sinkDatasourceId,
 
         IFNULL(m.read_row_count, 0) AS readRowCount,
         IFNULL(m.write_row_count, 0) AS writeRowCount,

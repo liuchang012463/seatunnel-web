@@ -18,7 +18,9 @@ import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.hocon.JobDefinitionCommandResolver;
 import org.apache.seatunnel.web.core.hocon.JobDefinitionHoconBuilder;
 import org.apache.seatunnel.web.core.job.TaskTypeResolver;
+import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
 import org.apache.seatunnel.web.dao.entity.JobInstance;
+import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
 import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.JobMetricsDao;
 import org.apache.seatunnel.web.dao.repository.JobTableMetricsDao;
@@ -36,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.nio.file.Paths;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -46,6 +49,9 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
 
     @Resource
     private JobInstanceDao jobInstanceDao;
+
+    @Resource
+    private JobDefinitionDao jobDefinitionDao;
 
     @Resource
     private JobMetricsDao jobMetricsDao;
@@ -188,7 +194,7 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
         result.setInstanceId(instanceId);
         result.setEngineJobId(instance.getEngineJobId());
         result.setLocalStatus(instance.getJobStatus());
-        result.setLocalErrorMessage(instance.getErrorMessage());
+        result.setLocalErrorMessage(HoconSensitiveMaskUtil.maskSensitiveText(instance.getErrorMessage()));
         result.setStatus(instance.getJobStatus());
         result.setEngineAvailable(false);
 
@@ -209,7 +215,8 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
             result.setStatus(stringValue(engineInfo.get("status"), result.getStatus()));
             result.setCreateTime(engineInfo.get("createTime"));
             result.setFinishTime(engineInfo.get("finishTime"));
-            result.setErrorMsg(stringValue(engineInfo.get("errorMsg"), null));
+            result.setErrorMsg(HoconSensitiveMaskUtil.maskSensitiveText(
+                    stringValue(engineInfo.get("errorMsg"), null)));
             // The Engine payload is copied field by field, so mask it before it leaves the Web.
             result.setJobDag(HoconSensitiveMaskUtil.maskSensitiveValues(engineInfo.get("jobDag")));
             result.setDiagnostics(
@@ -268,6 +275,50 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
         } catch (Exception e) {
             log.error("Remove all batch job instances by definition id failed, definitionId={}", definitionId, e);
             throw new ServiceException(Status.DELETE_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    @Override
+    public boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date startTime) {
+        if (instanceId == null || instanceId <= 0) {
+            return false;
+        }
+        try {
+            return jobInstanceDao.updateEngineIdIfStarting(instanceId, engineJobId, startTime);
+        } catch (Exception e) {
+            log.error("Update engine id conditionally failed, id={}", instanceId, e);
+            throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    @Override
+    public boolean updateStatusIfCurrent(Long instanceId,
+                                         JobStatus expectedStatus,
+                                         JobStatus targetStatus,
+                                         String errorMessage) {
+        if (instanceId == null || instanceId <= 0 || expectedStatus == null || targetStatus == null) {
+            return false;
+        }
+        try {
+            return jobInstanceDao.updateStatusIfCurrent(
+                    instanceId, expectedStatus, targetStatus, errorMessage);
+        } catch (Exception e) {
+            log.error("Update status conditionally failed, id={}, expected={}, target={}",
+                    instanceId, expectedStatus, targetStatus, e);
+            throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    @Override
+    public boolean touchStartingInstance(Long instanceId) {
+        if (instanceId == null || instanceId <= 0) {
+            return false;
+        }
+        try {
+            return jobInstanceDao.touchStartingInstance(instanceId);
+        } catch (Exception e) {
+            log.warn("Refresh submission heartbeat failed, id={}", instanceId, e);
+            return false;
         }
     }
 
@@ -404,7 +455,7 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
         }
         String runtimeConfig = buildJobConfig(command);
 
-        return jobInstanceFactory.create(
+        JobInstance instance = jobInstanceFactory.create(
                 command,
                 id,
                 runtimeConfig,
@@ -412,6 +463,27 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
                 buildLogPath(id),
                 JobMode.BATCH
         );
+        captureSubmittedTableSnapshot(instance, command.getId());
+        return instance;
+    }
+
+    /**
+     * Stores the source/target identifiers that this instance is actually submitted with. The
+     * definition may be edited while the asynchronous submission and lineage write are in flight,
+     * so the lineage service must not read those values back from the definition row.
+     */
+    private void captureSubmittedTableSnapshot(JobInstance instance, Long jobDefinitionId) {
+        if (instance == null || jobDefinitionId == null) {
+            return;
+        }
+        JobDefinitionEntity definition = jobDefinitionDao.queryById(jobDefinitionId);
+        if (definition == null) {
+            return;
+        }
+        instance.setSourceDatasourceId(definition.getSourceDatasourceId());
+        instance.setSinkDatasourceId(definition.getSinkDatasourceId());
+        instance.setSourceTable(definition.getSourceTable());
+        instance.setSinkTable(definition.getSinkTable());
     }
 
     /**

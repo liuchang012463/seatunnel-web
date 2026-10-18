@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.service.impl;
 
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
@@ -32,6 +33,10 @@ import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +57,12 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
     private final JobResultHandler jobResultHandler;
     private final TaskExecutor batchJobSubmitExecutor;
     private final Set<Long> submittingDefinitionIds = ConcurrentHashMap.newKeySet();
+    private final ScheduledExecutorService submissionHeartbeat =
+            Executors.newSingleThreadScheduledExecutor(runnable -> {
+                Thread thread = new Thread(runnable, "batch-submit-heartbeat");
+                thread.setDaemon(true);
+                return thread;
+            });
 
     @Autowired
     public BatchJobExecutorServiceImpl(BatchJobInstanceService instanceService,
@@ -103,6 +114,7 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             );
         }
 
+        boolean submissionQueued = false;
         try {
             if (instanceService.existsRunningInstance(jobDefineId)) {
                 throw new ServiceException(
@@ -153,7 +165,9 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             }
 
             try {
-                batchJobSubmitExecutor.execute(() -> submitBatchJob(instance, incrementalExecution));
+                batchJobSubmitExecutor.execute(
+                        () -> submitBatchJob(instance, incrementalExecution, jobDefineId));
+                submissionQueued = true;
             } catch (RuntimeException e) {
                 log.error("Queue batch job submission failed: jobDefineId={}, instanceId={}",
                         jobDefineId, instance.getId(), e);
@@ -169,9 +183,15 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             }
 
             return instance.getId();
-        } catch (RuntimeException e) {
-            submittingDefinitionIds.remove(jobDefineId);
-            throw e;
+        } finally {
+            /*
+             * The async task clears the marker when it actually finishes. Any failure before the
+             * task was queued (including an Error) must release it here, otherwise the definition
+             * stays blocked for the lifetime of the JVM.
+             */
+            if (!submissionQueued) {
+                submittingDefinitionIds.remove(jobDefineId);
+            }
         }
     }
 
@@ -267,13 +287,18 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             return jobInstanceId;
         }
 
-        JobInstance update = new JobInstance();
-        update.setId(jobInstanceId);
-        update.setJobStatus(JobStatus.FAILED);
-        // Keep the end time recorded when the ambiguous outcome was detected: the job never ran,
-        // so the operator's response time must not inflate the reported runtime.
-        update.setErrorMessage("操作员确认 SeaTunnel Engine 未运行该作业，提交结果按失败处理。");
-        instanceService.updateById(update);
+        // CAS on the ambiguous status: a submit response may arrive concurrently and record a
+        // real Engine job id. Only the transition that actually observes SUBMISSION_UNKNOWN wins.
+        boolean resolved = instanceService.updateStatusIfCurrent(
+                jobInstanceId,
+                JobStatus.SUBMISSION_UNKNOWN,
+                JobStatus.FAILED,
+                "操作员确认 SeaTunnel Engine 未运行该作业，提交结果按失败处理。");
+        if (!resolved) {
+            log.warn("Skip resolving unknown submission because its status changed concurrently, "
+                    + "instanceId={}", jobInstanceId);
+            return jobInstanceId;
+        }
 
         log.info("Resolved unknown batch submission as failed: instanceId={}", jobInstanceId);
         return jobInstanceId;
@@ -320,8 +345,17 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
     }
 
     private void submitBatchJob(JobInstanceVO instance,
-                                IncrementalBatchExecution incrementalExecution) {
+                                IncrementalBatchExecution incrementalExecution,
+                                Long jobDefinitionId) {
+        ScheduledFuture<?> heartbeat = null;
         try {
+            /*
+             * A driver upload can take several minutes. Refresh the instance heartbeat while the
+             * submit is in flight so recovery only treats a genuinely lost submission as stale.
+             */
+            heartbeat = submissionHeartbeat.scheduleAtFixedRate(
+                    () -> instanceService.touchStartingInstance(instance.getId()),
+                    60, 60, TimeUnit.SECONDS);
             jobSubmitter.submit(instance);
         } catch (Exception e) {
             log.error("Asynchronous batch job submission failed: instanceId={}", instance.getId(), e);
@@ -346,10 +380,16 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                 }
             }
         } finally {
-            if (instance.getJobDefinitionId() != null) {
-                submittingDefinitionIds.remove(instance.getJobDefinitionId());
+            if (heartbeat != null) {
+                heartbeat.cancel(false);
             }
+            submittingDefinitionIds.remove(jobDefinitionId);
         }
+    }
+
+    @PreDestroy
+    public void shutdownSubmissionHeartbeat() {
+        submissionHeartbeat.shutdownNow();
     }
 
     /**
