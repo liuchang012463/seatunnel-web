@@ -1,7 +1,7 @@
 import { Empty, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import React from "react";
-import { BLUE, BORDER_COLOR } from "../../constants/ui";
+import { BORDER_COLOR } from "../../constants/ui";
 import { MenuKey, ParamItem } from "../../types";
 
 const { Text } = Typography;
@@ -28,9 +28,9 @@ const softCodeStyle: React.CSSProperties = {
   maxWidth: "100%",
   padding: "2px 10px",
   borderRadius: 10,
-  background: "#F5F7FA",
-  border: "1px solid #EAECF0",
-  color: "#344054",
+  background: "var(--st-color-bg-control)",
+  border: "1px solid var(--st-color-line)",
+  color: "var(--st-color-text-primary)",
   fontSize: 12,
   lineHeight: "20px",
   fontFamily:
@@ -72,7 +72,7 @@ const ConnectorParamTable: React.FC<Props> = ({
             <div className="flex items-center gap-2">
               <span
                 className="truncate text-[14px] font-semibold leading-[22px]"
-                style={{ color: "#245BDB" }}
+                style={{ color: "var(--st-color-accent)" }}
                 title={record.connectorName || "-"}
               >
                 {record.connectorName || "-"}
@@ -80,7 +80,7 @@ const ConnectorParamTable: React.FC<Props> = ({
             </div>
 
             {record.connectorType ? (
-              <div className="mt-1 text-[12px] leading-5 text-[#98A2B3]">
+              <div className="mt-1 text-[12px] leading-5 text-[var(--st-color-text-muted)]">
                 类型：{record.connectorType}
               </div>
             ) : null}
@@ -95,7 +95,14 @@ const ConnectorParamTable: React.FC<Props> = ({
       width: 170,
       render: (_, record) => (
         <div className="min-w-0">
-          <div className="truncate text-[14px] font-semibold leading-[22px] text-[#101828]">
+          <div
+            className="truncate text-[14px] font-semibold leading-[22px] text-[var(--st-color-text-primary)]"
+            title={
+              [record.paramDesc, record.defaultValue, record.exampleValue]
+                .filter(Boolean)
+                .join(" · ") || record.paramName
+            }
+          >
             {record.paramName || "-"}
           </div>
         </div>
@@ -106,8 +113,9 @@ const ConnectorParamTable: React.FC<Props> = ({
       dataIndex: "paramDesc",
       key: "paramDesc",
       ellipsis: true,
+      responsive: ["xxl"],
       render: (value: string) => (
-        <Text className="text-[13px] leading-6 text-[#475467]">
+        <Text className="text-[13px] leading-6 text-[var(--st-color-text-secondary)]">
           {value || "-"}
         </Text>
       ),
@@ -125,9 +133,9 @@ const ConnectorParamTable: React.FC<Props> = ({
               marginInlineEnd: 0,
               borderRadius: 10,
               paddingInline: 10,
-              color: "#175CD3",
-              background: "#EFF8FF",
-              borderColor: "#B2DDFF",
+              color: "var(--st-color-accent)",
+              background: "rgba(63, 198, 255, 0.12)",
+              borderColor: "rgba(63, 198, 255, 0.35)",
               fontSize: 12,
             }}
           >
@@ -151,9 +159,9 @@ const ConnectorParamTable: React.FC<Props> = ({
                 marginInlineEnd: 0,
                 borderRadius: 10,
                 paddingInline: 10,
-                color: "#D92D20",
-                background: "#FEF3F2",
-                borderColor: "#FECDCA",
+                color: "var(--st-color-error)",
+                background: "rgba(255, 107, 94, 0.12)",
+                borderColor: "rgba(255, 107, 94, 0.35)",
                 fontSize: 12,
                 fontWeight: 500,
               }}
@@ -167,9 +175,9 @@ const ConnectorParamTable: React.FC<Props> = ({
                 marginInlineEnd: 0,
                 borderRadius: 10,
                 paddingInline: 10,
-                color: "#475467",
-                background: "#F8FAFC",
-                borderColor: "#E4E7EC",
+                color: "var(--st-color-text-secondary)",
+                background: "var(--st-color-bg-control)",
+                borderColor: "var(--st-color-line)",
                 fontSize: 12,
               }}
             >
@@ -186,6 +194,7 @@ const ConnectorParamTable: React.FC<Props> = ({
       key: "defaultValue",
       width: 180,
       ellipsis: true,
+      responsive: ["xxl"],
       render: (value?: string) =>
         value ? (
           <span style={softCodeStyle} title={value}>
@@ -201,6 +210,7 @@ const ConnectorParamTable: React.FC<Props> = ({
       key: "exampleValue",
       width: 170,
       ellipsis: true,
+      responsive: ["xxl"],
       render: (value?: string) =>
         value ? (
           <span style={softCodeStyle} title={value}>
@@ -213,8 +223,7 @@ const ConnectorParamTable: React.FC<Props> = ({
     {
       title: "操作",
       key: "action",
-      width: 150,
-      fixed: "right",
+      width: 130,
       render: (_: unknown, record: ParamItem) => (
         <Space size={8}>
           <button
@@ -223,8 +232,8 @@ const ConnectorParamTable: React.FC<Props> = ({
             onClick={() => onEdit(record)}
             style={{
               ...actionStyle,
-              color: BLUE,
-              background: "#F5F8FF",
+              color: "var(--st-color-accent)",
+              background: "rgba(63, 198, 255, 0.1)",
             }}
           >
             编辑
@@ -236,8 +245,8 @@ const ConnectorParamTable: React.FC<Props> = ({
             onClick={() => onDelete(record)}
             style={{
               ...actionStyle,
-              color: "#D92D20",
-              background: "#FEF3F2",
+              color: "var(--st-color-error)",
+              background: "rgba(255, 107, 94, 0.1)",
             }}
           >
             删除
@@ -249,10 +258,11 @@ const ConnectorParamTable: React.FC<Props> = ({
 
   return (
     <div
-      className="overflow-hidden rounded-[16px] bg-white"
+      className="overflow-hidden rounded-[8px]"
       style={{
         border: `1px solid ${BORDER_COLOR}`,
-        boxShadow: "0 4px 18px rgba(16, 24, 40, 0.04)",
+        background: "var(--st-color-bg-panel)",
+        boxShadow: "0 10px 30px rgba(0, 15, 21, 0.35)",
       }}
     >
       <Table<ParamItem>
@@ -274,27 +284,28 @@ const ConnectorParamTable: React.FC<Props> = ({
             </div>
           ),
         }}
-        scroll={{ x: 1280, y: "calc(100vh - 430px)" }}
+        scroll={{ x: "100%", y: "calc(100vh - 430px)" }}
+        tableLayout="fixed"
         rowClassName={() => "connector-param-table-row"}
       />
 
       <style>
         {`
           .ant-table-wrapper .ant-table-thead > tr > th {
-            background: #f8fafc;
-            color: #344054;
+            background: var(--st-color-bg-elevated);
+            color: var(--st-color-text-primary);
             font-weight: 600;
             font-size: 13px;
-            border-bottom: 1px solid #eef2f6;
+            border-bottom: 1px solid var(--st-color-line);
           }
 
           .ant-table-wrapper .ant-table-tbody > tr > td {
-            border-bottom: 1px solid #f2f4f7;
+            border-bottom: 1px solid var(--st-color-line);
             vertical-align: middle;
           }
 
           .ant-table-wrapper .connector-param-table-row:hover > td {
-            background: #fafcff !important;
+            background: var(--st-color-bg-hover) !important;
           }
 
           .ant-table-wrapper .ant-table-pagination {

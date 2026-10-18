@@ -657,6 +657,10 @@
   }
 }
 
+.datasource-page-heading {
+  margin-bottom: 14px;
+}
+
 .datasource-page-title-row {
   display: flex;
   align-items: center;
@@ -705,16 +709,17 @@
   height: 42px;
   padding-inline: 18px;
   flex-shrink: 0;
-  color: white;
+  /* White on #2187a8 is 4.12:1; the dark on-primary token keeps it above AA. */
+  color: var(--st-color-on-primary);
   background: #2187a8;
   border-color: #2187a8;
   border-radius: var(--st-radius-md);
-  font-weight: 400;
+  font-weight: 500;
 
   &:hover {
-    color: white;
-    background: #14627b !important;
-    border-color: #14627b !important;
+    color: var(--st-color-on-primary);
+    background: #2a9ac0 !important;
+    border-color: #2a9ac0 !important;
   }
 }
 

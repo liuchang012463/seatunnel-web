@@ -317,6 +317,9 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "",
       width: TASK_TABLE_COLUMN_WIDTHS.plan,
+      // Narrow viewports keep name/status/execution/createTime/action visible; the fixed action
+      // column otherwise covers the time column at 1366px.
+      responsive: ["xxl"],
       render: (_content: any, record: any) => (
         <div className="sync-task-plan-cell">
           <DataSourceSyncPlan record={record} />
@@ -339,6 +342,7 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "taskName",
       width: TASK_TABLE_COLUMN_WIDTHS.schedule,
+      responsive: ["xxl"],
       render: (_content: any, record: any) => <ScheduleInfo record={record} />,
     },
     {

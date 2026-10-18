@@ -12,17 +12,23 @@ const API_PREFIX = '/api/v1/reports';
 export const fetchReports = async (
   query: CollectionReportQuery = {},
 ): Promise<ApiResponse<CollectionReportPage>> => {
-  return HttpUtils.post<CollectionReportPage>(`${API_PREFIX}/page`, query);
+  return HttpUtils.post<CollectionReportPage>(`${API_PREFIX}/page`, query, {
+    skipErrorHandler: true,
+  });
 };
 
 export const generateReport = async (
   payload: Pick<CollectionReportRecord, 'name' | 'source' | 'format' | 'description' | 'relatedForm'>,
 ): Promise<ApiResponse<CollectionReportRecord>> => {
-  return HttpUtils.post<CollectionReportRecord>(`${API_PREFIX}/generate`, payload);
+  return HttpUtils.post<CollectionReportRecord>(`${API_PREFIX}/generate`, payload, {
+    skipErrorHandler: true,
+  });
 };
 
 export const previewReport = async (
   id: string,
 ): Promise<ApiResponse<ReportPreview | undefined>> => {
-  return HttpUtils.get<ReportPreview>(`${API_PREFIX}/${id}/preview`);
+  return HttpUtils.get<ReportPreview>(`${API_PREFIX}/${id}/preview`, {
+    skipErrorHandler: true,
+  });
 };

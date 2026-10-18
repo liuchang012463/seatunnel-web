@@ -13,8 +13,8 @@ const Loading: React.FC = () => {
           <div className="leg leg-right" />
         </div>
 
-        <span className="text-[13px] font-medium text-slate-500">
-          Loading
+        <span className="text-[13px] font-medium" style={{ color: 'var(--st-color-text-secondary)' }}>
+          加载中…
         </span>
       </div>
 
@@ -34,7 +34,7 @@ const Loading: React.FC = () => {
             width: 9px;
             height: 9px;
             border-radius: 999px;
-            background: #1f2937;
+            background: var(--st-color-accent);
           }
 
           .running-man .body {
@@ -44,7 +44,7 @@ const Loading: React.FC = () => {
             width: 3px;
             height: 12px;
             border-radius: 999px;
-            background: #1f2937;
+            background: var(--st-color-accent);
             transform-origin: top center;
             transform: rotate(-8deg);
           }
@@ -55,7 +55,7 @@ const Loading: React.FC = () => {
             width: 3px;
             height: 11px;
             border-radius: 999px;
-            background: #1f2937;
+            background: var(--st-color-accent);
             transform-origin: top center;
           }
 

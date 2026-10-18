@@ -43,11 +43,13 @@ export const menuData: MenuDataItem[] = [
     ],
   },
   {
-    path: '/reporting/forms',
+    path: '/menu/reporting',
     name: '数据采报',
     icon: <FormOutlined />,
-    disabledTooltip: true,
-    collapsedHoverPanel: true,
+    children: [
+      { path: '/reporting/forms', name: '采报配置', icon: <FormOutlined /> },
+      { path: '/reporting/reports', name: '采集报告', icon: <BarChartOutlined /> },
+    ],
   },
   {
     path: '/menu/ingestion',
@@ -75,7 +77,7 @@ export const menuData: MenuDataItem[] = [
     children: [
       { path: '/client', name: '引接引擎管理', icon: <ApiOutlined /> },
       { path: '/operations/metadata-engine', name: '探查引擎管理', icon: <ReadOutlined /> },
-      { path: '/lake/warehouse', name: 'Doris 集群管理', icon: <SettingOutlined /> },
+      { path: '/lake/warehouse', name: '数据湖管理', icon: <SettingOutlined /> },
       { path: '/alarm', name: '告警管理', icon: <SettingOutlined /> },
       { path: '/operations/protocol', name: '协议管理', icon: <ApiOutlined /> },
       { path: '/operations/diagnostics', name: '安全加密', icon: <SafetyCertificateOutlined /> },
@@ -98,7 +100,7 @@ export const menuData: MenuDataItem[] = [
     name: '系统管理',
     icon: <SettingOutlined />,
     children: [
-      { path: '/knowledge-management', name: '参数与知识', icon: <ReadOutlined /> },
+      { path: '/knowledge-management', name: '知识管理', icon: <ReadOutlined /> },
       { path: '/open-api', name: '开放接口', icon: <ApiOutlined /> },
     ],
   },

@@ -7,6 +7,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import {
+  Alert,
   Button,
   Card,
   Col,
@@ -64,6 +65,16 @@ const sourceLabel: Record<ReportSource, string> = {
   MANUAL: '人工汇总',
 };
 
+const friendlyReportError = (message?: string) => {
+  if (!message) {
+    return '报告服务暂不可用，请稍后重试';
+  }
+  if (message.includes('Resource not found') || message.includes('404')) {
+    return '报告服务尚未接入，请联系管理员或稍后重试';
+  }
+  return message;
+};
+
 const CollectionReportsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState<CollectionReportRecord[]>([]);
@@ -74,6 +85,7 @@ const CollectionReportsPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [previewing, setPreviewing] = useState<CollectionReportRecord>();
   const [preview, setPreview] = useState<ReportPreview>();
+  const [error, setError] = useState<string>();
   const [form] = Form.useForm();
 
   const reload = async () => {
@@ -83,7 +95,20 @@ const CollectionReportsPage: React.FC = () => {
       if (response.code === 0) {
         setRecords(response.data?.bizData || []);
         setTotal(response.data?.pagination?.total || 0);
+        setError(undefined);
+      } else {
+        setRecords([]);
+        setTotal(0);
+        setError(friendlyReportError(response.message || response.msg));
       }
+    } catch (requestError) {
+      setRecords([]);
+      setTotal(0);
+      setError(
+        friendlyReportError(
+          requestError instanceof Error ? requestError.message : undefined,
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -104,28 +129,40 @@ const CollectionReportsPage: React.FC = () => {
 
   const handlePreview = async (record: CollectionReportRecord) => {
     setPreviewing(record);
-    const response = await previewReport(record.id);
-    if (response.code === 0) {
-      setPreview(response.data);
-    } else {
+    try {
+      const response = await previewReport(record.id);
+      if (response.code === 0) {
+        setPreview(response.data);
+      } else {
+        setPreview(undefined);
+        message.warning(friendlyReportError(response.message || response.msg));
+      }
+    } catch {
       setPreview(undefined);
+      message.warning('报告预览暂不可用，请稍后重试');
     }
   };
 
   const handleGenerate = async () => {
     const values = await form.validateFields();
-    const response = await generateReport({
-      name: values.name,
-      source: values.source,
-      format: values.format,
-      relatedForm: values.relatedForm,
-      description: values.description || '由前端生成',
-    });
-    if (response.code === 0) {
-      message.success('已提交生成任务，结果稍后回写到列表');
-      setModalOpen(false);
-      form.resetFields();
-      reload();
+    try {
+      const response = await generateReport({
+        name: values.name,
+        source: values.source,
+        format: values.format,
+        relatedForm: values.relatedForm,
+        description: values.description || '由前端生成',
+      });
+      if (response.code === 0) {
+        message.success('已提交生成任务，结果稍后回写到列表');
+        setModalOpen(false);
+        form.resetFields();
+        reload();
+      } else {
+        message.warning(friendlyReportError(response.message || response.msg));
+      }
+    } catch {
+      message.warning('报告生成暂不可用，请稍后重试');
     }
   };
 
@@ -212,6 +249,20 @@ const CollectionReportsPage: React.FC = () => {
         </Button>,
       ]}
     >
+      {error ? (
+        <Alert
+          type="warning"
+          showIcon
+          className="mb-4"
+          message="采集报告服务暂不可用"
+          description={error}
+          action={
+            <Button type="link" onClick={reload}>
+              重试
+            </Button>
+          }
+        />
+      ) : null}
       <Row gutter={[16, 16]} className="reporting-reports-stats">
         <Col xs={24} md={8}>
           <Card>

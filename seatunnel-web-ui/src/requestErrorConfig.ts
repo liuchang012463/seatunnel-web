@@ -1,5 +1,4 @@
-﻿import type { RequestOptions } from '@@/plugin-request/request';
-import type { RequestConfig } from '@umijs/max';
+﻿import type { RequestConfig } from '@umijs/max';
 import { appMessage, appNotification } from './utils/antdFeedback';
 
 // 错误处理方案： 错误类型
@@ -76,27 +75,16 @@ export const errorConfig: RequestConfig = {
       } else if (error.response) {
         // Axios 的错误
         // 请求成功发出且服务器也响应了状态码，但状态代码超出了 2xx 的范围
-        appMessage.error(`Response status:${error.response.status}`);
+        appMessage.error(`请求失败（HTTP ${error.response.status}），请稍后重试`);
       } else if (error.request) {
         // 请求已经成功发起，但没有收到响应
-        // \`error.request\` 在浏览器中是 XMLHttpRequest 的实例，
-        // 而在node.js中是 http.ClientRequest 的实例
-        appMessage.error('None response! Please retry.');
+        appMessage.error('服务无响应，请检查网络后重试');
       } else {
         // 发送请求时出了点问题
-        appMessage.error('Request error, please retry.');
+        appMessage.error('请求发送失败，请稍后重试');
       }
     },
   },
-
-  // 请求拦截器
-  requestInterceptors: [
-    (config: RequestOptions) => {
-      // 拦截请求配置，进行个性化处理。
-      const url = config?.url?.concat('?token=123');
-      return { ...config, url };
-    },
-  ],
 
   // 响应拦截器
   responseInterceptors: [

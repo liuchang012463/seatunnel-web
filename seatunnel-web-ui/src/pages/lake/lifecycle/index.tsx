@@ -668,10 +668,11 @@ const LifecyclePage: React.FC = () => {
         title: '约等时间',
         key: 'approximateTime',
         width: 130,
+        responsive: ['xxl'],
         render: (_, row) => row.retentionCount == null ? '-' : `${row.retentionCount}${granularityLabels[row.granularity || ''] || '个分区'}`,
       },
-      { title: 'Scope', key: 'scope', width: 150, render: () => <Text type="secondary">可复用模板</Text> },
-      { title: '应用表', key: 'appliedTables', width: 100, render: () => <Text type="secondary">-</Text>, tooltip: '当前策略接口不返回应用表计数' },
+      { title: '作用范围', key: 'scope', width: 150, responsive: ['xxl'], render: () => <Text type="secondary">可复用模板</Text> },
+      { title: '应用表', key: 'appliedTables', width: 100, responsive: ['xxl'], render: () => <Text type="secondary">-</Text>, tooltip: '当前策略接口不返回应用表计数' },
       {
         title: '状态',
         dataIndex: 'status',
@@ -685,7 +686,7 @@ const LifecyclePage: React.FC = () => {
         title: '操作',
         key: 'option',
         valueType: 'option',
-        width: 260,
+        width: 220,
         render: (_, row) => (
           <Space size={4} wrap>
             <Button type="link" icon={<EditOutlined />} disabled={row.status === 'DISABLED'} onClick={() => { setEditingPolicy(row); setEditorOpen(true); }}>编辑</Button>
@@ -747,7 +748,8 @@ const LifecyclePage: React.FC = () => {
           rowKey="id"
           cardBordered
           columns={columns}
-          scroll={{ x: 'max-content' }}
+          scroll={{ x: '100%' }}
+          tableLayout="fixed"
           search={{ labelWidth: 'auto' }}
           options={false}
           pagination={{ showSizeChanger: true, showTotal: (total) => `共 ${total} 个策略` }}
@@ -774,10 +776,7 @@ const LifecyclePage: React.FC = () => {
               return { data: [], success: false, total: 0 };
             }
           }}
-          toolBarRender={() => [
-            <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => { setEditingPolicy(undefined); setEditorOpen(true); }}>新建策略</Button>,
-          ]}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生命周期策略，请先新建模板" /> }}
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生命周期策略，请先新建策略" /> }}
         />
       </div>
       <PolicyEditorDrawer open={editorOpen} policy={editingPolicy} onClose={() => setEditorOpen(false)} onSuccess={reload} />

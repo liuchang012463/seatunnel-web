@@ -1,8 +1,10 @@
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import ThemeConfigProvider from '@/components/ThemeConfigProvider';
 import '@ant-design/v5-patch-for-react-19';
+import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { Link, type RequestConfig, type RunTimeLayoutConfig } from '@umijs/max';
 import { Tooltip } from 'antd';
+import { isValidElement } from 'react';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
 import { Knowledge } from './components/RightContent';
@@ -85,8 +87,15 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
       const itemPath = menuItemProps.path
         ? withLayoutPrefix(menuItemProps.path.replace('/*', ''))
         : menuItemProps.path;
-      const menuItem = itemPath && menuProps.location?.pathname !== itemPath ? (
-        <Link to={itemPath} target={menuItemProps.target}>
+      const isCurrent = Boolean(itemPath && menuProps.location?.pathname === itemPath);
+      // Always keep link semantics, including the current item: rendering the current item as a
+      // bare span removes it from the keyboard tab order and loses aria-current.
+      const menuItem = itemPath ? (
+        <Link
+          to={itemPath}
+          target={menuItemProps.target}
+          aria-current={isCurrent ? 'page' : undefined}
+        >
           {defaultDom}
         </Link>
       ) : (
@@ -106,6 +115,25 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
         >
           {menuItem}
         </Tooltip>
+      );
+    },
+    collapsedButtonRender: (collapsed, defaultDom) => {
+      // ProLayout's defaultDom carries the actual collapse handler; keep using it so the
+      // accessible button still toggles the sider.
+      const toggle = isValidElement(defaultDom)
+        ? (defaultDom.props as { onClick?: () => void }).onClick
+        : undefined;
+      return (
+        <button
+          type="button"
+          className="ant-pro-sider-collapsed-button st-sider-collapsed-button"
+          aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'}
+          aria-expanded={!collapsed}
+          title={collapsed ? '展开侧边栏' : '收起侧边栏'}
+          onClick={toggle}
+        >
+          {collapsed ? <MenuUnfoldOutlined aria-hidden /> : <MenuFoldOutlined aria-hidden />}
+        </button>
       );
     },
     // 主题切换在浅色 token 完整迁移前隐藏，避免同一产品出现两套几何语言。
@@ -132,7 +160,6 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
  * @doc https://umijs.org/docs/max/request#配置
  */
 export const request: RequestConfig = {
-  baseURL: 'https://proapi.azurewebsites.net',
   ...errorConfig,
 };
 

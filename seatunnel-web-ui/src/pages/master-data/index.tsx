@@ -437,6 +437,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
             description="删除前请确认该单位下没有业务系统。"
             okText="删除"
             cancelText="取消"
+            okButtonProps={{ danger: true }}
             onConfirm={() => deleteUnit(record)}
           >
             <Button
@@ -497,6 +498,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
             description="删除前请确认该业务系统没有被数据源引用。"
             okText="删除"
             cancelText="取消"
+            okButtonProps={{ danger: true }}
             onConfirm={() => handleDeleteBusinessSystem(record)}
           >
             <Button

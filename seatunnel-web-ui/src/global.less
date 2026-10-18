@@ -329,8 +329,8 @@ html[data-hide-header='true'] {
 
 /* 页面主体（含自定义外壳）作为可压缩的纵向容器：内容多时由内部列表或整页滚动，
    自身不抢剩余高度（抢高度会把列表挤小） */
-.ant-pro-layout .ant-pro-page-container-children-container > *,
-.ant-pro-layout .ant-pro-page-container-children-content > * {
+.ant-pro-layout .ant-pro-page-container-children-container > *:not(.ant-row):not(.ant-space),
+.ant-pro-layout .ant-pro-page-container-children-content > *:not(.ant-row):not(.ant-space) {
   display: flex !important;
   flex: 0 1 auto !important;
   flex-direction: column;
@@ -1128,6 +1128,41 @@ html[data-hide-sidebar='true'] .ant-pro-layout {
 .ant-pro-sider-collapsed-button {
   transition: all @pro-sider-transition-duration ease;
   z-index: 101;
+}
+
+/* ProLayout 默认把收起按钮渲染成不可聚焦的 div；这里用真实 button 替换。
+   The positioning (24x24, absolute, top/right offsets) comes from the original
+   ant-pro-sider-collapsed-button class; do not stretch the button to the sider height,
+   otherwise it squeezes the menu container to 0. */
+.st-sider-collapsed-button {
+  position: absolute;
+  top: 18px;
+  right: -13px;
+  z-index: 101;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--st-color-text-secondary);
+  font-size: 14px;
+  background: var(--st-color-bg-elevated);
+  border: 1px solid var(--st-color-line-strong);
+  border-radius: 40px;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 1px 4px -1px rgba(25, 15, 15, 0.07);
+  cursor: pointer;
+  transition: color @pro-sider-transition-duration ease,
+    background-color @pro-sider-transition-duration ease;
+
+  &:hover {
+    color: var(--st-color-accent);
+    background: var(--st-color-bg-hover);
+  }
+
+  > svg {
+    transform: none !important;
+  }
 }
 
 /* Logo 区域 */

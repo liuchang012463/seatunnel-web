@@ -551,14 +551,15 @@ const DataExplorationTasksPage: React.FC = () => {
       title: '最近探查',
       key: 'profileLastRunTime',
       width: 170,
+      responsive: ['xxl'],
       render: (_, record) => record.profileLastSuccessTime || record.profileLastRunTime || '-',
     },
     {
       title: '操作',
       key: 'actions',
-      width: 400,
+      width: 290,
       render: (_, record) => (
-        <Space size="small">
+        <Space size="small" wrap>
           <Button type="link" icon={<SyncOutlined />} onClick={() => void triggerScan(record)}>
             重新扫描
           </Button>
@@ -703,7 +704,8 @@ const DataExplorationTasksPage: React.FC = () => {
             columns={columns}
             dataSource={records}
             pagination={false}
-            scroll={{ x: 'max-content' }}
+            scroll={{ x: '100%' }}
+            tableLayout="fixed"
             locale={{ emptyText: listError ? '请重试加载列表' : '暂无符合条件的数据源' }}
           />
         </Spin>

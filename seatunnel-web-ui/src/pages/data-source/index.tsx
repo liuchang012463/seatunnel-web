@@ -181,6 +181,23 @@ const DataSourcePage: React.FC = () => {
     selectedStatus,
   ]);
 
+  const hasActiveFilters = Boolean(
+    searchKeyword.trim() ||
+      selectedCategory !== 'ALL' ||
+      selectedUnit ||
+      selectedBusinessSystem ||
+      selectedStatus,
+  );
+
+  const resetFilters = () => {
+    setSearchKeyword('');
+    setSelectedCategory('ALL');
+    setSelectedUnit(undefined);
+    setSelectedBusinessSystem(undefined);
+    setSelectedStatus(undefined);
+    setPagination((current) => ({ ...current, pageNo: 1 }));
+  };
+
   const handleRefresh = () => {
     fetchList();
     refreshUnitOptions();
@@ -578,6 +595,15 @@ const DataSourcePage: React.FC = () => {
               animate="visible"
               variants={PAGE_ANIMATION.sectionStagger}
             >
+              <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-heading">
+                <div>
+                  <h1 className="datasource-page-title">数据源管理</h1>
+                  <p className="datasource-page-description">
+                    统一维护接入数据源、连通状态与元数据探查进度。
+                  </p>
+                </div>
+              </motion.div>
+
               <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
                 <SearchBar
                   value={searchKeyword}
@@ -716,7 +742,7 @@ const DataSourcePage: React.FC = () => {
                             columns={dataSourceColumns}
                             dataSource={dataSourceList}
                             pagination={false}
-                            scroll={{ x: 1038 }}
+                            scroll={{ x: 1038, y: 'calc(100vh - 360px)' }}
                             tableLayout="fixed"
                             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
                           />
@@ -724,7 +750,14 @@ const DataSourcePage: React.FC = () => {
                       </div>
                     </section>
                   ) : (
-                    !loading && !listError && <EmptyState onCreate={handleCreate} />
+                    !loading &&
+                    !listError && (
+                      <EmptyState
+                        onCreate={handleCreate}
+                        filtered={hasActiveFilters}
+                        onClearFilters={resetFilters}
+                      />
+                    )
                   )}
 
                   {pagination.total > 0 && (

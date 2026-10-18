@@ -193,6 +193,7 @@ const WarehousePage: React.FC = () => {
   const [status, setStatus] = useState<LakeDorisStatus>();
   const [hardware, setHardware] = useState<LakeDorisHardware>();
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -223,6 +224,7 @@ const WarehousePage: React.FC = () => {
       message.error(error instanceof Error ? error.message : '读取数据湖状态失败');
     } finally {
       setLoading(false);
+      setHasLoaded(true);
     }
   }, []);
 
@@ -231,6 +233,13 @@ const WarehousePage: React.FC = () => {
   }, [load]);
 
   const clusterStatus = useMemo(() => {
+    if (!hasLoaded) {
+      return {
+        label: '读取中',
+        tone: 'muted' as StatusTone,
+        description: '正在读取 Doris 集群状态。',
+      };
+    }
     const meta = statusMeta(status?.status);
     if (meta.tone === 'success' && config?.catalogReady === false) {
       return {
@@ -240,22 +249,28 @@ const WarehousePage: React.FC = () => {
       };
     }
     return meta;
-  }, [config?.catalogReady, status?.status]);
+  }, [config?.catalogReady, hasLoaded, status?.status]);
   const configured = Boolean(config?.configured || status?.configured);
-  const checkedAt = formatTime(status?.checkedAt);
+  const checkedAt = hasLoaded ? formatTime(status?.checkedAt) : '读取中';
   const backendUsage = maxBackendUsage(status?.backends);
   const totalNodes = (status?.frontendCount || 0) + (status?.backendCount || 0);
   const aliveNodes = (status?.aliveFrontendCount || 0) + (status?.aliveBackendCount || 0);
   const nodeHealthTone: StatusTone = totalNodes && aliveNodes < totalNodes ? 'error' : clusterStatus.tone;
   const feOffline = Math.max(0, (status?.frontendCount || 0) - (status?.aliveFrontendCount || 0));
   const beOffline = Math.max(0, (status?.backendCount || 0) - (status?.aliveBackendCount || 0));
-  const hardwareCheckedAt = formatTime(hardware?.checkedAt || status?.checkedAt);
-  const feEndpoint = status?.masterHost
-    ? `${status.masterHost}:${status.httpPort || '8030'}`
-    : '待配置';
-  const mysqlEndpoint = config?.jdbcUrl
-    ? `${hostFromJdbcUrl(config.jdbcUrl)}:${status?.queryPort || '9030'}`
-    : '待配置';
+  const hardwareCheckedAt = hasLoaded
+    ? formatTime(hardware?.checkedAt || status?.checkedAt)
+    : '读取中';
+  const feEndpoint = !hasLoaded
+    ? '读取中'
+    : status?.masterHost
+      ? `${status.masterHost}:${status.httpPort || '8030'}`
+      : '待配置';
+  const mysqlEndpoint = !hasLoaded
+    ? '读取中'
+    : config?.jdbcUrl
+      ? `${hostFromJdbcUrl(config.jdbcUrl)}:${status?.queryPort || '9030'}`
+      : '待配置';
 
   return (
     <div className="lake-warehouse-overview">

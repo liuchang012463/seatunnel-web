@@ -7,6 +7,10 @@ export default {
   'pages.datasource.empty': '暂无数据源',
   'pages.datasource.empty.desc': '先创建一个数据源，再开始探查。',
   'pages.datasource.empty.tip': '数据源连接、权限和探查状态会在这里统一管理。',
+  'pages.datasource.empty.filtered': '没有找到匹配的数据源',
+  'pages.datasource.empty.filtered.desc': '当前搜索或筛选条件下没有结果，试试调整关键字或清除筛选。',
+  'pages.datasource.empty.filtered.tip': '清除筛选后可查看全部数据源',
+  'pages.datasource.empty.clearFilters': '清除筛选',
   'pages.datasource.create': '新建数据源',
 
 

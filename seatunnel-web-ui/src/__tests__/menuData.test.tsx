@@ -19,7 +19,14 @@ describe('application navigation menu', () => {
           { path: '/data-exploration/results', name: '探查结果展示' },
         ],
       },
-      { path: '/reporting/forms', name: '数据采报' },
+      {
+        path: '/menu/reporting',
+        name: '数据采报',
+        children: [
+          { path: '/reporting/forms', name: '采报配置' },
+          { path: '/reporting/reports', name: '采集报告' },
+        ],
+      },
       {
         path: '/menu/ingestion',
         name: '数据引接',
@@ -40,7 +47,7 @@ describe('application navigation menu', () => {
         children: [
           { path: '/client', name: '引接引擎管理' },
           { path: '/operations/metadata-engine', name: '探查引擎管理' },
-          { path: '/lake/warehouse', name: 'Doris 集群管理' },
+          { path: '/lake/warehouse', name: '数据湖管理' },
           { path: '/alarm', name: '告警管理' },
           { path: '/operations/protocol', name: '协议管理' },
           { path: '/operations/diagnostics', name: '安全加密' },
@@ -61,7 +68,7 @@ describe('application navigation menu', () => {
         path: '/menu/system',
         name: '系统管理',
         children: [
-          { path: '/knowledge-management', name: '参数与知识' },
+          { path: '/knowledge-management', name: '知识管理' },
           { path: '/open-api', name: '开放接口' },
         ],
       },
@@ -80,7 +87,6 @@ describe('application navigation menu', () => {
     ).toEqual([
       { path: '/bi', disabledTooltip: true, collapsedHoverPanel: true },
       { path: '/data-source', disabledTooltip: true, collapsedHoverPanel: true },
-      { path: '/reporting/forms', disabledTooltip: true, collapsedHoverPanel: true },
     ]);
   });
 });

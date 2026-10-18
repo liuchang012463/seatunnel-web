@@ -24,10 +24,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
       <div className="flex h-full items-center justify-center text-base text-slate-400">
         {intl.formatMessage({
           id: "pages.job.detail.empty",
-          defaultMessage:
-            "Please select a run record on the left to view details",
-        })}{" "}
-        😊
+          defaultMessage: "请选择左侧的运行记录查看详情",
+        })}
       </div>
     );
   }

@@ -187,6 +187,9 @@ const IngestionSituationPage: React.FC = () => {
     setInventoryLoading(true);
     const isCurrentRequest = () => currentRequestId === requestId.current;
 
+    let summarySucceeded = false;
+    let chartSucceeded = false;
+
     const summaryRequest = Promise.all(TASK_TYPES.map((taskType) => fetchSummaryData(timeRange, taskType.key)))
       .then((summaries) => {
         if (!isCurrentRequest()) return;
@@ -201,6 +204,7 @@ const IngestionSituationPage: React.FC = () => {
             summary: summaries[index],
           })),
         );
+        summarySucceeded = true;
         setError('');
       })
       .catch(() => {
@@ -245,6 +249,7 @@ const IngestionSituationPage: React.FC = () => {
       .then((charts) => {
         if (!isCurrentRequest()) return;
         setChartMetrics(charts);
+        chartSucceeded = true;
         setTrendError('');
       })
       .catch(() => {
@@ -255,7 +260,9 @@ const IngestionSituationPage: React.FC = () => {
 
     const primaryRequests = Promise.all([summaryRequest, chartRequest]).then(() => {
       if (!isCurrentRequest()) return;
-      setUpdatedAt(formatTime(new Date()));
+      // Both branches catch their own errors, so Promise.all always resolves. Only claim a
+      // fresh timestamp when both payloads actually arrived.
+      setUpdatedAt(summarySucceeded && chartSucceeded ? formatTime(new Date()) : '');
       setLoading(false);
     });
     await Promise.all([primaryRequests, inventoryRequest]);

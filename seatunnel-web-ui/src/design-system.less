@@ -350,6 +350,12 @@ html[data-st-theme="dark"] .ant-menu-dark .ant-menu-submenu-selected > .ant-menu
   border-color: var(--st-color-accent);
 }
 
+/* Keep the danger affordance red instead of inheriting the teal primary border. */
+.ant-btn-dangerous,
+.ant-btn-dangerous:not(:disabled):hover {
+  border-color: var(--st-color-error);
+}
+
 .ant-btn:disabled,
 .ant-input:disabled,
 .ant-input-affix-wrapper-disabled,
@@ -590,14 +596,14 @@ html[data-st-theme="dark"] .ant-menu-dark .ant-menu-submenu-selected > .ant-menu
 }
 
 .ant-pagination .ant-pagination-item-active {
-  color: var(--st-color-text-primary);
+  color: var(--st-color-on-primary);
   background: var(--st-color-primary);
   border-color: var(--st-color-accent);
 }
 
 .ant-pagination .ant-pagination-item-active a,
 .ant-pagination .ant-pagination-item-active a:hover {
-  color: var(--st-color-text-primary);
+  color: var(--st-color-on-primary);
   background: transparent;
 }
 
@@ -780,18 +786,22 @@ body [class*="[background:radial-gradient(circle_at_top_left"] {
   color: var(--st-color-text-primary);
 }
 
-/* Keyboard and pointer state visibility */
-:where(
-  a,
-  button,
-  input,
-  textarea,
-  select,
-  [role="button"],
-  [tabindex]
-):focus-visible {
-  outline: 1px solid var(--st-color-accent);
-  outline-offset: 2px;
+/* Keyboard and pointer state visibility.
+   The previous :where() rule had zero specificity and lost to Ant Design's own focus styles,
+   which painted a near-black ring on the dark surface. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible,
+.ant-btn:focus-visible,
+.ant-menu-item:focus-visible,
+.ant-pagination-item:focus-visible,
+.ant-select-selector:focus-visible {
+  outline: 2px solid var(--st-color-accent) !important;
+  outline-offset: 2px !important;
 }
 
 ::-webkit-scrollbar {

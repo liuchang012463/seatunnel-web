@@ -43,7 +43,12 @@ const TaskViewModal = forwardRef(({}: CreateModalProps, ref) => {
 
   return (
     <Modal
-      title={<></>}
+      title={
+        <span>
+          运行历史
+          {jobItem?.jobName ? ` · ${jobItem.jobName}` : ""}
+        </span>
+      }
       open={visible}
       onCancel={onClose}
       styles={{ mask: { background: "var(--st-color-modal-mask)" } }}
@@ -51,10 +56,10 @@ const TaskViewModal = forwardRef(({}: CreateModalProps, ref) => {
       className="custom-modal task-history-modal"
       maskClosable={false}
       style={{ top: 10 }}
-      width="99vw"
+      width="96vw"
       footer={null}
     >
-      <div style={{ height: "calc(100vh - 43px)", padding: 16 }}>
+      <div style={{ height: "calc(100vh - 120px)", padding: 16 }}>
         <div style={{ marginBottom: 16, fontSize: 18, fontWeight: 600 }}>
           {intl.formatMessage({
             id: "pages.job.history.title",

@@ -10,10 +10,10 @@ export const fetchSummaryData = async (
     { skipErrorHandler: true }
   );
 
-  if (response?.code === 0) {
+  if (response?.code === 0 && response.data) {
     return response.data;
   }
-  throw new Error(response?.message || "Error");
+  throw new Error(response?.message || "任务概览指标暂不可用");
 };
 
 export const fetchChartData = async (
@@ -25,8 +25,8 @@ export const fetchChartData = async (
     { skipErrorHandler: true }
   );
 
-  if (response?.code === 0) {
+  if (response?.code === 0 && response.data) {
     return response.data;
   }
-  throw new Error(response?.message || "Error");
+  throw new Error(response?.message || "趋势数据暂不可用");
 };

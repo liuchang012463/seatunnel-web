@@ -111,16 +111,22 @@ const ApiManagementPage: React.FC = () => {
         ) : null}
 
         <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-6">
-          <div className="open-api-panel rounded-[28px] border p-5">
+          <div
+            className="open-api-panel rounded-[8px] border p-5"
+            style={{ position: "sticky", top: 16, alignSelf: "start" }}
+          >
             <div className="mb-4 flex items-center justify-between" style={{borderBottom : "1px solid var(--st-color-divider)"}}>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-[#1570EF]" />
-                  <div className="text-[16px] font-semibold tracking-[-0.01em] text-[#101828]">
+                  <div
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: "var(--st-color-accent)" }}
+                  />
+                  <div className="text-[16px] font-semibold tracking-[-0.01em] text-[var(--st-color-text-primary)]">
                     Controller 列表
                   </div>
                 </div>
-                <div className="mt-1 pl-4 text-[13px] text-[#667085]" style={{marginBottom: 4}}>
+                <div className="mt-1 pl-4 text-[13px] text-[var(--st-color-text-muted)]" style={{marginBottom: 4}}>
                   共 {Math.max(controllers.length - 1, 0)} 个控制器
                 </div>
               </div>

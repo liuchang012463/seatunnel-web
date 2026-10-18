@@ -369,7 +369,7 @@ const App: React.FC = () => {
                       <path d="M13 17V5" />
                       <path d="M8 17v-3" />
                     </svg>
-                    任务洞察
+                    任务概览
                   </h1>
                 </div>
 

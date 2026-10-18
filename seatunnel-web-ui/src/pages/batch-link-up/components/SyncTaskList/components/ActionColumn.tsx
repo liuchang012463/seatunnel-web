@@ -316,7 +316,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
     {
       key: "view",
       icon: <EyeOutlined />,
-      label: <span style={{ fontWeight: 500 }}>查看详情</span>,
+      label: <span style={{ fontWeight: 500 }}>运行历史</span>,
     },
     {
       key: "edit",

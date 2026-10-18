@@ -425,7 +425,8 @@ const PhysicalResourcesPage: React.FC = () => {
         title: '数据源',
         dataIndex: 'sourceDataSourceName',
         key: 'sourceDataSourceName',
-        width: 220,
+        width: 210,
+        ellipsis: true,
         render: (_, record) => (
           <Button type="link" className="lake-source-link" onClick={() => history.push(`/lake/resources/${record.sourceDataSourceId}`)}>
             {record.sourceDataSourceName || `DataSource #${record.sourceDataSourceId}`}
@@ -437,6 +438,7 @@ const PhysicalResourcesPage: React.FC = () => {
         title: 'ODS 库',
         key: 'databaseName',
         width: 230,
+        ellipsis: true,
         render: (_, record) => record.odsDatabase?.databaseName || <Text type="secondary">未创建</Text>,
       },
       {
@@ -451,13 +453,14 @@ const PhysicalResourcesPage: React.FC = () => {
         title: '最近对账',
         key: 'lastReconcileAt',
         width: 170,
+        responsive: ['xxl'],
         render: (_, record) => formatTime(record.odsDatabase?.lastReconcileAt),
       },
       {
         title: '操作',
         key: 'option',
         valueType: 'option',
-        width: 280,
+        width: 220,
         render: (_, record) => {
           const database = record.odsDatabase;
           const canRetry = !!database && ['ERROR', 'CREATE_FAILED', 'MISSING', 'UNKNOWN', 'PENDING_CREATE'].includes(database.resourceStatus || '');
@@ -544,7 +547,8 @@ const PhysicalResourcesPage: React.FC = () => {
           rowKey="sourceDataSourceId"
           cardBordered
           columns={columns}
-          scroll={{ x: 'max-content' }}
+          scroll={{ x: '100%' }}
+          tableLayout="fixed"
           search={false}
           options={false}
           pagination={{ showSizeChanger: true, showTotal: (total) => `共 ${total} 个数据源` }}

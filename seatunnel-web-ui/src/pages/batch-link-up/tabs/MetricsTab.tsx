@@ -208,6 +208,19 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
   const instanceId = instanceItem?.id;
   const normalizedStatus = normalizeBatchJobStatus(instanceItem?.jobStatus);
   const isTerminal = normalizedStatus === "FINISHED" || normalizedStatus === "FAILED";
+  // STARTING and SUBMISSION_UNKNOWN normalize to RUNNING for display, but no Engine metrics
+  // exist yet and an ambiguous submission will not change on its own. Polling them forever only
+  // adds load; the operator resolves them explicitly.
+  const isEngineActive = [
+    "INITIALIZING",
+    "CREATED",
+    "PENDING",
+    "SCHEDULED",
+    "RUNNING",
+    "FAILING",
+    "DOING_SAVEPOINT",
+    "CANCELING",
+  ].includes(String(instanceItem?.jobStatus || "").toUpperCase());
 
   const readQps = toNumber(instanceItem?.readQps);
   const writeQps = toNumber(instanceItem?.writeQps);
@@ -307,7 +320,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
     const refresh = async () => {
       await loadOperatorMetrics(firstLoad);
       firstLoad = false;
-      if (!cancelled && normalizedStatus === "RUNNING") {
+      if (!cancelled && isEngineActive) {
         timer = window.setTimeout(refresh, 5000);
       }
     };
@@ -319,7 +332,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
       if (timer !== undefined) window.clearTimeout(timer);
       operatorMetricsRequest.current += 1;
     };
-  }, [loadOperatorMetrics, normalizedStatus]);
+  }, [isEngineActive, loadOperatorMetrics]);
 
   const tableColumns = useMemo(
     () => [
