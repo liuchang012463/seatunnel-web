@@ -3,7 +3,7 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
-import org.apache.seatunnel.web.api.metadata.OmResourceType;
+import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
@@ -30,8 +30,8 @@ public class KafkaMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCo
     }
 
     @Override
-    public List<OmResourceType> resourceTypes() {
-        return List.of(OmResourceType.TOPIC);
+    public List<ExplorationAssetType> resourceTypes() {
+        return List.of(ExplorationAssetType.TOPIC);
     }
 
     @Override

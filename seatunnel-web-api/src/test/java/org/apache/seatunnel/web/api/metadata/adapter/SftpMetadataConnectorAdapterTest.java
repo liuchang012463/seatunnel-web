@@ -2,7 +2,7 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
-import org.apache.seatunnel.web.api.metadata.OmResourceType;
+import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
@@ -54,7 +54,7 @@ class SftpMetadataConnectorAdapterTest {
         assertEquals(true, enabled.at("/connection/config/extractSampleData").asBoolean());
         assertTrue(adapter.supportsSampleData());
         assertEquals(
-                List.of(OmResourceType.DIRECTORY, OmResourceType.FILE), adapter.resourceTypes());
+                List.of(ExplorationAssetType.DIRECTORY, ExplorationAssetType.FILE), adapter.resourceTypes());
     }
 
     private static DataSource source(String connectionParams) {

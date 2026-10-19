@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
-import org.apache.seatunnel.web.api.metadata.OmResourceType;
+import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
@@ -87,7 +87,7 @@ class KafkaMetadataConnectorAdapterTest {
         assertEquals("MessagingMetadata", enabled.at("/sourceConfig/config/type").asText());
         assertEquals("messagingService", enabled.at("/service/type").asText());
         assertTrue(adapter.supportsSampleData());
-        assertTrue(adapter.resourceTypes().contains(OmResourceType.TOPIC));
+        assertTrue(adapter.resourceTypes().contains(ExplorationAssetType.TOPIC));
     }
 
     private static DataSource source(String connectionParams) {

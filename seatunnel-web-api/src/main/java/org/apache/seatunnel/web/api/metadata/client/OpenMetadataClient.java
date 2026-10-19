@@ -1,8 +1,8 @@
 package org.apache.seatunnel.web.api.metadata.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
-import org.apache.seatunnel.web.api.metadata.OmResourceType;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,17 +20,43 @@ public interface OpenMetadataClient {
     Optional<OpenMetadataEntity> findService(MetadataServiceCategory category, String fullyQualifiedName);
 
     /**
-     * Reads one page of a non-relational asset collection (topics, containers,
-     * directories, files, API collections/endpoints, search indexes) for one service.
+     * Reads one cursor page of a non-relational asset collection. Topics, indexes,
+     * containers, root directories/files, API collections and endpoints use this path.
+     * {@code parentFqn} filters API endpoints by their collection; {@code root} selects
+     * root-level drive entities.
      */
-    OpenMetadataPage<OpenMetadataResource> listResourcesPage(
-            OmResourceType type, String serviceFullyQualifiedName, int limit, String after);
+    OpenMetadataPage<OpenMetadataAsset> listAssetsPage(
+            ExplorationAssetType type,
+            String serviceFullyQualifiedName,
+            String parentFullyQualifiedName,
+            boolean root,
+            int limit,
+            String after);
+
+    /** Reads one offset page of the child containers of a container. */
+    OpenMetadataPage<OpenMetadataAsset> listContainerChildren(
+            String parentFullyQualifiedName, int limit, int offset);
+
+    /** Reads one cursor page of the files directly inside a directory. */
+    OpenMetadataPage<OpenMetadataAsset> listFilesInDirectory(
+            String directoryFullyQualifiedName, int limit, String after);
 
     /**
-     * Reads one non-relational asset together with its schema and sample payload.
-     * Sample data stays empty when the entity has none or the caller may not view it.
+     * Reads one asset together with its schema, sample payload and display properties.
+     * Directory details also carry their direct child references.
      */
-    OpenMetadataResourceDetail getResourceDetail(OmResourceType type, String resourceId);
+    default OpenMetadataAssetDetail getAssetDetail(
+            ExplorationAssetType type, String resourceId) {
+        return getAssetDetail(type, resourceId, true);
+    }
+
+    /**
+     * Reads one asset. {@code includeSample=false} is used for parent/ancestor reads and
+     * when the data source has not opted into sample collection, so governance settings
+     * are respected before the sample endpoint is called.
+     */
+    OpenMetadataAssetDetail getAssetDetail(
+            ExplorationAssetType type, String resourceId, boolean includeSample);
 
     Optional<OpenMetadataDatabase> findDatabase(String fullyQualifiedName);
 

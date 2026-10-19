@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
-import org.apache.seatunnel.web.api.metadata.OmResourceType;
+import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
@@ -27,8 +27,8 @@ public class HttpMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCon
     }
 
     @Override
-    public List<OmResourceType> resourceTypes() {
-        return List.of(OmResourceType.API_COLLECTION, OmResourceType.API_ENDPOINT);
+    public List<ExplorationAssetType> resourceTypes() {
+        return List.of(ExplorationAssetType.API_COLLECTION, ExplorationAssetType.API_ENDPOINT);
     }
 
     @Override

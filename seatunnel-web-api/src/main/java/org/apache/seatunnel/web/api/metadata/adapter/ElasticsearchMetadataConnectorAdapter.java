@@ -3,7 +3,7 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
-import org.apache.seatunnel.web.api.metadata.OmResourceType;
+import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Component;
@@ -31,8 +31,33 @@ public class ElasticsearchMetadataConnectorAdapter extends AbstractNonDatabaseMe
     }
 
     @Override
-    public List<OmResourceType> resourceTypes() {
-        return List.of(OmResourceType.SEARCH_INDEX);
+    public List<ExplorationAssetType> resourceTypes() {
+        return List.of(ExplorationAssetType.SEARCH_INDEX);
+    }
+
+    @Override
+    public boolean supportsSampleData() {
+        return true;
+    }
+
+    /**
+     * OpenMetadata's search metadata pipeline defaults {@code includeSampleData} to true.
+     * Make it follow the data-source switch so a source that never opted in does not
+     * collect index documents into OpenMetadata.
+     */
+    @Override
+    public JsonNode metadataPipelineRequest(
+            DataSource dataSource,
+            String pipelineName,
+            String serviceId,
+            String serviceFqn,
+            MetadataSyncOptions options) {
+        ObjectNode request = (ObjectNode) metadataPipelineRequest(
+                dataSource, pipelineName, serviceId, serviceFqn);
+        ObjectNode config = request.withObject("/sourceConfig/config");
+        config.put("includeSampleData", options != null && options.sampleDataEnabled());
+        config.put("sampleSize", 10);
+        return request;
     }
 
     @Override

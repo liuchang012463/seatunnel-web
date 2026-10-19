@@ -4,7 +4,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
-import org.apache.seatunnel.web.api.metadata.OmResourceType;
+import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +21,9 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -514,117 +517,60 @@ class OpenMetadataRestClientTest {
     }
 
     @Test
-    void readsNonRelationalAssetsWithSchemaAndSamplePayload() throws Exception {
-        AtomicReference<String> topicsUri = new AtomicReference<>();
-        AtomicReference<String> topicDetailUri = new AtomicReference<>();
-        AtomicReference<String> apiEndpointsUri = new AtomicReference<>();
+    void readsTopicAssetsWithSchemaAndMessages() throws Exception {
+        AtomicReference<String> listUri = new AtomicReference<>();
+        AtomicReference<String> detailUri = new AtomicReference<>();
+        AtomicReference<String> sampleUri = new AtomicReference<>();
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/api/v1/topics", exchange -> {
-            if (exchange.getRequestURI().getPath().endsWith("/topic-id")) {
-                topicDetailUri.set(exchange.getRequestURI().toString());
-                respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000010\",\"name\":\"orders\","
-                        + "\"fullyQualifiedName\":\"st_ds_42.orders\",\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
-                        + "\"messageSchema\":{\"schemaFields\":[{\"name\":\"id\",\"dataType\":\"INT\"}]},"
+            String path = exchange.getRequestURI().getPath();
+            if (path.endsWith("/sampleData")) {
+                sampleUri.set(exchange.getRequestURI().toString());
+                respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000010\","
                         + "\"sampleData\":{\"messages\":[\"{\\\"id\\\":1}\"]}}");
                 return;
             }
-            topicsUri.set(exchange.getRequestURI().toString());
-            respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000010\",\"name\":\"orders\","
-                    + "\"fullyQualifiedName\":\"st_ds_42.orders\",\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+            if (path.endsWith("/topic-id")) {
+                detailUri.set(exchange.getRequestURI().toString());
+                respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000010\","
+                        + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                        + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                        + "\"messageSchema\":{\"schemaFields\":[{\"name\":\"id\",\"dataType\":\"INT\"}]},"
+                        + "\"partitions\":3}");
+                return;
+            }
+            listUri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000010\","
+                    + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                    + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
                     + "\"messageSchema\":{\"schemaFields\":[{\"name\":\"id\",\"dataType\":\"INT\"},"
                     + "{\"name\":\"amount\",\"dataType\":\"DOUBLE\"}]}}]}");
-        });
-        server.createContext("/api/v1/apiEndpoints", exchange -> {
-            apiEndpointsUri.set(exchange.getRequestURI().toString());
-            respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000011\","
-                    + "\"name\":\"GET /orders\",\"fullyQualifiedName\":\"st_ds_42.GET /orders\","
-                    + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}]}");
         });
         server.start();
 
         OpenMetadataRestClient client = new OpenMetadataRestClient(
                 properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
 
-        OpenMetadataPage<OpenMetadataResource> topics =
-                client.listResourcesPage(OmResourceType.TOPIC, "st_ds_42", 20, null);
-        // An endpoint without any request/response schema must not fail the listing.
-        OpenMetadataPage<OpenMetadataResource> endpoints =
-                client.listResourcesPage(OmResourceType.API_ENDPOINT, "st_ds_42", 20, null);
-        OpenMetadataResourceDetail detail = client.getResourceDetail(OmResourceType.TOPIC, "topic-id");
+        OpenMetadataPage<OpenMetadataAsset> topics =
+                client.listAssetsPage(ExplorationAssetType.TOPIC, "st_ds_42", null, false, 20, null);
+        OpenMetadataAssetDetail detail =
+                client.getAssetDetail(ExplorationAssetType.TOPIC, "topic-id");
 
         assertEquals(1, topics.data().size());
         assertEquals("orders", topics.data().get(0).name());
         assertEquals(2, topics.data().get(0).fieldCount());
         assertEquals("topic", topics.data().get(0).entityType());
         assertEquals("st_ds_42", topics.data().get(0).serviceFullyQualifiedName());
-        assertEquals(1, endpoints.data().size());
-        assertEquals(0, endpoints.data().get(0).fieldCount());
         assertEquals(1, detail.fields().size());
         assertEquals("id", detail.fields().get(0).name());
         assertEquals("INT", detail.fields().get(0).dataType());
-        assertEquals("st_ds_42", detail.resource().serviceFullyQualifiedName());
-        assertTrue(detail.sampleDataAvailable());
-        assertEquals(List.of("{\"id\":1}"), detail.messages());
-        assertQuery("/api/v1/topics", topicsUri.get(), "service=st_ds_42");
-        assertQuery("/api/v1/apiEndpoints", apiEndpointsUri.get(), "service=st_ds_42");
-        assertTrue(topicDetailUri.get().contains("fields=service"));
-    }
-
-    @Test
-    void returnsSchemaWhenTheCallerMayNotReadSampleData() throws Exception {
-        AtomicReference<String> sampleDeniedUri = new AtomicReference<>();
-        AtomicReference<String> schemaOnlyUri = new AtomicReference<>();
-        server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/api/v1/containers", exchange -> {
-            if (exchange.getRequestURI().getPath().endsWith("/container-id")) {
-                if (exchange.getRequestURI().getQuery().contains("sampleData")) {
-                    sampleDeniedUri.set(exchange.getRequestURI().toString());
-                    respond(exchange, 403, "{\"message\":\"not allowed\"}");
-                    return;
-                }
-                schemaOnlyUri.set(exchange.getRequestURI().toString());
-                respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000012\","
-                        + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
-                        + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
-                        + "\"dataModel\":{\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\"}]}}");
-                return;
-            }
-            respond(exchange, 200, "{\"data\":[]}");
-        });
-        server.start();
-
-        OpenMetadataRestClient client = new OpenMetadataRestClient(
-                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
-
-        OpenMetadataResourceDetail detail =
-                client.getResourceDetail(OmResourceType.CONTAINER, "container-id");
-
-        assertEquals(1, detail.fields().size());
-        assertEquals("id", detail.fields().get(0).name());
-        assertEquals("st_ds_42", detail.resource().serviceFullyQualifiedName());
-        assertEquals(false, detail.sampleDataAvailable());
-        assertTrue(detail.sampleRows().isEmpty());
-        assertTrue(sampleDeniedUri.get().contains("fields=service"));
-        assertTrue(schemaOnlyUri.get().contains("fields=service"));
-    }
-
-    @Test
-    void doesNotMaskServerErrorsAsMissingSampleData() throws Exception {
-        server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/api/v1/containers", exchange -> {
-            if (exchange.getRequestURI().getPath().endsWith("/container-id")) {
-                respond(exchange, 500, "{\"message\":\"boom\"}");
-                return;
-            }
-            respond(exchange, 200, "{\"data\":[]}");
-        });
-        server.start();
-
-        OpenMetadataRestClient client = new OpenMetadataRestClient(
-                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
-
-        assertThrows(MetadataIntegrationException.class,
-                () -> client.getResourceDetail(OmResourceType.CONTAINER, "container-id"));
+        assertEquals("st_ds_42", detail.asset().serviceFullyQualifiedName());
+        assertEquals(3, detail.properties().get("partitions"));
+        assertNotNull(detail.sample());
+        assertEquals(List.of("{\"id\":1}"), detail.sample().messages());
+        assertQuery("/api/v1/topics", listUri.get(), "service=st_ds_42", "fields=messageSchema,tags");
+        assertTrue(detailUri.get().contains("fields=service"));
+        assertEquals("/api/v1/topics/topic-id/sampleData", sampleUri.get().split("\\?")[0]);
     }
 
     @Test
@@ -635,9 +581,7 @@ class OpenMetadataRestClientTest {
             String path = exchange.getRequestURI().getRawPath();
             if (path.endsWith("/sampleData")) {
                 samplePath.set(path);
-                // Sample rows live in an entity extension, so only this endpoint returns them.
                 respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000012\","
-                        + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
                         + "\"sampleData\":{\"columns\":[\"id\"],\"rows\":[[\"1\"],[\"2\"]]}}");
                 return;
             }
@@ -652,15 +596,252 @@ class OpenMetadataRestClientTest {
                 properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
 
         String resourceId = "st_ds_42.orders & more";
-        OpenMetadataResourceDetail detail =
-                client.getResourceDetail(OmResourceType.CONTAINER, resourceId);
+        OpenMetadataAssetDetail detail =
+                client.getAssetDetail(ExplorationAssetType.CONTAINER, resourceId);
 
         assertEquals(1, detail.fields().size());
-        assertTrue(detail.sampleDataAvailable());
-        assertEquals(List.of("id"), detail.sampleColumns());
-        assertEquals(List.of(List.of("1"), List.of("2")), detail.sampleRows());
+        assertEquals(Boolean.TRUE, detail.properties().get("dataModelAvailable"));
+        assertNotNull(detail.sample());
+        assertEquals(List.of("id"), detail.sample().columns());
+        assertEquals(List.of(List.of("1"), List.of("2")), detail.sample().rows());
         // The hand-built path has to encode the id; the SDK does it for the entity read itself.
         assertEquals("/api/v1/containers/st_ds_42.orders%20%26%20more/sampleData", samplePath.get());
+    }
+
+    @Test
+    void keepsSchemaWhenSampleReadIsForbidden() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/containers", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            if (path.endsWith("/sampleData")) {
+                respond(exchange, 403, "{\"message\":\"not allowed\"}");
+                return;
+            }
+            respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000012\","
+                    + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                    + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                    + "\"dataModel\":{\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\"}]}}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataAssetDetail detail =
+                client.getAssetDetail(ExplorationAssetType.CONTAINER, "container-id");
+
+        assertEquals(1, detail.fields().size());
+        assertTrue(detail.samplePermissionDenied());
+        assertNull(detail.sample());
+    }
+
+    @Test
+    void reportsSampleServerErrorsWithoutLosingSchema() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/containers", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            if (path.endsWith("/sampleData")) {
+                respond(exchange, 500, "{\"message\":\"boom\"}");
+                return;
+            }
+            respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000012\","
+                    + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                    + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                    + "\"dataModel\":{\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\"}]}}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataAssetDetail detail =
+                client.getAssetDetail(ExplorationAssetType.CONTAINER, "container-id");
+
+        assertEquals(1, detail.fields().size());
+        assertTrue(detail.sampleError());
+        assertNull(detail.sample());
+    }
+
+    @Test
+    void readsDirectDirectoryChildrenAndFiltersUnknownFamilies() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/drives/directories", exchange -> respond(exchange, 200,
+                "{\"id\":\"00000000-0000-0000-0000-000000000020\","
+                        + "\"name\":\"data\",\"fullyQualifiedName\":\"st_ds_42.data\","
+                        + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                        + "\"children\":["
+                        + "{\"id\":\"00000000-0000-0000-0000-000000000021\",\"type\":\"directory\","
+                        + "\"name\":\"2026\",\"fullyQualifiedName\":\"st_ds_42.data.2026\"},"
+                        + "{\"id\":\"00000000-0000-0000-0000-000000000022\",\"type\":\"file\","
+                        + "\"name\":\"orders.csv\",\"fullyQualifiedName\":\"st_ds_42.data.orders.csv\"},"
+                        + "{\"id\":\"00000000-0000-0000-0000-000000000023\",\"type\":\"spreadsheet\","
+                        + "\"name\":\"sheet\",\"fullyQualifiedName\":\"st_ds_42.data.sheet\"}]}"));
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataAssetDetail detail =
+                client.getAssetDetail(ExplorationAssetType.DIRECTORY, "dir-id");
+
+        assertEquals(2, detail.children().size());
+        assertEquals("directory", detail.children().get(0).entityType());
+        assertEquals("file", detail.children().get(1).entityType());
+        assertEquals("st_ds_42.data", detail.children().get(1).parentFullyQualifiedName());
+    }
+
+    @Test
+    void listsDriveRootsWithRootFilter() throws Exception {
+        AtomicReference<String> directoryUri = new AtomicReference<>();
+        AtomicReference<String> fileUri = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/drives/directories", exchange -> {
+            directoryUri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200, "{\"data\":[]}");
+        });
+        server.createContext("/api/v1/drives/files", exchange -> {
+            fileUri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200, "{\"data\":[]}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        client.listAssetsPage(ExplorationAssetType.DIRECTORY, "st_ds_42", null, true, 20, null);
+        client.listAssetsPage(ExplorationAssetType.FILE, "st_ds_42", null, true, 20, null);
+
+        assertQuery("/api/v1/drives/directories", directoryUri.get(),
+                "service=st_ds_42", "root=true");
+        assertQuery("/api/v1/drives/files", fileUri.get(),
+                "service=st_ds_42", "root=true");
+    }
+
+    @Test
+    void readsSearchIndexSampleMessagesFromTheDedicatedEndpoint() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/searchIndexes", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            if (path.endsWith("/sampleData")) {
+                respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000030\","
+                        + "\"sampleData\":{\"messages\":[\"{\\\"title\\\":\\\"a\\\"}\"]}}");
+                return;
+            }
+            respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000030\","
+                    + "\"name\":\"docs\",\"fullyQualifiedName\":\"st_ds_42.docs\","
+                    + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                    + "\"fields\":[{\"name\":\"title\",\"dataType\":\"TEXT\"}]}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataAssetDetail detail =
+                client.getAssetDetail(ExplorationAssetType.SEARCH_INDEX, "index-id", true);
+
+        assertEquals(1, detail.fields().size());
+        assertEquals("title", detail.fields().get(0).name());
+        assertNotNull(detail.sample());
+        assertEquals(List.of("{\"title\":\"a\"}"), detail.sample().messages());
+    }
+
+    @Test
+    void listsContainerChildrenWithOffsetPagination() throws Exception {
+        AtomicReference<String> uri = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/containers", exchange -> {
+            uri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200, "{\"data\":[]}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        client.listContainerChildren("st_ds_42.bucket", 20, 40);
+
+        URI request = URI.create(uri.get());
+        assertTrue(request.getPath().endsWith("/children"));
+        List<String> params = Arrays.asList(request.getQuery().split("&"));
+        assertTrue(params.contains("limit=20"));
+        assertTrue(params.contains("offset=40"));
+    }
+
+    @Test
+    void filtersApiEndpointsByCollection() throws Exception {
+        AtomicReference<String> uri = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/apiEndpoints", exchange -> {
+            uri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200, "{\"data\":[]}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        client.listAssetsPage(
+                ExplorationAssetType.API_ENDPOINT, "st_ds_42", "st_ds_42.default",
+                false, 20, null);
+
+        assertQuery("/api/v1/apiEndpoints", uri.get(),
+                "service=st_ds_42", "apiCollection=st_ds_42.default");
+    }
+
+    @Test
+    void readsApiEndpointRequestAndResponseSchemas() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/apiEndpoints", exchange -> respond(exchange, 200,
+                "{\"id\":\"00000000-0000-0000-0000-000000000031\","
+                        + "\"name\":\"GET /orders\",\"fullyQualifiedName\":\"st_ds_42.default.GET /orders\","
+                        + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                        + "\"apiCollection\":{\"fullyQualifiedName\":\"st_ds_42.default\"},"
+                        + "\"requestMethod\":\"GET\","
+                        + "\"requestSchema\":{\"schemaFields\":[{\"name\":\"id\",\"dataType\":\"STRING\"}]},"
+                        + "\"responseSchema\":{\"schemaFields\":[{\"name\":\"status\",\"dataType\":\"STRING\"}]}}"));
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataAssetDetail detail =
+                client.getAssetDetail(ExplorationAssetType.API_ENDPOINT, "endpoint-id", true);
+
+        assertEquals(1, detail.requestFields().size());
+        assertEquals("id", detail.requestFields().get(0).name());
+        assertEquals(1, detail.responseFields().size());
+        assertEquals("status", detail.responseFields().get(0).name());
+        assertEquals("GET", detail.properties().get("requestMethod"));
+        assertNull(detail.sample());
+    }
+
+    @Test
+    void treatsAMissingSampleEndpointAsNoSample() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/containers", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            if (path.endsWith("/sampleData")) {
+                respond(exchange, 404, "{\"message\":\"not found\"}");
+                return;
+            }
+            respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000012\","
+                    + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                    + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                    + "\"dataModel\":{\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\"}]}}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataAssetDetail detail =
+                client.getAssetDetail(ExplorationAssetType.CONTAINER, "container-id", true);
+
+        assertEquals(1, detail.fields().size());
+        assertNull(detail.sample());
+        assertFalse(detail.samplePermissionDenied());
+        assertFalse(detail.sampleError());
     }
 
     private static OpenMetadataProperties properties(String baseUrl) {

@@ -61,6 +61,23 @@ class ElasticsearchMetadataConnectorAdapterTest {
         assertTrue(service.at("/connection/config/authType/apiKeyId").isMissingNode());
     }
 
+    @Test
+    void controlsSampleDataThroughTheSearchMetadataPipeline() {
+        DataSource dataSource = source("{\"hosts\":\"es.example:9200\",\"authType\":\"NONE\"}");
+
+        JsonNode disabled = adapter.metadataPipelineRequest(
+                dataSource, "st_ds_30_metadata", "uuid-1", "st_ds_30",
+                new MetadataSyncOptions(false, null));
+        JsonNode enabled = adapter.metadataPipelineRequest(
+                dataSource, "st_ds_30_metadata", "uuid-1", "st_ds_30",
+                new MetadataSyncOptions(true, null));
+
+        assertTrue(adapter.supportsSampleData());
+        assertFalse(disabled.at("/sourceConfig/config/includeSampleData").asBoolean());
+        assertTrue(enabled.at("/sourceConfig/config/includeSampleData").asBoolean());
+        assertEquals(10, enabled.at("/sourceConfig/config/sampleSize").asInt());
+    }
+
     private static DataSource source(String connectionParams) {
         DataSource dataSource = new DataSource();
         dataSource.setId(30L);

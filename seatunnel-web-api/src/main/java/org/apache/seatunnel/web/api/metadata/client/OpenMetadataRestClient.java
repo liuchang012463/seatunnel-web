@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
-import org.apache.seatunnel.web.api.metadata.OmResourceType;
+import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ContainerDataModel;
+import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SearchIndexField;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
@@ -49,6 +51,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -405,8 +408,13 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     @Override
-    public OpenMetadataPage<OpenMetadataResource> listResourcesPage(
-            OmResourceType type, String serviceFullyQualifiedName, int limit, String after) {
+    public OpenMetadataPage<OpenMetadataAsset> listAssetsPage(
+            ExplorationAssetType type,
+            String serviceFullyQualifiedName,
+            String parentFullyQualifiedName,
+            boolean root,
+            int limit,
+            String after) {
         validateBaseUrl();
         int safeLimit = safeLimit(limit, 1000);
         ListParams params = new ListParams()
@@ -414,14 +422,20 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 .setFields(type.listFields())
                 .setLimit(safeLimit)
                 .addQueryParam("include", "non-deleted");
+        if (root) {
+            params.setRoot("true");
+        }
+        if (type == ExplorationAssetType.API_ENDPOINT && !blank(parentFullyQualifiedName)) {
+            params.addQueryParam("apiCollection", parentFullyQualifiedName);
+        }
         if (after != null && !after.isBlank()) {
             params.setAfter(after);
         }
         try {
-            ListResponse<?> response = listResourceEntities(type, params);
-            List<OpenMetadataResource> data = new ArrayList<>();
+            ListResponse<?> response = listAssetEntities(type, params);
+            List<OpenMetadataAsset> data = new ArrayList<>();
             for (Object entity : safeList(response == null ? null : response.getData())) {
-                OpenMetadataResource parsed = toResource(type, entity, serviceFullyQualifiedName);
+                OpenMetadataAsset parsed = toAsset(type, entity, serviceFullyQualifiedName);
                 if (parsed != null) {
                     data.add(parsed);
                 }
@@ -434,77 +448,180 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     @Override
-    public OpenMetadataResourceDetail getResourceDetail(OmResourceType type, String resourceId) {
+    public OpenMetadataPage<OpenMetadataAsset> listContainerChildren(
+            String parentFullyQualifiedName, int limit, int offset) {
         validateBaseUrl();
+        int safeLimit = safeLimit(limit, 1000);
+        ListParams params = new ListParams()
+                .setLimit(safeLimit)
+                .setOffset(Math.max(0, offset))
+                .addQueryParam("include", "non-deleted");
         try {
-            Object entity = getResourceEntity(type, resourceId, type.detailFields());
-            return toResourceDetail(type, entity, extensionSampleData(type, resourceId));
+            ListResponse<Container> response =
+                    sdk().containers().listChildren(parentFullyQualifiedName, params);
+            List<OpenMetadataAsset> data = new ArrayList<>();
+            for (Container container : safeList(response == null ? null : response.getData())) {
+                OpenMetadataAsset parsed =
+                        toAsset(ExplorationAssetType.CONTAINER, container, null);
+                if (parsed != null) {
+                    data.add(parsed);
+                }
+            }
+            return page(response, data);
+        } catch (OpenMetadataException error) {
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata container children lookup failed", error);
+        }
+    }
+
+    @Override
+    public OpenMetadataPage<OpenMetadataAsset> listFilesInDirectory(
+            String directoryFullyQualifiedName, int limit, String after) {
+        validateBaseUrl();
+        int safeLimit = safeLimit(limit, 1000);
+        ListParams params = new ListParams()
+                .setDirectory(directoryFullyQualifiedName)
+                .setFields(ExplorationAssetType.FILE.listFields())
+                .setLimit(safeLimit)
+                .addQueryParam("include", "non-deleted");
+        if (after != null && !after.isBlank()) {
+            params.setAfter(after);
+        }
+        try {
+            ListResponse<File> response = sdk().files().list(params);
+            List<OpenMetadataAsset> data = new ArrayList<>();
+            for (File file : safeList(response == null ? null : response.getData())) {
+                OpenMetadataAsset parsed = toAsset(ExplorationAssetType.FILE, file, null);
+                if (parsed != null) {
+                    data.add(parsed);
+                }
+            }
+            return page(response, data);
+        } catch (OpenMetadataException error) {
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata file collection lookup failed", error);
+        }
+    }
+
+    @Override
+    public OpenMetadataAssetDetail getAssetDetail(
+            ExplorationAssetType type, String resourceId, boolean includeSample) {
+        validateBaseUrl();
+        Object entity;
+        try {
+            entity = getAssetEntity(type, resourceId, type.detailFields());
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
             }
-            // Only VIEW_SAMPLE_DATA / auth denials fall back to a schema-only read.
-            // Timeouts and 5xx must not be masked as "no sample data".
-            if (!isSampleDataPermissionDenied(error)) {
-                throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
-                        "OpenMetadata " + type.entityType() + " detail lookup failed", error);
-            }
-            try {
-                Object entity = getResourceEntity(type, resourceId, type.detailFieldsWithoutSampleData());
-                return toResourceDetail(type, entity, extensionSampleData(type, resourceId));
-            } catch (OpenMetadataException retryError) {
-                if (isNotFound(retryError)) {
-                    return null;
-                }
-                throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
-                        "OpenMetadata " + type.entityType() + " detail lookup failed", retryError);
-            }
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata " + type.entityType() + " detail lookup failed", error);
         }
+        SampleResult sample = includeSample
+                ? readSample(type, resourceId, entity)
+                : new SampleResult(null, false, false);
+        return toAssetDetail(type, entity, sample);
     }
 
     /**
-     * Container and file sample data live in an OpenMetadata entity extension rather than
-     * on the entity, so the entity read never carries it and the dedicated endpoint is the
-     * only way to see it. Failures degrade to "no sample data": the schema still matters.
+     * Sample payloads live on dedicated endpoints whose response is the full entity.
+     * A 403 is a permission outcome, not "no sample"; a 5xx is an error; 404 after a
+     * successful detail read is treated as no sample because the entity may have been
+     * deleted between the two calls.
      */
-    private TableData extensionSampleData(OmResourceType type, String resourceId) {
+    private SampleResult readSample(
+            ExplorationAssetType type, String resourceId, Object entity) {
+        if (type.sampleKind() == ExplorationAssetType.SampleKind.NONE) {
+            return new SampleResult(null, false, false);
+        }
+        if (type == ExplorationAssetType.CONTAINER
+                && ((Container) entity).getDataModel() == null) {
+            // OpenMetadata can only sample structured containers. Skip the endpoint so
+            // the UI can explain that a manifest is required instead of showing an error.
+            return new SampleResult(null, false, false);
+        }
+        if (type == ExplorationAssetType.FILE && !isTabularFile((File) entity)) {
+            return new SampleResult(null, false, false);
+        }
         String path = switch (type) {
+            case TOPIC -> "/v1/topics/" + encode(resourceId) + "/sampleData";
+            case SEARCH_INDEX -> "/v1/searchIndexes/" + encode(resourceId) + "/sampleData";
             case CONTAINER -> "/v1/containers/" + encode(resourceId) + "/sampleData";
             case FILE -> "/v1/drives/files/" + encode(resourceId) + "/sampleData";
             default -> null;
         };
         if (path == null) {
-            return null;
+            return new SampleResult(null, false, false);
         }
         try {
             JsonNode response = sdkRequest(
                     "GET", path, null, true, MetadataErrorCode.OM_SERVICE_SYNC_ERROR);
             JsonNode sample = response == null ? null : response.get("sampleData");
             if (sample == null || sample.isNull()) {
-                return null;
+                return new SampleResult(null, false, false);
             }
-            return OBJECT_MAPPER.treeToValue(sample, TableData.class);
+            if (type == ExplorationAssetType.TOPIC
+                    || type == ExplorationAssetType.SEARCH_INDEX) {
+                List<String> messages = new ArrayList<>();
+                JsonNode messageNodes = sample.get("messages");
+                if (messageNodes != null && messageNodes.isArray()) {
+                    for (JsonNode message : messageNodes) {
+                        if (message != null && !message.isNull()) {
+                            messages.add(message.asText());
+                        }
+                    }
+                }
+                return new SampleResult(
+                        messages.isEmpty()
+                                ? null : OpenMetadataAssetSample.messages(messages),
+                        false,
+                        false);
+            }
+            TableData table = OBJECT_MAPPER.treeToValue(sample, TableData.class);
+            return new SampleResult(
+                    hasRows(table)
+                            ? OpenMetadataAssetSample.rows(sampleColumns(table), sampleRows(table))
+                            : null,
+                    false,
+                    false);
+        } catch (MetadataIntegrationException error) {
+            boolean denied = error.getHttpStatusCode() != null
+                    && (error.getHttpStatusCode() == 401 || error.getHttpStatusCode() == 403);
+            return new SampleResult(null, denied, !denied);
         } catch (Exception error) {
-            log.debug("OpenMetadata sample data read skipped: type={}, id={}, type={}",
+            log.debug("OpenMetadata sample data read failed: type={}, id={}, type={}",
                     type.entityType(), resourceId, error.getClass().getSimpleName());
-            return null;
+            return new SampleResult(null, false, true);
         }
     }
 
-    private ListResponse<?> listResourceEntities(OmResourceType type, ListParams params)
+    private static boolean isTabularFile(File file) {
+        if (file.getFileType() != null) {
+            String fileType = file.getFileType().value();
+            if ("CSV".equalsIgnoreCase(fileType) || "TSV".equalsIgnoreCase(fileType)) {
+                return true;
+            }
+        }
+        String mime = file.getMimeType();
+        return "text/csv".equalsIgnoreCase(mime)
+                || "text/tab-separated-values".equalsIgnoreCase(mime);
+    }
+
+    private ListResponse<?> listAssetEntities(ExplorationAssetType type, ListParams params)
             throws OpenMetadataException {
         return switch (type) {
-            case TOPIC -> (ListResponse<?>) sdk().topics().list(params);
-            case CONTAINER -> (ListResponse<?>) sdk().containers().list(params);
-            case DIRECTORY -> (ListResponse<?>) sdk().directories().list(params);
-            case FILE -> (ListResponse<?>) sdk().files().list(params);
-            case API_COLLECTION -> (ListResponse<?>) sdk().apiCollections().list(params);
-            case API_ENDPOINT -> (ListResponse<?>) sdk().apiEndpoints().list(params);
-            case SEARCH_INDEX -> (ListResponse<?>) sdk().searchIndexes().list(params);
+            case TOPIC -> sdk().topics().list(params);
+            case CONTAINER -> sdk().containers().list(params);
+            case DIRECTORY -> sdk().directories().list(params);
+            case FILE -> sdk().files().list(params);
+            case API_COLLECTION -> sdk().apiCollections().list(params);
+            case API_ENDPOINT -> sdk().apiEndpoints().list(params);
+            case SEARCH_INDEX -> sdk().searchIndexes().list(params);
         };
     }
 
-    private Object getResourceEntity(OmResourceType type, String resourceId, String fields)
+    private Object getAssetEntity(
+            ExplorationAssetType type, String resourceId, String fields)
             throws OpenMetadataException {
         return switch (type) {
             case TOPIC -> sdk().topics().get(resourceId, fields, "non-deleted");
@@ -517,117 +634,189 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         };
     }
 
-    private static OpenMetadataResource toResource(
-            OmResourceType type, Object entity, String serviceFullyQualifiedName) {
+    private static OpenMetadataAsset toAsset(
+            ExplorationAssetType type, Object entity, String serviceFallback) {
         if (entity instanceof Topic topic) {
-            return new OpenMetadataResource(
-                    uuid(topic.getId()), topic.getName(), topic.getFullyQualifiedName(), type.entityType(),
-                    topic.getDescription(), fieldCount(topic.getMessageSchema()), tagNames(topic.getTags()),
-                    referenceFqn(topic.getService(), serviceFullyQualifiedName));
+            return new OpenMetadataAsset(
+                    uuid(topic.getId()), topic.getName(), topic.getDisplayName(),
+                    topic.getFullyQualifiedName(), type.entityType(), topic.getDescription(),
+                    fieldCount(topic.getMessageSchema()), null, tagNames(topic.getTags()),
+                    referenceFqn(topic.getService(), serviceFallback),
+                    null, null, null, null, epochMillis(topic.getUpdatedAt()));
         }
         if (entity instanceof Container container) {
-            return new OpenMetadataResource(
-                    uuid(container.getId()), container.getName(), container.getFullyQualifiedName(),
-                    type.entityType(), container.getDescription(), columnCount(container.getDataModel()),
-                    tagNames(container.getTags()),
-                    referenceFqn(container.getService(), serviceFullyQualifiedName));
+            return new OpenMetadataAsset(
+                    uuid(container.getId()), container.getName(), container.getDisplayName(),
+                    container.getFullyQualifiedName(), type.entityType(), container.getDescription(),
+                    columnCount(container.getDataModel()), null, tagNames(container.getTags()),
+                    referenceFqn(container.getService(), serviceFallback),
+                    referenceId(container.getParent()), referenceType(container.getParent()),
+                    referenceFqn(container.getParent(), null), longValue(container.getSize()),
+                    epochMillis(container.getUpdatedAt()));
         }
         if (entity instanceof Directory directory) {
-            return new OpenMetadataResource(
-                    uuid(directory.getId()), directory.getName(), directory.getFullyQualifiedName(),
-                    type.entityType(), directory.getDescription(), null, tagNames(directory.getTags()),
-                    referenceFqn(directory.getService(), serviceFullyQualifiedName));
+            Integer childCount = null;
+            if (directory.getNumberOfFiles() != null
+                    || directory.getNumberOfSubDirectories() != null) {
+                childCount = (directory.getNumberOfFiles() == null
+                        ? 0 : directory.getNumberOfFiles())
+                        + (directory.getNumberOfSubDirectories() == null
+                        ? 0 : directory.getNumberOfSubDirectories());
+            }
+            return new OpenMetadataAsset(
+                    uuid(directory.getId()), directory.getName(), directory.getDisplayName(),
+                    directory.getFullyQualifiedName(), type.entityType(), directory.getDescription(),
+                    null, childCount, tagNames(directory.getTags()),
+                    referenceFqn(directory.getService(), serviceFallback),
+                    referenceId(directory.getParent()), referenceType(directory.getParent()),
+                    referenceFqn(directory.getParent(), null),
+                    longValue(directory.getTotalSize()), epochMillis(directory.getUpdatedAt()));
         }
         if (entity instanceof File file) {
-            return new OpenMetadataResource(
-                    uuid(file.getId()), file.getName(), file.getFullyQualifiedName(), type.entityType(),
-                    file.getDescription(), size(file.getColumns()), tagNames(file.getTags()),
-                    referenceFqn(file.getService(), serviceFullyQualifiedName));
+            return new OpenMetadataAsset(
+                    uuid(file.getId()), file.getName(), file.getDisplayName(),
+                    file.getFullyQualifiedName(), type.entityType(), file.getDescription(),
+                    size(file.getColumns()), null, tagNames(file.getTags()),
+                    referenceFqn(file.getService(), serviceFallback),
+                    referenceId(file.getDirectory()), referenceType(file.getDirectory()),
+                    referenceFqn(file.getDirectory(), null), longValue(file.getSize()),
+                    epochMillis(file.getUpdatedAt()));
         }
         if (entity instanceof APICollection collection) {
-            return new OpenMetadataResource(
-                    uuid(collection.getId()), collection.getName(), collection.getFullyQualifiedName(),
-                    type.entityType(), collection.getDescription(), null,
-                    size(collection.getApiEndpoints()), tagNames(collection.getTags()),
-                    referenceFqn(collection.getService(), serviceFullyQualifiedName));
+            return new OpenMetadataAsset(
+                    uuid(collection.getId()), collection.getName(), collection.getDisplayName(),
+                    collection.getFullyQualifiedName(), type.entityType(),
+                    collection.getDescription(), null, size(collection.getApiEndpoints()),
+                    tagNames(collection.getTags()),
+                    referenceFqn(collection.getService(), serviceFallback),
+                    null, null, null, null, epochMillis(collection.getUpdatedAt()));
         }
         if (entity instanceof APIEndpoint endpoint) {
-            return new OpenMetadataResource(
-                    uuid(endpoint.getId()), endpoint.getName(), endpoint.getFullyQualifiedName(),
-                    type.entityType(), endpoint.getDescription(),
-                    fieldCount(endpoint.getRequestSchema()) + fieldCount(endpoint.getResponseSchema()),
-                    tagNames(endpoint.getTags()),
-                    referenceFqn(endpoint.getService(), serviceFullyQualifiedName));
+            return new OpenMetadataAsset(
+                    uuid(endpoint.getId()), endpoint.getName(), endpoint.getDisplayName(),
+                    endpoint.getFullyQualifiedName(), type.entityType(), endpoint.getDescription(),
+                    fieldCount(endpoint.getRequestSchema())
+                            + fieldCount(endpoint.getResponseSchema()),
+                    null, tagNames(endpoint.getTags()),
+                    referenceFqn(endpoint.getService(), serviceFallback),
+                    referenceId(endpoint.getApiCollection()),
+                    referenceType(endpoint.getApiCollection()),
+                    referenceFqn(endpoint.getApiCollection(), null), null,
+                    epochMillis(endpoint.getUpdatedAt()));
         }
         if (entity instanceof SearchIndex searchIndex) {
-            return new OpenMetadataResource(
-                    uuid(searchIndex.getId()), searchIndex.getName(), searchIndex.getFullyQualifiedName(),
+            return new OpenMetadataAsset(
+                    uuid(searchIndex.getId()), searchIndex.getName(),
+                    searchIndex.getDisplayName(), searchIndex.getFullyQualifiedName(),
                     type.entityType(), searchIndex.getDescription(), size(searchIndex.getFields()),
-                    tagNames(searchIndex.getTags()),
-                    referenceFqn(searchIndex.getService(), serviceFullyQualifiedName));
+                    null, tagNames(searchIndex.getTags()),
+                    referenceFqn(searchIndex.getService(), serviceFallback),
+                    null, null, null, null, epochMillis(searchIndex.getUpdatedAt()));
         }
         return null;
     }
 
-    private static OpenMetadataResourceDetail toResourceDetail(
-            OmResourceType type, Object entity, TableData extensionSample) {
-        OpenMetadataResource resource = toResource(type, entity, null);
-        if (resource == null) {
+    private static OpenMetadataAssetDetail toAssetDetail(
+            ExplorationAssetType type, Object entity, SampleResult sample) {
+        OpenMetadataAsset asset = toAsset(type, entity, null);
+        if (asset == null) {
             return null;
         }
+        List<OpenMetadataAssetField> fields = List.of();
+        List<OpenMetadataAssetField> requestFields = List.of();
+        List<OpenMetadataAssetField> responseFields = List.of();
+        List<OpenMetadataAsset> children = List.of();
+        Map<String, Object> properties = new LinkedHashMap<>();
         if (entity instanceof Topic topic) {
-            List<String> messages = topic.getSampleData() == null
-                    ? List.of() : safeList(topic.getSampleData().getMessages());
-            return new OpenMetadataResourceDetail(
-                    resource, fieldModels(topic.getMessageSchema()), !messages.isEmpty(),
-                    List.of(), List.of(), messages);
+            fields = messageFields(topic.getMessageSchema());
+            properties.put("partitions", topic.getPartitions());
+            properties.put("replicationFactor", topic.getReplicationFactor());
+            properties.put("retentionTime", topic.getRetentionTime());
+            properties.put("retentionSize", topic.getRetentionSize());
+            properties.put("maximumMessageSize", topic.getMaximumMessageSize());
+            properties.put("minimumInSyncReplicas", topic.getMinimumInSyncReplicas());
+            properties.put("cleanupPolicies", cleanupPolicies(topic.getCleanupPolicies()));
+        } else if (entity instanceof SearchIndex searchIndex) {
+            fields = searchIndexFields(searchIndex.getFields());
+            properties.put("indexType", searchIndex.getIndexType() == null
+                    ? null : searchIndex.getIndexType().value());
+            properties.put("fieldCount", size(searchIndex.getFields()));
+            properties.put("searchIndexSettings", searchIndex.getSearchIndexSettings());
+        } else if (entity instanceof Container container) {
+            fields = columns(container.getDataModel() == null
+                    ? null : container.getDataModel().getColumns());
+            properties.put("dataModelAvailable", container.getDataModel() != null);
+            properties.put("prefix", container.getPrefix());
+            properties.put("numberOfObjects", container.getNumberOfObjects());
+            properties.put("size", container.getSize());
+            properties.put("fileFormats", containerFileFormats(container.getFileFormats()));
+            properties.put("fullPath", container.getFullPath());
+            properties.put("parent", referenceFqn(container.getParent(), null));
+        } else if (entity instanceof Directory directory) {
+            properties.put("path", directory.getPath());
+            properties.put("numberOfFiles", directory.getNumberOfFiles());
+            properties.put("numberOfSubDirectories", directory.getNumberOfSubDirectories());
+            properties.put("totalSize", directory.getTotalSize());
+            properties.put("parent", referenceFqn(directory.getParent(), null));
+            children = directoryChildren(directory);
+        } else if (entity instanceof File file) {
+            fields = columns(file.getColumns());
+            properties.put("fileType", file.getFileType() == null
+                    ? null : file.getFileType().value());
+            properties.put("mimeType", file.getMimeType());
+            properties.put("size", file.getSize());
+            properties.put("path", file.getPath());
+            properties.put("directory", referenceFqn(file.getDirectory(), null));
+        } else if (entity instanceof APICollection collection) {
+            properties.put("endpointURL", collection.getEndpointURL() == null
+                    ? null : collection.getEndpointURL().toString());
+            properties.put("endpointCount", size(collection.getApiEndpoints()));
+        } else if (entity instanceof APIEndpoint endpoint) {
+            requestFields = apiFields(endpoint.getRequestSchema());
+            responseFields = apiFields(endpoint.getResponseSchema());
+            properties.put("requestMethod", endpoint.getRequestMethod() == null
+                    ? null : endpoint.getRequestMethod().value());
+            properties.put("endpointURL", endpoint.getEndpointURL() == null
+                    ? null : endpoint.getEndpointURL().toString());
+            properties.put("apiCollection", referenceFqn(endpoint.getApiCollection(), null));
         }
-        if (entity instanceof Container container) {
-            TableData sample = extensionSample != null ? extensionSample : container.getSampleData();
-            List<OpenMetadataResourceField> columns = columns(
-                    container.getDataModel() == null ? null : container.getDataModel().getColumns());
-            return new OpenMetadataResourceDetail(
-                    resource, columns, hasRows(sample), sampleColumns(sample), sampleRows(sample), List.of());
-        }
-        if (entity instanceof File file) {
-            TableData sample = extensionSample != null ? extensionSample : file.getSampleData();
-            return new OpenMetadataResourceDetail(
-                    resource, columns(file.getColumns()), hasRows(sample),
-                    sampleColumns(sample), sampleRows(sample), List.of());
-        }
-        if (entity instanceof APIEndpoint endpoint) {
-            // The OpenAPI contract is the exploration payload for an API endpoint, so the
-            // request and response schemas stay separate instead of being merged.
-            return new OpenMetadataResourceDetail(
-                    resource,
-                    List.of(),
-                    fieldModels(endpoint.getRequestSchema()),
-                    fieldModels(endpoint.getResponseSchema()),
-                    false, List.of(), List.of(), List.of());
-        }
-        if (entity instanceof SearchIndex searchIndex) {
-            List<OpenMetadataResourceField> fields = new ArrayList<>();
-            for (SearchIndexField field : safeList(searchIndex.getFields())) {
-                if (field != null) {
-                    fields.add(new OpenMetadataResourceField(
-                            field.getName(),
-                            field.getDataTypeDisplay() != null
-                                    ? field.getDataTypeDisplay() : enumValue(field.getDataType()),
-                            field.getDescription(), tagNames(field.getTags())));
-                }
-            }
-            return new OpenMetadataResourceDetail(
-                    resource, fields, false, List.of(), List.of(), List.of());
-        }
-        return new OpenMetadataResourceDetail(resource, List.of(), false, List.of(), List.of(), List.of());
+        return new OpenMetadataAssetDetail(
+                asset, fields, requestFields, responseFields, sample.sample(),
+                sample.permissionDenied(), sample.error(), children, properties);
     }
 
-    private static List<OpenMetadataResourceField> fieldModels(MessageSchema schema) {
-        List<OpenMetadataResourceField> fields = new ArrayList<>();
-        for (org.openmetadata.schema.type.Field field : schema == null ? List.<org.openmetadata.schema.type.Field>of()
+    /**
+     * Directory children are direct references. Spreadsheets and any future family are
+     * filtered out because this product only explores directories and files.
+     */
+    private static List<OpenMetadataAsset> directoryChildren(Directory directory) {
+        List<OpenMetadataAsset> children = new ArrayList<>();
+        for (EntityReference reference : safeList(directory.getChildren())) {
+            if (reference == null) {
+                continue;
+            }
+            ExplorationAssetType childType = ExplorationAssetType.fromValue(reference.getType());
+            if (childType != ExplorationAssetType.DIRECTORY
+                    && childType != ExplorationAssetType.FILE) {
+                continue;
+            }
+            children.add(new OpenMetadataAsset(
+                    uuid(reference.getId()), reference.getName(), reference.getDisplayName(),
+                    reference.getFullyQualifiedName(), childType.entityType(),
+                    reference.getDescription(), null, null, List.of(), null,
+                    uuid(directory.getId()), ExplorationAssetType.DIRECTORY.entityType(),
+                    directory.getFullyQualifiedName(), null, null));
+        }
+        return children;
+    }
+
+    private static List<OpenMetadataAssetField> messageFields(MessageSchema schema) {
+        List<OpenMetadataAssetField> fields = new ArrayList<>();
+        for (org.openmetadata.schema.type.Field field : schema == null
+                ? List.<org.openmetadata.schema.type.Field>of()
                 : safeList(schema.getSchemaFields())) {
             if (field != null) {
-                fields.add(new OpenMetadataResourceField(
+                fields.add(new OpenMetadataAssetField(
                         field.getName(),
                         field.getDataTypeDisplay() != null
                                 ? field.getDataTypeDisplay() : enumValue(field.getDataType()),
@@ -637,12 +826,13 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         return fields;
     }
 
-    private static List<OpenMetadataResourceField> fieldModels(APISchema schema) {
-        List<OpenMetadataResourceField> fields = new ArrayList<>();
-        for (org.openmetadata.schema.type.Field field : schema == null ? List.<org.openmetadata.schema.type.Field>of()
+    private static List<OpenMetadataAssetField> apiFields(APISchema schema) {
+        List<OpenMetadataAssetField> fields = new ArrayList<>();
+        for (org.openmetadata.schema.type.Field field : schema == null
+                ? List.<org.openmetadata.schema.type.Field>of()
                 : safeList(schema.getSchemaFields())) {
             if (field != null) {
-                fields.add(new OpenMetadataResourceField(
+                fields.add(new OpenMetadataAssetField(
                         field.getName(),
                         field.getDataTypeDisplay() != null
                                 ? field.getDataTypeDisplay() : enumValue(field.getDataType()),
@@ -652,11 +842,29 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         return fields;
     }
 
-    private static List<OpenMetadataResourceField> columns(List<Column> columns) {
-        List<OpenMetadataResourceField> fields = new ArrayList<>();
-        for (Column column : safeList(columns)) {
+    private static List<OpenMetadataAssetField> searchIndexFields(
+            List<SearchIndexField> source) {
+        List<OpenMetadataAssetField> fields = new ArrayList<>();
+        for (SearchIndexField field : safeList(source)) {
+            if (field == null) {
+                continue;
+            }
+            fields.add(new OpenMetadataAssetField(
+                    field.getName(),
+                    field.getDataTypeDisplay() != null
+                            ? field.getDataTypeDisplay()
+                            : field.getDataType() == null ? null : field.getDataType().value(),
+                    field.getDescription(), tagNames(field.getTags()),
+                    searchIndexFields(field.getChildren())));
+        }
+        return fields;
+    }
+
+    private static List<OpenMetadataAssetField> columns(List<Column> source) {
+        List<OpenMetadataAssetField> fields = new ArrayList<>();
+        for (Column column : safeList(source)) {
             if (column != null) {
-                fields.add(new OpenMetadataResourceField(
+                fields.add(new OpenMetadataAssetField(
                         column.getName(),
                         column.getDataTypeDisplay() != null
                                 ? column.getDataTypeDisplay() : enumValue(column.getDataType()),
@@ -664,6 +872,34 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             }
         }
         return fields;
+    }
+
+    private static List<String> cleanupPolicies(List<CleanupPolicy> policies) {
+        List<String> values = new ArrayList<>();
+        for (CleanupPolicy policy : safeList(policies)) {
+            if (policy != null) {
+                values.add(policy.value());
+            }
+        }
+        return values;
+    }
+
+    private static List<String> containerFileFormats(List<ContainerFileFormat> formats) {
+        List<String> values = new ArrayList<>();
+        for (ContainerFileFormat format : safeList(formats)) {
+            if (format != null) {
+                values.add(format.value());
+            }
+        }
+        return values;
+    }
+
+    private static Long epochMillis(Long value) {
+        return value;
+    }
+
+    private record SampleResult(
+            OpenMetadataAssetSample sample, boolean permissionDenied, boolean error) {
     }
 
     private static List<String> tagNames(List<TagLabel> tags) {
@@ -719,6 +955,14 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     private static String uuid(java.util.UUID value) {
         return value == null ? null : value.toString();
+    }
+
+    private static String referenceId(EntityReference reference) {
+        return reference == null ? null : uuid(reference.getId());
+    }
+
+    private static String referenceType(EntityReference reference) {
+        return reference == null ? null : reference.getType();
     }
 
     private static String referenceFqn(EntityReference reference, String fallback) {
@@ -1379,15 +1623,6 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     private static boolean isNotFound(OpenMetadataException error) {
         return error != null && error.getStatusCode() == 404;
-    }
-
-    /** True when OpenMetadata rejected the sampleData field, not the entity itself. */
-    private static boolean isSampleDataPermissionDenied(OpenMetadataException error) {
-        if (error == null) {
-            return false;
-        }
-        int status = error.getStatusCode();
-        return status == 401 || status == 403;
     }
 
     private static MetadataIntegrationException sdkFailure(

@@ -2,7 +2,7 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
-import org.apache.seatunnel.web.api.metadata.OmResourceType;
+import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
@@ -27,7 +27,7 @@ public interface MetadataConnectorAdapter {
      * Non-relational OpenMetadata asset families exposed by this connector. Database
      * connectors stay empty: their assets are reached through Database/Schema/Table.
      */
-    default List<OmResourceType> resourceTypes() {
+    default List<ExplorationAssetType> resourceTypes() {
         return List.of();
     }
 
