@@ -233,7 +233,7 @@ const CollectionReportsPage: React.FC = () => {
 
   return (
     <PageContainer
-      title="采集报告管理"
+      title="采集报告"
       subTitle="报告生成、预览、导出和分发记录"
       extra={[
         <Button key="refresh" icon={<ReloadOutlined />} onClick={reload}>

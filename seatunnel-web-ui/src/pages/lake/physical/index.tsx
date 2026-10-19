@@ -497,7 +497,7 @@ const PhysicalResourcesPage: React.FC = () => {
 
   return (
     <PageContainer
-      title="物理入湖"
+      title="物理入湖管理"
       subTitle="管理业务数据源对应的 Doris ODS 资源"
       extra={[
         <Button key="refresh" icon={<ReloadOutlined />} onClick={reload}>

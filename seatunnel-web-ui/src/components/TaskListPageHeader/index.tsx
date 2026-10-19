@@ -24,7 +24,9 @@ const TaskListPageHeader: React.FC<TaskListPageHeaderProps> = ({
     >
       <div className="task-list-page-header__top">
         <div className="task-list-page-header__meta">
-          <div className="task-list-page-header__icon">{icon}</div>
+          <div className="task-list-page-header__icon" aria-hidden="true">
+            {icon}
+          </div>
 
           <div className="task-list-page-header__text">
             <h1 className="task-list-page-header__title">{title}</h1>

@@ -1,10 +1,11 @@
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
+import AccessibilityNormalizer from '@/components/AccessibilityNormalizer';
 import ThemeConfigProvider from '@/components/ThemeConfigProvider';
 import '@ant-design/v5-patch-for-react-19';
 import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { Link, type RequestConfig, type RunTimeLayoutConfig } from '@umijs/max';
-import { Tooltip } from 'antd';
-import { isValidElement } from 'react';
+import { Spin, Tooltip } from 'antd';
+import { isValidElement, Suspense } from 'react';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
 import { Knowledge } from './components/RightContent';
@@ -12,6 +13,7 @@ import { menuData } from './menuData';
 import { errorConfig } from './requestErrorConfig';
 import { applyNavTheme, persistNavTheme, setNavTheme } from './theme';
 import HttpUtils from './utils/HttpUtils';
+import { resolveDocumentTitle } from './utils/documentTitle';
 import { installIframeHistoryGuard } from './utils/iframeHistoryGuard';
 import {
   applyLayoutVisibility,
@@ -79,6 +81,11 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
 
   return {
     menuDataRender: () => menuData,
+    onPageChange: (location) => {
+      if (typeof document !== 'undefined') {
+        document.title = resolveDocumentTitle(location?.pathname || '');
+      }
+    },
     menuItemRender: (menuItemProps, defaultDom, menuProps) => {
       if (menuItemProps.isUrl || menuItemProps.children) {
         return defaultDom;
@@ -136,6 +143,13 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
         </button>
       );
     },
+    // ProLayout's default header title is an <h1>; each page owns the single h1.
+    headerTitleRender: hideLayout ? false : (logo) => (
+      <div className="st-app-logo" aria-label="Aircas Web">
+        {logo}
+        <span className="st-app-logo__title">Aircas Web</span>
+      </div>
+    ),
     // 主题切换在浅色 token 完整迁移前隐藏，避免同一产品出现两套几何语言。
     actionsRender: () => [<Knowledge key="knowledge" />],
     // 业务水印默认关闭；审计/导出场景另行显式开启。
@@ -145,11 +159,24 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     links: [],
     // 自定义 403 页面
     // unAccessible: <div>unAccessible</div>,
-    // 增加一个 loading 的状态
-    childrenRender: (children) => children,
+    // 路由懒加载只替换内容区：全局 loading.tsx 会卸载侧栏/顶栏，分页或切换路由时
+    // 用户会丢失上下文。内层 Suspense 把兜底限制在布局内容区。
+    childrenRender: (children) => (
+      <Suspense
+        fallback={
+          <div className="st-route-loading" role="status" aria-live="polite">
+            <Spin size="small" />
+            <span>页面加载中…</span>
+          </div>
+        }
+      >
+        {children}
+      </Suspense>
+    ),
     ...initialState?.settings,
-    menuRender: hideLayout ? false : initialState?.settings?.menuRender,
-    menuHeaderRender: hideLayout ? false : undefined,
+    menuRender: hideLayout
+      ? false
+      : (_menuProps, defaultDom) => <nav aria-label="主导航">{defaultDom}</nav>,
     headerRender: hideLayout ? false : undefined,
   };
 };
@@ -172,5 +199,5 @@ export const rootContainer = (container: React.ReactNode) => {
     document.documentElement.lang = 'zh-CN';
   }
 
-  return <ThemeConfigProvider>{container}</ThemeConfigProvider>;
+  return <ThemeConfigProvider><AccessibilityNormalizer />{container}</ThemeConfigProvider>;
 };

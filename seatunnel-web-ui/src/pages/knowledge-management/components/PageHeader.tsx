@@ -22,7 +22,7 @@ const PageHeader: React.FC = () => {
             width: 48,
             height: 48,
             borderRadius: 16,
-            background: "#eef2ff",
+            background: "var(--st-color-selected)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -31,17 +31,17 @@ const PageHeader: React.FC = () => {
             flexShrink: 0,
           }}
         >
-          <BulbOutlined />
+          <BulbOutlined aria-hidden />
         </div>
 
         <div>
           <Title
-            level={2}
+            level={1}
             style={{
               margin: 0,
-              fontSize: 20,
-              lineHeight: "32px",
-              color: "#101828",
+              fontSize: 28,
+              lineHeight: "40px",
+              color: "var(--st-color-text-primary)",
             }}
           >
             知识管理

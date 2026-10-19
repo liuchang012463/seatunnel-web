@@ -444,7 +444,7 @@ const LogicalAccessPage: React.FC = () => {
     },
   ];
   return (
-    <PageContainer className="lake-logical-page" title="逻辑入湖" subTitle="选择已有数据源，按步骤完成 Doris 逻辑挂载">
+    <PageContainer className="lake-logical-page" title="逻辑入湖管理" subTitle="选择已有数据源，按步骤完成 Doris 逻辑挂载">
       <CapabilityCard sources={sources} initialSourceId={initialSourceId} onSourceChange={setSelectedSourceId} masterNames={masterNames} />
       {sourcesError ? (
         <Alert
@@ -472,6 +472,9 @@ const LogicalAccessPage: React.FC = () => {
         actionRef={actionRef}
         columns={columns}
         search={{ labelWidth: 'auto' }}
+        // The default toolbar renders refresh/settings as non-focusable spans; the explicit
+        // refresh button below is keyboard accessible.
+        options={false}
         pagination={{ defaultPageSize: 10, showSizeChanger: true }}
         toolBarRender={() => [
           <Button key="create" type="primary" icon={<PlusOutlined />} disabled={sourcesLoading || !sources.length} onClick={() => setCreateOpen(true)}>创建挂载</Button>,

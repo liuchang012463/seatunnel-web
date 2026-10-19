@@ -4,9 +4,9 @@ import {
   LinkOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import { Alert, Button, Input, Skeleton, Tag } from "antd";
+import { Alert, Button, Input, Pagination, Skeleton, Tag } from "antd";
 import { history } from "@umijs/max";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import MethodSegmented, { type FilterMethod } from "./MethodSegmented";
 import { HttpMethod, useOpenApiData } from "./openapi-parser";
 import "./index.less";
@@ -30,6 +30,8 @@ const ApiManagementPage: React.FC = () => {
   const [activeController, setActiveController] = useState<string>("all");
   const [method, setMethod] = useState<FilterMethod>("ALL");
   const [keyword, setKeyword] = useState("");
+  const [pageNo, setPageNo] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const currentController = useMemo(() => {
     return controllers.find((item) => item.key === activeController);
@@ -59,13 +61,24 @@ const ApiManagementPage: React.FC = () => {
     });
   }, [apis, activeController, method, keyword]);
 
+  // The OpenAPI document can contain hundreds of endpoints; render one page at a time so the
+  // page does not become a 46k-pixel scroll surface.
+  const pagedApis = useMemo(() => {
+    const start = (pageNo - 1) * pageSize;
+    return filteredApis.slice(start, start + pageSize);
+  }, [filteredApis, pageNo, pageSize]);
+
+  useEffect(() => {
+    setPageNo(1);
+  }, [activeController, method, keyword]);
+
   return (
     <div className="open-api-page min-h-screen">
       <div className="open-api-header border-b">
         <div className="mx-auto flex max-w-[1540px] items-center justify-between gap-4 px-6 py-5">
           <div className="flex min-w-0 items-center gap-4">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EFF8FF] text-[20px] text-[#1570EF]">
-              <ApiOutlined />
+              <ApiOutlined aria-hidden />
             </div>
 
             <div className="min-w-0">
@@ -242,7 +255,7 @@ const ApiManagementPage: React.FC = () => {
                   />
                 ))
               ) : filteredApis.length > 0 ? (
-                filteredApis.map((item) => (
+                pagedApis.map((item) => (
                   <div
                     key={item.id}
                     className="open-api-card group rounded-[20px] border p-4 transition-all"
@@ -304,6 +317,23 @@ const ApiManagementPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {!loading && filteredApis.length > 0 ? (
+              <div className="mt-5 flex justify-end">
+                <Pagination
+                  current={pageNo}
+                  pageSize={pageSize}
+                  total={filteredApis.length}
+                  showSizeChanger
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  showTotal={(total) => `共 ${total} 个接口`}
+                  onChange={(page, size) => {
+                    setPageNo(page);
+                    setPageSize(size);
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

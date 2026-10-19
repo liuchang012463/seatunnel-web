@@ -1201,3 +1201,37 @@ html[data-hide-sidebar='true'] .ant-pro-layout {
 .ant-splitter .ant-splitter-panel {
   padding: 0px !important;
 }
+
+/* 路由懒加载兜底：只占内容区，保留侧栏/顶栏上下文 */
+.st-route-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 240px;
+  color: var(--st-color-text-secondary, #afc4cd);
+  font-size: 13px;
+}
+
+/* 品牌标题：避免 ProLayout 默认渲染的 <h1> 与页面标题争抢唯一 H1 */
+.st-app-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.st-app-logo__title {
+  overflow: hidden;
+  color: var(--st-color-text-primary, #edf4f7);
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ant-pro-sider-collapsed .st-app-logo__title,
+.ant-pro-global-header-collapsed .st-app-logo__title {
+  display: none;
+}

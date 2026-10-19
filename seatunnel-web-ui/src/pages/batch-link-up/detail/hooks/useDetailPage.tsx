@@ -1,6 +1,7 @@
 import { history, useParams } from '@umijs/max';
 import { Form, message } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { seatunnelJobDefinitionApi } from '../../api';
 import { getDbLabel } from '../constants';
 import type { DetailFormValues, SourceTargetType, StepKey, SyncMode } from '../types';
 import { isWebUploadSource, normalizeOfflineMode } from '../modeUtils';
@@ -22,6 +23,8 @@ export default function useDetailPage() {
   const [form] = Form.useForm<DetailFormValues>();
 
   const [params, setParams] = useState<any>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [loadError, setLoadError] = useState<string>();
   const [sourceType, setSourceType] = useState<SourceTargetType>(defaultSourceType);
   const [targetType, setTargetType] = useState<SourceTargetType>(defaultTargetType);
   const [activeStep, setActiveStep] = useState<StepKey>('base');
@@ -42,40 +45,139 @@ export default function useDetailPage() {
   const [sourceDataSourceId, setSourceDataSourceId] = useState<string>();
   const [targetDataSourceId, setTargetDataSourceId] = useState<string>();
 
+  const applyDetail = useCallback(
+    (data: any) => {
+      setParams(data);
+
+      if (data?.sourceType) setSourceType(data.sourceType);
+      if (data?.targetType) setTargetType(data.targetType);
+
+      const currentMode = normalizeOfflineMode(data?.sourceType, data?.mode) as SyncMode;
+
+      form.setFieldsValue({
+        jobName: data?.jobName || '',
+        jobDesc: data?.jobDesc || '',
+        mode: currentMode,
+      });
+
+      setMode(currentMode);
+
+      setSourceClientId(data?.sourceClientId);
+      setTargetClientId(data?.targetClientId);
+      setClientId(data?.clientId);
+      // Lake table detail navigation already knows both endpoint ids. Keep them
+      // in the normal wizard state so the client-link step opens with the
+      // correct source/target selected; connectivity still has to be tested by
+      // the operator before continuing.
+      setSourceDataSourceId(data?.sourceDataSourceId || data?.sourceId
+        ? String(data?.sourceDataSourceId || data?.sourceId) : undefined);
+      setTargetDataSourceId(data?.targetDataSourceId || data?.targetId
+        ? String(data?.targetDataSourceId || data?.targetId) : undefined);
+    },
+    [form],
+  );
+
+  const loadFromServer = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setLoadError(undefined);
+    try {
+      // The read-only definition works for both online and offline jobs and is the primary
+      // source for deep links. The edit detail is only a richer fallback for saved drafts.
+      let definition: any;
+      try {
+        const response = await seatunnelJobDefinitionApi.selectById(id, {
+          skipErrorHandler: true,
+        });
+        if (response?.code === 0 && response?.data) {
+          definition = response.data;
+        }
+      } catch {
+        // Fall through to the edit-detail endpoint.
+      }
+
+      if (!definition) {
+        try {
+          const editResponse = await seatunnelJobDefinitionApi.selectEditDetail(id, {
+            skipErrorHandler: true,
+          });
+          if (editResponse?.code === 0 && editResponse?.data) {
+            definition = editResponse.data;
+          } else {
+            setLoadError(
+              editResponse?.message || editResponse?.msg || '任务详情读取失败',
+            );
+          }
+        } catch (error) {
+          setLoadError(
+            error instanceof Error && error.message
+              ? error.message
+              : '任务详情读取失败，请稍后重试',
+          );
+        }
+      }
+
+      if (!definition) {
+        return;
+      }
+
+      const basic = definition.basic || definition;
+      const workflow = definition.workflow || {};
+      const data = {
+        id: definition.id || id,
+        jobName: basic.jobName,
+        jobDesc: basic.jobDesc,
+        mode: definition.mode,
+        sourceType: workflow.sourceType
+          || (definition.sourceType ? { dbType: definition.sourceType } : undefined),
+        targetType: workflow.targetType
+          || (definition.sinkType ? { dbType: definition.sinkType } : undefined),
+        clientId: basic.clientId || definition.clientId,
+        sourceClientId: workflow.sourceClientId || workflow.source?.clientId,
+        targetClientId: workflow.targetClientId || workflow.target?.clientId,
+        sourceDataSourceId:
+          workflow.sourceDataSourceId || workflow.sourceId || definition.sourceDatasourceId,
+        targetDataSourceId:
+          workflow.targetDataSourceId || workflow.targetId || definition.sinkDatasourceId,
+      };
+      // The cache is an accelerator for the create flow, never the only source.
+      sessionStorage.setItem(`batch-link-up-detail-${id}`, JSON.stringify(data));
+      applyDetail(data);
+    } catch (error) {
+      setLoadError(
+        error instanceof Error && error.message
+          ? error.message
+          : '任务详情读取失败，请稍后重试',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [applyDetail, id]);
+
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setLoading(false);
+      return;
+    }
 
     const cache = sessionStorage.getItem(`batch-link-up-detail-${id}`);
-    if (!cache) return;
+    if (cache) {
+      try {
+        applyDetail(JSON.parse(cache));
+        setLoading(false);
+        return;
+      } catch {
+        sessionStorage.removeItem(`batch-link-up-detail-${id}`);
+      }
+    }
 
-    const data = JSON.parse(cache);
-    setParams(data);
-
-    if (data?.sourceType) setSourceType(data.sourceType);
-    if (data?.targetType) setTargetType(data.targetType);
-
-    const currentMode = normalizeOfflineMode(data?.sourceType, data?.mode) as SyncMode;
-
-    form.setFieldsValue({
-      jobName: data?.jobName || '',
-      jobDesc: data?.jobDesc || '',
-      mode: currentMode,
-    });
-
-    setMode(currentMode);
-
-    setSourceClientId(data?.sourceClientId);
-    setTargetClientId(data?.targetClientId);
-    setClientId(data?.clientId);
-    // Lake table detail navigation already knows both endpoint ids. Keep them
-    // in the normal wizard state so the client-link step opens with the
-    // correct source/target selected; connectivity still has to be tested by
-    // the operator before continuing.
-    setSourceDataSourceId(data?.sourceDataSourceId || data?.sourceId
-      ? String(data?.sourceDataSourceId || data?.sourceId) : undefined);
-    setTargetDataSourceId(data?.targetDataSourceId || data?.targetId
-      ? String(data?.targetDataSourceId || data?.targetId) : undefined);
-  }, [id, form]);
+    // Deep link or refresh: fetch the persisted definition by id instead of
+    // relying on a cache that only exists in the tab that opened the page.
+    void loadFromServer();
+  }, [applyDetail, id, loadFromServer]);
 
   const sourceLabel = useMemo(() => getDbLabel(sourceType), [sourceType]);
   const targetLabel = useMemo(() => getDbLabel(targetType), [targetType]);
@@ -214,6 +316,9 @@ export default function useDetailPage() {
   return {
     form,
     params,
+    loading,
+    loadError,
+    reload: loadFromServer,
     sourceType,
     targetType,
     activeStep,

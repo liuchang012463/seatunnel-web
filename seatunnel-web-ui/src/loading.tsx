@@ -2,9 +2,13 @@ import React from 'react';
 
 const Loading: React.FC = () => {
   return (
-    <div className="pointer-events-none fixed inset-0 z-[9999] flex items-center justify-center">
+    <div
+      className="pointer-events-none fixed inset-0 z-[9999] flex items-center justify-center"
+      role="status"
+      aria-live="polite"
+    >
       <div className="flex items-center gap-2">
-        <div className="running-man">
+        <div className="running-man" aria-hidden>
           <div className="head" />
           <div className="body" />
           <div className="arm arm-left" />

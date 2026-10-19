@@ -304,7 +304,7 @@ const DataExplorationOverviewPage: React.FC = () => {
         <section className="overview-panel overview-assets-panel">
           <div className="overview-panel-heading">
             <div>
-              <span className="overview-panel-heading__eyebrow">INVENTORY</span>
+              <span className="overview-panel-heading__eyebrow">数据资产</span>
               <h2>元数据规模</h2>
             </div>
             <span className="overview-panel-heading__meta">已纳入当前范围</span>
@@ -343,7 +343,7 @@ const DataExplorationOverviewPage: React.FC = () => {
           <section className="overview-panel overview-coverage-panel">
             <div className="overview-panel-heading">
               <div>
-                <span className="overview-panel-heading__eyebrow">COVERAGE</span>
+                <span className="overview-panel-heading__eyebrow">探查覆盖</span>
                 <h2>探查覆盖率</h2>
               </div>
               <span className="overview-panel-heading__meta">数据表</span>
@@ -376,7 +376,7 @@ const DataExplorationOverviewPage: React.FC = () => {
           <section className="overview-panel overview-scope-panel">
             <div className="overview-panel-heading">
               <div>
-                <span className="overview-panel-heading__eyebrow">SCOPE</span>
+                <span className="overview-panel-heading__eyebrow">探查范围</span>
                 <h2>当前范围</h2>
               </div>
               <span className="overview-panel-heading__meta">指标与列表同步</span>
@@ -395,7 +395,7 @@ const DataExplorationOverviewPage: React.FC = () => {
         <section className="overview-panel overview-source-panel">
           <div className="overview-panel-heading overview-source-panel__heading">
             <div>
-              <span className="overview-panel-heading__eyebrow">DATA SOURCES</span>
+              <span className="overview-panel-heading__eyebrow">数据源</span>
               <h2>数据源探查状态</h2>
             </div>
             <span className="overview-panel-heading__meta">共 {filteredSources.length} 个数据源</span>

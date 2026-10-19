@@ -435,11 +435,11 @@ const CatalogUpdateDrawer: React.FC<{
       >
         <Form.Item name="targetCatalogName" label="Catalog 名称"><Input disabled /></Form.Item>
         <Space align="start" style={{ width: '100%' }}>
-          <Form.Item name="adapter" label="Adapter" rules={[{ required: true }]}><Select options={[{ label: 'MySQL', value: 'MYSQL' }, { label: 'PostgreSQL', value: 'POSTGRESQL' }, { label: 'Oracle', value: 'ORACLE' }]} style={{ width: 210 }} /></Form.Item>
-          <Form.Item name="scope" label="Scope" rules={[{ required: true }]}><Select options={[{ label: '全部资源', value: 'ALL' }, { label: '指定数据库', value: 'DATABASE' }, { label: '指定表', value: 'TABLE' }]} style={{ width: 210 }} /></Form.Item>
+          <Form.Item name="adapter" label="数据库类型" rules={[{ required: true }]}><Select options={[{ label: 'MySQL', value: 'MYSQL' }, { label: 'PostgreSQL', value: 'POSTGRESQL' }, { label: 'Oracle', value: 'ORACLE' }]} style={{ width: 210 }} /></Form.Item>
+          <Form.Item name="scope" label="作用范围" rules={[{ required: true }]}><Select options={[{ label: '全部资源', value: 'ALL' }, { label: '指定数据库', value: 'DATABASE' }, { label: '指定表', value: 'TABLE' }]} style={{ width: 210 }} /></Form.Item>
         </Space>
-        <Form.Item name="databaseInclude" label="数据库范围"><Select mode="tags" tokenSeparators={[',']} placeholder="Scope 为 DATABASE/TABLE 时填写" /></Form.Item>
-        <Form.Item name="tableInclude" label="表范围"><Select mode="tags" tokenSeparators={[',']} placeholder="Scope 为 TABLE 时填写" /></Form.Item>
+        <Form.Item name="databaseInclude" label="数据库范围"><Select mode="tags" tokenSeparators={[',']} placeholder="作用范围为 DATABASE/TABLE 时填写" /></Form.Item>
+        <Form.Item name="tableInclude" label="表范围"><Select mode="tags" tokenSeparators={[',']} placeholder="作用范围为 TABLE 时填写" /></Form.Item>
       </Form>
     </Drawer>
   );
@@ -520,7 +520,7 @@ const LogicalCatalogDetail: React.FC = () => {
     });
   };
   const tabs = useMemo(() => catalog ? [
-    { key: 'base', label: '基本信息', children: <Descriptions bordered column={{ xs: 1, sm: 2 }}><Descriptions.Item label="Catalog">{catalog.targetCatalogName || '-'}</Descriptions.Item><Descriptions.Item label="源数据源">{catalog.sourceDataSourceId || '-'}</Descriptions.Item><Descriptions.Item label="Adapter">{catalog.adapter || '-'}</Descriptions.Item><Descriptions.Item label="Scope">{catalog.scope || '-'}</Descriptions.Item><Descriptions.Item label="Resource"><LakeResourceStatusTag status={catalog.resourceStatus} /></Descriptions.Item><Descriptions.Item label="Validation"><Tag color={statusColor(catalog.validationStatus)}>{catalog.validationStatus || 'UNKNOWN'}</Tag></Descriptions.Item><Descriptions.Item label="最近观察">{catalog.lastObservedAt || '-'}</Descriptions.Item><Descriptions.Item label="最近对账">{catalog.lastReconcileAt || '-'}</Descriptions.Item><Descriptions.Item label="锁版本">{catalog.lockVersion || '-'}</Descriptions.Item><Descriptions.Item label="错误码">{catalog.errorCode || '-'}</Descriptions.Item></Descriptions> },
+    { key: 'base', label: '基本信息', children: <Descriptions bordered column={{ xs: 1, sm: 2 }}><Descriptions.Item label="目录">{catalog.targetCatalogName || '-'}</Descriptions.Item><Descriptions.Item label="源数据源">{catalog.sourceDataSourceId || '-'}</Descriptions.Item><Descriptions.Item label="数据库类型">{catalog.adapter || '-'}</Descriptions.Item><Descriptions.Item label="作用范围">{catalog.scope || '-'}</Descriptions.Item><Descriptions.Item label="资源状态"><LakeResourceStatusTag status={catalog.resourceStatus} /></Descriptions.Item><Descriptions.Item label="校验状态"><Tag color={statusColor(catalog.validationStatus)}>{catalog.validationStatus || '未知'}</Tag></Descriptions.Item><Descriptions.Item label="最近观察">{catalog.lastObservedAt || '-'}</Descriptions.Item><Descriptions.Item label="最近对账">{catalog.lastReconcileAt || '-'}</Descriptions.Item><Descriptions.Item label="锁版本">{catalog.lockVersion || '-'}</Descriptions.Item><Descriptions.Item label="错误码">{catalog.errorCode || '-'}</Descriptions.Item></Descriptions> },
     { key: 'query', label: '查询验证', children: <Tabs items={[{ key: 'single', label: '单表验证', children: <SingleTableQuery catalog={catalog} /> }, { key: 'join', label: '双 Catalog JOIN', children: <JoinQuery catalog={catalog} catalogs={catalogs} /> }]} /> },
     { key: 'snapshot', label: '挂载资源', children: <Card><Typography.Text type="secondary">服务端返回的脱敏实际快照</Typography.Text><pre className="lake-snapshot">{JSON.stringify(catalog.actualSnapshot || {}, null, 2)}</pre></Card> },
     { key: 'consistency', label: '一致性', children: <Card><Alert type={catalog.validationStatus === 'MATCH' ? 'success' : 'warning'} showIcon message={catalog.validationStatus === 'MATCH' ? '挂载配置与 Doris 实际状态一致' : '当前需要重新观察或处理漂移'} description="页面读取的是服务端最近一次显式 Validate / Refresh / Reconcile 的结果，进入详情不会自动访问 Doris。" /></Card> },

@@ -25,7 +25,7 @@ const TimeParamContentHeader: React.FC<Props> = ({
             <div
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
               style={{
-                background: "#EEF4FF",
+                background: "var(--st-color-selected)",
                 color: BLUE,
               }}
             >
@@ -45,9 +45,9 @@ const TimeParamContentHeader: React.FC<Props> = ({
               </svg>
             </div>
 
-            <h1 className="m-0 text-[20px] font-bold leading-8 text-[#101828]">
+            <h2 className="m-0 text-[20px] font-bold leading-8 text-[color:var(--st-color-text-primary)]">
               时间变量
-            </h1>
+            </h2>
           </div>
 
           <p

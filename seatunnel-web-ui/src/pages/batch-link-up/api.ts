@@ -51,15 +51,15 @@ export const seatunnelJobDefinitionApi = {
     return HttpUtils.post(`${apiPrefix}/guide-multi/saveOrUpdate`, data);
   },
 
-  selectById: (id: any): Promise<{ code: number; data: SeatunnelJobDefinition; message?: string }> => {
-    return HttpUtils.get(`${apiPrefix}/${id}`);
+  selectById: (id: any, options?: RequestOptions): Promise<{ code: number; data: SeatunnelJobDefinition; message?: string }> => {
+    return HttpUtils.get(`${apiPrefix}/${id}`, options);
   },
 
   /**
    * 编辑页详情查询
    */
-  selectEditDetail: (id: any): Promise<{ code: number; data: any; message?: string; msg?: string }> => {
-    return HttpUtils.get(`${apiPrefix}/${id}/edit-detail`);
+  selectEditDetail: (id: any, options?: RequestOptions): Promise<{ code: number; data: any; message?: string; msg?: string }> => {
+    return HttpUtils.get(`${apiPrefix}/${id}/edit-detail`, options);
   },
 
   getUniqueId: (): Promise<{ code: number; data: SeatunnelJobDefinition; message?: string }> => {

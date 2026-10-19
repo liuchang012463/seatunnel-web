@@ -434,7 +434,7 @@ const DataExplorationResultsPage: React.FC = () => {
         <aside className="results-catalog" aria-label="探查类型导航">
           <div className="results-column-heading results-catalog__heading">
             <div>
-              <span className="results-column-kicker">EXPLORATION TYPES</span>
+              <span className="results-column-kicker">探查类型</span>
               <h2>探查导航</h2>
             </div>
             <span className="results-column-count">{scopedSources.length} 个数据源</span>
@@ -481,7 +481,7 @@ const DataExplorationResultsPage: React.FC = () => {
         <main className="results-browser" aria-label="探查结果列表">
           <div className="results-browser__header">
             <div className="results-browser__heading-copy">
-              <span className="results-column-kicker">METADATA RESULTS</span>
+              <span className="results-column-kicker">元数据结果</span>
               <h2>{GROUP_LABELS[selectedGroup]}</h2>
               <p>{GROUP_DESCRIPTIONS[selectedGroup]}</p>
             </div>
@@ -559,7 +559,7 @@ const DataExplorationResultsPage: React.FC = () => {
         <aside className="results-inspector" aria-label="当前结果摘要">
           <div className="results-column-heading">
             <div>
-              <span className="results-column-kicker">INSPECTOR</span>
+              <span className="results-column-kicker">检查器</span>
               <h2>当前结果摘要</h2>
             </div>
           </div>

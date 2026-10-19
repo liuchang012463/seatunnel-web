@@ -1,5 +1,5 @@
 import { openPrettyNotification } from "@/utils/prettyNotification";
-import { Button, Form } from "antd";
+import { Button, Form, Spin } from "antd";
 import BaseInfoSection from "./components/BaseInfoSection";
 import BottomActionBar from "./components/BottomActionBar";
 import ClientLinkSection from "./components/ClientLinkSection";
@@ -14,6 +14,9 @@ const DetailPage = () => {
   const {
     form,
     params,
+    loading,
+    loadError,
+    reload,
     sourceType,
     targetType,
     activeStep,
@@ -47,8 +50,26 @@ const DetailPage = () => {
 
   const sourceManaged = isWebUploadSource(sourceType);
 
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+          minHeight: 320,
+          color: "var(--st-color-text-muted)",
+        }}
+      >
+        <Spin size="small" />
+        <span style={{ fontSize: 13 }}>正在读取任务详情…</span>
+      </div>
+    );
+  }
+
   if (!params) {
-    // 深链兜底态：任务数据经列表页缓存进入，缺失时给页壳 + 返回 + 引导（审计 G10）。
+    // 深链兜底态：优先按 ID 拉取；拉取失败时给出可重试的错误态与返回入口。
     return (
       <Form form={form} layout="vertical">
       <div
@@ -64,11 +85,14 @@ const DetailPage = () => {
           未找到任务数据
         </strong>
         <span style={{ fontSize: 13, color: "var(--st-color-text-muted)" }}>
-          任务数据在从列表进入时缓存；请回到批量数据引接任务列表，从任务行「更多 → 查看详情」重新进入。
+          {loadError || "任务详情读取失败；请重试或返回批量数据引接任务列表。"}
         </span>
-        <Button type="primary" onClick={goBack}>
-          返回任务列表
-        </Button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button onClick={reload}>重新读取</Button>
+          <Button type="primary" onClick={goBack}>
+            返回任务列表
+          </Button>
+        </div>
       </div>
       </Form>
     );

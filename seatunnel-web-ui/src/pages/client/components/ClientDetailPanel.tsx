@@ -93,9 +93,9 @@ const ClientDetailPanel: React.FC<Props> = ({
 
                 <div className="min-w-0 flex-1 pt-0.5">
                   <div className="flex flex-wrap items-center gap-2.5">
-                    <h1 className="m-0 max-w-[420px] truncate text-[21px] font-semibold leading-8 text-[color:var(--st-color-text-primary)]">
+                    <h2 className="m-0 max-w-[420px] truncate text-[21px] font-semibold leading-8 text-[color:var(--st-color-text-primary)]">
                       {clientName}
-                    </h1>
+                    </h2>
 
                     {clientVersion && (
                       <span className="inline-flex h-6 items-center rounded-full border border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-panel)] px-2.5 text-[12px] font-medium text-[color:var(--st-color-accent)]">

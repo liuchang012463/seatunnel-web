@@ -14,12 +14,12 @@ const PageHeader: React.FC<Props> = ({
     <div className="border-b border-[#F2F4F7] bg-white">
       <div className="mx-auto flex max-w-[1540px] items-center justify-between gap-4 px-6 py-4">
         <div className="flex min-w-0 items-center gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EFF8FF] text-[20px] text-[#1570EF]">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EFF8FF] text-[20px] text-[#1570EF]" aria-hidden="true">
             <ProductOutlined />
           </div>
 
           <div className="min-w-0">
-            <div className="text-[22px] font-semibold leading-8 text-[#101828]">{title}</div>
+            <h1 className="m-0 text-[22px] font-semibold leading-8 text-[#101828]">{title}</h1>
           </div>
         </div>
 
