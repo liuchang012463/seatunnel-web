@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metrics;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataJobLineageService;
+import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageJobLineageService;
 import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 import org.apache.seatunnel.web.common.exception.JobSubmitException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -18,6 +19,7 @@ import java.net.NoRouteToHostException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Submitter for batch SeaTunnel jobs.
@@ -44,6 +46,8 @@ public class BatchJobSubmitter {
     private final JobResultWatcher batchJobResultWatcher;
     private final JobResultHandler batchJobResultHandler;
     private final OpenMetadataJobLineageService openMetadataJobLineageService;
+    /** Absent when lineage-bridge.kafka is disabled; nothing is scheduled. */
+    private final Optional<OpenLineageJobLineageService> openLineageJobLineageService;
 
     public BatchJobSubmitter(JobConfigFileService configFileService,
                              SeaTunnelRestClient restClient,
@@ -51,7 +55,8 @@ public class BatchJobSubmitter {
                              JobMetricsMonitor batchMetricsMonitor,
                              JobResultWatcher batchJobResultWatcher,
                              JobResultHandler batchJobResultHandler,
-                             OpenMetadataJobLineageService openMetadataJobLineageService) {
+                             OpenMetadataJobLineageService openMetadataJobLineageService,
+                             Optional<OpenLineageJobLineageService> openLineageJobLineageService) {
         this.configFileService = configFileService;
         this.restClient = restClient;
         this.driverJarPublisher = driverJarPublisher;
@@ -59,6 +64,7 @@ public class BatchJobSubmitter {
         this.batchJobResultWatcher = batchJobResultWatcher;
         this.batchJobResultHandler = batchJobResultHandler;
         this.openMetadataJobLineageService = openMetadataJobLineageService;
+        this.openLineageJobLineageService = openLineageJobLineageService;
     }
 
     public void submit(JobInstanceVO instance) {
@@ -113,6 +119,16 @@ public class BatchJobSubmitter {
                 openMetadataJobLineageService.recordBatchSubmission(instance, engineId);
             } catch (Exception lineageError) {
                 log.warn("Could not schedule OpenMetadata lineage for instanceId={}", instanceId, lineageError);
+            }
+
+            // Parallel OpenLineage channel with local identity only; every failure is logged,
+            // never rethrown, and never delays the settled submission.
+            String acceptedEngineJobId = engineId;
+            try {
+                openLineageJobLineageService.ifPresent(
+                        lineageService -> lineageService.recordStart(instance, acceptedEngineJobId, false));
+            } catch (Exception lineageError) {
+                log.warn("Could not schedule OpenLineage lineage for instanceId={}", instanceId, lineageError);
             }
 
             log.info("Submit batch job response received, instanceId={}, resp={}", instanceId, resp);

@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metrics.streaming;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataJobLineageService;
+import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageJobLineageService;
 import org.apache.seatunnel.web.api.metrics.JobConfigFileService;
 import org.apache.seatunnel.web.api.metrics.JobFileLogger;
 import org.apache.seatunnel.web.api.metrics.JobRuntimeContext;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 @Slf4j
@@ -31,6 +33,8 @@ public class StreamingJobSubmitter {
     private final StreamingJobResultWatcher streamingJobResultWatcher;
     private final StreamingJobResultHandler streamingJobResultHandler;
     private final OpenMetadataJobLineageService openMetadataJobLineageService;
+    /** Absent when lineage-bridge.kafka is disabled; nothing is scheduled. */
+    private final Optional<OpenLineageJobLineageService> openLineageJobLineageService;
 
     public StreamingJobSubmitter(JobConfigFileService configFileService,
                                  SeaTunnelRestClient restClient,
@@ -38,7 +42,8 @@ public class StreamingJobSubmitter {
                                  StreamingJobMetricsMonitor streamingJobMetricsMonitor,
                                  StreamingJobResultWatcher streamingJobResultWatcher,
                                  StreamingJobResultHandler streamingJobResultHandler,
-                                 OpenMetadataJobLineageService openMetadataJobLineageService) {
+                                 OpenMetadataJobLineageService openMetadataJobLineageService,
+                                 Optional<OpenLineageJobLineageService> openLineageJobLineageService) {
         this.configFileService = configFileService;
         this.restClient = restClient;
         this.driverJarPublisher = driverJarPublisher;
@@ -46,6 +51,7 @@ public class StreamingJobSubmitter {
         this.streamingJobResultWatcher = streamingJobResultWatcher;
         this.streamingJobResultHandler = streamingJobResultHandler;
         this.openMetadataJobLineageService = openMetadataJobLineageService;
+        this.openLineageJobLineageService = openLineageJobLineageService;
     }
 
     public void submit(JobInstanceVO instance) {
@@ -117,6 +123,16 @@ public class StreamingJobSubmitter {
                 openMetadataJobLineageService.recordStreamingSubmission(instance, engineId);
             } catch (Exception lineageError) {
                 log.warn("Could not schedule OpenMetadata lineage for instanceId={}", instanceId, lineageError);
+            }
+
+            // Parallel OpenLineage channel with local identity only; every failure is logged,
+            // never rethrown, and never delays the settled submission.
+            String acceptedEngineJobId = engineId;
+            try {
+                openLineageJobLineageService.ifPresent(
+                        lineageService -> lineageService.recordStart(instance, acceptedEngineJobId, true));
+            } catch (Exception lineageError) {
+                log.warn("Could not schedule OpenLineage lineage for instanceId={}", instanceId, lineageError);
             }
 
             log.info("Submit streaming job response received, instanceId={}, resp={}", instanceId, resp);
