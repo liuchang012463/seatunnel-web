@@ -113,7 +113,7 @@ lineage-bridge:
   kafka:
     enabled: ${LINEAGE_BRIDGE_ENABLED:false}
     # Blank + enabled=true → the bridge logs an ERROR and drops events instead of failing.
-    bootstrap-servers: ${LINEAGE_BRIDGE_KAFKA_BOOTSTRAP_SERVERS:}
+    bootstrap-servers: ${LINEAGE_BRIDGE_KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:19092,127.0.0.1:19093,127.0.0.1:19094}
     source-topic: ${LINEAGE_BRIDGE_SOURCE_TOPIC:meta_lineage_topic}
     sasl-username: ${LINEAGE_BRIDGE_KAFKA_SASL_USERNAME:kafka-admin}
     sasl-password: ${LINEAGE_BRIDGE_KAFKA_SASL_PASSWORD:Kafka@2024Secure!}
