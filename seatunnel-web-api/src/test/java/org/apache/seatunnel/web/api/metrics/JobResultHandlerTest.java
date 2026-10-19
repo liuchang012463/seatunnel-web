@@ -3,12 +3,16 @@ package org.apache.seatunnel.web.api.metrics;
 import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.IncrementalBatchService;
+import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
+import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Date;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -31,6 +35,47 @@ class JobResultHandlerTest {
 
         // The recovery scheduler or an operator already moved the instance out of STARTING.
         verify(instanceService, never()).updateById(any());
+    }
+
+    @Test
+    void lateSubmissionSuccessCancelsAnOrphanedEngineJob() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        SeaTunnelRestClient restClient = mock(SeaTunnelRestClient.class);
+        JobResultHandler handler = handler(
+                instanceService, mock(ApplicationEventPublisher.class), restClient);
+        when(instanceService.updateEngineIdIfStarting(eq(11L), eq("engine-1"), any(Date.class)))
+                .thenReturn(false);
+
+        JobInstanceVO instance = new JobInstanceVO();
+        instance.setId(11L);
+        instance.setClientId(2L);
+        instance.setJobStatus(JobStatus.FAILED.name());
+        when(instanceService.selectById(11L)).thenReturn(instance);
+
+        handler.updateEngineId(11L, "engine-1");
+
+        // The Web already told the operator the job failed; the Engine job must not keep running.
+        verify(restClient).stopJob(2L, "engine-1", false);
+    }
+
+    @Test
+    void lateSubmissionSuccessDoesNotCancelAJobTheWebAlreadyFinished() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        SeaTunnelRestClient restClient = mock(SeaTunnelRestClient.class);
+        JobResultHandler handler = handler(
+                instanceService, mock(ApplicationEventPublisher.class), restClient);
+        when(instanceService.updateEngineIdIfStarting(eq(11L), eq("engine-1"), any(Date.class)))
+                .thenReturn(false);
+
+        JobInstanceVO instance = new JobInstanceVO();
+        instance.setId(11L);
+        instance.setClientId(2L);
+        instance.setJobStatus(JobStatus.FINISHED.name());
+        when(instanceService.selectById(11L)).thenReturn(instance);
+
+        handler.updateEngineId(11L, "engine-1");
+
+        verify(restClient, never()).stopJob(anyLong(), anyString(), anyBoolean());
     }
 
     @Test
@@ -106,16 +151,26 @@ class JobResultHandlerTest {
     }
 
     private static JobResultHandler handler(BatchJobInstanceService instanceService) {
-        return handler(instanceService, mock(ApplicationEventPublisher.class));
+        return handler(
+                instanceService,
+                mock(ApplicationEventPublisher.class),
+                mock(SeaTunnelRestClient.class));
     }
 
     private static JobResultHandler handler(BatchJobInstanceService instanceService,
                                             ApplicationEventPublisher publisher) {
+        return handler(instanceService, publisher, mock(SeaTunnelRestClient.class));
+    }
+
+    private static JobResultHandler handler(BatchJobInstanceService instanceService,
+                                            ApplicationEventPublisher publisher,
+                                            SeaTunnelRestClient restClient) {
         return new JobResultHandler(
                 instanceService,
                 mock(JobMetricsMonitor.class),
                 publisher,
                 mock(IncrementalBatchService.class),
-                mock(JobLogService.class));
+                mock(JobLogService.class),
+                restClient);
     }
 }

@@ -9,6 +9,8 @@ import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.utils.JobUtils;
 import org.apache.seatunnel.web.common.enums.JobResult;
 import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
+import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -39,16 +41,20 @@ public class JobResultHandler {
 
     private final JobLogService jobLogService;
 
+    private final SeaTunnelRestClient restClient;
+
     public JobResultHandler(BatchJobInstanceService instanceService,
                             JobMetricsMonitor jobMetricsMonitor,
                             ApplicationEventPublisher eventPublisher,
                             IncrementalBatchService incrementalBatchService,
-                            JobLogService jobLogService) {
+                            JobLogService jobLogService,
+                            SeaTunnelRestClient restClient) {
         this.instanceService = instanceService;
         this.jobMetricsMonitor = jobMetricsMonitor;
         this.eventPublisher = eventPublisher;
         this.incrementalBatchService = incrementalBatchService;
         this.jobLogService = jobLogService;
+        this.restClient = restClient;
     }
 
     /**
@@ -272,10 +278,40 @@ public class JobResultHandler {
              */
             log.error("Late submission success ignored because the instance is no longer STARTING, "
                     + "instanceId={}, engineId={}", instanceId, engineId);
+            cancelOrphanedEngineJob(instanceId, engineId);
             return;
         }
 
         log.info("Job submitted. instanceId={}, engineId={}", instanceId, engineId);
+    }
+
+    /**
+     * If the Web already recorded a terminal result (for example an operator resolved an
+     * ambiguous submission as FAILED), a late Engine id must not leave an untracked job running.
+     * A still-open instance is left alone: the operator or recovery path owns that decision.
+     */
+    private void cancelOrphanedEngineJob(Long instanceId, String engineId) {
+        try {
+            JobInstanceVO instance = instanceService.selectById(instanceId);
+            if (instance == null || instance.getClientId() == null
+                    || StringUtils.isBlank(instance.getJobStatus())) {
+                log.warn("Cannot cancel late Engine job without an instance client, "
+                        + "instanceId={}, engineId={}", instanceId, engineId);
+                return;
+            }
+            JobStatus localStatus = JobStatus.fromString(instance.getJobStatus());
+            if (!localStatus.isEndState() || JobStatus.FINISHED.equals(localStatus)) {
+                return;
+            }
+
+            restClient.stopJob(instance.getClientId(), engineId, false);
+            log.warn("Cancelled orphaned Engine job for a terminal instance, "
+                    + "instanceId={}, engineId={}, status={}",
+                    instanceId, engineId, localStatus);
+        } catch (Exception error) {
+            log.warn("Could not cancel late Engine job, instanceId={}, engineId={}",
+                    instanceId, engineId, error);
+        }
     }
 
     private boolean updateStatus(Long jobInstanceId,
