@@ -161,7 +161,7 @@
                 </choose>, d0.id DESC
             </otherwise>
         </choose>
-        LIMIT #{offset}, #{pageSize}
+        LIMIT #{pageSize} OFFSET #{offset}
         ) d
         LEFT JOIN t_seatunnel_web_job_instance i
         ON i.id = d.latest_instance_id
