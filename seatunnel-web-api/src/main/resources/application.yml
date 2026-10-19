@@ -106,6 +106,23 @@ management:
   endpoints:
     enabled-by-default: false
 
+# OpenLineage lineage bridge: collects job lineage and publishes RunEvent JSON to Kafka.
+# The asset project consumes the topic and resolves-writes to OpenMetadata. Keep disabled
+# unless the Kafka endpoint below is reachable; disabled = no producer, no jobs, no listeners.
+lineage-bridge:
+  kafka:
+    enabled: ${LINEAGE_BRIDGE_ENABLED:false}
+    # Blank + enabled=true → the bridge logs an ERROR and drops events instead of failing.
+    bootstrap-servers: ${LINEAGE_BRIDGE_KAFKA_BOOTSTRAP_SERVERS:}
+    source-topic: ${LINEAGE_BRIDGE_SOURCE_TOPIC:meta_lineage_topic}
+    sasl-username: ${LINEAGE_BRIDGE_KAFKA_SASL_USERNAME:kafka-admin}
+    sasl-password: ${LINEAGE_BRIDGE_KAFKA_SASL_PASSWORD:Kafka@2024Secure!}
+    security-protocol: ${LINEAGE_BRIDGE_KAFKA_SECURITY_PROTOCOL:SASL_PLAINTEXT}
+    sasl-mechanism: ${LINEAGE_BRIDGE_KAFKA_SASL_MECHANISM:PLAIN}
+    client-id: ${LINEAGE_BRIDGE_KAFKA_CLIENT_ID:seatunnel-web-lineage-bridge}
+  running:
+    interval-ms: ${LINEAGE_BRIDGE_RUNNING_INTERVAL_MS:60000}
+
 # Mybatis-plus configuration, you don't need to change it
 mybatis-plus:
   mapper-locations: classpath:org/apache/seatunnel/web/dao/mapper/*Mapper.xml

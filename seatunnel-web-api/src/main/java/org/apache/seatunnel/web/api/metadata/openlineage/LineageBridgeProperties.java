@@ -1,0 +1,134 @@
+package org.apache.seatunnel.web.api.metadata.openlineage;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+/**
+ * Kafka delivery configuration for the OpenLineage lineage bridge.
+ *
+ * <p>
+ * The SASL credentials default to the deployment's shared bridge account, matching
+ * {@code .env.example}; production overrides them through environment variables. Environments
+ * that treat non-empty defaults in application.yml as unacceptable can blank the two password
+ * keys here without any code change.
+ * </p>
+ */
+@ConfigurationProperties(prefix = "lineage-bridge")
+public class LineageBridgeProperties {
+
+    private final Kafka kafka = new Kafka();
+
+    private final Running running = new Running();
+
+    public Kafka getKafka() {
+        return kafka;
+    }
+
+    public Running getRunning() {
+        return running;
+    }
+
+    /** Kafka producer client properties for the {@code OpenLineageKafkaBridge}. */
+    public static class Kafka {
+
+        /**
+         * Master switch. {@code false} leaves no producer, no scheduler and no listener behind.
+         */
+        private boolean enabled = false;
+
+        /** Comma separated bootstrap servers; blank with enabled=true drops events with an error log. */
+        private String bootstrapServers = "";
+
+        /** Topic the asset project consumes the lineage events from. */
+        private String sourceTopic = "meta_lineage_topic";
+
+        private String saslUsername = "kafka-admin";
+
+        private String saslPassword = "Kafka@2024Secure!";
+
+        /** SASL_PLAINTEXT / SASL_SSL / SSL / PLAINTEXT per the deployment's Kafka setup. */
+        private String securityProtocol = "SASL_PLAINTEXT";
+
+        /** PLAIN or SCRAM-SHA-256 / SCRAM-SHA-512. */
+        private String saslMechanism = "PLAIN";
+
+        private String clientId = "seatunnel-web-lineage-bridge";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getBootstrapServers() {
+            return bootstrapServers;
+        }
+
+        public void setBootstrapServers(String bootstrapServers) {
+            this.bootstrapServers = bootstrapServers;
+        }
+
+        public String getSourceTopic() {
+            return sourceTopic;
+        }
+
+        public void setSourceTopic(String sourceTopic) {
+            this.sourceTopic = sourceTopic;
+        }
+
+        public String getSaslUsername() {
+            return saslUsername;
+        }
+
+        public void setSaslUsername(String saslUsername) {
+            this.saslUsername = saslUsername;
+        }
+
+        public String getSaslPassword() {
+            return saslPassword;
+        }
+
+        public void setSaslPassword(String saslPassword) {
+            this.saslPassword = saslPassword;
+        }
+
+        public String getSecurityProtocol() {
+            return securityProtocol;
+        }
+
+        public void setSecurityProtocol(String securityProtocol) {
+            this.securityProtocol = securityProtocol;
+        }
+
+        public String getSaslMechanism() {
+            return saslMechanism;
+        }
+
+        public void setSaslMechanism(String saslMechanism) {
+            this.saslMechanism = saslMechanism;
+        }
+
+        public String getClientId() {
+            return clientId;
+        }
+
+        public void setClientId(String clientId) {
+            this.clientId = clientId;
+        }
+    }
+
+    /** Cadence of the periodic RUNNING heartbeat for streaming jobs. */
+    public static class Running {
+
+        private long intervalMs = 60000;
+
+        public long getIntervalMs() {
+            return intervalMs;
+        }
+
+        public void setIntervalMs(long intervalMs) {
+            this.intervalMs = intervalMs;
+        }
+    }
+}
