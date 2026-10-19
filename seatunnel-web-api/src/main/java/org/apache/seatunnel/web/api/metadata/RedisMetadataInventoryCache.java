@@ -98,7 +98,9 @@ public class RedisMetadataInventoryCache implements MetadataInventoryCache {
     }
 
     private long currentEpoch() {
-        return store.current(EPOCH_KEY);
+        // A missing epoch key means it was evicted or never created. Seeding a fresh generation
+        // prevents a surviving snapshot from an older counter (notably 0) from looking current.
+        return store.currentOrInitialize(EPOCH_KEY);
     }
 
     /** Rebuilds an expired-but-present snapshot off the request thread. */

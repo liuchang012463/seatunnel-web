@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
@@ -120,22 +121,52 @@ class RedisMetadataInventoryCacheTest {
         cache.invalidateAllSnapshots();
 
         AtomicInteger builds = new AtomicInteger();
+        AtomicReference<Thread> rebuildThread = new AtomicReference<>();
         InventorySnapshotPayload served = cache.getOrCompute("k", () -> {
             builds.incrementAndGet();
+            rebuildThread.set(Thread.currentThread());
             return payload(5L);
         });
         // The pre-invalidation snapshot is served immediately; the rebuild
         // happens off the request thread.
         assertEquals(1L, served.summary().getDataSourceCount());
-        assertEquals(0, builds.get());
 
         awaitTrue(2_000, () -> builds.get() == 1);
+        assertNotSame(Thread.currentThread(), rebuildThread.get());
         awaitTrue(2_000, () -> stored.get() != null && stored.get().contains("\"dataSourceCount\":5"));
 
         // The next read sees the refreshed snapshot.
         assertEquals(5L, cache.getOrCompute("k", () -> payload(6L))
                 .summary().getDataSourceCount());
         assertEquals(1, builds.get());
+    }
+
+    @Test
+    void missingEpochKeyDoesNotResurrectAnOldSnapshot() throws Exception {
+        AtomicReference<String> stored = new AtomicReference<>();
+        when(ops.get(anyString())).thenAnswer(invocation -> stored.get());
+        org.mockito.Mockito.doAnswer(invocation -> {
+            stored.set(invocation.getArgument(1));
+            return null;
+        }).when(ops).set(anyString(), anyString(), any(Duration.class));
+        // Simulate an evicted epoch key: the counter is missing and the fresh generation is
+        // seeded, so the surviving epoch-0 snapshot must not be treated as current.
+        when(ops.setIfAbsent(anyString(), anyString())).thenReturn(true);
+
+        long computedAt = System.currentTimeMillis();
+        stored.set(mapper.writeValueAsString(
+                new RedisMetadataInventoryCache.SnapshotEnvelope(computedAt, 0L, payload(1L))));
+
+        AtomicInteger builds = new AtomicInteger();
+        InventorySnapshotPayload served = newCache().getOrCompute("k", () -> {
+            builds.incrementAndGet();
+            return payload(4L);
+        });
+
+        // The stale snapshot is still served immediately, but a rebuild is scheduled.
+        assertEquals(1L, served.summary().getDataSourceCount());
+        awaitTrue(2_000, () -> builds.get() == 1);
+        awaitTrue(2_000, () -> stored.get() != null && stored.get().contains("\"dataSourceCount\":4"));
     }
 
     @Test

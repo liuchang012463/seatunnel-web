@@ -175,7 +175,9 @@ public class OmReadCache {
         if (entry != null && now - entry[1] <= EPOCH_CACHE_MS) {
             return entry[0];
         }
-        long value = store.current(epochKey);
+        // A missing epoch key starts a fresh generation instead of falling back to 0, which could
+        // make pages written under a previous epoch-0 counter look current after eviction.
+        long value = store.currentOrInitialize(epochKey);
         localEpochs.put(epochKey, new long[]{value, now});
         return value;
     }

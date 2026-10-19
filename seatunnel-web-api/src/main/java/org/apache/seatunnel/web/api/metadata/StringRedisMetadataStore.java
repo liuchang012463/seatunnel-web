@@ -51,6 +51,41 @@ public class StringRedisMetadataStore {
         }
     }
 
+    /**
+     * Returns an epoch counter, seeding a missing (evicted or never-created) key with the current
+     * wall clock. Reusing 0 would make snapshots written under a previous epoch-0 counter look
+     * current again; a timestamp seed is always newer than any counter this change can produce.
+     */
+    public long currentOrInitialize(String key) {
+        String value = getString(key).orElse(null);
+        if (value != null) {
+            try {
+                return Long.parseLong(value);
+            } catch (NumberFormatException ignored) {
+                // A corrupt counter is reseeded below.
+            }
+        }
+
+        long seed = System.currentTimeMillis();
+        Boolean created = call(
+                () -> redis.opsForValue().setIfAbsent(key, Long.toString(seed)), Boolean.FALSE);
+        if (created == null) {
+            // The client returned no result (for example a mocked or degraded template): fall
+            // back to the legacy counter path instead of inventing a generation.
+            return increment(key);
+        }
+        if (Boolean.TRUE.equals(created)) {
+            return seed;
+        }
+
+        String existing = getString(key).orElse(null);
+        try {
+            return existing == null ? seed : Long.parseLong(existing);
+        } catch (NumberFormatException ignored) {
+            return seed;
+        }
+    }
+
     public <T> Optional<String> writeJson(T value) {
         try {
             return Optional.of(mapper.writeValueAsString(value));
