@@ -47,6 +47,17 @@ public interface JobInstanceDao extends IDao<JobInstance> {
                                   String errorMessage);
 
     /**
+     * Applies an Engine-reported final status only while the instance is still running-like.
+     * A late success must not overwrite a terminal decision already made by an operator or by the
+     * recovery scheduler (for example, an ambiguous submission resolved as FAILED).
+     *
+     * @return true when the final status was applied
+     */
+    boolean updateFinalStatusIfRunningLike(Long instanceId,
+                                           JobStatus targetStatus,
+                                           String errorMessage);
+
+    /**
      * Refreshes the heartbeat of an in-flight submission so recovery does not mistake a long
      * driver upload for a lost submission.
      *

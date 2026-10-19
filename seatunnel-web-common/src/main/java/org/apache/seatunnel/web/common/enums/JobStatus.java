@@ -8,9 +8,10 @@ public enum JobStatus {
     /**
      * The submit request left the Web without an Engine job id coming back. The Engine may or may
      * not have accepted the job, so the instance keeps blocking further submits until an operator
-     * confirms the Engine is not running it.
+     * confirms the Engine is not running it. It is deliberately not an end state: the instance has
+     * no confirmed result, no end time, and its logs/metrics are still considered open.
      */
-    SUBMISSION_UNKNOWN(EndState.GLOBALLY),
+    SUBMISSION_UNKNOWN(EndState.NOT_END),
 
     /**
      * The job has been received by the Dispatcher, and is waiting for the job manager to receive

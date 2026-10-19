@@ -88,6 +88,25 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public JobInstanceVO createIfNoRunningInstance(Long jobDefineId,
+                                                   RunMode runMode,
+                                                   Map<String, String> runtimeParams) {
+        validateDefinitionId(jobDefineId);
+        validateRunMode(runMode);
+
+        // Lock the definition row so two Web instances cannot both pass the check and insert.
+        jobDefinitionDao.lockById(jobDefineId);
+        if (jobInstanceDao.existsRunningInstance(jobDefineId)) {
+            throw new ServiceException(
+                    Status.JOB_DEFINITION_EXECUTE_ERROR,
+                    "任务已有运行中实例。任务ID：" + jobDefineId
+            );
+        }
+        return create(jobDefineId, runMode, runtimeParams);
+    }
+
+    @Override
     public JobInstanceVO create(Long jobDefineId, RunMode runMode, Map<String, String> runtimeParams) {
         validateDefinitionId(jobDefineId);
         validateRunMode(runMode);
@@ -305,6 +324,23 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
         } catch (Exception e) {
             log.error("Update status conditionally failed, id={}, expected={}, target={}",
                     instanceId, expectedStatus, targetStatus, e);
+            throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    @Override
+    public boolean updateFinalStatusIfRunningLike(Long instanceId,
+                                                  JobStatus targetStatus,
+                                                  String errorMessage) {
+        if (instanceId == null || instanceId <= 0 || targetStatus == null) {
+            return false;
+        }
+        try {
+            return jobInstanceDao.updateFinalStatusIfRunningLike(
+                    instanceId, targetStatus, errorMessage);
+        } catch (Exception e) {
+            log.error("Update final status conditionally failed, id={}, target={}",
+                    instanceId, targetStatus, e);
             throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
         }
     }

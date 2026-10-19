@@ -137,7 +137,12 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
 
             JobInstanceVO instance;
             try {
-                instance = instanceService.create(jobDefineId, runMode,
+                // The early existsRunningInstance check above is only a fast fail; this call
+                // re-checks under a definition row lock so concurrent Web instances cannot both
+                // create a submission-blocking instance.
+                instance = instanceService.createIfNoRunningInstance(
+                        jobDefineId,
+                        runMode,
                         incrementalExecution == null ? null : incrementalExecution.getRuntimeParams());
                 if (incrementalExecution != null) {
                     incrementalBatchService.bindInstance(incrementalExecution.getBatchId(), instance.getId());

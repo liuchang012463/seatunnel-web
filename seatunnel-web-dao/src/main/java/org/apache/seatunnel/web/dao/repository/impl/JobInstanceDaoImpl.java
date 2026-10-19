@@ -183,6 +183,26 @@ public class JobInstanceDaoImpl
     }
 
     @Override
+    public boolean updateFinalStatusIfRunningLike(Long instanceId,
+                                                  JobStatus targetStatus,
+                                                  String errorMessage) {
+        Date now = new Date();
+        LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
+                .in(MyBatisColumn.getter(JobInstance::getJobStatus),
+                        JobStatusHelper.runningLikeStatuses())
+                .set(MyBatisColumn.getter(JobInstance::getJobStatus), targetStatus)
+                .set(MyBatisColumn.getter(JobInstance::getUpdateTime), now)
+                .set(MyBatisColumn.getter(JobInstance::getEndTime), now);
+
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            wrapper.set(MyBatisColumn.getter(JobInstance::getErrorMessage), truncate(errorMessage, 2000));
+        }
+
+        return jobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
     public boolean touchStartingInstance(Long instanceId) {
         LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)

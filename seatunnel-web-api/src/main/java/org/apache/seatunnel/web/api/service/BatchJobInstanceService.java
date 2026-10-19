@@ -33,6 +33,14 @@ public interface BatchJobInstanceService {
 
     boolean existsRunningInstance(Long definitionId);
 
+    /**
+     * Creates an instance only when no submission-blocking instance exists, serializing the
+     * check-and-insert across Web instances on the job definition row.
+     */
+    JobInstanceVO createIfNoRunningInstance(Long jobDefineId,
+                                            RunMode runMode,
+                                            Map<String, String> runtimeParams);
+
     void removeAllByDefinitionId(Long definitionId);
 
     void updateById(JobInstance po);
@@ -53,6 +61,15 @@ public interface BatchJobInstanceService {
                                   JobStatus expectedStatus,
                                   JobStatus targetStatus,
                                   String errorMessage);
+
+    /**
+     * Applies an Engine-reported final status only while the instance is still running-like.
+     *
+     * @return true when the final status was applied
+     */
+    boolean updateFinalStatusIfRunningLike(Long instanceId,
+                                           JobStatus targetStatus,
+                                           String errorMessage);
 
     /** Refreshes the heartbeat of an in-flight submission. */
     boolean touchStartingInstance(Long instanceId);

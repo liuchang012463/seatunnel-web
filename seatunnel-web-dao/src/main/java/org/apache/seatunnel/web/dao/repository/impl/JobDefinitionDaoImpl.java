@@ -70,6 +70,17 @@ public class JobDefinitionDaoImpl
     }
 
     @Override
+    public void lockById(Long id) {
+        if (id == null || id <= 0) {
+            return;
+        }
+        LambdaQueryWrapper<JobDefinitionEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(JobDefinitionEntity::getId), id)
+                .last("FOR UPDATE");
+        jobDefinitionMapper.selectOne(wrapper);
+    }
+
+    @Override
     public List<JobDefinitionEntity> listByIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Collections.emptyList();

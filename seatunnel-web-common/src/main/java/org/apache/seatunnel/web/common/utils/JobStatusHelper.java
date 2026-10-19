@@ -35,4 +35,13 @@ public final class JobStatusHelper {
         statuses.add(JobStatus.SUBMISSION_UNKNOWN);
         return statuses;
     }
+
+    /**
+     * Whether the status must block a new submit for the same definition. This is intentionally
+     * separate from {@link JobStatus#isEndState()}: an ambiguous submission is not an end state,
+     * yet it still blocks retries until an operator confirms the Engine result.
+     */
+    public static boolean blocksSubmission(JobStatus status) {
+        return status != null && submissionBlockingStatuses().contains(status);
+    }
 }

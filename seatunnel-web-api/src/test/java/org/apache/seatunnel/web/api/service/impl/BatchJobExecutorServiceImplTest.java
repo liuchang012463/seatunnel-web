@@ -76,7 +76,7 @@ class BatchJobExecutorServiceImplTest {
 
         when(definitionService.selectById(301L)).thenReturn(definition);
         when(incrementalBatchService.prepare(301L)).thenReturn(null);
-        when(instanceService.create(301L, RunMode.MANUAL, null)).thenReturn(instance);
+        when(instanceService.createIfNoRunningInstance(301L, RunMode.MANUAL, null)).thenReturn(instance);
         when(jobScheduleService.getByTaskDefinitionId(301L)).thenReturn(schedule);
         when(jobScheduleService.updateLastScheduleTime(501L)).thenReturn(true);
 
@@ -94,7 +94,7 @@ class BatchJobExecutorServiceImplTest {
         verify(lakeJobGuard).validateBeforeExecute(301L, LakeJobRuntimeType.BATCH);
         verify(lakeJobGuard).validateBeforeSubmit(instance, LakeJobRuntimeType.BATCH);
         verify(incrementalBatchService).prepare(301L);
-        verify(instanceService).create(301L, RunMode.MANUAL, null);
+        verify(instanceService).createIfNoRunningInstance(301L, RunMode.MANUAL, null);
     }
 
     @Test
@@ -241,7 +241,7 @@ class BatchJobExecutorServiceImplTest {
 
         when(definitionService.selectById(301L)).thenReturn(definition);
         when(instanceService.selectById(401L)).thenReturn(instance);
-        when(instanceService.create(301L, RunMode.MANUAL, null)).thenReturn(instance);
+        when(instanceService.createIfNoRunningInstance(301L, RunMode.MANUAL, null)).thenReturn(instance);
 
         assertEquals(401L, executor.jobExecute(301L, RunMode.MANUAL));
         assertEquals(1, queuedSubmissions.size());

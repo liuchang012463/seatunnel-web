@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -66,11 +67,54 @@ class JobResultHandlerTest {
         verify(instanceService, never()).updateById(any());
     }
 
+    @Test
+    void finalStatusUsesTheRunningLikeConditionalUpdate() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+        JobResultHandler handler = handler(instanceService, publisher);
+        when(instanceService.updateFinalStatusIfRunningLike(
+                eq(11L),
+                eq(org.apache.seatunnel.web.common.enums.JobStatus.FINISHED),
+                isNull()))
+                .thenReturn(true);
+
+        handler.handleSuccess(11L);
+
+        verify(instanceService).updateFinalStatusIfRunningLike(
+                eq(11L),
+                eq(org.apache.seatunnel.web.common.enums.JobStatus.FINISHED),
+                isNull());
+        verify(publisher).publishEvent(any());
+    }
+
+    @Test
+    void lateFinalStatusDoesNotOverwriteATerminalDecision() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+        JobResultHandler handler = handler(instanceService, publisher);
+        when(instanceService.updateFinalStatusIfRunningLike(
+                eq(11L),
+                eq(org.apache.seatunnel.web.common.enums.JobStatus.FINISHED),
+                isNull()))
+                .thenReturn(false);
+
+        handler.handleSuccess(11L);
+
+        // The instance was already resolved (for example an ambiguous submission marked FAILED);
+        // a late Engine success must not flip it or emit a second status change.
+        verify(publisher, never()).publishEvent(any());
+    }
+
     private static JobResultHandler handler(BatchJobInstanceService instanceService) {
+        return handler(instanceService, mock(ApplicationEventPublisher.class));
+    }
+
+    private static JobResultHandler handler(BatchJobInstanceService instanceService,
+                                            ApplicationEventPublisher publisher) {
         return new JobResultHandler(
                 instanceService,
                 mock(JobMetricsMonitor.class),
-                mock(ApplicationEventPublisher.class),
+                publisher,
                 mock(IncrementalBatchService.class),
                 mock(JobLogService.class));
     }

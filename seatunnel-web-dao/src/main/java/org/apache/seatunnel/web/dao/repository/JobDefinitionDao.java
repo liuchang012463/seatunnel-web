@@ -34,4 +34,10 @@ public interface JobDefinitionDao extends IDao<JobDefinitionEntity> {
     List<Long> selectReferencedDatasourceIds(List<Long> datasourceIds);
 
     boolean existsByClientId(Long clientId);
+
+    /**
+     * Locks the definition row for the current transaction. Concurrent submitters on different
+     * Web instances serialize on this row before checking for a running instance.
+     */
+    void lockById(Long id);
 }

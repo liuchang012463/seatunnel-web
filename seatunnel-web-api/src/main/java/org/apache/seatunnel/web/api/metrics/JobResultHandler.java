@@ -9,7 +9,6 @@ import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.utils.JobUtils;
 import org.apache.seatunnel.web.common.enums.JobResult;
 import org.apache.seatunnel.web.common.enums.JobStatus;
-import org.apache.seatunnel.web.dao.entity.JobInstance;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -160,7 +159,12 @@ public class JobResultHandler {
         JobStatus localStatus = normalizeFinalStatus(engineStatus);
         String metricsStatus = resolveMetricsStatus(engineStatus, localStatus);
 
-        updateStatus(jobInstanceId, localStatus, errorMessage);
+        if (!updateStatus(jobInstanceId, localStatus, errorMessage)) {
+            log.warn("Ignore late final status because the instance is no longer running-like, "
+                    + "instanceId={}, engineStatus={}, localStatus={}",
+                    jobInstanceId, engineStatus, localStatus);
+            return;
+        }
 
         try {
             incrementalBatchService.handleJobResult(jobInstanceId, localStatus, errorMessage);
@@ -213,7 +217,12 @@ public class JobResultHandler {
         JobStatus localStatus = normalizeFinalStatus(engineStatus);
         String metricsStatus = resolveMetricsStatus(engineStatus, localStatus);
 
-        updateStatus(jobInstanceId, localStatus, errorMessage);
+        if (!updateStatus(jobInstanceId, localStatus, errorMessage)) {
+            log.warn("Ignore late final status because the instance is no longer running-like, "
+                    + "instanceId={}, engineStatus={}, localStatus={}",
+                    jobInstanceId, engineStatus, localStatus);
+            return;
+        }
 
         try {
             incrementalBatchService.handleJobResult(jobInstanceId, localStatus, errorMessage);
@@ -269,25 +278,14 @@ public class JobResultHandler {
         log.info("Job submitted. instanceId={}, engineId={}", instanceId, engineId);
     }
 
-    private void updateStatus(Long jobInstanceId,
-                              JobStatus status,
-                              String errorMessage) {
-        JobInstance po = new JobInstance();
-        po.setId(jobInstanceId);
-        po.setJobStatus(status);
-        Date now = new Date();
-        po.setEndTime(now);
-        po.setUpdateTime(now);
-
-        /*
-         * FINISHED is normal success, do not write error_message.
-         * FAILED / CANCELED should keep the reason as much as possible.
-         */
-        if (!JobStatus.FINISHED.equals(status)) {
-            po.setErrorMessage(normalizeErrorMessage(errorMessage));
+    private boolean updateStatus(Long jobInstanceId,
+                                 JobStatus status,
+                                 String errorMessage) {
+        boolean updated = instanceService.updateFinalStatusIfRunningLike(
+                jobInstanceId, status, normalizeErrorMessage(status, errorMessage));
+        if (!updated) {
+            return false;
         }
-
-        instanceService.updateById(po);
 
         publishStatusChanged(jobInstanceId, status, errorMessage);
 
@@ -297,6 +295,15 @@ public class JobResultHandler {
                 status,
                 errorMessage
         );
+        return true;
+    }
+
+    private String normalizeErrorMessage(JobStatus status, String errorMessage) {
+        /*
+         * FINISHED is normal success, do not write error_message.
+         * FAILED / CANCELED should keep the reason as much as possible.
+         */
+        return JobStatus.FINISHED.equals(status) ? null : normalizeErrorMessage(errorMessage);
     }
 
     private void publishStatusChanged(Long jobInstanceId, JobStatus status, String errorMessage) {
