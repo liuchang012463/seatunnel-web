@@ -115,6 +115,58 @@ class OpenMetadataJobLineageServiceTest {
         assertEquals("engine-job-42", description.path("run").path("engineJobId").asText());
     }
 
+    @Test
+    void submittedValuesWinOverADefinitionEditedAfterSubmission() {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable("submitted_source");
+        submitted.setSinkTable("submitted_sink");
+        submitted.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        database="db"
+                        table_path="db.submitted_source"
+                    }
+                }
+                transform = [{
+                  FieldMapper {
+                    plugin_input = source
+                    plugin_output = sink
+                    field_mapper { name = name }
+                  }
+                }]
+                sink {
+                    Jdbc {
+                        database="db2"
+                        table="public.submitted_sink"
+                    }
+                }
+                """);
+
+        JobInstanceVO editedDetails = instance();
+        editedDetails.setSourceDatasourceId(30L);
+        editedDetails.setSinkDatasourceId(40L);
+        editedDetails.setSourceTable("edited_source");
+        editedDetails.setSinkTable("edited_sink");
+
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(editedDetails);
+        when(metadataBindingDao.queryByDataSourceId(10L)).thenReturn(binding("svc_source"));
+        when(metadataBindingDao.queryByDataSourceId(20L)).thenReturn(binding("svc_sink"));
+        OpenMetadataTable source = table("source-id", "svc_source.db.submitted_source", "name");
+        OpenMetadataTable target = table("target-id", "svc_sink.public.submitted_sink", "name");
+        when(openMetadataClient.getTableByName("svc_source.db.submitted_source"))
+                .thenReturn(source);
+        when(openMetadataClient.getTableByName("svc_sink.public.submitted_sink"))
+                .thenReturn(target);
+
+        service.recordBatchSubmission(submitted, "engine-job-42");
+
+        ArgumentCaptor<JsonNode> requestCaptor = ArgumentCaptor.forClass(JsonNode.class);
+        verify(openMetadataClient).addLineage(requestCaptor.capture());
+        JsonNode edge = requestCaptor.getValue().path("edge");
+        assertEquals("source-id", edge.path("fromEntity").path("id").asText());
+        assertEquals("target-id", edge.path("toEntity").path("id").asText());
+    }
+
     /**
      * A Vastbase/KingBase service is ingested under an OpenMetadata database named
      * {@code default} although the connector connects to {@code vastbase}: only the databases

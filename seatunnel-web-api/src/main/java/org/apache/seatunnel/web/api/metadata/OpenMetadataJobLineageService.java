@@ -573,10 +573,18 @@ public class OpenMetadataJobLineageService {
             return;
         }
         try {
-            for (String value : connector.getStringList(key)) {
+            List<String> values = connector.getStringList(key);
+            for (String value : values) {
                 String trimmed = StringUtils.trimToNull(value);
                 if (trimmed != null) {
                     options.put(key, trimmed);
+                    if (values.size() > 1) {
+                        // Multi-table jobs need one lineage edge per table; until that is
+                        // implemented, make the partial lineage explicit instead of silent.
+                        log.warn("Connector option {} lists {} tables; only the first ({}) is "
+                                        + "recorded in OpenMetadata lineage",
+                                key, values.size(), trimmed);
+                    }
                     return;
                 }
             }

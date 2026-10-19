@@ -27,6 +27,8 @@ import java.util.Set;
 @AutoService(TransformConfigSwitcher.class)
 public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
 
+    private static final int MAX_EXPRESSION_LENGTH = 4_000;
+
     @Override
     public Transform getTransform() {
         return Transform.FIELDMAPPER;
@@ -313,6 +315,8 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
                                     + mapping.getSourceField()
                     );
                 }
+
+                validateExpression(mapping.getExpression(), mapping.getSourceField());
             }
 
             if (!hasEnabled) {
@@ -340,6 +344,70 @@ public class FieldMapperTransformSwitcher implements TransformConfigSwitcher {
                                 + field.getFieldName()
                 );
             }
+        }
+    }
+
+    /**
+     * Expressions are concatenated into a single SQL SELECT, so reject the constructs that could
+     * turn one column expression into another statement or comment out the generated clause.
+     * Quoted literals are scanned so that a legitimate {@code '-'} or {@code '/*'} inside a string
+     * is not mistaken for SQL syntax.
+     */
+    private static void validateExpression(String expression, String sourceField) {
+        if (expression == null) {
+            return;
+        }
+        if (expression.length() > MAX_EXPRESSION_LENGTH) {
+            throw new IllegalArgumentException(
+                    "expression is too long for sourceField: " + sourceField);
+        }
+
+        char quote = 0;
+        for (int i = 0; i < expression.length(); i++) {
+            char current = expression.charAt(i);
+            if (quote != 0) {
+                if (current == quote) {
+                    if (i + 1 < expression.length() && expression.charAt(i + 1) == quote) {
+                        i++;
+                    } else {
+                        quote = 0;
+                    }
+                } else if (current == '\\' && quote != '`' && i + 1 < expression.length()) {
+                    i++;
+                }
+                continue;
+            }
+
+            if (current == '\'' || current == '"' || current == '`') {
+                quote = current;
+                continue;
+            }
+            if (current == ';') {
+                throw new IllegalArgumentException(
+                        "expression must be a single column expression, semicolon found for"
+                                + " sourceField: " + sourceField);
+            }
+            if (current == '-' && i + 1 < expression.length()
+                    && expression.charAt(i + 1) == '-') {
+                throw new IllegalArgumentException(
+                        "expression must not contain SQL comments for sourceField: " + sourceField);
+            }
+            if (current == '/' && i + 1 < expression.length()
+                    && expression.charAt(i + 1) == '*') {
+                throw new IllegalArgumentException(
+                        "expression must not contain SQL comments for sourceField: " + sourceField);
+            }
+            if (current == '\0'
+                    || (Character.isISOControl(current) && !Character.isWhitespace(current))) {
+                throw new IllegalArgumentException(
+                        "expression must not contain control characters for sourceField: "
+                                + sourceField);
+            }
+        }
+
+        if (quote != 0) {
+            throw new IllegalArgumentException(
+                    "expression has an unterminated quoted literal for sourceField: " + sourceField);
         }
     }
 }

@@ -133,6 +133,51 @@ class FieldMapperTransformSwitcherTest {
         assertEquals("at least one enabled mapping is required", ex.getMessage());
     }
 
+    @Test
+    void rejectsMultiStatementExpressions() {
+        FieldMapperMapping combined = mapping("channel_type", "province");
+        combined.setExpression("`channel_type`; DROP TABLE users");
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> switcher.transform(options(combined)));
+        assertTrue(ex.getMessage().contains("single column expression"));
+    }
+
+    @Test
+    void rejectsCommentMarkersOutsideQuotedLiterals() {
+        FieldMapperMapping combined = mapping("channel_type", "province");
+        combined.setExpression("`channel_type` -- rest of query");
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> switcher.transform(options(combined)));
+        assertTrue(ex.getMessage().contains("SQL comments"));
+    }
+
+    @Test
+    void allowsCommentMarkersInsideQuotedLiterals() {
+        FieldMapperMapping combined = mapping("channel_type", "province");
+        combined.setExpression("REPLACE(`channel_type`, '--', '')");
+
+        Config config = switcher.transform(options(combined));
+
+        assertEquals(
+                "SELECT REPLACE(`channel_type`, '--', '') AS `province` FROM `source-1`",
+                config.getString("Sql.query"));
+    }
+
+    @Test
+    void rejectsUnterminatedQuotedExpressions() {
+        FieldMapperMapping combined = mapping("channel_type", "province");
+        combined.setExpression("CONCAT(`channel_type`, 'unterminated)");
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> switcher.transform(options(combined)));
+        assertTrue(ex.getMessage().contains("unterminated quoted literal"));
+    }
+
     private static FieldMapperTransformOptions options(FieldMapperMapping... mappings) {
         FieldMapperConfig mapperConfig = new FieldMapperConfig();
         mapperConfig.setPluginInput("source-1");
