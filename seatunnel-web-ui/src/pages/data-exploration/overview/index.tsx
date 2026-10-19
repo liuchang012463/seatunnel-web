@@ -35,6 +35,7 @@ import type {
 } from '@/pages/data-source/types';
 import { formatDataSize } from '@/pages/data-source/metricFormat';
 import { displayOwner, explorationStatus, normalizeDataSourceList, sourceMatches, withoutSystemManagedSources } from '../shared';
+import { assetExplorationStatus, isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
 import '../index.less';
 import './overview.less';
 
@@ -189,8 +190,10 @@ const DataExplorationOverviewPage: React.FC = () => {
       dataIndex: 'profileStatus',
       key: 'profileStatus',
       width: 110,
-      render: (value: string) => {
-        const status = explorationStatus(value);
+      render: (value: string, record) => {
+        const status = isAssetExplorationDbType(record.dbType)
+          ? assetExplorationStatus(record)
+          : explorationStatus(value);
         return <Tag color={status.color}>{status.label}</Tag>;
       },
     },
@@ -198,7 +201,9 @@ const DataExplorationOverviewPage: React.FC = () => {
       title: '最近成功探查',
       key: 'profileTime',
       width: 170,
-      render: (_, record) => record.profileLastSuccessTime || record.profileLastRunTime || '—',
+      render: (_, record) => (isAssetExplorationDbType(record.dbType)
+        ? record.scanLastSuccessTime
+        : record.profileLastSuccessTime || record.profileLastRunTime) || '—',
     },
     {
       title: '操作',

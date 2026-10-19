@@ -6,6 +6,7 @@ import type { DataSourceLifecycleStatus, DataSourceRecord } from '../types';
 import DataSourceLifecycleStatusTag from './DataSourceLifecycleStatus';
 import DataSourceStatus from './DataSourceStatus';
 import { profileStatusConfig } from './profileStatus';
+import { assetExplorationStatus, isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
 
 interface DataSourceCardProps {
   record: DataSourceRecord;
@@ -32,6 +33,8 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
   const nextStatus = currentStatus === 'DISABLED' ? 'ENABLED' : 'DISABLED';
   const statusActionLabel = currentStatus === 'DISABLED' ? '启用' : '停用';
   const isSystemManaged = Boolean(record.systemManaged);
+  const assetStatus = isAssetExplorationDbType(record.dbType)
+    ? assetExplorationStatus(record) : undefined;
   const profileStatus = profileStatusConfig(record.profileStatus);
 
   const handleDetail = () => {
@@ -82,7 +85,13 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
         <div className="datasource-card-status">
           <DataSourceStatus status={record.connStatus} />
           <DataSourceLifecycleStatusTag status={record.status} />
-          <StatusChip tone={profileStatus.tone} label={profileStatus.text} detail={profileStatus.detail} />
+          <StatusChip
+            tone={assetStatus
+              ? (assetStatus.color === 'default' ? 'neutral' : assetStatus.color)
+              : profileStatus.tone}
+            label={assetStatus ? assetStatus.label : profileStatus.text}
+            detail={assetStatus ? 'OpenMetadata 元数据同步状态' : profileStatus.detail}
+          />
         </div>
 
         <div className="datasource-card-actions">

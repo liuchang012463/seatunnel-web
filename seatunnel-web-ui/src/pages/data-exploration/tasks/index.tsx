@@ -59,6 +59,7 @@ import {
   metadataStatus,
   supportsOmProfiler,
 } from '../shared';
+import { assetExplorationStatus, isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
 import '../index.less';
 
 const DEFAULT_PAGINATION: PaginationInfo = { pageNo: 1, pageSize: 10, total: 0 };
@@ -539,9 +540,16 @@ const DataExplorationTasksPage: React.FC = () => {
       key: 'profileStatus',
       width: 110,
       render: (value: string, record) => {
-        const item = explorationStatus(value);
+        const item = isAssetExplorationDbType(record.dbType)
+          ? assetExplorationStatus(record)
+          : explorationStatus(value);
         return (
-          <Tag color={item.color} title={record.profileLastError || undefined}>
+          <Tag
+            color={item.color}
+            title={isAssetExplorationDbType(record.dbType)
+              ? record.scanLastError || undefined
+              : record.profileLastError || undefined}
+          >
             {item.label}
           </Tag>
         );
@@ -552,7 +560,9 @@ const DataExplorationTasksPage: React.FC = () => {
       key: 'profileLastRunTime',
       width: 170,
       responsive: ['xxl'],
-      render: (_, record) => record.profileLastSuccessTime || record.profileLastRunTime || '-',
+      render: (_, record) => (isAssetExplorationDbType(record.dbType)
+        ? record.scanLastSuccessTime
+        : record.profileLastSuccessTime || record.profileLastRunTime) || '-',
     },
     {
       title: '操作',

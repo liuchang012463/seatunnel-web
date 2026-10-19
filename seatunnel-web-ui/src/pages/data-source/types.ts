@@ -95,45 +95,106 @@ export interface DataSourceMetadataStatus {
   exploration?: DataSourceMetadataRunState;
 }
 
-/** One non-relational OpenMetadata asset of a data source. */
-export interface DataSourceOmResource {
+export type ExplorationAssetType =
+  | 'TOPIC'
+  | 'SEARCH_INDEX'
+  | 'CONTAINER'
+  | 'DIRECTORY'
+  | 'FILE'
+  | 'API_COLLECTION'
+  | 'API_ENDPOINT';
+
+export type ExplorationAssetSchemaStatus =
+  | 'AVAILABLE'
+  | 'NO_SCHEMA'
+  | 'NEEDS_DATA_MODEL'
+  | 'NOT_APPLICABLE'
+  | 'NOT_SUPPORTED';
+
+export type ExplorationAssetSampleStatus =
+  | 'AVAILABLE'
+  | 'DISABLED'
+  | 'NOT_COLLECTED'
+  | 'NEEDS_DATA_MODEL'
+  | 'NOT_APPLICABLE'
+  | 'NOT_SUPPORTED'
+  | 'PERMISSION_DENIED'
+  | 'ERROR';
+
+export interface DataExplorationAssetRef {
   id?: string;
   name?: string;
+  assetType?: ExplorationAssetType | string;
   fullyQualifiedName?: string;
-  entityType?: string;
-  entityLabel?: string;
-  description?: string;
-  /** Size of the asset's own schema, when it has one. */
-  fieldCount?: number;
-  /** Number of contained assets, for example an API collection's endpoints. */
-  childCount?: number;
-  tags?: string[];
 }
 
-export interface DataSourceOmResourceField {
+export interface DataExplorationAsset {
+  id?: string;
+  name?: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+  assetType?: ExplorationAssetType | string;
+  assetLabel?: string;
+  description?: string;
+  hasChildren?: boolean;
+  childCount?: number | null;
+  fieldCount?: number | null;
+  tags?: string[];
+  sizeInByte?: number | null;
+  updatedAt?: number | null;
+}
+
+export interface DataExplorationAssetField {
   name?: string;
   dataType?: string;
   description?: string;
   tags?: string[];
+  children?: DataExplorationAssetField[];
 }
 
-export interface DataSourceOmResourceDetail {
-  resource?: DataSourceOmResource;
-  fields?: DataSourceOmResourceField[];
-  /** OpenAPI request schema of an API endpoint. */
-  requestFields?: DataSourceOmResourceField[];
-  /** OpenAPI response schema of an API endpoint. */
-  responseFields?: DataSourceOmResourceField[];
-  sampleDataAvailable?: boolean;
-  sampleColumns?: string[];
-  sampleRows?: Array<Array<string | null>>;
+export interface DataExplorationAssetSchema {
+  kind?: 'MESSAGE' | 'COLUMNS' | 'REQUEST_RESPONSE' | 'NONE';
+  status?: ExplorationAssetSchemaStatus;
+  fields?: DataExplorationAssetField[];
+  requestFields?: DataExplorationAssetField[];
+  responseFields?: DataExplorationAssetField[];
+}
+
+export interface DataExplorationAssetSample {
+  kind?: 'MESSAGES' | 'ROWS' | 'NONE';
+  status?: ExplorationAssetSampleStatus;
+  columns?: string[];
+  rows?: Array<Array<string | null>>;
   messages?: string[];
+  messageCount?: number;
 }
 
-export interface DataSourceOmResourcePage {
-  resources?: DataSourceOmResource[];
-  entityTypes?: string[];
+export interface DataExplorationAssetProperty {
+  key?: string;
+  label?: string;
+  value?: unknown;
+  displayType?: 'TEXT' | 'NUMBER' | 'SIZE' | 'DURATION' | 'CODE' | 'LIST';
+}
+
+export interface DataExplorationAssetPage {
+  breadcrumbs?: DataExplorationAssetRef[];
+  parent?: DataExplorationAssetRef | null;
+  records?: DataExplorationAsset[];
+  total?: number;
+  pageNo?: number;
+  pageSize?: number;
   truncated?: boolean;
+}
+
+export interface DataExplorationAssetDetail {
+  asset?: DataExplorationAsset;
+  breadcrumbs?: DataExplorationAssetRef[];
+  schema?: DataExplorationAssetSchema;
+  sample?: DataExplorationAssetSample;
+  properties?: DataExplorationAssetProperty[];
+  tags?: string[];
+  description?: string;
+  updatedAt?: number | null;
 }
 
 export interface DataSourcePageResult {

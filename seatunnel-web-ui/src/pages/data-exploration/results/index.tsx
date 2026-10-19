@@ -29,6 +29,7 @@ import type {
 import { getDataSourceCategory } from '@/pages/data-source/dataSourceRegistry';
 import { formatDataSize } from '@/pages/data-source/metricFormat';
 import { explorationStatus, normalizeDataSourceList, withoutSystemManagedSources } from '../shared';
+import { assetExplorationStatus, isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import '../index.less';
 import './results.less';
@@ -50,8 +51,8 @@ const EMPTY_SUMMARY: DataInventorySummary = {
 const EXPLORATION_GROUPS = [
   {
     key: 'DATABASE',
-    label: '数据库',
-    description: '关系型 / OLAP / ES',
+    label: '数据库与搜索引擎',
+    description: '关系型、OLAP 数据库与 Elasticsearch 索引',
     icon: <DatabaseOutlined />,
   },
   {
@@ -68,8 +69,8 @@ const EXPLORATION_GROUPS = [
   },
   {
     key: 'FILE_TRANSFER',
-    label: '文件同步任务',
-    description: 'FTP / SFTP / 对象存储',
+    label: '文件与对象存储',
+    description: 'FTP、SFTP、S3 与 MinIO',
     icon: <FolderOpenOutlined />,
   },
 ] as const;
@@ -85,6 +86,8 @@ interface ResultFilters {
 interface InitialRouteState extends ResultFilters {
   dataSourceId?: string;
   dbType?: string;
+  assetId?: string;
+  assetType?: string;
   /** 安全的站内返回路径，例如从数据源页进入详情后关闭应回到 /data-source */
   returnTo?: string;
 }
@@ -98,15 +101,15 @@ function sanitizeReturnTo(value?: string | null): string | undefined {
 
 const GROUP_LABELS: Record<SelectedGroupKey, string> = {
   ALL: '全部类型',
-  DATABASE: '数据库',
+  DATABASE: '数据库与搜索引擎',
   MESSAGE_QUEUE: '消息队列',
   API: 'API 服务',
-  FILE_TRANSFER: '文件同步任务',
+  FILE_TRANSFER: '文件与对象存储',
 };
 
 const GROUP_DESCRIPTIONS: Record<SelectedGroupKey, string> = {
   ALL: '查看当前范围内的全部数据源探查结果',
-  DATABASE: '关系型、OLAP 数据库与 Elasticsearch',
+  DATABASE: '关系型、OLAP 数据库与 Elasticsearch 索引',
   MESSAGE_QUEUE: 'Kafka 主题与消息元数据',
   API: 'HTTP 接口与 OpenAPI 目录',
   FILE_TRANSFER: 'FTP、SFTP、S3 与 MinIO 文件对象',
@@ -120,6 +123,8 @@ function readInitialRouteState(): InitialRouteState {
     businessSystemId: params.get('businessSystemId') || undefined,
     dataSourceId: params.get('dataSourceId') || undefined,
     dbType: params.get('dbType') || undefined,
+    assetId: params.get('assetId') || undefined,
+    assetType: params.get('assetType') || undefined,
     returnTo: sanitizeReturnTo(params.get('returnTo')),
   };
 }
@@ -176,6 +181,11 @@ const DataExplorationResultsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedSourceId, setSelectedSourceId] = useState<string>(route.dataSourceId || '');
   const [selectedSourceDbType, setSelectedSourceDbType] = useState<string | undefined>(route.dbType);
+  const [deepLink, setDeepLink] = useState<{ dataSourceId?: string; assetId?: string; assetType?: string }>({
+    dataSourceId: route.dataSourceId,
+    assetId: route.assetId,
+    assetType: route.assetType,
+  });
 
   const loadUnits = useCallback(async () => {
     setUnitLoading(true);
@@ -303,6 +313,8 @@ const DataExplorationResultsPage: React.FC = () => {
         source.name,
         source.dbType,
         source.jdbcUrl,
+        source.environment,
+        source.environmentName,
         owner.unit,
         owner.system,
       ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch));
@@ -320,6 +332,7 @@ const DataExplorationResultsPage: React.FC = () => {
     if (nextFilters.businessSystemId) query.set('businessSystemId', nextFilters.businessSystemId);
     if (source?.id) query.set('dataSourceId', String(source.id));
     if (source?.dbType) query.set('dbType', source.dbType);
+    if (route.returnTo) query.set('returnTo', route.returnTo);
     const queryString = query.toString();
     history.replace(`/data-exploration/results${queryString ? `?${queryString}` : ''}`);
   };
@@ -331,6 +344,7 @@ const DataExplorationResultsPage: React.FC = () => {
     }
     setSelectedSourceId('');
     setSelectedSourceDbType(undefined);
+    setDeepLink({});
     syncRoute(nextFilters);
   };
 
@@ -356,6 +370,7 @@ const DataExplorationResultsPage: React.FC = () => {
     if (!sourceId) return;
     setSelectedSourceId(sourceId);
     setSelectedSourceDbType(source.dbType);
+    setDeepLink({});
     syncRoute(filters, source);
   };
 
@@ -365,6 +380,25 @@ const DataExplorationResultsPage: React.FC = () => {
   );
 
   if (selectedSourceId) {
+    if (!selectedSourceType) {
+      if (!sourcesLoading && dataSources.length > 0) {
+        return (
+          <div className="data-exploration-page data-exploration-results data-exploration-results--detail">
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="未找到指定的数据源"
+            >
+              <Button onClick={() => clearSelection()}>返回探查结果</Button>
+            </Empty>
+          </div>
+        );
+      }
+      return (
+        <div className="data-exploration-page data-exploration-results data-exploration-results--detail">
+          <div className="results-inline-loading"><Spin size="small" /> 正在加载数据源类型</div>
+        </div>
+      );
+    }
     return (
       <div className="data-exploration-page data-exploration-results data-exploration-results--detail">
         <DataExplorationDrawer
@@ -372,7 +406,9 @@ const DataExplorationResultsPage: React.FC = () => {
           open
           dataSourceId={selectedSourceId}
           dataSourceName={selectedSource?.name}
-          dbType={selectedSource?.dbType || selectedSourceDbType}
+          dbType={selectedSourceType}
+          initialAssetId={deepLink.dataSourceId === selectedSourceId ? deepLink.assetId : undefined}
+          initialAssetType={deepLink.dataSourceId === selectedSourceId ? deepLink.assetType : undefined}
           backLabel={route.returnTo === '/data-source' ? '返回数据源' : undefined}
           onClose={() => clearSelection()}
         />
@@ -514,7 +550,9 @@ const DataExplorationResultsPage: React.FC = () => {
             ) : (
               visibleSources.map((source) => {
                 const owner = sourceOwner(source);
-                const status = explorationStatus(source.profileStatus);
+                const status = isAssetExplorationDbType(source.dbType)
+                  ? assetExplorationStatus(source)
+                  : explorationStatus(source.profileStatus);
                 const sourceId = String(source.id || source.name || '');
                 const isSelected = sourceId === selectedSourceId;
                 return (
@@ -619,8 +657,18 @@ const DataExplorationResultsPage: React.FC = () => {
                   <span><small>类型</small><b>{selectedSourceType || '—'}</b></span>
                   <span><small>单位</small><b>{selectedSourceOwner?.unit || '—'}</b></span>
                   <span><small>业务系统</small><b>{selectedSourceOwner?.system || '—'}</b></span>
-                  <span><small>探查状态</small><b>{explorationStatus(selectedSource.profileStatus).label}</b></span>
-                  <span><small>最近成功</small><b>{selectedSource.profileLastSuccessTime || '—'}</b></span>
+                  <span>
+                    <small>探查状态</small>
+                    <b>{isAssetExplorationDbType(selectedSourceType)
+                      ? assetExplorationStatus(selectedSource).label
+                      : explorationStatus(selectedSource.profileStatus).label}</b>
+                  </span>
+                  <span>
+                    <small>最近成功</small>
+                    <b>{(isAssetExplorationDbType(selectedSourceType)
+                      ? selectedSource.scanLastSuccessTime
+                      : selectedSource.profileLastSuccessTime) || '—'}</b>
+                  </span>
                 </div>
                 {selectedSourceGroup && (
                   <Tag className="results-inspector__source-tag" color="blue">

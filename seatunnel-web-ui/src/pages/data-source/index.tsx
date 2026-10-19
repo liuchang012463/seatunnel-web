@@ -51,6 +51,7 @@ import type {
 import DataSourceLifecycleStatusTag from './components/DataSourceLifecycleStatus';
 import DataSourceStatus from './components/DataSourceStatus';
 import { profileStatusConfig } from './components/profileStatus';
+import { assetExplorationStatus, isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
 import { withTimeout } from '@/utils/withTimeout';
 
 const { confirm } = Modal;
@@ -477,6 +478,11 @@ const DataSourcePage: React.FC = () => {
       align: 'center',
       width: 96,
       render: (_value, record) => {
+        if (isAssetExplorationDbType(record.dbType)) {
+          const status = assetExplorationStatus(record);
+          const tone = status.color === 'default' ? 'neutral' : status.color;
+          return <StatusChip tone={tone} label={status.label} detail="OpenMetadata 元数据同步状态" />;
+        }
         const status = profileStatusConfig(record.profileStatus);
         return <StatusChip tone={status.tone} label={status.text} detail={status.detail} />;
       },

@@ -26,8 +26,9 @@ import type {
   DataSourceMetadataStatus,
   DataSourceCatalogFileEntry,
   DataSourceCatalogOption,
-  DataSourceOmResourceDetail,
-  DataSourceOmResourcePage,
+  DataExplorationAssetDetail,
+  DataExplorationAssetPage,
+  ExplorationAssetType,
 } from './types';
 
 const DATA_SOURCE_API_PREFIX = '/api/v1/data-source';
@@ -454,32 +455,40 @@ export async function fetchDataSourceCatalogFiles(
 }
 
 /**
- * OpenMetadata-side assets of a non-database data source. These come from the
- * metadata server (schema plus any collected sample payload), not from the
- * connector catalog, so they can be shown beside the live catalog listing.
+ * Reads one level of the OpenMetadata non-relational asset hierarchy. Topics and
+ * search indexes are flat; containers, directories and API collections expose children.
  */
-export async function fetchDataSourceOmResources(
-  id: string,
-  resourceType?: string,
-  limit?: number,
-): Promise<CommonApiResponse<DataSourceOmResourcePage>> {
-  const params = new URLSearchParams();
-  if (resourceType) params.set('resourceType', resourceType);
-  if (limit) params.set('limit', String(limit));
-  const query = params.toString();
+export async function fetchDataExplorationAssets(params: {
+  dataSourceId: string;
+  parentId?: string;
+  parentType?: string;
+  pageNo?: number;
+  pageSize?: number;
+  search?: string;
+}): Promise<CommonApiResponse<DataExplorationAssetPage>> {
+  const query = new URLSearchParams({
+    dataSourceId: params.dataSourceId,
+    pageNo: String(params.pageNo || 1),
+    pageSize: String(params.pageSize || 50),
+  });
+  if (params.parentId) query.set('parentId', params.parentId);
+  if (params.parentType) query.set('parentType', params.parentType);
+  if (params.search) query.set('search', params.search);
   return HttpUtils.get(
-    `${DATA_SOURCE_API_PREFIX}/${encodeURIComponent(id)}/om-resources${query ? `?${query}` : ''}`,
+    `${DATA_EXPLORATION_API_PREFIX}/assets?${query.toString()}`,
+    METADATA_REQUEST_OPTIONS,
   );
 }
 
-export async function fetchDataSourceOmResourceDetail(
-  id: string,
-  resourceId: string,
-  resourceType: string,
-): Promise<CommonApiResponse<DataSourceOmResourceDetail>> {
+export async function fetchDataExplorationAsset(
+  dataSourceId: string,
+  assetId: string,
+  assetType: ExplorationAssetType | string,
+): Promise<CommonApiResponse<DataExplorationAssetDetail>> {
+  const query = new URLSearchParams({ dataSourceId, assetType });
   return HttpUtils.get(
-    `${DATA_SOURCE_API_PREFIX}/${encodeURIComponent(id)}/om-resources/${encodeURIComponent(resourceId)}`
-      + `?resourceType=${encodeURIComponent(resourceType)}`,
+    `${DATA_EXPLORATION_API_PREFIX}/assets/${encodeURIComponent(assetId)}?${query.toString()}`,
+    METADATA_REQUEST_OPTIONS,
   );
 }
 

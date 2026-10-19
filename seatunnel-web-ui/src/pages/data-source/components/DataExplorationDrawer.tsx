@@ -55,10 +55,9 @@ import type {
 } from '../types';
 import { formatDataSize } from '../metricFormat';
 import DataExplorationErDiagram from '@/pages/data-exploration/components/DataExplorationErDiagram';
-import GenericDataExplorationDrawer, {
-  isGenericExplorationDbType,
-} from './GenericDataExplorationDrawer';
-import './DataExplorationDrawer.less';
+import AssetDataExplorationDrawer from '@/pages/data-exploration/components/AssetDataExplorationDrawer';
+import { isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
+import '@/styles/exploration-workspace.less';
 
 export interface DataExplorationDrawerProps {
   dataSourceId?: string;
@@ -70,6 +69,9 @@ export interface DataExplorationDrawerProps {
   inline?: boolean;
   /** Inline 模式下返回按钮文案，默认「返回探查结果」 */
   backLabel?: string;
+  /** 资产级深链，仅非结构化探查使用。 */
+  initialAssetId?: string;
+  initialAssetType?: string;
   onClose: () => void;
 }
 
@@ -1248,8 +1250,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
  * hook ordering rules in the database implementation.
  */
 const DataExplorationDrawer: React.FC<DataExplorationDrawerProps> = (props) => {
-  if (isGenericExplorationDbType(props.dbType)) {
-    return <GenericDataExplorationDrawer {...props} />;
+  if (isAssetExplorationDbType(props.dbType)) {
+    return <AssetDataExplorationDrawer {...props} />;
   }
   return <DatabaseDataExplorationDrawer {...props} />;
 };

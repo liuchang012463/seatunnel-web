@@ -15,8 +15,8 @@ import {
   fetchDataSourceTopologyTree,
   fetchDataSourceCatalogFiles,
   fetchDataSourceCatalogOptions,
-  fetchDataSourceOmResourceDetail,
-  fetchDataSourceOmResources,
+  fetchDataExplorationAsset,
+  fetchDataExplorationAssets,
   updateDataSourceSampleData,
   updateDataSourceStorageManifest,
   previewDataExplorationTable,
@@ -121,28 +121,40 @@ describe('data source service', () => {
     expect(HttpUtils.get).toHaveBeenCalledWith('/api/v1/data-source/42/metadata-status');
   });
 
-  it('reads the OpenMetadata assets of a non-database data source', async () => {
-    const response = { code: 0, data: { resources: [], entityTypes: ['topic'], truncated: false } };
+  it('lists one level of OpenMetadata assets for a non-database data source', async () => {
+    const response = { code: 0, data: { records: [], total: 0 } };
     (HttpUtils.get as jest.Mock).mockResolvedValue(response);
 
-    await expect(fetchDataSourceOmResources('42')).resolves.toBe(response);
-    await expect(fetchDataSourceOmResources('42', 'topic', 100)).resolves.toBe(response);
+    await expect(fetchDataExplorationAssets({ dataSourceId: '42' })).resolves.toBe(response);
+    await expect(fetchDataExplorationAssets({
+      dataSourceId: '42',
+      parentId: 'dir-1',
+      parentType: 'DIRECTORY',
+      pageNo: 2,
+      search: 'orders',
+    })).resolves.toBe(response);
 
-    expect(HttpUtils.get).toHaveBeenNthCalledWith(1, '/api/v1/data-source/42/om-resources');
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/data-exploration/assets?dataSourceId=42&pageNo=1&pageSize=50',
+      { timeout: 60000 },
+    );
     expect(HttpUtils.get).toHaveBeenNthCalledWith(
       2,
-      '/api/v1/data-source/42/om-resources?resourceType=topic&limit=100',
+      '/api/v1/data-exploration/assets?dataSourceId=42&pageNo=2&pageSize=50&parentId=dir-1&parentType=DIRECTORY&search=orders',
+      { timeout: 60000 },
     );
   });
 
-  it('reads one OpenMetadata asset with its entity type', async () => {
-    const response = { code: 0, data: { fields: [], messages: [] } };
+  it('reads one OpenMetadata asset with its schema and sample', async () => {
+    const response = { code: 0, data: { asset: {}, schema: {}, sample: {} } };
     (HttpUtils.get as jest.Mock).mockResolvedValue(response);
 
-    await expect(fetchDataSourceOmResourceDetail('42', 'topic-id', 'topic')).resolves.toBe(response);
+    await expect(fetchDataExplorationAsset('42', 'topic-id', 'TOPIC')).resolves.toBe(response);
 
     expect(HttpUtils.get).toHaveBeenCalledWith(
-      '/api/v1/data-source/42/om-resources/topic-id?resourceType=topic',
+      '/api/v1/data-exploration/assets/topic-id?dataSourceId=42&assetType=TOPIC',
+      { timeout: 60000 },
     );
   });
 
