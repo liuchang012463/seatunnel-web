@@ -60,6 +60,25 @@ load_dotenv() {
   done <"$env_file"
   export SPRING_FLYWAY_REPAIR_ON_MIGRATE="${SPRING_FLYWAY_REPAIR_ON_MIGRATE:-false}"
   BACKEND_PORT="${SERVER_PORT:-$BACKEND_PORT}"
+  ensure_no_proxy
+}
+
+# The developer shell may export HTTP_PROXY/HTTPS_PROXY. The MinIO/S3 SDK honors
+# them, and a proxied request to an intranet host returns 502. Merge the internal
+# hosts into NO_PROXY instead of replacing an existing exclusion list.
+ensure_no_proxy() {
+  local hosts="localhost,127.0.0.1,::1,host.docker.internal,192.168.100.95"
+  local merged="${NO_PROXY:-${no_proxy:-}}"
+  local host
+  local IFS=','
+  for host in $hosts; do
+    case ",$merged," in
+      *",$host,"*) ;;
+      *) merged="${merged:+$merged,}$host" ;;
+    esac
+  done
+  export NO_PROXY="$merged"
+  export no_proxy="$merged"
 }
 
 pid_alive() {
