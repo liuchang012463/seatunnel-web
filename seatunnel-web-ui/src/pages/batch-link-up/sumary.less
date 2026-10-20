@@ -4,6 +4,27 @@
     }
 }
 
+/* 运行历史弹窗：整块内容按视口高度排版，详情区才能拿到确定的可用高度 */
+.task-history-modal {
+    display: flex;
+    flex-direction: column;
+
+    /* rc-dialog 在 .ant-modal 与 .ant-modal-content 之间插入了一层哨兵节点，需要一起参与弹性布局 */
+    > div:first-child {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 0%;
+        min-height: 0;
+    }
+
+    div:has(> .ant-modal-content) {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 0%;
+        min-height: 0;
+    }
+}
+
 .modal-container {
     overflow-x: hidden;
     overflow-y: auto;
