@@ -90,6 +90,7 @@ RUN set -eux; \
     test -f /tmp/seatunnel-web/conf/nginx/default.conf; \
     rm -rf /usr/share/nginx/html/*; \
     cp -r /tmp/seatunnel-web/web/. /usr/share/nginx/html/; \
+    chmod -R a+rX /usr/share/nginx/html; \
     cp /tmp/seatunnel-web/conf/nginx/default.conf \
        /etc/nginx/conf.d/default.conf; \
     rm -rf \
@@ -103,6 +104,6 @@ HEALTHCHECK \
     --timeout=3s \
     --start-period=10s \
     --retries=6 \
-    CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1
+    CMD curl -fsS -o /dev/null http://127.0.0.1/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
