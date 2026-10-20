@@ -58,6 +58,13 @@ public interface OpenMetadataClient {
     OpenMetadataAssetDetail getAssetDetail(
             ExplorationAssetType type, String resourceId, boolean includeSample);
 
+    /**
+     * Reads one asset with an explicit field projection. Parent and breadcrumb reads
+     * pass a lightweight projection so they never pull schemas or sample payloads.
+     */
+    OpenMetadataAssetDetail getAssetDetail(
+            ExplorationAssetType type, String resourceId, boolean includeSample, String fields);
+
     Optional<OpenMetadataDatabase> findDatabase(String fullyQualifiedName);
 
     List<OpenMetadataDatabase> listDatabases(String serviceFullyQualifiedName, int limit);

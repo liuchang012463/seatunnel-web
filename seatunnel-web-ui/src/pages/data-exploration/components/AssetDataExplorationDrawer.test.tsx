@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import AssetDataExplorationDrawer from './AssetDataExplorationDrawer';
 
@@ -11,6 +11,7 @@ jest.mock('@/pages/data-source/service', () => ({
   fetchDataExplorationAssets: jest.fn(),
   fetchDataExplorationAsset: jest.fn(),
   fetchDataSourceMetadataStatus: jest.fn(),
+  retryDataSourceMetadataSync: jest.fn(),
   triggerDataSourceScan: jest.fn(),
   updateDataSourceSampleData: jest.fn(),
   updateDataSourceStorageManifest: jest.fn(),
@@ -130,6 +131,7 @@ describe('AssetDataExplorationDrawer', () => {
       data: topicDetail,
     });
     service.triggerDataSourceScan.mockResolvedValue({ code: 0, data: true });
+    service.retryDataSourceMetadataSync.mockResolvedValue({ code: 0, data: true });
   });
 
   it('lists assets and shows schema and sample tabs', async () => {
@@ -215,5 +217,88 @@ describe('AssetDataExplorationDrawer', () => {
 
     expect(await screen.findByRole('heading', { name: 'orders.created' })).toBeTruthy();
     expect(service.fetchDataExplorationAsset).toHaveBeenCalledWith('42', 'topic-1', 'TOPIC');
+  });
+
+  it('offers retry sync when the metadata binding is in error', async () => {
+    service.fetchDataSourceMetadataStatus.mockResolvedValue({
+      code: 0,
+      data: {
+        syncStatus: 'ERROR',
+        sampleDataSupported: true,
+        sampleDataEnabled: true,
+        storageManifestSupported: false,
+        scan: { status: 'FAILED' },
+      },
+    });
+
+    render(React.createElement(AssetDataExplorationDrawer, {
+      inline: true,
+      open: true,
+      dataSourceId: '42',
+      dataSourceName: 'http',
+      dbType: 'HTTP',
+      onClose: () => {},
+    }));
+
+    const retryButtons = await screen.findAllByRole('button', { name: '重试同步' });
+    expect(retryButtons[0].hasAttribute('disabled')).toBe(false);
+    fireEvent.click(retryButtons[0]);
+
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '重试同步' }));
+
+    await waitFor(() => {
+      expect(service.retryDataSourceMetadataSync).toHaveBeenCalledWith('42');
+    });
+  });
+
+  it('keeps field keys unique for same-named children under different parents', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const child = (name: string) => ({
+        name,
+        dataType: 'STRING',
+        description: null,
+        tags: [],
+        children: [],
+      });
+      service.fetchDataExplorationAsset.mockResolvedValue({
+        code: 0,
+        data: {
+          ...topicDetail,
+          schema: {
+            ...topicDetail.schema,
+            fields: [
+              { name: 'left', dataType: 'STRUCT', description: null, tags: [], children: [child('name')] },
+              { name: 'right', dataType: 'STRUCT', description: null, tags: [], children: [child('name')] },
+            ],
+          },
+        },
+      });
+
+      render(React.createElement(AssetDataExplorationDrawer, {
+        inline: true,
+        open: true,
+        dataSourceId: '42',
+        dataSourceName: 'kafka',
+        dbType: 'KAFKA',
+        onClose: () => {},
+      }));
+
+      fireEvent.click(await screen.findByRole(
+        'button',
+        { name: '查看 orders.created 详情' },
+        { timeout: 5000 },
+      ));
+      expect(await screen.findByText('left', {}, { timeout: 5000 })).toBeTruthy();
+      expect(await screen.findByText('right', {}, { timeout: 5000 })).toBeTruthy();
+
+      const duplicateKeyWarnings = consoleError.mock.calls.filter(
+        (call) => String(call[0]).includes('same key'),
+      );
+      expect(duplicateKeyWarnings).toHaveLength(0);
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

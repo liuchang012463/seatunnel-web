@@ -39,6 +39,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,6 +51,14 @@ class AssetExplorationServiceTest {
     @Mock private MetadataConnectorRegistry connectorRegistry;
     @Mock private MetadataConnectorAdapter adapter;
     @Mock private OpenMetadataClient openMetadataClient;
+
+    @Test
+    void apiCollectionParentProjectionAvoidsTheUnsupportedParentField() {
+        // APICollection has no parent property; requesting it makes OpenMetadata
+        // reject the detail read, so the projection must stay service-only.
+        assertEquals("service", ExplorationAssetType.API_COLLECTION.parentFields());
+        assertEquals("service", ExplorationAssetType.API_COLLECTION.childrenFields());
+    }
 
     @Test
     void listsTopicsWithLabelsAndNoChildren() {
@@ -84,7 +93,7 @@ class AssetExplorationServiceTest {
         OpenMetadataAsset childFile = asset(
                 "file-1", "orders.csv", "st_ds_42.data.orders.csv", "file", 5, null,
                 "st_ds_42", "dir-1", "directory", "st_ds_42.data", 2048L);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.DIRECTORY), eq("dir-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.DIRECTORY), eq("dir-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         directory, List.of(), List.of(), List.of(), null,
                         false, false, List.of(childDirectory), Map.of()));
@@ -102,6 +111,11 @@ class AssetExplorationServiceTest {
         assertEquals("data", page.getParent().getName());
         assertEquals(1, page.getBreadcrumbs().size());
         verify(openMetadataClient).listFilesInDirectory(eq("st_ds_42.data"), anyInt(), any());
+        // The parent is read once, with the child-list projection, and reused for the
+        // breadcrumb instead of being fetched a second time with full details.
+        verify(openMetadataClient, times(1)).getAssetDetail(
+                eq(ExplorationAssetType.DIRECTORY), eq("dir-1"), eq(false),
+                eq("service,parent,children"));
     }
 
     @Test
@@ -110,7 +124,7 @@ class AssetExplorationServiceTest {
         OpenMetadataAsset foreign = asset(
                 "dir-1", "data", "other.data", "directory", null, null, "other",
                 null, null, null, null);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.DIRECTORY), eq("dir-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.DIRECTORY), eq("dir-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         foreign, List.of(), List.of(), List.of(), null,
                         false, false, List.of(), Map.of()));
@@ -140,7 +154,7 @@ class AssetExplorationServiceTest {
     void reportsAvailableSampleAndHidesItWhenCollectionIsDisabled() {
         stubSource(DbType.KAFKA, List.of(ExplorationAssetType.TOPIC), true);
         OpenMetadataAsset topic = topic("topic-1", "orders.created", 1);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         topic,
                         List.of(new OpenMetadataAssetField("id", "INT", null, List.of())),
@@ -169,7 +183,7 @@ class AssetExplorationServiceTest {
         OpenMetadataAsset container = asset(
                 "container-1", "bucket", "st_ds_42.bucket", "container", null, null,
                 "st_ds_42", null, null, null, 1024L);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.CONTAINER), eq("container-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.CONTAINER), eq("container-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         container, List.of(), List.of(), List.of(), null,
                         false, false, List.of(), Map.of("dataModelAvailable", false)));
@@ -187,7 +201,7 @@ class AssetExplorationServiceTest {
         OpenMetadataAsset file = asset(
                 "file-1", "image.png", "st_ds_42.data.image.png", "file", 0, null,
                 "st_ds_42", "dir-1", "directory", "st_ds_42.data", 4096L);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.FILE), eq("file-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.FILE), eq("file-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         file, List.of(), List.of(), List.of(), null,
                         false, false, List.of(),
@@ -203,7 +217,7 @@ class AssetExplorationServiceTest {
     @Test
     void reportsPermissionDeniedForSampleReads() {
         stubSource(DbType.KAFKA, List.of(ExplorationAssetType.TOPIC), true);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         topic("topic-1", "orders", 1),
                         List.of(new OpenMetadataAssetField("id", "INT", null, List.of())),
@@ -223,7 +237,7 @@ class AssetExplorationServiceTest {
                 "endpoint-1", "GET /orders", "st_ds_42.orders.GET /orders", "apiEndpoint",
                 2, null, "st_ds_42", "collection-1", "apiCollection",
                 "st_ds_42.orders", null);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.API_ENDPOINT), eq("endpoint-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.API_ENDPOINT), eq("endpoint-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         endpoint,
                         List.of(),
@@ -241,12 +255,45 @@ class AssetExplorationServiceTest {
     }
 
     @Test
+    void readsAncestorsWithTheLightweightParentProjection() {
+        stubSource(DbType.HTTP,
+                List.of(ExplorationAssetType.API_COLLECTION, ExplorationAssetType.API_ENDPOINT), true);
+        OpenMetadataAsset endpoint = asset(
+                "endpoint-1", "GET /orders", "st_ds_42.default.GET /orders", "apiEndpoint",
+                0, null, "st_ds_42", "collection-1", "apiCollection",
+                "st_ds_42.default", null);
+        OpenMetadataAsset collection = asset(
+                "collection-1", "default", "st_ds_42.default", "apiCollection",
+                null, 0, "st_ds_42", null, null, null, null);
+        when(openMetadataClient.getAssetDetail(
+                eq(ExplorationAssetType.API_ENDPOINT), eq("endpoint-1"), eq(true), anyString()))
+                .thenReturn(new OpenMetadataAssetDetail(
+                        endpoint, List.of(), List.of(), List.of(), null,
+                        false, false, List.of(), Map.of()));
+        when(openMetadataClient.getAssetDetail(
+                eq(ExplorationAssetType.API_COLLECTION), eq("collection-1"), eq(false),
+                eq("service")))
+                .thenReturn(new OpenMetadataAssetDetail(
+                        collection, List.of(), List.of(), List.of(), null,
+                        false, false, List.of(), Map.of()));
+
+        DataExplorationAssetDetailVO detail =
+                service().getAsset(42L, "endpoint-1", "API_ENDPOINT");
+
+        assertEquals(1, detail.getBreadcrumbs().size());
+        assertEquals("collection-1", detail.getBreadcrumbs().get(0).getId());
+        verify(openMetadataClient).getAssetDetail(
+                eq(ExplorationAssetType.API_COLLECTION), eq("collection-1"), eq(false),
+                eq("service"));
+    }
+
+    @Test
     void listsContainerChildrenWithOffsetPagination() {
         stubSource(DbType.MINIO, List.of(ExplorationAssetType.CONTAINER), true);
         OpenMetadataAsset parent = asset(
                 "container-1", "bucket", "st_ds_42.bucket", "container", null, null,
                 "st_ds_42", null, null, null, null);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.CONTAINER), eq("container-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.CONTAINER), eq("container-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         parent, List.of(), List.of(), List.of(), null,
                         false, false, List.of(), Map.of("dataModelAvailable", true)));
@@ -312,7 +359,7 @@ class AssetExplorationServiceTest {
         assertThrows(RuntimeException.class,
                 () -> service().getAsset(42L, "container-1", "CONTAINER"));
         verify(openMetadataClient, never())
-                .getAssetDetail(eq(ExplorationAssetType.CONTAINER), anyString(), anyBoolean());
+                .getAssetDetail(eq(ExplorationAssetType.CONTAINER), anyString(), anyBoolean(), anyString());
     }
 
 
@@ -341,7 +388,7 @@ class AssetExplorationServiceTest {
     void reportsNotCollectedAndSampleErrors() {
         stubSource(DbType.KAFKA, List.of(ExplorationAssetType.TOPIC), true);
         OpenMetadataAsset topic = topic("topic-1", "orders", 1);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         topic,
                         List.of(new OpenMetadataAssetField("id", "INT", null, List.of())),
@@ -349,7 +396,7 @@ class AssetExplorationServiceTest {
         assertEquals("NOT_COLLECTED",
                 service().getAsset(42L, "topic-1", "TOPIC").getSample().getStatus());
 
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         topic,
                         List.of(new OpenMetadataAssetField("id", "INT", null, List.of())),
@@ -361,7 +408,7 @@ class AssetExplorationServiceTest {
     @Test
     void reportsNoSchemaForAnEmptyTopic() {
         stubSource(DbType.KAFKA, List.of(ExplorationAssetType.TOPIC), true);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         topic("topic-1", "orders", 0),
                         List.of(), List.of(), List.of(), null,
@@ -379,7 +426,7 @@ class AssetExplorationServiceTest {
         OpenMetadataAsset directory = asset(
                 "dir-1", "data", "st_ds_42.data", "directory", null, 2,
                 "st_ds_42", null, null, null, 1024L);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.DIRECTORY), eq("dir-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.DIRECTORY), eq("dir-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         directory, List.of(), List.of(), List.of(), null,
                         false, false, List.of(), Map.of()));
@@ -394,7 +441,7 @@ class AssetExplorationServiceTest {
     @Test
     void rejectsAssetDetailsOwnedByAnotherService() {
         stubSource(DbType.KAFKA, List.of(ExplorationAssetType.TOPIC), true);
-        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean()))
+        when(openMetadataClient.getAssetDetail(eq(ExplorationAssetType.TOPIC), eq("topic-1"), anyBoolean(), anyString()))
                 .thenReturn(new OpenMetadataAssetDetail(
                         asset("topic-1", "orders", "other.orders", "topic", 1, null,
                                 "other", null, null, null, null),

@@ -52,7 +52,7 @@ const EXPLORATION_GROUPS = [
   {
     key: 'DATABASE',
     label: '数据库与搜索引擎',
-    description: '关系型、OLAP 数据库与 Elasticsearch 索引',
+    description: '关系型、OLAP 数据库、Elasticsearch 索引与非结构化元数据',
     icon: <DatabaseOutlined />,
   },
   {
@@ -109,7 +109,7 @@ const GROUP_LABELS: Record<SelectedGroupKey, string> = {
 
 const GROUP_DESCRIPTIONS: Record<SelectedGroupKey, string> = {
   ALL: '查看当前范围内的全部数据源探查结果',
-  DATABASE: '关系型、OLAP 数据库与 Elasticsearch 索引',
+  DATABASE: '关系型、OLAP 数据库、Elasticsearch 索引与非结构化元数据',
   MESSAGE_QUEUE: 'Kafka 主题与消息元数据',
   API: 'HTTP 接口与 OpenAPI 目录',
   FILE_TRANSFER: 'FTP、SFTP、S3 与 MinIO 文件对象',

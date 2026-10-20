@@ -142,6 +142,12 @@ export async function triggerDataSourceScan(id: string): Promise<CommonApiRespon
   return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/${id}/scan`);
 }
 
+export async function retryDataSourceMetadataSync(
+  id: string,
+): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/${id}/metadata-sync/retry`);
+}
+
 export async function triggerDataSourceExploration(
   id: string,
   databaseFqn: string,

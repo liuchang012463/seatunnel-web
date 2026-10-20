@@ -99,8 +99,12 @@ public class AssetExplorationService {
 
         List<ExplorationAssetType> types = parent == null
                 ? rootTypes(context) : childTypes(context, parent);
-        List<DataExplorationAssetRefVO> breadcrumbs = parent == null
-                ? List.of() : breadcrumbs(context, parentId, parent);
+        OpenMetadataAssetDetail parentDetail = parent == null
+                ? null
+                : requireOwnedDetail(
+                        context, parent, parentId, false, parent.childrenFields());
+        List<DataExplorationAssetRefVO> breadcrumbs = parentDetail == null
+                ? List.of() : breadcrumbs(context, parentDetail);
 
         Map<String, OpenMetadataAsset> collected = new LinkedHashMap<>();
         boolean truncated = false;
@@ -110,7 +114,7 @@ public class AssetExplorationService {
                 truncated = true;
                 break;
             }
-            LevelResult level = listLevel(context, type, parentId, keyword, remaining);
+            LevelResult level = listLevel(context, type, parentDetail, keyword, remaining);
             for (OpenMetadataAsset asset : level.assets()) {
                 if (asset.id() != null) {
                     collected.putIfAbsent(asset.id(), asset);
@@ -161,19 +165,19 @@ public class AssetExplorationService {
     private LevelResult listLevel(
             AssetContext context,
             ExplorationAssetType type,
-            String parentId,
+            OpenMetadataAssetDetail parentDetail,
             String keyword,
             int remaining) {
-        if (type == ExplorationAssetType.CONTAINER && !isBlank(parentId)) {
-            return listContainerChildren(context, parentId, keyword, remaining);
+        if (type == ExplorationAssetType.CONTAINER && parentDetail != null) {
+            return listContainerChildren(context, parentDetail, keyword, remaining);
         }
-        if (type == ExplorationAssetType.DIRECTORY && !isBlank(parentId)) {
-            return listDirectoryChildren(context, parentId, keyword, remaining);
+        if (type == ExplorationAssetType.DIRECTORY && parentDetail != null) {
+            return listDirectoryChildren(context, parentDetail, keyword, remaining);
         }
-        if (type == ExplorationAssetType.API_ENDPOINT && !isBlank(parentId)) {
-            OpenMetadataAssetDetail parent = requireOwnedDetail(
-                    context, ExplorationAssetType.API_COLLECTION, parentId);
-            return listCursor(context, type, parent.asset().fullyQualifiedName(), false, keyword, remaining);
+        if (type == ExplorationAssetType.API_ENDPOINT && parentDetail != null) {
+            return listCursor(
+                    context, type, parentDetail.asset().fullyQualifiedName(),
+                    false, keyword, remaining);
         }
         boolean root = type == ExplorationAssetType.DIRECTORY || type == ExplorationAssetType.FILE;
         return listCursor(context, type, null, root, keyword, remaining);
@@ -226,11 +230,9 @@ public class AssetExplorationService {
 
     private LevelResult listContainerChildren(
             AssetContext context,
-            String parentId,
+            OpenMetadataAssetDetail parent,
             String keyword,
             int remaining) {
-        OpenMetadataAssetDetail parent = requireOwnedDetail(
-                context, ExplorationAssetType.CONTAINER, parentId);
         List<OpenMetadataAsset> collected = new ArrayList<>();
         int offset = 0;
         int pageSize = Math.min(1000, Math.max(1, remaining));
@@ -266,11 +268,9 @@ public class AssetExplorationService {
 
     private LevelResult listDirectoryChildren(
             AssetContext context,
-            String parentId,
+            OpenMetadataAssetDetail parent,
             String keyword,
             int remaining) {
-        OpenMetadataAssetDetail parent = requireOwnedDetail(
-                context, ExplorationAssetType.DIRECTORY, parentId);
         List<OpenMetadataAsset> collected = new ArrayList<>();
         for (OpenMetadataAsset child : parent.children()) {
             if (ExplorationAssetType.DIRECTORY.entityType().equals(child.entityType())
@@ -331,14 +331,18 @@ public class AssetExplorationService {
     }
 
     private OpenMetadataAssetDetail requireOwnedDetail(
-            AssetContext context, ExplorationAssetType type, String assetId) {
-        return requireOwnedDetail(context, type, assetId, false);
+            AssetContext context, ExplorationAssetType type, String assetId, boolean includeSample) {
+        return requireOwnedDetail(context, type, assetId, includeSample, type.detailFields());
     }
 
     private OpenMetadataAssetDetail requireOwnedDetail(
-            AssetContext context, ExplorationAssetType type, String assetId, boolean includeSample) {
+            AssetContext context,
+            ExplorationAssetType type,
+            String assetId,
+            boolean includeSample,
+            String fields) {
         OpenMetadataAssetDetail detail = openMetadataClient.getAssetDetail(
-                type, assetId, includeSample);
+                type, assetId, includeSample, fields);
         if (detail == null || detail.asset() == null) {
             throw invalid("asset does not exist");
         }
@@ -361,7 +365,9 @@ public class AssetExplorationService {
             return List.of();
         }
         try {
-            return breadcrumbs(context, asset.parentId(), parentType);
+            OpenMetadataAssetDetail parent = requireOwnedDetail(
+                    context, parentType, asset.parentId(), false, parentType.parentFields());
+            return breadcrumbs(context, parent);
         } catch (RuntimeException error) {
             // A deleted or unreadable ancestor must not hide the asset itself.
             log.warn("OpenMetadata asset ancestor lookup failed: assetId={}, parentId={}, errorType={}, message={}",
@@ -371,21 +377,30 @@ public class AssetExplorationService {
         }
     }
 
+    /**
+     * Walks up from an already-read parent. The caller reads the parent once with the
+     * children projection, so listing a level does not fetch the same parent twice.
+     */
     private List<DataExplorationAssetRefVO> breadcrumbs(
-            AssetContext context, String parentId, ExplorationAssetType parentType) {
+            AssetContext context, OpenMetadataAssetDetail start) {
         List<DataExplorationAssetRefVO> refs = new ArrayList<>();
-        String currentId = parentId;
-        ExplorationAssetType currentType = parentType;
         Set<String> seen = new HashSet<>();
-        for (int depth = 0; depth < MAX_BREADCRUMB_DEPTH
-                && !isBlank(currentId) && seen.add(currentId); depth++) {
-            OpenMetadataAssetDetail detail = requireOwnedDetail(context, currentType, currentId);
-            refs.add(0, toRef(detail.asset()));
-            currentId = detail.asset().parentId();
-            currentType = ExplorationAssetType.fromValue(detail.asset().parentType());
-            if (currentType == null) {
+        OpenMetadataAssetDetail current = start;
+        for (int depth = 0; depth < MAX_BREADCRUMB_DEPTH && current != null; depth++) {
+            OpenMetadataAsset asset = current.asset();
+            if (asset == null || isBlank(asset.id()) || !seen.add(asset.id())) {
                 break;
             }
+            refs.add(0, toRef(asset));
+            if (isBlank(asset.parentId())) {
+                break;
+            }
+            ExplorationAssetType parentType = ExplorationAssetType.fromValue(asset.parentType());
+            if (parentType == null) {
+                break;
+            }
+            current = requireOwnedDetail(
+                    context, parentType, asset.parentId(), false, parentType.parentFields());
         }
         return refs;
     }

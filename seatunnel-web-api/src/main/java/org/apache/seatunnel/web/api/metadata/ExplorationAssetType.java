@@ -16,7 +16,9 @@ public enum ExplorationAssetType {
             "主题",
             SampleKind.MESSAGES,
             false,
-            "messageSchema,tags",
+            "tags",
+            "service",
+            "service",
             "service,messageSchema,partitions,cleanupPolicies,retentionTime,retentionSize,"
                     + "replicationFactor,maximumMessageSize,minimumInSyncReplicas,topicConfig,tags"),
 
@@ -25,7 +27,9 @@ public enum ExplorationAssetType {
             "索引",
             SampleKind.MESSAGES,
             false,
-            "fields,tags",
+            "tags",
+            "service",
+            "service",
             "service,fields,searchIndexSettings,indexType,tags"),
 
     CONTAINER(
@@ -33,7 +37,9 @@ public enum ExplorationAssetType {
             "容器",
             SampleKind.ROWS,
             true,
-            "dataModel,parent,tags",
+            "parent,tags",
+            "service,parent",
+            "service,parent",
             "service,dataModel,parent,prefix,numberOfObjects,size,fileFormats,fullPath,tags"),
 
     DIRECTORY(
@@ -42,6 +48,8 @@ public enum ExplorationAssetType {
             SampleKind.NONE,
             true,
             "parent,tags",
+            "service,parent",
+            "service,parent,children",
             "service,parent,children,numberOfFiles,numberOfSubDirectories,totalSize,path,tags"),
 
     FILE(
@@ -49,7 +57,9 @@ public enum ExplorationAssetType {
             "文件",
             SampleKind.ROWS,
             false,
-            "directory,columns,tags",
+            "directory,tags",
+            "service",
+            "service",
             "service,directory,columns,size,fileType,mimeType,path,tags"),
 
     API_COLLECTION(
@@ -57,7 +67,9 @@ public enum ExplorationAssetType {
             "接口分组",
             SampleKind.NONE,
             true,
-            "apiEndpoints,tags",
+            "tags",
+            "service",
+            "service",
             "service,apiEndpoints,endpointURL,tags"),
 
     API_ENDPOINT(
@@ -65,7 +77,9 @@ public enum ExplorationAssetType {
             "接口",
             SampleKind.NONE,
             false,
-            "apiCollection,requestSchema,responseSchema,tags",
+            "apiCollection,tags",
+            "service",
+            "service",
             "service,apiCollection,requestMethod,endpointURL,requestSchema,responseSchema,tags");
 
     /** Shape of the sample payload OpenMetadata stores for this family. */
@@ -80,6 +94,8 @@ public enum ExplorationAssetType {
     private final SampleKind sampleKind;
     private final boolean supportsChildren;
     private final String listFields;
+    private final String parentFields;
+    private final String childrenFields;
     private final String detailFields;
 
     ExplorationAssetType(
@@ -88,12 +104,16 @@ public enum ExplorationAssetType {
             SampleKind sampleKind,
             boolean supportsChildren,
             String listFields,
+            String parentFields,
+            String childrenFields,
             String detailFields) {
         this.entityType = entityType;
         this.label = label;
         this.sampleKind = sampleKind;
         this.supportsChildren = supportsChildren;
         this.listFields = listFields;
+        this.parentFields = parentFields;
+        this.childrenFields = childrenFields;
         this.detailFields = detailFields;
     }
 
@@ -117,11 +137,27 @@ public enum ExplorationAssetType {
     }
 
     /**
-     * Schema-only projection for collection listings. Sample payloads are read through
-     * the dedicated sampleData endpoint, never through the list.
+     * Collection projection. List requests only need identity, ownership and row
+     * metadata; schemas and sample payloads are read through the detail endpoint.
      */
     public String listFields() {
         return listFields;
+    }
+
+    /**
+     * Lightweight projection for breadcrumb and ancestor reads. It deliberately omits
+     * schemas, samples and child collections.
+     */
+    public String parentFields() {
+        return parentFields;
+    }
+
+    /**
+     * Projection used when this family is the parent of the level being listed.
+     * Directories need their child references; other families only need their identity.
+     */
+    public String childrenFields() {
+        return childrenFields;
     }
 
     /**

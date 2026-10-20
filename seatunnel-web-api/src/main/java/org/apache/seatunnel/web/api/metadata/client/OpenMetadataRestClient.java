@@ -58,6 +58,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 /**
  * OpenMetadata 2.0.4 boundary backed exclusively by the official
@@ -506,10 +507,18 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     @Override
     public OpenMetadataAssetDetail getAssetDetail(
             ExplorationAssetType type, String resourceId, boolean includeSample) {
+        return getAssetDetail(type, resourceId, includeSample, type.detailFields());
+    }
+
+    @Override
+    public OpenMetadataAssetDetail getAssetDetail(
+            ExplorationAssetType type, String resourceId, boolean includeSample, String fields) {
         validateBaseUrl();
         Object entity;
         try {
-            entity = getAssetEntity(type, resourceId, type.detailFields());
+            entity = getAssetEntity(
+                    type, resourceId,
+                    fields == null || fields.isBlank() ? type.detailFields() : fields);
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
@@ -811,65 +820,73 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     private static List<OpenMetadataAssetField> messageFields(MessageSchema schema) {
-        List<OpenMetadataAssetField> fields = new ArrayList<>();
-        for (org.openmetadata.schema.type.Field field : schema == null
-                ? List.<org.openmetadata.schema.type.Field>of()
-                : safeList(schema.getSchemaFields())) {
-            if (field != null) {
-                fields.add(new OpenMetadataAssetField(
-                        field.getName(),
-                        field.getDataTypeDisplay() != null
-                                ? field.getDataTypeDisplay() : enumValue(field.getDataType()),
-                        field.getDescription(), tagNames(field.getTags())));
-            }
-        }
-        return fields;
+        return assetFields(
+                schema == null ? null : schema.getSchemaFields(),
+                org.openmetadata.schema.type.Field::getName,
+                field -> field.getDataTypeDisplay() != null
+                        ? field.getDataTypeDisplay() : enumValue(field.getDataType()),
+                org.openmetadata.schema.type.Field::getDescription,
+                org.openmetadata.schema.type.Field::getTags,
+                org.openmetadata.schema.type.Field::getChildren);
     }
 
     private static List<OpenMetadataAssetField> apiFields(APISchema schema) {
-        List<OpenMetadataAssetField> fields = new ArrayList<>();
-        for (org.openmetadata.schema.type.Field field : schema == null
-                ? List.<org.openmetadata.schema.type.Field>of()
-                : safeList(schema.getSchemaFields())) {
-            if (field != null) {
-                fields.add(new OpenMetadataAssetField(
-                        field.getName(),
-                        field.getDataTypeDisplay() != null
-                                ? field.getDataTypeDisplay() : enumValue(field.getDataType()),
-                        field.getDescription(), tagNames(field.getTags())));
-            }
-        }
-        return fields;
+        return assetFields(
+                schema == null ? null : schema.getSchemaFields(),
+                org.openmetadata.schema.type.Field::getName,
+                field -> field.getDataTypeDisplay() != null
+                        ? field.getDataTypeDisplay() : enumValue(field.getDataType()),
+                org.openmetadata.schema.type.Field::getDescription,
+                org.openmetadata.schema.type.Field::getTags,
+                org.openmetadata.schema.type.Field::getChildren);
     }
 
     private static List<OpenMetadataAssetField> searchIndexFields(
             List<SearchIndexField> source) {
+        return assetFields(
+                source,
+                SearchIndexField::getName,
+                field -> field.getDataTypeDisplay() != null
+                        ? field.getDataTypeDisplay()
+                        : field.getDataType() == null ? null : field.getDataType().value(),
+                SearchIndexField::getDescription,
+                SearchIndexField::getTags,
+                SearchIndexField::getChildren);
+    }
+
+    private static List<OpenMetadataAssetField> columns(List<Column> source) {
+        return assetFields(
+                source,
+                Column::getName,
+                column -> column.getDataTypeDisplay() != null
+                        ? column.getDataTypeDisplay() : enumValue(column.getDataType()),
+                Column::getDescription,
+                Column::getTags,
+                Column::getChildren);
+    }
+
+    /**
+     * Recursive mapper shared by message schemas, OpenAPI schemas, search index fields
+     * and tabular columns so nested structures are never dropped.
+     */
+    private static <T> List<OpenMetadataAssetField> assetFields(
+            List<T> source,
+            Function<T, String> name,
+            Function<T, String> dataType,
+            Function<T, String> description,
+            Function<T, List<TagLabel>> tags,
+            Function<T, List<T>> children) {
         List<OpenMetadataAssetField> fields = new ArrayList<>();
-        for (SearchIndexField field : safeList(source)) {
+        for (T field : safeList(source)) {
             if (field == null) {
                 continue;
             }
             fields.add(new OpenMetadataAssetField(
-                    field.getName(),
-                    field.getDataTypeDisplay() != null
-                            ? field.getDataTypeDisplay()
-                            : field.getDataType() == null ? null : field.getDataType().value(),
-                    field.getDescription(), tagNames(field.getTags()),
-                    searchIndexFields(field.getChildren())));
-        }
-        return fields;
-    }
-
-    private static List<OpenMetadataAssetField> columns(List<Column> source) {
-        List<OpenMetadataAssetField> fields = new ArrayList<>();
-        for (Column column : safeList(source)) {
-            if (column != null) {
-                fields.add(new OpenMetadataAssetField(
-                        column.getName(),
-                        column.getDataTypeDisplay() != null
-                                ? column.getDataTypeDisplay() : enumValue(column.getDataType()),
-                        column.getDescription(), tagNames(column.getTags())));
-            }
+                    name.apply(field),
+                    dataType.apply(field),
+                    description.apply(field),
+                    tagNames(tags.apply(field)),
+                    assetFields(children.apply(field), name, dataType, description, tags, children)));
         }
         return fields;
     }

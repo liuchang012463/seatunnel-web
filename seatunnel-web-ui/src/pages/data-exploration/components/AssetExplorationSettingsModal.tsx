@@ -2,6 +2,7 @@ import { Alert, Button, Input, Modal, Space, Spin, Switch, Tag, message } from '
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchDataSourceMetadataStatus,
+  retryDataSourceMetadataSync,
   triggerDataSourceScan,
   updateDataSourceSampleData,
   updateDataSourceStorageManifest,
@@ -82,6 +83,7 @@ const AssetExplorationSettingsModal: React.FC<AssetExplorationSettingsModalProps
   const [manifest, setManifest] = useState('');
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [syncError, setSyncError] = useState<string>();
   const [manifestError, setManifestError] = useState<string>();
   const [savedReady, setSavedReady] = useState(false);
@@ -146,7 +148,7 @@ const AssetExplorationSettingsModal: React.FC<AssetExplorationSettingsModalProps
             return true;
           }
           if (response.data.syncStatus === 'ERROR') {
-            setSyncError('配置同步失败，请在数据源管理中重试同步。');
+            setSyncError('配置同步失败，请点击“重试同步”。');
             setSyncing(false);
             return false;
           }
@@ -162,6 +164,31 @@ const AssetExplorationSettingsModal: React.FC<AssetExplorationSettingsModalProps
     }
     return false;
   }, [dataSourceId]);
+
+  const retrySync = useCallback(async (): Promise<boolean> => {
+    if (!dataSourceId) return false;
+    setRetrying(true);
+    setSyncError(undefined);
+    try {
+      const response = await retryDataSourceMetadataSync(dataSourceId);
+      if (response.code !== 0) {
+        throw new Error(response.message || '重试同步失败');
+      }
+      const ready = await waitForReady();
+      if (ready) {
+        message.success('元数据同步已恢复');
+        onSaved?.();
+      }
+      return ready;
+    } catch (error: any) {
+      const detail = error?.response?.data?.message || error?.message || '重试同步失败';
+      setSyncError(detail);
+      message.error(detail);
+      return false;
+    } finally {
+      setRetrying(false);
+    }
+  }, [dataSourceId, onSaved, waitForReady]);
 
   const runScan = async () => {
     if (!dataSourceId) return;
@@ -185,7 +212,10 @@ const AssetExplorationSettingsModal: React.FC<AssetExplorationSettingsModalProps
     try {
       if (!sampleChanged && !manifestChanged) {
         if (scanAfterSave) {
-          if (status?.syncStatus !== 'READY') {
+          if (status?.syncStatus === 'ERROR') {
+            const ready = await retrySync();
+            if (!ready) return;
+          } else if (status?.syncStatus !== 'READY') {
             const ready = await waitForReady();
             if (!ready) return;
           }
@@ -234,7 +264,7 @@ const AssetExplorationSettingsModal: React.FC<AssetExplorationSettingsModalProps
   };
 
   const handleCancel = () => {
-    if (saving || syncing) return;
+    if (saving || syncing || retrying) return;
     if (!dirty) {
       onClose();
       return;
@@ -258,7 +288,7 @@ const AssetExplorationSettingsModal: React.FC<AssetExplorationSettingsModalProps
       footer={null}
       destroyOnHidden
       maskClosable={false}
-      closable={!saving && !syncing}
+      closable={!saving && !syncing && !retrying}
       width={620}
     >
       <Spin spinning={loading}>
@@ -279,6 +309,16 @@ const AssetExplorationSettingsModal: React.FC<AssetExplorationSettingsModalProps
                 : status.syncStatus === 'ERROR' ? 'error' : 'processing'}>
                 {syncStatusLabel(status.syncStatus)}
               </Tag>
+              {status.syncStatus === 'ERROR' && (
+                <Button
+                  size="small"
+                  loading={retrying}
+                  disabled={saving || syncing || retrying}
+                  onClick={() => void retrySync()}
+                >
+                  重试同步
+                </Button>
+              )}
               {status.scan?.lastSuccessTime && (
                 <span className="asset-exploration-settings__muted">
                   最近成功扫描 {status.scan.lastSuccessTime}
@@ -296,7 +336,7 @@ const AssetExplorationSettingsModal: React.FC<AssetExplorationSettingsModalProps
                   <Switch
                     aria-label="样本数据采集"
                     checked={sampleEnabled}
-                    disabled={saving || syncing || savedReady}
+                    disabled={saving || syncing || retrying || savedReady}
                     onChange={(checked) => {
                       setSampleEnabled(checked);
                       setSavedReady(false);
@@ -330,7 +370,7 @@ const AssetExplorationSettingsModal: React.FC<AssetExplorationSettingsModalProps
                   autoSize={{ minRows: 4, maxRows: 10 }}
                   placeholder={'{"entries":[]}'}
                   spellCheck={false}
-                  disabled={saving || syncing || savedReady}
+                  disabled={saving || syncing || retrying || savedReady}
                   status={manifestError ? 'error' : undefined}
                 />
                 {manifestError && <div className="asset-exploration-settings__error">{manifestError}</div>}
@@ -372,18 +412,18 @@ const AssetExplorationSettingsModal: React.FC<AssetExplorationSettingsModalProps
 
             {!savedReady && (
               <Space className="asset-exploration-settings__actions">
-                <Button onClick={handleCancel} disabled={saving || syncing}>取消</Button>
+                <Button onClick={handleCancel} disabled={saving || syncing || retrying}>取消</Button>
                 <Button
                   type="primary"
                   loading={saving && !syncing}
-                  disabled={saving || syncing}
+                  disabled={saving || syncing || retrying}
                   onClick={() => void save(false)}
                 >
                   保存
                 </Button>
                 <Button
                   loading={saving && !syncing}
-                  disabled={saving || syncing}
+                  disabled={saving || syncing || retrying}
                   onClick={() => void save(true)}
                 >
                   保存并扫描

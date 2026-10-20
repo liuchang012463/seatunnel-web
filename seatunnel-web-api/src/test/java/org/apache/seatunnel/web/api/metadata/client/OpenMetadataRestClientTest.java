@@ -535,7 +535,8 @@ class OpenMetadataRestClientTest {
                 respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000010\","
                         + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
                         + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
-                        + "\"messageSchema\":{\"schemaFields\":[{\"name\":\"id\",\"dataType\":\"INT\"}]},"
+                        + "\"messageSchema\":{\"schemaFields\":[{\"name\":\"id\",\"dataType\":\"INT\","
+                        + "\"children\":[{\"name\":\"nested\",\"dataType\":\"STRING\"}]}]},"
                         + "\"partitions\":3}");
                 return;
             }
@@ -564,11 +565,12 @@ class OpenMetadataRestClientTest {
         assertEquals(1, detail.fields().size());
         assertEquals("id", detail.fields().get(0).name());
         assertEquals("INT", detail.fields().get(0).dataType());
+        assertEquals("nested", detail.fields().get(0).children().get(0).name());
         assertEquals("st_ds_42", detail.asset().serviceFullyQualifiedName());
         assertEquals(3, detail.properties().get("partitions"));
         assertNotNull(detail.sample());
         assertEquals(List.of("{\"id\":1}"), detail.sample().messages());
-        assertQuery("/api/v1/topics", listUri.get(), "service=st_ds_42", "fields=messageSchema,tags");
+        assertQuery("/api/v1/topics", listUri.get(), "service=st_ds_42", "fields=tags");
         assertTrue(detailUri.get().contains("fields=service"));
         assertEquals("/api/v1/topics/topic-id/sampleData", sampleUri.get().split("\\?")[0]);
     }
@@ -588,7 +590,8 @@ class OpenMetadataRestClientTest {
             respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000012\","
                     + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
                     + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
-                    + "\"dataModel\":{\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\"}]}}");
+                    + "\"dataModel\":{\"columns\":[{\"name\":\"id\",\"dataType\":\"INT\","
+                    + "\"children\":[{\"name\":\"nested\",\"dataType\":\"STRING\"}]}]}}");
         });
         server.start();
 
@@ -600,6 +603,7 @@ class OpenMetadataRestClientTest {
                 client.getAssetDetail(ExplorationAssetType.CONTAINER, resourceId);
 
         assertEquals(1, detail.fields().size());
+        assertEquals("nested", detail.fields().get(0).children().get(0).name());
         assertEquals(Boolean.TRUE, detail.properties().get("dataModelAvailable"));
         assertNotNull(detail.sample());
         assertEquals(List.of("id"), detail.sample().columns());
@@ -691,6 +695,30 @@ class OpenMetadataRestClientTest {
     }
 
     @Test
+    void requestsTheExplicitParentProjection() throws Exception {
+        AtomicReference<String> uri = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/drives/directories", exchange -> {
+            uri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000020\","
+                    + "\"name\":\"data\",\"fullyQualifiedName\":\"st_ds_42.data\","
+                    + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
+                    + "\"parent\":{\"id\":\"00000000-0000-0000-0000-000000000019\","
+                    + "\"type\":\"directory\",\"fullyQualifiedName\":\"st_ds_42\"}}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        client.getAssetDetail(
+                ExplorationAssetType.DIRECTORY, "dir-id", false, "service,parent");
+
+        assertQuery("/api/v1/drives/directories/dir-id", uri.get(),
+                "fields=service,parent");
+    }
+
+    @Test
     void listsDriveRootsWithRootFilter() throws Exception {
         AtomicReference<String> directoryUri = new AtomicReference<>();
         AtomicReference<String> fileUri = new AtomicReference<>();
@@ -730,7 +758,8 @@ class OpenMetadataRestClientTest {
             respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000030\","
                     + "\"name\":\"docs\",\"fullyQualifiedName\":\"st_ds_42.docs\","
                     + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
-                    + "\"fields\":[{\"name\":\"title\",\"dataType\":\"TEXT\"}]}");
+                    + "\"fields\":[{\"name\":\"title\",\"dataType\":\"TEXT\","
+                    + "\"children\":[{\"name\":\"keyword\",\"dataType\":\"KEYWORD\"}]}]}");
         });
         server.start();
 
@@ -742,6 +771,7 @@ class OpenMetadataRestClientTest {
 
         assertEquals(1, detail.fields().size());
         assertEquals("title", detail.fields().get(0).name());
+        assertEquals("keyword", detail.fields().get(0).children().get(0).name());
         assertNotNull(detail.sample());
         assertEquals(List.of("{\"title\":\"a\"}"), detail.sample().messages());
     }
@@ -798,7 +828,8 @@ class OpenMetadataRestClientTest {
                         + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"},"
                         + "\"apiCollection\":{\"fullyQualifiedName\":\"st_ds_42.default\"},"
                         + "\"requestMethod\":\"GET\","
-                        + "\"requestSchema\":{\"schemaFields\":[{\"name\":\"id\",\"dataType\":\"STRING\"}]},"
+                        + "\"requestSchema\":{\"schemaFields\":[{\"name\":\"id\",\"dataType\":\"STRING\","
+                        + "\"children\":[{\"name\":\"nested\",\"dataType\":\"STRING\"}]}]},"
                         + "\"responseSchema\":{\"schemaFields\":[{\"name\":\"status\",\"dataType\":\"STRING\"}]}}"));
         server.start();
 
@@ -810,6 +841,7 @@ class OpenMetadataRestClientTest {
 
         assertEquals(1, detail.requestFields().size());
         assertEquals("id", detail.requestFields().get(0).name());
+        assertEquals("nested", detail.requestFields().get(0).children().get(0).name());
         assertEquals(1, detail.responseFields().size());
         assertEquals("status", detail.responseFields().get(0).name());
         assertEquals("GET", detail.properties().get("requestMethod"));

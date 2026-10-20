@@ -24,6 +24,7 @@ import {
   Input,
   Modal,
   Pagination,
+  Space,
   Spin,
   Table,
   Tabs,
@@ -37,6 +38,7 @@ import {
   fetchDataExplorationAsset,
   fetchDataExplorationAssets,
   fetchDataSourceMetadataStatus,
+  retryDataSourceMetadataSync,
   triggerDataSourceScan,
 } from '@/pages/data-source/service';
 import type {
@@ -198,13 +200,16 @@ function sampleTag(status?: string) {
 function flattenFields(
   fields: DataExplorationAssetField[] | undefined,
   depth = 0,
+  parentPath = '',
 ): Array<DataExplorationAssetField & { __key: string; __depth: number }> {
   const result: Array<DataExplorationAssetField & { __key: string; __depth: number }> = [];
   (fields || []).forEach((field, index) => {
-    const key = `${depth}-${index}-${field.name || ''}`;
+    // A field name is only unique among its siblings; the full path keeps React keys
+    // unique when different parents expose same-named children.
+    const path = `${parentPath}/${index}:${field.name || ''}`;
     const { children, ...row } = field;
-    result.push({ ...row, __key: key, __depth: depth });
-    result.push(...flattenFields(children, depth + 1));
+    result.push({ ...row, __key: path, __depth: depth });
+    result.push(...flattenFields(children, depth + 1, path));
   });
   return result;
 }
@@ -220,7 +225,7 @@ const fieldColumns: TableColumnsType<DataExplorationAssetField & { __key: string
     ),
   },
   { title: '类型', dataIndex: 'dataType', key: 'dataType', width: 160, render: (value) => value || '—' },
-  { title: '说明', dataIndex: 'description', key: 'description', ellipsis: true, render: (value) => value || '—' },
+  { title: '说明', dataIndex: 'description', key: 'description', ellipsis: true, render: (value) => (value ? decodeHtmlEntities(value) : '—') },
   {
     title: '标签',
     dataIndex: 'tags',
@@ -259,6 +264,13 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const pageRequest = useRef(0);
   const detailRequest = useRef(0);
+  const refreshTimer = useRef<number>();
+
+  useEffect(() => () => {
+    if (refreshTimer.current) {
+      window.clearTimeout(refreshTimer.current);
+    }
+  }, []);
 
   const loadMetadataStatus = useCallback(async () => {
     if (!dataSourceId) return;
@@ -406,11 +418,14 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   const records = page?.records || [];
   const currentPageNo = page?.pageNo || pageNo;
   const total = page?.total || 0;
-  const totalLabel = page?.truncated ? `${total}+` : String(total);
+  const totalLabel = page?.truncated ? `${total}（前 5000 项内）` : String(total);
   const metadataTag = assetExplorationStatus({
     metadataSyncStatus: metadataStatus?.syncStatus,
     scanStatus: metadataStatus?.scan?.status,
   });
+  const syncFailed = metadataStatus?.syncStatus === 'ERROR';
+  const canTriggerScan = metadataStatus?.syncStatus === 'READY' || syncFailed;
+  const rescanLabel = syncFailed ? '重试同步' : '重新扫描';
   const sampleCollectionTag = sampleCollectionCopy(metadataStatus);
   const selectedAsset = detail?.asset;
   const tabs = tabsForAsset(selectedAsset?.assetType || selected?.type);
@@ -464,20 +479,27 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
 
   const triggerScan = () => {
     if (!dataSourceId) return;
+    const retrying = metadataStatus?.syncStatus === 'ERROR';
     Modal.confirm({
-      title: '重新扫描数据源？',
-      content: '扫描会在 OpenMetadata 中重新抽取元数据，并在样本采集开启时采集样本。',
-      okText: '开始扫描',
+      title: retrying ? '重试元数据同步？' : '重新扫描数据源？',
+      content: retrying
+        ? '上次同步失败，将重新建立 OpenMetadata 绑定并继续元数据抽取。'
+        : '扫描会在 OpenMetadata 中重新抽取元数据，并在样本采集开启时采集样本。',
+      okText: retrying ? '重试同步' : '开始扫描',
       cancelText: '取消',
       onOk: async () => {
         try {
-          const response = await triggerDataSourceScan(dataSourceId);
+          const response = retrying
+            ? await retryDataSourceMetadataSync(dataSourceId)
+            : await triggerDataSourceScan(dataSourceId);
           if (response.code !== 0) {
-            message.error(response.message || '扫描提交失败');
+            message.error(response.message || (retrying ? '重试同步失败' : '扫描提交失败'));
             return;
           }
-          message.success('已提交扫描，完成后刷新查看结果');
-          window.setTimeout(() => {
+          message.success(retrying
+            ? '已提交同步重试，完成后刷新查看结果'
+            : '已提交扫描，完成后刷新查看结果');
+          refreshTimer.current = window.setTimeout(() => {
             void loadMetadataStatus();
             void loadPage(level, pageNo, search);
             if (selected) {
@@ -485,7 +507,8 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
             }
           }, 3000);
         } catch (error: any) {
-          message.error(error?.response?.data?.message || error?.message || '扫描提交失败');
+          message.error(error?.response?.data?.message || error?.message
+            || (retrying ? '重试同步失败' : '扫描提交失败'));
         }
       },
     });
@@ -567,9 +590,9 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         <Button
           size="small"
           onClick={triggerScan}
-          disabled={metadataStatus?.syncStatus !== 'READY'}
+          disabled={!canTriggerScan}
         >
-          重新扫描
+          {rescanLabel}
         </Button>,
       );
     }
@@ -629,9 +652,9 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         <Button
           size="small"
           onClick={triggerScan}
-          disabled={metadataStatus?.syncStatus !== 'READY'}
+          disabled={!canTriggerScan}
         >
-          重新扫描
+          {rescanLabel}
         </Button>
       );
     } else if (status === 'ERROR') {
@@ -858,7 +881,18 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                   showIcon
                   message="目录读取失败"
                   description={listError}
-                  action={<Button size="small" onClick={() => void loadPage(level, pageNo, search)}>重试</Button>}
+                  action={(
+                    <Space size="small">
+                      <Button size="small" onClick={() => void loadPage(level, pageNo, search)}>
+                        刷新
+                      </Button>
+                      {syncFailed && (
+                        <Button size="small" type="primary" onClick={triggerScan}>
+                          重试同步
+                        </Button>
+                      )}
+                    </Space>
+                  )}
                 />
               ) : records.length > 0 ? records.map((asset) => {
                 const key = String(asset.id || asset.fullyQualifiedName || asset.name);
@@ -878,7 +912,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                       <span className="asset-exploration__row-icon">{assetIcon(asset.assetType)}</span>
                       <span className="asset-exploration__row-copy">
                         <strong title={assetDisplayName(asset)}>{assetDisplayName(asset)}</strong>
-                        <small title={asset.fullyQualifiedName}>{asset.fullyQualifiedName || asset.description || assetTypeLabel(asset.assetType)}</small>
+                        <small title={asset.fullyQualifiedName}>{asset.fullyQualifiedName || (asset.description ? decodeHtmlEntities(asset.description) : assetTypeLabel(asset.assetType))}</small>
                       </span>
                       <span className="asset-exploration__row-meta">
                         {typeof asset.fieldCount === 'number' && asset.fieldCount > 0 && (
@@ -909,16 +943,18 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                     description={search ? `没有匹配的${currentTerm}` : `OpenMetadata 中暂无${currentTerm}`}
                   />
                   <div className="asset-exploration__empty-hint">
-                    {metadataStatus?.syncStatus === 'READY'
-                      ? '如果刚完成扫描，请刷新列表；仍未出现时可在右侧重新扫描。'
-                      : '元数据尚未同步，请先在探查设置中完成同步。'}
+                    {syncFailed
+                      ? '元数据同步失败，请点击右侧“重试同步”。'
+                      : metadataStatus?.syncStatus === 'READY'
+                        ? '如果刚完成扫描，请刷新列表；仍未出现时可在右侧重新扫描。'
+                        : '元数据尚未同步，请先在探查设置中完成同步。'}
                   </div>
                 </>
               )}
             </Spin>
           </div>
           {page?.truncated && (
-            <div className="asset-exploration__truncated">已扫描前 5000 项，结果可能不完整</div>
+            <div className="asset-exploration__truncated">仅扫描前 5000 项，超出部分未纳入结果</div>
           )}
           <Pagination
             size="small"
@@ -994,10 +1030,11 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
             <Button
               block
               icon={<ReloadOutlined />}
-              disabled={metadataStatus?.syncStatus !== 'READY'}
+              aria-label={rescanLabel}
+              disabled={!canTriggerScan}
               onClick={triggerScan}
             >
-              重新扫描
+              {rescanLabel}
             </Button>
           </section>
         </div>

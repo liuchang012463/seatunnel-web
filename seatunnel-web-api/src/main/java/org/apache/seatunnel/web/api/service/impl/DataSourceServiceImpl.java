@@ -849,6 +849,17 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             if (StringUtils.isBlank(jdbcUrl)) {
                 jdbcUrl = JSONUtils.getNodeString(vo.getConnectionParams(), "baseUrl");
             }
+            if (StringUtils.isBlank(jdbcUrl)) {
+                // Object storage and API sources store their address under a
+                // connector-specific key rather than url/baseUrl.
+                jdbcUrl = JSONUtils.getNodeString(vo.getConnectionParams(), "endpoint");
+            }
+            if (StringUtils.isBlank(jdbcUrl)) {
+                jdbcUrl = JSONUtils.getNodeString(vo.getConnectionParams(), "openApiSpecUrl");
+            }
+            if (StringUtils.isBlank(jdbcUrl)) {
+                jdbcUrl = JSONUtils.getNodeString(vo.getConnectionParams(), "host");
+            }
             vo.setJdbcUrl(jdbcUrl);
         } catch (Exception e) {
             log.warn("Parse jdbc url from connection params failed");

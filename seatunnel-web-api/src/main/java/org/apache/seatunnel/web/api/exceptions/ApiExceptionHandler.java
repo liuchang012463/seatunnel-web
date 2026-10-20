@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.exceptions;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.enums.Status;
@@ -36,6 +37,18 @@ public class ApiExceptionHandler {
             log.error("Meet a ServiceException: {}", e.getMessage(), e);
         }
         return new Result<>(e.getCode(), e.getMessage());
+    }
+
+    /**
+     * Sanitized OpenMetadata boundary failure. The message is already safe to return;
+     * the error code is kept in the log so operators can classify the failure.
+     */
+    @ExceptionHandler(MetadataIntegrationException.class)
+    public Result<Object> handleMetadataIntegrationException(
+            MetadataIntegrationException e, HttpServletRequest request) {
+        logWarnWithHandler(
+                request, "Meet a MetadataIntegrationException: " + e.getErrorCode(), e);
+        return Result.errorWithArgs(Status.INTERNAL_SERVER_ERROR_ARGS, e.getMessage());
     }
 
     /**
