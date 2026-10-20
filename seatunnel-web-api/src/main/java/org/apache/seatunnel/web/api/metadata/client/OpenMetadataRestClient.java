@@ -438,6 +438,13 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     data.add(parsed);
                 }
             }
+            if (type == ExplorationAssetType.API_ENDPOINT && !blank(parentFullyQualifiedName)) {
+                // OpenMetadata 2.0.4 does not apply the apiCollection list filter, so the
+                // endpoints of the service are narrowed down to the requested collection.
+                String prefix = parentFullyQualifiedName + ".";
+                data.removeIf(asset -> asset.fullyQualifiedName() == null
+                        || !asset.fullyQualifiedName().startsWith(prefix));
+            }
             return page(response, data);
         } catch (OpenMetadataException error) {
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
