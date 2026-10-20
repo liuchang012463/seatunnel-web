@@ -159,6 +159,13 @@ export async function triggerDataSourceExploration(
   });
 }
 
+/** Triggers the sample-collection agent for one data source. */
+export async function triggerDataSourceSampleCollection(
+  id: string,
+): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.post(`${DATA_SOURCE_API_PREFIX}/${id}/sample-collect`);
+}
+
 export async function fetchDataSourceMetadataStatus(
   id: string,
 ): Promise<CommonApiResponse<DataSourceMetadataStatus>> {

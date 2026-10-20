@@ -49,8 +49,8 @@ abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonD
      * one is silently dropped. The data source already fixes the bucket, so it is filled
      * in here instead of asking the operator to repeat it.</p>
      *
-     * <p>The data-source-aware overload is used on purpose: it omits the cron expression, so
-     * OpenMetadata cannot schedule an ingestion run behind the operator's back.</p>
+     * <p>The data-source-aware overload is used on purpose: it carries the shared
+     * two-hour metadata schedule.</p>
      */
     @Override
     public JsonNode metadataPipelineRequest(
@@ -105,7 +105,7 @@ abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonD
         config.put("storeSampleData", options != null && options.sampleDataEnabled());
         config.put("enableAutoClassification", false);
         return pipelineRequest(
-                pipelineName, serviceId, serviceFqn, "autoClassification", config, null);
+                pipelineName, serviceId, serviceFqn, "autoClassification", config, SAMPLE_SCHEDULE);
     }
 
     @Override

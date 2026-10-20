@@ -248,6 +248,146 @@ public class MetadataPipelineOperationService {
         return parsed.toString();
     }
 
+    /**
+     * Manually runs the sample-collection agent for one data source.
+     *
+     * <p>Database connectors own a dedicated AutoClassification pipeline. Storage
+     * connectors use the same pipeline but only when the operator enabled sample
+     * collection; Kafka/Elasticsearch/FTP/SFTP collect samples inside their metadata
+     * pipeline and therefore need the switch as well.</p>
+     */
+    public boolean triggerSampleCollection(Long dataSourceId) {
+        requireEnabled();
+        DataSource dataSource = requireActiveDataSource(dataSourceId);
+        MetadataSourceBinding binding = requireReadyBinding(dataSourceId);
+        MetadataConnectorAdapter adapter = connectorRegistry.find(dataSource.getDbType())
+                .orElseThrow(() -> invalid("metadata connector is not supported for this data source type"));
+        openMetadataClient.assertFixedVersion();
+        ensureNoRunningPipeline(binding);
+        if (adapter.supportsProfiler()) {
+            triggerSamplePipeline(adapter.autoClassificationPipelineRequest(
+                    MetadataStableName.autoClassificationPipelineName(dataSourceId),
+                    requireProfilerServiceId(binding, dataSourceId),
+                    requireServiceFqn(binding, dataSourceId)));
+            return true;
+        }
+        if (!Boolean.TRUE.equals(binding.getSampleDataEnabled())) {
+            throw invalid("sample data collection is not enabled for this data source");
+        }
+        if (adapter.collectsSampleDataViaAutoClassification()) {
+            triggerSamplePipeline(adapter.autoClassificationPipelineRequest(
+                    MetadataStableName.autoClassificationPipelineName(dataSourceId),
+                    requireProfilerServiceId(binding, dataSourceId),
+                    requireServiceFqn(binding, dataSourceId),
+                    new MetadataSyncOptions(true, binding.getStorageManifestConfig())));
+            return true;
+        }
+        if (adapter.supportsSampleData()) {
+            // These connectors sample inside their metadata pipeline.
+            openMetadataClient.triggerIngestionPipeline(
+                    requireMetadataPipelineId(binding, dataSourceId));
+            return true;
+        }
+        throw invalid("sample data collection is not supported for this data source type");
+    }
+
+    private void triggerSamplePipeline(JsonNode request) {
+        OpenMetadataEntity pipeline = openMetadataClient.upsertIngestionPipeline(request);
+        openMetadataClient.deployIngestionPipeline(pipeline.id());
+        openMetadataClient.enableIngestionPipeline(pipeline.id());
+        openMetadataClient.triggerIngestionPipeline(pipeline.id());
+    }
+
+    /** True when this connector has a sample pipeline separate from its metadata pipeline. */
+    boolean supportsSeparateSamplePipeline(MetadataSourceBinding binding) {
+        DataSource dataSource = binding == null ? null : dataSourceDao.queryById(binding.getDataSourceId());
+        if (dataSource == null) {
+            return false;
+        }
+        return connectorRegistry.find(dataSource.getDbType())
+                .map(adapter -> adapter.supportsProfiler()
+                        || (adapter.collectsSampleDataViaAutoClassification()
+                        && Boolean.TRUE.equals(binding.getSampleDataEnabled())))
+                .orElse(false);
+    }
+
+    /** True when the reconciler created a profiler pipeline for this binding. */
+    boolean supportsProfilerPipeline(MetadataSourceBinding binding) {
+        if (binding == null || binding.getOmProfilerPipelineId() == null
+                || binding.getOmProfilerPipelineId().isBlank()) {
+            return false;
+        }
+        DataSource dataSource = dataSourceDao.queryById(binding.getDataSourceId());
+        return dataSource != null && connectorRegistry.find(dataSource.getDbType())
+                .map(MetadataConnectorAdapter::supportsProfiler)
+                .orElse(false);
+    }
+
+    /**
+     * Triggers the sample stage of the initial exploration. Returns false when the
+     * connector has no sample pipeline or OpenMetadata rejected the request.
+     */
+    boolean triggerInitialSample(MetadataSourceBinding binding) {
+        if (binding == null) {
+            return false;
+        }
+        try {
+            openMetadataClient.assertFixedVersion();
+            DataSource dataSource = dataSourceDao.queryById(binding.getDataSourceId());
+            if (dataSource == null) {
+                return false;
+            }
+            MetadataConnectorAdapter adapter = connectorRegistry.find(dataSource.getDbType()).orElse(null);
+            if (adapter == null) {
+                return false;
+            }
+            String serviceId = requireProfilerServiceId(binding, binding.getDataSourceId());
+            String serviceFqn = requireServiceFqn(binding, binding.getDataSourceId());
+            JsonNode request;
+            if (adapter.supportsProfiler()) {
+                request = adapter.autoClassificationPipelineRequest(
+                        MetadataStableName.autoClassificationPipelineName(binding.getDataSourceId()),
+                        serviceId, serviceFqn);
+            } else if (adapter.collectsSampleDataViaAutoClassification()
+                    && Boolean.TRUE.equals(binding.getSampleDataEnabled())) {
+                request = adapter.autoClassificationPipelineRequest(
+                        MetadataStableName.autoClassificationPipelineName(binding.getDataSourceId()),
+                        serviceId, serviceFqn,
+                        new MetadataSyncOptions(true, binding.getStorageManifestConfig()));
+            } else {
+                return false;
+            }
+            triggerSamplePipeline(request);
+            return true;
+        } catch (Exception e) {
+            log.warn("Initial sample collection was not triggered: dataSourceId={}, type={}",
+                    binding.getDataSourceId(), e.getClass().getSimpleName());
+            return false;
+        }
+    }
+
+    /**
+     * Triggers the profiler stage of the initial exploration. The pipeline was
+     * deployed by the reconciler, so this only enables and runs it.
+     */
+    boolean triggerInitialProfile(MetadataSourceBinding binding) {
+        if (binding == null || binding.getOmProfilerPipelineId() == null
+                || binding.getOmProfilerPipelineId().isBlank()) {
+            return false;
+        }
+        try {
+            openMetadataClient.assertFixedVersion();
+            openMetadataClient.deployIngestionPipeline(binding.getOmProfilerPipelineId());
+            openMetadataClient.enableIngestionPipeline(binding.getOmProfilerPipelineId());
+            openMetadataClient.triggerIngestionPipeline(binding.getOmProfilerPipelineId());
+            return true;
+        } catch (Exception e) {
+            log.warn("Initial profiler run was not triggered: dataSourceId={}, type={}",
+                    binding.getDataSourceId(), e.getClass().getSimpleName());
+            return false;
+        }
+    }
+
     public boolean triggerScan(Long dataSourceId) {
         requireActiveDataSource(dataSourceId);
         MetadataSourceBinding binding = requireBinding(dataSourceId);

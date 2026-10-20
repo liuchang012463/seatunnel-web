@@ -48,6 +48,7 @@ public class MetadataBindingCommandServiceImpl implements MetadataBindingCommand
         binding.setMetadataTriggeredVersion(INITIAL_TRIGGERED_VERSION);
         binding.setScanStatus(MetadataRunStatus.NEVER);
         binding.setProfileStatus(MetadataRunStatus.NEVER);
+        binding.setInitialRunStage("METADATA");
         binding.setRetryCount(0);
         binding.setVersion(INITIAL_BINDING_VERSION);
 

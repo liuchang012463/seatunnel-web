@@ -47,6 +47,7 @@ class MetadataBindingCommandServiceImplTest {
         assertEquals(0L, binding.getMetadataTriggeredVersion());
         assertEquals(MetadataRunStatus.NEVER, binding.getScanStatus());
         assertEquals(MetadataRunStatus.NEVER, binding.getProfileStatus());
+        assertEquals("METADATA", binding.getInitialRunStage());
         assertNull(binding.getOmServiceId());
         assertNull(binding.getOmServiceFqn());
         assertNull(binding.getOmMetadataPipelineFqn());

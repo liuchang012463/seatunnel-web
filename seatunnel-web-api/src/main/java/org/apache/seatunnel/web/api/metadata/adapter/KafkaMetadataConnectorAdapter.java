@@ -45,8 +45,8 @@ public class KafkaMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCo
      * messages per topic (10 polls inside a 10 second window) and stores them on the
      * topic entity.
      *
-     * <p>The data-source-aware overload is used on purpose: it omits the cron expression, so
-     * OpenMetadata cannot schedule an ingestion run behind the operator's back.</p>
+     * <p>The data-source-aware overload is used on purpose: it carries the shared
+     * metadata schedule, so samples refresh with the two-hour metadata scan.</p>
      */
     @Override
     public JsonNode metadataPipelineRequest(

@@ -1,6 +1,7 @@
 import {
   ApartmentOutlined,
   ClockCircleOutlined,
+  ExperimentOutlined,
   EyeOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
@@ -36,6 +37,7 @@ import {
   fetchDataSourceUnitOptions,
   normalizeDataSourcePageResult,
   triggerDataSourceExploration,
+  triggerDataSourceSampleCollection,
   triggerDataSourceScan,
   unwrapMasterDataList,
 } from '@/pages/data-source/service';
@@ -58,8 +60,10 @@ import {
   getExplorationTaskCategory,
   metadataStatus,
   supportsOmProfiler,
+  supportsSampleCollection,
 } from '../shared';
 import { assetExplorationStatus, isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
+import AssetExplorationSettingsModal from '../components/AssetExplorationSettingsModal';
 import '../index.less';
 
 const DEFAULT_PAGINATION: PaginationInfo = { pageNo: 1, pageSize: 10, total: 0 };
@@ -143,6 +147,8 @@ const DataExplorationTasksPage: React.FC = () => {
   const [schemas, setSchemas] = useState<Array<{ value: string; label: string }>>([]);
   const [schemaFqn, setSchemaFqn] = useState<string>();
   const [exploreOpen, setExploreOpen] = useState(false);
+  const [settingsRecord, setSettingsRecord] = useState<DataSourceRecord>();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [exploreLoading, setExploreLoading] = useState(false);
   const [exploreError, setExploreError] = useState<string>();
   const [schemaLoading, setSchemaLoading] = useState(false);
@@ -486,6 +492,31 @@ const DataExplorationTasksPage: React.FC = () => {
     }
   };
 
+  const triggerSampleCollection = async (record: DataSourceRecord) => {
+    if (!record.id) return;
+    if (isAssetExplorationDbType(record.dbType)) {
+      // Non-database sources need the operator's sample-collection opt-in first.
+      setSettingsRecord(record);
+      setSettingsOpen(true);
+      return;
+    }
+    try {
+      const response = await triggerDataSourceSampleCollection(record.id);
+      if (response.code !== 0) {
+        message.error(response.message || '样例采集暂不可触发');
+        return;
+      }
+      setExplorationFeedback({
+        type: 'info',
+        message: `${record.name || '数据源'} 样例采集已提交`,
+        description: '任务已提交到后台，完成后可在运行记录中查看 AutoClassification 执行结果。',
+      });
+      void load();
+    } catch (error: any) {
+      message.error(errorMessage(error, '样例采集暂不可触发'));
+    }
+  };
+
   const triggerScan = async (record: DataSourceRecord) => {
     if (!record.id) return;
     const recoveringSync = record.metadataSyncStatus === 'ERROR';
@@ -567,12 +598,22 @@ const DataExplorationTasksPage: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      width: 290,
+      width: 360,
       render: (_, record) => (
         <Space size="small" wrap>
           <Button type="link" icon={<SyncOutlined />} onClick={() => void triggerScan(record)}>
             重新扫描
           </Button>
+          {supportsSampleCollection(record.dbType) && (
+            <Button
+              type="link"
+              icon={<ExperimentOutlined />}
+              disabled={record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING'}
+              onClick={() => void triggerSampleCollection(record)}
+            >
+              样例采集
+            </Button>
+          )}
           {supportsOmProfiler(record.dbType) && (
             <Button
               type="link"
@@ -759,7 +800,7 @@ const DataExplorationTasksPage: React.FC = () => {
             />
           ) : null}
           <div className="mb-2 text-sm text-[var(--st-color-text-muted)]">
-            一次探查一个 Database，可进一步限定 Schema。任务提交后不会在此页面自动调度。
+            一次探查一个 Database，可进一步限定 Schema。提交后立即执行一次；元数据每 2 小时、样本与指标每天自动执行。
           </div>
           <Select
             className="w-full"
@@ -787,6 +828,15 @@ const DataExplorationTasksPage: React.FC = () => {
           />
         </div>
       </Modal>
+
+      <AssetExplorationSettingsModal
+        open={settingsOpen}
+        dataSourceId={settingsRecord?.id}
+        dataSourceName={settingsRecord?.name}
+        dbType={settingsRecord?.dbType}
+        onClose={() => setSettingsOpen(false)}
+        onSaved={() => void load()}
+      />
 
       <Modal
         className="exploration-action-modal exploration-run-record-modal"

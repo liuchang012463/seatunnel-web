@@ -13,6 +13,10 @@ public abstract class AbstractNonDatabaseMetadataConnectorAdapter implements Met
 
     protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    /** Metadata scans every two hours; sample-only storage agents run once a day. */
+    static final String METADATA_SCHEDULE = "0 */2 * * *";
+    static final String SAMPLE_SCHEDULE = "0 0 * * *";
+
     @Override
     public JsonNode databaseServiceRequest(DataSource dataSource, String stableServiceName) {
         throw new UnsupportedOperationException(
@@ -21,13 +25,13 @@ public abstract class AbstractNonDatabaseMetadataConnectorAdapter implements Met
 
     @Override
     public JsonNode metadataPipelineRequest(String pipelineName, String serviceId, String serviceFqn) {
-        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, "0 0 1 1 *");
+        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, METADATA_SCHEDULE);
     }
 
     @Override
     public JsonNode metadataPipelineRequest(
             DataSource dataSource, String pipelineName, String serviceId, String serviceFqn) {
-        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, null);
+        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, METADATA_SCHEDULE);
     }
 
     @Override

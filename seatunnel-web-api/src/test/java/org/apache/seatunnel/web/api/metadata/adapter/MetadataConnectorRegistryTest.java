@@ -32,6 +32,10 @@ class MetadataConnectorRegistryTest {
         JsonNode pipeline = adapter.metadataPipelineRequest("st_ds_7_metadata", "uuid-1", "st_ds_7");
         JsonNode scheduledPipeline = adapter.metadataPipelineRequest(
                 dataSource, "st_ds_7_metadata", "uuid-1", "st_ds_7");
+        JsonNode profilerPipeline = adapter.profilerPipelineRequest(
+                "st_ds_7_profiler", "uuid-1", "st_ds_7");
+        JsonNode samplePipeline = adapter.autoClassificationPipelineRequest(
+                "st_ds_7_auto_classification", "uuid-1", "st_ds_7");
 
         assertEquals("Mysql", service.at("/connection/config/type").asText());
         assertEquals("db.example:3307", service.at("/connection/config/hostPort").asText());
@@ -43,7 +47,10 @@ class MetadataConnectorRegistryTest {
         assertEquals(false, pipeline.at("/sourceConfig/config/includeViews").asBoolean());
         assertEquals(1, pipeline.at("/airflowConfig/maxActiveRuns").asInt());
         assertEquals(false, scheduledPipeline.at("/airflowConfig/pausePipeline").asBoolean());
-        assertEquals(true, scheduledPipeline.at("/airflowConfig/scheduleInterval").isNull());
+        assertEquals("0 */2 * * *", scheduledPipeline.at("/airflowConfig/scheduleInterval").asText());
+        assertEquals("0 */2 * * *", pipeline.at("/airflowConfig/scheduleInterval").asText());
+        assertEquals("0 1 * * *", profilerPipeline.at("/airflowConfig/scheduleInterval").asText());
+        assertEquals("0 0 * * *", samplePipeline.at("/airflowConfig/scheduleInterval").asText());
     }
 
     @Test

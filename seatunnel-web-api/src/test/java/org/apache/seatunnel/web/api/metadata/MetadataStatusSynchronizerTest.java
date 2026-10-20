@@ -60,6 +60,71 @@ class MetadataStatusSynchronizerTest {
     }
 
     @Test
+    void newDataSourceStartsSampleCollectionAfterItsFirstMetadataScan() {
+        Date now = new Date();
+        long nowSeconds = now.getTime() / 1000L;
+        MetadataSourceBinding candidate = binding(0L);
+        candidate.setInitialRunStage("METADATA");
+        candidate.setScanStatus(MetadataRunStatus.SUCCESS);
+        candidate.setScanLastSuccessTime(new Date(now.getTime() - 30_000L));
+        MetadataSourceBinding live = binding(0L);
+        live.setInitialRunStage("METADATA");
+        live.setScanStatus(MetadataRunStatus.SUCCESS);
+        live.setScanLastSuccessTime(candidate.getScanLastSuccessTime());
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "scan-1", "success", nowSeconds - 60L, nowSeconds - 50L, nowSeconds - 50L, 0)));
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1))
+                .thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_auto_classification", 1))
+                .thenReturn(List.of());
+        when(operationService.supportsSeparateSamplePipeline(any(MetadataSourceBinding.class))).thenReturn(true);
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
+
+        synchronizer().refreshOne(candidate, now);
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateIfVersion(saved.capture(), eq(0L));
+        assertEquals("SAMPLE", saved.getValue().getInitialRunStage());
+        assertNotNull(saved.getValue().getInitialRunStartedAt());
+        verify(operationService).triggerInitialSample(saved.getValue());
+    }
+
+    @Test
+    void initialSampleSuccessStartsTheProfilerStage() {
+        Date now = new Date();
+        long nowSeconds = now.getTime() / 1000L;
+        MetadataSourceBinding candidate = binding(0L);
+        candidate.setInitialRunStage("SAMPLE");
+        candidate.setInitialRunBaselineId("old-sample");
+        candidate.setInitialRunStartedAt(new Date(now.getTime() - 30_000L));
+        MetadataSourceBinding live = binding(0L);
+        live.setInitialRunStage("SAMPLE");
+        live.setInitialRunBaselineId("old-sample");
+        live.setInitialRunStartedAt(candidate.getInitialRunStartedAt());
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1))
+                .thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "old-profile", "success", nowSeconds - 120L, nowSeconds - 110L, nowSeconds - 110L, 0)));
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_auto_classification", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "new-sample", "success", nowSeconds - 20L, nowSeconds - 10L, nowSeconds - 10L, 0)));
+        when(operationService.supportsProfilerPipeline(any(MetadataSourceBinding.class))).thenReturn(true);
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
+
+        synchronizer().refreshOne(candidate, now);
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateIfVersion(saved.capture(), eq(0L));
+        assertEquals("PROFILE", saved.getValue().getInitialRunStage());
+        assertEquals("old-profile", saved.getValue().getInitialRunBaselineId());
+        verify(operationService).triggerInitialProfile(saved.getValue());
+    }
+
+    @Test
     void marksUnknownInsteadOfFalselyFailingWhenOmCannotBeRead() {
         MetadataSourceBinding candidate = binding(0L);
         MetadataSourceBinding live = binding(0L);

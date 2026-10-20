@@ -19,6 +19,22 @@ import java.util.List;
 @Service
 public class MetadataStatusSynchronizer {
 
+    /** A new data source's initial stage may wait this long before it is abandoned. */
+    private static final long INITIAL_RUN_STAGE_TIMEOUT_MILLIS = 10 * 60 * 1000L;
+
+    private enum InitialRunAction { NONE, SAMPLE, PROFILE }
+
+    private record InitialRunTransition(
+            InitialRunAction action, String stage, String baselineId, Date startedAt) {
+        static InitialRunTransition none() {
+            return new InitialRunTransition(InitialRunAction.NONE, null, null, null);
+        }
+
+        static InitialRunTransition done() {
+            return new InitialRunTransition(InitialRunAction.NONE, "DONE", null, null);
+        }
+    }
+
     private final MetadataBindingDao metadataBindingDao;
     private final OpenMetadataClient openMetadataClient;
     private final MetadataStatusProperties properties;
@@ -100,6 +116,13 @@ public class MetadataStatusSynchronizer {
                     latest.getScanStatus(), latest.getScanLastSuccessTime());
             boolean profileChanged = runOutcomeChanged(profileStatusBefore, profileSuccessBefore,
                     latest.getProfileStatus(), latest.getProfileLastSuccessTime());
+            InitialRunTransition initialTransition =
+                    planInitialRun(latest, sampleRuns, profileRuns, now);
+            if (initialTransition.stage() != null) {
+                latest.setInitialRunStage(initialTransition.stage());
+                latest.setInitialRunBaselineId(initialTransition.baselineId());
+                latest.setInitialRunStartedAt(initialTransition.startedAt());
+            }
             latest.setLastStatusRefreshTime(now);
             latest.setStatusRefreshError(null);
             // Decide before the update so the marker cannot be read as a fresh scan, and trigger
@@ -123,10 +146,93 @@ public class MetadataStatusSynchronizer {
                         && operationService.triggerStorageSampleCollection(latest)) {
                     markStorageSampleTriggered(latest, storageSampleRunId);
                 }
+                if (initialTransition.action() == InitialRunAction.SAMPLE) {
+                    operationService.triggerInitialSample(latest);
+                } else if (initialTransition.action() == InitialRunAction.PROFILE) {
+                    operationService.triggerInitialProfile(latest);
+                }
             }
         } catch (Exception e) {
             markUnknown(candidate, now);
         }
+    }
+
+    /**
+     * Plans the one-time METADATA → SAMPLE → PROFILE sequence for a new data source.
+     * The next stage is persisted with its run baseline before the trigger, so a
+     * concurrent status refresh cannot replay it.
+     */
+    private InitialRunTransition planInitialRun(
+            MetadataSourceBinding binding,
+            List<OpenMetadataPipelineRun> sampleRuns,
+            List<OpenMetadataPipelineRun> profileRuns,
+            Date now) {
+        String stage = binding.getInitialRunStage();
+        if (stage == null || "DONE".equals(stage)) {
+            return InitialRunTransition.none();
+        }
+        if ("METADATA".equals(stage)) {
+            if (binding.getScanStatus() != MetadataRunStatus.SUCCESS) {
+                return InitialRunTransition.none();
+            }
+            boolean databasePipeline = binding.getOmProfilerPipelineFqn() != null
+                    && !binding.getOmProfilerPipelineFqn().isBlank();
+            if (databasePipeline && operationService.supportsSeparateSamplePipeline(binding)) {
+                return new InitialRunTransition(
+                        InitialRunAction.SAMPLE, "SAMPLE", runId(latestRun(sampleRuns)), now);
+            }
+            if (operationService.supportsProfilerPipeline(binding)) {
+                return new InitialRunTransition(
+                        InitialRunAction.PROFILE, "PROFILE", runId(latestRun(profileRuns)), now);
+            }
+            return InitialRunTransition.done();
+        }
+        if (initialStageTimedOut(binding, now)) {
+            return InitialRunTransition.done();
+        }
+        if ("SAMPLE".equals(stage)) {
+            OpenMetadataPipelineRun sample = latestRun(sampleRuns);
+            if (sample == null || sample.runId() == null
+                    || sample.runId().equals(binding.getInitialRunBaselineId())) {
+                return InitialRunTransition.none();
+            }
+            MetadataRunStatus status =
+                    OpenMetadataRunStatusMapper.fromPipelineState(sample.pipelineState());
+            if (status == MetadataRunStatus.FAILED) {
+                return InitialRunTransition.done();
+            }
+            if (status != MetadataRunStatus.SUCCESS) {
+                return InitialRunTransition.none();
+            }
+            if (operationService.supportsProfilerPipeline(binding)) {
+                return new InitialRunTransition(
+                        InitialRunAction.PROFILE, "PROFILE", runId(latestRun(profileRuns)), now);
+            }
+            return InitialRunTransition.done();
+        }
+        if ("PROFILE".equals(stage)) {
+            OpenMetadataPipelineRun profile = latestRun(profileRuns);
+            if (profile == null || profile.runId() == null
+                    || profile.runId().equals(binding.getInitialRunBaselineId())) {
+                return InitialRunTransition.none();
+            }
+            MetadataRunStatus status =
+                    OpenMetadataRunStatusMapper.fromPipelineState(profile.pipelineState());
+            if (status == MetadataRunStatus.SUCCESS || status == MetadataRunStatus.FAILED) {
+                return InitialRunTransition.done();
+            }
+        }
+        return InitialRunTransition.none();
+    }
+
+    private static boolean initialStageTimedOut(MetadataSourceBinding binding, Date now) {
+        return binding.getInitialRunStartedAt() != null
+                && now.getTime() - binding.getInitialRunStartedAt().getTime()
+                        > INITIAL_RUN_STAGE_TIMEOUT_MILLIS;
+    }
+
+    private static String runId(OpenMetadataPipelineRun run) {
+        return run == null ? null : run.runId();
     }
 
     /**

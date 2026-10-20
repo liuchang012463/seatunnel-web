@@ -57,6 +57,19 @@ public class MetadataSourceBinding extends BaseEntity {
      */
     private String storageSampleScanRunId;
 
+    /**
+     * Initial exploration stage for a newly created data source:
+     * METADATA → SAMPLE → PROFILE → DONE. Existing bindings default to DONE so
+     * they are never replayed by an upgrade.
+     */
+    private String initialRunStage;
+
+    /** Latest OpenMetadata run id captured before the current stage was triggered. */
+    private String initialRunBaselineId;
+
+    /** When the current initial stage was triggered; bounds how long it may wait. */
+    private Date initialRunStartedAt;
+
     private MetadataRunStatus scanStatus;
 
     private Date scanLastRunTime;

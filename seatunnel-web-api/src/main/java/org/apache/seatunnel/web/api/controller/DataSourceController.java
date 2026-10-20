@@ -256,6 +256,13 @@ public class DataSourceController {
         return Result.buildSuc(metadataPipelineOperationService.updateSampleDataCollection(id, enabled));
     }
 
+    @PostMapping("/{id}/sample-collect")
+    @Operation(summary = "triggerDataSourceSampleCollection",
+            description = "Trigger the OpenMetadata sample-collection agent for this data source")
+    public Result<Boolean> sampleCollect(@PathVariable("id") Long id) {
+        return Result.buildSuc(metadataPipelineOperationService.triggerSampleCollection(id));
+    }
+
     @PostMapping("/{id}/storage-manifest")
     @Operation(summary = "updateDataSourceStorageManifest",
             description = "Save the OpenMetadata object-storage manifest used for structured containers")

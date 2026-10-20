@@ -151,3 +151,19 @@ export function supportsOmProfiler(dbType?: string): boolean {
   const normalized = String(dbType || '').trim().toUpperCase();
   return (OM_PROFILER_DB_TYPES as readonly string[]).includes(normalized);
 }
+
+/** Connectors whose OpenMetadata pipeline can collect sample rows/messages. */
+export const SAMPLE_COLLECTION_DB_TYPES = [
+  ...OM_PROFILER_DB_TYPES,
+  'KAFKA',
+  'ELASTICSEARCH',
+  'MINIO',
+  'S3',
+  'FTP',
+  'SFTP',
+] as const;
+
+export function supportsSampleCollection(dbType?: string): boolean {
+  const normalized = String(dbType || '').trim().toUpperCase();
+  return (SAMPLE_COLLECTION_DB_TYPES as readonly string[]).includes(normalized);
+}

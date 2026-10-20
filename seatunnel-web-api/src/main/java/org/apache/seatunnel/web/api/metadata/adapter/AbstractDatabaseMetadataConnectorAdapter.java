@@ -15,6 +15,11 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
 
     protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    /** Metadata scans every two hours; sample and profiler agents run once a day. */
+    static final String METADATA_SCHEDULE = "0 */2 * * *";
+    static final String SAMPLE_SCHEDULE = "0 0 * * *";
+    static final String PROFILE_SCHEDULE = "0 1 * * *";
+
     @Override
     public MetadataServiceCategory serviceCategory() {
         return MetadataServiceCategory.DATABASE;
@@ -27,13 +32,13 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
 
     @Override
     public JsonNode metadataPipelineRequest(String pipelineName, String serviceId, String serviceFqn) {
-        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, "0 0 1 1 *");
+        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, METADATA_SCHEDULE);
     }
 
     @Override
     public JsonNode metadataPipelineRequest(
             DataSource dataSource, String pipelineName, String serviceId, String serviceFqn) {
-        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, null);
+        return metadataPipelineRequestInternal(pipelineName, serviceId, serviceFqn, METADATA_SCHEDULE);
     }
 
     private JsonNode metadataPipelineRequestInternal(
@@ -84,8 +89,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         ObjectNode staticSamplingConfig = profileSampleConfig.putObject("config");
         staticSamplingConfig.put("profileSample", 100);
         staticSamplingConfig.put("profileSampleType", "PERCENTAGE");
-        // The profiler is user-triggered only in this MVP.
-        return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config, null);
+        return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config, PROFILE_SCHEDULE);
     }
 
     @Override
@@ -115,7 +119,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         // AutoClassificationWorkflow still runs its sampler when classification is disabled.
         config.put("enableAutoClassification", false);
         return pipelineRequest(pipelineName, serviceId, serviceFqn,
-                "autoClassification", config, null);
+                "autoClassification", config, SAMPLE_SCHEDULE);
     }
 
     protected ObjectNode baseServiceRequest(DataSource dataSource, String stableServiceName) {
@@ -180,11 +184,9 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         root.put("pipelineType", pipelineType);
         root.putObject("sourceConfig").set("config", config);
         ObjectNode airflow = root.putObject("airflowConfig");
-        // Exploration is explicitly user-triggered in this product. Keep the
-        // pipeline unpaused so a managed trigger can execute, but omit a cron
-        // expression so Airflow cannot create a schedule behind the operator's
-        // back.  A paused DAG accepts a trigger in 2.0.4 but leaves the run
-        // permanently queued.
+        // Keep the pipeline unpaused so both the scheduler and a managed
+        // trigger can execute it. A paused DAG accepts a trigger in 2.0.4 but
+        // leaves the run permanently queued.
         airflow.put("pausePipeline", false);
         airflow.put("concurrency", 1);
         if (scheduleInterval == null || scheduleInterval.isBlank()) {
