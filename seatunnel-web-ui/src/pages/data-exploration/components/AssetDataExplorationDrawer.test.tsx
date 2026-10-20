@@ -290,6 +290,7 @@ describe('AssetDataExplorationDrawer', () => {
         { name: '查看 orders.created 详情' },
         { timeout: 5000 },
       ));
+      fireEvent.click(await screen.findByRole('tab', { name: /结构/ }, { timeout: 5000 }));
       expect(await screen.findByText('left', {}, { timeout: 5000 })).toBeTruthy();
       expect(await screen.findByText('right', {}, { timeout: 5000 })).toBeTruthy();
 

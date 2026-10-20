@@ -309,7 +309,7 @@ const DataExplorationOverviewPage: React.FC = () => {
         <section className="overview-panel overview-assets-panel">
           <div className="overview-panel-heading">
             <div>
-              <span className="overview-panel-heading__eyebrow">数据资产</span>
+              <span className="overview-panel-heading__eyebrow">元数据</span>
               <h2>元数据规模</h2>
             </div>
             <span className="overview-panel-heading__meta">已纳入当前范围</span>

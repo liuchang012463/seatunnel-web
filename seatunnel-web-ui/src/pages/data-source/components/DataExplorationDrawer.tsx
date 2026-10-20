@@ -69,7 +69,7 @@ export interface DataExplorationDrawerProps {
   inline?: boolean;
   /** Inline 模式下返回按钮文案，默认「返回探查结果」 */
   backLabel?: string;
-  /** 资产级深链，仅非结构化探查使用。 */
+  /** 元数据级深链，仅非结构化探查使用。 */
   initialAssetId?: string;
   initialAssetType?: string;
   onClose: () => void;
@@ -233,7 +233,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const [detailLoading, setDetailLoading] = useState(false);
   const [preview, setPreview] = useState<DataExplorationPreview>();
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('columns');
+  const previewAttemptRef = useRef<string>();
+  const [activeTab, setActiveTab] = useState('sample');
   const [tableSearch, setTableSearch] = useState('');
   const [pendingSchemaFqn, setPendingSchemaFqn] = useState<string>();
   // The ER diagram is the default view of the main workspace; selecting a
@@ -267,7 +268,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setScopeSummaryError(undefined);
     setPreview(undefined);
     setTableSearch('');
-    setActiveTab('columns');
+    setActiveTab('sample');
     setPendingSchemaFqn(undefined);
     setErActive(true);
     setCompletionJob(undefined);
@@ -374,9 +375,12 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
         message.error(response.message || '无法读取表列表');
         return;
       }
-      setTablePage(response.data || { records: [], total: 0, pageNo, pageSize: 20 });
+      const nextPage = response.data || { records: [], total: 0, pageNo, pageSize: 20 };
+      setTablePage(nextPage);
       setTablePageNo(pageNo);
-      setSelectedTableId(undefined);
+      const firstTable = nextPage.records?.[0];
+      setSelectedTableId(firstTable?.id);
+      setErActive(!firstTable);
       setTableDetail(undefined);
       setProfile(undefined);
       setPreview(undefined);
@@ -409,7 +413,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setProfile(undefined);
     setProfileLoading(false);
     setPreview(undefined);
-    setActiveTab('columns');
+    setActiveTab('sample');
     setCompletionJob(undefined);
     completionNoticeRef.current = undefined;
 
@@ -683,6 +687,21 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       setPreviewLoading(false);
     }
   };
+
+  // Sample data is the default tab, so load it together with the table detail
+  // instead of asking the operator to click "读取前 20 行" first.
+  useEffect(() => {
+    if (!open || !dataSourceId || !selectedTableId || activeTab !== 'sample') {
+      return;
+    }
+    if (preview || previewLoading || previewAttemptRef.current === selectedTableId) {
+      return;
+    }
+    previewAttemptRef.current = selectedTableId;
+    void loadPreview();
+    // loadPreview only reads the selected identifiers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, dataSourceId, open, preview, previewLoading, selectedTableId]);
 
   const structureColumns: TableColumnsType<DataExplorationColumn> = [
     { title: '字段', dataIndex: 'name', key: 'name', width: 150, fixed: 'left' },

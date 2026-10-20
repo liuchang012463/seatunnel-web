@@ -51,9 +51,15 @@ const EMPTY_SUMMARY: DataInventorySummary = {
 const EXPLORATION_GROUPS = [
   {
     key: 'DATABASE',
-    label: '数据库与搜索引擎',
-    description: '关系型、OLAP 数据库、Elasticsearch 索引与非结构化元数据',
+    label: '数据库',
+    description: '关系型与 OLAP 数据库',
     icon: <DatabaseOutlined />,
+  },
+  {
+    key: 'SEARCH_ENGINE',
+    label: '搜索引擎',
+    description: 'Elasticsearch 索引与文档',
+    icon: <SearchOutlined />,
   },
   {
     key: 'MESSAGE_QUEUE',
@@ -101,7 +107,8 @@ function sanitizeReturnTo(value?: string | null): string | undefined {
 
 const GROUP_LABELS: Record<SelectedGroupKey, string> = {
   ALL: '全部类型',
-  DATABASE: '数据库与搜索引擎',
+  DATABASE: '数据库',
+  SEARCH_ENGINE: '搜索引擎',
   MESSAGE_QUEUE: '消息队列',
   API: 'API 服务',
   FILE_TRANSFER: '文件与对象存储',
@@ -109,7 +116,8 @@ const GROUP_LABELS: Record<SelectedGroupKey, string> = {
 
 const GROUP_DESCRIPTIONS: Record<SelectedGroupKey, string> = {
   ALL: '查看当前范围内的全部数据源探查结果',
-  DATABASE: '关系型、OLAP 数据库、Elasticsearch 索引与非结构化元数据',
+  DATABASE: '关系型与 OLAP 数据库的元数据探查结果',
+  SEARCH_ENGINE: 'Elasticsearch 索引与文档元数据',
   MESSAGE_QUEUE: 'Kafka 主题与消息元数据',
   API: 'HTTP 接口与 OpenAPI 目录',
   FILE_TRANSFER: 'FTP、SFTP、S3 与 MinIO 文件对象',
@@ -129,7 +137,12 @@ function readInitialRouteState(): InitialRouteState {
   };
 }
 
+function isSearchEngineDbType(dbType?: string): boolean {
+  return String(dbType || '').trim().toUpperCase() === 'ELASTICSEARCH';
+}
+
 function sourceGroupKey(dbType?: string): ExplorationGroupKey {
+  if (isSearchEngineDbType(dbType)) return 'SEARCH_ENGINE';
   switch (getDataSourceCategory(dbType).key) {
     case 'MESSAGE_QUEUE':
       return 'MESSAGE_QUEUE';
@@ -147,6 +160,7 @@ function sourceGroupKey(dbType?: string): ExplorationGroupKey {
 
 function sourceTypeLabel(dbType?: string): string {
   if (!dbType) return '数据库';
+  if (isSearchEngineDbType(dbType)) return '搜索引擎';
   const category = getDataSourceCategory(dbType);
   if (category.key === 'OTHER') return '数据库';
   return category.label;
@@ -293,6 +307,7 @@ const DataExplorationResultsPage: React.FC = () => {
   const groupCounts = useMemo(() => {
     const counts: Record<ExplorationGroupKey, number> = {
       DATABASE: 0,
+      SEARCH_ENGINE: 0,
       MESSAGE_QUEUE: 0,
       API: 0,
       FILE_TRANSFER: 0,

@@ -40,11 +40,11 @@ export function assetTypeLabel(value?: string): string {
 
 export function assetTypeEyebrow(value?: string): string {
   const type = normalizeAssetType(value);
-  return type ? ASSET_TYPE_EYEBROWS[type] : 'ASSET';
+  return type ? ASSET_TYPE_EYEBROWS[type] : 'METADATA';
 }
 
 export function assetDisplayName(asset?: DataExplorationAsset | null): string {
-  return asset?.displayName || asset?.name || asset?.fullyQualifiedName || '未命名资产';
+  return asset?.displayName || asset?.name || asset?.fullyQualifiedName || '未命名元数据';
 }
 
 export type AssetTabKey = 'schema' | 'sample' | 'metrics' | 'request' | 'response';
@@ -71,7 +71,10 @@ export function tabsForAsset(value?: string): Array<{ key: AssetTabKey; label: s
 }
 
 export function firstTabKey(value?: string): AssetTabKey | undefined {
-  return tabsForAsset(value)[0]?.key;
+  const tabs = tabsForAsset(value);
+  // Sample data is the primary thing operators inspect; open it by default
+  // instead of making them click through the schema first.
+  return tabs.find((tab) => tab.key === 'sample')?.key ?? tabs[0]?.key;
 }
 
 export interface AssetStateCopy {
@@ -93,7 +96,7 @@ export function schemaStatusCopy(status?: ExplorationAssetSchemaStatus): AssetSt
       };
     case 'NOT_SUPPORTED':
       return {
-        title: '该类资产不提供结构',
+        title: '该类元数据不提供结构',
         description: '目录与接口分组在 OpenMetadata 中没有列结构。',
       };
     case 'NO_SCHEMA':
@@ -104,7 +107,7 @@ export function schemaStatusCopy(status?: ExplorationAssetSchemaStatus): AssetSt
     default:
       return {
         title: '暂无结构',
-        description: '当前资产没有可展示的结构。',
+        description: '当前元数据没有可展示的结构。',
       };
   }
 }
@@ -124,7 +127,7 @@ export function sampleStatusCopy(status?: ExplorationAssetSampleStatus): AssetSt
     case 'NOT_COLLECTED':
       return {
         title: '尚未采集到样本',
-        description: '样本采集已开启，但当前资产还没有样本；重新扫描后生成。',
+        description: '样本采集已开启，但当前元数据还没有样本；重新扫描后生成。',
       };
     case 'NEEDS_DATA_MODEL':
       return {
@@ -138,7 +141,7 @@ export function sampleStatusCopy(status?: ExplorationAssetSampleStatus): AssetSt
       };
     case 'NOT_SUPPORTED':
       return {
-        title: '该类资产不提供样本',
+        title: '该类元数据不提供样本',
         description: '目录与接口在 OpenMetadata 2.0.4 中没有样本数据。',
       };
     case 'PERMISSION_DENIED':
@@ -154,7 +157,7 @@ export function sampleStatusCopy(status?: ExplorationAssetSampleStatus): AssetSt
     default:
       return {
         title: '暂无样本',
-        description: '当前资产没有可展示的样本数据。',
+        description: '当前元数据没有可展示的样本数据。',
       };
   }
 }

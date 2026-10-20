@@ -24,7 +24,7 @@ describe('asset exploration helpers', () => {
     expect(tabsForAsset('API_ENDPOINT').map((tab) => tab.key))
       .toEqual(['request', 'response']);
     expect(tabsForAsset('DIRECTORY')).toEqual([]);
-    expect(firstTabKey('CONTAINER')).toBe('schema');
+    expect(firstTabKey('CONTAINER')).toBe('sample');
     expect(firstTabKey('API_COLLECTION')).toBeUndefined();
   });
 
@@ -34,7 +34,7 @@ describe('asset exploration helpers', () => {
     expect(sampleStatusCopy('NOT_APPLICABLE').title).toBe('该文件不提供样本');
     expect(sampleStatusCopy('PERMISSION_DENIED').title).toBe('没有查看样本的权限');
     expect(schemaStatusCopy('NO_SCHEMA').title).toBe('尚未抽取到结构');
-    expect(schemaStatusCopy('NOT_SUPPORTED').title).toBe('该类资产不提供结构');
+    expect(schemaStatusCopy('NOT_SUPPORTED').title).toBe('该类元数据不提供结构');
   });
 
   it('formats display-ready properties', () => {

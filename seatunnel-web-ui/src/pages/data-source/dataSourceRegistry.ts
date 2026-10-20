@@ -79,7 +79,7 @@ export function supportsSchemaScope(dbType?: string): boolean {
 
 const CATEGORY_LABELS: Record<DataSourceCategoryKey, string> = {
   RELATIONAL: '关系型数据库',
-  OLAP: 'OLAP 与搜索引擎',
+  OLAP: 'OLAP 数据库',
   MESSAGE_QUEUE: '消息队列',
   FILE_TRANSFER: '文件与对象存储',
   API: 'API 服务',

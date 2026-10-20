@@ -104,7 +104,7 @@ function rootTerm(dbType?: string): string {
     case 'HTTP':
       return '接口分组';
     default:
-      return '资产';
+      return '元数据';
   }
 }
 
@@ -117,7 +117,7 @@ function childTerm(parentType?: string): string {
     case 'API_COLLECTION':
       return '接口';
     default:
-      return '资产';
+      return '子项';
   }
 }
 
@@ -307,7 +307,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       });
       if (requestId !== pageRequest.current) return;
       if (response.code !== 0 || !response.data) {
-        setListError(response.message || '无法读取资产列表');
+        setListError(response.message || '无法读取元数据列表');
         return;
       }
       setPage(response.data);
@@ -319,7 +319,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       ));
     } catch (error: any) {
       if (requestId !== pageRequest.current) return;
-      setListError(error?.response?.data?.message || error?.message || '无法读取资产列表');
+      setListError(error?.response?.data?.message || error?.message || '无法读取元数据列表');
     } finally {
       if (requestId === pageRequest.current) {
         setListLoading(false);
@@ -340,7 +340,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       const response = await fetchDataExplorationAsset(dataSourceId, assetId, assetType);
       if (requestId !== detailRequest.current) return;
       if (response.code !== 0 || !response.data) {
-        setDetailError(response.message || '无法读取资产详情');
+        setDetailError(response.message || '无法读取元数据详情');
         return;
       }
       setDetail(response.data);
@@ -349,7 +349,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       }
     } catch (error: any) {
       if (requestId !== detailRequest.current) return;
-      setDetailError(error?.response?.data?.message || error?.message || '无法读取资产详情');
+      setDetailError(error?.response?.data?.message || error?.message || '无法读取元数据详情');
     } finally {
       if (requestId === detailRequest.current) {
         setDetailLoading(false);
@@ -362,7 +362,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     try {
       const response = await fetchDataExplorationAsset(dataSourceId, assetId, assetType);
       if (response.code !== 0 || !response.data?.asset) {
-        message.warning('无法定位到指定资产，已返回根层级');
+        message.warning('无法定位到指定元数据，已返回根层级');
         return;
       }
       const breadcrumbs = response.data.breadcrumbs || [];
@@ -377,7 +377,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       setDetail(response.data);
       setActiveTab(firstTabKey(response.data.asset.assetType || assetType));
     } catch {
-      message.warning('无法定位到指定资产，已返回根层级');
+      message.warning('无法定位到指定元数据，已返回根层级');
     }
   }, [dataSourceId]);
 
@@ -411,6 +411,16 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     if (!open || !selected) return;
     void loadDetail(selected.id, selected.type);
   }, [loadDetail, open, selected]);
+
+  // Open the first item by default so the workspace shows its metadata and
+  // sample data without an extra click.
+  useEffect(() => {
+    if (!open || selected || !page?.records?.length) return;
+    const first = page.records[0];
+    if (!first?.id) return;
+    setSelected({ id: first.id, type: String(first.assetType || '') });
+    setActiveTab(firstTabKey(first.assetType));
+  }, [open, page, selected]);
 
   const currentTerm = level.parentType ? childTerm(level.parentType) : rootTerm(dbType);
   const rootCrumbLabel = ['FTP', 'SFTP'].includes(String(dbType || '').toUpperCase())
@@ -614,7 +624,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     if (!detail) return null;
     const sample = detail.sample;
     if (!sample) {
-      return renderState('暂无样本', '当前资产没有可展示的样本数据。', undefined, <EyeOutlined />);
+      return renderState('暂无样本', '当前元数据没有可展示的样本数据。', undefined, <EyeOutlined />);
     }
     const status = sample.status;
     if (status === 'AVAILABLE') {
@@ -672,7 +682,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       <div className="exploration-drawer__tab-toolbar">
         <div>
           <div className="exploration-drawer__eyebrow">PROPERTIES</div>
-          <strong>资产指标</strong>
+          <strong>元数据指标</strong>
         </div>
       </div>
       {renderProperties()}
@@ -724,7 +734,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         <Alert
           type="warning"
           showIcon
-          message="资产详情读取失败"
+          message="元数据详情读取失败"
           description={detailError}
           action={selected
             ? <Button size="small" onClick={() => void loadDetail(selected.id, selected.type, true)}>重试</Button>
@@ -844,7 +854,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
             <Button
               type="text"
               size="small"
-              aria-label="刷新资产列表"
+              aria-label="刷新元数据列表"
               icon={<ReloadOutlined />}
               loading={listLoading}
               onClick={refresh}
@@ -972,14 +982,14 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         {detailBody()}
       </main>
 
-      <aside className="exploration-drawer__inspector" aria-label="资产检查器">
+      <aside className="exploration-drawer__inspector" aria-label="元数据检查器">
         <div className="exploration-drawer__inspector-header">
           <div className="exploration-drawer__eyebrow">INSPECTOR</div>
-          <strong>资产摘要</strong>
+          <strong>元数据摘要</strong>
         </div>
         <div className="exploration-drawer__inspector-scroll">
           <section className="exploration-drawer__inspector-section">
-            <div className="exploration-drawer__property-label">资产身份</div>
+            <div className="exploration-drawer__property-label">元数据身份</div>
             <div className="exploration-drawer__property">
               <span>类型</span>
               <strong>{assetTypeLabel(selectedAsset?.assetType)}</strong>
@@ -1017,7 +1027,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
               disabled={!selected}
               onClick={() => selected && void loadDetail(selected.id, selected.type, true)}
             >
-              刷新当前资产
+              刷新当前元数据
             </Button>
             <Button
               type="primary"
