@@ -13,7 +13,6 @@ import {
   ReloadOutlined,
   RightOutlined,
   SearchOutlined,
-  SettingOutlined,
   TableOutlined,
 } from '@ant-design/icons';
 import {
@@ -29,6 +28,7 @@ import {
   Table,
   Tabs,
   Tag,
+  Tree,
   message,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
@@ -85,6 +85,15 @@ interface LevelState {
   parentId?: string;
   parentType?: string;
   breadcrumbs: DataExplorationAssetRef[];
+}
+
+/** One node of the API catalog tree: a collection with its endpoints below it. */
+interface ApiTreeNode {
+  key: string;
+  title: string;
+  asset: DataExplorationAsset;
+  isLeaf: boolean;
+  children?: ApiTreeNode[];
 }
 
 const PAGE_SIZE = 50;
@@ -148,6 +157,30 @@ function toRef(asset: DataExplorationAsset): DataExplorationAssetRef {
     assetType: asset.assetType,
     fullyQualifiedName: asset.fullyQualifiedName,
   };
+}
+
+function toApiTreeNode(asset: DataExplorationAsset, isLeaf: boolean): ApiTreeNode {
+  return {
+    key: String(asset.id || asset.fullyQualifiedName || asset.name),
+    title: assetDisplayName(asset),
+    asset,
+    isLeaf,
+  };
+}
+
+/** Replaces the children of one tree node, keeping the rest of the tree untouched. */
+function withApiTreeChildren(
+  nodes: ApiTreeNode[],
+  key: string,
+  children: ApiTreeNode[],
+): ApiTreeNode[] {
+  return nodes.map((node) => {
+    if (node.key === key) return { ...node, children, isLeaf: children.length === 0 };
+    if (node.children && node.children.length > 0) {
+      return { ...node, children: withApiTreeChildren(node.children, key, children) };
+    }
+    return node;
+  });
 }
 
 function sampleCollectionCopy(status?: DataSourceMetadataStatus) {
@@ -262,9 +295,13 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   const [detailError, setDetailError] = useState<string>();
   const [activeTab, setActiveTab] = useState<AssetTabKey>();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [apiTree, setApiTree] = useState<ApiTreeNode[]>([]);
   const pageRequest = useRef(0);
   const detailRequest = useRef(0);
   const refreshTimer = useRef<number>();
+  // API services are browsed as one tree: the groups carry their endpoints, so the
+  // request and response structure of an interface is one click away.
+  const isApiCatalog = String(dbType || '').trim().toUpperCase() === 'HTTP';
 
   useEffect(() => () => {
     if (refreshTimer.current) {
@@ -327,12 +364,66 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     }
   }, [dataSourceId]);
 
+  /**
+   * Reads the API catalog root (the interface groups). The endpoints below a group are
+   * loaded when the group is expanded, so the request and response structure of an
+   * interface is reachable without walking into the group first.
+   */
+  const loadApiTree = useCallback(async (requestedSearch: string) => {
+    if (!dataSourceId) return;
+    const requestId = ++pageRequest.current;
+    setListLoading(true);
+    setListError(undefined);
+    try {
+      const response = await fetchDataExplorationAssets({
+        dataSourceId,
+        pageNo: 1,
+        pageSize: PAGE_SIZE,
+        search: requestedSearch,
+      });
+      if (requestId !== pageRequest.current) return;
+      if (response.code !== 0 || !response.data) {
+        setListError(response.message || '无法读取接口目录');
+        return;
+      }
+      setApiTree((response.data.records || []).map((asset) => toApiTreeNode(asset, false)));
+    } catch (error: any) {
+      if (requestId !== pageRequest.current) return;
+      setListError(error?.response?.data?.message || error?.message || '无法读取接口目录');
+    } finally {
+      if (requestId === pageRequest.current) {
+        setListLoading(false);
+      }
+    }
+  }, [dataSourceId]);
+
+  /** Loads the endpoints of one interface group. */
+  const loadApiChildren = useCallback(async (node: ApiTreeNode) => {
+    if (!dataSourceId || !node.asset.id) return;
+    try {
+      const response = await fetchDataExplorationAssets({
+        dataSourceId,
+        parentId: node.asset.id,
+        parentType: 'API_COLLECTION',
+        pageNo: 1,
+        pageSize: PAGE_SIZE,
+      });
+      if (response.code !== 0 || !response.data) {
+        setListError(response.message || '无法读取接口列表');
+        return;
+      }
+      const children = (response.data.records || []).map((asset) => toApiTreeNode(asset, true));
+      setApiTree((current) => withApiTreeChildren(current, node.key, children));
+    } catch (error: any) {
+      setListError(error?.response?.data?.message || error?.message || '无法读取接口列表');
+    }
+  }, [dataSourceId]);
+
   const loadDetail = useCallback(async (
     assetId: string,
     assetType: string,
     keepTab = false,
-  ) => {
-    if (!dataSourceId) return;
+  ) => {    if (!dataSourceId) return;
     const requestId = ++detailRequest.current;
     setDetailLoading(true);
     setDetailError(undefined);
@@ -393,6 +484,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     setSettingsOpen(false);
     setListError(undefined);
     setDetailError(undefined);
+    setApiTree([]);
     void loadMetadataStatus();
     if (initialAssetId && initialAssetType) {
       void loadDeepLink(initialAssetId, initialAssetType);
@@ -402,10 +494,14 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   useEffect(() => {
     if (!open || !dataSourceId) return;
     const timer = window.setTimeout(() => {
+      if (isApiCatalog) {
+        void loadApiTree(search);
+        return;
+      }
       void loadPage(level, pageNo, search);
     }, search ? 300 : 0);
     return () => window.clearTimeout(timer);
-  }, [dataSourceId, level, loadPage, open, pageNo, search]);
+  }, [dataSourceId, isApiCatalog, level, loadApiTree, loadPage, open, pageNo, search]);
 
   useEffect(() => {
     if (!open || !selected) return;
@@ -415,12 +511,12 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   // Open the first item by default so the workspace shows its metadata and
   // sample data without an extra click.
   useEffect(() => {
-    if (!open || selected || !page?.records?.length) return;
+    if (!open || selected || isApiCatalog || !page?.records?.length) return;
     const first = page.records[0];
     if (!first?.id) return;
     setSelected({ id: first.id, type: String(first.assetType || '') });
     setActiveTab(firstTabKey(first.assetType));
-  }, [open, page, selected]);
+  }, [isApiCatalog, open, page, selected]);
 
   const currentTerm = level.parentType ? childTerm(level.parentType) : rootTerm(dbType);
   const rootCrumbLabel = ['FTP', 'SFTP'].includes(String(dbType || '').toUpperCase())
@@ -434,8 +530,6 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     scanStatus: metadataStatus?.scan?.status,
   });
   const syncFailed = metadataStatus?.syncStatus === 'ERROR';
-  const canTriggerScan = metadataStatus?.syncStatus === 'READY' || syncFailed;
-  const rescanLabel = syncFailed ? '重试同步' : '重新扫描';
   const sampleCollectionTag = sampleCollectionCopy(metadataStatus);
   const selectedAsset = detail?.asset;
   const tabs = tabsForAsset(selectedAsset?.assetType || selected?.type);
@@ -481,7 +575,11 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
 
   const refresh = () => {
     void loadMetadataStatus();
-    void loadPage(level, pageNo, search);
+    if (isApiCatalog) {
+      void loadApiTree(search);
+    } else {
+      void loadPage(level, pageNo, search);
+    }
     if (selected) {
       void loadDetail(selected.id, selected.type, true);
     }
@@ -597,13 +695,6 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       return renderState(
         schemaStatusCopy(status).title,
         schemaStatusCopy(status).description,
-        <Button
-          size="small"
-          onClick={triggerScan}
-          disabled={!canTriggerScan}
-        >
-          {rescanLabel}
-        </Button>,
       );
     }
     return (
@@ -657,16 +748,6 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     let action: React.ReactNode;
     if (status === 'DISABLED' || status === 'NEEDS_DATA_MODEL') {
       action = <Button size="small" onClick={() => setSettingsOpen(true)}>打开探查设置</Button>;
-    } else if (status === 'NOT_COLLECTED') {
-      action = (
-        <Button
-          size="small"
-          onClick={triggerScan}
-          disabled={!canTriggerScan}
-        >
-          {rescanLabel}
-        </Button>
-      );
     } else if (status === 'ERROR') {
       action = (
         <Button size="small" onClick={() => selected && void loadDetail(selected.id, selected.type, true)}>
@@ -860,17 +941,19 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
               onClick={refresh}
             />
           </div>
-          <div className="asset-exploration__breadcrumb" aria-label="层级路径">
-            <button type="button" onClick={() => goToBreadcrumb(-1)}>{rootCrumbLabel}</button>
-            {level.breadcrumbs.map((ref, index) => (
-              <React.Fragment key={`${ref.id || ref.name}-${index}`}>
-                <span aria-hidden>/</span>
-                <button type="button" onClick={() => goToBreadcrumb(index)} title={ref.fullyQualifiedName}>
-                  {ref.name || ref.fullyQualifiedName}
-                </button>
-              </React.Fragment>
-            ))}
-          </div>
+          {!isApiCatalog && (
+            <div className="asset-exploration__breadcrumb" aria-label="层级路径">
+              <button type="button" onClick={() => goToBreadcrumb(-1)}>{rootCrumbLabel}</button>
+              {level.breadcrumbs.map((ref, index) => (
+                <React.Fragment key={`${ref.id || ref.name}-${index}`}>
+                  <span aria-hidden>/</span>
+                  <button type="button" onClick={() => goToBreadcrumb(index)} title={ref.fullyQualifiedName}>
+                    {ref.name || ref.fullyQualifiedName}
+                  </button>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="exploration-drawer__nav-divider" />
@@ -893,7 +976,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                   description={listError}
                   action={(
                     <Space size="small">
-                      <Button size="small" onClick={() => void loadPage(level, pageNo, search)}>
+                      <Button size="small" onClick={() => void (isApiCatalog ? loadApiTree(search) : loadPage(level, pageNo, search))}>
                         刷新
                       </Button>
                       {syncFailed && (
@@ -904,6 +987,35 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                     </Space>
                   )}
                 />
+              ) : isApiCatalog ? (
+                apiTree.length > 0 ? (
+                  <Tree
+                    className="asset-exploration__tree"
+                    showIcon
+                    blockNode
+                    treeData={apiTree}
+                    loadData={(node) => loadApiChildren(node as ApiTreeNode)}
+                    selectedKeys={selected ? [selected.id] : []}
+                    onSelect={(_keys, info) => {
+                      const asset = (info.node as ApiTreeNode).asset;
+                      if (asset) selectAsset(asset);
+                    }}
+                    titleRender={(node) => {
+                      const item = node as ApiTreeNode;
+                      return (
+                        <span className="asset-exploration__tree-title" title={item.asset.fullyQualifiedName}>
+                          {assetIcon(item.asset.assetType)}
+                          <span className="asset-exploration__tree-label">{item.title}</span>
+                        </span>
+                      );
+                    }}
+                  />
+                ) : (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={search ? `没有匹配的${currentTerm}` : `OpenMetadata 中暂无${currentTerm}`}
+                  />
+                )
               ) : records.length > 0 ? records.map((asset) => {
                 const key = String(asset.id || asset.fullyQualifiedName || asset.name);
                 const isSelected = selected?.id === asset.id;
@@ -966,15 +1078,17 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
           {page?.truncated && (
             <div className="asset-exploration__truncated">仅扫描前 5000 项，超出部分未纳入结果</div>
           )}
-          <Pagination
-            size="small"
-            current={currentPageNo}
-            pageSize={page?.pageSize || PAGE_SIZE}
-            total={total}
-            showSizeChanger={false}
-            showLessItems
-            onChange={(nextPage) => setPageNo(nextPage)}
-          />
+          {!isApiCatalog && (
+            <Pagination
+              size="small"
+              current={currentPageNo}
+              pageSize={page?.pageSize || PAGE_SIZE}
+              total={total}
+              showSizeChanger={false}
+              showLessItems
+              onChange={(nextPage) => setPageNo(nextPage)}
+            />
+          )}
         </div>
       </aside>
 
@@ -1018,34 +1132,6 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
               {sampleTag(detail?.sample?.status)}
               <p>{sampleStatusCopy(detail?.sample?.status).description}</p>
             </div>
-          </section>
-
-          <section className="exploration-drawer__inspector-actions">
-            <Button
-              block
-              icon={<ReloadOutlined />}
-              disabled={!selected}
-              onClick={() => selected && void loadDetail(selected.id, selected.type, true)}
-            >
-              刷新当前元数据
-            </Button>
-            <Button
-              type="primary"
-              block
-              icon={<SettingOutlined />}
-              onClick={() => setSettingsOpen(true)}
-            >
-              探查设置
-            </Button>
-            <Button
-              block
-              icon={<ReloadOutlined />}
-              aria-label={rescanLabel}
-              disabled={!canTriggerScan}
-              onClick={triggerScan}
-            >
-              {rescanLabel}
-            </Button>
           </section>
         </div>
       </aside>

@@ -24,7 +24,7 @@ describe('asset exploration helpers', () => {
     expect(tabsForAsset('API_ENDPOINT').map((tab) => tab.key))
       .toEqual(['request', 'response']);
     expect(tabsForAsset('DIRECTORY')).toEqual([]);
-    expect(firstTabKey('CONTAINER')).toBe('sample');
+    expect(firstTabKey('CONTAINER')).toBe('schema');
     expect(firstTabKey('API_COLLECTION')).toBeUndefined();
   });
 

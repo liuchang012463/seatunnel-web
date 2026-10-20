@@ -72,9 +72,9 @@ export function tabsForAsset(value?: string): Array<{ key: AssetTabKey; label: s
 
 export function firstTabKey(value?: string): AssetTabKey | undefined {
   const tabs = tabsForAsset(value);
-  // Sample data is the primary thing operators inspect; open it by default
-  // instead of making them click through the schema first.
-  return tabs.find((tab) => tab.key === 'sample')?.key ?? tabs[0]?.key;
+  // The structure is what the metadata scan produced; the sample is optional and
+  // often empty, so the workspace opens on the structure.
+  return tabs.find((tab) => tab.key === 'schema')?.key ?? tabs[0]?.key;
 }
 
 export interface AssetStateCopy {

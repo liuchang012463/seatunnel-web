@@ -78,6 +78,41 @@
     padding: 4px 8px 8px;
   }
 
+  /* The API catalog is browsed as one tree: a group carries its endpoints, so the
+     request and response structure of an interface is reachable in one click. */
+  .asset-exploration__tree {
+    color: var(--exploration-text-secondary);
+    background: transparent;
+
+    .ant-tree-treenode {
+      width: 100%;
+      padding: 2px 0;
+    }
+
+    .ant-tree-node-content-wrapper {
+      min-width: 0;
+      flex: 1;
+      padding: 4px 6px;
+    }
+
+    .ant-tree-node-selected {
+      background: rgb(77 210 255 / 12%);
+    }
+  }
+
+  .asset-exploration__tree-title {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .asset-exploration__tree-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .asset-exploration__row {
     display: flex;
     align-items: stretch;
