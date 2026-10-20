@@ -409,54 +409,59 @@ const IngestionSituationPage: React.FC = () => {
       ? latestRecordsSpeed.reduce((sum, value) => sum + value, 0)
       : null;
 
+  /**
+   * The headline figures are the accumulated assets the system runs on: they answer
+   * "how much is registered", not "how much moved in the selected window". The task
+   * flow of the window stays in the task statistics panel on the right.
+   */
   const kpis = [
     {
-      label: '引接任务数',
-      value: taskMetrics ? integerFormat.format(totals.tasks) : '—',
-      unit: taskMetrics ? '项' : '',
+      label: '已登记数据源',
+      value: inventorySummary ? integerFormat.format(inventorySummary.dataSourceCount) : '—',
+      unit: inventorySummary ? '个' : '',
       tone: 'cyan',
     },
     {
-      label: '引接条数',
-      value: taskMetrics ? recordsDisplay.value : '—',
-      unit: taskMetrics ? recordsDisplay.unit : '',
+      label: '数据库',
+      value: inventorySummary ? integerFormat.format(inventorySummary.databaseCount) : '—',
+      unit: inventorySummary ? '个' : '',
       tone: 'green',
     },
     {
-      label: '引接数据量',
-      value: taskMetrics ? bytesDisplay.value : '—',
-      unit: taskMetrics ? bytesDisplay.unit : '',
+      label: 'Schema',
+      value: inventorySummary ? integerFormat.format(inventorySummary.schemaCount) : '—',
+      unit: inventorySummary ? '个' : '',
+      tone: 'violet',
+    },
+    {
+      label: '数据表',
+      value: inventorySummary ? integerFormat.format(inventorySummary.tableCount) : '—',
+      unit: inventorySummary ? '张' : '',
       tone: 'blue',
     },
     {
-      label: '最新记录速率',
-      value: currentRecordsSpeed === null ? '—' : numberFormat.format(currentRecordsSpeed),
-      unit: currentRecordsSpeed === null ? '' : '条/s',
-      tone: 'orange',
+      label: '字段',
+      value: inventorySummary ? integerFormat.format(inventorySummary.columnCount) : '—',
+      unit: inventorySummary ? '个' : '',
+      tone: 'pink',
     },
     {
-      label: '实时平均延迟',
-      value: averageDelay === null ? '—' : integerFormat.format(averageDelay),
-      unit: averageDelay === null ? '' : 'ms',
+      label: '已探查表',
+      value: inventorySummary ? integerFormat.format(inventorySummary.profiledTableCount) : '—',
+      unit: inventorySummary ? '张' : '',
+      tone: 'amber',
+    },
+    {
+      label: '已采集行数',
+      value: inventorySummary ? integerFormat.format(inventorySummary.knownRowCount) : '—',
+      unit: inventorySummary ? '行' : '',
       tone: 'teal',
-    },
-    {
-      label: '任务成功率',
-      value: successRate === null ? '—' : numberFormat.format(successRate),
-      unit: successRate === null ? '' : '%',
-      tone: 'violet',
     },
     {
       label: '接入业务系统',
       value: businessSystemCount === undefined ? '—' : integerFormat.format(businessSystemCount),
       unit: businessSystemCount === undefined ? '' : '个',
-      tone: 'amber',
-    },
-    {
-      label: '运行中任务',
-      value: taskMetrics ? integerFormat.format(totals.running) : '—',
-      unit: taskMetrics ? '项' : '',
-      tone: 'pink',
+      tone: 'orange',
     },
   ];
 
@@ -1126,6 +1131,24 @@ const IngestionSituationPage: React.FC = () => {
                 <small><ShieldCheck size={12} />{successRate === null ? '暂无已结束任务' : '按任务状态计算'}</small>
               </div>
             </div>
+            <div className="inspect-metrics">
+              <div>
+                <span>引接条数</span>
+                <b>{taskMetrics ? `${recordsDisplay.value} ${recordsDisplay.unit}` : '—'}</b>
+              </div>
+              <div>
+                <span>引接数据量</span>
+                <b>{taskMetrics ? `${bytesDisplay.value} ${bytesDisplay.unit}` : '—'}</b>
+              </div>
+              <div>
+                <span>最新记录速率</span>
+                <b>{currentRecordsSpeed === null ? '—' : `${numberFormat.format(currentRecordsSpeed)} 条/s`}</b>
+              </div>
+              <div>
+                <span>实时平均延迟</span>
+                <b>{averageDelay === null ? '—' : `${integerFormat.format(averageDelay)} ms`}</b>
+              </div>
+            </div>
             <div className="inspect-chart">
               {statusItems.slice(0, 4).map((item) => (
                 <div className="inspect-bar-col" key={item.label}>
@@ -1199,9 +1222,8 @@ const IngestionSituationPage: React.FC = () => {
                 </div>
               </div>
               <div className="report-kpis">
-                <div><span>数据源</span><b>{inventorySummary ? integerFormat.format(inventorySummary.dataSourceCount) : '—'}</b></div>
-                <div><span>数据库</span><b>{inventorySummary ? integerFormat.format(inventorySummary.databaseCount) : '—'}</b></div>
-                <div><span>数据表</span><b>{inventorySummary ? integerFormat.format(inventorySummary.tableCount) : '—'}</b></div>
+                <div><span>已探查表</span><b>{inventorySummary ? integerFormat.format(inventorySummary.profiledTableCount) : '—'}</b></div>
+                <div><span>已采集行数</span><b>{inventorySummary ? integerFormat.format(inventorySummary.knownRowCount) : '—'}</b></div>
               </div>
             </div>
             <div className="report-bars">
