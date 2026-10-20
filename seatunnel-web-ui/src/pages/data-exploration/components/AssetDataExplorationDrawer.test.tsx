@@ -219,7 +219,7 @@ describe('AssetDataExplorationDrawer', () => {
     expect(service.fetchDataExplorationAsset).toHaveBeenCalledWith('42', 'topic-1', 'TOPIC');
   });
 
-  it('offers retry sync when the metadata binding is in error', async () => {
+  it('offers retry sync when the asset list cannot be read', async () => {
     service.fetchDataSourceMetadataStatus.mockResolvedValue({
       code: 0,
       data: {
@@ -230,6 +230,7 @@ describe('AssetDataExplorationDrawer', () => {
         scan: { status: 'FAILED' },
       },
     });
+    service.fetchDataExplorationAssets.mockRejectedValue(new Error('catalog unavailable'));
 
     render(React.createElement(AssetDataExplorationDrawer, {
       inline: true,

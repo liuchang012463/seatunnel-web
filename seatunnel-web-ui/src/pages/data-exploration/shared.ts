@@ -156,43 +156,9 @@ export const EXPLORATION_TASK_CATEGORIES: readonly ExplorationTaskCategory[] = [
 /** Default matches the probe page's database-first workflow. */
 export const DEFAULT_EXPLORATION_TASK_CATEGORY: ExplorationTaskCategoryKey = 'RELATIONAL';
 
-/** DbTypes that OpenMetadata profiler / DataExplorationService.context accept. */
-export const OM_PROFILER_DB_TYPES = [
-  'MYSQL',
-  'POSTGRE_SQL',
-  'ZEONEDB',
-  'VASTBASE',
-  'JDBC',
-  'DORIS',
-  'ORACLE',
-  'DAMENG',
-  'KINGBASE',
-] as const;
-
 export function getExplorationTaskCategory(
   key: ExplorationTaskCategoryKey = DEFAULT_EXPLORATION_TASK_CATEGORY,
 ): ExplorationTaskCategory {
   return EXPLORATION_TASK_CATEGORIES.find((category) => category.key === key)
     ?? EXPLORATION_TASK_CATEGORIES.find((category) => category.key === DEFAULT_EXPLORATION_TASK_CATEGORY)!;
-}
-
-export function supportsOmProfiler(dbType?: string): boolean {
-  const normalized = String(dbType || '').trim().toUpperCase();
-  return (OM_PROFILER_DB_TYPES as readonly string[]).includes(normalized);
-}
-
-/** Connectors whose OpenMetadata pipeline can collect sample rows/messages. */
-export const SAMPLE_COLLECTION_DB_TYPES = [
-  ...OM_PROFILER_DB_TYPES,
-  'KAFKA',
-  'ELASTICSEARCH',
-  'MINIO',
-  'S3',
-  'FTP',
-  'SFTP',
-] as const;
-
-export function supportsSampleCollection(dbType?: string): boolean {
-  const normalized = String(dbType || '').trim().toUpperCase();
-  return (SAMPLE_COLLECTION_DB_TYPES as readonly string[]).includes(normalized);
 }

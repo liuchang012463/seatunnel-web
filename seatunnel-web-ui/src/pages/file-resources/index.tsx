@@ -1,11 +1,9 @@
 import {
   ClockCircleOutlined,
-  CloudUploadOutlined,
   DownloadOutlined,
   FolderAddOutlined,
   FolderOpenOutlined,
   HistoryOutlined,
-  ReloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
@@ -14,12 +12,10 @@ import {
   Alert,
   Button,
   Card,
-  Col,
   Empty,
   Form,
   Input,
   Modal,
-  Row,
   Space,
   Spin,
   Progress,
@@ -63,7 +59,7 @@ import type {
 } from './types';
 import './index.less';
 
-const { Paragraph, Text, Title } = Typography;
+const { Text } = Typography;
 
 const uploadRecordStatusLabel: Record<string, string> = {
   PENDING: '等待上传',
@@ -326,30 +322,6 @@ const FileResourcesPage: React.FC = () => {
   return (
     <PageContainer className="file-resources-page" title="湖文件管理" subTitle="管理数据湖对象存储中的文件与目录">
       {contextHolder}
-      <Card className="file-resources-page__hero" variant="borderless">
-        <Row gutter={[20, 16]} align="middle">
-          <Col flex="auto">
-            <Space align="start" size={14}>
-              <div className="file-resources-page__hero-icon" aria-hidden="true">
-                <CloudUploadOutlined />
-              </div>
-              <div>
-                <Title level={4}>湖文件区</Title>
-                <Paragraph type="secondary">
-                  浏览与管理 MinIO 等湖侧对象存储中的文件，供离线文件导入与文件同步任务按需引用。
-                </Paragraph>
-              </div>
-            </Space>
-          </Col>
-          <Col>
-            <div className="file-resources-page__hero-stat">
-              <Text type="secondary">当前目录</Text>
-              <strong title={path}>{path}</strong>
-            </div>
-          </Col>
-        </Row>
-      </Card>
-
       {selectionMode ? (
         <Alert
           className="file-resources-page__selection-alert"
@@ -362,32 +334,6 @@ const FileResourcesPage: React.FC = () => {
       ) : null}
 
       <Card className="file-resources-page__workspace" variant="borderless">
-        <div className="file-resources-page__toolbar">
-          <div className="file-resources-page__location">
-            <FolderOpenOutlined />
-            <ResourceBreadcrumb path={path} onNavigate={setPath} />
-          </div>
-          <Space wrap>
-            <Upload {...uploadProps}>
-              <Button icon={<UploadOutlined />} loading={uploadingCount > 0}>
-                上传文件
-              </Button>
-            </Upload>
-            <Upload {...uploadProps} directory>
-              <Button icon={<FolderOpenOutlined />} loading={uploadingCount > 0}>
-                上传文件夹
-              </Button>
-            </Upload>
-            <Button icon={<FolderAddOutlined />} onClick={() => setDirectoryModalOpen(true)}>
-              新建目录
-            </Button>
-            <Button icon={<HistoryOutlined />} onClick={openUploadRecords}>
-              上传记录
-            </Button>
-            <Button aria-label="刷新目录" icon={<ReloadOutlined />} onClick={reload} />
-          </Space>
-        </div>
-
         {Object.entries(uploadProgress).length > 0 ? (
           <div className="file-resources-page__upload-progress" aria-live="polite">
             {Object.entries(uploadProgress).map(([key, progress]) => (
@@ -417,6 +363,32 @@ const FileResourcesPage: React.FC = () => {
           onPreview={handlePreview}
           onDownload={handleDownload}
           onDelete={handleDelete}
+          location={(
+            <div className="file-resources-page__location">
+              <FolderOpenOutlined />
+              <ResourceBreadcrumb path={path} onNavigate={setPath} rootLabel="当前目录" />
+            </div>
+          )}
+          actions={(
+            <Space wrap>
+              <Upload {...uploadProps}>
+                <Button icon={<UploadOutlined />} loading={uploadingCount > 0}>
+                  上传文件
+                </Button>
+              </Upload>
+              <Upload {...uploadProps} directory>
+                <Button icon={<FolderOpenOutlined />} loading={uploadingCount > 0}>
+                  上传文件夹
+                </Button>
+              </Upload>
+              <Button icon={<FolderAddOutlined />} onClick={() => setDirectoryModalOpen(true)}>
+                新建目录
+              </Button>
+              <Button icon={<HistoryOutlined />} onClick={openUploadRecords}>
+                上传记录
+              </Button>
+            </Space>
+          )}
           notice={
             <div className="file-resources-page__hint">
               <ClockCircleOutlined />

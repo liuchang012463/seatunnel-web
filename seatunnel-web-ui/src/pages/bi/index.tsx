@@ -458,7 +458,7 @@ const IngestionSituationPage: React.FC = () => {
       tone: 'teal',
     },
     {
-      label: '接入业务系统',
+      label: '业务系统',
       value: businessSystemCount === undefined ? '—' : integerFormat.format(businessSystemCount),
       unit: businessSystemCount === undefined ? '' : '个',
       tone: 'orange',

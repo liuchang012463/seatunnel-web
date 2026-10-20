@@ -59,6 +59,10 @@ export interface FileResourceBrowserProps {
   onPreview?: (resource: FileResourceEntry) => void | Promise<void>;
   onDelete?: (resource: FileResourceEntry) => void | Promise<void>;
   notice?: React.ReactNode;
+  /** Shown on the left of the search row, for example the current directory. */
+  location?: React.ReactNode;
+  /** Shown on the right of the search row, for example the file actions. */
+  actions?: React.ReactNode;
   compact?: boolean;
   pageSize?: number;
 }
@@ -94,6 +98,8 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
   onPreview,
   onDelete,
   notice,
+  location,
+  actions,
   compact = false,
   pageSize = 20,
 }) => {
@@ -347,6 +353,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
     <div className={`file-resource-browser${compact ? ' file-resource-browser--compact' : ''}`}>
       {notice}
       <div className="file-resource-browser__search">
+        {location && <div className="file-resource-browser__location">{location}</div>}
         <Input
           allowClear
           value={searchText}
@@ -377,6 +384,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
         >
           刷新
         </Button>
+        {actions && <div className="file-resource-browser__actions">{actions}</div>}
       </div>
       {error ? (
         <Alert

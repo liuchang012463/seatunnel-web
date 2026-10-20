@@ -274,9 +274,10 @@
 .bi-dashboard .metric-card {
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
   min-width: 0;
   min-height: 62px;
   padding: 8px 14px;
@@ -287,8 +288,8 @@
 }
 .bi-dashboard .metric-card::before { position: absolute; top: 0; left: 0; width: 40%; height: 2px; background: currentColor; box-shadow: 0 0 10px currentColor; content: ''; }
 .bi-dashboard .metric-card.cyan { color: var(--cyan); }.bi-dashboard .metric-card.green { color: var(--green); }.bi-dashboard .metric-card.amber { color: var(--amber); }.bi-dashboard .metric-card.orange { color: var(--orange); }.bi-dashboard .metric-card.teal { color: var(--teal); }.bi-dashboard .metric-card.violet { color: var(--violet); }.bi-dashboard .metric-card.blue { color: var(--text-main); }.bi-dashboard .metric-card.pink { color: var(--pink); }
-.bi-dashboard .metric-name { min-width: 0; overflow: hidden; color: var(--text-sub); font-size: 18px; font-weight: 600; letter-spacing: 0.02em; text-overflow: ellipsis; white-space: nowrap; }
-.bi-dashboard .metric-value { flex: 0 0 auto; overflow: hidden; color: currentColor; font: 400 34px/0.9 var(--font-num); letter-spacing: 0.03em; text-shadow: 0 0 14px color-mix(in srgb, currentColor, transparent 55%); white-space: nowrap; }
+.bi-dashboard .metric-name { max-width: 100%; min-width: 0; overflow: hidden; color: var(--text-sub); font-size: 15px; font-weight: 600; letter-spacing: 0.02em; text-overflow: ellipsis; white-space: nowrap; }
+.bi-dashboard .metric-value { max-width: 100%; flex: 0 0 auto; overflow: hidden; color: currentColor; font: 400 28px/0.9 var(--font-num); letter-spacing: 0.03em; text-shadow: 0 0 14px color-mix(in srgb, currentColor, transparent 55%); white-space: nowrap; }
 .bi-dashboard .metric-value small { margin-left: 4px; color: var(--text-sub); font: 400 13px var(--font-cn); letter-spacing: 0; }
 
 /* ---------------- 拓扑 ---------------- */
