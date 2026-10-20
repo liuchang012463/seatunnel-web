@@ -171,44 +171,58 @@ public final class OpenLineageEventFactory {
     }
 
     /**
-     * Attaches the standard {@code columnLineage} facet to the single output dataset, keyed by the
-     * output field name as the OpenLineage spec requires. Absent when no field was mapped, which
-     * marks a table-level-only run.
-     *
-     * <p>
-     * The facet is only attached when the column attribution is unambiguous: exactly one input
-     * dataset and exactly one output dataset. With several inputs the source table of a column is
-     * unknown, and with several outputs the target table of a column is unknown, so the event
-     * stays at table level instead of guessing.
-     * </p>
+     * Attaches the standard {@code columnLineage} facet to every output dataset that has one,
+     * keyed by the output field name as the OpenLineage spec requires. Absent when no field was
+     * mapped or when the source table of a column is unknown, which marks a table-level-only run.
      */
     private static void attachColumnLineage(ArrayNode outputs, OpenLineageSnapshot snapshot) {
-        Map<String, Set<String>> mappings = snapshot.fieldMappings();
-        List<OpenLineageSnapshot.Dataset> inputs = snapshot.inputs();
-        if (mappings == null || mappings.isEmpty() || inputs == null || inputs.size() != 1) {
+        List<OpenLineageSnapshot.OutputLineage> lineages = snapshot.lineages();
+        if (lineages == null || lineages.isEmpty()) {
             return;
         }
-        if (outputs.size() != 1) {
-            return;
-        }
-        OpenLineageSnapshot.Dataset input = inputs.get(0);
-        ObjectNode datasetNode = (ObjectNode) outputs.get(0);
-        ObjectNode facets = (ObjectNode) datasetNode.get("facets");
-        ObjectNode columnLineage = facets.putObject("columnLineage");
-        columnLineage.put("_producer", PRODUCER);
-        columnLineage.put("_schemaURL", COLUMN_LINEAGE_FACET_SCHEMA_URL);
+        List<OpenLineageSnapshot.Dataset> datasets = snapshot.outputs();
+        for (int index = 0; index < outputs.size() && index < datasets.size(); index++) {
+            OpenLineageSnapshot.Dataset output = datasets.get(index);
+            OpenLineageSnapshot.OutputLineage lineage = findLineage(lineages, output);
+            if (lineage == null || lineage.columns().isEmpty()) {
+                continue;
+            }
+            ObjectNode datasetNode = (ObjectNode) outputs.get(index);
+            ObjectNode facets = (ObjectNode) datasetNode.get("facets");
+            ObjectNode columnLineage = facets.putObject("columnLineage");
+            columnLineage.put("_producer", PRODUCER);
+            columnLineage.put("_schemaURL", COLUMN_LINEAGE_FACET_SCHEMA_URL);
 
-        ObjectNode fields = columnLineage.putObject("fields");
-        for (Map.Entry<String, Set<String>> mapping : new TreeMap<>(mappings).entrySet()) {
-            ObjectNode target = fields.putObject(mapping.getKey());
-            ArrayNode inputFields = target.putArray("inputFields");
-            for (String sourceField : mapping.getValue()) {
-                ObjectNode inputField = inputFields.addObject();
-                inputField.put("namespace", input.namespace() == null ? "" : input.namespace());
-                inputField.put("name", input.name() == null ? "" : input.name());
-                inputField.put("field", sourceField);
+            ObjectNode fields = columnLineage.putObject("fields");
+            for (Map.Entry<String, List<OpenLineageSnapshot.SourceColumn>> column
+                    : new TreeMap<>(lineage.columns()).entrySet()) {
+                ObjectNode target = fields.putObject(column.getKey());
+                ArrayNode inputFields = target.putArray("inputFields");
+                for (OpenLineageSnapshot.SourceColumn source : column.getValue()) {
+                    ObjectNode inputField = inputFields.addObject();
+                    inputField.put("namespace", source.dataset().namespace() == null
+                            ? "" : source.dataset().namespace());
+                    inputField.put("name", source.dataset().name() == null
+                            ? "" : source.dataset().name());
+                    inputField.put("field", source.column());
+                }
             }
         }
+    }
+
+    /** The column lineage of one output dataset, matched by its local identity. */
+    private static OpenLineageSnapshot.OutputLineage findLineage(
+            List<OpenLineageSnapshot.OutputLineage> lineages, OpenLineageSnapshot.Dataset output) {
+        for (OpenLineageSnapshot.OutputLineage lineage : lineages) {
+            if (lineage.output() == null) {
+                continue;
+            }
+            if (java.util.Objects.equals(lineage.output().namespace(), output.namespace())
+                    && java.util.Objects.equals(lineage.output().name(), output.name())) {
+                return lineage;
+            }
+        }
+        return null;
     }
 
     private static void putString(ObjectNode node, String field, String value) {

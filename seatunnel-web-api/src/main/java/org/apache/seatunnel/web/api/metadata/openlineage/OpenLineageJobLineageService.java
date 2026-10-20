@@ -324,6 +324,8 @@ public class OpenLineageJobLineageService {
                 ? null
                 : ConfigFactory.parseString(details.getRuntimeConfig());
         OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(runtimeConfig);
+        List<OpenLineageSnapshot.Dataset> inputs = resolveInputDatasets(details, topology);
+        List<OpenLineageSnapshot.Dataset> outputs = resolveOutputDatasets(details, topology);
         return new OpenLineageSnapshot(
                 eventType,
                 Instant.now(),
@@ -337,9 +339,10 @@ public class OpenLineageJobLineageService {
                 prevStatus,
                 errorMessage,
                 lastHeartbeat,
-                resolveInputDatasets(details, topology),
-                resolveOutputDatasets(details, topology),
-                FieldMappingExtractor.extract(runtimeConfig));
+                inputs,
+                outputs,
+                OpenLineageColumnLineageBuilder.build(
+                        inputs, outputs, FieldMappingExtractor.extractDetailed(runtimeConfig)));
     }
 
     /**

@@ -5,7 +5,6 @@ import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageEventFactory
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Everything the {@link OpenLineageEventFactory} needs to render one OpenLineage {@code RunEvent}.
@@ -43,8 +42,8 @@ public record OpenLineageSnapshot(
         List<Dataset> inputs,
         /** Sink datasets; when empty the factory emits an empty outputs array and no column facet. */
         List<Dataset> outputs,
-        /** Mapping from output field name to the source field names it reads; may be empty. */
-        Map<String, Set<String>> fieldMappings) {
+        /** Column lineage per output dataset; empty when only table level lineage is known. */
+        List<OutputLineage> lineages) {
 
     /**
      * Local identity of one lineage dataset: namespace is the datasource name, name is the
@@ -55,5 +54,19 @@ public record OpenLineageSnapshot(
             String dbTypeName,
             String namespace,
             String name) {
+    }
+
+    /**
+     * One source column, bound to the dataset it belongs to. The binding is what makes the
+     * column lineage unambiguous: without it a column of two source tables cannot be told apart.
+     */
+    public record SourceColumn(Dataset dataset, String column) {
+    }
+
+    /**
+     * The column lineage of one output dataset: the output column and the source columns it
+     * reads. A column with several sources is a many-to-one mapping.
+     */
+    public record OutputLineage(Dataset output, Map<String, List<SourceColumn>> columns) {
     }
 }

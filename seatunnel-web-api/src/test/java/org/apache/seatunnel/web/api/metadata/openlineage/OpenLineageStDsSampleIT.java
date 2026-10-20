@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -11,17 +13,16 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.seatunnel.web.api.metadata.FieldMappingExtractor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -104,14 +105,45 @@ class OpenLineageStDsSampleIT {
 
         String engineJobId = "stweb-stds-sample-" + System.currentTimeMillis();
         String runId = OpenLineageEventFactory.deriveRunId(engineJobId).toString();
-        Map<String, Set<String>> mappings = new LinkedHashMap<>();
-        mappings.put("id", Set.of("id"));
-        mappings.put("name", Set.of("nickname"));
-        mappings.put("avatar", Set.of("head_img_url"));
-        mappings.put("gender", Set.of("sex"));
-        mappings.put("last_login_time", Set.of("update_time"));
-        mappings.put("create_time", Set.of("create_time"));
-        mappings.put("update_time", Set.of("update_time"));
+
+        // The event is built the way the bridge builds it: the submitted configuration is parsed
+        // into datasets, and every mapped column is attributed to the table it comes from.
+        Config runtimeConfig = ConfigFactory.parseString("""
+                source {
+                    Jdbc {
+                        url="jdbc:mysql://82.157.22.233:13306/om_demo"
+                        table_path="om_demo.chatbi.wx_mp_user"
+                    }
+                }
+                transform {
+                    mapped {
+                        source_table_name="om_demo.chatbi.wx_mp_user"
+                        result_table_name="om_demo.chatbi.ac_user"
+                        query="select id as id, nickname as name, head_img_url as avatar, sex as gender, update_time as last_login_time, create_time as create_time, update_time as update_time from om_demo.chatbi.wx_mp_user"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        url="jdbc:mysql://82.157.22.233:13306/om_demo"
+                        table="om_demo.chatbi.ac_user"
+                    }
+                }
+                """);
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(runtimeConfig);
+        assertEquals(1, topology.sources().size());
+        assertEquals(1, topology.sinks().size());
+        List<OpenLineageSnapshot.Dataset> inputs = List.of(new OpenLineageSnapshot.Dataset(
+                DATASOURCE_ID, "MYSQL", DATASOURCE_NAME,
+                topology.sources().get(0).tables().get(0)));
+        List<OpenLineageSnapshot.Dataset> outputs = List.of(new OpenLineageSnapshot.Dataset(
+                DATASOURCE_ID, "MYSQL", DATASOURCE_NAME,
+                topology.sinks().get(0).tables().get(0)));
+        assertEquals(INPUT_TABLE, inputs.get(0).name());
+        assertEquals(OUTPUT_TABLE, outputs.get(0).name());
+        List<OpenLineageSnapshot.OutputLineage> lineages = OpenLineageColumnLineageBuilder.build(
+                inputs, outputs, FieldMappingExtractor.extractDetailed(runtimeConfig));
+        assertEquals(1, lineages.size());
+        assertEquals(7, lineages.get(0).columns().size());
 
         OpenLineageSnapshot snapshot = new OpenLineageSnapshot(
                 OpenLineageEventFactory.EventType.COMPLETE,
@@ -120,11 +152,9 @@ class OpenLineageStDsSampleIT {
                 1024L, 86L, "chatbi_sync_ac_user",
                 false, "BATCH", "BATCH",
                 "RUNNING", null, null,
-                List.of(new OpenLineageSnapshot.Dataset(
-                        DATASOURCE_ID, "MYSQL", DATASOURCE_NAME, INPUT_TABLE)),
-                List.of(new OpenLineageSnapshot.Dataset(
-                        DATASOURCE_ID, "MYSQL", DATASOURCE_NAME, OUTPUT_TABLE)),
-                mappings);
+                inputs,
+                outputs,
+                lineages);
 
         ObjectNode event = OpenLineageEventFactory.toRunEvent(snapshot);
         attachSchema(event.path("inputs").get(0), WX_MP_USER_FIELDS);
@@ -164,7 +194,7 @@ class OpenLineageStDsSampleIT {
                 output.path("facets").path("schema").path("fields").size());
 
         JsonNode lineageFields = output.path("facets").path("columnLineage").path("fields");
-        assertEquals(mappings.size(), lineageFields.size());
+        assertEquals(lineages.get(0).columns().size(), lineageFields.size());
         assertLineage(lineageFields, "id", "id");
         assertLineage(lineageFields, "name", "nickname");
         assertLineage(lineageFields, "avatar", "head_img_url");
@@ -175,7 +205,7 @@ class OpenLineageStDsSampleIT {
         System.out.println("[SAMPLE] verified service=" + SERVICE_NAME
                 + ", inputColumns=" + WX_MP_USER_FIELDS.size()
                 + ", outputColumns=" + AC_USER_FIELDS.size()
-                + ", lineageColumns=" + mappings.size());
+                + ", lineageColumns=" + lineages.get(0).columns().size());
     }
 
     private static String consume(String topic, String runId, LineageBridgeProperties properties) {

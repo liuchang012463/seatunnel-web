@@ -66,7 +66,12 @@ class OpenLineageKafkaSmokeIT {
                 null, null, null,
                 List.of(new OpenLineageSnapshot.Dataset(0L, "MYSQL", "smoke-datasource", "smoke.source_table")),
                 List.of(new OpenLineageSnapshot.Dataset(1L, "DORIS", "smoke-datasource", "smoke.sink_table")),
-                Map.of("smoke_out", Set.of("smoke_in")));
+                List.of(new OpenLineageSnapshot.OutputLineage(
+                        new OpenLineageSnapshot.Dataset(1L, "DORIS", "smoke-datasource", "smoke.sink_table"),
+                        Map.of("smoke_out", List.of(new OpenLineageSnapshot.SourceColumn(
+                                new OpenLineageSnapshot.Dataset(
+                                        0L, "MYSQL", "smoke-datasource", "smoke.source_table"),
+                                "smoke_in"))))));
         String runId = OpenLineageEventFactory.deriveRunId(engineJobId).toString();
         String eventJson = OpenLineageEventFactory.toRunEvent(snapshot).toString();
         System.out.println("[SMOKE] producing to " + topic + ", runId=" + runId);

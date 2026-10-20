@@ -8,6 +8,7 @@ import com.typesafe.config.ConfigValueType;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -26,10 +27,56 @@ import java.util.regex.Pattern;
  * the OpenLineage Kafka bridge both consume it as "job config → column mappings" input while
  * building their own, unrelated output formats.
  * </p>
+ *
+ * <p>
+ * Two levels of detail are offered: {@link #extract(Config)} returns the plain mapping the
+ * OpenMetadata channel needs (output column → source column names), while
+ * {@link #extractDetailed(Config)} additionally reports which transform block declared each
+ * mapping and which tables that block names. The OpenLineage channel needs the second level to
+ * attribute a column to the table it comes from.
+ * </p>
  */
 public final class FieldMappingExtractor {
 
     private FieldMappingExtractor() {}
+
+    /**
+     * One column mapping: the output column and the source columns it reads, plus the block that
+     * declared it.
+     *
+     * @param outputColumn the column the mapping writes
+     * @param sourceColumns the columns the mapping reads; they keep their table qualifier when
+     *     {@code qualified} is set (SQL projections) and are plain names otherwise (field mappers)
+     * @param ownerPath path of the transform block that declared the mapping
+     * @param qualified whether the source columns keep their table qualifier
+     */
+    public record ColumnMapping(
+            String outputColumn,
+            Set<String> sourceColumns,
+            String ownerPath,
+            boolean qualified) {
+    }
+
+    /**
+     * What one transform block says about its tables.
+     *
+     * @param path path of the block inside the job configuration
+     * @param aliasToTable table of every alias of a SQL projection, keyed by the lower case alias
+     * @param sourceTableName the source table a transform names explicitly, when it names one
+     * @param resultTableName the result table a transform names explicitly, when it names one
+     */
+    public record Owner(
+            String path,
+            Map<String, String> aliasToTable,
+            String sourceTableName,
+            String resultTableName) {
+    }
+
+    /**
+     * The detailed extraction: the column mappings and the blocks that declared them.
+     */
+    public record Result(List<ColumnMapping> mappings, List<Owner> owners) {
+    }
 
     /**
      * Reads every FieldMapper target-to-source mapping plus the projections of generated Sql
@@ -39,16 +86,57 @@ public final class FieldMappingExtractor {
      * @return mapping from target field name to the set of source field names it reads from
      */
     public static Map<String, Set<String>> extract(Config runtimeConfig) {
-        if (runtimeConfig == null) {
-            return Map.of();
-        }
         Map<String, Set<String>> mappings = new TreeMap<>();
-        collectFieldMappings(runtimeConfig.root(), mappings);
-        collectSqlTransformMappings(runtimeConfig, mappings);
+        for (ColumnMapping mapping : extractDetailed(runtimeConfig).mappings()) {
+            Set<String> columns =
+                    mappings.computeIfAbsent(mapping.outputColumn(), ignored -> new TreeSet<>());
+            for (String column : mapping.sourceColumns()) {
+                columns.add(mapping.qualified() ? lastSegment(column) : column);
+            }
+        }
         return mappings;
     }
 
-    private static void collectFieldMappings(ConfigValue value, Map<String, Set<String>> mappings) {
+    /**
+     * The detailed extraction: the same mappings as {@link #extract(Config)}, plus the transform
+     * block that declared each of them and the tables that block names.
+     */
+    public static Result extractDetailed(Config runtimeConfig) {
+        if (runtimeConfig == null) {
+            return new Result(List.of(), List.of());
+        }
+        Collector collector = new Collector();
+        collectFieldMappings(runtimeConfig.root(), "", collector);
+        collectSqlTransforms(runtimeConfig, collector);
+        return new Result(collector.mappings, collector.owners());
+    }
+
+    /** Collects the mappings and the transform blocks that declared them. */
+    private static final class Collector {
+
+        private final List<ColumnMapping> mappings = new ArrayList<>();
+        private final Map<String, Owner> owners = new LinkedHashMap<>();
+
+        private void addMapping(String outputColumn, Set<String> sourceColumns, String ownerPath) {
+            mappings.add(new ColumnMapping(outputColumn, sourceColumns, ownerPath, false));
+        }
+
+        private void addSqlMapping(
+                String outputColumn, Set<String> sourceColumns, String ownerPath) {
+            mappings.add(new ColumnMapping(outputColumn, sourceColumns, ownerPath, true));
+        }
+
+        private void addOwner(Owner owner) {
+            owners.putIfAbsent(owner.path(), owner);
+        }
+
+        private List<Owner> owners() {
+            return new ArrayList<>(owners.values());
+        }
+    }
+
+    private static void collectFieldMappings(
+            ConfigValue value, String path, Collector collector) {
         if (value instanceof ConfigObject object) {
             ConfigValue mapperValue = object.get("field_mapper");
             if (mapperValue instanceof ConfigObject mapper) {
@@ -61,12 +149,18 @@ public final class FieldMappingExtractor {
                     if (StringUtils.isAnyBlank(sourceField, targetField)) {
                         continue;
                     }
-                    mappings.computeIfAbsent(targetField, ignored -> new TreeSet<>()).add(sourceField);
+                    collector.addMapping(targetField, Set.of(sourceField), path);
                 }
             }
-            object.values().forEach(child -> collectFieldMappings(child, mappings));
+            for (Map.Entry<String, ConfigValue> entry : object.entrySet()) {
+                collectFieldMappings(entry.getValue(), childPath(path, entry.getKey()), collector);
+            }
         } else if (value instanceof ConfigList list) {
-            list.forEach(child -> collectFieldMappings(child, mappings));
+            int index = 0;
+            for (ConfigValue child : list) {
+                collectFieldMappings(child, path + "[" + index + "]", collector);
+                index++;
+            }
         }
     }
 
@@ -75,23 +169,35 @@ public final class FieldMappingExtractor {
      * mapping. Only the transform section is read: a source connector may carry a query of its own
      * that says nothing about the target table.
      */
-    private static void collectSqlTransformMappings(
-            Config runtimeConfig, Map<String, Set<String>> mappings) {
+    private static void collectSqlTransforms(Config runtimeConfig, Collector collector) {
         if (!runtimeConfig.hasPath("transform")) {
             return;
         }
-        collectSqlQueries(runtimeConfig.getValue("transform"), mappings);
+        collectSqlQueries(runtimeConfig.getValue("transform"), "transform", collector);
     }
 
-    private static void collectSqlQueries(ConfigValue value, Map<String, Set<String>> mappings) {
+    private static void collectSqlQueries(
+            ConfigValue value, String path, Collector collector) {
         if (value instanceof ConfigObject object) {
             ConfigValue queryValue = object.get("query");
             if (queryValue != null && queryValue.valueType() == ConfigValueType.STRING) {
-                collectProjectionMappings(queryValue.unwrapped().toString(), mappings);
+                String query = queryValue.unwrapped().toString();
+                collector.addOwner(new Owner(
+                        path,
+                        parseFromTables(query),
+                        string(object, "source_table_name"),
+                        string(object, "result_table_name")));
+                collectProjectionMappings(query, collector, path);
             }
-            object.values().forEach(child -> collectSqlQueries(child, mappings));
+            for (Map.Entry<String, ConfigValue> entry : object.entrySet()) {
+                collectSqlQueries(entry.getValue(), childPath(path, entry.getKey()), collector);
+            }
         } else if (value instanceof ConfigList list) {
-            list.forEach(child -> collectSqlQueries(child, mappings));
+            int index = 0;
+            for (ConfigValue child : list) {
+                collectSqlQueries(child, path + "[" + index + "]", collector);
+                index++;
+            }
         }
     }
 
@@ -100,7 +206,8 @@ public final class FieldMappingExtractor {
      * the source columns the expression reads. Anything this cannot read exactly (a star, a join,
      * an item without an alias) is left out instead of guessed.
      */
-    private static void collectProjectionMappings(String query, Map<String, Set<String>> mappings) {
+    private static void collectProjectionMappings(
+            String query, Collector collector, String ownerPath) {
         if (StringUtils.isBlank(query)) {
             return;
         }
@@ -117,11 +224,12 @@ public final class FieldMappingExtractor {
             return;
         }
         for (String item : splitTopLevel(projection, ',')) {
-            addProjectionItem(item, mappings);
+            addProjectionItem(item, collector, ownerPath);
         }
     }
 
-    private static void addProjectionItem(String item, Map<String, Set<String>> mappings) {
+    private static void addProjectionItem(
+            String item, Collector collector, String ownerPath) {
         String trimmed = StringUtils.trimToNull(item);
         if (trimmed == null) {
             return;
@@ -138,18 +246,124 @@ public final class FieldMappingExtractor {
         if (StringUtils.isBlank(alias)) {
             return;
         }
-        Set<String> sourceFields = new TreeSet<>();
-        for (String identifier : identifiersIn(expression)) {
-            sourceFields.add(identifier);
-        }
-        if (sourceFields.isEmpty()) {
+        Set<String> sourceColumns = identifiersIn(expression, true);
+        if (sourceColumns.isEmpty()) {
             return;
         }
-        mappings.computeIfAbsent(alias, ignored -> new TreeSet<>()).addAll(sourceFields);
+        collector.addSqlMapping(alias, sourceColumns, ownerPath);
+    }
+
+    /**
+     * The tables of a {@code FROM} clause, keyed by their alias (lower case) and by their own
+     * name. Only plain table references are read; a subquery is skipped.
+     */
+    private static Map<String, String> parseFromTables(String query) {
+        Map<String, String> tables = new LinkedHashMap<>();
+        int select = indexOfKeyword(query, "select", 0);
+        if (select < 0) {
+            return tables;
+        }
+        int from = indexOfKeyword(query, "from", select + "select".length());
+        if (from < 0) {
+            return tables;
+        }
+        String clause = query.substring(from + "from".length(), fromClauseEnd(query, from));
+        List<String> tokens = tokenize(clause);
+        for (int index = 0; index < tokens.size(); index++) {
+            String token = tokens.get(index);
+            if (isJoinKeyword(token)) {
+                continue;
+            }
+            if (isClauseKeyword(token)) {
+                break;
+            }
+            if (!isIdentifierLike(token)) {
+                continue;
+            }
+            String table = token;
+            String alias = null;
+            if (index + 1 < tokens.size()
+                    && isIdentifierLike(tokens.get(index + 1))
+                    && !isClauseKeyword(tokens.get(index + 1))
+                    && !isJoinKeyword(tokens.get(index + 1))) {
+                alias = tokens.get(index + 1);
+                index++;
+            }
+            tables.put(table.toLowerCase(Locale.ROOT), table);
+            if (alias != null) {
+                tables.put(alias.toLowerCase(Locale.ROOT), table);
+            }
+        }
+        return tables;
+    }
+
+    /** The end of the {@code FROM} clause: the first clause keyword that follows it. */
+    private static int fromClauseEnd(String query, int from) {
+        int end = query.length();
+        for (String keyword : List.of("on", "where", "group", "order", "having", "limit", "union",
+                "intersect", "except", "window", "qualify", "using")) {
+            int index = indexOfKeyword(query, keyword, from);
+            if (index >= 0 && index < end) {
+                end = index;
+            }
+        }
+        return end;
+    }
+
+    private static List<String> tokenize(String clause) {
+        List<String> tokens = new ArrayList<>();
+        for (String raw : clause.split("\\s+")) {
+            String token = raw.replace(",", "").trim();
+            if (token.isEmpty() || token.contains("(") || token.contains(")")) {
+                continue;
+            }
+            tokens.add(token);
+        }
+        return tokens;
+    }
+
+    private static boolean isJoinKeyword(String token) {
+        switch (token.toLowerCase(Locale.ROOT)) {
+            case "join":
+            case "inner":
+            case "left":
+            case "right":
+            case "full":
+            case "cross":
+            case "outer":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static boolean isClauseKeyword(String token) {
+        switch (token.toLowerCase(Locale.ROOT)) {
+            case "on":
+            case "where":
+            case "group":
+            case "order":
+            case "having":
+            case "limit":
+            case "union":
+            case "intersect":
+            case "except":
+            case "window":
+            case "qualify":
+            case "using":
+            case "as":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static boolean isIdentifierLike(String token) {
+        return token.matches("[A-Za-z_][A-Za-z0-9_$]*(?:\\.[A-Za-z_][A-Za-z0-9_$]*)*");
     }
 
     /** Identifiers an expression reads: string literals are dropped, quoted names are kept. */
-    private static Set<String> identifiersIn(String expression) {
+    private static Set<String> identifiersIn(String expression, boolean qualified) {
         Set<String> identifiers = new TreeSet<>();
         StringBuilder text = new StringBuilder(expression.length());
         int index = 0;
@@ -182,14 +396,14 @@ public final class FieldMappingExtractor {
             if (nextNonSpace(text, matcher.end()) == '(') {
                 continue;
             }
-            String matched = matcher.group();
+            String matched = matcher.group().replaceAll("\\s*\\.\\s*", ".");
             int lastDot = matched.lastIndexOf('.');
             String column = (lastDot >= 0 ? matched.substring(lastDot + 1) : matched).trim();
             if (StringUtils.isBlank(column)
                     || SQL_RESERVED_WORDS.contains(column.toUpperCase(Locale.ROOT))) {
                 continue;
             }
-            identifiers.add(column);
+            identifiers.add(qualified ? matched : column);
         }
         return identifiers;
     }
@@ -326,5 +540,22 @@ public final class FieldMappingExtractor {
         return StringUtils.trimToNull(value) == null
                 ? null
                 : value.trim().replace("`", "").replace("\"", "").replace("'", "");
+    }
+
+    private static String lastSegment(String identifier) {
+        int lastDot = identifier.lastIndexOf('.');
+        return lastDot >= 0 ? identifier.substring(lastDot + 1) : identifier;
+    }
+
+    private static String childPath(String path, String key) {
+        return path.isEmpty() ? key : path + "." + key;
+    }
+
+    private static String string(ConfigObject object, String key) {
+        ConfigValue value = object.get(key);
+        if (value == null || value.valueType() != ConfigValueType.STRING) {
+            return null;
+        }
+        return StringUtils.trimToNull(value.unwrapped().toString());
     }
 }
