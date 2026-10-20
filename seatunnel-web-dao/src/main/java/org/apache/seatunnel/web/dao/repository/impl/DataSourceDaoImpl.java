@@ -88,7 +88,8 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
                 .eq(businessSystemIds != null && businessSystemIds.isEmpty(), MyBatisColumn.getter(DataSource::getId), -1L)
                 .eq(dto.getStatus() != null, MyBatisColumn.getter(DataSource::getStatus), dto.getStatus())
                 .eq(dto.getEnvironment() != null, MyBatisColumn.getter(DataSource::getEnvironment), dto.getEnvironment())
-                .orderByDesc(MyBatisColumn.getter(DataSource::getCreateTime));
+                .orderByDesc(MyBatisColumn.getter(DataSource::getCreateTime))
+                .orderByDesc(MyBatisColumn.getter(DataSource::getId));
         if (Boolean.TRUE.equals(dto.getExcludeSystemManaged())) {
             wrapper.and(query -> query.eq(MyBatisColumn.getter(DataSource::getSystemManaged), false)
                     .or().isNull(MyBatisColumn.getter(DataSource::getSystemManaged)));

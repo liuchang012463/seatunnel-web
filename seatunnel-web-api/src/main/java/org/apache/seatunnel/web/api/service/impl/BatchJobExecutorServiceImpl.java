@@ -243,13 +243,10 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         try {
             jobSubmitter.pause(instance);
 
-            JobInstance update = new JobInstance();
-            update.setId(jobInstanceId);
-            update.setJobStatus(JobStatus.CANCELED);
-            update.setEndTime(new Date());
-            update.setErrorMessage("Job was manually paused by user.");
-
-            instanceService.updateById(update);
+            // Route the terminal state through the shared handler so metrics are finalized
+            // and the monitor is released instead of waiting for its no-progress timeout.
+            jobResultHandler.handleFinalStatus(
+                    jobInstanceId, JobStatus.CANCELED, "Job was manually paused by user.");
 
             log.info("Job pause success: instanceId={}", jobInstanceId);
             return jobInstanceId;

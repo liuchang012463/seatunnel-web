@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.lake.job.LakeJobGuard;
+import org.apache.seatunnel.web.api.metrics.streaming.StreamingJobResultHandler;
 import org.apache.seatunnel.web.api.metrics.streaming.StreamingJobSubmitter;
 import org.apache.seatunnel.web.api.service.StreamingJobExecutorService;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
@@ -34,18 +35,30 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
     private final StreamingJobSubmitter streamingJobSubmitter;
     private final ZetaJobStatusHandler zetaJobStatusHandler;
     private final LakeJobGuard lakeJobGuard;
+    private final StreamingJobResultHandler streamingJobResultHandler;
 
     @Autowired
     public StreamingJobExecutorServiceImpl(StreamingJobInstanceService streamingJobInstanceService,
                                            StreamingJobDefinitionQueryService streamingJobDefinitionQueryService,
                                            StreamingJobSubmitter streamingJobSubmitter,
                                            ZetaJobStatusHandler zetaJobStatusHandler,
-                                           LakeJobGuard lakeJobGuard) {
+                                           LakeJobGuard lakeJobGuard,
+                                           StreamingJobResultHandler streamingJobResultHandler) {
         this.streamingJobInstanceService = streamingJobInstanceService;
         this.streamingJobDefinitionQueryService = streamingJobDefinitionQueryService;
         this.streamingJobSubmitter = streamingJobSubmitter;
         this.zetaJobStatusHandler = zetaJobStatusHandler;
         this.lakeJobGuard = lakeJobGuard;
+        this.streamingJobResultHandler = streamingJobResultHandler;
+    }
+
+    public StreamingJobExecutorServiceImpl(StreamingJobInstanceService streamingJobInstanceService,
+                                           StreamingJobDefinitionQueryService streamingJobDefinitionQueryService,
+                                           StreamingJobSubmitter streamingJobSubmitter,
+                                           ZetaJobStatusHandler zetaJobStatusHandler,
+                                           LakeJobGuard lakeJobGuard) {
+        this(streamingJobInstanceService, streamingJobDefinitionQueryService,
+                streamingJobSubmitter, zetaJobStatusHandler, lakeJobGuard, null);
     }
 
     public StreamingJobExecutorServiceImpl(StreamingJobInstanceService streamingJobInstanceService,
@@ -53,7 +66,7 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
                                            StreamingJobSubmitter streamingJobSubmitter,
                                            ZetaJobStatusHandler zetaJobStatusHandler) {
         this(streamingJobInstanceService, streamingJobDefinitionQueryService,
-                streamingJobSubmitter, zetaJobStatusHandler, null);
+                streamingJobSubmitter, zetaJobStatusHandler, null, null);
     }
 
     @Override
@@ -167,13 +180,20 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
         try {
             streamingJobSubmitter.pause(instance);
 
-            StreamingJobInstance update = new StreamingJobInstance();
-            update.setId(jobInstanceId);
-            update.setJobStatus(JobStatus.CANCELED);
-            update.setEndTime(new Date());
-            update.setErrorMessage("Streaming job was manually paused by user.");
+            // Finalize through the shared handler so the streaming metrics monitor is released
+            // and the engine log is persisted instead of waiting for its timeout.
+            if (streamingJobResultHandler != null) {
+                streamingJobResultHandler.handleCanceled(
+                        jobInstanceId, "Streaming job was manually paused by user.");
+            } else {
+                StreamingJobInstance update = new StreamingJobInstance();
+                update.setId(jobInstanceId);
+                update.setJobStatus(JobStatus.CANCELED);
+                update.setEndTime(new Date());
+                update.setErrorMessage("Streaming job was manually paused by user.");
 
-            streamingJobInstanceService.updateById(update);
+                streamingJobInstanceService.updateById(update);
+            }
 
             log.info("Streaming job pause success: instanceId={}", jobInstanceId);
             return jobInstanceId;

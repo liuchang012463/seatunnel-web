@@ -378,13 +378,17 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
     public List<JobTableMetricsVO> listTableMetrics(Long instanceId) {
         validateInstanceId(instanceId);
 
+        JobInstanceVO instance = jobInstanceDao.selectDetailById(instanceId);
+        if (instance == null) {
+            throw new ServiceException(Status.BATCH_JOB_INSTANCE_NOT_EXIST);
+        }
+
         try {
             List<JobTableMetricsVO> tableMetrics = jobTableMetricsDao.selectByInstanceId(instanceId);
             if (tableMetrics == null || tableMetrics.isEmpty() || tableMetrics.size() != 1) {
                 return tableMetrics == null ? List.of() : tableMetrics;
             }
 
-            JobInstanceVO instance = jobInstanceDao.selectDetailById(instanceId);
             if (!isTerminalInstance(instance)) {
                 return tableMetrics;
             }
