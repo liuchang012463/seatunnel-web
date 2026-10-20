@@ -31,7 +31,6 @@ import {
   fetchBusinessSystemOptions,
   fetchDataSourceMetadataDatabases,
   fetchDataSourceMetadataSchemas,
-  fetchDataSourceMetadataRuns,
   fetchDataSourceMetadataStatus,
   fetchDataSourcePage,
   fetchDataSourceUnitOptions,
@@ -56,26 +55,18 @@ import {
   EXPLORATION_TASK_CATEGORIES,
   type ExplorationTaskCategoryKey,
   displayOwner,
-  explorationStatus,
   getExplorationTaskCategory,
   metadataStatus,
-  supportsOmProfiler,
-  supportsSampleCollection,
+  profilerStatus,
+  sampleStatus,
 } from '../shared';
 import { assetExplorationStatus, isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
 import AssetExplorationSettingsModal from '../components/AssetExplorationSettingsModal';
+import RunRecordLogModal from '../components/RunRecordLogModal';
 import '../index.less';
 
 const DEFAULT_PAGINATION: PaginationInfo = { pageNo: 1, pageSize: 10, total: 0 };
 
-type RunRecord = {
-  runId: string;
-  pipelineType?: string;
-  status: string;
-  startTime?: string;
-  endTime?: string;
-  errorMessage?: string;
-};
 type ExplorationTracking = { id: string; name: string; submittedAt: number };
 type ExplorationFeedback = { type: 'info' | 'success' | 'error'; message: string; description?: string };
 
@@ -111,21 +102,6 @@ function explorationErrorText(status?: DataSourceMetadataStatus['exploration']) 
   return labels[code] || `探查任务执行失败（${code}）`;
 }
 
-function runStatusLabel(status?: string) {
-  if (status === 'SUCCESS') return '成功';
-  if (status === 'FAILED') return '失败';
-  if (status === 'RUNNING' || status === 'QUEUED') return '执行中';
-  return status || '-';
-}
-
-function runPipelineLabel(pipelineType?: string) {
-  if (pipelineType === 'PROFILER') return '指标统计';
-  if (pipelineType === 'AUTO_CLASSIFICATION') return '采样数据';
-  if (pipelineType === 'METADATA') return '元数据扫描';
-  if (pipelineType === 'LOCAL') return '本地触发';
-  return pipelineType;
-}
-
 function schemaPlaceholder() {
   return '请选择 Schema';
 }
@@ -153,8 +129,8 @@ const DataExplorationTasksPage: React.FC = () => {
   const [exploreError, setExploreError] = useState<string>();
   const [schemaLoading, setSchemaLoading] = useState(false);
   const [runRecordOpen, setRunRecordOpen] = useState(false);
-  const [runRecords, setRunRecords] = useState<RunRecord[]>([]);
   const [runRecordName, setRunRecordName] = useState('');
+  const [runRecordId, setRunRecordId] = useState<string>();
   const [trackingExploration, setTrackingExploration] = useState<ExplorationTracking>();
   const [explorationFeedback, setExplorationFeedback] = useState<ExplorationFeedback>();
   const exploreRequestRef = useRef(0);
@@ -455,41 +431,9 @@ const DataExplorationTasksPage: React.FC = () => {
 
   const showRuns = async (record: DataSourceRecord) => {
     if (!record.id) return;
-    try {
-      if (!supportsOmProfiler(record.dbType)) {
-        const scanResponse = await fetchDataSourceMetadataRuns(record.id, 'SCAN');
-        if (scanResponse.code !== 0) {
-          message.error(scanResponse.message || '无法读取扫描运行记录');
-          return;
-        }
-        setRunRecordName(record.name || '数据源');
-        setRunRecords(scanResponse.data || []);
-        setRunRecordOpen(true);
-        return;
-      }
-
-      const [explorationResponse, scanResponse] = await Promise.all([
-        fetchDataSourceMetadataRuns(record.id, 'EXPLORATION'),
-        record.scanStatus === 'FAILED'
-          ? fetchDataSourceMetadataRuns(record.id, 'SCAN')
-          : Promise.resolve(undefined),
-      ]);
-      if (explorationResponse.code !== 0) {
-        message.error(explorationResponse.message || '无法读取探查运行记录');
-        return;
-      }
-      const explorationRuns = explorationResponse.data || [];
-      const scanRuns = scanResponse?.code === 0 ? (scanResponse.data || []) : [];
-      const merged: RunRecord[] = [
-        ...scanRuns.map((run) => ({ ...run, runId: run.runId?.startsWith('local-') ? run.runId : `scan:${run.runId}` })),
-        ...explorationRuns,
-      ];
-      setRunRecordName(record.name || '数据源');
-      setRunRecords(merged);
-      setRunRecordOpen(true);
-    } catch (error: any) {
-      message.error(errorMessage(error, '无法读取探查运行记录'));
-    }
+    setRunRecordName(record.name || '数据源');
+    setRunRecordId(String(record.id));
+    setRunRecordOpen(true);
   };
 
   const triggerSampleCollection = async (record: DataSourceRecord) => {
@@ -541,7 +485,7 @@ const DataExplorationTasksPage: React.FC = () => {
     {
       title: '数据源',
       key: 'name',
-      width: 220,
+      width: 200,
       render: (_, record) => (
         <div className="min-w-0">
           <div className="truncate font-medium" title={record.name}>{record.name || '-'}</div>
@@ -549,15 +493,17 @@ const DataExplorationTasksPage: React.FC = () => {
         </div>
       ),
     },
-    { title: '单位', key: 'unit', width: 150, render: (_, record) => displayOwner(record).unit },
-    { title: '业务系统', key: 'system', width: 170, render: (_, record) => displayOwner(record).system },
+    { title: '单位', key: 'unit', width: 120, render: (_, record) => displayOwner(record).unit },
+    { title: '业务系统', key: 'system', width: 140, render: (_, record) => displayOwner(record).system },
     {
       title: '元数据状态',
       dataIndex: 'metadataSyncStatus',
       key: 'metadataSyncStatus',
-      width: 120,
+      width: 110,
       render: (value: string, record) => {
-        const item = metadataStatus(value, record.scanStatus);
+        const item = isAssetExplorationDbType(record.dbType)
+          ? assetExplorationStatus(record)
+          : metadataStatus(value, record.scanStatus);
         return (
           <Tag color={item.color} title={record.scanLastError || undefined}>
             {item.label}
@@ -569,42 +515,49 @@ const DataExplorationTasksPage: React.FC = () => {
       title: '探查状态',
       dataIndex: 'profileStatus',
       key: 'profileStatus',
-      width: 110,
-      render: (value: string, record) => {
-        const item = isAssetExplorationDbType(record.dbType)
-          ? assetExplorationStatus(record)
-          : explorationStatus(value);
+      width: 100,
+      render: (_value: string, record) => {
+        const item = profilerStatus(record);
         return (
-          <Tag
-            color={item.color}
-            title={isAssetExplorationDbType(record.dbType)
-              ? record.scanLastError || undefined
-              : record.profileLastError || undefined}
-          >
+          <Tag color={item.color} title={record.profileLastError || undefined}>
             {item.label}
           </Tag>
         );
       },
     },
     {
-      title: '最近探查',
+      title: '样例状态',
+      dataIndex: 'sampleStatus',
+      key: 'sampleStatus',
+      width: 110,
+      render: (_value: string, record) => {
+        const item = sampleStatus(record);
+        return (
+          <Tag color={item.color} title={record.sampleLastError || undefined}>
+            {item.label}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: '最近运行',
       key: 'profileLastRunTime',
-      width: 170,
+      width: 160,
       responsive: ['xxl'],
-      render: (_, record) => (isAssetExplorationDbType(record.dbType)
-        ? record.scanLastSuccessTime
-        : record.profileLastSuccessTime || record.profileLastRunTime) || '-',
+      render: (_, record) => (record.profilerSupported
+        ? record.profileLastSuccessTime || record.profileLastRunTime
+        : record.scanLastSuccessTime) || '-',
     },
     {
       title: '操作',
       key: 'actions',
-      width: 360,
+      width: 470,
       render: (_, record) => (
-        <Space size="small" wrap>
+        <Space size={4} wrap={false} className="exploration-task-actions">
           <Button type="link" icon={<SyncOutlined />} onClick={() => void triggerScan(record)}>
             重新扫描
           </Button>
-          {supportsSampleCollection(record.dbType) && (
+          {record.sampleDataSupported && (
             <Button
               type="link"
               icon={<ExperimentOutlined />}
@@ -614,7 +567,7 @@ const DataExplorationTasksPage: React.FC = () => {
               样例采集
             </Button>
           )}
-          {supportsOmProfiler(record.dbType) && (
+          {record.profilerSupported && (
             <Button
               type="link"
               icon={<PlayCircleOutlined />}
@@ -838,48 +791,12 @@ const DataExplorationTasksPage: React.FC = () => {
         onSaved={() => void load()}
       />
 
-      <Modal
-        className="exploration-action-modal exploration-run-record-modal"
-        title={<span className="exploration-modal-title">{runRecordName} · 探查运行记录</span>}
+      <RunRecordLogModal
         open={runRecordOpen}
-        footer={null}
-        centered
-        width="min(720px, calc(100vw - 32px))"
-        onCancel={() => setRunRecordOpen(false)}
-      >
-        {runRecords.length === 0 ? (
-          <div className="py-8 text-center text-[var(--st-color-text-muted)]">暂无探查运行记录</div>
-        ) : (
-          <div className="max-h-[420px] overflow-auto py-2">
-            {runRecords.map((run) => (
-              <div
-                key={`${run.pipelineType || 'RUN'}:${run.runId}`}
-                className="exploration-run-item mb-2 rounded-md px-3 py-2 text-sm"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium">
-                    {runStatusLabel(run.status)}
-                    {run.pipelineType && (
-                      <span className="ml-2 text-xs font-normal text-[var(--st-color-text-muted)]">
-                        {runPipelineLabel(run.pipelineType)}
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-xs text-[var(--st-color-text-muted)]">{run.runId}</span>
-                </div>
-                <div className="mt-1 text-xs text-[var(--st-color-text-muted)]">
-                  {run.startTime || '-'} → {run.endTime || '-'}
-                </div>
-                {run.errorMessage && (
-                  <div className="mt-2 whitespace-pre-wrap break-all text-xs text-[var(--st-color-error)]">
-                    {run.errorMessage}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Modal>
+        dataSourceId={runRecordId}
+        dataSourceName={runRecordName}
+        onClose={() => setRunRecordOpen(false)}
+      />
     </div>
   );
 };

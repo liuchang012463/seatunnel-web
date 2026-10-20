@@ -64,6 +64,17 @@ export interface DataSourceRecord {
   profileLastError?: string;
   profileLastRunTime?: string;
   profileLastSuccessTime?: string;
+  /** Whether the connector can store sample data in OpenMetadata at all. */
+  sampleDataSupported?: boolean;
+  /** Whether sample collection runs as its own OpenMetadata agent. */
+  sampleAgentSupported?: boolean;
+  /** Status of the sample-collection agent; empty when there is no such agent. */
+  sampleStatus?: string;
+  sampleLastError?: string;
+  sampleLastRunTime?: string;
+  sampleLastSuccessTime?: string;
+  /** Whether the connector can be profiled by the OpenMetadata profiler agent. */
+  profilerSupported?: boolean;
   status?: DataSourceLifecycleStatus;
   /** System projection rows are maintained by lake warehouse configuration. */
   systemManaged?: boolean;
@@ -169,8 +180,33 @@ export interface DataExplorationAssetSample {
   messageCount?: number;
 }
 
-export interface DataExplorationAssetProperty {
-  key?: string;
+/** One OpenMetadata pipeline run as reported by the agent history. */
+export interface MetadataPipelineRun {
+  runId: string;
+  pipelineType?: string;
+  status?: string;
+  startTime?: string;
+  endTime?: string;
+  warningsCount?: number;
+  errorMessage?: string;
+}
+
+/** Run history of one OpenMetadata agent. */
+export interface MetadataAgentRuns {
+  agentType: string;
+  label: string;
+  pipelineFqn?: string;
+  runs: MetadataPipelineRun[];
+}
+
+/** Log of the last run of one OpenMetadata agent, keyed by task instance name. */
+export interface MetadataAgentLogs {
+  agentType: string;
+  logs?: Record<string, string>;
+  message?: string;
+}
+
+export interface DataExplorationAssetProperty {  key?: string;
   label?: string;
   value?: unknown;
   displayType?: 'TEXT' | 'NUMBER' | 'SIZE' | 'DURATION' | 'CODE' | 'LIST';

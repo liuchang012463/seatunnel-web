@@ -28,6 +28,35 @@ export const explorationStatus = (status?: string) => {
   return { label: '未探查', color: 'default' as const };
 };
 
+/**
+ * State of the sample-collection agent.
+ *
+ * A connector that cannot store samples at all has no agent. Connectors that sample
+ * inside their metadata pipeline (Elasticsearch, FTP, SFTP) have no agent either; their
+ * samples arrive with the scan. The rest own an auto-classification agent whose run
+ * state is reported here.
+ */
+export const sampleStatus = (record: {
+  sampleDataSupported?: boolean;
+  sampleAgentSupported?: boolean;
+  sampleStatus?: string;
+}) => {
+  if (!record.sampleDataSupported) return { label: '不支持', color: 'default' as const };
+  if (!record.sampleAgentSupported) return { label: '随扫描采集', color: 'default' as const };
+  if (record.sampleStatus === 'SUCCESS') return { label: '已就绪', color: 'success' as const };
+  if (record.sampleStatus === 'FAILED') return { label: '采集异常', color: 'error' as const };
+  if (record.sampleStatus === 'RUNNING' || record.sampleStatus === 'QUEUED') {
+    return { label: '采集中', color: 'processing' as const };
+  }
+  return { label: '未采集', color: 'default' as const };
+};
+
+/** State of the profiler agent; connectors without a profiler have no agent to report. */
+export const profilerStatus = (record: { profilerSupported?: boolean; profileStatus?: string }) => {
+  if (!record.profilerSupported) return { label: '不支持', color: 'default' as const };
+  return explorationStatus(record.profileStatus);
+};
+
 export const metadataStatus = (status?: string, scanStatus?: string) => {
   if (status === 'READY' && scanStatus === 'FAILED') {
     return { label: '扫描异常', color: 'error' as const };

@@ -156,6 +156,12 @@
     margin-top: auto !important;
   }
 
+  /* Keep every action of a row on one line: the buttons are link buttons, so a
+     compact horizontal padding is enough to fit them into the action column. */
+  .exploration-task-actions .ant-btn-link {
+    padding-inline: 4px;
+  }
+
   .exploration-table-panel .ant-table,
   .exploration-topology-panel .ant-tree,
   .exploration-source-card .ant-table {
@@ -1298,3 +1304,4 @@
     }
   }
 }
+

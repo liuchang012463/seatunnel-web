@@ -82,8 +82,8 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     @Resource
     private MetadataBindingDao metadataBindingDao;
 
-    /** Optional to keep existing unit-test constructors and lightweight deployments compatible. */
-    @Autowired(required = false)
+    /** The connector registry is the single source of truth for the supported agents. */
+    @Resource
     private MetadataConnectorRegistry metadataConnectorRegistry;
 
     @Resource
@@ -919,7 +919,6 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         vo.setSampleAgentSupported(adapter != null && adapter.hasDedicatedSampleAgent());
         vo.setProfilerSupported(adapter != null && adapter.supportsProfiler());
     }
-
     /**
      * Older status sync could wipe FAILED to NEVER while leaving lastError set.
      * Present that combination as FAILED so list/status UIs stay honest.
