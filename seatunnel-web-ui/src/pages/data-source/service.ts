@@ -24,6 +24,8 @@ import type {
   DataSourceTopologyNode,
   DataSourceTopologyNodeType,
   DataSourceMetadataStatus,
+  MetadataAgentLogs,
+  MetadataAgentRuns,
   DataSourceCatalogFileEntry,
   DataSourceCatalogOption,
   DataExplorationAssetDetail,
@@ -200,6 +202,30 @@ export async function fetchDataSourceMetadataRuns(
   errorMessage?: string;
 }>>> {
   return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/${id}/runs?type=${type}&limit=${limit}`);
+}
+
+/** Reads the run history of every OpenMetadata agent the data source owns. */
+export async function fetchDataSourceMetadataAgents(
+  id: string,
+  limit = 10,
+): Promise<CommonApiResponse<MetadataAgentRuns[]>> {
+  return HttpUtils.get(
+    `${DATA_SOURCE_API_PREFIX}/${encodeURIComponent(id)}/metadata-agents?limit=${limit}`,
+    METADATA_REQUEST_OPTIONS,
+  );
+}
+
+/** Reads the log of the last run of one OpenMetadata agent. */
+export async function fetchDataSourceMetadataAgentLogs(
+  id: string,
+  agentType: string,
+  limit = 2000,
+): Promise<CommonApiResponse<MetadataAgentLogs>> {
+  return HttpUtils.get(
+    `${DATA_SOURCE_API_PREFIX}/${encodeURIComponent(id)}/metadata-agents/`
+      + `${encodeURIComponent(agentType)}/logs?limit=${limit}`,
+    METADATA_REQUEST_OPTIONS,
+  );
 }
 
 export async function fetchDataExplorationDatabases(

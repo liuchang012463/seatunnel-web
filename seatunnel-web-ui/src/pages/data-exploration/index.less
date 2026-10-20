@@ -777,6 +777,122 @@
   }
 }
 
+/* Run history and log of one OpenMetadata agent, in the shape of the OpenMetadata
+   log page: the runs on the left, the log of the last run on the right. */
+.exploration-run-record-modal .exploration-run-record {
+  display: flex;
+  min-height: 420px;
+  gap: 16px;
+}
+
+.exploration-run-record-modal .exploration-run-record__runs {
+  display: flex;
+  width: 320px;
+  min-width: 0;
+  flex-direction: column;
+  border-right: 1px solid var(--st-color-divider);
+}
+
+.exploration-run-record-modal .exploration-run-record__runs-head,
+.exploration-run-record-modal .exploration-run-record__log-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  color: var(--st-color-text-secondary);
+  font-size: 12px;
+  border-bottom: 1px solid var(--st-color-divider);
+}
+
+.exploration-run-record-modal .exploration-run-record__run-list {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 8px 8px 0 0;
+}
+
+.exploration-run-record-modal .exploration-run-record__run {
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: var(--st-color-bg-control);
+  border: 1px solid var(--st-color-divider);
+  border-radius: 6px;
+}
+
+.exploration-run-record-modal .exploration-run-record__run-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.exploration-run-record-modal .exploration-run-record__run-id {
+  overflow: hidden;
+  color: var(--st-color-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exploration-run-record-modal .exploration-run-record__run-time {
+  margin-top: 4px;
+  color: var(--st-color-text-muted);
+  font-size: 11px;
+}
+
+.exploration-run-record-modal .exploration-run-record__run-error {
+  margin-top: 4px;
+  color: var(--st-color-error);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.exploration-run-record-modal .exploration-run-record__empty {
+  padding: 16px 4px;
+  color: var(--st-color-text-muted);
+  font-size: 12px;
+}
+
+.exploration-run-record-modal .exploration-run-record__log {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.exploration-run-record-modal .exploration-run-record__log-block {
+  margin-top: 10px;
+}
+
+.exploration-run-record-modal .exploration-run-record__log-task {
+  margin-bottom: 4px;
+  color: var(--st-color-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+}
+
+.exploration-run-record-modal .exploration-run-record__log-text {
+  max-height: 420px;
+  padding: 10px 12px;
+  margin: 0;
+  overflow: auto;
+  color: var(--st-color-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--st-color-bg-control);
+  border: 1px solid var(--st-color-divider);
+  border-radius: 6px;
+}
+
+.exploration-run-record-modal .exploration-run-record__note {
+  margin-top: 10px;
+  color: var(--st-color-text-muted);
+  font-size: 11px;
+}
 @media (max-width: 640px) {
   .data-exploration-page {
     padding-right: 14px !important;
