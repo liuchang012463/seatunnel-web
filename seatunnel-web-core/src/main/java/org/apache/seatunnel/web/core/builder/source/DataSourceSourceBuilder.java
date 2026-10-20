@@ -55,6 +55,13 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     private static final String KEY_SQL = "sql";
     private static final String KEY_WHERE_CONDITION = "where_condition";
 
+    /**
+     * The DuckDB JDBC dialect materializes this SQL into a per-connection temporary file, because
+     * DuckDB only accepts a local {@code session_init_sql_file}. Keeping the SQL in the source
+     * properties avoids a shared directory between the Web and the Engine.
+     */
+    private static final String DUCKDB_SESSION_INIT_SQL_PROPERTY = "duckdb.session_init_sql";
+
     @Resource
     private DataSourceDao dataSourceDao;
 
@@ -66,9 +73,6 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
     @Resource
     private FileResourceResolver fileResourceResolver;
-
-    @Resource
-    private DuckDbSourceInitSqlFileService duckDbSourceInitSqlFileService;
 
     @Value("${seatunnel.web.duckdb.driver-location:}")
     private String duckDbDriverLocation;
@@ -323,7 +327,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         }
 
         if ("duckdb".equalsIgnoreCase(configuredFormat)) {
-            return buildDuckDbFileSource(reference, nodeConfig, resourceId);
+            return buildDuckDbFileSource(reference, nodeConfig);
         }
 
         Map<String, Object> connection = new HashMap<>();
@@ -363,8 +367,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     }
 
     private Config buildDuckDbFileSource(FileResourceReference reference,
-                                         Config nodeConfig,
-                                         Long resourceId) {
+                                         Config nodeConfig) {
         String objectKey = resolveFileResourcePath(reference);
         String normalizedKey = objectKey.startsWith("/") ? objectKey.substring(1) : objectKey;
         String normalizedKeyLower = normalizedKey.toLowerCase(Locale.ROOT);
@@ -416,10 +419,6 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         initSqlStatements.add("ATTACH IF NOT EXISTS " + sqlLiteral(remoteDatabase)
                 + " AS duckdb_source (READ_ONLY);");
         String initSql = String.join("\n", initSqlStatements);
-        if (duckDbSourceInitSqlFileService == null) {
-            throw new IllegalStateException("DuckDB source initialization SQL service is unavailable");
-        }
-        String initSqlPath = duckDbSourceInitSqlFileService.write(resourceId, initSql);
         String query = "USE " + quoteDuckDbIdentifier("duckdb_source")
                 + "." + quoteDuckDbIdentifier(defaultSchema) + ";\n" + sourceQuery;
 
@@ -428,9 +427,10 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         properties.put("threads", "2");
         properties.put("memory_limit", "512MB");
         properties.put("jdbc_stream_results", "true");
+        properties.put(DUCKDB_SESSION_INIT_SQL_PROPERTY, initSql);
 
         Map<String, Object> source = new HashMap<>();
-        source.put("url", "jdbc:duckdb:;session_init_sql_file=" + initSqlPath);
+        source.put("url", "jdbc:duckdb:");
         source.put("driver", "org.duckdb.DuckDBDriver");
         source.put("driver_location", requireDuckDbDriverLocation());
         source.put("enable_concurrent_read", false);

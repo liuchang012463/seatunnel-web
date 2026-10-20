@@ -86,7 +86,6 @@ class DataSourceSourceBuilderFileResourceTest {
     @Test
     void buildsDuckDbFileResourceAsSingleSplitJdbcSource() throws Exception {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
-        Path initSqlDirectory = configureDuckDbInitSql(sourceBuilder);
         FileResourceResolver resolver = mock(FileResourceResolver.class);
         ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
         String driver = "/opt/seatunnel/lib/duckdb_jdbc-1.3.1.0.jar";
@@ -115,9 +114,7 @@ class DataSourceSourceBuilderFileResourceTest {
         Config result = sourceBuilder.build(node);
 
         assertEquals("Jdbc", sourceBuilder.connectorName(node));
-        assertEquals(
-                "jdbc:duckdb:;session_init_sql_file=/opt/seatunnel/lib/duckdb-init/duckdb-resource-42.sql",
-                result.getString("url"));
+        assertEquals("jdbc:duckdb:", result.getString("url"));
         assertEquals("org.duckdb.DuckDBDriver", result.getString("driver"));
         assertEquals(driver, result.getString("driver_location"));
         assertTrue(!result.getBoolean("enable_concurrent_read"));
@@ -141,7 +138,7 @@ class DataSourceSourceBuilderFileResourceTest {
         assertTrue(!query.contains("INSTALL httpfs"));
         assertTrue(!query.contains("TYPE DUCKDB"));
 
-        String initSql = Files.readString(initSqlDirectory.resolve("duckdb-resource-42.sql"));
+        String initSql = properties.getString("duckdb.session_init_sql");
         assertTrue(initSql.contains("LOAD httpfs;\nCREATE SECRET duckdb_source_minio_secret ("));
         assertTrue(initSql.contains("KEY_ID 'test-access-key',"));
         assertTrue(initSql.contains("SECRET 'test-secret-''key',"));
@@ -153,14 +150,11 @@ class DataSourceSourceBuilderFileResourceTest {
         assertFalse(initSql.contains("SET s3_"));
         assertTrue(initSql.contains(
                 "ATTACH IF NOT EXISTS 's3://archive/resources/weather%20data.duckdb' AS duckdb_source (READ_ONLY);"));
-        assertTrue(Files.getPosixFilePermissions(initSqlDirectory.resolve("duckdb-resource-42.sql"))
-                .stream().allMatch(permission -> permission.name().startsWith("OWNER_")));
     }
 
     @Test
     void validatesAndAppendsOneReadOnlyDuckDbSelect() throws Exception {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
-        configureDuckDbInitSql(sourceBuilder);
         FileResourceResolver resolver = mock(FileResourceResolver.class);
         ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
         Path driver = Files.createFile(tempDir.resolve("duckdb_jdbc.jar"));
@@ -192,7 +186,6 @@ class DataSourceSourceBuilderFileResourceTest {
     @Test
     void writesTheConfiguredExtensionDirectoryIntoTheDuckDbInitSql() throws Exception {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
-        Path initSqlDirectory = configureDuckDbInitSql(sourceBuilder);
         ReflectionTestUtils.setField(sourceBuilder, "duckDbExtensionDirectory", "/opt/seatunnel/lib/duckdb-extensions");
         FileResourceResolver resolver = mock(FileResourceResolver.class);
         ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
@@ -201,7 +194,7 @@ class DataSourceSourceBuilderFileResourceTest {
                 "MINIO", "https://minio.example.com:9000", "us-east-1", "archive", "/resources",
                 "resources/weather.duckdb", "STATIC", "access", "secret", true));
 
-        sourceBuilder.build(ConfigFactory.parseMap(Map.of(
+        Config result = sourceBuilder.build(ConfigFactory.parseMap(Map.of(
                 "sourceMode", "FILE_RESOURCE",
                 "fileResourceId", "42",
                 "fileFormatType", "duckdb",
@@ -209,7 +202,7 @@ class DataSourceSourceBuilderFileResourceTest {
                 "duckdbSchema", "main",
                 "duckdbTable", "orders")));
 
-        String initSql = Files.readString(initSqlDirectory.resolve("duckdb-resource-42.sql"));
+        String initSql = result.getConfig("properties").getString("duckdb.session_init_sql");
         // Auto-install is off, so httpfs has to be preinstalled where the engine is told to look.
         assertTrue(initSql.contains("SET extension_directory = '/opt/seatunnel/lib/duckdb-extensions';"));
         assertTrue(initSql.indexOf("SET extension_directory") < initSql.indexOf("LOAD httpfs;"));
@@ -218,7 +211,6 @@ class DataSourceSourceBuilderFileResourceTest {
     @Test
     void rejectsARelativeExtensionDirectory() throws Exception {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
-        configureDuckDbInitSql(sourceBuilder);
         ReflectionTestUtils.setField(sourceBuilder, "duckDbExtensionDirectory", "lib/duckdb-extensions");
         FileResourceResolver resolver = mock(FileResourceResolver.class);
         ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
@@ -265,15 +257,6 @@ class DataSourceSourceBuilderFileResourceTest {
                         "fileFormatType", "csv"))));
 
         assertTrue(exception.getMessage().contains("fileResourceId"));
-    }
-
-    private Path configureDuckDbInitSql(DataSourceSourceBuilder sourceBuilder) throws Exception {
-        Path initSqlDirectory = Files.createDirectories(tempDir.resolve("duckdb-init"));
-        DuckDbSourceInitSqlFileService initSqlFileService = new DuckDbSourceInitSqlFileService();
-        ReflectionTestUtils.setField(initSqlFileService, "initSqlDirectory", initSqlDirectory.toString());
-        ReflectionTestUtils.setField(initSqlFileService, "engineInitSqlDirectory", "/opt/seatunnel/lib/duckdb-init");
-        ReflectionTestUtils.setField(sourceBuilder, "duckDbSourceInitSqlFileService", initSqlFileService);
-        return initSqlDirectory;
     }
 
     @Test
