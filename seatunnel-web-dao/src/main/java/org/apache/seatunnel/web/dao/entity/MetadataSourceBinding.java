@@ -86,6 +86,19 @@ public class MetadataSourceBinding extends BaseEntity {
 
     private String profileLastError;
 
+    /**
+     * Status of the sample-collection agent. Only connectors that own an
+     * auto-classification pipeline have one; the others sample inside their metadata
+     * pipeline and are reported as "collected along with the scan".
+     */
+    private MetadataRunStatus sampleStatus;
+
+    private Date sampleLastRunTime;
+
+    private Date sampleLastSuccessTime;
+
+    private String sampleLastError;
+
     private String profileRunReservationToken;
 
     private String profileProfilerRunIdBaseline;

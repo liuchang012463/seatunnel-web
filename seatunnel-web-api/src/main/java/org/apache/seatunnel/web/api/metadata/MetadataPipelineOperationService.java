@@ -311,6 +311,17 @@ public class MetadataPipelineOperationService {
                 .orElse(false);
     }
 
+    /** True when the connector owns a sample-collection agent of its own. */
+    boolean hasDedicatedSampleAgent(MetadataSourceBinding binding) {
+        DataSource dataSource = binding == null ? null : dataSourceDao.queryById(binding.getDataSourceId());
+        if (dataSource == null) {
+            return false;
+        }
+        return connectorRegistry.find(dataSource.getDbType())
+                .map(MetadataConnectorAdapter::hasDedicatedSampleAgent)
+                .orElse(false);
+    }
+
     /** True when the reconciler created a profiler pipeline for this binding. */
     boolean supportsProfilerPipeline(MetadataSourceBinding binding) {
         if (binding == null || binding.getOmProfilerPipelineId() == null

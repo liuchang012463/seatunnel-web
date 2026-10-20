@@ -49,6 +49,24 @@ public interface MetadataConnectorAdapter {
     }
 
     /**
+     * Whether this connector can store sample data in OpenMetadata at all: inside its own
+     * metadata pipeline, through a dedicated auto-classification agent, or through the
+     * database auto-classification agent.
+     */
+    default boolean supportsSampleCollection() {
+        return supportsSampleData() || collectsSampleDataViaAutoClassification() || supportsProfiler();
+    }
+
+    /**
+     * Whether sample collection runs as its own OpenMetadata agent. Database and
+     * object-storage connectors own an auto-classification pipeline; connectors that
+     * sample inside their metadata pipeline (Elasticsearch, FTP, SFTP) do not.
+     */
+    default boolean hasDedicatedSampleAgent() {
+        return supportsProfiler() || collectsSampleDataViaAutoClassification();
+    }
+
+    /**
      * Whether this connector derives a container data model from an object-storage
      * manifest supplied by the operator.
      */

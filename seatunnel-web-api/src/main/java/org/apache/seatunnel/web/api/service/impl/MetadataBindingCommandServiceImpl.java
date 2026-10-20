@@ -48,6 +48,9 @@ public class MetadataBindingCommandServiceImpl implements MetadataBindingCommand
         binding.setMetadataTriggeredVersion(INITIAL_TRIGGERED_VERSION);
         binding.setScanStatus(MetadataRunStatus.NEVER);
         binding.setProfileStatus(MetadataRunStatus.NEVER);
+        binding.setSampleStatus(MetadataRunStatus.NEVER);
+        // Sample collection is on by default; the operator can turn it off per source.
+        binding.setSampleDataEnabled(Boolean.TRUE);
         binding.setInitialRunStage("METADATA");
         binding.setRetryCount(0);
         binding.setVersion(INITIAL_BINDING_VERSION);
@@ -83,6 +86,9 @@ public class MetadataBindingCommandServiceImpl implements MetadataBindingCommand
         }
         if (binding.getProfileStatus() == null) {
             binding.setProfileStatus(MetadataRunStatus.NEVER);
+        }
+        if (binding.getSampleStatus() == null) {
+            binding.setSampleStatus(MetadataRunStatus.NEVER);
         }
         if (binding.getRetryCount() == null) {
             binding.setRetryCount(0);

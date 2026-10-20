@@ -49,6 +49,19 @@ public final class MetadataStableName {
         return serviceFqn(dataSourceId) + "." + autoClassificationPipelineName(dataSourceId);
     }
 
+    /**
+     * Sample-pipeline name used before the stable naming separated the words with an
+     * underscore. Reconciliation removes the leftover so a data source never keeps two
+     * sample pipelines.
+     */
+    public static String legacyAutoClassificationPipelineName(Long dataSourceId) {
+        return serviceName(dataSourceId) + "_autoclassification";
+    }
+
+    public static String legacyAutoClassificationPipelineFqn(Long dataSourceId) {
+        return serviceFqn(dataSourceId) + "." + legacyAutoClassificationPipelineName(dataSourceId);
+    }
+
     private static long requireId(Long dataSourceId) {
         if (dataSourceId == null || dataSourceId <= 0) {
             throw new IllegalArgumentException("dataSourceId must be positive");

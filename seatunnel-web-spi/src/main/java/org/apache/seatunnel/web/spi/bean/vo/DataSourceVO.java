@@ -86,6 +86,26 @@ public class DataSourceVO {
     @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
     private Date profileLastSuccessTime;
 
+    /** Whether this data source can store sample data in OpenMetadata at all. */
+    private Boolean sampleDataSupported;
+
+    /** Whether sample collection runs as its own OpenMetadata agent. */
+    private Boolean sampleAgentSupported;
+
+    /** Status of the sample-collection agent; empty when there is no such agent. */
+    private MetadataRunStatus sampleStatus;
+
+    private String sampleLastError;
+
+    @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
+    private Date sampleLastRunTime;
+
+    @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
+    private Date sampleLastSuccessTime;
+
+    /** Whether this data source can be profiled by the OpenMetadata profiler agent. */
+    private Boolean profilerSupported;
+
     @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
     private Date createTime;
 

@@ -9,6 +9,8 @@ import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcDriverDirectoryResolv
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
 import org.apache.seatunnel.web.api.metadata.MetadataInventoryCache;
 import org.apache.seatunnel.web.api.metadata.MetadataSyncStatusView;
+import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
+import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
 import org.apache.seatunnel.web.api.service.DataSourceService;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
@@ -79,6 +81,10 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
     @Resource
     private MetadataBindingDao metadataBindingDao;
+
+    /** Optional to keep existing unit-test constructors and lightweight deployments compatible. */
+    @Autowired(required = false)
+    private MetadataConnectorRegistry metadataConnectorRegistry;
 
     @Resource
     private JobDefinitionDao jobDefinitionDao;
@@ -302,6 +308,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             records.forEach(record -> {
                 fillDerivedFields(record, systems, units);
                 fillMetadataFields(record, bindings.get(record.getId()));
+                fillAgentCapabilities(record);
                 redactSystemProjection(record);
             });
 
@@ -481,6 +488,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             result.forEach(record -> {
                 fillDerivedFields(record, systems, units);
                 fillMetadataFields(record, bindings.get(record.getId()));
+                fillAgentCapabilities(record);
                 redactSystemProjection(record);
             });
             return result;
@@ -875,6 +883,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             vo.setMetadataSyncStatus("NOT_INITIALIZED");
             vo.setScanStatus(org.apache.seatunnel.web.common.enums.MetadataRunStatus.NEVER);
             vo.setProfileStatus(org.apache.seatunnel.web.common.enums.MetadataRunStatus.NEVER);
+            vo.setSampleStatus(org.apache.seatunnel.web.common.enums.MetadataRunStatus.NEVER);
             return;
         }
         vo.setMetadataSyncStatus(MetadataSyncStatusView.project(binding));
@@ -887,6 +896,28 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         vo.setProfileLastError(binding.getProfileLastError());
         vo.setProfileLastRunTime(binding.getProfileLastRunTime());
         vo.setProfileLastSuccessTime(binding.getProfileLastSuccessTime());
+        vo.setSampleStatus(effectiveRunStatus(
+                binding.getSampleStatus(), binding.getSampleLastError(), binding.getSampleLastRunTime()));
+        vo.setSampleLastError(binding.getSampleLastError());
+        vo.setSampleLastRunTime(binding.getSampleLastRunTime());
+        vo.setSampleLastSuccessTime(binding.getSampleLastSuccessTime());
+    }
+
+    /**
+     * Resolves which OpenMetadata agents this data source type supports. The connector
+     * registry is the single source of truth, so the UI never has to guess from a
+     * hard-coded type list.
+     */
+    private void fillAgentCapabilities(DataSourceVO vo) {
+        if (vo == null) {
+            return;
+        }
+        MetadataConnectorAdapter adapter = vo.getDbType() == null
+                ? null
+                : metadataConnectorRegistry.find(vo.getDbType()).orElse(null);
+        vo.setSampleDataSupported(adapter != null && adapter.supportsSampleCollection());
+        vo.setSampleAgentSupported(adapter != null && adapter.hasDedicatedSampleAgent());
+        vo.setProfilerSupported(adapter != null && adapter.supportsProfiler());
     }
 
     /**

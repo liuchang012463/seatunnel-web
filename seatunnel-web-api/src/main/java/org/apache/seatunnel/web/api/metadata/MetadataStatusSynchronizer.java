@@ -97,10 +97,15 @@ public class MetadataStatusSynchronizer {
             openMetadataClient.assertFixedVersion();
             List<OpenMetadataPipelineRun> scanRuns = listRuns(candidate.getOmMetadataPipelineFqn());
             List<OpenMetadataPipelineRun> profileRuns = listRuns(candidate.getOmProfilerPipelineFqn());
-            List<OpenMetadataPipelineRun> sampleRuns = candidate.getOmProfilerPipelineFqn() == null
-                    || candidate.getOmProfilerPipelineFqn().isBlank()
-                    ? List.of()
-                    : listRuns(MetadataStableName.autoClassificationPipelineFqn(candidate.getDataSourceId()));
+            // The sample agent is a separate auto-classification pipeline. Database sources
+            // own one next to their profiler pipeline; object-storage sources own one
+            // without a profiler, so their binding carries no profiler FQN.
+            boolean ownsSampleAgent = candidate.getOmProfilerPipelineFqn() != null
+                    && !candidate.getOmProfilerPipelineFqn().isBlank()
+                    || operationService.hasDedicatedSampleAgent(candidate);
+            List<OpenMetadataPipelineRun> sampleRuns = ownsSampleAgent
+                    ? listRuns(MetadataStableName.autoClassificationPipelineFqn(candidate.getDataSourceId()))
+                    : List.of();
             MetadataSourceBinding latest = metadataBindingDao.queryById(candidate.getId());
             if (!owned(latest, candidate.getVersion())) {
                 return;
@@ -112,6 +117,7 @@ public class MetadataStatusSynchronizer {
             OpenMetadataPipelineRun latestScanRun = latestRun(scanRuns);
             applyRun(latest, true, latestScanRun, now);
             applyExplorationRuns(latest, profileRuns, sampleRuns, now);
+            applySampleRun(latest, latestRun(sampleRuns));
             boolean scanChanged = runOutcomeChanged(scanStatusBefore, scanSuccessBefore,
                     latest.getScanStatus(), latest.getScanLastSuccessTime());
             boolean profileChanged = runOutcomeChanged(profileStatusBefore, profileSuccessBefore,
@@ -433,6 +439,31 @@ public class MetadataStatusSynchronizer {
 
         // Both runs are present but OM returned an unrecognized terminal state.
         binding.setProfileStatus(MetadataRunStatus.UNKNOWN);
+    }
+
+    /**
+     * Records the sample-collection agent's latest run. The agent is a separate
+     * auto-classification pipeline, so its state is reported on its own instead of being
+     * folded into the metadata scan or the profiler.
+     */
+    private void applySampleRun(MetadataSourceBinding binding, OpenMetadataPipelineRun run) {
+        if (run == null) {
+            return;
+        }
+        MetadataRunStatus status = OpenMetadataRunStatusMapper.fromPipelineState(run.pipelineState());
+        Date runTime = MetadataPipelineOperationService.fromOmTimestamp(
+                run.startDate() == null ? run.timestamp() : run.startDate());
+        Date successTime = status == MetadataRunStatus.SUCCESS ? runSuccessTime(run) : null;
+        binding.setSampleStatus(status);
+        if (runTime != null) {
+            binding.setSampleLastRunTime(runTime);
+        }
+        if (successTime != null) {
+            binding.setSampleLastSuccessTime(successTime);
+            binding.setSampleLastError(null);
+        } else if (status == MetadataRunStatus.FAILED) {
+            binding.setSampleLastError(MetadataErrorCode.PIPELINE_EXECUTION_ERROR.name());
+        }
     }
 
     private void applyLegacyProfilerRun(

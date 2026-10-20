@@ -154,6 +154,7 @@ public class MetadataSourceReconciler {
             openMetadataClient.deployIngestionPipeline(samplePipeline.id());
             openMetadataClient.enableIngestionPipeline(samplePipeline.id());
         }
+        removeLegacySamplePipeline(dataSource.getId());
 
         MetadataSourceBinding latest = metadataBindingDao.queryById(claimed.getId());
         if (!owned(latest, claimedVersion)) {
@@ -200,6 +201,21 @@ public class MetadataSourceReconciler {
             // The local source stayed available until external cleanup completed.
             dataSourceDao.deleteById(claimed.getDataSourceId());
         }
+    }
+
+    /**
+     * Removes the sample pipeline that older deployments created under a name without
+     * the separating underscore. Left in place it would keep collecting samples next to
+     * the pipeline created under the stable name.
+     */
+    private void removeLegacySamplePipeline(Long dataSourceId) {
+        String legacyFqn = MetadataStableName.legacyAutoClassificationPipelineFqn(dataSourceId);
+        openMetadataClient.findIngestionPipeline(legacyFqn)
+                .ifPresent(pipeline -> {
+                    openMetadataClient.deleteIngestionPipeline(pipeline.id());
+                    log.info("Removed legacy sample pipeline: dataSourceId={}, fqn={}",
+                            dataSourceId, legacyFqn);
+                });
     }
 
     private void deletePipeline(String id, String fqn) {

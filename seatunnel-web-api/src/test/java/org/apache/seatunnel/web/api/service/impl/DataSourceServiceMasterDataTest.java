@@ -1,6 +1,8 @@
 package org.apache.seatunnel.web.api.service.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
+import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
@@ -28,11 +30,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -68,8 +74,56 @@ class DataSourceServiceMasterDataTest {
     @Mock
     private CurrentUserProvider currentUserProvider;
 
+    @Mock
+    private MetadataConnectorRegistry metadataConnectorRegistry;
+
     @InjectMocks
     private DataSourceServiceImpl service;
+
+    @Test
+    void reportsWhichOpenMetadataAgentsEachConnectorTypeSupports() {
+        DataSource database = new DataSource();
+        database.setId(1L);
+        database.setName("orders");
+        database.setStatus(DataSourceLifecycleStatus.ENABLED);
+        database.setDbType(DbType.MYSQL);
+
+        DataSource api = new DataSource();
+        api.setId(2L);
+        api.setName("openapi");
+        api.setStatus(DataSourceLifecycleStatus.ENABLED);
+        api.setDbType(DbType.HTTP);
+
+        Page<DataSource> page = new Page<>(1, 10);
+        page.setRecords(List.of(database, api));
+        page.setTotal(2);
+        when(dataSourceDao.queryPage(any(DataSourceDTO.class), isNull())).thenReturn(page);
+        when(metadataBindingDao.queryByDataSourceIds(List.of(1L, 2L))).thenReturn(List.of());
+        MetadataConnectorAdapter databaseAdapter = agentAdapter(true, true, true);
+        MetadataConnectorAdapter apiAdapter = agentAdapter(false, false, false);
+        when(metadataConnectorRegistry.find(DbType.MYSQL)).thenReturn(Optional.of(databaseAdapter));
+        when(metadataConnectorRegistry.find(DbType.HTTP)).thenReturn(Optional.of(apiAdapter));
+
+        PaginationResult<DataSourceVO> result = service.queryDataSourceListPaging(new DataSourceDTO());
+
+        DataSourceVO databaseVo = result.getData().getBizData().get(0);
+        assertTrue(databaseVo.getSampleDataSupported());
+        assertTrue(databaseVo.getSampleAgentSupported());
+        assertTrue(databaseVo.getProfilerSupported());
+        DataSourceVO apiVo = result.getData().getBizData().get(1);
+        assertFalse(apiVo.getSampleDataSupported());
+        assertFalse(apiVo.getSampleAgentSupported());
+        assertFalse(apiVo.getProfilerSupported());
+    }
+
+    private static MetadataConnectorAdapter agentAdapter(
+            boolean sampleCollection, boolean sampleAgent, boolean profiler) {
+        MetadataConnectorAdapter adapter = mock(MetadataConnectorAdapter.class);
+        when(adapter.supportsSampleCollection()).thenReturn(sampleCollection);
+        when(adapter.hasDedicatedSampleAgent()).thenReturn(sampleAgent);
+        when(adapter.supportsProfiler()).thenReturn(profiler);
+        return adapter;
+    }
 
     @Test
     void rejectsCreateWithoutCanonicalBusinessSystem() {
