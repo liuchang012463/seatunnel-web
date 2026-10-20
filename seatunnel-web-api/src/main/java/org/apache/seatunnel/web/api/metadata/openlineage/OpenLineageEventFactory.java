@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metadata.openlineage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.seatunnel.web.common.utils.MetadataStableName;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -16,9 +17,10 @@ import java.util.UUID;
  *
  * <p>
  * The output follows the OpenLineage v1 specification only: the run/job/dataset skeleton, the
- * standard {@code columnLineage} facet, and two custom facets ({@code seatunnel} on the run,
- * {@code seatunnelDatasource} on every dataset) carrying the engine-native identities. Nothing
- * here shares structure with the OpenMetadata lineage request the OM channel builds.
+ * standard {@code datasource} and {@code columnLineage} facets, and two custom facets
+ * ({@code seatunnel} on the run, {@code seatunnelDatasource} on every dataset) carrying the
+ * engine-native identities. Nothing here shares structure with the OpenMetadata lineage request
+ * the OM channel builds.
  * </p>
  */
 public final class OpenLineageEventFactory {
@@ -38,6 +40,8 @@ public final class OpenLineageEventFactory {
             "https://openlineage.io/spec/1-0-5/OpenLineage.json#/definitions/RunEvent";
     static final String COLUMN_LINEAGE_FACET_SCHEMA_URL =
             "https://openlineage.io/spec/facets/1-1-1/ColumnLineageDatasetFacet.json";
+    static final String DATASOURCE_FACET_SCHEMA_URL =
+            "https://openlineage.io/spec/facets/1-0-0/DatasourceDatasetFacet.json";
     /** Custom facets are not part of the official spec namespace, so these URLs are project-local. */
     static final String SEATUNNEL_RUN_FACET_SCHEMA_URL =
             "https://github.com/weifuwan/seatunnel-web/spec/facets/1-0-0/SeatunnelRunFacet.json";
@@ -130,8 +134,30 @@ public final class OpenLineageEventFactory {
         datasource.put("_schemaURL", SEATUNNEL_DATASOURCE_FACET_SCHEMA_URL);
         putNumber(datasource, "datasourceId", dataset.datasourceId());
         putString(datasource, "dbTypeName", dataset.dbTypeName());
+        String serviceName = serviceName(dataset.datasourceId());
+        putString(datasource, "serviceName", serviceName);
         datasource.put("identityType", IDENTITY_TYPE_LOCAL);
+
+        // Standard facet consumed by OM 2.0.4 and the asset precheck: the datasource name is
+        // resolved as the database service name, which lets the consumer build the exact table
+        // FQN without a namespaceToServiceMapping entry.
+        if (serviceName != null) {
+            ObjectNode standardDatasource = facets.putObject("datasource");
+            standardDatasource.put("_producer", PRODUCER);
+            standardDatasource.put("_schemaURL", DATASOURCE_FACET_SCHEMA_URL);
+            standardDatasource.put("name", serviceName);
+        }
         return array;
+    }
+
+    /**
+     * OpenMetadata service FQN derived from the immutable local datasource id. This is a pure
+     * local derivation (no OpenMetadata I/O), used only to give consumers an exact service name.
+     */
+    private static String serviceName(Long datasourceId) {
+        return datasourceId == null || datasourceId <= 0
+                ? null
+                : MetadataStableName.serviceFqn(datasourceId);
     }
 
     /**

@@ -72,11 +72,20 @@ class OpenLineageEventFactoryTest {
         JsonNode inputFacet = input.path("facets").path("seatunnelDatasource");
         assertEquals(7L, inputFacet.path("datasourceId").asLong());
         assertEquals("MYSQL", inputFacet.path("dbTypeName").asText());
+        assertEquals("st_ds_7", inputFacet.path("serviceName").asText());
         assertEquals("local", inputFacet.path("identityType").asText());
+
+        JsonNode inputDatasource = input.path("facets").path("datasource");
+        assertEquals(OpenLineageEventFactory.DATASOURCE_FACET_SCHEMA_URL,
+                inputDatasource.path("_schemaURL").asText());
+        assertEquals("st_ds_7", inputDatasource.path("name").asText());
 
         JsonNode output = event.path("outputs").get(0);
         assertEquals("bi_tidb_doris", output.path("namespace").asText());
         assertEquals("ods.orders_dwd", output.path("name").asText());
+        assertEquals("st_ds_11",
+                output.path("facets").path("seatunnelDatasource").path("serviceName").asText());
+        assertEquals("st_ds_11", output.path("facets").path("datasource").path("name").asText());
 
         // Standard columnLineage facet, keyed by the output field per the spec.
         JsonNode columnLineage = output.path("facets").path("columnLineage");
@@ -116,6 +125,31 @@ class OpenLineageEventFactoryTest {
         // Missing facet = table-level lineage; dataset facets stay.
         assertTrue(event.path("outputs").get(0).path("facets").path("columnLineage").isMissingNode());
         assertEquals("ods.orders_dwd", event.path("outputs").get(0).path("name").asText());
+    }
+
+    @Test
+    void omitsServiceIdentityFacetsWhenDatasourceIdIsUnknown() {
+        OpenLineageSnapshot snapshot = new OpenLineageSnapshot(
+                OpenLineageEventFactory.EventType.START,
+                Instant.now(),
+                "engine-job-43b",
+                1L, 2L, "t2b",
+                false, null, null,
+                null, null, null,
+                new OpenLineageSnapshot.Dataset(0L, "MYSQL", "local", "source"),
+                new OpenLineageSnapshot.Dataset(null, "DORIS", "local", "sink"),
+                Map.of("out", Set.of("in")));
+
+        JsonNode event = MAPPER.convertValue(
+                OpenLineageEventFactory.toRunEvent(snapshot), JsonNode.class);
+
+        JsonNode inputFacets = event.path("inputs").get(0).path("facets");
+        assertTrue(inputFacets.path("seatunnelDatasource").path("serviceName").isMissingNode());
+        assertTrue(inputFacets.path("datasource").isMissingNode());
+
+        JsonNode outputFacets = event.path("outputs").get(0).path("facets");
+        assertTrue(outputFacets.path("seatunnelDatasource").path("serviceName").isMissingNode());
+        assertTrue(outputFacets.path("datasource").isMissingNode());
     }
 
     @Test
