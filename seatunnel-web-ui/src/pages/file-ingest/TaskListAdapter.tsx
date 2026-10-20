@@ -323,15 +323,17 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
             }}
           />
           {pagination.total > 0 ? (
-            <div className="task-pagination">
-              <CustomPagination
-                total={pagination.total}
-                current={pagination.current}
-                pageSize={pagination.pageSize}
-                onChange={(current, pageSize) => {
-                  setPagination((previous) => ({ ...previous, current, pageSize }));
-                }}
-              />
+            <div className="task-list-footer">
+              <div className="task-pagination">
+                <CustomPagination
+                  total={pagination.total}
+                  current={pagination.current}
+                  pageSize={pagination.pageSize}
+                  onChange={(current, pageSize) => {
+                    setPagination((previous) => ({ ...previous, current, pageSize }));
+                  }}
+                />
+              </div>
             </div>
           ) : null}
         </div>

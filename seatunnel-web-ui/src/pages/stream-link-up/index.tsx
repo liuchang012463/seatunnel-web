@@ -1027,7 +1027,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   return (
     <>
-      <div className={`stream-link-page sync-task-list${hasSelected ? ' has-selected-tasks' : ''}`}>
+      <div className="stream-link-page sync-task-list">
         <RealtimeHeader
           sourceType={sourceType}
           sinkType={sinkType}
@@ -1082,48 +1082,49 @@ const RealtimeSyncPage: React.FC = () => {
             onCreate={() => void handleCreate()}
           />
 
-          {pagination.total > 0 ? (
-            <div className="stream-link-pagination task-pagination">
-              <Pagination
-                size="small"
-                total={pagination.total}
-                current={pagination.current}
-                pageSize={pagination.pageSize}
-                showSizeChanger
-                pageSizeOptions={[10, 20, 50]}
-                onChange={handlePaginationChange}
-                onShowSizeChange={handlePaginationChange}
-              />
-            </div>
-          ) : null}
+          <div className="task-list-footer">
+            <BottomActionBar
+              selectedCount={selectedRowKeys.length}
+              disabled={!hasSelected}
+              onCreate={openBatchCreate}
+              onOnline={handleBatchOnline}
+              onOffline={handleBatchOffline}
+              onStart={handleBatchStart}
+              onTerminate={handleBatchTerminate}
+              onPause={handleBatchPause}
+              onResume={handleBatchResume}
+              onDelete={handleBatchDelete}
+              onlineDisabled={batchActionState.onlineDisabled}
+              offlineDisabled={batchActionState.offlineDisabled}
+              startDisabled={batchActionState.startDisabled}
+              terminateDisabled={batchActionState.terminateDisabled}
+              pauseDisabled={batchActionState.pauseDisabled}
+              resumeDisabled={batchActionState.resumeDisabled}
+              onlineTooltip={batchActionState.onlineTooltip}
+              offlineTooltip={batchActionState.offlineTooltip}
+              startTooltip={batchActionState.startTooltip}
+              terminateTooltip={batchActionState.terminateTooltip}
+              pauseTooltip={batchActionState.pauseTooltip}
+              resumeTooltip={batchActionState.resumeTooltip}
+              deleteDisabled={batchActionState.deleteDisabled}
+              deleteTooltip={batchActionState.deleteTooltip}
+            />
+            {pagination.total > 0 ? (
+              <div className="stream-link-pagination task-pagination">
+                <Pagination
+                  size="small"
+                  total={pagination.total}
+                  current={pagination.current}
+                  pageSize={pagination.pageSize}
+                  showSizeChanger
+                  pageSizeOptions={[10, 20, 50]}
+                  onChange={handlePaginationChange}
+                  onShowSizeChange={handlePaginationChange}
+                />
+              </div>
+            ) : null}
+          </div>
         </div>
-
-        <BottomActionBar
-          selectedCount={selectedRowKeys.length}
-          disabled={!hasSelected}
-          onCreate={openBatchCreate}
-          onOnline={handleBatchOnline}
-          onOffline={handleBatchOffline}
-          onStart={handleBatchStart}
-          onTerminate={handleBatchTerminate}
-          onPause={handleBatchPause}
-          onResume={handleBatchResume}
-          onDelete={handleBatchDelete}
-          onlineDisabled={batchActionState.onlineDisabled}
-          offlineDisabled={batchActionState.offlineDisabled}
-          startDisabled={batchActionState.startDisabled}
-          terminateDisabled={batchActionState.terminateDisabled}
-          pauseDisabled={batchActionState.pauseDisabled}
-          resumeDisabled={batchActionState.resumeDisabled}
-          onlineTooltip={batchActionState.onlineTooltip}
-          offlineTooltip={batchActionState.offlineTooltip}
-          startTooltip={batchActionState.startTooltip}
-          terminateTooltip={batchActionState.terminateTooltip}
-          pauseTooltip={batchActionState.pauseTooltip}
-          resumeTooltip={batchActionState.resumeTooltip}
-          deleteDisabled={batchActionState.deleteDisabled}
-          deleteTooltip={batchActionState.deleteTooltip}
-        />
       </div>
 
       <BatchCreateJobModal

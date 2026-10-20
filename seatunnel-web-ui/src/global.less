@@ -493,6 +493,32 @@ html[data-hide-header='true'] {
   background: var(--st-color-bg-page, #02222d);
 }
 
+/* 列表页底部：批量操作与分页共用一行，避免固定底条遮挡表体 */
+.task-list-footer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-top: auto;
+  padding: 12px 16px;
+  border-top: 1px solid var(--st-color-divider);
+
+  .task-pagination {
+    margin: 0 0 0 auto;
+    padding: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .task-list-footer {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px;
+  }
+}
+
 /* =========================
    通用组件样式
    ========================= */

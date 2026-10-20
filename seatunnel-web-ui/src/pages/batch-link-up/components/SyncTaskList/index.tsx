@@ -823,7 +823,7 @@ const App: React.FC<Props> = ({
 
   return (
     <>
-      <div className={`batch-link-up-page sync-task-list${hasSelected ? " has-selected-tasks" : ""}`}>
+      <div className="batch-link-up-page sync-task-list">
         <div className="config-manage-page">
           <div className="operate-bar task-search-wrap">
             <div className="left">
@@ -877,40 +877,41 @@ const App: React.FC<Props> = ({
                 ),
               }}
             />
-            {pagination.total > 0 ? (
-              <div className="task-pagination">
-                <CustomPagination
-                  total={pagination.total}
-                  current={pagination.current}
-                  pageSize={pagination.pageSize}
-                  onChange={handlePaginationChange}
-                />
-              </div>
-            ) : null}
+            <div className="task-list-footer">
+              <BottomActionBar
+                onStart={onStartAll}
+                onStop={onTerminateAll}
+                onOnline={onOnlineAll}
+                onOffline={onOfflineAll}
+                onDelete={onDeleteAll}
+                onCreate={openBatchCreate}
+                selectedCount={selectedRowKeys.length}
+                disabled={!hasSelected}
+                startDisabled={batchActionState.startDisabled}
+                stopDisabled={batchActionState.stopDisabled}
+                startTooltip={batchActionState.startTooltip}
+                stopTooltip={batchActionState.stopTooltip}
+                onlineDisabled={batchActionState.onlineDisabled}
+                offlineDisabled={batchActionState.offlineDisabled}
+                onlineTooltip={batchActionState.onlineTooltip}
+                offlineTooltip={batchActionState.offlineTooltip}
+                deleteDisabled={batchActionState.deleteDisabled}
+                deleteTooltip={batchActionState.deleteTooltip}
+              />
+              {pagination.total > 0 ? (
+                <div className="task-pagination">
+                  <CustomPagination
+                    total={pagination.total}
+                    current={pagination.current}
+                    pageSize={pagination.pageSize}
+                    onChange={handlePaginationChange}
+                  />
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
-
-      <BottomActionBar
-        onStart={onStartAll}
-        onStop={onTerminateAll}
-        onOnline={onOnlineAll}
-        onOffline={onOfflineAll}
-        onDelete={onDeleteAll}
-        onCreate={openBatchCreate}
-        selectedCount={selectedRowKeys.length}
-        disabled={!hasSelected}
-        startDisabled={batchActionState.startDisabled}
-        stopDisabled={batchActionState.stopDisabled}
-        startTooltip={batchActionState.startTooltip}
-        stopTooltip={batchActionState.stopTooltip}
-        onlineDisabled={batchActionState.onlineDisabled}
-        offlineDisabled={batchActionState.offlineDisabled}
-        onlineTooltip={batchActionState.onlineTooltip}
-        offlineTooltip={batchActionState.offlineTooltip}
-        deleteDisabled={batchActionState.deleteDisabled}
-        deleteTooltip={batchActionState.deleteTooltip}
-      />
 
       <BatchCreateJobModal
         open={batchCreateOpen}
