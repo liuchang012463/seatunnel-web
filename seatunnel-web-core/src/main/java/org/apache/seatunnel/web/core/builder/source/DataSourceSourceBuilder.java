@@ -414,7 +414,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         initSqlStatements.add("  ENDPOINT " + sqlLiteral(endpoint.hostAndPort()) + ",");
         initSqlStatements.add("  URL_STYLE " + sqlLiteral(reference.isPathStyleAccess() ? "path" : "vhost") + ",");
         initSqlStatements.add("  USE_SSL " + endpoint.ssl() + ",");
-        initSqlStatements.add("  SCOPE " + sqlLiteral(remoteDatabase) + ",");
+        initSqlStatements.add("  SCOPE " + sqlLiteral(remoteDatabase));
         initSqlStatements.add(");");
         initSqlStatements.add("ATTACH IF NOT EXISTS " + sqlLiteral(remoteDatabase)
                 + " AS duckdb_source (READ_ONLY);");

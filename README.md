@@ -482,8 +482,9 @@ containers while preserving the named volumes (`seatunnel-web-logs`,
   `conf/nginx/default.conf` to `/etc/nginx/conf.d/default.conf` (read-only).
 * Logs and JDBC drivers use named volumes so container writes do not pollute
   the bind-mounted host directory. DuckDB session init SQL is passed inline in
-  the job config, so no shared directory is required; only the DuckDB JDBC JAR
-  must be preinstalled on every SeaTunnel Engine node.
+  the job config, so no shared directory is required. The DuckDB JDBC JAR and
+  the `httpfs` extension must be preinstalled on every SeaTunnel Engine node;
+  point `SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR` at the extension directory.
 * `dist/seatunnel-web-1.0.0/conf/application.yml` is intentionally not
   read-only-mounted. This allows on-site tuning during development and
   iteration. Production releases should treat the YAML as part of the

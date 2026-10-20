@@ -146,7 +146,7 @@ class DataSourceSourceBuilderFileResourceTest {
         assertTrue(initSql.contains("ENDPOINT 'minio.example.com:9000',"));
         assertTrue(initSql.contains("URL_STYLE 'path',"));
         assertTrue(initSql.contains("USE_SSL true,"));
-        assertTrue(initSql.contains("SCOPE 's3://archive/resources/weather%20data.duckdb'"));
+        assertTrue(initSql.contains("SCOPE 's3://archive/resources/weather%20data.duckdb'\n);"));
         assertFalse(initSql.contains("SET s3_"));
         assertTrue(initSql.contains(
                 "ATTACH IF NOT EXISTS 's3://archive/resources/weather%20data.duckdb' AS duckdb_source (READ_ONLY);"));
