@@ -1,5 +1,8 @@
 package org.apache.seatunnel.web.api.metadata.openlineage;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +26,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,6 +56,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @ConditionalOnProperty(prefix = "lineage-bridge.kafka", name = "enabled", havingValue = "true")
 @Slf4j
 public class OpenLineageJobLineageService {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final LineageBridgeProperties properties;
     private final OpenLineageKafkaBridge bridge;
@@ -359,8 +365,9 @@ public class OpenLineageJobLineageService {
             }
             return datasets;
         }
+        boolean singlePlugin = sources.size() == 1;
         for (OpenLineageJobTopology.Plugin plugin : sources) {
-            Long datasourceId = resolveDatasourceId(plugin, details.getSourceDatasourceId());
+            Long datasourceId = resolveDatasourceId(plugin, details.getSourceDatasourceId(), singlePlugin);
             for (String table : plugin.tables()) {
                 addDataset(datasets, datasourceId, table);
             }
@@ -379,8 +386,9 @@ public class OpenLineageJobLineageService {
             }
             return datasets;
         }
+        boolean singlePlugin = sinks.size() == 1;
         for (OpenLineageJobTopology.Plugin plugin : sinks) {
-            Long datasourceId = resolveDatasourceId(plugin, details.getSinkDatasourceId());
+            Long datasourceId = resolveDatasourceId(plugin, details.getSinkDatasourceId(), singlePlugin);
             for (String table : plugin.tables()) {
                 addDataset(datasets, datasourceId, table);
             }
@@ -389,15 +397,109 @@ public class OpenLineageJobLineageService {
     }
 
     /**
-     * The datasource of one plugin: the configuration wins, the instance column is the fallback.
-     * A multi plugin job shares one instance column, so it is only trusted while the job has a
-     * single plugin on that side.
+     * The datasource of one plugin: the configuration wins, the instance column is the fallback of
+     * a single plugin job, and a job with several plugins resolves its datasource by connection.
      */
-    private Long resolveDatasourceId(OpenLineageJobTopology.Plugin plugin, Long instanceDatasourceId) {
+    private Long resolveDatasourceId(
+            OpenLineageJobTopology.Plugin plugin, Long instanceDatasourceId, boolean singlePlugin) {
         if (plugin.datasourceId() != null) {
             return plugin.datasourceId();
         }
-        return instanceDatasourceId;
+        if (singlePlugin) {
+            return instanceDatasourceId;
+        }
+        return resolveDatasourceByConnection(plugin);
+    }
+
+    /**
+     * The local datasource whose connection matches the connection of the plugin. A connection
+     * that two local datasources share cannot be attributed, so the plugin stays unidentified
+     * instead of being attached to a random datasource.
+     */
+    private Long resolveDatasourceByConnection(OpenLineageJobTopology.Plugin plugin) {
+        String url = StringUtils.trimToNull(plugin.url());
+        if (url == null) {
+            return null;
+        }
+        List<DataSource> dataSources = dataSourceDao.queryAll();
+        if (dataSources == null) {
+            return null;
+        }
+        Long matched = null;
+        for (DataSource dataSource : dataSources) {
+            if (!sameConnection(url, plugin.username(), dataSource)) {
+                continue;
+            }
+            if (matched != null && !matched.equals(dataSource.getId())) {
+                log.warn("OpenLineage bridge cannot attribute the datasource of a job plugin: "
+                        + "several local datasources share the connection, url={}", url);
+                return null;
+            }
+            matched = dataSource.getId();
+        }
+        if (matched == null) {
+            log.warn("OpenLineage bridge cannot attribute the datasource of a job plugin: "
+                    + "no local datasource matches the connection, url={}", url);
+        }
+        return matched;
+    }
+
+    /** Two connections are the same when their url only differs in case, slash or parameters. */
+    private static boolean sameConnection(
+            String url, String username, DataSource dataSource) {
+        String candidate = connectionUrl(dataSource);
+        if (candidate == null || !normalizeUrl(candidate).equals(normalizeUrl(url))) {
+            return false;
+        }
+        String candidateUser = connectionUser(dataSource);
+        if (candidateUser == null || username == null) {
+            return true;
+        }
+        return candidateUser.equalsIgnoreCase(username);
+    }
+
+    /** The connection url of a local datasource, as stored in its connection parameters. */
+    private static String connectionUrl(DataSource dataSource) {
+        JsonNode parameters = connectionParameters(dataSource);
+        JsonNode url = parameters == null ? null : parameters.get("url");
+        return url == null ? null : StringUtils.trimToNull(url.asText());
+    }
+
+    /** The connection user of a local datasource, as stored in its connection parameters. */
+    private static String connectionUser(DataSource dataSource) {
+        JsonNode parameters = connectionParameters(dataSource);
+        if (parameters == null) {
+            return null;
+        }
+        JsonNode user = parameters.get("user");
+        if (user == null) {
+            user = parameters.get("username");
+        }
+        return user == null ? null : StringUtils.trimToNull(user.asText());
+    }
+
+    private static JsonNode connectionParameters(DataSource dataSource) {
+        String parameters = dataSource == null ? null : dataSource.getConnectionParams();
+        if (StringUtils.isBlank(parameters)) {
+            return null;
+        }
+        try {
+            return OBJECT_MAPPER.readTree(parameters);
+        } catch (JsonProcessingException error) {
+            return null;
+        }
+    }
+
+    private static String normalizeUrl(String url) {
+        String value = url.trim().toLowerCase(Locale.ROOT);
+        int parameters = value.indexOf('?');
+        if (parameters >= 0) {
+            value = value.substring(0, parameters);
+        }
+        while (value.endsWith("/")) {
+            value = value.substring(0, value.length() - 1);
+        }
+        return value;
     }
 
     /** Adds one dataset, skipping duplicates and entries without a datasource or a table. */

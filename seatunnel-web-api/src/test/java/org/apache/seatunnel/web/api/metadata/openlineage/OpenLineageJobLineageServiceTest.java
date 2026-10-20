@@ -119,6 +119,12 @@ class OpenLineageJobLineageServiceTest {
         return dataSource;
     }
 
+    private static DataSource dataSource(Long id, String name, String dbType, String url) {
+        DataSource dataSource = dataSource(id, name, dbType);
+        dataSource.setConnectionParams("{\"url\":\"" + url + "\",\"user\":\"root\"}");
+        return dataSource;
+    }
+
     @Test
     void publishesStartUnderTheLocalDatasetIdentity() throws Exception {
         when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance());
@@ -250,6 +256,79 @@ class OpenLineageJobLineageServiceTest {
         assertEquals(2, event.path("inputs").size());
         assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
         assertEquals("seatunnel_web.customers", event.path("inputs").get(1).path("name").asText());
+    }
+
+    @Test
+    void resolvesTheDatasourceOfEveryPluginByItsConnection() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceDatasourceId(10L);
+        submitted.setRuntimeConfig("""
+                source = [
+                  { Jdbc {
+                      url="jdbc:mysql://192.168.100.95:33306/seatunnel_web"
+                      table_path="seatunnel_web.orders"
+                  } },
+                  { Jdbc {
+                      url="jdbc:mysql://192.168.100.96:33306/other_db"
+                      table_path="other_db.customers"
+                  } }
+                ]
+                sink {
+                    Jdbc { table="public.test" }
+                }
+                """);
+        lenient().when(dataSourceDao.queryAll()).thenReturn(List.of(
+                dataSource(10L, "bi_src_mysql", "MYSQL", "jdbc:mysql://192.168.100.95:33306/seatunnel_web"),
+                dataSource(30L, "bi_other_mysql", "MYSQL", "jdbc:mysql://192.168.100.96:33306/other_db")));
+        lenient().when(dataSourceDao.queryById(30L))
+                .thenReturn(dataSource(30L, "bi_other_mysql", "MYSQL"));
+
+        service.recordStart(submitted, "engine-job-64", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals(2, event.path("inputs").size());
+        // Each plugin keeps its own datasource: the namespaces differ.
+        assertEquals("bi_src_mysql", event.path("inputs").get(0).path("namespace").asText());
+        assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
+        assertEquals("bi_other_mysql", event.path("inputs").get(1).path("namespace").asText());
+        assertEquals("other_db.customers", event.path("inputs").get(1).path("name").asText());
+        assertEquals("st_ds_30", event.path("inputs").get(1).path("facets")
+                .path("datasource").path("name").asText());
+    }
+
+    @Test
+    void skipsTheTableOfAPluginWhoseDatasourceStaysAmbiguous() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceDatasourceId(10L);
+        submitted.setRuntimeConfig("""
+                source = [
+                  { Jdbc {
+                      url="jdbc:mysql://192.168.100.95:33306/seatunnel_web"
+                      table_path="seatunnel_web.orders"
+                  } },
+                  { Jdbc {
+                      url="jdbc:mysql://192.168.100.97:33306/other_db"
+                      table_path="other_db.customers"
+                  } }
+                ]
+                sink {
+                    Jdbc { table="public.test" }
+                }
+                """);
+        // Two local datasources share the connection of the second plugin.
+        lenient().when(dataSourceDao.queryAll()).thenReturn(List.of(
+                dataSource(10L, "bi_src_mysql", "MYSQL", "jdbc:mysql://192.168.100.95:33306/seatunnel_web"),
+                dataSource(30L, "bi_other_mysql", "MYSQL", "jdbc:mysql://192.168.100.97:33306/other_db"),
+                dataSource(31L, "bi_other_mysql_copy", "MYSQL", "jdbc:mysql://192.168.100.97:33306/other_db")));
+
+        service.recordStart(submitted, "engine-job-65", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        // The ambiguous plugin contributes no table, the resolved one still does.
+        assertEquals(1, event.path("inputs").size());
+        assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
     }
 
     @Test
