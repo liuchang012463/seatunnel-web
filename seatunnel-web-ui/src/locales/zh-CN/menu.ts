@@ -2,8 +2,6 @@ export default {
   'menu.reporting': '数据采报',
   'menu.reporting.forms': '数据采报',
   'menu.reporting.reports': '采集报告管理',
-  'menu.数据采报.采报配置': '采报配置',
-  'menu.数据采报.采集报告': '采集报告',
   'menu.situation': '引接态势',
   'menu.datasource': '数据源管理',
   'menu.discovery': '数据探查',

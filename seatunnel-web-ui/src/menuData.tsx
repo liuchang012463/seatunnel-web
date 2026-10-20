@@ -43,13 +43,11 @@ export const menuData: MenuDataItem[] = [
     ],
   },
   {
-    path: '/menu/reporting',
+    path: '/reporting/forms',
     name: '数据采报',
     icon: <FormOutlined />,
-    children: [
-      { path: '/reporting/forms', name: '采报配置', icon: <FormOutlined /> },
-      { path: '/reporting/reports', name: '采集报告', icon: <BarChartOutlined /> },
-    ],
+    disabledTooltip: true,
+    collapsedHoverPanel: true,
   },
   {
     path: '/menu/ingestion',

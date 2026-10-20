@@ -19,14 +19,7 @@ describe('application navigation menu', () => {
           { path: '/data-exploration/results', name: '探查结果展示' },
         ],
       },
-      {
-        path: '/menu/reporting',
-        name: '数据采报',
-        children: [
-          { path: '/reporting/forms', name: '采报配置' },
-          { path: '/reporting/reports', name: '采集报告' },
-        ],
-      },
+      { path: '/reporting/forms', name: '数据采报' },
       {
         path: '/menu/ingestion',
         name: '数据引接',
@@ -87,6 +80,7 @@ describe('application navigation menu', () => {
     ).toEqual([
       { path: '/bi', disabledTooltip: true, collapsedHoverPanel: true },
       { path: '/data-source', disabledTooltip: true, collapsedHoverPanel: true },
+      { path: '/reporting/forms', disabledTooltip: true, collapsedHoverPanel: true },
     ]);
   });
 });

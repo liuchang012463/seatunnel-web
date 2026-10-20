@@ -10,6 +10,10 @@ const PAGE_COPY: Record<string, { title: string; description: string }> = {
     title: '数据采报',
     description: '采报模板与填报闭环尚未接入当前版本。',
   },
+  '/reporting/reports': {
+    title: '数据采报',
+    description: '采集报告尚未接入当前版本。',
+  },
   '/sync/cloud-edge-tasks': {
     title: '云边协同任务',
     description: '云边协同任务能力尚未接入当前版本。',

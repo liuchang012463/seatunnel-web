@@ -19,7 +19,7 @@ const withHiddenLayoutRedirect = (redirect: string) => {
  */
 const businessRoutes = [
   ['/reporting/forms', './FeaturePlaceholderPage'],
-  ['/reporting/reports', './reporting-reports'],
+  ['/reporting/reports', './FeaturePlaceholderPage'],
   ['/data-source', './data-source'],
   ['/data-source/master-data', './master-data'],
   ['/data-exploration/overview', './data-exploration/overview'],
