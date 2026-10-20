@@ -601,15 +601,6 @@ const DataSourcePage: React.FC = () => {
               animate="visible"
               variants={PAGE_ANIMATION.sectionStagger}
             >
-              <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-heading">
-                <div>
-                  <h1 className="datasource-page-title">数据源管理</h1>
-                  <p className="datasource-page-description">
-                    统一维护接入数据源、连通状态与元数据探查进度。
-                  </p>
-                </div>
-              </motion.div>
-
               <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
                 <SearchBar
                   value={searchKeyword}
