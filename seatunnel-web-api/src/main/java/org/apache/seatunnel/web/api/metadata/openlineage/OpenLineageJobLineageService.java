@@ -323,6 +323,7 @@ public class OpenLineageJobLineageService {
         Config runtimeConfig = StringUtils.isBlank(details.getRuntimeConfig())
                 ? null
                 : ConfigFactory.parseString(details.getRuntimeConfig());
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(runtimeConfig);
         return new OpenLineageSnapshot(
                 eventType,
                 Instant.now(),
@@ -336,15 +337,75 @@ public class OpenLineageJobLineageService {
                 prevStatus,
                 errorMessage,
                 lastHeartbeat,
-                resolveDataset(details.getSourceDatasourceId(), details.getSourceTable()),
-                resolveDataset(details.getSinkDatasourceId(), details.getSinkTable()),
+                resolveInputDatasets(details, topology),
+                resolveOutputDatasets(details, topology),
                 FieldMappingExtractor.extract(runtimeConfig));
     }
 
-    /** Datasets are published under the local identity only; asset performs the name → OM mapping. */
-    private OpenLineageSnapshot.Dataset resolveDataset(Long datasourceId, String tablePath) {
-        if (datasourceId == null || StringUtils.isBlank(tablePath)) {
-            return null;
+    /**
+     * The tables the job reads. The submitted configuration is the authority; the instance
+     * columns are the fallback for jobs whose configuration cannot be parsed.
+     */
+    private List<OpenLineageSnapshot.Dataset> resolveInputDatasets(
+            JobInstanceVO details, OpenLineageJobTopology.Topology topology) {
+        List<OpenLineageSnapshot.Dataset> datasets = new ArrayList<>();
+        List<OpenLineageJobTopology.Plugin> sources = topology.sources();
+        if (sources.isEmpty()) {
+            for (String table : parseTableList(details.getSourceTable())) {
+                addDataset(datasets, details.getSourceDatasourceId(), table);
+            }
+            return datasets;
+        }
+        for (OpenLineageJobTopology.Plugin plugin : sources) {
+            Long datasourceId = resolveDatasourceId(plugin, details.getSourceDatasourceId());
+            for (String table : plugin.tables()) {
+                addDataset(datasets, datasourceId, table);
+            }
+        }
+        return datasets;
+    }
+
+    /** The tables the job writes, resolved like the source side. */
+    private List<OpenLineageSnapshot.Dataset> resolveOutputDatasets(
+            JobInstanceVO details, OpenLineageJobTopology.Topology topology) {
+        List<OpenLineageSnapshot.Dataset> datasets = new ArrayList<>();
+        List<OpenLineageJobTopology.Plugin> sinks = topology.sinks();
+        if (sinks.isEmpty()) {
+            for (String table : parseTableList(details.getSinkTable())) {
+                addDataset(datasets, details.getSinkDatasourceId(), table);
+            }
+            return datasets;
+        }
+        for (OpenLineageJobTopology.Plugin plugin : sinks) {
+            Long datasourceId = resolveDatasourceId(plugin, details.getSinkDatasourceId());
+            for (String table : plugin.tables()) {
+                addDataset(datasets, datasourceId, table);
+            }
+        }
+        return datasets;
+    }
+
+    /**
+     * The datasource of one plugin: the configuration wins, the instance column is the fallback.
+     * A multi plugin job shares one instance column, so it is only trusted while the job has a
+     * single plugin on that side.
+     */
+    private Long resolveDatasourceId(OpenLineageJobTopology.Plugin plugin, Long instanceDatasourceId) {
+        if (plugin.datasourceId() != null) {
+            return plugin.datasourceId();
+        }
+        return instanceDatasourceId;
+    }
+
+    /** Adds one dataset, skipping duplicates and entries without a datasource or a table. */
+    private void addDataset(List<OpenLineageSnapshot.Dataset> datasets, Long datasourceId, String table) {
+        if (datasourceId == null || StringUtils.isBlank(table)) {
+            return;
+        }
+        for (OpenLineageSnapshot.Dataset dataset : datasets) {
+            if (datasourceId.equals(dataset.datasourceId()) && table.equals(dataset.name())) {
+                return;
+            }
         }
         DataSource dataSource = dataSourceDao.queryById(datasourceId);
         String namespace = dataSource != null && StringUtils.isNotBlank(dataSource.getName())
@@ -353,14 +414,47 @@ public class OpenLineageJobLineageService {
         String dbTypeName = dataSource != null && dataSource.getDbType() != null
                 ? dataSource.getDbType().name()
                 : null;
-        return new OpenLineageSnapshot.Dataset(datasourceId, dbTypeName, namespace, tablePath);
+        datasets.add(new OpenLineageSnapshot.Dataset(datasourceId, dbTypeName, namespace, table));
+    }
+
+    /**
+     * Reads the table list the web stores on the job definition: a plain table path, a JSON
+     * array (guide multi, script) or a comma separated list (whole sync).
+     */
+    private static List<String> parseTableList(String raw) {
+        List<String> tables = new ArrayList<>();
+        String value = StringUtils.trimToNull(raw);
+        if (value == null) {
+            return tables;
+        }
+        if (value.startsWith("[") && value.endsWith("]")) {
+            try {
+                Config parsed = ConfigFactory.parseString("tables = " + value);
+                tables.addAll(parsed.getStringList("tables"));
+            } catch (RuntimeException error) {
+                log.debug("Could not read the JSON table list, value={}", value, error);
+                tables.add(value);
+            }
+            return tables;
+        }
+        if (value.contains(",")) {
+            for (String table : value.split(",")) {
+                String trimmed = StringUtils.trimToNull(table);
+                if (trimmed != null) {
+                    tables.add(trimmed);
+                }
+            }
+            return tables;
+        }
+        tables.add(value);
+        return tables;
     }
 
     private void publishIfValid(OpenLineageSnapshot snapshot) {
         if (snapshot == null) {
             return;
         }
-        if (snapshot.input() == null || snapshot.output() == null) {
+        if (snapshot.inputs().isEmpty() || snapshot.outputs().isEmpty()) {
             // Local lineage is only publishable with both sides identified: the design fixes
             // source/sink datasource id and table path as the minimum viable edge.
             log.info("Skipping OpenLineage {} without source/sink table, instanceId={}, engineJobId={}",

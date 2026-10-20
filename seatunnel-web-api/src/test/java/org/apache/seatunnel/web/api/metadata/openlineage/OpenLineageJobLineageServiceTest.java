@@ -148,10 +148,108 @@ class OpenLineageJobLineageServiceTest {
     void skipsStartWhenLocalLineageCannotBeIdentified() {
         JobInstanceVO submitted = instance();
         submitted.setSourceTable(null);
+        // A source that only carries a query names no table, so no edge can be published.
+        submitted.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web"
+                        query="select * from seatunnel_web.orders"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        table="public.test"
+                    }
+                }
+                """);
 
         service.recordStart(submitted, "engine-job-42", false);
 
         assertTrue(published.isEmpty(), "an unidentified datasource/table edge must not publish");
+    }
+
+    @Test
+    void prefersTheSubmittedConfigurationOverTheInstanceTable() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable("seatunnel_web.stale_table");
+        submitted.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web"
+                        table_path="seatunnel_web.orders"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        table="public.test"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-63", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
+    }
+
+    @Test
+    void publishesEverySourceTableOfAMultiTableJob() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable("[\"seatunnel_web.orders\",\"seatunnel_web.customers\"]");
+        submitted.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web"
+                        table_list=["seatunnel_web.orders","seatunnel_web.customers"]
+                    }
+                }
+                sink {
+                    Jdbc {
+                        table="public.test"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-60", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals(2, event.path("inputs").size());
+        assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
+        assertEquals("seatunnel_web.customers", event.path("inputs").get(1).path("name").asText());
+        // The JSON table list must never leak into the dataset name.
+        assertEquals("bi_src_mysql", event.path("inputs").get(0).path("namespace").asText());
+    }
+
+    @Test
+    void publishesEverySourceTableStoredAsAJsonListWithoutAReadableConfiguration() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable("[\"seatunnel_web.orders\",\"seatunnel_web.customers\"]");
+        submitted.setRuntimeConfig("");
+
+        service.recordStart(submitted, "engine-job-61", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals(2, event.path("inputs").size());
+        assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
+        assertEquals("seatunnel_web.customers", event.path("inputs").get(1).path("name").asText());
+    }
+
+    @Test
+    void publishesEverySourceTableStoredAsACommaSeparatedList() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable("seatunnel_web.orders,seatunnel_web.customers");
+        submitted.setRuntimeConfig("");
+
+        service.recordStart(submitted, "engine-job-62", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals(2, event.path("inputs").size());
+        assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
+        assertEquals("seatunnel_web.customers", event.path("inputs").get(1).path("name").asText());
     }
 
     @Test

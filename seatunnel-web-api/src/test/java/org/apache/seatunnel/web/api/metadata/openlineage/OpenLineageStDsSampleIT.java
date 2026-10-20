@@ -120,10 +120,10 @@ class OpenLineageStDsSampleIT {
                 1024L, 86L, "chatbi_sync_ac_user",
                 false, "BATCH", "BATCH",
                 "RUNNING", null, null,
-                new OpenLineageSnapshot.Dataset(
-                        DATASOURCE_ID, "MYSQL", DATASOURCE_NAME, INPUT_TABLE),
-                new OpenLineageSnapshot.Dataset(
-                        DATASOURCE_ID, "MYSQL", DATASOURCE_NAME, OUTPUT_TABLE),
+                List.of(new OpenLineageSnapshot.Dataset(
+                        DATASOURCE_ID, "MYSQL", DATASOURCE_NAME, INPUT_TABLE)),
+                List.of(new OpenLineageSnapshot.Dataset(
+                        DATASOURCE_ID, "MYSQL", DATASOURCE_NAME, OUTPUT_TABLE)),
                 mappings);
 
         ObjectNode event = OpenLineageEventFactory.toRunEvent(snapshot);

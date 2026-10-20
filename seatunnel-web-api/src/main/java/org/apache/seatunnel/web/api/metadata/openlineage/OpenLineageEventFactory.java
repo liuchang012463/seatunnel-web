@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.common.utils.MetadataStableName;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -79,8 +80,8 @@ public final class OpenLineageEventFactory {
         event.put("eventTime", snapshot.eventTime().toString());
         event.set("run", buildRun(snapshot));
         event.set("job", buildJob(snapshot));
-        event.set("inputs", buildDatasets(snapshot, true));
-        ArrayNode outputs = buildDatasets(snapshot, false);
+        event.set("inputs", buildDatasets(snapshot.inputs()));
+        ArrayNode outputs = buildDatasets(snapshot.outputs());
         attachColumnLineage(outputs, snapshot);
         event.set("outputs", outputs);
         event.put("producer", PRODUCER);
@@ -118,13 +119,22 @@ public final class OpenLineageEventFactory {
         return job;
     }
 
-    private static ArrayNode buildDatasets(OpenLineageSnapshot snapshot, boolean inputSide) {
+    private static ArrayNode buildDatasets(List<OpenLineageSnapshot.Dataset> datasets) {
         ArrayNode array = OBJECT_MAPPER.createArrayNode();
-        OpenLineageSnapshot.Dataset dataset = inputSide ? snapshot.input() : snapshot.output();
-        if (dataset == null) {
+        if (datasets == null) {
             return array;
         }
-        ObjectNode node = array.addObject();
+        for (OpenLineageSnapshot.Dataset dataset : datasets) {
+            if (dataset == null) {
+                continue;
+            }
+            array.add(buildDataset(dataset));
+        }
+        return array;
+    }
+
+    private static ObjectNode buildDataset(OpenLineageSnapshot.Dataset dataset) {
+        ObjectNode node = OBJECT_MAPPER.createObjectNode();
         node.put("namespace", dataset.namespace());
         node.put("name", dataset.name());
 
@@ -147,7 +157,7 @@ public final class OpenLineageEventFactory {
             standardDatasource.put("_schemaURL", DATASOURCE_FACET_SCHEMA_URL);
             standardDatasource.put("name", serviceName);
         }
-        return array;
+        return node;
     }
 
     /**
@@ -164,14 +174,24 @@ public final class OpenLineageEventFactory {
      * Attaches the standard {@code columnLineage} facet to the single output dataset, keyed by the
      * output field name as the OpenLineage spec requires. Absent when no field was mapped, which
      * marks a table-level-only run.
+     *
+     * <p>
+     * The facet is only attached when the column attribution is unambiguous: exactly one input
+     * dataset and exactly one output dataset. With several inputs the source table of a column is
+     * unknown, and with several outputs the target table of a column is unknown, so the event
+     * stays at table level instead of guessing.
+     * </p>
      */
     private static void attachColumnLineage(ArrayNode outputs, OpenLineageSnapshot snapshot) {
         Map<String, Set<String>> mappings = snapshot.fieldMappings();
-        OpenLineageSnapshot.Dataset input = snapshot.input();
-        OpenLineageSnapshot.Dataset output = snapshot.output();
-        if (mappings == null || mappings.isEmpty() || output == null) {
+        List<OpenLineageSnapshot.Dataset> inputs = snapshot.inputs();
+        if (mappings == null || mappings.isEmpty() || inputs == null || inputs.size() != 1) {
             return;
         }
+        if (outputs.size() != 1) {
+            return;
+        }
+        OpenLineageSnapshot.Dataset input = inputs.get(0);
         ObjectNode datasetNode = (ObjectNode) outputs.get(0);
         ObjectNode facets = (ObjectNode) datasetNode.get("facets");
         ObjectNode columnLineage = facets.putObject("columnLineage");
@@ -184,8 +204,8 @@ public final class OpenLineageEventFactory {
             ArrayNode inputFields = target.putArray("inputFields");
             for (String sourceField : mapping.getValue()) {
                 ObjectNode inputField = inputFields.addObject();
-                inputField.put("namespace", input == null ? "" : input.namespace());
-                inputField.put("name", input == null ? "" : input.name());
+                inputField.put("namespace", input.namespace() == null ? "" : input.namespace());
+                inputField.put("name", input.name() == null ? "" : input.name());
                 inputField.put("field", sourceField);
             }
         }

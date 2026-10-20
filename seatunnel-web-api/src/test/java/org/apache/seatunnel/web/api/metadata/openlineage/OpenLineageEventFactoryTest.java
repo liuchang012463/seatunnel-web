@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -33,7 +34,7 @@ class OpenLineageEventFactoryTest {
                 1024L, 86L, "ods_order_sync",
                 false, "MANUAL", "BATCH",
                 null, null, null,
-                MYSQL_SOURCE, DORIS_SINK,
+                List.of(MYSQL_SOURCE), List.of(DORIS_SINK),
                 Map.of("create_date", Set.of("create_time")));
 
         JsonNode event = MAPPER.convertValue(
@@ -117,7 +118,7 @@ class OpenLineageEventFactoryTest {
                 1L, 2L, "t2",
                 false, null, null,
                 null, null, null,
-                MYSQL_SOURCE, DORIS_SINK,
+                List.of(MYSQL_SOURCE), List.of(DORIS_SINK),
                 Map.of());
 
         JsonNode event = MAPPER.convertValue(
@@ -136,8 +137,8 @@ class OpenLineageEventFactoryTest {
                 1L, 2L, "t2b",
                 false, null, null,
                 null, null, null,
-                new OpenLineageSnapshot.Dataset(0L, "MYSQL", "local", "source"),
-                new OpenLineageSnapshot.Dataset(null, "DORIS", "local", "sink"),
+                List.of(new OpenLineageSnapshot.Dataset(0L, "MYSQL", "local", "source")),
+                List.of(new OpenLineageSnapshot.Dataset(null, "DORIS", "local", "sink")),
                 Map.of("out", Set.of("in")));
 
         JsonNode event = MAPPER.convertValue(
@@ -161,7 +162,7 @@ class OpenLineageEventFactoryTest {
                 3L, 4L, "t3",
                 false, null, null,
                 "RUNNING", "Engine crashed", null,
-                MYSQL_SOURCE, DORIS_SINK,
+                List.of(MYSQL_SOURCE), List.of(DORIS_SINK),
                 Map.of());
         OpenLineageSnapshot heartbeat = new OpenLineageSnapshot(
                 OpenLineageEventFactory.EventType.RUNNING,
@@ -170,7 +171,7 @@ class OpenLineageEventFactoryTest {
                 3L, 4L, "t3",
                 true, null, null,
                 null, null, "2026-10-19T10:00:00Z",
-                MYSQL_SOURCE, DORIS_SINK,
+                List.of(MYSQL_SOURCE), List.of(DORIS_SINK),
                 Map.of());
 
         JsonNode failedEvent = MAPPER.convertValue(
@@ -194,6 +195,85 @@ class OpenLineageEventFactoryTest {
     }
 
     @Test
+    void rendersEveryInputAndOutputDatasetOfAMultiTableJob() {
+        OpenLineageSnapshot.Dataset secondSource =
+                new OpenLineageSnapshot.Dataset(7L, "MYSQL", "bi_src_mysql", "ds_1.customers");
+        OpenLineageSnapshot.Dataset secondSink =
+                new OpenLineageSnapshot.Dataset(11L, "DORIS", "bi_tidb_doris", "ods.customers_dwd");
+
+        OpenLineageSnapshot snapshot = new OpenLineageSnapshot(
+                OpenLineageEventFactory.EventType.COMPLETE,
+                Instant.now(),
+                "engine-job-46",
+                10L, 11L, "multi_table_sync",
+                false, "MANUAL", "BATCH",
+                "RUNNING", null, null,
+                List.of(MYSQL_SOURCE, secondSource),
+                List.of(DORIS_SINK, secondSink),
+                Map.of());
+
+        JsonNode event = MAPPER.convertValue(
+                OpenLineageEventFactory.toRunEvent(snapshot), JsonNode.class);
+
+        assertEquals(2, event.path("inputs").size());
+        assertEquals("ds_1.orders", event.path("inputs").get(0).path("name").asText());
+        assertEquals("ds_1.customers", event.path("inputs").get(1).path("name").asText());
+        assertEquals(2, event.path("outputs").size());
+        assertEquals("ods.orders_dwd", event.path("outputs").get(0).path("name").asText());
+        assertEquals("ods.customers_dwd", event.path("outputs").get(1).path("name").asText());
+        // Every dataset carries its own local identity.
+        assertEquals("bi_src_mysql", event.path("inputs").get(1).path("namespace").asText());
+        assertEquals("st_ds_7",
+                event.path("inputs").get(1).path("facets").path("datasource").path("name").asText());
+        assertEquals("st_ds_11",
+                event.path("outputs").get(1).path("facets").path("datasource").path("name").asText());
+    }
+
+    @Test
+    void omitsColumnLineageWhenSeveralInputsMakeTheSourceTableAmbiguous() {
+        OpenLineageSnapshot snapshot = new OpenLineageSnapshot(
+                OpenLineageEventFactory.EventType.COMPLETE,
+                Instant.now(),
+                "engine-job-47",
+                10L, 11L, "merge_two_tables",
+                false, "MANUAL", "BATCH",
+                "RUNNING", null, null,
+                List.of(MYSQL_SOURCE,
+                        new OpenLineageSnapshot.Dataset(7L, "MYSQL", "bi_src_mysql", "ds_1.customers")),
+                List.of(DORIS_SINK),
+                Map.of("create_date", Set.of("create_time")));
+
+        JsonNode event = MAPPER.convertValue(
+                OpenLineageEventFactory.toRunEvent(snapshot), JsonNode.class);
+
+        // The source table of a column is unknown, so the event stays at table level.
+        assertTrue(event.path("outputs").get(0).path("facets").path("columnLineage").isMissingNode());
+        assertEquals(2, event.path("inputs").size());
+    }
+
+    @Test
+    void omitsColumnLineageWhenSeveralOutputsMakeTheTargetTableAmbiguous() {
+        OpenLineageSnapshot snapshot = new OpenLineageSnapshot(
+                OpenLineageEventFactory.EventType.COMPLETE,
+                Instant.now(),
+                "engine-job-48",
+                10L, 11L, "fan_out_one_table",
+                false, "MANUAL", "BATCH",
+                "RUNNING", null, null,
+                List.of(MYSQL_SOURCE),
+                List.of(DORIS_SINK,
+                        new OpenLineageSnapshot.Dataset(11L, "DORIS", "bi_tidb_doris", "ods.orders_dwd2")),
+                Map.of("create_date", Set.of("create_time")));
+
+        JsonNode event = MAPPER.convertValue(
+                OpenLineageEventFactory.toRunEvent(snapshot), JsonNode.class);
+
+        // The target table of a column is unknown, so the event stays at table level.
+        assertTrue(event.path("outputs").get(0).path("facets").path("columnLineage").isMissingNode());
+        assertEquals(2, event.path("outputs").size());
+    }
+
+    @Test
     void neverEmitsOpenMetadataRequestStructure() {
         OpenLineageSnapshot snapshot = new OpenLineageSnapshot(
                 OpenLineageEventFactory.EventType.COMPLETE,
@@ -202,7 +282,7 @@ class OpenLineageEventFactoryTest {
                 9L, 9L, "t9",
                 false, null, null,
                 "RUNNING", null, null,
-                MYSQL_SOURCE, DORIS_SINK,
+                List.of(MYSQL_SOURCE), List.of(DORIS_SINK),
                 new TreeMap<>(Map.of("c", Set.of("a", "b"))));
 
         JsonNode event = MAPPER.convertValue(
