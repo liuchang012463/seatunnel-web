@@ -3,6 +3,7 @@ import {
   CloseOutlined,
   DownOutlined,
   SearchOutlined,
+  StopOutlined,
   SyncOutlined,
 } from "@ant-design/icons";
 import { useIntl } from "@umijs/max";
@@ -161,6 +162,18 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
         </span>
       ),
       value: "FAILED",
+    },
+    {
+      label: (
+        <span className="inline-flex items-center gap-2">
+          <StopOutlined className="text-slate-400" />
+          {intl.formatMessage({
+            id: "pages.job.status.canceled",
+            defaultMessage: "CANCELED",
+          })}
+        </span>
+      ),
+      value: "CANCELED",
     },
   ];
 

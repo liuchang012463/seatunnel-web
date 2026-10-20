@@ -224,6 +224,7 @@ export default {
   'pages.job.status.completed': 'COMPLETED',
   'pages.job.status.failed': 'FAILED',
   'pages.job.status.success': 'SUCCESS',
+  'pages.job.status.canceled': 'CANCELED',
 
   'pages.job.config.basicSetting': 'Basic Setting',
 
@@ -382,6 +383,8 @@ export default {
   "pages.job.detail.metrics.throughputDesc": "Current read and write processing speed",
   "pages.job.detail.metrics.completedThroughputDesc": "Average speed calculated from total rows and runtime after the task finishes",
   "pages.job.detail.metrics.totalVolume": "Total Volume",
+  "pages.job.detail.metrics.totalVolumeDesc": "Data processed by the current run",
+  "pages.job.detail.metrics.accumulated": "Accumulated",
 
   "pages.job.detail.metrics.readQps": "Read QPS",
   "pages.job.detail.metrics.writeQps": "Write QPS",

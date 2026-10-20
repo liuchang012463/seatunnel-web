@@ -230,6 +230,7 @@ export default {
   'pages.job.status.completed': '已完成',
   'pages.job.status.failed': '失败',
   'pages.job.status.success': '成功',
+  'pages.job.status.canceled': '已取消',
 
   'pages.job.config.basicSetting': '基础配置',
 
@@ -387,6 +388,8 @@ export default {
   "pages.job.detail.metrics.throughputDesc": "当前实例的读取与写入处理速度",
   "pages.job.detail.metrics.completedThroughputDesc": "任务结束后按累计处理行数和运行时长计算的平均速度",
   "pages.job.detail.metrics.totalVolume": "总量统计",
+  "pages.job.detail.metrics.totalVolumeDesc": "当前运行实例累计处理的数据量",
+  "pages.job.detail.metrics.accumulated": "累计",
 
   "pages.job.detail.metrics.readQps": "读取 QPS",
   "pages.job.detail.metrics.writeQps": "写入 QPS",
