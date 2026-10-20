@@ -25,6 +25,8 @@ import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceMetadataStatusVO;
+import org.apache.seatunnel.web.spi.bean.vo.MetadataAgentLogsVO;
+import org.apache.seatunnel.web.spi.bean.vo.MetadataAgentRunsVO;
 import org.apache.seatunnel.web.spi.bean.vo.MetadataPipelineRunVO;
 import org.apache.seatunnel.web.spi.bean.vo.MetadataRunStateVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
@@ -40,6 +42,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -602,6 +605,111 @@ public class MetadataPipelineOperationService {
             return MetadataRunStatus.FAILED;
         }
         return status;
+    }
+
+    /**
+     * The OpenMetadata agents this data source owns, with their run history. A source
+     * without a profiler or without a dedicated sample agent only reports the agents it
+     * actually runs.
+     */
+    public List<MetadataAgentRunsVO> listAgentRuns(Long dataSourceId, int limit) {
+        requireEnabled();
+        MetadataSourceBinding binding = requireReadyBinding(dataSourceId);
+        MetadataConnectorAdapter adapter = requireAdapter(dataSourceId);
+        openMetadataClient.assertFixedVersion();
+        int safeLimit = Math.max(1, limit);
+        List<MetadataAgentRunsVO> agents = new ArrayList<>();
+        agents.add(agentRuns(
+                "METADATA",
+                "元数据扫描",
+                defaultIfBlank(binding.getOmMetadataPipelineFqn(),
+                        MetadataStableName.metadataPipelineFqn(dataSourceId)),
+                safeLimit));
+        if (adapter.supportsProfiler()) {
+            agents.add(agentRuns(
+                    "PROFILER",
+                    "指标统计",
+                    defaultIfBlank(binding.getOmProfilerPipelineFqn(),
+                            MetadataStableName.profilerPipelineFqn(dataSourceId)),
+                    safeLimit));
+        }
+        if (adapter.hasDedicatedSampleAgent()) {
+            agents.add(agentRuns(
+                    "AUTO_CLASSIFICATION",
+                    "样例采集",
+                    MetadataStableName.autoClassificationPipelineFqn(dataSourceId),
+                    safeLimit));
+        }
+        return agents;
+    }
+
+    /**
+     * Log of the last run of one agent. OpenMetadata 2.0.4 only keeps the log of the
+     * latest run, so an agent that never ran simply has no log.
+     */
+    public MetadataAgentLogsVO getAgentLogs(Long dataSourceId, String agentType, int limit) {
+        requireEnabled();
+        MetadataSourceBinding binding = requireReadyBinding(dataSourceId);
+        MetadataConnectorAdapter adapter = requireAdapter(dataSourceId);
+        String pipelineFqn = agentPipelineFqn(binding, adapter, dataSourceId, agentType);
+        openMetadataClient.assertFixedVersion();
+        MetadataAgentLogsVO vo = new MetadataAgentLogsVO();
+        vo.setAgentType(agentType);
+        try {
+            Map<String, String> logs =
+                    openMetadataClient.listIngestionPipelineLogs(pipelineFqn, Math.max(1, limit));
+            vo.setLogs(logs);
+            vo.setMessage(logs.isEmpty() ? "该 agent 暂无运行日志" : null);
+        } catch (MetadataIntegrationException error) {
+            vo.setMessage("无法读取运行日志：" + error.getMessage());
+        }
+        return vo;
+    }
+
+    private MetadataAgentRunsVO agentRuns(
+            String agentType, String label, String pipelineFqn, int limit) {
+        MetadataAgentRunsVO vo = new MetadataAgentRunsVO();
+        vo.setAgentType(agentType);
+        vo.setLabel(label);
+        vo.setPipelineFqn(pipelineFqn);
+        vo.setRuns(toRunViews(pipelineFqn, limit, agentType));
+        return vo;
+    }
+
+    private String agentPipelineFqn(
+            MetadataSourceBinding binding,
+            MetadataConnectorAdapter adapter,
+            Long dataSourceId,
+            String agentType) {
+        String normalized = agentType == null ? "" : agentType.trim().toUpperCase();
+        switch (normalized) {
+            case "METADATA":
+                return defaultIfBlank(binding.getOmMetadataPipelineFqn(),
+                        MetadataStableName.metadataPipelineFqn(dataSourceId));
+            case "PROFILER":
+                if (!adapter.supportsProfiler()) {
+                    throw invalid("this data source has no profiler agent");
+                }
+                return defaultIfBlank(binding.getOmProfilerPipelineFqn(),
+                        MetadataStableName.profilerPipelineFqn(dataSourceId));
+            case "AUTO_CLASSIFICATION":
+                if (!adapter.hasDedicatedSampleAgent()) {
+                    throw invalid("this data source has no sample collection agent");
+                }
+                return MetadataStableName.autoClassificationPipelineFqn(dataSourceId);
+            default:
+                throw invalid("agentType must be METADATA, PROFILER or AUTO_CLASSIFICATION");
+        }
+    }
+
+    private MetadataConnectorAdapter requireAdapter(Long dataSourceId) {
+        DataSource dataSource = requireActiveDataSource(dataSourceId);
+        return connectorRegistry.find(dataSource.getDbType())
+                .orElseThrow(() -> invalid("metadata connector is not supported for this data source type"));
+    }
+
+    private static String defaultIfBlank(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     public List<MetadataPipelineRunVO> listRuns(Long dataSourceId, String type, int limit) {

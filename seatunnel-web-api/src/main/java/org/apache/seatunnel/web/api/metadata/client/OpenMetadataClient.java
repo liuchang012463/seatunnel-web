@@ -5,6 +5,7 @@ import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /** OpenMetadata Server boundary. This interface deliberately exposes no Airflow API. */
@@ -182,6 +183,12 @@ public interface OpenMetadataClient {
 
     /** Reads PipelineStatus from OpenMetadata, never from an Airflow endpoint. */
     List<OpenMetadataPipelineRun> listIngestionPipelineRuns(String fullyQualifiedName, int limit);
+
+    /**
+     * Reads the log of the last run of one ingestion pipeline from OpenMetadata. The
+     * 2.0.4 endpoint only exposes the latest run, keyed by the task instance name.
+     */
+    Map<String, String> listIngestionPipelineLogs(String fullyQualifiedName, int limit);
 
     /** OpenMetadata 2.0.4 kill endpoint; it intentionally has no request body. */
     void killIngestionPipeline(String id);

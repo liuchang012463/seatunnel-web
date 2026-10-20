@@ -20,6 +20,8 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.spi.bean.vo.DBOptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceMetadataStatusVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceVO;
+import org.apache.seatunnel.web.spi.bean.vo.MetadataAgentLogsVO;
+import org.apache.seatunnel.web.spi.bean.vo.MetadataAgentRunsVO;
 import org.apache.seatunnel.web.spi.bean.vo.MetadataPipelineRunVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.enums.Status;
@@ -233,6 +235,27 @@ public class DataSourceController {
             @RequestParam(value = "type", defaultValue = "SCAN") String type,
             @RequestParam(value = "limit", defaultValue = "5") int limit) {
         return Result.buildSuc(metadataPipelineOperationService.listRuns(id, type, limit));
+    }
+
+    @GetMapping("/{id}/metadata-agents")
+    @Operation(
+            summary = "listDataSourceMetadataAgents",
+            description = "Read the run history of every OpenMetadata agent this data source owns")
+    public Result<List<MetadataAgentRunsVO>> metadataAgents(
+            @PathVariable("id") Long id,
+            @RequestParam(value = "limit", defaultValue = "10") int limit) {
+        return Result.buildSuc(metadataPipelineOperationService.listAgentRuns(id, limit));
+    }
+
+    @GetMapping("/{id}/metadata-agents/{agentType}/logs")
+    @Operation(
+            summary = "getDataSourceMetadataAgentLogs",
+            description = "Read the log of the last run of one OpenMetadata agent")
+    public Result<MetadataAgentLogsVO> metadataAgentLogs(
+            @PathVariable("id") Long id,
+            @PathVariable("agentType") String agentType,
+            @RequestParam(value = "limit", defaultValue = "2000") int limit) {
+        return Result.buildSuc(metadataPipelineOperationService.getAgentLogs(id, agentType, limit));
     }
 
     @PostMapping("/{id}/metadata-sync/retry")

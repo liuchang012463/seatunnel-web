@@ -426,9 +426,6 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         if (root) {
             params.setRoot("true");
         }
-        if (type == ExplorationAssetType.API_ENDPOINT && !blank(parentFullyQualifiedName)) {
-            params.addQueryParam("apiCollection", parentFullyQualifiedName);
-        }
         if (after != null && !after.isBlank()) {
             params.setAfter(after);
         }
@@ -1490,6 +1487,25 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     warningCount(run)));
         }
         return runs;
+    }
+
+    @Override
+    public Map<String, String> listIngestionPipelineLogs(String fullyQualifiedName, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 5000));
+        JsonNode response = sdkRequest(
+                "GET", "/v1/services/ingestionPipelines/logs/" + encode(fullyQualifiedName)
+                        + "/last?limit=" + safeLimit,
+                null,
+                true);
+        Map<String, String> logs = new LinkedHashMap<>();
+        if (response == null) {
+            return logs;
+        }
+        response.fields().forEachRemaining(entry -> {
+            JsonNode value = entry.getValue();
+            logs.put(entry.getKey(), value == null || value.isNull() ? "" : value.asText());
+        });
+        return logs;
     }
 
     @Override
