@@ -120,6 +120,7 @@ class JobDefinitionMapperH2PagingTest {
                     CREATE TABLE t_seatunnel_web_job_instance (
                         id BIGINT PRIMARY KEY,
                         job_definition_id BIGINT,
+                        engine_job_id VARCHAR(255),
                         job_status VARCHAR(32),
                         start_time TIMESTAMP,
                         end_time TIMESTAMP,
