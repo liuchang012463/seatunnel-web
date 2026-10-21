@@ -102,6 +102,8 @@ class OpenLineageStDsSampleIT {
         properties.getKafka().setSourceTopic(topic);
         properties.getKafka().setSaslUsername(username);
         properties.getKafka().setSaslPassword(password);
+        // The broker may have automatic topic creation turned off.
+        new OpenLineageTopicProvisioner(properties).ensureTopic(topic);
 
         String engineJobId = "stweb-stds-sample-" + System.currentTimeMillis();
         String runId = OpenLineageEventFactory.deriveRunId(engineJobId).toString();

@@ -53,6 +53,8 @@ class OpenLineageKafkaSmokeIT {
         properties.getKafka().setSourceTopic(topic);
         properties.getKafka().setSaslUsername(username);
         properties.getKafka().setSaslPassword(password);
+        // The broker may have automatic topic creation turned off.
+        new OpenLineageTopicProvisioner(properties).ensureTopic(topic);
 
         // A marker engine job id keeps this run unique and easily searchable.
         String engineJobId = "stweb-smoke-" + System.currentTimeMillis();

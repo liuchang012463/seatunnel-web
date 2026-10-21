@@ -32,4 +32,14 @@ public class LineageBridgeConfig {
         // executor and leak the first one.
         return executor;
     }
+
+    /**
+     * Creates the lineage topic when the broker does not have it yet. A broker with automatic
+     * topic creation turned off would otherwise drop every lineage event.
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "lineage-bridge.kafka", name = "enabled", havingValue = "true")
+    public OpenLineageTopicProvisioner openLineageTopicProvisioner(LineageBridgeProperties properties) {
+        return new OpenLineageTopicProvisioner(properties);
+    }
 }

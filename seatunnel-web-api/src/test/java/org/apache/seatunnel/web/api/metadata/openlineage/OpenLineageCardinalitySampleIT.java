@@ -81,6 +81,8 @@ class OpenLineageCardinalitySampleIT {
         properties.getKafka().setSourceTopic(topic);
         properties.getKafka().setSaslUsername(username);
         properties.getKafka().setSaslPassword(password);
+        // The broker may have automatic topic creation turned off.
+        new OpenLineageTopicProvisioner(properties).ensureTopic(topic);
 
         Map<String, RecordMetadata> produced = new LinkedHashMap<>();
         try (KafkaProducer<String, String> producer =

@@ -53,6 +53,15 @@ public class LineageBridgeProperties {
 
         private String clientId = "seatunnel-web-lineage-bridge";
 
+        /**
+         * Creates the topic when the broker does not have it yet. A broker with automatic topic
+         * creation turned off would otherwise drop every lineage event.
+         */
+        private boolean autoCreateTopic = true;
+
+        /** Timeout of the topic administration call, in milliseconds. */
+        private int adminTimeoutMs = 10000;
+
         public boolean isEnabled() {
             return enabled;
         }
@@ -115,6 +124,22 @@ public class LineageBridgeProperties {
 
         public void setClientId(String clientId) {
             this.clientId = clientId;
+        }
+
+        public boolean isAutoCreateTopic() {
+            return autoCreateTopic;
+        }
+
+        public void setAutoCreateTopic(boolean autoCreateTopic) {
+            this.autoCreateTopic = autoCreateTopic;
+        }
+
+        public int getAdminTimeoutMs() {
+            return adminTimeoutMs;
+        }
+
+        public void setAdminTimeoutMs(int adminTimeoutMs) {
+            this.adminTimeoutMs = adminTimeoutMs;
         }
     }
 
