@@ -8,13 +8,13 @@ import { CopyOutlined } from "@ant-design/icons";
 import type { TaskSortField, TaskSortOrder } from "@/pages/common/components/TaskSortControls";
 import { TASK_TABLE_COLUMN_WIDTHS } from "@/pages/common/components/taskTableLayout";
 import DataSourceSyncPlan from "@/pages/batch-link-up/components/SyncTaskList/components/DataSourceSyncPlan";
-import ScheduleInfo from "@/pages/batch-link-up/components/SyncTaskList/components/ScheduleInfo";
 import ExecutionStatus from "@/pages/batch-link-up/components/SyncTaskList/components/ExecutionStatus";
 import "@/pages/batch-link-up/components/SyncTaskList/index.less";
 
 import RealtimeTaskActionColumn, {
   StreamingJobDefinitionVO,
 } from "./RealtimeTaskActionColumn";
+import RealtimeMetricsTrend from "./RealtimeMetricsTrend";
 import TaskStatus from "./TaskStatus";
 
 interface RealtimeTaskTableProps {
@@ -128,6 +128,12 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
               </button>
             </Tooltip>
           </div>
+          <div
+            className="sync-task-name-cell__engine-id"
+            title={record.engineJobId ? String(record.engineJobId) : undefined}
+          >
+            引擎 Job ID：{record.engineJobId || "-"}
+          </div>
         </div>
       ),
     },
@@ -164,6 +170,20 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       ),
     },
     {
+      key: "metrics",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.metrics",
+        defaultMessage: "负载情况",
+      }),
+      dataIndex: "",
+      width: 370,
+      render: (_content, record) => (
+        <div className="min-w-[350px]">
+          <RealtimeMetricsTrend record={record} onView={onView} />
+        </div>
+      ),
+    },
+    {
       key: "execution",
       title: intl.formatMessage({
         id: "pages.job.table.col.execution",
@@ -172,16 +192,6 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       dataIndex: "",
       width: TASK_TABLE_COLUMN_WIDTHS.execution,
       render: (_content, record) => <ExecutionStatus record={record} />,
-    },
-    {
-      key: "schedule",
-      title: intl.formatMessage({
-        id: "pages.job.table.col.schedule",
-        defaultMessage: "链路动态调度",
-      }),
-      dataIndex: "",
-      width: TASK_TABLE_COLUMN_WIDTHS.schedule,
-      render: (_content, record) => <ScheduleInfo record={record} />,
     },
     {
       key: "createTime",
@@ -196,6 +206,21 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       ellipsis: true,
       render: (value: string | undefined) => (
         <span className="sync-task-time">{formatDateTime(value)}</span>
+      ),
+    },
+    {
+      key: "updateTime",
+      title: intl.formatMessage({
+        id: "pages.job.table.col.updateTime",
+        defaultMessage: "最近更新时间",
+      }),
+      dataIndex: "updateTime",
+      width: TASK_TABLE_COLUMN_WIDTHS.updateTime,
+      ellipsis: true,
+      render: (value: string | undefined) => (
+        <span className="sync-task-time" title={value || undefined}>
+          {formatDateTime(value)}
+        </span>
       ),
     },
     {
