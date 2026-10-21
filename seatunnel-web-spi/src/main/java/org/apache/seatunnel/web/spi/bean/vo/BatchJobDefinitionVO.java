@@ -21,6 +21,8 @@ public class BatchJobDefinitionVO {
 
     private Long instanceId;
 
+    private String engineJobId;
+
     private String jobName;
 
     private String jobDesc;

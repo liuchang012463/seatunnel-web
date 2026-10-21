@@ -196,6 +196,12 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
                 </button>
               </Tooltip>
             </div>
+          <div
+            className="sync-task-name-cell__engine-id"
+            title={record?.engineJobId ? String(record.engineJobId) : undefined}
+          >
+            引擎 Job ID：{record?.engineJobId || '-'}
+          </div>
           </div>
         ),
       },
@@ -248,7 +254,22 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         width: TASK_TABLE_COLUMN_WIDTHS.createTime,
         sorter: true,
         sortOrder: sort.field === 'createTime' ? (sort.order === 'asc' ? 'ascend' : 'descend') : undefined,
-        render: (value: string) => <span className="sync-task-time">{value || '-'}</span>,
+        ellipsis: true,
+        render: (value: string) => (
+          <span className="sync-task-time" title={value || undefined}>{value || '-'}</span>
+        ),
+      },
+      {
+        title: intl.formatMessage({
+          id: 'pages.job.table.col.updateTime',
+          defaultMessage: '最近更新时间',
+        }),
+        dataIndex: 'updateTime',
+        width: TASK_TABLE_COLUMN_WIDTHS.updateTime,
+        ellipsis: true,
+        render: (value: string) => (
+          <span className="sync-task-time" title={value || undefined}>{value || '-'}</span>
+        ),
       },
       {
         title: intl.formatMessage({

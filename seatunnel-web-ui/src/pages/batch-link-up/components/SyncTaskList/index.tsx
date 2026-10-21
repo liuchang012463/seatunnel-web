@@ -291,6 +291,12 @@ const App: React.FC<Props> = ({
               </button>
             </Tooltip>
           </div>
+          <div
+            className="sync-task-name-cell__engine-id"
+            title={record?.engineJobId ? String(record.engineJobId) : undefined}
+          >
+            引擎 Job ID：{record?.engineJobId || "-"}
+          </div>
         </div>
       ),
     },
@@ -317,8 +323,8 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "",
       width: TASK_TABLE_COLUMN_WIDTHS.plan,
-      // Narrow viewports keep name/status/execution/createTime/action visible; the fixed action
-      // column otherwise covers the time column at 1366px.
+      // Narrow viewports keep name/status/execution/timestamps/action visible; the fixed action
+      // column otherwise covers the time columns at 1366px.
       responsive: ["xxl"],
       render: (_content: any, record: any) => (
         <div className="sync-task-plan-cell">
@@ -354,8 +360,25 @@ const App: React.FC<Props> = ({
       width: TASK_TABLE_COLUMN_WIDTHS.createTime,
       sorter: true,
       sortOrder: sort.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
+      ellipsis: true,
       render: (createTime: string) => (
-        <span className="sync-task-time">{createTime || "-"}</span>
+        <span className="sync-task-time" title={createTime || undefined}>
+          {createTime || "-"}
+        </span>
+      ),
+    },
+    {
+      title: intl.formatMessage({
+        id: "pages.job.table.col.updateTime",
+        defaultMessage: "最近更新时间",
+      }),
+      dataIndex: "updateTime",
+      width: TASK_TABLE_COLUMN_WIDTHS.updateTime,
+      ellipsis: true,
+      render: (updateTime: string) => (
+        <span className="sync-task-time" title={updateTime || undefined}>
+          {updateTime || "-"}
+        </span>
       ),
     },
     {

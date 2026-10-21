@@ -15,6 +15,7 @@ export interface SeatunnelJobDefinition {
   jobVersion?: any;
   clientId?: any;
   clientType?: any;
+  engineJobId?: string;
   createTime?: any;
   updateTime?: any;
 }
