@@ -19,7 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -59,7 +61,13 @@ class RedisMetadataInventoryCacheTest {
             builds.incrementAndGet();
             return payload(7L);
         };
-        when(ops.get(anyString())).thenReturn(null);
+        AtomicReference<String> snapshot = new AtomicReference<>();
+        // Redis keeps the invalidation epoch as a plain counter under its own key and the
+        // snapshot envelope under stweb:inv:snap:<digest>. Answering every key with the
+        // envelope would make the epoch look corrupt, and the cache would then treat the
+        // snapshot as invalidated and rebuild it in the background.
+        when(ops.get("stweb:inv:epoch")).thenReturn("1");
+        when(ops.get(startsWith("stweb:inv:snap:"))).thenAnswer(invocation -> snapshot.get());
         RedisMetadataInventoryCache cache = newCache();
 
         assertEquals(7L, cache.getOrCompute("k", supplier).summary().getDataSourceCount());
@@ -67,9 +75,11 @@ class RedisMetadataInventoryCacheTest {
 
         ArgumentCaptor<String> stored = ArgumentCaptor.forClass(String.class);
         verify(ops).set(contains("stweb:inv:snap:"), stored.capture(), any(Duration.class));
-        when(ops.get(anyString())).thenReturn(stored.getValue());
+        snapshot.set(stored.getValue());
 
         assertEquals(7L, cache.getOrCompute("k", supplier).summary().getDataSourceCount());
+        // The snapshot was served from Redis as-is: no rebuild wrote it a second time.
+        verify(ops, times(1)).set(contains("stweb:inv:snap:"), anyString(), any(Duration.class));
         assertEquals(1, builds.get());
     }
 
