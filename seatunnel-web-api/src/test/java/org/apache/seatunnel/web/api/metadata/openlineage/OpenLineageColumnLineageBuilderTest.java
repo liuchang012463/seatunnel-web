@@ -224,6 +224,39 @@ class OpenLineageColumnLineageBuilderTest {
         assertEquals(ORDERS, lineages.get(0).columns().get("order_id").get(0).dataset());
     }
 
+    @Test
+    void dropsAColumnWhoseTableNameIsAmbiguousAcrossSchemas() {
+        OpenLineageSnapshot.Dataset otherSchema =
+                new OpenLineageSnapshot.Dataset(9L, "MYSQL", "other_mysql", "other.wx_mp_user");
+        OpenLineageSnapshot.Dataset chatbi =
+                new OpenLineageSnapshot.Dataset(7L, "MYSQL", "bi_src_mysql", "chatbi.wx_mp_user");
+        List<OpenLineageSnapshot.OutputLineage> lineages = build(
+                List.of(chatbi, otherSchema),
+                List.of(SINK),
+                """
+                source {
+                    Jdbc { table_path="chatbi.wx_mp_user" }
+                }
+                source2 {
+                    Jdbc { table_path="other.wx_mp_user" }
+                }
+                transform {
+                  joined {
+                    source_table_name="wx_mp_user"
+                    query="select id as user_id from wx_mp_user"
+                  }
+                }
+                sink {
+                    Jdbc { table="ods.orders_dwd" }
+                }
+                """);
+
+        // The mapping names the table without its schema and two datasets carry that name.
+        // Attaching the column to either of them would be a guess, so it stays unresolved and
+        // the event keeps its table level lineage.
+        assertTrue(lineages.isEmpty());
+    }
+
     private static List<OpenLineageSnapshot.OutputLineage> build(
             List<OpenLineageSnapshot.Dataset> inputs,
             List<OpenLineageSnapshot.Dataset> outputs,

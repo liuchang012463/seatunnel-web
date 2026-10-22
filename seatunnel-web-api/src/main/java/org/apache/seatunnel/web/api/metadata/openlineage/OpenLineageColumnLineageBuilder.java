@@ -155,7 +155,7 @@ public final class OpenLineageColumnLineageBuilder {
         return column.substring(0, lastDot);
     }
 
-    /** The dataset of a table path: exact match first, then the table name alone. */
+    /** The dataset of a table path: exact match first, then the table name alone when it names exactly one dataset. */
     private static OpenLineageSnapshot.Dataset matchTable(
             List<OpenLineageSnapshot.Dataset> datasets, String table) {
         String value = StringUtils.trimToNull(table);
@@ -168,12 +168,20 @@ public final class OpenLineageColumnLineageBuilder {
             }
         }
         String last = lastSegment(value);
+        OpenLineageSnapshot.Dataset found = null;
         for (OpenLineageSnapshot.Dataset dataset : datasets) {
-            if (last.equalsIgnoreCase(lastSegment(dataset.name()))) {
-                return dataset;
+            if (!last.equalsIgnoreCase(lastSegment(dataset.name()))) {
+                continue;
             }
+            if (found != null) {
+                // Several datasets share the table name, e.g. the same table in two schemas.
+                // The mapping does not say which one it means, so the column stays unresolved
+                // instead of being attached to one of them by chance.
+                return null;
+            }
+            found = dataset;
         }
-        return null;
+        return found;
     }
 
     private static List<OpenLineageSnapshot.SourceColumn> merge(
