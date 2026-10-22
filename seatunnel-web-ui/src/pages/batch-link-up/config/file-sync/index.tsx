@@ -252,20 +252,7 @@ const FileSyncWorkflowPage: React.FC = () => {
   }, [id, location.search]);
 
   const goBack = () => {
-    const searchParams = new URLSearchParams(location.search);
-    const scene = searchParams.get('scene');
-    const isFileRoute = stripLayoutPrefix(location.pathname).startsWith('/sync/file-link-up');
-    const listPath = isFileRoute ? '/sync/file-link-up' : '/sync/batch-link-up';
-    const detailPath = isFileRoute
-      ? `/sync/file-link-up/${id}/detail`
-      : `/sync/batch-link-up/${id}/detail`;
-
-    if (scene === 'edit') {
-      history.push(listPath);
-      return;
-    }
-
-    history.push(detailPath);
+    history.push("/sync/batch-link-up");
   };
 
   if (loading) {

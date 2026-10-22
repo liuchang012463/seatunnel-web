@@ -327,15 +327,7 @@ export default function MultiConfigPage() {
   }, [id, location.search]);
 
   const goBack = () => {
-    const searchParams = new URLSearchParams(location.search);
-    const scene = searchParams.get("scene");
-
-    if (scene === "edit") {
-      history.push("/sync/stream-link-up");
-      return;
-    }
-
-    history.push(`/sync/stream-link-up/${id}/detail`);
+    history.push("/sync/stream-link-up");
   };
 
   if (loading) {

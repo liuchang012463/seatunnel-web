@@ -379,15 +379,7 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
   }, [id, location.search]);
 
   const goBack = () => {
-    const searchParams = new URLSearchParams(location.search);
-    const scene = searchParams.get("scene");
-
-    if (resolveConfigPageScene(scene) === "edit") {
-      history.push(`/sync/batch-link-up`);
-      return;
-    }
-
-    history.push(`/sync/batch-link-up/${id}/detail`);
+    history.push("/sync/batch-link-up");
   };
 
   if (loading) {
@@ -399,14 +391,11 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
   }
 
   if (!params) {
-    const isCreateScene = resolveConfigPageScene(
-      new URLSearchParams(location.search).get("scene"),
-    ) === "create";
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
         <Empty description={loadError || "任务配置加载失败，请返回列表重试。"}>
           <Button type="primary" onClick={goBack}>
-            {isCreateScene ? "返回任务详情" : "返回任务列表"}
+            返回任务列表
           </Button>
         </Empty>
       </div>

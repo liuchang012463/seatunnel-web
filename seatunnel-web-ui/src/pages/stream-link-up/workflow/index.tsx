@@ -246,14 +246,6 @@ export default function Workflow({
     },
   }[editorSyncState];
 
-  const isOnline =
-    String(definitionState?.releaseState || "OFFLINE").toUpperCase() === "ONLINE";
-  const releaseStatusView = isOnline
-    ? { text: "任务已上线", tooltip: "任务已上线，可以启动" }
-    : {
-        text: "任务未上线",
-        tooltip: "保存配置后，返回任务列表点击“上线”即可启动",
-      };
 
   const { checkStat, checkGroups } = useFlowChecks(workflowGraph.nodes || []);
 
@@ -435,11 +427,7 @@ export default function Workflow({
         clientId: nextBasic?.clientId ?? prev?.clientId,
       }));
 
-      message.success(
-        String(nextState?.releaseState || "OFFLINE").toUpperCase() === "ONLINE"
-          ? "配置已保存"
-          : "配置已保存。任务尚未上线，请返回任务列表点击“上线”后再启动。",
-      );
+      message.success("配置已保存，请返回任务列表上线并运行。", 5);
     } catch (error: any) {
       message.error(error?.message || "保存配置失败");
     } finally {
@@ -497,7 +485,7 @@ export default function Workflow({
               onClick={goBack}
               className="!h-10 !rounded-full !border !border-slate-200 !bg-white !px-4 !text-slate-700 !shadow-sm hover:!border-slate-300 hover:!bg-slate-50 hover:!text-slate-800"
             >
-              返回上一步
+              返回任务列表
             </Button>
           </div>
         </div>
@@ -510,7 +498,7 @@ export default function Workflow({
               <div className="flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-[0_4px_18px_rgba(15,23,42,0.03)]">
                 <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
                   <div className="text-[15px] font-semibold text-slate-800">
-                    同步编排
+                    任务配置
                   </div>
 
                   <Space size={10}>
@@ -558,19 +546,6 @@ export default function Workflow({
                         ].join(" ")}
                       >
                         {publishStatusView.text}
-                      </span>
-                    </Tooltip>
-
-                    <Tooltip title={releaseStatusView.tooltip}>
-                      <span
-                        className={[
-                          "inline-flex h-[34px] select-none items-center justify-center rounded-full border px-3 text-[13px] font-medium leading-none",
-                          isOnline
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-                            : "border-amber-200 bg-amber-50 text-amber-600",
-                        ].join(" ")}
-                      >
-                        {releaseStatusView.text}
                       </span>
                     </Tooltip>
 

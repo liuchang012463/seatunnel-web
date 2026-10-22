@@ -362,7 +362,7 @@ export function useCustomWorkflowState({
 
       resetBaseline();
 
-      message.success("发布成功");
+      message.success("配置已保存，请返回任务列表上线并运行。", 5);
     } catch (error: any) {
     } finally {
       setPublishLoading(false);

@@ -119,11 +119,7 @@ const FileTransferConfigPage: React.FC = () => {
   const workflowContextKey = ['FILE_TRANSFER', id || 'unknown', params?.state?.editorSyncState || 'UNPUBLISHED'].join('-');
 
   const goBack = () => {
-    if (scene === 'edit') {
-      history.push('/sync/file-transfer');
-      return;
-    }
-    history.push(`/sync/file-transfer/${id}/detail`);
+    history.push("/sync/file-transfer");
   };
 
   if (loading) {

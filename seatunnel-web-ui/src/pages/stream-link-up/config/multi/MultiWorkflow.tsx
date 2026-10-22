@@ -1,6 +1,6 @@
-import { ArrowLeftOutlined, SendOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Button, Form, Popover, Space, Tooltip } from "antd";
-import { Blocks, Eye } from "lucide-react";
+import { Blocks, Eye, Save } from "lucide-react";
 import React from "react";
 
 import { EnvConfig } from "../../workflow/components/ScheduleConfigContent/types";
@@ -13,8 +13,6 @@ import TableTransferPanel from "./components/TableTransferPanel";
 import { useMultiWorkflowState } from "./hooks/useMultiWorkflowState";
 import { useResizablePanel } from "./hooks/useResizablePanel";
 import {
-  canRunByDefinitionState,
-  getRunDisabledReasonByState,
   markJobDefinitionDirty,
   normalizeJobDefinitionState,
 } from "./jobDefinitionState";
@@ -70,15 +68,12 @@ export default function MultiWorkflow({
     previewLoading,
 
     publishLoading,
-    canRun,
-    runDisabledReason,
 
     handleSourceIdChange,
     handleMatchModeChange,
     handleKeywordChange,
     handleSave,
     handlePreview,
-    handleRun,
   } = useMultiWorkflowState({
     form,
     params,
@@ -90,27 +85,20 @@ export default function MultiWorkflow({
 
   const jobState = normalizeJobDefinitionState(params?.state);
 
-  const canRunByState = canRunByDefinitionState(jobState);
-  const finalCanRun = canRun && canRunByState;
-
-  const finalRunDisabledReason = !canRunByState
-    ? getRunDisabledReasonByState(jobState)
-    : runDisabledReason;
-
   const publishStatusView = {
     UNPUBLISHED: {
-      text: "未发布",
-      tooltip: "当前多表实时任务还没有发布到数据库，暂时不能运行",
+      text: "配置未保存",
+      tooltip: "当前配置尚未保存到任务定义",
       className: "border-amber-200 bg-amber-50 text-amber-600",
     },
     SYNCED: {
-      text: "已发布",
-      tooltip: "当前内容已同步到数据库，可以运行",
+      text: "配置已保存",
+      tooltip: "当前配置已保存到数据库",
       className: "border-emerald-200 bg-emerald-50 text-emerald-600",
     },
     DIRTY: {
-      text: "已修改，未发布",
-      tooltip: "当前页面内容已变更，需要重新发布后才能运行",
+      text: "有未保存的修改",
+      tooltip: "当前页面内容已变更，请先保存配置",
       className: "border-blue-200 bg-blue-50 text-blue-600",
     },
   }[jobState.editorSyncState];
@@ -187,7 +175,7 @@ export default function MultiWorkflow({
   };
 
   const actionButtonClass =
-    "!inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-slate-200 !bg-slate-50 !px-3.5 !text-[13px] !font-medium !text-slate-500 transition-colors duration-200 hover:!border-slate-300 hover:!bg-white/80 hover:!text-slate-700 hover:!shadow-[0_4px_12px_rgba(15,23,42,0.05)] disabled:!cursor-not-allowed disabled:!border-slate-200 disabled:!bg-slate-100 disabled:!text-slate-400 disabled:!shadow-none";
+    "!inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none";
 
   const actionChipClass =
     "inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[13px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0";
@@ -215,7 +203,7 @@ export default function MultiWorkflow({
               onClick={goBack}
               className="!h-10 !rounded-full !border !border-slate-200 !bg-white !px-4 !text-slate-700 !shadow-sm hover:!border-slate-300 hover:!bg-slate-50 hover:!text-slate-800"
             >
-              返回上一步
+              返回任务列表
             </Button>
           </div>
         </div>
@@ -228,24 +216,10 @@ export default function MultiWorkflow({
               <div className="flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-[0_4px_18px_rgba(15,23,42,0.03)]">
                 <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
                   <div className="text-[15px] font-semibold text-slate-800">
-                    多表同步编排
+                    任务配置
                   </div>
 
                   <Space size={10}>
-                    {/* <Tooltip title={finalRunDisabledReason || undefined}>
-                      <span className="inline-flex">
-                        <Button
-                          type="default"
-                          icon={<PlayCircle size={15} strokeWidth={1.9} />}
-                          onClick={handleRun}
-                          disabled={!finalCanRun}
-                          className={actionButtonClass}
-                        >
-                          运行
-                        </Button>
-                      </span>
-                    </Tooltip> */}
-
                     <Popover
                       open={previewOpen}
                       placement="leftTop"
@@ -290,12 +264,12 @@ export default function MultiWorkflow({
 
                     <Button
                       type="default"
-                      icon={<SendOutlined />}
+                      icon={<Save size={15} strokeWidth={1.9} />}
                       onClick={handleSave}
                       loading={publishLoading}
                       className={actionButtonClass}
                     >
-                      发布
+                      保存配置
                     </Button>
                   </Space>
                 </div>

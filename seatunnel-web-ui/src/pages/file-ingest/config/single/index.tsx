@@ -156,11 +156,7 @@ const FileIngestConfigPage: React.FC = () => {
   ].join('-');
 
   const goBack = () => {
-    if (scene === 'edit') {
-      history.push('/sync/file-ingest');
-      return;
-    }
-    history.push(`/sync/file-ingest/${id}/detail`);
+    history.push("/sync/file-ingest");
   };
 
   if (loading) {
@@ -200,7 +196,6 @@ const FileIngestConfigPage: React.FC = () => {
         setParams={setParams}
         envConfig={envConfig}
         setEnvConfig={setEnvConfig}
-        showRun={false}
       />
     </div>
   );

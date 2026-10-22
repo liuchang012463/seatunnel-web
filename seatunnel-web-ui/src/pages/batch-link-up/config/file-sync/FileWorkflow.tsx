@@ -1,6 +1,6 @@
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { App, Button, Popover, Space, Tooltip } from 'antd';
-import { Blocks, Eye, FolderSync, Upload } from 'lucide-react';
+import { Blocks, Eye, FolderSync, Save } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -453,18 +453,18 @@ export default function FileWorkflow({
 
   const publishStatusView = {
     UNPUBLISHED: {
-      text: '未发布',
-      tooltip: '当前任务还没有发布到数据库，暂时不能运行',
+      text: '配置未保存',
+      tooltip: '当前配置尚未保存到任务定义',
       className: 'border-amber-200 bg-amber-50 text-amber-600',
     },
     SYNCED: {
-      text: '已发布',
-      tooltip: '当前内容已同步到数据库，可以运行',
+      text: '配置已保存',
+      tooltip: '当前配置已保存到数据库',
       className: 'border-emerald-200 bg-emerald-50 text-emerald-600',
     },
     DIRTY: {
-      text: '已修改，未发布',
-      tooltip: '当前页面内容已变更，需要重新发布后才能运行',
+      text: '有未保存的修改',
+      tooltip: '当前页面内容已变更，请先保存配置',
       className: 'border-blue-200 bg-blue-50 text-blue-600',
     },
   }[editorSyncState];
@@ -532,7 +532,7 @@ export default function FileWorkflow({
 
   const validateBeforeAction = () => {
     if (checkStat.errors.length !== 0) {
-      message.warning(`请先修复 ${checkStat.errors.length} 项配置问题，再进行预览或发布`);
+      message.warning(`请先修复 ${checkStat.errors.length} 项配置问题，再进行预览或保存`);
       return false;
     }
     const scheduleWarning = getScheduleValidationMessage(scheduleConfig);
@@ -652,11 +652,11 @@ export default function FileWorkflow({
     try {
       const finalPayload = buildSavePayload();
       const res = await seatunnelJobDefinitionApi.saveOrUpdateFileSync(finalPayload);
-      if (res?.code !== 0) throw new Error(res?.message || res?.msg || '发布失败，请稍后重试');
+      if (res?.code !== 0) throw new Error(res?.message || res?.msg || '保存配置失败，请稍后重试');
 
       const saveData = getSaveResponseData(res);
       if (!saveData.id && !jobDefinitionId) {
-        message.error('发布失败：未获取到任务定义ID');
+        message.error('保存配置失败：未获取到任务定义ID');
         return;
       }
 
@@ -664,13 +664,13 @@ export default function FileWorkflow({
       setDefinitionState(nextState);
       setBaselineSignature(currentSignature);
 
-      message.success('发布成功');
+      message.success('配置已保存，请返回任务列表上线并运行。', 5);
     } catch (error: any) {
       message.error(
         error?.response?.data?.message ||
           error?.response?.data?.msg ||
           error?.message ||
-          '发布失败，请稍后重试',
+          '保存配置失败，请稍后重试',
       );
     } finally {
       setPublishLoading(false);
@@ -703,7 +703,7 @@ export default function FileWorkflow({
               onClick={goBack}
               className="!h-10 !rounded-full !border !border-slate-200 !bg-white !px-4 !text-slate-700 !shadow-sm hover:!border-slate-300 hover:!bg-slate-50 hover:!text-slate-800"
             >
-              返回上一步
+              返回任务列表
             </Button>
           </div>
         </div>
@@ -715,7 +715,7 @@ export default function FileWorkflow({
             <div className="file-workflow-editor-page__main flex h-full min-w-0 flex-1 overflow-hidden">
               <div className="file-workflow-editor-page__content flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-white shadow-[0_4px_18px_rgba(15,23,42,0.03)]">
                 <div className="file-workflow-editor-page__toolbar flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
-                  <div className="text-[15px] font-semibold text-slate-800">同步编排</div>
+                  <div className="text-[15px] font-semibold text-slate-800">任务配置</div>
 
                   <Space size={10}>
                     <CheckListPopover
@@ -768,13 +768,13 @@ export default function FileWorkflow({
 
                     <Button
                       type="default"
-                      icon={<Upload size={15} strokeWidth={1.9} />}
+                      icon={<Save size={15} strokeWidth={1.9} />}
                       onClick={handleSave}
                       loading={publishLoading}
                       disabled={checkStat.errors.length > 0}
                       className="file-workflow-editor-page__publish-button !inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
                     >
-                      发布
+                      保存配置
                     </Button>
                   </Space>
                 </div>
