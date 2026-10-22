@@ -187,7 +187,7 @@ const DetailPage = () => {
     <div className="min-h-screen bg-white">
       <PageHeader onBack={goBack} />
 
-      <div className="mx-auto max-w-[1540px] px-6 pb-28 pt-6">
+      <div className="mx-auto w-full max-w-[1540px] px-6 pb-28 pt-6">
         <div className="sticky top-0 z-20 mb-6 bg-white/95 pt-1 backdrop-blur">
           <div className="flex items-center gap-3">
             <button
