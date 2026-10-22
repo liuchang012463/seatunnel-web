@@ -168,15 +168,6 @@ export const seatunnelJobExecuteApi = {
     return HttpUtils.get(`${executeApiPrefix}/pause?jobInstanceId=${jobInstanceId}`);
   },
 
-  /**
-   * Release an ambiguous submission after checking the Engine job list: the instance is
-   * recorded as failed so the task can be started again.
-   */
-  resolveUnknownSubmission: (jobInstanceId: any) => {
-    return HttpUtils.post(
-      `${executeApiPrefix}/resolve-unknown-submission?jobInstanceId=${jobInstanceId}`,
-    );
-  },
 };
 
 const instanceApiPrefix = '/api/v1/job/batch-instance';

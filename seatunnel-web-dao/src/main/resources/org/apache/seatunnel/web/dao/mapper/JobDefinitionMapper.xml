@@ -7,13 +7,16 @@
     <sql id="statusBucketPredicate">
         <choose>
             <when test="dto.status == 'RUNNING'">
-                AND ${alias}.job_status IN ('STARTING', 'SUBMISSION_UNKNOWN', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
+                AND ${alias}.job_status IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
             </when>
             <when test="dto.status == 'FAILED'">
                 AND ${alias}.job_status IN ('FAILED', 'UNKNOWABLE', 'CANCELED', 'CANCELLED')
             </when>
             <when test="dto.status == 'FINISHED' or dto.status == 'SUCCESS'">
                 AND ${alias}.job_status IN ('FINISHED', 'SAVEPOINT_DONE', 'SUCCESS')
+            </when>
+            <when test="dto.status == 'UNSTARTED'">
+                AND (${alias}.job_status IS NULL OR ${alias}.job_status = '' OR ${alias}.job_status = 'UNSTARTED')
             </when>
             <otherwise>
                 AND ${alias}.job_status = #{dto.status}

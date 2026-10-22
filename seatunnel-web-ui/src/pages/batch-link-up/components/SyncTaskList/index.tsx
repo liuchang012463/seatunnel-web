@@ -52,8 +52,6 @@ const ENGINE_ACTIVE_STATUS_SET = new Set([
 const EXECUTION_BLOCKING_STATUS_SET = new Set([
   ...ENGINE_ACTIVE_STATUS_SET,
   "STARTING",
-  // An ambiguous submission blocks the task on the backend until it is resolved.
-  "SUBMISSION_UNKNOWN",
 ]);
 
 const parseSearchParamsFromUrl = () => {

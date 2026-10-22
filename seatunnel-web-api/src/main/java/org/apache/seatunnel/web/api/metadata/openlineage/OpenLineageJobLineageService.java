@@ -107,7 +107,7 @@ public class OpenLineageJobLineageService {
 
     /**
      * Terminal of one batch run. The batch result handler publishes the final status
-     * (FINISHED / FAILED / CANCELED); every other status (SUBMISSION_UNKNOWN, transitions, ...)
+     * (FINISHED / FAILED / CANCELED); every other status (STARTING, transitions, ...)
      * emits no event because the run either never started or cannot be pinned to a final state.
      */
     @Async("lineageEventExecutor")
@@ -118,7 +118,7 @@ public class OpenLineageJobLineageService {
         }
         EventType eventType = batchEventType(event.getNewStatus());
         if (eventType == null) {
-            if (event.getNewStatus() == JobStatus.SUBMISSION_UNKNOWN) {
+            if (event.getNewStatus() == JobStatus.STARTING) {
                 log.debug("OpenLineage bridge skips {} without an event, instanceId={}",
                         event.getNewStatus(), event.getJobInstanceId());
             }
@@ -231,7 +231,7 @@ public class OpenLineageJobLineageService {
             case SAVEPOINT_DONE:
                 return EventType.ABORT;
             default:
-                // SUBMISSION_UNKNOWN / UNKNOWABLE / transitions: no event, log only.
+                // STARTING / UNKNOWABLE / transitions: no event, log only.
                 return null;
         }
     }

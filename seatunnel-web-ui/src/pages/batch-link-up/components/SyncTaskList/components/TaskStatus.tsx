@@ -2,10 +2,7 @@ import { message, Popover } from "antd";
 import type { MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import StatusChip, { type StatusChipTone } from "@/components/StatusChip";
-import {
-  normalizeBatchJobStatus,
-  rawBatchJobStatusLabel,
-} from "@/pages/batch-link-up/utils/normalizeJobStatus";
+import { normalizeBatchJobStatus } from "@/pages/batch-link-up/utils/normalizeJobStatus";
 
 interface TaskStatusProps {
   status?: string;
@@ -19,23 +16,12 @@ const statusConfig: Record<string, { tone: StatusChipTone; label: string }> = {
 };
 
 const getStatusConfig = (status?: string) => {
-  const rawLabel = rawBatchJobStatusLabel(status);
-
-  if (rawLabel) {
-    return {
-      tone: (rawLabel === "提交结果待确认"
-        ? "warning"
-        : "neutral") as StatusChipTone,
-      label: rawLabel,
-    };
-  }
-
   const normalizedStatus = normalizeBatchJobStatus(status);
 
   if (normalizedStatus === "UNSTARTED") {
     return {
       tone: "neutral" as StatusChipTone,
-      label: "未开始",
+      label: "未执行",
     };
   }
 
@@ -79,11 +65,9 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
 
   const content = <StatusChip tone={config.tone} label={config.label} />;
 
-  const isUnknownSubmission = config.label === "提交结果待确认";
-
-  if ((config.label === "失败" || isUnknownSubmission) && errorMessage) {
+  if (config.label === "失败" && errorMessage) {
     const lines = errorMessage.split("\n");
-    const errorTitle = isUnknownSubmission ? "提交结果待确认" : "失败原因";
+    const errorTitle = "失败原因";
 
     return (
       <Popover

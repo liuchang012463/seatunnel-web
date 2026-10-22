@@ -208,9 +208,8 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
   const instanceId = instanceItem?.id;
   const normalizedStatus = normalizeBatchJobStatus(instanceItem?.jobStatus);
   const isTerminal = normalizedStatus === "FINISHED" || normalizedStatus === "FAILED";
-  // STARTING and SUBMISSION_UNKNOWN normalize to RUNNING for display, but no Engine metrics
-  // exist yet and an ambiguous submission will not change on its own. Polling them forever only
-  // adds load; the operator resolves them explicitly.
+  // STARTING displays as RUNNING while the submit/recovery path settles the Engine result.
+  // Operator metrics only exist after Engine has accepted the job.
   const isEngineActive = [
     "INITIALIZING",
     "CREATED",

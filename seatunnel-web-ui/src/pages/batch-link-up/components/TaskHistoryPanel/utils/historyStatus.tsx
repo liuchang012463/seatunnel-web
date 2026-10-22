@@ -3,40 +3,12 @@ import {
   CloseCircleFilled,
   LoadingOutlined,
   StopFilled,
-  WarningFilled,
 } from "@ant-design/icons";
 import React from "react";
 import type { IntlShape } from "react-intl";
-import {
-  normalizeBatchJobStatus,
-  rawBatchJobStatusLabel,
-} from "@/pages/batch-link-up/utils/normalizeJobStatus";
+import { normalizeBatchJobStatus } from "@/pages/batch-link-up/utils/normalizeJobStatus";
 
 export const getHistoryStatusMeta = (status: string, intl: IntlShape) => {
-  const rawLabel = rawBatchJobStatusLabel(status);
-
-  if (rawLabel === "提交结果待确认") {
-    return {
-      text: rawLabel,
-      color: "#d97706",
-      tagColor: "#d97706",
-      dotColor: "#f59e0b",
-      lightBg: "rgba(245, 158, 11, 0.12)",
-      icon: <WarningFilled style={{ color: "#f59e0b" }} />,
-    };
-  }
-
-  if (rawLabel) {
-    return {
-      text: rawLabel,
-      color: "var(--st-color-text-muted)",
-      tagColor: "var(--st-color-text-muted)",
-      dotColor: "var(--st-color-text-muted)",
-      lightBg: "rgba(148, 163, 184, 0.16)",
-      icon: <StopFilled style={{ color: "var(--st-color-text-muted)" }} />,
-    };
-  }
-
   switch (normalizeBatchJobStatus(status)) {
     case "FINISHED":
       return {
@@ -79,7 +51,7 @@ export const getHistoryStatusMeta = (status: string, intl: IntlShape) => {
 
     default:
       return {
-        text: status || "-",
+        text: "未执行",
         color: "var(--st-color-text-muted)",
         tagColor: "var(--st-color-text-muted)",
         dotColor: "var(--st-color-text-muted)",

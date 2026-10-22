@@ -173,46 +173,6 @@ class BatchJobExecutorServiceImplTest {
         verify(jobResultHandler).handleFailure(eq(401L), any(Throwable.class));
     }
 
-    @Test
-    void resolvingAnUnknownSubmissionRecordsItAsFailed() {
-        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
-        BatchJobExecutorServiceImpl executor = executorWith(instanceService);
-
-        JobInstanceVO instance = new JobInstanceVO();
-        instance.setId(401L);
-        instance.setJobStatus(JobStatus.SUBMISSION_UNKNOWN.name());
-        when(instanceService.selectById(401L)).thenReturn(instance);
-        when(instanceService.updateStatusIfCurrent(
-                401L,
-                JobStatus.SUBMISSION_UNKNOWN,
-                JobStatus.FAILED,
-                "操作员确认 SeaTunnel Engine 未运行该作业，提交结果按失败处理。"))
-                .thenReturn(true);
-
-        assertEquals(401L, executor.resolveUnknownSubmission(401L));
-
-        verify(instanceService).updateStatusIfCurrent(
-                401L,
-                JobStatus.SUBMISSION_UNKNOWN,
-                JobStatus.FAILED,
-                "操作员确认 SeaTunnel Engine 未运行该作业，提交结果按失败处理。");
-    }
-
-    @Test
-    void resolvingAnAlreadyResolvedInstanceChangesNothing() {
-        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
-        BatchJobExecutorServiceImpl executor = executorWith(instanceService);
-
-        JobInstanceVO instance = new JobInstanceVO();
-        instance.setId(401L);
-        instance.setJobStatus(JobStatus.FAILED.name());
-        when(instanceService.selectById(401L)).thenReturn(instance);
-
-        assertEquals(401L, executor.resolveUnknownSubmission(401L));
-
-        verify(instanceService, never()).updateById(any(JobInstance.class));
-    }
-
     private static BatchJobExecutorServiceImpl executorWith(BatchJobInstanceService instanceService) {
         return new BatchJobExecutorServiceImpl(
                 instanceService,

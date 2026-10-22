@@ -197,20 +197,9 @@ public class ZetaJobStatusHandler {
     private ZetaJobStatusResolveResult resolveFromFinishedJobsByState(Long clientId,
                                                                       String engineJobId,
                                                                       String state) {
-        List finishedJobs;
-
-        try {
-            finishedJobs = seaTunnelRestClient.finishedJobs(clientId, state);
-        } catch (Exception e) {
-            log.debug(
-                    "Query Zeta finished-jobs failed, clientId={}, engineJobId={}, state={}",
-                    clientId,
-                    engineJobId,
-                    state,
-                    e
-            );
-            return null;
-        }
+        // A failed history query is not evidence that the job does not exist. Let resolve()
+        // return UNKNOWN so automatic recovery waits for a successful reconciliation.
+        List finishedJobs = seaTunnelRestClient.finishedJobs(clientId, state);
 
         if (finishedJobs == null || finishedJobs.isEmpty()) {
             return null;

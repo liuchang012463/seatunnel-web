@@ -213,7 +213,7 @@
                 <if test="dto.jobStatus != null and dto.jobStatus != ''">
                     <choose>
                         <when test="dto.jobStatus == 'RUNNING'">
-                            AND i.job_status IN ('STARTING', 'SUBMISSION_UNKNOWN', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
+                            AND i.job_status IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
                         </when>
                         <when test="dto.jobStatus == 'FAILED'">
                             AND i.job_status IN ('FAILED', 'UNKNOWABLE', 'CANCELED', 'CANCELLED')

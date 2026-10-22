@@ -362,11 +362,11 @@ class OpenLineageJobLineageServiceTest {
     }
 
     @Test
-    void ambiguousSubmissionUnknownPublishesNothing() {
+    void pendingSubmissionPublishesNothing() {
         service.onBatchJobStatusChanged(new JobStatusChangedEvent(
-                this, 100L, null, JobStatus.SUBMISSION_UNKNOWN, null, "no engine id", null));
+                this, 100L, null, JobStatus.STARTING, null, "no engine id", null));
 
-        assertTrue(published.isEmpty(), "SUBMISSION_UNKNOWN must not emit an event");
+        assertTrue(published.isEmpty(), "STARTING must not emit an event");
     }
 
     @Test
@@ -466,7 +466,7 @@ class OpenLineageJobLineageServiceTest {
                 .thenReturn(List.of(listed))
                 .thenReturn(List.of());
         JobInstanceVO unknown = instance();
-        unknown.setJobStatus("SUBMISSION_UNKNOWN");
+        unknown.setJobStatus("STARTING");
         unknown.setEngineJobId("engine-job-53");
         when(streamingJobInstanceDao.selectDetailById(100L))
                 .thenReturn(listed)

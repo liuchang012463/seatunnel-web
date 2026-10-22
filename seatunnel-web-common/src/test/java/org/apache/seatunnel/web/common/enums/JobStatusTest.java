@@ -9,12 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class JobStatusTest {
 
     @Test
-    void submissionUnknownIsOpenButBlocksRetries() {
-        assertFalse(JobStatus.SUBMISSION_UNKNOWN.isEndState());
-        assertTrue(JobStatusHelper.blocksSubmission(JobStatus.SUBMISSION_UNKNOWN));
-    }
-
-    @Test
     void runningStatusesBlockRetriesButAreNotTerminal() {
         assertFalse(JobStatus.STARTING.isEndState());
         assertFalse(JobStatus.RUNNING.isEndState());

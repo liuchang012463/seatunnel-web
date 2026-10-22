@@ -65,6 +65,23 @@ class BatchJobSubmitterClassificationTest {
         assertFalse(BatchJobSubmitter.isSubmitOutcomeAmbiguous(wrapped));
     }
 
+    @Test
+    void catalogTypeRejectionIsAFailureEvenWhenEngineReturnsHttp500() {
+        assertFalse(BatchJobSubmitter.isSubmitOutcomeAmbiguous(new SeaTunnelClientException(
+                "submit failed", 500,
+                "ErrorCode:[COMMON-21], 'KingBase' tables unsupported get catalog table, varcharbyte",
+                new IllegalStateException("unsupported type"))));
+    }
+
+    @Test
+    void engineFactoryRejectionIsAFailureEvenWhenResponseOmitsTheNestedCatalogError() {
+        assertFalse(BatchJobSubmitter.isSubmitOutcomeAmbiguous(new SeaTunnelClientException(
+                "submit failed", 500,
+                "{\"status\":\"fail\",\"message\":\"FactoryException: ErrorCode:[API-06], "
+                        + "ErrorDescription:[Factory initialize failed] - Unable to create a source for identifier 'Jdbc'.\"}",
+                new IllegalStateException("source rejected"))));
+    }
+
     private static SeaTunnelClientException clientException(int httpStatus, Throwable cause) {
         return new SeaTunnelClientException("POST /submit-job/upload failed", httpStatus, "", cause);
     }

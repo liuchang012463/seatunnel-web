@@ -39,9 +39,6 @@ public class JobInstanceRecoveryScheduler {
      * above the submit read timeout, so an in-flight submission is never misread as stuck.
      */
     private static final long SUBMISSION_GRACE_MS = 10 * 60 * 1000L;
-    // job_instance timestamps use second precision; floor the boundary so a new
-    // request in the same second cannot be mistaken for a previous-process row.
-    private final Date processStartedAt = new Date(System.currentTimeMillis() / 1_000 * 1_000);
 
     @Resource
     private JobInstanceDao jobInstanceDao;
@@ -66,7 +63,6 @@ public class JobInstanceRecoveryScheduler {
 
         log.info("Start recovering running job instances after SeaTunnel Web startup");
 
-        markInterruptedBatchSubmissions();
         recoverBatchInstances();
         recoverStreamingInstances();
 
@@ -108,44 +104,6 @@ public class JobInstanceRecoveryScheduler {
         }
     }
 
-    /**
-     * An in-memory submission queue is lost on process restart. Keep ambiguous submissions
-     * visible and block automatic retries, since Engine may have accepted a request before
-     * the Web process stopped or timed out.
-     */
-    private void markInterruptedBatchSubmissions() {
-        List<JobInstance> instances = jobInstanceDao.listRunningLikeInstances();
-        if (instances == null || instances.isEmpty()) {
-            return;
-        }
-
-        for (JobInstance instance : instances) {
-            try {
-                if (instance == null
-                        || instance.getId() == null
-                        || !JobStatus.STARTING.equals(instance.getJobStatus())
-                        || (instance.getEngineJobId() != null && !instance.getEngineJobId().isBlank())
-                        || (instance.getCreateTime() != null
-                        && !instance.getCreateTime().before(processStartedAt))
-                        // A rolling restart can start this instance while another Web instance is
-                        // still submitting an older row. Only a submission with no heartbeat for
-                        // the full grace window is treated as interrupted.
-                        || !isStaleSubmission(instance)) {
-                    continue;
-                }
-
-                String message = "SeaTunnel Web 在提交任务时重启，未保存到 Engine 作业 ID；任务可能已被 Engine 接收。"
-                        + "请先核对 SeaTunnel Engine 作业列表，再决定是否重新启动。";
-                jobResultHandler.handleSubmissionUnknown(instance.getId(), message);
-                log.warn("Marked interrupted batch submission as unknown, instanceId={}", instance.getId());
-            } catch (Exception e) {
-                // One bad row must not stop the remaining startup recovery steps.
-                log.warn("Mark interrupted batch submission failed, instanceId={}",
-                        instance == null ? null : instance.getId(), e);
-            }
-        }
-    }
-
     private boolean isStaleSubmission(JobInstance instance) {
         Date lastActivity = instance.getUpdateTime() != null
                 ? instance.getUpdateTime()
@@ -181,30 +139,28 @@ public class JobInstanceRecoveryScheduler {
             return;
         }
 
-        // A batch submit is still running asynchronously until Engine returns an id.
-        // A missing id at this point is not evidence that the Engine job has failed, but a
-        // submission that never produced an id within the grace window is stuck: the async task
-        // was lost without a restart (rejected queue, dropped task). Hand it to the operator as
-        // an ambiguous submission instead of leaving it STARTING forever.
-        if (JobStatus.STARTING.equals(instance.getJobStatus())
-                && (instance.getEngineJobId() == null || instance.getEngineJobId().isBlank())) {
-            if (isStaleSubmission(instance)) {
-                String message = "SeaTunnel Web 提交该任务后长时间未收到 Engine 作业 ID；"
-                        + "任务可能已被 Engine 接收。请先核对 SeaTunnel Engine 作业列表，再决定是否重新启动。";
-                jobResultHandler.handleSubmissionUnknown(instance.getId(), message);
-                log.warn("Marked stale batch submission as unknown, instanceId={}", instance.getId());
+        if (JobStatus.STARTING.equals(instance.getJobStatus())) {
+            // Active async submissions refresh update_time. Wait for the heartbeat to stop
+            // before reconciling, so an in-flight request is never mistaken for a failure.
+            if (!isStaleSubmission(instance)) {
                 return;
             }
-
-            log.debug("Skip recovering batch instance while submission is in progress, instanceId={}",
-                    instance.getId());
-            return;
+            if (instance.getEngineJobId() == null || instance.getEngineJobId().isBlank()) {
+                jobResultHandler.handleFailure(instance.getId(),
+                        new IllegalStateException("任务提交中断，未保存 Engine 作业 ID，已自动标记失败。"));
+                return;
+            }
         }
 
         ZetaJobStatusResolveResult result = zetaJobStatusHandler.resolve(
                 instance.getClientId(),
                 instance.getEngineJobId()
         );
+
+        if (result != null && result.isRunning()
+                && JobStatus.STARTING.equals(instance.getJobStatus())) {
+            jobResultHandler.updateEngineId(instance.getId(), instance.getEngineJobId());
+        }
 
         if (shouldSkipRecovery(instance.getId(), instance.getEngineJobId(), result)) {
             return;

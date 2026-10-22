@@ -503,6 +503,9 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
                 buildLogPath(id),
                 JobMode.BATCH
         );
+        // Persist the caller-supplied Engine id before any network request. Recovery can then
+        // reconcile a lost submit response without asking the user or submitting a duplicate job.
+        instance.setEngineJobId(String.valueOf(id));
         captureSubmittedTableSnapshot(instance, command.getId());
         return instance;
     }

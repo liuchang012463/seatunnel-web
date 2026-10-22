@@ -7,9 +7,11 @@ import org.apache.seatunnel.web.api.alarm.event.JobStatusChangedEvent;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.utils.JobUtils;
+import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.common.enums.JobResult;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
+import org.apache.seatunnel.web.engine.client.exceptions.SeaTunnelClientException;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -79,46 +81,6 @@ public class JobResultHandler {
         handleFinalStatus(jobInstanceId, JobStatus.FAILED, message);
 
         log.error("Job failed. instanceId={}, error={}", jobInstanceId, message, error);
-    }
-
-    /**
-     * Record an ambiguous submit result without claiming that Engine rejected the job.
-     * Retrying such an instance automatically could create a duplicate Engine job.
-     *
-     * @param jobInstanceId job instance id
-     * @param message       operator-facing explanation
-     */
-    public void handleSubmissionUnknown(Long jobInstanceId, String message) {
-        if (jobInstanceId == null || jobInstanceId <= 0) {
-            log.warn("Skip recording unknown submission because instanceId is invalid, instanceId={}",
-                    jobInstanceId);
-            return;
-        }
-
-        // Only a STARTING instance can become ambiguous. If the submit response won the race and
-        // already recorded an Engine id, overwriting it would lose the real job reference.
-        boolean updated = instanceService.updateStatusIfCurrent(
-                jobInstanceId,
-                JobStatus.STARTING,
-                JobStatus.SUBMISSION_UNKNOWN,
-                message);
-        if (!updated) {
-            log.warn("Skip recording unknown submission because the instance left STARTING, "
-                    + "instanceId={}", jobInstanceId);
-            return;
-        }
-
-        publishStatusChanged(jobInstanceId, JobStatus.SUBMISSION_UNKNOWN, message);
-
-        try {
-            incrementalBatchService.handleJobResult(
-                    jobInstanceId, JobStatus.SUBMISSION_UNKNOWN, message);
-        } catch (Exception e) {
-            log.error("Update incremental batch after unknown submission failed, instanceId={}",
-                    jobInstanceId, e);
-        }
-
-        log.warn("Job submission outcome is unknown. instanceId={}, message={}", jobInstanceId, message);
     }
 
     /**
@@ -272,7 +234,7 @@ public class JobResultHandler {
         if (!updated) {
             /*
              * The instance left STARTING while the submit response was in flight: either the
-             * recovery scheduler or an operator already resolved it as an ambiguous submission.
+             * recovery scheduler already finalized it or attached the reserved Engine id.
              * Overwriting that decision would revive a terminal instance and could allow a
              * duplicate Engine job, so the late success is reported as a conflict instead.
              */
@@ -286,9 +248,8 @@ public class JobResultHandler {
     }
 
     /**
-     * If the Web already recorded a terminal result (for example an operator resolved an
-     * ambiguous submission as FAILED), a late Engine id must not leave an untracked job running.
-     * A still-open instance is left alone: the operator or recovery path owns that decision.
+     * If recovery already recorded a terminal failure, a late Engine id must not leave an
+     * untracked job running. A still-open instance remains owned by automatic recovery.
      */
     private void cancelOrphanedEngineJob(Long instanceId, String engineId) {
         try {
@@ -389,11 +350,21 @@ public class JobResultHandler {
         }
 
         String message = error.getMessage();
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (current instanceof SeaTunnelClientException clientError
+                    && StringUtils.isNotBlank(clientError.getResponseBody())) {
+                message = clientError.getResponseBody();
+                break;
+            }
+            if (current.getCause() == current) {
+                break;
+            }
+        }
         if (StringUtils.isBlank(message)) {
             return error.getClass().getSimpleName();
         }
 
-        return JobUtils.getJobInstanceErrorMessage(message);
+        return JobUtils.getJobInstanceErrorMessage(HoconSensitiveMaskUtil.maskSensitiveText(message));
     }
 
     private String normalizeErrorMessage(String errorMessage) {

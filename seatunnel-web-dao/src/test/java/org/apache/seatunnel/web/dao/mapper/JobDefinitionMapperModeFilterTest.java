@@ -88,8 +88,8 @@ class JobDefinitionMapperModeFilterTest {
 
         // The list buckets a coarse UI status; the count feeds the same pagination total and must
         // match the same rows, otherwise a filtered page reports a wrong total.
-        assertTrue(pageSql(params).contains("'SUBMISSION_UNKNOWN'"), pageSql(params));
-        assertTrue(countSql(params).contains("'SUBMISSION_UNKNOWN'"), countSql(params));
+        assertTrue(pageSql(params).contains("'STARTING'"), pageSql(params));
+        assertTrue(countSql(params).contains("'STARTING'"), countSql(params));
         assertTrue(pageSql(params).contains("JOB_STATUS IN ("), pageSql(params));
         assertTrue(countSql(params).contains("JOB_STATUS IN ("), countSql(params));
     }
@@ -124,6 +124,18 @@ class JobDefinitionMapperModeFilterTest {
 
         assertTrue(pageSql(params).contains("JOB_STATUS = ?"), pageSql(params));
         assertTrue(countSql(params).contains("JOB_STATUS = ?"), countSql(params));
+    }
+
+    @Test
+    void unstartedFilterIncludesDefinitionsWithoutInstances() {
+        BatchJobDefinitionQueryDTO dto = new BatchJobDefinitionQueryDTO();
+        dto.setStatus("UNSTARTED");
+        Map<String, Object> params = new HashMap<>();
+        params.put("dto", dto);
+        params.put("offset", 0);
+        params.put("pageSize", 10);
+        assertTrue(pageSql(params).contains("JOB_STATUS IS NULL"), pageSql(params));
+        assertTrue(countSql(params).contains("JOB_STATUS IS NULL"), countSql(params));
     }
 
     private static void assertModePredicates(

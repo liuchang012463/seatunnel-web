@@ -35,10 +35,6 @@ public class BatchJobSubmitter {
 
     private static final String JOB_TYPE_BATCH = "BATCH";
 
-    private static final String SUBMIT_OUTCOME_UNKNOWN_MESSAGE =
-            "SeaTunnel Web 已发出提交请求，但未收到 Engine 作业 ID；任务可能已被 Engine 接收。"
-                    + "请先在 SeaTunnel Engine 作业列表中核对，再确认标记失败后重试。";
-
     private final JobConfigFileService configFileService;
     private final SeaTunnelRestClient restClient;
     private final EngineDriverJarPublisher driverJarPublisher;
@@ -103,10 +99,16 @@ public class BatchJobSubmitter {
             Map<?, ?> resp = restClient.submitJobUpload(
                     clientId,
                     safeConfig(hoconConfig).getBytes(StandardCharsets.UTF_8),
-                    filename
+                    filename,
+                    instance.getEngineJobId(),
+                    null,
+                    false
             );
 
             engineId = extractJobId(resp);
+            if (!engineId.equals(instance.getEngineJobId())) {
+                throw new IllegalStateException("Engine returned a different jobId: " + engineId);
+            }
             submitted = true;
 
             // The Engine has accepted the instance and returned its job id. The lineage
@@ -255,25 +257,14 @@ public class BatchJobSubmitter {
                                             Long instanceId,
                                             Exception e) {
         if (isSubmitOutcomeAmbiguous(e)) {
-            /*
-             * The submit request was already sent, so the Engine may have accepted the job even
-             * though no job id came back. Recording FAILED here would immediately unblock a retry
-             * and duplicate the Engine job, so keep the instance in an explicit "outcome unknown"
-             * state until an operator confirms the Engine is not running it.
-             */
-            jobLogger.error("Batch job submission ended without an Engine job id", e);
-            try {
-                batchJobResultHandler.handleSubmissionUnknown(instanceId, SUBMIT_OUTCOME_UNKNOWN_MESSAGE);
-            } catch (Exception handlerEx) {
-                log.error("Record batch unknown submission failed, instanceId={}", instanceId, handlerEx);
-            }
+            // The reserved Engine id is already durable. Keep STARTING and let the recovery
+            // scheduler query that exact id; never retry an uncertain network submission.
+            jobLogger.error("Batch submission response unavailable; automatic reconciliation pending", e);
 
             throw new JobSubmitException(
                     JobSubmitStage.SUBMIT,
                     "Submit batch job failed before an Engine job id was received",
                     e,
-                    // Keep the ambiguity visible to the caller even when the status write failed,
-                    // so it never falls back to a retryable FAILED.
                     true
             );
         }
@@ -296,7 +287,7 @@ public class BatchJobSubmitter {
      * A submit failure is only safe to record as FAILED when the request provably never reached
      * the Engine: a refused or unresolvable connection, or a request the Engine rejected with a
      * 4xx. A read timeout, a 5xx or an unknown transport error may have been accepted, so the
-     * outcome stays unknown and the instance keeps blocking further submits.
+     * instance stays STARTING and blocks further submits until automatic reconciliation.
      */
     static boolean isSubmitOutcomeAmbiguous(Throwable error) {
         for (Throwable current = error; current != null; current = current.getCause()) {
@@ -306,7 +297,13 @@ public class BatchJobSubmitter {
                     return false;
                 }
                 if (httpStatus >= 500) {
-                    return true;
+                    String body = ((SeaTunnelClientException) current).getResponseBody();
+                    // These errors occur during source/sink construction, before job submission.
+                    boolean catalogRejected = body != null && body.contains("COMMON-21")
+                            && body.contains("unsupported get catalog table");
+                    boolean factoryRejected = body != null && body.contains("ErrorCode:[API-06]")
+                            && body.contains("Factory initialize failed");
+                    return !catalogRejected && !factoryRejected;
                 }
             }
 
@@ -376,6 +373,10 @@ public class BatchJobSubmitter {
 
         if (StringUtils.isBlank(instance.getLogPath())) {
             throw new IllegalArgumentException("Batch job log path must not be blank");
+        }
+
+        if (StringUtils.isBlank(instance.getEngineJobId())) {
+            throw new IllegalArgumentException("Batch job must reserve an Engine job id before submission");
         }
 
         if (StringUtils.isBlank(instance.getRuntimeConfig())) {

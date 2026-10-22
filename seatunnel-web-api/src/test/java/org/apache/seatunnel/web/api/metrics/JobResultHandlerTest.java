@@ -5,6 +5,7 @@ import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
+import org.apache.seatunnel.web.engine.client.exceptions.SeaTunnelClientException;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -15,6 +16,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -23,6 +25,21 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class JobResultHandlerTest {
+
+    @Test
+    void rejectedSubmissionKeepsEngineReasonAndMasksCredentials() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        JobResultHandler handler = handler(instanceService);
+
+        handler.handleFailure(11L, new SeaTunnelClientException(
+                "POST /submit-job/upload failed", 500,
+                "Factory initialize failed: unsupported varcharbyte; password=private-test-value",
+                new IllegalStateException("source rejected")));
+
+        verify(instanceService).updateFinalStatusIfRunningLike(eq(11L), eq(JobStatus.FAILED),
+                argThat(message -> message.contains("unsupported varcharbyte")
+                        && !message.contains("private-test-value")));
+    }
 
     @Test
     void lateSubmissionSuccessDoesNotOverwriteAResolvedInstance() {
@@ -88,27 +105,6 @@ class JobResultHandlerTest {
         handler.updateEngineId(11L, "engine-1");
 
         verify(instanceService).updateEngineIdIfStarting(eq(11L), eq("engine-1"), any(Date.class));
-        verify(instanceService, never()).updateById(any());
-    }
-
-    @Test
-    void unknownSubmissionUsesTheConditionalStatusTransition() {
-        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
-        JobResultHandler handler = handler(instanceService);
-        when(instanceService.updateStatusIfCurrent(
-                eq(11L),
-                eq(org.apache.seatunnel.web.common.enums.JobStatus.STARTING),
-                eq(org.apache.seatunnel.web.common.enums.JobStatus.SUBMISSION_UNKNOWN),
-                eq("ambiguous")))
-                .thenReturn(true);
-
-        handler.handleSubmissionUnknown(11L, "ambiguous");
-
-        verify(instanceService).updateStatusIfCurrent(
-                eq(11L),
-                eq(org.apache.seatunnel.web.common.enums.JobStatus.STARTING),
-                eq(org.apache.seatunnel.web.common.enums.JobStatus.SUBMISSION_UNKNOWN),
-                eq("ambiguous"));
         verify(instanceService, never()).updateById(any());
     }
 

@@ -150,7 +150,9 @@ public class JobInstanceDaoImpl
                 .and(condition -> condition
                         .isNull(MyBatisColumn.getter(JobInstance::getEngineJobId))
                         .or()
-                        .eq(MyBatisColumn.getter(JobInstance::getEngineJobId), ""))
+                        .eq(MyBatisColumn.getter(JobInstance::getEngineJobId), "")
+                        .or()
+                        .eq(MyBatisColumn.getter(JobInstance::getEngineJobId), engineJobId))
                 .set(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatus.INITIALIZING)
                 .set(MyBatisColumn.getter(JobInstance::getEngineJobId), engineJobId)
                 .set(MyBatisColumn.getter(JobInstance::getSubmitTime), startTime)

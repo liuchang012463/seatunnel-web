@@ -265,48 +265,6 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
     }
 
     /**
-     * Resolve an ambiguous submission after an operator confirmed the Engine is not running it.
-     *
-     * <p>
-     * An instance in {@link JobStatus#SUBMISSION_UNKNOWN} keeps blocking further submits because
-     * the Engine may have accepted a request whose response never arrived. Only an operator can
-     * check the Engine job list, so this is the explicit action that releases the definition.
-     * </p>
-     */
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long resolveUnknownSubmission(Long jobInstanceId) {
-        validateInstanceId(jobInstanceId);
-
-        JobInstanceVO instance = instanceService.selectById(jobInstanceId);
-        if (instance == null || instance.getId() == null) {
-            throw new ServiceException(Status.BATCH_JOB_INSTANCE_NOT_EXIST);
-        }
-
-        if (!JobStatus.SUBMISSION_UNKNOWN.name().equalsIgnoreCase(instance.getJobStatus())) {
-            log.info("Job instance is not in an unknown submission state, skip resolving: "
-                    + "instanceId={}, status={}", jobInstanceId, instance.getJobStatus());
-            return jobInstanceId;
-        }
-
-        // CAS on the ambiguous status: a submit response may arrive concurrently and record a
-        // real Engine job id. Only the transition that actually observes SUBMISSION_UNKNOWN wins.
-        boolean resolved = instanceService.updateStatusIfCurrent(
-                jobInstanceId,
-                JobStatus.SUBMISSION_UNKNOWN,
-                JobStatus.FAILED,
-                "操作员确认 SeaTunnel Engine 未运行该作业，提交结果按失败处理。");
-        if (!resolved) {
-            log.warn("Skip resolving unknown submission because its status changed concurrently, "
-                    + "instanceId={}", jobInstanceId);
-            return jobInstanceId;
-        }
-
-        log.info("Resolved unknown batch submission as failed: instanceId={}", jobInstanceId);
-        return jobInstanceId;
-    }
-
-    /**
      * Batch execute jobs by job definition ids.
      *
      * Rules:
@@ -373,7 +331,7 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                         instance.getId(), stateCheckError);
             }
 
-            if (incrementalExecution != null) {
+            if (incrementalExecution != null && !isSubmitOutcomeUnknown(e)) {
                 try {
                     incrementalBatchService.markSubmitFailure(instance.getId(), e);
                 } catch (Exception incrementalError) {
@@ -396,8 +354,7 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
 
     /**
      * An ambiguous submit must not be recorded as a final failure: the Engine may be running the
-     * job, so the instance has to stay blocking until the recovery scheduler or an operator
-     * resolves it.
+     * job, so the instance has to stay blocking until the recovery scheduler resolves it automatically.
      */
     private static boolean isSubmitOutcomeUnknown(Throwable error) {
         return error instanceof JobSubmitException
