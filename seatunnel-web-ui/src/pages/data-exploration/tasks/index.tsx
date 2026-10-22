@@ -92,18 +92,59 @@ function isCurrentRun(status: DataSourceMetadataStatus['exploration'], submitted
 
 function explorationErrorText(status?: DataSourceMetadataStatus['exploration']) {
   const code = status?.lastError;
-  if (!code) return '探查任务执行失败，请查看运行记录。';
+  if (!code) return '指标统计任务执行失败，请查看运行记录。';
   const labels: Record<string, string> = {
-    OM_SERVICE_SYNC_ERROR: 'OpenMetadata 探查管道同步失败（常见于网络超时）',
-    OM_PIPELINE_TRIGGER_ERROR: 'OpenMetadata 探查管道触发失败',
-    OM_PIPELINE_STATUS_ERROR: '无法同步 OpenMetadata 探查状态',
-    PIPELINE_EXECUTION_ERROR: '探查管道执行失败',
+    OM_SERVICE_SYNC_ERROR: 'OpenMetadata 指标统计管道同步失败（常见于网络超时）',
+    OM_PIPELINE_TRIGGER_ERROR: 'OpenMetadata 指标统计管道触发失败',
+    OM_PIPELINE_STATUS_ERROR: '无法同步 OpenMetadata 指标统计状态',
+    PIPELINE_EXECUTION_ERROR: '指标统计管道执行失败',
   };
-  return labels[code] || `探查任务执行失败（${code}）`;
+  return labels[code] || `指标统计任务执行失败（${code}）`;
 }
 
 function schemaPlaceholder() {
   return '请选择 Schema';
+}
+
+function isScanRunning(record: DataSourceRecord) {
+  return record.scanStatus === 'QUEUED' || record.scanStatus === 'RUNNING';
+}
+
+function metadataUnavailableReason(record: DataSourceRecord) {
+  if (record.metadataSyncStatus === 'ERROR') return '元数据同步异常，请先重试同步。';
+  if (record.metadataSyncStatus !== 'READY') return '元数据同步完成后即可使用此操作。';
+  if (isScanRunning(record)) return '首次元数据扫描正在运行，请稍候。';
+  if (record.scanStatus === 'FAILED') return '元数据扫描异常，请先重新扫描。';
+  if (record.scanStatus !== 'SUCCESS') return '新数据源的首次元数据扫描由系统自动触发，完成后即可继续。';
+  return undefined;
+}
+
+function scanActionState(record: DataSourceRecord) {
+  if (record.metadataSyncStatus === 'ERROR') {
+    return { disabled: false, label: '重试同步', title: '重新发起元数据同步' };
+  }
+  if (record.metadataSyncStatus !== 'READY') {
+    const syncStatus = record.metadataSyncStatus;
+    return {
+      disabled: true,
+      label: syncStatus === 'UNSUPPORTED'
+        ? '不支持'
+        : ['PENDING', 'SYNCING', 'WAITING'].includes(syncStatus || '')
+          ? '同步中'
+          : syncStatus === 'DELETING' ? '删除中' : '等待同步',
+      title: syncStatus === 'UNSUPPORTED'
+        ? '该数据源类型不支持元数据扫描'
+        : '元数据同步完成后才可重新扫描',
+    };
+  }
+  if (isScanRunning(record)) {
+    return { disabled: true, label: '扫描中', title: '元数据扫描正在运行' };
+  }
+  if (record.scanStatus === 'SUCCESS' || record.scanStatus === 'FAILED'
+      || (record.scanStatus === 'UNKNOWN' && Boolean(record.scanLastRunTime))) {
+    return { disabled: false, label: '重新扫描', title: '重新运行元数据扫描' };
+  }
+  return { disabled: true, label: '自动扫描中', title: '新数据源首次扫描由系统自动触发' };
 }
 
 const DataExplorationTasksPage: React.FC = () => {
@@ -275,7 +316,7 @@ const DataExplorationTasksPage: React.FC = () => {
           if (status.status === 'FAILED') {
             setExplorationFeedback({
               type: 'error',
-              message: `${trackingExploration.name} 探查失败`,
+              message: `${trackingExploration.name} 指标统计失败`,
               description: explorationErrorText(status),
             });
             setTrackingExploration(undefined);
@@ -286,7 +327,7 @@ const DataExplorationTasksPage: React.FC = () => {
           if (status.status === 'UNKNOWN') {
             setExplorationFeedback({
               type: 'error',
-              message: `${trackingExploration.name} 探查状态未知`,
+              message: `${trackingExploration.name} 指标统计状态未知`,
               description: explorationErrorText(status),
             });
             setTrackingExploration(undefined);
@@ -297,8 +338,8 @@ const DataExplorationTasksPage: React.FC = () => {
           if (status.status === 'SUCCESS') {
             setExplorationFeedback({
               type: 'success',
-              message: `${trackingExploration.name} 探查已完成`,
-              description: '探查结果已写入 OpenMetadata，可前往结果页查看。',
+              message: `${trackingExploration.name} 指标统计已完成`,
+            description: '指标统计结果已写入 OpenMetadata，可前往结果页查看。',
             });
             setTrackingExploration(undefined);
             void load();
@@ -312,7 +353,7 @@ const DataExplorationTasksPage: React.FC = () => {
       if (attempts >= 60) {
         setExplorationFeedback({
           type: 'info',
-          message: `${trackingExploration.name} 探查已提交`,
+          message: `${trackingExploration.name} 指标统计已提交`,
           description: '状态同步超时，请稍后刷新或查看运行记录。',
         });
         setTrackingExploration(undefined);
@@ -333,11 +374,16 @@ const DataExplorationTasksPage: React.FC = () => {
 
   const openExplore = async (record: DataSourceRecord) => {
     if (!record.id) return;
+    const unavailableReason = metadataUnavailableReason(record);
+    if (unavailableReason) {
+      setExplorationFeedback({ type: 'info', message: '暂不可开始指标统计', description: unavailableReason });
+      return;
+    }
     if (record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING') {
       setExplorationFeedback({
         type: 'info',
-        message: `${record.name || '数据源'} 探查正在执行`,
-        description: '请等待当前任务完成后再提交新的探查。',
+        message: `${record.name || '数据源'} 指标统计正在执行`,
+        description: '请等待当前任务完成后再提交新的统计任务。',
       });
       return;
     }
@@ -359,7 +405,7 @@ const DataExplorationTasksPage: React.FC = () => {
       );
       if (exploreRequestRef.current !== requestId) return;
       if (response.code !== 0) {
-        throw new Error(response.message || '无法读取可探查的 Database');
+        throw new Error(response.message || '无法读取可进行指标统计的 Database');
       }
       const nextDatabases = response.data || [];
       setDatabases(nextDatabases);
@@ -367,7 +413,7 @@ const DataExplorationTasksPage: React.FC = () => {
       setExploreError(undefined);
     } catch (error: any) {
       if (exploreRequestRef.current === requestId) {
-        setExploreError(errorMessage(error, '无法读取可探查的 Database'));
+        setExploreError(errorMessage(error, '无法读取可进行指标统计的 Database'));
         setDatabases([]);
         setDatabaseFqn(undefined);
       }
@@ -394,11 +440,11 @@ const DataExplorationTasksPage: React.FC = () => {
       const response = await withTimeout(
         triggerDataSourceExploration(dataSourceId, databaseFqn, schemaFqn),
         10000,
-        '探查任务提交请求超时，请稍后重试',
+        '指标统计提交请求超时，请稍后重试',
       );
       if (exploreRequestRef.current !== requestId) return;
       if (response.code !== 0) {
-        message.error(response.message || '数据源探查暂不可触发');
+        message.error(response.message || '数据源指标统计暂不可触发');
         return;
       }
       setRecords((current) => current.map((record) => (
@@ -408,7 +454,7 @@ const DataExplorationTasksPage: React.FC = () => {
       )));
       setExplorationFeedback({
         type: 'info',
-        message: `${dataSourceName} 探查已开始`,
+        message: `${dataSourceName} 指标统计已开始`,
         description: '任务已提交到后台，页面会自动同步执行状态。',
       });
       setTrackingExploration({ id: dataSourceId, name: dataSourceName, submittedAt });
@@ -416,7 +462,7 @@ const DataExplorationTasksPage: React.FC = () => {
       void load();
     } catch (error: any) {
       if (exploreRequestRef.current === requestId) {
-        message.error(errorMessage(error, '数据源探查暂不可触发'));
+        message.error(errorMessage(error, '数据源指标统计暂不可触发'));
       }
     } finally {
       if (exploreRequestRef.current === requestId) setExploreLoading(false);
@@ -438,6 +484,12 @@ const DataExplorationTasksPage: React.FC = () => {
 
   const triggerSampleCollection = async (record: DataSourceRecord) => {
     if (!record.id) return;
+    const unavailableReason = metadataUnavailableReason(record);
+    if (unavailableReason) {
+      setExplorationFeedback({ type: 'info', message: '暂不可采集样例', description: unavailableReason });
+      return;
+    }
+    if (record.sampleStatus === 'QUEUED' || record.sampleStatus === 'RUNNING') return;
     if (isAssetExplorationDbType(record.dbType)) {
       // Non-database sources need the operator's sample-collection opt-in first.
       setSettingsRecord(record);
@@ -463,6 +515,11 @@ const DataExplorationTasksPage: React.FC = () => {
 
   const triggerScan = async (record: DataSourceRecord) => {
     if (!record.id) return;
+    const actionState = scanActionState(record);
+    if (actionState.disabled) {
+      setExplorationFeedback({ type: 'info', message: actionState.label, description: actionState.title });
+      return;
+    }
     const recoveringSync = record.metadataSyncStatus === 'ERROR';
     try {
       const response = await triggerDataSourceScan(record.id);
@@ -512,7 +569,7 @@ const DataExplorationTasksPage: React.FC = () => {
       },
     },
     {
-      title: '探查状态',
+      title: '指标统计',
       dataIndex: 'profileStatus',
       key: 'profileStatus',
       width: 100,
@@ -552,47 +609,61 @@ const DataExplorationTasksPage: React.FC = () => {
       title: '操作',
       key: 'actions',
       width: 470,
-      render: (_, record) => (
-        <Space size={4} wrap={false} className="exploration-task-actions">
-          <Button type="link" icon={<SyncOutlined />} onClick={() => void triggerScan(record)}>
-            重新扫描
-          </Button>
-          {record.sampleDataSupported && (
+      render: (_, record) => {
+        const scanAction = scanActionState(record);
+        const unavailableReason = metadataUnavailableReason(record);
+        const profileRunning = record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING';
+        const sampleRunning = record.sampleStatus === 'QUEUED' || record.sampleStatus === 'RUNNING';
+        return (
+          <Space size={4} wrap={false} className="exploration-task-actions">
             <Button
               type="link"
-              icon={<ExperimentOutlined />}
-              disabled={record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING'}
-              onClick={() => void triggerSampleCollection(record)}
+              icon={<SyncOutlined />}
+              disabled={scanAction.disabled}
+              title={scanAction.title}
+              onClick={() => void triggerScan(record)}
             >
-              样例采集
+              {scanAction.label}
             </Button>
-          )}
-          {record.profilerSupported && (
+            {record.sampleDataSupported && (
+              <Button
+                type="link"
+                icon={<ExperimentOutlined />}
+                disabled={Boolean(unavailableReason) || sampleRunning}
+                title={sampleRunning ? '样例采集正在运行' : unavailableReason}
+                onClick={() => void triggerSampleCollection(record)}
+              >
+                {sampleRunning ? '采集中' : '样例采集'}
+              </Button>
+            )}
+            {record.profilerSupported && (
+              <Button
+                type="link"
+                icon={<PlayCircleOutlined />}
+                disabled={Boolean(unavailableReason) || profileRunning}
+                title={profileRunning ? '指标统计正在运行' : unavailableReason}
+                onClick={() => void openExplore(record)}
+              >
+                {profileRunning ? '统计中' : unavailableReason ? '等待扫描' : '开始指标统计'}
+              </Button>
+            )}
+            <Button type="link" icon={<ClockCircleOutlined />} onClick={() => void showRuns(record)}>
+              运行记录
+            </Button>
             <Button
               type="link"
-              icon={<PlayCircleOutlined />}
-              disabled={record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING'}
-              onClick={() => void openExplore(record)}
+              icon={<EyeOutlined />}
+              onClick={() => {
+                const query = new URLSearchParams({ dataSourceId: String(record.id) });
+                if (record.dbType) query.set('dbType', record.dbType);
+                history.push(`/data-exploration/results?${query.toString()}`);
+              }}
             >
-              {record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING' ? '探查中' : '开始探查'}
+              查看结果
             </Button>
-          )}
-          <Button type="link" icon={<ClockCircleOutlined />} onClick={() => void showRuns(record)}>
-            运行记录
-          </Button>
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => {
-              const query = new URLSearchParams({ dataSourceId: String(record.id) });
-              if (record.dbType) query.set('dbType', record.dbType);
-              history.push(`/data-exploration/results?${query.toString()}`);
-            }}
-          >
-            查看结果
-          </Button>
-        </Space>
-      ),
+          </Space>
+        );
+      },
     },
   ], []);
 
@@ -604,7 +675,14 @@ const DataExplorationTasksPage: React.FC = () => {
         actions={<Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button>}
       />
 
-      <Card className="exploration-panel exploration-filter-panel mt-5" size="small">
+      <Alert
+        className="exploration-task-schedule-hint mt-3"
+        type="info"
+        showIcon
+        message="Metadata、Profiler 和 AutoClassification 三个 agent 由系统自动调度。新建数据源会自动进行首次扫描；扫描完成后可按需统计指标或采集样例。"
+      />
+
+      <Card className="exploration-panel exploration-filter-panel mt-3" size="small">
         <div className="flex flex-wrap items-center gap-3">
           <Input
             allowClear
@@ -731,11 +809,11 @@ const DataExplorationTasksPage: React.FC = () => {
 
       <Modal
         className="exploration-action-modal"
-        title={<span className="exploration-modal-title">开始探查{exploreRecord?.name ? ` · ${exploreRecord.name}` : ''}</span>}
+        title={<span className="exploration-modal-title">开始指标统计{exploreRecord?.name ? ` · ${exploreRecord.name}` : ''}</span>}
         open={exploreOpen}
         centered
         width="min(640px, calc(100vw - 32px))"
-        okText="提交探查"
+        okText="开始统计"
         cancelText="取消"
         confirmLoading={exploreLoading}
         onCancel={closeExplore}
@@ -747,13 +825,13 @@ const DataExplorationTasksPage: React.FC = () => {
               className="mb-3"
               type="error"
               showIcon
-              message="探查元数据读取失败"
+              message="读取指标统计所需元数据失败"
               description={exploreError}
               action={exploreRecord ? <Button type="link" onClick={() => void openExplore(exploreRecord)}>重试</Button> : null}
             />
           ) : null}
           <div className="mb-2 text-sm text-[var(--st-color-text-muted)]">
-            一次探查一个 Database，可进一步限定 Schema。提交后立即执行一次；元数据每 2 小时、样本与指标每天自动执行。
+            选择一个 Database，可进一步限定 Schema。手动提交会立即运行一次指标统计，系统也会按计划自动调度。
           </div>
           <Select
             className="w-full"
@@ -764,7 +842,7 @@ const DataExplorationTasksPage: React.FC = () => {
             value={databaseFqn}
             options={databases}
             onChange={setDatabaseFqn}
-            notFoundContent="暂无可探查的 Database，请先完成元数据扫描"
+            notFoundContent="暂无可用于指标统计的 Database，请先完成元数据扫描"
           />
           <Select
             className="mt-3 w-full"
@@ -777,7 +855,7 @@ const DataExplorationTasksPage: React.FC = () => {
             value={schemaFqn}
             options={schemas}
             onChange={setSchemaFqn}
-            notFoundContent={databaseFqn ? '暂无可探查的 Schema，请先完成元数据扫描' : '请先选择 Database'}
+            notFoundContent={databaseFqn ? '暂无可用于指标统计的 Schema，请先完成元数据扫描' : '请先选择 Database'}
           />
         </div>
       </Modal>

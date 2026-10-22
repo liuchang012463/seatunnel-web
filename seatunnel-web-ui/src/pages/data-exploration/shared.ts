@@ -54,12 +54,26 @@ export const sampleStatus = (record: {
 /** State of the profiler agent; connectors without a profiler have no agent to report. */
 export const profilerStatus = (record: { profilerSupported?: boolean; profileStatus?: string }) => {
   if (!record.profilerSupported) return { label: '不支持', color: 'default' as const };
-  return explorationStatus(record.profileStatus);
+  if (record.profileStatus === 'SUCCESS') return { label: '已完成', color: 'success' as const };
+  if (record.profileStatus === 'FAILED') return { label: '异常', color: 'error' as const };
+  if (record.profileStatus === 'RUNNING' || record.profileStatus === 'QUEUED') {
+    return { label: '统计中', color: 'processing' as const };
+  }
+  return { label: '未统计', color: 'default' as const };
 };
 
 export const metadataStatus = (status?: string, scanStatus?: string) => {
+  if (status === 'ERROR') return { label: '同步异常', color: 'error' as const };
+  if (scanStatus === 'RUNNING') return { label: '扫描中', color: 'processing' as const };
+  if (scanStatus === 'QUEUED') return { label: '扫描排队中', color: 'processing' as const };
   if (status === 'READY' && scanStatus === 'FAILED') {
     return { label: '扫描异常', color: 'error' as const };
+  }
+  if (status === 'READY' && scanStatus === 'UNKNOWN') {
+    return { label: '扫描状态未知', color: 'warning' as const };
+  }
+  if (status === 'READY' && (!scanStatus || scanStatus === 'NEVER')) {
+    return { label: '等待首次扫描', color: 'processing' as const };
   }
   if (status === 'READY') return { label: '已就绪', color: 'success' as const };
   if (status === 'SYNCING' || status === 'WAITING' || status === 'PENDING') {

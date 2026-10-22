@@ -72,6 +72,7 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
     if (!dataSourceId || !agentType) return;
     setLogsLoading(true);
     setLogsError(undefined);
+    setLogs(undefined);
     try {
       const response = await fetchDataSourceMetadataAgentLogs(dataSourceId, agentType);
       if (response.code !== 0) {
@@ -123,7 +124,7 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
       className="exploration-action-modal exploration-run-record-modal"
       title={(
         <span className="exploration-modal-title">
-          {dataSourceName || '数据源'} · 探查运行记录
+          {dataSourceName || '数据源'} · 运行记录
         </span>
       )}
       open={open}
@@ -151,14 +152,23 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
             className="exploration-run-record-tabs"
             activeKey={activeAgent}
             onChange={(key) => setActiveAgent(key)}
-            items={agents.map((agent) => ({
-              key: agent.agentType,
-              label: agent.label,
-              children: (
+            items={agents.map((agent) => {
+              const latestStatus = agent.runs?.[0]
+                ? runStatusLabel(agent.runs[0].status)
+                : { label: '暂无记录', color: 'default' as const };
+              return {
+                key: agent.agentType,
+                label: (
+                  <span className="exploration-run-record__agent-tab">
+                    <span>{agent.label}</span>
+                    <Tag color={latestStatus.color}>{latestStatus.label}</Tag>
+                  </span>
+                ),
+                children: (
                 <div className="exploration-run-record">
                   <aside className="exploration-run-record__runs">
                     <div className="exploration-run-record__runs-head">
-                      <span>运行历史</span>
+                      <span>运行历史 <span className="exploration-run-record__run-count">{agent.runs?.length || 0}</span></span>
                       <Button
                         type="text"
                         size="small"
@@ -170,18 +180,24 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
                     <div className="exploration-run-record__run-list">
                       {(agent.runs || []).length === 0 ? (
                         <div className="exploration-run-record__empty">该 agent 还没有运行记录</div>
-                      ) : (agent.runs || []).map((run) => {
+                      ) : (agent.runs || []).map((run, index) => {
                         const status = runStatusLabel(run.status);
+                        const isLatest = index === 0;
                         return (
-                          <div className="exploration-run-record__run" key={run.runId}>
+                          <div
+                            className={`exploration-run-record__run${isLatest ? ' is-latest' : ''}`}
+                            key={run.runId}
+                          >
                             <div className="exploration-run-record__run-head">
                               <Tag color={status.color}>{status.label}</Tag>
                               <span className="exploration-run-record__run-id" title={run.runId}>
                                 {run.runId}
                               </span>
+                              {isLatest && <span className="exploration-run-record__latest-label">最新日志</span>}
                             </div>
                             <div className="exploration-run-record__run-time">
-                              <ClockCircleOutlined /> {run.startTime || '-'} → {run.endTime || '-'}
+                              <ClockCircleOutlined /> {run.startTime || '-'}
+                              {run.endTime ? <> → {run.endTime}</> : null}
                             </div>
                             {run.errorMessage && (
                               <div className="exploration-run-record__run-error">
@@ -195,7 +211,12 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
                   </aside>
                   <section className="exploration-run-record__log">
                     <div className="exploration-run-record__log-head">
-                      <span>最近一次运行日志</span>
+                      <div className="exploration-run-record__log-title">
+                        <strong>最近一次运行日志</strong>
+                        {agent.runs?.[0]?.runId && (
+                          <span title={agent.runs[0].runId}>对应运行：{agent.runs[0].runId}</span>
+                        )}
+                      </div>
                       <Space size="small">
                         <Button
                           type="text"
@@ -208,6 +229,7 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
                           type="text"
                           size="small"
                           icon={<CopyOutlined />}
+                          disabled={logEntries.length === 0}
                           onClick={() => void copyLog(logEntries.map(([, text]) => text).join('\n'))}
                         >
                           复制
@@ -236,8 +258,9 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
                     </div>
                   </section>
                 </div>
-              ),
-            }))}
+                ),
+              };
+            })}
           />
         )}
       </Spin>

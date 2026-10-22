@@ -46,6 +46,8 @@ export function assetExplorationStatus(record: {
       return { label: '扫描中', color: 'processing' };
     }
     if (scan === 'FAILED') return { label: '扫描异常', color: 'error' };
+    if (scan === 'UNKNOWN') return { label: '扫描状态未知', color: 'warning' };
+    if (!scan || scan === 'NEVER') return { label: '等待首次扫描', color: 'processing' };
     return { label: '未扫描', color: 'default' };
   }
   return { label: '未初始化', color: 'default' };
