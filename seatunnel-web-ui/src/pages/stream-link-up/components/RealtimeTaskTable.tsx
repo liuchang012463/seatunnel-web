@@ -150,6 +150,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
           <TaskStatus
             status={record?.lastJobStatus}
             errorMessage={record?.lastErrorMessage}
+            showErrorDetailsLink={false}
           />
         </div>
       ),

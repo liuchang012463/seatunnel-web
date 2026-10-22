@@ -5,6 +5,7 @@ import StatusChip, { type StatusChipTone } from "@/components/StatusChip";
 interface TaskStatusProps {
   status?: string;
   errorMessage?: string;
+  showErrorDetailsLink?: boolean;
 }
 
 const statusConfig: Record<string, { tone: StatusChipTone; label: string }> = {
@@ -35,7 +36,11 @@ const getStatusConfig = (status?: string) => {
   );
 };
 
-const TaskStatus: React.FC<TaskStatusProps> = ({ status, errorMessage }) => {
+const TaskStatus: React.FC<TaskStatusProps> = ({
+  status,
+  errorMessage,
+  showErrorDetailsLink = true,
+}) => {
   const config = getStatusConfig(status);
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<number | null>(null);
@@ -108,21 +113,25 @@ const TaskStatus: React.FC<TaskStatusProps> = ({ status, errorMessage }) => {
       }
     >
       <span
-        className="inline-flex cursor-pointer items-center gap-1.5"
+        className={`inline-flex items-center gap-1.5${
+          showErrorDetailsLink ? " cursor-pointer" : ""
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {content}
-        <a
-          style={{
-            fontSize: 12,
-            lineHeight: '20px',
-            color: 'var(--st-color-accent)',
-          }}
-          role="button"
-          tabIndex={0}
-        >
-          日志
-        </a>
+        {showErrorDetailsLink ? (
+          <a
+            style={{
+              fontSize: 12,
+              lineHeight: "20px",
+              color: "var(--st-color-accent)",
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            日志
+          </a>
+        ) : null}
       </span>
     </Popover>
   );
