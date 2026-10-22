@@ -84,6 +84,12 @@
             <artifactId>seatunnel-web-messaging-all</artifactId>
         </dependency>
 
+        <!-- OpenLineage lineage bridge: Kafka producer client, version managed by the parent. -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+        </dependency>
+
         <!-- spring-boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
