@@ -107,8 +107,8 @@ management:
     enabled-by-default: false
 
 # OpenLineage lineage bridge: collects job lineage and publishes RunEvent JSON to Kafka.
-# The asset project consumes the topic and resolves-writes to OpenMetadata. Keep disabled
-# unless the Kafka endpoint below is reachable; disabled = no producer, no jobs, no listeners.
+# The asset project consumes the topic and resolves-writes to OpenMetadata. Enabled by default;
+# set LINEAGE_BRIDGE_ENABLED=false to leave no producer, no scheduler and no listener behind.
 lineage-bridge:
   kafka:
     enabled: ${LINEAGE_BRIDGE_ENABLED:true}

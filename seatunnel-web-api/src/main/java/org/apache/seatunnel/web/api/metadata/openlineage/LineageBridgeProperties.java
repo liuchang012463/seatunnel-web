@@ -31,9 +31,10 @@ public class LineageBridgeProperties {
     public static class Kafka {
 
         /**
-         * Master switch. {@code false} leaves no producer, no scheduler and no listener behind.
+         * Master switch, enabled by default. {@code false} leaves no producer, no scheduler and no
+         * listener behind.
          */
-        private boolean enabled = false;
+        private boolean enabled = true;
 
         /** Comma separated bootstrap servers; blank with enabled=true drops events with an error log. */
         private String bootstrapServers = "";

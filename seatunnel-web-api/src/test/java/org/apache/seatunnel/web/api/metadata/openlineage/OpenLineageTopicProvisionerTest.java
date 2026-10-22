@@ -50,8 +50,37 @@ class OpenLineageTopicProvisionerTest {
     }
 
     @Test
-    void createsTheTopicOnlyOnce() {
+    void runsTheStartupCheckOnTheGivenExecutor() {
         List<String> created = new ArrayList<>();
+        List<Runnable> tasks = new ArrayList<>();
+        LineageBridgeProperties properties = properties(true, "kafka:9092");
+        properties.getKafka().setSourceTopic("meta_lineage_topic");
+        OpenLineageTopicProvisioner provisioner = new OpenLineageTopicProvisioner(
+                properties,
+                clientProperties -> new OpenLineageTopicProvisioner.AdminOperations() {
+                    @Override
+                    public void createTopic(String topic, int timeoutMs) {
+                        created.add(topic);
+                    }
+
+                    @Override
+                    public void close() {
+                    }
+                },
+                tasks::add);
+
+        provisioner.ensureConfiguredTopic();
+
+        // The check is dispatched, not run inline: an unreachable broker must not delay the
+        // start of the application.
+        assertTrue(created.isEmpty());
+        assertEquals(1, tasks.size());
+        tasks.get(0).run();
+        assertEquals(List.of("meta_lineage_topic"), created);
+    }
+
+    @Test
+    void createsTheTopicOnlyOnce() {        List<String> created = new ArrayList<>();
         OpenLineageTopicProvisioner provisioner = provisioner(properties(true, "kafka:9092"), created, null);
 
         provisioner.ensureTopic("meta_lineage_topic");

@@ -1,10 +1,13 @@
 package org.apache.seatunnel.web.api.metadata.openlineage;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.concurrent.Executor;
 
 /**
  * Wiring for the OpenLineage lineage bridge. Everything is created only while
@@ -39,7 +42,11 @@ public class LineageBridgeConfig {
      */
     @Bean
     @ConditionalOnProperty(prefix = "lineage-bridge.kafka", name = "enabled", havingValue = "true")
-    public OpenLineageTopicProvisioner openLineageTopicProvisioner(LineageBridgeProperties properties) {
-        return new OpenLineageTopicProvisioner(properties);
+    public OpenLineageTopicProvisioner openLineageTopicProvisioner(
+            LineageBridgeProperties properties,
+            @Qualifier("lineageEventExecutor") Executor executor) {
+        // The startup check runs on the lineage executor: an unreachable broker must not delay
+        // the start of the application.
+        return OpenLineageTopicProvisioner.create(properties, executor);
     }
 }

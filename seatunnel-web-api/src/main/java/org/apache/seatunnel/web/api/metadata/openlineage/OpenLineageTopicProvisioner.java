@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -42,6 +43,9 @@ public class OpenLineageTopicProvisioner {
 
     private final AdminOperationsFactory operationsFactory;
 
+    /** Where the startup check runs; null means inline. */
+    private final Executor startupExecutor;
+
     /** Topics that are known to exist. */
     private final Set<String> ensured = ConcurrentHashMap.newKeySet();
 
@@ -49,13 +53,32 @@ public class OpenLineageTopicProvisioner {
     private final Map<String, Long> failures = new ConcurrentHashMap<>();
 
     public OpenLineageTopicProvisioner(LineageBridgeProperties properties) {
-        this(properties, clientProperties -> new KafkaAdminOperations(AdminClient.create(clientProperties)));
+        this(properties, clientProperties -> new KafkaAdminOperations(AdminClient.create(clientProperties)), null);
+    }
+
+    /**
+     * The production wiring: the startup check runs on the given executor.
+     */
+    public static OpenLineageTopicProvisioner create(
+            LineageBridgeProperties properties, Executor startupExecutor) {
+        return new OpenLineageTopicProvisioner(
+                properties,
+                clientProperties -> new KafkaAdminOperations(AdminClient.create(clientProperties)),
+                startupExecutor);
     }
 
     OpenLineageTopicProvisioner(
             LineageBridgeProperties properties, AdminOperationsFactory operationsFactory) {
+        this(properties, operationsFactory, null);
+    }
+
+    OpenLineageTopicProvisioner(
+            LineageBridgeProperties properties,
+            AdminOperationsFactory operationsFactory,
+            Executor startupExecutor) {
         this.properties = properties;
         this.operationsFactory = operationsFactory;
+        this.startupExecutor = startupExecutor;
     }
 
     /**
@@ -106,10 +129,20 @@ public class OpenLineageTopicProvisioner {
     /**
      * Creates the topic the bridge publishes to, once the application is up. The topic is then
      * there before the first job of the day is submitted.
+     *
+     * <p>
+     * The check runs on the lineage executor, never on the thread that publishes the ready event:
+     * an unreachable broker must not delay the start of the application.
+     * </p>
      */
     @EventListener(ApplicationReadyEvent.class)
     public void ensureConfiguredTopic() {
-        ensureTopic(properties.getKafka().getSourceTopic());
+        String topic = properties.getKafka().getSourceTopic();
+        if (startupExecutor == null) {
+            ensureTopic(topic);
+            return;
+        }
+        startupExecutor.execute(() -> ensureTopic(topic));
     }
 
     @FunctionalInterface
