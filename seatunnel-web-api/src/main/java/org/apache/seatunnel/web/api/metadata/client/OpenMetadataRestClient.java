@@ -1033,22 +1033,6 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     @Override
-    public void addLineage(JsonNode lineageRequest) {
-        validateBaseUrl();
-        if (lineageRequest == null || !lineageRequest.path("edge").isObject()) {
-            throw new MetadataIntegrationException(
-                    MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
-                    "OpenMetadata lineage request must contain an edge");
-        }
-        try {
-            sdk().lineage().addLineage(lineageRequest);
-        } catch (OpenMetadataException error) {
-            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
-                    "OpenMetadata lineage write failed", error);
-        }
-    }
-
-    @Override
     public OpenMetadataTable patchTable(String tableId, JsonNode patchDocument) {
         validateBaseUrl();
         if (patchDocument == null || !patchDocument.isArray()) {

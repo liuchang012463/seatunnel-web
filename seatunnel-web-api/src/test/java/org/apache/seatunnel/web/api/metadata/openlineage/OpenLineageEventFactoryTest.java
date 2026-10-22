@@ -316,7 +316,7 @@ class OpenLineageEventFactoryTest {
         JsonNode event = MAPPER.convertValue(
                 OpenLineageEventFactory.toRunEvent(snapshot), JsonNode.class);
 
-        // The bridge shares zero structure with OpenMetadataJobLineageService.buildLineageRequest.
+        // The bridge shares zero structure with the OpenMetadata addLineage request format.
         assertFalse(event.has("edge"));
         assertFalse(event.has("fromEntity"));
         assertFalse(event.has("toEntity"));

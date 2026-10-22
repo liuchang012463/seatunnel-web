@@ -111,9 +111,6 @@ public interface OpenMetadataClient {
     /** Gets a table entity by its OpenMetadata fully qualified name. */
     OpenMetadataTable getTableByName(String fullyQualifiedName);
 
-    /** Writes a table lineage edge through the official OpenMetadata 2.0.4 SDK. */
-    void addLineage(JsonNode lineageRequest);
-
     /** Applies an OpenMetadata JSON Patch through the official SDK table service. */
     OpenMetadataTable patchTable(String tableId, JsonNode patchDocument);
 

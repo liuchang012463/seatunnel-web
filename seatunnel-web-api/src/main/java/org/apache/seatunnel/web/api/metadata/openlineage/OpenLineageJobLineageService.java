@@ -35,13 +35,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * Publishes SeaTunnel job lineage to Kafka as OpenLineage {@code RunEvent} JSON.
  *
  * <p>
- * This is a channel fully parallel to {@code OpenMetadataJobLineageService}: it fetches the job
- * instances, runtime configs and datasource names itself, uses the local names as dataset
- * identity (the asset project resolves them to OpenMetadata entities), and never reads or waits
- * for the OpenMetadata channel. Whole-run life cycle per the bridge design v1: one START at
- * submission acceptance, periodic RUNNING heartbeats for streaming jobs, exactly one terminal
- * COMPLETE / FAIL / ABORT per run. The runId is derived deterministically from the engine job id,
- * so START and the terminal event share one runId even across a web restart.
+ * This is the only lineage channel of the web: it fetches the job instances, runtime configs and
+ * datasource names itself, uses the local names as dataset identity (the asset project resolves
+ * them to OpenMetadata entities) and writes nothing to OpenMetadata itself. Whole-run life cycle
+ * per the bridge design v1: one START at submission acceptance, periodic RUNNING heartbeats for
+ * streaming jobs, exactly one terminal COMPLETE / FAIL / ABORT per run. The runId is derived
+ * deterministically from the engine job id, so START and the terminal event share one runId even
+ * across a web restart.
  * </p>
  *
  * <p>
