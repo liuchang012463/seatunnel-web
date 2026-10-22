@@ -111,7 +111,7 @@ management:
 # unless the Kafka endpoint below is reachable; disabled = no producer, no jobs, no listeners.
 lineage-bridge:
   kafka:
-    enabled: ${LINEAGE_BRIDGE_ENABLED:false}
+    enabled: ${LINEAGE_BRIDGE_ENABLED:true}
     # Blank + enabled=true → the bridge logs an ERROR and drops events instead of failing.
     bootstrap-servers: ${LINEAGE_BRIDGE_KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:19092,127.0.0.1:19093,127.0.0.1:19094}
     source-topic: ${LINEAGE_BRIDGE_SOURCE_TOPIC:meta_lineage_topic}
