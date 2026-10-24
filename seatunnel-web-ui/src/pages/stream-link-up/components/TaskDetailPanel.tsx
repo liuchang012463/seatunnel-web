@@ -148,10 +148,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
   ];
 
   return (
-    <div className="h-full bg-slate-50">
+    <div className="flex h-full min-h-0 flex-col bg-slate-50">
       <TaskHeader item={instanceItem} />
 
-      <div className="h-[calc(100vh-46px)] overflow-y-auto bg-slate-50">
+      {/* 高度由外层面板决定，不能用视口高度，否则底部内容会被裁切且无法滚动到 */}
+      <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50">
         <BasicInfoSection item={instanceItem} />
 
         <div className="m-4 rounded-lg bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">

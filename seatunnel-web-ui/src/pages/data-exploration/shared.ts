@@ -80,7 +80,6 @@ export const metadataStatus = (status?: string, scanStatus?: string) => {
     return { label: '同步中', color: 'processing' as const };
   }
   if (status === 'UNSUPPORTED') return { label: '未接入', color: 'default' as const };
-  if (status === 'ERROR') return { label: '同步异常', color: 'error' as const };
   if (status === 'DELETING') return { label: '删除中', color: 'warning' as const };
   return { label: '未初始化', color: 'default' as const };
 };

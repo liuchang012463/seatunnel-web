@@ -22,6 +22,8 @@ describe('asset exploration status', () => {
     expect(assetExplorationStatus({ metadataSyncStatus: 'READY', scanStatus: 'FAILED' }))
       .toEqual({ label: '扫描异常', color: 'error' });
     expect(assetExplorationStatus({ metadataSyncStatus: 'READY', scanStatus: 'NEVER' }))
+      .toEqual({ label: '等待首次扫描', color: 'processing' });
+    expect(assetExplorationStatus({ metadataSyncStatus: 'READY', scanStatus: 'OTHER' }))
       .toEqual({ label: '未扫描', color: 'default' });
     expect(assetExplorationStatus({ metadataSyncStatus: 'PENDING' }))
       .toEqual({ label: '同步中', color: 'processing' });
