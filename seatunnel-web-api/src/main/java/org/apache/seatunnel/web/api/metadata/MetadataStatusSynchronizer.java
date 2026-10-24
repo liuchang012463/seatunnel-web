@@ -122,6 +122,9 @@ public class MetadataStatusSynchronizer {
                     latest.getScanStatus(), latest.getScanLastSuccessTime());
             boolean profileChanged = runOutcomeChanged(profileStatusBefore, profileSuccessBefore,
                     latest.getProfileStatus(), latest.getProfileLastSuccessTime());
+            String previousStage = latest.getInitialRunStage();
+            String previousBaselineId = latest.getInitialRunBaselineId();
+            Date previousStartedAt = latest.getInitialRunStartedAt();
             InitialRunTransition initialTransition =
                     planInitialRun(latest, sampleRuns, profileRuns, now);
             if (initialTransition.stage() != null) {
@@ -153,9 +156,13 @@ public class MetadataStatusSynchronizer {
                     markStorageSampleTriggered(latest, storageSampleRunId);
                 }
                 if (initialTransition.action() == InitialRunAction.SAMPLE) {
-                    operationService.triggerInitialSample(latest);
+                    if (!operationService.triggerInitialSample(latest)) {
+                        revertInitialStage(latest, previousStage, previousBaselineId, previousStartedAt);
+                    }
                 } else if (initialTransition.action() == InitialRunAction.PROFILE) {
-                    operationService.triggerInitialProfile(latest);
+                    if (!operationService.triggerInitialProfile(latest)) {
+                        revertInitialStage(latest, previousStage, previousBaselineId, previousStartedAt);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -272,6 +279,23 @@ public class MetadataStatusSynchronizer {
         binding.initUpdate();
         if (!metadataBindingDao.updateIfVersion(binding, version)) {
             log.warn("Could not record the storage sample marker: dataSourceId={}", binding.getDataSourceId());
+        }
+    }
+
+    private void revertInitialStage(
+            MetadataSourceBinding binding,
+            String previousStage,
+            String previousBaselineId,
+            Date previousStartedAt) {
+        long version = binding.getVersion();
+        binding.setInitialRunStage(previousStage);
+        binding.setInitialRunBaselineId(previousBaselineId);
+        binding.setInitialRunStartedAt(previousStartedAt);
+        binding.setVersion(version + 1L);
+        binding.initUpdate();
+        if (!metadataBindingDao.updateIfVersion(binding, version)) {
+            log.warn("Could not revert initial run stage after trigger failure: dataSourceId={}",
+                    binding.getDataSourceId());
         }
     }
 

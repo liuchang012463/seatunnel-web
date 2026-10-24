@@ -80,6 +80,7 @@ class MetadataStatusSynchronizerTest {
         when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_auto_classification", 1))
                 .thenReturn(List.of());
         when(operationService.supportsSeparateSamplePipeline(any(MetadataSourceBinding.class))).thenReturn(true);
+        when(operationService.triggerInitialSample(any(MetadataSourceBinding.class))).thenReturn(true);
         when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
 
         synchronizer().refreshOne(candidate, now);
@@ -89,6 +90,38 @@ class MetadataStatusSynchronizerTest {
         assertEquals("SAMPLE", saved.getValue().getInitialRunStage());
         assertNotNull(saved.getValue().getInitialRunStartedAt());
         verify(operationService).triggerInitialSample(saved.getValue());
+    }
+
+    @Test
+    void failedInitialSampleTriggerRevertsStageToRetryLater() {
+        Date now = new Date();
+        long nowSeconds = now.getTime() / 1000L;
+        MetadataSourceBinding candidate = binding(0L);
+        candidate.setInitialRunStage("METADATA");
+        candidate.setScanStatus(MetadataRunStatus.SUCCESS);
+        candidate.setScanLastSuccessTime(new Date(now.getTime() - 30_000L));
+        MetadataSourceBinding live = binding(0L);
+        live.setInitialRunStage("METADATA");
+        live.setScanStatus(MetadataRunStatus.SUCCESS);
+        live.setScanLastSuccessTime(candidate.getScanLastSuccessTime());
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "scan-1", "success", nowSeconds - 60L, nowSeconds - 50L, nowSeconds - 50L, 0)));
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1))
+                .thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_auto_classification", 1))
+                .thenReturn(List.of());
+        when(operationService.supportsSeparateSamplePipeline(any(MetadataSourceBinding.class))).thenReturn(true);
+        when(operationService.triggerInitialSample(any(MetadataSourceBinding.class))).thenReturn(false);
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(1L))).thenReturn(true);
+
+        synchronizer().refreshOne(candidate, now);
+
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateIfVersion(saved.capture(), eq(1L));
+        assertEquals("METADATA", saved.getValue().getInitialRunStage());
     }
 
     @Test
@@ -113,6 +146,7 @@ class MetadataStatusSynchronizerTest {
                 .thenReturn(List.of(new OpenMetadataPipelineRun(
                         "new-sample", "success", nowSeconds - 20L, nowSeconds - 10L, nowSeconds - 10L, 0)));
         when(operationService.supportsProfilerPipeline(any(MetadataSourceBinding.class))).thenReturn(true);
+        when(operationService.triggerInitialProfile(any(MetadataSourceBinding.class))).thenReturn(true);
         when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
 
         synchronizer().refreshOne(candidate, now);
