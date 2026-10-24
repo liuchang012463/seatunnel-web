@@ -8,6 +8,7 @@ import org.apache.kafka.common.errors.TopicExistsException;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -179,7 +180,7 @@ public class OpenLineageTopicProvisioner {
 
         @Override
         public void close() {
-            adminClient.close();
+            adminClient.close(Duration.ofSeconds(2));
         }
     }
 

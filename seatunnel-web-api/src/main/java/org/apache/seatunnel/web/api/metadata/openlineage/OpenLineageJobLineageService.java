@@ -330,8 +330,11 @@ public class OpenLineageJobLineageService {
                 ? null
                 : ConfigFactory.parseString(details.getRuntimeConfig());
         OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(runtimeConfig);
-        List<OpenLineageSnapshot.Dataset> inputs = resolveInputDatasets(details, topology);
-        List<OpenLineageSnapshot.Dataset> outputs = resolveOutputDatasets(details, topology);
+        List<DataSource> allDataSources = needsDatasourceResolution(topology)
+                ? dataSourceDao.queryAll()
+                : null;
+        List<OpenLineageSnapshot.Dataset> inputs = resolveInputDatasets(details, topology, allDataSources);
+        List<OpenLineageSnapshot.Dataset> outputs = resolveOutputDatasets(details, topology, allDataSources);
         return new OpenLineageSnapshot(
                 eventType,
                 Instant.now(),
@@ -351,12 +354,32 @@ public class OpenLineageJobLineageService {
                         inputs, outputs, FieldMappingExtractor.extractDetailed(runtimeConfig)));
     }
 
+    private static boolean needsDatasourceResolution(OpenLineageJobTopology.Topology topology) {
+        if (topology.sources().size() > 1) {
+            for (OpenLineageJobTopology.Plugin plugin : topology.sources()) {
+                if (plugin.datasourceId() == null) {
+                    return true;
+                }
+            }
+        }
+        if (topology.sinks().size() > 1) {
+            for (OpenLineageJobTopology.Plugin plugin : topology.sinks()) {
+                if (plugin.datasourceId() == null) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /**
      * The tables the job reads. The submitted configuration is the authority; the instance
      * columns are the fallback for jobs whose configuration cannot be parsed.
      */
     private List<OpenLineageSnapshot.Dataset> resolveInputDatasets(
-            JobInstanceVO details, OpenLineageJobTopology.Topology topology) {
+            JobInstanceVO details,
+            OpenLineageJobTopology.Topology topology,
+            List<DataSource> allDataSources) {
         List<OpenLineageSnapshot.Dataset> datasets = new ArrayList<>();
         List<OpenLineageJobTopology.Plugin> sources = topology.sources();
         if (sources.isEmpty()) {
@@ -367,7 +390,8 @@ public class OpenLineageJobLineageService {
         }
         boolean singlePlugin = sources.size() == 1;
         for (OpenLineageJobTopology.Plugin plugin : sources) {
-            Long datasourceId = resolveDatasourceId(plugin, details.getSourceDatasourceId(), singlePlugin);
+            Long datasourceId = resolveDatasourceId(
+                    plugin, details.getSourceDatasourceId(), singlePlugin, allDataSources);
             for (String table : plugin.tables()) {
                 addDataset(datasets, datasourceId, table);
             }
@@ -377,7 +401,9 @@ public class OpenLineageJobLineageService {
 
     /** The tables the job writes, resolved like the source side. */
     private List<OpenLineageSnapshot.Dataset> resolveOutputDatasets(
-            JobInstanceVO details, OpenLineageJobTopology.Topology topology) {
+            JobInstanceVO details,
+            OpenLineageJobTopology.Topology topology,
+            List<DataSource> allDataSources) {
         List<OpenLineageSnapshot.Dataset> datasets = new ArrayList<>();
         List<OpenLineageJobTopology.Plugin> sinks = topology.sinks();
         if (sinks.isEmpty()) {
@@ -388,7 +414,8 @@ public class OpenLineageJobLineageService {
         }
         boolean singlePlugin = sinks.size() == 1;
         for (OpenLineageJobTopology.Plugin plugin : sinks) {
-            Long datasourceId = resolveDatasourceId(plugin, details.getSinkDatasourceId(), singlePlugin);
+            Long datasourceId = resolveDatasourceId(
+                    plugin, details.getSinkDatasourceId(), singlePlugin, allDataSources);
             for (String table : plugin.tables()) {
                 addDataset(datasets, datasourceId, table);
             }
@@ -401,14 +428,17 @@ public class OpenLineageJobLineageService {
      * a single plugin job, and a job with several plugins resolves its datasource by connection.
      */
     private Long resolveDatasourceId(
-            OpenLineageJobTopology.Plugin plugin, Long instanceDatasourceId, boolean singlePlugin) {
+            OpenLineageJobTopology.Plugin plugin,
+            Long instanceDatasourceId,
+            boolean singlePlugin,
+            List<DataSource> allDataSources) {
         if (plugin.datasourceId() != null) {
             return plugin.datasourceId();
         }
         if (singlePlugin) {
             return instanceDatasourceId;
         }
-        return resolveDatasourceByConnection(plugin);
+        return resolveDatasourceByConnection(plugin, allDataSources);
     }
 
     /**
@@ -416,12 +446,13 @@ public class OpenLineageJobLineageService {
      * that two local datasources share cannot be attributed, so the plugin stays unidentified
      * instead of being attached to a random datasource.
      */
-    private Long resolveDatasourceByConnection(OpenLineageJobTopology.Plugin plugin) {
+    private Long resolveDatasourceByConnection(
+            OpenLineageJobTopology.Plugin plugin, List<DataSource> allDataSources) {
         String url = StringUtils.trimToNull(plugin.url());
         if (url == null) {
             return null;
         }
-        List<DataSource> dataSources = dataSourceDao.queryAll();
+        List<DataSource> dataSources = allDataSources != null ? allDataSources : dataSourceDao.queryAll();
         if (dataSources == null) {
             return null;
         }

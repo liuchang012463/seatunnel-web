@@ -44,7 +44,7 @@ public class LineageBridgeProperties {
 
         private String saslUsername = "kafka-admin";
 
-        private String saslPassword = "Kafka@2024Secure!";
+        private String saslPassword = "";
 
         /** SASL_PLAINTEXT / SASL_SSL / SSL / PLAINTEXT per the deployment's Kafka setup. */
         private String securityProtocol = "SASL_PLAINTEXT";
