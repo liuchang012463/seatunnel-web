@@ -37,6 +37,17 @@ public class ZetaJobStatusHandler {
             "UNKNOWABLE"
     );
 
+    /**
+     * Local statuses the Engine reports under their own name and that carry no explicit rule in
+     * {@link #mapToLocalStatus(String)}. Every other local status is a Web-side state the Engine
+     * never reports, so accepting it from the Engine would turn an unknown Engine vocabulary into
+     * a final state.
+     */
+    private static final List<JobStatus> ENGINE_OWN_STATUSES = Arrays.asList(
+            JobStatus.SAVEPOINT_DONE,
+            JobStatus.UNKNOWABLE
+    );
+
     @Resource
     private SeaTunnelRestClient seaTunnelRestClient;
 
@@ -125,6 +136,11 @@ public class ZetaJobStatusHandler {
             }
 
             JobStatus localStatus = mapToLocalStatus(engineStatus);
+            if (localStatus == null) {
+                // The Engine still lists the job as running but reports a status this Web does
+                // not know. Treating it as final would fail a job that is still alive.
+                return ZetaJobStatusResolveResult.running(engineStatus);
+            }
 
             if (isRunningLike(localStatus)) {
                 return ZetaJobStatusResolveResult.running(engineStatus);
@@ -232,6 +248,10 @@ public class ZetaJobStatusHandler {
             if (localStatus == null || JobStatus.UNKNOWABLE.equals(localStatus)) {
                 localStatus = mapToLocalStatus(state);
                 engineStatus = state;
+            }
+            if (localStatus == null) {
+                // Neither the reported status nor the queried state is known to this Web.
+                return null;
             }
 
             if (isRunningLike(localStatus)) {
@@ -353,9 +373,17 @@ public class ZetaJobStatusHandler {
         return StringUtils.isBlank(message) ? null : message;
     }
 
+    /**
+     * Maps an Engine status onto a local status.
+     *
+     * @return the local status, or {@code null} when the Engine reports a status this Web does
+     *     not know. An unknown status is not evidence of a final state: the Engine vocabulary
+     *     grows over time, so an unknown status must leave the instance running instead of
+     *     failing a job that is still alive.
+     */
     private JobStatus mapToLocalStatus(String engineStatus) {
         if (StringUtils.isBlank(engineStatus)) {
-            return JobStatus.UNKNOWABLE;
+            return null;
         }
 
         String normalized = engineStatus.trim().toUpperCase();
@@ -367,14 +395,17 @@ public class ZetaJobStatusHandler {
                 || "RUNNING".equals(normalized)
                 || "FAILING".equals(normalized)
                 || "DOING_SAVEPOINT".equals(normalized)
-                || "CANCELING".equals(normalized)) {
+                || "CANCELING".equals(normalized)
+                || "CANCELLING".equals(normalized)
+                || "STOPPING".equals(normalized)) {
             return JobStatus.RUNNING;
         }
 
         if ("FINISHED".equals(normalized)
                 || "SUCCESS".equals(normalized)
                 || "SUCCEEDED".equals(normalized)
-                || "DONE".equals(normalized)) {
+                || "DONE".equals(normalized)
+                || "COMPLETED".equals(normalized)) {
             return JobStatus.FINISHED;
         }
 
@@ -390,11 +421,17 @@ public class ZetaJobStatusHandler {
         }
 
         try {
-            return JobStatus.valueOf(normalized);
+            JobStatus parsed = JobStatus.valueOf(normalized);
+            if (ENGINE_OWN_STATUSES.contains(parsed)) {
+                return parsed;
+            }
         } catch (Exception e) {
             log.warn("Unknown Zeta job status: {}", engineStatus);
-            return JobStatus.UNKNOWABLE;
+            return null;
         }
+
+        log.warn("Unknown Zeta job status: {}", engineStatus);
+        return null;
     }
 
     private boolean isRunningLike(JobStatus status) {
