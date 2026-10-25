@@ -113,12 +113,29 @@ public class OpenLineageJobLineageService {
      * </p>
      */
     private final Set<String> terminalPublished = Collections.synchronizedSet(
-            Collections.newSetFromMap(new LinkedHashMap<String, Boolean>(64, 0.75f, true) {
+            Collections.newSetFromMap(new LinkedHashMap<String, Boolean>(64, 0.75f, false) {
                 @Override
                 protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
                     return size() > TERMINAL_PUBLISHED_CAPACITY;
                 }
             }));
+
+    /**
+     * Terminal events the broker did not acknowledge. The pulse publishes them again, so a
+     * terminal survives a broker outage even when the instance was never seen in the running set.
+     *
+     * <p>
+     * The map is bounded: an instance whose terminal can never be delivered is forgotten instead
+     * of being retried for the whole life of the web.
+     * </p>
+     */
+    private final Map<Long, OpenLineageSnapshot> pendingTerminals =
+            Collections.synchronizedMap(new LinkedHashMap<Long, OpenLineageSnapshot>(64, 0.75f, false) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<Long, OpenLineageSnapshot> eldest) {
+                    return size() > TERMINAL_PUBLISHED_CAPACITY;
+                }
+            });
 
     OpenLineageJobLineageService(LineageBridgeProperties properties,
                                  OpenLineageKafkaBridge bridge,
@@ -199,10 +216,11 @@ public class OpenLineageJobLineageService {
             }
             PublishOutcome outcome = publishIfValid(snapshot);
             if (outcome == PublishOutcome.FAILED) {
-                // The broker did not acknowledge the event: let the batch pulse publish the
-                // terminal later. A skipped event has no identifiable dataset and would never
-                // be publishable, so it is not retried.
+                // The broker did not acknowledge the event: the pulse publishes the terminal
+                // again. A skipped event has no identifiable dataset and would never be
+                // publishable, so it is not retried.
                 terminalPublished.remove(key);
+                pendingTerminals.put(event.getJobInstanceId(), snapshot);
             }
         } catch (Exception error) {
             log.warn("Could not publish OpenLineage terminal event, instanceId={}, status={}",
@@ -294,8 +312,36 @@ public class OpenLineageJobLineageService {
                     monitoredBatchStatuses.put(entry.getKey(), entry.getValue());
                 }
             }
+            retryPendingTerminals();
         } catch (Exception error) {
             log.warn("OpenLineage batch pulse failed", error);
+        }
+    }
+
+    /**
+     * Publishes the terminal events the broker did not acknowledge. The event path may see a
+     * job that finished before the pulse ever observed it, so the pending terminals are kept
+     * until the broker confirms them.
+     */
+    private void retryPendingTerminals() {
+        List<Map.Entry<Long, OpenLineageSnapshot>> entries;
+        synchronized (pendingTerminals) {
+            if (pendingTerminals.isEmpty()) {
+                return;
+            }
+            entries = new ArrayList<>(pendingTerminals.entrySet());
+        }
+        for (Map.Entry<Long, OpenLineageSnapshot> entry : entries) {
+            Long instanceId = entry.getKey();
+            String key = terminalKey(false, instanceId);
+            if (!terminalPublished.add(key)) {
+                continue;
+            }
+            if (publishIfValid(entry.getValue()) != PublishOutcome.PUBLISHED) {
+                terminalPublished.remove(key);
+                continue;
+            }
+            pendingTerminals.remove(instanceId);
         }
     }
 
@@ -861,8 +907,13 @@ public class OpenLineageJobLineageService {
                     snapshot.eventType(), snapshot.instanceId(), snapshot.engineJobId());
             return PublishOutcome.SKIPPED;
         }
+        // A terminal is published again by the pulse, so the bridge must not send it a second
+        // time on its own: the run would see two terminal events.
+        boolean retryOnMissingTopic = snapshot.eventType() == EventType.START
+                || snapshot.eventType() == EventType.RUNNING;
         if (!bridge.publish(properties.getKafka().getSourceTopic(),
-                OpenLineageEventFactory.toRunEvent(snapshot).toString())) {
+                OpenLineageEventFactory.toRunEvent(snapshot).toString(),
+                retryOnMissingTopic)) {
             log.debug("OpenLineage event was not delivered, instanceId={}, engineJobId={}",
                     snapshot.instanceId(), snapshot.engineJobId());
             return PublishOutcome.FAILED;

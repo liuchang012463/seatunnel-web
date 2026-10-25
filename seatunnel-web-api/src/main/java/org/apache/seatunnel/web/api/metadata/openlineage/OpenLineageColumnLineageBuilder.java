@@ -64,10 +64,15 @@ public final class OpenLineageColumnLineageBuilder {
         for (FieldMappingExtractor.Owner owner : extraction.owners()) {
             owners.put(owner.path(), owner);
         }
+        // A job with a single transform writes to the sink, so a named output that does not
+        // resolve still has one candidate. With several transforms the named output can be an
+        // intermediate step, and then there is no candidate to fall back to.
+        boolean singleTransform = owners.size() <= 1;
         Map<String, Map<String, List<OpenLineageSnapshot.SourceColumn>>> byOutput = new LinkedHashMap<>();
         for (FieldMappingExtractor.ColumnMapping mapping : extraction.mappings()) {
             FieldMappingExtractor.Owner owner = owners.get(mapping.ownerPath());
-            OpenLineageSnapshot.Dataset output = resolveOutput(outputs, owner, outputAliases);
+            OpenLineageSnapshot.Dataset output =
+                    resolveOutput(outputs, owner, outputAliases, singleTransform);
             if (output == null) {
                 continue;
             }
@@ -97,20 +102,25 @@ public final class OpenLineageColumnLineageBuilder {
     private static OpenLineageSnapshot.Dataset resolveOutput(
             List<OpenLineageSnapshot.Dataset> outputs,
             FieldMappingExtractor.Owner owner,
-            Map<String, List<OpenLineageSnapshot.Dataset>> outputAliases) {
+            Map<String, List<OpenLineageSnapshot.Dataset>> outputAliases,
+            boolean singleTransform) {
         if (owner != null && StringUtils.isNotBlank(owner.resultTableName())) {
-            OpenLineageSnapshot.Dataset matched = matchTable(outputs, owner.resultTableName());
-            if (matched != null) {
-                return matched;
-            }
+            // The alias of the transform names the dataset it writes to; a table of that name
+            // would shadow the alias, so the alias is resolved first.
             OpenLineageSnapshot.Dataset aliased =
                     matchAlias(outputAliases, owner.resultTableName());
             if (aliased != null) {
                 return aliased;
             }
-            // The named output does not resolve. A job with exactly one output has no other
-            // candidate, so the column still belongs to it.
-            return outputs.size() == 1 ? outputs.get(0) : null;
+            OpenLineageSnapshot.Dataset matched = matchTable(outputs, owner.resultTableName());
+            if (matched != null) {
+                return matched;
+            }
+            // The named output does not resolve. A job with one transform and one output has
+            // no other candidate, so the column still belongs to that output. With several
+            // transforms the named output can be an intermediate step, and then the columns
+            // stay unresolved instead of being attached to the sink.
+            return singleTransform && outputs.size() == 1 ? outputs.get(0) : null;
         }
         return outputs.size() == 1 ? outputs.get(0) : null;
     }
@@ -176,8 +186,10 @@ public final class OpenLineageColumnLineageBuilder {
         if (table == null) {
             return null;
         }
-        OpenLineageSnapshot.Dataset matched = matchTable(inputs, table);
-        return matched != null ? matched : matchAlias(inputAliases, table);
+        // The alias of the transform names the dataset it reads from; a table of that name
+        // would shadow the alias, so the alias is resolved first.
+        OpenLineageSnapshot.Dataset aliased = matchAlias(inputAliases, table);
+        return aliased != null ? aliased : matchTable(inputs, table);
     }
 
     /** The table a mapping names for one source column. */

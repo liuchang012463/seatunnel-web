@@ -129,6 +129,9 @@ lineage-bridge:
     # forgotten once the broker confirmed it. The wait is bounded so a broker that is
     # slow or unreachable cannot pin the lineage track.
     send-timeout-ms: ${LINEAGE_BRIDGE_KAFKA_SEND_TIMEOUT_MS:5000}
+    # How long the producer waits for the topic metadata. An unreachable broker blocks a
+    # send for this long, so it bounds the damage a broker outage does.
+    max-block-ms: ${LINEAGE_BRIDGE_KAFKA_MAX_BLOCK_MS:10000}
   running:
     interval-ms: ${LINEAGE_BRIDGE_RUNNING_INTERVAL_MS:60000}
 

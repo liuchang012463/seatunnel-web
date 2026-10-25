@@ -377,12 +377,63 @@ class OpenLineageColumnLineageBuilderTest {
         assertEquals(CUSTOMERS, columns.get("customer_name").get(0).dataset());
     }
 
+    /**
+     * With several transforms the named output of a transform can be an intermediate step. The
+     * columns of that step must not be attached to the sink of the job.
+     */
+    @Test
+    void dropsTheColumnsOfAnIntermediateTransform() {
+        List<OpenLineageSnapshot.OutputLineage> lineages = build(
+                List.of(ORDERS),
+                List.of(SINK),
+                """
+                source {
+                    Jdbc { table_path="om_demo.orders" }
+                }
+                transform = [{
+                  FieldMapper {
+                    plugin_input = source
+                    plugin_output = middle
+                    field_mapper {
+                      source_order_id = order_id
+                    }
+                  }
+                }, {
+                  Sql {
+                    plugin_input = middle
+                    plugin_output = sink
+                    query="select order_id from om_demo.orders"
+                  }
+                }]
+                sink {
+                    Jdbc { table="ods.orders_dwd" }
+                }
+                """, Map.of("sink", List.of(SINK)));
+
+        assertEquals(1, lineages.size());
+        Map<String, List<OpenLineageSnapshot.SourceColumn>> columns = lineages.get(0).columns();
+        // Only the transform that writes to the sink owns its columns; the intermediate step
+        // would contribute the field mapper's own source column.
+        assertEquals(1, columns.size());
+        assertEquals("order_id", columns.get("order_id").get(0).column());
+        assertEquals(1, columns.get("order_id").size());
+    }
+
     private static List<OpenLineageSnapshot.OutputLineage> build(
             List<OpenLineageSnapshot.Dataset> inputs,
             List<OpenLineageSnapshot.Dataset> outputs,
             String hocon) {
+        return build(inputs, outputs, hocon, Map.of());
+    }
+
+    private static List<OpenLineageSnapshot.OutputLineage> build(
+            List<OpenLineageSnapshot.Dataset> inputs,
+            List<OpenLineageSnapshot.Dataset> outputs,
+            String hocon,
+            Map<String, List<OpenLineageSnapshot.Dataset>> outputAliases) {
         Config config = ConfigFactory.parseString(hocon);
         return OpenLineageColumnLineageBuilder.build(
-                inputs, outputs, FieldMappingExtractor.extractDetailed(config));
+                inputs, outputs, FieldMappingExtractor.extractDetailed(config),
+                Map.of(), outputAliases);
     }
 }

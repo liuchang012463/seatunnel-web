@@ -67,6 +67,13 @@ public class LineageBridgeProperties {
          */
         private int sendTimeoutMs = 5000;
 
+        /**
+         * How long the producer waits for the topic metadata, in milliseconds. An unreachable
+         * broker blocks the send for this long, so it bounds the damage a broker outage does
+         * to the lineage track.
+         */
+        private int maxBlockMs = 10000;
+
         public boolean isEnabled() {
             return enabled;
         }
@@ -153,6 +160,14 @@ public class LineageBridgeProperties {
 
         public void setSendTimeoutMs(int sendTimeoutMs) {
             this.sendTimeoutMs = sendTimeoutMs;
+        }
+
+        public int getMaxBlockMs() {
+            return maxBlockMs;
+        }
+
+        public void setMaxBlockMs(int maxBlockMs) {
+            this.maxBlockMs = maxBlockMs;
         }
     }
 

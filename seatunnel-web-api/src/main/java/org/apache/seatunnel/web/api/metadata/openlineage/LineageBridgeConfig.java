@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.metadata.openlineage;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -8,12 +9,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Wiring for the OpenLineage lineage bridge. Everything is created only while
  * {@code lineage-bridge.kafka.enabled=true}, so disabled deployments keep zero resources.
  */
+@Slf4j
 @Configuration
 @EnableConfigurationProperties(LineageBridgeProperties.class)
 public class LineageBridgeConfig {
@@ -26,7 +27,9 @@ public class LineageBridgeConfig {
     @ConditionalOnProperty(prefix = "lineage-bridge.kafka", name = "enabled", havingValue = "true")
     public ThreadPoolTaskExecutor lineageEventExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);
+        // A publish waits for the broker acknowledgement, so one thread would block the whole
+        // lineage track while a broker is slow.
+        executor.setCorePoolSize(2);
         executor.setMaxPoolSize(2);
         executor.setQueueCapacity(64);
         executor.setThreadNamePrefix("lineage-event-");
@@ -34,8 +37,10 @@ public class LineageBridgeConfig {
         executor.setAwaitTerminationSeconds(5);
         // Lineage is best effort: a saturated queue must drop the event instead of throwing back
         // into the event multicaster, which would skip the other listeners of the same status
-        // change (the alarm engine, for example).
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        // change (the alarm engine, for example). The drop is logged, a silent loss is hard to
+        // diagnose.
+        executor.setRejectedExecutionHandler((task, rejected) ->
+                log.warn("Dropped a lineage event because the lineage track is saturated"));
         // Spring calls afterPropertiesSet() -> initialize(); doing it here would create a second
         // executor and leak the first one.
         return executor;

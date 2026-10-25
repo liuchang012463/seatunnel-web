@@ -87,6 +87,17 @@ public class OpenLineageKafkaBridge {
      *     unconfigured or the delivery failed
      */
     boolean publish(String topic, String value) {
+        return publish(topic, value, true);
+    }
+
+    /**
+     * Sends one event and reports whether the broker acknowledged it.
+     *
+     * @param retryOnMissingTopic whether the bridge creates a missing topic and sends the event
+     *     again. A terminal event must not be sent twice: the caller publishes it again when
+     *     this method reports a failure.
+     */
+    boolean publish(String topic, String value, boolean retryOnMissingTopic) {
         if (!properties.getKafka().isEnabled() || closed) {
             return false;
         }
@@ -95,7 +106,7 @@ public class OpenLineageKafkaBridge {
             return false;
         }
         topicProvisioner.ensureTopic(topic);
-        return send(kafkaProducer, topic, value, true);
+        return send(kafkaProducer, topic, value, retryOnMissingTopic);
     }
 
     /**
@@ -172,17 +183,19 @@ public class OpenLineageKafkaBridge {
             }
             return null;
         }
-        if (usesSasl(properties.getKafka().getSecurityProtocol())
+        if (requiresSaslPassword(properties.getKafka().getSecurityProtocol(),
+                properties.getKafka().getSaslMechanism())
                 && StringUtils.isBlank(properties.getKafka().getSaslPassword())) {
-            // A SASL protocol without a password cannot authenticate: the producer would be
-            // created, every send would block for the metadata timeout and then fail. Refusing
-            // the producer keeps the failure fast and visible.
+            // A SASL mechanism that uses a password cannot authenticate without one: the
+            // producer would be created, every send would block for the metadata timeout and
+            // then fail. Refusing the producer keeps the failure fast and visible.
             if (!warnedBlankPassword) {
                 warnedBlankPassword = true;
-                log.error("lineage-bridge.kafka.security-protocol={} requires a "
+                log.error("lineage-bridge.kafka.security-protocol={} with sasl-mechanism={} requires a "
                                 + "lineage-bridge.kafka.sasl-password while enabled=true; "
                                 + "OpenLineage events are dropped",
-                        properties.getKafka().getSecurityProtocol());
+                        properties.getKafka().getSecurityProtocol(),
+                        properties.getKafka().getSaslMechanism());
             }
             return null;
         }
@@ -212,7 +225,7 @@ public class OpenLineageKafkaBridge {
         // bounded so an unreachable broker cannot pin a lineage worker for the client default.
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.RETRIES_CONFIG, 5);
-        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000);
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, kafka.getMaxBlockMs());
         if (StringUtils.isNotBlank(kafka.getClientId())) {
             props.put(ProducerConfig.CLIENT_ID_CONFIG, kafka.getClientId());
         }
@@ -253,6 +266,22 @@ public class OpenLineageKafkaBridge {
             props.put(SaslConfigs.SASL_JAAS_CONFIG,
                     buildJaas(kafka.getSaslMechanism(), kafka.getSaslUsername(), kafka.getSaslPassword()));
         }
+    }
+
+    /**
+     * True when the mechanism authenticates with a password. OAUTHBEARER and GSSAPI use a token
+     * or the host credentials, so they need no password.
+     */
+    private static boolean requiresSaslPassword(String securityProtocol, String saslMechanism) {
+        if (!usesSasl(securityProtocol)) {
+            return false;
+        }
+        String mechanism = StringUtils.trimToNull(saslMechanism);
+        if (mechanism == null) {
+            return true;
+        }
+        String upper = mechanism.toUpperCase(Locale.ROOT);
+        return "PLAIN".equals(upper) || upper.startsWith("SCRAM");
     }
 
     private static boolean usesSasl(String securityProtocol) {

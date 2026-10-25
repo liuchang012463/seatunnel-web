@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -70,7 +71,7 @@ class OpenLineageJobLineageServiceTest {
         lenient().doAnswer(invocation -> {
             published.add(invocation.getArgument(1));
             return true;
-        }).when(bridge).publish(anyString(), anyString());
+        }).when(bridge).publish(anyString(), anyString(), anyBoolean());
         lenient().when(dataSourceDao.queryById(10L)).thenReturn(dataSource(10L, "bi_src_mysql", "MYSQL"));
         lenient().when(dataSourceDao.queryById(20L)).thenReturn(dataSource(20L, "bi_tidb_doris", "DORIS"));
     }
@@ -555,7 +556,7 @@ class OpenLineageJobLineageServiceTest {
         lenient().doAnswer(invocation -> {
             attempts.add(invocation.getArgument(1));
             return deliveries.getAndIncrement() == 0 ? false : true;
-        }).when(bridge).publish(anyString(), anyString());
+        }).when(bridge).publish(anyString(), anyString(), anyBoolean());
 
         // Pulse 1 tracks the running instance, pulse 2 sees the bulk failure and reports it.
         service.pulseBatchJobs();
@@ -565,6 +566,37 @@ class OpenLineageJobLineageServiceTest {
         assertEquals(1, attempts.size());
         service.pulseBatchJobs();
         assertEquals(2, attempts.size());
+    }
+
+    /**
+     * A job that finishes before the pulse ever observed it still gets its terminal published
+     * when the broker was unavailable at that moment.
+     */
+    @Test
+    void aTerminalThatWasNotDeliveredIsRetriedEvenForAnUnobservedInstance() throws Exception {
+        JobInstanceVO finished = instance();
+        finished.setJobStatus("FINISHED");
+        finished.setEngineJobId("engine-job-42");
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(finished);
+        // The broker does not acknowledge the first terminal.
+        AtomicInteger deliveries = new AtomicInteger();
+        lenient().doAnswer(invocation -> {
+            boolean delivered = deliveries.incrementAndGet() > 1;
+            if (delivered) {
+                published.add(invocation.getArgument(1));
+            }
+            return delivered;
+        }).when(bridge).publish(anyString(), anyString(), anyBoolean());
+
+        service.onBatchJobStatusChanged(new JobStatusChangedEvent(
+                this, 100L, 200L, JobStatus.FINISHED, JobStatus.RUNNING, null, "engine-job-42"));
+        assertEquals(0, published.size());
+
+        // The pulse publishes the pending terminal even though the instance was never running.
+        service.pulseBatchJobs();
+
+        assertEquals(1, published.size());
+        assertEquals("COMPLETE", MAPPER.readTree(published.get(0)).path("eventType").asText());
     }
 
     @Test
