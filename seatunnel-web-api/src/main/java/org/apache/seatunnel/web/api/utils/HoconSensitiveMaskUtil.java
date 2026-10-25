@@ -41,9 +41,11 @@ public final class HoconSensitiveMaskUtil {
      * messages and diagnostics, where there is no URL or HOCON structure to parse.
      */
     private static final Pattern KEY_VALUE_CREDENTIAL = Pattern.compile(
-            "(?i)((?:[a-z0-9_.-]*(?:password|passwd|pwd|secret|token|credential"
-                    + "|access[_-]?key|api[_-]?key|private[_-]?key|authorization|signature)"
-                    + "[a-z0-9_.-]*)\\s*[=:]\\s*)(\\{[^}]*\\}|\"[^\"]*\"|'(?:''|[^'])*'|[^\\s,;&#]+)");
+            "(?i)((?:[\"']?)(?:[a-z0-9_.-]*(?:password|passwd|pwd|secret|token|credential"
+                    + "|access[_-]?key|api[_-]?key|client[_-]?key|private[_-]?key"
+                    + "|authorization|signature)"
+                    + "[a-z0-9_.-]*)(?:[\"']?)\\s*[=:]\\s*)"
+                    + "(\\{[^}]*\\}|\"[^\"]*\"|'(?:''|[^'])*'|(?:Bearer|Basic)?\\s*[^\\s,;&#]+)");
 
     private static final String INVALID_HOCON_MASKED_MESSAGE =
             "# HOCON parsing failed; configuration values were fully masked.";

@@ -231,6 +231,29 @@ class HoconSensitiveMaskUtilTest {
         assertTrue(masked.contains("******"));
     }
 
+    /**
+     * The Engine answers with JSON, so a quoted key must be masked as well.
+     */
+    @Test
+    void masksQuotedCredentialsInFreeFormText() {
+        String masked = HoconSensitiveMaskUtil.maskSensitiveText(
+                "{\"password\":\"json-password\",\"url\":\"jdbc:mysql://root:db-pw@127.0.0.1:3306/db\"}");
+
+        assertFalse(masked.contains("json-password"));
+        assertFalse(masked.contains("db-pw"));
+        assertTrue(masked.contains("******"));
+    }
+
+    @Test
+    void masksTheWholeValueOfAnAuthorizationHeader() {
+        String masked = HoconSensitiveMaskUtil.maskSensitiveText(
+                "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature");
+
+        assertFalse(masked.contains("eyJhbGciOiJIUzI1NiJ9"));
+        assertFalse(masked.contains("payload.signature"));
+        assertTrue(masked.contains("******"));
+    }
+
     @Test
     void fullyMasksConfigurationWhenHoconCannotBeParsed() {
         String malformedHocon = """

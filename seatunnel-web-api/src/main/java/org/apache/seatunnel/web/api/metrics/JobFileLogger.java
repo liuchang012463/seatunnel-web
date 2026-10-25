@@ -87,7 +87,9 @@ public class JobFileLogger {
 
     private void offer(String level, String message) {
         String time = FORMATTER.format(LocalDateTime.now());
-        String formatted = "[" + time + "] [" + level + "] " + message;
+        // The log file is served to the browser and shipped to the log collectors, so the
+        // sensitive parts of the text are masked before it is written.
+        String formatted = "[" + time + "] [" + level + "] " + RedactedErrors.mask(message);
 
         fileLock.lock();
         try {
@@ -106,10 +108,14 @@ public class JobFileLogger {
         }
     }
 
+    /**
+     * The stack trace of the failure without its message and without its cause chain: the
+     * Engine error text can carry connector credentials.
+     */
     private String stackTraceToString(Throwable t) {
         StringWriter stringWriter = new StringWriter();
         t.printStackTrace(new PrintWriter(stringWriter));
-        return stringWriter.toString();
+        return RedactedErrors.mask(stringWriter.toString());
     }
 
     public void flush() {
