@@ -178,6 +178,30 @@ class JobResultHandlerTest {
         verify(publisher, never()).publishEvent(any());
     }
 
+    /**
+     * The incremental batch record is a second sink of the engine error text, so it has to
+     * receive the masked message as well.
+     */
+    @Test
+    void theIncrementalBatchRecordReceivesTheMaskedMessage() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        IncrementalBatchService incrementalBatchService = mock(IncrementalBatchService.class);
+        JobResultHandler handler = handler(
+                instanceService,
+                mock(ApplicationEventPublisher.class),
+                mock(SeaTunnelRestClient.class),
+                incrementalBatchService);
+        when(instanceService.updateFinalStatusIfRunningLike(
+                eq(11L), eq(JobStatus.FAILED), anyString())).thenReturn(true);
+
+        handler.handleFinalStatus(
+                11L, JobStatus.FAILED, "connect failed; password=private-test-value");
+
+        verify(incrementalBatchService).handleJobResult(eq(11L), eq(JobStatus.FAILED),
+                argThat(message -> message.contains("connect failed")
+                        && !message.contains("private-test-value")));
+    }
+
     private static JobResultHandler handler(BatchJobInstanceService instanceService) {
         return handler(
                 instanceService,
@@ -193,11 +217,18 @@ class JobResultHandlerTest {
     private static JobResultHandler handler(BatchJobInstanceService instanceService,
                                             ApplicationEventPublisher publisher,
                                             SeaTunnelRestClient restClient) {
+        return handler(instanceService, publisher, restClient, mock(IncrementalBatchService.class));
+    }
+
+    private static JobResultHandler handler(BatchJobInstanceService instanceService,
+                                            ApplicationEventPublisher publisher,
+                                            SeaTunnelRestClient restClient,
+                                            IncrementalBatchService incrementalBatchService) {
         return new JobResultHandler(
                 instanceService,
                 mock(JobMetricsMonitor.class),
                 publisher,
-                mock(IncrementalBatchService.class),
+                incrementalBatchService,
                 mock(JobLogService.class),
                 restClient);
     }

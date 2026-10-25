@@ -19,6 +19,7 @@ import org.apache.seatunnel.web.engine.client.handler.ZetaJobStatusHandler;
 import org.apache.seatunnel.web.engine.client.modal.ZetaJobStatusResolveResult;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.enums.Status;
+import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -204,7 +205,10 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
 
             StreamingJobInstance update = new StreamingJobInstance();
             update.setId(jobInstanceId);
-            update.setErrorMessage("Streaming job pause failed: " + e.getMessage());
+            // The engine text can carry connector credentials, so it is masked before it
+            // reaches the instance row.
+            update.setErrorMessage("Streaming job pause failed: "
+                    + HoconSensitiveMaskUtil.maskSensitiveText(e.getMessage()));
 
             streamingJobInstanceService.updateById(update);
 
@@ -269,7 +273,8 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
 
             StreamingJobInstance update = new StreamingJobInstance();
             update.setId(jobInstanceId);
-            update.setErrorMessage("Streaming job stop with savepoint failed: " + e.getMessage());
+            update.setErrorMessage("Streaming job stop with savepoint failed: "
+                    + HoconSensitiveMaskUtil.maskSensitiveText(e.getMessage()));
 
             streamingJobInstanceService.updateById(update);
 

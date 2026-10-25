@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metrics.streaming;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
+import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.api.utils.JobUtils;
 import org.apache.seatunnel.web.common.enums.JobResult;
 import org.apache.seatunnel.web.common.enums.JobStatus;
@@ -50,10 +51,30 @@ public class StreamingJobResultHandler {
 
         String message = error == null
                 ? "Unknown error"
-                : JobUtils.getJobInstanceErrorMessage(error.getMessage());
+                : JobUtils.getJobInstanceErrorMessage(
+                        HoconSensitiveMaskUtil.maskSensitiveText(error.getMessage()));
 
         updateStatus(jobInstanceId, JobStatus.FAILED, message);
-        log.error("Streaming job failed. instanceId={}, error={}", jobInstanceId, message, error);
+        // The engine error text can carry connector credentials, so the log carries the masked
+        // message and the stack frames of the failure instead of the original exception.
+        log.error("Streaming job failed. instanceId={}, errorType={}, error={}",
+                jobInstanceId,
+                error == null ? null : error.getClass().getName(),
+                message,
+                redacted(error, message));
+    }
+
+    /**
+     * A throwable that carries the masked message and the stack frames of the original failure
+     * but neither its message nor its cause chain, so the engine text never reaches the log.
+     */
+    private static Throwable redacted(Throwable error, String maskedMessage) {
+        if (error == null) {
+            return null;
+        }
+        RuntimeException wrapper = new RuntimeException(maskedMessage);
+        wrapper.setStackTrace(error.getStackTrace());
+        return wrapper;
     }
 
     public void handleFailure(Long jobInstanceId, JobResult jobResult) {
@@ -75,7 +96,9 @@ public class StreamingJobResultHandler {
             return;
         }
 
-        String message = jobResult != null ? jobResult.getError() : "Unknown error";
+        String message = jobResult != null
+                ? HoconSensitiveMaskUtil.maskSensitiveText(jobResult.getError())
+                : "Unknown error";
 
         updateStatus(jobInstanceId, JobStatus.FAILED, message);
 

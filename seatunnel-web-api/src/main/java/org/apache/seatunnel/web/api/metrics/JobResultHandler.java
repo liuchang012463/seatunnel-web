@@ -80,7 +80,26 @@ public class JobResultHandler {
 
         handleFinalStatus(jobInstanceId, JobStatus.FAILED, message);
 
-        log.error("Job failed. instanceId={}, error={}", jobInstanceId, message, error);
+        // The engine error text can carry connector credentials, so the log carries the masked
+        // message and the stack frames of the failure instead of the original exception.
+        log.error("Job failed. instanceId={}, errorType={}, error={}",
+                jobInstanceId,
+                error == null ? null : error.getClass().getName(),
+                message,
+                redacted(error, message));
+    }
+
+    /**
+     * A throwable that carries the masked message and the stack frames of the original failure
+     * but neither its message nor its cause chain, so the engine text never reaches the log.
+     */
+    private static Throwable redacted(Throwable error, String maskedMessage) {
+        if (error == null) {
+            return null;
+        }
+        RuntimeException wrapper = new RuntimeException(maskedMessage);
+        wrapper.setStackTrace(error.getStackTrace());
+        return wrapper;
     }
 
     /**
@@ -126,8 +145,12 @@ public class JobResultHandler {
 
         JobStatus localStatus = normalizeFinalStatus(engineStatus);
         String metricsStatus = resolveMetricsStatus(engineStatus, localStatus);
+        // The engine error text can carry connector credentials; it is masked once here so
+        // every sink of the message (instance row, incremental batch record, event, log)
+        // receives the same redacted text.
+        String safeErrorMessage = maskErrorMessage(errorMessage);
 
-        if (!updateStatus(jobInstanceId, localStatus, errorMessage)) {
+        if (!updateStatus(jobInstanceId, localStatus, safeErrorMessage)) {
             log.warn("Ignore late final status because the instance is no longer running-like, "
                     + "instanceId={}, engineStatus={}, localStatus={}",
                     jobInstanceId, engineStatus, localStatus);
@@ -135,7 +158,7 @@ public class JobResultHandler {
         }
 
         try {
-            incrementalBatchService.handleJobResult(jobInstanceId, localStatus, errorMessage);
+            incrementalBatchService.handleJobResult(jobInstanceId, localStatus, safeErrorMessage);
         } catch (Exception e) {
             log.error("Finalize incremental batch state failed, instanceId={}", jobInstanceId, e);
         }
@@ -184,8 +207,12 @@ public class JobResultHandler {
 
         JobStatus localStatus = normalizeFinalStatus(engineStatus);
         String metricsStatus = resolveMetricsStatus(engineStatus, localStatus);
+        // The engine error text can carry connector credentials; it is masked once here so
+        // every sink of the message (instance row, incremental batch record, event, log)
+        // receives the same redacted text.
+        String safeErrorMessage = maskErrorMessage(errorMessage);
 
-        if (!updateStatus(jobInstanceId, localStatus, errorMessage)) {
+        if (!updateStatus(jobInstanceId, localStatus, safeErrorMessage)) {
             log.warn("Ignore late final status because the instance is no longer running-like, "
                     + "instanceId={}, engineStatus={}, localStatus={}",
                     jobInstanceId, engineStatus, localStatus);
@@ -193,7 +220,7 @@ public class JobResultHandler {
         }
 
         try {
-            incrementalBatchService.handleJobResult(jobInstanceId, localStatus, errorMessage);
+            incrementalBatchService.handleJobResult(jobInstanceId, localStatus, safeErrorMessage);
         } catch (Exception e) {
             log.error("Finalize incremental batch state in recovery failed, instanceId={}", jobInstanceId, e);
         }
@@ -381,5 +408,16 @@ public class JobResultHandler {
         // same masking the throwable path uses applies here before the text reaches the UI.
         return JobUtils.getJobInstanceErrorMessage(
                 HoconSensitiveMaskUtil.maskSensitiveText(errorMessage));
+    }
+
+    /**
+     * The engine error text with the sensitive parts removed. A blank message stays blank so the
+     * callers keep their own default.
+     */
+    private static String maskErrorMessage(String errorMessage) {
+        if (StringUtils.isBlank(errorMessage)) {
+            return errorMessage;
+        }
+        return HoconSensitiveMaskUtil.maskSensitiveText(errorMessage);
     }
 }

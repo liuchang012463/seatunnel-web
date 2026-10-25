@@ -30,6 +30,7 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
+import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
@@ -270,7 +271,10 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
 
             JobInstance update = new JobInstance();
             update.setId(jobInstanceId);
-            update.setErrorMessage("Job pause failed: " + e.getMessage());
+            // The engine text can carry connector credentials, so it is masked before it
+            // reaches the instance row.
+            update.setErrorMessage("Job pause failed: "
+                    + HoconSensitiveMaskUtil.maskSensitiveText(e.getMessage()));
             instanceService.updateById(update);
 
             throw new ServiceException(Status.JOB_DEFINITION_EXECUTE_ERROR);
@@ -381,7 +385,9 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         update.setId(instance.getId());
         update.setJobStatus(JobStatus.FAILED);
         update.setEndTime(new Date());
-        update.setErrorMessage(error == null ? "Batch job submission failed" : error.getMessage());
+        update.setErrorMessage(error == null
+                ? "Batch job submission failed"
+                : HoconSensitiveMaskUtil.maskSensitiveText(error.getMessage()));
         instanceService.updateById(update);
     }
 
