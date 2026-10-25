@@ -197,6 +197,24 @@ public enum Status {
             "delete connector param meta error",
             "删除连接器参数元数据失败"
     ),
+
+    OFFLINE_IMPORT_TASK_NOT_EXIST(
+            11807,
+            "offline import task {0} not exists",
+            "离线导入任务[{0}]不存在"
+    ),
+
+    OFFLINE_IMPORT_TASK_STATE_ERROR(
+            11808,
+            "offline import task state error: {0}",
+            "离线导入任务状态不允许该操作: {0}"
+    ),
+
+    OFFLINE_IMPORT_TASK_EXECUTE_ERROR(
+            11809,
+            "offline import task execute error: {0}",
+            "离线导入任务执行失败: {0}"
+    ),
     ;
 
 
