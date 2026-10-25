@@ -129,6 +129,16 @@ public final class FieldMappingExtractor {
                     }
                     collector.addMapping(targetField, Set.of(sourceField), path);
                 }
+                if (!object.containsKey("query")) {
+                    // A field mapper names the table it reads and the table it writes through the
+                    // plugin aliases. Without an owner the columns of a job with more than one
+                    // source or sink cannot be attributed to a table at all.
+                    collector.addOwner(new Owner(
+                            path,
+                            Map.of(),
+                            string(object, "plugin_input"),
+                            string(object, "plugin_output")));
+                }
             }
             for (Map.Entry<String, ConfigValue> entry : object.entrySet()) {
                 collectFieldMappings(entry.getValue(), childPath(path, entry.getKey()), collector);
@@ -424,10 +434,11 @@ public final class FieldMappingExtractor {
             text.append(current);
             index++;
         }
-        Matcher matcher = IDENTIFIER.matcher(text);
+        String readable = blankCastTypes(text);
+        Matcher matcher = IDENTIFIER.matcher(readable);
         while (matcher.find()) {
             // A name directly followed by "(" is a function, not a column.
-            if (nextNonSpace(text, matcher.end()) == '(') {
+            if (nextNonSpace(readable, matcher.end()) == '(') {
                 continue;
             }
             String matched = matcher.group().replaceAll("\\s*\\.\\s*", ".");
@@ -442,6 +453,109 @@ public final class FieldMappingExtractor {
         return identifiers;
     }
 
+    /**
+     * Blanks the type of a {@code CAST(expression AS type)}: the type is a data type, not a
+     * column, and it may consist of several words ({@code double precision},
+     * {@code timestamp with time zone}). Without this the lineage claims that the output column
+     * reads a column called {@code jsonb} or {@code bytea}.
+     */
+    private static String blankCastTypes(CharSequence text) {
+        StringBuilder result = new StringBuilder(text);
+        int index = 0;
+        while (index < result.length()) {
+            int asIndex = indexOfWord(result, index, "AS");
+            if (asIndex < 0) {
+                return result.toString();
+            }
+            int open = enclosingParenthesis(result, asIndex);
+            if (open < 0 || !isCastFunction(wordBefore(result, open))) {
+                index = asIndex + 2;
+                continue;
+            }
+            int close = matchingParenthesis(result, open);
+            if (close < 0) {
+                return result.toString();
+            }
+            for (int i = asIndex + 2; i < close; i++) {
+                if (!Character.isWhitespace(result.charAt(i))) {
+                    result.setCharAt(i, ' ');
+                }
+            }
+            index = close + 1;
+        }
+        return result.toString();
+    }
+
+    /** The index of the next standalone word, or -1. */
+    private static int indexOfWord(CharSequence text, int from, String word) {
+        Matcher matcher = STANDALONE_WORD.matcher(text);
+        matcher.region(from, text.length());
+        while (matcher.find()) {
+            if (word.equalsIgnoreCase(matcher.group())) {
+                return matcher.start();
+            }
+        }
+        return -1;
+    }
+
+    /** The parenthesis that opens the group the index is in, or -1. */
+    private static int enclosingParenthesis(CharSequence text, int index) {
+        int depth = 0;
+        for (int i = index - 1; i >= 0; i--) {
+            char current = text.charAt(i);
+            if (current == ')') {
+                depth++;
+            } else if (current == '(') {
+                if (depth == 0) {
+                    return i;
+                }
+                depth--;
+            }
+        }
+        return -1;
+    }
+
+    /** The parenthesis that closes the group the index opens, or -1. */
+    private static int matchingParenthesis(CharSequence text, int open) {
+        int depth = 0;
+        for (int i = open; i < text.length(); i++) {
+            char current = text.charAt(i);
+            if (current == '(') {
+                depth++;
+            } else if (current == ')') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /** The word that ends right before the index. */
+    private static String wordBefore(CharSequence text, int index) {
+        int end = index;
+        while (end > 0 && Character.isWhitespace(text.charAt(end - 1))) {
+            end--;
+        }
+        int start = end;
+        while (start > 0 && isWordCharacter(text.charAt(start - 1))) {
+            start--;
+        }
+        return text.subSequence(start, end).toString();
+    }
+
+    private static boolean isCastFunction(String function) {
+        return "CAST".equalsIgnoreCase(function)
+                || "CONVERT".equalsIgnoreCase(function)
+                || "TRY_CAST".equalsIgnoreCase(function)
+                || "SAFE_CAST".equalsIgnoreCase(function);
+    }
+
+    private static boolean isWordCharacter(char character) {
+        return Character.isLetterOrDigit(character) || character == '_' || character == '$';
+    }
+
     private static char nextNonSpace(CharSequence text, int fromIndex) {
         for (int index = fromIndex; index < text.length(); index++) {
             if (!Character.isWhitespace(text.charAt(index))) {
@@ -453,6 +567,10 @@ public final class FieldMappingExtractor {
 
     private static final Pattern IDENTIFIER =
             Pattern.compile("[A-Za-z_][A-Za-z0-9_$]*(?:\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_$]*)*");
+
+    /** A word on its own, used to find the {@code AS} of a cast. */
+    private static final Pattern STANDALONE_WORD =
+            Pattern.compile("[A-Za-z_][A-Za-z0-9_$]*");
 
     private static final Set<String> SQL_RESERVED_WORDS = Set.of(
             "AND",

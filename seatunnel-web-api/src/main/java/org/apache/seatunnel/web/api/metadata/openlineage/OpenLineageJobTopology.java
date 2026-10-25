@@ -193,6 +193,11 @@ public final class OpenLineageJobTopology {
                     tableName = string(plugin, "table");
                 }
                 path = tableName == null ? null : qualify(plugin, tableName);
+            } else {
+                // The same table configured through table_path and through table_name has to
+                // carry the same identity, otherwise the asset side resolves two datasets for
+                // one physical table.
+                path = qualify(plugin, path);
             }
             addTable(tables, path);
         }

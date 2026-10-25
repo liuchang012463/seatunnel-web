@@ -186,7 +186,9 @@ public class OpenLineageJobLineageService {
                         event.getJobInstanceId());
                 return;
             }
-            String prevStatus = event.getOldStatus() == null ? null : event.getOldStatus().name();
+            String prevStatus = event.getOldStatus() == null
+                    ? monitoredBatchStatuses.get(event.getJobInstanceId())
+                    : event.getOldStatus().name();
             OpenLineageSnapshot snapshot = toSnapshot(details, engineJobId, false, eventType,
                     prevStatus, event.getErrorMessage(), null);
             String key = terminalKey(false, event.getJobInstanceId());

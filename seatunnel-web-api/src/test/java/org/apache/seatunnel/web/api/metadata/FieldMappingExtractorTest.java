@@ -139,6 +139,55 @@ class FieldMappingExtractorTest {
     }
 
     @Test
+    void ignoresTheTypeOfACastThatIsNotAReservedWord() {
+        FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
+                transform {
+                  casted {
+                    query="select cast(`id` as JSONB) as a, cast(`id` as BYTEA) as b, cast(`id` as UUID) as c from db.t"
+                  }
+                }
+                """));
+
+        assertEquals(Set.of("id"), sourcesOf(result, "a"));
+        assertEquals(Set.of("id"), sourcesOf(result, "b"));
+        assertEquals(Set.of("id"), sourcesOf(result, "c"));
+    }
+
+    @Test
+    void ignoresTheTypeOfACastThatConsistsOfSeveralWords() {
+        FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
+                transform {
+                  casted {
+                    query="select cast(`id` as double precision) as a, cast(`id` as timestamp with time zone) as b from db.t"
+                  }
+                }
+                """));
+
+        assertEquals(Set.of("id"), sourcesOf(result, "a"));
+        assertEquals(Set.of("id"), sourcesOf(result, "b"));
+    }
+
+    @Test
+    void aFieldMapperNamesTheTableItReadsAndWrites() {
+        FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
+                transform {
+                  mapped {
+                    plugin_input=source
+                    plugin_output=sink
+                    field_mapper {
+                      channel_type=category
+                    }
+                  }
+                }
+                """));
+
+        assertEquals(1, result.owners().size());
+        FieldMappingExtractor.Owner owner = result.owners().get(0);
+        assertEquals("source", owner.sourceTableName());
+        assertEquals("sink", owner.resultTableName());
+    }
+
+    @Test
     void ignoresAProjectionWithAStar() {
         FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
                 transform {

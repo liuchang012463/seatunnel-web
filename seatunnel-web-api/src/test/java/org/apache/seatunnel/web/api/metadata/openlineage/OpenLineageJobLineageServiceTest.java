@@ -473,6 +473,30 @@ class OpenLineageJobLineageServiceTest {
                 MAPPER.readTree(published.get(0)).path("run").path("runId").asText());
     }
 
+    /**
+     * The status change event does not carry the previous status, so the terminal takes the
+     * status the pulse saw last for that instance.
+     */
+    @Test
+    void theTerminalTakesTheLastSeenStatusWhenTheEventCarriesNone() throws Exception {
+        JobInstance running = new JobInstance();
+        running.setId(100L);
+        running.setJobStatus(JobStatus.RUNNING);
+        when(jobInstanceDao.listRunningLikeInstances()).thenReturn(List.of(running));
+        JobInstanceVO finished = instance();
+        finished.setJobStatus("FINISHED");
+        finished.setEngineJobId("engine-job-42");
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(finished);
+
+        service.pulseBatchJobs();
+        service.onBatchJobStatusChanged(new JobStatusChangedEvent(
+                this, 100L, 200L, JobStatus.FINISHED, null, null, "engine-job-42"));
+
+        assertEquals(1, published.size());
+        assertEquals("RUNNING", MAPPER.readTree(published.get(0)).path("run")
+                .path("facets").path("seatunnel").path("prevStatus").asText());
+    }
+
     @Test
     void repeatedTerminalEventForTheSameInstanceIsPublishedOnce() {
         JobInstanceVO details = instance();

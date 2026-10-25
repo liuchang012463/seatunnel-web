@@ -11,6 +11,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OpenLineageJobTopologyTest {
 
+    /**
+     * The same table configured through table_path and through table_name carries the same
+     * identity, otherwise the asset side resolves two datasets for one physical table.
+     */
+    @Test
+    void aTablePathIsQualifiedWithTheDatabaseLikeATableName() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Jdbc {
+                        database="om_demo"
+                        table_path="orders"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        database="om_demo"
+                        table_name="orders_dwd"
+                    }
+                }
+                """));
+
+        assertEquals(List.of("om_demo.orders"), topology.sources().get(0).tables());
+        assertEquals(List.of("om_demo.orders_dwd"), topology.sinks().get(0).tables());
+    }
+
     @Test
     void readsTheSingleTableOfAGuideJob() {
         OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""

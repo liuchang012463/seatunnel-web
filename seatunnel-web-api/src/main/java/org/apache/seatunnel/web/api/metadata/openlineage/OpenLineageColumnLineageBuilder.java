@@ -100,7 +100,17 @@ public final class OpenLineageColumnLineageBuilder {
             Map<String, List<OpenLineageSnapshot.Dataset>> outputAliases) {
         if (owner != null && StringUtils.isNotBlank(owner.resultTableName())) {
             OpenLineageSnapshot.Dataset matched = matchTable(outputs, owner.resultTableName());
-            return matched != null ? matched : matchAlias(outputAliases, owner.resultTableName());
+            if (matched != null) {
+                return matched;
+            }
+            OpenLineageSnapshot.Dataset aliased =
+                    matchAlias(outputAliases, owner.resultTableName());
+            if (aliased != null) {
+                return aliased;
+            }
+            // The named output does not resolve. A job with exactly one output has no other
+            // candidate, so the column still belongs to it.
+            return outputs.size() == 1 ? outputs.get(0) : null;
         }
         return outputs.size() == 1 ? outputs.get(0) : null;
     }
