@@ -61,6 +61,12 @@ public class LineageBridgeProperties {
         /** Timeout of the topic administration call, in milliseconds. */
         private int adminTimeoutMs = 10000;
 
+        /**
+         * Timeout of one event delivery, in milliseconds. The bridge waits for the broker
+         * acknowledgement so the caller knows whether a terminal event may be forgotten.
+         */
+        private int sendTimeoutMs = 5000;
+
         public boolean isEnabled() {
             return enabled;
         }
@@ -139,6 +145,14 @@ public class LineageBridgeProperties {
 
         public void setAdminTimeoutMs(int adminTimeoutMs) {
             this.adminTimeoutMs = adminTimeoutMs;
+        }
+
+        public int getSendTimeoutMs() {
+            return sendTimeoutMs;
+        }
+
+        public void setSendTimeoutMs(int sendTimeoutMs) {
+            this.sendTimeoutMs = sendTimeoutMs;
         }
     }
 

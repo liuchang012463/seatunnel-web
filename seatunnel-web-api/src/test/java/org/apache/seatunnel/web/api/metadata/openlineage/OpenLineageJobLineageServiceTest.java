@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -509,6 +510,37 @@ class OpenLineageJobLineageServiceTest {
         assertEquals("FAIL", terminal.path("eventType").asText());
         assertEquals("engine client died", terminal.path("run").path("facets")
                 .path("seatunnel").path("errorMessage").asText());
+    }
+
+    @Test
+    void aTerminalThatWasNotDeliveredIsPublishedAgainByTheNextPulse() {
+        JobInstance running = new JobInstance();
+        running.setId(100L);
+        running.setJobStatus(JobStatus.RUNNING);
+        when(jobInstanceDao.listRunningLikeInstances())
+                .thenReturn(List.of(running))
+                .thenReturn(List.of())
+                .thenReturn(List.of());
+        JobInstanceVO failed = instance();
+        failed.setJobStatus("FAILED");
+        failed.setEngineJobId("engine-job-42");
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(failed);
+        // The broker does not acknowledge the first terminal.
+        List<String> attempts = new ArrayList<>();
+        AtomicInteger deliveries = new AtomicInteger();
+        lenient().doAnswer(invocation -> {
+            attempts.add(invocation.getArgument(1));
+            return deliveries.getAndIncrement() == 0 ? false : true;
+        }).when(bridge).publish(anyString(), anyString());
+
+        // Pulse 1 tracks the running instance, pulse 2 sees the bulk failure and reports it.
+        service.pulseBatchJobs();
+        service.pulseBatchJobs();
+
+        // The undelivered terminal is not forgotten: the next pulse publishes it again.
+        assertEquals(1, attempts.size());
+        service.pulseBatchJobs();
+        assertEquals(2, attempts.size());
     }
 
     @Test

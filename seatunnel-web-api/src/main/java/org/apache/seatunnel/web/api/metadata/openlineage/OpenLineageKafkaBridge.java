@@ -20,7 +20,10 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Publishes rendered OpenLineage JSON to Kafka.
@@ -28,8 +31,13 @@ import java.util.concurrent.Executor;
  * <p>
  * The producer is created lazily on first send so a misconfigured bootstrap address costs
  * nothing until an event is actually due. Failures are best-effort logged, never thrown: the
- * Engine has already accepted the job and a bridge outage must not change its state. The
- * semantics handed to the asset side are at-least-once-as-possible, not guaranteed delivery.
+ * Engine has already accepted the job and a bridge outage must not change its state.
+ * </p>
+ *
+ * <p>
+ * {@link #publish(String, String)} reports the delivery outcome, so the caller can decide
+ * whether a terminal event may be forgotten. A record that was buffered but never acknowledged
+ * counts as not delivered.
  * </p>
  */
 @Service
@@ -47,6 +55,8 @@ public class OpenLineageKafkaBridge {
 
     private volatile boolean warnedBlankBootstrap;
 
+    private volatile boolean warnedBlankPassword;
+
     private volatile boolean closed;
 
     OpenLineageKafkaBridge(LineageBridgeProperties properties,
@@ -58,17 +68,23 @@ public class OpenLineageKafkaBridge {
     }
 
     /**
-     * Sends one event asynchronously with a null key (lineage volume is low, so no partition
-     * affinity is needed) and logs an async failure at WARN without any retry or local cache.
+     * Sends one event with a null key (lineage volume is low, so no partition affinity is needed)
+     * and reports whether the broker acknowledged it.
      *
      * <p>
-     * The only exception is a topic the broker does not know: the topic is created and the event
-     * is sent one more time, because a missing topic is a recoverable state and not a delivery
-     * problem.
+     * The outcome is the delivery outcome, not the enqueue outcome: the caller decides whether a
+     * terminal event may be forgotten, so a record that was buffered but never acknowledged has to
+     * be reported as a failure.
      * </p>
      *
-     * @return true when the event was handed to the producer, false when the bridge is disabled,
-     *     unconfigured or could not enqueue it
+     * <p>
+     * The only recoverable send failure is a topic the broker does not know: the topic is created
+     * and the event is sent one more time, because a missing topic is a recoverable state and not
+     * a delivery problem.
+     * </p>
+     *
+     * @return true when the broker acknowledged the event, false when the bridge is disabled,
+     *     unconfigured or the delivery failed
      */
     boolean publish(String topic, String value) {
         if (!properties.getKafka().isEnabled() || closed) {
@@ -83,37 +99,51 @@ public class OpenLineageKafkaBridge {
     }
 
     /**
-     * Sends one event and reports the outcome. A missing topic is retried once, on the lineage
-     * executor: the callback of the producer runs on the Kafka I/O thread, which must not be
-     * blocked by a topic administration call.
+     * Sends one event and waits for the broker acknowledgement, bounded by the configured send
+     * timeout. A missing topic is retried once, on the lineage executor: the retry must not block
+     * the caller, and the caller learns the delivery failed so it can publish the event again.
      */
     private boolean send(
             Producer<String, String> kafkaProducer, String topic, String value, boolean retryAllowed) {
         try {
-            kafkaProducer.send(new ProducerRecord<>(topic, null, value), (metadata, error) -> {
-                if (error == null) {
-                    return;
-                }
-                if (retryAllowed && isTopicMissing(error)) {
-                    log.warn("OpenLineage topic {} is missing, creating it and sending again", topic);
-                    topicProvisioner.invalidate(topic);
-                    retryExecutor.execute(() -> {
-                        topicProvisioner.ensureTopic(topic);
-                        send(kafkaProducer, topic, value, false);
-                    });
-                    return;
-                }
-                log.warn("OpenLineage event send failed on topic {}: {}", topic, error.getMessage());
-            });
+            kafkaProducer.send(new ProducerRecord<>(topic, null, value))
+                    .get(properties.getKafka().getSendTimeoutMs(), TimeUnit.MILLISECONDS);
             return true;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            log.warn("Interrupted while sending the OpenLineage event to topic {}", topic);
+            return false;
+        } catch (TimeoutException timeout) {
+            log.warn("The OpenLineage event to topic {} was not acknowledged within {} ms",
+                    topic, properties.getKafka().getSendTimeoutMs());
+            return false;
+        } catch (ExecutionException failure) {
+            Throwable cause = failure.getCause() == null ? failure : failure.getCause();
+            if (retryAllowed && cause instanceof UnknownTopicOrPartitionException) {
+                log.warn("OpenLineage topic {} is missing, creating it and sending again", topic);
+                topicProvisioner.invalidate(topic);
+                retryExecutor.execute(() -> {
+                    topicProvisioner.ensureTopic(topic);
+                    send(kafkaProducer, topic, value, false);
+                });
+                return false;
+            }
+            log.warn("OpenLineage event send failed on topic {}: {}", topic, cause.getMessage());
+            return false;
         } catch (Exception error) {
-            log.warn("Could not enqueue OpenLineage event on topic {}", topic, error);
+            // The producer rejected the record itself, e.g. because the topic is unknown.
+            if (retryAllowed && error instanceof UnknownTopicOrPartitionException) {
+                log.warn("OpenLineage topic {} is missing, creating it and sending again", topic);
+                topicProvisioner.invalidate(topic);
+                retryExecutor.execute(() -> {
+                    topicProvisioner.ensureTopic(topic);
+                    send(kafkaProducer, topic, value, false);
+                });
+                return false;
+            }
+            log.warn("Could not enqueue OpenLineage event on topic {}: {}", topic, error.getMessage());
             return false;
         }
-    }
-
-    private static boolean isTopicMissing(Exception error) {
-        return error instanceof UnknownTopicOrPartitionException;
     }
 
     /** Package-private state probe for unit tests. */
@@ -139,6 +169,20 @@ public class OpenLineageKafkaBridge {
                 warnedBlankBootstrap = true;
                 log.error("lineage-bridge.kafka.bootstrap-servers is blank while enabled=true; "
                         + "OpenLineage events are dropped");
+            }
+            return null;
+        }
+        if (usesSasl(properties.getKafka().getSecurityProtocol())
+                && StringUtils.isBlank(properties.getKafka().getSaslPassword())) {
+            // A SASL protocol without a password cannot authenticate: the producer would be
+            // created, every send would block for the metadata timeout and then fail. Refusing
+            // the producer keeps the failure fast and visible.
+            if (!warnedBlankPassword) {
+                warnedBlankPassword = true;
+                log.error("lineage-bridge.kafka.security-protocol={} requires a "
+                                + "lineage-bridge.kafka.sasl-password while enabled=true; "
+                                + "OpenLineage events are dropped",
+                        properties.getKafka().getSecurityProtocol());
             }
             return null;
         }

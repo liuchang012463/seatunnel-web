@@ -28,8 +28,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -67,6 +69,20 @@ public class OpenLineageJobLineageService {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    /** How many terminal publications are remembered before the oldest ones are forgotten. */
+    private static final int TERMINAL_PUBLISHED_CAPACITY = 4096;
+
+    /**
+     * Outcome of one publication attempt. {@link #SKIPPED} means the event is not publishable at
+     * all (no identifiable dataset), {@link #FAILED} means it could be published but was not
+     * delivered, so the caller has to try again.
+     */
+    private enum PublishOutcome {
+        PUBLISHED,
+        SKIPPED,
+        FAILED
+    }
+
     private final LineageBridgeProperties properties;
     private final OpenLineageKafkaBridge bridge;
     private final JobInstanceDao jobInstanceDao;
@@ -88,8 +104,21 @@ public class OpenLineageJobLineageService {
      */
     private final Map<Long, String> monitoredBatchStatuses = new ConcurrentHashMap<>();
 
-    /** Instances whose terminal event was already published, so the pulse and the event agree. */
-    private final Set<String> terminalPublished = ConcurrentHashMap.newKeySet();
+    /**
+     * Instances whose terminal event was already published, so the pulse and the event agree.
+     *
+     * <p>
+     * The set is bounded: an instance that left the running set is forgotten as soon as its
+     * terminal was dealt with, so an unbounded set would grow with every job the web ever ran.
+     * </p>
+     */
+    private final Set<String> terminalPublished = Collections.synchronizedSet(
+            Collections.newSetFromMap(new LinkedHashMap<String, Boolean>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+                    return size() > TERMINAL_PUBLISHED_CAPACITY;
+                }
+            }));
 
     OpenLineageJobLineageService(LineageBridgeProperties properties,
                                  OpenLineageKafkaBridge bridge,
@@ -166,10 +195,11 @@ public class OpenLineageJobLineageService {
                         event.getJobInstanceId());
                 return;
             }
-            boolean published = publishIfValid(snapshot);
-            if (!published) {
-                // Nothing reached the producer (no identifiable dataset, broker unavailable), so
-                // let the batch pulse retry the terminal later.
+            PublishOutcome outcome = publishIfValid(snapshot);
+            if (outcome == PublishOutcome.FAILED) {
+                // The broker did not acknowledge the event: let the batch pulse publish the
+                // terminal later. A skipped event has no identifiable dataset and would never
+                // be publishable, so it is not retried.
                 terminalPublished.remove(key);
             }
         } catch (Exception error) {
@@ -180,9 +210,15 @@ public class OpenLineageJobLineageService {
 
     /**
      * Periodic pulse for streaming jobs: RUNNING heartbeats with the same lineage as START, and
-     * terminal detection via vanishing from the running set. Runs on the shared scheduler thread,
-     * so it should stay cheap at default 60s cadence.
+     * terminal detection via vanishing from the running set.
+     *
+     * <p>
+     * The pulse runs on the lineage track, not on the shared scheduler: a broker that is slow or
+     * unreachable must not delay the job metrics, the metadata status refresh and the recovery
+     * scheduler, which share that single scheduler thread.
+     * </p>
      */
+    @Async("lineageEventExecutor")
     @Scheduled(fixedDelayString = "${lineage-bridge.running.interval-ms:60000}")
     public void pulseStreamingJobs() {
         try {
@@ -198,15 +234,20 @@ public class OpenLineageJobLineageService {
                 }
             }
 
-            List<Long> vanished = new ArrayList<>(monitoredStreamingStatuses.keySet());
-            vanished.removeAll(present);
-            for (Long instanceId : vanished) {
-                publishStreamingTerminal(instanceId, monitoredStreamingStatuses.get(instanceId));
-            }
+            Map<Long, String> vanished = vanished(monitoredStreamingStatuses, present);
             monitoredStreamingStatuses.keySet().retainAll(present);
             for (JobInstanceVO listed : running) {
                 if (listed != null && listed.getId() != null) {
                     monitoredStreamingStatuses.put(listed.getId(), listed.getJobStatus());
+                }
+            }
+            for (Map.Entry<Long, String> entry : vanished.entrySet()) {
+                if (publishStreamingTerminal(entry.getKey(), entry.getValue())
+                        == PublishOutcome.FAILED) {
+                    // The terminal was not delivered: keep the instance monitored so that the
+                    // next pulse publishes it again. A lost terminal leaves the run open on the
+                    // asset side forever.
+                    monitoredStreamingStatuses.put(entry.getKey(), entry.getValue());
                 }
             }
         } catch (Exception error) {
@@ -220,29 +261,18 @@ public class OpenLineageJobLineageService {
      * Engine client died, no such event is published. A vanished batch instance is therefore
      * reported here, deduplicated against the event path by {@link #terminalPublished}.
      */
+    @Async("lineageEventExecutor")
     @Scheduled(fixedDelayString = "${lineage-bridge.running.interval-ms:60000}")
     public void pulseBatchJobs() {
         try {
             List<JobInstance> running = jobInstanceDao.listRunningLikeInstances();
             Set<Long> present = new HashSet<>();
+            Map<Long, String> statuses = new HashMap<>();
             if (running != null) {
                 for (JobInstance instance : running) {
                     if (instance != null && instance.getId() != null) {
                         present.add(instance.getId());
-                    }
-                }
-            }
-
-            List<Long> vanished = new ArrayList<>(monitoredBatchStatuses.keySet());
-            vanished.removeAll(present);
-            for (Long instanceId : vanished) {
-                publishBatchTerminal(instanceId, monitoredBatchStatuses.get(instanceId));
-            }
-            monitoredBatchStatuses.keySet().retainAll(present);
-            if (running != null) {
-                for (JobInstance instance : running) {
-                    if (instance != null && instance.getId() != null) {
-                        monitoredBatchStatuses.put(
+                        statuses.put(
                                 instance.getId(),
                                 instance.getJobStatus() == null
                                         ? null
@@ -250,38 +280,63 @@ public class OpenLineageJobLineageService {
                     }
                 }
             }
+
+            Map<Long, String> vanished = vanished(monitoredBatchStatuses, present);
+            monitoredBatchStatuses.keySet().retainAll(present);
+            monitoredBatchStatuses.putAll(statuses);
+            for (Map.Entry<Long, String> entry : vanished.entrySet()) {
+                if (publishBatchTerminal(entry.getKey(), entry.getValue())
+                        == PublishOutcome.FAILED) {
+                    // The terminal was not delivered: keep the instance monitored so that the
+                    // next pulse publishes it again.
+                    monitoredBatchStatuses.put(entry.getKey(), entry.getValue());
+                }
+            }
         } catch (Exception error) {
             log.warn("OpenLineage batch pulse failed", error);
         }
     }
 
-    private void publishBatchTerminal(Long instanceId, String lastSeenStatus) {
+    /** The monitored instances that are no longer in the running set, with their last status. */
+    private static Map<Long, String> vanished(Map<Long, String> monitored, Set<Long> present) {
+        Map<Long, String> vanished = new HashMap<>();
+        for (Map.Entry<Long, String> entry : monitored.entrySet()) {
+            if (!present.contains(entry.getKey())) {
+                vanished.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return vanished;
+    }
+
+    private PublishOutcome publishBatchTerminal(Long instanceId, String lastSeenStatus) {
         try {
             JobInstanceVO details = jobInstanceDao.selectDetailById(instanceId);
             if (details == null) {
-                return;
+                return PublishOutcome.SKIPPED;
             }
             EventType eventType = batchTerminalType(details.getJobStatus());
             if (eventType == null) {
                 log.debug("OpenLineage bridge drops vanished batch instance with status={}",
                         details.getJobStatus());
-                return;
+                return PublishOutcome.SKIPPED;
             }
             if (StringUtils.isBlank(details.getEngineJobId())) {
-                return;
+                return PublishOutcome.SKIPPED;
             }
             OpenLineageSnapshot snapshot = toSnapshot(details, details.getEngineJobId(), false,
                     eventType, lastSeenStatus, details.getErrorMessage(), null);
             String key = terminalKey(false, instanceId);
             if (!terminalPublished.add(key)) {
-                return;
+                return PublishOutcome.PUBLISHED;
             }
-            boolean published = publishIfValid(snapshot);
-            if (!published) {
+            PublishOutcome outcome = publishIfValid(snapshot);
+            if (outcome != PublishOutcome.PUBLISHED) {
                 terminalPublished.remove(key);
             }
+            return outcome;
         } catch (Exception error) {
             log.warn("Could not publish OpenLineage batch terminal, instanceId={}", instanceId, error);
+            return PublishOutcome.FAILED;
         }
     }
 
@@ -311,34 +366,36 @@ public class OpenLineageJobLineageService {
         }
     }
 
-    private void publishStreamingTerminal(Long instanceId, String lastSeenStatus) {
+    private PublishOutcome publishStreamingTerminal(Long instanceId, String lastSeenStatus) {
         try {
             JobInstanceVO details = streamingJobInstanceDao.selectDetailById(instanceId);
             if (details == null) {
                 // The row is gone (definition deleted); there is no run left to report.
-                return;
+                return PublishOutcome.SKIPPED;
             }
             EventType eventType = streamingTerminalType(details.getJobStatus());
             if (eventType == null) {
                 log.debug("OpenLineage bridge drops vanished streaming instance with status={}",
                         details.getJobStatus());
-                return;
+                return PublishOutcome.SKIPPED;
             }
             if (StringUtils.isBlank(details.getEngineJobId())) {
-                return;
+                return PublishOutcome.SKIPPED;
             }
             OpenLineageSnapshot snapshot = toSnapshot(details, details.getEngineJobId(), true,
                     eventType, lastSeenStatus, details.getErrorMessage(), null);
             String key = terminalKey(true, instanceId);
             if (!terminalPublished.add(key)) {
-                return;
+                return PublishOutcome.PUBLISHED;
             }
-            boolean published = publishIfValid(snapshot);
-            if (!published) {
+            PublishOutcome outcome = publishIfValid(snapshot);
+            if (outcome != PublishOutcome.PUBLISHED) {
                 terminalPublished.remove(key);
             }
+            return outcome;
         } catch (Exception error) {
             log.warn("Could not publish OpenLineage streaming terminal, instanceId={}", instanceId, error);
+            return PublishOutcome.FAILED;
         }
     }
 
@@ -791,22 +848,22 @@ public class OpenLineageJobLineageService {
         return null;
     }
 
-    private boolean publishIfValid(OpenLineageSnapshot snapshot) {
+    private PublishOutcome publishIfValid(OpenLineageSnapshot snapshot) {
         if (snapshot == null) {
-            return false;
+            return PublishOutcome.SKIPPED;
         }
         if (snapshot.inputs().isEmpty() || snapshot.outputs().isEmpty()) {
             // Local lineage is only publishable with both sides identified: the design fixes
             // source/sink datasource id and table path as the minimum viable edge.
             log.info("Skipping OpenLineage {} without source/sink table, instanceId={}, engineJobId={}",
                     snapshot.eventType(), snapshot.instanceId(), snapshot.engineJobId());
-            return false;
+            return PublishOutcome.SKIPPED;
         }
         if (!bridge.publish(properties.getKafka().getSourceTopic(),
                 OpenLineageEventFactory.toRunEvent(snapshot).toString())) {
-            log.debug("OpenLineage event was not handed to the producer, instanceId={}, engineJobId={}",
+            log.debug("OpenLineage event was not delivered, instanceId={}, engineJobId={}",
                     snapshot.instanceId(), snapshot.engineJobId());
-            return false;
+            return PublishOutcome.FAILED;
         }
         if (snapshot.eventType() == EventType.RUNNING) {
             log.debug("Published OpenLineage RUNNING heartbeat, instanceId={}, engineJobId={}",
@@ -815,6 +872,6 @@ public class OpenLineageJobLineageService {
             log.info("Published OpenLineage {} event, instanceId={}, engineJobId={}",
                     snapshot.eventType(), snapshot.instanceId(), snapshot.engineJobId());
         }
-        return true;
+        return PublishOutcome.PUBLISHED;
     }
 }

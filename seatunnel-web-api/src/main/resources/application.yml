@@ -125,6 +125,10 @@ lineage-bridge:
     # are left to the broker defaults.
     auto-create-topic: ${LINEAGE_BRIDGE_KAFKA_AUTO_CREATE_TOPIC:true}
     admin-timeout-ms: ${LINEAGE_BRIDGE_KAFKA_ADMIN_TIMEOUT_MS:10000}
+    # The bridge waits for the broker acknowledgement, so a terminal event is only
+    # forgotten once the broker confirmed it. The wait is bounded so a broker that is
+    # slow or unreachable cannot pin the lineage track.
+    send-timeout-ms: ${LINEAGE_BRIDGE_KAFKA_SEND_TIMEOUT_MS:5000}
   running:
     interval-ms: ${LINEAGE_BRIDGE_RUNNING_INTERVAL_MS:60000}
 

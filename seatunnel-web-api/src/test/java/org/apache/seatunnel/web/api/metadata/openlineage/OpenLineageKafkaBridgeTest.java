@@ -1,14 +1,17 @@
 package org.apache.seatunnel.web.api.metadata.openlineage;
 
-import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -64,42 +67,78 @@ class OpenLineageKafkaBridgeTest {
     void sendsTheEventOnlyOnceWhenTheBrokerAcceptsIt() {
         LineageBridgeProperties properties = properties(true, "kafka:9092");
         OpenLineageKafkaBridge bridge = bridge(properties);
-        List<Callback> callbacks = new ArrayList<>();
-        bridge.useProducer(recordingProducer(callbacks));
+        List<ProducerRecord<String, String>> sent = new ArrayList<>();
+        bridge.useProducer(acceptingProducer(sent));
 
-        bridge.publish("meta_lineage_topic", "{}");
-        callbacks.get(0).onCompletion(null, null);
-
-        assertEquals(1, callbacks.size());
+        assertTrue(bridge.publish("meta_lineage_topic", "{}"));
+        assertEquals(1, sent.size());
     }
 
     @Test
     void createsTheTopicAndSendsTheEventAgainWhenTheTopicIsMissing() {
         LineageBridgeProperties properties = properties(true, "kafka:9092");
         OpenLineageKafkaBridge bridge = bridge(properties);
-        List<Callback> callbacks = new ArrayList<>();
-        bridge.useProducer(recordingProducer(callbacks));
+        List<ProducerRecord<String, String>> sent = new ArrayList<>();
+        bridge.useProducer(topicMissingProducer(sent));
 
-        bridge.publish("meta_lineage_topic", "{}");
-        callbacks.get(0).onCompletion(null, new UnknownTopicOrPartitionException("no topic"));
-
-        // The missing topic is the only failure that is retried, and only once.
-        assertEquals(2, callbacks.size());
-        callbacks.get(1).onCompletion(null, new UnknownTopicOrPartitionException("no topic"));
-        assertEquals(2, callbacks.size());
+        // The missing topic is the only failure that is retried, and only once. The first
+        // attempt still counts as not delivered, so the caller may publish the event again.
+        assertFalse(bridge.publish("meta_lineage_topic", "{}"));
+        assertEquals(2, sent.size());
     }
 
     @Test
     void doesNotRetryAnyOtherFailure() {
         LineageBridgeProperties properties = properties(true, "kafka:9092");
         OpenLineageKafkaBridge bridge = bridge(properties);
-        List<Callback> callbacks = new ArrayList<>();
-        bridge.useProducer(recordingProducer(callbacks));
+        List<ProducerRecord<String, String>> sent = new ArrayList<>();
+        bridge.useProducer(failingProducer(sent, new IllegalStateException("broker down")));
 
-        bridge.publish("meta_lineage_topic", "{}");
-        callbacks.get(0).onCompletion(null, new IllegalStateException("broker down"));
+        assertFalse(bridge.publish("meta_lineage_topic", "{}"));
+        assertEquals(1, sent.size());
+    }
 
-        assertEquals(1, callbacks.size());
+    /**
+     * A broker that never acknowledges the event leaves the caller with an unconfirmed terminal,
+     * so the publication has to be reported as failed.
+     */
+    @Test
+    void anUnacknowledgedEventIsReportedAsNotDelivered() {
+        LineageBridgeProperties properties = properties(true, "kafka:9092");
+        properties.getKafka().setSendTimeoutMs(100);
+        OpenLineageKafkaBridge bridge = bridge(properties);
+        List<ProducerRecord<String, String>> sent = new ArrayList<>();
+        bridge.useProducer(neverAcknowledgedProducer(sent));
+
+        assertFalse(bridge.publish("meta_lineage_topic", "{}"));
+        assertEquals(1, sent.size());
+    }
+
+    /**
+     * A SASL protocol without a password cannot authenticate. Creating the producer anyway makes
+     * every send block for the metadata timeout and then fail, so the bridge refuses it.
+     */
+    @Test
+    void aSaslProtocolWithoutAPasswordDoesNotCreateAProducer() {
+        LineageBridgeProperties properties = properties(true, "kafka:9092");
+        properties.getKafka().setSecurityProtocol("SASL_PLAINTEXT");
+        properties.getKafka().setSaslPassword("");
+        OpenLineageKafkaBridge bridge = bridge(properties);
+
+        assertFalse(bridge.publish("meta_lineage_topic", "{}"));
+        assertFalse(bridge.producerReady());
+    }
+
+    @Test
+    void aBlankPasswordOnAPlaintextProtocolStillPublishes() {
+        LineageBridgeProperties properties = properties(true, "kafka:9092");
+        properties.getKafka().setSecurityProtocol("PLAINTEXT");
+        properties.getKafka().setSaslPassword("");
+        OpenLineageKafkaBridge bridge = bridge(properties);
+        List<ProducerRecord<String, String>> sent = new ArrayList<>();
+        bridge.useProducer(acceptingProducer(sent));
+
+        assertTrue(bridge.publish("meta_lineage_topic", "{}"));
     }
 
     @Test
@@ -146,13 +185,56 @@ class OpenLineageKafkaBridgeTest {
                 OpenLineageKafkaBridge.buildJaas("PLAIN", "a\"b", "c\\d"));
     }
 
-    /** A producer that records the callback of every send. */
-    private static Producer<String, String> recordingProducer(List<Callback> callbacks) {
+    /** A producer that records every send and acknowledges it. */
+    private static Producer<String, String> acceptingProducer(List<ProducerRecord<String, String>> sent) {
         Producer<String, String> producer = mock(Producer.class);
-        when(producer.send(any(), any())).thenAnswer(invocation -> {
-            callbacks.add(invocation.getArgument(1));
-            return null;
+        when(producer.send(any(ProducerRecord.class))).thenAnswer(invocation -> {
+            sent.add(invocation.getArgument(0));
+            return acknowledged();
         });
         return producer;
+    }
+
+    /** A producer whose first send reports a missing topic and whose second one succeeds. */
+    private static Producer<String, String> topicMissingProducer(
+            List<ProducerRecord<String, String>> sent) {
+        Producer<String, String> producer = mock(Producer.class);
+        when(producer.send(any(ProducerRecord.class))).thenAnswer(invocation -> {
+            sent.add(invocation.getArgument(0));
+            if (sent.size() == 1) {
+                throw new UnknownTopicOrPartitionException("no topic");
+            }
+            return acknowledged();
+        });
+        return producer;
+    }
+
+    /** A producer that always fails with the given error. */
+    private static Producer<String, String> failingProducer(
+            List<ProducerRecord<String, String>> sent, RuntimeException failure) {
+        Producer<String, String> producer = mock(Producer.class);
+        when(producer.send(any(ProducerRecord.class))).thenAnswer(invocation -> {
+            sent.add(invocation.getArgument(0));
+            throw failure;
+        });
+        return producer;
+    }
+
+    /** A producer that never acknowledges the record. */
+    private static Producer<String, String> neverAcknowledgedProducer(
+            List<ProducerRecord<String, String>> sent) {
+        Producer<String, String> producer = mock(Producer.class);
+        when(producer.send(any(ProducerRecord.class))).thenAnswer(invocation -> {
+            sent.add(invocation.getArgument(0));
+            return new CompletableFuture<>();
+        });
+        return producer;
+    }
+
+    /** A future that is already completed. */
+    private static Future<RecordMetadata> acknowledged() {
+        CompletableFuture<RecordMetadata> future = new CompletableFuture<>();
+        future.complete(null);
+        return future;
     }
 }
