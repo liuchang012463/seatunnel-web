@@ -170,7 +170,17 @@
         LEFT JOIN t_seatunnel_web_job_instance i
         ON i.id = d.latest_instance_id
 
-        LEFT JOIN t_seatunnel_web_job_metrics m
+        LEFT JOIN (
+        SELECT
+        job_instance_id,
+        SUM(read_row_count) AS read_row_count,
+        SUM(write_row_count) AS write_row_count,
+        SUM(read_qps) AS read_qps,
+        SUM(write_qps) AS write_qps,
+        MAX(record_delay) AS record_delay
+        FROM t_seatunnel_web_job_metrics
+        GROUP BY job_instance_id
+        ) m
         ON i.id = m.job_instance_id
 
         LEFT JOIN t_seatunnel_web_job_schedule s

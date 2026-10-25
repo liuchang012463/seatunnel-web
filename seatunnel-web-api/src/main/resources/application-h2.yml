@@ -13,12 +13,6 @@ spring:
     properties:
       org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
 
-  # H2 migration V1_0_46 was added after V1_0_47 shipped. A persistent H2 database that already
-  # applied 1.0.47 must still accept the late 1.0.46 script; out-of-order is safe for the
-  # in-memory test profile and keeps such a database startable.
-  flyway:
-    out-of-order: true
-
 seatunnel:
   web:
     database:

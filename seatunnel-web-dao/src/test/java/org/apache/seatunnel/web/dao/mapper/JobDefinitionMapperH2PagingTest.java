@@ -91,6 +91,44 @@ class JobDefinitionMapperH2PagingTest {
         }
     }
 
+    /**
+     * A job writes one metrics row per pipeline. Joining the metrics table directly would
+     * duplicate the definition row and break the page size.
+     */
+    @Test
+    void aJobWithSeveralPipelinesIsListedOnce() {
+        BatchJobDefinitionQueryDTO dto = new BatchJobDefinitionQueryDTO();
+
+        try (SqlSession session = sessionFactory.openSession()) {
+            JobDefinitionMapper mapper = session.getMapper(JobDefinitionMapper.class);
+
+            statement(session, "INSERT INTO t_seatunnel_web_job_metrics "
+                    + "(job_instance_id, read_qps, write_qps, read_row_count, write_row_count) "
+                    + "VALUES (12, 1.0, 2.0, 10, 20), (12, 3.0, 4.0, 30, 40), (31, 5.0, 6.0, 50, 60)");
+
+            List<BatchJobDefinitionVO> page =
+                    mapper.selectPageWithLatestInstance(dto, 0, 10);
+
+            assertEquals(3, page.size());
+            assertEquals(3, page.stream().map(BatchJobDefinitionVO::getId).distinct().count());
+            BatchJobDefinitionVO first = page.stream()
+                    .filter(definition -> definition.getId() == 1L)
+                    .findFirst()
+                    .orElseThrow();
+            // The metrics of both pipelines are summed instead of producing a second row.
+            assertEquals(40L, first.getReadRowCount());
+            assertEquals(60L, first.getWriteRowCount());
+        }
+    }
+
+    private static void statement(SqlSession session, String sql) {
+        try {
+            session.getConnection().createStatement().execute(sql);
+        } catch (Exception error) {
+            throw new IllegalStateException(error);
+        }
+    }
+
     private static void createSchema(DataSource dataSource) throws Exception {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
