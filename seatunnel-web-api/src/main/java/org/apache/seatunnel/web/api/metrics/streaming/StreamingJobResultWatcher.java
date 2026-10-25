@@ -1,11 +1,14 @@
 package org.apache.seatunnel.web.api.metrics.streaming;
 
+import org.apache.commons.lang3.StringUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.metrics.JobRuntimeContext;
 import org.apache.seatunnel.web.common.enums.JobResult;
 import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.common.utils.EngineJobStatusParser;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
+import org.apache.seatunnel.web.api.utils.RedactedErrors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -75,11 +78,19 @@ public class StreamingJobResultWatcher {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("Streaming REST job result watcher interrupted, instanceId={}, engineId={}",
-                    instanceId, engineId, e);
+            log.warn("Streaming REST job result watcher interrupted, instanceId={}, engineId={}, "
+                            + "errorType={}, error={}",
+                    instanceId, engineId,
+                    RedactedErrors.typeOf(e),
+                    RedactedErrors.mask(e.getMessage()),
+                    RedactedErrors.redacted(e, RedactedErrors.mask(e.getMessage())));
         } catch (Exception e) {
-            log.warn("Streaming REST job result watcher failed, instanceId={}, engineId={}",
-                    instanceId, engineId, e);
+            log.warn("Streaming REST job result watcher failed, instanceId={}, engineId={}, "
+                            + "errorType={}, error={}",
+                    instanceId, engineId,
+                    RedactedErrors.typeOf(e),
+                    RedactedErrors.mask(e.getMessage()),
+                    RedactedErrors.redacted(e, RedactedErrors.mask(e.getMessage())));
 
             streamingJobResultHandler.handleFailure(instanceId, e);
         } finally {
@@ -158,35 +169,18 @@ public class StreamingJobResultWatcher {
         Thread.sleep(pollIntervalMs);
     }
 
+    /**
+     * The local status of the Engine status.
+     *
+     * @return the local status, or {@code null} when the Engine reports a status this web does
+     *     not know. An unknown status is not evidence of a final state, so the job keeps being
+     *     polled instead of being failed.
+     */
     private JobStatus parseJobStatus(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return null;
+        JobStatus status = EngineJobStatusParser.parse(value);
+        if (status == null && StringUtils.isNotBlank(value)) {
+            log.warn("Unknown streaming job status: {}", value);
         }
-
-        String normalized = value.trim().toUpperCase(Locale.ROOT);
-
-        if ("CANCELLED".equals(normalized)
-                || "CANCELED".equals(normalized)
-                || "STOPPED".equals(normalized)) {
-            return JobStatus.CANCELED;
-        }
-
-        if ("CANCELLING".equals(normalized)
-                || "CANCELING".equals(normalized)
-                || "STOPPING".equals(normalized)) {
-            return JobStatus.RUNNING;
-        }
-
-        if ("COMPLETED".equals(normalized)
-                || "SUCCEEDED".equals(normalized)
-                || "SUCCESS".equals(normalized)) {
-            return JobStatus.FINISHED;
-        }
-
-        try {
-            return JobStatus.valueOf(normalized);
-        } catch (Exception e) {
-            return null;
-        }
+        return status;
     }
 }

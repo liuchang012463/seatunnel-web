@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import React from "react";
-import type { IntlShape } from "react-intl";
+import { createIntl, createIntlCache, RawIntlProvider, type IntlShape } from "react-intl";
 import BatchTaskStatus from "@/pages/batch-link-up/components/SyncTaskList/components/TaskStatus";
 import { getHistoryStatusMeta as getBatchHistoryStatusMeta } from "@/pages/batch-link-up/components/TaskHistoryPanel/utils/historyStatus";
 import StreamTaskStatus from "@/pages/stream-link-up/components/TaskStatus";
@@ -33,11 +33,17 @@ const STATUSES = [
 const chipColorOf = (container: HTMLElement) =>
   (container.querySelector(".st-status-chip") as HTMLElement)?.style.color;
 
+/** The list chips read their label through intl, so they need the same provider as the app. */
+const providerIntl = createIntl({ locale: "zh-CN", messages: {} }, createIntlCache());
+
+const renderChip = (element: React.ReactElement) =>
+  render(<RawIntlProvider value={providerIntl}>{element}</RawIntlProvider>);
+
 describe("批量任务的列表状态与运行历史状态一致", () => {
   it.each(STATUSES)("%s 的列表与运行历史文案一致", (status) => {
     const historyText = getBatchHistoryStatusMeta(status, intl).text;
 
-    render(<BatchTaskStatus status={status} />);
+    renderChip(<BatchTaskStatus status={status} />);
 
     expect(screen.getByText(historyText)).toBeTruthy();
   });
@@ -47,7 +53,7 @@ describe("实时任务的列表状态与运行历史状态一致", () => {
   it.each(STATUSES)("%s 的列表与运行历史文案一致", (status) => {
     const historyText = getStreamHistoryStatusMeta(status, intl).text;
 
-    render(<StreamTaskStatus status={status} />);
+    renderChip(<StreamTaskStatus status={status} />);
 
     expect(screen.getByText(historyText)).toBeTruthy();
   });
@@ -64,7 +70,7 @@ describe("已取消的任务不是失败", () => {
       <StreamTaskStatus key="stream" status="CANCELED" errorMessage="boom" />,
     ],
   ])("%s 列表展示已取消且不展示失败原因", (_name, element) => {
-    render(element);
+    renderChip(element);
 
     expect(screen.getByText("已取消")).toBeTruthy();
     expect(screen.queryByText("失败原因")).toBeNull();
@@ -83,11 +89,11 @@ describe("已取消的任务不是失败", () => {
   });
 
   it("批量列表的已取消状态色与失败态不同", () => {
-    const canceled = render(<BatchTaskStatus status="CANCELED" />);
+    const canceled = renderChip(<BatchTaskStatus status="CANCELED" />);
     const canceledColor = chipColorOf(canceled.container);
     canceled.unmount();
 
-    const failed = render(<BatchTaskStatus status="FAILED" />);
+    const failed = renderChip(<BatchTaskStatus status="FAILED" />);
     const failedColor = chipColorOf(failed.container);
     failed.unmount();
 
@@ -96,11 +102,11 @@ describe("已取消的任务不是失败", () => {
   });
 
   it("实时列表的已取消状态色与失败态不同", () => {
-    const canceled = render(<StreamTaskStatus status="CANCELED" />);
+    const canceled = renderChip(<StreamTaskStatus status="CANCELED" />);
     const canceledColor = chipColorOf(canceled.container);
     canceled.unmount();
 
-    const failed = render(<StreamTaskStatus status="FAILED" />);
+    const failed = renderChip(<StreamTaskStatus status="FAILED" />);
     const failedColor = chipColorOf(failed.container);
     failed.unmount();
 

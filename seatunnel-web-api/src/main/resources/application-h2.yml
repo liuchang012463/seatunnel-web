@@ -13,6 +13,13 @@ spring:
     properties:
       org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
 
+  # The 20261022 release artifact shipped H2 1.0.47 without H2 1.0.46, so a file based H2
+  # database that ran that artifact has 1.0.47 applied and 1.0.46 missing. Without
+  # out-of-order such a database refuses to start after the upgrade. MySQL is unaffected: its
+  # 1.0.46 predates 1.0.47.
+  flyway:
+    out-of-order: true
+
 seatunnel:
   web:
     database:

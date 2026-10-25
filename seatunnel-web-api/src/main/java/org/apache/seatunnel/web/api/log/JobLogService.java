@@ -14,6 +14,7 @@ import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
+import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -388,7 +389,12 @@ public class JobLogService {
         }
 
         try {
-            return seaTunnelRestClient.jobLogs(context.clientId(), context.engineJobId(), "json");
+            String engineContent =
+                    seaTunnelRestClient.jobLogs(context.clientId(), context.engineJobId(), "json");
+            // The Engine log can echo the connector options of the failed job. The log is
+            // written to disk and served to the browser, so the sensitive parts are masked
+            // before it leaves this method.
+            return HoconSensitiveMaskUtil.maskSensitiveText(engineContent);
         } catch (Exception e) {
             log.warn(
                     "Fetch SeaTunnel Engine log failed, instanceId={}, engineJobId={}",

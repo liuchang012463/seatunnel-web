@@ -1,3 +1,4 @@
+import { useIntl, type IntlShape } from "react-intl";
 import { message, Popover } from "antd";
 import React, { useEffect, useRef, useState } from "react";
 import StatusChip from "@/components/StatusChip";
@@ -9,12 +10,14 @@ interface TaskStatusProps {
   showErrorDetailsLink?: boolean;
 }
 
-const getStatusConfig = (status?: string) => {
+const getStatusConfig = (status: string | undefined, intl: IntlShape) => {
   const view = getJobStatusView(status, "stream");
 
   return {
     tone: view.tone,
-    label: view.label.defaultMessage,
+    // The run history renders the same label through intl, so the list and the history must
+    // use the same text in every locale.
+    label: intl.formatMessage({ id: view.label.id, defaultMessage: view.label.defaultMessage }),
     errorDetail: view.errorDetail,
   };
 };
@@ -24,7 +27,8 @@ const TaskStatus: React.FC<TaskStatusProps> = ({
   errorMessage,
   showErrorDetailsLink = true,
 }) => {
-  const config = getStatusConfig(status);
+  const intl = useIntl();
+  const config = getStatusConfig(status, intl);
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<number | null>(null);
 

@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
+import org.apache.seatunnel.web.api.utils.RedactedErrors;
 
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
@@ -187,8 +188,12 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             } catch (RuntimeException e) {
                 cancelHeartbeat(queuedHeartbeat[0]);
                 queuedHeartbeat[0] = null;
-                log.error("Queue batch job submission failed: jobDefineId={}, instanceId={}",
-                        jobDefineId, instance.getId(), e);
+                log.error("Queue batch job submission failed: jobDefineId={}, instanceId={}, "
+                                + "errorType={}, error={}",
+                        jobDefineId, instance.getId(),
+                        RedactedErrors.typeOf(e),
+                        RedactedErrors.mask(e.getMessage()),
+                        RedactedErrors.redacted(e, RedactedErrors.mask(e.getMessage())));
                 failInstance(instance, e);
                 if (incrementalExecution != null) {
                     incrementalBatchService.markSubmitFailure(instance.getId(), e);
@@ -267,7 +272,11 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Job pause failed: instanceId={}", jobInstanceId, e);
+            log.error("Job pause failed: instanceId={}, errorType={}, error={}",
+                    jobInstanceId,
+                    RedactedErrors.typeOf(e),
+                    RedactedErrors.mask(e.getMessage()),
+                    RedactedErrors.redacted(e, RedactedErrors.mask(e.getMessage())));
 
             JobInstance update = new JobInstance();
             update.setId(jobInstanceId);
@@ -313,7 +322,11 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                 log.info("Batch execute success: jobDefinitionId={}, jobInstanceId={}",
                         jobDefinitionId, jobInstanceId);
             } catch (Exception e) {
-                log.error("Batch execute failed: jobDefinitionId={}", jobDefinitionId, e);
+                log.error("Batch execute failed: jobDefinitionId={}, errorType={}, error={}",
+                        jobDefinitionId,
+                        RedactedErrors.typeOf(e),
+                        RedactedErrors.mask(e.getMessage()),
+                        RedactedErrors.redacted(e, RedactedErrors.mask(e.getMessage())));
                 result.addFailed(jobDefinitionId, null, getErrorMessage(e));
             }
         }
@@ -328,7 +341,11 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         try {
             jobSubmitter.submit(instance);
         } catch (Exception e) {
-            log.error("Asynchronous batch job submission failed: instanceId={}", instance.getId(), e);
+            log.error("Asynchronous batch job submission failed: instanceId={}, errorType={}, error={}",
+                    instance.getId(),
+                    RedactedErrors.typeOf(e),
+                    RedactedErrors.mask(e.getMessage()),
+                    RedactedErrors.redacted(e, RedactedErrors.mask(e.getMessage())));
             try {
                 JobInstanceVO latest = instanceService.selectById(instance.getId());
                 if (latest != null
@@ -434,8 +451,12 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                     log.info("Batch pause success: jobDefinitionId={}, jobInstanceId={}",
                             jobDefinitionId, jobInstanceId);
                 } catch (Exception e) {
-                    log.error("Batch pause failed: jobDefinitionId={}, instanceId={}",
-                            jobDefinitionId, instance.getId(), e);
+                    log.error("Batch pause failed: jobDefinitionId={}, instanceId={}, "
+                                    + "errorType={}, error={}",
+                            jobDefinitionId, instance.getId(),
+                            RedactedErrors.typeOf(e),
+                            RedactedErrors.mask(e.getMessage()),
+                            RedactedErrors.redacted(e, RedactedErrors.mask(e.getMessage())));
                     result.addFailed(jobDefinitionId, instance.getId(), getErrorMessage(e));
                 }
             }

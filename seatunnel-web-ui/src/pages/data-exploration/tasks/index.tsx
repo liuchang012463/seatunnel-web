@@ -415,6 +415,8 @@ const DataExplorationTasksPage: React.FC = () => {
           const scan = responses[index]?.data?.scan;
           if (!scan?.status) return false;
           if (scan.status === 'QUEUED' || scan.status === 'RUNNING') return false;
+          // A scan that never reported a run time did not start yet.
+          if (parseServerTime(scan.lastRunTime) === undefined) return false;
           return isCurrentRun(scan, scanningIds[id]);
         });
 
@@ -596,14 +598,15 @@ const DataExplorationTasksPage: React.FC = () => {
       return;
     }
     const recoveringSync = record.metadataSyncStatus === 'ERROR';
-    markScanPending(id, Date.now());
     try {
       const response = await triggerDataSourceScan(record.id);
       if (response.code !== 0) {
         message.error(response.message || '元数据扫描暂不可触发');
-        clearScanPending(id);
         return;
       }
+      // The marker is set once the trigger was accepted: a status read that wins the race
+      // would otherwise clear it again while the scan is still running.
+      markScanPending(id, Date.now());
       message.success(
         recoveringSync
           ? '已重新发起元数据同步，就绪后将自动扫描'
@@ -612,7 +615,6 @@ const DataExplorationTasksPage: React.FC = () => {
       void load();
     } catch (error: any) {
       message.error(errorMessage(error, '元数据扫描暂不可触发'));
-      clearScanPending(id);
     }
   };
 

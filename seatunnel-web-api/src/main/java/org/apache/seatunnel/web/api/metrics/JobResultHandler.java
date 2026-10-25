@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.api.alarm.event.JobStatusChangedEvent;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.utils.JobUtils;
+import org.apache.seatunnel.web.api.utils.RedactedErrors;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.common.enums.JobResult;
 import org.apache.seatunnel.web.common.enums.JobStatus;
@@ -84,22 +85,9 @@ public class JobResultHandler {
         // message and the stack frames of the failure instead of the original exception.
         log.error("Job failed. instanceId={}, errorType={}, error={}",
                 jobInstanceId,
-                error == null ? null : error.getClass().getName(),
+                RedactedErrors.typeOf(error),
                 message,
-                redacted(error, message));
-    }
-
-    /**
-     * A throwable that carries the masked message and the stack frames of the original failure
-     * but neither its message nor its cause chain, so the engine text never reaches the log.
-     */
-    private static Throwable redacted(Throwable error, String maskedMessage) {
-        if (error == null) {
-            return null;
-        }
-        RuntimeException wrapper = new RuntimeException(maskedMessage);
-        wrapper.setStackTrace(error.getStackTrace());
-        return wrapper;
+                RedactedErrors.redacted(error, message));
     }
 
     /**

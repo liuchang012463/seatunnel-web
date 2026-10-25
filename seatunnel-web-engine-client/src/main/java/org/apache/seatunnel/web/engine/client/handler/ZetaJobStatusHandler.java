@@ -5,6 +5,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.common.utils.EngineJobStatusParser;
 import org.apache.seatunnel.web.engine.client.modal.ZetaJobStatusResolveResult;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.springframework.stereotype.Component;
@@ -35,17 +36,6 @@ public class ZetaJobStatusHandler {
             "CANCELLED",
             "SAVEPOINT_DONE",
             "UNKNOWABLE"
-    );
-
-    /**
-     * Local statuses the Engine reports under their own name and that carry no explicit rule in
-     * {@link #mapToLocalStatus(String)}. Every other local status is a Web-side state the Engine
-     * never reports, so accepting it from the Engine would turn an unknown Engine vocabulary into
-     * a final state.
-     */
-    private static final List<JobStatus> ENGINE_OWN_STATUSES = Arrays.asList(
-            JobStatus.SAVEPOINT_DONE,
-            JobStatus.UNKNOWABLE
     );
 
     @Resource
@@ -382,56 +372,11 @@ public class ZetaJobStatusHandler {
      *     failing a job that is still alive.
      */
     private JobStatus mapToLocalStatus(String engineStatus) {
-        if (StringUtils.isBlank(engineStatus)) {
-            return null;
-        }
-
-        String normalized = engineStatus.trim().toUpperCase();
-
-        if ("INITIALIZING".equals(normalized)
-                || "CREATED".equals(normalized)
-                || "PENDING".equals(normalized)
-                || "SCHEDULED".equals(normalized)
-                || "RUNNING".equals(normalized)
-                || "FAILING".equals(normalized)
-                || "DOING_SAVEPOINT".equals(normalized)
-                || "CANCELING".equals(normalized)
-                || "CANCELLING".equals(normalized)
-                || "STOPPING".equals(normalized)) {
-            return JobStatus.RUNNING;
-        }
-
-        if ("FINISHED".equals(normalized)
-                || "SUCCESS".equals(normalized)
-                || "SUCCEEDED".equals(normalized)
-                || "DONE".equals(normalized)
-                || "COMPLETED".equals(normalized)) {
-            return JobStatus.FINISHED;
-        }
-
-        if ("FAILED".equals(normalized)
-                || "FAILURE".equals(normalized)) {
-            return JobStatus.FAILED;
-        }
-
-        if ("CANCELED".equals(normalized)
-                || "CANCELLED".equals(normalized)
-                || "STOPPED".equals(normalized)) {
-            return JobStatus.CANCELED;
-        }
-
-        try {
-            JobStatus parsed = JobStatus.valueOf(normalized);
-            if (ENGINE_OWN_STATUSES.contains(parsed)) {
-                return parsed;
-            }
-        } catch (Exception e) {
+        JobStatus status = EngineJobStatusParser.parse(engineStatus);
+        if (status == null && StringUtils.isNotBlank(engineStatus)) {
             log.warn("Unknown Zeta job status: {}", engineStatus);
-            return null;
         }
-
-        log.warn("Unknown Zeta job status: {}", engineStatus);
-        return null;
+        return status;
     }
 
     private boolean isRunningLike(JobStatus status) {

@@ -4,6 +4,8 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.api.utils.RedactedErrors;
+import org.apache.seatunnel.web.common.utils.EngineJobStatusParser;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -83,6 +85,20 @@ public class JobResultWatcher {
                 }
 
                 JobStatus status = parseJobStatus(statusStr);
+                if (status == null) {
+                    // The Engine reports a status this web does not know. The job may still be
+                    // running, so it keeps being polled instead of being failed.
+                    log.warn(
+                            "Unknown Zeta job status, instanceId={}, clientId={}, engineId={}, engineStatus={}",
+                            instanceId,
+                            clientId,
+                            engineId,
+                            statusStr
+                    );
+
+                    sleepQuietly();
+                    continue;
+                }
 
                 log.debug(
                         "Polling Zeta job status, instanceId={}, clientId={}, engineId={}, engineStatus={}, localStatus={}",
@@ -105,21 +121,25 @@ public class JobResultWatcher {
             Thread.currentThread().interrupt();
 
             log.warn(
-                    "REST job result watcher interrupted, instanceId={}, clientId={}, engineId={}",
+                    "REST job result watcher interrupted, instanceId={}, clientId={}, engineId={}, errorType={}, error={}",
                     instanceId,
                     clientId,
                     engineId,
-                    e
+                    RedactedErrors.typeOf(e),
+                    RedactedErrors.mask(e.getMessage()),
+                    RedactedErrors.redacted(e, RedactedErrors.mask(e.getMessage()))
             );
 
             resultHandler.handleFailure(instanceId, e);
         } catch (Exception e) {
             log.warn(
-                    "REST job result watcher failed, instanceId={}, clientId={}, engineId={}",
+                    "REST job result watcher failed, instanceId={}, clientId={}, engineId={}, errorType={}, error={}",
                     instanceId,
                     clientId,
                     engineId,
-                    e
+                    RedactedErrors.typeOf(e),
+                    RedactedErrors.mask(e.getMessage()),
+                    RedactedErrors.redacted(e, RedactedErrors.mask(e.getMessage()))
             );
 
             resultHandler.handleFailure(instanceId, e);
@@ -237,33 +257,18 @@ public class JobResultWatcher {
         Thread.sleep(pollIntervalMs);
     }
 
+    /**
+     * The local status of the Engine status.
+     *
+     * @return the local status, or {@code null} when the Engine reports a status this web does
+     *     not know. An unknown status is not evidence of a final state, so the job keeps being
+     *     polled instead of being failed.
+     */
     private JobStatus parseJobStatus(String value) {
-        if (StringUtils.isBlank(value)) {
-            return JobStatus.UNKNOWABLE;
-        }
-
-        String normalized = value.trim().toUpperCase();
-
-        if ("SUCCESS".equals(normalized)
-                || "SUCCEEDED".equals(normalized)
-                || "DONE".equals(normalized)) {
-            return JobStatus.FINISHED;
-        }
-
-        if ("FAILURE".equals(normalized)) {
-            return JobStatus.FAILED;
-        }
-
-        if ("CANCELLED".equals(normalized)
-                || "STOPPED".equals(normalized)) {
-            return JobStatus.CANCELED;
-        }
-
-        try {
-            return JobStatus.valueOf(normalized);
-        } catch (Exception e) {
+        JobStatus status = EngineJobStatusParser.parse(value);
+        if (status == null && StringUtils.isNotBlank(value)) {
             log.warn("Unknown Zeta job status: {}", value);
-            return JobStatus.UNKNOWABLE;
         }
+        return status;
     }
 }

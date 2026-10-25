@@ -5,6 +5,7 @@ import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.api.utils.JobUtils;
+import org.apache.seatunnel.web.api.utils.RedactedErrors;
 import org.apache.seatunnel.web.common.enums.JobResult;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.dao.entity.StreamingJobInstance;
@@ -37,7 +38,9 @@ public class StreamingJobResultHandler {
     public void handleCanceled(Long jobInstanceId, String message) {
         String finalMessage = message == null || message.trim().isEmpty()
                 ? "Streaming job was canceled."
-                : message;
+                // The engine error text can carry connector credentials, so it is masked before
+                // it reaches the instance row.
+                : RedactedErrors.mask(message);
 
         updateStatus(jobInstanceId, JobStatus.CANCELED, finalMessage);
         log.info("Streaming job canceled. instanceId={}, message={}", jobInstanceId, finalMessage);
@@ -59,22 +62,9 @@ public class StreamingJobResultHandler {
         // message and the stack frames of the failure instead of the original exception.
         log.error("Streaming job failed. instanceId={}, errorType={}, error={}",
                 jobInstanceId,
-                error == null ? null : error.getClass().getName(),
+                RedactedErrors.typeOf(error),
                 message,
-                redacted(error, message));
-    }
-
-    /**
-     * A throwable that carries the masked message and the stack frames of the original failure
-     * but neither its message nor its cause chain, so the engine text never reaches the log.
-     */
-    private static Throwable redacted(Throwable error, String maskedMessage) {
-        if (error == null) {
-            return null;
-        }
-        RuntimeException wrapper = new RuntimeException(maskedMessage);
-        wrapper.setStackTrace(error.getStackTrace());
-        return wrapper;
+                RedactedErrors.redacted(error, message));
     }
 
     public void handleFailure(Long jobInstanceId, JobResult jobResult) {

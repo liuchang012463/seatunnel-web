@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.metrics;
 
+import org.apache.seatunnel.web.api.utils.RedactedErrors;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedWriter;

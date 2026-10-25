@@ -1,3 +1,4 @@
+import { useIntl, type IntlShape } from "react-intl";
 import { message, Popover } from "antd";
 import React, { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
@@ -9,18 +10,21 @@ interface TaskStatusProps {
   errorMessage?: string;
 }
 
-const getStatusConfig = (status?: string) => {
+const getStatusConfig = (status: string | undefined, intl: IntlShape) => {
   const view = getJobStatusView(status, "batch");
 
   return {
     tone: view.tone,
-    label: view.label.defaultMessage,
+    // The run history renders the same label through intl, so the list and the history must
+    // use the same text in every locale.
+    label: intl.formatMessage({ id: view.label.id, defaultMessage: view.label.defaultMessage }),
     errorDetail: view.errorDetail,
   };
 };
 
 const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
-  const config = getStatusConfig(status);
+  const intl = useIntl();
+  const config = getStatusConfig(status, intl);
   const [logOpen, setLogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<number | null>(null);
