@@ -30,26 +30,16 @@ public interface JobInstanceDao extends IDao<JobInstance> {
 
     /**
      * Records a successful submission only while the instance is still STARTING. A late response
-     * must not resurrect an instance that the recovery scheduler or an operator already resolved.
+     * must not resurrect an instance that the recovery scheduler already resolved.
      *
      * @return true when the row was still STARTING and has been updated
      */
     boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date startTime);
 
     /**
-     * Applies a status transition only when the row is still in the expected status.
-     *
-     * @return true when the transition was applied
-     */
-    boolean updateStatusIfCurrent(Long instanceId,
-                                  JobStatus expectedStatus,
-                                  JobStatus targetStatus,
-                                  String errorMessage);
-
-    /**
      * Applies an Engine-reported final status only while the instance is still running-like.
-     * A late success must not overwrite a terminal decision already made by an operator or by the
-     * recovery scheduler (for example, an ambiguous submission resolved as FAILED).
+     * A late success must not overwrite a terminal decision already made by the recovery
+     * scheduler (for example, an ambiguous submission resolved as FAILED).
      *
      * @return true when the final status was applied
      */

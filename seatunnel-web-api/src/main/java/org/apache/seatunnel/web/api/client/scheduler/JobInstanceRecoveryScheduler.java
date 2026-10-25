@@ -166,7 +166,7 @@ public class JobInstanceRecoveryScheduler {
             return;
         }
 
-        JobStatus targetStatus = result.getLocalStatus();
+        JobStatus targetStatus = adjustNotFoundStatus(instance.getJobStatus(), result);
 
         String errorMessage = buildRecoveryMessage(
                 instance.getId(),
@@ -213,7 +213,7 @@ public class JobInstanceRecoveryScheduler {
             return;
         }
 
-        JobStatus targetStatus = result.getLocalStatus();
+        JobStatus targetStatus = adjustNotFoundStatus(instance.getJobStatus(), result);
 
         String errorMessage = buildRecoveryMessage(
                 instance.getId(),
@@ -289,7 +289,10 @@ public class JobInstanceRecoveryScheduler {
             return true;
         }
 
-        if (JobStatus.UNKNOWABLE.equals(localStatus)) {
+        // An unresolved status (the Engine was unreachable) is retried next round. A status the
+        // Engine explicitly reports as UNKNOWABLE is final and must be reconciled, otherwise the
+        // instance blocks its definition forever.
+        if (JobStatus.UNKNOWABLE.equals(localStatus) && !result.isFound()) {
             log.warn(
                     "Skip recovering job instance because Zeta status is unknown, instanceId={}, engineJobId={}, message={}",
                     instanceId,
@@ -310,6 +313,26 @@ public class JobInstanceRecoveryScheduler {
         }
 
         return false;
+    }
+
+    /**
+     * A job the Engine no longer knows did not necessarily fail: a canceled job and a
+     * savepoint-stopped job are cleaned up by the Engine too. Map those two local intents to
+     * their real terminal state instead of writing FAILED.
+     */
+    private static JobStatus adjustNotFoundStatus(
+            JobStatus currentStatus, ZetaJobStatusResolveResult result) {
+        JobStatus targetStatus = result.getLocalStatus();
+        if (!"NOT_FOUND".equals(result.getEngineStatus())) {
+            return targetStatus;
+        }
+        if (JobStatus.CANCELING.equals(currentStatus)) {
+            return JobStatus.CANCELED;
+        }
+        if (JobStatus.DOING_SAVEPOINT.equals(currentStatus)) {
+            return JobStatus.SAVEPOINT_DONE;
+        }
+        return targetStatus;
     }
 
     private String buildRecoveryMessage(Long instanceId,

@@ -33,6 +33,7 @@ public class ZetaJobStatusHandler {
             "FAILED",
             "CANCELED",
             "CANCELLED",
+            "SAVEPOINT_DONE",
             "UNKNOWABLE"
     );
 
@@ -46,7 +47,7 @@ public class ZetaJobStatusHandler {
             );
         }
 
-        if (engineJobId == null ) {
+        if (StringUtils.isBlank(engineJobId)) {
             return ZetaJobStatusResolveResult.notFound(
                     "engineJobId is empty, cannot reconcile Zeta job status"
             );
@@ -156,12 +157,23 @@ public class ZetaJobStatusHandler {
         }
 
         JobStatus localStatus = mapToLocalStatus(engineStatus);
-        if (localStatus == null || JobStatus.UNKNOWABLE.equals(localStatus)) {
+        if (localStatus == null) {
             return ZetaJobStatusResolveResult.unknown(
                     "Unknown Zeta job status from job-info, engineJobId="
                             + engineJobId
                             + ", engineStatus="
                             + engineStatus
+            );
+        }
+        if (JobStatus.UNKNOWABLE.equals(localStatus)) {
+            // The Engine answered and reports the job as unknowable: this is a final status, not
+            // a transport failure, so the caller may reconcile it instead of retrying forever.
+            return ZetaJobStatusResolveResult.finished(
+                    localStatus,
+                    engineStatus,
+                    readErrorMsg(jobInfo),
+                    "Zeta job status is UNKNOWABLE according to job-info, engineJobId="
+                            + engineJobId
             );
         }
 

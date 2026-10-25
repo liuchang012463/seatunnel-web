@@ -53,16 +53,6 @@ public interface BatchJobInstanceService {
     boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date startTime);
 
     /**
-     * Applies a status transition only when the instance is still in the expected status.
-     *
-     * @return true when the transition was applied
-     */
-    boolean updateStatusIfCurrent(Long instanceId,
-                                  JobStatus expectedStatus,
-                                  JobStatus targetStatus,
-                                  String errorMessage);
-
-    /**
      * Applies an Engine-reported final status only while the instance is still running-like.
      *
      * @return true when the final status was applied

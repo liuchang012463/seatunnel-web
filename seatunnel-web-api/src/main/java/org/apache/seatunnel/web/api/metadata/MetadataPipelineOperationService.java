@@ -347,6 +347,11 @@ public class MetadataPipelineOperationService {
         }
         try {
             openMetadataClient.assertFixedVersion();
+            if (hasRunningPipeline(binding)) {
+                // A previous trigger was accepted but its response was lost. Keeping the stage
+                // lets the next refresh observe that run instead of starting a duplicate one.
+                return true;
+            }
             DataSource dataSource = dataSourceDao.queryById(binding.getDataSourceId());
             if (dataSource == null) {
                 return false;
@@ -391,6 +396,9 @@ public class MetadataPipelineOperationService {
         }
         try {
             openMetadataClient.assertFixedVersion();
+            if (hasRunningPipeline(binding)) {
+                return true;
+            }
             openMetadataClient.deployIngestionPipeline(binding.getOmProfilerPipelineId());
             openMetadataClient.enableIngestionPipeline(binding.getOmProfilerPipelineId());
             openMetadataClient.triggerIngestionPipeline(binding.getOmProfilerPipelineId());
@@ -946,17 +954,27 @@ public class MetadataPipelineOperationService {
     }
 
     private void ensureNoRunningPipeline(MetadataSourceBinding binding) {
-        if (isRunning(binding.getScanStatus()) || isRunning(binding.getProfileStatus())) {
+        if (hasRunningPipeline(binding)) {
             throw invalid("a scan or exploration is already running");
+        }
+    }
+
+    /**
+     * True when the binding already has a metadata, profiler or sample run in flight. The initial
+     * exploration stages use this to avoid starting a second run when a previous trigger was
+     * accepted but its response was lost.
+     */
+    boolean hasRunningPipeline(MetadataSourceBinding binding) {
+        if (isRunning(binding.getScanStatus()) || isRunning(binding.getProfileStatus())) {
+            return true;
         }
         List<OpenMetadataPipelineRun> scanRuns = runs(binding.getOmMetadataPipelineFqn());
         List<OpenMetadataPipelineRun> profileRuns = runs(binding.getOmProfilerPipelineFqn());
         List<OpenMetadataPipelineRun> sampleRuns = runs(
                 MetadataStableName.autoClassificationPipelineFqn(binding.getDataSourceId()));
-        if (isRunning(latestStatus(scanRuns)) || isRunning(latestStatus(profileRuns))
-                || isRunning(latestStatus(sampleRuns))) {
-            throw invalid("a scan or exploration is already running");
-        }
+        return isRunning(latestStatus(scanRuns))
+                || isRunning(latestStatus(profileRuns))
+                || isRunning(latestStatus(sampleRuns));
     }
 
     /** The local profile QUEUED flag belongs to the reservation being executed. */

@@ -54,7 +54,8 @@ public class JobInstance {
     private Long clientId;
 
     /**
-     * Engine-side job id
+     * Engine-side job id. The web reserves it before submission so a lost submit response can be
+     * reconciled without asking the user or submitting a duplicate job.
      */
     private String engineJobId;
 

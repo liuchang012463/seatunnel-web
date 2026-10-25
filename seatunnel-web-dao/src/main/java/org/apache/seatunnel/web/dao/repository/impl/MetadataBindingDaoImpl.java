@@ -186,6 +186,25 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
     }
 
     @Override
+    public boolean revertInitialRun(Long id,
+                                    Long expectedVersion,
+                                    String stage,
+                                    String baselineId,
+                                    Date startedAt) {
+        if (id == null || expectedVersion == null) {
+            return false;
+        }
+        return metadataSourceBindingMapper.update(null, new LambdaUpdateWrapper<MetadataSourceBinding>()
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getId), id)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getInitialRunStage), stage)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getInitialRunBaselineId), baselineId)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getInitialRunStartedAt), startedAt)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion + 1L)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getUpdateTime), new Date())) > 0;
+    }
+
+    @Override
     public boolean resetForInstanceChange(MetadataSourceBinding binding, Long expectedVersion) {
         if (binding == null || binding.getId() == null || expectedVersion == null) {
             return false;

@@ -115,6 +115,7 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         }
 
         boolean submissionQueued = false;
+        ScheduledFuture<?>[] queuedHeartbeat = new ScheduledFuture<?>[1];
         try {
             if (instanceService.existsRunningInstance(jobDefineId)) {
                 throw new ServiceException(
@@ -170,10 +171,21 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             }
 
             try {
+                /*
+                 * Refresh the heartbeat before the task reaches an executor thread: a submission
+                 * can wait in the queue for minutes, and the recovery scheduler must not mistake
+                 * that wait for a lost submission.
+                 */
+                queuedHeartbeat[0] = submissionHeartbeat.scheduleAtFixedRate(
+                        () -> instanceService.touchStartingInstance(instance.getId()),
+                        60, 60, TimeUnit.SECONDS);
                 batchJobSubmitExecutor.execute(
-                        () -> submitBatchJob(instance, incrementalExecution, jobDefineId));
+                        () -> submitBatchJob(
+                                instance, incrementalExecution, jobDefineId, queuedHeartbeat[0]));
                 submissionQueued = true;
             } catch (RuntimeException e) {
+                cancelHeartbeat(queuedHeartbeat[0]);
+                queuedHeartbeat[0] = null;
                 log.error("Queue batch job submission failed: jobDefineId={}, instanceId={}",
                         jobDefineId, instance.getId(), e);
                 failInstance(instance, e);
@@ -195,6 +207,7 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
              * stays blocked for the lifetime of the JVM.
              */
             if (!submissionQueued) {
+                cancelHeartbeat(queuedHeartbeat[0]);
                 submittingDefinitionIds.remove(jobDefineId);
             }
         }
@@ -306,16 +319,9 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
 
     private void submitBatchJob(JobInstanceVO instance,
                                 IncrementalBatchExecution incrementalExecution,
-                                Long jobDefinitionId) {
-        ScheduledFuture<?> heartbeat = null;
+                                Long jobDefinitionId,
+                                ScheduledFuture<?> heartbeat) {
         try {
-            /*
-             * A driver upload can take several minutes. Refresh the instance heartbeat while the
-             * submit is in flight so recovery only treats a genuinely lost submission as stale.
-             */
-            heartbeat = submissionHeartbeat.scheduleAtFixedRate(
-                    () -> instanceService.touchStartingInstance(instance.getId()),
-                    60, 60, TimeUnit.SECONDS);
             jobSubmitter.submit(instance);
         } catch (Exception e) {
             log.error("Asynchronous batch job submission failed: instanceId={}", instance.getId(), e);
@@ -340,10 +346,14 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                 }
             }
         } finally {
-            if (heartbeat != null) {
-                heartbeat.cancel(false);
-            }
+            cancelHeartbeat(heartbeat);
             submittingDefinitionIds.remove(jobDefinitionId);
+        }
+    }
+
+    private static void cancelHeartbeat(ScheduledFuture<?> heartbeat) {
+        if (heartbeat != null) {
+            heartbeat.cancel(false);
         }
     }
 

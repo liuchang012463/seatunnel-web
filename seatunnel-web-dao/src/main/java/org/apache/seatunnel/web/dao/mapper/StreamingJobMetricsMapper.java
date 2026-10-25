@@ -135,10 +135,10 @@ public interface StreamingJobMetricsMapper extends BaseMapper<StreamingJobMetric
             SELECT COALESCE((SELECT SUM(records_delta) FROM sample_deltas WHERE is_in_range = 1), 0) AS totalRecords,
                    COALESCE((SELECT SUM(bytes_delta) FROM sample_deltas WHERE is_in_range = 1), 0) AS totalBytes,
                    COUNT(1) AS totalTasks,
-                   COALESCE(SUM(CASE WHEN UPPER(job_status) = 'FINISHED' THEN 1 ELSE 0 END), 0) AS successTasks,
+                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('FINISHED', 'SUCCESS') THEN 1 ELSE 0 END), 0) AS successTasks,
                    COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('FAILED', 'UNKNOWABLE') THEN 1 ELSE 0 END), 0) AS failedTasks,
-                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING') THEN 1 ELSE 0 END), 0) AS runningTasks,
-                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('CANCELED', 'SAVEPOINT_DONE') THEN 1 ELSE 0 END), 0) AS stoppedTasks,
+                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING') THEN 1 ELSE 0 END), 0) AS runningTasks,
+                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('CANCELED', 'CANCELLED', 'SAVEPOINT_DONE') THEN 1 ELSE 0 END), 0) AS stoppedTasks,
                    COALESCE(AVG(record_delay), 0) AS avgRecordDelay
             FROM task_summary
             """)

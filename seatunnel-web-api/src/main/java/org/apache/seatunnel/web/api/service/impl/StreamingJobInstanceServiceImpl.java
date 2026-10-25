@@ -485,5 +485,8 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
         if (vo.getRuntimeConfig() != null) {
             vo.setRuntimeConfig(HoconSensitiveMaskUtil.maskSensitiveInfo(vo.getRuntimeConfig()));
         }
+        if (vo.getErrorMessage() != null) {
+            vo.setErrorMessage(HoconSensitiveMaskUtil.maskSensitiveText(vo.getErrorMessage()));
+        }
     }
 }

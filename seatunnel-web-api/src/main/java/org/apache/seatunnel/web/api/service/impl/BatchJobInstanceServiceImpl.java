@@ -311,24 +311,6 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
     }
 
     @Override
-    public boolean updateStatusIfCurrent(Long instanceId,
-                                         JobStatus expectedStatus,
-                                         JobStatus targetStatus,
-                                         String errorMessage) {
-        if (instanceId == null || instanceId <= 0 || expectedStatus == null || targetStatus == null) {
-            return false;
-        }
-        try {
-            return jobInstanceDao.updateStatusIfCurrent(
-                    instanceId, expectedStatus, targetStatus, errorMessage);
-        } catch (Exception e) {
-            log.error("Update status conditionally failed, id={}, expected={}, target={}",
-                    instanceId, expectedStatus, targetStatus, e);
-            throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
-        }
-    }
-
-    @Override
     public boolean updateFinalStatusIfRunningLike(Long instanceId,
                                                   JobStatus targetStatus,
                                                   String errorMessage) {
@@ -512,8 +494,9 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
 
     /**
      * Stores the source/target identifiers that this instance is actually submitted with. The
-     * definition may be edited while the asynchronous submission and lineage write are in flight,
-     * so the lineage service must not read those values back from the definition row.
+     * definition may be edited while the asynchronous submission and lineage event publication
+     * are in flight, so the lineage service must not read those values back from the definition
+     * row.
      */
     private void captureSubmittedTableSnapshot(JobInstance instance, Long jobDefinitionId) {
         if (instance == null || jobDefinitionId == null) {
@@ -622,6 +605,9 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
 
         if (vo.getRuntimeConfig() != null) {
             vo.setRuntimeConfig(HoconSensitiveMaskUtil.maskSensitiveInfo(vo.getRuntimeConfig()));
+        }
+        if (vo.getErrorMessage() != null) {
+            vo.setErrorMessage(HoconSensitiveMaskUtil.maskSensitiveText(vo.getErrorMessage()));
         }
     }
 }

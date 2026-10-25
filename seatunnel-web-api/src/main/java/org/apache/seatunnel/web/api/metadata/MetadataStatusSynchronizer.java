@@ -288,15 +288,18 @@ public class MetadataStatusSynchronizer {
             String previousBaselineId,
             Date previousStartedAt) {
         long version = binding.getVersion();
+        // A plain entity update skips null fields, which would leave this stage's baseline behind
+        // when the previous stage had none. The DAO writes the three columns explicitly.
+        if (!metadataBindingDao.revertInitialRun(
+                binding.getId(), version, previousStage, previousBaselineId, previousStartedAt)) {
+            log.warn("Could not revert initial run stage after trigger failure: dataSourceId={}",
+                    binding.getDataSourceId());
+            return;
+        }
         binding.setInitialRunStage(previousStage);
         binding.setInitialRunBaselineId(previousBaselineId);
         binding.setInitialRunStartedAt(previousStartedAt);
         binding.setVersion(version + 1L);
-        binding.initUpdate();
-        if (!metadataBindingDao.updateIfVersion(binding, version)) {
-            log.warn("Could not revert initial run stage after trigger failure: dataSourceId={}",
-                    binding.getDataSourceId());
-        }
     }
 
     private static boolean runOutcomeChanged(

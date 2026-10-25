@@ -72,6 +72,44 @@ class JobInstanceRecoverySchedulerTest {
     }
 
     @Test
+    void absentJobThatWasBeingCanceledBecomesCanceled() {
+        JobInstance instance = instance(new Date(0));
+        instance.setJobStatus(JobStatus.CANCELING);
+        when(instances.listRunningLikeInstances()).thenReturn(List.of(instance));
+        when(engine.resolve(2L, "101")).thenReturn(ZetaJobStatusResolveResult.notFound("absent"));
+
+        scheduler().recoverPeriodically();
+
+        verify(results).handleFinalStatus(any(JobRuntimeContext.class), eq(JobStatus.CANCELED), any());
+    }
+
+    @Test
+    void absentJobThatWasTakingASavepointBecomesSavepointDone() {
+        JobInstance instance = instance(new Date(0));
+        instance.setJobStatus(JobStatus.DOING_SAVEPOINT);
+        when(instances.listRunningLikeInstances()).thenReturn(List.of(instance));
+        when(engine.resolve(2L, "101")).thenReturn(ZetaJobStatusResolveResult.notFound("absent"));
+
+        scheduler().recoverPeriodically();
+
+        verify(results).handleFinalStatus(
+                any(JobRuntimeContext.class), eq(JobStatus.SAVEPOINT_DONE), any());
+    }
+
+    @Test
+    void confirmedUnknowableJobIsReconciledInsteadOfSkippedForever() {
+        when(instances.listRunningLikeInstances()).thenReturn(List.of(instance(new Date(0))));
+        when(engine.resolve(2L, "101")).thenReturn(
+                ZetaJobStatusResolveResult.finished(
+                        JobStatus.UNKNOWABLE, "UNKNOWABLE", null, "engine lost the job"));
+
+        scheduler().recoverPeriodically();
+
+        verify(results).handleFinalStatus(
+                any(JobRuntimeContext.class), eq(JobStatus.UNKNOWABLE), any());
+    }
+
+    @Test
     void inFlightSubmissionIsNotReconciledBeforeHeartbeatExpires() {
         when(instances.listRunningLikeInstances()).thenReturn(List.of(instance(new Date())));
 

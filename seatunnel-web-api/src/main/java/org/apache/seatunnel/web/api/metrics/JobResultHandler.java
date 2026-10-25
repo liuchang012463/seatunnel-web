@@ -99,7 +99,7 @@ public class JobResultHandler {
                 "Job failed. instanceId={}, status={}, error={}",
                 jobInstanceId,
                 engineStatus,
-                message
+                normalizeErrorMessage(message)
         );
     }
 
@@ -278,19 +278,20 @@ public class JobResultHandler {
     private boolean updateStatus(Long jobInstanceId,
                                  JobStatus status,
                                  String errorMessage) {
+        String safeErrorMessage = normalizeErrorMessage(status, errorMessage);
         boolean updated = instanceService.updateFinalStatusIfRunningLike(
-                jobInstanceId, status, normalizeErrorMessage(status, errorMessage));
+                jobInstanceId, status, safeErrorMessage);
         if (!updated) {
             return false;
         }
 
-        publishStatusChanged(jobInstanceId, status, errorMessage);
+        publishStatusChanged(jobInstanceId, status, safeErrorMessage);
 
         log.info(
                 "Batch job instance final status updated, instanceId={}, status={}, errorMessage={}",
                 jobInstanceId,
                 status,
-                errorMessage
+                safeErrorMessage
         );
         return true;
     }
@@ -327,6 +328,10 @@ public class JobResultHandler {
 
         if (JobStatus.CANCELED.equals(engineStatus)) {
             return JobStatus.CANCELED;
+        }
+
+        if (JobStatus.SAVEPOINT_DONE.equals(engineStatus)) {
+            return JobStatus.SAVEPOINT_DONE;
         }
 
         return JobStatus.FAILED;
@@ -372,6 +377,9 @@ public class JobResultHandler {
             return "Unknown error";
         }
 
-        return JobUtils.getJobInstanceErrorMessage(errorMessage);
+        // The Engine may echo connector options (passwords, tokens) in its failure message; the
+        // same masking the throwable path uses applies here before the text reaches the UI.
+        return JobUtils.getJobInstanceErrorMessage(
+                HoconSensitiveMaskUtil.maskSensitiveText(errorMessage));
     }
 }

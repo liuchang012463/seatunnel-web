@@ -163,28 +163,6 @@ public class JobInstanceDaoImpl
     }
 
     @Override
-    public boolean updateStatusIfCurrent(Long instanceId,
-                                         JobStatus expectedStatus,
-                                         JobStatus targetStatus,
-                                         String errorMessage) {
-        Date now = new Date();
-        LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
-                .eq(MyBatisColumn.getter(JobInstance::getJobStatus), expectedStatus)
-                .set(MyBatisColumn.getter(JobInstance::getJobStatus), targetStatus)
-                .set(MyBatisColumn.getter(JobInstance::getUpdateTime), now);
-
-        if (errorMessage != null && !errorMessage.isBlank()) {
-            wrapper.set(MyBatisColumn.getter(JobInstance::getErrorMessage), truncate(errorMessage, 2000));
-        }
-        if (targetStatus.isEndState()) {
-            wrapper.set(MyBatisColumn.getter(JobInstance::getEndTime), now);
-        }
-
-        return jobInstanceMapper.update(null, wrapper) > 0;
-    }
-
-    @Override
     public boolean updateFinalStatusIfRunningLike(Long instanceId,
                                                   JobStatus targetStatus,
                                                   String errorMessage) {

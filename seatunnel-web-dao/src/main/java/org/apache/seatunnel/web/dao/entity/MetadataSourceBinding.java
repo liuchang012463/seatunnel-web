@@ -41,7 +41,7 @@ public class MetadataSourceBinding extends BaseEntity {
 
     private String omProfilerPipelineFqn;
 
-    /** Operator decision for OpenMetadata sample-data collection; off by default. */
+    /** Whether OpenMetadata sample-data collection is enabled; new bindings default to on. */
     private Boolean sampleDataEnabled;
 
     /**

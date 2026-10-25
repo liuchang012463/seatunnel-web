@@ -40,6 +40,16 @@ public interface MetadataBindingDao extends IDao<MetadataSourceBinding> {
     boolean updateIfVersion(MetadataSourceBinding binding, Long expectedVersion);
 
     /**
+     * Reverts the initial exploration stage. The baseline id and start time are cleared
+     * explicitly because an entity update skips null fields.
+     */
+    boolean revertInitialRun(Long id,
+                             Long expectedVersion,
+                             String stage,
+                             String baselineId,
+                             Date startedAt);
+
+    /**
      * Writes one binding reset for a changed OpenMetadata instance. An entity update skips null
      * fields, so the ids of the previous instance are cleared explicitly instead.
      */

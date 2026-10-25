@@ -42,6 +42,38 @@ class JobResultHandlerTest {
     }
 
     @Test
+    void savepointDoneIsPersistedAsItself() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        JobResultHandler handler = handler(instanceService);
+        when(instanceService.updateFinalStatusIfRunningLike(
+                eq(11L), eq(JobStatus.SAVEPOINT_DONE), anyString())).thenReturn(true);
+
+        handler.handleFinalStatus(11L, JobStatus.SAVEPOINT_DONE, "savepoint completed");
+
+        verify(instanceService).updateFinalStatusIfRunningLike(
+                eq(11L), eq(JobStatus.SAVEPOINT_DONE), anyString());
+        verify(instanceService, never()).updateFinalStatusIfRunningLike(
+                eq(11L), eq(JobStatus.FAILED), anyString());
+    }
+
+    @Test
+    void engineFailureMessageIsMaskedBeforeItIsPersisted() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        JobResultHandler handler = handler(instanceService);
+        when(instanceService.updateFinalStatusIfRunningLike(
+                eq(11L), eq(JobStatus.FAILED), anyString())).thenReturn(true);
+
+        handler.handleFinalStatus(
+                11L, JobStatus.FAILED, "connect failed; password=private-test-value");
+
+        verify(instanceService).updateFinalStatusIfRunningLike(
+                eq(11L),
+                eq(JobStatus.FAILED),
+                argThat(message -> message.contains("connect failed")
+                        && !message.contains("private-test-value")));
+    }
+
+    @Test
     void lateSubmissionSuccessDoesNotOverwriteAResolvedInstance() {
         BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
         JobResultHandler handler = handler(instanceService);

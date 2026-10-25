@@ -74,10 +74,10 @@
         SELECT COALESCE(SUM(t.inc_records), 0) AS totalRecords,
                COALESCE(SUM(t.inc_bytes), 0)   AS totalBytes,
                COALESCE(COUNT(1), 0)           AS totalTasks
-               , COALESCE(SUM(CASE WHEN UPPER(t.job_status) = 'FINISHED' THEN 1 ELSE 0 END), 0) AS successTasks
+               , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('FINISHED', 'SUCCESS') THEN 1 ELSE 0 END), 0) AS successTasks
                , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('FAILED', 'UNKNOWABLE') THEN 1 ELSE 0 END), 0) AS failedTasks
                , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING') THEN 1 ELSE 0 END), 0) AS runningTasks
-               , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('CANCELED', 'SAVEPOINT_DONE') THEN 1 ELSE 0 END), 0) AS stoppedTasks
+               , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('CANCELED', 'CANCELLED', 'SAVEPOINT_DONE') THEN 1 ELSE 0 END), 0) AS stoppedTasks
         FROM task_summary t
     </select>
 

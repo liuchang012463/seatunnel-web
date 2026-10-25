@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -115,13 +116,14 @@ class MetadataStatusSynchronizerTest {
         when(operationService.supportsSeparateSamplePipeline(any(MetadataSourceBinding.class))).thenReturn(true);
         when(operationService.triggerInitialSample(any(MetadataSourceBinding.class))).thenReturn(false);
         when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
-        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(1L))).thenReturn(true);
+        when(bindingDao.revertInitialRun(eq(1L), eq(1L), eq("METADATA"), isNull(), isNull()))
+                .thenReturn(true);
 
         synchronizer().refreshOne(candidate, now);
 
-        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
-        verify(bindingDao).updateIfVersion(saved.capture(), eq(1L));
-        assertEquals("METADATA", saved.getValue().getInitialRunStage());
+        // The revert writes the null baseline explicitly; an entity update would skip those
+        // columns and leave this stage's baseline behind.
+        verify(bindingDao).revertInitialRun(1L, 1L, "METADATA", null, null);
     }
 
     @Test
