@@ -191,10 +191,19 @@ public class MetadataStatusSynchronizer {
             boolean databasePipeline = binding.getOmProfilerPipelineFqn() != null
                     && !binding.getOmProfilerPipelineFqn().isBlank();
             if (databasePipeline && operationService.supportsSeparateSamplePipeline(binding)) {
+                if (runInFlight(sampleRuns)) {
+                    // The sample pipeline of this stage is already running. A second run would
+                    // duplicate it, and the stage can only be judged by the run that is in
+                    // flight, so the stage waits for it.
+                    return InitialRunTransition.none();
+                }
                 return new InitialRunTransition(
                         InitialRunAction.SAMPLE, "SAMPLE", runId(latestRun(sampleRuns)), now);
             }
             if (operationService.supportsProfilerPipeline(binding)) {
+                if (runInFlight(profileRuns)) {
+                    return InitialRunTransition.none();
+                }
                 return new InitialRunTransition(
                         InitialRunAction.PROFILE, "PROFILE", runId(latestRun(profileRuns)), now);
             }
@@ -218,6 +227,9 @@ public class MetadataStatusSynchronizer {
                 return InitialRunTransition.none();
             }
             if (operationService.supportsProfilerPipeline(binding)) {
+                if (runInFlight(profileRuns)) {
+                    return InitialRunTransition.none();
+                }
                 return new InitialRunTransition(
                         InitialRunAction.PROFILE, "PROFILE", runId(latestRun(profileRuns)), now);
             }
@@ -238,8 +250,18 @@ public class MetadataStatusSynchronizer {
         return InitialRunTransition.none();
     }
 
-    private static boolean initialStageTimedOut(MetadataSourceBinding binding, Date now) {
-        return binding.getInitialRunStartedAt() != null
+    /** True when the latest run of a pipeline is still queued or running. */
+    private static boolean runInFlight(List<OpenMetadataPipelineRun> runs) {
+        OpenMetadataPipelineRun latest = latestRun(runs);
+        if (latest == null) {
+            return false;
+        }
+        MetadataRunStatus status =
+                OpenMetadataRunStatusMapper.fromPipelineState(latest.pipelineState());
+        return MetadataPipelineOperationService.isRunning(status);
+    }
+
+    private static boolean initialStageTimedOut(MetadataSourceBinding binding, Date now) {        return binding.getInitialRunStartedAt() != null
                 && now.getTime() - binding.getInitialRunStartedAt().getTime()
                         > INITIAL_RUN_STAGE_TIMEOUT_MILLIS;
     }

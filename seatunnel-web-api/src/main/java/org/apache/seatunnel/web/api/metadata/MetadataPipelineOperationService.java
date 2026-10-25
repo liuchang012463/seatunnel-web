@@ -340,6 +340,12 @@ public class MetadataPipelineOperationService {
     /**
      * Triggers the sample stage of the initial exploration. Returns false when the
      * connector has no sample pipeline or OpenMetadata rejected the request.
+     *
+     * <p>
+     * A pipeline that is already running makes the trigger a no-op and reports false: the stage
+     * is then retried once that run is done. Reporting success would leave the stage waiting
+     * for a run that is never started.
+     * </p>
      */
     boolean triggerInitialSample(MetadataSourceBinding binding) {
         if (binding == null) {
@@ -348,9 +354,9 @@ public class MetadataPipelineOperationService {
         try {
             openMetadataClient.assertFixedVersion();
             if (hasRunningPipeline(binding)) {
-                // A previous trigger was accepted but its response was lost. Keeping the stage
-                // lets the next refresh observe that run instead of starting a duplicate one.
-                return true;
+                log.debug("Initial sample collection waits for the running pipeline, dataSourceId={}",
+                        binding.getDataSourceId());
+                return false;
             }
             DataSource dataSource = dataSourceDao.queryById(binding.getDataSourceId());
             if (dataSource == null) {
@@ -397,7 +403,9 @@ public class MetadataPipelineOperationService {
         try {
             openMetadataClient.assertFixedVersion();
             if (hasRunningPipeline(binding)) {
-                return true;
+                log.debug("Initial profiler run waits for the running pipeline, dataSourceId={}",
+                        binding.getDataSourceId());
+                return false;
             }
             openMetadataClient.deployIngestionPipeline(binding.getOmProfilerPipelineId());
             openMetadataClient.enableIngestionPipeline(binding.getOmProfilerPipelineId());

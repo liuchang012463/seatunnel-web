@@ -126,6 +126,43 @@ class MetadataStatusSynchronizerTest {
         verify(bindingDao).revertInitialRun(1L, 1L, "METADATA", null, null);
     }
 
+    /**
+     * A sample run that is already in flight is the run of this stage. The stage waits for it
+     * instead of starting a second one, and it does not enter a stage that waits forever for a
+     * run that is never started.
+     */
+    @Test
+    void aSampleRunThatIsAlreadyInFlightIsNotDuplicated() {
+        Date now = new Date();
+        long nowSeconds = now.getTime() / 1000L;
+        MetadataSourceBinding candidate = binding(0L);
+        candidate.setInitialRunStage("METADATA");
+        candidate.setScanStatus(MetadataRunStatus.SUCCESS);
+        candidate.setScanLastSuccessTime(new Date(now.getTime() - 30_000L));
+        MetadataSourceBinding live = binding(0L);
+        live.setInitialRunStage("METADATA");
+        live.setScanStatus(MetadataRunStatus.SUCCESS);
+        live.setScanLastSuccessTime(candidate.getScanLastSuccessTime());
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "scan-1", "success", nowSeconds - 60L, nowSeconds - 50L, nowSeconds - 50L, 0)));
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1))
+                .thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_auto_classification", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "sample-1", "running", nowSeconds - 10L, 0L, nowSeconds - 10L, 0)));
+        when(operationService.supportsSeparateSamplePipeline(any(MetadataSourceBinding.class))).thenReturn(true);
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), eq(0L))).thenReturn(true);
+
+        synchronizer().refreshOne(candidate, now);
+
+        verify(operationService, never()).triggerInitialSample(any(MetadataSourceBinding.class));
+        ArgumentCaptor<MetadataSourceBinding> saved = ArgumentCaptor.forClass(MetadataSourceBinding.class);
+        verify(bindingDao).updateIfVersion(saved.capture(), eq(0L));
+        assertEquals("METADATA", saved.getValue().getInitialRunStage());
+    }
+
     @Test
     void initialSampleSuccessStartsTheProfilerStage() {
         Date now = new Date();
