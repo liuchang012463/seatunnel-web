@@ -1,6 +1,7 @@
 import { message, Popover } from "antd";
 import React, { useEffect, useRef, useState } from "react";
-import StatusChip, { type StatusChipTone } from "@/components/StatusChip";
+import StatusChip from "@/components/StatusChip";
+import { getJobStatusView } from "@/pages/common/utils/jobStatus";
 
 interface TaskStatusProps {
   status?: string;
@@ -8,35 +9,14 @@ interface TaskStatusProps {
   showErrorDetailsLink?: boolean;
 }
 
-const statusConfig: Record<string, { tone: StatusChipTone; label: string }> = {
-  FINISHED: { tone: "success", label: "已完成" },
-  SUCCESS: { tone: "success", label: "已完成" },
-  SAVEPOINT_DONE: { tone: "success", label: "保存点完成" },
-  RUNNING: { tone: "processing", label: "运行中" },
-  STARTING: { tone: "processing", label: "启动中" },
-  FAILED: { tone: "error", label: "失败" },
-  FAILING: { tone: "error", label: "失败中" },
-  UNKNOWABLE: { tone: "warning", label: "状态未知" },
-  CANCELED: { tone: "neutral", label: "已取消" },
-  CANCELLED: { tone: "neutral", label: "已取消" },
-  PAUSED: { tone: "warning", label: "已暂停" },
-  INITIALIZING: { tone: "neutral", label: "初始化中" },
-  CREATED: { tone: "neutral", label: "已创建" },
-  PENDING: { tone: "neutral", label: "等待中" },
-  SCHEDULED: { tone: "neutral", label: "已调度" },
-  DOING_SAVEPOINT: { tone: "warning", label: "保存点中" },
-  CANCELING: { tone: "neutral", label: "取消中" },
-};
-
 const getStatusConfig = (status?: string) => {
-  const normalizedStatus = String(status || "").toUpperCase();
+  const view = getJobStatusView(status, "stream");
 
-  return (
-    statusConfig[normalizedStatus] || {
-      tone: "neutral" as StatusChipTone,
-      label: status ? "未识别" : "未开始",
-    }
-  );
+  return {
+    tone: view.tone,
+    label: view.label.defaultMessage,
+    errorDetail: view.errorDetail,
+  };
 };
 
 const TaskStatus: React.FC<TaskStatusProps> = ({
@@ -77,7 +57,8 @@ const TaskStatus: React.FC<TaskStatusProps> = ({
 
   const content = <StatusChip tone={config.tone} label={config.label} />;
 
-  if (String(status || "").toUpperCase() !== "FAILED" || !errorMessage) {
+  // 只有真正的失败态才展示错误详情，已取消等中性状态不展示。
+  if (!config.errorDetail || !errorMessage) {
     return content;
   }
 

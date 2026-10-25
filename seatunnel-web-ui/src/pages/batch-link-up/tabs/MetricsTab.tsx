@@ -13,7 +13,7 @@ import {
   Table2,
 } from "lucide-react";
 import { batchJobInstanceApi } from "../api";
-import { normalizeBatchJobStatus } from "../utils/normalizeJobStatus";
+import { normalizeJobStatus } from "@/pages/common/utils/jobStatus";
 import { parseEngineOperatorMetrics, type EngineOperatorMetric } from "../utils/engineOperatorMetrics";
 
 
@@ -206,7 +206,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
     intl.formatMessage({ id, defaultMessage });
 
   const instanceId = instanceItem?.id;
-  const normalizedStatus = normalizeBatchJobStatus(instanceItem?.jobStatus);
+  const normalizedStatus = normalizeJobStatus(instanceItem?.jobStatus);
   const isTerminal = normalizedStatus === "FINISHED" || normalizedStatus === "FAILED";
   // STARTING displays as RUNNING while the submit/recovery path settles the Engine result.
   // Operator metrics only exist after Engine has accepted the job.

@@ -40,7 +40,9 @@ const FileTransferPage: React.FC = () => {
     }
 
     if (String(item?.sourceType || '').toUpperCase() === 'WEB_UPLOAD') {
-      history.push(`/sync/file-link-up/${id}/config/file-sync?scene=edit`);
+      // The local-upload tasks are configured on the shared file-sync page; `from` tells it which
+      // list to return to, otherwise the operator would land on the file link-up list.
+      history.push(`/sync/file-link-up/${id}/config/file-sync?scene=edit&from=file-transfer`);
       return;
     }
 

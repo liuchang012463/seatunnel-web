@@ -1,6 +1,6 @@
 import { streamingSeatunnelJobInstanceApi } from "@/pages/batch-link-up/api";
 import { HistoryItem } from "@/pages/batch-link-up/type";
-import { normalizeBatchJobStatus } from "@/pages/batch-link-up/utils/normalizeJobStatus";
+import { normalizeJobStatus } from "@/pages/common/utils/jobStatus";
 import { message } from "antd";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -125,7 +125,7 @@ export const useTaskHistory = ({
       (acc, item) => {
         // Count by the same category the status filter uses; raw CANCELED/SAVEPOINT_DONE etc.
         // must not produce counts that disagree with the filtered list.
-        const category = normalizeBatchJobStatus(item.jobStatus);
+        const category = normalizeJobStatus(item.jobStatus);
         if (category === "FINISHED") {
           acc.FINISHED += 1;
         } else if (category === "FAILED") {

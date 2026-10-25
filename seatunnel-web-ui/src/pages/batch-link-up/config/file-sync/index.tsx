@@ -1,13 +1,13 @@
 import { history, useLocation, useParams } from '@umijs/max';
 import { App, Empty, Spin } from 'antd';
 import { useEffect, useState } from 'react';
-import { stripLayoutPrefix } from '@/utils/iframeLayout';
 import { seatunnelJobDefinitionApi } from '../../api';
 import {
   defaultEnvConfig,
   EnvConfig,
   ScheduleConfig,
 } from '../../workflow/components/ScheduleConfigContent/types';
+import { resolveFileSyncBackPath } from './backPath';
 import FileWorkflow from './FileWorkflow';
 
 type PageScene = 'create' | 'edit';
@@ -252,14 +252,9 @@ const FileSyncWorkflowPage: React.FC = () => {
   }, [id, location.search]);
 
   const goBack = () => {
-    // The same page serves batch and file ingestion; return to the list it was opened from.
-    // The path may carry the /iframe namespace, so compare the layout-stripped path.
-    const path = stripLayoutPrefix(location.pathname);
-    history.push(
-      path.startsWith('/sync/file-link-up')
-        ? '/sync/file-link-up'
-        : '/sync/batch-link-up',
-    );
+    // The same page serves batch, file link-up and file transfer; return to the list it was opened
+    // from. The path may carry the /iframe namespace, so compare the layout-stripped path.
+    history.push(resolveFileSyncBackPath(location.pathname, location.search));
   };
 
   if (loading) {

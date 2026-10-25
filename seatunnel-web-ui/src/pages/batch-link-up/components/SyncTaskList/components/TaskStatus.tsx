@@ -1,31 +1,22 @@
 import { message, Popover } from "antd";
+import React, { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
-import { useEffect, useRef, useState } from "react";
-import StatusChip, { type StatusChipTone } from "@/components/StatusChip";
-import { normalizeBatchJobStatus } from "@/pages/batch-link-up/utils/normalizeJobStatus";
+import StatusChip from "@/components/StatusChip";
+import { getJobStatusView } from "@/pages/common/utils/jobStatus";
 
 interface TaskStatusProps {
   status?: string;
   errorMessage?: string;
 }
 
-const statusConfig: Record<string, { tone: StatusChipTone; label: string }> = {
-  FINISHED: { tone: "success", label: "成功" },
-  RUNNING: { tone: "processing", label: "运行中" },
-  FAILED: { tone: "error", label: "失败" },
-};
-
 const getStatusConfig = (status?: string) => {
-  const normalizedStatus = normalizeBatchJobStatus(status);
+  const view = getJobStatusView(status, "batch");
 
-  if (normalizedStatus === "UNSTARTED") {
-    return {
-      tone: "neutral" as StatusChipTone,
-      label: "未执行",
-    };
-  }
-
-  return statusConfig[normalizedStatus];
+  return {
+    tone: view.tone,
+    label: view.label.defaultMessage,
+    errorDetail: view.errorDetail,
+  };
 };
 
 const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
@@ -65,7 +56,8 @@ const TaskStatus = ({ status, errorMessage }: TaskStatusProps) => {
 
   const content = <StatusChip tone={config.tone} label={config.label} />;
 
-  if (config.label === "失败" && errorMessage) {
+  // 只有真正的失败态才展示失败原因，已取消等中性状态不展示。
+  if (config.errorDetail && errorMessage) {
     const lines = errorMessage.split("\n");
     const errorTitle = "失败原因";
 

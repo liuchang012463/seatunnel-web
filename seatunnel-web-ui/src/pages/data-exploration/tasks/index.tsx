@@ -178,6 +178,9 @@ const DataExplorationTasksPage: React.FC = () => {
   const [runRecordId, setRunRecordId] = useState<string>();
   const [trackingExploration, setTrackingExploration] = useState<ExplorationTracking>();
   const [explorationFeedback, setExplorationFeedback] = useState<ExplorationFeedback>();
+  // 正在提交或等待扫描结束的数据源，避免重复触发扫描。
+  const [scanningIds, setScanningIds] = useState<Record<string, number>>({});
+  const scanningIdsRef = useRef<Record<string, number>>({});
   const exploreRequestRef = useRef(0);
   const [category, setCategory] = useState<ExplorationTaskCategoryKey>(DEFAULT_EXPLORATION_TASK_CATEGORY);
   const selectedCategory = getExplorationTaskCategory(category);
@@ -374,6 +377,71 @@ const DataExplorationTasksPage: React.FC = () => {
     };
   }, [load, trackingExploration]);
 
+  const markScanPending = useCallback((id: string, submittedAt: number) => {
+    scanningIdsRef.current = { ...scanningIdsRef.current, [id]: submittedAt };
+    setScanningIds(scanningIdsRef.current);
+  }, []);
+
+  const clearScanPending = useCallback((id: string) => {
+    if (!(id in scanningIdsRef.current)) return;
+
+    const next = { ...scanningIdsRef.current };
+    delete next[id];
+    scanningIdsRef.current = next;
+    setScanningIds(next);
+  }, []);
+
+  // 手动扫描提交后，后端同步写入 QUEUED，页面自己轮询扫描状态，
+  // 扫描结束后刷新列表，样例采集与指标统计随即可用。
+  useEffect(() => {
+    const pendingIds = Object.keys(scanningIds);
+    if (pendingIds.length === 0) return;
+
+    let disposed = false;
+    let timer: number | undefined;
+    let attempts = 0;
+
+    const poll = async () => {
+      if (disposed) return;
+      attempts += 1;
+
+      try {
+        const responses = await Promise.all(
+          pendingIds.map((id) => fetchDataSourceMetadataStatus(id).catch(() => undefined)),
+        );
+        if (disposed) return;
+
+        const finished = pendingIds.filter((id, index) => {
+          const scan = responses[index]?.data?.scan;
+          if (!scan?.status) return false;
+          if (scan.status === 'QUEUED' || scan.status === 'RUNNING') return false;
+          return isCurrentRun(scan, scanningIds[id]);
+        });
+
+        if (finished.length > 0) {
+          finished.forEach((id) => clearScanPending(id));
+          void load();
+        }
+      } catch (_) {
+        // Keep polling. A transient status-read failure must not hide the submitted scan.
+      }
+
+      if (attempts >= 60) {
+        pendingIds.forEach((id) => clearScanPending(id));
+        void load();
+        return;
+      }
+
+      if (!disposed) timer = window.setTimeout(() => void poll(), 2_000);
+    };
+
+    void poll();
+    return () => {
+      disposed = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [clearScanPending, load, scanningIds]);
+
   const resetPage = () => setPagination((current) => ({ ...current, pageNo: 1 }));
 
   const openExplore = async (record: DataSourceRecord) => {
@@ -519,16 +587,21 @@ const DataExplorationTasksPage: React.FC = () => {
 
   const triggerScan = async (record: DataSourceRecord) => {
     if (!record.id) return;
+    const id = String(record.id);
+    // 扫描请求还在进行中时不再重复提交，否则后端会以"元数据扫描暂不可触发"拒绝第二次请求。
+    if (scanningIdsRef.current[id] !== undefined) return;
     const actionState = scanActionState(record);
     if (actionState.disabled) {
       setExplorationFeedback({ type: 'info', message: actionState.label, description: actionState.title });
       return;
     }
     const recoveringSync = record.metadataSyncStatus === 'ERROR';
+    markScanPending(id, Date.now());
     try {
       const response = await triggerDataSourceScan(record.id);
       if (response.code !== 0) {
         message.error(response.message || '元数据扫描暂不可触发');
+        clearScanPending(id);
         return;
       }
       message.success(
@@ -539,6 +612,7 @@ const DataExplorationTasksPage: React.FC = () => {
       void load();
     } catch (error: any) {
       message.error(errorMessage(error, '元数据扫描暂不可触发'));
+      clearScanPending(id);
     }
   };
 
@@ -618,16 +692,17 @@ const DataExplorationTasksPage: React.FC = () => {
         const unavailableReason = metadataUnavailableReason(record);
         const profileRunning = record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING';
         const sampleRunning = record.sampleStatus === 'QUEUED' || record.sampleStatus === 'RUNNING';
+        const scanPending = scanningIds[String(record.id)] !== undefined;
         return (
           <Space size={4} wrap={false} className="exploration-task-actions">
             <Button
               type="link"
               icon={<SyncOutlined />}
-              disabled={scanAction.disabled}
-              title={scanAction.title}
+              disabled={scanAction.disabled || scanPending}
+              title={scanPending ? '元数据扫描正在执行' : scanAction.title}
               onClick={() => void triggerScan(record)}
             >
-              {scanAction.label}
+              {scanPending ? '扫描中' : scanAction.label}
             </Button>
             {record.sampleDataSupported && (
               <Button
@@ -669,7 +744,7 @@ const DataExplorationTasksPage: React.FC = () => {
         );
       },
     },
-  ], []);
+  ], [scanningIds]);
 
   return (
     <div className="data-exploration-page data-exploration-tasks flex h-full min-h-full flex-col px-6 py-5">

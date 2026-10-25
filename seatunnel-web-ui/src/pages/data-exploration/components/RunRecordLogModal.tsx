@@ -44,6 +44,9 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
   // The log request of the currently selected tab; a slower response for a previous tab must
   // not overwrite the log that belongs to the visible run.
   const logsRequest = useRef(0);
+  // The agent list has its own sequence number: a slower response of an earlier refresh must
+  // not overwrite the run list of a newer one.
+  const agentsRequest = useRef(0);
   const activeAgentRef = useRef<string | undefined>(activeAgent);
   useEffect(() => {
     activeAgentRef.current = activeAgent;
@@ -51,10 +54,13 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
 
   const loadAgents = useCallback(async () => {
     if (!dataSourceId) return;
+    const requestId = agentsRequest.current + 1;
+    agentsRequest.current = requestId;
     setLoading(true);
     setError(undefined);
     try {
       const response = await fetchDataSourceMetadataAgents(dataSourceId, RUN_LIMIT);
+      if (requestId !== agentsRequest.current) return;
       if (response.code !== 0) {
         setError(response.message || '无法读取运行记录');
         setAgents([]);
@@ -68,10 +74,13 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
           : nextAgents[0]?.agentType
       ));
     } catch (err: any) {
+      if (requestId !== agentsRequest.current) return;
       setError(err?.response?.data?.message || err?.message || '无法读取运行记录');
       setAgents([]);
     } finally {
-      setLoading(false);
+      if (requestId === agentsRequest.current) {
+        setLoading(false);
+      }
     }
   }, [dataSourceId]);
 
