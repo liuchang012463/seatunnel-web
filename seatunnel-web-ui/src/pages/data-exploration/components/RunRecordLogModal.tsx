@@ -1,6 +1,6 @@
 import { ClockCircleOutlined, CopyOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Alert, Button, Empty, Modal, Space, Spin, Tabs, Tag, message } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchDataSourceMetadataAgentLogs,
   fetchDataSourceMetadataAgents,
@@ -41,6 +41,13 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
   const [logs, setLogs] = useState<MetadataAgentLogs>();
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState<string>();
+  // The log request of the currently selected tab; a slower response for a previous tab must
+  // not overwrite the log that belongs to the visible run.
+  const logsRequest = useRef(0);
+  const activeAgentRef = useRef<string | undefined>(activeAgent);
+  useEffect(() => {
+    activeAgentRef.current = activeAgent;
+  }, [activeAgent]);
 
   const loadAgents = useCallback(async () => {
     if (!dataSourceId) return;
@@ -70,11 +77,14 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
 
   const loadLogs = useCallback(async (agentType?: string) => {
     if (!dataSourceId || !agentType) return;
+    const requestId = logsRequest.current + 1;
+    logsRequest.current = requestId;
     setLogsLoading(true);
     setLogsError(undefined);
     setLogs(undefined);
     try {
       const response = await fetchDataSourceMetadataAgentLogs(dataSourceId, agentType);
+      if (requestId !== logsRequest.current) return;
       if (response.code !== 0) {
         setLogsError(response.message || '无法读取运行日志');
         setLogs(undefined);
@@ -82,12 +92,23 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
       }
       setLogs(response.data);
     } catch (err: any) {
+      if (requestId !== logsRequest.current) return;
       setLogsError(err?.response?.data?.message || err?.message || '无法读取运行日志');
       setLogs(undefined);
     } finally {
-      setLogsLoading(false);
+      if (requestId === logsRequest.current) {
+        setLogsLoading(false);
+      }
     }
   }, [dataSourceId]);
+
+  const refreshRunsAndLogs = useCallback(async () => {
+    const currentAgent = activeAgentRef.current;
+    await loadAgents();
+    if (currentAgent && activeAgentRef.current === currentAgent) {
+      await loadLogs(currentAgent);
+    }
+  }, [loadAgents, loadLogs]);
 
   useEffect(() => {
     if (!open) return;
@@ -174,7 +195,7 @@ const RunRecordLogModal: React.FC<RunRecordLogModalProps> = ({
                         size="small"
                         aria-label="刷新运行记录"
                         icon={<ReloadOutlined />}
-                        onClick={() => void loadAgents()}
+                        onClick={() => void refreshRunsAndLogs()}
                       />
                     </div>
                     <div className="exploration-run-record__run-list">

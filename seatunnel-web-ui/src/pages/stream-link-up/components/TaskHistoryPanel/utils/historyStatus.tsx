@@ -1,4 +1,5 @@
 import { HistoryItem } from "@/pages/batch-link-up/type";
+import { normalizeBatchJobStatus } from "@/pages/batch-link-up/utils/normalizeJobStatus";
 import {
   CheckCircleFilled,
   ClockCircleOutlined,
@@ -12,7 +13,7 @@ export const getHistoryStatusMeta = (
   status: HistoryItem["jobStatus"],
   intl: IntlShape
 ) => {
-  switch (status) {
+  switch (normalizeBatchJobStatus(status)) {
     case "FAILED":
       return {
         icon: <CloseCircleOutlined style={{ color: "#ff4d4f" }} />,

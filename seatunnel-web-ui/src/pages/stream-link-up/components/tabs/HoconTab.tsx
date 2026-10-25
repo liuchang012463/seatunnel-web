@@ -8,7 +8,7 @@ const HoconTab: React.FC<any> = ({ config = "" }) => {
       size="small"
       style={{ borderWidth: 0 }}
       className="hocon-tab mt-2  !shadow-[0_0_0_rgba(15,23,42,0.04)]"
-      bodyStyle={{ borderWidth: 0, padding: 0, marginBottom: 116 }}
+      bodyStyle={{ borderWidth: 0, padding: 0 }}
     >
       <div className="hocon-tab__surface overflow-hidden  bg-[#FCFDFE]">
         <div className="">

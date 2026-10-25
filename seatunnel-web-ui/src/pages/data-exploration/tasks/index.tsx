@@ -113,9 +113,11 @@ function isScanRunning(record: DataSourceRecord) {
 function metadataUnavailableReason(record: DataSourceRecord) {
   if (record.metadataSyncStatus === 'ERROR') return '元数据同步异常，请先重试同步。';
   if (record.metadataSyncStatus !== 'READY') return '元数据同步完成后即可使用此操作。';
-  if (isScanRunning(record)) return '首次元数据扫描正在运行，请稍候。';
+  if (isScanRunning(record)) return '元数据扫描正在运行，请稍候。';
   if (record.scanStatus === 'FAILED') return '元数据扫描异常，请先重新扫描。';
-  if (record.scanStatus !== 'SUCCESS') return '新数据源的首次元数据扫描由系统自动触发，完成后即可继续。';
+  // The scan button stays enabled for a data source whose first scan never ran, so the operator
+  // can start it; sample/profiler need the catalog a successful scan produces.
+  if (record.scanStatus !== 'SUCCESS') return '请先完成元数据扫描后再使用此操作。';
   return undefined;
 }
 
@@ -144,7 +146,9 @@ function scanActionState(record: DataSourceRecord) {
       || (record.scanStatus === 'UNKNOWN' && Boolean(record.scanLastRunTime))) {
     return { disabled: false, label: '重新扫描', title: '重新运行元数据扫描' };
   }
-  return { disabled: true, label: '自动扫描中', title: '新数据源首次扫描由系统自动触发' };
+  // READY without a finished scan: the automatic first scan may never have been triggered, so
+  // the operator must be able to start it manually instead of waiting forever.
+  return { disabled: false, label: '立即扫描', title: '立即运行首次元数据扫描' };
 }
 
 const DataExplorationTasksPage: React.FC = () => {
@@ -608,7 +612,7 @@ const DataExplorationTasksPage: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      width: 470,
+      width: 520,
       render: (_, record) => {
         const scanAction = scanActionState(record);
         const unavailableReason = metadataUnavailableReason(record);
@@ -644,7 +648,7 @@ const DataExplorationTasksPage: React.FC = () => {
                 title={profileRunning ? '指标统计正在运行' : unavailableReason}
                 onClick={() => void openExplore(record)}
               >
-                {profileRunning ? '统计中' : unavailableReason ? '等待扫描' : '开始指标统计'}
+                {profileRunning ? '统计中' : unavailableReason ? '暂不可用' : '开始指标统计'}
               </Button>
             )}
             <Button type="link" icon={<ClockCircleOutlined />} onClick={() => void showRuns(record)}>

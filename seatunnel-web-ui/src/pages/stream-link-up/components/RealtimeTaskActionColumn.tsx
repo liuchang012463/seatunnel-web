@@ -79,8 +79,21 @@ const isReleaseOnline = (releaseState?: string | number) => {
   return releaseState === "ONLINE" || releaseState === 1;
 };
 
+/** Engine states in which a start or an offline action would race the running instance. */
+const RUNNING_LIKE_STATUSES = new Set([
+  "STARTING",
+  "INITIALIZING",
+  "CREATED",
+  "PENDING",
+  "SCHEDULED",
+  "RUNNING",
+  "FAILING",
+  "DOING_SAVEPOINT",
+  "CANCELING",
+]);
+
 const isRunningStatus = (status?: string) => {
-  return String(status || "").toUpperCase() === "RUNNING";
+  return RUNNING_LIKE_STATUSES.has(String(status || "").toUpperCase());
 };
 
 const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({

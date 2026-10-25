@@ -397,7 +397,7 @@ export default function Workflow({
       0;
 
     if (total !== 0) {
-      message.warning("请先完成 Checklist 检查后，再进行预览或同步");
+      message.warning("请先完成 Checklist 检查后，再进行预览或保存");
       return false;
     }
 

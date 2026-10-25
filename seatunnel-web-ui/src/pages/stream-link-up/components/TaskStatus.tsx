@@ -11,9 +11,12 @@ interface TaskStatusProps {
 const statusConfig: Record<string, { tone: StatusChipTone; label: string }> = {
   FINISHED: { tone: "success", label: "已完成" },
   SUCCESS: { tone: "success", label: "已完成" },
+  SAVEPOINT_DONE: { tone: "success", label: "保存点完成" },
   RUNNING: { tone: "processing", label: "运行中" },
+  STARTING: { tone: "processing", label: "启动中" },
   FAILED: { tone: "error", label: "失败" },
   FAILING: { tone: "error", label: "失败中" },
+  UNKNOWABLE: { tone: "warning", label: "状态未知" },
   CANCELED: { tone: "neutral", label: "已取消" },
   CANCELLED: { tone: "neutral", label: "已取消" },
   PAUSED: { tone: "warning", label: "已暂停" },

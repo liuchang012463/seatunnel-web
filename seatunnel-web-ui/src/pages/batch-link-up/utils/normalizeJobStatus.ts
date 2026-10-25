@@ -2,6 +2,7 @@ export type BatchJobStatusCategory = "FINISHED" | "FAILED" | "RUNNING" | "UNSTAR
 
 const FAILED_STATUSES = new Set([
   "FAILED",
+  // Historical rows only: the backend removed the manual submission-confirmation state.
   "SUBMISSION_UNKNOWN",
   "UNKNOWABLE",
   "CANCELED",

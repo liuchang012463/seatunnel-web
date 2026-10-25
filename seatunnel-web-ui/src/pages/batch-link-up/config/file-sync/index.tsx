@@ -252,7 +252,14 @@ const FileSyncWorkflowPage: React.FC = () => {
   }, [id, location.search]);
 
   const goBack = () => {
-    history.push("/sync/batch-link-up");
+    // The same page serves batch and file ingestion; return to the list it was opened from.
+    // The path may carry the /iframe namespace, so compare the layout-stripped path.
+    const path = stripLayoutPrefix(location.pathname);
+    history.push(
+      path.startsWith('/sync/file-link-up')
+        ? '/sync/file-link-up'
+        : '/sync/batch-link-up',
+    );
   };
 
   if (loading) {
