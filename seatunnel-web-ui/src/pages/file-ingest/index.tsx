@@ -1,37 +1,26 @@
-import { FileTextOutlined } from '@ant-design/icons';
-import { history } from '@umijs/max';
-import { App } from 'antd';
+import { FileTextOutlined, PlusOutlined } from '@ant-design/icons';
+import { history, useLocation } from '@umijs/max';
+import { App, Button, Segmented } from 'antd';
+import TaskListPageHeader from '@/components/TaskListPageHeader';
 import FileTaskList from './TaskListAdapter';
-import TaskPageHeader from './TaskPageHeader';
-import { fileIngestTaskApi } from './api';
-import { FILE_RESOURCE_SOURCE, fileTaskDraftKey } from './types';
+import OfflineImportTaskList from './import/list';
+
+const OFFLINE_TAB = 'offline-import';
 
 const FileIngestPage: React.FC = () => {
   const { message } = App.useApp();
+  const location = useLocation();
+  const activeTab = new URLSearchParams(location.search).get('tab') === OFFLINE_TAB
+    ? OFFLINE_TAB
+    : 'file-ingest';
 
-  const createTask = async () => {
+  const switchTab = (value: string) => {
+    history.push(value === OFFLINE_TAB ? '/sync/file-ingest?tab=offline-import' : '/sync/file-ingest');
+  };
+
+  const createTask = () => {
     try {
-      const response = await fileIngestTaskApi.getUniqueId();
-      const id = response?.data as any;
-      if (response?.code !== 0 || !id) {
-        throw new Error(response?.message || '申请任务定义 ID 失败');
-      }
-
-      sessionStorage.setItem(
-        fileTaskDraftKey('FILE_INGEST', String(id)),
-        JSON.stringify({
-          id,
-          taskType: 'FILE_INGEST',
-          mode: 'GUIDE_SINGLE',
-          sourceType: FILE_RESOURCE_SOURCE,
-          targetType: {
-            dbType: 'MYSQL',
-            connectorType: 'Jdbc',
-            pluginName: 'JDBC-MYSQL',
-          },
-        }),
-      );
-      history.push(`/sync/file-ingest/${id}/detail?scene=create`);
+      history.push('/sync/file-ingest/select');
     } catch (error: any) {
       message.error(error?.message || '新建离线文件导入任务失败');
     }
@@ -53,18 +42,40 @@ const FileIngestPage: React.FC = () => {
 
   return (
     <div className="task-list-page-shell">
-      <TaskPageHeader
+      <TaskListPageHeader
         icon={<FileTextOutlined />}
         title="离线文件导入"
-        createText="创建文件导入"
-        onCreate={() => void createTask()}
-      />
-      <FileTaskList
-        taskType="FILE_INGEST"
-        mode="GUIDE_SINGLE"
-        goDetail={(id, item) => editTask(String(id), item)}
-        emptyDescription="暂无离线文件导入任务"
-      />
+        actions={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={createTask}
+            className="task-list-page-header__create-button"
+          >
+            创建文件导入
+          </Button>
+        }
+      >
+        <Segmented
+          value={activeTab}
+          onChange={(value) => switchTab(String(value))}
+          options={[
+            { label: '文件导入任务', value: 'file-ingest' },
+            { label: 'DMP / SQL 导入', value: OFFLINE_TAB },
+          ]}
+        />
+      </TaskListPageHeader>
+
+      {activeTab === OFFLINE_TAB ? (
+        <OfflineImportTaskList />
+      ) : (
+        <FileTaskList
+          taskType="FILE_INGEST"
+          mode="GUIDE_SINGLE"
+          goDetail={(id, item) => editTask(String(id), item)}
+          emptyDescription="暂无离线文件导入任务"
+        />
+      )}
     </div>
   );
 };
