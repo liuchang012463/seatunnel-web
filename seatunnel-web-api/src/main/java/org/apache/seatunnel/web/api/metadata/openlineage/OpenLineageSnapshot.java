@@ -12,7 +12,7 @@ import java.util.Map;
  * <p>
  * The snapshot is built from the job's local state only (instance identity, engine job id, local
  * datasource names and table paths, column field mappings). It intentionally contains no
- * OpenMetadata entity, so the OpenLineage channel never depends on the OM channel.
+ * OpenMetadata entity, so lineage publication never depends on OpenMetadata.
  * </p>
  *
  * <p>

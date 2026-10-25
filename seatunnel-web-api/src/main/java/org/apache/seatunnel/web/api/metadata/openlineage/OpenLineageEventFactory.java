@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -20,8 +19,7 @@ import java.util.UUID;
  * The output follows the OpenLineage v1 specification only: the run/job/dataset skeleton, the
  * standard {@code datasource} and {@code columnLineage} facets, and two custom facets
  * ({@code seatunnel} on the run, {@code seatunnelDatasource} on every dataset) carrying the
- * engine-native identities. Nothing here shares structure with the OpenMetadata lineage request
- * the OM channel builds.
+ * engine-native identities.
  * </p>
  */
 public final class OpenLineageEventFactory {
@@ -61,13 +59,18 @@ public final class OpenLineageEventFactory {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
-     * Derives the OpenLineage runId deterministically from the Engine job id, so START, RUNNING
-     * heartbeats and the terminal event of one instance share one runId even across a restart:
-     * {@code UUID.nameUUIDFromBytes("stweb-lineage:" + engineJobId)}.
+     * Derives the OpenLineage runId deterministically from the instance id and the Engine job id,
+     * so START, RUNNING heartbeats and the terminal event of one instance share one runId even
+     * across a restart. The instance id keeps a savepoint-restored run, which reuses the previous
+     * Engine job id, from colliding with the run it was restored from.
+     * {@code UUID.nameUUIDFromBytes("stweb-lineage:" + instanceId + ":" + engineJobId)}.
      */
-    public static UUID deriveRunId(String engineJobId) {
-        return UUID.nameUUIDFromBytes(
-                (RUN_ID_DERIVATION_PREFIX + engineJobId).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    public static UUID deriveRunId(Long instanceId, String engineJobId) {
+        String identity = RUN_ID_DERIVATION_PREFIX
+                + (instanceId == null ? "" : instanceId)
+                + ":"
+                + engineJobId;
+        return UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -91,7 +94,7 @@ public final class OpenLineageEventFactory {
 
     private static ObjectNode buildRun(OpenLineageSnapshot snapshot) {
         ObjectNode run = OBJECT_MAPPER.createObjectNode();
-        run.put("runId", deriveRunId(snapshot.engineJobId()).toString());
+        run.put("runId", deriveRunId(snapshot.instanceId(), snapshot.engineJobId()).toString());
 
         ObjectNode facets = run.putObject("facets");
         ObjectNode seatunnel = facets.putObject("seatunnel");

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.alarm.event.JobStatusChangedEvent;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
+import org.apache.seatunnel.web.dao.entity.JobInstance;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
@@ -66,7 +68,7 @@ class OpenLineageJobLineageServiceTest {
         lenient().when(properties.getKafka()).thenReturn(kafka);
         lenient().doAnswer(invocation -> {
             published.add(invocation.getArgument(1));
-            return null;
+            return true;
         }).when(bridge).publish(anyString(), anyString());
         lenient().when(dataSourceDao.queryById(10L)).thenReturn(dataSource(10L, "bi_src_mysql", "MYSQL"));
         lenient().when(dataSourceDao.queryById(20L)).thenReturn(dataSource(20L, "bi_tidb_doris", "DORIS"));
@@ -135,7 +137,7 @@ class OpenLineageJobLineageServiceTest {
         JsonNode event = MAPPER.readTree(published.get(0));
         assertEquals("START", event.path("eventType").asText());
         // The runId is deterministic, so the terminal event lands on the same run.
-        assertEquals(OpenLineageEventFactory.deriveRunId("engine-job-42").toString(),
+        assertEquals(OpenLineageEventFactory.deriveRunId(100L, "engine-job-42").toString(),
                 event.path("run").path("runId").asText());
         assertEquals("Customer summary", event.path("job").path("name").asText());
         // Local identity only: datasource name as namespace, the user's table path as name.
@@ -151,10 +153,9 @@ class OpenLineageJobLineageServiceTest {
     }
 
     @Test
-    void skipsStartWhenLocalLineageCannotBeIdentified() {
+    void readsTheTableOfAQueryOnlySourceWhenTheInstanceSnapshotIsEmpty() throws Exception {
         JobInstanceVO submitted = instance();
         submitted.setSourceTable(null);
-        // A source that only carries a query names no table, so no edge can be published.
         submitted.setRuntimeConfig("""
                 source {
                     Jdbc {
@@ -171,7 +172,10 @@ class OpenLineageJobLineageServiceTest {
 
         service.recordStart(submitted, "engine-job-42", false);
 
-        assertTrue(published.isEmpty(), "an unidentified datasource/table edge must not publish");
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals("START", event.path("eventType").asText());
+        assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
     }
 
     @Test
@@ -197,6 +201,109 @@ class OpenLineageJobLineageServiceTest {
         assertEquals(1, published.size());
         JsonNode event = MAPPER.readTree(published.get(0));
         assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
+    }
+
+    @Test
+    void fallsBackToTheInstanceTableWhenTheSinkUsesADynamicTableName() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSinkTable("public.dynamic_sink");
+        submitted.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web"
+                        table_path="seatunnel_web.orders"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        table="${table_name}"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-66", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
+        assertEquals("public.dynamic_sink", event.path("outputs").get(0).path("name").asText());
+    }
+
+    @Test
+    void publishesTheTableNamesOfACdcSource() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable(null);
+        submitted.setRuntimeConfig("""
+                source {
+                    MySQL-CDC {
+                        "table-names"=["inventory.orders","inventory.customers"]
+                    }
+                }
+                sink {
+                    Jdbc {
+                        table="public.test"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-67", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals(2, event.path("inputs").size());
+        assertEquals("inventory.orders", event.path("inputs").get(0).path("name").asText());
+        assertEquals("inventory.customers", event.path("inputs").get(1).path("name").asText());
+    }
+
+    @Test
+    void doesNotPublishRawScriptSqlAsATable() {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable("select * from (select id from db.t) x");
+        submitted.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        query="select * from (select id from db.t) x"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        table="public.test"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-68", false);
+
+        assertTrue(published.isEmpty());
+    }
+
+    @Test
+    void publishesEveryTableOfAQueryOnlyJoin() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable(null);
+        submitted.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web"
+                        query="select o.id as order_id, c.name as customer_name from seatunnel_web.orders o join seatunnel_web.customers c on o.id = c.id"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        table="public.test"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-69", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals(2, event.path("inputs").size());
+        assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
+        assertEquals("seatunnel_web.customers", event.path("inputs").get(1).path("name").asText());
+        // The source query has no transform mapping, so only table level lineage is known.
+        assertTrue(event.path("outputs").get(0).path("facets").path("columnLineage").isMissingNode());
     }
 
     @Test
@@ -333,18 +440,22 @@ class OpenLineageJobLineageServiceTest {
 
     @Test
     void mapsEveryBatchTerminalStatusPerTheDesignMatrix() throws Exception {
-        JobInstanceVO details = instance();
-        details.setEngineJobId("engine-job-42");
-        when(jobInstanceDao.selectDetailById(100L)).thenReturn(details);
+        when(jobInstanceDao.selectDetailById(anyLong())).thenAnswer(invocation -> {
+            JobInstanceVO details = instance();
+            details.setId(invocation.getArgument(0));
+            details.setEngineJobId("engine-job-42");
+            return details;
+        });
 
+        // One terminal per instance: the real update is guarded to a single final transition.
         service.onBatchJobStatusChanged(new JobStatusChangedEvent(
-                this, 100L, 200L, JobStatus.FINISHED, JobStatus.RUNNING, null, "engine-job-42"));
+                this, 101L, 200L, JobStatus.FINISHED, JobStatus.RUNNING, null, "engine-job-42"));
         service.onBatchJobStatusChanged(new JobStatusChangedEvent(
-                this, 100L, 200L, JobStatus.FAILED, JobStatus.RUNNING, "engine crash", "engine-job-42"));
+                this, 102L, 200L, JobStatus.FAILED, JobStatus.RUNNING, "engine crash", "engine-job-42"));
         service.onBatchJobStatusChanged(new JobStatusChangedEvent(
-                this, 100L, 200L, JobStatus.CANCELED, JobStatus.RUNNING, null, "engine-job-42"));
+                this, 103L, 200L, JobStatus.CANCELED, JobStatus.RUNNING, null, "engine-job-42"));
         service.onBatchJobStatusChanged(new JobStatusChangedEvent(
-                this, 100L, 200L, JobStatus.SAVEPOINT_DONE, JobStatus.RUNNING, null, "engine-job-42"));
+                this, 104L, 200L, JobStatus.SAVEPOINT_DONE, JobStatus.RUNNING, null, "engine-job-42"));
 
         assertEquals(4, published.size());
         assertEquals("COMPLETE", MAPPER.readTree(published.get(0)).path("eventType").asText());
@@ -356,9 +467,48 @@ class OpenLineageJobLineageServiceTest {
         // prevStatus comes from the event, not from the terminal status itself.
         assertEquals("RUNNING", MAPPER.readTree(published.get(0)).path("run")
                 .path("facets").path("seatunnel").path("prevStatus").asText());
-        // All terminals share the START runId.
-        assertEquals(OpenLineageEventFactory.deriveRunId("engine-job-42").toString(),
+        // All terminals share the START runId of their instance.
+        assertEquals(OpenLineageEventFactory.deriveRunId(101L, "engine-job-42").toString(),
                 MAPPER.readTree(published.get(0)).path("run").path("runId").asText());
+    }
+
+    @Test
+    void repeatedTerminalEventForTheSameInstanceIsPublishedOnce() {
+        JobInstanceVO details = instance();
+        details.setEngineJobId("engine-job-42");
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(details);
+
+        service.onBatchJobStatusChanged(new JobStatusChangedEvent(
+                this, 100L, 200L, JobStatus.FINISHED, JobStatus.RUNNING, null, "engine-job-42"));
+        service.onBatchJobStatusChanged(new JobStatusChangedEvent(
+                this, 100L, 200L, JobStatus.FINISHED, JobStatus.RUNNING, null, "engine-job-42"));
+
+        assertEquals(1, published.size());
+    }
+
+    @Test
+    void batchPulseReportsAnInstanceFailedWithoutAStatusEvent() throws Exception {
+        JobInstance running = new JobInstance();
+        running.setId(100L);
+        running.setJobStatus(JobStatus.RUNNING);
+        when(jobInstanceDao.listRunningLikeInstances())
+                .thenReturn(List.of(running))
+                .thenReturn(List.of());
+        JobInstanceVO failed = instance();
+        failed.setJobStatus("FAILED");
+        failed.setEngineJobId("engine-job-42");
+        failed.setErrorMessage("engine client died");
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(failed);
+
+        // Pulse 1 tracks the running instance, pulse 2 sees the bulk failure and reports it.
+        service.pulseBatchJobs();
+        service.pulseBatchJobs();
+
+        assertEquals(1, published.size());
+        JsonNode terminal = MAPPER.readTree(published.get(0));
+        assertEquals("FAIL", terminal.path("eventType").asText());
+        assertEquals("engine client died", terminal.path("run").path("facets")
+                .path("seatunnel").path("errorMessage").asText());
     }
 
     @Test
@@ -404,7 +554,7 @@ class OpenLineageJobLineageServiceTest {
     }
 
     @Test
-    void streamingVanishEmitsAbortNeverCompleteForAFinishedEngineResult() throws Exception {
+    void streamingVanishEmitsCompleteForAFinishedEngineResult() throws Exception {
         JobInstanceVO listed = instance();
         listed.setJobStatus("RUNNING");
         listed.setEngineJobId("engine-job-51");
@@ -424,7 +574,7 @@ class OpenLineageJobLineageServiceTest {
 
         assertEquals(2, published.size());
         JsonNode terminal = MAPPER.readTree(published.get(1));
-        assertEquals("ABORT", terminal.path("eventType").asText());
+        assertEquals("COMPLETE", terminal.path("eventType").asText());
         assertEquals("RUNNING", terminal.path("run").path("facets").path("seatunnel")
                 .path("prevStatus").asText());
         // A vanished instance must not emit the terminal twice.

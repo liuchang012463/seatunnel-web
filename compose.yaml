@@ -138,6 +138,22 @@ services:
       SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX:-seatunnel-web-upload}
       SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS:-24}
 
+      # OpenLineage lineage bridge. The asset project consumes this topic and writes the lineage
+      # to OpenMetadata. Inside the container 127.0.0.1 is the app itself, so the broker address
+      # has to be supplied explicitly; a blank address logs an error and drops events instead of
+      # failing startup.
+      LINEAGE_BRIDGE_ENABLED: ${LINEAGE_BRIDGE_ENABLED:-true}
+      LINEAGE_BRIDGE_KAFKA_BOOTSTRAP_SERVERS: ${LINEAGE_BRIDGE_KAFKA_BOOTSTRAP_SERVERS:-}
+      LINEAGE_BRIDGE_SOURCE_TOPIC: ${LINEAGE_BRIDGE_SOURCE_TOPIC:-meta_lineage_topic}
+      LINEAGE_BRIDGE_KAFKA_SASL_USERNAME: ${LINEAGE_BRIDGE_KAFKA_SASL_USERNAME:-kafka-admin}
+      LINEAGE_BRIDGE_KAFKA_SASL_PASSWORD: ${LINEAGE_BRIDGE_KAFKA_SASL_PASSWORD:-}
+      LINEAGE_BRIDGE_KAFKA_SECURITY_PROTOCOL: ${LINEAGE_BRIDGE_KAFKA_SECURITY_PROTOCOL:-SASL_PLAINTEXT}
+      LINEAGE_BRIDGE_KAFKA_SASL_MECHANISM: ${LINEAGE_BRIDGE_KAFKA_SASL_MECHANISM:-PLAIN}
+      LINEAGE_BRIDGE_KAFKA_CLIENT_ID: ${LINEAGE_BRIDGE_KAFKA_CLIENT_ID:-seatunnel-web-lineage-bridge}
+      LINEAGE_BRIDGE_KAFKA_AUTO_CREATE_TOPIC: ${LINEAGE_BRIDGE_KAFKA_AUTO_CREATE_TOPIC:-true}
+      LINEAGE_BRIDGE_KAFKA_ADMIN_TIMEOUT_MS: ${LINEAGE_BRIDGE_KAFKA_ADMIN_TIMEOUT_MS:-10000}
+      LINEAGE_BRIDGE_RUNNING_INTERVAL_MS: ${LINEAGE_BRIDGE_RUNNING_INTERVAL_MS:-60000}
+
       # DuckDB file sources: the Web writes the session init SQL into this directory and every
       # Engine node has to see the same files. Override the engine path when the Engine mounts
       # the shared volume somewhere else.

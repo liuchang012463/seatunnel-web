@@ -41,6 +41,21 @@ public final class OpenLineageColumnLineageBuilder {
             List<OpenLineageSnapshot.Dataset> inputs,
             List<OpenLineageSnapshot.Dataset> outputs,
             FieldMappingExtractor.Result extraction) {
+        return build(inputs, outputs, extraction, Map.of(), Map.of());
+    }
+
+    /**
+     * Builds the column lineage with the transform aliases of the job.
+     *
+     * @param inputAliases source plugin output names (e.g. {@code source-1}) mapped to datasets
+     * @param outputAliases sink plugin input names mapped to datasets
+     */
+    public static List<OpenLineageSnapshot.OutputLineage> build(
+            List<OpenLineageSnapshot.Dataset> inputs,
+            List<OpenLineageSnapshot.Dataset> outputs,
+            FieldMappingExtractor.Result extraction,
+            Map<String, List<OpenLineageSnapshot.Dataset>> inputAliases,
+            Map<String, List<OpenLineageSnapshot.Dataset>> outputAliases) {
         if (inputs == null || inputs.isEmpty() || outputs == null || outputs.isEmpty()
                 || extraction == null || extraction.mappings().isEmpty()) {
             return List.of();
@@ -52,11 +67,12 @@ public final class OpenLineageColumnLineageBuilder {
         Map<String, Map<String, List<OpenLineageSnapshot.SourceColumn>>> byOutput = new LinkedHashMap<>();
         for (FieldMappingExtractor.ColumnMapping mapping : extraction.mappings()) {
             FieldMappingExtractor.Owner owner = owners.get(mapping.ownerPath());
-            OpenLineageSnapshot.Dataset output = resolveOutput(outputs, owner);
+            OpenLineageSnapshot.Dataset output = resolveOutput(outputs, owner, outputAliases);
             if (output == null) {
                 continue;
             }
-            List<OpenLineageSnapshot.SourceColumn> sources = resolveSources(inputs, owner, mapping);
+            List<OpenLineageSnapshot.SourceColumn> sources =
+                    resolveSources(inputs, owner, mapping, inputAliases);
             if (sources.isEmpty()) {
                 continue;
             }
@@ -75,18 +91,18 @@ public final class OpenLineageColumnLineageBuilder {
     }
 
     /**
-     * The output dataset a mapping writes to: the only one of the job, or the one the transform
-     * names as its result table.
+     * The output dataset a mapping writes to: the one the transform names as its result table or
+     * output alias, or the only output of the job when the transform names none.
      */
     private static OpenLineageSnapshot.Dataset resolveOutput(
-            List<OpenLineageSnapshot.Dataset> outputs, FieldMappingExtractor.Owner owner) {
-        if (outputs.size() == 1) {
-            return outputs.get(0);
+            List<OpenLineageSnapshot.Dataset> outputs,
+            FieldMappingExtractor.Owner owner,
+            Map<String, List<OpenLineageSnapshot.Dataset>> outputAliases) {
+        if (owner != null && StringUtils.isNotBlank(owner.resultTableName())) {
+            OpenLineageSnapshot.Dataset matched = matchTable(outputs, owner.resultTableName());
+            return matched != null ? matched : matchAlias(outputAliases, owner.resultTableName());
         }
-        if (owner == null || StringUtils.isBlank(owner.resultTableName())) {
-            return null;
-        }
-        return matchTable(outputs, owner.resultTableName());
+        return outputs.size() == 1 ? outputs.get(0) : null;
     }
 
     /**
@@ -95,10 +111,12 @@ public final class OpenLineageColumnLineageBuilder {
     private static List<OpenLineageSnapshot.SourceColumn> resolveSources(
             List<OpenLineageSnapshot.Dataset> inputs,
             FieldMappingExtractor.Owner owner,
-            FieldMappingExtractor.ColumnMapping mapping) {
+            FieldMappingExtractor.ColumnMapping mapping,
+            Map<String, List<OpenLineageSnapshot.Dataset>> inputAliases) {
         List<OpenLineageSnapshot.SourceColumn> sources = new ArrayList<>();
         for (String sourceColumn : mapping.sourceColumns()) {
-            OpenLineageSnapshot.Dataset dataset = resolveSource(inputs, owner, mapping, sourceColumn);
+            OpenLineageSnapshot.Dataset dataset =
+                    resolveSource(inputs, owner, mapping, sourceColumn, inputAliases);
             if (dataset == null) {
                 continue;
             }
@@ -112,21 +130,62 @@ public final class OpenLineageColumnLineageBuilder {
             List<OpenLineageSnapshot.Dataset> inputs,
             FieldMappingExtractor.Owner owner,
             FieldMappingExtractor.ColumnMapping mapping,
-            String sourceColumn) {
+            String sourceColumn,
+            Map<String, List<OpenLineageSnapshot.Dataset>> inputAliases) {
         if (inputs.size() == 1) {
-            return inputs.get(0);
+            if (owner == null || !mapping.qualified()) {
+                return inputs.get(0);
+            }
+            // A qualified column must name the only input. If its alias is unknown or names
+            // another table, the topology missed that table and binding the column to the only
+            // input would be worse than leaving it unresolved.
+            String alias = aliasOf(sourceColumn);
+            if (alias != null) {
+                String aliasedTable = owner.aliasToTable().get(alias.toLowerCase(Locale.ROOT));
+                if (aliasedTable == null) {
+                    return null;
+                }
+                return matchTable(inputs, aliasedTable) != null
+                        || matchAlias(inputAliases, aliasedTable) != null
+                        ? inputs.get(0)
+                        : null;
+            }
+            String table = tableForColumn(owner, mapping, sourceColumn);
+            if (table == null) {
+                return inputs.get(0);
+            }
+            return matchTable(inputs, table) != null || matchAlias(inputAliases, table) != null
+                    ? inputs.get(0)
+                    : null;
         }
         if (owner == null) {
             // A field mapper names a column only; without a table it is ambiguous.
             return null;
         }
+        String table = tableForColumn(owner, mapping, sourceColumn);
+        if (table == null) {
+            return null;
+        }
+        OpenLineageSnapshot.Dataset matched = matchTable(inputs, table);
+        return matched != null ? matched : matchAlias(inputAliases, table);
+    }
+
+    /** The table a mapping names for one source column. */
+    private static String tableForColumn(
+            FieldMappingExtractor.Owner owner,
+            FieldMappingExtractor.ColumnMapping mapping,
+            String sourceColumn) {
         String table = null;
         if (mapping.qualified()) {
             String alias = aliasOf(sourceColumn);
             if (alias != null) {
                 table = owner.aliasToTable().get(alias.toLowerCase(Locale.ROOT));
-            }
-            if (table == null) {
+                if (table == null) {
+                    // A qualified column whose alias is not in the FROM clause cannot be
+                    // attributed to a table.
+                    return null;
+                }
+            } else {
                 // An unqualified column of a projection that reads exactly one table.
                 table = onlyTable(owner);
             }
@@ -134,10 +193,7 @@ public final class OpenLineageColumnLineageBuilder {
         if (table == null) {
             table = owner.sourceTableName();
         }
-        if (table == null) {
-            return null;
-        }
-        return matchTable(inputs, table);
+        return table;
     }
 
     /** The single table a SQL projection reads, when it reads exactly one. */
@@ -162,10 +218,20 @@ public final class OpenLineageColumnLineageBuilder {
         if (value == null) {
             return null;
         }
+        OpenLineageSnapshot.Dataset exact = null;
         for (OpenLineageSnapshot.Dataset dataset : datasets) {
-            if (value.equalsIgnoreCase(dataset.name())) {
-                return dataset;
+            if (!value.equalsIgnoreCase(dataset.name())) {
+                continue;
             }
+            if (exact != null) {
+                // Two datasources expose the same table path; the mapping does not say which one
+                // it means, so the column stays unresolved instead of binding to one by chance.
+                return null;
+            }
+            exact = dataset;
+        }
+        if (exact != null) {
+            return exact;
         }
         String last = lastSegment(value);
         OpenLineageSnapshot.Dataset found = null;
@@ -182,6 +248,19 @@ public final class OpenLineageColumnLineageBuilder {
             found = dataset;
         }
         return found;
+    }
+
+    /**
+     * The dataset a transform alias names. An alias that resolves to several tables (a multi-table
+     * source plugin) is ambiguous and yields no dataset.
+     */
+    private static OpenLineageSnapshot.Dataset matchAlias(
+            Map<String, List<OpenLineageSnapshot.Dataset>> aliases, String alias) {
+        if (aliases == null || aliases.isEmpty() || StringUtils.isBlank(alias)) {
+            return null;
+        }
+        List<OpenLineageSnapshot.Dataset> datasets = aliases.get(alias.toLowerCase(Locale.ROOT));
+        return datasets != null && datasets.size() == 1 ? datasets.get(0) : null;
     }
 
     private static List<OpenLineageSnapshot.SourceColumn> merge(

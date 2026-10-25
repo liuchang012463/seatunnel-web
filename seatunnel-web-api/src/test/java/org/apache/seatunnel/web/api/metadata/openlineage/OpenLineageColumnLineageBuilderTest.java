@@ -257,6 +257,126 @@ class OpenLineageColumnLineageBuilderTest {
         assertTrue(lineages.isEmpty());
     }
 
+    @Test
+    void dropsAColumnWhoseExactTablePathExistsInTwoDatasources() {
+        OpenLineageSnapshot.Dataset samePathOtherDatasource =
+                new OpenLineageSnapshot.Dataset(8L, "MYSQL", "other_mysql", "om_demo.orders");
+        List<OpenLineageSnapshot.OutputLineage> lineages = build(
+                List.of(ORDERS, samePathOtherDatasource),
+                List.of(SINK),
+                """
+                source {
+                    Jdbc { table_path="om_demo.orders" }
+                }
+                source2 {
+                    Jdbc { table_path="om_demo.orders" }
+                }
+                transform {
+                  joined {
+                    source_table_name="om_demo.orders"
+                    query="select id as order_id from om_demo.orders"
+                  }
+                }
+                sink {
+                    Jdbc { table="ods.orders_dwd" }
+                }
+                """);
+
+        assertTrue(lineages.isEmpty());
+    }
+
+    @Test
+    void resolvesTheGeneratedSqlAliasesToTheirDatasets() {
+        Config config = ConfigFactory.parseString("""
+                source {
+                    Jdbc {
+                        plugin_output="source-1"
+                        table_path="om_demo.orders"
+                    }
+                }
+                source2 {
+                    Jdbc {
+                        plugin_output="source-2"
+                        table_path="om_demo.customers"
+                    }
+                }
+                transform {
+                  Sql {
+                    plugin_input="source-1"
+                    plugin_output="sink-1"
+                    query="SELECT `source_order_id` AS `order_id` FROM `source-1`"
+                  }
+                }
+                sink {
+                    Jdbc {
+                        plugin_input="sink-1"
+                        table="ods.orders_dwd"
+                    }
+                }
+                """);
+
+        List<OpenLineageSnapshot.OutputLineage> lineages = OpenLineageColumnLineageBuilder.build(
+                List.of(ORDERS, CUSTOMERS),
+                List.of(SINK),
+                FieldMappingExtractor.extractDetailed(config),
+                Map.of("source-1", List.of(ORDERS), "source-2", List.of(CUSTOMERS)),
+                Map.of("sink-1", List.of(SINK)));
+
+        assertEquals(1, lineages.size());
+        assertEquals(SINK, lineages.get(0).output());
+        assertEquals(ORDERS, lineages.get(0).columns().get("order_id").get(0).dataset());
+        assertEquals("source_order_id", lineages.get(0).columns().get("order_id").get(0).column());
+    }
+
+    @Test
+    void doesNotBindAQualifiedColumnWhoseAliasIsMissing() {
+        List<OpenLineageSnapshot.OutputLineage> lineages = build(
+                List.of(ORDERS),
+                List.of(SINK),
+                """
+                source {
+                    Jdbc { table_path="om_demo.orders" }
+                }
+                transform {
+                  Sql {
+                    query="select x.id as order_id from om_demo.orders o"
+                  }
+                }
+                sink {
+                    Jdbc { table="ods.orders_dwd" }
+                }
+                """);
+
+        // The alias x is not in the FROM clause; binding the column to the only input would be
+        // a guess, so it stays unresolved.
+        assertTrue(lineages.isEmpty());
+    }
+
+    @Test
+    void attributesAJoinColumnToItsOwnTable() {
+        List<OpenLineageSnapshot.OutputLineage> lineages = build(
+                List.of(ORDERS, CUSTOMERS),
+                List.of(SINK),
+                """
+                source {
+                    Jdbc { table_list=["om_demo.orders","om_demo.customers"] }
+                }
+                transform {
+                  joined {
+                    query="select o.id as order_id, c.name as customer_name from om_demo.orders o join om_demo.customers c on o.id = c.id"
+                  }
+                }
+                sink {
+                    Jdbc { table="ods.orders_dwd" }
+                }
+                """);
+
+        assertEquals(1, lineages.size());
+        Map<String, List<OpenLineageSnapshot.SourceColumn>> columns = lineages.get(0).columns();
+        assertEquals(ORDERS, columns.get("order_id").get(0).dataset());
+        assertEquals(CUSTOMERS, columns.get("customer_name").get(0).dataset());
+    }
+
     private static List<OpenLineageSnapshot.OutputLineage> build(
             List<OpenLineageSnapshot.Dataset> inputs,
             List<OpenLineageSnapshot.Dataset> outputs,

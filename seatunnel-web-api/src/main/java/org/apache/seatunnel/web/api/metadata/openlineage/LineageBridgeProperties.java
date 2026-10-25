@@ -6,10 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Kafka delivery configuration for the OpenLineage lineage bridge.
  *
  * <p>
- * The SASL credentials default to the deployment's shared bridge account, matching
- * {@code .env.example}; production overrides them through environment variables. Environments
- * that treat non-empty defaults in application.yml as unacceptable can blank the two password
- * keys here without any code change.
+ * The SASL user defaults to the deployment's shared bridge account, matching
+ * {@code .env.example}; the password has no default and has to come from the environment.
  * </p>
  */
 @ConfigurationProperties(prefix = "lineage-bridge")

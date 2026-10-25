@@ -4,7 +4,6 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,7 +13,7 @@ class FieldMappingExtractorTest {
 
     @Test
     void readsTheFieldMapperOfATransform() {
-        Map<String, Set<String>> mappings = FieldMappingExtractor.extract(config("""
+        FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
                 source {
                     Jdbc { table_path="om_demo.orders" }
                 }
@@ -34,13 +33,13 @@ class FieldMappingExtractorTest {
                 """));
 
         // The field mapper reads source column = target column.
-        assertEquals(Set.of("source_order_id"), mappings.get("order_id"));
-        assertEquals(Set.of("source_created_at"), mappings.get("created_at"));
+        assertEquals(Set.of("source_order_id"), sourcesOf(result, "order_id"));
+        assertEquals(Set.of("source_created_at"), sourcesOf(result, "created_at"));
     }
 
     @Test
     void readsTheProjectionOfASqlTransform() {
-        Map<String, Set<String>> mappings = FieldMappingExtractor.extract(config("""
+        FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
                 transform {
                   joined {
                     query="select o.id as order_id, c.name as customer_name from om_demo.orders o join om_demo.customers c on o.user_id = c.user_id"
@@ -48,9 +47,8 @@ class FieldMappingExtractorTest {
                 }
                 """));
 
-        // The OpenMetadata channel only needs the column names, without the table qualifier.
-        assertEquals(Set.of("id"), mappings.get("order_id"));
-        assertEquals(Set.of("name"), mappings.get("customer_name"));
+        assertEquals(Set.of("o.id"), sourcesOf(result, "order_id"));
+        assertEquals(Set.of("c.name"), sourcesOf(result, "customer_name"));
     }
 
     @Test
@@ -91,8 +89,58 @@ class FieldMappingExtractorTest {
     }
 
     @Test
+    void readsEveryJoinAliasWhenTheSqlUsesAs() {
+        FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
+                transform {
+                  joined {
+                    query="select a.id as order_id, b.name as customer_name from om_demo.orders as a join om_demo.customers as b on a.user_id = b.user_id"
+                  }
+                }
+                """));
+
+        FieldMappingExtractor.Owner owner = result.owners().get(0);
+        assertEquals("om_demo.orders", owner.aliasToTable().get("a"));
+        assertEquals("om_demo.customers", owner.aliasToTable().get("b"));
+    }
+
+    @Test
+    void readsTheGeneratedSqlTransformAliases() {
+        FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
+                transform {
+                  Sql {
+                    plugin_input = "source-1"
+                    plugin_output = "sink-1"
+                    query="SELECT `source_id` AS `target_id` FROM `source-1`"
+                  }
+                }
+                """));
+
+        FieldMappingExtractor.Owner owner = result.owners().get(0);
+        assertEquals("source-1", owner.sourceTableName());
+        assertEquals("sink-1", owner.resultTableName());
+        assertEquals("source-1", owner.aliasToTable().get("source-1"));
+        assertEquals(Set.of("source_id"), sourcesOf(result, "target_id"));
+    }
+
+    @Test
+    void ignoresCastTypeNames() {
+        FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
+                transform {
+                  casted {
+                    query="select cast(`channel_type` as BYTES) as a, cast(`channel_type` as ARRAY<STRING>) as b, cast(`channel_type` as TIMESTAMP_TZ) as c, cast(`channel_type` as DATETIME) as d from db.t"
+                  }
+                }
+                """));
+
+        assertEquals(Set.of("channel_type"), sourcesOf(result, "a"));
+        assertEquals(Set.of("channel_type"), sourcesOf(result, "b"));
+        assertEquals(Set.of("channel_type"), sourcesOf(result, "c"));
+        assertEquals(Set.of("channel_type"), sourcesOf(result, "d"));
+    }
+
+    @Test
     void ignoresAProjectionWithAStar() {
-        Map<String, Set<String>> mappings = FieldMappingExtractor.extract(config("""
+        FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
                 transform {
                   copied {
                     query="select * from om_demo.orders"
@@ -100,13 +148,21 @@ class FieldMappingExtractorTest {
                 }
                 """));
 
-        assertTrue(mappings.isEmpty());
+        assertTrue(result.mappings().isEmpty());
     }
 
     @Test
     void readsNothingFromAnEmptyConfiguration() {
-        assertTrue(FieldMappingExtractor.extract(config("parallelism = 1")).isEmpty());
-        assertTrue(FieldMappingExtractor.extract(null).isEmpty());
+        assertTrue(FieldMappingExtractor.extractDetailed(config("parallelism = 1")).mappings().isEmpty());
+        assertTrue(FieldMappingExtractor.extractDetailed(null).mappings().isEmpty());
+    }
+
+    private static Set<String> sourcesOf(FieldMappingExtractor.Result result, String outputColumn) {
+        return result.mappings().stream()
+                .filter(mapping -> outputColumn.equals(mapping.outputColumn()))
+                .findFirst()
+                .orElseThrow()
+                .sourceColumns();
     }
 
     private static Config config(String hocon) {

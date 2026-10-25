@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Wiring for the OpenLineage lineage bridge. Everything is created only while
@@ -31,6 +32,10 @@ public class LineageBridgeConfig {
         executor.setThreadNamePrefix("lineage-event-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(5);
+        // Lineage is best effort: a saturated queue must drop the event instead of throwing back
+        // into the event multicaster, which would skip the other listeners of the same status
+        // change (the alarm engine, for example).
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
         // Spring calls afterPropertiesSet() -> initialize(); doing it here would create a second
         // executor and leak the first one.
         return executor;

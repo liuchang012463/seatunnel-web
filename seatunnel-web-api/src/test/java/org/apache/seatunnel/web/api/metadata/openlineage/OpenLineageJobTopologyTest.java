@@ -128,6 +128,150 @@ class OpenLineageJobTopologyTest {
         assertTrue(OpenLineageJobTopology.parse(null).sinks().isEmpty());
     }
 
+    @Test
+    void readsCdcTableNames() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    MySQL-CDC {
+                        "table-names"=["inventory.orders","inventory.customers"]
+                    }
+                }
+                sink {
+                    Jdbc { table_list=["ods.orders_dwd","ods.customers_dwd"] }
+                }
+                """));
+
+        assertEquals(List.of("inventory.orders", "inventory.customers"),
+                topology.sources().get(0).tables());
+        assertEquals(List.of("ods.orders_dwd", "ods.customers_dwd"),
+                topology.sinks().get(0).tables());
+    }
+
+    @Test
+    void readsTheTableOfAQueryOnlySource() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Jdbc {
+                        query="select id, name from om_demo.orders where id > 0"
+                    }
+                }
+                sink {
+                    Jdbc { table="ods.orders_dwd" }
+                }
+                """));
+
+        assertEquals(List.of("om_demo.orders"), topology.sources().get(0).tables());
+    }
+
+    @Test
+    void qualifiesATableListObjectWithItsDatabase() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Doris {
+                        table_list=[{ database="analytics", table="orders" }]
+                    }
+                }
+                """));
+
+        assertEquals(List.of("analytics.orders"), topology.sources().get(0).tables());
+    }
+
+    @Test
+    void reportsTheTransformAliasesOfAPlugin() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Jdbc {
+                        plugin_output="source-1"
+                        table_path="om_demo.orders"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        plugin_input="sink-1"
+                        table="ods.orders_dwd"
+                    }
+                }
+                """));
+
+        assertEquals("source-1", topology.sources().get(0).outputName());
+        assertEquals("sink-1", topology.sinks().get(0).inputName());
+    }
+
+    @Test
+    void readsEveryTableOfAQueryOnlyJoin() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Jdbc {
+                        query="select o.id, c.name from db.orders o join db.customers c on o.id = c.id"
+                    }
+                }
+                """));
+
+        assertEquals(List.of("db.orders", "db.customers"), topology.sources().get(0).tables());
+    }
+
+    @Test
+    void doesNotTreatACteSubqueryOrUnionAsATable() {
+        assertTrue(OpenLineageJobTopology.parse(config("""
+                source { Jdbc { query="with x as (select id from db.t) select id from x" } }
+                """)).sources().get(0).tables().isEmpty());
+        assertTrue(OpenLineageJobTopology.parse(config("""
+                source { Jdbc { query="select id from (select id from db.t) x" } }
+                """)).sources().get(0).tables().isEmpty());
+        assertTrue(OpenLineageJobTopology.parse(config("""
+                source { Jdbc { query="select id from db.a union select id from db.b" } }
+                """)).sources().get(0).tables().isEmpty());
+    }
+
+    @Test
+    void doesNotTreatTableFunctionsOrLateralAsTables() {
+        assertTrue(OpenLineageJobTopology.parse(config("""
+                source { Jdbc { query="select * from generate_series(1,10)" } }
+                """)).sources().get(0).tables().isEmpty());
+        assertTrue(OpenLineageJobTopology.parse(config("""
+                source { Jdbc { query="select * from unnest(array[1,2]) u" } }
+                """)).sources().get(0).tables().isEmpty());
+        assertTrue(OpenLineageJobTopology.parse(config("""
+                source { Jdbc { query="select * from db.a a, lateral (select id from db.b) x" } }
+                """)).sources().get(0).tables().isEmpty());
+    }
+
+    @Test
+    void readsTheTableAfterAMySqlHashComment() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Jdbc {
+                        query="select id # from orders\\n from db.t"
+                    }
+                }
+                """));
+
+        assertEquals(List.of("db.t"), topology.sources().get(0).tables());
+    }
+
+    @Test
+    void doesNotTreatPostgreSqlHashOperatorsAsComments() {
+        assertEquals(List.of("db.t"), OpenLineageJobTopology.parse(config("""
+                source { Jdbc { query="select data #> '{a}' from db.t" } }
+                """)).sources().get(0).tables());
+        assertEquals(List.of("db.t"), OpenLineageJobTopology.parse(config("""
+                source { Jdbc { query="select data #>> '{a}' from db.t" } }
+                """)).sources().get(0).tables());
+    }
+
+    @Test
+    void readsTheTableAfterAQueryComment() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Jdbc {
+                        query="select id /* from the source */ from db.t"
+                    }
+                }
+                """));
+
+        assertEquals(List.of("db.t"), topology.sources().get(0).tables());
+    }
+
     private static Config config(String hocon) {
         return ConfigFactory.parseString(hocon);
     }

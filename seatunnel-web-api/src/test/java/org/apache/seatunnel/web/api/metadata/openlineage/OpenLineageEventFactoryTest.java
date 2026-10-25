@@ -58,7 +58,9 @@ class OpenLineageEventFactoryTest {
         // Run + custom facet carrying the engine-native ids.
         UUID runId = UUID.fromString(event.path("run").path("runId").asText());
         assertEquals(
-                UUID.nameUUIDFromBytes("stweb-lineage:engine-job-42".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                UUID.nameUUIDFromBytes(
+                        "stweb-lineage:1024:engine-job-42"
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
                 runId);
         JsonNode seatunnel = event.path("run").path("facets").path("seatunnel");
         assertEquals(1024L, seatunnel.path("instanceId").asLong());
@@ -110,9 +112,9 @@ class OpenLineageEventFactoryTest {
 
     @Test
     void runIdIsDeterministicForTheSameEngineJobId() {
-        UUID first = OpenLineageEventFactory.deriveRunId("8e12af37-9abc");
-        UUID second = OpenLineageEventFactory.deriveRunId("8e12af37-9abc");
-        UUID other = OpenLineageEventFactory.deriveRunId("different-engine-job");
+        UUID first = OpenLineageEventFactory.deriveRunId(1L, "8e12af37-9abc");
+        UUID second = OpenLineageEventFactory.deriveRunId(1L, "8e12af37-9abc");
+        UUID other = OpenLineageEventFactory.deriveRunId(1L, "different-engine-job");
 
         assertEquals(first, second);
         assertFalse(first.equals(other));

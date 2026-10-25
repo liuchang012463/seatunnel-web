@@ -94,7 +94,7 @@ class OpenLineageStDsSampleIT {
                 "127.0.0.1:19092,127.0.0.1:19093,127.0.0.1:19094");
         String topic = env("LINEAGE_BRIDGE_SOURCE_TOPIC", "meta_lineage_topic");
         String username = env("LINEAGE_BRIDGE_KAFKA_SASL_USERNAME", "kafka-admin");
-        String password = env("LINEAGE_BRIDGE_KAFKA_SASL_PASSWORD", "Kafka@2024Secure!");
+        String password = env("LINEAGE_BRIDGE_KAFKA_SASL_PASSWORD", "");
 
         LineageBridgeProperties properties = new LineageBridgeProperties();
         properties.getKafka().setEnabled(true);
@@ -106,7 +106,7 @@ class OpenLineageStDsSampleIT {
         new OpenLineageTopicProvisioner(properties).ensureTopic(topic);
 
         String engineJobId = "stweb-stds-sample-" + System.currentTimeMillis();
-        String runId = OpenLineageEventFactory.deriveRunId(engineJobId).toString();
+        String runId = OpenLineageEventFactory.deriveRunId(0L, engineJobId).toString();
 
         // The event is built the way the bridge builds it: the submitted configuration is parsed
         // into datasets, and every mapped column is attributed to the table it comes from.

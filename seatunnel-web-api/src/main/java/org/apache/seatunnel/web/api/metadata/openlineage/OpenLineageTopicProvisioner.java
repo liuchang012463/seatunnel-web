@@ -116,7 +116,8 @@ public class OpenLineageTopicProvisioner {
 
     /**
      * Forgets what is known about a topic, so the next call tries to create it again. Used when
-     * the broker reports that the topic is gone.
+     * the broker reports that the topic is gone. The failure cooldown is kept: a broker that keeps
+     * rejecting the creation must not turn every lineage event into an administration call.
      */
     public void invalidate(String topic) {
         String name = StringUtils.trimToNull(topic);
@@ -124,7 +125,6 @@ public class OpenLineageTopicProvisioner {
             return;
         }
         ensured.remove(name);
-        failures.remove(name);
     }
 
     /**
@@ -143,7 +143,13 @@ public class OpenLineageTopicProvisioner {
             ensureTopic(topic);
             return;
         }
-        startupExecutor.execute(() -> ensureTopic(topic));
+        try {
+            startupExecutor.execute(() -> ensureTopic(topic));
+        } catch (RuntimeException error) {
+            // A saturated executor must not fail application startup; the topic is retried on
+            // the first publish.
+            log.warn("Could not schedule the OpenLineage lineage topic check: {}", error.getMessage());
+        }
     }
 
     @FunctionalInterface

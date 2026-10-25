@@ -110,7 +110,7 @@ class OpenLineageKafkaBridgeTest {
         kafka.setSecurityProtocol("SASL_PLAINTEXT");
         kafka.setSaslMechanism("PLAIN");
         kafka.setSaslUsername("kafka-admin");
-        kafka.setSaslPassword("Kafka@2024Secure!");
+        kafka.setSaslPassword("test-password");
         kafka.setClientId("seatunnel-web-lineage-bridge");
 
         Map<String, Object> props = OpenLineageKafkaBridge.producerProperties(properties);
@@ -128,12 +128,12 @@ class OpenLineageKafkaBridgeTest {
         assertTrue(((String) props.get("sasl.jaas.config")).startsWith(
                 "org.apache.kafka.common.security.plain.PlainLoginModule"));
         assertTrue(((String) props.get("sasl.jaas.config"))
-                .contains("username=\"kafka-admin\" password=\"Kafka@2024Secure!\""));
+                .contains("username=\"kafka-admin\" password=\"test-password\""));
     }
 
     @Test
     void scramMechanismSwitchesTheLoginModule() {
-        String jaas = OpenLineageKafkaBridge.buildJaas("SCRAM-SHA-256", "kafka-admin", "Kafka@2024Secure!");
+        String jaas = OpenLineageKafkaBridge.buildJaas("SCRAM-SHA-256", "kafka-admin", "test-password");
 
         assertTrue(jaas.startsWith("org.apache.kafka.common.security.scram.ScramLoginModule"));
         assertTrue(jaas.contains("username=\"kafka-admin\""));

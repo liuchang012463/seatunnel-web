@@ -3,7 +3,6 @@ package org.apache.seatunnel.web.api.metrics;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageJobLineageService;
-import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageJobLineageService;
 import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 import org.apache.seatunnel.web.common.exception.JobSubmitException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;

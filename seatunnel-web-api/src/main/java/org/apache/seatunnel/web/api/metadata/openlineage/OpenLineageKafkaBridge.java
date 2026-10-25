@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
@@ -46,6 +47,8 @@ public class OpenLineageKafkaBridge {
 
     private volatile boolean warnedBlankBootstrap;
 
+    private volatile boolean closed;
+
     OpenLineageKafkaBridge(LineageBridgeProperties properties,
                            OpenLineageTopicProvisioner topicProvisioner,
                            @Qualifier("lineageEventExecutor") Executor retryExecutor) {
@@ -63,17 +66,20 @@ public class OpenLineageKafkaBridge {
      * is sent one more time, because a missing topic is a recoverable state and not a delivery
      * problem.
      * </p>
+     *
+     * @return true when the event was handed to the producer, false when the bridge is disabled,
+     *     unconfigured or could not enqueue it
      */
-    void publish(String topic, String value) {
-        if (!properties.getKafka().isEnabled()) {
-            return;
+    boolean publish(String topic, String value) {
+        if (!properties.getKafka().isEnabled() || closed) {
+            return false;
         }
         Producer<String, String> kafkaProducer = producer();
         if (kafkaProducer == null) {
-            return;
+            return false;
         }
         topicProvisioner.ensureTopic(topic);
-        send(kafkaProducer, topic, value, true);
+        return send(kafkaProducer, topic, value, true);
     }
 
     /**
@@ -81,7 +87,7 @@ public class OpenLineageKafkaBridge {
      * executor: the callback of the producer runs on the Kafka I/O thread, which must not be
      * blocked by a topic administration call.
      */
-    private void send(
+    private boolean send(
             Producer<String, String> kafkaProducer, String topic, String value, boolean retryAllowed) {
         try {
             kafkaProducer.send(new ProducerRecord<>(topic, null, value), (metadata, error) -> {
@@ -99,8 +105,10 @@ public class OpenLineageKafkaBridge {
                 }
                 log.warn("OpenLineage event send failed on topic {}: {}", topic, error.getMessage());
             });
+            return true;
         } catch (Exception error) {
             log.warn("Could not enqueue OpenLineage event on topic {}", topic, error);
+            return false;
         }
     }
 
@@ -119,6 +127,9 @@ public class OpenLineageKafkaBridge {
     }
 
     private Producer<String, String> producer() {
+        if (closed) {
+            return null;
+        }
         Producer<String, String> existing = producer;
         if (existing != null) {
             return existing;
@@ -132,6 +143,9 @@ public class OpenLineageKafkaBridge {
             return null;
         }
         synchronized (this) {
+            if (closed) {
+                return null;
+            }
             if (producer == null) {
                 LineageBridgeProperties.Kafka kafka = properties.getKafka();
                 producer = new KafkaProducer<>(producerProperties(properties));
@@ -150,9 +164,11 @@ public class OpenLineageKafkaBridge {
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        // Low-frequency small messages: reliability first, no batching delay.
+        // Low-frequency small messages: reliability first, no batching delay. The metadata wait is
+        // bounded so an unreachable broker cannot pin a lineage worker for the client default.
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.RETRIES_CONFIG, 5);
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000);
         if (StringUtils.isNotBlank(kafka.getClientId())) {
             props.put(ProducerConfig.CLIENT_ID_CONFIG, kafka.getClientId());
         }
@@ -184,11 +200,20 @@ public class OpenLineageKafkaBridge {
         if (StringUtils.isNotBlank(kafka.getSecurityProtocol())) {
             props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, kafka.getSecurityProtocol());
         }
-        if (StringUtils.isNotBlank(kafka.getSaslMechanism())) {
-            props.put(SaslConfigs.SASL_MECHANISM, kafka.getSaslMechanism());
+        if (!usesSasl(kafka.getSecurityProtocol()) || StringUtils.isBlank(kafka.getSaslMechanism())) {
+            return;
+        }
+        props.put(SaslConfigs.SASL_MECHANISM, kafka.getSaslMechanism());
+        String mechanism = kafka.getSaslMechanism().toUpperCase(Locale.ROOT);
+        if ("PLAIN".equals(mechanism) || mechanism.startsWith("SCRAM")) {
             props.put(SaslConfigs.SASL_JAAS_CONFIG,
                     buildJaas(kafka.getSaslMechanism(), kafka.getSaslUsername(), kafka.getSaslPassword()));
         }
+    }
+
+    private static boolean usesSasl(String securityProtocol) {
+        return StringUtils.isNotBlank(securityProtocol)
+                && securityProtocol.toUpperCase(Locale.ROOT).contains("SASL");
     }
 
     /** JAAS string for PLAIN / SCRAM mechanisms, mirroring the Kafka datasource connector. */
@@ -206,7 +231,12 @@ public class OpenLineageKafkaBridge {
 
     @PreDestroy
     void close() {
-        Producer<String, String> kafkaProducer = producer;
+        Producer<String, String> kafkaProducer;
+        synchronized (this) {
+            closed = true;
+            kafkaProducer = producer;
+            producer = null;
+        }
         if (kafkaProducer != null) {
             kafkaProducer.close(Duration.ofSeconds(5));
             log.info("OpenLineage Kafka bridge producer closed");

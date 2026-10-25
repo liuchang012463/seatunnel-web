@@ -79,7 +79,7 @@ class OpenLineageOmMetadataSampleIT {
                 "127.0.0.1:19092,127.0.0.1:19093,127.0.0.1:19094");
         String topic = env("LINEAGE_BRIDGE_SOURCE_TOPIC", "meta_lineage_topic");
         String username = env("LINEAGE_BRIDGE_KAFKA_SASL_USERNAME", "kafka-admin");
-        String password = env("LINEAGE_BRIDGE_KAFKA_SASL_PASSWORD", "Kafka@2024Secure!");
+        String password = env("LINEAGE_BRIDGE_KAFKA_SASL_PASSWORD", "");
 
         LineageBridgeProperties properties = new LineageBridgeProperties();
         properties.getKafka().setEnabled(true);

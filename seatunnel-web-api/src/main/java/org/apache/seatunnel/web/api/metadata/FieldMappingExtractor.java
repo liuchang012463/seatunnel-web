@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,17 +22,14 @@ import java.util.regex.Pattern;
  *
  * <p>
  * This is a pure parser over the job's own configuration: it performs no OpenMetadata I/O and
- * shares nothing with the OpenMetadata lineage request JSON. The OpenMetadata lineage writer and
- * the OpenLineage Kafka bridge both consume it as "job config → column mappings" input while
- * building their own, unrelated output formats.
+ * shares nothing with any lineage request JSON. The OpenLineage Kafka bridge consumes it as
+ * "job config → column mappings" input while building its own event format.
  * </p>
  *
  * <p>
- * Two levels of detail are offered: {@link #extract(Config)} returns the plain mapping the
- * OpenMetadata channel needs (output column → source column names), while
- * {@link #extractDetailed(Config)} additionally reports which transform block declared each
- * mapping and which tables that block names. The OpenLineage channel needs the second level to
- * attribute a column to the table it comes from.
+ * {@link #extractDetailed(Config)} reports which transform block declared each mapping and which
+ * tables that block names. The OpenLineage channel needs this detail to attribute a column to the
+ * table it comes from.
  * </p>
  */
 public final class FieldMappingExtractor {
@@ -79,27 +75,9 @@ public final class FieldMappingExtractor {
     }
 
     /**
-     * Reads every FieldMapper target-to-source mapping plus the projections of generated Sql
-     * transforms. Target fields that no connector maps are absent, source fields unrecognized by
-     * the parser are dropped rather than guessed.
-     *
-     * @return mapping from target field name to the set of source field names it reads from
-     */
-    public static Map<String, Set<String>> extract(Config runtimeConfig) {
-        Map<String, Set<String>> mappings = new TreeMap<>();
-        for (ColumnMapping mapping : extractDetailed(runtimeConfig).mappings()) {
-            Set<String> columns =
-                    mappings.computeIfAbsent(mapping.outputColumn(), ignored -> new TreeSet<>());
-            for (String column : mapping.sourceColumns()) {
-                columns.add(mapping.qualified() ? lastSegment(column) : column);
-            }
-        }
-        return mappings;
-    }
-
-    /**
-     * The detailed extraction: the same mappings as {@link #extract(Config)}, plus the transform
-     * block that declared each of them and the tables that block names.
+     * The detailed extraction: every FieldMapper target-to-source mapping plus the projections of
+     * generated Sql transforms. Target fields that no connector maps are absent, source fields
+     * unrecognized by the parser are dropped rather than guessed.
      */
     public static Result extractDetailed(Config runtimeConfig) {
         if (runtimeConfig == null) {
@@ -185,8 +163,8 @@ public final class FieldMappingExtractor {
                 collector.addOwner(new Owner(
                         path,
                         parseFromTables(query),
-                        string(object, "source_table_name"),
-                        string(object, "result_table_name")));
+                        firstNonBlank(string(object, "source_table_name"), string(object, "plugin_input")),
+                        firstNonBlank(string(object, "result_table_name"), string(object, "plugin_output"))));
                 collectProjectionMappings(query, collector, path);
             }
             for (Map.Entry<String, ConfigValue> entry : object.entrySet()) {
@@ -255,10 +233,15 @@ public final class FieldMappingExtractor {
 
     /**
      * The tables of a {@code FROM} clause, keyed by their alias (lower case) and by their own
-     * name. Only plain table references are read; a subquery is skipped.
+     * name. Only plain table references are read; a subquery is skipped. The parser walks table
+     * positions instead of stopping at the first join condition, so every joined table and its
+     * {@code AS} alias is captured.
      */
     private static Map<String, String> parseFromTables(String query) {
         Map<String, String> tables = new LinkedHashMap<>();
+        if (StringUtils.isBlank(query)) {
+            return tables;
+        }
         int select = indexOfKeyword(query, "select", 0);
         if (select < 0) {
             return tables;
@@ -267,53 +250,64 @@ public final class FieldMappingExtractor {
         if (from < 0) {
             return tables;
         }
-        String clause = query.substring(from + "from".length(), fromClauseEnd(query, from));
-        List<String> tokens = tokenize(clause);
+        List<String> tokens = tokenize(query.substring(from + "from".length()));
+        boolean expectTable = true;
         for (int index = 0; index < tokens.size(); index++) {
             String token = tokens.get(index);
-            if (isJoinKeyword(token)) {
+            String lower = token.toLowerCase(Locale.ROOT);
+            if (",".equals(token)) {
+                expectTable = true;
                 continue;
             }
-            if (isClauseKeyword(token)) {
+            if (isFromTerminator(lower)) {
                 break;
             }
-            if (!isIdentifierLike(token)) {
+            if (isJoinKeyword(lower)) {
+                expectTable = true;
                 continue;
             }
-            String table = token;
+            if (isJoinConditionKeyword(lower)) {
+                expectTable = false;
+                continue;
+            }
+            if (!expectTable) {
+                continue;
+            }
+            String table = normalizeTableToken(token);
+            if (table == null) {
+                continue;
+            }
             String alias = null;
-            if (index + 1 < tokens.size()
-                    && isIdentifierLike(tokens.get(index + 1))
-                    && !isClauseKeyword(tokens.get(index + 1))
-                    && !isJoinKeyword(tokens.get(index + 1))) {
-                alias = tokens.get(index + 1);
-                index++;
+            int next = index + 1;
+            if (next < tokens.size() && "as".equalsIgnoreCase(tokens.get(next))) {
+                next++;
+            }
+            if (next < tokens.size()) {
+                String candidateToken = tokens.get(next);
+                String candidateLower = candidateToken.toLowerCase(Locale.ROOT);
+                if (!",".equals(candidateToken)
+                        && !isFromTerminator(candidateLower)
+                        && !isJoinKeyword(candidateLower)
+                        && !isJoinConditionKeyword(candidateLower)) {
+                    alias = normalizeTableToken(candidateToken);
+                    if (alias != null) {
+                        index = next;
+                    }
+                }
             }
             tables.put(table.toLowerCase(Locale.ROOT), table);
             if (alias != null) {
                 tables.put(alias.toLowerCase(Locale.ROOT), table);
             }
+            expectTable = false;
         }
         return tables;
     }
 
-    /** The end of the {@code FROM} clause: the first clause keyword that follows it. */
-    private static int fromClauseEnd(String query, int from) {
-        int end = query.length();
-        for (String keyword : List.of("on", "where", "group", "order", "having", "limit", "union",
-                "intersect", "except", "window", "qualify", "using")) {
-            int index = indexOfKeyword(query, keyword, from);
-            if (index >= 0 && index < end) {
-                end = index;
-            }
-        }
-        return end;
-    }
-
     private static List<String> tokenize(String clause) {
         List<String> tokens = new ArrayList<>();
-        for (String raw : clause.split("\\s+")) {
-            String token = raw.replace(",", "").trim();
+        for (String raw : clause.replace(",", " , ").split("\\s+")) {
+            String token = raw.trim();
             if (token.isEmpty() || token.contains("(") || token.contains(")")) {
                 continue;
             }
@@ -323,7 +317,7 @@ public final class FieldMappingExtractor {
     }
 
     private static boolean isJoinKeyword(String token) {
-        switch (token.toLowerCase(Locale.ROOT)) {
+        switch (token) {
             case "join":
             case "inner":
             case "left":
@@ -331,35 +325,75 @@ public final class FieldMappingExtractor {
             case "full":
             case "cross":
             case "outer":
+            case "natural":
+            case "straight_join":
                 return true;
             default:
                 return false;
         }
     }
 
-    private static boolean isClauseKeyword(String token) {
-        switch (token.toLowerCase(Locale.ROOT)) {
+    /** A keyword that starts the condition of a join; the next table follows a join keyword. */
+    private static boolean isJoinConditionKeyword(String token) {
+        switch (token) {
             case "on":
+            case "using":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /** A keyword that ends the FROM clause. */
+    private static boolean isFromTerminator(String token) {
+        switch (token) {
             case "where":
             case "group":
             case "order":
             case "having":
             case "limit":
+            case "offset":
+            case "fetch":
             case "union":
             case "intersect":
             case "except":
             case "window":
             case "qualify":
-            case "using":
-            case "as":
                 return true;
             default:
                 return false;
         }
     }
 
-    private static boolean isIdentifierLike(String token) {
-        return token.matches("[A-Za-z_][A-Za-z0-9_$]*(?:\\.[A-Za-z_][A-Za-z0-9_$]*)*");
+    /**
+     * A table or alias token: a quoted identifier keeps its content verbatim (SeaTunnel generated
+     * names may contain hyphens), an unquoted one has to be a plain dotted identifier.
+     */
+    private static String normalizeTableToken(String token) {
+        String trimmed = StringUtils.trimToNull(token);
+        if (trimmed == null) {
+            return null;
+        }
+        String value = unquoteToken(trimmed);
+        if (StringUtils.isBlank(value)) {
+            return null;
+        }
+        if (!isQuoted(trimmed) && !value.matches("[A-Za-z_][A-Za-z0-9_$]*(?:\\.[A-Za-z_][A-Za-z0-9_$]*)*")) {
+            return null;
+        }
+        return SQL_RESERVED_WORDS.contains(value.toUpperCase(Locale.ROOT)) ? null : value;
+    }
+
+    private static boolean isQuoted(String token) {
+        if (token.length() < 2) {
+            return false;
+        }
+        char first = token.charAt(0);
+        return (first == '`' || first == '"') && token.charAt(token.length() - 1) == first;
+    }
+
+    private static String unquoteToken(String token) {
+        return isQuoted(token) ? token.substring(1, token.length() - 1) : token;
     }
 
     /** Identifiers an expression reads: string literals are dropped, quoted names are kept. */
@@ -422,26 +456,75 @@ public final class FieldMappingExtractor {
 
     private static final Set<String> SQL_RESERVED_WORDS = Set.of(
             "AND",
+            "ARRAY",
             "AS",
             "BETWEEN",
+            "BIGINT",
+            "BINARY",
+            "BLOB",
+            "BOOLEAN",
+            "BYTE",
+            "BYTES",
             "CASE",
             "CAST",
+            "CHAR",
+            "CHARACTER",
+            "CLOB",
+            "DATE",
+            "DATETIME",
+            "DAY",
+            "DECIMAL",
             "DISTINCT",
+            "DOUBLE",
             "ELSE",
             "END",
             "FALSE",
+            "FLOAT",
             "FROM",
+            "GEOMETRY",
+            "HOUR",
             "IN",
+            "INT",
+            "INTEGER",
+            "INTERVAL",
             "IS",
+            "JSON",
             "LIKE",
+            "LONG",
+            "MAP",
+            "MINUTE",
+            "MONTH",
+            "NCHAR",
             "NOT",
             "NULL",
+            "NUMBER",
+            "NUMERIC",
+            "NVARCHAR",
             "OR",
+            "REAL",
+            "ROW",
+            "SECOND",
             "SELECT",
+            "SHORT",
+            "SIGNED",
+            "SMALLINT",
+            "STRING",
+            "TEXT",
             "THEN",
+            "TIME",
+            "TIMESTAMP",
+            "TIMESTAMP_LTZ",
+            "TIMESTAMP_TZ",
+            "TINYINT",
             "TRUE",
+            "UNSIGNED",
+            "UUID",
+            "VARBINARY",
+            "VARCHAR",
+            "VARCHAR2",
             "WHEN",
-            "WHERE"
+            "WHERE",
+            "YEAR"
     );
 
     private static int indexOfKeyword(String text, String keyword, int fromIndex) {
@@ -542,9 +625,8 @@ public final class FieldMappingExtractor {
                 : value.trim().replace("`", "").replace("\"", "").replace("'", "");
     }
 
-    private static String lastSegment(String identifier) {
-        int lastDot = identifier.lastIndexOf('.');
-        return lastDot >= 0 ? identifier.substring(lastDot + 1) : identifier;
+    private static String firstNonBlank(String first, String second) {
+        return StringUtils.isNotBlank(first) ? first : second;
     }
 
     private static String childPath(String path, String key) {

@@ -80,7 +80,8 @@ class OpenLineageTopicProvisionerTest {
     }
 
     @Test
-    void createsTheTopicOnlyOnce() {        List<String> created = new ArrayList<>();
+    void createsTheTopicOnlyOnce() {
+        List<String> created = new ArrayList<>();
         OpenLineageTopicProvisioner provisioner = provisioner(properties(true, "kafka:9092"), created, null);
 
         provisioner.ensureTopic("meta_lineage_topic");
@@ -135,6 +136,21 @@ class OpenLineageTopicProvisionerTest {
     }
 
     @Test
+    void invalidatingAMissingTopicKeepsTheFailureCooldown() {
+        List<String> created = new ArrayList<>();
+        OpenLineageTopicProvisioner provisioner = provisioner(
+                properties(true, "kafka:9092"), created, new IllegalStateException("no permission"));
+
+        provisioner.ensureTopic("meta_lineage_topic");
+        // A send to the topic failed because the broker does not know it. The bridge invalidates
+        // the topic before retrying; the failed creation must not be attempted on every event.
+        provisioner.invalidate("meta_lineage_topic");
+        provisioner.ensureTopic("meta_lineage_topic");
+
+        assertEquals(1, created.size());
+    }
+
+    @Test
     void letsTheClusterDecidePartitionsAndReplication() {
         NewTopic topic = OpenLineageTopicProvisioner.newTopic("meta_lineage_topic");
 
@@ -149,7 +165,7 @@ class OpenLineageTopicProvisionerTest {
         properties.getKafka().setSecurityProtocol("SASL_PLAINTEXT");
         properties.getKafka().setSaslMechanism("PLAIN");
         properties.getKafka().setSaslUsername("kafka-admin");
-        properties.getKafka().setSaslPassword("Kafka@2024Secure!");
+        properties.getKafka().setSaslPassword("test-password");
         properties.getKafka().setClientId("seatunnel-web-lineage-bridge");
 
         Map<String, Object> props = OpenLineageKafkaBridge.adminProperties(properties);
