@@ -230,11 +230,19 @@ public class JobInstanceRecoveryScheduler {
                 result.getMessage()
         );
 
-        streamingJobInstanceDao.updateStatus(
+        // The status is written only while the instance is still running: a job the operator
+        // stopped in the meantime keeps its own status.
+        if (!streamingJobInstanceDao.updateFinalStatusIfRunningLike(
                 instance.getId(),
                 targetStatus,
                 errorMessage
-        );
+        )) {
+            log.info(
+                    "Skip streaming recovery because the instance is no longer running, instanceId={}, targetStatus={}",
+                    instance.getId(),
+                    targetStatus
+            );
+        }
     }
 
     private JobRuntimeContext buildBatchRuntimeContext(JobInstance instance) {

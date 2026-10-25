@@ -141,6 +141,27 @@ public class StreamingJobInstanceDaoImpl
     }
 
     @Override
+    public boolean updateFinalStatusIfRunningLike(Long instanceId,
+                                                 JobStatus status,
+                                                 String errorMessage) {
+        Date now = new Date();
+        LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId)
+                .in(MyBatisColumn.getter(StreamingJobInstance::getJobStatus),
+                        JobStatusHelper.runningLikeStatuses())
+                .set(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), status)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), now)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getEndTime), now);
+
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getErrorMessage),
+                    truncate(errorMessage, 2000));
+        }
+
+        return streamingJobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
     public void updateStatusAndEngineId(Long instanceId, JobStatus status, String engineJobId) {
         boolean endState = status.isEndState();
         Date now = new Date();

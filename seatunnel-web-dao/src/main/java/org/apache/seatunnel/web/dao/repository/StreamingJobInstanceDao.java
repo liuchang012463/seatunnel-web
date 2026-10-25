@@ -25,6 +25,14 @@ public interface StreamingJobInstanceDao extends IDao<StreamingJobInstance> {
 
     void updateStatus(Long instanceId, JobStatus status, String errorMessage);
 
+    /**
+     * Writes a terminal status only while the instance is still running. A job the operator
+     * stopped in the meantime keeps its status instead of being overwritten by a recovery.
+     *
+     * @return true when the status was written
+     */
+    boolean updateFinalStatusIfRunningLike(Long instanceId, JobStatus status, String errorMessage);
+
     void updateStatusAndEngineId(Long instanceId, JobStatus status, String engineJobId);
 
     void updateSubmitResult(Long instanceId, String engineJobId, JobStatus submitStatus, Date submitTime);

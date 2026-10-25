@@ -143,6 +143,11 @@ public class JobInstanceDaoImpl
 
     @Override
     public boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date startTime) {
+        if (engineJobId == null || engineJobId.isBlank()) {
+            // Without an engine job id the instance cannot be reconciled any more, so it must
+            // not leave the STARTING state.
+            return false;
+        }
         Date now = new Date();
         LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
