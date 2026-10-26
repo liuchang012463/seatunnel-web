@@ -64,7 +64,9 @@ ENTRYPOINT ["/opt/seatunnel-web/bin/run-seatunnel-web.sh"]
 # =========================
 # Frontend runtime
 # =========================
-FROM nginx:latest AS frontend-runtime
+# Pinned tag: the health check below depends on curl, and "latest" could silently switch to a
+# variant without it. The dependency is installed explicitly instead of relying on the base.
+FROM nginx:1.27-bookworm AS frontend-runtime
 
 ARG VERSION=dev
 ARG VCS_REF=unknown
@@ -82,6 +84,9 @@ COPY --from=dist-artifact \
      /tmp/seatunnel-web.tar.gz
 
 RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends curl; \
+    rm -rf /var/lib/apt/lists/*; \
     mkdir -p /tmp/seatunnel-web; \
     tar -xzf /tmp/seatunnel-web.tar.gz \
         --strip-components=1 \
