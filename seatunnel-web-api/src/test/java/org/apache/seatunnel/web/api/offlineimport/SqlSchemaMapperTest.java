@@ -60,6 +60,10 @@ class SqlSchemaMapperTest {
         assertEquals(Set.of("SRC"), SqlSchemaMapper.writeSchemas("CREATE INDEX idx ON SRC.table_name(id)"));
         assertEquals(Set.of("SRC"), SqlSchemaMapper.writeSchemas("TRUNCATE SRC.table_name"));
         assertEquals(Set.of("SRC"), SqlSchemaMapper.writeSchemas("TRUNCATE TABLE SRC.table_name"));
+        assertEquals(Set.of("DST", "SRC"), SqlSchemaMapper.writeSchemas("TRUNCATE TABLE DST.t, SRC.t"));
+        assertEquals(Set.of("DST", "SRC"), SqlSchemaMapper.writeSchemas("DROP TABLE DST.t, SRC.t"));
+        assertEquals(Set.of("SRC"), SqlSchemaMapper.writeSchemas("COMMENT ON TABLE SRC.t IS 'note'"));
+        assertEquals(Set.of("SRC"), SqlSchemaMapper.writeSchemas("SELECT sys_catalog.setval('SRC.seq', 42, true)"));
     }
 
     @Test
@@ -89,5 +93,11 @@ class SqlSchemaMapperTest {
                 + "INSERT INTO SRC.t VALUES (NEW.id); RETURN NEW; END $$ LANGUAGE plpgsql";
 
         assertEquals(Set.of("SRC"), SqlSchemaMapper.writeSchemas(sql));
+    }
+
+    @Test
+    void rewritesCommentOnSchema() {
+        assertEquals("COMMENT ON SCHEMA \"DST\" IS 'note'",
+                SqlSchemaMapper.rewrite("COMMENT ON SCHEMA SRC IS 'note'", "SRC", "DST"));
     }
 }

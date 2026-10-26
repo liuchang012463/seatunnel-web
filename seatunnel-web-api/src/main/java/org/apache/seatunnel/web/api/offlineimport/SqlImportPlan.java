@@ -17,7 +17,8 @@ public final class SqlImportPlan {
     private static final Pattern SEARCH_PATH_SWITCH = Pattern.compile(
             "(?is)^\\s*SET\\s+(?:SESSION\\s+)?search_path\\s*(?:TO|=)\\s*(.*?)\\s*$");
     private static final Pattern SET_CONFIG_SEARCH_PATH = Pattern.compile(
-            "(?is)^\\s*SELECT\\s+(?:pg_catalog\\s*\\.\\s*)?set_config\\s*\\(\\s*'search_path'\\s*,\\s*'((?:''|[^'])*)'\\s*,\\s*(true|false)\\s*\\)\\s*$");
+            "(?is)^\\s*SELECT\\s+(?:(pg_catalog|sys_catalog)\\s*\\.\\s*)?set_config\\s*"
+                    + "\\(\\s*'search_path'\\s*,\\s*'((?:''|[^'])*)'\\s*,\\s*(true|false)\\s*\\)\\s*$");
 
     private static final Set<String> BLOCKED_FILE_FUNCTIONS = Set.of(
             "PG_READ_FILE", "PG_READ_BINARY_FILE", "PG_WRITE_FILE", "LO_IMPORT", "LO_EXPORT");
@@ -64,7 +65,7 @@ public final class SqlImportPlan {
                 continue;
             }
 
-            String switched = rewriteSchemaSwitch(sql, words, sourceSchema, effectiveTarget);
+            String switched = rewriteSchemaSwitch(sql, sourceSchema, effectiveTarget);
             Set<String> writeSchemas = SqlSchemaMapper.writeSchemas(switched);
             validateWriteSchemas(writeSchemas, sourceSchema, effectiveTarget);
 
@@ -119,12 +120,14 @@ public final class SqlImportPlan {
                 throw new IllegalArgumentException("SQL 文件包含数据库服务器文件操作函数: " + word);
             }
         }
-        if (sql.matches("(?is).*\\bSET\\s+(?:SESSION\\s+)?AUTHORIZATION\\b.*")
-                || sql.matches("(?is).*\\bSET\\s+ROLE\\b.*")) {
+        if (startsWith(words, "SET", "AUTHORIZATION")
+                || startsWith(words, "SET", "SESSION", "AUTHORIZATION")
+                || startsWith(words, "SET", "ROLE")
+                || startsWith(words, "SET", "SESSION", "ROLE")) {
             throw new IllegalArgumentException("SQL 文件不能切换数据库执行身份");
         }
-        if (sql.matches("(?is).*\\bset_config\\s*\\(\\s*'search_path'.*")) {
-            Matcher matcher = SET_CONFIG_SEARCH_PATH.matcher(sql);
+        if ("SELECT".equals(first) && words.contains("SET_CONFIG")) {
+            Matcher matcher = SET_CONFIG_SEARCH_PATH.matcher(stripLeadingComments(sql));
             if (!matcher.matches()) {
                 throw new IllegalArgumentException("无法安全识别 SQL 文件中的 search_path 动态设置");
             }
@@ -142,43 +145,78 @@ public final class SqlImportPlan {
         return "ALTER".equals(first) && words.contains("OWNER") && words.contains("TO");
     }
 
-    private static String rewriteSchemaSwitch(
-            String sql, List<String> words, String sourceSchema, String targetSchema) {
+    private static String rewriteSchemaSwitch(String sql, String sourceSchema, String targetSchema) {
         if (targetSchema == null) {
             return sql;
         }
-        Matcher schema = SCHEMA_SWITCH.matcher(sql);
+        int commandStart = leadingCommentEnd(sql);
+        String command = sql.substring(commandStart);
+        String prefix = sql.substring(0, commandStart);
+        Matcher schema = SCHEMA_SWITCH.matcher(command);
         if (schema.matches()) {
             String current = identifierValue(schema.group(1));
             validateSchemaSwitch(current, sourceSchema, targetSchema);
-            return "SET SCHEMA " + SqlSchemaMapper.quoteIdentifier(targetSchema);
+            return prefix + "SET SCHEMA " + SqlSchemaMapper.quoteIdentifier(targetSchema);
         }
 
-        Matcher path = SEARCH_PATH_SWITCH.matcher(sql);
+        Matcher path = SEARCH_PATH_SWITCH.matcher(command);
         if (path.matches()) {
-            return "SET search_path TO " + mapSearchPath(path.group(1), sourceSchema, targetSchema);
+            return prefix + "SET search_path TO " + mapSearchPath(path.group(1), sourceSchema, targetSchema);
         }
 
-        Matcher config = SET_CONFIG_SEARCH_PATH.matcher(sql);
+        Matcher config = SET_CONFIG_SEARCH_PATH.matcher(command);
         if (config.matches()) {
-            String mappedPath = mapSearchPath(config.group(1), sourceSchema, targetSchema);
-            return "SELECT pg_catalog.set_config('search_path', '" + mappedPath.replace("'", "''")
-                    + "', " + config.group(2).toLowerCase(Locale.ROOT) + ")";
+            String mappedPath = mapSearchPath(config.group(2), sourceSchema, targetSchema);
+            String catalog = config.group(1) == null ? "pg_catalog" : config.group(1).toLowerCase(Locale.ROOT);
+            return prefix + "SELECT " + catalog + ".set_config('search_path', '" + mappedPath.replace("'", "''")
+                    + "', " + config.group(3).toLowerCase(Locale.ROOT) + ")";
         }
         return sql;
     }
 
+    private static String stripLeadingComments(String sql) {
+        return sql.substring(leadingCommentEnd(sql));
+    }
+
+    private static int leadingCommentEnd(String sql) {
+        int i = 0;
+        while (i < sql.length()) {
+            while (i < sql.length() && Character.isWhitespace(sql.charAt(i))) {
+                i++;
+            }
+            if (i + 1 < sql.length() && sql.charAt(i) == '-' && sql.charAt(i + 1) == '-') {
+                int nl = sql.indexOf('\n', i + 2);
+                i = nl < 0 ? sql.length() : nl + 1;
+            } else if (i + 1 < sql.length() && sql.charAt(i) == '/' && sql.charAt(i + 1) == '*') {
+                int depth = 1;
+                i += 2;
+                while (i < sql.length() && depth > 0) {
+                    if (i + 1 < sql.length() && sql.charAt(i) == '/' && sql.charAt(i + 1) == '*') {
+                        depth++;
+                        i += 2;
+                    } else if (i + 1 < sql.length() && sql.charAt(i) == '*' && sql.charAt(i + 1) == '/') {
+                        depth--;
+                        i += 2;
+                    } else {
+                        i++;
+                    }
+                }
+            } else {
+                return i;
+            }
+        }
+        return i;
+    }
+
     private static String mapSearchPath(String rawPath, String sourceSchema, String targetSchema) {
         String path = rawPath.trim();
-        if (path.startsWith("'") && path.endsWith("'")) {
-            path = identifierValue(path);
-        } else if (path.startsWith("\"") && path.endsWith("\"")) {
+        if (path.length() >= 2 && path.charAt(0) == '\'' && path.charAt(path.length() - 1) == '\'') {
             path = identifierValue(path);
         }
         if (path.isEmpty()) {
             return SqlSchemaMapper.quoteIdentifier(targetSchema);
         }
-        String[] entries = path.split(",", -1);
+        List<String> entries = splitSearchPath(path);
         List<String> mapped = new ArrayList<>();
         for (String entry : entries) {
             String value = identifierValue(entry.trim());
@@ -200,6 +238,34 @@ public final class SqlImportPlan {
             mapped.add(0, SqlSchemaMapper.quoteIdentifier(targetSchema));
         }
         return String.join(", ", mapped);
+    }
+
+    private static List<String> splitSearchPath(String path) {
+        List<String> entries = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean quotedIdentifier = false;
+        for (int i = 0; i < path.length(); i++) {
+            char c = path.charAt(i);
+            if (c == '"') {
+                current.append(c);
+                if (quotedIdentifier && i + 1 < path.length() && path.charAt(i + 1) == '"') {
+                    current.append('"');
+                    i++;
+                } else {
+                    quotedIdentifier = !quotedIdentifier;
+                }
+            } else if (c == ',' && !quotedIdentifier) {
+                entries.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(c);
+            }
+        }
+        if (quotedIdentifier) {
+            throw new IllegalArgumentException("无法安全识别 SQL 文件中的 search_path 引号");
+        }
+        entries.add(current.toString());
+        return entries;
     }
 
     private static String identifierValue(String raw) {

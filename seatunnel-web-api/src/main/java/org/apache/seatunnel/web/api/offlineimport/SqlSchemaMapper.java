@@ -57,6 +57,7 @@ public final class SqlSchemaMapper {
     /** Returns explicit schemas used as object targets by DDL/DML statements. */
     public static Set<String> writeSchemas(String sql) {
         List<Token> tokens = tokens(sql);
+        Set<String> schemas = new LinkedHashSet<>();
         Span routineBody = routineBody(sql);
         if (routineBody != null && routineBody.kind() != BodyKind.C) {
             String body = sql.substring(routineBody.contentStart(), routineBody.contentEnd());
@@ -64,8 +65,9 @@ public final class SqlSchemaMapper {
                 body = body.replace("''", "'");
             }
             tokens.addAll(tokens(body));
+            addSequenceReferenceSchemas(body, schemas);
         }
-        Set<String> schemas = new LinkedHashSet<>();
+        addSequenceReferenceSchemas(sql, schemas);
         boolean createIndexOrTrigger = containsWord(tokens, "CREATE")
                 && (containsWord(tokens, "INDEX") || containsWord(tokens, "TRIGGER"));
         for (int i = 0; i < tokens.size(); i++) {
@@ -90,9 +92,13 @@ public final class SqlSchemaMapper {
                 if (kind >= 0) {
                     int object = skipIfNotExists(tokens, kind + 1);
                     if ("SCHEMA".equals(tokens.get(kind).word())) {
-                        addNamedSchema(tokens, object, schemas);
+                        addCommaNamedSchemas(tokens, object, schemas);
                     } else {
-                        addQualifiedSchema(tokens, object, schemas);
+                        if ("DROP".equals(word)) {
+                            addCommaQualifiedSchemas(tokens, object, schemas);
+                        } else {
+                            addQualifiedSchema(tokens, object, schemas);
+                        }
                     }
                 }
             } else if ("INSERT".equals(word) || "MERGE".equals(word)) {
@@ -113,14 +119,31 @@ public final class SqlSchemaMapper {
                     if (table < tokens.size() && "TABLE".equals(tokens.get(table).word())) {
                         table++;
                     }
-                    addQualifiedSchema(tokens, skipOnly(tokens, table), schemas);
+                    addCommaQualifiedSchemas(tokens, skipOnly(tokens, table), schemas);
                 }
             } else if ("REFERENCES".equals(word)) {
                 addQualifiedSchema(tokens, i + 1, schemas);
             } else if ("ON".equals(word) && createIndexOrTrigger) {
                 addQualifiedSchema(tokens, i + 1, schemas);
-            } else if ("TABLE".equals(word) && i > 0 && "COMMENT".equals(tokens.get(i - 1).word())) {
-                addQualifiedSchema(tokens, i + 1, schemas);
+            } else if ("COMMENT".equals(word) && i + 2 < tokens.size()
+                    && "ON".equals(tokens.get(i + 1).word())) {
+                String kind = tokens.get(i + 2).word();
+                if ("SCHEMA".equals(kind)) {
+                    addNamedSchema(tokens, i + 3, schemas);
+                } else if ("CONSTRAINT".equals(kind)) {
+                    int on = findWord(tokens, "ON", i + 3);
+                    if (on >= 0) {
+                        addQualifiedSchema(tokens, on + 1, schemas);
+                    }
+                } else if (Set.of("TABLE", "COLUMN", "SEQUENCE", "VIEW", "MATERIALIZED", "INDEX",
+                        "FUNCTION", "PROCEDURE", "TYPE", "DOMAIN", "TRIGGER").contains(kind)) {
+                    int object = i + 3;
+                    if ("MATERIALIZED".equals(kind) && object < tokens.size()
+                            && "VIEW".equals(tokens.get(object).word())) {
+                        object++;
+                    }
+                    addQualifiedSchema(tokens, object, schemas);
+                }
             }
         }
         return schemas;
@@ -270,6 +293,46 @@ public final class SqlSchemaMapper {
                 || prefix.matches("(?is).*?\\b(?:nextval|currval|setval|lastval)\\s*\\(\\s*$");
     }
 
+    private static void addSequenceReferenceSchemas(String sql, Set<String> schemas) {
+        int i = 0;
+        while (i < sql.length()) {
+            char c = sql.charAt(i);
+            char next = i + 1 < sql.length() ? sql.charAt(i + 1) : '\0';
+            if (c == '-' && next == '-') {
+                int nl = sql.indexOf('\n', i);
+                i = nl < 0 ? sql.length() : nl + 1;
+            } else if (c == '/' && next == '*') {
+                i = skipBlockComment(sql, i);
+            } else if (c == '"') {
+                i = skipQuoted(sql, i, '"');
+            } else if (c == '$' && dollarTagEnd(sql, i) >= 0) {
+                int tagEnd = dollarTagEnd(sql, i);
+                String tag = sql.substring(i, tagEnd);
+                int close = sql.indexOf(tag, tagEnd);
+                i = close < 0 ? sql.length() : close + tag.length();
+            } else if (c == '\'') {
+                int end = skipQuoted(sql, i, '\'');
+                if (isSequenceReference(sql, i, end)) {
+                    String value = sql.substring(i + 1, Math.max(i + 1, end - 1)).replace("''", "'").trim();
+                    int dot = qualifiedNameDot(value);
+                    if (dot > 0) {
+                        String schema = value.substring(0, dot).trim();
+                        if (schema.length() >= 2 && schema.charAt(0) == '"'
+                                && schema.charAt(schema.length() - 1) == '"') {
+                            schema = schema.substring(1, schema.length() - 1).replace("\"\"", "\"");
+                        }
+                        if (!schema.isBlank()) {
+                            schemas.add(schema);
+                        }
+                    }
+                }
+                i = end;
+            } else {
+                i++;
+            }
+        }
+    }
+
     private static String rewriteSequenceLiteral(String literal, String source, String target) {
         if (literal.length() < 2 || literal.charAt(0) != '\'') {
             return literal;
@@ -310,7 +373,8 @@ public final class SqlSchemaMapper {
     private static boolean isSchemaDeclaration(String sql, int at) {
         String prefix = sql.substring(0, at).replaceAll("(?s)/\\*.*?\\*/|--[^\\r\\n]*", " ")
                 .trim().toUpperCase(Locale.ROOT);
-        return prefix.matches("(?s).*\\b(?:CREATE|ALTER|DROP)\\s+SCHEMA(?:\\s+IF\\s+NOT\\s+EXISTS)?$");
+        return prefix.matches("(?s).*\\b(?:(?:CREATE|ALTER|DROP)\\s+SCHEMA(?:\\s+IF\\s+NOT\\s+EXISTS)?"
+                + "|COMMENT\\s+ON\\s+SCHEMA)$");
     }
 
     private static boolean followedByDot(String sql, int from) {
@@ -469,6 +533,34 @@ public final class SqlSchemaMapper {
     private static void addNamedSchema(List<Token> tokens, int at, Set<String> schemas) {
         if (at >= 0 && at < tokens.size() && tokens.get(at).identifier()) {
             schemas.add(tokens.get(at).value());
+        }
+    }
+
+    private static void addCommaNamedSchemas(List<Token> tokens, int at, Set<String> schemas) {
+        int object = at;
+        while (object >= 0 && object < tokens.size() && tokens.get(object).identifier()) {
+            addNamedSchema(tokens, object, schemas);
+            object++;
+            if (object >= tokens.size() || !",".equals(tokens.get(object).text())) {
+                return;
+            }
+            object++;
+        }
+    }
+
+    private static void addCommaQualifiedSchemas(List<Token> tokens, int at, Set<String> schemas) {
+        int object = at;
+        while (object >= 0 && object < tokens.size() && tokens.get(object).identifier()) {
+            addQualifiedSchema(tokens, object, schemas);
+            object++;
+            if (object + 1 < tokens.size() && ".".equals(tokens.get(object).text())
+                    && tokens.get(object + 1).identifier()) {
+                object += 2;
+            }
+            if (object >= tokens.size() || !",".equals(tokens.get(object).text())) {
+                return;
+            }
+            object++;
         }
     }
 

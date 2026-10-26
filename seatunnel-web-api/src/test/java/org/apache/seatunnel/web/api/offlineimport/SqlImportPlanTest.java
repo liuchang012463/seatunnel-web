@@ -58,6 +58,20 @@ class SqlImportPlanTest {
     }
 
     @Test
+    void mapsQuotedSearchPathEntriesAndCatalogSetConfig() {
+        SqlImportPlan.Plan kingbase = SqlImportPlan.prepare(
+                "SET search_path = \"SRC\", \"pg_catalog\"; SELECT 1;",
+                DbType.KINGBASE, "SRC", "DST");
+        assertEquals("SET search_path TO \"DST\", pg_catalog", kingbase.statements().get(0).sql());
+
+        SqlImportPlan.Plan setConfig = SqlImportPlan.prepare(
+                "SELECT sys_catalog.set_config('search_path', 'SRC, pg_catalog', false); SELECT 1;",
+                DbType.KINGBASE, "SRC", "DST");
+        assertTrue(setConfig.statements().get(0).sql()
+                .startsWith("SELECT sys_catalog.set_config('search_path', '\"DST\", pg_catalog'"));
+    }
+
+    @Test
     void rejectsAnExplicitNonTargetSchemaWhenSourceIsMissingOrMismatched() {
         assertThrows(IllegalArgumentException.class,
                 () -> SqlImportPlan.prepare("CREATE TABLE SRC.t(id INT);", DbType.KINGBASE, null, "DST"));
@@ -70,6 +84,14 @@ class SqlImportPlanTest {
                 () -> SqlImportPlan.prepare("CREATE FUNCTION f() RETURNS trigger AS $$ BEGIN "
                                 + "INSERT INTO SRC.t VALUES (NEW.id); RETURN NEW; END $$ LANGUAGE plpgsql;",
                         DbType.KINGBASE, null, "DST"));
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare("TRUNCATE TABLE DST.t, SRC.t;", DbType.KINGBASE, null, "DST"));
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare("SELECT sys_catalog.setval('SRC.seq', 42, true);",
+                        DbType.KINGBASE, null, "DST"));
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare("COMMENT ON TABLE SRC.t IS 'note';",
+                        DbType.KINGBASE, null, "DST"));
     }
 
     @Test
@@ -81,5 +103,23 @@ class SqlImportPlanTest {
                 () -> SqlImportPlan.prepare(dynamic, DbType.KINGBASE, null, "DST"));
         assertThrows(IllegalArgumentException.class,
                 () -> SqlImportPlan.prepare("COPY SRC.t FROM stdin;\n1\n\\.\n", DbType.DAMENG, "SRC", "DST"));
+    }
+
+    @Test
+    void rewritesSchemaSwitchesAfterLeadingCommentsAndDoesNotScanDataForCommands() {
+        SqlImportPlan.Plan dameng = SqlImportPlan.prepare(
+                "-- exported schema\nSET SCHEMA SRC; CREATE TABLE t(id INT);",
+                DbType.DAMENG, "SRC", "DST");
+        assertTrue(dameng.statements().get(0).sql().contains("SET SCHEMA \"DST\""));
+
+        SqlImportPlan.Plan kingbase = SqlImportPlan.prepare(
+                "/* export header */ SET search_path=SRC; CREATE TABLE t(id INT);",
+                DbType.KINGBASE, "SRC", "DST");
+        assertTrue(kingbase.statements().get(0).sql().contains("SET search_path TO \"DST\""));
+
+        SqlImportPlan.Plan data = SqlImportPlan.prepare(
+                "INSERT INTO SRC.t VALUES ('SET ROLE admin');",
+                DbType.KINGBASE, "SRC", "DST");
+        assertTrue(data.statements().get(0).sql().contains("'SET ROLE admin'"));
     }
 }
