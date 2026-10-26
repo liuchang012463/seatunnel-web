@@ -232,6 +232,43 @@ class HoconSensitiveMaskUtilTest {
     }
 
     /**
+     * Diagnostic fields that merely contain a credential word root (tokens counted by a model,
+     * a vocabulary size, a search keyword, a user id, a verify switch) are not credentials and
+     * must survive masking readable.
+     */
+    @Test
+    void doesNotMaskBusinessFieldsThatContainACredentialRoot() {
+        String text = "max_tokens=512 total_tokens: 1024 tokenizer.vocab_size=30522 "
+                + "?keyword=search&monkey=1&user_id=7 signature.verify=true secretariat.office=room5";
+
+        assertEquals(text, HoconSensitiveMaskUtil.maskSensitiveText(text));
+    }
+
+    @Test
+    void stillMasksCompoundAndBareCredentialRoots() {
+        String masked = HoconSensitiveMaskUtil.maskSensitiveText(
+                "api_key=k1 access-token=k2 client_secret=k3 token: k4 "
+                        + "url?a=b&token=url-token&X-Amz-Signature=sig");
+
+        assertFalse(masked.contains("k1"));
+        assertFalse(masked.contains("k2"));
+        assertFalse(masked.contains("k3"));
+        assertFalse(masked.contains("k4"));
+        assertFalse(masked.contains("url-token"));
+        assertFalse(masked.contains("=sig"));
+        assertTrue(masked.contains("a=b"));
+    }
+
+    /** The quotes of a masked JSON value are kept, so an embedded JSON fragment stays parseable. */
+    @Test
+    void keepsTheQuotesOfAMaskedJsonValue() {
+        String masked = HoconSensitiveMaskUtil.maskSensitiveText(
+                "connect failed: {\"password\":\"json-password\",\"ok\":true}");
+
+        assertEquals("connect failed: {\"password\":\"******\",\"ok\":true}", masked);
+    }
+
+    /**
      * The Engine answers with JSON, so a quoted key must be masked as well.
      */
     @Test

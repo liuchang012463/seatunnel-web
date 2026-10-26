@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.utils;
 import com.typesafe.config.*;
 
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class HoconSensitiveMaskUtil {
@@ -31,20 +32,35 @@ public final class HoconSensitiveMaskUtil {
     ));
 
     private static final Pattern URL_USER_INFO = Pattern.compile("(?i)(://)[^/?#]+@");
+
+    /**
+     * 凭证参数出现在 URL 查询串里。词根匹配分三类：无歧义词根（password 等）允许子串；
+     * 复合键（api_key / access_token 等）按前缀+词根整段匹配；易误伤词根（secret/token/
+     * signature/key/user/auth）只在词边界上匹配——否则 keyword、monkey、user_id、max_tokens
+     * 这类业务参数会被误伤。X-Amz-Signature 这类连字符前缀仍视为凭证。
+     */
     private static final Pattern URL_CREDENTIAL_PARAMETER = Pattern.compile(
-            "(?i)([?&;,](?:[a-z0-9_.-]*(?:password|passwd|pwd|secret|token|credential"
-                    + "|access[_-]?key|api[_-]?key|private[_-]?key|authorization|user(?:name)?|signature|key|auth)"
-                    + "[a-z0-9_.-]*)=)(\\{[^}]*\\}|\"[^\"]*\"|'(?:''|[^'])*'|[^&#;,]*)");
+            "(?i)([?&;,](?:"
+                    + "[a-z0-9_.-]*(?:password|passwd|pwd|credential|authorization)[a-z0-9_.-]*"
+                    + "|(?:access|api|client|private|auth)[_-]?(?:key|token|secret)"
+                    + "|[a-z0-9_.-]*(?<![a-z0-9_.])(?:secret|token|signature|key|user(?:name)?|auth)"
+                    + "(?![a-z0-9_.])[a-z0-9_.-]*"
+                    + ")=)"
+                    + "(\\{[^}]*\\}|\"[^\"]*\"|'(?:''|[^'])*'|[^&#;,]*)");
 
     /**
      * Credentials also appear as {@code password = "..."} or {@code apiKey: ...} inside error
-     * messages and diagnostics, where there is no URL or HOCON structure to parse.
+     * messages and diagnostics, where there is no URL or HOCON structure to parse. The word
+     * roots are matched with the same three-tier rule as the URL parameters above.
      */
     private static final Pattern KEY_VALUE_CREDENTIAL = Pattern.compile(
-            "(?i)((?:[\"']?)(?:[a-z0-9_.-]*(?:password|passwd|pwd|secret|token|credential"
-                    + "|access[_-]?key|api[_-]?key|client[_-]?key|private[_-]?key"
-                    + "|authorization|signature)"
-                    + "[a-z0-9_.-]*)(?:[\"']?)\\s*[=:]\\s*)"
+            "(?i)((?:[\"']?)"
+                    + "(?:"
+                    + "[a-z0-9_.-]*(?:password|passwd|pwd|credential|authorization)[a-z0-9_.-]*"
+                    + "|(?:access|api|client|private|auth)[_-]?(?:key|token|secret)"
+                    + "|(?<![a-z0-9_.-])(?:secret|token|signature)(?![a-z0-9_.-])"
+                    + ")"
+                    + "(?:[\"']?)\\s*[=:]\\s*)"
                     + "(\\{[^}]*\\}|\"[^\"]*\"|'(?:''|[^'])*'|(?:Bearer|Basic)?\\s*[^\\s,;&#]+)");
 
     private static final String INVALID_HOCON_MASKED_MESSAGE =
@@ -308,7 +324,31 @@ public final class HoconSensitiveMaskUtil {
         String masked = URL_USER_INFO.matcher(value).replaceAll("$1" + MASK + "@");
         masked = maskOracleThinCredentials(masked);
         masked = URL_CREDENTIAL_PARAMETER.matcher(masked).replaceAll("$1" + MASK);
-        return KEY_VALUE_CREDENTIAL.matcher(masked).replaceAll("$1" + MASK);
+        return maskQuotedAware(masked);
+    }
+
+    /**
+     * 引号和花括号是值的一部分，脱敏时保留外层定界符：引擎诊断常带 JSON 片段，去掉引号会让
+     * 落库的错误信息不再可解析。
+     */
+    private static String maskQuotedAware(String value) {
+        Matcher matcher = KEY_VALUE_CREDENTIAL.matcher(value);
+        StringBuilder result = new StringBuilder();
+        while (matcher.find()) {
+            String replacement = MASK;
+            String raw = matcher.group(2);
+            if (raw.startsWith("\"")) {
+                replacement = "\"" + MASK + "\"";
+            } else if (raw.startsWith("'")) {
+                replacement = "'" + MASK + "'";
+            } else if (raw.startsWith("{")) {
+                replacement = "{" + MASK + "}";
+            }
+            matcher.appendReplacement(result,
+                    Matcher.quoteReplacement(matcher.group(1) + replacement));
+        }
+        matcher.appendTail(result);
+        return result.toString();
     }
 
     private static String maskOracleThinCredentials(String value) {
