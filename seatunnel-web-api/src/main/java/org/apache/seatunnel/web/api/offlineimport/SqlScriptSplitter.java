@@ -87,12 +87,17 @@ public final class SqlScriptSplitter {
                 String word = script.substring(i, wordEnd).toUpperCase(Locale.ROOT);
 
                 if ("BEGIN".equals(word)) {
-                    // A BEGIN right after a DECLARE/CREATE unit starts that unit's
-                    // body instead of opening an independent block.
-                    if (!openers.isEmpty() && openers.peek() == Opener.PENDING_UNIT) {
-                        openers.pop();
+                    if (isTransactionBegin(script, wordEnd)) {
+                        // "BEGIN;" / "BEGIN WORK;" opens a transaction, not a
+                        // block; pushing here would swallow the whole script.
+                    } else {
+                        // A BEGIN right after a DECLARE/CREATE unit starts that unit's
+                        // body instead of opening an independent block.
+                        if (!openers.isEmpty() && openers.peek() == Opener.PENDING_UNIT) {
+                            openers.pop();
+                        }
+                        openers.push(Opener.BLOCK);
                     }
-                    openers.push(Opener.BLOCK);
                 } else if ("CASE".equals(word)) {
                     openers.push(Opener.BLOCK);
                 } else if ("DECLARE".equals(word) && isStatementStart(current)) {
@@ -118,6 +123,21 @@ public final class SqlScriptSplitter {
                 continue;
             }
 
+            if (c == ';' && !openers.isEmpty() && openers.peek() == Opener.PENDING_UNIT) {
+                // A body-bearing CREATE whose ';' arrives while still waiting
+                // for its BEGIN/IS/AS has no body at all — the PostgreSQL
+                // "CREATE TRIGGER ... EXECUTE PROCEDURE fn();" shape. Only a
+                // following body keyword keeps the unit open.
+                String after = nextSignificantWord(script, i + 1);
+                if (after == null || (!"BEGIN".equals(after) && !"IS".equals(after) && !"AS".equals(after))) {
+                    openers.pop();
+                    addIfMeaningful(statements, current.toString());
+                    current.setLength(0);
+                }
+                i++;
+                continue;
+            }
+
             current.append(c);
             i++;
         }
@@ -136,7 +156,9 @@ public final class SqlScriptSplitter {
         }
     }
 
-    /** True when the words after CREATE match [OR REPLACE] [EDITIONABLE] PROCEDURE|FUNCTION|TRIGGER|PACKAGE. */
+    /**
+     * True when the words after CREATE match [OR REPLACE] [EDITIONABLE] PROCEDURE|FUNCTION|TRIGGER|PACKAGE.
+     */
     private static boolean createsBody(String script, int from) {
         List<String> words = wordsAfter(script, from, 4);
         for (String word : words) {
@@ -148,6 +170,66 @@ public final class SqlScriptSplitter {
             }
         }
         return false;
+    }
+
+    /**
+     * True for {@code BEGIN;} / {@code BEGIN WORK;} / {@code BEGIN TRANSACTION;} — the
+     * PostgreSQL-lineage transaction control, which carries no block body.
+     */
+    private static boolean isTransactionBegin(String script, int from) {
+        int i = skipWhitespace(script, from);
+        String word = wordAt(script, i);
+        if ("WORK".equals(word) || "TRANSACTION".equals(word)) {
+            i = skipWhitespace(script, i + word.length());
+        }
+        return i < script.length() && script.charAt(i) == ';';
+    }
+
+    /** The next word skipping whitespace and both comment styles, or null at end of input. */
+    private static String nextSignificantWord(String script, int from) {
+        int i = from;
+        while (i < script.length()) {
+            char c = script.charAt(i);
+            if (Character.isWhitespace(c)) {
+                i++;
+                continue;
+            }
+            if (c == '-' && i + 1 < script.length() && script.charAt(i + 1) == '-') {
+                int nl = script.indexOf('\n', i);
+                if (nl < 0) {
+                    return null;
+                }
+                i = nl + 1;
+                continue;
+            }
+            if (c == '/' && i + 1 < script.length() && script.charAt(i + 1) == '*') {
+                int close = script.indexOf("*/", i + 2);
+                if (close < 0) {
+                    return null;
+                }
+                i = close + 2;
+                continue;
+            }
+            return wordAt(script, i);
+        }
+        return null;
+    }
+
+    private static int skipWhitespace(String script, int from) {
+        int i = from;
+        while (i < script.length() && Character.isWhitespace(script.charAt(i))) {
+            i++;
+        }
+        return i;
+    }
+
+    private static String wordAt(String script, int from) {
+        int i = from;
+        while (i < script.length()
+                && (Character.isLetterOrDigit(script.charAt(i)) || script.charAt(i) == '_')) {
+            i++;
+        }
+        return from == i ? null : script.substring(from, i).toUpperCase(Locale.ROOT);
     }
 
     private static List<String> wordsAfter(String script, int from, int count) {

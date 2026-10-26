@@ -58,7 +58,16 @@ public class DmpProcessRunner {
             }, "offline-import-dmp-output");
             outputDrain.setDaemon(true);
             outputDrain.start();
-            finished = process.waitFor(timeoutMinutes, TimeUnit.MINUTES);
+            try {
+                finished = process.waitFor(timeoutMinutes, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+                // Worker shutdown: leaving the tool running would keep writing
+                // to the target database after the task is marked FAILED.
+                process.destroyForcibly();
+                Thread.currentThread().interrupt();
+                log.line("执行线程被中断，已强制终止还原工具");
+                throw e;
+            }
             if (!finished) {
                 process.destroyForcibly();
                 log.line("还原工具执行超时（" + timeoutMinutes + " 分钟），已强制终止");

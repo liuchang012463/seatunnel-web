@@ -77,4 +77,15 @@ class DmpCommandBuilderTest {
         assertTrue(masked.contains("USERID=test/******@h:5236"));
         assertFalse(masked.contains("TopSecret"));
     }
+
+    @Test
+    void maskSurvivesPasswordContainingAtSign() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
+                "/opt/dmdbms/bin/dimp", "h", "5236", "test", "Pwd@123", DMP, LOG, null, null, true);
+
+        String masked = DmpCommandBuilder.mask(command, "Pwd@123");
+        assertTrue(masked.contains("USERID=test/******@h:5236"));
+        assertFalse(masked.contains("Pwd@123"));
+        assertFalse(masked.contains("123@"));
+    }
 }
