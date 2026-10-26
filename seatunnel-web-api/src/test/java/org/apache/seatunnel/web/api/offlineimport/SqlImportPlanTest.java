@@ -72,6 +72,16 @@ class SqlImportPlanTest {
     }
 
     @Test
+    void mapsNativeDumpDefaultPublicSearchPathToSelectedTarget() {
+        SqlImportPlan.Plan plan = SqlImportPlan.prepare(
+                "SELECT pg_catalog.set_config('search_path', 'public', false);",
+                DbType.KINGBASE, "codex_sql_src_20261027_01", "codex_sql_dst_20261027_01");
+
+        assertEquals("SELECT pg_catalog.set_config('search_path', '\"codex_sql_dst_20261027_01\"', false)",
+                plan.statements().get(0).sql());
+    }
+
+    @Test
     void rejectsAnExplicitNonTargetSchemaWhenSourceIsMissingOrMismatched() {
         assertThrows(IllegalArgumentException.class,
                 () -> SqlImportPlan.prepare("CREATE TABLE SRC.t(id INT);", DbType.KINGBASE, null, "DST"));

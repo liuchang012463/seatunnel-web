@@ -227,6 +227,11 @@ public final class SqlImportPlan {
                 mapped.add(SqlSchemaMapper.quoteIdentifier(targetSchema));
             } else if (value.equalsIgnoreCase(targetSchema)) {
                 mapped.add(SqlSchemaMapper.quoteIdentifier(targetSchema));
+            } else if ("PUBLIC".equalsIgnoreCase(value)) {
+                // Native Kingbase/PostgreSQL dumps set the default search_path to public.
+                // When importing into an explicitly selected schema, keep unqualified
+                // objects scoped to that target instead of rejecting or writing to public.
+                mapped.add(SqlSchemaMapper.quoteIdentifier(targetSchema));
             } else if ("PG_CATALOG".equalsIgnoreCase(value)) {
                 mapped.add("pg_catalog");
             } else {
