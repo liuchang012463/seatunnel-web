@@ -167,7 +167,10 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
       label: (
         <span className="inline-flex items-center gap-2">
           <StopOutlined className="text-slate-400" />
-          未执行
+          {intl.formatMessage({
+            id: "pages.job.status.unstarted",
+            defaultMessage: "Unstarted",
+          })}
         </span>
       ),
       value: "UNSTARTED",

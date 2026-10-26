@@ -20,6 +20,7 @@ import BatchCreateJobModal, {
   BatchCreateValues,
 } from '@/pages/common/components/BatchCreateJobModal';
 import type { TaskSortField, TaskSortOrder } from '@/pages/common/components/TaskSortControls';
+import { isRunningLikeStatus } from '@/pages/common/utils/jobStatus';
 import useTaskListAutoRefresh, {
   TASK_LIST_REQUEST_TIMEOUT,
 } from '@/pages/common/hooks/useTaskListAutoRefresh';
@@ -216,8 +217,6 @@ const getPageRecords = (res: any) => {
 };
 
 const isReleaseOnline = (releaseState?: string | number) => releaseState === 'ONLINE' || releaseState === 1;
-
-const isRunningStatus = (status?: string) => String(status || '').toUpperCase() === 'RUNNING';
 
 const RealtimeSyncPage: React.FC = () => {
   const [sourceType, setSourceType] = useState<any>({
@@ -684,12 +683,12 @@ const RealtimeSyncPage: React.FC = () => {
 
     const onlineRecords = selectedRecords.filter((record) => isReleaseOnline(record.releaseState));
     const offlineRecords = selectedRecords.filter((record) => !isReleaseOnline(record.releaseState));
-    const runningRecords = selectedRecords.filter((record) => isRunningStatus(record.lastJobStatus));
-    const notRunningRecords = selectedRecords.filter((record) => !isRunningStatus(record.lastJobStatus));
+    const runningRecords = selectedRecords.filter((record) => isRunningLikeStatus(record.lastJobStatus));
+    const notRunningRecords = selectedRecords.filter((record) => !isRunningLikeStatus(record.lastJobStatus));
     const recordsWithoutInstance = selectedRecords.filter((record) => !record.instanceId);
     const recordsWithoutSavepoint = selectedRecords.filter((record) => !record.savepointPath);
     const deleteBlockedRecords = selectedRecords.filter(
-      (record) => isReleaseOnline(record.releaseState) || isRunningStatus(record.lastJobStatus),
+      (record) => isReleaseOnline(record.releaseState) || isRunningLikeStatus(record.lastJobStatus),
     );
 
     return {
@@ -751,7 +750,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   const handleBatchOffline = async () => {
     const selectedRecords = getSelectedRecords();
-    const runningRecords = selectedRecords.filter((record) => isRunningStatus(record.lastJobStatus));
+    const runningRecords = selectedRecords.filter((record) => isRunningLikeStatus(record.lastJobStatus));
     if (runningRecords.length > 0) {
       message.warning(`存在运行中的任务，请先终止后再下线：${getSelectedJobLabels(runningRecords)}`);
       return;
@@ -773,7 +772,7 @@ const RealtimeSyncPage: React.FC = () => {
   const handleBatchStart = async () => {
     const selectedRecords = getSelectedRecords();
     const offlineRecords = selectedRecords.filter((record) => !isReleaseOnline(record.releaseState));
-    const runningRecords = selectedRecords.filter((record) => isRunningStatus(record.lastJobStatus));
+    const runningRecords = selectedRecords.filter((record) => isRunningLikeStatus(record.lastJobStatus));
     if (selectedRecords.length === 0) {
       message.warning('请先选择要启动的任务');
       return;
@@ -793,7 +792,7 @@ const RealtimeSyncPage: React.FC = () => {
   const handleBatchTerminate = async () => {
     const selectedRecords = getSelectedRecords();
     const invalidRecords = selectedRecords.filter(
-      (record) => !isRunningStatus(record.lastJobStatus) || !record.instanceId,
+      (record) => !isRunningLikeStatus(record.lastJobStatus) || !record.instanceId,
     );
     if (selectedRecords.length === 0) {
       message.warning('请先选择要终止的任务');
@@ -814,7 +813,7 @@ const RealtimeSyncPage: React.FC = () => {
   const handleBatchPause = async () => {
     const selectedRecords = getSelectedRecords();
     const invalidRecords = selectedRecords.filter(
-      (record) => !isRunningStatus(record.lastJobStatus) || !record.instanceId,
+      (record) => !isRunningLikeStatus(record.lastJobStatus) || !record.instanceId,
     );
     if (selectedRecords.length === 0) {
       message.warning('请先选择要暂停的任务');
@@ -837,7 +836,7 @@ const RealtimeSyncPage: React.FC = () => {
     const invalidRecords = selectedRecords.filter(
       (record) =>
         !isReleaseOnline(record.releaseState) ||
-        isRunningStatus(record.lastJobStatus) ||
+        isRunningLikeStatus(record.lastJobStatus) ||
         !record.instanceId ||
         !record.savepointPath,
     );
@@ -865,7 +864,7 @@ const RealtimeSyncPage: React.FC = () => {
     }
 
     const blockedRecords = selectedRecords.filter(
-      (record) => isReleaseOnline(record.releaseState) || isRunningStatus(record.lastJobStatus),
+      (record) => isReleaseOnline(record.releaseState) || isRunningLikeStatus(record.lastJobStatus),
     );
     if (blockedRecords.length > 0) {
       message.warning(batchActionState.deleteTooltip || '所选任务当前不可删除');
@@ -988,7 +987,7 @@ const RealtimeSyncPage: React.FC = () => {
       return;
     }
 
-    if (record.lastJobStatus === 'RUNNING') {
+    if (isRunningLikeStatus(record.lastJobStatus)) {
       message.warning('任务正在运行中，不能重复恢复');
       return;
     }

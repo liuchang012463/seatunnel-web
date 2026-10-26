@@ -748,7 +748,7 @@ const DataExplorationTasksPage: React.FC = () => {
         );
       },
     },
-  ], [scanningIds]);
+  ], [scanningIds, load]);
 
   return (
     <div className="data-exploration-page data-exploration-tasks flex h-full min-h-full flex-col px-6 py-5">

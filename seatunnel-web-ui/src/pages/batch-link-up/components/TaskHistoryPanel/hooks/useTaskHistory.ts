@@ -2,7 +2,7 @@ import { seatunnelJobInstanceApi } from "@/pages/batch-link-up/api";
 import { HistoryItem } from "@/pages/batch-link-up/type";
 import { message } from "antd";
 import dayjs from "dayjs";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { normalizeJobStatus } from "@/pages/common/utils/jobStatus";
 
 
@@ -28,6 +28,9 @@ export const useTaskHistory = ({
   const [customTimeRange, setCustomTimeRange] = useState<
     [dayjs.Dayjs | null, dayjs.Dayjs | null] | null
   >(null);
+
+  // 快速切换筛选/任务时，慢响应不能覆盖新请求的结果：只有最新请求可以写状态。
+  const requestSeqRef = useRef(0);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -79,11 +82,13 @@ export const useTaskHistory = ({
 
   const fetchHistory = useCallback(async () => {
     if (!selectedItem?.id) {
+      requestSeqRef.current += 1;
       setHistoryItems([]);
       return;
     }
 
     const { queryStartTime, queryEndTime } = getTimeRangeParams();
+    const requestSeq = ++requestSeqRef.current;
 
     setLoading(true);
 
@@ -99,15 +104,20 @@ export const useTaskHistory = ({
         queryEndTime,
       });
 
+      if (requestSeq !== requestSeqRef.current) {
+        return;
+      }
       if (data?.code === 0) {
         setHistoryItems(data?.data?.bizData || []);
       } else {
-        
+
       }
     } catch (error) {
-      
+
     } finally {
-      setLoading(false);
+      if (requestSeq === requestSeqRef.current) {
+        setLoading(false);
+      }
     }
   }, [
     selectedItem?.id,

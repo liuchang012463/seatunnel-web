@@ -37,6 +37,27 @@ export interface JobStatusView {
 const UNSTARTED_STATUSES = new Set(["", "UNSTARTED", "NOT_EXECUTED"]);
 
 /**
+ * 后端 JobStatusHelper.runningLikeStatuses() 的镜像：提交中、运行中与各过渡态。
+ * 批量操作栏与单行操作必须共用同一份集合，否则过渡态（STARTING/FAILING/…）任务会被
+ * 当成"未运行"而放行二次启动或运行窗口内的下线/删除。
+ */
+const RUNNING_LIKE_STATUSES = new Set([
+  "STARTING",
+  "INITIALIZING",
+  "CREATED",
+  "PENDING",
+  "SCHEDULED",
+  "RUNNING",
+  "FAILING",
+  "DOING_SAVEPOINT",
+  "CANCELING",
+]);
+
+/** 该状态是否仍处于提交/运行/过渡窗口（对应后端 runningLikeStatuses）。 */
+export const isRunningLikeStatus = (status?: string) =>
+  RUNNING_LIKE_STATUSES.has(String(status || "").toUpperCase());
+
+/**
  * 原始状态 → 分类与语义色。取消态是中性色而不是错误色：取消是操作员主动触发的，
  * 不是失败。四个视图共用这一份，避免同一状态在不同页面出现不同的严重程度。
  */

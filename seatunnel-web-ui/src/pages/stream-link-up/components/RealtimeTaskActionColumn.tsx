@@ -14,6 +14,8 @@ import {
 import { App, Dropdown, Popconfirm, Space } from "antd";
 import React, { useState } from "react";
 
+import { isRunningLikeStatus } from "@/pages/common/utils/jobStatus";
+
 export interface StreamingJobDefinitionVO {
   id: string | number;
   jobName?: string;
@@ -79,22 +81,8 @@ const isReleaseOnline = (releaseState?: string | number) => {
   return releaseState === "ONLINE" || releaseState === 1;
 };
 
-/** Engine states in which a start or an offline action would race the running instance. */
-const RUNNING_LIKE_STATUSES = new Set([
-  "STARTING",
-  "INITIALIZING",
-  "CREATED",
-  "PENDING",
-  "SCHEDULED",
-  "RUNNING",
-  "FAILING",
-  "DOING_SAVEPOINT",
-  "CANCELING",
-]);
-
-const isRunningStatus = (status?: string) => {
-  return RUNNING_LIKE_STATUSES.has(String(status || "").toUpperCase());
-};
+/** 引擎侧仍处于提交/运行/过渡窗口时，启动与下线动作会与运行中的实例竞争。 */
+const isRunningStatus = isRunningLikeStatus;
 
 const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
   record,

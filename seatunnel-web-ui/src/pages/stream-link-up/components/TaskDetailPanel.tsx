@@ -7,7 +7,6 @@ import TaskLogObservability from "@/pages/batch-link-up/components/TaskLogObserv
 import TaskHeader from "@/pages/batch-link-up/TaskHeader";
 import HoconTab from "./tabs/HoconTab";
 import MetricsTab from "./tabs/MetricsTab";
-import ScheduleTab from "./tabs/ScheduleTab";
 import TableTab from "./tabs/TableTab";
 
 interface TaskDetailPanelProps {
@@ -119,14 +118,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({ instanceItem }) => {
       }),
       children: <MetricsTab instanceItem={instanceItem} />,
     },
-    {
-      key: "schedule",
-      label: intl.formatMessage({
-        id: "pages.job.detail.tabs.schedule",
-        defaultMessage: "Scheduled",
-      }),
-      children: <ScheduleTab instanceItem={instanceItem} />,
-    },
+    // 流式实例没有调度字段（后端 StreamingJobInstanceMapper 不查询 schedule），调度页签
+    // 在这里只会渲染一列 "-"，已随调度配置功能一并移除。
     ...(showTableTab
       ? [
           {
