@@ -42,7 +42,9 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -478,7 +480,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         }
     }
 
-    private String decode(byte[] bytes, String encoding) {
+    static String decode(byte[] bytes, String encoding) {
         Charset charset;
         try {
             charset = Charset.forName(encoding);
@@ -490,7 +492,15 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         if (bytes.length >= 3 && (bytes[0] & 0xFF) == 0xEF && (bytes[1] & 0xFF) == 0xBB && (bytes[2] & 0xFF) == 0xBF) {
             offset = 3;
         }
-        return new String(bytes, offset, bytes.length - offset, charset);
+        try {
+            return charset.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes, offset, bytes.length - offset))
+                    .toString();
+        } catch (CharacterCodingException e) {
+            throw new IllegalArgumentException("SQL 文件编码与所选编码不匹配，请选择 UTF-8 或 GBK");
+        }
     }
 
     private void registerConnectionSecrets(ExecutionLogBuffer executionLog, String password) {

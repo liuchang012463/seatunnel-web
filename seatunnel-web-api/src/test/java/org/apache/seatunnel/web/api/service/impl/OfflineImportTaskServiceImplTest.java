@@ -23,6 +23,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.OutputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
 
@@ -123,6 +125,24 @@ class OfflineImportTaskServiceImplTest {
         assertEquals(USER_ID, saved.getCreateUserId());
         assertTrue(saved.getOptionsJson().contains("\"stopOnError\":true"));
         assertTrue(saved.getOptionsJson().contains("\"encoding\":\"UTF-8\""));
+    }
+
+    @Test
+    void decodesChineseGbKSqlWithoutReplacingCharacters() {
+        String script = "INSERT INTO t VALUES ('中文');";
+
+        assertEquals(script, OfflineImportTaskServiceImpl.decode(
+                script.getBytes(Charset.forName("GBK")), "GBK"));
+    }
+
+    @Test
+    void rejectsMalformedSqlBytesAndPreservesUtf8BomHandling() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> OfflineImportTaskServiceImpl.decode(new byte[] {(byte) 0xC4, (byte) 0xE3}, "UTF-8"));
+        assertTrue(exception.getMessage().contains("编码不匹配"));
+        assertEquals("SELECT 1;", OfflineImportTaskServiceImpl.decode(
+                new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF, 'S', 'E', 'L', 'E', 'C', 'T', ' ', '1', ';'},
+                StandardCharsets.UTF_8.name()));
     }
 
     @Test
