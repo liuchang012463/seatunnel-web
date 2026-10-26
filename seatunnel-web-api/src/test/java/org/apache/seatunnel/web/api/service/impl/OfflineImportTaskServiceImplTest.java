@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.service.impl;
 
 import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProvider;
+import org.apache.seatunnel.web.api.offlineimport.ExecutionLogBuffer;
 import org.apache.seatunnel.web.api.offlineimport.OfflineImportProperties;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.FileResourceService;
@@ -12,18 +13,24 @@ import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.FileResourceDao;
 import org.apache.seatunnel.web.dao.repository.OfflineImportTaskDao;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineImportOptions;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
 import org.apache.seatunnel.web.spi.enums.DbType;
+import org.apache.seatunnel.web.spi.enums.OfflineImportType;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
@@ -34,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -44,6 +52,9 @@ class OfflineImportTaskServiceImplTest {
     private static final Long DATASOURCE_ID = 22979298326688L;
     private static final Long FILE_RESOURCE_ID = 1001L;
     private static final Integer USER_ID = 7;
+
+    @TempDir
+    Path tempDir;
 
     private OfflineImportTaskDao offlineImportTaskDao;
     private DataSourceDao dataSourceDao;
@@ -346,6 +357,55 @@ class OfflineImportTaskServiceImplTest {
         assertEquals("FAILED", captor.getValue().getStatus());
         assertTrue(captor.getValue().getErrorMessage().contains("类型已变更"));
         verify(fileResourceDao, never()).queryById(FILE_RESOURCE_ID);
+    }
+
+    @Test
+    void rejectsKingbaseFilterWithNoMatchingSchemaBeforeOpeningTarget() throws Exception {
+        Path restoreTool = tempDir.resolve("sys_restore-list");
+        Files.writeString(restoreTool,
+                "#!/bin/sh\ncase \"$*\" in *--schema=missing_schema*) "
+                        + "printf '%s\\n' 'no matching archive entries' >&2; exit 1;; esac\n"
+                        + "printf '%s\\n' '3359; 1259 16444 TABLE public another_table owner'\n");
+        Files.setPosixFilePermissions(restoreTool, PosixFilePermissions.fromString("rwx------"));
+        OfflineImportProperties properties = new OfflineImportProperties();
+        properties.setWorkDir(tempDir.resolve("scratch").toString());
+        properties.setKingbaseSysRestorePath(restoreTool.toString());
+        properties.setProcessTimeoutMinutes(1);
+        ReflectionTestUtils.setField(service, "offlineImportProperties", properties);
+
+        FileResource resource = readyFileResource(USER_ID);
+        resource.setObjectKey("offline-import-test-object");
+        when(fileResourceDao.queryById(FILE_RESOURCE_ID)).thenReturn(resource);
+        doAnswer(invocation -> {
+            ((OutputStream) invocation.getArgument(1)).write(new byte[] {1, 2, 3});
+            return null;
+        }).when(storageProvider).download(eq("offline-import-test-object"), any(OutputStream.class));
+
+        OfflineImportTask task = task(50L, "RUNNING", USER_ID);
+        task.setFileResourceId(FILE_RESOURCE_ID);
+        task.setFileName("source.dmp");
+        task.setCreateUserId(USER_ID);
+        task.setTargetSchema("missing_schema");
+
+        String failure = ReflectionTestUtils.invokeMethod(
+                service, "runDmpImport", task, OfflineImportType.KINGBASE_DMP,
+                kingbaseDataSource(), new OfflineImportOptions(), new ExecutionLogBuffer(8_192));
+
+        assertTrue(failure.contains("原厂预检失败"));
+        assertTrue(failure.contains("源 Schema 未匹配"));
+        verify(storageProvider).download(eq("offline-import-test-object"), any(OutputStream.class));
+    }
+
+    @Test
+    void readsOnlyTheConfiguredTailOfLargeNativeToolLogs() throws Exception {
+        Path toolLog = tempDir.resolve("large-tool.log");
+        Files.writeString(toolLog, "x".repeat(1_000_000) + "FINAL_MARKER", StandardCharsets.UTF_8);
+
+        String tail = ReflectionTestUtils.invokeMethod(
+                service, "readTail", toolLog, 32, StandardCharsets.UTF_8);
+
+        assertEquals(32, tail.length());
+        assertTrue(tail.endsWith("FINAL_MARKER"));
     }
 
     private OfflineImportTask taskForSql(Long id) {

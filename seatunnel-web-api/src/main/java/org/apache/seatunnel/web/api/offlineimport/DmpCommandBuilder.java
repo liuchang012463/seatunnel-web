@@ -55,6 +55,25 @@ public final class DmpCommandBuilder {
         return new DmpCommand(command, Map.of());
     }
 
+    /** Builds a DIMP read-only archive inspection command (SHOW=Y). */
+    public static DmpCommand damengShow(
+            String dimpPath,
+            String host,
+            String port,
+            String user,
+            String password,
+            Path dmpFile,
+            Path logFile) {
+        List<String> command = new ArrayList<>();
+        command.add(dimpPath);
+        command.add("USERID=" + user + "/" + encodeDamengPassword(password) + "@" + host + ":" + port);
+        command.add("FILE=" + dmpFile.getFileName());
+        command.add("LOG=" + logFile.getFileName());
+        command.add("DIRECTORY=" + dmpFile.getParent());
+        command.add("SHOW=Y");
+        return new DmpCommand(command, Map.of());
+    }
+
     /**
      * DIMP parses its own USERID syntax even when ProcessBuilder bypasses a shell.
      * Quote passwords containing delimiters or other punctuation, and double
@@ -104,6 +123,26 @@ public final class DmpCommandBuilder {
         Map<String, String> environment = new LinkedHashMap<>();
         environment.put("KINGBASE_PASSWORD", password);
         return new DmpCommand(command, environment);
+    }
+
+    /**
+     * Uses sys_restore's archive-list mode without connecting to the target
+     * database. When a source schema is selected, let the vendor tool apply
+     * that filter and fail strictly if the archive contains no matching TOC
+     * entries. This also handles data-only archives, which have no SCHEMA TOC
+     * row of their own.
+     */
+    public static DmpCommand kingbaseList(String sysRestorePath, Path dmpFile, String sourceSchema) {
+        List<String> command = new ArrayList<>();
+        command.add(sysRestorePath);
+        command.add("--list");
+        String effectiveSource = StringUtils.trimToNull(sourceSchema);
+        if (effectiveSource != null) {
+            command.add("--schema=" + effectiveSource);
+            command.add("--strict-names");
+        }
+        command.add(dmpFile.toAbsolutePath().toString());
+        return new DmpCommand(command, Map.of());
     }
 
     /** Command rendering with the password masked, safe for persisted logs. */
