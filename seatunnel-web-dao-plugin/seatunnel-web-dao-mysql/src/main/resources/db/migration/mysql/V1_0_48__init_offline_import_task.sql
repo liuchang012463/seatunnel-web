@@ -1,0 +1,26 @@
+CREATE TABLE `t_seatunnel_web_offline_import_task`
+(
+    `id`                   bigint        NOT NULL COMMENT '任务ID',
+    `name`                 varchar(128)  NOT NULL COMMENT '任务名称',
+    `description`          varchar(512)           DEFAULT NULL COMMENT '任务描述',
+    `import_type`          varchar(32)   NOT NULL COMMENT '导入类型：KINGBASE_DMP/DAMENG_DMP/KINGBASE_SQL/DAMENG_SQL',
+    `file_resource_id`     bigint        NOT NULL COMMENT '来源文件资源ID',
+    `file_name`            varchar(512)  NOT NULL COMMENT '来源文件名',
+    `target_datasource_id` bigint        NOT NULL COMMENT '目标数据源ID',
+    `target_schema`        varchar(128)           DEFAULT NULL COMMENT '目标Schema',
+    `options_json`         varchar(2048)          DEFAULT NULL COMMENT '导入选项JSON',
+    `status`               varchar(24)   NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING/RUNNING/SUCCESS/FAILED',
+    `total_statements`     int           NOT NULL DEFAULT 0 COMMENT 'SQL导入：语句总数',
+    `executed_statements`  int           NOT NULL DEFAULT 0 COMMENT 'SQL导入：已执行语句数',
+    `failed_statements`    int           NOT NULL DEFAULT 0 COMMENT 'SQL导入：失败语句数',
+    `error_message`        varchar(2000)          DEFAULT NULL COMMENT '失败原因摘要',
+    `execution_log`        mediumtext COMMENT '执行日志（保留尾部）',
+    `start_time`           datetime               DEFAULT NULL COMMENT '最近一次执行开始时间',
+    `end_time`             datetime               DEFAULT NULL COMMENT '最近一次执行结束时间',
+    `create_user_id`       int           NOT NULL COMMENT '创建用户ID',
+    `create_time`          datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time`          datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_offline_import_task_owner` (`create_user_id`, `create_time`),
+    KEY `idx_offline_import_task_type_status` (`import_type`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='离线DMP/SQL数据导入任务';
