@@ -74,16 +74,23 @@ public final class SqlScriptSplitter {
             }
 
             if (c == '\'' || c == '"') {
+                boolean createFunctionBody = c == '\'' && isCreateFunctionBodyStart(current);
                 int end = skipQuoted(script, i, c);
                 current.append(script, i, end);
+                if (createFunctionBody) {
+                    releaseDollarQuotedCreates(openers);
+                }
                 i = end;
                 continue;
             }
 
             if (c == '$' && isDollarQuoteStart(script, i)) {
+                boolean createBody = isCreateBodyStart(current);
                 int end = skipDollarQuoted(script, i);
                 current.append(script, i, end);
-                releaseDollarQuotedCreates(openers);
+                if (createBody) {
+                    releaseDollarQuotedCreates(openers);
+                }
                 i = end;
                 continue;
             }
@@ -168,14 +175,84 @@ public final class SqlScriptSplitter {
 
     /** Recognizes the PostgreSQL trigger form without an inline body. */
     private static boolean isBodylessTrigger(StringBuilder current) {
-        String sql = current.toString().toUpperCase(Locale.ROOT);
-        boolean trigger = sql.contains("CREATE TRIGGER") || sql.contains("CREATE OR REPLACE TRIGGER");
-        return trigger
-                && (sql.contains("EXECUTE PROCEDURE") || sql.contains("EXECUTE FUNCTION"))
-                && !sql.contains("DECLARE")
-                && !sql.contains(" BEGIN ")
-                && !sql.contains(" AS ")
-                && !sql.contains(" IS ");
+        List<String> words = sqlWords(current.toString());
+        int triggerIndex = createKindIndex(words, "TRIGGER");
+        if (triggerIndex < 0) {
+            return false;
+        }
+        boolean hasInlineBody = words.subList(triggerIndex + 1, words.size()).stream()
+                .anyMatch(word -> "DECLARE".equals(word) || "BEGIN".equals(word)
+                        || "AS".equals(word) || "IS".equals(word));
+        for (int i = triggerIndex + 1; i + 1 < words.size(); i++) {
+            if ("EXECUTE".equals(words.get(i))
+                    && ("PROCEDURE".equals(words.get(i + 1)) || "FUNCTION".equals(words.get(i + 1)))) {
+                return !hasInlineBody;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isCreateFunctionBodyStart(StringBuilder current) {
+        List<String> words = sqlWords(current.toString());
+        return createKindIndex(words, "FUNCTION") >= 0
+                && !words.isEmpty()
+                && ("AS".equals(words.get(words.size() - 1)) || "IS".equals(words.get(words.size() - 1)));
+    }
+
+    private static boolean isCreateBodyStart(StringBuilder current) {
+        List<String> words = sqlWords(current.toString());
+        if (words.isEmpty()) {
+            return false;
+        }
+        for (String kind : CREATE_BODY_KIND) {
+            if (createKindIndex(words, kind) >= 0
+                    && ("AS".equals(words.get(words.size() - 1)) || "IS".equals(words.get(words.size() - 1)))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int createKindIndex(List<String> words, String kind) {
+        if (words.isEmpty() || !"CREATE".equals(words.get(0))) {
+            return -1;
+        }
+        int i = 1;
+        while (i < words.size() && CREATE_BODY_PREFIX.contains(words.get(i))) {
+            i++;
+        }
+        return i < words.size() && kind.equals(words.get(i)) ? i : -1;
+    }
+
+    /** Tokenizes SQL words while ignoring comments, strings and quoted identifiers. */
+    private static List<String> sqlWords(String sql) {
+        List<String> words = new ArrayList<>();
+        int i = 0;
+        while (i < sql.length()) {
+            char c = sql.charAt(i);
+            char next = i + 1 < sql.length() ? sql.charAt(i + 1) : '\0';
+            if (c == '-' && next == '-') {
+                int end = sql.indexOf('\n', i);
+                i = end < 0 ? sql.length() : end + 1;
+            } else if (c == '/' && next == '*') {
+                i = skipBlockComment(sql, i);
+            } else if (c == '\'' || c == '"') {
+                i = skipQuoted(sql, i, c);
+            } else if (c == '$' && isDollarQuoteStart(sql, i)) {
+                i = skipDollarQuoted(sql, i);
+            } else if (Character.isLetter(c)) {
+                int end = i + 1;
+                while (end < sql.length()
+                        && (Character.isLetterOrDigit(sql.charAt(end)) || sql.charAt(end) == '_')) {
+                    end++;
+                }
+                words.add(sql.substring(i, end).toUpperCase(Locale.ROOT));
+                i = end;
+            } else {
+                i++;
+            }
+        }
+        return words;
     }
 
     /** Returns true when a slash is the only non-whitespace token on its line. */

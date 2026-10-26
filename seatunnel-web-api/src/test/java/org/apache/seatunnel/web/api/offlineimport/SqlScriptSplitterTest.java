@@ -60,6 +60,16 @@ class SqlScriptSplitterTest {
     }
 
     @Test
+    void sqlFunctionBodyInSingleQuotedStringEndsBeforeFollowingStatement() {
+        List<String> statements = split(
+                "CREATE FUNCTION f() RETURNS integer AS 'SELECT 1' LANGUAGE sql; SELECT 2;");
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).startsWith("CREATE FUNCTION f()"));
+        assertEquals("SELECT 2", statements.get(1));
+    }
+
+    @Test
     void keepsTaggedDollarQuotesSeparateFromUntagged() {
         String script = "DO $body$\n BEGIN\n  NULL;\n END\n $body$;\nSELECT '$$';";
         List<String> statements = split(script);
@@ -145,6 +155,16 @@ class SqlScriptSplitterTest {
         assertEquals(4, statements.size());
         assertTrue(statements.get(1).startsWith("CREATE TRIGGER"));
         assertEquals("INSERT INTO x VALUES (1)", statements.get(2));
+    }
+
+    @Test
+    void bodylessTriggerDetectionUsesTokensAcrossWhitespaceAndComments() {
+        List<String> statements = split("CREATE\nTRIGGER trg AFTER INSERT ON x "
+                + "/* AS this is only a comment */ FOR EACH ROW EXECUTE FUNCTION fn(); SELECT 2;");
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).startsWith("CREATE\nTRIGGER"));
+        assertEquals("SELECT 2", statements.get(1));
     }
 
     @Test
