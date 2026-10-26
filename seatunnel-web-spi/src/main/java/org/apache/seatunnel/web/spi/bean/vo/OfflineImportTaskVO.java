@@ -35,7 +35,7 @@ public class OfflineImportTaskVO {
 
     private OfflineImportOptions options;
 
-    /** PENDING / RUNNING / SUCCESS / FAILED. */
+    /** PENDING / QUEUED / RUNNING / SUCCESS / FAILED. */
     private String status;
 
     private Integer totalStatements;

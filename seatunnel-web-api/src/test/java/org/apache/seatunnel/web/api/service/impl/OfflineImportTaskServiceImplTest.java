@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -141,12 +142,12 @@ class OfflineImportTaskServiceImplTest {
     }
 
     @Test
-    void executeRejectsWhileAlreadyRunning() {
+    void executeRejectsWhileAlreadyQueuedOrRunning() {
         OfflineImportTask task = new OfflineImportTask();
         task.setId(1L);
         task.setStatus("RUNNING");
         when(offlineImportTaskDao.queryById(1L)).thenReturn(task);
-        when(offlineImportTaskDao.markRunningIfExecutable(eq(1L), any())).thenReturn(false);
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(1L), any())).thenReturn(false);
 
         ServiceException exception = assertThrows(ServiceException.class, () -> service.execute(1L));
         assertEquals(Status.OFFLINE_IMPORT_TASK_STATE_ERROR.getCode(), exception.getCode());
@@ -156,9 +157,10 @@ class OfflineImportTaskServiceImplTest {
     void executeWorkerMarksVanishedTaskFailed() {
         OfflineImportTask task = new OfflineImportTask();
         task.setId(9L);
-        task.setStatus("RUNNING");
+        task.setStatus("QUEUED");
         when(offlineImportTaskDao.queryById(9L)).thenReturn(task, (OfflineImportTask) null);
-        when(offlineImportTaskDao.markRunningIfExecutable(eq(9L), any())).thenReturn(true);
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(9L), any())).thenReturn(true);
+        when(offlineImportTaskDao.markRunningFromQueued(eq(9L), any())).thenReturn(true);
         service.setExecutorForTest(Runnable::run);
 
         service.execute(9L);
@@ -167,5 +169,20 @@ class OfflineImportTaskServiceImplTest {
         verify(offlineImportTaskDao).updateById(captor.capture());
         assertEquals("FAILED", captor.getValue().getStatus());
         assertTrue(captor.getValue().getErrorMessage().contains("不存在"));
+    }
+
+    @Test
+    void executeWorkerSkipsTaskDeletedWhileQueued() {
+        OfflineImportTask task = new OfflineImportTask();
+        task.setId(11L);
+        task.setStatus("QUEUED");
+        when(offlineImportTaskDao.queryById(11L)).thenReturn(task);
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(11L), any())).thenReturn(true);
+        when(offlineImportTaskDao.markRunningFromQueued(eq(11L), any())).thenReturn(false);
+        service.setExecutorForTest(Runnable::run);
+
+        service.execute(11L);
+
+        verify(offlineImportTaskDao, never()).updateById(any(OfflineImportTask.class));
     }
 }

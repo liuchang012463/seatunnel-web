@@ -10,6 +10,7 @@ import {
 
 const STATUS_META: Record<string, { text: string; badge: 'default' | 'processing' | 'success' | 'error' }> = {
   PENDING: { text: '待执行', badge: 'default' },
+  QUEUED: { text: '排队中', badge: 'default' },
   RUNNING: { text: '执行中', badge: 'processing' },
   SUCCESS: { text: '成功', badge: 'success' },
   FAILED: { text: '失败', badge: 'error' },
@@ -54,10 +55,10 @@ const OfflineImportTaskList: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageNo, pageSize, name, status]);
 
-  // Refresh quietly while any task is running so status/progress stay current.
+  // Refresh quietly while any task is queued or running so status/progress stay current.
   useEffect(() => {
-    const hasRunning = tasks.some((task) => task.status === 'RUNNING');
-    if (!hasRunning) {
+    const hasActive = tasks.some((task) => task.status === 'RUNNING' || task.status === 'QUEUED');
+    if (!hasActive) {
       if (pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
@@ -182,7 +183,7 @@ const OfflineImportTaskList: React.FC = () => {
             type="link"
             size="small"
             icon={<PlayCircleOutlined />}
-            disabled={record.status === 'RUNNING'}
+            disabled={record.status === 'RUNNING' || record.status === 'QUEUED'}
             onClick={() => void execute(record)}
           >
             执行

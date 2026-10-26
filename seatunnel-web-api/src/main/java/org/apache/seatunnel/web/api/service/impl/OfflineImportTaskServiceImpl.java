@@ -60,6 +60,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
     private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_QUEUED = "QUEUED";
     private static final String STATUS_RUNNING = "RUNNING";
     private static final String STATUS_SUCCESS = "SUCCESS";
     private static final String STATUS_FAILED = "FAILED";
@@ -106,10 +107,10 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         this.executor = testExecutor;
     }
 
-    /** Tasks stuck in RUNNING belong to a previous process; fail them so they can re-run. */
+    /** Tasks stuck in RUNNING/QUEUED belong to a previous process; fail them so they can re-run. */
     @PostConstruct
     public void failOrphanedRunningTasks() {
-        int failed = offlineImportTaskDao.failAllRunning("服务重启导致任务中断，请重新执行");
+        int failed = offlineImportTaskDao.failAllActive("服务重启导致任务中断，请重新执行");
         if (failed > 0) {
             log.warn("Failed {} offline import tasks orphaned by restart", failed);
         }
@@ -207,8 +208,8 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
     @Override
     public void execute(Long id) {
         requireTask(id);
-        if (!offlineImportTaskDao.markRunningIfExecutable(id, new java.util.Date())) {
-            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务正在执行中");
+        if (!offlineImportTaskDao.markQueuedIfExecutable(id, new java.util.Date())) {
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务正在排队或执行中");
         }
         executor.execute(() -> {
             try {
@@ -229,6 +230,11 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
     }
 
     private void runTask(Long id) {
+        // QUEUED → RUNNING marks the real start; a task deleted while queued stays deleted.
+        if (!offlineImportTaskDao.markRunningFromQueued(id, new java.util.Date())) {
+            log.info("Offline import task {} is no longer queued, skip run", id);
+            return;
+        }
         OfflineImportTask task = requireTask(id);
         OfflineImportType importType = OfflineImportType.of(task.getImportType());
         OfflineImportOptions options = defaultOptions(
@@ -326,7 +332,11 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             String safeName = task.getFileName().replaceAll("[/\\\\]", "_");
             Path dmpFile = workDir.resolve(safeName);
             Path toolLogFile = workDir.resolve(safeName + ".log");
-            Files.write(dmpFile, readFileResource(requireWorkerResource(task.getFileResourceId())));
+            // Stream straight to disk: DMP backups may be far larger than the heap.
+            FileResource dmpResource = requireWorkerResource(task.getFileResourceId());
+            try (java.io.OutputStream output = java.nio.file.Files.newOutputStream(dmpFile)) {
+                storageProvider.download(dmpResource.getObjectKey(), output);
+            }
             executionLog.line("已下载 DMP 文件 " + task.getFileName() + "，调用 " + toolName + " 导入");
 
             BaseConnectionParam param = (BaseConnectionParam) DataSourceUtils.buildConnectionParams(

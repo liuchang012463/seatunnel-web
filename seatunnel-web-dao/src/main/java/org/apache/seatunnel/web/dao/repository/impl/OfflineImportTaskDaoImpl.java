@@ -45,22 +45,32 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
     }
 
     @Override
-    public boolean markRunningIfExecutable(Long id, Date updateTime) {
+    public boolean markQueuedIfExecutable(Long id, Date updateTime) {
         LambdaUpdateWrapper<OfflineImportTask> wrapper = new LambdaUpdateWrapper<OfflineImportTask>()
                 .eq(OfflineImportTask::getId, id)
                 .in(OfflineImportTask::getStatus, "PENDING", "SUCCESS", "FAILED")
-                .set(OfflineImportTask::getStatus, "RUNNING")
+                .set(OfflineImportTask::getStatus, "QUEUED")
                 .set(OfflineImportTask::getUpdateTime, updateTime)
-                .set(OfflineImportTask::getStartTime, updateTime)
-                .set(OfflineImportTask::getEndTime, null)
                 .set(OfflineImportTask::getErrorMessage, null);
         return mybatisMapper.update(null, wrapper) > 0;
     }
 
     @Override
-    public int failAllRunning(String errorMessage) {
+    public boolean markRunningFromQueued(Long id, Date updateTime) {
         LambdaUpdateWrapper<OfflineImportTask> wrapper = new LambdaUpdateWrapper<OfflineImportTask>()
-                .eq(OfflineImportTask::getStatus, "RUNNING")
+                .eq(OfflineImportTask::getId, id)
+                .eq(OfflineImportTask::getStatus, "QUEUED")
+                .set(OfflineImportTask::getStatus, "RUNNING")
+                .set(OfflineImportTask::getUpdateTime, updateTime)
+                .set(OfflineImportTask::getStartTime, updateTime)
+                .set(OfflineImportTask::getEndTime, null);
+        return mybatisMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public int failAllActive(String errorMessage) {
+        LambdaUpdateWrapper<OfflineImportTask> wrapper = new LambdaUpdateWrapper<OfflineImportTask>()
+                .in(OfflineImportTask::getStatus, "RUNNING", "QUEUED")
                 .set(OfflineImportTask::getStatus, "FAILED")
                 .set(OfflineImportTask::getErrorMessage, errorMessage)
                 .set(OfflineImportTask::getEndTime, new Date());
