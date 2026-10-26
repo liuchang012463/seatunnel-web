@@ -349,6 +349,44 @@ class MetadataSourceReconcilerTest {
     }
 
     @Test
+    void removesTheLegacyNamedSamplePipelineEvenWhenSampleDataIsTurnedOff() {
+        MetadataSourceBinding candidate = binding(1L, MetadataDesiredState.ACTIVE, 1L, 0L);
+        MetadataSourceBinding live = binding(1L, MetadataDesiredState.ACTIVE, 1L, 1L);
+        DataSource source = source();
+        stubCandidate(candidate, live);
+        when(dataSourceDao.queryById(42L)).thenReturn(source);
+        when(registry.find(DbType.MYSQL)).thenReturn(Optional.of(adapter));
+        when(adapter.serviceCategory()).thenReturn(MetadataServiceCategory.STORAGE);
+        when(adapter.supportsProfiler()).thenReturn(false);
+        when(adapter.collectsSampleDataViaAutoClassification()).thenReturn(true);
+        when(adapter.serviceRequest(eq(source), eq("st_ds_42"), eq(DISABLED)))
+                .thenReturn(JSON.createObjectNode());
+        when(adapter.metadataPipelineRequest(
+                eq(source), eq("st_ds_42_metadata"), eq("svc"), eq("st_ds_42"), eq(DISABLED)))
+                .thenReturn(JSON.createObjectNode());
+        when(openMetadataClient.upsertService(eq(MetadataServiceCategory.STORAGE), any()))
+                .thenReturn(new OpenMetadataEntity("svc", "st_ds_42"));
+        when(openMetadataClient.upsertIngestionPipeline(any()))
+                .thenReturn(new OpenMetadataEntity("meta", "st_ds_42.st_ds_42_metadata"));
+        when(openMetadataClient.findIngestionPipeline("st_ds_42.st_ds_42_auto_classification"))
+                .thenReturn(Optional.of(new OpenMetadataEntity(
+                        "auto", "st_ds_42.st_ds_42_auto_classification")));
+        when(openMetadataClient.listIngestionPipelineRuns(
+                "st_ds_42.st_ds_42_auto_classification", 1))
+                .thenReturn(List.of());
+        // The older deployment created the pipeline under the legacy name: turning samples off
+        // must delete that one too, otherwise it keeps collecting next to nothing.
+        when(openMetadataClient.findIngestionPipeline("st_ds_42.st_ds_42_autoclassification"))
+                .thenReturn(Optional.of(new OpenMetadataEntity(
+                        "legacy", "st_ds_42.st_ds_42_autoclassification")));
+
+        reconciler().reconcilePendingBindings();
+
+        verify(openMetadataClient).deleteIngestionPipeline("auto");
+        verify(openMetadataClient).deleteIngestionPipeline("legacy");
+    }
+
+    @Test
     void deletesBindingAndLocalDataSourceOnlyAfterOmCleanup() {
         MetadataSourceBinding candidate = binding(1L, MetadataDesiredState.DELETED, 2L, 0L);
         candidate.setOmMetadataPipelineId("meta");

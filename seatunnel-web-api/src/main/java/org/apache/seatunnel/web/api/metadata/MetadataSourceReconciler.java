@@ -18,8 +18,10 @@ import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Desired-state reconciler. No local transaction spans an OpenMetadata request.
@@ -154,7 +156,15 @@ public class MetadataSourceReconciler {
             openMetadataClient.deployIngestionPipeline(samplePipeline.id());
             openMetadataClient.enableIngestionPipeline(samplePipeline.id());
         }
-        removeLegacySamplePipeline(dataSource.getId());
+        Set<String> managedPipelineIds = new HashSet<>();
+        managedPipelineIds.add(metadataPipeline.id());
+        if (profilerPipeline != null) {
+            managedPipelineIds.add(profilerPipeline.id());
+        }
+        if (samplePipeline != null) {
+            managedPipelineIds.add(samplePipeline.id());
+        }
+        removeLegacySamplePipeline(dataSource.getId(), managedPipelineIds);
 
         MetadataSourceBinding latest = metadataBindingDao.queryById(claimed.getId());
         if (!owned(latest, claimedVersion)) {
@@ -206,16 +216,27 @@ public class MetadataSourceReconciler {
     /**
      * Removes the sample pipeline that older deployments created under a name without
      * the separating underscore. Left in place it would keep collecting samples next to
-     * the pipeline created under the stable name.
+     * the pipeline created under the stable name. The derived FQN already scopes the lookup to
+     * the service this web owns; the pipelines created by this reconcile are excluded so a
+     * colliding name can never delete what was just deployed. Cleanup is best effort: a failed
+     * lookup must not turn an otherwise successful reconcile into a retry.
      */
-    private void removeLegacySamplePipeline(Long dataSourceId) {
+    private void removeLegacySamplePipeline(Long dataSourceId, Set<String> managedPipelineIds) {
         String legacyFqn = MetadataStableName.legacyAutoClassificationPipelineFqn(dataSourceId);
-        openMetadataClient.findIngestionPipeline(legacyFqn)
-                .ifPresent(pipeline -> {
-                    openMetadataClient.deleteIngestionPipeline(pipeline.id());
-                    log.info("Removed legacy sample pipeline: dataSourceId={}, fqn={}",
-                            dataSourceId, legacyFqn);
-                });
+        try {
+            openMetadataClient.findIngestionPipeline(legacyFqn)
+                    .filter(pipeline -> !managedPipelineIds.contains(pipeline.id()))
+                    // Reuse the shared deletion path: it kills a run that is still collecting
+                    // before the pipeline is removed.
+                    .ifPresent(pipeline -> {
+                        deletePipeline(pipeline.id(), legacyFqn);
+                        log.info("Removed legacy sample pipeline: dataSourceId={}, fqn={}",
+                                dataSourceId, legacyFqn);
+                    });
+        } catch (Exception error) {
+            log.warn("Could not remove the legacy sample pipeline: dataSourceId={}, fqn={}",
+                    dataSourceId, legacyFqn, error);
+        }
     }
 
     private void deletePipeline(String id, String fqn) {
