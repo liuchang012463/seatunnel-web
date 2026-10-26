@@ -23,6 +23,19 @@ class SqlScriptSplitterTest {
     }
 
     @Test
+    void doesNotTreatKeywordsInsideUnderscoreOrDollarIdentifiersAsBlocks() {
+        List<String> statements = split(
+                "CREATE TABLE _begin(id INT); INSERT INTO _begin VALUES(1); "
+                        + "CREATE TABLE value$case(id INT); INSERT INTO value$case VALUES(2);");
+
+        assertEquals(4, statements.size());
+        assertTrue(statements.get(0).startsWith("CREATE TABLE _begin"));
+        assertTrue(statements.get(1).startsWith("INSERT INTO _begin"));
+        assertTrue(statements.get(2).startsWith("CREATE TABLE value$case"));
+        assertTrue(statements.get(3).startsWith("INSERT INTO value$case"));
+    }
+
+    @Test
     void keepsSemicolonsInsideLineComments() {
         List<String> statements = split("INSERT INTO a VALUES (1); -- tricky ; comment\nINSERT INTO a VALUES (2);");
         assertEquals(2, statements.size());

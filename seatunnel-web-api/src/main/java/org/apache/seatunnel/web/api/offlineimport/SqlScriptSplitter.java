@@ -140,10 +140,9 @@ public final class SqlScriptSplitter {
                 continue;
             }
 
-            if (Character.isLetter(c)) {
+            if (isIdentifierStart(c)) {
                 int wordEnd = i;
-                while (wordEnd < length
-                        && (Character.isLetterOrDigit(script.charAt(wordEnd)) || script.charAt(wordEnd) == '_')) {
+                while (wordEnd < length && isIdentifierPart(script.charAt(wordEnd))) {
                     wordEnd++;
                 }
                 String word = script.substring(i, wordEnd).toUpperCase(Locale.ROOT);
@@ -347,10 +346,9 @@ public final class SqlScriptSplitter {
                 i = skipQuoted(sql, i, c);
             } else if (c == '$' && isDollarQuoteStart(sql, i)) {
                 i = skipDollarQuoted(sql, i);
-            } else if (Character.isLetter(c)) {
+            } else if (isIdentifierStart(c)) {
                 int end = i + 1;
-                while (end < sql.length()
-                        && (Character.isLetterOrDigit(sql.charAt(end)) || sql.charAt(end) == '_')) {
+                while (end < sql.length() && isIdentifierPart(sql.charAt(end))) {
                     end++;
                 }
                 words.add(sql.substring(i, end).toUpperCase(Locale.ROOT));
@@ -464,9 +462,11 @@ public final class SqlScriptSplitter {
     }
 
     private static String wordAt(String script, int from) {
+        if (from >= script.length() || !isIdentifierStart(script.charAt(from))) {
+            return null;
+        }
         int i = from;
-        while (i < script.length()
-                && (Character.isLetterOrDigit(script.charAt(i)) || script.charAt(i) == '_')) {
+        while (i < script.length() && isIdentifierPart(script.charAt(i))) {
             i++;
         }
         return from == i ? null : script.substring(from, i).toUpperCase(Locale.ROOT);
@@ -480,16 +480,23 @@ public final class SqlScriptSplitter {
                 i++;
             }
             int start = i;
-            while (i < script.length()
-                    && (Character.isLetterOrDigit(script.charAt(i)) || script.charAt(i) == '_')) {
-                i++;
-            }
-            if (start == i) {
+            if (i >= script.length() || !isIdentifierStart(script.charAt(i))) {
                 break;
+            }
+            while (i < script.length() && isIdentifierPart(script.charAt(i))) {
+                i++;
             }
             words.add(script.substring(start, i).toUpperCase(Locale.ROOT));
         }
         return words;
+    }
+
+    private static boolean isIdentifierStart(char c) {
+        return Character.isLetter(c) || c == '_';
+    }
+
+    private static boolean isIdentifierPart(char c) {
+        return Character.isLetterOrDigit(c) || c == '_' || c == '$';
     }
 
     /** Block comments nest in PostgreSQL-lineage dialects; mirror that here. */
