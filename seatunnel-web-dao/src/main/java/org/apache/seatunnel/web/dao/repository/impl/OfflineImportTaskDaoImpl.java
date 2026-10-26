@@ -24,13 +24,18 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
     }
 
     @Override
-    public IPage<OfflineImportTask> queryPage(OfflineImportTaskQueryDTO queryDTO) {
+    public IPage<OfflineImportTask> queryPage(OfflineImportTaskQueryDTO queryDTO, Integer ownerId) {
         OfflineImportTaskQueryDTO dto = queryDTO == null
                 ? new OfflineImportTaskQueryDTO() : queryDTO;
         int pageNo = dto.getPageNo() == null || dto.getPageNo() <= 0 ? 1 : dto.getPageNo();
         int pageSize = dto.getPageSize() == null || dto.getPageSize() <= 0
                 ? 10 : Math.min(dto.getPageSize(), 100);
         LambdaQueryWrapper<OfflineImportTask> wrapper = new LambdaQueryWrapper<>();
+        if (ownerId == null) {
+            wrapper.apply("1 = 0");
+        } else {
+            wrapper.eq(OfflineImportTask::getCreateUserId, ownerId);
+        }
         if (StringUtils.isNotBlank(dto.getName())) {
             wrapper.like(OfflineImportTask::getName, dto.getName().trim());
         }
@@ -45,25 +50,67 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
     }
 
     @Override
-    public boolean markQueuedIfExecutable(Long id, Date updateTime) {
+    public boolean markQueuedIfExecutable(Long id, Integer ownerId, Date updateTime) {
+        if (ownerId == null) {
+            return false;
+        }
         LambdaUpdateWrapper<OfflineImportTask> wrapper = new LambdaUpdateWrapper<OfflineImportTask>()
                 .eq(OfflineImportTask::getId, id)
+                .eq(OfflineImportTask::getCreateUserId, ownerId)
                 .in(OfflineImportTask::getStatus, "PENDING", "SUCCESS", "FAILED")
                 .set(OfflineImportTask::getStatus, "QUEUED")
                 .set(OfflineImportTask::getUpdateTime, updateTime)
-                .set(OfflineImportTask::getErrorMessage, null);
+                .set(OfflineImportTask::getErrorMessage, null)
+                .set(OfflineImportTask::getExecutionLog, null)
+                .set(OfflineImportTask::getStartTime, null)
+                .set(OfflineImportTask::getEndTime, null)
+                .set(OfflineImportTask::getTotalStatements, 0)
+                .set(OfflineImportTask::getExecutedStatements, 0)
+                .set(OfflineImportTask::getFailedStatements, 0);
         return mybatisMapper.update(null, wrapper) > 0;
     }
 
     @Override
-    public boolean markRunningFromQueued(Long id, Date updateTime) {
+    public boolean markRunningFromQueued(Long id, Integer ownerId, Date updateTime) {
+        if (ownerId == null) {
+            return false;
+        }
         LambdaUpdateWrapper<OfflineImportTask> wrapper = new LambdaUpdateWrapper<OfflineImportTask>()
                 .eq(OfflineImportTask::getId, id)
+                .eq(OfflineImportTask::getCreateUserId, ownerId)
                 .eq(OfflineImportTask::getStatus, "QUEUED")
                 .set(OfflineImportTask::getStatus, "RUNNING")
                 .set(OfflineImportTask::getUpdateTime, updateTime)
                 .set(OfflineImportTask::getStartTime, updateTime)
                 .set(OfflineImportTask::getEndTime, null);
+        return mybatisMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean deleteIfNotRunning(Long id, Integer ownerId) {
+        if (ownerId == null) {
+            return false;
+        }
+        LambdaQueryWrapper<OfflineImportTask> wrapper = new LambdaQueryWrapper<OfflineImportTask>()
+                .eq(OfflineImportTask::getId, id)
+                .eq(OfflineImportTask::getCreateUserId, ownerId)
+                .in(OfflineImportTask::getStatus, "PENDING", "QUEUED", "SUCCESS", "FAILED");
+        return mybatisMapper.delete(wrapper) > 0;
+    }
+
+    @Override
+    public boolean failQueued(Long id, Integer ownerId, String errorMessage, Date updateTime) {
+        if (ownerId == null) {
+            return false;
+        }
+        LambdaUpdateWrapper<OfflineImportTask> wrapper = new LambdaUpdateWrapper<OfflineImportTask>()
+                .eq(OfflineImportTask::getId, id)
+                .eq(OfflineImportTask::getCreateUserId, ownerId)
+                .eq(OfflineImportTask::getStatus, "QUEUED")
+                .set(OfflineImportTask::getStatus, "FAILED")
+                .set(OfflineImportTask::getErrorMessage, errorMessage)
+                .set(OfflineImportTask::getEndTime, updateTime)
+                .set(OfflineImportTask::getUpdateTime, updateTime);
         return mybatisMapper.update(null, wrapper) > 0;
     }
 

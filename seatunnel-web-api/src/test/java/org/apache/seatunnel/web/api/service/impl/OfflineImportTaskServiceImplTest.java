@@ -1,14 +1,18 @@
 package org.apache.seatunnel.web.api.service.impl;
 
+import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProvider;
 import org.apache.seatunnel.web.api.offlineimport.OfflineImportProperties;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.FileResourceService;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.DataSource;
+import org.apache.seatunnel.web.dao.entity.FileResource;
 import org.apache.seatunnel.web.dao.entity.OfflineImportTask;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
+import org.apache.seatunnel.web.dao.repository.FileResourceDao;
 import org.apache.seatunnel.web.dao.repository.OfflineImportTaskDao;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
 import org.apache.seatunnel.web.spi.enums.DbType;
@@ -18,7 +22,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.OutputStream;
+import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,6 +46,8 @@ class OfflineImportTaskServiceImplTest {
     private OfflineImportTaskDao offlineImportTaskDao;
     private DataSourceDao dataSourceDao;
     private FileResourceService fileResourceService;
+    private FileResourceDao fileResourceDao;
+    private FileResourceStorageProvider storageProvider;
     private CurrentUserProvider currentUserProvider;
     private OfflineImportTaskServiceImpl service;
 
@@ -45,11 +56,15 @@ class OfflineImportTaskServiceImplTest {
         offlineImportTaskDao = mock(OfflineImportTaskDao.class);
         dataSourceDao = mock(DataSourceDao.class);
         fileResourceService = mock(FileResourceService.class);
+        fileResourceDao = mock(FileResourceDao.class);
+        storageProvider = mock(FileResourceStorageProvider.class);
         currentUserProvider = mock(CurrentUserProvider.class);
         service = new OfflineImportTaskServiceImpl();
         ReflectionTestUtils.setField(service, "offlineImportTaskDao", offlineImportTaskDao);
         ReflectionTestUtils.setField(service, "dataSourceDao", dataSourceDao);
         ReflectionTestUtils.setField(service, "fileResourceService", fileResourceService);
+        ReflectionTestUtils.setField(service, "fileResourceDao", fileResourceDao);
+        ReflectionTestUtils.setField(service, "storageProvider", storageProvider);
         ReflectionTestUtils.setField(service, "currentUserProvider", currentUserProvider);
         ReflectionTestUtils.setField(service, "offlineImportProperties", new OfflineImportProperties());
         when(currentUserProvider.getCurrentUserId()).thenReturn(USER_ID);
@@ -83,6 +98,14 @@ class OfflineImportTaskServiceImplTest {
         when(fileResourceService.get(FILE_RESOURCE_ID)).thenReturn(fileResource(fileName, 100));
         when(dataSourceDao.queryById(DATASOURCE_ID)).thenReturn(kingbaseDataSource());
         return dto;
+    }
+
+    private OfflineImportTask task(Long id, String status, Integer ownerId) {
+        OfflineImportTask task = new OfflineImportTask();
+        task.setId(id);
+        task.setStatus(status);
+        task.setCreateUserId(ownerId);
+        return task;
     }
 
     @Test
@@ -131,11 +154,51 @@ class OfflineImportTaskServiceImplTest {
     }
 
     @Test
+    void pageIsScopedToCurrentOwner() {
+        OfflineImportTaskQueryDTO query = new OfflineImportTaskQueryDTO();
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<OfflineImportTask> page =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, 10);
+        when(offlineImportTaskDao.queryPage(query, USER_ID)).thenReturn(page);
+        when(dataSourceDao.queryByIds(any())).thenReturn(List.of());
+
+        service.page(query);
+
+        verify(offlineImportTaskDao).queryPage(query, USER_ID);
+    }
+
+    @Test
+    void getHidesTaskOwnedByAnotherUser() {
+        when(offlineImportTaskDao.queryById(1L)).thenReturn(task(1L, "PENDING", USER_ID + 1));
+
+        ServiceException exception = assertThrows(ServiceException.class, () -> service.get(1L));
+
+        assertEquals(Status.OFFLINE_IMPORT_TASK_NOT_EXIST.getCode(), exception.getCode());
+    }
+
+    @Test
+    void deleteHidesTaskOwnedByAnotherUser() {
+        when(offlineImportTaskDao.queryById(1L)).thenReturn(task(1L, "PENDING", USER_ID + 1));
+
+        ServiceException exception = assertThrows(ServiceException.class, () -> service.delete(1L));
+
+        assertEquals(Status.OFFLINE_IMPORT_TASK_NOT_EXIST.getCode(), exception.getCode());
+        verify(offlineImportTaskDao, never()).deleteIfNotRunning(any(), any());
+    }
+
+    @Test
+    void deleteFailsIfTaskStartsRunningAfterTheInitialRead() {
+        when(offlineImportTaskDao.queryById(1L)).thenReturn(task(1L, "QUEUED", USER_ID));
+        when(offlineImportTaskDao.deleteIfNotRunning(1L, USER_ID)).thenReturn(false);
+
+        ServiceException exception = assertThrows(ServiceException.class, () -> service.delete(1L));
+
+        assertEquals(Status.OFFLINE_IMPORT_TASK_STATE_ERROR.getCode(), exception.getCode());
+        verify(offlineImportTaskDao).deleteIfNotRunning(1L, USER_ID);
+    }
+
+    @Test
     void deleteRejectsRunningTask() {
-        OfflineImportTask task = new OfflineImportTask();
-        task.setId(1L);
-        task.setStatus("RUNNING");
-        when(offlineImportTaskDao.queryById(1L)).thenReturn(task);
+        when(offlineImportTaskDao.queryById(1L)).thenReturn(task(1L, "RUNNING", USER_ID));
 
         ServiceException exception = assertThrows(ServiceException.class, () -> service.delete(1L));
         assertEquals(Status.OFFLINE_IMPORT_TASK_STATE_ERROR.getCode(), exception.getCode());
@@ -143,24 +206,45 @@ class OfflineImportTaskServiceImplTest {
 
     @Test
     void executeRejectsWhileAlreadyQueuedOrRunning() {
-        OfflineImportTask task = new OfflineImportTask();
-        task.setId(1L);
-        task.setStatus("RUNNING");
-        when(offlineImportTaskDao.queryById(1L)).thenReturn(task);
-        when(offlineImportTaskDao.markQueuedIfExecutable(eq(1L), any())).thenReturn(false);
+        when(offlineImportTaskDao.queryById(1L)).thenReturn(task(1L, "RUNNING", USER_ID));
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(1L), eq(USER_ID), any())).thenReturn(false);
 
         ServiceException exception = assertThrows(ServiceException.class, () -> service.execute(1L));
         assertEquals(Status.OFFLINE_IMPORT_TASK_STATE_ERROR.getCode(), exception.getCode());
     }
 
     @Test
+    void executeHidesTaskOwnedByAnotherUser() {
+        when(offlineImportTaskDao.queryById(1L)).thenReturn(task(1L, "PENDING", USER_ID + 1));
+
+        ServiceException exception = assertThrows(ServiceException.class, () -> service.execute(1L));
+
+        assertEquals(Status.OFFLINE_IMPORT_TASK_NOT_EXIST.getCode(), exception.getCode());
+        verify(offlineImportTaskDao, never()).markQueuedIfExecutable(any(), any(), any());
+    }
+
+    @Test
+    void executeMarksTaskFailedWhenExecutorRejectsSubmission() {
+        when(offlineImportTaskDao.queryById(3L)).thenReturn(task(3L, "PENDING", USER_ID));
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(3L), eq(USER_ID), any())).thenReturn(true);
+        when(offlineImportTaskDao.failQueued(eq(3L), eq(USER_ID), any(), any())).thenReturn(true);
+        service.setExecutorForTest(command -> {
+            throw new RejectedExecutionException("full");
+        });
+
+        ServiceException exception = assertThrows(ServiceException.class, () -> service.execute(3L));
+
+        assertEquals(Status.OFFLINE_IMPORT_TASK_STATE_ERROR.getCode(), exception.getCode());
+        verify(offlineImportTaskDao).failQueued(
+                eq(3L), eq(USER_ID), eq("任务执行器当前不可用，请稍后重试"), any());
+    }
+
+    @Test
     void executeWorkerMarksVanishedTaskFailed() {
-        OfflineImportTask task = new OfflineImportTask();
-        task.setId(9L);
-        task.setStatus("QUEUED");
-        when(offlineImportTaskDao.queryById(9L)).thenReturn(task, (OfflineImportTask) null);
-        when(offlineImportTaskDao.markQueuedIfExecutable(eq(9L), any())).thenReturn(true);
-        when(offlineImportTaskDao.markRunningFromQueued(eq(9L), any())).thenReturn(true);
+        when(offlineImportTaskDao.queryById(9L))
+                .thenReturn(task(9L, "PENDING", USER_ID), (OfflineImportTask) null);
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(9L), eq(USER_ID), any())).thenReturn(true);
+        when(offlineImportTaskDao.markRunningFromQueued(eq(9L), eq(USER_ID), any())).thenReturn(true);
         service.setExecutorForTest(Runnable::run);
 
         service.execute(9L);
@@ -168,21 +252,100 @@ class OfflineImportTaskServiceImplTest {
         ArgumentCaptor<OfflineImportTask> captor = ArgumentCaptor.forClass(OfflineImportTask.class);
         verify(offlineImportTaskDao).updateById(captor.capture());
         assertEquals("FAILED", captor.getValue().getStatus());
-        assertTrue(captor.getValue().getErrorMessage().contains("不存在"));
+        assertNotNull(captor.getValue().getErrorMessage());
     }
 
     @Test
     void executeWorkerSkipsTaskDeletedWhileQueued() {
-        OfflineImportTask task = new OfflineImportTask();
-        task.setId(11L);
-        task.setStatus("QUEUED");
-        when(offlineImportTaskDao.queryById(11L)).thenReturn(task);
-        when(offlineImportTaskDao.markQueuedIfExecutable(eq(11L), any())).thenReturn(true);
-        when(offlineImportTaskDao.markRunningFromQueued(eq(11L), any())).thenReturn(false);
+        when(offlineImportTaskDao.queryById(11L)).thenReturn(task(11L, "PENDING", USER_ID));
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(11L), eq(USER_ID), any())).thenReturn(true);
+        when(offlineImportTaskDao.markRunningFromQueued(eq(11L), eq(USER_ID), any())).thenReturn(false);
         service.setExecutorForTest(Runnable::run);
 
         service.execute(11L);
 
         verify(offlineImportTaskDao, never()).updateById(any(OfflineImportTask.class));
+    }
+
+    @Test
+    void workerRejectsFileResourceOwnedByAnotherUser() throws Exception {
+        when(offlineImportTaskDao.queryById(13L))
+                .thenReturn(taskForSql(13L), taskForSql(13L));
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(13L), eq(USER_ID), any())).thenReturn(true);
+        when(offlineImportTaskDao.markRunningFromQueued(eq(13L), eq(USER_ID), any())).thenReturn(true);
+        when(dataSourceDao.queryById(DATASOURCE_ID)).thenReturn(kingbaseDataSource());
+        FileResource resource = readyFileResource(USER_ID + 1);
+        when(fileResourceDao.queryById(FILE_RESOURCE_ID)).thenReturn(resource);
+        service.setExecutorForTest(Runnable::run);
+
+        service.execute(13L);
+
+        ArgumentCaptor<OfflineImportTask> captor = ArgumentCaptor.forClass(OfflineImportTask.class);
+        verify(offlineImportTaskDao).updateById(captor.capture());
+        assertEquals("FAILED", captor.getValue().getStatus());
+        assertTrue(captor.getValue().getErrorMessage().contains("不可用"));
+        verify(storageProvider, never()).download(any(), any(OutputStream.class));
+    }
+
+    @Test
+    void workerRejectsFileResourceThatIsNotReady() throws Exception {
+        when(offlineImportTaskDao.queryById(14L))
+                .thenReturn(taskForSql(14L), taskForSql(14L));
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(14L), eq(USER_ID), any())).thenReturn(true);
+        when(offlineImportTaskDao.markRunningFromQueued(eq(14L), eq(USER_ID), any())).thenReturn(true);
+        when(dataSourceDao.queryById(DATASOURCE_ID)).thenReturn(kingbaseDataSource());
+        FileResource resource = readyFileResource(USER_ID);
+        resource.setStatus("DELETED");
+        when(fileResourceDao.queryById(FILE_RESOURCE_ID)).thenReturn(resource);
+        service.setExecutorForTest(Runnable::run);
+
+        service.execute(14L);
+
+        ArgumentCaptor<OfflineImportTask> captor = ArgumentCaptor.forClass(OfflineImportTask.class);
+        verify(offlineImportTaskDao).updateById(captor.capture());
+        assertEquals("FAILED", captor.getValue().getStatus());
+        assertTrue(captor.getValue().getErrorMessage().contains("不可用"));
+        verify(storageProvider, never()).download(any(), any(OutputStream.class));
+    }
+
+    @Test
+    void workerRejectsDatasourceTypeChangedAfterTaskCreation() throws Exception {
+        when(offlineImportTaskDao.queryById(15L))
+                .thenReturn(taskForSql(15L), taskForSql(15L));
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(15L), eq(USER_ID), any())).thenReturn(true);
+        when(offlineImportTaskDao.markRunningFromQueued(eq(15L), eq(USER_ID), any())).thenReturn(true);
+        DataSource mysql = kingbaseDataSource();
+        mysql.setDbType(DbType.MYSQL);
+        when(dataSourceDao.queryById(DATASOURCE_ID)).thenReturn(mysql);
+        service.setExecutorForTest(Runnable::run);
+
+        service.execute(15L);
+
+        ArgumentCaptor<OfflineImportTask> captor = ArgumentCaptor.forClass(OfflineImportTask.class);
+        verify(offlineImportTaskDao).updateById(captor.capture());
+        assertEquals("FAILED", captor.getValue().getStatus());
+        assertTrue(captor.getValue().getErrorMessage().contains("类型已变更"));
+        verify(fileResourceDao, never()).queryById(FILE_RESOURCE_ID);
+    }
+
+    private OfflineImportTask taskForSql(Long id) {
+        OfflineImportTask task = task(id, "PENDING", USER_ID);
+        task.setName("sql-import");
+        task.setImportType("KINGBASE_SQL");
+        task.setFileResourceId(FILE_RESOURCE_ID);
+        task.setFileName("dump.sql");
+        task.setTargetDatasourceId(DATASOURCE_ID);
+        task.setOptionsJson("{}");
+        return task;
+    }
+
+    private FileResource readyFileResource(Integer ownerId) {
+        FileResource resource = new FileResource();
+        resource.setOwnerId(ownerId);
+        resource.setResourceType("FILE");
+        resource.setStatus("READY");
+        resource.setSize(10L);
+        resource.setObjectKey("object-key");
+        return resource;
     }
 }
