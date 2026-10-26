@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.alarm.event.JobStatusChangedEvent;
 import org.apache.seatunnel.web.api.metadata.FieldMappingExtractor;
 import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageEventFactory.EventType;
+import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.JobInstance;
@@ -32,6 +33,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -335,6 +337,9 @@ public class OpenLineageJobLineageService {
             Long instanceId = entry.getKey();
             String key = terminalKey(false, instanceId);
             if (!terminalPublished.add(key)) {
+                // The event path published it in the meantime: the pending copy is stale and
+                // would only take capacity away from terminals still waiting for the broker.
+                pendingTerminals.remove(instanceId);
                 continue;
             }
             if (publishIfValid(entry.getValue()) != PublishOutcome.PUBLISHED) {
@@ -827,73 +832,46 @@ public class OpenLineageJobLineageService {
         String dbTypeName = dataSource != null && dataSource.getDbType() != null
                 ? dataSource.getDbType().name()
                 : null;
-        datasets.add(new OpenLineageSnapshot.Dataset(datasourceId, dbTypeName, namespace, table));
+        // The standard datasource facet wants a uri; the connection url is masked because a
+        // datasource may store credentials inside it.
+        String uri = dataSource == null ? null
+                : HoconSensitiveMaskUtil.maskSensitiveText(connectionUrl(dataSource));
+        datasets.add(new OpenLineageSnapshot.Dataset(datasourceId, dbTypeName, namespace, table, uri));
     }
 
     /**
      * Reads the table list the web stores on the job definition: a plain table path, a JSON
      * array (guide multi, script) or a comma separated list (whole sync).
+     *
+     * <p>
+     * The acceptance rules are the ones of the topology path, so the same physical table keeps
+     * one identity whichever path published it.
+     * </p>
      */
     private static List<String> parseTableList(String raw) {
-        List<String> tables = new ArrayList<>();
+        Set<String> tables = new LinkedHashSet<>();
         String value = StringUtils.trimToNull(raw);
         if (value == null) {
-            return tables;
+            return new ArrayList<>();
         }
         if (value.startsWith("[") && value.endsWith("]")) {
             try {
                 Config parsed = ConfigFactory.parseString("tables = " + value);
                 for (ConfigValue element : parsed.getList("tables")) {
                     if (element.valueType() == ConfigValueType.STRING) {
-                        addTable(tables, element.unwrapped().toString());
+                        OpenLineageJobTopology.addTableNames(tables, element.unwrapped().toString());
                     } else if (element.valueType() == ConfigValueType.OBJECT) {
-                        addTable(tables, tableOf((ConfigObject) element));
+                        OpenLineageJobTopology.addTable(
+                                tables, OpenLineageJobTopology.tableOf((ConfigObject) element));
                     }
                 }
             } catch (RuntimeException error) {
                 log.debug("Could not read the JSON table list, value={}", value, error);
             }
-            return tables;
+            return new ArrayList<>(tables);
         }
-        if (value.contains(",")) {
-            for (String table : value.split(",")) {
-                addTable(tables, table);
-            }
-            return tables;
-        }
-        addTable(tables, value);
-        return tables;
-    }
-
-    private static void addTable(List<String> tables, String table) {
-        String value = StringUtils.trimToNull(table);
-        if (value == null) {
-            return;
-        }
-        String unquoted = value;
-        if (value.length() >= 2
-                && (value.charAt(0) == '`' || value.charAt(0) == '"')
-                && value.charAt(value.length() - 1) == value.charAt(0)) {
-            unquoted = StringUtils.trimToNull(value.substring(1, value.length() - 1));
-        }
-        if (unquoted == null
-                || unquoted.contains("${")
-                || !unquoted.matches("[A-Za-z_][A-Za-z0-9_$]*(?:\\.[A-Za-z_][A-Za-z0-9_$]*)*")) {
-            // A script definition stores the raw query as its source table. It is not a table
-            // path and must never be published as a dataset name.
-            return;
-        }
-        tables.add(unquoted);
-    }
-
-    private static String tableOf(ConfigObject object) {
-        for (String field : List.of("table", "table_path", "table_name")) {
-            ConfigValue value = object.get(field);
-            if (value != null && value.valueType() == ConfigValueType.STRING) {
-                return value.unwrapped().toString();
-            }
-        }
-        return null;
+        OpenLineageJobTopology.addTableNames(tables, value);
+        return new ArrayList<>(tables);
     }
 
     private PublishOutcome publishIfValid(OpenLineageSnapshot snapshot) {
@@ -912,6 +890,7 @@ public class OpenLineageJobLineageService {
         boolean retryOnMissingTopic = snapshot.eventType() == EventType.START
                 || snapshot.eventType() == EventType.RUNNING;
         if (!bridge.publish(properties.getKafka().getSourceTopic(),
+                OpenLineageEventFactory.deriveRunId(snapshot.instanceId(), snapshot.engineJobId()).toString(),
                 OpenLineageEventFactory.toRunEvent(snapshot).toString(),
                 retryOnMissingTopic)) {
             log.debug("OpenLineage event was not delivered, instanceId={}, engineJobId={}",

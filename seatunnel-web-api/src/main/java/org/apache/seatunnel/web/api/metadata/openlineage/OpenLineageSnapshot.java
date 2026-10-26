@@ -48,12 +48,20 @@ public record OpenLineageSnapshot(
     /**
      * Local identity of one lineage dataset: namespace is the datasource name, name is the
      * table path exactly as the user typed it.
+     *
+     * @param uri connection url of the datasource, carried for the standard datasource facet;
+     *     null when the datasource is unknown
      */
     public record Dataset(
             Long datasourceId,
             String dbTypeName,
             String namespace,
-            String name) {
+            String name,
+            String uri) {
+
+        public Dataset(Long datasourceId, String dbTypeName, String namespace, String name) {
+            this(datasourceId, dbTypeName, namespace, name, null);
+        }
     }
 
     /**

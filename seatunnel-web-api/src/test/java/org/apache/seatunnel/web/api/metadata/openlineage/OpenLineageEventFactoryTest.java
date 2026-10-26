@@ -34,6 +34,31 @@ class OpenLineageEventFactoryTest {
                         new OpenLineageSnapshot.SourceColumn(MYSQL_SOURCE, sourceColumn)))));
     }
 
+    /** The standard datasource facet carries the connection uri, its second spec field. */
+    @Test
+    void theStandardDatasourceFacetCarriesTheConnectionUri() {
+        OpenLineageSnapshot.Dataset source = new OpenLineageSnapshot.Dataset(
+                7L, "MYSQL", "bi_src_mysql", "ds_1.orders", "jdbc:mysql://host:3306/ds_1");
+        OpenLineageSnapshot snapshot = new OpenLineageSnapshot(
+                OpenLineageEventFactory.EventType.START,
+                Instant.ofEpochSecond(1790000000),
+                "engine-job-42",
+                1024L, 86L, "ods_order_sync",
+                false, "MANUAL", "BATCH",
+                null, null, null,
+                List.of(source), List.of(DORIS_SINK),
+                List.of());
+
+        JsonNode event = MAPPER.convertValue(
+                OpenLineageEventFactory.toRunEvent(snapshot), JsonNode.class);
+
+        JsonNode inputDatasource = event.path("inputs").get(0).path("facets").path("datasource");
+        assertEquals("jdbc:mysql://host:3306/ds_1", inputDatasource.path("uri").asText());
+        // A dataset without a connection url omits the field instead of inventing one.
+        assertTrue(event.path("outputs").get(0).path("facets").path("datasource").path("uri")
+                .isMissingNode());
+    }
+
     @Test
     void rendersASpecConformantStartEvent() {
         OpenLineageSnapshot snapshot = new OpenLineageSnapshot(

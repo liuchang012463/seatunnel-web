@@ -69,9 +69,9 @@ class OpenLineageJobLineageServiceTest {
         kafka.setSourceTopic("meta_lineage_topic");
         lenient().when(properties.getKafka()).thenReturn(kafka);
         lenient().doAnswer(invocation -> {
-            published.add(invocation.getArgument(1));
+            published.add(invocation.getArgument(2));
             return true;
-        }).when(bridge).publish(anyString(), anyString(), anyBoolean());
+        }).when(bridge).publish(anyString(), anyString(), anyString(), anyBoolean());
         lenient().when(dataSourceDao.queryById(10L)).thenReturn(dataSource(10L, "bi_src_mysql", "MYSQL"));
         lenient().when(dataSourceDao.queryById(20L)).thenReturn(dataSource(20L, "bi_tidb_doris", "DORIS"));
     }
@@ -229,6 +229,68 @@ class OpenLineageJobLineageServiceTest {
         JsonNode event = MAPPER.readTree(published.get(0));
         assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
         assertEquals("public.dynamic_sink", event.path("outputs").get(0).path("name").asText());
+    }
+
+    /**
+     * A hyphen is a legal part of table and topic names: the instance snapshot fallback accepts
+     * it, exactly like the plugin path of the topology.
+     */
+    @Test
+    void publishesAHyphenatedTableNameFromTheInstanceSnapshot() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSinkTable("ods.my-events");
+        submitted.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web"
+                        table_path="seatunnel_web.orders"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        table="${table_name}"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-66", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals("ods.my-events", event.path("outputs").get(0).path("name").asText());
+    }
+
+    /**
+     * A table list element of the instance snapshot is qualified with its database, the same way
+     * the topology qualifies a plugin table, so one physical table keeps one dataset identity.
+     */
+    @Test
+    void qualifiesTheDatabaseOfAnInstanceTableListElement() throws Exception {
+        JobInstanceVO submitted = instance();
+        submitted.setSinkTable("""
+                [{"database":"ods","table":"events"},{"table":"public.plain"}]
+                """);
+        submitted.setRuntimeConfig("""
+                source {
+                    Jdbc {
+                        url="jdbc:mysql://192.168.100.95:33306/seatunnel_web"
+                        table_path="seatunnel_web.orders"
+                    }
+                }
+                sink {
+                    Jdbc {
+                        table="${table_name}"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-66", false);
+
+        assertEquals(1, published.size());
+        JsonNode outputs = MAPPER.readTree(published.get(0)).path("outputs");
+        assertEquals(2, outputs.size());
+        assertEquals("ods.events", outputs.get(0).path("name").asText());
+        assertEquals("public.plain", outputs.get(1).path("name").asText());
     }
 
     @Test
@@ -554,9 +616,9 @@ class OpenLineageJobLineageServiceTest {
         List<String> attempts = new ArrayList<>();
         AtomicInteger deliveries = new AtomicInteger();
         lenient().doAnswer(invocation -> {
-            attempts.add(invocation.getArgument(1));
+            attempts.add(invocation.getArgument(2));
             return deliveries.getAndIncrement() == 0 ? false : true;
-        }).when(bridge).publish(anyString(), anyString(), anyBoolean());
+        }).when(bridge).publish(anyString(), anyString(), anyString(), anyBoolean());
 
         // Pulse 1 tracks the running instance, pulse 2 sees the bulk failure and reports it.
         service.pulseBatchJobs();
@@ -583,10 +645,10 @@ class OpenLineageJobLineageServiceTest {
         lenient().doAnswer(invocation -> {
             boolean delivered = deliveries.incrementAndGet() > 1;
             if (delivered) {
-                published.add(invocation.getArgument(1));
+                published.add(invocation.getArgument(2));
             }
             return delivered;
-        }).when(bridge).publish(anyString(), anyString(), anyBoolean());
+        }).when(bridge).publish(anyString(), anyString(), anyString(), anyBoolean());
 
         service.onBatchJobStatusChanged(new JobStatusChangedEvent(
                 this, 100L, 200L, JobStatus.FINISHED, JobStatus.RUNNING, null, "engine-job-42"));

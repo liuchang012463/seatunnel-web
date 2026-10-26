@@ -15,14 +15,8 @@ public class LineageBridgeProperties {
 
     private final Kafka kafka = new Kafka();
 
-    private final Running running = new Running();
-
     public Kafka getKafka() {
         return kafka;
-    }
-
-    public Running getRunning() {
-        return running;
     }
 
     /** Kafka producer client properties for the {@code OpenLineageKafkaBridge}. */
@@ -168,20 +162,6 @@ public class LineageBridgeProperties {
 
         public void setMaxBlockMs(int maxBlockMs) {
             this.maxBlockMs = maxBlockMs;
-        }
-    }
-
-    /** Cadence of the periodic RUNNING heartbeat for streaming jobs. */
-    public static class Running {
-
-        private long intervalMs = 60000;
-
-        public long getIntervalMs() {
-            return intervalMs;
-        }
-
-        public void setIntervalMs(long intervalMs) {
-            this.intervalMs = intervalMs;
         }
     }
 }

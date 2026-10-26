@@ -68,13 +68,19 @@ public class OpenLineageKafkaBridge {
     }
 
     /**
-     * Sends one event with a null key (lineage volume is low, so no partition affinity is needed)
-     * and reports whether the broker acknowledged it.
+     * Sends one event and reports whether the broker acknowledged it.
+     *
+     * <p>
+     * The record is keyed by the runId, so every event of one run lands on one partition in send
+     * order: a consumer never sees a terminal before the START of the same run.
+     * </p>
      *
      * <p>
      * The outcome is the delivery outcome, not the enqueue outcome: the caller decides whether a
      * terminal event may be forgotten, so a record that was buffered but never acknowledged has to
-     * be reported as a failure.
+     * be reported as a failure. The delivery timeout of the producer sits strictly below the send
+     * timeout, so a send timeout means the record is dead, not still in flight — publishing the
+     * terminal again cannot produce a second delivered terminal.
      * </p>
      *
      * <p>
@@ -86,8 +92,27 @@ public class OpenLineageKafkaBridge {
      * @return true when the broker acknowledged the event, false when the bridge is disabled,
      *     unconfigured or the delivery failed
      */
+    boolean publish(String topic, String key, String value, boolean retryOnMissingTopic) {
+        if (!properties.getKafka().isEnabled() || closed) {
+            return false;
+        }
+        Producer<String, String> kafkaProducer = producer();
+        if (kafkaProducer == null) {
+            return false;
+        }
+        topicProvisioner.ensureTopic(topic);
+        return send(kafkaProducer, topic, key, value, retryOnMissingTopic);
+    }
+
+    /**
+     * Sends one event with a null key (lineage volume is low, so no partition affinity is needed)
+     * and reports whether the broker acknowledged it.
+     *
+     * @return true when the broker acknowledged the event, false when the bridge is disabled,
+     *     unconfigured or the delivery failed
+     */
     boolean publish(String topic, String value) {
-        return publish(topic, value, true);
+        return publish(topic, null, value, true);
     }
 
     /**
@@ -98,15 +123,7 @@ public class OpenLineageKafkaBridge {
      *     this method reports a failure.
      */
     boolean publish(String topic, String value, boolean retryOnMissingTopic) {
-        if (!properties.getKafka().isEnabled() || closed) {
-            return false;
-        }
-        Producer<String, String> kafkaProducer = producer();
-        if (kafkaProducer == null) {
-            return false;
-        }
-        topicProvisioner.ensureTopic(topic);
-        return send(kafkaProducer, topic, value, retryOnMissingTopic);
+        return publish(topic, null, value, retryOnMissingTopic);
     }
 
     /**
@@ -115,9 +132,13 @@ public class OpenLineageKafkaBridge {
      * the caller, and the caller learns the delivery failed so it can publish the event again.
      */
     private boolean send(
-            Producer<String, String> kafkaProducer, String topic, String value, boolean retryAllowed) {
+            Producer<String, String> kafkaProducer,
+            String topic,
+            String key,
+            String value,
+            boolean retryAllowed) {
         try {
-            kafkaProducer.send(new ProducerRecord<>(topic, null, value))
+            kafkaProducer.send(new ProducerRecord<>(topic, key, value))
                     .get(properties.getKafka().getSendTimeoutMs(), TimeUnit.MILLISECONDS);
             return true;
         } catch (InterruptedException interrupted) {
@@ -135,7 +156,7 @@ public class OpenLineageKafkaBridge {
                 topicProvisioner.invalidate(topic);
                 retryExecutor.execute(() -> {
                     topicProvisioner.ensureTopic(topic);
-                    send(kafkaProducer, topic, value, false);
+                    send(kafkaProducer, topic, key, value, false);
                 });
                 return false;
             }
@@ -148,7 +169,7 @@ public class OpenLineageKafkaBridge {
                 topicProvisioner.invalidate(topic);
                 retryExecutor.execute(() -> {
                     topicProvisioner.ensureTopic(topic);
-                    send(kafkaProducer, topic, value, false);
+                    send(kafkaProducer, topic, key, value, false);
                 });
                 return false;
             }
@@ -226,6 +247,16 @@ public class OpenLineageKafkaBridge {
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.RETRIES_CONFIG, 5);
         props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, kafka.getMaxBlockMs());
+        // The delivery budget stays strictly below the send timeout: when the bridge reports a
+        // send timeout, the record is already dead in the producer, so a caller that publishes a
+        // terminal again can never put a second delivered terminal on the wire.
+        int deliveryTimeoutMs = Math.max(100, kafka.getSendTimeoutMs() - 500);
+        if (deliveryTimeoutMs >= kafka.getSendTimeoutMs()) {
+            deliveryTimeoutMs = Math.max(100, kafka.getSendTimeoutMs() / 2);
+        }
+        int requestTimeoutMs = Math.min(deliveryTimeoutMs, Math.max(100, deliveryTimeoutMs * 4 / 5));
+        props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, deliveryTimeoutMs);
+        props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, requestTimeoutMs);
         if (StringUtils.isNotBlank(kafka.getClientId())) {
             props.put(ProducerConfig.CLIENT_ID_CONFIG, kafka.getClientId());
         }

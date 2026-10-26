@@ -233,7 +233,7 @@ public final class OpenLineageJobTopology {
     }
 
     /** A table list submitted as one comma separated string. */
-    private static void addTableNames(Set<String> tables, String raw) {
+    static void addTableNames(Set<String> tables, String raw) {
         String value = StringUtils.trimToNull(raw);
         if (value == null) {
             return;
@@ -247,7 +247,7 @@ public final class OpenLineageJobTopology {
         }
     }
 
-    private static String tableOf(ConfigObject object) {
+    static String tableOf(ConfigObject object) {
         String table = null;
         for (String field : List.of("table", "table_path", "table_name")) {
             ConfigValue value = object.get(field);
@@ -291,9 +291,22 @@ public final class OpenLineageJobTopology {
         return tableName;
     }
 
-    private static void addTable(Set<String> tables, String table) {
-        String value = stripQuotes(StringUtils.trimToNull(table));
-        if (value == null || value.contains("${") || value.contains("(") || value.contains("*")) {
+    /**
+     * Accepts one candidate table path. A dynamic placeholder, a function call or any multi-word
+     * text (a raw query is stored as the table of a script job) is not a table; a hyphen is a
+     * legal part of topic and table names, and an explicitly quoted name is taken verbatim.
+     */
+    static void addTable(Set<String> tables, String table) {
+        String trimmed = StringUtils.trimToNull(table);
+        boolean quoted = trimmed != null && trimmed.length() >= 2
+                && (trimmed.charAt(0) == '`' || trimmed.charAt(0) == '"')
+                && trimmed.charAt(trimmed.length() - 1) == trimmed.charAt(0);
+        String value = stripQuotes(trimmed);
+        if (value == null
+                || value.contains("${")
+                || value.contains("(")
+                || value.contains("*")
+                || (!quoted && value.chars().anyMatch(Character::isWhitespace))) {
             return;
         }
         tables.add(value);

@@ -38,7 +38,7 @@ public final class OpenLineageEventFactory {
     static final String RUN_EVENT_SCHEMA_URL =
             "https://openlineage.io/spec/1-0-5/OpenLineage.json#/definitions/RunEvent";
     static final String COLUMN_LINEAGE_FACET_SCHEMA_URL =
-            "https://openlineage.io/spec/facets/1-1-1/ColumnLineageDatasetFacet.json";
+            "https://openlineage.io/spec/facets/1-1-0/ColumnLineageDatasetFacet.json";
     static final String DATASOURCE_FACET_SCHEMA_URL =
             "https://openlineage.io/spec/facets/1-0-0/DatasourceDatasetFacet.json";
     /** Custom facets are not part of the official spec namespace, so these URLs are project-local. */
@@ -153,12 +153,14 @@ public final class OpenLineageEventFactory {
 
         // Standard facet consumed by OM 2.0.4 and the asset precheck: the datasource name is
         // resolved as the database service name, which lets the consumer build the exact table
-        // FQN without a namespaceToServiceMapping entry.
+        // FQN without a namespaceToServiceMapping entry. The uri is the masked connection url,
+        // the facet's second standard field.
         if (serviceName != null) {
             ObjectNode standardDatasource = facets.putObject("datasource");
             standardDatasource.put("_producer", PRODUCER);
             standardDatasource.put("_schemaURL", DATASOURCE_FACET_SCHEMA_URL);
             standardDatasource.put("name", serviceName);
+            putString(standardDatasource, "uri", dataset.uri());
         }
         return node;
     }

@@ -122,6 +122,26 @@ class FieldMappingExtractorTest {
         assertEquals(Set.of("source_id"), sourcesOf(result, "target_id"));
     }
 
+    /**
+     * Common calendar words are legal column names: a dimension table that really has a
+     * {@code date} or {@code year} column keeps its column lineage.
+     */
+    @Test
+    void keepsColumnsNamedLikeCalendarWords() {
+        FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""
+                transform {
+                  projected {
+                    query="select `date`, `year`, `month`, amount from db.t"
+                  }
+                }
+                """));
+
+        assertEquals(Set.of("date"), sourcesOf(result, "date"));
+        assertEquals(Set.of("year"), sourcesOf(result, "year"));
+        assertEquals(Set.of("month"), sourcesOf(result, "month"));
+        assertEquals(Set.of("amount"), sourcesOf(result, "amount"));
+    }
+
     @Test
     void ignoresCastTypeNames() {
         FieldMappingExtractor.Result result = FieldMappingExtractor.extractDetailed(config("""

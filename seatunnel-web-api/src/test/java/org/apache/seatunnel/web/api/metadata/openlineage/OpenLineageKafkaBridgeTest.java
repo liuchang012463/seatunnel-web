@@ -141,6 +141,40 @@ class OpenLineageKafkaBridgeTest {
         assertTrue(bridge.publish("meta_lineage_topic", "{}"));
     }
 
+    /** The record is keyed by the runId, so one run's events keep their partition order. */
+    @Test
+    void sendsTheEventKeyedByRun() {
+        LineageBridgeProperties properties = properties(true, "kafka:9092");
+        OpenLineageKafkaBridge bridge = bridge(properties);
+        List<ProducerRecord<String, String>> sent = new ArrayList<>();
+        bridge.useProducer(acceptingProducer(sent));
+
+        String runId = OpenLineageEventFactory.deriveRunId(100L, "engine-job-42").toString();
+        assertTrue(bridge.publish("meta_lineage_topic", runId, "{}", true));
+
+        assertEquals(1, sent.size());
+        assertEquals(runId, sent.get(0).key());
+    }
+
+    /**
+     * The delivery budget sits strictly below the send timeout: a send timeout then means the
+     * record is dead, so a republished terminal can never be delivered twice.
+     */
+    @Test
+    void theDeliveryTimeoutStaysBelowTheSendTimeout() {
+        LineageBridgeProperties properties = properties(true, "kafka:9092");
+        properties.getKafka().setSendTimeoutMs(5000);
+
+        Map<String, Object> props = OpenLineageKafkaBridge.producerProperties(properties);
+
+        int deliveryTimeout = (int) props.get(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG);
+        int requestTimeout = (int) props.get(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG);
+        assertTrue(deliveryTimeout < properties.getKafka().getSendTimeoutMs(),
+                "delivery timeout must be below the send timeout");
+        assertTrue(requestTimeout <= deliveryTimeout,
+                "request timeout must fit into the delivery budget");
+    }
+
     @Test
     void producerPropertiesMatchTheDesignContract() {
         LineageBridgeProperties properties = properties(true, "kafka-1:9092,kafka-2:9092");

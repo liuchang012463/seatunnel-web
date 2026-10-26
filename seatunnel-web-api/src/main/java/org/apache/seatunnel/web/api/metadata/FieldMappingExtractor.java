@@ -572,9 +572,14 @@ public final class FieldMappingExtractor {
     private static final Pattern STANDALONE_WORD =
             Pattern.compile("[A-Za-z_][A-Za-z0-9_$]*");
 
+    /**
+     * Words that are never a column or table identifier in an expression. Only structural
+     * keywords and type words that are all but never chosen as a column name are listed: common
+     * words like {@code date} or {@code year} are legal column names, and a CAST type is blanked
+     * by {@link #blankCastTypes} instead. A function call is dropped separately by the "(" rule.
+     */
     private static final Set<String> SQL_RESERVED_WORDS = Set.of(
             "AND",
-            "ARRAY",
             "AS",
             "BETWEEN",
             "BIGINT",
@@ -588,9 +593,6 @@ public final class FieldMappingExtractor {
             "CHAR",
             "CHARACTER",
             "CLOB",
-            "DATE",
-            "DATETIME",
-            "DAY",
             "DECIMAL",
             "DISTINCT",
             "DOUBLE",
@@ -600,49 +602,35 @@ public final class FieldMappingExtractor {
             "FLOAT",
             "FROM",
             "GEOMETRY",
-            "HOUR",
             "IN",
             "INT",
             "INTEGER",
             "INTERVAL",
             "IS",
-            "JSON",
             "LIKE",
             "LONG",
-            "MAP",
-            "MINUTE",
-            "MONTH",
             "NCHAR",
             "NOT",
             "NULL",
-            "NUMBER",
             "NUMERIC",
             "NVARCHAR",
             "OR",
             "REAL",
-            "ROW",
-            "SECOND",
             "SELECT",
             "SHORT",
             "SIGNED",
             "SMALLINT",
-            "STRING",
-            "TEXT",
             "THEN",
-            "TIME",
-            "TIMESTAMP",
             "TIMESTAMP_LTZ",
             "TIMESTAMP_TZ",
             "TINYINT",
             "TRUE",
             "UNSIGNED",
-            "UUID",
             "VARBINARY",
             "VARCHAR",
             "VARCHAR2",
             "WHEN",
-            "WHERE",
-            "YEAR"
+            "WHERE"
     );
 
     private static int indexOfKeyword(String text, String keyword, int fromIndex) {
