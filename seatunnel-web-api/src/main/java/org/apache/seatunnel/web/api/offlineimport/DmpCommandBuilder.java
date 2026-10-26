@@ -101,8 +101,10 @@ public final class DmpCommandBuilder {
         }
         if (token.startsWith("USERID=") && token.contains("/")) {
             int userEnd = token.indexOf('/');
-            int hostAt = token.indexOf('@', userEnd);
-            String hostPart = hostAt > 0 ? token.substring(hostAt) : "";
+            // The password may itself contain '@', while the host part never
+            // does, so only the last '@' can be the USERID delimiter.
+            int hostAt = token.lastIndexOf('@');
+            String hostPart = hostAt > userEnd ? token.substring(hostAt) : "";
             return "USERID=" + token.substring("USERID=".length(), userEnd) + "/******" + hostPart;
         }
         return token.replace(password, "******");

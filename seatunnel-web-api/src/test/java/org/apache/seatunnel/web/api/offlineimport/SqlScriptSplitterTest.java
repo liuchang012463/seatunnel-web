@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SqlScriptSplitterTest {
 
@@ -96,6 +97,43 @@ class SqlScriptSplitterTest {
         List<String> statements = split("SELECT CASE WHEN a = 1 THEN 'x' ELSE 'y' END FROM t;\nSELECT 2;");
         assertEquals(2, statements.size());
         assertEquals("SELECT 2", statements.get(1));
+    }
+
+    @Test
+    void kingbaseTransactionBeginDoesNotSwallowFollowingStatements() {
+        List<String> statements = split(
+                "BEGIN;\nINSERT INTO a VALUES (1);\nINSERT INTO b VALUES (2);\nCOMMIT;\nSELECT 1;");
+        assertEquals(5, statements.size());
+        assertEquals("BEGIN", statements.get(0));
+        assertEquals("COMMIT", statements.get(3));
+        assertEquals("SELECT 1", statements.get(4));
+    }
+
+    @Test
+    void beginWorkAndBeginTransactionAreAlsoTransactionControl() {
+        assertEquals(3, split("BEGIN WORK; SELECT 1; BEGIN TRANSACTION;").size());
+    }
+
+    @Test
+    void pgStyleBareTriggerReleasesThePendingUnit() {
+        List<String> statements = split(
+                "CREATE TABLE x (id int); "
+                        + "CREATE TRIGGER trg AFTER INSERT ON x FOR EACH ROW EXECUTE PROCEDURE fn(); "
+                        + "INSERT INTO x VALUES (1); "
+                        + "INSERT INTO x VALUES (2);");
+        assertEquals(4, statements.size());
+        assertTrue(statements.get(1).startsWith("CREATE TRIGGER"));
+        assertEquals("INSERT INTO x VALUES (1)", statements.get(2));
+    }
+
+    @Test
+    void damengTriggerWithRealBodyStillStaysOneStatement() {
+        String script = "CREATE TRIGGER trg BEFORE INSERT ON x FOR EACH ROW "
+                + "DECLARE v INT; BEGIN IF NEW.id > 0 THEN NEW.id := 1; END IF; END;";
+        List<String> statements = split(script + "\nSELECT 1;");
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).startsWith("CREATE TRIGGER"));
+        assertEquals("SELECT 1", statements.get(1));
     }
 
     @Test
