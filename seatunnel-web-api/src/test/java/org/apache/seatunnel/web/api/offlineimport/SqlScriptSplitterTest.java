@@ -82,6 +82,17 @@ class SqlScriptSplitterTest {
                 + "SELECT 1;";
         List<String> statements = split(script);
         assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("v_id INT;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void keepsMultipleDamengDeclarationsAndTheirSemicolonsInOneProcedure() {
+        String script = "CREATE PROCEDURE p AS a INT; b INT; BEGIN NULL; END; SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("a INT; b INT; BEGIN"));
         assertEquals("SELECT 1", statements.get(1));
     }
 
@@ -97,6 +108,16 @@ class SqlScriptSplitterTest {
         List<String> statements = split("SELECT CASE WHEN a = 1 THEN 'x' ELSE 'y' END FROM t;\nSELECT 2;");
         assertEquals(2, statements.size());
         assertEquals("SELECT 2", statements.get(1));
+    }
+
+    @Test
+    void endCaseDoesNotReopenTheCaseBlock() {
+        List<String> statements = split(
+                "CREATE PROCEDURE p AS BEGIN CASE WHEN 1 = 1 THEN NULL; END CASE; END; SELECT 1;");
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("END CASE;"));
+        assertEquals("SELECT 1", statements.get(1));
     }
 
     @Test
@@ -133,6 +154,15 @@ class SqlScriptSplitterTest {
         List<String> statements = split(script + "\nSELECT 1;");
         assertEquals(2, statements.size());
         assertTrue(statements.get(0).startsWith("CREATE TRIGGER"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void standaloneDamengSlashTerminatesInsteadOfBeingSentToJdbc() {
+        List<String> statements = split("CREATE PROCEDURE p AS BEGIN NULL; END;\n/\nSELECT 1;");
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.stream().noneMatch("/"::equals));
         assertEquals("SELECT 1", statements.get(1));
     }
 

@@ -41,12 +41,22 @@ public final class SqlScriptSplitter {
 
         StringBuilder current = new StringBuilder();
         Deque<Opener> openers = new ArrayDeque<>();
+        boolean skipCaseAfterEndCase = false;
         int i = 0;
         int length = script.length();
 
         while (i < length) {
             char c = script.charAt(i);
             char next = i + 1 < length ? script.charAt(i + 1) : '\0';
+
+            if (c == '/' && isStandaloneSlashLine(script, i)) {
+                addIfMeaningful(statements, current.toString());
+                current.setLength(0);
+                openers.clear();
+                int end = script.indexOf('\n', i);
+                i = end < 0 ? length : end + 1;
+                continue;
+            }
 
             if (c == '-' && next == '-') {
                 int end = script.indexOf('\n', i);
@@ -87,6 +97,7 @@ public final class SqlScriptSplitter {
                 String word = script.substring(i, wordEnd).toUpperCase(Locale.ROOT);
 
                 if ("BEGIN".equals(word)) {
+                    skipCaseAfterEndCase = false;
                     if (isTransactionBegin(script, wordEnd)) {
                         // "BEGIN;" / "BEGIN WORK;" opens a transaction, not a
                         // block; pushing here would swallow the whole script.
@@ -99,16 +110,25 @@ public final class SqlScriptSplitter {
                         openers.push(Opener.BLOCK);
                     }
                 } else if ("CASE".equals(word)) {
-                    openers.push(Opener.BLOCK);
+                    if (skipCaseAfterEndCase) {
+                        skipCaseAfterEndCase = false;
+                    } else {
+                        openers.push(Opener.BLOCK);
+                    }
                 } else if ("DECLARE".equals(word) && isStatementStart(current)) {
+                    skipCaseAfterEndCase = false;
                     openers.push(Opener.PENDING_UNIT);
                 } else if ("CREATE".equals(word) && createsBody(script, wordEnd)) {
+                    skipCaseAfterEndCase = false;
                     openers.push(Opener.PENDING_UNIT);
                 } else if ("END".equals(word) && !openers.isEmpty()) {
-                    String after = nextWord(script, wordEnd);
+                    String after = nextSignificantWord(script, wordEnd);
                     if (after == null || !NON_BLOCK_END.contains(after)) {
                         openers.pop();
                     }
+                    skipCaseAfterEndCase = "CASE".equals(after);
+                } else {
+                    skipCaseAfterEndCase = false;
                 }
 
                 current.append(script, i, wordEnd);
@@ -124,15 +144,16 @@ public final class SqlScriptSplitter {
             }
 
             if (c == ';' && !openers.isEmpty() && openers.peek() == Opener.PENDING_UNIT) {
-                // A body-bearing CREATE whose ';' arrives while still waiting
-                // for its BEGIN/IS/AS has no body at all — the PostgreSQL
-                // "CREATE TRIGGER ... EXECUTE PROCEDURE fn();" shape. Only a
-                // following body keyword keeps the unit open.
-                String after = nextSignificantWord(script, i + 1);
-                if (after == null || (!"BEGIN".equals(after) && !"IS".equals(after) && !"AS".equals(after))) {
+                // A bodyless PostgreSQL trigger ends at the function call's
+                // semicolon. Other pending units may contain multiple
+                // declaration statements before their BEGIN, so keep each
+                // declaration semicolon in the SQL text.
+                if (isBodylessTrigger(current)) {
                     openers.pop();
                     addIfMeaningful(statements, current.toString());
                     current.setLength(0);
+                } else {
+                    current.append(';');
                 }
                 i++;
                 continue;
@@ -143,6 +164,37 @@ public final class SqlScriptSplitter {
         }
         addIfMeaningful(statements, current.toString());
         return statements;
+    }
+
+    /** Recognizes the PostgreSQL trigger form without an inline body. */
+    private static boolean isBodylessTrigger(StringBuilder current) {
+        String sql = current.toString().toUpperCase(Locale.ROOT);
+        boolean trigger = sql.contains("CREATE TRIGGER") || sql.contains("CREATE OR REPLACE TRIGGER");
+        return trigger
+                && (sql.contains("EXECUTE PROCEDURE") || sql.contains("EXECUTE FUNCTION"))
+                && !sql.contains("DECLARE")
+                && !sql.contains(" BEGIN ")
+                && !sql.contains(" AS ")
+                && !sql.contains(" IS ");
+    }
+
+    /** Returns true when a slash is the only non-whitespace token on its line. */
+    private static boolean isStandaloneSlashLine(String script, int slash) {
+        int lineStart = script.lastIndexOf('\n', slash - 1) + 1;
+        for (int i = lineStart; i < slash; i++) {
+            if (!Character.isWhitespace(script.charAt(i))) {
+                return false;
+            }
+        }
+        int lineEnd = script.indexOf('\n', slash + 1);
+        if (lineEnd < 0) {
+            lineEnd = script.length();
+        }
+        int i = slash + 1;
+        while (i < lineEnd && Character.isWhitespace(script.charAt(i))) {
+            i++;
+        }
+        return i == lineEnd || (i + 1 < lineEnd && script.charAt(i) == '-' && script.charAt(i + 1) == '-');
     }
 
     /**
@@ -250,11 +302,6 @@ public final class SqlScriptSplitter {
             words.add(script.substring(start, i).toUpperCase(Locale.ROOT));
         }
         return words;
-    }
-
-    private static String nextWord(String script, int from) {
-        List<String> words = wordsAfter(script, from, 1);
-        return words.isEmpty() ? null : words.get(0);
     }
 
     /** Block comments nest in PostgreSQL-lineage dialects; mirror that here. */
