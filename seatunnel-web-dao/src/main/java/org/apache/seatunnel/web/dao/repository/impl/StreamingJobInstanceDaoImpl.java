@@ -67,14 +67,7 @@ public class StreamingJobInstanceDaoImpl
     public List<StreamingJobInstance> listRunningLikeInstances() {
         LambdaQueryWrapper<StreamingJobInstance> wrapper = new LambdaQueryWrapper<>();
         wrapper.in(MyBatisColumn.getter(StreamingJobInstance::getJobStatus),
-                JobStatus.INITIALIZING,
-                JobStatus.CREATED,
-                JobStatus.PENDING,
-                JobStatus.SCHEDULED,
-                JobStatus.RUNNING,
-                JobStatus.FAILING,
-                JobStatus.DOING_SAVEPOINT,
-                JobStatus.CANCELING)
+                        JobStatusHelper.runningLikeStatuses())
                 .orderByDesc(MyBatisColumn.getter(StreamingJobInstance::getCreateTime));
 
         List<StreamingJobInstance> records = streamingJobInstanceMapper.selectList(wrapper);
@@ -207,14 +200,7 @@ public class StreamingJobInstanceDaoImpl
         wrapper.isNotNull(MyBatisColumn.getter(StreamingJobInstance::getClientId))
                 .isNotNull(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId))
                 .in(MyBatisColumn.getter(StreamingJobInstance::getJobStatus),
-                        JobStatus.INITIALIZING,
-                        JobStatus.CREATED,
-                        JobStatus.PENDING,
-                        JobStatus.SCHEDULED,
-                        JobStatus.RUNNING,
-                        JobStatus.FAILING,
-                        JobStatus.DOING_SAVEPOINT,
-                        JobStatus.CANCELING);
+                        JobStatusHelper.runningLikeStatuses());
 
         List<StreamingJobInstance> records = streamingJobInstanceMapper.selectList(wrapper);
 
