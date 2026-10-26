@@ -25,7 +25,7 @@ export interface OfflineImportTask {
   targetDatasourceName?: string;
   targetSchema?: string;
   options?: OfflineImportOptions;
-  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED';
+  status: 'PENDING' | 'QUEUED' | 'RUNNING' | 'SUCCESS' | 'FAILED';
   totalStatements?: number;
   executedStatements?: number;
   failedStatements?: number;

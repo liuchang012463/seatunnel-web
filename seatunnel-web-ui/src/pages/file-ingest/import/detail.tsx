@@ -10,6 +10,7 @@ import {
 
 const STATUS_META: Record<string, { text: string; badge: 'default' | 'processing' | 'success' | 'error' }> = {
   PENDING: { text: '待执行', badge: 'default' },
+  QUEUED: { text: '排队中', badge: 'default' },
   RUNNING: { text: '执行中', badge: 'processing' },
   SUCCESS: { text: '成功', badge: 'success' },
   FAILED: { text: '失败', badge: 'error' },
@@ -48,7 +49,7 @@ const OfflineImportDetailPage: React.FC = () => {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
-    if (task?.status === 'RUNNING') {
+    if (task?.status === 'RUNNING' || task?.status === 'QUEUED') {
       pollRef.current = setInterval(() => void load(), 2000);
     }
     return () => {
@@ -121,8 +122,8 @@ const OfflineImportDetailPage: React.FC = () => {
           <Button
             type="primary"
             icon={<PlayCircleOutlined />}
-            loading={executing || task.status === 'RUNNING'}
-            disabled={task.status === 'RUNNING'}
+            loading={executing}
+            disabled={task.status === 'RUNNING' || task.status === 'QUEUED'}
             onClick={() => void execute()}
           >
             {task.status === 'PENDING' ? '执行导入' : '重新执行'}

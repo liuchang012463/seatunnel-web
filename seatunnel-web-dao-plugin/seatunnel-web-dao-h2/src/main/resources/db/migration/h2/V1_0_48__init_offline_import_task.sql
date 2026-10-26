@@ -1,4 +1,4 @@
--- H2 equivalent of MySQL V1.0.47 for local/test profiles.
+-- H2 equivalent of MySQL V1.0.48 for local/test profiles.
 CREATE TABLE `t_seatunnel_web_offline_import_task`
 (
     `id`                   bigint        NOT NULL,

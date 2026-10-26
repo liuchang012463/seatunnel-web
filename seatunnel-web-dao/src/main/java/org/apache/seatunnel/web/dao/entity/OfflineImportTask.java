@@ -29,7 +29,7 @@ public class OfflineImportTask extends BaseEntity {
 
     private String optionsJson;
 
-    /** PENDING / RUNNING / SUCCESS / FAILED. */
+    /** PENDING / QUEUED / RUNNING / SUCCESS / FAILED. */
     private String status;
 
     private Integer totalStatements;
