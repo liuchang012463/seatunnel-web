@@ -12,7 +12,7 @@ import {
   Spin,
   Upload,
 } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchDataSourceOptions } from '@/pages/data-source/service';
 import { uploadFileResources } from '@/pages/file-resources/service';
 import BottomActionBar from '@/pages/batch-link-up/detail/components/BottomActionBar';
@@ -58,30 +58,50 @@ const CreateOfflineImportPage: React.FC = () => {
     ? 'SQL'
     : 'DMP') as OfflineImportCategory;
   const typeOptions = IMPORT_TYPE_OPTIONS[category];
-  const [importType, setImportType] = useState<OfflineImportTypeCode>(typeOptions[0].value);
+  const [selectedImportType, setSelectedImportType] = useState<OfflineImportTypeCode>(typeOptions[0].value);
+  const importType = typeOptions.some((option) => option.value === selectedImportType)
+    ? selectedImportType
+    : typeOptions[0].value;
   const [file, setFile] = useState<FileResource | null>(null);
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [dataSourceOptions, setDataSourceOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [dataSourceOptionsState, setDataSourceOptionsState] = useState<{
+    dbType: string;
+    options: Array<{ value: string; label: string }>;
+  }>({ dbType: offlineImportTargetDbType(typeOptions[0].value), options: [] });
   const [submitting, setSubmitting] = useState(false);
 
   const accept = category === 'DMP' ? '.dmp' : '.sql';
   const targetDbType = offlineImportTargetDbType(importType);
+  const dataSourceOptions = dataSourceOptionsState.dbType === targetDbType ? dataSourceOptionsState.options : [];
+  const previousCategory = useRef(category);
+
+  useEffect(() => {
+    if (previousCategory.current === category) return;
+    previousCategory.current = category;
+    setSelectedImportType(typeOptions[0].value);
+    setFile(null);
+    form.resetFields(['targetDatasourceId', 'targetSchema', 'sourceSchema', 'encoding', 'stopOnError', 'ignoreErrors']);
+  }, [category, form, typeOptions]);
 
   useEffect(() => {
     let cancelled = false;
+    setDataSourceOptionsState({ dbType: targetDbType, options: [] });
     fetchDataSourceOptions(targetDbType)
       .then((response) => {
         if (cancelled) return;
         const records = (response?.data || []) as Array<{ id?: string | number; value?: string | number; name?: string; label?: string }>;
-        setDataSourceOptions(
-          records.map((record) => ({
+        setDataSourceOptionsState({
+          dbType: targetDbType,
+          options: records.map((record) => ({
             value: String(record.id ?? record.value ?? ''),
             label: String(record.name || record.label || record.value || record.id || ''),
           })),
-        );
+        });
       })
-      .catch(() => setDataSourceOptions([]));
+      .catch(() => {
+        if (!cancelled) setDataSourceOptionsState({ dbType: targetDbType, options: [] });
+      });
     return () => {
       cancelled = true;
     };
@@ -143,8 +163,15 @@ const CreateOfflineImportPage: React.FC = () => {
         targetSchema: values.targetSchema || undefined,
         options:
           category === 'SQL'
-            ? { stopOnError: values.stopOnError, encoding: values.encoding }
-            : { sourceSchema: values.sourceSchema || undefined, ignoreErrors: values.ignoreErrors },
+            ? {
+                sourceSchema: values.sourceSchema?.trim() || undefined,
+                stopOnError: values.stopOnError,
+                encoding: values.encoding,
+              }
+            : {
+                sourceSchema: values.sourceSchema?.trim() || undefined,
+                ...(importType === 'DAMENG_DMP' ? { ignoreErrors: values.ignoreErrors } : {}),
+              },
       });
       if (response?.code !== 0) {
         throw new Error(response?.msg || '创建任务失败');
@@ -167,6 +194,14 @@ const CreateOfflineImportPage: React.FC = () => {
           category === 'SQL' ? (
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               <Form.Item
+                name="sourceSchema"
+                label="SQL 源 Schema"
+                style={{ marginBottom: 0, maxWidth: 420 }}
+                tooltip="跨模式还原需填写导出文件中的源 Schema；与目标 Schema 不同时映射显式限定的对象。留空仅适用于无模式限定或源、目标同名的脚本"
+              >
+                <Input placeholder="填写脚本中显式限定的源 Schema；留空不映射" style={{ maxWidth: 320 }} />
+              </Form.Item>
+              <Form.Item
                 name="encoding"
                 label="文件编码"
                 initialValue="UTF-8"
@@ -178,7 +213,6 @@ const CreateOfflineImportPage: React.FC = () => {
               <Form.Item
                 name="stopOnError"
                 label="出错时停止"
-                valuePropName="checked"
                 initialValue={true}
                 style={{ marginBottom: 0 }}
                 tooltip="开启后遇到第一条失败语句即中止；关闭则跳过失败语句继续执行"
@@ -199,32 +233,33 @@ const CreateOfflineImportPage: React.FC = () => {
                 name="sourceSchema"
                 label="DMP 内源 Schema"
                 style={{ marginBottom: 0, maxWidth: 420 }}
-                tooltip="备份文件内的 Schema 名；与目标 Schema 不同时将执行重映射（达梦），留空则默认与目标 Schema 相同"
+                tooltip="备份文件内的源 Schema 名；配合目标 Schema 执行映射，留空按目标 Schema 处理"
               >
                 <Input placeholder="留空则与目标 Schema 相同" style={{ maxWidth: 320 }} />
               </Form.Item>
-              <Form.Item
-                name="ignoreErrors"
-                label="忽略对象已存在等错误"
-                valuePropName="checked"
-                initialValue={true}
-                style={{ marginBottom: 0 }}
-                tooltip="对应 dimp 的 IGNORE=Y；重复导入场景建议开启"
-              >
-                <Radio.Group
-                  options={[
-                    { value: true, label: '忽略（默认）' },
-                    { value: false, label: '不忽略' },
-                  ]}
-                  optionType="button"
-                  buttonStyle="solid"
-                />
-              </Form.Item>
+              {importType === 'DAMENG_DMP' && (
+                <Form.Item
+                  name="ignoreErrors"
+                  label="忽略对象已存在等错误"
+                  initialValue={true}
+                  style={{ marginBottom: 0 }}
+                  tooltip="对应达梦 dimp 的 IGNORE=Y；重复导入场景建议开启"
+                >
+                  <Radio.Group
+                    options={[
+                      { value: true, label: '忽略（默认）' },
+                      { value: false, label: '不忽略' },
+                    ]}
+                    optionType="button"
+                    buttonStyle="solid"
+                  />
+                </Form.Item>
+              )}
             </Space>
           ),
       },
     ],
-    [category],
+    [category, importType],
   );
 
   return (
@@ -237,7 +272,12 @@ const CreateOfflineImportPage: React.FC = () => {
             <div className="mb-4 text-[14px] font-medium">导入类型</div>
             <Radio.Group
               value={importType}
-              onChange={(event) => setImportType(event.target.value)}
+              onChange={(event) => {
+                const nextImportType = event.target.value as OfflineImportTypeCode;
+                if (nextImportType === importType) return;
+                setSelectedImportType(nextImportType);
+                form.resetFields(['targetDatasourceId', 'targetSchema']);
+              }}
               optionType="button"
               buttonStyle="solid"
               options={typeOptions}
