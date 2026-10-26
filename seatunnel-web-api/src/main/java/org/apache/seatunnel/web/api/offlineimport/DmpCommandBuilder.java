@@ -62,7 +62,7 @@ public final class DmpCommandBuilder {
      */
     private static String encodeDamengPassword(String password) {
         if (password == null || password.chars().allMatch(
-                ch -> Character.isLetterOrDigit(ch) || ch == '_' || ch == '-' || ch == '.')) {
+                ch -> Character.isLetterOrDigit(ch) || ch == '_' || ch == '-')) {
             return password;
         }
         return "\"" + password.replace("\"", "\"\"") + "\"";

@@ -105,6 +105,14 @@ class DmpCommandBuilderTest {
     }
 
     @Test
+    void damengCommandQuotesDotInPassword() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
+                "/opt/dmdbms/bin/dimp", "h", "5236", "u", "a.b", DMP, LOG, null, null, false);
+
+        assertEquals("USERID=u/\"a.b\"@h:5236", command.command().get(1));
+    }
+
+    @Test
     void kingbaseCommandUsesSourceForFilteringAndTargetForMapping() {
         DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
                 "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, "SRC", "DST");
