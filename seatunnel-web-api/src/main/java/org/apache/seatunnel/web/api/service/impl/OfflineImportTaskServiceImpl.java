@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -180,7 +181,8 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
     @Override
     public PaginationResult<OfflineImportTaskVO> page(OfflineImportTaskQueryDTO query) {
-        IPage<OfflineImportTask> page = offlineImportTaskDao.queryPage(query);
+        IPage<OfflineImportTask> page = offlineImportTaskDao.queryPage(
+                query, currentUserProvider.getCurrentUserId());
         Map<Long, String> dataSourceNames = dataSourceNames(page.getRecords());
         return PaginationResult.buildSuc(
                 page.getRecords().stream()
@@ -202,40 +204,54 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         if (STATUS_RUNNING.equals(task.getStatus())) {
             throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务正在执行中，不能删除");
         }
-        offlineImportTaskDao.deleteById(id);
+        if (!offlineImportTaskDao.deleteIfNotRunning(id, task.getCreateUserId())) {
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务状态已变化，不能删除");
+        }
     }
 
     @Override
     public void execute(Long id) {
-        requireTask(id);
-        if (!offlineImportTaskDao.markQueuedIfExecutable(id, new java.util.Date())) {
+        OfflineImportTask task = requireTask(id);
+        Integer ownerId = task.getCreateUserId();
+        if (!offlineImportTaskDao.markQueuedIfExecutable(id, ownerId, new java.util.Date())) {
             throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务正在排队或执行中");
         }
-        executor.execute(() -> {
-            try {
-                runTask(id);
-            } catch (Throwable t) {
-                log.error("Offline import task {} crashed", id, t);
-                markTerminated(id, STATUS_FAILED, "任务执行异常: " + StringUtils.defaultIfBlank(t.getMessage(), t.getClass().getSimpleName()), null);
-            }
-        });
+        try {
+            executor.execute(() -> {
+                try {
+                    runTask(id, ownerId);
+                } catch (Throwable t) {
+                    log.error("Offline import task {} crashed", id, t);
+                    markTerminated(id, STATUS_FAILED,
+                            "任务执行异常: " + StringUtils.defaultIfBlank(t.getMessage(), t.getClass().getSimpleName()), null);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            offlineImportTaskDao.failQueued(
+                    id, ownerId, "任务执行器当前不可用，请稍后重试", new java.util.Date());
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务执行器当前不可用，请稍后重试");
+        }
     }
 
     private OfflineImportTask requireTask(Long id) {
+        return requireTask(id, currentUserProvider.getCurrentUserId());
+    }
+
+    private OfflineImportTask requireTask(Long id, Integer ownerId) {
         OfflineImportTask task = id == null ? null : offlineImportTaskDao.queryById(id);
-        if (task == null) {
+        if (task == null || ownerId == null || !ownerId.equals(task.getCreateUserId())) {
             throw new ServiceException(Status.OFFLINE_IMPORT_TASK_NOT_EXIST, String.valueOf(id));
         }
         return task;
     }
 
-    private void runTask(Long id) {
+    private void runTask(Long id, Integer ownerId) {
         // QUEUED → RUNNING marks the real start; a task deleted while queued stays deleted.
-        if (!offlineImportTaskDao.markRunningFromQueued(id, new java.util.Date())) {
+        if (!offlineImportTaskDao.markRunningFromQueued(id, ownerId, new java.util.Date())) {
             log.info("Offline import task {} is no longer queued, skip run", id);
             return;
         }
-        OfflineImportTask task = requireTask(id);
+        OfflineImportTask task = requireTask(id, ownerId);
         OfflineImportType importType = OfflineImportType.of(task.getImportType());
         OfflineImportOptions options = defaultOptions(
                 JSONUtils.parseObject(task.getOptionsJson(), OfflineImportOptions.class));
@@ -246,6 +262,9 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         try {
             if (importType == null || dataSource == null) {
                 throw new IllegalStateException(importType == null ? "导入类型无效" : "目标数据源不存在");
+            }
+            if (dataSource.getDbType() != importType.getTargetDbType()) {
+                throw new IllegalStateException("任务目标数据源类型已变更，与导入类型不匹配");
             }
             String failure = importType.isSql()
                     ? runSqlImport(task, importType, dataSource, options, executionLog)
@@ -267,7 +286,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             DataSource dataSource,
             OfflineImportOptions options,
             ExecutionLogBuffer executionLog) throws Exception {
-        FileResource resource = requireWorkerResource(task.getFileResourceId());
+        FileResource resource = requireWorkerResource(task.getFileResourceId(), task.getCreateUserId());
         long maxBytes = offlineImportProperties.getSqlMaxFileBytes();
         if (resource.getSize() != null && resource.getSize() > maxBytes) {
             return "SQL 文件超过大小上限 " + maxBytes + " 字节";
@@ -333,7 +352,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             Path dmpFile = workDir.resolve(safeName);
             Path toolLogFile = workDir.resolve(safeName + ".log");
             // Stream straight to disk: DMP backups may be far larger than the heap.
-            FileResource dmpResource = requireWorkerResource(task.getFileResourceId());
+            FileResource dmpResource = requireWorkerResource(task.getFileResourceId(), task.getCreateUserId());
             try (java.io.OutputStream output = java.nio.file.Files.newOutputStream(dmpFile)) {
                 storageProvider.download(dmpResource.getObjectKey(), output);
             }
@@ -430,9 +449,11 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         return new String(bytes, offset, bytes.length - offset, charset);
     }
 
-    private FileResource requireWorkerResource(Long fileResourceId) {
+    private FileResource requireWorkerResource(Long fileResourceId, Integer taskOwnerId) {
         FileResource resource = fileResourceId == null ? null : fileResourceDao.queryById(fileResourceId);
-        if (resource == null || !"FILE".equalsIgnoreCase(resource.getResourceType())) {
+        if (resource == null || taskOwnerId == null || !taskOwnerId.equals(resource.getOwnerId())
+                || !"READY".equalsIgnoreCase(resource.getStatus())
+                || !"FILE".equalsIgnoreCase(resource.getResourceType())) {
             throw new IllegalStateException("导入文件资源不存在或不可用");
         }
         return resource;
