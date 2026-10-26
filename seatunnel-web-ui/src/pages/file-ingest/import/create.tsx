@@ -276,7 +276,7 @@ const CreateOfflineImportPage: React.FC = () => {
                 const nextImportType = event.target.value as OfflineImportTypeCode;
                 if (nextImportType === importType) return;
                 setSelectedImportType(nextImportType);
-                form.resetFields(['targetDatasourceId', 'targetSchema']);
+                form.resetFields(['targetDatasourceId', 'targetSchema', 'sourceSchema', 'ignoreErrors']);
               }}
               optionType="button"
               buttonStyle="solid"
