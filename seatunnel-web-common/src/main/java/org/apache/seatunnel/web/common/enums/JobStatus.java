@@ -6,6 +6,14 @@ public enum JobStatus {
     STARTING(EndState.NOT_END),
 
     /**
+     * Legacy submission state the manual-confirmation flow used to write. The flow was removed
+     * and the rows are cleaned by V1_0_47, but the value must stay parseable during a rolling
+     * upgrade while an old instance can still write it.
+     */
+    @Deprecated
+    SUBMISSION_UNKNOWN(EndState.NOT_END),
+
+    /**
      * The job has been received by the Dispatcher, and is waiting for the job manager to receive
      * leadership and to be created.
      */
