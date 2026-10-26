@@ -261,7 +261,8 @@ public class MetadataStatusSynchronizer {
         return MetadataPipelineOperationService.isRunning(status);
     }
 
-    private static boolean initialStageTimedOut(MetadataSourceBinding binding, Date now) {        return binding.getInitialRunStartedAt() != null
+    private static boolean initialStageTimedOut(MetadataSourceBinding binding, Date now) {
+        return binding.getInitialRunStartedAt() != null
                 && now.getTime() - binding.getInitialRunStartedAt().getTime()
                         > INITIAL_RUN_STAGE_TIMEOUT_MILLIS;
     }
