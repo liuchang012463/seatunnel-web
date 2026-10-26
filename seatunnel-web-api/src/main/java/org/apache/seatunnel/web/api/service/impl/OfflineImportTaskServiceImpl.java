@@ -7,6 +7,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
+import org.apache.seatunnel.web.api.offlineimport.DmpArchivePreflight;
 import org.apache.seatunnel.web.api.offlineimport.DmpCommandBuilder;
 import org.apache.seatunnel.web.api.offlineimport.DmpProcessRunner;
 import org.apache.seatunnel.web.api.offlineimport.ExecutionLogBuffer;
@@ -39,21 +40,25 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
@@ -68,6 +73,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
     private static final int LOG_MAX_CHARS = 64 * 1024;
     private static final long PROGRESS_FLUSH_INTERVAL_MS = 3000;
+    private static final int KINGBASE_SCHEMA_DDL_TIMEOUT_SECONDS = 300;
 
     @Resource
     private OfflineImportTaskDao offlineImportTaskDao;
@@ -271,12 +277,19 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                     : runDmpImport(task, importType, dataSource, options, executionLog);
             boolean success = failure == null;
             executionLog.line(success ? "任务执行成功" : "任务执行失败: " + failure);
-            markTerminated(id, success ? STATUS_SUCCESS : STATUS_FAILED, failure, executionLog.snapshot());
+            markTerminated(id, success ? STATUS_SUCCESS : STATUS_FAILED,
+                    executionLog.redact(failure), executionLog.snapshot());
         } catch (Exception e) {
-            log.error("Offline import task {} failed", id, e);
-            String failure = "任务执行异常: " + StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName());
+            // Native tools and JDBC drivers may include command arguments in
+            // exception messages. Keep their raw messages out of application
+            // logs; DMP failures expose only a generic exception type.
+            log.error("Offline import task {} failed ({})", id, e.getClass().getSimpleName());
+            String details = importType != null && !importType.isSql()
+                    ? e.getClass().getSimpleName()
+                    : StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName());
+            String failure = executionLog.redact("任务执行异常: " + details);
             executionLog.line(failure);
-            markTerminated(id, STATUS_FAILED, failure, executionLog.snapshot());
+            markTerminated(id, STATUS_FAILED, executionLog.redact(failure), executionLog.snapshot());
         }
     }
 
@@ -345,7 +358,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         // dimp resolves DIRECTORY itself, so the scratch dir must be absolute.
         Path workDir = Paths.get(offlineImportProperties.getWorkDir())
                 .toAbsolutePath()
-                .resolve("task-" + task.getId());
+                .resolve("task-" + task.getId() + "-" + UUID.randomUUID());
         Files.createDirectories(workDir);
         try {
             String safeName = task.getFileName().replaceAll("[/\\\\]", "_");
@@ -360,6 +373,54 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
             BaseConnectionParam param = (BaseConnectionParam) DataSourceUtils.buildConnectionParams(
                     dataSource.getDbType(), dataSource.getConnectionParams());
+            for (String secret : DmpArchivePreflight.secretVariants(param.getPassword())) {
+                executionLog.addSecret(secret);
+            }
+
+            DmpProcessRunner processRunner = new DmpProcessRunner();
+            Charset processOutputCharset = importType == OfflineImportType.DAMENG_DMP
+                    ? Charset.forName("GB18030")
+                    : StandardCharsets.UTF_8;
+            String selectedSourceSchema = DmpArchivePreflight.selectedSourceSchema(
+                    options.getSourceSchema(), task.getTargetSchema());
+            Path preflightLogFile = workDir.resolve(safeName + ".preflight.log");
+            boolean sourceSchemaFound = selectedSourceSchema == null;
+            DmpCommandBuilder.DmpCommand preflightCommand;
+            if (importType == OfflineImportType.DAMENG_DMP) {
+                preflightCommand = DmpCommandBuilder.damengShow(
+                        toolPath, param.getHost(), param.getPort(), param.getUser(), param.getPassword(),
+                        dmpFile, preflightLogFile);
+            } else {
+                preflightCommand = DmpCommandBuilder.kingbaseList(toolPath, dmpFile, selectedSourceSchema);
+            }
+            AtomicBoolean matchedSourceSchema = new AtomicBoolean(sourceSchemaFound);
+            java.util.function.Consumer<String> preflightObserver = importType == OfflineImportType.DAMENG_DMP
+                    ? line -> {
+                        if (DmpArchivePreflight.damengSchemaEntry(line, selectedSourceSchema)) {
+                            matchedSourceSchema.set(true);
+                        }
+                    }
+                    : null;
+            DmpProcessRunner.ProcessResult preflightResult = processRunner.run(
+                    preflightCommand, preflightCommand.environment(), workDir,
+                    offlineImportProperties.getProcessTimeoutMinutes(), executionLog,
+                    preflightObserver, processOutputCharset);
+            if (importType == OfflineImportType.DAMENG_DMP) {
+                appendToolLogFile(preflightLogFile, executionLog, processOutputCharset);
+            }
+            if (!preflightResult.success()) {
+                return "DMP 文件原厂预检失败，源 Schema 未匹配或文件格式无效，已在还原前终止"
+                        + (preflightResult.timedOut() ? "（预检超时）" : "");
+            }
+            if (!matchedSourceSchema.get()) {
+                return "DMP 文件中未找到指定源 Schema，已在还原前终止";
+            }
+
+            if (importType == OfflineImportType.KINGBASE_DMP) {
+                ensureKingbaseTargetSchema(dataSource, param, selectedTargetSchema(
+                        options.getSourceSchema(), task.getTargetSchema()));
+            }
+
             DmpCommandBuilder.DmpCommand command;
             if (importType == OfflineImportType.DAMENG_DMP) {
                 command = DmpCommandBuilder.dameng(
@@ -375,10 +436,10 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             }
             executionLog.line("执行命令: " + DmpCommandBuilder.mask(command, param.getPassword()));
 
-            DmpProcessRunner.ProcessResult result = new DmpProcessRunner().run(
+            DmpProcessRunner.ProcessResult result = processRunner.run(
                     command, command.environment(), workDir,
-                    offlineImportProperties.getProcessTimeoutMinutes(), executionLog);
-            appendToolLogFile(toolLogFile, executionLog);
+                    offlineImportProperties.getProcessTimeoutMinutes(), executionLog, null, processOutputCharset);
+            appendToolLogFile(toolLogFile, executionLog, processOutputCharset);
             return result.success()
                     ? null
                     : toolName + " 退出码 " + result.exitCode() + "，详见执行日志"
@@ -388,23 +449,65 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         }
     }
 
-    private void appendToolLogFile(Path toolLogFile, ExecutionLogBuffer executionLog) {
+    private void appendToolLogFile(Path toolLogFile, ExecutionLogBuffer executionLog, Charset charset) {
         try {
             if (!Files.exists(toolLogFile)) {
                 return;
             }
-            String content = Files.readString(toolLogFile, StandardCharsets.UTF_8);
+            String content = readTail(toolLogFile, 8 * 1024, charset);
             if (StringUtils.isNotBlank(content)) {
                 executionLog.line("工具日志尾部:");
-                executionLog.raw(tail(content, 8 * 1024));
+                executionLog.raw(content);
             }
         } catch (IOException e) {
-            log.warn("Read tool log file failed: {}", toolLogFile, e);
+            log.warn("Read DMP tool log failed ({})", e.getClass().getSimpleName());
         }
     }
 
-    private String tail(String content, int maxChars) {
-        return content.length() <= maxChars ? content : content.substring(content.length() - maxChars);
+    private String readTail(Path file, int maxChars, Charset charset) throws IOException {
+        char[] ring = new char[maxChars];
+        char[] chunk = new char[4096];
+        int next = 0;
+        int size = 0;
+        try (Reader reader = Files.newBufferedReader(file, charset)) {
+            int read;
+            while ((read = reader.read(chunk)) >= 0) {
+                for (int index = 0; index < read; index++) {
+                    ring[next] = chunk[index];
+                    next = (next + 1) % maxChars;
+                    size = Math.min(size + 1, maxChars);
+                }
+            }
+        }
+        StringBuilder tail = new StringBuilder(size);
+        int start = (next - size + maxChars) % maxChars;
+        for (int index = 0; index < size; index++) {
+            tail.append(ring[(start + index) % maxChars]);
+        }
+        return tail.toString();
+    }
+
+    private String selectedTargetSchema(String sourceSchema, String targetSchema) {
+        String target = StringUtils.trimToNull(targetSchema);
+        return target != null ? target : StringUtils.trimToNull(sourceSchema);
+    }
+
+    private void ensureKingbaseTargetSchema(
+            DataSource dataSource, BaseConnectionParam connectionParam, String targetSchema) throws Exception {
+        String schema = StringUtils.trimToNull(targetSchema);
+        if (schema == null) {
+            return;
+        }
+        if (schema.indexOf('\0') >= 0) {
+            throw new IllegalArgumentException("目标 Schema 名称不合法");
+        }
+        String quotedSchema = "\"" + schema.replace("\"", "\"\"") + "\"";
+        try (Connection connection = DataSourceUtils.getDatasourceProcessor(dataSource.getDbType())
+                     .getConnectionManager().getConnection(connectionParam);
+             Statement statement = connection.createStatement()) {
+            statement.setQueryTimeout(KINGBASE_SCHEMA_DDL_TIMEOUT_SECONDS);
+            statement.execute("CREATE SCHEMA IF NOT EXISTS " + quotedSchema);
+        }
     }
 
     private void deleteRecursively(Path dir) {

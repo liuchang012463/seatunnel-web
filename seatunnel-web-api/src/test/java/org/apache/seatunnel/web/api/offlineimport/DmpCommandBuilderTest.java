@@ -32,6 +32,39 @@ class DmpCommandBuilderTest {
     }
 
     @Test
+    void damengShowCommandIsReadOnlyAndDoesNotApplyImportFilters() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.damengShow(
+                "/opt/dmdbms/bin/dimp", "h", "5236", "u", "Pwd@123", DMP, LOG);
+
+        assertTrue(command.command().contains("SHOW=Y"));
+        assertFalse(command.command().toString().contains("SCHEMAS="));
+        assertFalse(command.command().toString().contains("REMAP_SCHEMA="));
+        assertFalse(command.command().toString().contains("IGNORE="));
+    }
+
+    @Test
+    void kingbaseListCommandDoesNotConnectToTargetOrPassCredentials() {
+        DmpCommandBuilder.DmpCommand command =
+                DmpCommandBuilder.kingbaseList("/usr/bin/sys_restore", DMP, "source_schema");
+
+        assertEquals(
+                java.util.List.of("/usr/bin/sys_restore", "--list", "--schema=source_schema",
+                        "--strict-names", DMP.toAbsolutePath().toString()),
+                command.command());
+        assertTrue(command.environment().isEmpty());
+    }
+
+    @Test
+    void kingbaseListOmitsStrictSchemaFilterWhenNoSourceIsSelected() {
+        DmpCommandBuilder.DmpCommand command =
+                DmpCommandBuilder.kingbaseList("/usr/bin/sys_restore", DMP, " ");
+
+        assertEquals(
+                java.util.List.of("/usr/bin/sys_restore", "--list", DMP.toAbsolutePath().toString()),
+                command.command());
+    }
+
+    @Test
     void damengCommandWithOnlyTargetSchemaSkipsRemap() {
         DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
                 "/opt/dmdbms/bin/dimp", "h", "5236", "u", "p", DMP, LOG, null, "TEST", false);
