@@ -17,9 +17,11 @@ import org.apache.seatunnel.web.core.hocon.JobDefinitionHoconBuilder;
 import org.apache.seatunnel.web.core.hocon.StreamingJobDefinitionCommandResolver;
 import org.apache.seatunnel.web.core.job.TaskTypeResolver;
 import org.apache.seatunnel.web.dao.entity.StreamingJobInstance;
+import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
 import org.apache.seatunnel.web.dao.entity.StreamingJobMetrics;
 import org.apache.seatunnel.web.dao.entity.StreamingJobMetricsCurrent;
 import org.apache.seatunnel.web.dao.entity.StreamingJobTableMetricsCurrent;
+import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobMetricsCurrentDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobMetricsDao;
@@ -46,6 +48,9 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
 
     @Resource
     private StreamingJobInstanceDao streamingJobInstanceDao;
+
+    @Resource
+    private StreamingJobDefinitionDao streamingJobDefinitionDao;
 
     @Resource
     private StreamingJobMetricsCurrentDao streamingJobMetricsCurrentDao;
@@ -382,7 +387,7 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
         String runtimeConfig = buildJobConfig(command);
         Date now = new Date();
 
-        return StreamingJobInstance.builder()
+        StreamingJobInstance instance = StreamingJobInstance.builder()
                 .id(id)
                 .jobDefinitionId(command.getId())
                 .clientId(command.getBasic().getClientId())
@@ -395,6 +400,28 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
                 .createTime(now)
                 .updateTime(now)
                 .build();
+        captureSubmittedIdentitySnapshot(instance, command.getId());
+        return instance;
+    }
+
+    /**
+     * Stores the job name and source/target identifiers that this instance is actually submitted
+     * with. The definition may be edited while the streaming run and its lineage events are in
+     * flight, so the lineage service must not read those values back from the definition row.
+     */
+    private void captureSubmittedIdentitySnapshot(StreamingJobInstance instance, Long jobDefinitionId) {
+        if (instance == null || jobDefinitionId == null) {
+            return;
+        }
+        StreamingJobDefinitionEntity definition = streamingJobDefinitionDao.queryById(jobDefinitionId);
+        if (definition == null) {
+            return;
+        }
+        instance.setJobName(definition.getJobName());
+        instance.setSourceDatasourceId(definition.getSourceDatasourceId());
+        instance.setSinkDatasourceId(definition.getSinkDatasourceId());
+        instance.setSourceTable(definition.getSourceTable());
+        instance.setSinkTable(definition.getSinkTable());
     }
 
     private String buildJobConfig(JobDefinitionSaveCommand command) {

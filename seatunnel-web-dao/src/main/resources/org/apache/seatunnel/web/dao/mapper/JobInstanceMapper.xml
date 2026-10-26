@@ -80,7 +80,9 @@
         i.create_time AS createTime,
         i.update_time AS updateTime,
 
-        d.job_name AS jobName,
+        <!-- Prefer the identity captured at submission; fall back to the definition for
+             instances created before those columns existed. -->
+        COALESCE(i.job_name, d.job_name) AS jobName,
         d.job_desc AS jobDesc,
         d.mode AS definitionMode,
         d.job_type AS jobType,
@@ -237,7 +239,8 @@
 
                 <if test="dto.keyword != null and dto.keyword != ''">
                     AND (
-                    d.job_name LIKE CONCAT('%', #{dto.keyword}, '%')
+                    <!-- Search the same identity the row displays: the submission snapshot. -->
+                    COALESCE(i.job_name, d.job_name) LIKE CONCAT('%', #{dto.keyword}, '%')
                     OR CAST(i.engine_job_id AS CHAR) LIKE CONCAT('%', #{dto.keyword}, '%')
                     OR i.error_message LIKE CONCAT('%', #{dto.keyword}, '%')
                     OR i.log_path LIKE CONCAT('%', #{dto.keyword}, '%')

@@ -493,10 +493,10 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
     }
 
     /**
-     * Stores the source/target identifiers that this instance is actually submitted with. The
-     * definition may be edited while the asynchronous submission and lineage event publication
-     * are in flight, so the lineage service must not read those values back from the definition
-     * row.
+     * Stores the job name and source/target identifiers that this instance is actually submitted
+     * with. The definition may be edited while the asynchronous submission and lineage event
+     * publication are in flight, so the lineage service must not read those values back from the
+     * definition row.
      */
     private void captureSubmittedTableSnapshot(JobInstance instance, Long jobDefinitionId) {
         if (instance == null || jobDefinitionId == null) {
@@ -510,6 +510,7 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
         instance.setSinkDatasourceId(definition.getSinkDatasourceId());
         instance.setSourceTable(definition.getSourceTable());
         instance.setSinkTable(definition.getSinkTable());
+        instance.setJobName(definition.getJobName());
     }
 
     /**
