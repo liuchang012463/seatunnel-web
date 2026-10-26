@@ -51,6 +51,16 @@ export class BizError extends Error {
 /** 唯一错误出口 */
 const errorHandler = (error: any): Response | undefined => {
   const { response } = error;
+  // Background polling opts out of the global notification; the caller
+  // handles the failure locally or ignores it.
+  const skipErrorHandler =
+    error?.skipErrorHandler
+    || error?.options?.skipErrorHandler
+    || error?.request?.options?.skipErrorHandler;
+
+  if (skipErrorHandler && !(error instanceof BizError)) {
+    return response;
+  }
 
   // 业务异常
   if (error instanceof BizError) {
