@@ -11,6 +11,8 @@ import org.apache.seatunnel.web.api.offlineimport.DmpCommandBuilder;
 import org.apache.seatunnel.web.api.offlineimport.DmpProcessRunner;
 import org.apache.seatunnel.web.api.offlineimport.ExecutionLogBuffer;
 import org.apache.seatunnel.web.api.offlineimport.OfflineImportProperties;
+import org.apache.seatunnel.web.api.offlineimport.SqlImportPlan;
+import org.apache.seatunnel.web.api.offlineimport.SqlSchemaMapper;
 import org.apache.seatunnel.web.api.offlineimport.SqlScriptImportRunner;
 import org.apache.seatunnel.web.api.offlineimport.SqlScriptSplitter;
 import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProvider;
@@ -39,12 +41,15 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -292,26 +297,40 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             return "SQL 文件超过大小上限 " + maxBytes + " 字节";
         }
 
-        byte[] bytes = readFileResource(resource);
+        byte[] bytes = readFileResource(resource, maxBytes);
         String text = decode(bytes, options.getEncoding());
         executionLog.line("已读取 SQL 文件 " + task.getFileName()
                 + "（" + bytes.length + " 字节，编码 " + options.getEncoding() + "）");
 
-        List<String> statements = SqlScriptSplitter.split(text);
-        executionLog.line("解析得到 " + statements.size() + " 条语句");
+        SqlImportPlan.Plan plan = SqlImportPlan.prepare(
+                text, dataSource.getDbType(), options.getSourceSchema(), task.getTargetSchema());
+        List<SqlScriptSplitter.Statement> statements = plan.statements();
+        executionLog.line("预检通过，解析得到 " + statements.size() + " 条导入语句"
+                + (plan.ignoredMetadata() == 0 ? "" : "，忽略 " + plan.ignoredMetadata() + " 条导出元数据"));
         updateProgress(task.getId(), statements.size(), 0, 0);
 
         BaseConnectionParam connectionParam = (BaseConnectionParam) DataSourceUtils.buildConnectionParams(
                 dataSource.getDbType(), dataSource.getConnectionParams());
+        registerConnectionSecrets(executionLog, connectionParam.getPassword());
         try (Connection connection = DataSourceUtils.getDatasourceProcessor(dataSource.getDbType())
                 .getConnectionManager()
                 .getConnection(connectionParam)) {
-            SqlScriptImportRunner runner = new SqlScriptImportRunner(connection, executionLog);
-            runner.runPrelude(schemaPrelude(dataSource.getDbType(), task.getTargetSchema()));
+            SqlScriptImportRunner runner = new SqlScriptImportRunner(
+                    connection, executionLog, offlineImportProperties.getSqlStatementTimeoutSeconds());
+            runner.verifyTimeoutSupport();
+            if (statements.stream().anyMatch(SqlScriptSplitter.Statement::isCopy)) {
+                runner.verifyCopySupport();
+            }
+
+            String effectiveTarget = StringUtils.trimToNull(
+                    StringUtils.defaultIfBlank(task.getTargetSchema(), options.getSourceSchema()));
+            ensureTargetSchema(connection, effectiveTarget, offlineImportProperties.getSqlStatementTimeoutSeconds(),
+                    executionLog);
+            runner.runPrelude(schemaPrelude(dataSource.getDbType(), effectiveTarget));
 
             AtomicLong lastFlush = new AtomicLong(System.currentTimeMillis());
             int[] counters = new int[2];
-            String abort = runner.execute(statements, Boolean.TRUE.equals(options.getStopOnError()),
+            String abort = runner.executePlan(statements, Boolean.TRUE.equals(options.getStopOnError()),
                     (executed, failed, total) -> {
                         counters[0] = executed;
                         counters[1] = failed;
@@ -426,12 +445,37 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         if (StringUtils.isBlank(targetSchema)) {
             return prelude;
         }
+        String quotedSchema = SqlSchemaMapper.quoteIdentifier(targetSchema.trim());
         if (dbType == DbType.KINGBASE) {
-            prelude.add("SET search_path TO \"" + targetSchema.replace("\"", "\"\"") + "\"");
+            prelude.add("SET search_path TO " + quotedSchema);
         } else if (dbType == DbType.DAMENG) {
-            prelude.add("SET SCHEMA \"" + targetSchema.replace("\"", "\"\"") + "\"");
+            prelude.add("SET SCHEMA " + quotedSchema);
         }
         return prelude;
+    }
+
+    private void ensureTargetSchema(Connection connection, String targetSchema, int timeoutSeconds,
+            ExecutionLogBuffer executionLog) throws java.sql.SQLException {
+        if (StringUtils.isBlank(targetSchema)) {
+            return;
+        }
+        String expected = targetSchema.trim();
+        boolean exists = false;
+        try (ResultSet schemas = connection.getMetaData().getSchemas()) {
+            while (schemas.next()) {
+                if (expected.equals(schemas.getString("TABLE_SCHEM"))) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (!exists) {
+            try (Statement statement = connection.createStatement()) {
+                statement.setQueryTimeout(Math.max(1, timeoutSeconds));
+                statement.execute("CREATE SCHEMA " + SqlSchemaMapper.quoteIdentifier(expected));
+            }
+            executionLog.line("已创建目标 Schema " + expected);
+        }
     }
 
     private String decode(byte[] bytes, String encoding) {
@@ -449,6 +493,15 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         return new String(bytes, offset, bytes.length - offset, charset);
     }
 
+    private void registerConnectionSecrets(ExecutionLogBuffer executionLog, String password) {
+        if (StringUtils.isBlank(password)) {
+            return;
+        }
+        executionLog.addSecret(password);
+        executionLog.addSecret(password.replace("\"", "\"\""));
+        executionLog.addSecret(java.net.URLEncoder.encode(password, StandardCharsets.UTF_8));
+    }
+
     private FileResource requireWorkerResource(Long fileResourceId, Integer taskOwnerId) {
         FileResource resource = fileResourceId == null ? null : fileResourceDao.queryById(fileResourceId);
         if (resource == null || taskOwnerId == null || !taskOwnerId.equals(resource.getOwnerId())
@@ -459,13 +512,50 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         return resource;
     }
 
-    private byte[] readFileResource(FileResource resource) {
+    private byte[] readFileResource(FileResource resource, long maxBytes) {
         try {
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            LimitedByteArrayOutputStream output = new LimitedByteArrayOutputStream(maxBytes);
             storageProvider.download(resource.getObjectKey(), output);
             return output.toByteArray();
+        } catch (FileTooLargeException e) {
+            throw new IllegalStateException("SQL 文件实际内容超过大小上限 " + maxBytes + " 字节");
         } catch (IOException e) {
-            throw new IllegalStateException("读取文件资源失败: " + e.getMessage(), e);
+            throw new IllegalStateException("读取 SQL 文件资源失败");
+        }
+    }
+
+    private static final class FileTooLargeException extends IOException {
+        private static final long serialVersionUID = 1L;
+    }
+
+    private static final class LimitedByteArrayOutputStream extends OutputStream {
+        private final ByteArrayOutputStream delegate = new ByteArrayOutputStream();
+        private final long maxBytes;
+
+        private LimitedByteArrayOutputStream(long maxBytes) {
+            this.maxBytes = maxBytes;
+        }
+
+        @Override
+        public void write(int value) throws IOException {
+            ensureCapacity(1);
+            delegate.write(value);
+        }
+
+        @Override
+        public void write(byte[] bytes, int offset, int length) throws IOException {
+            ensureCapacity(length);
+            delegate.write(bytes, offset, length);
+        }
+
+        private void ensureCapacity(int length) throws FileTooLargeException {
+            if (length < 0 || (long) delegate.size() + length > maxBytes) {
+                throw new FileTooLargeException();
+            }
+        }
+
+        private byte[] toByteArray() {
+            return delegate.toByteArray();
         }
     }
 

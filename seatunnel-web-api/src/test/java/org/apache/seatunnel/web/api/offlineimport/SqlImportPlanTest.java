@@ -1,0 +1,85 @@
+package org.apache.seatunnel.web.api.offlineimport;
+
+import org.apache.seatunnel.web.spi.enums.DbType;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class SqlImportPlanTest {
+
+    @Test
+    void plansKingbaseCopyAndAllowsOnlySafeDumpMetadataDirectives() {
+        String script = "\\restrict token123\n"
+                + "COPY SRC.t (id, note) FROM stdin;\n"
+                + "1\tsemicolon; and\\connect still data\n"
+                + "\\.\n"
+                + "\\unrestrict\n";
+        SqlImportPlan.Plan plan = SqlImportPlan.prepare(script, DbType.KINGBASE, "SRC", "DST");
+
+        assertEquals(1, plan.executableCount());
+        assertEquals(2, plan.ignoredMetadata());
+        SqlScriptSplitter.Statement copy = plan.statements().get(0);
+        assertTrue(copy.isCopy());
+        assertEquals("\"DST\".t", copy.sql().substring("COPY ".length(), copy.sql().indexOf(" (")));
+        assertTrue(copy.copyData().contains("semicolon; and\\connect still data"));
+    }
+
+    @Test
+    void rejectsClientCommandsBeforeExecution() {
+        for (String directive : List.of("\\! touch /tmp/not-run", "\\connect other_db", "\\i /tmp/extra.sql",
+                "@/tmp/extra.sql", "\\copy t from program 'echo bad'")) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> SqlImportPlan.prepare(directive + "\nSELECT 1;", DbType.KINGBASE, null, "DST"));
+        }
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare("CREATE DATABASE other;", DbType.KINGBASE, null, "DST"));
+    }
+
+    @Test
+    void mapsSchemaSwitchesAndSequenceReferencesButPreservesDataAndOwnerMetadata() {
+        String script = "CREATE SCHEMA SRC;\n"
+                + "SET search_path = 'SRC, pg_catalog';\n"
+                + "CREATE TABLE SRC.t(id INT DEFAULT nextval('SRC.seq'::regclass), note TEXT);\n"
+                + "INSERT INTO SRC.t VALUES (1, 'SRC.seq');\n"
+                + "ALTER TABLE SRC.t OWNER TO old_user;\n"
+                + "GRANT SELECT ON SRC.t TO old_user;\n";
+        SqlImportPlan.Plan plan = SqlImportPlan.prepare(script, DbType.KINGBASE, "SRC", "DST");
+
+        assertEquals(3, plan.executableCount());
+        assertEquals(3, plan.ignoredMetadata());
+        assertTrue(plan.statements().get(0).sql().contains("SET search_path TO \"DST\", pg_catalog"));
+        assertTrue(plan.statements().get(1).sql().contains("CREATE TABLE \"DST\".t"));
+        assertTrue(plan.statements().get(1).sql().contains("nextval('\"DST\".seq'::regclass)"));
+        assertTrue(plan.statements().get(2).sql().contains("'SRC.seq'"));
+    }
+
+    @Test
+    void rejectsAnExplicitNonTargetSchemaWhenSourceIsMissingOrMismatched() {
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare("CREATE TABLE SRC.t(id INT);", DbType.KINGBASE, null, "DST"));
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare("CREATE TABLE OTHER.t(id INT);", DbType.KINGBASE, "SRC", "DST"));
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare("SET SCHEMA SRC; CREATE TABLE SRC.t(id INT);",
+                        DbType.DAMENG, null, "DST"));
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare("CREATE FUNCTION f() RETURNS trigger AS $$ BEGIN "
+                                + "INSERT INTO SRC.t VALUES (NEW.id); RETURN NEW; END $$ LANGUAGE plpgsql;",
+                        DbType.KINGBASE, null, "DST"));
+    }
+
+    @Test
+    void rejectsDynamicRoutineMappingAndNonKingbaseCopyBeforeWriting() {
+        String dynamic = "CREATE FUNCTION SRC.f() RETURNS void AS $$ BEGIN EXECUTE 'SELECT * FROM SRC.t'; END $$ LANGUAGE plpgsql;";
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare(dynamic, DbType.KINGBASE, "SRC", "DST"));
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare(dynamic, DbType.KINGBASE, null, "DST"));
+        assertThrows(IllegalArgumentException.class,
+                () -> SqlImportPlan.prepare("COPY SRC.t FROM stdin;\n1\n\\.\n", DbType.DAMENG, "SRC", "DST"));
+    }
+}

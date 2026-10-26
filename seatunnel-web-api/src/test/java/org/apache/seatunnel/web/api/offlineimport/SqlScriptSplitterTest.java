@@ -6,6 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SqlScriptSplitterTest {
 
@@ -168,6 +169,25 @@ class SqlScriptSplitterTest {
     }
 
     @Test
+    void triggerWhenIsNullDoesNotLookLikeAnInlineTriggerBody() {
+        List<String> statements = split("CREATE TRIGGER trg AFTER INSERT ON t FOR EACH ROW "
+                + "WHEN (NEW.id IS NOT NULL) EXECUTE FUNCTION fn(); SELECT 2;");
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("WHEN (NEW.id IS NOT NULL)"));
+        assertEquals("SELECT 2", statements.get(1));
+    }
+
+    @Test
+    void sqlProcedureSingleQuotedBodyEndsBeforeFollowingStatement() {
+        List<String> statements = split(
+                "CREATE PROCEDURE p() LANGUAGE SQL AS 'INSERT INTO t VALUES (1)'; SELECT 2;");
+
+        assertEquals(2, statements.size());
+        assertEquals("SELECT 2", statements.get(1));
+    }
+
+    @Test
     void damengTriggerWithRealBodyStillStaysOneStatement() {
         String script = "CREATE TRIGGER trg BEFORE INSERT ON x FOR EACH ROW "
                 + "DECLARE v INT; BEGIN IF NEW.id > 0 THEN NEW.id := 1; END IF; END;";
@@ -205,6 +225,37 @@ class SqlScriptSplitterTest {
         assertEquals(0, split(null).size());
         assertEquals(0, split("").size());
         assertEquals(0, split("   \n -- x \n ").size());
+    }
+
+    @Test
+    void preservesCopyPayloadAsOpaqueDataAndSeparatesClientDirectives() {
+        String script = "-- pg_dump header\n"
+                + "\\restrict dump-key\n"
+                + "CREATE TABLE src.copy_sample (payload text);\n"
+                + "COPY src.copy_sample (payload) FROM stdin;\n"
+                + "value;with;semicolons\n"
+                + "\\connect this-is-copy-data\n"
+                + "\\.\n"
+                + "SELECT 1;\n"
+                + "\\unrestrict dump-key\n";
+
+        List<SqlScriptSplitter.Statement> parsed = SqlScriptSplitter.parse(script);
+
+        assertEquals(5, parsed.size());
+        assertTrue(parsed.get(0).isDirective());
+        assertEquals("\\restrict dump-key", parsed.get(0).directive());
+        assertEquals("CREATE TABLE src.copy_sample (payload text)", parsed.get(1).sql());
+        assertTrue(parsed.get(2).isCopy());
+        assertEquals("COPY src.copy_sample (payload) FROM stdin", parsed.get(2).sql());
+        assertEquals("value;with;semicolons\n\\connect this-is-copy-data\n", parsed.get(2).copyData());
+        assertEquals("SELECT 1", parsed.get(3).sql());
+        assertEquals("\\unrestrict dump-key", parsed.get(4).directive());
+    }
+
+    @Test
+    void rejectsCopyInputWithoutTerminator() {
+        assertThrows(IllegalArgumentException.class, () -> SqlScriptSplitter.parse(
+                "COPY src.t FROM stdin;\nvalue\nSELECT 1;"));
     }
 
     @Test

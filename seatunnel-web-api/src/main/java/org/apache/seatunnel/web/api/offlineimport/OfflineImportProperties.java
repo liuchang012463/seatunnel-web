@@ -22,6 +22,9 @@ public class OfflineImportProperties {
     /** Upper bound for one SQL script loaded into memory. */
     private long sqlMaxFileBytes = 268435456L;
 
+    /** Per-statement wall-clock limit for JDBC SQL imports. */
+    private int sqlStatementTimeoutSeconds = 300;
+
     /** Hard wall-clock limit for one external tool process. */
     private long processTimeoutMinutes = 240L;
 

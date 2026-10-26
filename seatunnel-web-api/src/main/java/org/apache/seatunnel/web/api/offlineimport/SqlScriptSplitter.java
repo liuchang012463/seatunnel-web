@@ -21,6 +21,29 @@ import java.util.Set;
  */
 public final class SqlScriptSplitter {
 
+    /** One executable SQL statement, a PostgreSQL COPY payload, or a client directive. */
+    public record Statement(String sql, String copyData, String directive) {
+        public static Statement sql(String sql) {
+            return new Statement(sql, null, null);
+        }
+
+        public static Statement copy(String sql, String data) {
+            return new Statement(sql, data, null);
+        }
+
+        public static Statement directive(String directive) {
+            return new Statement(null, null, directive);
+        }
+
+        public boolean isCopy() {
+            return copyData != null;
+        }
+
+        public boolean isDirective() {
+            return directive != null;
+        }
+    }
+
     private enum Opener {
         /** A DECLARE/CREATE unit whose terminating BEGIN..END has not started yet. */
         PENDING_UNIT, BLOCK
@@ -34,7 +57,19 @@ public final class SqlScriptSplitter {
     }
 
     public static List<String> split(String script) {
-        List<String> statements = new ArrayList<>();
+        return parse(script).stream()
+                .filter(statement -> !statement.isDirective())
+                .map(Statement::sql)
+                .toList();
+    }
+
+    /**
+     * Splits SQL while keeping {@code COPY ... FROM stdin} data opaque. Its
+     * payload is preserved verbatim up to the standalone {@code \\.} line;
+     * client commands are returned separately for preflight validation.
+     */
+    public static List<Statement> parse(String script) {
+        List<Statement> statements = new ArrayList<>();
         if (script == null || script.isEmpty()) {
             return statements;
         }
@@ -48,6 +83,16 @@ public final class SqlScriptSplitter {
         while (i < length) {
             char c = script.charAt(i);
             char next = i + 1 < length ? script.charAt(i + 1) : '\0';
+
+            if ((c == '\\' || c == '@') && isLineStart(script, i) && openers.isEmpty()) {
+                int end = script.indexOf('\n', i);
+                end = end < 0 ? length : end;
+                addIfMeaningful(statements, current.toString());
+                current.setLength(0);
+                statements.add(Statement.directive(script.substring(i, end).trim()));
+                i = end < length ? end + 1 : end;
+                continue;
+            }
 
             if (c == '/' && isStandaloneSlashLine(script, i)) {
                 addIfMeaningful(statements, current.toString());
@@ -144,6 +189,20 @@ public final class SqlScriptSplitter {
             }
 
             if (c == ';' && openers.isEmpty()) {
+                if (isCopyFromStdin(current.toString())) {
+                    int dataStart = i + 1;
+                    if (dataStart < length && script.charAt(dataStart) == '\r') {
+                        dataStart++;
+                    }
+                    if (dataStart < length && script.charAt(dataStart) == '\n') {
+                        dataStart++;
+                    }
+                    CopyPayload payload = readCopyPayload(script, dataStart);
+                    statements.add(Statement.copy(current.toString().trim(), payload.data()));
+                    current.setLength(0);
+                    i = payload.nextIndex();
+                    continue;
+                }
                 addIfMeaningful(statements, current.toString());
                 current.setLength(0);
                 i++;
@@ -173,6 +232,57 @@ public final class SqlScriptSplitter {
         return statements;
     }
 
+    private static boolean isCopyFromStdin(String sql) {
+        List<String> words = sqlWords(sql);
+        if (words.size() < 3 || !"COPY".equals(words.get(0))) {
+            return false;
+        }
+        for (int i = 1; i + 1 < words.size(); i++) {
+            if ("FROM".equals(words.get(i)) && "STDIN".equals(words.get(i + 1))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private record CopyPayload(String data, int nextIndex) {
+    }
+
+    private static CopyPayload readCopyPayload(String script, int from) {
+        StringBuilder data = new StringBuilder();
+        int lineStart = from;
+        while (lineStart <= script.length()) {
+            int lineEnd = script.indexOf('\n', lineStart);
+            boolean hasNewline = lineEnd >= 0;
+            if (!hasNewline) {
+                lineEnd = script.length();
+            }
+            int contentEnd = lineEnd > lineStart && script.charAt(lineEnd - 1) == '\r'
+                    ? lineEnd - 1 : lineEnd;
+            if ("\\.".equals(script.substring(lineStart, contentEnd))) {
+                return new CopyPayload(data.toString(), hasNewline ? lineEnd + 1 : lineEnd);
+            }
+            data.append(script, lineStart, lineEnd);
+            if (hasNewline) {
+                data.append('\n');
+                lineStart = lineEnd + 1;
+            } else {
+                break;
+            }
+        }
+        throw new IllegalArgumentException("COPY FROM STDIN 数据段缺少独立的 \\. 结束行");
+    }
+
+    private static boolean isLineStart(String script, int index) {
+        int lineStart = script.lastIndexOf('\n', index - 1) + 1;
+        for (int i = lineStart; i < index; i++) {
+            if (!Character.isWhitespace(script.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** Recognizes the PostgreSQL trigger form without an inline body. */
     private static boolean isBodylessTrigger(StringBuilder current) {
         List<String> words = sqlWords(current.toString());
@@ -180,23 +290,19 @@ public final class SqlScriptSplitter {
         if (triggerIndex < 0) {
             return false;
         }
-        boolean hasInlineBody = words.subList(triggerIndex + 1, words.size()).stream()
-                .anyMatch(word -> "DECLARE".equals(word) || "BEGIN".equals(word)
-                        || "AS".equals(word) || "IS".equals(word));
         for (int i = triggerIndex + 1; i + 1 < words.size(); i++) {
             if ("EXECUTE".equals(words.get(i))
                     && ("PROCEDURE".equals(words.get(i + 1)) || "FUNCTION".equals(words.get(i + 1)))) {
-                return !hasInlineBody;
+                boolean blockStartedBeforeExecute = words.subList(triggerIndex + 1, i).stream()
+                        .anyMatch(word -> "DECLARE".equals(word) || "BEGIN".equals(word));
+                return !blockStartedBeforeExecute;
             }
         }
         return false;
     }
 
     private static boolean isCreateFunctionBodyStart(StringBuilder current) {
-        List<String> words = sqlWords(current.toString());
-        return createKindIndex(words, "FUNCTION") >= 0
-                && !words.isEmpty()
-                && ("AS".equals(words.get(words.size() - 1)) || "IS".equals(words.get(words.size() - 1)));
+        return isCreateBodyStart(current);
     }
 
     private static boolean isCreateBodyStart(StringBuilder current) {
@@ -466,11 +572,11 @@ public final class SqlScriptSplitter {
         return true;
     }
 
-    private static void addIfMeaningful(List<String> statements, String raw) {
+    private static void addIfMeaningful(List<Statement> statements, String raw) {
         String trimmed = raw.trim();
         if (trimmed.isEmpty() || isStatementStart(new StringBuilder(trimmed))) {
             return;
         }
-        statements.add(trimmed);
+        statements.add(Statement.sql(trimmed));
     }
 }
