@@ -263,6 +263,7 @@ seatunnel:
       work-dir: ${SEATUNNEL_WEB_OFFLINE_IMPORT_WORK_DIR:tmp/offline-import}
       sql-max-file-bytes: ${SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_MAX_FILE_BYTES:268435456}
       process-timeout-minutes: ${SEATUNNEL_WEB_OFFLINE_IMPORT_PROCESS_TIMEOUT_MINUTES:240}
+      sql-statement-timeout-seconds: ${SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_STATEMENT_TIMEOUT_SECONDS:300}
       dameng-dimp-path: ${SEATUNNEL_WEB_OFFLINE_IMPORT_DIMP_PATH:}
       kingbase-sys-restore-path: ${SEATUNNEL_WEB_OFFLINE_IMPORT_SYS_RESTORE_PATH:}
 

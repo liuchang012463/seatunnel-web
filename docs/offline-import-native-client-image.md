@@ -5,7 +5,7 @@
 ## 运行依赖与配置
 
 - DMP 还原运行时需要与目标数据库版本匹配的 Kingbase `sys_restore` 和达梦 `dimp`。SQL 脚本走 JDBC 执行；Kingbase 使用官方 CopyManager，因此 `ksql`、`disql` 是可选诊断工具，不是 SQL 导入依赖。Kingbase `sys_dump`、达梦 `dexp` 用于生成验收样本。
-- `application.yml` 已提供 `SEATUNNEL_WEB_OFFLINE_IMPORT_DIMP_PATH`、`SEATUNNEL_WEB_OFFLINE_IMPORT_SYS_RESTORE_PATH`、`SEATUNNEL_WEB_OFFLINE_IMPORT_WORK_DIR` 和 `SEATUNNEL_WEB_OFFLINE_IMPORT_PROCESS_TIMEOUT_MINUTES`。前两个路径默认留空；工作目录默认 `tmp/offline-import`，超时默认 240 分钟。工作目录必须可写。
+- `application.yml` 已提供 `SEATUNNEL_WEB_OFFLINE_IMPORT_DIMP_PATH`、`SEATUNNEL_WEB_OFFLINE_IMPORT_SYS_RESTORE_PATH`、`SEATUNNEL_WEB_OFFLINE_IMPORT_WORK_DIR`、`SEATUNNEL_WEB_OFFLINE_IMPORT_PROCESS_TIMEOUT_MINUTES` 和 `SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_STATEMENT_TIMEOUT_SECONDS`。前两个路径默认留空；工作目录默认 `tmp/offline-import`，原生进程超时默认 240 分钟，SQL 语句超时默认 300 秒。工作目录必须可写。
 
 示例路径仅供镜像布局参考，需随实际客户端包调整。数据库凭据由平台数据源提供，只在启动对应原厂子进程时传入（Kingbase `sys_restore` 使用临时 `KINGBASE_PASSWORD` 环境变量）；凭据不写入镜像层、Dockerfile 静态 `ENV` 或 build args，执行命令记录需脱敏：
 
@@ -14,6 +14,7 @@ SEATUNNEL_WEB_OFFLINE_IMPORT_DIMP_PATH=/opt/native-clients/dm/bin/dimp
 SEATUNNEL_WEB_OFFLINE_IMPORT_SYS_RESTORE_PATH=/opt/native-clients/kingbase/bin/sys_restore
 SEATUNNEL_WEB_OFFLINE_IMPORT_WORK_DIR=/opt/seatunnel-web/tmp/offline-import
 SEATUNNEL_WEB_OFFLINE_IMPORT_PROCESS_TIMEOUT_MINUTES=240
+SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_STATEMENT_TIMEOUT_SECONDS=300
 ```
 
 ## 镜像交付约束
