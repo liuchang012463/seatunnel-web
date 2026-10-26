@@ -1,6 +1,6 @@
 import { PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
-import { App, Badge, Button, Input, Popconfirm, Select, Space, Table, Tag } from 'antd';
+import { Alert, App, Badge, Button, Input, Popconfirm, Select, Space, Table, Tag } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import {
   OFFLINE_IMPORT_TYPE_LABELS,
@@ -34,21 +34,51 @@ const OfflineImportTaskList: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [name, setName] = useState('');
   const [status, setStatus] = useState<string>();
+  const [loadError, setLoadError] = useState<string>();
+  const [executingId, setExecutingId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inFlightRef = useRef(false);
+  const requestSeqRef = useRef(0);
 
   const load = async (silent = false) => {
+    // Silent polling never overlaps another request; a user-initiated load
+    // supersedes any poll already in flight.
+    if (silent && inFlightRef.current) return;
+    const seq = ++requestSeqRef.current;
+    inFlightRef.current = true;
     if (!silent) setLoading(true);
     try {
-      const response = await offlineImportTaskApi.page({ pageNo, pageSize, name, status });
+      const response = await offlineImportTaskApi.page(
+        { pageNo, pageSize, name, status },
+        { skipErrorHandler: true },
+      );
+      if (seq !== requestSeqRef.current) return;
+      if (response?.code !== 0) {
+        throw new Error(response?.message || response?.msg || '查询任务失败');
+      }
       const data = (response?.data as any)?.bizData || [];
       setTasks(data);
       setTotal(Number((response?.data as any)?.pagination?.total ?? data.length ?? 0));
+      setLoadError(undefined);
     } catch (error: any) {
-      if (!silent) message.error(error?.message || '查询任务失败');
+      if (seq !== requestSeqRef.current) return;
+      if (!silent) {
+        const text = error?.message || error?.msg || '查询任务失败';
+        setLoadError(text);
+        message.error(text);
+      }
     } finally {
-      if (!silent) setLoading(false);
+      if (seq === requestSeqRef.current) {
+        inFlightRef.current = false;
+        if (!silent) setLoading(false);
+      }
     }
   };
+
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  });
 
   useEffect(() => {
     void load();
@@ -66,7 +96,7 @@ const OfflineImportTaskList: React.FC = () => {
       return;
     }
     if (!pollRef.current) {
-      pollRef.current = setInterval(() => void load(true), 3000);
+      pollRef.current = setInterval(() => void loadRef.current(true), 3000);
     }
     return () => {
       if (pollRef.current) {
@@ -85,26 +115,37 @@ const OfflineImportTaskList: React.FC = () => {
   );
 
   const execute = async (task: OfflineImportTask) => {
+    setExecutingId(task.id);
     try {
-      const response = await offlineImportTaskApi.execute(task.id);
+      const response = await offlineImportTaskApi.execute(task.id, {
+        skipErrorHandler: true,
+      });
       if (response?.code !== 0) {
-        throw new Error(response?.msg || '执行失败');
+        throw new Error(response?.message || response?.msg || '执行失败');
       }
       message.success(`任务「${task.name}」已开始执行`);
       void load(true);
     } catch (error: any) {
       message.error(error?.message || '执行失败');
+    } finally {
+      setExecutingId(null);
     }
   };
 
   const remove = async (task: OfflineImportTask) => {
     try {
-      const response = await offlineImportTaskApi.remove(task.id);
+      const response = await offlineImportTaskApi.remove(task.id, {
+        skipErrorHandler: true,
+      });
       if (response?.code !== 0) {
-        throw new Error(response?.msg || '删除失败');
+        throw new Error(response?.message || response?.msg || '删除失败');
       }
       message.success('任务已删除');
-      void load();
+      if (tasks.length === 1 && pageNo > 1) {
+        setPageNo(pageNo - 1);
+      } else {
+        void load();
+      }
     } catch (error: any) {
       message.error(error?.message || '删除失败');
     }
@@ -157,7 +198,7 @@ const OfflineImportTaskList: React.FC = () => {
       key: 'progress',
       width: 120,
       render: (_: unknown, record: OfflineImportTask) =>
-        record.importType.endsWith('_SQL')
+        String(record.importType || '').endsWith('_SQL')
           ? `${record.executedStatements ?? 0}/${record.totalStatements ?? 0}${
               record.failedStatements ? `（失败 ${record.failedStatements}）` : ''
             }`
@@ -183,7 +224,12 @@ const OfflineImportTaskList: React.FC = () => {
             type="link"
             size="small"
             icon={<PlayCircleOutlined />}
-            disabled={record.status === 'RUNNING' || record.status === 'QUEUED'}
+            loading={executingId === record.id}
+            disabled={
+              executingId === record.id
+              || record.status === 'RUNNING'
+              || record.status === 'QUEUED'
+            }
             onClick={() => void execute(record)}
           >
             执行
@@ -220,6 +266,12 @@ const OfflineImportTaskList: React.FC = () => {
             setPageNo(1);
             setName(value);
           }}
+          onChange={(event) => {
+            if (!event.target.value) {
+              setPageNo(1);
+              setName('');
+            }
+          }}
         />
         <Select
           placeholder="状态"
@@ -231,8 +283,22 @@ const OfflineImportTaskList: React.FC = () => {
             setStatus(value);
           }}
         />
-        <Button icon={<ReloadOutlined />} onClick={() => void load()} />
+        <Button aria-label="刷新任务列表" icon={<ReloadOutlined />} onClick={() => void load()} />
       </div>
+
+      {loadError && (
+        <Alert
+          className="mb-3"
+          type="error"
+          showIcon
+          message={loadError}
+          action={
+            <Button size="small" onClick={() => void load()}>
+              重试
+            </Button>
+          }
+        />
+      )}
 
       <Table
         rowKey="id"

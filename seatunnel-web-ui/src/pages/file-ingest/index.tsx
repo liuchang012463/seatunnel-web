@@ -52,7 +52,7 @@ const FileIngestPage: React.FC = () => {
             onClick={createTask}
             className="task-list-page-header__create-button"
           >
-            创建文件导入
+            新建导入任务
           </Button>
         }
       >

@@ -1,4 +1,4 @@
-import HttpUtils, { RequestOptions } from '@/utils/HttpUtils';
+import HttpUtils, { type RequestOptions } from '@/utils/HttpUtils';
 
 const OFFLINE_IMPORT_API_PREFIX = '/api/v1/offline-import-tasks';
 
@@ -82,7 +82,11 @@ export const offlineImportTaskApi = {
     HttpUtils.get(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}`, options),
 
   remove: (id: string | number, options?: RequestOptions) =>
-    HttpUtils.delete(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}`, options),
+    HttpUtils.delete(
+      `${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}`,
+      undefined,
+      options,
+    ),
 
   execute: (id: string | number, options?: RequestOptions) =>
     HttpUtils.post(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}/execute`, undefined, options),

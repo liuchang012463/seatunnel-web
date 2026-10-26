@@ -4,6 +4,7 @@ import {
   FileExcelOutlined,
   FileZipOutlined,
   PartitionOutlined,
+  TableOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
 import { history } from '@umijs/max';
@@ -80,8 +81,8 @@ const ImportSelectPage: React.FC = () => {
       icon: <DatabaseOutlined />,
       iconClassName: 'import-select-card__icon--dmp',
       tags: [
-        { label: '人大金仓 KingbaseES DMP' },
-        { label: '达梦 DM DMP' },
+        { label: '人大金仓 KingbaseES · DMP' },
+        { label: '达梦 DM · DMP' },
       ],
       action: () => history.push('/sync/file-ingest/import/create?type=DMP'),
     },
@@ -92,8 +93,8 @@ const ImportSelectPage: React.FC = () => {
       icon: <PartitionOutlined />,
       iconClassName: 'import-select-card__icon--sql',
       tags: [
-        { label: '人大金仓 KingbaseES SQL' },
-        { label: '达梦 DM SQL' },
+        { label: '人大金仓 KingbaseES · SQL' },
+        { label: '达梦 DM · SQL' },
         { label: 'Oracle SQL', disabled: true },
       ],
       action: () => history.push('/sync/file-ingest/import/create?type=SQL'),
@@ -112,7 +113,7 @@ const ImportSelectPage: React.FC = () => {
       key: 'duckdb',
       title: 'DuckDB 数据导入',
       description: '读取 DuckDB 数据库文件并导入目标库',
-      icon: <FileZipOutlined />,
+      icon: <TableOutlined />,
       iconClassName: 'import-select-card__icon--duckdb',
       tags: [{ label: 'DuckDB' }],
       action: () => {
@@ -135,14 +136,52 @@ const ImportSelectPage: React.FC = () => {
     choice.action?.();
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent, choice: ImportChoice) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleChoice(choice);
+    }
+  };
+
+  const goBack = () => {
+    if (window.history.length > 1) {
+      history.back();
+    } else {
+      history.push('/sync/file-ingest?tab=offline-import');
+    }
+  };
+
   return (
     <div className="import-select-page">
-      <PageHeader onBack={() => history.push('/sync/file-ingest')} title="离线数据导入" />
+      <PageHeader
+        theme="light"
+        onBack={goBack}
+        title="离线文件导入"
+      />
 
       <div className="import-select-page__body">
+        <div className="import-select-page__hero">
+          <div>
+            <h2 className="import-select-page__title">离线数据导入</h2>
+            <p className="import-select-page__subtitle">
+              多格式文件 · 多类型数据库 · 一个统一的数据入口
+            </p>
+          </div>
+          <div className="import-select-page__stats">
+            <div className="import-select-page__stat">
+              <strong>05</strong>
+              <span>导入类型</span>
+            </div>
+            <div className="import-select-page__stat">
+              <strong>11</strong>
+              <span>数据入口</span>
+            </div>
+          </div>
+        </div>
+
         <div className="import-select-page__heading">
-          <h2 className="import-select-page__title">选择导入类型</h2>
-          <p className="import-select-page__subtitle">
+          <h3 className="import-select-page__section-title">选择导入类型</h3>
+          <p className="import-select-page__hint">
             请选择数据导入方式，进入对应任务的创建流程
           </p>
         </div>
@@ -157,7 +196,11 @@ const ImportSelectPage: React.FC = () => {
                 ]
                   .filter(Boolean)
                   .join(' ')}
+                role="button"
+                tabIndex={0}
+                aria-disabled={choice.disabled || undefined}
                 onClick={() => handleChoice(choice)}
+                onKeyDown={(event) => handleKeyDown(event, choice)}
               >
                 <div className={`import-select-card__icon ${choice.iconClassName}`}>
                   {choice.icon}
@@ -191,7 +234,7 @@ const ImportSelectPage: React.FC = () => {
                 </div>
                 {!choice.disabled && (
                   <div className="import-select-card__arrow">
-                    <ArrowRightOutlined />
+                    进入 <ArrowRightOutlined />
                   </div>
                 )}
               </div>

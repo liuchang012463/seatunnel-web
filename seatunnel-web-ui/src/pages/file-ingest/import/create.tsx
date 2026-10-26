@@ -1,4 +1,4 @@
-import { DatabaseOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
+import { InboxOutlined, UploadOutlined } from '@ant-design/icons';
 import { history, useLocation } from '@umijs/max';
 import {
   App,
@@ -70,6 +70,7 @@ const CreateOfflineImportPage: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
+    setDataSourceOptions([]);
     fetchDataSourceOptions(targetDbType)
       .then((response) => {
         if (cancelled) return;
@@ -81,11 +82,19 @@ const CreateOfflineImportPage: React.FC = () => {
           })),
         );
       })
-      .catch(() => setDataSourceOptions([]));
+      .catch(() => {
+        if (!cancelled) setDataSourceOptions([]);
+      });
     return () => {
       cancelled = true;
     };
   }, [targetDbType]);
+
+  // A datasource/schema of the previous database type must not survive the switch.
+  useEffect(() => {
+    form.setFieldValue('targetDatasourceId', undefined);
+    form.setFieldValue('targetSchema', undefined);
+  }, [importType, form]);
 
   const uploadRequest = async (options: any) => {
     const { file: rawFile, onSuccess, onError } = options;
@@ -132,22 +141,43 @@ const CreateOfflineImportPage: React.FC = () => {
       message.warning('请先上传或选择导入文件');
       return;
     }
+    if (!String(file.name || '').toLowerCase().endsWith(accept)) {
+      message.warning(`仅支持 ${accept} 文件`);
+      return;
+    }
+    if (
+      importType === 'KINGBASE_DMP'
+      && values.sourceSchema
+      && values.targetSchema
+      && values.sourceSchema !== values.targetSchema
+    ) {
+      message.warning('人大金仓 DMP 不支持 Schema 重映射，源 Schema 与目标 Schema 必须一致');
+      return;
+    }
     setSubmitting(true);
     try {
-      const response = await offlineImportTaskApi.create({
-        name: values.name,
-        description: values.description,
-        importType,
-        fileResourceId: file.id,
-        targetDatasourceId: values.targetDatasourceId,
-        targetSchema: values.targetSchema || undefined,
-        options:
-          category === 'SQL'
-            ? { stopOnError: values.stopOnError, encoding: values.encoding }
-            : { sourceSchema: values.sourceSchema || undefined, ignoreErrors: values.ignoreErrors },
-      });
+      const response = await offlineImportTaskApi.create(
+        {
+          name: values.name,
+          description: values.description,
+          importType,
+          fileResourceId: file.id,
+          targetDatasourceId: values.targetDatasourceId,
+          targetSchema: values.targetSchema || undefined,
+          options:
+            category === 'SQL'
+              ? { stopOnError: values.stopOnError, encoding: values.encoding }
+              : {
+                  sourceSchema: values.sourceSchema || undefined,
+                  ...(importType === 'DAMENG_DMP'
+                    ? { ignoreErrors: values.ignoreErrors }
+                    : {}),
+                },
+        },
+        { skipErrorHandler: true },
+      );
       if (response?.code !== 0) {
-        throw new Error(response?.msg || '创建任务失败');
+        throw new Error(response?.message || response?.msg || '创建任务失败');
       }
       message.success('任务创建成功，可在列表中执行导入');
       history.push('/sync/file-ingest?tab=offline-import');
@@ -155,6 +185,16 @@ const CreateOfflineImportPage: React.FC = () => {
       message.error(error?.message || '创建任务失败');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const goBack = () => {
+    if (window.history.length > 1) {
+      history.back();
+    } else {
+      // Direct deep link: return to the task list instead of the selection
+      // page, which would otherwise bounce back to this page.
+      history.push('/sync/file-ingest?tab=offline-import');
     }
   };
 
@@ -178,7 +218,6 @@ const CreateOfflineImportPage: React.FC = () => {
               <Form.Item
                 name="stopOnError"
                 label="出错时停止"
-                valuePropName="checked"
                 initialValue={true}
                 style={{ marginBottom: 0 }}
                 tooltip="开启后遇到第一条失败语句即中止；关闭则跳过失败语句继续执行"
@@ -199,37 +238,46 @@ const CreateOfflineImportPage: React.FC = () => {
                 name="sourceSchema"
                 label="DMP 内源 Schema"
                 style={{ marginBottom: 0, maxWidth: 420 }}
-                tooltip="备份文件内的 Schema 名；与目标 Schema 不同时将执行重映射（达梦），留空则默认与目标 Schema 相同"
+                tooltip={
+                  importType === 'KINGBASE_DMP'
+                    ? '备份文件内的 Schema 名，用于 sys_restore 过滤；金仓不支持重映射，必须与目标 Schema 一致'
+                    : '备份文件内的 Schema 名；与目标 Schema 不同时将执行重映射（达梦），留空则默认与目标 Schema 相同'
+                }
               >
                 <Input placeholder="留空则与目标 Schema 相同" style={{ maxWidth: 320 }} />
               </Form.Item>
-              <Form.Item
-                name="ignoreErrors"
-                label="忽略对象已存在等错误"
-                valuePropName="checked"
-                initialValue={true}
-                style={{ marginBottom: 0 }}
-                tooltip="对应 dimp 的 IGNORE=Y；重复导入场景建议开启"
-              >
-                <Radio.Group
-                  options={[
-                    { value: true, label: '忽略（默认）' },
-                    { value: false, label: '不忽略' },
-                  ]}
-                  optionType="button"
-                  buttonStyle="solid"
-                />
-              </Form.Item>
+              {importType === 'DAMENG_DMP' && (
+                <Form.Item
+                  name="ignoreErrors"
+                  label="忽略对象已存在等错误"
+                  initialValue={true}
+                  style={{ marginBottom: 0 }}
+                  tooltip="对应 dimp 的 IGNORE=Y；重复导入场景建议开启"
+                >
+                  <Radio.Group
+                    options={[
+                      { value: true, label: '忽略（默认）' },
+                      { value: false, label: '不忽略' },
+                    ]}
+                    optionType="button"
+                    buttonStyle="solid"
+                  />
+                </Form.Item>
+              )}
             </Space>
           ),
       },
     ],
-    [category],
+    [category, importType],
   );
 
   return (
     <div className="min-h-screen bg-white">
-      <PageHeader onBack={() => history.push('/sync/file-ingest/select')} title={`离线数据导入 · ${category === 'DMP' ? 'DMP' : 'SQL'} 数据导入`} />
+      <PageHeader
+        theme="light"
+        onBack={goBack}
+        title={`离线数据导入 · ${category === 'DMP' ? 'DMP' : 'SQL'} 数据导入`}
+      />
 
       <div className="mx-auto max-w-[960px] px-6 pb-28 pt-6">
         <Form form={form} layout="vertical">
@@ -296,13 +344,17 @@ const CreateOfflineImportPage: React.FC = () => {
               <span className="text-[13px] text-[color:var(--st-color-text-secondary,#475467)]">
                 已有文件在湖文件资源池？直接选择
               </span>
-              <Button icon={<UploadOutlined />} onClick={() => setPickerOpen(true)}>
+              <Button
+                icon={<UploadOutlined />}
+                disabled={uploading}
+                onClick={() => setPickerOpen(true)}
+              >
                 从湖文件选择
               </Button>
             </div>
           </div>
 
-          <div className="mt-6 rounded-[24px] border border-[#EAECF0] p-6 shadow-[0_1px 2px_rgba(16,24,40,0.04)]">
+          <div className="mt-6 rounded-[24px] border border-[#EAECF0] p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <div className="mb-4 text-[14px] font-medium">导入目标</div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Form.Item
@@ -317,6 +369,7 @@ const CreateOfflineImportPage: React.FC = () => {
                   options={dataSourceOptions}
                   notFoundContent="暂无可用数据源，请先在数据源管理中创建"
                   showSearch
+                  allowClear
                   optionFilterProp="label"
                 />
               </Form.Item>
@@ -333,7 +386,7 @@ const CreateOfflineImportPage: React.FC = () => {
       </div>
 
       <BottomActionBar
-        onCancel={() => history.push('/sync/file-ingest/select')}
+        onCancel={goBack}
         onNext={() => void submit()}
         nextText="创建导入任务"
         hintText="创建后任务进入待执行状态，可在任务列表中执行导入"
