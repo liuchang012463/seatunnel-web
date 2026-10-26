@@ -207,6 +207,30 @@ class SqlScriptSplitterTest {
     }
 
     @Test
+    void keepsNestedProcedureAndPackageEndTogetherUntilSlash() {
+        String script = "CREATE OR REPLACE PACKAGE BODY p AS "
+                + "PROCEDURE q AS BEGIN NULL; END; END;\n/\nSELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("PROCEDURE q AS BEGIN NULL; END; END"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void keepsPackageInitializationBlockAndFinalEndTogetherUntilSlash() {
+        String script = "CREATE OR REPLACE PACKAGE BODY p AS\n"
+                + "PROCEDURE q AS BEGIN NULL; END;\n"
+                + "BEGIN NULL; END p;\n/\nSELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("PROCEDURE q AS BEGIN NULL; END;"));
+        assertTrue(statements.get(0).contains("BEGIN NULL; END p;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
     void createTableDoesNotOpenABlock() {
         List<String> statements = split("CREATE TABLE b (id int);\nCREATE INDEX i ON b (id);");
         assertEquals(2, statements.size());

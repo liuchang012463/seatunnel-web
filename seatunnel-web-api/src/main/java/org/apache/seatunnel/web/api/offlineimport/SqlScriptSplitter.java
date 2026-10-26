@@ -46,7 +46,7 @@ public final class SqlScriptSplitter {
 
     private enum Opener {
         /** A DECLARE/CREATE unit whose terminating BEGIN..END has not started yet. */
-        PENDING_UNIT, BLOCK
+        PENDING_UNIT, PENDING_PACKAGE, BLOCK
     }
 
     private static final Set<String> CREATE_BODY_PREFIX = Set.of("OR", "REPLACE", "EDITIONABLE", "NONEDITIONABLE");
@@ -172,7 +172,8 @@ public final class SqlScriptSplitter {
                     openers.push(Opener.PENDING_UNIT);
                 } else if ("CREATE".equals(word) && createsBody(script, wordEnd)) {
                     skipCaseAfterEndCase = false;
-                    openers.push(Opener.PENDING_UNIT);
+                    openers.push(createsPackage(script, wordEnd)
+                            ? Opener.PENDING_PACKAGE : Opener.PENDING_UNIT);
                 } else if ("END".equals(word) && !openers.isEmpty()) {
                     String after = nextSignificantWord(script, wordEnd);
                     if (after == null || !NON_BLOCK_END.contains(after)) {
@@ -405,6 +406,10 @@ public final class SqlScriptSplitter {
             }
         }
         return false;
+    }
+
+    private static boolean createsPackage(String script, int from) {
+        return wordsAfter(script, from, 4).contains("PACKAGE");
     }
 
     /**
