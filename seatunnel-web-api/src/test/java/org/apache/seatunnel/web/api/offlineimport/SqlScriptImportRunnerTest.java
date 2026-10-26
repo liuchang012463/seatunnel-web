@@ -104,6 +104,46 @@ class SqlScriptImportRunnerTest {
     }
 
     @Test
+    void executesCopyBlockThroughInsertBatches() throws Exception {
+        ExecutionLogBuffer log = new ExecutionLogBuffer(4096);
+        SqlScriptImportRunner runner = new SqlScriptImportRunner(connection, log);
+        List<String> statements = SqlScriptSplitter.split(
+                "COPY target_table (id) FROM stdin;\n"
+                        + "40\n"
+                        + "41\n"
+                        + "\\.\n"
+                        + "INSERT INTO target_table (id) VALUES (42);");
+
+        String failure = runner.execute(statements, true, (executed, failed, total) -> {
+        });
+
+        assertNull(failure);
+        assertEquals(3, countRows());
+        assertTrue(log.snapshot().contains("COPY 数据块"));
+    }
+
+    @Test
+    void countsOnlySuccessfulStatementsAsExecuted() throws Exception {
+        ExecutionLogBuffer log = new ExecutionLogBuffer(4096);
+        SqlScriptImportRunner runner = new SqlScriptImportRunner(connection, log);
+        List<String> statements = SqlScriptSplitter.split(
+                "INSERT INTO target_table (id) VALUES (50);\n"
+                        + "CREATE TABLE;\n"
+                        + "INSERT INTO target_table (id) VALUES (51);");
+
+        AtomicInteger lastExecuted = new AtomicInteger();
+        AtomicInteger lastFailed = new AtomicInteger();
+        String failure = runner.execute(statements, false, (executed, failed, total) -> {
+            lastExecuted.set(executed);
+            lastFailed.set(failed);
+        });
+
+        assertTrue(failure.contains("1/3"));
+        assertEquals(2, lastExecuted.get());
+        assertEquals(1, lastFailed.get());
+    }
+
+    @Test
     void preludeRunsOutsideTheCounters() throws Exception {
         ExecutionLogBuffer log = new ExecutionLogBuffer(1024);
         SqlScriptImportRunner runner = new SqlScriptImportRunner(connection, log);

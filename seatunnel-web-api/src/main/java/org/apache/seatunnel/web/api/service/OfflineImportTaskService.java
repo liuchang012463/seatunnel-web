@@ -16,6 +16,6 @@ public interface OfflineImportTaskService {
 
     void delete(Long id);
 
-    /** Marks the task RUNNING and executes it on the background worker. */
+    /** Queues the task; the background worker claims it as RUNNING. */
     void execute(Long id);
 }

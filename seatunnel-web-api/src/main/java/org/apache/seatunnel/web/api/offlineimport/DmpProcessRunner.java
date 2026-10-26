@@ -38,6 +38,9 @@ public class DmpProcessRunner {
         Process process;
         try {
             process = builder.start();
+            // A tool that unexpectedly asks for input must fail instead of
+            // blocking until the process timeout.
+            process.getOutputStream().close();
         } catch (IOException e) {
             log.line("无法启动还原工具: " + e.getMessage());
             throw e;

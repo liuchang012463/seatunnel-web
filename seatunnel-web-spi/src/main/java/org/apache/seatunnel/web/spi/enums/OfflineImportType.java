@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.spi.enums;
 import lombok.Getter;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -47,6 +48,6 @@ public enum OfflineImportType {
     }
 
     public static OfflineImportType of(String code) {
-        return code == null ? null : TYPE_MAP.get(code.trim().toUpperCase());
+        return code == null ? null : TYPE_MAP.get(code.trim().toUpperCase(Locale.ROOT));
     }
 }

@@ -22,7 +22,7 @@ class DmpCommandBuilderTest {
                 DMP, LOG, "SRC", "DST", true);
 
         assertEquals("/opt/dmdbms/bin/dimp", command.command().get(0));
-        assertEquals("USERID=test/Pwd@123@192.168.100.95:5236", command.command().get(1));
+        assertEquals("USERID=test/\"Pwd@123\"@192.168.100.95:5236", command.command().get(1));
         assertEquals("FILE=export.dmp", command.command().get(2));
         assertEquals("DIRECTORY=/work/task-1", command.command().get(4));
         assertEquals("IGNORE=Y", command.command().get(5));
@@ -45,7 +45,7 @@ class DmpCommandBuilderTest {
     void kingbaseCommandPassesPasswordThroughEnvironmentOnly() {
         DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
                 "/opt/Kingbase/ES/V8/bin/sys_restore", "192.168.100.91", "54321", "kingbase",
-                "system", "Secret#9", DMP, "public");
+                "system", "Secret#9", DMP, null, "public");
 
         assertEquals("/opt/Kingbase/ES/V8/bin/sys_restore", command.command().get(0));
         int userIndex = command.command().indexOf("-U");
@@ -63,9 +63,37 @@ class DmpCommandBuilderTest {
     @Test
     void kingbaseCommandOmitsSchemaFlagWhenBlank() {
         DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
-                "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, " ");
+                "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, null, " ");
 
         assertFalse(String.join(" ", command.command()).contains("--schema"));
+    }
+
+    @Test
+    void damengUsesSourceSchemaWhenTargetSchemaIsBlank() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
+                "/opt/dmdbms/bin/dimp", "h", "5236", "u", "p", DMP, LOG, "SRC", null, true);
+
+        assertTrue(command.command().contains("SCHEMAS=SRC"));
+        assertFalse(command.command().toString().contains("REMAP_SCHEMA"));
+    }
+
+    @Test
+    void kingbaseUsesSourceSchemaFromTheDumpWhenPresent() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
+                "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, "SRC", "DST");
+
+        assertTrue(command.command().contains("--schema=SRC"));
+        assertFalse(command.command().contains("--schema=DST"));
+    }
+
+    @Test
+    void damengQuotesPasswordWithSlashAndQuotes() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
+                "/opt/dmdbms/bin/dimp", "h", "5236", "test", "Pwd/\"x", DMP, LOG, null, null, true);
+
+        assertEquals("USERID=test/\"Pwd/\"\"x\"@h:5236", command.command().get(1));
+        String masked = DmpCommandBuilder.mask(command, "Pwd/\"x");
+        assertFalse(masked.contains("Pwd"));
     }
 
     @Test

@@ -37,7 +37,7 @@ public final class DmpCommandBuilder {
             boolean ignoreErrors) {
         List<String> command = new ArrayList<>();
         command.add(dimpPath);
-        command.add("USERID=" + user + "/" + password + "@" + host + ":" + port);
+        command.add("USERID=" + user + "/" + quoteDamengPassword(password) + "@" + host + ":" + port);
         command.add("FILE=" + dmpFile.getFileName());
         command.add("LOG=" + logFile.getFileName());
         command.add("DIRECTORY=" + dmpFile.getParent());
@@ -50,6 +50,8 @@ public final class DmpCommandBuilder {
             command.add("REMAP_SCHEMA=" + effectiveSource + ":" + effectiveTarget);
         } else if (effectiveTarget != null) {
             command.add("SCHEMAS=" + effectiveTarget);
+        } else if (effectiveSource != null) {
+            command.add("SCHEMAS=" + effectiveSource);
         }
         return new DmpCommand(command, Map.of());
     }
@@ -62,6 +64,7 @@ public final class DmpCommandBuilder {
             String user,
             String password,
             Path dmpFile,
+            String sourceSchema,
             String targetSchema) {
         List<String> command = new ArrayList<>();
         command.add(sysRestorePath);
@@ -76,7 +79,12 @@ public final class DmpCommandBuilder {
         command.add("--no-password");
         command.add("--no-owner");
         command.add("--no-privileges");
-        String schema = StringUtils.trimToNull(targetSchema);
+        // sys_restore --schema is a filter on the dump, not a remap: prefer
+        // the schema recorded inside the backup and fall back to the target.
+        String schema = StringUtils.trimToNull(sourceSchema);
+        if (schema == null) {
+            schema = StringUtils.trimToNull(targetSchema);
+        }
         if (schema != null) {
             command.add("--schema=" + schema);
         }
@@ -85,6 +93,20 @@ public final class DmpCommandBuilder {
         Map<String, String> environment = new LinkedHashMap<>();
         environment.put("PGPASSWORD", password);
         return new DmpCommand(command, environment);
+    }
+
+    /**
+     * dimp requires a password containing delimiters such as {@code /} or
+     * {@code @} to be double-quoted inside USERID.
+     */
+    private static String quoteDamengPassword(String password) {
+        if (StringUtils.isEmpty(password)) {
+            return "";
+        }
+        if (password.matches("[A-Za-z0-9_#]+")) {
+            return password;
+        }
+        return "\"" + password.replace("\"", "\"\"") + "\"";
     }
 
     /** Command rendering with the password masked, safe for persisted logs. */

@@ -17,11 +17,12 @@ public class ExecutionLogBuffer {
     }
 
     public synchronized void line(String text) {
-        append("[" + LocalDateTime.now().format(TS) + "] " + normalize(text));
+        append("[" + LocalDateTime.now().format(TS) + "] "
+                + normalize(OfflineImportLogRedactor.mask(text)));
     }
 
     public synchronized void raw(String text) {
-        append(normalize(text));
+        append(normalize(OfflineImportLogRedactor.mask(text)));
     }
 
     private void append(String line) {
