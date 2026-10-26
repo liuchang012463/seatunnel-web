@@ -351,7 +351,8 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             } else {
                 command = DmpCommandBuilder.kingbase(
                         toolPath, param.getHost(), param.getPort(), param.getDatabase(),
-                        param.getUser(), param.getPassword(), dmpFile, task.getTargetSchema());
+                        param.getUser(), param.getPassword(), dmpFile,
+                        options.getSourceSchema(), task.getTargetSchema());
             }
             executionLog.line("执行命令: " + DmpCommandBuilder.mask(command, param.getPassword()));
 
