@@ -4,6 +4,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.metrics.JobResultHandler;
 import org.apache.seatunnel.web.api.metrics.JobRuntimeContext;
+import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.dao.entity.JobInstance;
 import org.apache.seatunnel.web.dao.entity.StreamingJobInstance;
@@ -214,6 +215,11 @@ public class JobInstanceRecoveryScheduler {
         }
 
         JobStatus targetStatus = adjustNotFoundStatus(instance.getJobStatus(), result);
+        if (JobStatus.UNKNOWABLE.equals(targetStatus)) {
+            // The batch path normalizes a confirmed UNKNOWABLE to FAILED. Streaming must agree,
+            // otherwise the row keeps a status no terminal mapping (UI, OpenLineage) understands.
+            targetStatus = JobStatus.FAILED;
+        }
 
         String errorMessage = buildRecoveryMessage(
                 instance.getId(),
@@ -359,14 +365,17 @@ public class JobInstanceRecoveryScheduler {
 
         StringBuilder builder = new StringBuilder();
 
+        // The engine message can quote connector options; mask before the text is persisted and
+        // republished (UI detail, OpenLineage terminal facet).
         builder.append("SeaTunnel Web 重启后执行任务状态恢复，发现该实例已不再处于 Zeta 运行中状态，已自动补偿本地状态。")
                 .append(" instanceId=").append(instanceId)
                 .append(", engineJobId=").append(engineJobId)
                 .append(", engineStatus=").append(safe(result.getEngineStatus()))
-                .append(", reason=").append(safe(result.getMessage()));
+                .append(", reason=").append(HoconSensitiveMaskUtil.maskSensitiveText(safe(result.getMessage())));
 
         if (result.getErrorMessage() != null && !result.getErrorMessage().trim().isEmpty()) {
-            builder.append(", engineError=").append(result.getErrorMessage());
+            builder.append(", engineError=")
+                    .append(HoconSensitiveMaskUtil.maskSensitiveText(result.getErrorMessage()));
         }
 
         builder.append(", recoveryTime=").append(new Date());

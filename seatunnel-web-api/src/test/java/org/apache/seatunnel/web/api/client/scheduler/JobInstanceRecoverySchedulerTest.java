@@ -4,16 +4,20 @@ import org.apache.seatunnel.web.api.metrics.JobResultHandler;
 import org.apache.seatunnel.web.api.metrics.JobRuntimeContext;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.dao.entity.JobInstance;
+import org.apache.seatunnel.web.dao.entity.StreamingJobInstance;
 import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.engine.client.handler.ZetaJobStatusHandler;
 import org.apache.seatunnel.web.engine.client.modal.ZetaJobStatusResolveResult;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Date;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -25,6 +29,7 @@ import static org.mockito.Mockito.when;
 class JobInstanceRecoverySchedulerTest {
 
     private final JobInstanceDao instances = mock(JobInstanceDao.class);
+    private final StreamingJobInstanceDao streamingInstances = mock(StreamingJobInstanceDao.class);
     private final ZetaJobStatusHandler engine = mock(ZetaJobStatusHandler.class);
     private final JobResultHandler results = mock(JobResultHandler.class);
 
@@ -118,11 +123,38 @@ class JobInstanceRecoverySchedulerTest {
         verifyNoInteractions(engine, results);
     }
 
+    @Test
+    void streamingEngineErrorIsMaskedBeforeItIsPersisted() {
+        when(streamingInstances.listRunningLikeInstances()).thenReturn(List.of(streamingInstance()));
+        when(engine.resolve(2L, "101")).thenReturn(
+                ZetaJobStatusResolveResult.finished(
+                        JobStatus.FAILED, "FAILED", "connect failed password=P@ssw0rd!", "job failed"));
+
+        scheduler().recoverPeriodically();
+
+        ArgumentCaptor<String> message = ArgumentCaptor.forClass(String.class);
+        verify(streamingInstances).updateFinalStatusIfRunningLike(eq(101L), eq(JobStatus.FAILED), message.capture());
+        assertTrue(message.getValue().contains("engineError="));
+        assertFalse(message.getValue().contains("P@ssw0rd"), "engine error must be masked: " + message.getValue());
+    }
+
+    @Test
+    void confirmedUnknowableStreamingJobIsReconciledAsFailed() {
+        when(streamingInstances.listRunningLikeInstances()).thenReturn(List.of(streamingInstance()));
+        when(engine.resolve(2L, "101")).thenReturn(
+                ZetaJobStatusResolveResult.finished(
+                        JobStatus.UNKNOWABLE, "UNKNOWABLE", null, "engine lost the job"));
+
+        scheduler().recoverPeriodically();
+
+        verify(streamingInstances).updateFinalStatusIfRunningLike(eq(101L), eq(JobStatus.FAILED), any());
+    }
+
     private JobInstanceRecoveryScheduler scheduler() {
         JobInstanceRecoveryScheduler scheduler = new JobInstanceRecoveryScheduler();
         ReflectionTestUtils.setField(scheduler, "enabled", true);
         ReflectionTestUtils.setField(scheduler, "jobInstanceDao", instances);
-        ReflectionTestUtils.setField(scheduler, "streamingJobInstanceDao", mock(StreamingJobInstanceDao.class));
+        ReflectionTestUtils.setField(scheduler, "streamingJobInstanceDao", streamingInstances);
         ReflectionTestUtils.setField(scheduler, "zetaJobStatusHandler", engine);
         ReflectionTestUtils.setField(scheduler, "jobResultHandler", results);
         return scheduler;
@@ -135,6 +167,16 @@ class JobInstanceRecoverySchedulerTest {
         instance.setEngineJobId("101");
         instance.setJobStatus(JobStatus.STARTING);
         instance.setUpdateTime(lastActivity);
+        return instance;
+    }
+
+    private StreamingJobInstance streamingInstance() {
+        StreamingJobInstance instance = new StreamingJobInstance();
+        instance.setId(101L);
+        instance.setClientId(2L);
+        instance.setEngineJobId("101");
+        instance.setJobStatus(JobStatus.RUNNING);
+        instance.setUpdateTime(new Date(0));
         return instance;
     }
 }
