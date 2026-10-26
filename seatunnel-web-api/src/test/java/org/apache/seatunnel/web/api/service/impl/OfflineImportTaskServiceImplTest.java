@@ -5,6 +5,9 @@ import org.apache.seatunnel.web.api.offlineimport.ExecutionLogBuffer;
 import org.apache.seatunnel.web.api.offlineimport.OfflineImportProperties;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.FileResourceService;
+import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
+import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
+import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.FileResource;
@@ -17,6 +20,7 @@ import org.apache.seatunnel.web.spi.bean.dto.OfflineImportOptions;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
+import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.enums.OfflineImportType;
 import org.apache.seatunnel.web.spi.enums.Status;
@@ -24,25 +28,30 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -394,6 +403,71 @@ class OfflineImportTaskServiceImplTest {
         assertTrue(failure.contains("原厂预检失败"));
         assertTrue(failure.contains("源 Schema 未匹配"));
         verify(storageProvider).download(eq("offline-import-test-object"), any(OutputStream.class));
+    }
+
+    @Test
+    void acceptsKingbaseStrictSchemaPreflightSuccessAndContinuesRestore() throws Exception {
+        Path restoreTool = tempDir.resolve("sys_restore-matched");
+        Path calls = tempDir.resolve("restore-tool-calls.txt");
+        Files.writeString(restoreTool,
+                "#!/bin/sh\n"
+                        + "case \"$*\" in *--list*) printf '%s\\n' 'TABLE DATA src_schema sample owner'; "
+                        + "echo list >> '" + calls + "';; *) echo restore >> '" + calls + "';; esac\n"
+                        + "exit 0\n");
+        Files.setPosixFilePermissions(restoreTool, PosixFilePermissions.fromString("rwx------"));
+        OfflineImportProperties properties = new OfflineImportProperties();
+        properties.setWorkDir(tempDir.resolve("scratch-matched").toString());
+        properties.setKingbaseSysRestorePath(restoreTool.toString());
+        properties.setProcessTimeoutMinutes(1);
+        ReflectionTestUtils.setField(service, "offlineImportProperties", properties);
+
+        FileResource resource = readyFileResource(USER_ID);
+        resource.setObjectKey("offline-import-test-object");
+        when(fileResourceDao.queryById(FILE_RESOURCE_ID)).thenReturn(resource);
+        doAnswer(invocation -> {
+            ((OutputStream) invocation.getArgument(1)).write(new byte[] {1, 2, 3});
+            return null;
+        }).when(storageProvider).download(eq("offline-import-test-object"), any(OutputStream.class));
+
+        OfflineImportTask task = task(51L, "RUNNING", USER_ID);
+        task.setFileResourceId(FILE_RESOURCE_ID);
+        task.setFileName("source.dmp");
+        task.setCreateUserId(USER_ID);
+        task.setTargetSchema("target_schema");
+        OfflineImportOptions options = new OfflineImportOptions();
+        options.setSourceSchema("src_schema");
+
+        DataSource dataSource = kingbaseDataSource();
+        BaseConnectionParam connectionParam = mock(BaseConnectionParam.class);
+        when(connectionParam.getHost()).thenReturn("127.0.0.1");
+        when(connectionParam.getPort()).thenReturn("54321");
+        when(connectionParam.getDatabase()).thenReturn("kb");
+        when(connectionParam.getUser()).thenReturn("offline_import_test");
+        when(connectionParam.getPassword()).thenReturn("test-secret");
+        DataSourceProcessor processor = mock(DataSourceProcessor.class);
+        JdbcConnectionProvider connectionProvider = mock(JdbcConnectionProvider.class);
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        when(processor.getConnectionManager()).thenReturn(connectionProvider);
+        when(connectionProvider.getConnection(connectionParam)).thenReturn(connection);
+        when(connection.createStatement()).thenReturn(statement);
+
+        try (MockedStatic<DataSourceUtils> dataSourceUtils = mockStatic(DataSourceUtils.class)) {
+            dataSourceUtils.when(() -> DataSourceUtils.buildConnectionParams(
+                    DbType.KINGBASE, dataSource.getConnectionParams())).thenReturn(connectionParam);
+            dataSourceUtils.when(() -> DataSourceUtils.getDatasourceProcessor(DbType.KINGBASE))
+                    .thenReturn(processor);
+
+            String failure = ReflectionTestUtils.invokeMethod(
+                    service, "runDmpImport", task, OfflineImportType.KINGBASE_DMP,
+                    dataSource, options, new ExecutionLogBuffer(8_192));
+
+            assertNull(failure);
+        }
+
+        assertEquals(List.of("list", "restore"), Files.readAllLines(calls));
+        verify(statement).setQueryTimeout(300);
+        verify(statement).execute("CREATE SCHEMA IF NOT EXISTS \"target_schema\"");
     }
 
     @Test

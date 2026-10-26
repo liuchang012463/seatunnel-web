@@ -430,7 +430,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                 return "DMP 文件原厂预检失败，源 Schema 未匹配或文件格式无效，已在还原前终止"
                         + (preflightResult.timedOut() ? "（预检超时）" : "");
             }
-            if (!matchedSourceSchema.get()) {
+            if (importType == OfflineImportType.DAMENG_DMP && !matchedSourceSchema.get()) {
                 return "DMP 文件中未找到指定源 Schema，已在还原前终止";
             }
 
