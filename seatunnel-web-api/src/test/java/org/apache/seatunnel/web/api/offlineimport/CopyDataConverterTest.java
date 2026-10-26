@@ -161,6 +161,34 @@ class CopyDataConverterTest {
     }
 
     @Test
+    void headerNoKeepsTheFirstDataRow() throws Exception {
+        String copy = "COPY copy_target (id, name) FROM stdin "
+                + "WITH (FORMAT csv, HEADER no);\n"
+                + "11,Grace\n"
+                + "\\.\n";
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(1, CopyDataConverter.execute(statement, copy));
+        }
+        assertEquals(1, countRows());
+    }
+
+    @Test
+    void supportsSchemaQualifiedQuotedTableName() throws Exception {
+        String copy = "COPY PUBLIC.\"Copy Target\" (id, name) FROM stdin;\n"
+                + "12\tHeidi\n"
+                + "\\.\n";
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(1, CopyDataConverter.execute(statement, copy));
+        }
+        try (Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery(
+                     "SELECT name FROM PUBLIC.\"Copy Target\" WHERE id = 12")) {
+            assertTrue(rs.next());
+            assertEquals("Heidi", rs.getString(1));
+        }
+    }
+
+    @Test
     void decodesEscapedDelimiterOption() throws Exception {
         String copy = "COPY copy_target (id, name) FROM stdin "
                 + "WITH (DELIMITER E'\\x7c');\n"

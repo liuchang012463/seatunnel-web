@@ -16,8 +16,9 @@ public final class OfflineImportLogRedactor {
                     + "(?:'(?:[^']|'')*'|\"[^\"]*\"|\\S+)");
     private static final Pattern PG_PASSWORD =
             Pattern.compile("(?i)(\\bPGPASSWORD\\s*=\\s*)(?:'(?:[^']|'')*'|\"[^\"]*\"|\\S+)");
-    private static final Pattern PASSWORD_KEYWORD =
-            Pattern.compile("(?i)(\\bPASSWORD\\s+)(?:'(?:[^']|'')*'|\"[^\"]*\"|\\S+)");
+    private static final Pattern PASSWORD_KEYWORD = Pattern.compile(
+            "(?i)(\\bPASSWORD\\b(?:\\s|/\\*(?:[^*]|\\*(?!/))*\\*/|--[^\\n]*(?:\\n|$))+)"
+                    + "(?:'(?:[^']|'')*'|\"[^\"]*\"|\\S+)");
 
     private OfflineImportLogRedactor() {
     }

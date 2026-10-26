@@ -451,6 +451,254 @@ class SqlScriptSplitterTest {
     }
 
     @Test
+    void keepsPackageBodyWithLocalFunctionBody() {
+        String script = "CREATE OR REPLACE PACKAGE BODY pkg AS\n"
+                + "  PROCEDURE p IS\n"
+                + "    FUNCTION local_f RETURN INT IS\n"
+                + "    BEGIN RETURN 1; END;\n"
+                + "  BEGIN NULL; END;\n"
+                + "END pkg;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("FUNCTION local_f"));
+        assertTrue(statements.get(0).endsWith("END pkg;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void quotedIdentifierDeclarationDoesNotCloseTheOuterProcedure() {
+        String script = "CREATE OR REPLACE PROCEDURE p AS\n"
+                + "  \"v\" INT;\n"
+                + "BEGIN\n"
+                + "  NULL;\n"
+                + "END;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("\"v\" INT;"));
+        assertTrue(statements.get(0).endsWith("END;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void cursorAliasDoesNotCloseTheOuterProcedure() {
+        String script = "CREATE OR REPLACE PROCEDURE outer_p AS\n"
+                + "  CURSOR c IS SELECT col AS \"alias\" FROM t;\n"
+                + "BEGIN\n"
+                + "  NULL;\n"
+                + "END;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("CURSOR c IS"));
+        assertTrue(statements.get(0).endsWith("END;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void cursorAliasDoesNotCloseAnAnonymousDeclareBlock() {
+        String script = "DECLARE\n"
+                + "  CURSOR c IS SELECT col AS \"alias\" FROM t;\n"
+                + "BEGIN\n"
+                + "  NULL;\n"
+                + "END;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("CURSOR c IS"));
+        assertTrue(statements.get(0).endsWith("END;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void nestedBodyAliasDoesNotCloseTheOuterProcedure() {
+        String script = "CREATE OR REPLACE PROCEDURE outer_p AS\n"
+                + "  PROCEDURE inner_p IS\n"
+                + "  BEGIN\n"
+                + "    SELECT col AS \"alias\" FROM t;\n"
+                + "  END;\n"
+                + "BEGIN\n"
+                + "  NULL;\n"
+                + "END;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("PROCEDURE inner_p"));
+        assertTrue(statements.get(0).endsWith("END;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void nestedBodySubqueryAliasDoesNotCloseTheOuterProcedure() {
+        String script = "CREATE OR REPLACE PROCEDURE outer_p AS\n"
+                + "  PROCEDURE inner_p IS\n"
+                + "  BEGIN\n"
+                + "    SELECT * FROM (SELECT 1 AS x) AS \"sub\";\n"
+                + "  END;\n"
+                + "BEGIN\n"
+                + "  NULL;\n"
+                + "END;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).endsWith("END;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void forwardDeclarationWithCastDefaultDoesNotLeaveAFrame() {
+        String script = "CREATE OR REPLACE PACKAGE pkg AS\n"
+                + "  PROCEDURE p(x DATE := CAST(NULL AS DATE));\n"
+                + "END pkg;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).endsWith("END pkg;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void forwardDeclarationWithCaseDefaultDoesNotLeaveAFrame() {
+        String script = "CREATE OR REPLACE PACKAGE pkg AS\n"
+                + "  PROCEDURE p(x INT := CASE WHEN 1 IS NULL THEN 1 ELSE 2 END);\n"
+                + "END pkg;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).endsWith("END pkg;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void packageBodyForwardDeclarationWithCastDefaultThenBody() {
+        String script = "CREATE OR REPLACE PACKAGE BODY pkg AS\n"
+                + "  PROCEDURE p(x DATE := CAST(NULL AS DATE));\n"
+                + "  PROCEDURE p IS BEGIN NULL; END;\n"
+                + "END pkg;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).endsWith("END pkg;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void handlesMutualRecursionForwardDeclarationsInPackageBody() {
+        String script = "CREATE OR REPLACE PACKAGE BODY pkg AS\n"
+                + "  PROCEDURE p;\n"
+                + "  PROCEDURE q;\n"
+                + "  PROCEDURE p IS BEGIN q; END;\n"
+                + "  PROCEDURE q IS BEGIN p; END;\n"
+                + "END pkg;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("PROCEDURE p IS"));
+        assertTrue(statements.get(0).endsWith("END pkg;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void handlesSequentialForwardDeclarationAndBodyPairs() {
+        String script = "CREATE OR REPLACE PACKAGE BODY pkg AS\n"
+                + "  PROCEDURE p;\n"
+                + "  PROCEDURE p IS BEGIN NULL; END;\n"
+                + "  PROCEDURE q;\n"
+                + "  PROCEDURE q IS BEGIN NULL; END;\n"
+                + "END pkg;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).endsWith("END pkg;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void keepsPackageBodyWithDeclarationBeforeLocalFunctionBody() {
+        String script = "CREATE OR REPLACE PACKAGE BODY pkg AS\n"
+                + "  PROCEDURE p IS\n"
+                + "    TYPE t IS RECORD (a INT);\n"
+                + "    FUNCTION local_f RETURN INT IS\n"
+                + "    BEGIN\n"
+                + "      RETURN 1;\n"
+                + "    END;\n"
+                + "  BEGIN\n"
+                + "    NULL;\n"
+                + "  END;\n"
+                + "END pkg;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("TYPE t IS RECORD"));
+        assertTrue(statements.get(0).contains("FUNCTION local_f"));
+        assertTrue(statements.get(0).endsWith("END pkg;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void keepsPackageBodyWithDeclarationBeforeLocalProcedureBody() {
+        String script = "CREATE OR REPLACE PACKAGE BODY pkg AS\n"
+                + "  PROCEDURE p IS\n"
+                + "    v INT;\n"
+                + "    PROCEDURE local_p IS BEGIN NULL; END;\n"
+                + "  BEGIN NULL; END;\n"
+                + "END pkg;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("PROCEDURE local_p"));
+        assertTrue(statements.get(0).endsWith("END pkg;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void keepsTypeBodyWithDeclarationBeforeLocalFunctionBody() {
+        String script = "CREATE OR REPLACE TYPE BODY t AS\n"
+                + "  MEMBER PROCEDURE p IS\n"
+                + "    v INT;\n"
+                + "    FUNCTION local_f RETURN INT IS BEGIN RETURN 1; END;\n"
+                + "  BEGIN NULL; END;\n"
+                + "END;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("FUNCTION local_f"));
+        assertTrue(statements.get(0).endsWith("END;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void keepsPackageBodyWithLocalProcedureBody() {
+        String script = "CREATE OR REPLACE PACKAGE BODY pkg AS\n"
+                + "  PROCEDURE p IS\n"
+                + "    PROCEDURE local_p IS BEGIN NULL; END;\n"
+                + "  BEGIN NULL; END;\n"
+                + "END pkg;\n"
+                + "SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("PROCEDURE local_p"));
+        assertTrue(statements.get(0).endsWith("END pkg;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
     void doesNotSwallowCopyToStatementWithFromStdinInSubquery() {
         List<String> statements = split(
                 "COPY (SELECT * FROM stdin) TO stdout;\n"

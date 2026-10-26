@@ -30,6 +30,7 @@ public final class SqlScriptSplitter {
         FUNCTION,
         TRIGGER,
         PACKAGE,
+        PACKAGE_BODY,
         TYPE_BODY,
         DECLARE_BLOCK,
         ANONYMOUS
@@ -41,18 +42,24 @@ public final class SqlScriptSplitter {
         private final int createKindWordEnd;
         private boolean declarationSection;
         private boolean bodyStarted;
+        private boolean bodyClauseSeen;
         private boolean literalBody;
         private boolean expectBodyLiteral;
         private boolean unitEndSeen;
-        private boolean pendingNestedUnit;
         private int blockDepth;
-        private int nestedUnitDepth;
 
         private Unit(UnitKind kind, boolean declarationSection, int createKindWordEnd) {
             this.kind = kind;
             this.declarationSection = declarationSection;
             this.createKindWordEnd = createKindWordEnd;
         }
+    }
+
+    /** A local procedure/function declared inside another unit. */
+    private static final class NestedUnit {
+        private boolean bodyClauseSeen;
+        private boolean bodyStarted;
+        private int blockDepth;
     }
 
     private record WordToken(String word, int start, int end) {
@@ -76,7 +83,9 @@ public final class SqlScriptSplitter {
 
         StringBuilder current = new StringBuilder();
         Unit unit = null;
+        Deque<NestedUnit> nestedUnits = new ArrayDeque<>();
         int caseDepth = 0;
+        int parenDepth = 0;
         int i = 0;
         int length = script.length();
 
@@ -127,7 +136,11 @@ public final class SqlScriptSplitter {
             if (c == '\'' || c == '"') {
                 boolean backslashEscapes = c == '\'' && isEStringPrefix(script, i);
                 int end = skipQuoted(script, i, c, backslashEscapes);
-                markLiteralBody(unit);
+                if (c == '\'') {
+                    // A double-quoted token is an identifier, not a literal
+                    // body after AS/IS.
+                    markLiteralBody(unit);
+                }
                 current.append(script, i, end);
                 i = end;
                 continue;
@@ -194,34 +207,59 @@ public final class SqlScriptSplitter {
                                 unit.bodyStarted = true;
                                 unit.blockDepth = 1;
                             }
-                        } else {
-                            if (unit.pendingNestedUnit) {
-                                unit.nestedUnitDepth++;
-                                unit.pendingNestedUnit = false;
+                        } else if (!nestedUnits.isEmpty()) {
+                            NestedUnit nested = nestedUnits.peek();
+                            if (!nested.bodyStarted) {
+                                nested.bodyStarted = true;
+                                nested.blockDepth = 1;
+                            } else {
+                                nested.blockDepth++;
                             }
+                        } else if (!unit.bodyStarted) {
                             unit.bodyStarted = true;
+                            unit.blockDepth = 1;
+                        } else {
                             unit.blockDepth++;
                         }
                     }
                 } else if ("CASE".equals(word)) {
                     caseDepth++;
-                } else if ("PROCEDURE".equals(word) || "FUNCTION".equals(word)) {
+                } else if (("PROCEDURE".equals(word) || "FUNCTION".equals(word))
+                        && parenDepth == 0) {
                     if (unit != null
                             && wordEnd != unit.createKindWordEnd
-                            && unit.blockDepth == 0
-                            && unit.nestedUnitDepth == 0
-                            && (unit.kind == UnitKind.PACKAGE
-                                    || unit.kind == UnitKind.TYPE_BODY
-                                    || unit.declarationSection)) {
-                        unit.pendingNestedUnit = true;
+                            && inDeclarationSection(unit, nestedUnits)) {
+                        nestedUnits.push(new NestedUnit());
                     }
-                } else if ("AS".equals(word) || "IS".equals(word)) {
-                    if (unit != null && !unit.bodyStarted) {
-                        if (unit.kind == UnitKind.PACKAGE || unit.kind == UnitKind.TYPE_BODY) {
-                            unit.bodyStarted = true;
-                        } else {
-                            unit.expectBodyLiteral = true;
+                } else if (("AS".equals(word) || "IS".equals(word)) && parenDepth == 0) {
+                    if (!nestedUnits.isEmpty()) {
+                        NestedUnit nested = nestedUnits.peek();
+                        if (!nested.bodyStarted) {
+                            // A local subprogram's declaration/body starts
+                            // here; a bare "PROCEDURE p;" has no IS/AS and is
+                            // dropped at its semicolon as a forward declaration.
+                            nested.bodyClauseSeen = true;
                         }
+                        // An AS/IS inside the nested body (column alias,
+                        // CAST, subquery alias) must not leak into the outer
+                        // unit's literal-body detection.
+                    } else if (unit != null && !unit.bodyStarted) {
+                        if (unit.kind == UnitKind.PACKAGE
+                                || unit.kind == UnitKind.PACKAGE_BODY
+                                || unit.kind == UnitKind.TYPE_BODY) {
+                            unit.bodyStarted = true;
+                        } else if (unit.kind == UnitKind.PROCEDURE
+                                || unit.kind == UnitKind.FUNCTION) {
+                            // Only the first top-level AS/IS after the
+                            // parameter list is the body clause. Later ones
+                            // (cursor queries, SELECT aliases) are content.
+                            if (!unit.bodyClauseSeen) {
+                                unit.bodyClauseSeen = true;
+                                unit.expectBodyLiteral = true;
+                            }
+                        }
+                        // DECLARE_BLOCK/TRIGGER declarations use BEGIN bodies;
+                        // AS/IS there belongs to cursors/types, not a literal.
                     }
                 } else if ("END".equals(word)) {
                     WordToken after = nextSignificantWord(script, wordEnd);
@@ -239,15 +277,21 @@ public final class SqlScriptSplitter {
                         continue;
                     } else if (caseDepth > 0) {
                         caseDepth--;
+                    } else if (!nestedUnits.isEmpty()) {
+                        NestedUnit nested = nestedUnits.peek();
+                        if (nested.bodyStarted && nested.blockDepth > 0) {
+                            nested.blockDepth--;
+                            if (nested.blockDepth == 0) {
+                                nestedUnits.pop();
+                            }
+                        } else {
+                            nestedUnits.pop();
+                        }
                     } else if (unit != null) {
                         if (unit.blockDepth > 0) {
                             unit.blockDepth--;
                             if (unit.blockDepth == 0) {
-                                if (unit.nestedUnitDepth > 0) {
-                                    unit.nestedUnitDepth--;
-                                } else {
-                                    unit.unitEndSeen = true;
-                                }
+                                unit.unitEndSeen = true;
                             }
                         } else {
                             unit.unitEndSeen = true;
@@ -279,6 +323,18 @@ public final class SqlScriptSplitter {
                     caseDepth = 0;
                     continue;
                 }
+                if (!nestedUnits.isEmpty()) {
+                    NestedUnit nested = nestedUnits.peek();
+                    if (!nested.bodyStarted && nested.blockDepth == 0
+                            && !nested.bodyClauseSeen) {
+                        // A bare local declaration ("PROCEDURE p;") is a
+                        // forward declaration, not a unit with a body. Its
+                        // later "PROCEDURE p IS ..." definition pushes a new
+                        // frame, so forward declarations never accumulate.
+                        nestedUnits.pop();
+                    }
+                    continue;
+                }
                 boolean close = unit.unitEndSeen
                         || (!unit.bodyStarted
                                 && (unit.literalBody
@@ -291,17 +347,17 @@ public final class SqlScriptSplitter {
                     addIfMeaningful(statements, current.toString(), true);
                     current.setLength(0);
                     unit = null;
+                    nestedUnits.clear();
                     caseDepth = 0;
-                } else if (unit.pendingNestedUnit
-                        && !keepPendingNestedUnit(script, i)) {
-                    // A procedure declaration ("PROCEDURE p1;") inside a package
-                    // is not a nested unit with a body; a declaration section
-                    // before BEGIN (e.g. "v INT;") still belongs to it.
-                    unit.pendingNestedUnit = false;
                 }
                 continue;
             }
 
+            if (c == '(') {
+                parenDepth++;
+            } else if (c == ')' && parenDepth > 0) {
+                parenDepth--;
+            }
             current.append(c);
             i++;
         }
@@ -310,26 +366,25 @@ public final class SqlScriptSplitter {
     }
 
     /**
-     * After a semicolon in a pending nested unit, decide whether the unit is
-     * still in its declaration section. A following declaration or BEGIN
-     * keeps it open; END/PROCEDURE/FUNCTION means it was a forward
-     * declaration without a body.
+     * True when a PROCEDURE/FUNCTION word declares a local subprogram rather
+     * than naming one in a call. Local subprograms may themselves contain
+     * declarations and further local subprograms, so the caller keeps a stack.
      */
-    private static boolean keepPendingNestedUnit(String script, int from) {
-        WordToken next = nextSignificantWord(script, from);
-        if (next == null) {
+    private static boolean inDeclarationSection(Unit unit, Deque<NestedUnit> nestedUnits) {
+        if (unit == null) {
             return false;
         }
-        String word = next.word();
-        return "BEGIN".equals(word)
-                || "IS".equals(word)
-                || "AS".equals(word)
-                || "DECLARE".equals(word)
-                || (!"END".equals(word)
-                        && !"PROCEDURE".equals(word)
-                        && !"FUNCTION".equals(word)
-                        && !"PACKAGE".equals(word)
-                        && !"CREATE".equals(word));
+        if (!nestedUnits.isEmpty()) {
+            NestedUnit nested = nestedUnits.peek();
+            return !nested.bodyStarted && nested.blockDepth == 0;
+        }
+        if (unit.blockDepth > 0) {
+            return false;
+        }
+        return (unit.declarationSection && !unit.bodyStarted)
+                || unit.kind == UnitKind.PACKAGE
+                || unit.kind == UnitKind.PACKAGE_BODY
+                || unit.kind == UnitKind.TYPE_BODY;
     }
 
     private static void markLiteralBody(Unit unit) {
@@ -366,6 +421,10 @@ public final class SqlScriptSplitter {
                 return new CreateInfo(UnitKind.TRIGGER, token.end());
             }
             if ("PACKAGE".equals(word)) {
+                WordToken afterPackage = nextSignificantWord(script, token.end());
+                if (afterPackage != null && "BODY".equals(afterPackage.word())) {
+                    return new CreateInfo(UnitKind.PACKAGE_BODY, token.end());
+                }
                 return new CreateInfo(UnitKind.PACKAGE, token.end());
             }
             if ("TYPE".equals(word)) {

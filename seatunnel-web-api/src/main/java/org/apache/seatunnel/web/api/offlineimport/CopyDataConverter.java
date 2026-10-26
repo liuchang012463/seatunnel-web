@@ -19,7 +19,8 @@ import java.util.regex.Pattern;
 public final class CopyDataConverter {
 
     private static final Pattern COPY_HEADER = Pattern.compile(
-            "(?is)^\\s*COPY\\s+(\"(?:[^\"]|\"\")*\"|[^\\s(]+)\\s*"
+            "(?is)^\\s*COPY\\s+((?:\"(?:[^\"]|\"\")*\"|[^\\s(\".]+)"
+                    + "(?:\\.(?:\"(?:[^\"]|\"\")*\"|[^\\s(\".]+))?)\\s*"
                     + "(?:\\(([^)]*)\\))?\\s+FROM\\s+STDIN\\b(.*)$");
     private static final Pattern COPY_OPTION = Pattern.compile(
             "(?i)\\b(DELIMITER|NULL|HEADER|QUOTE|ESCAPE)\\b"
@@ -139,8 +140,7 @@ public final class CopyDataConverter {
                     }
                 }
                 case "NULL" -> nullMarker = value;
-                case "HEADER" -> header = value == null
-                        || !("false".equalsIgnoreCase(value) || "0".equals(value) || "off".equalsIgnoreCase(value));
+                case "HEADER" -> header = parseBoolean(value, true);
                 case "QUOTE" -> {
                     if (value != null && !value.isEmpty()) {
                         quote = value.charAt(0);
@@ -157,6 +157,26 @@ public final class CopyDataConverter {
             }
         }
         return new CopyOptions(delimiter, nullMarker, header, quote, escape);
+    }
+
+    private static boolean parseBoolean(String value, boolean defaultValue) {
+        if (value == null || value.isEmpty()) {
+            return defaultValue;
+        }
+        String normalized = value.toLowerCase(Locale.ROOT);
+        if ("true".startsWith(normalized)
+                || "yes".startsWith(normalized)
+                || "on".startsWith(normalized)
+                || "1".equals(normalized)) {
+            return true;
+        }
+        if ("false".startsWith(normalized)
+                || "no".startsWith(normalized)
+                || "off".startsWith(normalized)
+                || "0".equals(normalized)) {
+            return false;
+        }
+        return defaultValue;
     }
 
     private static String decodeOptionValue(String value) {

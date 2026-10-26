@@ -21,6 +21,14 @@ class OfflineImportLogRedactorTest {
     }
 
     @Test
+    void masksPasswordSeparatedByAComment() {
+        String masked = OfflineImportLogRedactor.mask(
+                "ALTER ROLE app PASSWORD /* rotate */ 'secret6';");
+        assertFalse(masked.contains("secret6"));
+        assertTrue(masked.contains("PASSWORD /* rotate */ ******"));
+    }
+
+    @Test
     void masksNativeToolCredentials() {
         String masked = OfflineImportLogRedactor.mask(
                 "USERID=app/\"Pwd/123\"@host:5236 PGPASSWORD=secret4 password=secret5");
