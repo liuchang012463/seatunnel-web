@@ -275,7 +275,13 @@ public class JobResultHandler {
                         + "instanceId={}, engineId={}", instanceId, engineId);
                 return;
             }
-            JobStatus localStatus = JobStatus.fromString(instance.getJobStatus());
+            // Legacy rows may still carry the British spelling CANCELLED; the enum only knows
+            // CANCELED, and an unparseable status would silently skip the orphan cancellation.
+            String storedStatus = instance.getJobStatus();
+            if ("CANCELLED".equalsIgnoreCase(storedStatus)) {
+                storedStatus = JobStatus.CANCELED.name();
+            }
+            JobStatus localStatus = JobStatus.fromString(storedStatus);
             if (!localStatus.isEndState() || JobStatus.FINISHED.equals(localStatus)) {
                 return;
             }

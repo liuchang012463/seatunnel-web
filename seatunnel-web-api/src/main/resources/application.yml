@@ -160,6 +160,10 @@ seatunnel:
   result:
     poll-interval-ms: 2000
     poll-timeout-ms: 0
+    # A watcher that keeps reading an unknown engine status gives up after this many consecutive
+    # polls and leaves the instance to the recovery scheduler; keeps a permanently unknown
+    # status from pinning a watcher thread when poll-timeout-ms is 0.
+    unknown-status-poll-limit: 150
 
   streaming:
     metrics:

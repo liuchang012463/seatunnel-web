@@ -34,6 +34,14 @@ public class StreamingJobResultWatcher {
     @Value("${seatunnel.result.poll-timeout-ms}")
     private long pollTimeoutMs;
 
+    /**
+     * Consecutive unknown-status polls one watcher tolerates before it gives up. Giving up is
+     * safe: the instance stays running-like and the recovery scheduler reconciles it as soon as
+     * the Engine reports a status this web knows (or stops answering).
+     */
+    @Value("${seatunnel.result.unknown-status-poll-limit:150}")
+    private int unknownStatusPollLimit;
+
     public void registerByRest(JobRuntimeContext context) {
         executor.submit(() -> watch(context));
     }
@@ -43,6 +51,7 @@ public class StreamingJobResultWatcher {
 
         Long instanceId = context.getInstanceId();
         String engineId = context.getEngineId();
+        int unknownStatusPolls = 0;
 
         try {
             while (true) {
@@ -61,11 +70,23 @@ public class StreamingJobResultWatcher {
                 JobStatus status = parseJobStatus(statusStr);
 
                 if (status == null) {
+                    // Unknown is not evidence of a final state, so the job keeps being polled
+                    // instead of being failed — but only for a bounded streak, otherwise a
+                    // permanently unknown status pins this thread.
+                    unknownStatusPolls++;
+                    if (unknownStatusPolls >= unknownStatusPollLimit) {
+                        log.warn("Streaming job status stayed unknown for {} polls, releasing the "
+                                        + "watcher; the recovery scheduler reconciles the instance, "
+                                        + "instanceId={}, engineId={}, status={}",
+                                unknownStatusPollLimit, instanceId, engineId, statusStr);
+                        return;
+                    }
                     log.warn("Unknown streaming job status, instanceId={}, engineId={}, status={}, resp={}",
                             instanceId, engineId, statusStr, jobInfo);
                     sleepQuietly();
                     continue;
                 }
+                unknownStatusPolls = 0;
 
                 if (isRunningStatus(status)) {
                     sleepQuietly();

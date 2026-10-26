@@ -106,6 +106,18 @@ public class BatchJobSubmitter {
 
             engineId = extractJobId(resp);
             if (!engineId.equals(instance.getEngineJobId())) {
+                // The Engine created a job under another id. That job is invisible to this web
+                // (recovery only reconciles the reserved id), so it is stopped instead of being
+                // left running untracked; a stop failure is logged and the submit still fails.
+                String unexpectedJobId = engineId;
+                try {
+                    restClient.stopJob(clientId, unexpectedJobId, false);
+                    jobLogger.warn("Stopped an Engine job that came back with an unexpected id: "
+                            + unexpectedJobId);
+                } catch (Exception stopError) {
+                    log.warn("Could not stop the Engine job with the unexpected id, instanceId={}, "
+                            + "engineJobId={}", instanceId, unexpectedJobId, stopError);
+                }
                 throw new IllegalStateException("Engine returned a different jobId: " + engineId);
             }
             submitted = true;

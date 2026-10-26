@@ -41,6 +41,14 @@ public class JobResultWatcher {
     @Value("${seatunnel.result.poll-timeout-ms}")
     private long pollTimeoutMs;
 
+    /**
+     * Consecutive unknown-status polls one watcher tolerates before it gives up. Giving up is
+     * safe: the instance stays running-like and the recovery scheduler reconciles it as soon as
+     * the Engine reports a status this web knows (or stops answering).
+     */
+    @Value("${seatunnel.result.unknown-status-poll-limit:150}")
+    private int unknownStatusPollLimit;
+
     public void registerByRest(final JobRuntimeContext context) {
         if (context == null) {
             log.warn("Skip registering REST job result watcher because context is null");
@@ -61,6 +69,7 @@ public class JobResultWatcher {
         Long instanceId = context.getInstanceId();
         Long clientId = context.getClientId();
         String engineId = context.getEngineId();
+        int unknownStatusPolls = 0;
 
         try {
             validateContext(context);
@@ -87,7 +96,22 @@ public class JobResultWatcher {
                 JobStatus status = parseJobStatus(statusStr);
                 if (status == null) {
                     // The Engine reports a status this web does not know. The job may still be
-                    // running, so it keeps being polled instead of being failed.
+                    // running, so it keeps being polled instead of being failed — but only for a
+                    // bounded streak, otherwise a permanently unknown status pins this thread.
+                    unknownStatusPolls++;
+                    if (unknownStatusPolls >= unknownStatusPollLimit) {
+                        log.warn(
+                                "Zeta job status stayed unknown for {} polls, releasing the watcher; "
+                                        + "the recovery scheduler reconciles the instance, instanceId={}, "
+                                        + "clientId={}, engineId={}, engineStatus={}",
+                                unknownStatusPollLimit,
+                                instanceId,
+                                clientId,
+                                engineId,
+                                statusStr
+                        );
+                        return;
+                    }
                     log.warn(
                             "Unknown Zeta job status, instanceId={}, clientId={}, engineId={}, engineStatus={}",
                             instanceId,
@@ -99,6 +123,7 @@ public class JobResultWatcher {
                     sleepQuietly();
                     continue;
                 }
+                unknownStatusPolls = 0;
 
                 log.debug(
                         "Polling Zeta job status, instanceId={}, clientId={}, engineId={}, engineStatus={}, localStatus={}",
