@@ -496,9 +496,9 @@ public class OpenLineageJobLineageService {
             return submittedInstance;
         }
         copyMissingValues(submittedInstance, details);
-        // selectDetailById reads the table ids from the definition row, which may have been
-        // edited after this instance was submitted; the submitted values are the ones the
-        // Engine actually ran, so they win wherever the submitter recorded them.
+        // selectDetailById prefers the identity captured on the instance row and only falls back
+        // to the definition for rows created before those columns existed; the submitted values
+        // are the ones the Engine actually ran, so they still win wherever they were recorded.
         preferSubmittedValues(submittedInstance, details);
         // This is the immutable configuration used to submit this instance. Do not
         // derive field mappings from a subsequently edited job definition.
@@ -537,6 +537,9 @@ public class OpenLineageJobLineageService {
     }
 
     private static void preferSubmittedValues(JobInstanceVO submitted, JobInstanceVO details) {
+        if (StringUtils.isNotBlank(submitted.getJobName())) {
+            details.setJobName(submitted.getJobName());
+        }
         if (submitted.getSourceDatasourceId() != null) {
             details.setSourceDatasourceId(submitted.getSourceDatasourceId());
         }
@@ -668,12 +671,24 @@ public class OpenLineageJobLineageService {
             registerAlias(aliases, plugin.outputName(), pluginDatasets);
             registerAlias(aliases, plugin.inputName(), pluginDatasets);
         }
-        if (datasets.isEmpty()) {
+        if (datasets.isEmpty() && !hasPatternSubscription(plugins)) {
+            // The instance snapshot is only a fallback for a plugin whose tables could not be
+            // read. A pattern subscription has no dataset on purpose — its topic option is a
+            // regex, and the snapshot of such a job stores that regex as its "table".
             for (String table : parseTableList(instanceTable)) {
                 addDataset(datasets, instanceDatasourceId, table, dataSourceCache);
             }
         }
         return new ResolvedSide(datasets, aliases);
+    }
+
+    private static boolean hasPatternSubscription(List<OpenLineageJobTopology.Plugin> plugins) {
+        for (OpenLineageJobTopology.Plugin plugin : plugins) {
+            if (plugin.pattern()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void registerAlias(
@@ -760,7 +775,9 @@ public class OpenLineageJobLineageService {
         if (parameters == null) {
             return null;
         }
-        for (String key : List.of("url", "base-url", "fenodes", "bootstrap.servers")) {
+        // "bootstrapServers" is the JSON key of the Kafka datasource connection params; a job
+        // configuration spells the same value "bootstrap.servers".
+        for (String key : List.of("url", "base-url", "fenodes", "bootstrap.servers", "bootstrapServers")) {
             JsonNode value = parameters.get(key);
             if (value != null && StringUtils.isNotBlank(value.asText())) {
                 return StringUtils.trimToNull(value.asText());

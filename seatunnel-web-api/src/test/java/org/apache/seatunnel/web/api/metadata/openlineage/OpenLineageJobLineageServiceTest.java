@@ -205,6 +205,136 @@ class OpenLineageJobLineageServiceTest {
         assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
     }
 
+    /**
+     * A message-broker job reads and writes topics; a topic is the dataset of the plugin, so a
+     * Kafka job must publish its topics instead of falling back to the instance table. The
+     * multi-source case has no dataSourceId in the configuration, so each plugin's datasource is
+     * resolved by its bootstrap servers — the key the local datasource stores as
+     * "bootstrapServers".
+     */
+    @Test
+    void publishesTheTopicsOfAKafkaJobAsDatasets() throws Exception {
+        JobInstanceVO submitted = instance();
+        // The instance snapshot names a table: only the parsed topics may be published.
+        submitted.setSourceTable("instance.source.table");
+        submitted.setSinkTable("instance.sink.table");
+        submitted.setRuntimeConfig("""
+                source = [
+                    { Kafka { topic="orders-topic", bootstrap.servers="kafka-a:9092" } },
+                    { Kafka { topic="customers-topic", bootstrap.servers="kafka-b:9092" } }
+                ]
+                sink {
+                    Kafka {
+                        topic="orders-dwd-topic"
+                        bootstrap.servers="kafka-b:9092"
+                    }
+                }
+                """);
+        DataSource sourceA = dataSource(10L, "bi_src_mysql", "MYSQL");
+        sourceA.setConnectionParams("{\"bootstrapServers\":\"kafka-a:9092\"}");
+        DataSource sourceB = dataSource(20L, "bi_tidb_doris", "DORIS");
+        sourceB.setConnectionParams("{\"bootstrapServers\":\"kafka-b:9092\"}");
+        when(dataSourceDao.queryAll()).thenReturn(List.of(sourceA, sourceB));
+
+        service.recordStart(submitted, "engine-job-77", true);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.get(0));
+        assertEquals(2, event.path("inputs").size());
+        assertEquals("orders-topic", event.path("inputs").get(0).path("name").asText());
+        assertEquals("customers-topic", event.path("inputs").get(1).path("name").asText());
+        assertEquals("orders-dwd-topic", event.path("outputs").get(0).path("name").asText());
+    }
+
+    /**
+     * A pattern subscription has no dataset: the topic option is a regular expression, and the
+     * instance snapshot of such a job stores that regex as its "table". Neither may be published.
+     */
+    @Test
+    void doesNotPublishAPatternSubscriptionAsADataset() {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable("orders.$");
+        submitted.setSinkTable("orders-dwd-topic");
+        submitted.setRuntimeConfig("""
+                source {
+                    Kafka {
+                        topic="orders.$"
+                        pattern=true
+                        bootstrap.servers="kafka-a:9092"
+                    }
+                }
+                sink {
+                    Kafka {
+                        topic="orders-dwd-topic"
+                        bootstrap.servers="kafka-b:9092"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-78", true);
+
+        assertTrue(published.isEmpty());
+    }
+
+    /**
+     * A stored runtime config may still carry the legacy shape where the regex sits in
+     * "pattern". Such an instance must not publish the regex, and the instance-table fallback of
+     * the same side is suppressed as well: the snapshot of such a job holds the regex too.
+     */
+    @Test
+    void doesNotPublishALegacyPatternExpression() {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable("orders.$");
+        submitted.setSinkTable("orders-dwd-topic");
+        submitted.setRuntimeConfig("""
+                source {
+                    Kafka {
+                        topic="orders.$"
+                        pattern="orders.$"
+                        bootstrap.servers="kafka-a:9092"
+                    }
+                }
+                sink {
+                    Kafka {
+                        topic="orders-dwd-topic"
+                        bootstrap.servers="kafka-b:9092"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-79", true);
+
+        assertTrue(published.isEmpty());
+    }
+
+    /**
+     * A pattern plugin on a side suppresses the instance-table fallback for that whole side: the
+     * stored snapshot names the regex, so the literal plugin's own dynamic table cannot be
+     * recovered from it either.
+     */
+    @Test
+    void aPatternSubscriptionSuppressesTheInstanceFallbackOfTheSameSide() {
+        JobInstanceVO submitted = instance();
+        submitted.setSourceTable("orders.$");
+        submitted.setSinkTable("orders-dwd-topic");
+        submitted.setRuntimeConfig("""
+                source = [
+                    { Kafka { topic="orders.$", pattern=true, bootstrap.servers="kafka-a:9092" } },
+                    { Jdbc { table="${table_name}", url="jdbc:mysql://host:3306/db" } }
+                ]
+                sink {
+                    Kafka {
+                        topic="orders-dwd-topic"
+                        bootstrap.servers="kafka-b:9092"
+                    }
+                }
+                """);
+
+        service.recordStart(submitted, "engine-job-80", true);
+
+        assertTrue(published.isEmpty());
+    }
+
     @Test
     void fallsBackToTheInstanceTableWhenTheSinkUsesADynamicTableName() throws Exception {
         JobInstanceVO submitted = instance();

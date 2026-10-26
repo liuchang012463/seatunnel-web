@@ -44,6 +44,11 @@ public final class OpenLineageJobTopology {
     /** Keys that may carry a table list, in the order they are read. */
     private static final List<String> TABLE_LIST_KEYS =
             List.of("table_list", "source_table_list", "sink_table_list", "table-names", "table_names");
+    /**
+     * Message-broker dataset keys. A Kafka/Mqtt/Pulsar topic is the dataset of the plugin and is
+     * modeled like a table path: the topic name under the datasource namespace.
+     */
+    private static final List<String> TOPIC_LIST_KEYS = List.of("topic", "topics");
     /** Keys that may carry the local datasource id of the plugin. */
     private static final List<String> DATASOURCE_ID_KEYS =
             List.of("dataSourceId", "datasourceId", "data_source_id");
@@ -69,6 +74,8 @@ public final class OpenLineageJobTopology {
      * @param username connection user of the plugin, used to disambiguate the datasource
      * @param inputName plugin output consumed by this plugin, the identity a transform uses
      * @param outputName plugin output this plugin produces, the identity a transform reads
+     * @param pattern the plugin subscribes by regular expression (Kafka pattern=true), so its
+     *     topic option is not a dataset name
      */
     public record Plugin(
             String configPath,
@@ -77,7 +84,8 @@ public final class OpenLineageJobTopology {
             String url,
             String username,
             String inputName,
-            String outputName) {
+            String outputName,
+            boolean pattern) {
     }
 
     /**
@@ -166,20 +174,32 @@ public final class OpenLineageJobTopology {
     }
 
     private static Plugin plugin(Config config, String configPath) {
+        boolean pattern = patternSubscription(config);
         return new Plugin(
                 configPath,
-                tables(config),
+                tables(config, pattern),
                 datasourceId(config),
-                string(config, "url"),
+                // A message-broker plugin has no url: its connection is the bootstrap servers,
+                // which is how the local datasource stores it too.
+                firstNonBlank(string(config, "url"), string(config, "bootstrap.servers")),
                 string(config, "username"),
                 firstNonBlank(string(config, "plugin_input"), string(config, "source_table_name")),
-                firstNonBlank(string(config, "plugin_output"), string(config, "result_table_name")));
+                firstNonBlank(string(config, "plugin_output"), string(config, "result_table_name")),
+                pattern);
     }
 
     /** The concrete tables of one plugin; dynamic placeholders are not tables. */
-    private static List<String> tables(Config plugin) {
+    private static List<String> tables(Config plugin, boolean pattern) {
+        if (pattern) {
+            // A pattern subscription names a regex, never a concrete dataset: no table or topic
+            // option of such a plugin may be published.
+            return new ArrayList<>();
+        }
         Set<String> tables = new LinkedHashSet<>();
         for (String key : TABLE_LIST_KEYS) {
+            addTableList(tables, plugin, key);
+        }
+        for (String key : TOPIC_LIST_KEYS) {
             addTableList(tables, plugin, key);
         }
         if (tables.isEmpty()) {
@@ -306,10 +326,27 @@ public final class OpenLineageJobTopology {
                 || value.contains("${")
                 || value.contains("(")
                 || value.contains("*")
-                || (!quoted && value.chars().anyMatch(Character::isWhitespace))) {
+                || (!quoted && (value.chars().anyMatch(Character::isWhitespace)
+                        || containsRegexMetacharacter(value)))) {
             return;
         }
         tables.add(value);
+    }
+
+    /**
+     * Regex metacharacters a concrete topic or table name never carries unquoted. A legacy
+     * subscription expression ({@code orders-.+}) must not be published as a dataset name.
+     */
+    private static boolean containsRegexMetacharacter(String value) {
+        for (int index = 0; index < value.length(); index++) {
+            char current = value.charAt(index);
+            if (current == '+' || current == '[' || current == ']' || current == '{'
+                    || current == '}' || current == '^' || current == '|'
+                    || current == '\\' || current == '?') {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -649,6 +686,43 @@ public final class OpenLineageJobTopology {
             }
         }
         return null;
+    }
+
+    /**
+     * True when the plugin subscribes to topics by regular expression (Kafka pattern=true). Only
+     * the Kafka source writes this key today; a connector that ever reuses it with another
+     * meaning has to revisit this rule.
+     */
+    private static boolean patternSubscription(Config plugin) {
+        if (!plugin.hasPath("pattern")) {
+            return false;
+        }
+        try {
+            ConfigValue value = plugin.getValue("pattern");
+            if (value.valueType() == ConfigValueType.BOOLEAN) {
+                return Boolean.TRUE.equals(value.unwrapped());
+            }
+            if (value.valueType() == ConfigValueType.STRING) {
+                String text = StringUtils.trimToNull(value.unwrapped().toString());
+                if (text == null) {
+                    return false;
+                }
+                if ("true".equalsIgnoreCase(text)) {
+                    return true;
+                }
+                if ("false".equalsIgnoreCase(text)) {
+                    return false;
+                }
+                // Older Web payloads stored the regex expression itself in "pattern"; the
+                // current builder migrates such a value to topic with pattern=true. An already
+                // stored runtime config keeps the old shape, so it is still a pattern
+                // subscription and must not be read as a topic name.
+                return true;
+            }
+        } catch (ConfigException ignored) {
+            // An unreadable flag keeps the default: treat the topic as a concrete name.
+        }
+        return false;
     }
 
     private static String string(Config config, String key) {

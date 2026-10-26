@@ -95,8 +95,95 @@ class OpenLineageJobTopologyTest {
         assertEquals("source[0].Jdbc", topology.sources().get(0).configPath());
         assertEquals(List.of("db.orders"), topology.sources().get(0).tables());
         assertEquals("source[1].Kafka", topology.sources().get(1).configPath());
-        // A topic is not a table, so the plugin contributes no dataset.
-        assertTrue(topology.sources().get(1).tables().isEmpty());
+        // A topic is the dataset of a message-broker plugin, exactly like a table path.
+        assertEquals(List.of("orders-topic"), topology.sources().get(1).tables());
+    }
+
+    /** A pattern subscription names a regex, not a dataset: it must not be published. */
+    @Test
+    void doesNotTreatAPatternSubscriptionAsATopicDataset() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Kafka {
+                        topic="orders.$"
+                        pattern=true
+                    }
+                }
+                """));
+
+        assertTrue(topology.sources().get(0).tables().isEmpty());
+    }
+
+    /** The flag may also be written as a string, and a plain subscription keeps its topics. */
+    @Test
+    void readsAPatternFlagWrittenAsAString() {
+        OpenLineageJobTopology.Topology pattern = OpenLineageJobTopology.parse(config("""
+                source {
+                    Kafka {
+                        topic="orders.$"
+                        pattern="true"
+                    }
+                }
+                """));
+        assertTrue(pattern.sources().get(0).tables().isEmpty());
+
+        OpenLineageJobTopology.Topology plain = OpenLineageJobTopology.parse(config("""
+                source {
+                    Kafka {
+                        topic="orders-topic"
+                        pattern=false
+                    }
+                }
+                """));
+        assertEquals(List.of("orders-topic"), plain.sources().get(0).tables());
+    }
+
+    /** The plural topic key is a dataset list like the table list keys. */
+    @Test
+    void readsEveryTopicOfAPluralTopicList() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Kafka {
+                        topics=["orders-topic", "customers-topic"]
+                    }
+                }
+                """));
+
+        assertEquals(List.of("orders-topic", "customers-topic"),
+                topology.sources().get(0).tables());
+    }
+
+    /**
+     * Older payloads stored the regex itself in "pattern": such a value is a pattern
+     * subscription, not a topic name.
+     */
+    @Test
+    void treatsALegacyPatternExpressionAsAPatternSubscription() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Kafka {
+                        topic="orders.$"
+                        pattern="orders.$"
+                    }
+                }
+                """));
+
+        assertTrue(topology.sources().get(0).pattern());
+        assertTrue(topology.sources().get(0).tables().isEmpty());
+    }
+
+    /** A regex-shaped table option is an expression, not a concrete dataset name. */
+    @Test
+    void doesNotTreatARegexShapedTableAsADataset() {
+        OpenLineageJobTopology.Topology topology = OpenLineageJobTopology.parse(config("""
+                source {
+                    Jdbc {
+                        table="orders-[0-9]+"
+                    }
+                }
+                """));
+
+        assertTrue(topology.sources().get(0).tables().isEmpty());
     }
 
     @Test
