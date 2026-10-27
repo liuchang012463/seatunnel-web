@@ -26,11 +26,11 @@ public class OfflineImportProperties {
      */
     private long sqlMaxFileBytes = 67108864L;
 
-    /** Per-statement JDBC timeout; 0 disables it. */
-    private long sqlStatementTimeoutSeconds = 3600L;
-
     /** Upper bound for one DMP backup downloaded to the scratch directory. */
     private long dmpMaxFileBytes = 10737418240L;
+
+    /** Per-statement wall-clock limit for JDBC SQL imports. */
+    private int sqlStatementTimeoutSeconds = 300;
 
     /** Hard wall-clock limit for one external tool process. */
     private long processTimeoutMinutes = 240L;

@@ -20,10 +20,33 @@ import java.util.Set;
  *
  * <p>Statements are returned without their terminating semicolon. A COPY
  * block is returned as one statement, including its raw data lines and the
- * closing {@code \.} marker; {@link SqlScriptImportRunner} turns it into
- * INSERT batches before execution.</p>
+ * closing {@code \.} marker. The typed parse API keeps COPY data separate
+ * for native driver execution and validates client directives before import.</p>
  */
 public final class SqlScriptSplitter {
+
+    /** One executable SQL statement, a PostgreSQL COPY payload, or a client directive. */
+    public record Statement(String sql, String copyData, String directive) {
+        public static Statement sql(String sql) {
+            return new Statement(sql, null, null);
+        }
+
+        public static Statement copy(String sql, String data) {
+            return new Statement(sql, data, null);
+        }
+
+        public static Statement directive(String directive) {
+            return new Statement(null, null, directive);
+        }
+
+        public boolean isCopy() {
+            return copyData != null;
+        }
+
+        public boolean isDirective() {
+            return directive != null;
+        }
+    }
 
     private enum UnitKind {
         PROCEDURE,
@@ -76,7 +99,17 @@ public final class SqlScriptSplitter {
     }
 
     public static List<String> split(String script) {
-        List<String> statements = new ArrayList<>();
+        return parse(script).stream()
+                .filter(statement -> !statement.isDirective())
+                .map(statement -> statement.isCopy()
+                        ? statement.sql() + ";\n" + statement.copyData() + "\\."
+                        : statement.sql())
+                .toList();
+    }
+
+    /** Parses executable SQL, opaque COPY payloads, and client directives separately. */
+    public static List<Statement> parse(String script) {
+        List<Statement> statements = new ArrayList<>();
         if (script == null || script.isEmpty()) {
             return statements;
         }
@@ -92,6 +125,17 @@ public final class SqlScriptSplitter {
         while (i < length) {
             char c = script.charAt(i);
             char next = i + 1 < length ? script.charAt(i + 1) : '\0';
+
+            if (c == '\\' && isStatementStart(current) && isLineStart(script, i)) {
+                int lineEnd = script.indexOf('\n', i);
+                if (lineEnd < 0) {
+                    lineEnd = length;
+                }
+                statements.add(Statement.directive(script.substring(i, lineEnd).trim()));
+                current.setLength(0);
+                i = lineEnd;
+                continue;
+            }
 
             if (c == '-' && next == '-') {
                 int end = skipLineComment(script, i);
@@ -173,7 +217,7 @@ public final class SqlScriptSplitter {
                 continue;
             }
 
-            if (Character.isLetter(c)) {
+            if (Character.isLetter(c) || c == '_' || c == '$') {
                 int wordEnd = i;
                 while (wordEnd < length && isIdentifierChar(script.charAt(wordEnd))) {
                     wordEnd++;
@@ -314,9 +358,20 @@ public final class SqlScriptSplitter {
                 i++;
                 if (unit == null) {
                     if (isCopyFromStdin(current)) {
-                        int dataEnd = consumeCopyData(script, i);
-                        current.append(script, i, dataEnd);
-                        i = dataEnd;
+                        int dataStart = i;
+                        if (dataStart < length && script.charAt(dataStart) == '\r') {
+                            dataStart++;
+                        }
+                        if (dataStart < length && script.charAt(dataStart) == '\n') {
+                            dataStart++;
+                        }
+                        CopyPayload payload = readCopyPayload(script, dataStart);
+                        String header = current.toString().trim();
+                        statements.add(Statement.copy(header.substring(0, header.length() - 1), payload.data()));
+                        current.setLength(0);
+                        caseDepth = 0;
+                        i = payload.nextIndex();
+                        continue;
                     }
                     addIfMeaningful(statements, current.toString(), false);
                     current.setLength(0);
@@ -513,7 +568,7 @@ public final class SqlScriptSplitter {
     }
 
     private static boolean isIdentifierChar(char c) {
-        return Character.isLetterOrDigit(c) || c == '_';
+        return Character.isLetterOrDigit(c) || c == '_' || c == '$';
     }
 
     /** Block comments nest in PostgreSQL-lineage dialects; mirror that here. */
@@ -613,7 +668,8 @@ public final class SqlScriptSplitter {
             return false;
         }
         int j = i + 1;
-        while (j < script.length() && isIdentifierChar(script.charAt(j))) {
+        while (j < script.length()
+                && (Character.isLetterOrDigit(script.charAt(j)) || script.charAt(j) == '_')) {
             j++;
         }
         return j < script.length() && script.charAt(j) == '$';
@@ -696,22 +752,42 @@ public final class SqlScriptSplitter {
         return CopyDataConverter.isCopyFromStdin(statement.toString());
     }
 
-    /** Consumes raw COPY data through the line that contains only {@code \.}. */
-    private static int consumeCopyData(String script, int from) {
+    private record CopyPayload(String data, int nextIndex) {
+    }
+
+    private static CopyPayload readCopyPayload(String script, int from) {
+        StringBuilder data = new StringBuilder();
         int lineStart = from;
-        while (lineStart < script.length()) {
+        while (lineStart <= script.length()) {
             int lineEnd = script.indexOf('\n', lineStart);
-            int contentEnd = lineEnd < 0 ? script.length() : lineEnd;
-            String line = script.substring(lineStart, contentEnd).trim();
-            if ("\\.".equals(line)) {
-                return contentEnd;
+            boolean hasNewline = lineEnd >= 0;
+            if (!hasNewline) {
+                lineEnd = script.length();
             }
-            if (lineEnd < 0) {
-                return script.length();
+            int contentEnd = lineEnd > lineStart && script.charAt(lineEnd - 1) == '\r'
+                    ? lineEnd - 1 : lineEnd;
+            if ("\\.".equals(script.substring(lineStart, contentEnd))) {
+                return new CopyPayload(data.toString(), hasNewline ? lineEnd + 1 : lineEnd);
             }
-            lineStart = lineEnd + 1;
+            data.append(script, lineStart, lineEnd);
+            if (hasNewline) {
+                data.append('\n');
+                lineStart = lineEnd + 1;
+            } else {
+                break;
+            }
         }
-        return script.length();
+        throw new IllegalArgumentException("COPY FROM STDIN 数据段缺少独立的 \\. 结束行");
+    }
+
+    private static boolean isLineStart(String script, int index) {
+        int lineStart = script.lastIndexOf('\n', index - 1) + 1;
+        for (int i = lineStart; i < index; i++) {
+            if (!Character.isWhitespace(script.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isSlashTerminator(String script, int i) {
@@ -727,7 +803,7 @@ public final class SqlScriptSplitter {
     }
 
     private static void addIfMeaningful(
-            List<String> statements, String raw, boolean keepTerminator) {
+            List<Statement> statements, String raw, boolean keepTerminator) {
         String trimmed = raw.trim();
         if (!keepTerminator && trimmed.endsWith(";")) {
             trimmed = trimmed.substring(0, trimmed.length() - 1).trim();
@@ -735,6 +811,6 @@ public final class SqlScriptSplitter {
         if (trimmed.isEmpty() || isStatementStart(new StringBuilder(trimmed))) {
             return;
         }
-        statements.add(trimmed);
+        statements.add(Statement.sql(trimmed));
     }
 }

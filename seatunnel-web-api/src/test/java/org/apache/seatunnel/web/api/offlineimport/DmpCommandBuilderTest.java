@@ -32,6 +32,39 @@ class DmpCommandBuilderTest {
     }
 
     @Test
+    void damengShowCommandIsReadOnlyAndDoesNotApplyImportFilters() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.damengShow(
+                "/opt/dmdbms/bin/dimp", "h", "5236", "u", "Pwd@123", DMP, LOG);
+
+        assertTrue(command.command().contains("SHOW=Y"));
+        assertFalse(command.command().toString().contains("SCHEMAS="));
+        assertFalse(command.command().toString().contains("REMAP_SCHEMA="));
+        assertFalse(command.command().toString().contains("IGNORE="));
+    }
+
+    @Test
+    void kingbaseListCommandDoesNotConnectToTargetOrPassCredentials() {
+        DmpCommandBuilder.DmpCommand command =
+                DmpCommandBuilder.kingbaseList("/usr/bin/sys_restore", DMP, "source_schema");
+
+        assertEquals(
+                java.util.List.of("/usr/bin/sys_restore", "--list", "--schema=source_schema",
+                        "--strict-names", DMP.toAbsolutePath().toString()),
+                command.command());
+        assertTrue(command.environment().isEmpty());
+    }
+
+    @Test
+    void kingbaseListOmitsStrictSchemaFilterWhenNoSourceIsSelected() {
+        DmpCommandBuilder.DmpCommand command =
+                DmpCommandBuilder.kingbaseList("/usr/bin/sys_restore", DMP, " ");
+
+        assertEquals(
+                java.util.List.of("/usr/bin/sys_restore", "--list", DMP.toAbsolutePath().toString()),
+                command.command());
+    }
+
+    @Test
     void damengCommandWithOnlyTargetSchemaSkipsRemap() {
         DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
                 "/opt/dmdbms/bin/dimp", "h", "5236", "u", "p", DMP, LOG, null, "TEST", false);
@@ -53,47 +86,100 @@ class DmpCommandBuilderTest {
         int dbIndex = command.command().indexOf("-d");
         assertEquals("kingbase", command.command().get(dbIndex + 1));
         assertTrue(command.command().contains("--no-owner"));
-        assertTrue(command.command().contains("--schema=public"));
+        assertTrue(command.command().contains("--fromSchema=public"));
+        assertTrue(command.command().contains("--targetSchema=public"));
         assertEquals(DMP.toAbsolutePath().toString(),
                 command.command().get(command.command().size() - 1));
-        assertEquals(Map.of("PGPASSWORD", "Secret#9"), command.environment());
+        assertEquals(Map.of("KINGBASE_PASSWORD", "Secret#9"), command.environment());
         assertFalse(String.join(" ", command.command()).contains("Secret#9"));
     }
 
     @Test
     void kingbaseCommandOmitsSchemaFlagWhenBlank() {
         DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
-                "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, null, " ");
+                "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, " ", " ");
 
-        assertFalse(String.join(" ", command.command()).contains("--schema"));
+        assertFalse(String.join(" ", command.command()).contains("Schema"));
     }
 
     @Test
-    void damengUsesSourceSchemaWhenTargetSchemaIsBlank() {
+    void damengCommandUsesSourceAsFilterWhenTargetIsOmitted() {
         DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
-                "/opt/dmdbms/bin/dimp", "h", "5236", "u", "p", DMP, LOG, "SRC", null, true);
+                "/opt/dmdbms/bin/dimp", "h", "5236", "u", "p", DMP, LOG, "SRC", null, false);
 
         assertTrue(command.command().contains("SCHEMAS=SRC"));
         assertFalse(command.command().toString().contains("REMAP_SCHEMA"));
     }
 
     @Test
-    void kingbaseUsesSourceSchemaFromTheDumpWhenPresent() {
-        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
-                "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, "SRC", "DST");
+    void damengCommandOmitsSchemaOptionsWhenBothAreOmitted() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
+                "/opt/dmdbms/bin/dimp", "h", "5236", "u", "p", DMP, LOG, null, null, false);
 
-        assertTrue(command.command().contains("--schema=SRC"));
-        assertFalse(command.command().contains("--schema=DST"));
+        assertFalse(command.command().toString().contains("SCHEMAS="));
+        assertFalse(command.command().toString().contains("REMAP_SCHEMA="));
     }
 
     @Test
-    void damengQuotesPasswordWithSlashAndQuotes() {
+    void damengCommandUsesSameSchemaWhenSourceAndTargetAreEqual() {
         DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
-                "/opt/dmdbms/bin/dimp", "h", "5236", "test", "Pwd/\"x", DMP, LOG, null, null, true);
+                "/opt/dmdbms/bin/dimp", "h", "5236", "u", "p", DMP, LOG, "SAME", "SAME", false);
 
-        assertEquals("USERID=test/\"Pwd/\"\"x\"@h:5236", command.command().get(1));
-        String masked = DmpCommandBuilder.mask(command, "Pwd/\"x");
-        assertFalse(masked.contains("Pwd"));
+        assertTrue(command.command().contains("SCHEMAS=SAME"));
+        assertFalse(command.command().toString().contains("REMAP_SCHEMA"));
+    }
+
+    @Test
+    void damengCommandEscapesEmbeddedDoubleQuotesInPassword() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
+                "/opt/dmdbms/bin/dimp", "h", "5236", "u", "a\"b@c/#", DMP, LOG, null, null, false);
+
+        assertEquals("USERID=u/\"a\"\"b@c/#\"@h:5236", command.command().get(1));
+    }
+
+    @Test
+    void damengCommandQuotesDotInPassword() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.dameng(
+                "/opt/dmdbms/bin/dimp", "h", "5236", "u", "a.b", DMP, LOG, null, null, false);
+
+        assertEquals("USERID=u/\"a.b\"@h:5236", command.command().get(1));
+    }
+
+    @Test
+    void kingbaseCommandUsesSourceForFilteringAndTargetForMapping() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
+                "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, "SRC", "DST");
+
+        assertTrue(command.command().contains("--fromSchema=SRC"));
+        assertTrue(command.command().contains("--targetSchema=DST"));
+        assertFalse(command.command().toString().contains("--schema"));
+    }
+
+    @Test
+    void kingbaseCommandUsesSourceWhenTargetIsOmitted() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
+                "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, "SRC", null);
+
+        assertTrue(command.command().contains("--fromSchema=SRC"));
+        assertTrue(command.command().contains("--targetSchema=SRC"));
+    }
+
+    @Test
+    void kingbaseCommandUsesSameSchemaWhenSourceAndTargetAreEqual() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
+                "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, "SAME", "SAME");
+
+        assertTrue(command.command().contains("--fromSchema=SAME"));
+        assertTrue(command.command().contains("--targetSchema=SAME"));
+    }
+
+    @Test
+    void kingbaseCommandUsesSameNamedSourceWhenSourceIsOmitted() {
+        DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
+                "/usr/bin/sys_restore", "h", "5432", "db", "u", "p", DMP, null, "DST");
+
+        assertTrue(command.command().contains("--fromSchema=DST"));
+        assertTrue(command.command().contains("--targetSchema=DST"));
     }
 
     @Test

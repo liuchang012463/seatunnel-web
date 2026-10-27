@@ -6,6 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SqlScriptSplitterTest {
 
@@ -19,6 +20,19 @@ class SqlScriptSplitterTest {
         assertEquals(3, statements.size());
         assertEquals("CREATE TABLE a (id int)", statements.get(0));
         assertEquals("INSERT INTO a VALUES (2)", statements.get(2));
+    }
+
+    @Test
+    void doesNotTreatKeywordsInsideUnderscoreOrDollarIdentifiersAsBlocks() {
+        List<String> statements = split(
+                "CREATE TABLE _begin(id INT); INSERT INTO _begin VALUES(1); "
+                        + "CREATE TABLE value$case(id INT); INSERT INTO value$case VALUES(2);");
+
+        assertEquals(4, statements.size());
+        assertTrue(statements.get(0).startsWith("CREATE TABLE _begin"));
+        assertTrue(statements.get(1).startsWith("INSERT INTO _begin"));
+        assertTrue(statements.get(2).startsWith("CREATE TABLE value$case"));
+        assertTrue(statements.get(3).startsWith("INSERT INTO value$case"));
     }
 
     @Test
@@ -60,6 +74,16 @@ class SqlScriptSplitterTest {
     }
 
     @Test
+    void sqlFunctionBodyInSingleQuotedStringEndsBeforeFollowingStatement() {
+        List<String> statements = split(
+                "CREATE FUNCTION f() RETURNS integer AS 'SELECT 1' LANGUAGE sql; SELECT 2;");
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).startsWith("CREATE FUNCTION f()"));
+        assertEquals("SELECT 2", statements.get(1));
+    }
+
+    @Test
     void keepsTaggedDollarQuotesSeparateFromUntagged() {
         String script = "DO $body$\n BEGIN\n  NULL;\n END\n $body$;\nSELECT '$$';";
         List<String> statements = split(script);
@@ -82,6 +106,17 @@ class SqlScriptSplitterTest {
                 + "SELECT 1;";
         List<String> statements = split(script);
         assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("v_id INT;"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void keepsMultipleDamengDeclarationsAndTheirSemicolonsInOneProcedure() {
+        String script = "CREATE PROCEDURE p AS a INT; b INT; BEGIN NULL; END; SELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("a INT; b INT; BEGIN"));
         assertEquals("SELECT 1", statements.get(1));
     }
 
@@ -97,6 +132,16 @@ class SqlScriptSplitterTest {
         List<String> statements = split("SELECT CASE WHEN a = 1 THEN 'x' ELSE 'y' END FROM t;\nSELECT 2;");
         assertEquals(2, statements.size());
         assertEquals("SELECT 2", statements.get(1));
+    }
+
+    @Test
+    void endCaseDoesNotReopenTheCaseBlock() {
+        List<String> statements = split(
+                "CREATE PROCEDURE p AS BEGIN CASE WHEN 1 = 1 THEN NULL; END CASE; END; SELECT 1;");
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("END CASE;"));
+        assertEquals("SELECT 1", statements.get(1));
     }
 
     @Test
@@ -127,12 +172,74 @@ class SqlScriptSplitterTest {
     }
 
     @Test
+    void bodylessTriggerDetectionUsesTokensAcrossWhitespaceAndComments() {
+        List<String> statements = split("CREATE\nTRIGGER trg AFTER INSERT ON x "
+                + "/* AS this is only a comment */ FOR EACH ROW EXECUTE FUNCTION fn(); SELECT 2;");
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).startsWith("CREATE\nTRIGGER"));
+        assertEquals("SELECT 2", statements.get(1));
+    }
+
+    @Test
+    void triggerWhenIsNullDoesNotLookLikeAnInlineTriggerBody() {
+        List<String> statements = split("CREATE TRIGGER trg AFTER INSERT ON t FOR EACH ROW "
+                + "WHEN (NEW.id IS NOT NULL) EXECUTE FUNCTION fn(); SELECT 2;");
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("WHEN (NEW.id IS NOT NULL)"));
+        assertEquals("SELECT 2", statements.get(1));
+    }
+
+    @Test
+    void sqlProcedureSingleQuotedBodyEndsBeforeFollowingStatement() {
+        List<String> statements = split(
+                "CREATE PROCEDURE p() LANGUAGE SQL AS 'INSERT INTO t VALUES (1)'; SELECT 2;");
+
+        assertEquals(2, statements.size());
+        assertEquals("SELECT 2", statements.get(1));
+    }
+
+    @Test
     void damengTriggerWithRealBodyStillStaysOneStatement() {
         String script = "CREATE TRIGGER trg BEFORE INSERT ON x FOR EACH ROW "
                 + "DECLARE v INT; BEGIN IF NEW.id > 0 THEN NEW.id := 1; END IF; END;";
         List<String> statements = split(script + "\nSELECT 1;");
         assertEquals(2, statements.size());
         assertTrue(statements.get(0).startsWith("CREATE TRIGGER"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void standaloneDamengSlashTerminatesInsteadOfBeingSentToJdbc() {
+        List<String> statements = split("CREATE PROCEDURE p AS BEGIN NULL; END;\n/\nSELECT 1;");
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.stream().noneMatch("/"::equals));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void keepsNestedProcedureAndPackageEndTogetherUntilSlash() {
+        String script = "CREATE OR REPLACE PACKAGE BODY p AS "
+                + "PROCEDURE q AS BEGIN NULL; END; END;\n/\nSELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("PROCEDURE q AS BEGIN NULL; END; END"));
+        assertEquals("SELECT 1", statements.get(1));
+    }
+
+    @Test
+    void keepsPackageInitializationBlockAndFinalEndTogetherUntilSlash() {
+        String script = "CREATE OR REPLACE PACKAGE BODY p AS\n"
+                + "PROCEDURE q AS BEGIN NULL; END;\n"
+                + "BEGIN NULL; END p;\n/\nSELECT 1;";
+        List<String> statements = split(script);
+
+        assertEquals(2, statements.size());
+        assertTrue(statements.get(0).contains("PROCEDURE q AS BEGIN NULL; END;"));
+        assertTrue(statements.get(0).contains("BEGIN NULL; END p;"));
         assertEquals("SELECT 1", statements.get(1));
     }
 
@@ -155,6 +262,37 @@ class SqlScriptSplitterTest {
         assertEquals(0, split(null).size());
         assertEquals(0, split("").size());
         assertEquals(0, split("   \n -- x \n ").size());
+    }
+
+    @Test
+    void preservesCopyPayloadAsOpaqueDataAndSeparatesClientDirectives() {
+        String script = "-- pg_dump header\n"
+                + "\\restrict dump-key\n"
+                + "CREATE TABLE src.copy_sample (payload text);\n"
+                + "COPY src.copy_sample (payload) FROM stdin;\n"
+                + "value;with;semicolons\n"
+                + "\\connect this-is-copy-data\n"
+                + "\\.\n"
+                + "SELECT 1;\n"
+                + "\\unrestrict dump-key\n";
+
+        List<SqlScriptSplitter.Statement> parsed = SqlScriptSplitter.parse(script);
+
+        assertEquals(5, parsed.size());
+        assertTrue(parsed.get(0).isDirective());
+        assertEquals("\\restrict dump-key", parsed.get(0).directive());
+        assertEquals("CREATE TABLE src.copy_sample (payload text)", parsed.get(1).sql());
+        assertTrue(parsed.get(2).isCopy());
+        assertEquals("COPY src.copy_sample (payload) FROM stdin", parsed.get(2).sql());
+        assertEquals("value;with;semicolons\n\\connect this-is-copy-data\n", parsed.get(2).copyData());
+        assertEquals("SELECT 1", parsed.get(3).sql());
+        assertEquals("\\unrestrict dump-key", parsed.get(4).directive());
+    }
+
+    @Test
+    void rejectsCopyInputWithoutTerminator() {
+        assertThrows(IllegalArgumentException.class, () -> SqlScriptSplitter.parse(
+                "COPY src.t FROM stdin;\nvalue\nSELECT 1;"));
     }
 
     @Test

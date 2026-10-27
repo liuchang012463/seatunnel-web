@@ -144,7 +144,30 @@ const OfflineImportDetailPage: React.FC = () => {
   }
 
   const isSql = String(task.importType || '').endsWith('_SQL');
+  const isDamengDmp = task.importType === 'DAMENG_DMP';
   const statusMeta = STATUS_META[task.status] || { text: task.status, badge: 'default' as const };
+  const importOptionsSummary = task.options
+    ? isSql
+      ? [
+          `编码 ${task.options.encoding || 'UTF-8'}`,
+          `源 Schema 映射 ${
+            task.options.sourceSchema
+              ? `${task.options.sourceSchema} → ${task.targetSchema || task.options.sourceSchema}`
+              : '未设置'
+          }`,
+          `出错${task.options.stopOnError === false ? '继续执行' : '停止'}`,
+        ].join('，')
+      : [
+          task.options.sourceSchema
+            ? `源 Schema ${task.options.sourceSchema}`
+            : task.targetSchema
+              ? `源 Schema 按目标 Schema ${task.targetSchema} 处理`
+              : '源 Schema 未指定',
+          ...(isDamengDmp
+            ? [`${task.options.ignoreErrors === false ? '不忽略' : '忽略'}已存在对象错误`]
+            : []),
+        ].join('，')
+    : '-';
 
   return (
     <div className="min-h-screen bg-white">
@@ -210,17 +233,7 @@ const OfflineImportDetailPage: React.FC = () => {
             </Descriptions.Item>
             {task.options && (
               <Descriptions.Item label="导入选项">
-                {isSql
-                  ? `编码 ${task.options.encoding || 'UTF-8'}，出错${
-                      task.options.stopOnError === false ? '继续执行' : '停止'
-                    }`
-                  : task.importType === 'DAMENG_DMP'
-                    ? `${task.options.sourceSchema ? `源 Schema ${task.options.sourceSchema}，` : ''}${
-                        task.options.ignoreErrors === false ? '不忽略' : '忽略'
-                      }已存在对象错误`
-                    : task.options.sourceSchema
-                      ? `按备份内 Schema ${task.options.sourceSchema} 过滤`
-                      : '恢复备份内全部 Schema'}
+                {importOptionsSummary}
               </Descriptions.Item>
             )}
           </Descriptions>

@@ -13,7 +13,7 @@ import java.util.Map;
  *
  * <p>Dameng uses {@code dimp} with USERID as the first keyword; KingbaseES
  * uses the pg_restore-compatible {@code sys_restore} with the password fed
- * through the PGPASSWORD environment variable instead of the command line.</p>
+ * through the Kingbase client environment instead of the command line.</p>
  */
 public final class DmpCommandBuilder {
 
@@ -37,7 +37,7 @@ public final class DmpCommandBuilder {
             boolean ignoreErrors) {
         List<String> command = new ArrayList<>();
         command.add(dimpPath);
-        command.add("USERID=" + user + "/" + quoteDamengPassword(password) + "@" + host + ":" + port);
+        command.add("USERID=" + user + "/" + encodeDamengPassword(password) + "@" + host + ":" + port);
         command.add("FILE=" + dmpFile.getFileName());
         command.add("LOG=" + logFile.getFileName());
         command.add("DIRECTORY=" + dmpFile.getParent());
@@ -45,15 +45,46 @@ public final class DmpCommandBuilder {
 
         String effectiveSource = StringUtils.trimToNull(sourceSchema);
         String effectiveTarget = StringUtils.trimToNull(targetSchema);
+        String selectedSource = effectiveSource != null ? effectiveSource : effectiveTarget;
+        if (selectedSource != null) {
+            command.add("SCHEMAS=" + selectedSource);
+        }
         if (effectiveSource != null && effectiveTarget != null && !effectiveSource.equals(effectiveTarget)) {
-            command.add("SCHEMAS=" + effectiveSource);
             command.add("REMAP_SCHEMA=" + effectiveSource + ":" + effectiveTarget);
-        } else if (effectiveTarget != null) {
-            command.add("SCHEMAS=" + effectiveTarget);
-        } else if (effectiveSource != null) {
-            command.add("SCHEMAS=" + effectiveSource);
         }
         return new DmpCommand(command, Map.of());
+    }
+
+    /** Builds a DIMP read-only archive inspection command (SHOW=Y). */
+    public static DmpCommand damengShow(
+            String dimpPath,
+            String host,
+            String port,
+            String user,
+            String password,
+            Path dmpFile,
+            Path logFile) {
+        List<String> command = new ArrayList<>();
+        command.add(dimpPath);
+        command.add("USERID=" + user + "/" + encodeDamengPassword(password) + "@" + host + ":" + port);
+        command.add("FILE=" + dmpFile.getFileName());
+        command.add("LOG=" + logFile.getFileName());
+        command.add("DIRECTORY=" + dmpFile.getParent());
+        command.add("SHOW=Y");
+        return new DmpCommand(command, Map.of());
+    }
+
+    /**
+     * DIMP parses its own USERID syntax even when ProcessBuilder bypasses a shell.
+     * Quote passwords containing delimiters or other punctuation, and double
+     * embedded quotes according to the DIMP connection-string rules.
+     */
+    private static String encodeDamengPassword(String password) {
+        if (password == null || password.chars().allMatch(
+                ch -> Character.isLetterOrDigit(ch) || ch == '_' || ch == '-')) {
+            return password;
+        }
+        return "\"" + password.replace("\"", "\"\"") + "\"";
     }
 
     public static DmpCommand kingbase(
@@ -79,34 +110,39 @@ public final class DmpCommandBuilder {
         command.add("--no-password");
         command.add("--no-owner");
         command.add("--no-privileges");
-        // sys_restore --schema is a filter on the dump, not a remap: prefer
-        // the schema recorded inside the backup and fall back to the target.
-        String schema = StringUtils.trimToNull(sourceSchema);
-        if (schema == null) {
-            schema = StringUtils.trimToNull(targetSchema);
-        }
-        if (schema != null) {
-            command.add("--schema=" + schema);
+        String effectiveSource = StringUtils.trimToNull(sourceSchema);
+        String effectiveTarget = StringUtils.trimToNull(targetSchema);
+        String selectedSource = effectiveSource != null ? effectiveSource : effectiveTarget;
+        String selectedTarget = effectiveTarget != null ? effectiveTarget : effectiveSource;
+        if (selectedSource != null) {
+            command.add("--fromSchema=" + selectedSource);
+            command.add("--targetSchema=" + selectedTarget);
         }
         command.add(dmpFile.toAbsolutePath().toString());
 
         Map<String, String> environment = new LinkedHashMap<>();
-        environment.put("PGPASSWORD", password);
+        environment.put("KINGBASE_PASSWORD", password);
         return new DmpCommand(command, environment);
     }
 
     /**
-     * dimp requires a password containing delimiters such as {@code /} or
-     * {@code @} to be double-quoted inside USERID.
+     * Uses sys_restore's archive-list mode without connecting to the target
+     * database. When a source schema is selected, let the vendor tool apply
+     * that filter and fail strictly if the archive contains no matching TOC
+     * entries. This also handles data-only archives, which have no SCHEMA TOC
+     * row of their own.
      */
-    private static String quoteDamengPassword(String password) {
-        if (StringUtils.isEmpty(password)) {
-            return "";
+    public static DmpCommand kingbaseList(String sysRestorePath, Path dmpFile, String sourceSchema) {
+        List<String> command = new ArrayList<>();
+        command.add(sysRestorePath);
+        command.add("--list");
+        String effectiveSource = StringUtils.trimToNull(sourceSchema);
+        if (effectiveSource != null) {
+            command.add("--schema=" + effectiveSource);
+            command.add("--strict-names");
         }
-        if (password.matches("[A-Za-z0-9_#]+")) {
-            return password;
-        }
-        return "\"" + password.replace("\"", "\"\"") + "\"";
+        command.add(dmpFile.toAbsolutePath().toString());
+        return new DmpCommand(command, Map.of());
     }
 
     /** Command rendering with the password masked, safe for persisted logs. */
