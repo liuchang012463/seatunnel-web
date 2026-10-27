@@ -162,15 +162,6 @@ const CreateOfflineImportPage: React.FC = () => {
       message.warning(`仅支持 ${accept} 文件`);
       return;
     }
-    if (
-      importType === 'KINGBASE_DMP'
-      && values.sourceSchema
-      && values.targetSchema
-      && values.sourceSchema !== values.targetSchema
-    ) {
-      message.warning('人大金仓 DMP 不支持 Schema 重映射，源 Schema 与目标 Schema 必须一致');
-      return;
-    }
     setSubmitting(true);
     try {
       const response = await offlineImportTaskApi.create({
