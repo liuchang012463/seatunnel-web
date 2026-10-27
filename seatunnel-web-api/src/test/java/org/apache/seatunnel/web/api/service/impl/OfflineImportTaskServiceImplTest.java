@@ -38,6 +38,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
@@ -491,6 +493,41 @@ class OfflineImportTaskServiceImplTest {
         task.setTargetDatasourceId(DATASOURCE_ID);
         task.setOptionsJson("{}");
         return task;
+    }
+
+    @Test
+    void createsKingbaseTargetSchemaIdempotentlyWhenMetadataFoldsIdentifierCase() throws Exception {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        when(connection.createStatement()).thenReturn(statement);
+
+        ReflectionTestUtils.invokeMethod(
+                service, "ensureTargetSchema", connection, DbType.KINGBASE,
+                "CODEX_REVIEW_KB_SQL_20261027", 30, new ExecutionLogBuffer(8_192));
+
+        verify(connection, never()).getMetaData();
+        verify(statement).setQueryTimeout(30);
+        verify(statement).execute("CREATE SCHEMA IF NOT EXISTS \"CODEX_REVIEW_KB_SQL_20261027\"");
+    }
+
+    @Test
+    void preservesExactSchemaCaseForDameng() throws Exception {
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        ResultSet schemas = mock(ResultSet.class);
+        Statement statement = mock(Statement.class);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getSchemas()).thenReturn(schemas);
+        when(schemas.next()).thenReturn(true, false);
+        when(schemas.getString("TABLE_SCHEM")).thenReturn("mixed");
+        when(connection.createStatement()).thenReturn(statement);
+
+        ReflectionTestUtils.invokeMethod(
+                service, "ensureTargetSchema", connection, DbType.DAMENG,
+                "MiXeD", 30, new ExecutionLogBuffer(8_192));
+
+        verify(statement).setQueryTimeout(30);
+        verify(statement).execute("CREATE SCHEMA \"MiXeD\"");
     }
 
     private FileResource readyFileResource(Integer ownerId) {

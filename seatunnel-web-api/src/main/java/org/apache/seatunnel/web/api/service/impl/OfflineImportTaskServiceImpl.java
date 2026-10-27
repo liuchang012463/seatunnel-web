@@ -336,8 +336,8 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
             String effectiveTarget = StringUtils.trimToNull(
                     StringUtils.defaultIfBlank(task.getTargetSchema(), options.getSourceSchema()));
-            ensureTargetSchema(connection, effectiveTarget, offlineImportProperties.getSqlStatementTimeoutSeconds(),
-                    executionLog);
+            ensureTargetSchema(connection, dataSource.getDbType(), effectiveTarget,
+                    offlineImportProperties.getSqlStatementTimeoutSeconds(), executionLog);
             runner.runPrelude(schemaPrelude(dataSource.getDbType(), effectiveTarget));
 
             AtomicLong lastFlush = new AtomicLong(System.currentTimeMillis());
@@ -556,12 +556,21 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         return prelude;
     }
 
-    private void ensureTargetSchema(Connection connection, String targetSchema, int timeoutSeconds,
+    private void ensureTargetSchema(Connection connection, DbType dbType, String targetSchema, int timeoutSeconds,
             ExecutionLogBuffer executionLog) throws java.sql.SQLException {
         if (StringUtils.isBlank(targetSchema)) {
             return;
         }
         String expected = targetSchema.trim();
+        if (dbType == DbType.KINGBASE) {
+            try (Statement statement = connection.createStatement()) {
+                statement.setQueryTimeout(Math.max(1, timeoutSeconds));
+                statement.execute("CREATE SCHEMA IF NOT EXISTS " + SqlSchemaMapper.quoteIdentifier(expected));
+            }
+            executionLog.line("已确保目标 Schema " + expected + " 存在");
+            return;
+        }
+
         boolean exists = false;
         try (ResultSet schemas = connection.getMetaData().getSchemas()) {
             while (schemas.next()) {
