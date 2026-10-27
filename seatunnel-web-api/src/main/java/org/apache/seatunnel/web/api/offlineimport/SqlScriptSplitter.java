@@ -126,7 +126,7 @@ public final class SqlScriptSplitter {
             char c = script.charAt(i);
             char next = i + 1 < length ? script.charAt(i + 1) : '\0';
 
-            if (c == '\\' && isStatementStart(current) && isLineStart(script, i)) {
+            if ((c == '\\' || c == '@') && isStatementStart(current) && isLineStart(script, i)) {
                 int lineEnd = script.indexOf('\n', i);
                 if (lineEnd < 0) {
                     lineEnd = length;
