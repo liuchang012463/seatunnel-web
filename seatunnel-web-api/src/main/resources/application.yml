@@ -263,6 +263,15 @@ seatunnel:
       catalog-concurrency: ${SEATUNNEL_WEB_DUCKDB_CATALOG_CONCURRENCY:2}
     engine:
       driver-location-mappings: ${SEATUNNEL_WEB_ENGINE_DRIVER_LOCATION_MAPPINGS:}
+    offline-import:
+      work-dir: ${SEATUNNEL_WEB_OFFLINE_IMPORT_WORK_DIR:tmp/offline-import}
+      sql-max-file-bytes: ${SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_MAX_FILE_BYTES:67108864}
+      sql-statement-timeout-seconds: ${SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_STATEMENT_TIMEOUT_SECONDS:3600}
+      dmp-max-file-bytes: ${SEATUNNEL_WEB_OFFLINE_IMPORT_DMP_MAX_FILE_BYTES:10737418240}
+      process-timeout-minutes: ${SEATUNNEL_WEB_OFFLINE_IMPORT_PROCESS_TIMEOUT_MINUTES:240}
+      stale-active-minutes: ${SEATUNNEL_WEB_OFFLINE_IMPORT_STALE_ACTIVE_MINUTES:5}
+      dameng-dimp-path: ${SEATUNNEL_WEB_OFFLINE_IMPORT_DIMP_PATH:}
+      kingbase-sys-restore-path: ${SEATUNNEL_WEB_OFFLINE_IMPORT_SYS_RESTORE_PATH:}
 
 # OpenMetadata Server connection is managed only in 运行运维 → 探查引擎管理.
 # The metadata.openmetadata.* fields below are unused at runtime (legacy shape

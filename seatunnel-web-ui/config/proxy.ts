@@ -13,7 +13,9 @@
 export default {
   dev: {
     '/api/': {
-      target: 'http://localhost:9527',
+      // DEV_API_TARGET lets a parallel checkout point its dev server at a
+      // backend on a non-default port; default keeps the standard 9527.
+      target: process.env.DEV_API_TARGET || 'http://localhost:9527',
       changeOrigin: true,
       pathRewrite: { '^/api': '/api' },
     },
