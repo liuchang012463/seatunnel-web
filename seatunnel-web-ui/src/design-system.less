@@ -793,6 +793,26 @@ select:focus-visible,
   outline-offset: 2px !important;
 }
 
+/* Ant Design 在控件外层绘制焦点，内部编辑元素不再叠加轮廓或边框。 */
+.ant-input:focus-visible,
+.ant-select-selection-search-input:focus-visible,
+.ant-input-number-input:focus-visible,
+.ant-picker-input > input:focus-visible {
+  outline: none !important;
+}
+
+.ant-input-affix-wrapper > input.ant-input,
+.ant-input-affix-wrapper > textarea.ant-input,
+.ant-select .ant-select-selection-search-input,
+.ant-input-number-affix-wrapper .ant-input-number,
+.ant-input-number-input,
+.ant-picker-input > input {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
