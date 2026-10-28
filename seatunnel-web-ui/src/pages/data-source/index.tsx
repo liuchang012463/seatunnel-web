@@ -24,7 +24,12 @@ import EmptyState from './components/EmptyState';
 import SearchBar from './components/SearchBar';
 import MasterDataPage from '../master-data';
 import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from './constants';
-import { DATA_SOURCE_CATEGORIES, DATA_SOURCE_REGISTRY, getDataSourceCategory } from './dataSourceRegistry';
+import {
+  DATA_SOURCE_CATEGORIES,
+  DATA_SOURCE_REGISTRY,
+  filterDataSourceTypesByUsage,
+  getDataSourceCategory,
+} from './dataSourceRegistry';
 import DatabaseIcons from './icon/DatabaseIcons';
 import './index.less';
 import {
@@ -132,8 +137,7 @@ const DataSourcePage: React.FC = () => {
 
       if (usageView) {
         const supportedTypes = new Set(
-          DATA_SOURCE_REGISTRY.filter((item) => item[usageView === 'SOURCE' ? 'source' : 'sink'] === true)
-            .map((item) => item.dbType),
+          filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, usageView).map((item) => item.dbType),
         );
         const requestedTypes = requestParams.dbTypes || DATA_SOURCE_REGISTRY.map((item) => item.dbType);
         requestParams.dbTypes = requestedTypes.filter((dbType) => supportedTypes.has(dbType));

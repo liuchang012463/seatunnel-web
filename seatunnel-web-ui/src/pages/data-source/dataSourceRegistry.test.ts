@@ -1,7 +1,10 @@
 import {
   DATA_SOURCE_CATEGORIES,
+  DATA_SOURCE_REGISTRY,
+  filterDataSourceTypesByUsage,
   getDataSourceCategory,
   groupDataSourcesByCategory,
+  supportsDataSourceUsage,
 } from './dataSourceRegistry';
 
 describe('dataSourceRegistry', () => {
@@ -31,5 +34,23 @@ describe('dataSourceRegistry', () => {
     expect(
       DATA_SOURCE_CATEGORIES.find((category) => category.key === 'API')?.dbTypes,
     ).toEqual(['HTTP']);
+  });
+
+  it('keeps connectors with omitted capability flags available in management views', () => {
+    const types = ['S3', 'SFTP', 'FTP', 'MINIO', 'H2'];
+    const byType = new Map(DATA_SOURCE_REGISTRY.map((item) => [item.dbType, item]));
+
+    types.forEach((dbType) => {
+      const connector = byType.get(dbType);
+      expect(supportsDataSourceUsage(connector, 'SOURCE')).toBe(true);
+      expect(supportsDataSourceUsage(connector, 'SINK')).toBe(true);
+    });
+
+    expect(filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, 'SOURCE').map((item) => item.dbType))
+      .toEqual(expect.arrayContaining(types));
+    expect(filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, 'SINK').map((item) => item.dbType))
+      .toEqual(expect.arrayContaining(types));
+    expect(supportsDataSourceUsage(byType.get('HTTP'), 'SOURCE')).toBe(true);
+    expect(supportsDataSourceUsage(byType.get('HTTP'), 'SINK')).toBe(false);
   });
 });

@@ -12,11 +12,30 @@ export interface DataSourceRegistryItem {
   category: DataSourceCategoryKey;
   connectorType: string;
   pluginName?: string;
+  /** Management views preserve legacy capability when omitted; task selectors keep explicit-true behavior. */
   source?: boolean;
   sink?: boolean;
   realtime?: boolean;
   taskSelector?: boolean;
   creatable?: boolean;
+}
+
+export type DataSourceUsageRole = 'SOURCE' | 'SINK';
+
+/** Missing connector metadata preserves legacy usage; only explicit false disables it. */
+export function supportsDataSourceUsage(
+  item: Pick<DataSourceRegistryItem, 'source' | 'sink'> | undefined,
+  usage: DataSourceUsageRole,
+): boolean {
+  if (!item) return false;
+  return usage === 'SOURCE' ? item.source !== false : item.sink !== false;
+}
+
+export function filterDataSourceTypesByUsage<T extends DataSourceRegistryItem>(
+  items: readonly T[],
+  usage: DataSourceUsageRole,
+): T[] {
+  return items.filter((item) => supportsDataSourceUsage(item, usage));
 }
 
 export interface DataSourceCategory {

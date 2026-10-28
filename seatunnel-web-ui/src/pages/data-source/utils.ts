@@ -1,4 +1,4 @@
-import { DATA_SOURCE_REGISTRY } from './dataSourceRegistry';
+import { DATA_SOURCE_REGISTRY, supportsDataSourceUsage } from './dataSourceRegistry';
 import type { DataSourceConnectionFormValues, DataSourceFormValues, DataSourceRecord } from './types';
 
 export function filterDataSourceList(list: DataSourceRecord[], keyword: string): DataSourceRecord[] {
@@ -48,10 +48,10 @@ export function buildSubmitPayload(
   } = basicValues as DataSourceFormValues & { dataSourceUnit?: string };
 
   const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
-  const sourceEnabled = connector?.source === false
+  const sourceEnabled = !supportsDataSourceUsage(connector, 'SOURCE')
     ? Boolean(previousUsage?.sourceEnabled)
     : usages.includes('SOURCE');
-  const sinkEnabled = connector?.sink === false
+  const sinkEnabled = !supportsDataSourceUsage(connector, 'SINK')
     ? Boolean(previousUsage?.sinkEnabled)
     : usages.includes('SINK');
 

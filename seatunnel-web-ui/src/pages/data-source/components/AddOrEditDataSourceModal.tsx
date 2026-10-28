@@ -3,7 +3,7 @@ import { Button, Form, message, Modal } from 'antd';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { dataSourceGroupList } from '../constants';
 import DatabaseIcons from '../icon/DatabaseIcons';
-import { DATA_SOURCE_REGISTRY } from '../dataSourceRegistry';
+import { DATA_SOURCE_REGISTRY, supportsDataSourceUsage } from '../dataSourceRegistry';
 import {
   createDataSource,
   testDataSourceConnectionWithParams,
@@ -67,7 +67,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       usages: (() => {
         const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === record.dbType);
         return (['SOURCE', 'SINK'] as const).filter((usage) => {
-          const supported = usage === 'SOURCE' ? connector?.source !== false : connector?.sink !== false;
+          const supported = supportsDataSourceUsage(connector, usage);
           const enabled = usage === 'SOURCE' ? record.sourceEnabled : record.sinkEnabled;
           return supported && (enabled == null || enabled);
         });

@@ -5,7 +5,7 @@ import { Alert, Button, Checkbox, Form, Input, InputNumber, message, Select, Swi
 import TextArea from 'antd/es/input/TextArea';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import DatabaseIcons from '../../icon/DatabaseIcons';
-import { DATA_SOURCE_REGISTRY } from '../../dataSourceRegistry';
+import { DATA_SOURCE_REGISTRY, supportsDataSourceUsage } from '../../dataSourceRegistry';
 import { DataSourceOperateType, DynamicDataSourceFormProps } from '../../types';
 import DataSourceUnitSelect from '../DataSourceUnitSelect';
 import CustomKVList from './components/CustomKVList';
@@ -81,7 +81,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
     if (isEmptyValue(current?.usages)) {
       const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
       const supportedUsages = (['SOURCE', 'SINK'] as const).filter((usage) =>
-        usage === 'SOURCE' ? connector?.source !== false : connector?.sink !== false,
+        supportsDataSourceUsage(connector, usage),
       );
       patch.usages = defaultUsage
         ? supportedUsages.includes(defaultUsage) ? [defaultUsage] : supportedUsages
@@ -372,8 +372,8 @@ const renderFieldLabel = (field: any): React.ReactNode => {
   if (usageOnly) {
     const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
     const usageOptions = [
-      ...(connector?.source === false ? [] : [{ label: '源端', value: 'SOURCE' }]),
-      ...(connector?.sink === false ? [] : [{ label: '目标端', value: 'SINK' }]),
+      ...(supportsDataSourceUsage(connector, 'SOURCE') ? [{ label: '源端', value: 'SOURCE' }] : []),
+      ...(supportsDataSourceUsage(connector, 'SINK') ? [{ label: '目标端', value: 'SINK' }] : []),
     ];
 
     return (
@@ -458,8 +458,8 @@ const renderFieldLabel = (field: any): React.ReactNode => {
                 options={(() => {
                   const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
                   return [
-                    ...(connector?.source === false ? [] : [{ label: '源端', value: 'SOURCE' }]),
-                    ...(connector?.sink === false ? [] : [{ label: '目标端', value: 'SINK' }]),
+                    ...(supportsDataSourceUsage(connector, 'SOURCE') ? [{ label: '源端', value: 'SOURCE' }] : []),
+                    ...(supportsDataSourceUsage(connector, 'SINK') ? [{ label: '目标端', value: 'SINK' }] : []),
                   ];
                 })()}
               />

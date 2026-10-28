@@ -4,7 +4,11 @@ import { SearchOutlined } from '@ant-design/icons';
 
 import DatabaseIcons from '../icon/DatabaseIcons';
 import { COMMON_DB_OPTIONS } from '../constants';
-import { DATA_SOURCE_REGISTRY, getConnectorTypeLabel } from '../dataSourceRegistry';
+import {
+  DATA_SOURCE_REGISTRY,
+  getConnectorTypeLabel,
+  supportsDataSourceUsage,
+} from '../dataSourceRegistry';
 import type { DataSourceGroup } from '../types';
 
 interface DataSourceTypeSelectorProps {
@@ -29,7 +33,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
       ...group,
       datasourceList: group.datasourceList.filter((item) => {
         const connector = DATA_SOURCE_REGISTRY.find((entry) => entry.dbType === item.dbType);
-        return defaultUsage === 'SOURCE' ? connector?.source !== false : connector?.sink !== false;
+        return supportsDataSourceUsage(connector, defaultUsage);
       }),
     })).filter((group) => group.datasourceList.length > 0);
   }, [dataSourceGroups, defaultUsage]);
@@ -55,7 +59,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
     return COMMON_DB_OPTIONS.filter((common) => {
       if (!defaultUsage) return true;
       const connector = DATA_SOURCE_REGISTRY.find((entry) => entry.dbType === common.value);
-      return defaultUsage === 'SOURCE' ? connector?.source !== false : connector?.sink !== false;
+      return supportsDataSourceUsage(connector, defaultUsage);
     }).map((common) => {
       const matched = flatDatasourceList.find(
         (item) =>
