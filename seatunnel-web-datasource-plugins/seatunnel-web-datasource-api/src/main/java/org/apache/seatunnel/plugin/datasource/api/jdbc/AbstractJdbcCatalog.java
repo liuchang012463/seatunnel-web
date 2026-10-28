@@ -226,7 +226,8 @@ public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
 
     protected List<OptionVO> queryOptionList(String sql, ResultSetConsumer<OptionVO> consumer)
             throws SQLException {
-        try (PreparedStatement ps = getConnection().prepareStatement(sql);
+        try (Connection connection = getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             List<OptionVO> result = new ArrayList<>();
             while (rs.next()) {
@@ -254,6 +255,11 @@ public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
     @Override
     public String buildSelectAllColumnsSql(String tablePath, List<DataSourceTableColumn> columns) {
         return buildSelectAllColumnsSql(resolveTablePath(tablePath), columns);
+    }
+
+    @Override
+    public String buildSelectAllColumnsSql(Map<String, Object> requestBody, List<DataSourceTableColumn> columns) {
+        return buildSelectAllColumnsSql(preprocessRequest(requestBody).getTablePath(), columns);
     }
 
     @Override

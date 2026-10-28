@@ -369,9 +369,7 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         String tablePath = getRequiredText(requestBody, KEY_TABLE_PATH);
         getRequiredText(requestBody, KEY_READ_MODE);
         String databaseName = getText(requestBody, "database");
-        String effectiveTablePath = StringUtils.isNotBlank(databaseName) && !tablePath.contains(".")
-                ? databaseName + "." + tablePath
-                : tablePath;
+        String schemaName = getText(requestBody, "schema_name");
 
         DataSource dataSource = getDataSourceOrThrow(datasourceId);
         ConnectionParam connectionParam = buildConnectionParam(dataSource);
@@ -384,13 +382,16 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
         if (StringUtils.isNotBlank(databaseName)) {
             columnRequest.put("database", databaseName);
         }
+        if (StringUtils.isNotBlank(schemaName)) {
+            columnRequest.put("schema_name", schemaName);
+        }
 
         try {
             List<DataSourceTableColumn> columns = jdbcCatalog.listColumns(columnRequest);
             if (columns == null || columns.isEmpty()) {
                 throw new ServiceException(Status.DATASOURCE_COLUMN_NOT_FOUND, tablePath);
             }
-            return jdbcCatalog.buildSelectAllColumnsSql(effectiveTablePath, columns);
+            return jdbcCatalog.buildSelectAllColumnsSql(columnRequest, columns);
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {

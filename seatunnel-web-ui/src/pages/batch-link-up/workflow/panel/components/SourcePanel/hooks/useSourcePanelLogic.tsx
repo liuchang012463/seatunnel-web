@@ -9,7 +9,7 @@ import {
 } from "@/pages/data-source/dataSourceRegistry";
 import { message } from "antd";
 import { Table2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface SourcePanelLogicProps {
   selectedNode: any;
@@ -242,24 +242,29 @@ export function useSourcePanelLogic({
   }, [dataSourceId, database, dbType, isWebUpload, schemaName, updateNode]);
 
   useEffect(() => {
+    let disposed = false;
     const loadTableOptions = async () => {
       const databaseScoped = supportsDatabaseScope(dbType);
       const schemaScoped = supportsSchemaScope(dbType);
       if (isWebUpload || !dataSourceId || String(dbType).toUpperCase() === "HTTP") {
         setTableOptions([]);
+        setTableLoading(false);
         return;
       }
 
       if (databaseScoped && !database) {
         setTableOptions([]);
+        setTableLoading(false);
         return;
       }
 
       if (schemaScoped && schemaOptions.length > 0 && !schemaName) {
         setTableOptions([]);
+        setTableLoading(false);
         return;
       }
 
+      setTableOptions([]);
       setTableLoading(true);
       try {
         const res = databaseScoped
@@ -269,6 +274,7 @@ export function useSourcePanelLogic({
               schemaScoped ? schemaName : undefined,
             )
           : await dataSourceCatalogApi.listTable(dataSourceId);
+        if (disposed) return;
         const list = Array.isArray(res?.data) ? res.data : [];
 
         const options = list.map((item: any) => {
@@ -310,14 +316,16 @@ export function useSourcePanelLogic({
           updateNode({ table: undefined, incrementalConfig: undefined });
         }
       } catch (error) {
+        if (disposed) return;
         console.error("load table options error", error);
         setTableOptions([]);
       } finally {
-        setTableLoading(false);
+        if (!disposed) setTableLoading(false);
       }
     };
 
     loadTableOptions();
+    return () => { disposed = true; };
   }, [
     dataSourceId,
     database,
@@ -359,6 +367,7 @@ export function useSourcePanelLogic({
 
   const handleDatabaseChange = useCallback(
     (value: string) => {
+      setSelectedSqlTable(undefined);
       updateNode({
         database: value,
         schemaName: undefined,
@@ -371,6 +380,7 @@ export function useSourcePanelLogic({
 
   const handleSchemaChange = useCallback(
     (value: string) => {
+      setSelectedSqlTable(undefined);
       updateNode({
         schemaName: value,
         table: undefined,

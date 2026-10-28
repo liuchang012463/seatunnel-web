@@ -68,6 +68,9 @@ public interface JdbcCatalog extends DataSourceCatalog {
      */
     String buildSelectAllColumnsSql(TablePath tablePath, List<DataSourceTableColumn> columns);
 
+    /** Build SQL using the same database, schema and table scope as a column request. */
+    String buildSelectAllColumnsSql(Map<String, Object> requestBody, List<DataSourceTableColumn> columns);
+
     /**
      * Resolve variables inside sql, such as ${var:today_start}.
      */

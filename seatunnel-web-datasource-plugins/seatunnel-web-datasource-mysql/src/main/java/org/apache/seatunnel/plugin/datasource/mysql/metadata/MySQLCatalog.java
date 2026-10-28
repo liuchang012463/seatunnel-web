@@ -95,10 +95,19 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         return String.format(
                 "SELECT TABLE_NAME, TABLE_COMMENT " +
                         "FROM INFORMATION_SCHEMA.TABLES " +
-                        "WHERE TABLE_SCHEMA = '%s' AND TABLE_TYPE = 'BASE TABLE' " +
+                        "WHERE TABLE_SCHEMA = '%s' AND TABLE_TYPE IN ('BASE TABLE', 'VIEW', 'SYSTEM VIEW') " +
                         "ORDER BY TABLE_NAME",
-                databaseName
+                StringUtils.defaultString(databaseName).replace("'", "''")
         );
+    }
+
+    @Override
+    public List<OptionVO> listTableOptions(String databaseName, String schemaName) {
+        try {
+            return queryOptionList(getListTableSql(databaseName), this::buildTableOption);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed listing tables in MySQL database " + databaseName, e);
+        }
     }
 
     @Override
