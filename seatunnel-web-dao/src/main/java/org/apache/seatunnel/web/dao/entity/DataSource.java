@@ -10,6 +10,8 @@ import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.EnvironmentEnum;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
+import java.util.List;
+
 
 @Data
 @TableName("t_seatunnel_web_datasource")
@@ -61,6 +63,14 @@ public class DataSource extends BaseEntity {
      * 原始json
      */
     private String originalJson;
+
+    /** Names of configured secret fields exposed to editors without values. */
+    @TableField(exist = false)
+    private List<String> configuredSecretFields;
+
+    /** Password field keys present in the saved config, including intentionally empty values. */
+    @TableField(exist = false)
+    private List<String> savedSecretFields;
 
     /**
      * 描述

@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.common.enums.MetadataRunStatus;
 import org.apache.seatunnel.web.spi.enums.DbType;
 
 import java.util.Date;
+import java.util.List;
 
 @Data
 public class DataSourceVO {
@@ -54,6 +55,11 @@ public class DataSourceVO {
     private String connectionParams;
 
     private String originalJson;
+
+    private List<String> configuredSecretFields;
+
+    /** Password field keys present in the saved config, including intentionally empty values. */
+    private List<String> savedSecretFields;
 
     private ConnStatus connStatus;
 

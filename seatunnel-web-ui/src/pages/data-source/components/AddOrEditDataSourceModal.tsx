@@ -158,6 +158,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
           ...connectionValues,
           type: selectedDbType,
         }),
+        ...(isEditMode && currentRecord?.id ? { dataSourceId: currentRecord.id } : {}),
       });
 
       if (response.code === 0) {
@@ -385,6 +386,8 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
           operateType={operateType}
           onManageMasterData={onManageMasterData}
           initialConfig={isEditMode ? parseOriginalJson(currentRecord?.originalJson) : undefined}
+          configuredSecretFields={isEditMode ? currentRecord?.configuredSecretFields : undefined}
+          savedSecretFields={isEditMode ? currentRecord?.savedSecretFields : undefined}
           defaultUsage={defaultUsage}
         />
       ) : (

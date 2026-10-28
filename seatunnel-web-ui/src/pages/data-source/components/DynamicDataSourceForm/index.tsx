@@ -14,6 +14,8 @@ import { getConfigInitialValues, isFieldVisible, transformRules } from './utils/
 
 /** Hidden from UI; always sent on create / preserved on edit. */
 const DEFAULT_ENVIRONMENT = 'DEVELOP';
+const EMPTY_CONFIGURED_SECRET_FIELDS: string[] = [];
+const EMPTY_SAVED_SECRET_FIELDS: string[] = [];
 
 const sectionTitleClass = 'm-0 text-[15px] font-semibold text-slate-800';
 const sectionDescClass = 'mt-1 mb-0 text-[13px] leading-[22px] text-slate-500';
@@ -42,6 +44,8 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   initialConfig,
   hideBaseFields = false,
   allowExistingPassword = false,
+  configuredSecretFields = EMPTY_CONFIGURED_SECRET_FIELDS,
+  savedSecretFields = EMPTY_SAVED_SECRET_FIELDS,
   defaultUsage,
 }) => {
   const intl = useIntl();
@@ -146,14 +150,29 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
            * 编辑模式：使用传入的 initialConfig 覆盖默认值
            * 创建模式：使用表单的默认值
            */
-          if (initialConfig && Object.keys(initialConfig).length > 0) {
-            configForm.setFieldsValue({
-              ...init,
-              ...initialConfig,
-            });
-          } else {
-            configForm.setFieldsValue(init);
-          }
+          const values: Record<string, any> = {
+            ...init,
+            ...initialConfig,
+          };
+          fields.forEach((field: any) => {
+            if (
+              field.type === 'PASSWORD' &&
+              (configuredSecretFields.includes(field.key) || savedSecretFields.includes(field.key))
+            ) {
+              values[field.key] = '';
+            } else if (field.type === 'PASSWORD' && values[field.key] == null) {
+              values[field.key] = '';
+            }
+            if (field.type === 'CUSTOM_SELECT' && Array.isArray(values[field.key])) {
+              values[field.key] = values[field.key].map((pair: any) => {
+                const fieldId = `${field.key}:${pair?.key}`;
+                const configuredPair = configuredSecretFields.includes(fieldId);
+                const savedPair = savedSecretFields.includes(fieldId);
+                return configuredPair || savedPair ? { ...pair, value: '' } : pair;
+              });
+            }
+          });
+          configForm.setFieldsValue(values);
           return;
         }
 
@@ -182,7 +201,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         }
       }
     },
-    [configForm, intl],
+    [configForm, intl, configuredSecretFields, savedSecretFields],
   );
 
   useEffect(() => {
@@ -276,7 +295,17 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         return <Input {...commonProps} />;
 
       case 'PASSWORD':
-        return <Input.Password {...commonProps} autoComplete="new-password" />;
+        return (
+          <Input.Password
+            {...commonProps}
+            placeholder={
+              configuredSecretFields.includes(field.key) || (allowExistingPassword && field.key === 'password')
+                ? '已设置，留空保持不变'
+                : field.placeholder
+            }
+            autoComplete="new-password"
+          />
+        );
 
       case 'SELECT':
         return (
@@ -481,8 +510,20 @@ const renderFieldLabel = (field: any): React.ReactNode => {
             }
 
             if (field.type === 'CUSTOM_SELECT') {
-              return <CustomKVList key={field.key} intl={intl} field={field} />;
+              return (
+                <CustomKVList
+                  key={field.key}
+                  intl={intl}
+                  field={field}
+                  configForm={configForm}
+                  configuredSecretFields={configuredSecretFields}
+                  savedSecretFields={savedSecretFields}
+                />
+              );
             }
+
+            const configuredSecret = configuredSecretFields.includes(field.key);
+            const savedSecret = savedSecretFields.includes(field.key);
 
             return (
               <Form.Item
@@ -496,7 +537,7 @@ const renderFieldLabel = (field: any): React.ReactNode => {
                     : field.description || undefined
                 }
                 rules={
-                  field.key === 'password' && allowExistingPassword
+                  field.type === 'PASSWORD' && (configuredSecret || savedSecret || allowExistingPassword)
                     ? fieldRules(field).filter((rule) => !rule.required)
                     : fieldRules(field)
                 }

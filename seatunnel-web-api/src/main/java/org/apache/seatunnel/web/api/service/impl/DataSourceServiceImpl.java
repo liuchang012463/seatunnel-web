@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.api.metadata.MetadataSyncStatusView;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
 import org.apache.seatunnel.web.api.service.DataSourceService;
+import org.apache.seatunnel.web.api.service.DataSourceSecretSupport;
 import org.apache.seatunnel.web.api.service.DataSourceUsageValidator;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
@@ -161,8 +162,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         BusinessSystemOwnership ownership = resolveActiveBusinessSystem(dto.getBusinessSystemId());
 
         try {
+            String connectionJson = dto.getConnectionParams();
             ConnectionParam connectionParam =
-                    DataSourceUtils.buildConnectionParams(dto.getDbType(), dto.getConnectionParams());
+                    DataSourceUtils.buildConnectionParams(dto.getDbType(), connectionJson);
 
             DataSourceUtils.checkDatasourceParam(connectionParam);
 
@@ -174,7 +176,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             // Legacy data_source_unit is nullable. Canonical ownership is kept only in business_system_id.
             entity.setDataSourceUnit(null);
             entity.setConnectionParams(JSONUtils.toJsonString(connectionParam));
-            entity.setOriginalJson(dto.getConnectionParams());
+            entity.setOriginalJson(connectionJson);
 
             entity.setConnStatus(ConnStatus.CONNECTED_SUCCESS);
             entity.setStatus(DataSourceLifecycleStatus.ENABLED);
@@ -219,8 +221,13 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         BusinessSystemOwnership ownership = resolveActiveBusinessSystem(dto.getBusinessSystemId());
 
         try {
+            String connectionJson = dto.getConnectionParams();
+            if (java.util.Objects.equals(dto.getDbType(), existing.getDbType())) {
+                connectionJson = DataSourceSecretSupport.mergeSecrets(
+                        dto.getDbType(), connectionJson, existing.getOriginalJson(), existing.getConnectionParams());
+            }
             ConnectionParam connectionParam =
-                    DataSourceUtils.buildConnectionParams(dto.getDbType(), dto.getConnectionParams());
+                    DataSourceUtils.buildConnectionParams(dto.getDbType(), connectionJson);
             DataSourceUtils.checkDatasourceParam(connectionParam);
 
             // 修改也需要限制，离线任务下次运行时会导致任务被变更
@@ -243,7 +250,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             entity.setSourceEnabled(dto.getSourceEnabled());
             entity.setSinkEnabled(dto.getSinkEnabled());
             entity.setConnectionParams(JSONUtils.toJsonString(connectionParam));
-            entity.setOriginalJson(dto.getConnectionParams());
+            entity.setOriginalJson(connectionJson);
             entity.setConnStatus(existing.getConnStatus());
             entity.setStatus(existing.getStatus() == null
                     ? DataSourceLifecycleStatus.ENABLED
@@ -328,7 +335,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
                 fillDerivedFields(record, systems, units);
                 fillMetadataFields(record, bindings.get(record.getId()));
                 fillAgentCapabilities(record);
-                redactSystemProjection(record);
+                DataSourceSecretSupport.redact(record);
             });
 
             return PaginationResult.buildSuc(records, pageResult);
@@ -504,7 +511,13 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         validateId(id);
         DataSource existing = getDataSourceOrThrow(id);
         ensureUserManaged(existing);
-        return connectionTestWithParam(connJson);
+        DbType editedType = extractDbType(connJson);
+        String connectionJson = connJson;
+        if (java.util.Objects.equals(editedType, existing.getDbType())) {
+            connectionJson = DataSourceSecretSupport.mergeSecrets(
+                    editedType, connJson, existing.getOriginalJson(), existing.getConnectionParams());
+        }
+        return connectionTestWithParam(connectionJson);
     }
 
     @Override
@@ -519,7 +532,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
                 fillDerivedFields(record, systems, units);
                 fillMetadataFields(record, bindings.get(record.getId()));
                 fillAgentCapabilities(record);
-                redactSystemProjection(record);
+                DataSourceSecretSupport.redact(record);
             });
             return result;
         } catch (Exception e) {
@@ -1036,14 +1049,6 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             return org.apache.seatunnel.web.common.enums.MetadataRunStatus.FAILED;
         }
         return status;
-    }
-
-    /** Never expose the encrypted ODS password through ordinary datasource APIs. */
-    private static void redactSystemProjection(DataSourceVO vo) {
-        if (vo != null && Boolean.TRUE.equals(vo.getSystemManaged())) {
-            vo.setConnectionParams(null);
-            vo.setOriginalJson(null);
-        }
     }
 
     private DBOptionVO toOptionVO(DataSource entity) {

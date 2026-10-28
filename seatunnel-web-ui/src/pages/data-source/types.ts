@@ -83,6 +83,9 @@ export interface DataSourceRecord {
   systemKey?: string;
   remark?: string;
   originalJson?: string;
+  /** Secret fields configured on the server; values are never returned. */
+  configuredSecretFields?: string[];
+  savedSecretFields?: string[];
   createTime?: string;
   updateTime?: string;
 }
@@ -329,6 +332,8 @@ export interface DynamicDataSourceFormProps {
   hideBaseFields?: boolean;
   /** Keep an existing server-side password when the input is empty. */
   allowExistingPassword?: boolean;
+  configuredSecretFields?: string[];
+  savedSecretFields?: string[];
   defaultUsage?: 'SOURCE' | 'SINK';
 }
 

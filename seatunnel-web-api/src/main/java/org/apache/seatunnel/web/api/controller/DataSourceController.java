@@ -10,6 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.exceptions.ApiException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.api.service.DataSourceService;
+import org.apache.seatunnel.web.api.service.DataSourceSecretSupport;
 import org.apache.seatunnel.web.common.enums.DataSourceUsage;
 import org.apache.seatunnel.web.api.metadata.MetadataPipelineOperationService;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
@@ -55,7 +56,7 @@ public class DataSourceController {
     @Operation(summary = "createDataSource", description = "CREATE_DATA_SOURCE_NOTES")
     @ApiException(CREATE_DATASOURCE_ERROR)
     public Result<DataSource> createDataSource(@RequestBody DataSourceDTO dto) {
-        return Result.buildSuc(redactSystemProjection(dataSourceService.createDataSource(dto)));
+        return Result.buildSuc(redactDataSourceSecrets(dataSourceService.createDataSource(dto)));
     }
 
     /**
@@ -70,7 +71,7 @@ public class DataSourceController {
     public Result<DataSource> updateDataSource(
             @PathVariable("id") Long id,
             @RequestBody DataSourceDTO dto) {
-        return Result.buildSuc(redactSystemProjection(dataSourceService.updateDataSource(id, dto)));
+        return Result.buildSuc(redactDataSourceSecrets(dataSourceService.updateDataSource(id, dto)));
     }
 
     /**
@@ -85,7 +86,7 @@ public class DataSourceController {
     public Result<DataSource> assignBusinessSystem(
             @PathVariable("id") Long id,
             @RequestBody DataSourceDTO dto) {
-        return Result.buildSuc(redactSystemProjection(dataSourceService.assignBusinessSystem(
+        return Result.buildSuc(redactDataSourceSecrets(dataSourceService.assignBusinessSystem(
                 id, dto == null ? null : dto.getBusinessSystemId())));
     }
 
@@ -99,14 +100,11 @@ public class DataSourceController {
     })
     @ApiException(QUERY_DATASOURCE_ERROR)
     public Result<DataSource> selectById(@PathVariable("id") Long id) {
-        return Result.buildSuc(redactSystemProjection(dataSourceService.selectById(id)));
+        return Result.buildSuc(redactDataSourceSecrets(dataSourceService.selectById(id)));
     }
 
-    private DataSource redactSystemProjection(DataSource dataSource) {
-        if (dataSource != null && Boolean.TRUE.equals(dataSource.getSystemManaged())) {
-            dataSource.setConnectionParams(null);
-            dataSource.setOriginalJson(null);
-        }
+    private DataSource redactDataSourceSecrets(DataSource dataSource) {
+        DataSourceSecretSupport.redact(dataSource);
         return dataSource;
     }
 
