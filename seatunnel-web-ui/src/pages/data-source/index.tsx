@@ -1,5 +1,5 @@
 import StatusChip from '@/components/StatusChip';
-import { history, useIntl } from '@umijs/max';
+import { history, useIntl, useLocation } from '@umijs/max';
 import { AppstoreOutlined, MoreOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import {
   Alert,
@@ -24,7 +24,12 @@ import EmptyState from './components/EmptyState';
 import SearchBar from './components/SearchBar';
 import MasterDataPage from '../master-data';
 import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from './constants';
-import { DATA_SOURCE_CATEGORIES, getDataSourceCategory } from './dataSourceRegistry';
+import {
+  DATA_SOURCE_CATEGORIES,
+  DATA_SOURCE_REGISTRY,
+  filterDataSourceTypesByUsage,
+  getDataSourceCategory,
+} from './dataSourceRegistry';
 import DatabaseIcons from './icon/DatabaseIcons';
 import './index.less';
 import {
@@ -62,7 +67,13 @@ type DataSourceViewMode = 'card' | 'list';
 
 const DataSourcePage: React.FC = () => {
   const intl = useIntl();
+  const location = useLocation();
   const modalRef = useRef<DataSourceModalRef>(null);
+  const usageView = location.pathname.endsWith('/source-connection')
+    ? 'SOURCE'
+    : location.pathname.endsWith('/target-connection')
+      ? 'SINK'
+      : undefined;
 
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState<string>();
@@ -115,12 +126,27 @@ const DataSourcePage: React.FC = () => {
         pageSize: pagination.pageSize,
         name: searchKeyword.trim() || undefined,
         dbTypes: selectedCategory === 'ALL' ? undefined : selectedCategoryConfig?.dbTypes || [],
+        ...(usageView === 'SOURCE' ? { sourceEnabled: true } : {}),
+        ...(usageView === 'SINK' ? { sinkEnabled: true } : {}),
         unitId: selectedUnit || undefined,
         businessSystemId: selectedBusinessSystem || undefined,
         status: selectedStatus,
         excludeSystemManaged: true,
         ...params,
       };
+
+      if (usageView) {
+        const supportedTypes = new Set(
+          filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, usageView).map((item) => item.dbType),
+        );
+        const requestedTypes = requestParams.dbTypes || DATA_SOURCE_REGISTRY.map((item) => item.dbType);
+        requestParams.dbTypes = requestedTypes.filter((dbType) => supportedTypes.has(dbType));
+        if (requestParams.dbTypes.length === 0) {
+          setDataSourceList([]);
+          setPagination((current) => ({ ...current, total: 0 }));
+          return;
+        }
+      }
 
       const response = await withTimeout(
         fetchDataSourcePage(requestParams),
@@ -180,6 +206,7 @@ const DataSourcePage: React.FC = () => {
     selectedUnit,
     selectedBusinessSystem,
     selectedStatus,
+    usageView,
   ]);
 
   const hasActiveFilters = Boolean(
@@ -207,6 +234,7 @@ const DataSourcePage: React.FC = () => {
   const handleCreate = () => {
     modalRef.current?.open({
       operateType: 'CREATE' as DataSourceOperateType,
+      defaultUsage: usageView,
       onSuccess: handleRefresh,
     });
   };
@@ -215,6 +243,15 @@ const DataSourcePage: React.FC = () => {
     modalRef.current?.open({
       operateType: 'EDIT' as DataSourceOperateType,
       currentRecord: record,
+      onSuccess: handleRefresh,
+    });
+  };
+
+  const handleEditUsage = (record: DataSourceRecord) => {
+    modalRef.current?.open({
+      operateType: 'EDIT' as DataSourceOperateType,
+      currentRecord: record,
+      usageOnly: true,
       onSuccess: handleRefresh,
     });
   };
@@ -509,6 +546,12 @@ const DataSourcePage: React.FC = () => {
             ]
           : [
               {
+                key: 'usage',
+                label: '编辑连接用途',
+                disabled: isDeleting,
+                onClick: () => handleEditUsage(record),
+              },
+              {
                 key: 'lifecycle',
                 label: statusActionLabel,
                 disabled: isDeleting,
@@ -602,6 +645,11 @@ const DataSourcePage: React.FC = () => {
               variants={PAGE_ANIMATION.sectionStagger}
             >
               <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
+                <div className="min-w-0 flex-1">
+                  <div className="text-lg font-semibold text-slate-900">
+                    {usageView === 'SOURCE' ? '源端连接' : usageView === 'SINK' ? '目标连接' : '数据源管理'}
+                  </div>
+                </div>
                 <SearchBar
                   value={searchKeyword}
                   onChange={(value) => {
@@ -720,6 +768,7 @@ const DataSourcePage: React.FC = () => {
                                 key={String(record.id || record.name || `data-source-${index}`)}
                                 record={record}
                                 onEdit={handleEdit}
+                                onEditUsage={handleEditUsage}
                                 onDelete={(currentRecord) => {
                                   void handleDelete(currentRecord);
                                 }}

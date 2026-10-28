@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -26,10 +28,16 @@ public class JobDefinitionAnalysisResult {
      */
     private Long sourceDatasourceId;
 
+    /** All source IDs for script jobs; the scalar remains for API compatibility. */
+    private List<Long> sourceDatasourceIds;
+
     /**
      * Sink datasource id
      */
     private Long sinkDatasourceId;
+
+    /** All sink IDs for script jobs; the scalar remains for API compatibility. */
+    private List<Long> sinkDatasourceIds;
 
     /**
      * Source table map json

@@ -11,6 +11,7 @@ import { assetExplorationStatus, isAssetExplorationDbType } from '@/utils/assetE
 interface DataSourceCardProps {
   record: DataSourceRecord;
   onEdit: (record: DataSourceRecord) => void;
+  onEditUsage: (record: DataSourceRecord) => void;
   onDelete: (record: DataSourceRecord) => void;
   onTestConnection: (record: DataSourceRecord) => void;
   onViewExploration: (record: DataSourceRecord) => void;
@@ -21,6 +22,7 @@ interface DataSourceCardProps {
 const DataSourceCard: React.FC<DataSourceCardProps> = ({
   record,
   onEdit,
+  onEditUsage,
   onDelete,
   onTestConnection,
   onViewExploration,
@@ -125,6 +127,12 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
               trigger={['click']}
               menu={{
                 items: [
+                  {
+                    key: 'usage',
+                    label: '编辑连接用途',
+                    disabled: isDeleting,
+                    onClick: () => onEditUsage(record),
+                  },
                   {
                     key: 'lifecycle',
                     label: statusActionLabel,

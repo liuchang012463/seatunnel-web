@@ -1,10 +1,11 @@
 import HttpUtils from '@/utils/HttpUtils';
 import { InfoCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useIntl } from '@umijs/max';
-import { Alert, Button, Form, Input, InputNumber, message, Select, Switch, Tooltip } from 'antd';
+import { Alert, Button, Checkbox, Form, Input, InputNumber, message, Select, Switch, Tooltip } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import DatabaseIcons from '../../icon/DatabaseIcons';
+import { DATA_SOURCE_REGISTRY, supportsDataSourceUsage } from '../../dataSourceRegistry';
 import { DataSourceOperateType, DynamicDataSourceFormProps } from '../../types';
 import DataSourceUnitSelect from '../DataSourceUnitSelect';
 import CustomKVList from './components/CustomKVList';
@@ -13,6 +14,8 @@ import { getConfigInitialValues, isFieldVisible, transformRules } from './utils/
 
 /** Hidden from UI; always sent on create / preserved on edit. */
 const DEFAULT_ENVIRONMENT = 'DEVELOP';
+const EMPTY_CONFIGURED_SECRET_FIELDS: string[] = [];
+const EMPTY_SAVED_SECRET_FIELDS: string[] = [];
 
 const sectionTitleClass = 'm-0 text-[15px] font-semibold text-slate-800';
 const sectionDescClass = 'mt-1 mb-0 text-[13px] leading-[22px] text-slate-500';
@@ -41,6 +44,10 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   initialConfig,
   hideBaseFields = false,
   allowExistingPassword = false,
+  configuredSecretFields = EMPTY_CONFIGURED_SECRET_FIELDS,
+  savedSecretFields = EMPTY_SAVED_SECRET_FIELDS,
+  defaultUsage,
+  usageOnly = false,
 }) => {
   const intl = useIntl();
 
@@ -71,10 +78,20 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
       patch.environment = DEFAULT_ENVIRONMENT;
     }
 
+    if (isEmptyValue(current?.usages)) {
+      const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
+      const supportedUsages = (['SOURCE', 'SINK'] as const).filter((usage) =>
+        supportsDataSourceUsage(connector, usage),
+      );
+      patch.usages = defaultUsage
+        ? supportedUsages.includes(defaultUsage) ? [defaultUsage] : supportedUsages
+        : supportedUsages;
+    }
+
     if (Object.keys(patch).length) {
       form.setFieldsValue(patch);
     }
-  }, [hideBaseFields, operateType, form]);
+  }, [hideBaseFields, operateType, form, dbType, defaultUsage]);
 
   const loadFormConfig = useCallback(
     async (currentDbType: string): Promise<void> => {
@@ -134,14 +151,29 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
            * 编辑模式：使用传入的 initialConfig 覆盖默认值
            * 创建模式：使用表单的默认值
            */
-          if (initialConfig && Object.keys(initialConfig).length > 0) {
-            configForm.setFieldsValue({
-              ...init,
-              ...initialConfig,
-            });
-          } else {
-            configForm.setFieldsValue(init);
-          }
+          const values: Record<string, any> = {
+            ...init,
+            ...initialConfig,
+          };
+          fields.forEach((field: any) => {
+            if (
+              field.type === 'PASSWORD' &&
+              (configuredSecretFields.includes(field.key) || savedSecretFields.includes(field.key))
+            ) {
+              values[field.key] = '';
+            } else if (field.type === 'PASSWORD' && values[field.key] == null) {
+              values[field.key] = '';
+            }
+            if (field.type === 'CUSTOM_SELECT' && Array.isArray(values[field.key])) {
+              values[field.key] = values[field.key].map((pair: any) => {
+                const fieldId = `${field.key}:${pair?.key}`;
+                const configuredPair = configuredSecretFields.includes(fieldId);
+                const savedPair = savedSecretFields.includes(fieldId);
+                return configuredPair || savedPair ? { ...pair, value: '' } : pair;
+              });
+            }
+          });
+          configForm.setFieldsValue(values);
           return;
         }
 
@@ -170,7 +202,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         }
       }
     },
-    [configForm, intl],
+    [configForm, intl, configuredSecretFields, savedSecretFields],
   );
 
   useEffect(() => {
@@ -190,6 +222,17 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   }, [authenticationType, configForm, formConfig]);
 
   useEffect(() => {
+    if (usageOnly) {
+      requestSeqRef.current += 1;
+      setFormConfig([]);
+      setNeedInstall(false);
+      setLoadErrMsg('');
+      setLoading(false);
+      return () => {
+        requestSeqRef.current += 1;
+      };
+    }
+
     if (!dbType) {
       requestSeqRef.current += 1;
       setFormConfig([]);
@@ -208,7 +251,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
        */
       requestSeqRef.current += 1;
     };
-  }, [dbType, configForm, loadFormConfig]);
+  }, [dbType, configForm, loadFormConfig, usageOnly]);
 
   const installPlugin = async () => {
     if (!dbType) {
@@ -264,7 +307,17 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         return <Input {...commonProps} />;
 
       case 'PASSWORD':
-        return <Input.Password {...commonProps} autoComplete="new-password" />;
+        return (
+          <Input.Password
+            {...commonProps}
+            placeholder={
+              configuredSecretFields.includes(field.key) || (allowExistingPassword && field.key === 'password')
+                ? '已设置，留空保持不变'
+                : field.placeholder
+            }
+            autoComplete="new-password"
+          />
+        );
 
       case 'SELECT':
         return (
@@ -316,6 +369,36 @@ const renderFieldLabel = (field: any): React.ReactNode => {
     });
   };
 
+  if (usageOnly) {
+    const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
+    const usageOptions = [
+      ...(supportsDataSourceUsage(connector, 'SOURCE') ? [{ label: '源端', value: 'SOURCE' }] : []),
+      ...(supportsDataSourceUsage(connector, 'SINK') ? [{ label: '目标端', value: 'SINK' }] : []),
+    ];
+
+    return (
+      <div className="datasource-form-panel p-5">
+        <div className="mb-5">
+          <h3 className={sectionTitleClass}>连接用途</h3>
+          <p className={sectionDescClass}>调整此连接可用于源端或目标端。已被任务使用的用途不能移除。</p>
+        </div>
+        <Form form={form} layout="vertical">
+          <Form.Item
+            label="连接用途"
+            name="usages"
+            rules={[{
+              validator: (_, value) => value?.length
+                ? Promise.resolve()
+                : Promise.reject(new Error('至少选择一个连接用途')),
+            }]}
+          >
+            <Checkbox.Group options={usageOptions} />
+          </Form.Item>
+        </Form>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="datasource-form-panel flex min-h-[220px] items-center justify-center p-5">
@@ -359,6 +442,26 @@ const renderFieldLabel = (field: any): React.ReactNode => {
                   defaultMessage: 'Input...',
                 })}
                 maxLength={100}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="连接用途"
+              name="usages"
+              rules={[{
+                validator: (_, value) => value?.length
+                  ? Promise.resolve()
+                  : Promise.reject(new Error('至少选择一个连接用途')),
+              }]}
+            >
+              <Checkbox.Group
+                options={(() => {
+                  const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
+                  return [
+                    ...(supportsDataSourceUsage(connector, 'SOURCE') ? [{ label: '源端', value: 'SOURCE' }] : []),
+                    ...(supportsDataSourceUsage(connector, 'SINK') ? [{ label: '目标端', value: 'SINK' }] : []),
+                  ];
+                })()}
               />
             </Form.Item>
 
@@ -449,8 +552,20 @@ const renderFieldLabel = (field: any): React.ReactNode => {
             }
 
             if (field.type === 'CUSTOM_SELECT') {
-              return <CustomKVList key={field.key} intl={intl} field={field} />;
+              return (
+                <CustomKVList
+                  key={field.key}
+                  intl={intl}
+                  field={field}
+                  configForm={configForm}
+                  configuredSecretFields={configuredSecretFields}
+                  savedSecretFields={savedSecretFields}
+                />
+              );
             }
+
+            const configuredSecret = configuredSecretFields.includes(field.key);
+            const savedSecret = savedSecretFields.includes(field.key);
 
             return (
               <Form.Item
@@ -464,7 +579,7 @@ const renderFieldLabel = (field: any): React.ReactNode => {
                     : field.description || undefined
                 }
                 rules={
-                  field.key === 'password' && allowExistingPassword
+                  field.type === 'PASSWORD' && (configuredSecret || savedSecret || allowExistingPassword)
                     ? fieldRules(field).filter((rule) => !rule.required)
                     : fieldRules(field)
                 }

@@ -14,6 +14,8 @@ public interface LakeSourceObjectRefDao extends IDao<LakeSourceObjectRef> {
 
     LakeSourceObjectRef queryBySourceDataSourceIdAndOmEntityId(Long sourceDataSourceId, String omEntityId);
 
+    boolean existsActiveBySourceDataSourceId(Long sourceDataSourceId);
+
     boolean updateIfTokenAndVersion(LakeSourceObjectRef entity, String operationToken, Integer lockVersion);
 
     boolean updateIfTokenAndVersionIncludingDeleted(

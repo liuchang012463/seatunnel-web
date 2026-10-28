@@ -12,27 +12,42 @@ import org.apache.seatunnel.web.api.metadata.MetadataSyncStatusView;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorAdapter;
 import org.apache.seatunnel.web.api.metadata.adapter.MetadataConnectorRegistry;
 import org.apache.seatunnel.web.api.service.DataSourceService;
+import org.apache.seatunnel.web.api.service.DataSourceSecretSupport;
+import org.apache.seatunnel.web.api.service.DataSourceUsageValidator;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
+import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
+import org.apache.seatunnel.web.common.enums.DataSourceUsage;
 import org.apache.seatunnel.web.common.utils.ConvertUtil;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.core.job.handler.script.ScriptJobDefinitionParser;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.DataSourceUnit;
 import org.apache.seatunnel.web.dao.entity.BusinessSystem;
+import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
+import org.apache.seatunnel.web.dao.entity.JobDefinitionContentEntity;
 import org.apache.seatunnel.web.dao.entity.MetadataSourceBinding;
+import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionEntity;
+import org.apache.seatunnel.web.dao.entity.StreamingJobDefinitionContentEntity;
 import org.apache.seatunnel.web.dao.repository.BusinessSystemDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
 import org.apache.seatunnel.web.dao.repository.JobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.JobDefinitionContentDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
+import org.apache.seatunnel.web.dao.repository.LakeExternalCatalogBindingDao;
+import org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
+import org.apache.seatunnel.web.dao.repository.OfflineImportTaskDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
+import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionContentDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
+import org.apache.seatunnel.web.spi.bean.dto.config.ScriptJobContent;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.DBOptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceVO;
@@ -56,6 +71,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -93,7 +109,25 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     private StreamingJobDefinitionDao streamingJobDefinitionDao;
 
     @Resource
+    private JobDefinitionContentDao jobDefinitionContentDao;
+
+    @Resource
+    private StreamingJobDefinitionContentDao streamingJobDefinitionContentDao;
+
+    @Resource
+    private ScriptJobDefinitionParser scriptJobDefinitionParser;
+
+    @Resource
     private LakeOdsDatabaseBindingDao lakeOdsDatabaseBindingDao;
+
+    @Resource
+    private LakeExternalCatalogBindingDao lakeExternalCatalogBindingDao;
+
+    @Resource
+    private LakeSourceObjectRefDao lakeSourceObjectRefDao;
+
+    @Resource
+    private OfflineImportTaskDao offlineImportTaskDao;
 
     @Resource
     private CurrentUserProvider currentUserProvider;
@@ -142,12 +176,14 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DataSource createDataSource(DataSourceDTO dto) {
+        applyCreateUsageDefaults(dto);
         validateCreateRequest(dto);
         BusinessSystemOwnership ownership = resolveActiveBusinessSystem(dto.getBusinessSystemId());
 
         try {
+            String connectionJson = dto.getConnectionParams();
             ConnectionParam connectionParam =
-                    DataSourceUtils.buildConnectionParams(dto.getDbType(), dto.getConnectionParams());
+                    DataSourceUtils.buildConnectionParams(dto.getDbType(), connectionJson);
 
             DataSourceUtils.checkDatasourceParam(connectionParam);
 
@@ -159,7 +195,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             // Legacy data_source_unit is nullable. Canonical ownership is kept only in business_system_id.
             entity.setDataSourceUnit(null);
             entity.setConnectionParams(JSONUtils.toJsonString(connectionParam));
-            entity.setOriginalJson(dto.getConnectionParams());
+            entity.setOriginalJson(connectionJson);
 
             entity.setConnStatus(ConnStatus.CONNECTED_SUCCESS);
             entity.setStatus(DataSourceLifecycleStatus.ENABLED);
@@ -198,12 +234,19 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
                     "A data source pending metadata deletion cannot be updated.");
         }
+        applyUpdateUsageDefaults(existing, dto);
         validateUpdateRequest(id, dto);
+        validateUsageChangeAllowed(existing, dto);
         BusinessSystemOwnership ownership = resolveActiveBusinessSystem(dto.getBusinessSystemId());
 
         try {
+            String connectionJson = dto.getConnectionParams();
+            if (java.util.Objects.equals(dto.getDbType(), existing.getDbType())) {
+                connectionJson = DataSourceSecretSupport.mergeSecrets(
+                        dto.getDbType(), connectionJson, existing.getOriginalJson(), existing.getConnectionParams());
+            }
             ConnectionParam connectionParam =
-                    DataSourceUtils.buildConnectionParams(dto.getDbType(), dto.getConnectionParams());
+                    DataSourceUtils.buildConnectionParams(dto.getDbType(), connectionJson);
             DataSourceUtils.checkDatasourceParam(connectionParam);
 
             // 修改也需要限制，离线任务下次运行时会导致任务被变更
@@ -223,8 +266,10 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             entity.setBusinessSystemId(ownership.system().getId());
             // Do not mutate the legacy compatibility value on canonical updates.
             entity.setDataSourceUnit(existing.getDataSourceUnit());
+            entity.setSourceEnabled(dto.getSourceEnabled());
+            entity.setSinkEnabled(dto.getSinkEnabled());
             entity.setConnectionParams(JSONUtils.toJsonString(connectionParam));
-            entity.setOriginalJson(dto.getConnectionParams());
+            entity.setOriginalJson(connectionJson);
             entity.setConnStatus(existing.getConnStatus());
             entity.setStatus(existing.getStatus() == null
                     ? DataSourceLifecycleStatus.ENABLED
@@ -247,6 +292,49 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             log.error("Update data source failed, id={}, name={}, dbType={}", id, dto.getName(), dto.getDbType(), e);
             throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateDataSourceUsage(Long id, Boolean sourceEnabled, Boolean sinkEnabled) {
+        validateId(id);
+        if (sourceEnabled == null || sinkEnabled == null
+                || (!sourceEnabled && !sinkEnabled)) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "At least one data source usage must be enabled.");
+        }
+
+        DataSource existing = getDataSourceOrThrow(id);
+        ensureUserManaged(existing);
+        if (existing.getStatus() == DataSourceLifecycleStatus.REVOKED) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "A data source pending metadata deletion cannot be updated.");
+        }
+        if (sourceEnabled && !DataSourceUsageValidator.supportsConnector(
+                existing.getDbType(), DataSourceUsage.SOURCE, null)) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "This connector cannot be used as a source.");
+        }
+        if (sinkEnabled && !DataSourceUsageValidator.supportsConnector(
+                existing.getDbType(), DataSourceUsage.SINK, null)) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "This connector cannot be used as a target.");
+        }
+
+        DataSourceDTO usageUpdate = new DataSourceDTO();
+        usageUpdate.setSourceEnabled(sourceEnabled);
+        usageUpdate.setSinkEnabled(sinkEnabled);
+        validateUsageChangeAllowed(existing, usageUpdate);
+
+        DataSource entity = new DataSource();
+        entity.setId(id);
+        entity.setSourceEnabled(sourceEnabled);
+        entity.setSinkEnabled(sinkEnabled);
+        entity.setUpdateUserId(currentUserProvider.getCurrentUserId());
+        entity.initUpdate();
+        dataSourceDao.updateById(entity);
+        invalidateInventorySnapshots();
+        return true;
     }
 
     @Override
@@ -309,7 +397,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
                 fillDerivedFields(record, systems, units);
                 fillMetadataFields(record, bindings.get(record.getId()));
                 fillAgentCapabilities(record);
-                redactSystemProjection(record);
+                DataSourceSecretSupport.redact(record);
             });
 
             return PaginationResult.buildSuc(records, pageResult);
@@ -478,6 +566,23 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     }
 
     @Override
+    public Boolean connectionTestWithParam(Long id, String connJson) {
+        if (id == null) {
+            return connectionTestWithParam(connJson);
+        }
+        validateId(id);
+        DataSource existing = getDataSourceOrThrow(id);
+        ensureUserManaged(existing);
+        DbType editedType = extractDbType(connJson);
+        String connectionJson = connJson;
+        if (java.util.Objects.equals(editedType, existing.getDbType())) {
+            connectionJson = DataSourceSecretSupport.mergeSecrets(
+                    editedType, connJson, existing.getOriginalJson(), existing.getConnectionParams());
+        }
+        return connectionTestWithParam(connectionJson);
+    }
+
+    @Override
     public List<DataSourceVO> listAll() {
         try {
             List<DataSource> entities = dataSourceDao.queryAll();
@@ -489,7 +594,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
                 fillDerivedFields(record, systems, units);
                 fillMetadataFields(record, bindings.get(record.getId()));
                 fillAgentCapabilities(record);
-                redactSystemProjection(record);
+                DataSourceSecretSupport.redact(record);
             });
             return result;
         } catch (Exception e) {
@@ -563,11 +668,19 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
     @Override
     public List<DBOptionVO> option(String dbType) {
+        return option(dbType, null, null);
+    }
+
+    @Override
+    public List<DBOptionVO> option(String dbType, DataSourceUsage usage, String pluginName) {
         try {
             List<DataSource> entities = dataSourceDao.queryByDbType(dbType);
             return entities.stream()
                     .filter(entity -> entity.getStatus() == null
                             || entity.getStatus() == DataSourceLifecycleStatus.ENABLED)
+                    .filter(entity -> usage == null || isEnabledForUsage(entity, usage))
+                    .filter(entity -> usage == null || DataSourceUsageValidator.supportsConnector(
+                            entity.getDbType(), usage, pluginName))
                     .map(this::toOptionVO)
                     .collect(Collectors.toList());
         } catch (Exception e) {
@@ -575,6 +688,165 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, e.getMessage());
         }
     }
+
+    private void applyUpdateUsageDefaults(DataSource existing, DataSourceDTO dto) {
+        if (dto.getSourceEnabled() == null) {
+            dto.setSourceEnabled(existing.getSourceEnabled() == null || existing.getSourceEnabled());
+        }
+        if (dto.getSinkEnabled() == null) {
+            dto.setSinkEnabled(existing.getSinkEnabled() == null || existing.getSinkEnabled());
+        }
+    }
+
+    private void validateUsageChangeAllowed(DataSource existing, DataSourceDTO dto) {
+        if (isEnabledForUsage(existing, DataSourceUsage.SOURCE) && Boolean.FALSE.equals(dto.getSourceEnabled())
+                && isReferencedOnSourceSide(existing.getId())) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "The source usage cannot be removed while a task uses this data source as a source.");
+        }
+        if (isEnabledForUsage(existing, DataSourceUsage.SINK) && Boolean.FALSE.equals(dto.getSinkEnabled())
+                && isReferencedOnSinkSide(existing.getId())) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "The sink usage cannot be removed while a task uses this data source as a target.");
+        }
+    }
+
+    private boolean isReferencedOnSourceSide(Long datasourceId) {
+        return jobDefinitionDao.existsBySourceDatasourceId(datasourceId)
+                || streamingJobDefinitionDao.existsBySourceDatasourceId(datasourceId)
+                || (lakeOdsDatabaseBindingDao != null
+                    && lakeOdsDatabaseBindingDao.existsActiveBySourceDataSourceId(datasourceId))
+                || (lakeExternalCatalogBindingDao != null
+                    && lakeExternalCatalogBindingDao.existsActiveBySourceDataSourceId(datasourceId))
+                || (lakeSourceObjectRefDao != null
+                    && lakeSourceObjectRefDao.existsActiveBySourceDataSourceId(datasourceId))
+                || hasScriptDatasourceReference(datasourceId, DataSourceUsage.SOURCE);
+    }
+
+    private boolean isReferencedOnSinkSide(Long datasourceId) {
+        return jobDefinitionDao.existsBySinkDatasourceId(datasourceId)
+                || streamingJobDefinitionDao.existsBySinkDatasourceId(datasourceId)
+                || offlineImportTaskDao.existsByTargetDatasourceId(datasourceId)
+                || hasScriptDatasourceReference(datasourceId, DataSourceUsage.SINK);
+    }
+
+    private boolean hasScriptDatasourceReference(Long datasourceId, DataSourceUsage usage) {
+        String section = usage == DataSourceUsage.SOURCE ? "source" : "sink";
+        for (JobDefinitionContentEntity content : latestBatchContents()) {
+            if (content.getMode() == JobDefinitionMode.SCRIPT
+                    && scriptContainsDatasource(content.getDefinitionContent(), datasourceId, section,
+                            content.getJobDefinitionId())) {
+                return true;
+            }
+        }
+        for (StreamingJobDefinitionContentEntity content : latestStreamingContents()) {
+            if (content.getMode() == JobDefinitionMode.SCRIPT
+                    && scriptContainsDatasource(content.getDefinitionContent(), datasourceId, section,
+                            content.getJobDefinitionId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<JobDefinitionContentEntity> latestBatchContents() {
+        List<JobDefinitionContentEntity> all = jobDefinitionContentDao.queryAll();
+        if (all == null || all.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<Long, Integer> currentVersions = new HashMap<>();
+        List<JobDefinitionEntity> definitions = jobDefinitionDao.queryAll();
+        if (definitions != null) {
+            for (JobDefinitionEntity definition : definitions) {
+                if (definition != null && definition.getId() != null && definition.getJobVersion() != null) {
+                    currentVersions.put(definition.getId(), definition.getJobVersion());
+                }
+            }
+        }
+        List<JobDefinitionContentEntity> current = new java.util.ArrayList<>();
+        for (JobDefinitionContentEntity content : all) {
+            if (content == null || content.getJobDefinitionId() == null || content.getVersion() == null) {
+                continue;
+            }
+            Integer currentVersion = currentVersions.get(content.getJobDefinitionId());
+            if (Objects.equals(content.getVersion(), currentVersion)) {
+                current.add(content);
+            }
+        }
+        return List.copyOf(current);
+    }
+
+    private List<StreamingJobDefinitionContentEntity> latestStreamingContents() {
+        List<StreamingJobDefinitionContentEntity> all = streamingJobDefinitionContentDao.queryAll();
+        if (all == null || all.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<Long, Integer> currentVersions = new HashMap<>();
+        List<StreamingJobDefinitionEntity> definitions = streamingJobDefinitionDao.queryAll();
+        if (definitions != null) {
+            for (StreamingJobDefinitionEntity definition : definitions) {
+                if (definition != null && definition.getId() != null && definition.getJobVersion() != null) {
+                    currentVersions.put(definition.getId(), definition.getJobVersion());
+                }
+            }
+        }
+        List<StreamingJobDefinitionContentEntity> current = new java.util.ArrayList<>();
+        for (StreamingJobDefinitionContentEntity content : all) {
+            if (content == null || content.getJobDefinitionId() == null || content.getVersion() == null) {
+                continue;
+            }
+            Integer currentVersion = currentVersions.get(content.getJobDefinitionId());
+            if (Objects.equals(content.getVersion(), currentVersion)) {
+                current.add(content);
+            }
+        }
+        return List.copyOf(current);
+    }
+
+    private boolean scriptContainsDatasource(
+            String definitionContent, Long datasourceId, String section, Long jobDefinitionId) {
+        try {
+            String hocon = null;
+            try {
+                ScriptJobContent script = JSONUtils.parseObject(definitionContent, ScriptJobContent.class);
+                hocon = script == null ? null : script.getHoconContent();
+            } catch (Exception ignored) {
+                // Older rows may contain raw HOCON rather than the JSON wrapper.
+            }
+            if (StringUtils.isBlank(hocon)) {
+                // Compatibility with rows that stored raw HOCON before the content wrapper was added.
+                hocon = definitionContent;
+            }
+            return scriptJobDefinitionParser.extractDatasourceIds(hocon, section).contains(datasourceId);
+        } catch (Exception e) {
+            // Stored scripts were validated when saved; fail closed if a historical row cannot be inspected.
+            log.warn("Unable to inspect stored script datasource references, jobDefinitionId={}",
+                    jobDefinitionId, e);
+            return true;
+        }
+    }
+
+    void applyCreateUsageDefaults(DataSourceDTO dto) {
+        if (dto == null) {
+            return;
+        }
+        if (dto.getSourceEnabled() == null) {
+            dto.setSourceEnabled(DataSourceUsageValidator.supportsConnector(
+                    dto.getDbType(), DataSourceUsage.SOURCE, null));
+        }
+        if (dto.getSinkEnabled() == null) {
+            dto.setSinkEnabled(DataSourceUsageValidator.supportsConnector(
+                    dto.getDbType(), DataSourceUsage.SINK, null));
+        }
+    }
+
+    private static boolean isEnabledForUsage(DataSource dataSource, DataSourceUsage usage) {
+        if (usage == DataSourceUsage.SOURCE) {
+            return dataSource.getSourceEnabled() == null || dataSource.getSourceEnabled();
+        }
+        return dataSource.getSinkEnabled() == null || dataSource.getSinkEnabled();
+    }
+
 
 
     private void checkDataSourceNotUsed(Long datasourceId) {
@@ -687,6 +959,10 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         }
         if (StringUtils.isBlank(dto.getConnectionParams())) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "connectionParams");
+        }
+        if (Boolean.FALSE.equals(dto.getSourceEnabled()) && Boolean.FALSE.equals(dto.getSinkEnabled())) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "At least one data source usage must be enabled.");
         }
     }
 
@@ -933,14 +1209,6 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             return org.apache.seatunnel.web.common.enums.MetadataRunStatus.FAILED;
         }
         return status;
-    }
-
-    /** Never expose the encrypted ODS password through ordinary datasource APIs. */
-    private static void redactSystemProjection(DataSourceVO vo) {
-        if (vo != null && Boolean.TRUE.equals(vo.getSystemManaged())) {
-            vo.setConnectionParams(null);
-            vo.setOriginalJson(null);
-        }
     }
 
     private DBOptionVO toOptionVO(DataSource entity) {

@@ -59,6 +59,13 @@ public class LakeSourceObjectRefDaoImpl extends BaseDao<LakeSourceObjectRef, Lak
     }
 
     @Override
+    public boolean existsActiveBySourceDataSourceId(Long sourceDataSourceId) {
+        return sourceDataSourceId != null && mapper.selectCount(new LambdaQueryWrapper<LakeSourceObjectRef>()
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getSourceDataSourceId), sourceDataSourceId)
+                .eq(MyBatisColumn.getter(LakeSourceObjectRef::getDeleted), false)) > 0;
+    }
+
+    @Override
     public boolean updateIfTokenAndVersion(
             LakeSourceObjectRef entity, String operationToken, Integer lockVersion) {
         return updateIfTokenAndVersion(entity, operationToken, lockVersion, true);

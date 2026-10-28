@@ -180,4 +180,13 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
         return mybatisMapper.selectCount(new LambdaQueryWrapper<OfflineImportTask>()
                 .eq(OfflineImportTask::getFileResourceId, fileResourceId)) > 0;
     }
+
+    @Override
+    public boolean existsByTargetDatasourceId(Long datasourceId) {
+        if (datasourceId == null || datasourceId <= 0) {
+            return false;
+        }
+        return mybatisMapper.selectCount(new LambdaQueryWrapper<OfflineImportTask>()
+                .eq(OfflineImportTask::getTargetDatasourceId, datasourceId)) > 0;
+    }
 }

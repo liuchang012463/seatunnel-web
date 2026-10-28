@@ -29,8 +29,10 @@ export const menuData: MenuDataItem[] = [
     path: '/data-source',
     name: '数据源管理',
     icon: <DatabaseOutlined />,
-    disabledTooltip: true,
-    collapsedHoverPanel: true,
+    children: [
+      { path: '/data-source/source-connection', name: '源端连接' },
+      { path: '/data-source/target-connection', name: '目标连接' },
+    ],
   },
   {
     path: '/menu/exploration',

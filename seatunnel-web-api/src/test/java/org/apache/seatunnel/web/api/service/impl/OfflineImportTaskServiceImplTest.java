@@ -5,6 +5,7 @@ import org.apache.seatunnel.web.api.offlineimport.ExecutionLogBuffer;
 import org.apache.seatunnel.web.api.offlineimport.OfflineImportProperties;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.FileResourceService;
+import org.apache.seatunnel.web.api.service.DataSourceUsageValidator;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
@@ -73,6 +74,7 @@ class OfflineImportTaskServiceImplTest {
     private FileResourceDao fileResourceDao;
     private FileResourceStorageProvider storageProvider;
     private CurrentUserProvider currentUserProvider;
+    private DataSourceUsageValidator dataSourceUsageValidator;
     private OfflineImportTaskServiceImpl service;
 
     @BeforeEach
@@ -83,6 +85,7 @@ class OfflineImportTaskServiceImplTest {
         fileResourceDao = mock(FileResourceDao.class);
         storageProvider = mock(FileResourceStorageProvider.class);
         currentUserProvider = mock(CurrentUserProvider.class);
+        dataSourceUsageValidator = mock(DataSourceUsageValidator.class);
         service = new OfflineImportTaskServiceImpl();
         ReflectionTestUtils.setField(service, "offlineImportTaskDao", offlineImportTaskDao);
         ReflectionTestUtils.setField(service, "dataSourceDao", dataSourceDao);
@@ -90,6 +93,7 @@ class OfflineImportTaskServiceImplTest {
         ReflectionTestUtils.setField(service, "fileResourceDao", fileResourceDao);
         ReflectionTestUtils.setField(service, "storageProvider", storageProvider);
         ReflectionTestUtils.setField(service, "currentUserProvider", currentUserProvider);
+        ReflectionTestUtils.setField(service, "dataSourceUsageValidator", dataSourceUsageValidator);
         ReflectionTestUtils.setField(service, "offlineImportProperties", new OfflineImportProperties());
         when(currentUserProvider.getCurrentUserId()).thenReturn(USER_ID);
     }

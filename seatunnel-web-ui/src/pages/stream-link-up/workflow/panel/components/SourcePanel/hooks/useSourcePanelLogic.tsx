@@ -2,6 +2,7 @@ import {
   dataSourceCatalogApi,
   fetchDataSourceOptions,
 } from "@/pages/data-source/service";
+import { DATA_SOURCE_REGISTRY } from "@/pages/data-source/dataSourceRegistry";
 import { message } from "antd";
 import { Table2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -93,7 +94,9 @@ export function useSourcePanelLogic({
       }
 
       try {
-        const res = await fetchDataSourceOptions(dbType);
+        const pluginName = config?.pluginName || nodeData?.pluginName
+          || DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType)?.pluginName;
+        const res = await fetchDataSourceOptions(dbType, "SOURCE", pluginName);
         const list = Array.isArray(res?.data) ? res.data : [];
 
         const options = list.map((item: any) => ({
@@ -110,7 +113,7 @@ export function useSourcePanelLogic({
     };
 
     loadDataSourceOptions();
-  }, [dbType]);
+  }, [dbType, config?.pluginName, nodeData?.pluginName]);
 
   /**
    * 根据当前 dataSourceId 回填节点标题和 dbType。

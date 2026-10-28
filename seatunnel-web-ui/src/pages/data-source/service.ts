@@ -105,6 +105,13 @@ export async function updateDataSource(
   return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}`, payload);
 }
 
+export async function updateDataSourceUsage(
+  id: string,
+  payload: { sourceEnabled: boolean; sinkEnabled: boolean },
+): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}/usage`, payload);
+}
+
 /**
  * Updates only the canonical ownership binding. Connection parameters are
  * deliberately not accepted by this endpoint, so legacy/job-referenced
@@ -468,8 +475,15 @@ export interface DataSourceOptionRecord {
   [key: string]: unknown;
 }
 
-export async function fetchDataSourceOptions(dbType: string): Promise<CommonApiResponse<DataSourceOptionRecord[]>> {
-  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/option?dbType=${dbType}`);
+export async function fetchDataSourceOptions(
+  dbType: string,
+  usage?: 'SOURCE' | 'SINK',
+  pluginName?: string,
+): Promise<CommonApiResponse<DataSourceOptionRecord[]>> {
+  const query = new URLSearchParams({ dbType });
+  if (usage) query.set('usage', usage);
+  if (pluginName) query.set('pluginName', pluginName);
+  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/option?${query.toString()}`);
 }
 
 export const apiPrefixCatalog = '/api/v1/data-source/catalog';

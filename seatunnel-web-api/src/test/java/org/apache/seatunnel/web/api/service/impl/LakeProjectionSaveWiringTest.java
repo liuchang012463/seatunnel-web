@@ -5,6 +5,7 @@ import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.lake.job.LakeJobRelationBridgeService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
+import org.apache.seatunnel.web.api.service.DataSourceUsageValidator;
 import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
 import org.apache.seatunnel.web.api.service.StreamingJobMetricsService;
@@ -69,6 +70,7 @@ class LakeProjectionSaveWiringTest {
     @Mock private StreamingJobInstanceService streamingJobInstanceService;
     @Mock private StreamingJobMetricsService streamingJobMetricsService;
     @Mock private ObjectMapper objectMapper;
+    @Mock private DataSourceUsageValidator dataSourceUsageValidator;
 
     @InjectMocks private BatchJobDefinitionServiceImpl batchService;
     @InjectMocks private StreamingJobDefinitionServiceImpl streamingService;

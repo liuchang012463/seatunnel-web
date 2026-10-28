@@ -1,3 +1,4 @@
+import { DATA_SOURCE_REGISTRY, supportsDataSourceUsage } from './dataSourceRegistry';
 import type { DataSourceConnectionFormValues, DataSourceFormValues, DataSourceRecord } from './types';
 
 export function filterDataSourceList(list: DataSourceRecord[], keyword: string): DataSourceRecord[] {
@@ -34,6 +35,7 @@ export function buildSubmitPayload(
   dbType: string,
   basicValues: DataSourceFormValues,
   connectionValues: DataSourceConnectionFormValues,
+  previousUsage?: { sourceEnabled?: boolean; sinkEnabled?: boolean },
 ) {
   // `unitId` is only used to populate the cascading selector. The server's
   // canonical ownership key is `businessSystemId`; the old free-text
@@ -41,12 +43,23 @@ export function buildSubmitPayload(
   const {
     dataSourceUnit: _deprecatedDataSourceUnit,
     unitId: _unitId,
+    usages = [],
     ...canonicalBasicValues
   } = basicValues as DataSourceFormValues & { dataSourceUnit?: string };
+
+  const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
+  const sourceEnabled = !supportsDataSourceUsage(connector, 'SOURCE')
+    ? Boolean(previousUsage?.sourceEnabled)
+    : usages.includes('SOURCE');
+  const sinkEnabled = !supportsDataSourceUsage(connector, 'SINK')
+    ? Boolean(previousUsage?.sinkEnabled)
+    : usages.includes('SINK');
 
   return {
     dbType,
     ...canonicalBasicValues,
+    sourceEnabled,
+    sinkEnabled,
     // Soft metadata: UI no longer collects env; default DEVELOP when missing.
     // Edit forms hydrate record.environment so PROD/TEST are preserved.
     environment: canonicalBasicValues.environment || 'DEVELOP',

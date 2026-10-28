@@ -3,8 +3,13 @@ import { Button, Form, message, Modal } from 'antd';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { dataSourceGroupList } from '../constants';
 import DatabaseIcons from '../icon/DatabaseIcons';
-import { DATA_SOURCE_REGISTRY } from '../dataSourceRegistry';
-import { createDataSource, testDataSourceConnectionWithParams, updateDataSource } from '../service';
+import { DATA_SOURCE_REGISTRY, supportsDataSourceUsage } from '../dataSourceRegistry';
+import {
+  createDataSource,
+  testDataSourceConnectionWithParams,
+  updateDataSource,
+  updateDataSourceUsage,
+} from '../service';
 import type {
   DataSourceFormValues,
   DataSourceModalOpenPayload,
@@ -32,6 +37,8 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
   const [selectedDbType, setSelectedDbType] = useState('');
   const [showFormStep, setShowFormStep] = useState(false);
   const [hideBackButton, setHideBackButton] = useState(false);
+  const [defaultUsage, setDefaultUsage] = useState<'SOURCE' | 'SINK'>();
+  const [usageOnly, setUsageOnly] = useState(false);
 
   const successCallbackRef = useRef<(() => void) | undefined>();
 
@@ -43,6 +50,8 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
     setSelectedDbType('');
     setShowFormStep(false);
     setHideBackButton(false);
+    setDefaultUsage(undefined);
+    setUsageOnly(false);
     basicForm.resetFields();
     configForm.resetFields();
   };
@@ -55,6 +64,14 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
   const initializeEditForm = (record: DataSourceRecord) => {
     basicForm.setFieldsValue({
       name: record.name || '',
+      usages: (() => {
+        const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === record.dbType);
+        return (['SOURCE', 'SINK'] as const).filter((usage) => {
+          const supported = supportsDataSourceUsage(connector, usage);
+          const enabled = usage === 'SOURCE' ? record.sourceEnabled : record.sinkEnabled;
+          return supported && (enabled == null || enabled);
+        });
+      })(),
       unitId: record.unitId == null ? undefined : String(record.unitId),
       // Historical rows may have no business-system binding. Leave the field
       // empty so the required rule makes the editor choose a canonical owner.
@@ -74,6 +91,8 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       onSuccess,
       dbType,
       hideBack,
+      defaultUsage: requestedUsage,
+      usageOnly: requestedUsageOnly,
     }: DataSourceModalOpenPayload) => {
       /**
        * 每次打开前，先清理上一次弹窗状态。
@@ -84,6 +103,8 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       setOpen(true);
       setOperateType(nextOperateType);
       setCurrentRecord(nextRecord);
+      setDefaultUsage(requestedUsage);
+      setUsageOnly(Boolean(requestedUsageOnly));
       successCallbackRef.current = onSuccess;
 
       /**
@@ -146,6 +167,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
           ...connectionValues,
           type: selectedDbType,
         }),
+        ...(isEditMode && currentRecord?.id ? { dataSourceId: currentRecord.id } : {}),
       });
 
       if (response.code === 0) {
@@ -168,10 +190,35 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
 
   const handleSubmit = async () => {
     try {
+      if (usageOnly) {
+        const basicValues = await basicForm.validateFields(['usages']);
+        if (!currentRecord?.id) {
+          return;
+        }
+        const usages = basicValues.usages || [];
+        const response = await updateDataSourceUsage(currentRecord.id, {
+          sourceEnabled: usages.includes('SOURCE'),
+          sinkEnabled: usages.includes('SINK'),
+        });
+        if (response.code !== 0) {
+          return;
+        }
+
+        message.success(
+          intl.formatMessage({
+            id: 'pages.datasource.modal.message.success',
+            defaultMessage: 'Success',
+          }),
+        );
+        handleClose();
+        successCallbackRef.current?.();
+        return;
+      }
+
       const basicValues = await basicForm.validateFields();
       const connectionValues = await configForm.validateFields();
 
-      const payload = buildSubmitPayload(selectedDbType, basicValues, connectionValues);
+      const payload = buildSubmitPayload(selectedDbType, basicValues, connectionValues, currentRecord);
 
       if (isCreateMode) {
         const response = await createDataSource(payload);
@@ -209,7 +256,9 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
   };
 
   const modalActionText =
-    operateType === ('EDIT' as DataSourceOperateType)
+    usageOnly
+      ? '编辑连接用途'
+      : operateType === ('EDIT' as DataSourceOperateType)
       ? intl.formatMessage({
           id: 'pages.datasource.modal.title.edit',
           defaultMessage: 'Edit',
@@ -297,7 +346,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
                   }}
                 >
                   {modalActionText}
-                  {intl.formatMessage({
+                  {!usageOnly && intl.formatMessage({
                     id: 'pages.datasource.common.title',
                     defaultMessage: ' Data Source',
                   })}
@@ -352,9 +401,11 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
 
           {showFormStep ? (
             <div style={{ display: 'flex', gap: 10 }}>
-              <Button onClick={handleTestConnection} style={{ height: 34, borderRadius: 6 }}>
-                连接测试
-              </Button>
+              {!usageOnly ? (
+                <Button onClick={handleTestConnection} style={{ height: 34, borderRadius: 6 }}>
+                  连接测试
+                </Button>
+              ) : null}
 
               <Button type="primary" onClick={handleSubmit} style={{ height: 34, borderRadius: 6, paddingInline: 18 }}>
                 完成
@@ -373,10 +424,18 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
           operateType={operateType}
           onManageMasterData={onManageMasterData}
           initialConfig={isEditMode ? parseOriginalJson(currentRecord?.originalJson) : undefined}
+          configuredSecretFields={isEditMode ? currentRecord?.configuredSecretFields : undefined}
+          savedSecretFields={isEditMode ? currentRecord?.savedSecretFields : undefined}
+          defaultUsage={defaultUsage}
+          usageOnly={usageOnly}
         />
       ) : (
         <div style={{ padding: '4px 0 8px' }}>
-          <DataSourceTypeSelector dataSourceGroups={dataSourceGroupList} onSelect={handleSelectDbType} />
+          <DataSourceTypeSelector
+            dataSourceGroups={dataSourceGroupList}
+            defaultUsage={defaultUsage}
+            onSelect={handleSelectDbType}
+          />
         </div>
       )}
     </Modal>

@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.service.impl.client;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.service.DataSourceService;
+import org.apache.seatunnel.web.api.service.DataSourceUsageValidator;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.core.verify.DatasourceConnectivityVerificationStrategy;
 import org.apache.seatunnel.web.core.verify.DatasourceConnectivityVerificationStrategyFactory;
@@ -53,6 +54,9 @@ public class SeaTunnelClientDatasourceVerifyAppService {
     @Resource
     private DatasourceConnectivityVerificationStrategyFactory strategyFactory;
 
+    @Resource
+    private DataSourceUsageValidator dataSourceUsageValidator;
+
     /**
      * Verifies datasource connectivity through the specified SeaTunnel client.
      *
@@ -84,6 +88,16 @@ public class SeaTunnelClientDatasourceVerifyAppService {
                     Status.INTERNAL_SERVER_ERROR_ARGS,
                     "数据源不存在, datasourceId=" + dto.getDatasourceId()
             );
+        }
+
+        if (StringUtils.isNotBlank(dto.getRole())) {
+            org.apache.seatunnel.web.common.enums.DataSourceUsage usage;
+            try {
+                usage = org.apache.seatunnel.web.common.enums.DataSourceUsage.from(dto.getRole());
+            } catch (IllegalArgumentException e) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "role");
+            }
+            dataSourceUsageValidator.validate(dto.getDatasourceId(), usage, dto.getPluginName());
         }
 
         DbType dbType = datasource.getDbType();

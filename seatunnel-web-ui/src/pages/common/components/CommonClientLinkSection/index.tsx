@@ -555,7 +555,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   }, []);
 
   const loadSourceOptions = useCallback(
-    async (dbType?: string) => {
+    async (dbType?: string, pluginName?: string) => {
       const requestId = ++dataSourceOptionsRequestIdRef.current.source;
       if (sourceManaged) {
         setSourceLoading(false);
@@ -580,7 +580,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
       try {
         setSourceLoading(true);
 
-        const res = await fetchDataSourceOptions(dbType);
+        const res = await fetchDataSourceOptions(dbType, 'SOURCE', pluginName);
         const nextData = Array.isArray(res?.data) ? res.data : [];
 
         if (dataSourceOptionsRequestIdRef.current.source !== requestId) {
@@ -606,7 +606,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   );
 
   const loadTargetOptions = useCallback(
-    async (dbType?: string) => {
+    async (dbType?: string, pluginName?: string) => {
       const requestId = ++dataSourceOptionsRequestIdRef.current.target;
       if (!dbType) {
         setTargetLoading(false);
@@ -622,7 +622,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
       try {
         setTargetLoading(true);
 
-        const res = await fetchDataSourceOptions(dbType);
+        const res = await fetchDataSourceOptions(dbType, 'SINK', pluginName);
         const nextData = Array.isArray(res?.data) ? res.data : [];
 
         if (dataSourceOptionsRequestIdRef.current.target !== requestId) {
@@ -906,12 +906,12 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
       autoTestKeyRef.current.source = undefined;
       return;
     }
-    loadSourceOptions(sourceType?.dbType);
-  }, [sourceType?.dbType, loadSourceOptions, sourceManaged, form, resetSourceTestStatus, setSourceDataSourceId]);
+    loadSourceOptions(sourceType?.dbType, sourceType?.pluginName);
+  }, [sourceType?.dbType, sourceType?.pluginName, loadSourceOptions, sourceManaged, form, resetSourceTestStatus, setSourceDataSourceId]);
 
   useEffect(() => {
-    loadTargetOptions(targetType?.dbType);
-  }, [targetType?.dbType, loadTargetOptions]);
+    loadTargetOptions(targetType?.dbType, targetType?.pluginName);
+  }, [targetType?.dbType, targetType?.pluginName, loadTargetOptions]);
 
   useEffect(() => {
     if (sourceManaged) return;
@@ -1106,12 +1106,13 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
     modalRef.current?.open({
       operateType: "CREATE" as DataSourceOperateType,
       dbType,
+      defaultUsage: side === "source" ? "SOURCE" : "SINK",
       hideBack: true,
       onSuccess: async () => {
         const nextData =
           side === "source"
-            ? await loadSourceOptions(dbType)
-            : await loadTargetOptions(dbType);
+            ? await loadSourceOptions(dbType, sourceType?.pluginName)
+            : await loadTargetOptions(dbType, targetType?.pluginName);
 
         const createdValue = nextData?.[0]?.id ?? nextData?.[0]?.value;
 

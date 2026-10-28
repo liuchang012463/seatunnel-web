@@ -127,6 +127,24 @@ public class JobDefinitionDaoImpl
     }
 
     @Override
+    public boolean existsBySourceDatasourceId(Long datasourceId) {
+        if (datasourceId == null || datasourceId <= 0) {
+            return false;
+        }
+        return jobDefinitionMapper.selectCount(new LambdaQueryWrapper<JobDefinitionEntity>()
+                .eq(MyBatisColumn.getter(JobDefinitionEntity::getSourceDatasourceId), datasourceId)) > 0;
+    }
+
+    @Override
+    public boolean existsBySinkDatasourceId(Long datasourceId) {
+        if (datasourceId == null || datasourceId <= 0) {
+            return false;
+        }
+        return jobDefinitionMapper.selectCount(new LambdaQueryWrapper<JobDefinitionEntity>()
+                .eq(MyBatisColumn.getter(JobDefinitionEntity::getSinkDatasourceId), datasourceId)) > 0;
+    }
+
+    @Override
     public List<Long> selectReferencedDatasourceIds(List<Long> datasourceIds) {
         if (datasourceIds == null || datasourceIds.isEmpty()) {
             return Collections.emptyList();

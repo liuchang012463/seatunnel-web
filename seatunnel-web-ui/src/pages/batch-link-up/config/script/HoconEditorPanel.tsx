@@ -612,7 +612,7 @@ export default function HoconEditorPanel({
       return;
     }
 
-    const cacheKey = `${blockInfo.area}:${dbType}`;
+    const cacheKey = `${blockInfo.area}:${dbType}:${blockInfo.pluginName || ''}`;
     const cachedOptions = datasourceCacheRef.current.get(cacheKey);
 
     if (cachedOptions) {
@@ -655,7 +655,11 @@ export default function HoconEditorPanel({
     });
 
     try {
-      const response = await fetchDataSourceOptions(dbType);
+      const response = await fetchDataSourceOptions(
+        dbType,
+        blockInfo.area === "source" ? "SOURCE" : "SINK",
+        blockInfo.pluginName,
+      );
 
       if (requestSeqRef.current !== currentRequestSeq) {
         return;

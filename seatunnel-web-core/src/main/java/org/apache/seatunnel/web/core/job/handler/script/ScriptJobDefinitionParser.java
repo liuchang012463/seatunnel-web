@@ -64,6 +64,7 @@ public class ScriptJobDefinitionParser {
         Set<String> sinkTables = new LinkedHashSet<>();
 
         for (PluginConfig plugin : sourcePlugins) {
+            addIfNotNull(sourceDatasourceIds, resolveDatasourceId(plugin.getConfig()));
             JobDefinitionAnalysisResult result = analyzePlugin(
                     DatasourceAnalysisRole.SOURCE,
                     plugin,
@@ -76,6 +77,7 @@ public class ScriptJobDefinitionParser {
         }
 
         for (PluginConfig plugin : sinkPlugins) {
+            addIfNotNull(sinkDatasourceIds, resolveDatasourceId(plugin.getConfig()));
             JobDefinitionAnalysisResult result = analyzePlugin(
                     DatasourceAnalysisRole.SINK,
                     plugin,
@@ -91,10 +93,25 @@ public class ScriptJobDefinitionParser {
                 .sourceType(joinAsCsv(sourceTypes))
                 .sinkType(joinAsCsv(sinkTypes))
                 .sourceDatasourceId(firstLong(sourceDatasourceIds))
+                .sourceDatasourceIds(List.copyOf(sourceDatasourceIds))
                 .sinkDatasourceId(firstLong(sinkDatasourceIds))
+                .sinkDatasourceIds(List.copyOf(sinkDatasourceIds))
                 .sourceTable(JSONUtils.toJsonString(new ArrayList<>(sourceTables)))
                 .sinkTable(JSONUtils.toJsonString(new ArrayList<>(sinkTables)))
                 .build();
+    }
+
+    /** Extracts every datasource reference from a persisted script section without resolving plugins. */
+    public Set<Long> extractDatasourceIds(String hoconContent, String section) {
+        if (!"source".equals(section) && !"sink".equals(section)) {
+            throw new IllegalArgumentException("section must be source or sink");
+        }
+        Config config = parseAndValidate(hoconContent);
+        Set<Long> ids = new LinkedHashSet<>();
+        for (PluginConfig plugin : getPluginConfigs(config, section)) {
+            addIfNotNull(ids, resolveDatasourceId(plugin.getConfig()));
+        }
+        return ids;
     }
 
     private JobDefinitionAnalysisResult analyzePlugin(DatasourceAnalysisRole role,

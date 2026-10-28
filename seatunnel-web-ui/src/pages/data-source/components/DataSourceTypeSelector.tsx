@@ -4,16 +4,22 @@ import { SearchOutlined } from '@ant-design/icons';
 
 import DatabaseIcons from '../icon/DatabaseIcons';
 import { COMMON_DB_OPTIONS } from '../constants';
-import { getConnectorTypeLabel } from '../dataSourceRegistry';
+import {
+  DATA_SOURCE_REGISTRY,
+  getConnectorTypeLabel,
+  supportsDataSourceUsage,
+} from '../dataSourceRegistry';
 import type { DataSourceGroup } from '../types';
 
 interface DataSourceTypeSelectorProps {
   dataSourceGroups: DataSourceGroup[];
+  defaultUsage?: 'SOURCE' | 'SINK';
   onSelect: (dbType: string) => void;
 }
 
 const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
   dataSourceGroups,
+  defaultUsage,
   onSelect,
 }) => {
   const [query, setQuery] = useState('');
@@ -21,25 +27,40 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
 
   const keyword = query.trim().toLowerCase();
 
+  const visibleGroups = useMemo(() => {
+    if (!defaultUsage) return dataSourceGroups;
+    return dataSourceGroups.map((group) => ({
+      ...group,
+      datasourceList: group.datasourceList.filter((item) => {
+        const connector = DATA_SOURCE_REGISTRY.find((entry) => entry.dbType === item.dbType);
+        return supportsDataSourceUsage(connector, defaultUsage);
+      }),
+    })).filter((group) => group.datasourceList.length > 0);
+  }, [dataSourceGroups, defaultUsage]);
+
   const totalDatasourceCount = useMemo(() => {
-    return dataSourceGroups.reduce(
+    return visibleGroups.reduce(
       (total, group) => total + group.datasourceList.length,
       0,
     );
-  }, [dataSourceGroups]);
+  }, [visibleGroups]);
 
   const flatDatasourceList = useMemo(() => {
-    return dataSourceGroups.flatMap((group) =>
+    return visibleGroups.flatMap((group) =>
       group.datasourceList.map((item) => ({
         ...item,
         groupName: group.groupName,
         searchText: `${item.label} ${item.dbType} ${item.connectorType || ''} ${item.type || ''} ${group.groupName}`.toLowerCase(),
       })),
     );
-  }, [dataSourceGroups]);
+  }, [visibleGroups]);
 
   const suggestedDatasourceList = useMemo(() => {
-    return COMMON_DB_OPTIONS.map((common) => {
+    return COMMON_DB_OPTIONS.filter((common) => {
+      if (!defaultUsage) return true;
+      const connector = DATA_SOURCE_REGISTRY.find((entry) => entry.dbType === common.value);
+      return supportsDataSourceUsage(connector, defaultUsage);
+    }).map((common) => {
       const matched = flatDatasourceList.find(
         (item) =>
           item.dbType === common.value ||
@@ -55,7 +76,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
         groupName: matched?.groupName,
       };
     }).filter((item) => item.dbType).slice(0, 3);;
-  }, [flatDatasourceList]);
+  }, [defaultUsage, flatDatasourceList]);
 
   const showSuggested = !keyword && suggestedDatasourceList.length > 0;
 
@@ -106,7 +127,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
             </span>
           </Button>
 
-          {dataSourceGroups.map((group) => {
+          {visibleGroups.map((group) => {
             const active = selectedGroupName === group.groupName;
 
             return (
