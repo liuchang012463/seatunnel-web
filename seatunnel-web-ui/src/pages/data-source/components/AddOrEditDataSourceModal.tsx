@@ -4,7 +4,12 @@ import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { dataSourceGroupList } from '../constants';
 import DatabaseIcons from '../icon/DatabaseIcons';
 import { DATA_SOURCE_REGISTRY } from '../dataSourceRegistry';
-import { createDataSource, testDataSourceConnectionWithParams, updateDataSource } from '../service';
+import {
+  createDataSource,
+  testDataSourceConnectionWithParams,
+  updateDataSource,
+  updateDataSourceUsage,
+} from '../service';
 import type {
   DataSourceFormValues,
   DataSourceModalOpenPayload,
@@ -33,6 +38,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
   const [showFormStep, setShowFormStep] = useState(false);
   const [hideBackButton, setHideBackButton] = useState(false);
   const [defaultUsage, setDefaultUsage] = useState<'SOURCE' | 'SINK'>();
+  const [usageOnly, setUsageOnly] = useState(false);
 
   const successCallbackRef = useRef<(() => void) | undefined>();
 
@@ -45,6 +51,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
     setShowFormStep(false);
     setHideBackButton(false);
     setDefaultUsage(undefined);
+    setUsageOnly(false);
     basicForm.resetFields();
     configForm.resetFields();
   };
@@ -85,6 +92,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       dbType,
       hideBack,
       defaultUsage: requestedUsage,
+      usageOnly: requestedUsageOnly,
     }: DataSourceModalOpenPayload) => {
       /**
        * 每次打开前，先清理上一次弹窗状态。
@@ -96,6 +104,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       setOperateType(nextOperateType);
       setCurrentRecord(nextRecord);
       setDefaultUsage(requestedUsage);
+      setUsageOnly(Boolean(requestedUsageOnly));
       successCallbackRef.current = onSuccess;
 
       /**
@@ -181,6 +190,31 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
 
   const handleSubmit = async () => {
     try {
+      if (usageOnly) {
+        const basicValues = await basicForm.validateFields(['usages']);
+        if (!currentRecord?.id) {
+          return;
+        }
+        const usages = basicValues.usages || [];
+        const response = await updateDataSourceUsage(currentRecord.id, {
+          sourceEnabled: usages.includes('SOURCE'),
+          sinkEnabled: usages.includes('SINK'),
+        });
+        if (response.code !== 0) {
+          return;
+        }
+
+        message.success(
+          intl.formatMessage({
+            id: 'pages.datasource.modal.message.success',
+            defaultMessage: 'Success',
+          }),
+        );
+        handleClose();
+        successCallbackRef.current?.();
+        return;
+      }
+
       const basicValues = await basicForm.validateFields();
       const connectionValues = await configForm.validateFields();
 
@@ -222,7 +256,9 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
   };
 
   const modalActionText =
-    operateType === ('EDIT' as DataSourceOperateType)
+    usageOnly
+      ? '编辑连接用途'
+      : operateType === ('EDIT' as DataSourceOperateType)
       ? intl.formatMessage({
           id: 'pages.datasource.modal.title.edit',
           defaultMessage: 'Edit',
@@ -365,9 +401,11 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
 
           {showFormStep ? (
             <div style={{ display: 'flex', gap: 10 }}>
-              <Button onClick={handleTestConnection} style={{ height: 34, borderRadius: 6 }}>
-                连接测试
-              </Button>
+              {!usageOnly ? (
+                <Button onClick={handleTestConnection} style={{ height: 34, borderRadius: 6 }}>
+                  连接测试
+                </Button>
+              ) : null}
 
               <Button type="primary" onClick={handleSubmit} style={{ height: 34, borderRadius: 6, paddingInline: 18 }}>
                 完成
@@ -389,6 +427,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
           configuredSecretFields={isEditMode ? currentRecord?.configuredSecretFields : undefined}
           savedSecretFields={isEditMode ? currentRecord?.savedSecretFields : undefined}
           defaultUsage={defaultUsage}
+          usageOnly={usageOnly}
         />
       ) : (
         <div style={{ padding: '4px 0 8px' }}>

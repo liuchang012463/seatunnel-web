@@ -47,3 +47,35 @@ SET datasource.source_enabled = CASE
         THEN 0
         ELSE 1
     END;
+
+-- Script jobs may contain multiple source or sink plugins while the legacy
+-- definition columns retain only the first ID. Keep every connection found in
+-- a current script definition dual-purpose until its side can be maintained
+-- by the job editor without losing historical references.
+UPDATE `t_seatunnel_web_datasource` datasource
+SET datasource.source_enabled = 1,
+    datasource.sink_enabled = 1
+WHERE EXISTS (
+    SELECT 1
+    FROM `t_seatunnel_web_job_definition_content` content
+    JOIN `t_seatunnel_web_job_definition` job
+      ON job.id = content.job_definition_id
+     AND job.job_version = content.version
+     AND job.mode = 'SCRIPT'
+     AND content.mode = 'SCRIPT'
+    WHERE REGEXP_LIKE(LOWER(content.definition_content),
+          CONCAT('.*(datasourceid|datasource_id).{0,32}[^0-9]',
+                 datasource.id, '([^0-9].*|$)'))
+)
+OR EXISTS (
+    SELECT 1
+    FROM `t_seatunnel_web_streaming_job_definition_content` content
+    JOIN `t_seatunnel_web_streaming_job_definition` job
+      ON job.id = content.job_definition_id
+     AND job.job_version = content.version
+     AND job.mode = 'SCRIPT'
+     AND content.mode = 'SCRIPT'
+    WHERE REGEXP_LIKE(LOWER(content.definition_content),
+          CONCAT('.*(datasourceid|datasource_id).{0,32}[^0-9]',
+                 datasource.id, '([^0-9].*|$)'))
+);

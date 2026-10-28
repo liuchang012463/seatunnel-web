@@ -105,6 +105,13 @@ export async function updateDataSource(
   return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}`, payload);
 }
 
+export async function updateDataSourceUsage(
+  id: string,
+  payload: { sourceEnabled: boolean; sinkEnabled: boolean },
+): Promise<CommonApiResponse<boolean>> {
+  return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}/usage`, payload);
+}
+
 /**
  * Updates only the canonical ownership binding. Connection parameters are
  * deliberately not accepted by this endpoint, so legacy/job-referenced

@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.service;
 
 import org.apache.seatunnel.web.common.enums.DataSourceUsage;
+import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
@@ -69,9 +70,33 @@ class DataSourceUsageValidatorTest {
                 () -> validator.validate(DATA_SOURCE_ID, DataSourceUsage.SINK));
     }
 
+    @Test
+    void validatesEverySourceAndSinkIdFromMultiPluginScriptAnalysis() {
+        when(dataSourceDao.queryById(11L)).thenReturn(dataSource(11L, DbType.MYSQL, true, true));
+        when(dataSourceDao.queryById(12L)).thenReturn(dataSource(12L, DbType.MYSQL, true, true));
+        when(dataSourceDao.queryById(21L)).thenReturn(dataSource(21L, DbType.MYSQL, true, true));
+        when(dataSourceDao.queryById(22L)).thenReturn(dataSource(22L, DbType.MYSQL, true, false));
+
+        JobDefinitionAnalysisResult analysis = JobDefinitionAnalysisResult.builder()
+                .sourceDatasourceId(11L)
+                .sourceDatasourceIds(java.util.List.of(11L, 12L))
+                .sinkDatasourceId(21L)
+                .sinkDatasourceIds(java.util.List.of(21L, 22L))
+                .build();
+
+        assertThrows(ServiceException.class, () -> validator.validate(analysis));
+        when(dataSourceDao.queryById(22L)).thenReturn(dataSource(22L, DbType.MYSQL, true, true));
+        assertDoesNotThrow(() -> validator.validate(analysis));
+    }
+
     private static DataSource dataSource(DbType dbType, Boolean sourceEnabled, Boolean sinkEnabled) {
+        return dataSource(DATA_SOURCE_ID, dbType, sourceEnabled, sinkEnabled);
+    }
+
+    private static DataSource dataSource(
+            Long id, DbType dbType, Boolean sourceEnabled, Boolean sinkEnabled) {
         DataSource dataSource = new DataSource();
-        dataSource.setId(DATA_SOURCE_ID);
+        dataSource.setId(id);
         dataSource.setDbType(dbType);
         dataSource.setSourceEnabled(sourceEnabled);
         dataSource.setSinkEnabled(sinkEnabled);

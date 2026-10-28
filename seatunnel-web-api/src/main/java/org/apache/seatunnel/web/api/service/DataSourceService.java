@@ -40,6 +40,9 @@ public interface DataSourceService {
      */
     DataSource updateDataSource(Long id, DataSourceDTO dto);
 
+    /** Updates only source/target usage flags without changing connection or ownership data. */
+    boolean updateDataSourceUsage(Long id, Boolean sourceEnabled, Boolean sinkEnabled);
+
     /**
      * Assigns an existing data source to an active business system without
      * changing its connection parameters. This operation is intentionally

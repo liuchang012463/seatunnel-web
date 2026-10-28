@@ -74,6 +74,20 @@ public class DataSourceController {
         return Result.buildSuc(redactDataSourceSecrets(dataSourceService.updateDataSource(id, dto)));
     }
 
+    /** Updates only the allowed source/target purposes of a data source. */
+    @PutMapping("/{id}/usage")
+    @Operation(summary = "updateDataSourceUsage",
+            description = "Update the source/target usage flags without changing connection settings")
+    @ApiException(UPDATE_DATASOURCE_ERROR)
+    public Result<Boolean> updateDataSourceUsage(
+            @PathVariable("id") Long id,
+            @RequestBody DataSourceDTO dto) {
+        return Result.buildSuc(dataSourceService.updateDataSourceUsage(
+                id,
+                dto == null ? null : dto.getSourceEnabled(),
+                dto == null ? null : dto.getSinkEnabled()));
+    }
+
     /**
      * Changes only the canonical business-system ownership of a data source.
      * Connection parameters remain untouched, including for job-referenced

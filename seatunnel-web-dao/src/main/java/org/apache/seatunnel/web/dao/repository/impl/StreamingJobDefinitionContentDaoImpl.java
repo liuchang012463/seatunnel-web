@@ -9,11 +9,18 @@ import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionContentDao;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public class StreamingJobDefinitionContentDaoImpl implements StreamingJobDefinitionContentDao {
 
     @Resource
     private StreamingJobDefinitionContentMapper streamingJobDefinitionContentMapper;
+
+    @Override
+    public List<StreamingJobDefinitionContentEntity> queryAll() {
+        return streamingJobDefinitionContentMapper.selectList(new LambdaQueryWrapper<>());
+    }
 
     @Override
     public void save(StreamingJobDefinitionContentEntity entity) {

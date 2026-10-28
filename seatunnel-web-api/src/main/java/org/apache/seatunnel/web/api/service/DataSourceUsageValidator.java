@@ -13,6 +13,8 @@ import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /** Enforces datasource purpose and connector capability at job-entry points. */
 @Component
 public class DataSourceUsageValidator {
@@ -24,8 +26,17 @@ public class DataSourceUsageValidator {
         if (analysis == null) {
             return;
         }
-        validate(analysis.getSourceDatasourceId(), DataSourceUsage.SOURCE);
-        validate(analysis.getSinkDatasourceId(), DataSourceUsage.SINK);
+        validateAll(analysis.getSourceDatasourceId(), analysis.getSourceDatasourceIds(), DataSourceUsage.SOURCE);
+        validateAll(analysis.getSinkDatasourceId(), analysis.getSinkDatasourceIds(), DataSourceUsage.SINK);
+    }
+
+    private void validateAll(Long primaryId, List<Long> ids, DataSourceUsage usage) {
+        if (primaryId != null) {
+            validate(primaryId, usage);
+        }
+        if (ids != null) {
+            ids.stream().filter(id -> id != null && !id.equals(primaryId)).forEach(id -> validate(id, usage));
+        }
     }
 
     public void validate(Long dataSourceId, DataSourceUsage usage) {

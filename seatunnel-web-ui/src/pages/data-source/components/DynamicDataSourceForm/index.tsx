@@ -47,6 +47,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   configuredSecretFields = EMPTY_CONFIGURED_SECRET_FIELDS,
   savedSecretFields = EMPTY_SAVED_SECRET_FIELDS,
   defaultUsage,
+  usageOnly = false,
 }) => {
   const intl = useIntl();
 
@@ -221,6 +222,17 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   }, [authenticationType, configForm, formConfig]);
 
   useEffect(() => {
+    if (usageOnly) {
+      requestSeqRef.current += 1;
+      setFormConfig([]);
+      setNeedInstall(false);
+      setLoadErrMsg('');
+      setLoading(false);
+      return () => {
+        requestSeqRef.current += 1;
+      };
+    }
+
     if (!dbType) {
       requestSeqRef.current += 1;
       setFormConfig([]);
@@ -239,7 +251,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
        */
       requestSeqRef.current += 1;
     };
-  }, [dbType, configForm, loadFormConfig]);
+  }, [dbType, configForm, loadFormConfig, usageOnly]);
 
   const installPlugin = async () => {
     if (!dbType) {
@@ -356,6 +368,36 @@ const renderFieldLabel = (field: any): React.ReactNode => {
       return rule;
     });
   };
+
+  if (usageOnly) {
+    const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
+    const usageOptions = [
+      ...(connector?.source === false ? [] : [{ label: '源端', value: 'SOURCE' }]),
+      ...(connector?.sink === false ? [] : [{ label: '目标端', value: 'SINK' }]),
+    ];
+
+    return (
+      <div className="datasource-form-panel p-5">
+        <div className="mb-5">
+          <h3 className={sectionTitleClass}>连接用途</h3>
+          <p className={sectionDescClass}>调整此连接可用于源端或目标端。已被任务使用的用途不能移除。</p>
+        </div>
+        <Form form={form} layout="vertical">
+          <Form.Item
+            label="连接用途"
+            name="usages"
+            rules={[{
+              validator: (_, value) => value?.length
+                ? Promise.resolve()
+                : Promise.reject(new Error('至少选择一个连接用途')),
+            }]}
+          >
+            <Checkbox.Group options={usageOptions} />
+          </Form.Item>
+        </Form>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

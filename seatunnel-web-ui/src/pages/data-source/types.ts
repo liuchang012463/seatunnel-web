@@ -276,6 +276,8 @@ export interface DataSourceModalOpenPayload {
   operateType: DataSourceOperateType;
   currentRecord?: DataSourceRecord;
   onSuccess?: () => void;
+  /** Only edit the connection's allowed source/target purposes. */
+  usageOnly?: boolean;
   /**
    * 外部创建入口已确定 dbType 时传入。
    * 传入后弹窗会跳过数据源类型选择页。
@@ -335,6 +337,7 @@ export interface DynamicDataSourceFormProps {
   configuredSecretFields?: string[];
   savedSecretFields?: string[];
   defaultUsage?: 'SOURCE' | 'SINK';
+  usageOnly?: boolean;
 }
 
 export interface DataSourceOptionItem {

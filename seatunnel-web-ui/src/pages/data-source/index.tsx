@@ -243,6 +243,15 @@ const DataSourcePage: React.FC = () => {
     });
   };
 
+  const handleEditUsage = (record: DataSourceRecord) => {
+    modalRef.current?.open({
+      operateType: 'EDIT' as DataSourceOperateType,
+      currentRecord: record,
+      usageOnly: true,
+      onSuccess: handleRefresh,
+    });
+  };
+
   const handleDelete = async (record: DataSourceRecord) => {
     if (!record.id) {
       message.error(
@@ -533,6 +542,12 @@ const DataSourcePage: React.FC = () => {
             ]
           : [
               {
+                key: 'usage',
+                label: '编辑连接用途',
+                disabled: isDeleting,
+                onClick: () => handleEditUsage(record),
+              },
+              {
                 key: 'lifecycle',
                 label: statusActionLabel,
                 disabled: isDeleting,
@@ -749,6 +764,7 @@ const DataSourcePage: React.FC = () => {
                                 key={String(record.id || record.name || `data-source-${index}`)}
                                 record={record}
                                 onEdit={handleEdit}
+                                onEditUsage={handleEditUsage}
                                 onDelete={(currentRecord) => {
                                   void handleDelete(currentRecord);
                                 }}
