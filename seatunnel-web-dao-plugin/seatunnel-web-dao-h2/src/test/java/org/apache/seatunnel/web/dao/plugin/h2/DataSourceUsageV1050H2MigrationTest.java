@@ -50,7 +50,7 @@ class DataSourceUsageV1050H2MigrationTest {
 
                 migration.stream().filter(sql -> sql.startsWith("ALTER TABLE"))
                         .forEach(sql -> execute(statement, sql));
-                for (long id = 1; id <= 16; id++) {
+                for (long id = 1; id <= 18; id++) {
                     statement.execute("INSERT INTO t_seatunnel_web_datasource (id, system_managed)"
                             + " VALUES (" + id + ", " + (id == 8) + ")");
                 }
@@ -68,6 +68,9 @@ class DataSourceUsageV1050H2MigrationTest {
                 statement.execute("INSERT INTO t_seatunnel_web_job_definition"
                         + " (id, job_version, mode, source_datasource_id, sink_datasource_id)"
                         + " VALUES (101, 2, 'SCRIPT', 16, NULL)");
+                statement.execute("INSERT INTO t_seatunnel_web_job_definition"
+                        + " (id, job_version, mode, source_datasource_id, sink_datasource_id)"
+                        + " VALUES (102, 1, 'SCRIPT', 17, NULL), (103, 1, 'SCRIPT', 18, NULL)");
                 statement.execute("INSERT INTO t_seatunnel_web_streaming_job_definition"
                         + " (id, job_version, mode, source_datasource_id, sink_datasource_id)"
                         + " VALUES (200, 1, 'SCRIPT', 14, NULL)");
@@ -82,6 +85,11 @@ class DataSourceUsageV1050H2MigrationTest {
                                 + "{ plugin_name = \"Jdbc\", dataSourceId = 13 }]");
                 insertScript(statement, "t_seatunnel_web_job_definition_content", 101L, 1,
                         "sink = [{ plugin_name = \"Jdbc\", dataSourceId = 16 }]");
+                insertRawScript(statement, "t_seatunnel_web_job_definition_content", 102L, 1,
+                        "sink = [\n  { plugin_name = \"Jdbc\",\n    dataSourceId = 17 }\n]");
+                insertScript(statement, "t_seatunnel_web_job_definition_content", 103L, 1,
+                        "sink = [{ plugin_name = \"Jdbc\", dataSourceId"
+                                + " ".repeat(40) + " = 18 }]");
                 insertScript(statement, "t_seatunnel_web_streaming_job_definition_content", 200L, 1,
                         "source = ["
                                 + "{ plugin_name = \"Jdbc\", dataSourceId = 14 },"
@@ -114,6 +122,8 @@ class DataSourceUsageV1050H2MigrationTest {
                 assertUsage(statement, 14, true, true); // Streaming script source.
                 assertUsage(statement, 15, true, true); // JSON-wrapped, quoted key and string ID.
                 assertUsage(statement, 16, true, false); // Stale SCRIPT content is not current.
+                assertUsage(statement, 17, true, true); // Raw HOCON with newlines.
+                assertUsage(statement, 18, true, true); // More than 32 spaces before the ID.
             }
         }
     }
@@ -127,6 +137,14 @@ class DataSourceUsageV1050H2MigrationTest {
                 + " (job_definition_id, version, mode, definition_content) VALUES ("
                 + jobId + ", " + version + ", '" + JobDefinitionMode.SCRIPT.name() + "', '"
                 + JSONUtils.toJsonString(script).replace("'", "''") + "')");
+    }
+
+    private static void insertRawScript(Statement statement, String table, long jobId, int version, String hocon)
+            throws Exception {
+        statement.execute("INSERT INTO " + table
+                + " (job_definition_id, version, mode, definition_content) VALUES ("
+                + jobId + ", " + version + ", '" + JobDefinitionMode.SCRIPT.name() + "', '"
+                + hocon.replace("'", "''") + "')");
     }
 
     private static void assertUsage(Statement statement, long id, boolean source, boolean sink)

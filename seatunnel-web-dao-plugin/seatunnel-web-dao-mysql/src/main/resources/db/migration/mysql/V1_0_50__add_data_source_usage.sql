@@ -64,8 +64,7 @@ WHERE EXISTS (
      AND job.mode = 'SCRIPT'
      AND content.mode = 'SCRIPT'
     WHERE REGEXP_LIKE(LOWER(content.definition_content),
-          CONCAT('.*(datasourceid|datasource_id).{0,32}[^0-9]',
-                 datasource.id, '([^0-9].*|$)'))
+          CONCAT('(?s).*[^0-9]', datasource.id, '([^0-9].*|$)'))
 )
 OR EXISTS (
     SELECT 1
@@ -76,6 +75,5 @@ OR EXISTS (
      AND job.mode = 'SCRIPT'
      AND content.mode = 'SCRIPT'
     WHERE REGEXP_LIKE(LOWER(content.definition_content),
-          CONCAT('.*(datasourceid|datasource_id).{0,32}[^0-9]',
-                 datasource.id, '([^0-9].*|$)'))
+          CONCAT('(?s).*[^0-9]', datasource.id, '([^0-9].*|$)'))
 );
