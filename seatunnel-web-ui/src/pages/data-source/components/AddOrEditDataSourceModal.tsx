@@ -346,7 +346,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
                   }}
                 >
                   {modalActionText}
-                  {intl.formatMessage({
+                  {!usageOnly && intl.formatMessage({
                     id: 'pages.datasource.common.title',
                     defaultMessage: ' Data Source',
                   })}
