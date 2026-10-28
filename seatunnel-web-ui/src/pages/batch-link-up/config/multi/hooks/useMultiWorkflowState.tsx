@@ -194,8 +194,12 @@ export function useMultiWorkflowState({
     }
   }, [params?.id]);
 
-  const fetchDataSourceOptionsU = useCallback(async (dbType: string) => {
-    const res = await fetchDataSourceOptions(dbType);
+  const fetchDataSourceOptionsU = useCallback(async (
+    dbType: string,
+    usage: "SOURCE" | "SINK",
+    pluginName?: string,
+  ) => {
+    const res = await fetchDataSourceOptions(dbType, usage, pluginName);
     if (res?.code === 0 && Array.isArray(res?.data)) {
       return res.data;
     }
@@ -509,8 +513,8 @@ export function useMultiWorkflowState({
         const targetDbType = nextTargetType?.dbType || "MYSQL";
 
         const [sourceOptions, targetOptions] = await Promise.all([
-          fetchDataSourceOptionsU(sourceDbType),
-          fetchDataSourceOptionsU(targetDbType),
+          fetchDataSourceOptionsU(sourceDbType, "SOURCE", nextSourceType?.pluginName),
+          fetchDataSourceOptionsU(targetDbType, "SINK", nextTargetType?.pluginName),
         ]);
 
         if (!mounted) return;

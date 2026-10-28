@@ -1,10 +1,11 @@
 import HttpUtils from '@/utils/HttpUtils';
 import { InfoCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useIntl } from '@umijs/max';
-import { Alert, Button, Form, Input, InputNumber, message, Select, Switch, Tooltip } from 'antd';
+import { Alert, Button, Checkbox, Form, Input, InputNumber, message, Select, Switch, Tooltip } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import DatabaseIcons from '../../icon/DatabaseIcons';
+import { DATA_SOURCE_REGISTRY } from '../../dataSourceRegistry';
 import { DataSourceOperateType, DynamicDataSourceFormProps } from '../../types';
 import DataSourceUnitSelect from '../DataSourceUnitSelect';
 import CustomKVList from './components/CustomKVList';
@@ -41,6 +42,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   initialConfig,
   hideBaseFields = false,
   allowExistingPassword = false,
+  defaultUsage,
 }) => {
   const intl = useIntl();
 
@@ -71,10 +73,20 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
       patch.environment = DEFAULT_ENVIRONMENT;
     }
 
+    if (isEmptyValue(current?.usages)) {
+      const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
+      const supportedUsages = (['SOURCE', 'SINK'] as const).filter((usage) =>
+        usage === 'SOURCE' ? connector?.source !== false : connector?.sink !== false,
+      );
+      patch.usages = defaultUsage
+        ? supportedUsages.includes(defaultUsage) ? [defaultUsage] : supportedUsages
+        : supportedUsages;
+    }
+
     if (Object.keys(patch).length) {
       form.setFieldsValue(patch);
     }
-  }, [hideBaseFields, operateType, form]);
+  }, [hideBaseFields, operateType, form, dbType, defaultUsage]);
 
   const loadFormConfig = useCallback(
     async (currentDbType: string): Promise<void> => {
@@ -359,6 +371,26 @@ const renderFieldLabel = (field: any): React.ReactNode => {
                   defaultMessage: 'Input...',
                 })}
                 maxLength={100}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="连接用途"
+              name="usages"
+              rules={[{
+                validator: (_, value) => value?.length
+                  ? Promise.resolve()
+                  : Promise.reject(new Error('至少选择一个连接用途')),
+              }]}
+            >
+              <Checkbox.Group
+                options={(() => {
+                  const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
+                  return [
+                    ...(connector?.source === false ? [] : [{ label: '源端', value: 'SOURCE' }]),
+                    ...(connector?.sink === false ? [] : [{ label: '目标端', value: 'SINK' }]),
+                  ];
+                })()}
               />
             </Form.Item>
 

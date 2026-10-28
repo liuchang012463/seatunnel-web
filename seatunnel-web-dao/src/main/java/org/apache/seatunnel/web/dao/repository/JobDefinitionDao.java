@@ -31,6 +31,10 @@ public interface JobDefinitionDao extends IDao<JobDefinitionEntity> {
 
     boolean existsByDatasourceId(Long datasourceId);
 
+    boolean existsBySourceDatasourceId(Long datasourceId);
+
+    boolean existsBySinkDatasourceId(Long datasourceId);
+
     List<Long> selectReferencedDatasourceIds(List<Long> datasourceIds);
 
     boolean existsByClientId(Long clientId);

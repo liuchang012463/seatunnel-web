@@ -43,6 +43,10 @@ public class DataSourceVO {
 
     private DbType dbType;
 
+    private Boolean sourceEnabled;
+
+    private Boolean sinkEnabled;
+
     private String jdbcUrl;
 
     private String remark;

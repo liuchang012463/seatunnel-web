@@ -468,8 +468,15 @@ export interface DataSourceOptionRecord {
   [key: string]: unknown;
 }
 
-export async function fetchDataSourceOptions(dbType: string): Promise<CommonApiResponse<DataSourceOptionRecord[]>> {
-  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/option?dbType=${dbType}`);
+export async function fetchDataSourceOptions(
+  dbType: string,
+  usage?: 'SOURCE' | 'SINK',
+  pluginName?: string,
+): Promise<CommonApiResponse<DataSourceOptionRecord[]>> {
+  const query = new URLSearchParams({ dbType });
+  if (usage) query.set('usage', usage);
+  if (pluginName) query.set('pluginName', pluginName);
+  return HttpUtils.get(`${DATA_SOURCE_API_PREFIX}/option?${query.toString()}`);
 }
 
 export const apiPrefixCatalog = '/api/v1/data-source/catalog';

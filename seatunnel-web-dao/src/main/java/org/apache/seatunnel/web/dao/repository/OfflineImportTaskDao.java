@@ -37,4 +37,6 @@ public interface OfflineImportTaskDao extends IDao<OfflineImportTask> {
     boolean deleteIfNotRunning(Long id);
 
     boolean existsByFileResourceId(Long fileResourceId);
+
+    boolean existsByTargetDatasourceId(Long datasourceId);
 }

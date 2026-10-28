@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchDataSourceOptions } from '@/pages/data-source/service';
+import { DATA_SOURCE_REGISTRY } from '@/pages/data-source/dataSourceRegistry';
 import { uploadFileResources } from '@/pages/file-resources/service';
 import BottomActionBar from '@/pages/batch-link-up/detail/components/BottomActionBar';
 import PageHeader from '@/pages/batch-link-up/detail/components/PageHeader';
@@ -87,7 +88,8 @@ const CreateOfflineImportPage: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     setDataSourceOptionsState({ dbType: targetDbType, options: [] });
-    fetchDataSourceOptions(targetDbType)
+    const pluginName = DATA_SOURCE_REGISTRY.find((item) => item.dbType === targetDbType)?.pluginName;
+    fetchDataSourceOptions(targetDbType, 'SINK', pluginName)
       .then((response) => {
         if (cancelled) return;
         const records = (response?.data || []) as Array<{ id?: string | number; value?: string | number; name?: string; label?: string }>;

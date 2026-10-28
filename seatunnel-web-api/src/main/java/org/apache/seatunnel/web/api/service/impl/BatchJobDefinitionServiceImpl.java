@@ -5,6 +5,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.service.BatchJobDefinitionService;
+import org.apache.seatunnel.web.api.service.DataSourceUsageValidator;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.IncrementalBatchService;
 import org.apache.seatunnel.web.api.service.FileUploadService;
@@ -70,6 +71,9 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     private JobDefinitionModeHandlerRegistry handlerRegistry;
 
     @Resource
+    private DataSourceUsageValidator dataSourceUsageValidator;
+
+    @Resource
     private JobDefinitionDao jobDefinitionDao;
 
     @Resource
@@ -133,6 +137,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
             validateFileUpload(command);
             JobDefinitionModeHandler handler = getAndValidateHandler(command);
             JobDefinitionAnalysisResult analysis = handler.analyze(command);
+            dataSourceUsageValidator.validate(analysis);
 
             JobDefinitionEntity existing = command.getId() == null
                     ? null

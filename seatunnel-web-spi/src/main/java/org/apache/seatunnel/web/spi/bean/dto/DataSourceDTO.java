@@ -30,6 +30,10 @@ public class DataSourceDTO extends PaginationBaseDTO {
 
     private DbType dbType;
 
+    private Boolean sourceEnabled;
+
+    private Boolean sinkEnabled;
+
     /** Compatible multi-type filter used by category-based datasource management. */
     private List<DbType> dbTypes;
 

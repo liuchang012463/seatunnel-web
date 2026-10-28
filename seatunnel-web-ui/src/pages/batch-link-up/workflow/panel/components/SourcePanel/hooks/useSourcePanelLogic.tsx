@@ -5,6 +5,7 @@ import {
 import {
   supportsDatabaseScope,
   supportsSchemaScope,
+  DATA_SOURCE_REGISTRY,
 } from "@/pages/data-source/dataSourceRegistry";
 import { message } from "antd";
 import { Table2 } from "lucide-react";
@@ -110,7 +111,9 @@ export function useSourcePanelLogic({
       }
 
       try {
-        const res = await fetchDataSourceOptions(dbType);
+        const pluginName = config?.pluginName || nodeData?.pluginName
+          || DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType)?.pluginName;
+        const res = await fetchDataSourceOptions(dbType, "SOURCE", pluginName);
         const list = Array.isArray(res?.data) ? res.data : [];
         const options = list.map((item: any) => ({
           label: item?.label,
@@ -125,7 +128,7 @@ export function useSourcePanelLogic({
     };
 
     loadDataSourceOptions();
-  }, [dbType, isWebUpload]);
+  }, [dbType, isWebUpload, config?.pluginName, nodeData?.pluginName]);
 
   useEffect(() => {
     if (!dataSourceId || dataSourceOptions.length === 0) return;

@@ -10,6 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.exceptions.ApiException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.api.service.DataSourceService;
+import org.apache.seatunnel.web.common.enums.DataSourceUsage;
 import org.apache.seatunnel.web.api.metadata.MetadataPipelineOperationService;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceExploreDTO;
@@ -169,8 +170,15 @@ public class DataSourceController {
             @Parameter(name = "dbType", description = "DATABASE_TYPE", required = true)
     })
     @ApiException(QUERY_DATASOURCE_ERROR)
-    public Result<List<DBOptionVO>> option(@RequestParam("dbType") String dbType) {
-        return Result.buildSuc(dataSourceService.option(dbType));
+    public Result<List<DBOptionVO>> option(
+            @RequestParam("dbType") String dbType,
+            @RequestParam(value = "usage", required = false) String usage,
+            @RequestParam(value = "pluginName", required = false) String pluginName) {
+        try {
+            return Result.buildSuc(dataSourceService.option(dbType, DataSourceUsage.from(usage), pluginName));
+        } catch (IllegalArgumentException e) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "usage");
+        }
     }
 
     /**
@@ -307,7 +315,16 @@ public class DataSourceController {
         if (connJsonObj == null || StringUtils.isBlank(String.valueOf(connJsonObj))) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "connJson");
         }
-        return Result.buildSuc(dataSourceService.connectionTestWithParam(String.valueOf(connJsonObj)));
+        Object dataSourceId = requestBody.get("dataSourceId");
+        Long id = null;
+        if (dataSourceId != null && StringUtils.isNotBlank(String.valueOf(dataSourceId))) {
+            try {
+                id = Long.valueOf(String.valueOf(dataSourceId));
+            } catch (NumberFormatException e) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "dataSourceId");
+            }
+        }
+        return Result.buildSuc(dataSourceService.connectionTestWithParam(id, String.valueOf(connJsonObj)));
     }
 
     /**

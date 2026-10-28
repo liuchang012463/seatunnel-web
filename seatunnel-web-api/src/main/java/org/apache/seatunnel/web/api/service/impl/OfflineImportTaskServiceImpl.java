@@ -20,6 +20,7 @@ import org.apache.seatunnel.web.api.offlineimport.SqlScriptSplitter;
 import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProvider;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.FileResourceService;
+import org.apache.seatunnel.web.api.service.DataSourceUsageValidator;
 import org.apache.seatunnel.web.api.service.OfflineImportTaskService;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -89,6 +90,9 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
     @Resource
     private DataSourceDao dataSourceDao;
+
+    @Resource
+    private DataSourceUsageValidator dataSourceUsageValidator;
 
     @Resource
     private FileResourceService fileResourceService;
@@ -209,6 +213,8 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
                     "目标数据源类型 " + dataSource.getDbType() + " 与导入类型 " + importType.getCode() + " 不匹配");
         }
+        dataSourceUsageValidator.validate(dataSource.getId(),
+                org.apache.seatunnel.web.common.enums.DataSourceUsage.SINK);
 
         OfflineImportTask entity = new OfflineImportTask();
         entity.initInsert();

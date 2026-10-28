@@ -51,6 +51,8 @@ export interface DataSourceRecord {
   businessSystemName?: string;
   systemName?: string;
   dbType?: string;
+  sourceEnabled?: boolean;
+  sinkEnabled?: boolean;
   jdbcUrl?: string;
   environment?: string;
   environmentName?: string;
@@ -243,6 +245,8 @@ export interface DataSourcePageParams {
   pageSize: number;
   dbType?: string;
   dbTypes?: string[];
+  sourceEnabled?: boolean;
+  sinkEnabled?: boolean;
   name?: string;
   unitId?: DataSourceEntityId;
   businessSystemId?: DataSourceEntityId;
@@ -260,6 +264,7 @@ export interface DataSourceFormValues {
   businessSystemId?: DataSourceEntityId | null;
   environment: string;
   remark?: string;
+  usages?: Array<'SOURCE' | 'SINK'>;
 }
 
 export type DataSourceConnectionFormValues = Record<string, unknown>;
@@ -273,6 +278,8 @@ export interface DataSourceModalOpenPayload {
    * 传入后弹窗会跳过数据源类型选择页。
    */
   dbType?: string;
+  /** Default purpose for a new connection created from a source/target workflow. */
+  defaultUsage?: 'SOURCE' | 'SINK';
 
   /**
    * 是否隐藏“上一步”按钮。
@@ -322,6 +329,7 @@ export interface DynamicDataSourceFormProps {
   hideBaseFields?: boolean;
   /** Keep an existing server-side password when the input is empty. */
   allowExistingPassword?: boolean;
+  defaultUsage?: 'SOURCE' | 'SINK';
 }
 
 export interface DataSourceOptionItem {

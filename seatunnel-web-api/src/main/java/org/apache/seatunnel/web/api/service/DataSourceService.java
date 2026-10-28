@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.service;
 
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
+import org.apache.seatunnel.web.common.enums.DataSourceUsage;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.DBOptionVO;
@@ -102,6 +103,8 @@ public interface DataSourceService {
      */
     List<DBOptionVO> option(String dbType);
 
+    List<DBOptionVO> option(String dbType, DataSourceUsage usage, String pluginName);
+
     /**
      * Batch soft deletion of datasources.
      *
@@ -129,6 +132,8 @@ public interface DataSourceService {
      * @return {@code true} if connection succeeds
      */
     Boolean connectionTestWithParam(String connJson);
+
+    Boolean connectionTestWithParam(Long id, String connJson);
 
     /**
      * Retrieves all datasources.

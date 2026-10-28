@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.service.StreamingJobDefinitionService;
+import org.apache.seatunnel.web.api.service.DataSourceUsageValidator;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
 import org.apache.seatunnel.web.api.service.StreamingJobMetricsService;
 import org.apache.seatunnel.web.api.service.cdc.CdcServerIdAllocationService;
@@ -63,6 +64,9 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
 
     @Resource
     private JobDefinitionModeHandlerRegistry handlerRegistry;
+
+    @Resource
+    private DataSourceUsageValidator dataSourceUsageValidator;
 
     @Resource
     private StreamingJobDefinitionDao streamingJobDefinitionDao;
@@ -401,6 +405,7 @@ public class StreamingJobDefinitionServiceImpl extends BaseServiceImpl implement
     private SaveContext prepareSaveContext(StreamingJobSaveCommand command) {
         JobDefinitionModeHandler handler = getAndValidateHandler(command);
         JobDefinitionAnalysisResult analysis = handler.analyze(command);
+        dataSourceUsageValidator.validate(analysis);
         String definitionContent = handler.serializeDefinition(command);
 
         if (StringUtils.isBlank(definitionContent)) {

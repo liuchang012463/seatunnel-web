@@ -188,6 +188,14 @@ public class ScriptDatasourceHoconBuildService {
                     role + " data source does not exist, datasourceId=" + datasourceId);
         }
 
+        boolean enabled = SOURCE.equals(role)
+                ? dataSource.getSourceEnabled() == null || dataSource.getSourceEnabled()
+                : dataSource.getSinkEnabled() == null || dataSource.getSinkEnabled();
+        if (!enabled) {
+            throw new IllegalArgumentException(
+                    role + " data source usage is disabled, datasourceId=" + datasourceId);
+        }
+
         return dataSource;
     }
 

@@ -5,6 +5,7 @@ import {
 import {
   supportsDatabaseScope,
   supportsSchemaScope,
+  DATA_SOURCE_REGISTRY,
 } from "@/pages/data-source/dataSourceRegistry";
 import { message } from "antd";
 import { Table2 } from "lucide-react";
@@ -92,7 +93,9 @@ export function useSinkPanelLogic({
       }
 
       try {
-        const res = await fetchDataSourceOptions(dbType);
+        const pluginName = config?.pluginName || nodeData?.pluginName
+          || DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType)?.pluginName;
+        const res = await fetchDataSourceOptions(dbType, "SINK", pluginName);
         const list = Array.isArray(res?.data) ? res.data : [];
         const options = list.map((item: any) => ({
           label: item?.label,
@@ -108,7 +111,7 @@ export function useSinkPanelLogic({
     };
 
     loadDataSourceOptions();
-  }, [dbType]);
+  }, [dbType, config?.pluginName, nodeData?.pluginName]);
 
   useEffect(() => {
     if (!dataSourceId || dataSourceOptions.length === 0) return;

@@ -21,6 +21,8 @@ const businessRoutes = [
   ['/reporting/forms', './FeaturePlaceholderPage'],
   ['/reporting/reports', './FeaturePlaceholderPage'],
   ['/data-source', './data-source'],
+  ['/data-source/source-connection', './data-source'],
+  ['/data-source/target-connection', './data-source'],
   ['/data-source/master-data', './master-data'],
   ['/data-exploration/overview', './data-exploration/overview'],
   ['/data-exploration/tasks', './data-exploration/tasks'],

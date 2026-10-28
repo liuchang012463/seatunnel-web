@@ -90,6 +90,18 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
                 .eq(dto.getEnvironment() != null, MyBatisColumn.getter(DataSource::getEnvironment), dto.getEnvironment())
                 .orderByDesc(MyBatisColumn.getter(DataSource::getCreateTime))
                 .orderByDesc(MyBatisColumn.getter(DataSource::getId));
+        if (Boolean.TRUE.equals(dto.getSourceEnabled())) {
+            wrapper.and(query -> query.eq(MyBatisColumn.getter(DataSource::getSourceEnabled), true)
+                    .or().isNull(MyBatisColumn.getter(DataSource::getSourceEnabled)));
+        } else if (Boolean.FALSE.equals(dto.getSourceEnabled())) {
+            wrapper.eq(MyBatisColumn.getter(DataSource::getSourceEnabled), false);
+        }
+        if (Boolean.TRUE.equals(dto.getSinkEnabled())) {
+            wrapper.and(query -> query.eq(MyBatisColumn.getter(DataSource::getSinkEnabled), true)
+                    .or().isNull(MyBatisColumn.getter(DataSource::getSinkEnabled)));
+        } else if (Boolean.FALSE.equals(dto.getSinkEnabled())) {
+            wrapper.eq(MyBatisColumn.getter(DataSource::getSinkEnabled), false);
+        }
         if (Boolean.TRUE.equals(dto.getExcludeSystemManaged())) {
             wrapper.and(query -> query.eq(MyBatisColumn.getter(DataSource::getSystemManaged), false)
                     .or().isNull(MyBatisColumn.getter(DataSource::getSystemManaged)));

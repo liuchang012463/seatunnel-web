@@ -130,6 +130,24 @@ public class StreamingJobDefinitionDaoImpl
     }
 
     @Override
+    public boolean existsBySourceDatasourceId(Long datasourceId) {
+        if (datasourceId == null || datasourceId <= 0) {
+            return false;
+        }
+        return streamingJobDefinitionMapper.selectCount(new LambdaQueryWrapper<StreamingJobDefinitionEntity>()
+                .eq(MyBatisColumn.getter(StreamingJobDefinitionEntity::getSourceDatasourceId), datasourceId)) > 0;
+    }
+
+    @Override
+    public boolean existsBySinkDatasourceId(Long datasourceId) {
+        if (datasourceId == null || datasourceId <= 0) {
+            return false;
+        }
+        return streamingJobDefinitionMapper.selectCount(new LambdaQueryWrapper<StreamingJobDefinitionEntity>()
+                .eq(MyBatisColumn.getter(StreamingJobDefinitionEntity::getSinkDatasourceId), datasourceId)) > 0;
+    }
+
+    @Override
     public List<Long> selectReferencedDatasourceIds(List<Long> datasourceIds) {
         if (datasourceIds == null || datasourceIds.isEmpty()) {
             return Collections.emptyList();

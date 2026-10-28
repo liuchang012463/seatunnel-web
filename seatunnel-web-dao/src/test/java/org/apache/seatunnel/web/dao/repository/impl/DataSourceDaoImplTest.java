@@ -76,4 +76,21 @@ class DataSourceDaoImplTest {
         assertTrue(sql.contains("STATUS ="));
     }
 
+    @Test
+    void shouldFilterTaskOptionsByUsageWhileKeepingLegacyNullFlagsVisible() {
+        DataSourceDTO dto = new DataSourceDTO();
+        dto.setSourceEnabled(true);
+        dto.setSinkEnabled(false);
+
+        LambdaQueryWrapper<DataSource> wrapper = DataSourceDaoImpl.buildQueryWrapper(dto);
+        String sql = wrapper.getSqlSegment().toUpperCase();
+
+        assertTrue(sql.contains("SOURCE_ENABLED ="));
+        assertTrue(sql.contains("SOURCE_ENABLED IS NULL"));
+        assertTrue(sql.contains("SINK_ENABLED ="));
+        assertTrue(wrapper.getParamNameValuePairs().values().stream()
+                .map(String::valueOf)
+                .anyMatch("false"::equalsIgnoreCase));
+    }
+
 }

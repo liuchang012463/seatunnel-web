@@ -46,6 +46,12 @@ public class DataSource extends BaseEntity {
      */
     private DbType dbType;
 
+    /** Whether this connection is available as a task source. */
+    private Boolean sourceEnabled;
+
+    /** Whether this connection is available as a task target. */
+    private Boolean sinkEnabled;
+
     /**
      * 数据库连接参数
      */
