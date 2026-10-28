@@ -9,6 +9,7 @@ interface Props {
   nextText?: string;
   hintText?: string;
   nextDisabled?: boolean;
+  className?: string;
 }
 
 const BottomActionBar: React.FC<Props> = ({
@@ -18,10 +19,14 @@ const BottomActionBar: React.FC<Props> = ({
   nextText = "下一步",
   hintText = "完成基础信息与客户端连接后，即可进入下一步",
   nextDisabled = false,
+  className,
 }) => {
   return (
     <div
-      className="fixed bottom-0 right-0 z-[99] border-t border-[#EAECF0] bg-white/95 px-6 py-4 backdrop-blur"
+      className={[
+        "fixed bottom-0 right-0 z-[99] border-t border-[#EAECF0] bg-white/95 px-6 py-4 backdrop-blur",
+        className,
+      ].filter(Boolean).join(" ")}
       style={{
         left: "var(--pro-sider-current-width)",
         transition: "left var(--pro-sider-transition-duration) ease",

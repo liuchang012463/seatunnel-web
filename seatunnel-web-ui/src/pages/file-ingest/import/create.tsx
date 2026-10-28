@@ -12,13 +12,14 @@ import {
   Spin,
   Upload,
 } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { fetchDataSourceOptions } from '@/pages/data-source/service';
 import { DATA_SOURCE_REGISTRY } from '@/pages/data-source/dataSourceRegistry';
 import { uploadFileResources } from '@/pages/file-resources/service';
 import BottomActionBar from '@/pages/batch-link-up/detail/components/BottomActionBar';
 import PageHeader from '@/pages/batch-link-up/detail/components/PageHeader';
 import FileResourcePicker from '../FileResourcePicker';
+import './create.less';
 import type { FileResource } from '../types';
 import {
   OFFLINE_IMPORT_TYPE_LABELS,
@@ -55,11 +56,16 @@ const CreateOfflineImportPage: React.FC = () => {
   const { message } = App.useApp();
   const location = useLocation();
   const [form] = Form.useForm();
-  const category = (new URLSearchParams(location.search).get('type')?.toUpperCase() === 'SQL'
+  const searchParams = new URLSearchParams(location.search);
+  const category = (searchParams.get('type')?.toUpperCase() === 'SQL'
     ? 'SQL'
     : 'DMP') as OfflineImportCategory;
   const typeOptions = IMPORT_TYPE_OPTIONS[category];
-  const [selectedImportType, setSelectedImportType] = useState<OfflineImportTypeCode>(typeOptions[0].value);
+  const requestedImportType = searchParams.get('importType')?.toUpperCase();
+  const initialImportType = typeOptions.some((option) => option.value === requestedImportType)
+    ? (requestedImportType as OfflineImportTypeCode)
+    : typeOptions[0].value;
+  const [selectedImportType, setSelectedImportType] = useState<OfflineImportTypeCode>(initialImportType);
   const importType = typeOptions.some((option) => option.value === selectedImportType)
     ? selectedImportType
     : typeOptions[0].value;
@@ -75,15 +81,11 @@ const CreateOfflineImportPage: React.FC = () => {
   const accept = category === 'DMP' ? '.dmp' : '.sql';
   const targetDbType = offlineImportTargetDbType(importType);
   const dataSourceOptions = dataSourceOptionsState.dbType === targetDbType ? dataSourceOptionsState.options : [];
-  const previousCategory = useRef(category);
-
   useEffect(() => {
-    if (previousCategory.current === category) return;
-    previousCategory.current = category;
-    setSelectedImportType(typeOptions[0].value);
+    setSelectedImportType(initialImportType);
     setFile(null);
     form.resetFields(['targetDatasourceId', 'targetSchema', 'sourceSchema', 'encoding', 'stopOnError', 'ignoreErrors']);
-  }, [category, form, typeOptions]);
+  }, [initialImportType, form]);
 
   useEffect(() => {
     let cancelled = false;
@@ -285,101 +287,66 @@ const CreateOfflineImportPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="offline-import-create">
       <PageHeader
-        theme="light"
         onBack={goBack}
         title={`离线数据导入 · ${category === 'DMP' ? 'DMP' : 'SQL'} 数据导入`}
+        className="offline-import-create__page-header"
       />
 
-      <div className="mx-auto max-w-[960px] px-6 pb-28 pt-6">
-        <Form form={form} layout="vertical">
-          <div className="rounded-[24px] border border-[#EAECF0] p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <div className="mb-4 text-[14px] font-medium">导入类型</div>
-            <Radio.Group
-              value={importType}
-              onChange={(event) => {
-                const nextImportType = event.target.value as OfflineImportTypeCode;
-                if (nextImportType === importType) return;
-                setSelectedImportType(nextImportType);
-                form.resetFields(['targetDatasourceId', 'targetSchema', 'sourceSchema', 'ignoreErrors']);
-              }}
-              optionType="button"
-              buttonStyle="solid"
-              options={typeOptions}
-            />
-            {category === 'SQL' && (
-              <div className="mt-2 text-[12px] text-[color:var(--st-color-text-muted,#98a2b3)]">
-                Oracle SQL 导入待支持
-              </div>
-            )}
+      <div className="offline-import-create__content">
+        <Form
+          form={form}
+          layout="horizontal"
+          labelCol={{ flex: '118px' }}
+          wrapperCol={{ flex: 'auto' }}
+          className="offline-import-create__form"
+        >
+          <div className="offline-import-create__grid">
+            <section className="offline-import-create__panel offline-import-create__panel--details">
+              <h2 className="offline-import-create__panel-title">任务信息</h2>
+              <Form.Item label="导入类型" className="offline-import-create__field">
+                <Radio.Group
+                  value={importType}
+                  onChange={(event) => {
+                    const nextImportType = event.target.value as OfflineImportTypeCode;
+                    if (nextImportType === importType) return;
+                    setSelectedImportType(nextImportType);
+                    form.resetFields(['targetDatasourceId', 'targetSchema', 'sourceSchema', 'ignoreErrors']);
+                  }}
+                  optionType="button"
+                  buttonStyle="solid"
+                  options={typeOptions}
+                />
+                {category === 'SQL' && (
+                  <div className="offline-import-create__field-hint">Oracle SQL 导入待支持</div>
+                )}
+              </Form.Item>
 
-            <div className="mt-6 space-y-5">
               <Form.Item
                 label="任务名称"
                 name="name"
                 rules={[{ required: true, message: '请输入任务名称' }]}
-                className="mb-0"
+                className="offline-import-create__field"
               >
                 <Input
                   placeholder={category === 'DMP' ? '例如：生产库 DMP 备份导入' : '例如：建库脚本导入'}
-                  className="!h-[36px] !rounded-[12px]"
                   maxLength={64}
                 />
               </Form.Item>
-              <Form.Item label="任务描述" name="description" className="mb-0">
-                <Input.TextArea placeholder="描述导入范围、用途、注意事项等" rows={3} className="!rounded-xl" maxLength={256} />
+
+              <Form.Item label="任务描述" name="description" className="offline-import-create__field offline-import-create__field--last">
+                <Input.TextArea placeholder="描述导入范围、用途、注意事项等" rows={3} maxLength={256} />
               </Form.Item>
-            </div>
-          </div>
+            </section>
 
-          <div className="mt-6 rounded-[24px] border border-[#EAECF0] p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <div className="mb-4 text-[14px] font-medium">导入文件</div>
-            <Upload.Dragger
-              accept={accept}
-              maxCount={1}
-              customRequest={uploadRequest}
-              beforeUpload={beforeUpload}
-              showUploadList={false}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <Spin />
-              ) : (
-                <p className="ant-upload-drag-icon !mb-2">
-                  <InboxOutlined />
-                </p>
-              )}
-              <p className="ant-upload-text">{file ? file.name : `点击或拖拽上传 ${accept} 文件`}</p>
-              <p className="ant-upload-hint">
-                {file
-                  ? `文件大小：${(Number(file.size || 0) / 1024).toFixed(1)} KB，可重新上传覆盖`
-                  : '文件将上传到平台湖文件资源池后执行导入'}
-              </p>
-            </Upload.Dragger>
-
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-[13px] text-[color:var(--st-color-text-secondary,#475467)]">
-                已有文件在湖文件资源池？直接选择
-              </span>
-              <Button
-                icon={<UploadOutlined />}
-                disabled={uploading}
-                onClick={() => setPickerOpen(true)}
-              >
-                从湖文件选择
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-6 rounded-[24px] border border-[#EAECF0] p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <div className="mb-4 text-[14px] font-medium">导入目标</div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <section className="offline-import-create__panel offline-import-create__panel--target">
+              <h2 className="offline-import-create__panel-title">导入目标</h2>
               <Form.Item
                 label="目标数据源"
                 name="targetDatasourceId"
                 rules={[{ required: true, message: '请选择目标数据源' }]}
-                className="mb-0"
+                className="offline-import-create__field"
                 tooltip={`仅展示 ${targetDbType === 'KINGBASE' ? '人大金仓' : '达梦'} 类型数据源`}
               >
                 <Select
@@ -391,14 +358,52 @@ const CreateOfflineImportPage: React.FC = () => {
                   optionFilterProp="label"
                 />
               </Form.Item>
-              <Form.Item label="目标 Schema" name="targetSchema" className="mb-0">
+              <Form.Item label="目标 Schema" name="targetSchema" className="offline-import-create__field offline-import-create__field--last">
                 <Input placeholder={targetDbType === 'KINGBASE' ? '例如 public' : '例如 TEST'} maxLength={128} />
               </Form.Item>
-            </div>
-          </div>
+            </section>
 
-          <div className="mt-6 rounded-[24px] border border-[#EAECF0] p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <Collapse items={advancedPanel} ghost />
+            <section className="offline-import-create__panel offline-import-create__panel--file">
+              <h2 className="offline-import-create__panel-title">导入文件</h2>
+              <Upload.Dragger
+                accept={accept}
+                maxCount={1}
+                customRequest={uploadRequest}
+                beforeUpload={beforeUpload}
+                showUploadList={false}
+                disabled={uploading}
+                className="offline-import-create__upload"
+              >
+                {uploading ? (
+                  <Spin />
+                ) : (
+                  <p className="ant-upload-drag-icon !mb-2">
+                    <InboxOutlined />
+                  </p>
+                )}
+                <p className="ant-upload-text">{file ? file.name : `点击或拖拽上传 ${accept} 文件`}</p>
+                <p className="ant-upload-hint">
+                  {file
+                    ? `文件大小：${(Number(file.size || 0) / 1024).toFixed(1)} KB，可重新上传覆盖`
+                    : '文件将上传到平台湖文件资源池后执行导入'}
+                </p>
+              </Upload.Dragger>
+
+              <div className="offline-import-create__file-picker">
+                <span>已有文件在湖文件资源池？直接选择</span>
+                <Button
+                  icon={<UploadOutlined />}
+                  disabled={uploading}
+                  onClick={() => setPickerOpen(true)}
+                >
+                  从湖文件选择
+                </Button>
+              </div>
+            </section>
+
+            <section className="offline-import-create__panel offline-import-create__panel--advanced">
+              <Collapse items={advancedPanel} ghost />
+            </section>
           </div>
         </Form>
       </div>
@@ -409,6 +414,7 @@ const CreateOfflineImportPage: React.FC = () => {
         nextText="创建导入任务"
         hintText="创建后任务进入待执行状态，可在任务列表中执行导入"
         nextDisabled={submitting || uploading}
+        className="offline-import-create__action-bar"
       />
 
       <FileResourcePicker
