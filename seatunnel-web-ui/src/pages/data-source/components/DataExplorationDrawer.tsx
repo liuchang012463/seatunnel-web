@@ -117,6 +117,8 @@ const EMPTY_SCOPE_SUMMARY: DataInventorySummary = {
   knownSizeInByte: 0,
 };
 
+const SAMPLE_COLUMN_WIDTH = 180;
+
 function qualityTag(status?: ExplorationQualityStatus, reason?: string) {
   const config = qualityConfig[status || 'NO_PROFILE'];
   return <Tag color={config.color} title={reason}>{config.label}</Tag>;
@@ -234,7 +236,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const [preview, setPreview] = useState<DataExplorationPreview>();
   const [previewLoading, setPreviewLoading] = useState(false);
   const previewAttemptRef = useRef<string>();
-  const [activeTab, setActiveTab] = useState('sample');
+  const [activeTab, setActiveTab] = useState('columns');
   const [tableSearch, setTableSearch] = useState('');
   const [pendingSchemaFqn, setPendingSchemaFqn] = useState<string>();
   // The ER diagram is the default view of the main workspace; selecting a
@@ -268,7 +270,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setScopeSummaryError(undefined);
     setPreview(undefined);
     setTableSearch('');
-    setActiveTab('sample');
+    setActiveTab('columns');
+    previewAttemptRef.current = undefined;
     setPendingSchemaFqn(undefined);
     setErActive(true);
     setCompletionJob(undefined);
@@ -379,6 +382,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       setTablePage(nextPage);
       setTablePageNo(pageNo);
       const firstTable = nextPage.records?.[0];
+      setActiveTab('columns');
       setSelectedTableId(firstTable?.id);
       setErActive(!firstTable);
       setTableDetail(undefined);
@@ -413,7 +417,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setProfile(undefined);
     setProfileLoading(false);
     setPreview(undefined);
-    setActiveTab('sample');
+    setActiveTab('columns');
+    previewAttemptRef.current = undefined;
     setCompletionJob(undefined);
     completionNoticeRef.current = undefined;
 
@@ -688,8 +693,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     }
   };
 
-  // Sample data is the default tab, so load it together with the table detail
-  // instead of asking the operator to click "读取前 20 行" first.
+  // Load sample data when its tab is opened; the column definitions are shown first.
   useEffect(() => {
     if (!open || !dataSourceId || !selectedTableId || activeTab !== 'sample') {
       return;
@@ -734,14 +738,24 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     return (preview?.columns || [])
       .map((column, index) => {
         const dataIndex = column.dataIndex || column.key || String(index);
+        const columnName = column.title || dataIndex;
+        const definition = tableDetail?.columns?.find((item) => item.name === dataIndex);
+        const dataType = definition?.dataTypeDisplay || definition?.dataType;
         return {
-          title: column.title || dataIndex,
+          title: (
+            <div className="exploration-drawer__sample-heading">
+              <span title={columnName}>{columnName}</span>
+              {dataType && <small title={dataType}>{dataType}</small>}
+            </div>
+          ),
           dataIndex,
           key: column.key || dataIndex,
+          width: SAMPLE_COLUMN_WIDTH,
           ellipsis: true,
+          render: displayValue,
         };
       });
-  }, [preview]);
+  }, [preview, tableDetail]);
 
   const constraints = tableDetail?.tableConstraints || [];
   const tables = tablePage?.records || [];
@@ -880,6 +894,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                         key={table.id}
                         className={`exploration-drawer__table-item${selectedTableId === table.id ? ' is-selected' : ''}`}
                         onClick={() => {
+                          if (selectedTableId !== table.id) setActiveTab('columns');
                           setSelectedTableId(table.id);
                           setErActive(false);
                         }}
@@ -1030,7 +1045,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                                 columns={previewColumns}
                                 dataSource={preview.data || []}
                                 pagination={false}
-                                scroll={{ x: 760, y: 390 }}
+                                scroll={{ x: Math.max(760, previewColumns.length * SAMPLE_COLUMN_WIDTH), y: 390 }}
                                 locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无样本数据" /> }}
                               />
                             ) : (
