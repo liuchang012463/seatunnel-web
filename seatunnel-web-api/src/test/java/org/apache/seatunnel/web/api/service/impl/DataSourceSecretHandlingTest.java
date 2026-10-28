@@ -52,12 +52,14 @@ class DataSourceSecretHandlingTest {
 
     @Test
     void responseRedactionUsesPasswordMetadataAndPreservesCredentialIdentifiers() throws Exception {
-        String original = "{\"type\":\"S3\",\"accessKey\":\"access-key-secret\","
+        String original = "{\"type\":\"S3\",\"credentialMode\":\"INSTANCE_PROFILE\","
+                + "\"accessKey\":\"access-key-secret\","
                 + "\"secretKey\":\"s3-secret\",\"apiKeyEncoded\":\"encoded-secret\","
                 + "\"apiKeyId\":\"public-key-id\",\"other\":["
                 + "{\"key\":\"tlsTruststorePassword\",\"value\":\"trust-secret\"},"
                 + "{\"key\":\"region\",\"value\":\"us-east-1\"}]}";
-        String normalized = "{\"user\":\"access-key-alias\",\"password\":\"password-alias\","
+        String normalized = "{\"credentialMode\":\"INSTANCE_PROFILE\","
+                + "\"user\":\"access-key-alias\",\"password\":\"password-alias\","
                 + "\"secretKey\":\"s3-secret\",\"other\":["
                 + "{\"key\":\"tlsTruststorePassword\",\"value\":\"trust-secret\"}]}";
 
@@ -68,7 +70,17 @@ class DataSourceSecretHandlingTest {
 
         DataSourceSecretSupport.redact(dataSource);
 
-        assertEquals(null, MAPPER.readTree(dataSource.getOriginalJson()).get("accessKey"));
+        assertEquals("INSTANCE_PROFILE", MAPPER.readTree(dataSource.getOriginalJson())
+                .get("credentialMode").asText());
+        assertEquals("INSTANCE_PROFILE", MAPPER.readTree(dataSource.getConnectionParams())
+                .get("credentialMode").asText());
+        JsonNode redactedOriginal = MAPPER.readTree(dataSource.getOriginalJson());
+        JsonNode redactedConnection = MAPPER.readTree(dataSource.getConnectionParams());
+        assertFalse(redactedOriginal.has("accessKey"));
+        assertFalse(redactedOriginal.has("secretKey"));
+        assertFalse(redactedConnection.has("user"));
+        assertFalse(redactedConnection.has("password"));
+        assertFalse(redactedConnection.has("secretKey"));
         assertEquals("public-key-id", MAPPER.readTree(dataSource.getOriginalJson()).get("apiKeyId").asText());
         assertEquals("us-east-1", MAPPER.readTree(dataSource.getOriginalJson())
                 .get("other").get(1).get("value").asText());
@@ -82,8 +94,10 @@ class DataSourceSecretHandlingTest {
         assertTrue(dataSource.getConfiguredSecretFields().contains("secretKey"));
         assertTrue(dataSource.getConfiguredSecretFields().contains("apiKeyEncoded"));
         assertTrue(dataSource.getConfiguredSecretFields().contains("other:tlsTruststorePassword"));
+        assertFalse(dataSource.getConfiguredSecretFields().contains("credentialMode"));
         assertTrue(dataSource.getSavedSecretFields().contains("accessKey"));
         assertTrue(dataSource.getSavedSecretFields().contains("other:tlsTruststorePassword"));
+        assertFalse(dataSource.getSavedSecretFields().contains("credentialMode"));
 
         DataSourceVO vo = new DataSourceVO();
         vo.setDbType(DbType.S3);
@@ -91,7 +105,10 @@ class DataSourceSecretHandlingTest {
         vo.setConnectionParams(normalized);
         DataSourceSecretSupport.redact(vo);
         assertFalse(vo.getOriginalJson().contains("s3-secret"));
+        assertEquals("INSTANCE_PROFILE", MAPPER.readTree(vo.getOriginalJson())
+                .get("credentialMode").asText());
         assertTrue(vo.getConfiguredSecretFields().contains("secretKey"));
+        assertFalse(vo.getConfiguredSecretFields().contains("credentialMode"));
     }
 
     @Test

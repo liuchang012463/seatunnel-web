@@ -627,8 +627,7 @@ public final class DataSourceSecretSupport {
                 || normalized.contains("accesskeysecret")
                 || normalized.contains("privatekey")
                 || normalized.contains("keystorepassword")
-                || normalized.contains("truststorepassword")
-                || normalized.contains("credential");
+                || normalized.contains("truststorepassword");
     }
 
     private static String canonicalFieldName(String key, Set<String> secretNames) {
