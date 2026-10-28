@@ -12,8 +12,8 @@
 
   --st-font-family: "MiSans", "HarmonyOS Sans SC", "Source Han Sans SC",
     "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
-  /* 数字等宽栈：DS-Digital 无可用授权，数字统一走系统等宽字体 + tabular-nums */
-  --st-font-digital: "Consolas", "Courier New", monospace;
+  /* 数字等宽栈：大屏/指标数字使用 DS-Digital（见 src/assets/fonts） */
+  --st-font-digital: "DS-Digital", "Microsoft YaHei", "微软雅黑", sans-serif;
 
   /* §3.4 字号（v2：display 28 / title 20 / heading 16 / body 14 / body-sm 13 / caption 12） */
   --st-type-large-title-size: 28px;
@@ -811,6 +811,20 @@ select:focus-visible,
   background: transparent !important;
   box-shadow: none !important;
   outline: none !important;
+}
+
+/* 页面级 :focus 与组件运行时样式也必须让内部输入框保持无边框。 */
+.ant-input-affix-wrapper input.ant-input,
+.ant-input-affix-wrapper input.ant-input:hover,
+.ant-input-affix-wrapper input.ant-input:focus,
+.ant-input-affix-wrapper input.ant-input:focus-visible,
+.ant-select .ant-select-selection-search-input:focus,
+.ant-input-number .ant-input-number-input:focus,
+.ant-picker .ant-picker-input > input:focus {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 ::-webkit-scrollbar {

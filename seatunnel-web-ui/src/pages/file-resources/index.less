@@ -27,6 +27,13 @@
   box-shadow: none;
 }
 
+/* 覆盖通用页面子项 flex:0，文件工作区在空目录和少量记录时也填满内容区。 */
+.ant-pro-layout .file-resources-page .ant-pro-page-container-children-container > .file-resources-page__workspace,
+.ant-pro-layout .file-resources-page .ant-pro-page-container-children-content > .file-resources-page__workspace {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+}
+
 .file-resources-page__selection-alert {
   margin-bottom: 16px;
 }

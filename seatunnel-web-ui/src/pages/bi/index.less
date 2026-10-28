@@ -1,7 +1,7 @@
 /* ==========================================================
    HJJ 数据引接大屏 — 视觉规范版
    依据《设计样式》：背景 #001922 / 主色 #2187A8 / 文字 #4DD2FF·#1EF6FF·#CDE1F4
-   中文微软雅黑 · 数字等宽（tabular-nums） · 1080P 满屏无滚动
+   中文微软雅黑 · 数字 DS-Digital · 1080P 满屏无滚动
    ========================================================== */
 
 .bi-dashboard {
@@ -37,15 +37,79 @@
   --focus: #4dd2ff;
   /* 遮罩 */
   --mask: rgba(0, 0, 0, 0.6);
-  /* 字体 */
+  /* 字体：栈首位 DS-Digital（unicode-range 仅数字），中文自动回退雅黑 */
   --font-cn: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', sans-serif;
-  --font-num: 'Consolas', 'Courier New', monospace;
-  font-family: var(--font-cn);
+  --font-num: 'DS-Digital', 'Microsoft YaHei', '微软雅黑', sans-serif;
+  font-family: var(--font-num);
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
   font-variant-numeric: tabular-nums;
   text-rendering: optimizeLegibility;
+}
+
+/* 压过 design-system 对 button/a/输入控件的 MiSans !important，保证数字走 DS-Digital */
+.bi-dashboard,
+.bi-dashboard button,
+.bi-dashboard a,
+.bi-dashboard input,
+.bi-dashboard select,
+.bi-dashboard textarea,
+.bi-dashboard .ant-typography,
+.bi-dashboard [role='button'],
+.bi-dashboard [role='tab'],
+.bi-dashboard [role='link'] {
+  font-family: var(--font-num) !important;
+  font-style: normal;
+}
+
+/* 大屏数字字重固定 400，避免粗体字形未命中回退雅黑 */
+.bi-dashboard .source-total,
+.bi-dashboard .source-total-trend b,
+.bi-dashboard .tile-count,
+.bi-dashboard .donut-chart b,
+.bi-dashboard .breakdown-total,
+.bi-dashboard .breakdown-row-meta b,
+.bi-dashboard .breakdown-row > small,
+.bi-dashboard .system-summary b,
+.bi-dashboard .system-volume b,
+.bi-dashboard .system-volume small,
+.bi-dashboard .mode-total strong,
+.bi-dashboard .mode-row > strong,
+.bi-dashboard .mode-row small,
+.bi-dashboard .success-tag,
+.bi-dashboard .trend-toolbar strong,
+.bi-dashboard .trend-records,
+.bi-dashboard .chart-y-labels,
+.bi-dashboard .chart-x-labels,
+.bi-dashboard .range-tabs button,
+.bi-dashboard .metric-value,
+.bi-dashboard .topology-count,
+.bi-dashboard .node-copy small,
+.bi-dashboard .node-state,
+.bi-dashboard .task-copy small,
+.bi-dashboard .resource-copy small,
+.bi-dashboard .detail-metrics b,
+.bi-dashboard .detail-foot b,
+.bi-dashboard .detail-foot span,
+.bi-dashboard .inspect-summary strong,
+.bi-dashboard .inspect-summary small,
+.bi-dashboard .inspect-summary small b,
+.bi-dashboard .quality-badge b,
+.bi-dashboard .inspect-metrics b,
+.bi-dashboard .inspect-bar-value,
+.bi-dashboard .inspect-foot,
+.bi-dashboard .live-counter,
+.bi-dashboard .live-task-rate,
+.bi-dashboard .live-task-state,
+.bi-dashboard .report-ring b,
+.bi-dashboard .report-kpis b,
+.bi-dashboard .report-bar-row > b,
+.bi-dashboard .report-bar-row > span:last-child,
+.bi-dashboard .panel-foot,
+.bi-dashboard .foot-update,
+.bi-dashboard .topology-baseline-note {
+  font-weight: 400 !important;
 }
 
 .bi-dashboard * { box-sizing: border-box; }
@@ -55,12 +119,16 @@
 
 .bi-dashboard {
   position: relative;
-  /* 应用外壳内容区固定为 calc(100vh - 100px)（见 global.less），大屏须与容器等高，否则底部被裁切 */
-  height: calc(100vh - 100px);
+  box-sizing: border-box;
+  /* 高度由 global.less 对内容区子节点的定高规则约束；此处再锁一次，避免分类统计内容把大屏撑出视口 */
+  flex: 1 1 0%;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
   padding: 12px 14px;
   overflow: hidden;
   isolation: isolate;
-  width: 100%;
 }
 
 /* 背景网格 + 微光，收敛到规范蓝色系 */
@@ -97,14 +165,18 @@
 /* ---------------- 布局：1080P 满屏 ---------------- */
 .bi-dashboard .dashboard-grid {
   display: grid;
+  flex: 1 1 0%;
   grid-template-columns: 336px minmax(0, 1fr) 352px;
   gap: 12px;
+  width: 100%;
   height: 100%;
+  min-height: 0;
 }
-.bi-dashboard .rail, .bi-dashboard .center-stage { min-width: 0; min-height: 0; }
-.bi-dashboard .rail { display: grid; grid-template-rows: minmax(0, 1.14fr) minmax(0, 0.84fr) minmax(0, 1fr); gap: 12px; }
-.bi-dashboard .right-rail { grid-template-rows: minmax(0, 1.32fr) minmax(0, 0.94fr) minmax(0, 0.94fr); }
-.bi-dashboard .center-stage { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; }
+.bi-dashboard .rail, .bi-dashboard .center-stage { min-width: 0; min-height: 0; overflow: hidden; }
+.bi-dashboard .rail { display: grid; grid-template-rows: minmax(0, 1.4fr) minmax(0, 0.74fr) minmax(0, 0.96fr); gap: 12px; height: 100%; }
+.bi-dashboard .right-rail { grid-template-rows: minmax(0, 1.3fr) minmax(0, 0.95fr) minmax(0, 0.95fr); }
+.bi-dashboard .center-stage { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; height: 100%; }
+.bi-dashboard .rail > .panel { min-height: 0; overflow: hidden; }
 
 /* ---------------- 面板框（装饰框规范） ---------------- */
 .bi-dashboard .panel {
@@ -146,16 +218,46 @@
   cursor: pointer;
   transition: color .18s ease, background .18s ease, box-shadow .18s ease;
 }
-.bi-dashboard .segmented-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 14px 10px 14px; padding: 3px; border: 1px solid rgba(33, 135, 168, 0.4); background: var(--input-bg); }
-.bi-dashboard .segmented-tabs button { padding: 6px 5px; color: var(--text-main); font-size: 13px; }
+.bi-dashboard .segmented-tabs { display: grid; flex: 0 0 auto; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 14px 4px; padding: 3px; border: 1px solid rgba(33, 135, 168, 0.4); background: var(--input-bg); }
+.bi-dashboard .segmented-tabs button { padding: 4px; color: var(--text-main); font-size: 13px; }
 .bi-dashboard .segmented-tabs button.active { color: var(--text); background: var(--primary); box-shadow: 0 0 10px rgba(33, 135, 168, 0.5); }
 
-.bi-dashboard .source-overview, .bi-dashboard .source-breakdown { padding: 0 14px; min-height: 0; }
+.bi-dashboard .source-overview {
+  flex: 1 1 0%;
+  min-height: 0;
+  padding: 0 14px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+/* 分类统计：chip / 环形图 / 列表合成一整块，超出在面板内滚动 */
+.bi-dashboard .source-breakdown {
+  flex: 1 1 0%;
+  min-height: 0;
+  padding: 0 14px 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(33, 135, 168, 0.7) transparent;
+}
+.bi-dashboard .source-breakdown::-webkit-scrollbar { width: 5px; }
+.bi-dashboard .source-breakdown::-webkit-scrollbar-thumb { background: rgba(33, 135, 168, 0.7); border-radius: 3px; }
+.bi-dashboard .source-breakdown::-webkit-scrollbar-track { background: transparent; }
+.bi-dashboard .source-panel > .segmented-tabs,
+.bi-dashboard .source-panel > .panel-foot {
+  flex-shrink: 0;
+}
+.bi-dashboard .source-panel.is-breakdown {
+  min-height: 0;
+  overflow: hidden;
+}
+.bi-dashboard .source-panel .panel-heading {
+  flex-shrink: 0;
+}
 .bi-dashboard .source-total-row { display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 4px 8px; border-top: 1px solid rgba(33, 135, 168, 0.35); border-bottom: 1px solid rgba(33, 135, 168, 0.35); }
 .bi-dashboard .source-total { display: block; margin-top: 2px; color: var(--text-main); font: 400 34px/0.9 var(--font-num); letter-spacing: 0.04em; text-shadow: 0 0 16px rgba(77, 210, 255, 0.45); }
 .bi-dashboard .source-total span { color: var(--text-sub); font-family: var(--font-cn); font-size: 12px; font-weight: 400; letter-spacing: 0; }
 .bi-dashboard .source-total-trend { display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 5px; text-align: right; }
-.bi-dashboard .source-total-trend b { color: var(--green); font: 600 14px/1 var(--font-cn); }
+.bi-dashboard .source-total-trend b { color: var(--green); font: 400 14px/1 var(--font-num); }
 .bi-dashboard .source-total-trend small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
 
 .bi-dashboard .source-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding-top: 8px; }
@@ -172,32 +274,49 @@
 .bi-dashboard .status-dot.offline, .bi-dashboard .status-dot.amber { background: var(--amber); box-shadow: 0 0 7px rgba(217, 182, 33, 0.72); }
 .bi-dashboard .status-dot.red { background: var(--red); box-shadow: 0 0 7px rgba(240, 31, 31, 0.72); }
 
-/* 分类统计 */
-.bi-dashboard .breakdown-switcher { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
-.bi-dashboard .variant-chip { padding: 4px 9px; color: var(--text-sub); font-size: 12px; border: 1px solid rgba(33, 135, 168, 0.45); background: var(--input-bg); cursor: pointer; }
+/* 分类统计：chip 单行横滑；内容自然排布，由外层整块滚动 */
+.bi-dashboard .breakdown-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 6px 0 8px;
+  overflow: visible;
+}
+.bi-dashboard .variant-chip { flex: 0 0 auto; padding: 4px 9px; color: var(--text-sub); font-size: 12px; line-height: 1.3; white-space: nowrap; border: 1px solid rgba(33, 135, 168, 0.45); background: var(--input-bg); cursor: pointer; }
 .bi-dashboard .variant-chip:hover { border-color: var(--hover); background: rgba(173, 90, 24, 0.2); }
 .bi-dashboard .variant-chip.active { color: var(--text); border-color: var(--selected); background: var(--selected); }
 .bi-dashboard .variant-chip.cyan { color: var(--cyan); }.bi-dashboard .variant-chip.violet { color: var(--violet); }.bi-dashboard .variant-chip.amber { color: var(--amber); }.bi-dashboard .variant-chip.green { color: var(--green); }.bi-dashboard .variant-chip.blue { color: var(--blue); }.bi-dashboard .variant-chip.pink { color: var(--pink); }
 .bi-dashboard .variant-chip.active.cyan, .bi-dashboard .variant-chip.active.violet, .bi-dashboard .variant-chip.active.amber, .bi-dashboard .variant-chip.active.green, .bi-dashboard .variant-chip.active.blue, .bi-dashboard .variant-chip.active.pink { color: var(--text); }
-.bi-dashboard .breakdown-head { display: flex; align-items: center; gap: 14px; padding: 4px 0 12px; border-bottom: 1px solid rgba(33, 135, 168, 0.35); }
-.bi-dashboard .donut-chart { position: relative; display: grid; flex: 0 0 78px; place-items: center; width: 78px; height: 78px; border-radius: 50%; background: conic-gradient(var(--donut-color) var(--donut-value), rgba(20, 98, 123, 0.45) 0); box-shadow: 0 0 16px color-mix(in srgb, var(--donut-color), transparent 72%); }
-.bi-dashboard .donut-chart::before { width: 58px; height: 58px; border-radius: 50%; background: var(--panel); content: ''; }
-.bi-dashboard .donut-chart > div { position: absolute; display: grid; place-items: center; }
-.bi-dashboard .donut-chart b { color: var(--text); font: 400 18px/1 var(--font-num); }
-.bi-dashboard .donut-chart span { margin-top: 3px; color: var(--text-sub); font-size: 12px; }
-.bi-dashboard .breakdown-total { display: block; margin-top: 2px; color: var(--text-main); font: 400 30px/0.95 var(--font-num); }
+.bi-dashboard .breakdown-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0 12px;
+  border-bottom: 1px solid rgba(33, 135, 168, 0.35);
+}
+.bi-dashboard .donut-chart { position: relative; display: grid; flex: 0 0 72px; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: conic-gradient(var(--donut-color) var(--donut-value), rgba(20, 98, 123, 0.45) 0); box-shadow: 0 0 16px color-mix(in srgb, var(--donut-color), transparent 72%); }
+.bi-dashboard .donut-chart::before { width: 52px; height: 52px; border-radius: 50%; background: var(--panel); content: ''; }
+.bi-dashboard .donut-chart > div { position: absolute; display: grid; place-items: center; text-align: center; }
+.bi-dashboard .donut-chart b { color: var(--text); font: 400 14px/1 var(--font-num); }
+.bi-dashboard .donut-chart span { margin-top: 2px; color: var(--text-sub); font-size: 11px; line-height: 1; }
+.bi-dashboard .breakdown-total { display: block; margin-top: 2px; color: var(--text-main); font: 400 28px/0.95 var(--font-num); }
 .bi-dashboard .breakdown-total small { color: var(--text-sub); font: 400 12px var(--font-cn); }
-.bi-dashboard .breakdown-head p { margin-top: 6px; color: var(--muted); font-size: 12px; }
-.bi-dashboard .breakdown-list { padding-top: 10px; overflow: auto; }
-.bi-dashboard .breakdown-row { margin-bottom: 10px; }
-.bi-dashboard .breakdown-row-meta { display: flex; justify-content: space-between; color: var(--text-sub); font-size: 12px; }
-.bi-dashboard .breakdown-row-meta span { display: inline-flex; align-items: center; gap: 6px; }
-.bi-dashboard .breakdown-row-meta b { color: var(--text); font: 400 15px var(--font-num); }
+.bi-dashboard .breakdown-head p { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.3; }
+.bi-dashboard .breakdown-list {
+  padding-top: 10px;
+  overflow: visible;
+}
+.bi-dashboard .breakdown-row {
+  margin-bottom: 10px;
+}
+.bi-dashboard .breakdown-row-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--text-sub); font-size: 12px; line-height: 1.3; }
+.bi-dashboard .breakdown-row-meta span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bi-dashboard .breakdown-row-meta b { flex: 0 0 auto; color: var(--text); font: 400 14px var(--font-num); }
 .bi-dashboard .legend-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
 .bi-dashboard .legend-dot.cyan { background: var(--cyan); }.bi-dashboard .legend-dot.blue { background: var(--blue); }.bi-dashboard .legend-dot.green { background: var(--green); }.bi-dashboard .legend-dot.amber { background: var(--amber); }.bi-dashboard .legend-dot.violet, .bi-dashboard .legend-dot.purple { background: var(--violet); }.bi-dashboard .legend-dot.pink { background: var(--pink); }.bi-dashboard .legend-dot.red { background: var(--red); }
 .bi-dashboard .legend-dot.online { background: var(--green); box-shadow: 0 0 7px rgba(56, 167, 59, 0.75); }
 .bi-dashboard .legend-dot.offline { background: var(--amber); box-shadow: 0 0 7px rgba(217, 182, 33, 0.7); }
-.bi-dashboard .progress-track { height: 5px; margin-top: 5px; overflow: hidden; background: rgba(20, 98, 123, 0.35); }
+.bi-dashboard .progress-track { height: 5px; margin-top: 5px; overflow: hidden; background: rgba(20, 98, 123, 0.45); }
 .bi-dashboard .progress-track span { display: block; height: 100%; box-shadow: 0 0 9px currentColor; }
 .bi-dashboard .progress-track .cyan { color: var(--cyan); background: var(--cyan); }.bi-dashboard .progress-track .blue { color: var(--blue); background: var(--blue); }.bi-dashboard .progress-track .green { color: var(--green); background: var(--green); }.bi-dashboard .progress-track .amber { color: var(--amber); background: var(--amber); }.bi-dashboard .progress-track .violet { color: var(--violet); background: var(--violet); }.bi-dashboard .progress-track .pink { color: var(--pink); background: var(--pink); }
 .bi-dashboard .breakdown-row > small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
@@ -230,17 +349,17 @@
 .bi-dashboard .system-copy small { display: block; overflow: hidden; margin-top: 2px; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .bi-dashboard .system-volume { display: grid; gap: 2px; min-width: 48px; text-align: right; }
 .bi-dashboard .system-volume b { color: var(--text-main); font: 400 15px/1 var(--font-num); }
-.bi-dashboard .system-volume small { color: currentColor; font: 600 12px var(--font-cn); }
+.bi-dashboard .system-volume small { color: currentColor; font: 400 12px var(--font-num); }
 
 .bi-dashboard .mode-total { display: grid; grid-template-columns: 1fr auto; align-items: end; padding: 12px 0; border-bottom: 1px solid rgba(33, 135, 168, 0.35); }
 .bi-dashboard .mode-total strong { color: var(--text-main); font: 400 32px/0.9 var(--font-num); }
 .bi-dashboard .mode-total strong span { color: var(--text-sub); font: 400 12px var(--font-cn); }
-.bi-dashboard .success-tag { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; color: var(--green); font-size: 12px; }
+.bi-dashboard .success-tag { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; color: var(--green); font: 400 12px var(--font-num); }
 .bi-dashboard .mode-list { padding-top: 4px; }
 .bi-dashboard .mode-row { display: grid; grid-template-columns: 1fr 1fr 44px; align-items: center; gap: 8px; margin: 13px 0; }
 .bi-dashboard .mode-row > div:first-child { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .bi-dashboard .mode-row b { color: var(--text-sub); font-size: 12px; }
-.bi-dashboard .mode-row small { margin-left: 3px; color: var(--muted); font-size: 12px; }
+.bi-dashboard .mode-row small { margin-left: 3px; color: var(--muted); font: 400 12px var(--font-num); }
 .bi-dashboard .mode-row > strong { color: var(--text); font: 400 18px var(--font-num); text-align: right; }
 .bi-dashboard .mode-callout { display: flex; align-items: flex-start; gap: 7px; margin-top: 12px; padding: 9px 8px; color: var(--text-sub); font-size: 12px; line-height: 1.5; border: 1px solid rgba(33, 135, 168, 0.45); background: rgba(20, 98, 123, 0.22); }
 .bi-dashboard .mode-callout svg { flex: 0 0 auto; color: var(--text-main); }
@@ -251,7 +370,7 @@
 .bi-dashboard .trend-toolbar .data-label { display: block; white-space: nowrap; }
 .bi-dashboard .trend-toolbar strong { color: var(--text-main); font: 400 28px/0.9 var(--font-num); white-space: nowrap; }
 .bi-dashboard .range-tabs { display: flex; align-items: center; gap: 3px; padding: 2px; border: 1px solid rgba(33, 135, 168, 0.45); background: var(--input-bg); }
-.bi-dashboard .range-tabs button { padding: 5px 7px; color: var(--text-sub); font-size: 12px; line-height: 1; }
+.bi-dashboard .range-tabs button { padding: 5px 7px; color: var(--text-sub); font: 400 12px/1 var(--font-num); }
 .bi-dashboard .range-tabs button:hover { color: var(--text); background: var(--primary-deep); }
 .bi-dashboard .range-tabs button.active { color: var(--text); background: var(--primary); }
 .bi-dashboard .trend-legend { flex: 0 0 auto; display: flex; justify-content: flex-end; gap: 12px; padding: 6px 14px 0; color: var(--text-sub); font-size: 12px; }
@@ -266,8 +385,8 @@
 .bi-dashboard .volume-line { stroke: var(--cyan); stroke-width: 3; filter: drop-shadow(0 0 4px rgba(77, 210, 255, 0.5)); }
 .bi-dashboard .added-line { stroke: var(--amber); stroke-width: 1.8; opacity: 0.9; }
 .bi-dashboard .chart-last-dot { fill: var(--cyan); stroke: #dff6ff; stroke-width: 2; filter: drop-shadow(0 0 4px var(--cyan)); }
-.bi-dashboard .chart-y-labels { position: absolute; top: 8px; bottom: 22px; left: -26px; display: flex; flex-direction: column; justify-content: space-between; color: var(--text-sub); font-size: 12px; }
-.bi-dashboard .chart-x-labels { position: absolute; right: 1px; bottom: 0; display: flex; justify-content: space-between; color: var(--text-sub); font-size: 12px; }
+.bi-dashboard .chart-y-labels { position: absolute; top: 8px; bottom: 22px; left: -26px; display: flex; flex-direction: column; justify-content: space-between; color: var(--text-sub); font: 400 12px var(--font-num); }
+.bi-dashboard .chart-x-labels { position: absolute; right: 1px; bottom: 0; display: flex; justify-content: space-between; color: var(--text-sub); font: 400 12px var(--font-num); }
 
 /* ---------------- 中间统计卡片（8 项：名左数右） ---------------- */
 .bi-dashboard .metrics-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: auto auto; gap: 10px; }
@@ -306,7 +425,7 @@
 .bi-dashboard .topology-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .bi-dashboard .legend-help { margin-left: auto; color: var(--text-sub); }
 .bi-dashboard .legend-help svg { color: var(--text-main); }
-.bi-dashboard .topology-count { margin-left: 0; color: var(--muted); }
+.bi-dashboard .topology-count { margin-left: 0; color: var(--muted); font: 400 12px var(--font-num); }
 
 .bi-dashboard .topology-stage { position: relative; flex: 1 1 auto; min-height: 0; margin: 0 10px 10px; overflow: hidden; border: 1px solid rgba(33, 135, 168, 0.4); background:
   radial-gradient(circle at 62% 50%, rgba(20, 98, 123, 0.22), transparent 42%),
@@ -336,8 +455,8 @@
 .bi-dashboard .node-icon { display: grid; grid-row: span 2; place-items: center; width: 30px; height: 30px; border: 1px solid currentColor; background: rgba(0, 25, 34, 0.75); box-shadow: 0 0 10px color-mix(in srgb, currentColor, transparent 72%); }
 .bi-dashboard .node-copy { min-width: 0; }
 .bi-dashboard .node-copy b { display: block; overflow: hidden; color: var(--text); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.bi-dashboard .node-copy small { display: block; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.bi-dashboard .node-state { display: flex; align-items: center; gap: 4px; color: currentColor; font-size: 12px; }
+.bi-dashboard .node-copy small { display: block; overflow: hidden; color: var(--muted); font: 400 12px var(--font-num); text-overflow: ellipsis; white-space: nowrap; }
+.bi-dashboard .node-state { display: flex; align-items: center; gap: 4px; color: currentColor; font: 400 12px var(--font-num); }
 .bi-dashboard .node-state i { width: 4px; height: 4px; background: currentColor; border-radius: 50%; box-shadow: 0 0 5px currentColor; }
 
 .bi-dashboard .task-node { display: grid; grid-template-columns: 6px 1fr 14px; align-items: center; gap: 7px; width: 158px; min-height: 54px; padding: 8px 8px 8px 7px; text-align: left; border: 1px solid currentColor; border-left-width: 3px; background: rgba(10, 29, 37, 0.96); box-shadow: 0 0 14px color-mix(in srgb, currentColor, transparent 82%); }
@@ -350,7 +469,7 @@
 .bi-dashboard .task-status.muted { background: var(--muted); }
 .bi-dashboard .task-copy { min-width: 0; }
 .bi-dashboard .task-copy b { display: block; color: var(--text); font-size: 13px; font-weight: 600; }
-.bi-dashboard .task-copy small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.bi-dashboard .task-copy small { display: block; margin-top: 3px; color: var(--muted); font: 400 12px var(--font-num); }
 .bi-dashboard .task-chevron { color: currentColor; transform: rotate(-90deg); }
 
 .bi-dashboard .agent-node { position: absolute; z-index: 3; top: 49.64%; left: 62.5%; display: grid; grid-template-columns: 38px auto; grid-template-rows: auto auto; align-items: center; gap: 2px 8px; width: 152px; padding: 10px 12px; color: var(--text-main); text-align: left; border: 1px solid var(--text-main); background: linear-gradient(135deg, rgba(20, 98, 123, 0.85), rgba(7, 22, 30, 0.96)); box-shadow: 0 0 24px rgba(77, 210, 255, 0.3), inset 0 0 18px rgba(77, 210, 255, 0.12); transform: translate(-50%, -50%); cursor: pointer; }
@@ -368,7 +487,7 @@
 .bi-dashboard .resource-icon { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid currentColor; background: rgba(0, 25, 34, 0.75); box-shadow: 0 0 10px color-mix(in srgb, currentColor, transparent 72%); }
 .bi-dashboard .resource-copy { min-width: 0; }
 .bi-dashboard .resource-copy b { display: block; overflow: hidden; color: var(--text); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.bi-dashboard .resource-copy small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.bi-dashboard .resource-copy small { display: block; margin-top: 2px; color: var(--muted); font: 400 12px var(--font-num); }
 
 /* 链路详情弹窗：对话框规范，位于中间 Agent 节点上方，仅 hover 链路时出现 */
 .bi-dashboard .topology-detail { position: absolute; z-index: 6; top: 5.5%; left: 62.5%; width: 302px; padding: 0; overflow: hidden; border: 1px solid var(--primary); background: rgba(10, 29, 37, 0.97); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5), 0 0 22px color-mix(in srgb, var(--primary), transparent 75%); transform: translateX(-50%); }
@@ -399,35 +518,105 @@
 .bi-dashboard .topology-empty svg { color: var(--amber); }
 .bi-dashboard .topology-empty button { min-height: 28px; padding: 4px 10px; color: var(--text); border: 1px solid var(--primary); background: var(--primary); cursor: pointer; }
 
-/* ---------------- 右栏：探查 ---------------- */
-.bi-dashboard .inspect-summary { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin: 0 14px; padding: 8px 0; border-bottom: 1px solid rgba(33, 135, 168, 0.35); }
-.bi-dashboard .inspect-summary strong { display: block; margin-top: 2px; color: var(--text-main); font: 400 32px/0.9 var(--font-num); }
-.bi-dashboard .inspect-summary small { display: flex; align-items: center; gap: 4px; margin-top: 4px; color: var(--muted); font-size: 12px; }
+/* ---------------- 右栏：任务执行统计 ---------------- */
+.bi-dashboard .inspect-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.bi-dashboard .inspect-panel > .panel-heading {
+  flex-shrink: 0;
+}
+/* 汇总 / 指标 / 柱图 / 底栏合成一整块，超出竖向滚动 */
+.bi-dashboard .inspect-body {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(33, 135, 168, 0.7) transparent;
+}
+.bi-dashboard .inspect-body::-webkit-scrollbar { width: 5px; }
+.bi-dashboard .inspect-body::-webkit-scrollbar-thumb { background: rgba(33, 135, 168, 0.7); border-radius: 3px; }
+.bi-dashboard .inspect-body::-webkit-scrollbar-track { background: transparent; }
+.bi-dashboard .inspect-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; margin: 0 14px; padding: 8px 0; border-bottom: 1px solid rgba(33, 135, 168, 0.35); }
+.bi-dashboard .inspect-summary strong { display: block; margin-top: 2px; color: var(--text-main); font: 400 28px/0.9 var(--font-num); }
+.bi-dashboard .inspect-summary small { display: flex; align-items: center; gap: 4px; margin-top: 3px; color: var(--muted); font-size: 12px; }
 .bi-dashboard .inspect-summary small b { color: var(--green); font-weight: 500; }
-.bi-dashboard .quality-badge { min-width: 78px; padding-left: 12px; border-left: 1px solid rgba(33, 135, 168, 0.35); }
+.bi-dashboard .quality-badge { min-width: 84px; padding-left: 10px; border-left: 1px solid rgba(33, 135, 168, 0.35); }
 .bi-dashboard .quality-badge span { display: block; color: var(--muted); font-size: 12px; }
-.bi-dashboard .quality-badge b { display: block; margin-top: 2px; color: var(--green); font: 400 22px/1 var(--font-num); }
+.bi-dashboard .quality-badge b { display: block; margin-top: 2px; color: var(--green); font: 400 20px/1 var(--font-num); }
 .bi-dashboard .quality-badge b em { font: 400 12px var(--font-cn); font-style: normal; }
-.bi-dashboard .quality-badge small { display: flex; align-items: center; gap: 3px; color: var(--green); font-size: 12px; }
+.bi-dashboard .quality-badge small { display: flex; align-items: center; gap: 3px; margin-top: 3px; color: var(--green); font-size: 12px; }
 .bi-dashboard .quality-badge small svg { color: var(--green); }
-.bi-dashboard .inspect-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 8px 14px 0; padding-bottom: 10px; border-bottom: 1px solid rgba(33, 135, 168, 0.35); }
-.bi-dashboard .inspect-metrics span { display: block; color: var(--muted); font-size: 11px; }
+.bi-dashboard .inspect-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin: 8px 14px 0; padding-bottom: 8px; border-bottom: 1px solid rgba(33, 135, 168, 0.35); }
+.bi-dashboard .inspect-metrics span { display: block; color: var(--muted); font-size: 12px; line-height: 1.2; }
 .bi-dashboard .inspect-metrics b { display: block; margin-top: 2px; color: var(--text-main); font: 400 14px/1.2 var(--font-num); }
-.bi-dashboard .inspect-chart { display: flex; align-items: end; justify-content: space-around; flex: 1 1 auto; min-height: 84px; margin: 0 16px; padding: 10px 7px 0; border-bottom: 1px solid rgba(77, 210, 255, 0.3); background: repeating-linear-gradient(to top, transparent 0 28px, rgba(77, 210, 255, 0.12) 29px); }
-.bi-dashboard .inspect-bar-col { display: grid; grid-template-rows: 15px 1fr 17px; align-items: end; width: 18%; height: 100%; text-align: center; }
-.bi-dashboard .inspect-bar-value { color: var(--text-sub); font: 400 14px var(--font-num); }
-.bi-dashboard .inspect-bar-track { display: flex; align-items: end; justify-content: center; height: 100%; max-height: 74px; }
-.bi-dashboard .inspect-bar-track span { display: block; width: 20px; min-height: 8px; background: var(--cyan); box-shadow: 0 0 10px color-mix(in srgb, currentColor, transparent 50%); }
-.bi-dashboard .inspect-bar-track .green { color: var(--green); background: var(--green); }
-.bi-dashboard .inspect-bar-track .cyan { color: var(--cyan); background: var(--cyan); }
-.bi-dashboard .inspect-bar-track .violet { color: var(--violet); background: var(--violet); }
-.bi-dashboard .inspect-bar-track .red { color: var(--red); background: var(--red); }
-.bi-dashboard .inspect-bar-col > span:last-child { color: var(--text-sub); font-size: 12px; }
-.bi-dashboard .inspect-foot { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 7px 14px 9px; color: var(--text-sub); font-size: 12px; }
+.bi-dashboard .inspect-chart {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 4px;
+  height: 128px;
+  margin: 0 14px;
+  padding: 8px 2px 4px;
+  border-bottom: 1px solid rgba(77, 210, 255, 0.3);
+  background: repeating-linear-gradient(to top, transparent 0 22px, rgba(77, 210, 255, 0.12) 23px);
+}
+.bi-dashboard .inspect-bar-col {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  align-items: center;
+  width: auto;
+  min-width: 0;
+  height: 100%;
+  text-align: center;
+}
+.bi-dashboard .inspect-bar-track {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+}
+.bi-dashboard .inspect-bar-space {
+  display: block;
+  width: 0;
+  min-height: 0;
+}
+.bi-dashboard .inspect-bar-value {
+  flex: 0 0 auto;
+  margin-bottom: 4px;
+  color: var(--text-sub);
+  font: 400 12px/1 var(--font-num);
+}
+.bi-dashboard .inspect-bar-track > span {
+  display: block;
+  width: 18px;
+  min-height: 8px;
+  background: var(--cyan);
+  box-shadow: 0 0 10px color-mix(in srgb, currentColor, transparent 50%);
+}
+.bi-dashboard .inspect-bar-track > span.green { color: var(--green); background: var(--green); }
+.bi-dashboard .inspect-bar-track > span.cyan { color: var(--cyan); background: var(--cyan); }
+.bi-dashboard .inspect-bar-track > span.violet { color: var(--violet); background: var(--violet); }
+.bi-dashboard .inspect-bar-track > span.red { color: var(--red); background: var(--red); }
+.bi-dashboard .inspect-bar-col > span:last-child {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  color: var(--text-sub);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.bi-dashboard .inspect-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 14px; color: var(--text-sub); font-size: 12px; }
 .bi-dashboard .inspect-foot span { display: inline-flex; align-items: center; gap: 4px; }
 
 /* ---------------- 右栏：实时任务 ---------------- */
-.bi-dashboard .live-counter { display: inline-flex; align-items: center; gap: 6px; color: var(--green); font-size: 12px; }
+.bi-dashboard .live-counter { display: inline-flex; align-items: center; gap: 6px; color: var(--green); font: 400 12px var(--font-num); }
 .bi-dashboard .live-task-list { flex: 1 1 auto; min-height: 0; margin: 0 10px; overflow: auto; scrollbar-width: thin; scrollbar-color: rgba(33, 135, 168, 0.7) transparent; }
 .bi-dashboard .live-task-list::-webkit-scrollbar { width: 5px; }
 .bi-dashboard .live-task-list::-webkit-scrollbar-thumb { background: rgba(33, 135, 168, 0.7); }
@@ -435,7 +624,7 @@
 .bi-dashboard .live-task:hover { background: rgba(173, 90, 24, 0.24); }
 .bi-dashboard .live-task-name { min-width: 0; overflow: hidden; color: var(--text-sub); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .bi-dashboard .live-task-rate { color: var(--text-main); font: 400 14px var(--font-num); white-space: nowrap; }
-.bi-dashboard .live-task-state { font: 600 12px var(--font-cn); white-space: nowrap; }
+.bi-dashboard .live-task-state { font: 400 12px var(--font-num); white-space: nowrap; }
 .bi-dashboard .live-task-state.green { color: var(--green); }.bi-dashboard .live-task-state.amber { color: var(--amber); }.bi-dashboard .live-task-state.red { color: var(--red); }.bi-dashboard .live-task-state.muted { color: var(--muted); }
 .bi-dashboard .list-scroll-hint { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 4px; padding-bottom: 6px; color: var(--muted); font-size: 12px; }
 .bi-dashboard .list-scroll-hint span { display: block; width: 25px; height: 2px; background: linear-gradient(90deg, transparent, var(--text-main), transparent); }
@@ -506,7 +695,7 @@
 
 .bi-dashboard .dashboard-refresh .is-spinning { animation: bi-dashboard-spin 1s linear infinite; }
 
-.bi-dashboard .trend-records { color: var(--green); font: 600 12px var(--font-cn); white-space: nowrap; }
+.bi-dashboard .trend-records { color: var(--green); font: 400 12px var(--font-num); white-space: nowrap; }
 
 .bi-dashboard .source-empty, .bi-dashboard .system-empty, .bi-dashboard .live-empty { display: flex; align-items: center; justify-content: center; min-height: 38px; padding: 8px; color: var(--muted); font-size: 12px; }
 
@@ -516,7 +705,7 @@
 
 .bi-dashboard .live-empty { height: 100%; }
 
-.bi-dashboard .topology-baseline-note { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 14px 8px; color: var(--muted); font-size: 12px; }
+.bi-dashboard .topology-baseline-note { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 14px 8px; color: var(--muted); font: 400 12px var(--font-num); }
 
 .bi-dashboard .topology-loading { position: absolute; inset: 0; z-index: 7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-sub); background: rgba(7, 22, 30, .78); }
 
@@ -536,21 +725,24 @@
    two-column stage with the right rail below it and let the page scroll. */
 @media (max-width: 1599px) {
   .bi-dashboard {
-    height: auto;
-    min-height: calc(100vh - 100px);
+    height: 100%;
+    max-height: 100%;
     overflow-y: auto;
   }
 
   .bi-dashboard .dashboard-grid {
     grid-template-columns: 300px minmax(0, 1fr);
-    grid-template-rows: auto auto;
+    grid-template-rows: minmax(0, 1fr) auto;
     height: auto;
+    min-height: 100%;
   }
 
   .bi-dashboard .left-rail {
     grid-column: 1;
     grid-row: 1;
-    grid-template-rows: repeat(3, minmax(220px, auto));
+    grid-template-rows: minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 1fr);
+    height: 100%;
+    min-height: 720px;
   }
 
   .bi-dashboard .center-stage {

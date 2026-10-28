@@ -6,6 +6,25 @@
   src: url("@/assets/web.woff2") format("woff2");
 }
 
+@font-face {
+  font-family: "DS-Digital";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  /* 仅覆盖数字与常用度量符号，中文/英文仍走后续字体栈 */
+  unicode-range: U+0030-0039, U+0025, U+002B, U+002C, U+002D, U+002E, U+003A, U+003C, U+003E;
+  src: url("@/assets/fonts/DS-DIGI.TTF") format("truetype");
+}
+
+@font-face {
+  font-family: "DS-Digital";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+0025, U+002B, U+002C, U+002D, U+002E, U+003A, U+003C, U+003E;
+  src: url("@/assets/fonts/DS-DIGIB.TTF") format("truetype");
+}
+
 
 
 html,
@@ -194,10 +213,15 @@ html[data-hide-header='true'] {
   background: var(--st-color-bg-page, #02222d);
 }
 
-/* 任务列表页外壳定高：面板吃满视口，表头/分页固定，表体内部滚动 */
+/* 任务列表页 / 探查页 / 引接大屏：定高吃满内容区，内部自行滚动，避免被上面的 height:auto 撑出整页滚动 */
 .ant-pro-layout .ant-pro-layout-content > .task-list-page-shell,
-.ant-pro-layout .ant-pro-layout-content > .data-exploration-page {
-  height: 100%;
+.ant-pro-layout .ant-pro-layout-content > .data-exploration-page,
+.ant-pro-layout .ant-pro-layout-content > .bi-dashboard {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 /* 任务列表等「顶栏 + 列表」：子项用 flex 占剩余高度 */

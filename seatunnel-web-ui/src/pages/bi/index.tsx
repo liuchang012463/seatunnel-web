@@ -1,4 +1,5 @@
 import { Link } from '@umijs/max';
+import AnimatedMetric from './AnimatedMetric';
 import { Spin } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -269,8 +270,20 @@ const IngestionSituationPage: React.FC = () => {
   }, [timeRange]);
 
   useEffect(() => {
-    void loadDashboard();
+    let pending = false;
+    const refresh = async () => {
+      if (pending) return;
+      pending = true;
+      try {
+        await loadDashboard();
+      } finally {
+        pending = false;
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 20_000);
     return () => {
+      clearInterval(timer);
       requestId.current += 1;
     };
   }, [loadDashboard]);
@@ -854,7 +867,7 @@ const IngestionSituationPage: React.FC = () => {
               <article key={metric.label} className={'metric-card ' + metric.tone}>
                 <span className="metric-name">{metric.label}</span>
                 <span className="metric-value">
-                  {metric.value}
+                  <AnimatedMetric value={metric.value} />
                   <small>{metric.unit}</small>
                 </span>
               </article>
@@ -1092,9 +1105,6 @@ const IngestionSituationPage: React.FC = () => {
                   <button type="button" onClick={() => setSelectedTaskType(null)}>显示全部</button>
                 </div>
               )}
-              <div className="topology-baseline">
-                <span>SeaTunnel Web</span><i /><span>任务指标与元数据资产</span>
-              </div>
               <div className="topology-edge-actions sr-only" aria-label="任务类型筛选">
                 {TASK_TYPES.map((taskType) => (
                   <button key={taskType.key} type="button" onClick={() => setSelectedTaskType(taskType.key)}>
@@ -1106,10 +1116,6 @@ const IngestionSituationPage: React.FC = () => {
                 <div className="topology-loading"><Spin size="large" /><span>正在读取引接指标</span></div>
               )}
             </div>
-            <div className="topology-baseline-note">
-              <span>链路按连接器、任务类型和数据资产汇总展示，不代表单个任务的精确映射</span>
-              <span>{selectedLabel} · {rangeLabel}</span>
-            </div>
           </section>
         </section>
 
@@ -1119,54 +1125,61 @@ const IngestionSituationPage: React.FC = () => {
               <h2>任务执行统计</h2>
               <span className="live-counter"><span className="live-dot" />{taskMetrics ? integerFormat.format(totals.tasks) + ' 项' : '加载中'}</span>
             </div>
-            <div className="inspect-summary">
-              <div>
-                <span className="data-label">{rangeLabel}任务</span>
-                <strong>{taskMetrics ? integerFormat.format(totals.tasks) : '—'}</strong>
-                <small>运行中 <b>{taskMetrics ? integerFormat.format(totals.running) : '—'}</b></small>
-              </div>
-              <div className="quality-badge">
-                <span>已结束任务成功率</span>
-                <b>{successRate === null ? '—' : numberFormat.format(successRate)}<em>{successRate === null ? '' : '%'}</em></b>
-                <small><ShieldCheck size={12} />{successRate === null ? '暂无已结束任务' : '按任务状态计算'}</small>
-              </div>
-            </div>
-            <div className="inspect-metrics">
-              <div>
-                <span>引接条数</span>
-                <b>{taskMetrics ? `${recordsDisplay.value} ${recordsDisplay.unit}` : '—'}</b>
-              </div>
-              <div>
-                <span>引接数据量</span>
-                <b>{taskMetrics ? `${bytesDisplay.value} ${bytesDisplay.unit}` : '—'}</b>
-              </div>
-              <div>
-                <span>最新记录速率</span>
-                <b>{currentRecordsSpeed === null ? '—' : `${numberFormat.format(currentRecordsSpeed)} 条/s`}</b>
-              </div>
-              <div>
-                <span>实时平均延迟</span>
-                <b>{averageDelay === null ? '—' : `${integerFormat.format(averageDelay)} ms`}</b>
-              </div>
-            </div>
-            <div className="inspect-chart">
-              {statusItems.slice(0, 4).map((item) => (
-                <div className="inspect-bar-col" key={item.label}>
-                  <div className="inspect-bar-value">{taskMetrics ? integerFormat.format(item.value) : '—'}</div>
-                  <div className="inspect-bar-track">
-                    <span
-                      className={item.tone}
-                      style={{ height: (taskMetrics ? (item.value / maxStatus) * 100 : 0) + '%' }}
-                    />
-                  </div>
-                  <span>{item.label}</span>
+            <div className="inspect-body">
+              <div className="inspect-summary">
+                <div>
+                  <span className="data-label">{rangeLabel}任务</span>
+                  <strong>{taskMetrics ? integerFormat.format(totals.tasks) : '—'}</strong>
+                  <small>运行中 <b>{taskMetrics ? integerFormat.format(totals.running) : '—'}</b></small>
                 </div>
-              ))}
-            </div>
-            <div className="inspect-foot">
-              <span><i className="legend-dot cyan" />运行中 {taskMetrics ? integerFormat.format(totals.running) : '—'}</span>
-              <span><i className="legend-dot red" />失败 {taskMetrics ? integerFormat.format(totals.failed) : '—'}</span>
-              <Link to="/metrics">查看任务概览 <List size={12} /></Link>
+                <div className="quality-badge">
+                  <span>已结束任务成功率</span>
+                  <b>{successRate === null ? '—' : numberFormat.format(successRate)}<em>{successRate === null ? '' : '%'}</em></b>
+                  <small><ShieldCheck size={12} />{successRate === null ? '暂无已结束任务' : '按任务状态计算'}</small>
+                </div>
+              </div>
+              <div className="inspect-metrics">
+                <div>
+                  <span>引接条数</span>
+                  <b>{taskMetrics ? `${recordsDisplay.value} ${recordsDisplay.unit}` : '—'}</b>
+                </div>
+                <div>
+                  <span>引接数据量</span>
+                  <b>{taskMetrics ? `${bytesDisplay.value} ${bytesDisplay.unit}` : '—'}</b>
+                </div>
+                <div>
+                  <span>最新记录速率</span>
+                  <b>{currentRecordsSpeed === null ? '—' : `${numberFormat.format(currentRecordsSpeed)} 条/s`}</b>
+                </div>
+                <div>
+                  <span>实时平均延迟</span>
+                  <b>{averageDelay === null ? '—' : `${integerFormat.format(averageDelay)} ms`}</b>
+                </div>
+              </div>
+              <div className="inspect-chart">
+                {statusItems.slice(0, 4).map((item) => {
+                  const value = taskMetrics ? item.value : 0
+                  const headRoom = Math.max(maxStatus - value, 0)
+                  return (
+                    <div className="inspect-bar-col" key={item.label}>
+                      <div className="inspect-bar-track">
+                        <i className="inspect-bar-space" style={{ flex: headRoom || 0.0001 }} aria-hidden />
+                        <div className="inspect-bar-value">{taskMetrics ? integerFormat.format(item.value) : '—'}</div>
+                        <span
+                          className={item.tone}
+                          style={{ flex: Math.max(value, 0.12) }}
+                        />
+                      </div>
+                      <span>{item.label}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="inspect-foot">
+                <span><i className="legend-dot cyan" />运行中 {taskMetrics ? integerFormat.format(totals.running) : '—'}</span>
+                <span><i className="legend-dot red" />失败 {taskMetrics ? integerFormat.format(totals.failed) : '—'}</span>
+                <Link to="/metrics">查看任务概览 <List size={12} /></Link>
+              </div>
             </div>
           </section>
 
