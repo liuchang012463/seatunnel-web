@@ -11,4 +11,7 @@ public class SeaTunnelClientProperties {
     private int connectTimeoutMs = 2000;
     private int readTimeoutMs = 60000;
 
+    /** Dedicated timeout for config uploads, which can take longer while the Engine resolves connectors. */
+    private int jobSubmitReadTimeoutMs = 300000;
+
 }

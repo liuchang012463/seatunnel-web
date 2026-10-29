@@ -3,6 +3,8 @@ package org.apache.seatunnel.web.engine.client.rest;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.engine.client.exceptions.SeaTunnelClientException;
 import org.apache.seatunnel.web.engine.client.modal.SeaTunnelClientAuth;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -26,11 +28,22 @@ public class SeaTunnelRestClient {
     private static final String DEFAULT_CONFIG_FILE_NAME = "job.conf";
 
     private final RestTemplate restTemplate;
+    private final RestTemplate jobSubmitRestTemplate;
     private final SeaTunnelClientResolver seatunnelClientResolver;
+
+    @Autowired
+    public SeaTunnelRestClient(@Qualifier("seaTunnelRestTemplate") RestTemplate restTemplate,
+                               @Qualifier("seaTunnelJobSubmitRestTemplate") RestTemplate jobSubmitRestTemplate,
+                               SeaTunnelClientResolver seatunnelClientResolver) {
+        this.restTemplate = restTemplate;
+        this.jobSubmitRestTemplate = jobSubmitRestTemplate;
+        this.seatunnelClientResolver = seatunnelClientResolver;
+    }
 
     public SeaTunnelRestClient(RestTemplate restTemplate,
                                SeaTunnelClientResolver seatunnelClientResolver) {
         this.restTemplate = restTemplate;
+        this.jobSubmitRestTemplate = restTemplate;
         this.seatunnelClientResolver = seatunnelClientResolver;
     }
 
@@ -482,6 +495,16 @@ public class SeaTunnelRestClient {
                                String jobId,
                                String jobName,
                                Boolean isStartWithSavePoint) {
+        return submitJobUpload(clientId, fileBytes, filename, jobId, jobName, isStartWithSavePoint, null);
+    }
+
+    public Map submitJobUpload(Long clientId,
+                               byte[] fileBytes,
+                               String filename,
+                               String jobId,
+                               String jobName,
+                               Boolean isStartWithSavePoint,
+                               String restoreSourceJobId) {
         try {
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
@@ -503,8 +526,12 @@ public class SeaTunnelRestClient {
                     UriComponentsBuilder.fromHttpUrl(url(clientId, "/submit-job/upload"));
 
             appendSubmitJobParams(builder, jobId, jobName, isStartWithSavePoint);
+            if (!isBlank(restoreSourceJobId)) {
+                builder.queryParam("restoreMode", "SAVEPOINT")
+                        .queryParam("restoreSourceJobId", restoreSourceJobId.trim());
+            }
 
-            ResponseEntity<Map> response = restTemplate.exchange(
+            ResponseEntity<Map> response = jobSubmitRestTemplate.exchange(
                     builder.build(true).toUriString(),
                     HttpMethod.POST,
                     request,
