@@ -183,6 +183,7 @@ function apiMethodColor(method?: string): string {
 }
 
 function apiEndpointPath(asset?: DataExplorationAsset): string {
+  if (asset?.name?.startsWith('/')) return asset.name;
   return asset?.endpointURL || asset?.name || asset?.fullyQualifiedName || '未命名接口';
 }
 
@@ -314,6 +315,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   const [activeTab, setActiveTab] = useState<AssetTabKey>();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [apiTree, setApiTree] = useState<ApiTreeNode[]>([]);
+  const [expandedApiTreeKeys, setExpandedApiTreeKeys] = useState<string[]>([]);
   const [apiEndpointPage, setApiEndpointPage] = useState<DataExplorationAssetPage>();
   const [apiEndpointPageNo, setApiEndpointPageNo] = useState(1);
   const [apiEndpointSearch, setApiEndpointSearch] = useState('');
@@ -422,7 +424,10 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   }, [dataSourceId]);
 
   /** Loads the endpoints of one interface group. */
-  const loadApiChildren = useCallback(async (node: ApiTreeNode) => {
+  const loadApiChildren = useCallback(async (
+    node: ApiTreeNode,
+    selectedEndpoint?: DataExplorationAsset,
+  ) => {
     if (!dataSourceId || !node.asset.id) return;
     const requestId = pageRequest.current;
     try {
@@ -438,7 +443,11 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         setListError(response.message || '无法读取接口列表');
         return;
       }
-      const children = (response.data.records || []).map((asset) => toApiTreeNode(asset, true));
+      const childAssets = [...(response.data.records || [])];
+      if (selectedEndpoint?.id && !childAssets.some((asset) => asset.id === selectedEndpoint.id)) {
+        childAssets.push(selectedEndpoint);
+      }
+      const children = childAssets.map((asset) => toApiTreeNode(asset, true));
       setApiTree((current) => withApiTreeChildren(current, node.key, children));
     } catch (error: any) {
       if (requestId !== pageRequest.current) return;
@@ -546,6 +555,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     setDetail(undefined);
     setActiveTab(undefined);
     setSettingsOpen(false);
+    setExpandedApiTreeKeys([]);
     setListError(undefined);
     setDetailError(undefined);
     setApiTree([]);
@@ -588,6 +598,25 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     void loadApiEndpoints(selected.id, apiEndpointPageNo, apiEndpointSearch);
   }, [apiEndpointPageNo, apiEndpointSearch, loadApiEndpoints, open, selected?.id, selected?.type]);
 
+  useEffect(() => {
+    if (!open || !isApiCatalog || !selected?.id
+        || normalizeAssetType(selected.type) !== 'API_ENDPOINT'
+        || detail?.asset?.id !== selected.id) {
+      return;
+    }
+    const collection = [...(detail.breadcrumbs || [])]
+      .reverse()
+      .find((item) => normalizeAssetType(item.assetType) === 'API_COLLECTION');
+    if (!collection?.id) return;
+    const group = apiTree.find((node) => node.asset.id === collection.id);
+    if (!group) return;
+
+    setExpandedApiTreeKeys((current) => current.includes(group.key) ? current : [...current, group.key]);
+    if (!group.children?.some((node) => node.asset.id === selected.id)) {
+      void loadApiChildren(group, detail.asset);
+    }
+  }, [apiTree, detail, isApiCatalog, loadApiChildren, open, selected]);
+
   // Open the first item by default so the workspace shows its metadata and
   // sample data without an extra click.
   useEffect(() => {
@@ -622,6 +651,11 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     if (normalizeAssetType(asset.assetType) === 'API_COLLECTION') {
       setApiEndpointPageNo(1);
       setApiEndpointSearch('');
+      const group = apiTree.find((node) => node.asset.id === asset.id);
+      if (group) {
+        setExpandedApiTreeKeys((current) => current.includes(group.key) ? current : [...current, group.key]);
+        if (!group.children) void loadApiChildren(group);
+      }
     }
   };
 
@@ -1071,8 +1105,8 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
           </Tag>
         </div>
         <div className="asset-exploration__api-context-url">
-          <span>接口地址</span>
-          <code>{selectedAsset?.endpointURL || selectedAsset?.name || '—'}</code>
+          <span>接口路径</span>
+          <code>{apiEndpointPath(selectedAsset)}</code>
         </div>
         <div className="asset-exploration__api-context-description">
           <strong>接口描述</strong>
@@ -1302,6 +1336,8 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                     showIcon
                     blockNode
                     treeData={apiTree}
+                    expandedKeys={expandedApiTreeKeys}
+                    onExpand={(keys) => setExpandedApiTreeKeys(keys.map(String))}
                     loadData={(node) => loadApiChildren(node as ApiTreeNode)}
                     selectedKeys={selected ? [selected.id] : []}
                     onSelect={(_keys, info) => {
