@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.AbstractJdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
+import org.apache.seatunnel.plugin.datasource.api.jdbc.QueryRequest;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.TablePath;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
@@ -86,9 +87,34 @@ public class DamengCatalog extends AbstractJdbcCatalog {
     private String resolveSchemaName(TablePath tablePath) {
         String resolved = tablePath == null ? null : tablePath.getSchemaName();
         if (StringUtils.isBlank(resolved)) {
-            resolved = schemaName;
+            resolved = schemaName.toUpperCase(Locale.ROOT);
         }
         return resolved;
+    }
+
+    @Override
+    protected QueryRequest preprocessRequest(Map<String, Object> requestBody) {
+        QueryRequest request = super.preprocessRequest(requestBody);
+        if (usesConfiguredSchemaFallback(requestBody)) {
+            TablePath tablePath = request.getTablePath();
+            if (tablePath != null && StringUtils.isNotBlank(tablePath.getSchemaName())) {
+                request.setTablePath(TablePath.of(
+                        tablePath.getDatabaseName(),
+                        tablePath.getSchemaName().toUpperCase(Locale.ROOT),
+                        tablePath.getTableName()));
+            }
+        }
+        return request;
+    }
+
+    private boolean usesConfiguredSchemaFallback(Map<String, Object> requestBody) {
+        if (requestBody == null
+                || (requestBody.get("schema_name") != null
+                        && StringUtils.isNotBlank(String.valueOf(requestBody.get("schema_name"))))
+                || requestBody.get("table_path") == null) {
+            return false;
+        }
+        return splitIdentifierPath(String.valueOf(requestBody.get("table_path"))).size() == 1;
     }
 
     private String escapeSql(String value) {
