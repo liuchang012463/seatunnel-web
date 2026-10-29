@@ -183,8 +183,10 @@ function apiMethodColor(method?: string): string {
 }
 
 function apiEndpointPath(asset?: DataExplorationAsset): string {
+  if (asset?.displayName?.startsWith('/')) return asset.displayName;
   if (asset?.name?.startsWith('/')) return asset.name;
-  return asset?.endpointURL || asset?.name || asset?.fullyQualifiedName || '未命名接口';
+  return asset?.endpointURL || asset?.displayName || asset?.name
+    || asset?.fullyQualifiedName || '未命名接口';
 }
 
 /** Replaces the children of one tree node, keeping the rest of the tree untouched. */

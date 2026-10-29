@@ -317,12 +317,12 @@ describe('AssetDataExplorationDrawer', () => {
     };
     const endpoint = {
       id: 'endpoint-1',
-      name: '/omext/health',
-      displayName: '/omext/health',
-      fullyQualifiedName: 'st_ds_42.core.GET /omext/health',
+      name: '/omext/generate/{fqn}/post',
+      displayName: '/omext/generate/{fqn}',
+      fullyQualifiedName: 'st_ds_42.core.POST /omext/generate/{fqn}',
       assetType: 'API_ENDPOINT',
-      requestMethod: 'GET',
-      endpointURL: 'http://192.0.2.1:38000/openapi.json/submit_health',
+      requestMethod: 'POST',
+      endpointURL: 'http://192.0.2.1:38000/openapi.json/submit_generate_omext_generate__fqn__post',
       description: 'Service health check',
     };
     service.fetchDataExplorationAssets.mockImplementation((params: {
@@ -376,19 +376,19 @@ describe('AssetDataExplorationDrawer', () => {
     fireEvent.click(await screen.findByText('core'));
     expect((await screen.findAllByText('Service endpoint group')).length).toBeGreaterThan(0);
     const searchInput = await screen.findByRole('textbox', { name: '搜索分组内接口' });
-    expect((await screen.findAllByText('/omext/health')).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('GET').length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('/omext/generate/{fqn}')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('POST').length).toBeGreaterThan(0);
     fireEvent.change(searchInput, { target: { value: 'health' } });
     await waitFor(() => expect(service.fetchDataExplorationAssets).toHaveBeenCalledWith(
       expect.objectContaining({ parentId: 'collection-1', search: 'health', pageNo: 1 }),
     ));
 
-    fireEvent.click(screen.getByRole('button', { name: '/omext/health' }));
+    fireEvent.click(screen.getByRole('button', { name: '/omext/generate/{fqn}' }));
     expect((await screen.findAllByText('Service health check')).length).toBeGreaterThan(0);
     expect(screen.getByText(/分组描述：Service endpoint group/)).toBeTruthy();
     expect(screen.getByText('接口路径')).toBeTruthy();
-    expect(screen.getAllByText('/omext/health')).toHaveLength(3);
+    expect(screen.getAllByText('/omext/generate/{fqn}')).toHaveLength(3);
     expect(screen.queryByText(endpoint.endpointURL)).toBeNull();
-    expect(screen.getAllByText('GET').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('POST').length).toBeGreaterThan(0);
   });
 });
