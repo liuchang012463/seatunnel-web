@@ -1924,15 +1924,17 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     private static <T> OpenMetadataPage<T> page(
             ListResponse<?> response, List<T> data) {
+        int scannedCount = response == null || response.getData() == null
+                ? data.size() : response.getData().size();
         if (response == null || response.getPaging() == null) {
-            return new OpenMetadataPage<>(data, data.size(), null);
+            return new OpenMetadataPage<>(data, data.size(), null, scannedCount);
         }
         Integer total = response.getPaging().getTotal();
         return new OpenMetadataPage<>(
                 data,
                 total == null ? data.size() : total,
                 response.getPaging().getAfter(),
-                response.getData() == null ? 0 : response.getData().size());
+                scannedCount);
     }
 
     private static String referenceFqn(org.openmetadata.schema.type.EntityReference reference) {
