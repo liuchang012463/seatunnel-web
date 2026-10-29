@@ -35,7 +35,7 @@ class DamengCatalogTest {
 
         assertTrue(sql.contains("FROM ALL_TAB_COLUMNS"));
         assertTrue(sql.contains("OWNER = 'APP'"));
-        assertTrue(sql.contains("TABLE_NAME = 'ORDERS'"));
+        assertTrue(sql.contains("TABLE_NAME = 'orders'"));
         assertFalse(sql.toLowerCase().contains("information_schema"));
     }
 
@@ -48,6 +48,21 @@ class DamengCatalogTest {
         String reference = catalog.buildTableReference(
                 TablePath.of("testdb", "APP", "ORDERS"));
 
-        assertEquals("APP.ORDERS", reference);
+        assertEquals("\"APP\".\"ORDERS\"", reference);
+    }
+
+    @Test
+    void preservesMixedCaseMetadataNamesAndQuotesEmbeddedQuotes() {
+        DamengConnectionParam param = new DamengConnectionParam();
+        param.setSchemaName("SYSDBA");
+        DamengCatalog catalog = new DamengCatalog(param, null);
+
+        assertEquals("\"MixedOwner\".\"Order\"\"Details\"", catalog.buildTableReference(
+                TablePath.of("testdb", "MixedOwner", "Order\"Details")));
+
+        String sql = catalog.getSelectColumnsSql(
+                TablePath.of("testdb", "MixedOwner", "OrderDetails"));
+        assertTrue(sql.contains("OWNER = 'MixedOwner'"));
+        assertTrue(sql.contains("TABLE_NAME = 'OrderDetails'"));
     }
 }

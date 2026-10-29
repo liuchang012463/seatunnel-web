@@ -66,24 +66,21 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             throw new IllegalArgumentException("tablePath must not be blank");
         }
 
-        String[] parts = java.util.Arrays.stream(tablePath.split("\\."))
-                .map(NonNullFunctions.from(String::trim))
-                .filter(StringUtils::isNotBlank)
-                .toArray(String[]::new);
+        List<String> parts = splitIdentifierPath(tablePath);
 
-        if (parts.length == 1) {
+        if (parts.size() == 1) {
             return TablePath.of(
                     getParam().getDatabase(),
                     null,
-                    parts[0]
+                    parts.get(0)
             );
         }
 
-        if (parts.length == 2) {
+        if (parts.size() == 2) {
             return TablePath.of(
-                    parts[0],
+                    parts.get(0),
                     null,
-                    parts[1]
+                    parts.get(1)
             );
         }
 
@@ -124,7 +121,10 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
     @Override
     protected String quoteIdentifier(String identifier) {
-        return "`" + identifier + "`";
+        if (StringUtils.isBlank(identifier)) {
+            return identifier;
+        }
+        return "`" + identifier.replace("`", "``") + "`";
     }
 
     @Override

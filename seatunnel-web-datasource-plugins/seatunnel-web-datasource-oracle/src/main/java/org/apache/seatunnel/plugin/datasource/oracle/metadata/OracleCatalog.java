@@ -35,7 +35,10 @@ public class OracleCatalog extends AbstractJdbcCatalog {
 
     @Override
     protected String quoteIdentifier(String identifier) {
-        return "\"" + identifier + "\"";
+        if (StringUtils.isBlank(identifier)) {
+            return identifier;
+        }
+        return "\"" + identifier.replace("\"", "\"\"") + "\"";
     }
 
     @Override
@@ -123,7 +126,7 @@ public class OracleCatalog extends AbstractJdbcCatalog {
                 .collect(Collectors.toList());
 
         String quotedColumnNames = columnNames.stream()
-                .map(name -> "'" + escapeSql(name.toUpperCase(Locale.ROOT)) + "'")
+                .map(name -> "'" + escapeSql(name) + "'")
                 .collect(Collectors.joining(", "));
 
         return String.format(
@@ -149,7 +152,7 @@ public class OracleCatalog extends AbstractJdbcCatalog {
             return quoteIdentifier(tableName);
         }
 
-        return quoteIdentifier(owner.toUpperCase()) + "." + quoteIdentifier(tableName);
+        return quoteIdentifier(owner) + "." + quoteIdentifier(tableName);
     }
 
     private String resolveOwnerForTablePath(TablePath tablePath) {
@@ -163,6 +166,6 @@ public class OracleCatalog extends AbstractJdbcCatalog {
             throw new IllegalArgumentException("Oracle owner/schema must not be blank");
         }
 
-        return escapeSql(owner.toUpperCase(Locale.ROOT));
+        return escapeSql(owner);
     }
 }

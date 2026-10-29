@@ -100,14 +100,14 @@ public class DamengCatalog extends AbstractJdbcCatalog {
         if (StringUtils.isBlank(owner)) {
             throw new IllegalArgumentException("Dameng owner/schema must not be blank");
         }
-        return escapeSql(owner.toUpperCase(Locale.ROOT));
+        return escapeSql(owner);
     }
 
     private String resolveTableName(TablePath tablePath) {
         if (tablePath == null || StringUtils.isBlank(tablePath.getTableName())) {
             throw new IllegalArgumentException("table is null");
         }
-        return escapeSql(tablePath.getTableName().toUpperCase(Locale.ROOT));
+        return escapeSql(tablePath.getTableName());
     }
 
     @Override
@@ -192,7 +192,7 @@ public class DamengCatalog extends AbstractJdbcCatalog {
                 .collect(Collectors.toList());
 
         String quotedColumnNames = columnNames.stream()
-                .map(name -> "'" + escapeSql(name.toUpperCase(Locale.ROOT)) + "'")
+                .map(name -> "'" + escapeSql(name) + "'")
                 .collect(Collectors.joining(", "));
 
         return String.format(

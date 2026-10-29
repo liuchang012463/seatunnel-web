@@ -31,6 +31,16 @@ class KingbaseCatalogTest {
         String reference = catalog.buildTableReference(
                 TablePath.of("testdb", "app", "orders"));
 
-        assertEquals("app.orders", reference);
+        assertEquals("\"app\".\"orders\"", reference);
+    }
+
+    @Test
+    void quotesMixedCaseReservedAndEmbeddedQuoteIdentifiers() {
+        KingbaseConnectionParam param = new KingbaseConnectionParam();
+        param.setSchemaName("public");
+        KingbaseCatalog catalog = new KingbaseCatalog(param, null);
+
+        assertEquals("\"MiXed\".\"Order\"\"Details\"", catalog.buildTableReference(
+                TablePath.of("testdb", "MiXed", "Order\"Details")));
     }
 }

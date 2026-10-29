@@ -887,7 +887,14 @@ public class DataExplorationService {
     }
 
     private static String localTablePath(OpenMetadataTable table) {
-        return blankToDefault(table.getName(), lastPart(table.getFullyQualifiedName()));
+        String tableName = blankToDefault(table.getName(), lastPart(table.getFullyQualifiedName()));
+        if (tableName.indexOf('.') >= 0
+                || tableName.indexOf('"') >= 0
+                || tableName.indexOf('`') >= 0
+                || !tableName.equals(tableName.trim())) {
+            return "\"" + tableName.replace("\"", "\"\"") + "\"";
+        }
+        return tableName;
     }
 
     private static String localSchemaName(OpenMetadataTable table) {

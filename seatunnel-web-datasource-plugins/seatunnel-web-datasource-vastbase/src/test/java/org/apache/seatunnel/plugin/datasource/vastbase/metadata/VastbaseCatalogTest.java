@@ -27,7 +27,16 @@ class VastbaseCatalogTest {
         param.setSchemaName("public");
         VastbaseCatalog catalog = new VastbaseCatalog(param, null);
 
-        assertEquals("app.orders", catalog.buildTableReference(
+        assertEquals("\"app\".\"orders\"", catalog.buildTableReference(
                 TablePath.of("postgres", "app", "orders")));
+    }
+
+    @Test
+    void quotesMixedCaseReservedAndEmbeddedQuoteIdentifiers() {
+        VastbaseConnectionParam param = new VastbaseConnectionParam();
+        VastbaseCatalog catalog = new VastbaseCatalog(param, null);
+
+        assertEquals("\"Sales.Schema\".\"Select\"\"ed\"", catalog.buildTableReference(
+                TablePath.of("postgres", "Sales.Schema", "Select\"ed")));
     }
 }

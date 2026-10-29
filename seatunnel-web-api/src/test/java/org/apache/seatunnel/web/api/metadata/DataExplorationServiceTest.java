@@ -210,6 +210,24 @@ class DataExplorationServiceTest {
     }
 
     @Test
+    void preservesDottedOpenMetadataTableNameWhenDelegatingPreview() {
+        stubReadySource();
+        OpenMetadataTable table = tableWithFqn(
+                "table-id", "Orders.Archive", "st_ds_42.orders.public.Orders.Archive");
+        table.setDatabaseFullyQualifiedName("st_ds_42.orders");
+        table.setSchemaFullyQualifiedName("st_ds_42.orders.public");
+        when(openMetadataClient.getTable("table-id")).thenReturn(table);
+        when(catalogService.getTop20Data(eq(42L), any())).thenReturn(new QueryResult());
+
+        service().preview(42L, "table-id", Map.of());
+
+        ArgumentCaptor<Map<String, Object>> request = ArgumentCaptor.forClass(Map.class);
+        verify(catalogService).getTop20Data(eq(42L), request.capture());
+        assertEquals("\"Orders.Archive\"", request.getValue().get("table_path"));
+        assertEquals("public", request.getValue().get("schema_name"));
+    }
+
+    @Test
     void hidesNegativeTableMetricsAsUnknown() {
         stubReadySource();
         OpenMetadataTable table = table("table-id", "orders");

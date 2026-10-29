@@ -33,4 +33,17 @@ class OracleCatalogTest {
 
         assertEquals("\"ORACLE_APP\".\"TEST_USER\"", reference);
     }
+
+    @Test
+    void preservesMixedCaseOwnerAndEscapesEmbeddedIdentifierQuotes() {
+        OracleCatalog catalog = new OracleCatalog(new OracleConnectionParam(), null);
+
+        assertEquals("\"MiXeD_Owner\".\"Order\"\"Details\"", catalog.buildTableReference(
+                TablePath.of("ORCL", "MiXeD_Owner", "Order\"Details")));
+
+        String sql = catalog.getSelectColumnsSql(
+                TablePath.of("ORCL", "MiXeD_Owner", "OrderDetails"));
+        assertTrue(sql.contains("OWNER = 'MiXeD_Owner'"));
+        assertTrue(sql.contains("TABLE_NAME = 'OrderDetails'"));
+    }
 }
