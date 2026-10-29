@@ -10,6 +10,8 @@ import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -92,16 +94,69 @@ public class OracleCatalog extends AbstractJdbcCatalog {
     @Override
     protected QueryRequest preprocessRequest(Map<String, Object> requestBody) {
         QueryRequest request = super.preprocessRequest(requestBody);
-        if (usesConfiguredSchemaFallback(requestBody)) {
-            TablePath tablePath = request.getTablePath();
-            if (tablePath != null && StringUtils.isNotBlank(tablePath.getSchemaName())) {
+        TablePath tablePath = request.getTablePath();
+        if (tablePath == null) {
+            return request;
+        }
+
+        if (hasExplicitSchema(requestBody)) {
+            String resolvedSchema = resolvePhysicalOwner(tablePath.getSchemaName());
+            if (!StringUtils.equals(tablePath.getSchemaName(), resolvedSchema)) {
                 request.setTablePath(TablePath.of(
                         tablePath.getDatabaseName(),
-                        tablePath.getSchemaName().toUpperCase(Locale.ROOT),
+                        resolvedSchema,
                         tablePath.getTableName()));
+            }
+        } else if (usesConfiguredSchemaFallback(requestBody)) {
+            String owner = resolvePhysicalOwner(configuredOwner(tablePath));
+            if (StringUtils.isNotBlank(owner)) {
+                request.setTablePath(TablePath.of(
+                        tablePath.getDatabaseName(), owner, tablePath.getTableName()));
             }
         }
         return request;
+    }
+
+    private boolean hasExplicitSchema(Map<String, Object> requestBody) {
+        if (requestBody == null) {
+            return false;
+        }
+        Object schema = requestBody.get("schema_name");
+        if (schema != null && StringUtils.isNotBlank(String.valueOf(schema))) {
+            return true;
+        }
+        Object rawTablePath = requestBody.get("table_path");
+        return rawTablePath != null && splitIdentifierPath(String.valueOf(rawTablePath)).size() > 1;
+    }
+
+    private String resolvePhysicalOwner(String requestedOwner) {
+        if (StringUtils.isBlank(requestedOwner)) {
+            return requestedOwner;
+        }
+        String foldedOwner = requestedOwner.toUpperCase(Locale.ROOT);
+        if (StringUtils.equals(requestedOwner, foldedOwner)) {
+            return requestedOwner;
+        }
+
+        String sql = "SELECT USERNAME FROM ALL_USERS WHERE USERNAME = ? OR USERNAME = ?";
+        try (Connection connection = getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, requestedOwner);
+            statement.setString(2, foldedOwner);
+            boolean exactOwnerExists = false;
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    String owner = resultSet.getString(1);
+                    if (StringUtils.equals(owner, requestedOwner)) {
+                        exactOwnerExists = true;
+                    }
+                }
+            }
+            return exactOwnerExists ? requestedOwner : foldedOwner;
+        } catch (SQLException e) {
+            log.warn("Failed resolving Oracle owner case for '{}'; preserving the requested name", requestedOwner, e);
+            return requestedOwner;
+        }
     }
 
     private boolean usesConfiguredSchemaFallback(Map<String, Object> requestBody) {
@@ -112,6 +167,14 @@ public class OracleCatalog extends AbstractJdbcCatalog {
             return false;
         }
         return splitIdentifierPath(String.valueOf(requestBody.get("table_path"))).size() == 1;
+    }
+
+    private String configuredOwner(TablePath tablePath) {
+        if (StringUtils.isNotBlank(tablePath.getSchemaName())) {
+            return tablePath.getSchemaName();
+        }
+        BaseConnectionParam param = getParam();
+        return StringUtils.defaultIfBlank(param.getUser(), param.getSchemaName());
     }
 
     private String escapeSql(String value) {
