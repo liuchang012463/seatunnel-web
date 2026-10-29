@@ -79,10 +79,19 @@ class DamengCatalogTest {
                 "table_path", "orders"));
         TablePath fallbackPath = fallbackRequest.getTablePath();
         assertEquals("APP", fallbackPath.getSchemaName());
-        assertEquals("\"APP\".\"orders\"", catalog.buildTableReference(fallbackPath));
+        assertEquals("ORDERS", fallbackPath.getTableName());
+        assertEquals("\"APP\".\"ORDERS\"", catalog.buildTableReference(fallbackPath));
         String fallbackSql = catalog.getSelectColumnsSql(fallbackPath);
         assertTrue(fallbackSql.contains("OWNER = 'APP'"));
-        assertTrue(fallbackSql.contains("TABLE_NAME = 'orders'"));
+        assertTrue(fallbackSql.contains("TABLE_NAME = 'ORDERS'"));
+
+        var quotedFallbackRequest = catalog.preprocessRequest(Map.of(
+                "read_mode", "TABLE",
+                "table_path", "\"orders\""));
+        TablePath quotedFallbackPath = quotedFallbackRequest.getTablePath();
+        assertEquals("APP", quotedFallbackPath.getSchemaName());
+        assertEquals("orders", quotedFallbackPath.getTableName());
+        assertEquals("\"APP\".\"orders\"", catalog.buildTableReference(quotedFallbackPath));
 
         var metadataRequest = catalog.preprocessRequest(Map.of(
                 "read_mode", "TABLE",
@@ -92,5 +101,12 @@ class DamengCatalogTest {
         String metadataSql = catalog.getSelectColumnsSql(metadataPath);
         assertTrue(metadataSql.contains("OWNER = 'MiXeD_Owner'"));
         assertTrue(metadataSql.contains("TABLE_NAME = 'alarm_mysql_sync'"));
+
+        var explicitSchemaRequest = catalog.preprocessRequest(Map.of(
+                "read_mode", "TABLE",
+                "table_path", "alarm_mysql_sync",
+                "schema_name", "MiXeD_Owner"));
+        assertEquals("MiXeD_Owner", explicitSchemaRequest.getTablePath().getSchemaName());
+        assertEquals("alarm_mysql_sync", explicitSchemaRequest.getTablePath().getTableName());
     }
 }

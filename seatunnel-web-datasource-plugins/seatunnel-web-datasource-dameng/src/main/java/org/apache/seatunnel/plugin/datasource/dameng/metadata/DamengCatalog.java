@@ -97,14 +97,25 @@ public class DamengCatalog extends AbstractJdbcCatalog {
         QueryRequest request = super.preprocessRequest(requestBody);
         if (usesConfiguredSchemaFallback(requestBody)) {
             TablePath tablePath = request.getTablePath();
-            if (tablePath != null && StringUtils.isNotBlank(tablePath.getSchemaName())) {
+            if (tablePath != null) {
+                String rawTablePath = String.valueOf(requestBody.get("table_path")).trim();
+                String tableName = isQuotedIdentifier(rawTablePath)
+                        ? tablePath.getTableName()
+                        : tablePath.getTableName().toUpperCase(Locale.ROOT);
                 request.setTablePath(TablePath.of(
                         tablePath.getDatabaseName(),
-                        tablePath.getSchemaName().toUpperCase(Locale.ROOT),
-                        tablePath.getTableName()));
+                        StringUtils.isBlank(tablePath.getSchemaName())
+                                ? tablePath.getSchemaName()
+                                : tablePath.getSchemaName().toUpperCase(Locale.ROOT),
+                        tableName));
             }
         }
         return request;
+    }
+
+    private boolean isQuotedIdentifier(String identifier) {
+        return (identifier.startsWith("\"") && identifier.endsWith("\""))
+                || (identifier.startsWith("`") && identifier.endsWith("`"));
     }
 
     private boolean usesConfiguredSchemaFallback(Map<String, Object> requestBody) {
