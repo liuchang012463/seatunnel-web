@@ -30,11 +30,8 @@ const TableTransferPanel: React.FC<Props> = ({
     }
 
     return (
-      <div style={{ display: "flex", fontSize: 12, padding: "8px 12px" }}>
+      <div style={{ fontSize: 12, padding: "8px 12px" }}>
         <span>{`已选 ${selectedTables} 个表`}</span>
-        <span style={{ color: "red", marginLeft: 16 }}>
-          Supports up to 100 tables
-        </span>
       </div>
     );
   };

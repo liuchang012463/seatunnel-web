@@ -404,7 +404,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
           const data = await seatunnelJobExecuteApi.execute(record?.id);
 
           if (data?.code === 0) {
-            message.success("任务已进入启动队列");
+            message.success("任务已进入提交队列");
             cbk();
             setRunOpen(false);
           } else {

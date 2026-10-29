@@ -462,7 +462,7 @@ const RealtimeSyncPage: React.FC = () => {
     }
 
     await runJobAction(() => seatunnelStreamingJobExecuteApi.execute(record.id), {
-      success: '实时任务已启动',
+      success: '启动请求已接收，任务正在后台提交',
       error: '启动实时任务失败',
     });
   };
@@ -784,7 +784,7 @@ const RealtimeSyncPage: React.FC = () => {
     await runBatchOperations(
       selectedRecords,
       (record) => seatunnelStreamingJobExecuteApi.execute(record.id),
-      '批量启动完成',
+      '批量启动请求已接收',
       '批量启动失败',
     );
   };
@@ -851,7 +851,7 @@ const RealtimeSyncPage: React.FC = () => {
     await runBatchOperations(
       selectedRecords,
       (record) => seatunnelStreamingJobExecuteApi.resumeFromSavepoint(record.instanceId),
-      '批量恢复完成',
+      '批量恢复请求已接收',
       '批量恢复失败',
     );
   };
@@ -1017,7 +1017,7 @@ const RealtimeSyncPage: React.FC = () => {
       },
       async onOk() {
         await runJobAction(() => seatunnelStreamingJobExecuteApi.resumeFromSavepoint(record.instanceId), {
-          success: '已从检查点恢复实时任务',
+          success: '恢复请求已接收，任务正在后台提交',
           error: '从检查点恢复失败',
         });
       },
