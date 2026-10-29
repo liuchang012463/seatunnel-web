@@ -645,11 +645,11 @@ const DataSourcePage: React.FC = () => {
               variants={PAGE_ANIMATION.sectionStagger}
             >
               <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
-                <div className="min-w-0 flex-1">
-                  <div className="text-lg font-semibold text-slate-900">
-                    {usageView === 'SOURCE' ? '源端连接' : usageView === 'SINK' ? '目标连接' : '数据源管理'}
+                {usageView === undefined && (
+                  <div className="min-w-0 flex-1">
+                    <div className="text-lg font-semibold text-slate-900">数据源管理</div>
                   </div>
-                </div>
+                )}
                 <SearchBar
                   value={searchKeyword}
                   onChange={(value) => {
