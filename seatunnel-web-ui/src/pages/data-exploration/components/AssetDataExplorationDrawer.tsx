@@ -806,21 +806,27 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       return renderState('暂无样本', '当前元数据没有可展示的样本数据。', undefined, <EyeOutlined />);
     }
     const status = sample.status;
+    const isMessageSample = sample.kind === 'MESSAGES';
+    const isSearchIndex = normalizeAssetType(detail.asset?.assetType || selected?.type) === 'SEARCH_INDEX';
+    const sampleItemLabel = isMessageSample
+      ? (isSearchIndex ? '样本文档' : '样本消息')
+      : '样本行';
+    const sampleCountUnit = isSearchIndex && isMessageSample ? '份' : '条';
     if (status === 'AVAILABLE') {
       return (
         <div className="exploration-drawer__tab-pane">
           <div className="exploration-drawer__tab-toolbar">
             <div>
               <div className="exploration-drawer__eyebrow">SAMPLE DATA</div>
-              <strong>{sample?.kind === 'MESSAGES' ? '样本消息' : '样本行'}</strong>
+              <strong>{sampleItemLabel}</strong>
             </div>
             <span>
-              共 {sample?.kind === 'MESSAGES'
+              共 {isMessageSample
                 ? (sample?.messages?.length || 0)
-                : (sample?.rows?.length || 0)} 条 · 样本为最近一次采集结果
+                : (sample?.rows?.length || 0)} {sampleCountUnit} · 样本为最近一次采集结果
             </span>
           </div>
-          {sample?.kind === 'MESSAGES' ? (
+          {isMessageSample ? (
             <Collapse
               className="asset-exploration__message-list"
               defaultActiveKey={sample.messages?.length ? ['0'] : []}
@@ -831,7 +837,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                   key: String(index),
                   label: (
                     <span className="asset-exploration__message-title">
-                      <strong>样本消息 {index + 1}</strong>
+                      <strong>{sampleItemLabel} {index + 1}</strong>
                       <Tag color={formatted.parsed ? 'blue' : 'default'}>
                         {formatted.parsed ? '格式化 JSON' : '原始内容'}
                       </Tag>
