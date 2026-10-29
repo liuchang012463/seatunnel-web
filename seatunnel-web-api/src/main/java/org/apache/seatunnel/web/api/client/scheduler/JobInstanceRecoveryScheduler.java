@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.engine.client.handler.ZetaJobStatusHandler;
 import org.apache.seatunnel.web.engine.client.modal.ZetaJobStatusResolveResult;
+import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -50,6 +51,9 @@ public class JobInstanceRecoveryScheduler {
 
     @Resource
     private ZetaJobStatusHandler zetaJobStatusHandler;
+
+    @Resource
+    private SeaTunnelRestClient seaTunnelRestClient;
 
     @Resource
     private JobResultHandler jobResultHandler;
@@ -156,20 +160,25 @@ public class JobInstanceRecoveryScheduler {
             return;
         }
 
-        if (JobStatus.STARTING.equals(instance.getJobStatus())) {
-            // Active async submissions refresh update_time. Wait for the heartbeat to stop
-            // before reconciling, so an in-flight request is never mistaken for a failure.
+        if (isSubmissionInFlight(instance.getJobStatus())) {
+            // Active async submissions, including a cancellation requested during upload,
+            // refresh update_time. Wait for the lease to expire before resolving the reserved id.
             if (!isStaleSubmission(instance)) {
                 return;
             }
             if (instance.getEngineJobId() == null || instance.getEngineJobId().isBlank()) {
                 JobRuntimeContext context = buildBatchRuntimeContext(instance);
-                jobResultHandler.handleFinalStatusIfStarting(
-                        context,
-                        JobStatus.FAILED,
-                        "任务提交中断，未保存 Engine 作业 ID，已自动标记失败。",
-                        instance.getEngineJobId(),
-                        lastActivity(instance));
+                if (JobStatus.CANCELING.equals(instance.getJobStatus())) {
+                    jobResultHandler.handleFinalStatus(
+                            context, JobStatus.CANCELED, "任务取消已确认，未保存 Engine 作业 ID。");
+                } else {
+                    jobResultHandler.handleFinalStatusIfStarting(
+                            context,
+                            JobStatus.FAILED,
+                            "任务提交中断，未保存 Engine 作业 ID，已自动标记失败。",
+                            instance.getEngineJobId(),
+                            lastActivity(instance));
+                }
                 return;
             }
         }
@@ -182,6 +191,12 @@ public class JobInstanceRecoveryScheduler {
         if (result != null && result.isRunning()
                 && JobStatus.STARTING.equals(instance.getJobStatus())) {
             jobResultHandler.updateEngineId(instance.getId(), instance.getEngineJobId());
+        }
+
+        if (result != null && result.isRunning()
+                && JobStatus.CANCELING.equals(instance.getJobStatus())) {
+            requestStopForCanceling(instance.getId(), instance.getClientId(), instance.getEngineJobId());
+            return;
         }
 
         if (shouldSkipRecovery(instance.getId(), instance.getEngineJobId(), result)) {
@@ -231,17 +246,22 @@ public class JobInstanceRecoveryScheduler {
             return;
         }
 
-        if (JobStatus.STARTING.equals(instance.getJobStatus())) {
+        if (isSubmissionInFlight(instance.getJobStatus())) {
             if (!isStaleSubmission(instance)) {
                 return;
             }
             if (instance.getEngineJobId() == null || instance.getEngineJobId().isBlank()) {
-                streamingJobResultHandler.handleFinalStatusIfStarting(
-                        instance.getId(),
-                        instance.getEngineJobId(),
-                        lastActivity(instance),
-                        JobStatus.FAILED,
-                        "任务提交中断，未保存 Engine 作业 ID，已自动标记失败。");
+                if (JobStatus.CANCELING.equals(instance.getJobStatus())) {
+                    streamingJobInstanceDao.updateFinalStatusIfRunningLike(
+                            instance.getId(), JobStatus.CANCELED, "任务取消已确认，未保存 Engine 作业 ID。");
+                } else {
+                    streamingJobResultHandler.handleFinalStatusIfStarting(
+                            instance.getId(),
+                            instance.getEngineJobId(),
+                            lastActivity(instance),
+                            JobStatus.FAILED,
+                            "任务提交中断，未保存 Engine 作业 ID，已自动标记失败。");
+                }
                 return;
             }
         }
@@ -255,6 +275,12 @@ public class JobInstanceRecoveryScheduler {
                 && JobStatus.STARTING.equals(instance.getJobStatus())) {
             streamingJobInstanceDao.updateEngineIdIfStarting(
                     instance.getId(), instance.getEngineJobId(), new Date());
+        }
+
+        if (result != null && result.isRunning()
+                && JobStatus.CANCELING.equals(instance.getJobStatus())) {
+            requestStopForCanceling(instance.getId(), instance.getClientId(), instance.getEngineJobId());
+            return;
         }
 
         if (shouldSkipRecovery(instance.getId(), instance.getEngineJobId(), result)) {
@@ -399,6 +425,22 @@ public class JobInstanceRecoveryScheduler {
             return JobStatus.SAVEPOINT_DONE;
         }
         return targetStatus;
+    }
+
+    private static boolean isSubmissionInFlight(JobStatus status) {
+        return JobStatus.STARTING.equals(status) || JobStatus.CANCELING.equals(status);
+    }
+
+    private void requestStopForCanceling(Long instanceId, Long clientId, String engineJobId) {
+        try {
+            seaTunnelRestClient.stopJob(clientId, engineJobId, false);
+            log.info("Retried Engine stop for a canceling submission, instanceId={}, engineJobId={}",
+                    instanceId, engineJobId);
+        } catch (Exception e) {
+            // Keep CANCELING so the same reserved id is checked and stopped again on a later pass.
+            log.warn("Could not stop the Engine job for a canceling submission, instanceId={}, engineJobId={}",
+                    instanceId, engineJobId, e);
+        }
     }
 
     private String buildRecoveryMessage(Long instanceId,

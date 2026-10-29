@@ -166,7 +166,7 @@ class BatchJobExecutorServiceImplTest {
     }
 
     @Test
-    void queuedSubmissionIsSkippedAfterTheInstanceIsCanceled() {
+    void queuedSubmissionIsSkippedAfterCancelStopFindsNoEngineJobYet() {
         BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
         BatchJobDefinitionService definitionService = mock(BatchJobDefinitionService.class);
         BatchJobSubmitter jobSubmitter = mock(BatchJobSubmitter.class);
@@ -185,15 +185,22 @@ class BatchJobExecutorServiceImplTest {
 
         JobInstanceVO starting = queueSubmission(executor, instanceService,
                 definitionService, queuedSubmissions);
-        JobInstanceVO canceled = new JobInstanceVO();
-        canceled.setId(401L);
-        canceled.setJobStatus(JobStatus.CANCELED.name());
-        when(instanceService.selectById(401L)).thenReturn(starting, canceled);
+        starting.setEngineJobId("401");
+        JobInstanceVO canceling = new JobInstanceVO();
+        canceling.setId(401L);
+        canceling.setEngineJobId("401");
+        canceling.setJobStatus(JobStatus.CANCELING.name());
+        when(jobResultHandler.handleCanceling(
+                eq(401L), eq("401"), any(String.class))).thenReturn(true);
+        when(instanceService.selectById(401L)).thenReturn(starting, canceling);
+        doThrow(new IllegalStateException("Engine job not found yet"))
+                .when(jobSubmitter).pause(starting);
 
         executor.jobPause(401L);
         queuedSubmissions.get(0).run();
 
-        verify(jobResultHandler).handleFinalStatus(eq(401L), eq(JobStatus.CANCELED), any(String.class));
+        verify(jobResultHandler).handleCanceling(eq(401L), eq("401"), any(String.class));
+        verify(jobResultHandler).skipSubmissionIfNotStarting(401L, "401");
         verify(jobSubmitter).pause(starting);
         verify(jobSubmitter, never()).submit(any(JobInstanceVO.class));
     }

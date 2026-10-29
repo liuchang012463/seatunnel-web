@@ -168,6 +168,28 @@ public class JobInstanceDaoImpl
     }
 
     @Override
+    public boolean markCancelingIfStarting(Long instanceId, String engineJobId, String errorMessage) {
+        Date now = new Date();
+        LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
+                .eq(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatus.STARTING);
+        if (engineJobId == null || engineJobId.isBlank()) {
+            wrapper.and(condition -> condition
+                    .isNull(MyBatisColumn.getter(JobInstance::getEngineJobId))
+                    .or()
+                    .eq(MyBatisColumn.getter(JobInstance::getEngineJobId), ""));
+        } else {
+            wrapper.eq(MyBatisColumn.getter(JobInstance::getEngineJobId), engineJobId);
+        }
+        wrapper.set(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatus.CANCELING)
+                .set(MyBatisColumn.getter(JobInstance::getUpdateTime), now);
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            wrapper.set(MyBatisColumn.getter(JobInstance::getErrorMessage), truncate(errorMessage, 2000));
+        }
+        return jobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
     public boolean updateFinalStatusIfRunningLike(Long instanceId,
                                                   JobStatus targetStatus,
                                                   String errorMessage) {
@@ -228,7 +250,7 @@ public class JobInstanceDaoImpl
     public boolean touchStartingInstance(Long instanceId) {
         LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
-                .eq(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatus.STARTING)
+                .in(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatus.STARTING, JobStatus.CANCELING)
                 .set(MyBatisColumn.getter(JobInstance::getUpdateTime), new Date());
 
         return jobInstanceMapper.update(null, wrapper) > 0;

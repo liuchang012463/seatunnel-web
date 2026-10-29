@@ -28,11 +28,13 @@ public interface StreamingJobInstanceService {
 
     boolean existsRunningInstance(Long definitionId);
 
-    /** Refreshes an in-flight streaming submission heartbeat. */
+    /** Refreshes an in-flight streaming submission or its cancellation heartbeat. */
     boolean touchStartingInstance(Long instanceId);
 
     /** Attaches the reserved Engine id only while the instance is still being submitted. */
     boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date submitTime);
+
+    boolean markCancelingIfStarting(Long instanceId, String engineJobId, String errorMessage);
 
     boolean updateFinalStatusIfStarting(Long instanceId,
                                         String expectedEngineJobId,

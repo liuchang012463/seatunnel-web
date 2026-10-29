@@ -55,6 +55,38 @@ class StreamingJobSubmitterTest {
     }
 
     @Test
+    void cancelingPreflightSkipsEngineUpload() {
+        StreamingJobResultHandler resultHandler = mock(StreamingJobResultHandler.class);
+        SeaTunnelRestClient restClient = mock(SeaTunnelRestClient.class);
+        when(resultHandler.skipSubmissionIfNotStarting(301L, "301")).thenReturn(true);
+        StreamingJobSubmitter submitter = submitter(restClient, resultHandler);
+
+        assertDoesNotThrow(() -> submitter.submit(instance()));
+
+        verify(restClient, never()).submitJobUpload(
+                eq(2L), any(byte[].class), anyString(), eq("301"), eq((String) null),
+                eq(false), eq((String) null));
+    }
+
+    @Test
+    void lateSubmitResponseAfterPauseImmediatelyRetriesStopWithReservedId() {
+        StreamingJobResultHandler resultHandler = mock(StreamingJobResultHandler.class);
+        SeaTunnelRestClient restClient = mock(SeaTunnelRestClient.class);
+        when(restClient.submitJobUpload(
+                eq(2L), any(byte[].class), anyString(), eq("301"), eq((String) null),
+                eq(false), eq((String) null)))
+                .thenReturn(Map.of("jobId", "301"));
+        when(resultHandler.updateEngineId(301L, "301")).thenReturn(false);
+        when(resultHandler.isCancellationRequested(301L, "301")).thenReturn(true);
+        StreamingJobSubmitter submitter = submitter(restClient, resultHandler);
+
+        assertDoesNotThrow(() -> submitter.submit(instance()));
+
+        verify(restClient).stopJob(2L, "301", false);
+        verify(resultHandler, never()).isEngineJobTracked(anyLong(), anyString());
+    }
+
+    @Test
     void engineRejectionIsRecordedAsDefiniteFailure() {
         StreamingJobResultHandler resultHandler = mock(StreamingJobResultHandler.class);
         SeaTunnelRestClient restClient = mock(SeaTunnelRestClient.class);

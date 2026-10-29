@@ -108,6 +108,26 @@ class JobResultHandlerTest {
     }
 
     @Test
+    void lateSubmissionSuccessRetriesStopWhileCancellationIsPending() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        SeaTunnelRestClient restClient = mock(SeaTunnelRestClient.class);
+        JobResultHandler handler = handler(
+                instanceService, mock(ApplicationEventPublisher.class), restClient);
+        when(instanceService.updateEngineIdIfStarting(eq(11L), eq("engine-1"), any(Date.class)))
+                .thenReturn(false);
+
+        JobInstanceVO instance = new JobInstanceVO();
+        instance.setId(11L);
+        instance.setClientId(2L);
+        instance.setJobStatus(JobStatus.CANCELING.name());
+        when(instanceService.selectById(11L)).thenReturn(instance);
+
+        handler.updateEngineId(11L, "engine-1");
+
+        verify(restClient).stopJob(2L, "engine-1", false);
+    }
+
+    @Test
     void lateSubmissionSuccessDoesNotCancelAJobTheWebAlreadyFinished() {
         BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
         SeaTunnelRestClient restClient = mock(SeaTunnelRestClient.class);

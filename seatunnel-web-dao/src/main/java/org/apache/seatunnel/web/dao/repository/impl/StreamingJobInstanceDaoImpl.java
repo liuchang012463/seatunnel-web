@@ -124,10 +124,33 @@ public class StreamingJobInstanceDaoImpl
     }
 
     @Override
+    public boolean markCancelingIfStarting(Long instanceId, String engineJobId, String errorMessage) {
+        Date now = new Date();
+        LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId)
+                .eq(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatus.STARTING);
+        if (engineJobId == null || engineJobId.isBlank()) {
+            wrapper.and(condition -> condition
+                    .isNull(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId))
+                    .or()
+                    .eq(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), ""));
+        } else {
+            wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), engineJobId);
+        }
+        wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatus.CANCELING)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), now);
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getErrorMessage), truncate(errorMessage, 2000));
+        }
+        return streamingJobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
     public boolean touchStartingInstance(Long instanceId) {
         LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId)
-                .eq(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatus.STARTING)
+                .in(MyBatisColumn.getter(StreamingJobInstance::getJobStatus),
+                        JobStatus.STARTING, JobStatus.CANCELING)
                 .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), new Date());
         return streamingJobInstanceMapper.update(null, wrapper) > 0;
     }

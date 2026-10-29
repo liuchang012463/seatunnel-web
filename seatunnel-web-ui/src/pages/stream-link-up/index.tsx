@@ -474,7 +474,7 @@ const RealtimeSyncPage: React.FC = () => {
     }
 
     await runJobAction(() => seatunnelStreamingJobExecuteApi.pause(record.instanceId), {
-      success: '实时任务已终止',
+      success: '终止请求已提交，正在确认 Engine 状态',
       error: '终止实时任务失败',
     });
   };

@@ -94,6 +94,11 @@ public class BatchJobSubmitter {
 
             String filename = "batch-job-" + instanceId + ".conf";
 
+            if (batchJobResultHandler.skipSubmissionIfNotStarting(instanceId, instance.getEngineJobId())) {
+                jobLogger.info("Skip Engine upload because the local submission is no longer STARTING");
+                return;
+            }
+
             submitRequestStarted = true;
             Map<?, ?> resp = restClient.submitJobUpload(
                     clientId,
@@ -268,8 +273,8 @@ public class BatchJobSubmitter {
                                             Long instanceId,
                                             Exception e) {
         if (isSubmitOutcomeAmbiguous(e)) {
-            // The reserved Engine id is already durable. Keep STARTING and let the recovery
-            // scheduler query that exact id; never retry an uncertain network submission.
+            // The reserved Engine id is durable. Keep STARTING or CANCELING so recovery can
+            // query that exact id; never retry an uncertain network submission.
             jobLogger.error("Batch submission response unavailable; automatic reconciliation pending", e);
 
             throw new JobSubmitException(

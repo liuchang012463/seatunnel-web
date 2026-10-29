@@ -110,6 +110,31 @@ public class JobResultHandler {
         );
     }
 
+    /** Records an in-flight cancellation without finalizing metrics before Engine state is known. */
+    public boolean handleCanceling(Long jobInstanceId, String engineJobId, String message) {
+        String safeMessage = maskErrorMessage(message);
+        boolean updated = instanceService.markCancelingIfStarting(jobInstanceId, engineJobId, safeMessage);
+        if (updated) {
+            publishStatusChanged(jobInstanceId, JobStatus.CANCELING, safeMessage);
+        }
+        return updated;
+    }
+
+    /** Returns true when a queued/preflight submission should not send its Engine request. */
+    public boolean skipSubmissionIfNotStarting(Long jobInstanceId, String engineJobId) {
+        JobInstanceVO current = instanceService.selectById(jobInstanceId);
+        if (current != null && JobStatus.STARTING.name().equalsIgnoreCase(current.getJobStatus())
+                && engineJobId != null && engineJobId.equals(current.getEngineJobId())) {
+            return false;
+        }
+        if (current != null && JobStatus.CANCELING.name().equalsIgnoreCase(current.getJobStatus())
+                && engineJobId != null && engineJobId.equals(current.getEngineJobId())) {
+            handleFinalStatus(jobInstanceId, JobStatus.CANCELED,
+                    "Job was canceled before Engine submission.");
+        }
+        return true;
+    }
+
     /**
      * Handle final status in normal watcher mode.
      *
@@ -290,8 +315,8 @@ public class JobResultHandler {
     }
 
     /**
-     * If recovery already recorded a terminal failure, a late Engine id must not leave an
-     * untracked job running. A still-open instance remains owned by automatic recovery.
+     * If recovery already recorded a terminal result, or cancellation is pending, a late Engine
+     * response must not leave a job running without a stop request.
      */
     private void cancelOrphanedEngineJob(Long instanceId, String engineId) {
         try {
@@ -309,7 +334,8 @@ public class JobResultHandler {
                 storedStatus = JobStatus.CANCELED.name();
             }
             JobStatus localStatus = JobStatus.fromString(storedStatus);
-            if (!localStatus.isEndState() || JobStatus.FINISHED.equals(localStatus)) {
+            if (!JobStatus.CANCELING.equals(localStatus)
+                    && (!localStatus.isEndState() || JobStatus.FINISHED.equals(localStatus))) {
                 return;
             }
 

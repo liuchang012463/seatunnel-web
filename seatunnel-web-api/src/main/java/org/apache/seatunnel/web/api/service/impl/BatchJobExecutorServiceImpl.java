@@ -259,28 +259,46 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         log.info("Job pause requested: instanceId={}, status={}",
                 jobInstanceId, instance.getJobStatus());
 
-        if (JobStatus.STARTING.name().equalsIgnoreCase(instance.getJobStatus())) {
-            if (jobResultHandler != null) {
-                jobResultHandler.handleFinalStatus(
-                        jobInstanceId, JobStatus.CANCELED, "Job was canceled before Engine submission.");
-            } else {
-                JobInstance update = new JobInstance();
-                update.setId(jobInstanceId);
-                update.setJobStatus(JobStatus.CANCELED);
-                update.setEndTime(new Date());
-                update.setErrorMessage("Job was canceled before Engine submission.");
-                instanceService.updateById(update);
-            }
-
+        if (JobStatus.CANCELING.name().equalsIgnoreCase(instance.getJobStatus())) {
             try {
                 jobSubmitter.pause(instance);
             } catch (Exception e) {
-                // The Engine may not have accepted the queued request yet. A late submit response
-                // is stopped by the result handler after it observes this canceled local state.
-                log.info("Batch submission canceled before Engine acceptance: instanceId={}, errorType={}, error={}",
+                log.info("Batch cancellation is already pending: instanceId={}, errorType={}, error={}",
                         jobInstanceId, RedactedErrors.typeOf(e), RedactedErrors.mask(e.getMessage()));
             }
             return jobInstanceId;
+        }
+
+        if (JobStatus.STARTING.name().equalsIgnoreCase(instance.getJobStatus())) {
+            String message = "Job was canceled while Engine submission was in flight.";
+            boolean markedCanceling = jobResultHandler != null
+                    ? jobResultHandler.handleCanceling(jobInstanceId, instance.getEngineJobId(), message)
+                    : instanceService.markCancelingIfStarting(jobInstanceId, instance.getEngineJobId(), message);
+            if (markedCanceling) {
+                try {
+                    jobSubmitter.pause(instance);
+                } catch (Exception e) {
+                    // The upload can be accepted after this stop attempt. Recovery keeps the
+                    // reserved id and retries until the Engine confirms a terminal state.
+                    log.info("Batch submission cancellation requested: instanceId={}, errorType={}, error={}",
+                            jobInstanceId, RedactedErrors.typeOf(e), RedactedErrors.mask(e.getMessage()));
+                }
+                return jobInstanceId;
+            }
+
+            instance = instanceService.selectById(jobInstanceId);
+            if (instance == null || isFinishedStatus(instance.getJobStatus())) {
+                return jobInstanceId;
+            }
+            if (JobStatus.CANCELING.name().equalsIgnoreCase(instance.getJobStatus())) {
+                try {
+                    jobSubmitter.pause(instance);
+                } catch (Exception e) {
+                    log.info("Batch cancellation is already pending: instanceId={}, errorType={}, error={}",
+                            jobInstanceId, RedactedErrors.typeOf(e), RedactedErrors.mask(e.getMessage()));
+                }
+                return jobInstanceId;
+            }
         }
 
         try {
@@ -367,6 +385,14 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
             if (latest == null || !JobStatus.STARTING.name().equalsIgnoreCase(latest.getJobStatus())) {
                 log.info("Skip batch submission because the instance left STARTING while queued, instanceId={}, status={}",
                         instance.getId(), latest == null ? null : latest.getJobStatus());
+                if (latest != null && JobStatus.CANCELING.name().equalsIgnoreCase(latest.getJobStatus())) {
+                    if (jobResultHandler != null) {
+                        jobResultHandler.skipSubmissionIfNotStarting(instance.getId(), latest.getEngineJobId());
+                    } else {
+                        instanceService.updateFinalStatusIfRunningLike(
+                                instance.getId(), JobStatus.CANCELED, "Job was canceled before Engine submission.");
+                    }
+                }
                 return;
             }
             jobSubmitter.submit(latest);

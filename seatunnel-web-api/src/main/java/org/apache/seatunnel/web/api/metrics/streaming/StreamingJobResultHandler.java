@@ -47,6 +47,33 @@ public class StreamingJobResultHandler {
         log.info("Streaming job canceled. instanceId={}, message={}", jobInstanceId, finalMessage);
     }
 
+    /** Records an in-flight cancellation without finalizing metrics before Engine state is known. */
+    public boolean handleCanceling(Long jobInstanceId, String engineJobId, String message) {
+        boolean updated = streamingJobInstanceService.markCancelingIfStarting(
+                jobInstanceId, engineJobId, RedactedErrors.mask(message));
+        if (updated) {
+            log.info("Streaming job is canceling while submission is in flight. instanceId={}", jobInstanceId);
+        }
+        return updated;
+    }
+
+    /** Returns true when a queued/preflight submission should not send its Engine request. */
+    public boolean skipSubmissionIfNotStarting(Long jobInstanceId, String engineJobId) {
+        JobInstanceVO current = streamingJobInstanceService.selectById(jobInstanceId);
+        if (current != null && JobStatus.STARTING.name().equalsIgnoreCase(current.getJobStatus())
+                && engineJobId != null && engineJobId.equals(current.getEngineJobId())) {
+            return false;
+        }
+        if (isCancellationRequested(current, engineJobId)) {
+            handleCanceledIfRunningLike(jobInstanceId, "Streaming job was canceled before Engine submission.");
+        }
+        return true;
+    }
+
+    public boolean isCancellationRequested(Long jobInstanceId, String engineJobId) {
+        return isCancellationRequested(streamingJobInstanceService.selectById(jobInstanceId), engineJobId);
+    }
+
     public void handleFailure(Long jobInstanceId, Throwable error) {
         if (shouldSkipFailureOverwrite(jobInstanceId)) {
             log.info("Skip failure overwrite because streaming job is already finished. instanceId={}", jobInstanceId);
@@ -149,6 +176,22 @@ public class StreamingJobResultHandler {
         } catch (IllegalArgumentException e) {
             return false;
         }
+    }
+
+    private boolean isCancellationRequested(JobInstanceVO current, String engineJobId) {
+        return current != null
+                && JobStatus.CANCELING.name().equalsIgnoreCase(current.getJobStatus())
+                && engineJobId != null
+                && engineJobId.equals(current.getEngineJobId());
+    }
+
+    private boolean handleCanceledIfRunningLike(Long jobInstanceId, String message) {
+        boolean updated = streamingJobInstanceService.updateFinalStatusIfRunningLike(
+                jobInstanceId, JobStatus.CANCELED, RedactedErrors.mask(message));
+        if (updated) {
+            persistFinalResult(jobInstanceId, JobStatus.CANCELED);
+        }
+        return updated;
     }
 
     private void updateStatus(Long jobInstanceId, JobStatus status, String errorMessage) {

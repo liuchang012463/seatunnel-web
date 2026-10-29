@@ -275,6 +275,19 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
     }
 
     @Override
+    public boolean markCancelingIfStarting(Long instanceId, String engineJobId, String errorMessage) {
+        if (instanceId == null || instanceId <= 0) {
+            return false;
+        }
+        try {
+            return streamingJobInstanceDao.markCancelingIfStarting(instanceId, engineJobId, errorMessage);
+        } catch (Exception e) {
+            log.error("Mark streaming job instance canceling failed, id={}", instanceId, e);
+            throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    @Override
     public void updateById(StreamingJobInstance po) {
         if (po == null || po.getId() == null || po.getId() <= 0) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "streamingJobInstance");

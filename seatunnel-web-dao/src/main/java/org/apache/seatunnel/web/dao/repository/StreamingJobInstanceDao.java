@@ -54,6 +54,9 @@ public interface StreamingJobInstanceDao extends IDao<StreamingJobInstance> {
 
     boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date submitTime);
 
+    /** Records cancellation intent without ending the instance while submission may still be in flight. */
+    boolean markCancelingIfStarting(Long instanceId, String engineJobId, String errorMessage);
+
     boolean touchStartingInstance(Long instanceId);
 
     void updateStatusAndEngineId(Long instanceId, JobStatus status, String engineJobId);

@@ -332,7 +332,7 @@ class StreamingJobExecutorServiceImplTest {
     }
 
     @Test
-    void queuedSubmissionIsSkippedAfterTheInstanceIsCanceled() {
+    void queuedSubmissionIsSkippedAfterCancelStopFindsNoEngineJobYet() {
         StreamingJobInstanceService instanceService = mock(StreamingJobInstanceService.class);
         StreamingJobDefinitionQueryService definitionQueryService =
                 mock(StreamingJobDefinitionQueryService.class);
@@ -345,17 +345,22 @@ class StreamingJobExecutorServiceImplTest {
         prepareOnlineDefinition(definitionQueryService, instanceService);
 
         JobInstanceVO starting = instance(401L);
-        JobInstanceVO canceled = instance(401L);
-        canceled.setJobStatus(JobStatus.CANCELED.name());
+        JobInstanceVO canceling = instance(401L);
+        canceling.setJobStatus(JobStatus.CANCELING.name());
+        when(resultHandler.handleCanceling(
+                eq(401L), eq("401"), any(String.class))).thenReturn(true);
         when(instanceService.createIfNoRunningInstance(301L, RunMode.MANUAL, JobMode.STREAMING))
                 .thenReturn(starting);
-        when(instanceService.selectById(401L)).thenReturn(starting, canceled);
+        when(instanceService.selectById(401L)).thenReturn(starting, canceling);
+        doThrow(new IllegalStateException("Engine job not found yet"))
+                .when(submitter).pause(starting);
 
         assertEquals(401L, executor.jobExecute(301L, RunMode.MANUAL));
         executor.jobPause(401L);
         queuedSubmissions.get(0).run();
 
-        verify(resultHandler).handleCanceled(eq(401L), any(String.class));
+        verify(resultHandler).handleCanceling(eq(401L), eq("401"), any(String.class));
+        verify(resultHandler).skipSubmissionIfNotStarting(401L, "401");
         verify(submitter).pause(starting);
         verify(submitter, never()).submit(any(JobInstanceVO.class));
     }

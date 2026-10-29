@@ -105,6 +105,11 @@ public class StreamingJobSubmitter {
 
             String filename = "streaming-job-" + instanceId + ".conf";
 
+            if (streamingJobResultHandler.skipSubmissionIfNotStarting(instanceId, instance.getEngineJobId())) {
+                jobLogger.info("Skip Engine upload because the local submission is no longer STARTING");
+                return;
+            }
+
             submitRequestStarted = true;
             Map<?, ?> resp = restClient.submitJobUpload(
                     clientId,
@@ -127,7 +132,8 @@ public class StreamingJobSubmitter {
             submitted = true;
 
             if (!streamingJobResultHandler.updateEngineId(instanceId, engineId)) {
-                if (!streamingJobResultHandler.isEngineJobTracked(instanceId, engineId)) {
+                if (streamingJobResultHandler.isCancellationRequested(instanceId, engineId)
+                        || !streamingJobResultHandler.isEngineJobTracked(instanceId, engineId)) {
                     cancelUnexpectedEngineJob(clientId, engineId, jobLogger);
                 }
                 return;
@@ -336,9 +342,9 @@ public class StreamingJobSubmitter {
     private void cancelUnexpectedEngineJob(Long clientId, String engineId, JobFileLogger jobLogger) {
         try {
             restClient.stopJob(clientId, engineId, false);
-            jobLogger.warn("Stopped an Engine job that came back with an unexpected id: " + engineId);
+            jobLogger.warn("Stopped an Engine job after its submit response conflicted with local state: " + engineId);
         } catch (Exception stopError) {
-            log.warn("Could not stop the Engine job with the unexpected id, engineJobId={}",
+            log.warn("Could not stop the Engine job after its submit response conflicted with local state, engineJobId={}",
                     engineId, stopError);
         }
     }

@@ -169,28 +169,47 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
         log.info("Streaming job pause requested: instanceId={}, status={}",
                 jobInstanceId, instance.getJobStatus());
 
-        if (JobStatus.STARTING.name().equalsIgnoreCase(instance.getJobStatus())) {
-            if (streamingJobResultHandler != null) {
-                streamingJobResultHandler.handleCanceled(
-                        jobInstanceId, "Streaming job was canceled before Engine submission.");
-            } else {
-                StreamingJobInstance update = new StreamingJobInstance();
-                update.setId(jobInstanceId);
-                update.setJobStatus(JobStatus.CANCELED);
-                update.setEndTime(new Date());
-                update.setErrorMessage("Streaming job was canceled before Engine submission.");
-                streamingJobInstanceService.updateById(update);
-            }
-
+        if (JobStatus.CANCELING.name().equalsIgnoreCase(instance.getJobStatus())) {
             try {
                 streamingJobSubmitter.pause(instance);
             } catch (Exception e) {
-                // A queued task will see CANCELED and skip submission; an in-flight response
-                // cancels the Engine job after observing the same terminal state.
-                log.info("Streaming submission canceled before Engine acceptance: instanceId={}, errorType={}, error={}",
+                log.info("Streaming cancellation is already pending: instanceId={}, errorType={}, error={}",
                         jobInstanceId, RedactedErrors.typeOf(e), RedactedErrors.mask(e.getMessage()));
             }
             return jobInstanceId;
+        }
+
+        if (JobStatus.STARTING.name().equalsIgnoreCase(instance.getJobStatus())) {
+            String message = "Streaming job was canceled while Engine submission was in flight.";
+            boolean markedCanceling = streamingJobResultHandler != null
+                    ? streamingJobResultHandler.handleCanceling(jobInstanceId, instance.getEngineJobId(), message)
+                    : streamingJobInstanceService.markCancelingIfStarting(
+                            jobInstanceId, instance.getEngineJobId(), message);
+            if (markedCanceling) {
+                try {
+                    streamingJobSubmitter.pause(instance);
+                } catch (Exception e) {
+                    // The upload can be accepted after this stop attempt. Recovery keeps the
+                    // reserved id and retries until the Engine confirms a terminal state.
+                    log.info("Streaming submission cancellation requested: instanceId={}, errorType={}, error={}",
+                            jobInstanceId, RedactedErrors.typeOf(e), RedactedErrors.mask(e.getMessage()));
+                }
+                return jobInstanceId;
+            }
+
+            instance = streamingJobInstanceService.selectById(jobInstanceId);
+            if (instance == null || isFinishedStatus(instance.getJobStatus())) {
+                return jobInstanceId;
+            }
+            if (JobStatus.CANCELING.name().equalsIgnoreCase(instance.getJobStatus())) {
+                try {
+                    streamingJobSubmitter.pause(instance);
+                } catch (Exception e) {
+                    log.info("Streaming cancellation is already pending: instanceId={}, errorType={}, error={}",
+                            jobInstanceId, RedactedErrors.typeOf(e), RedactedErrors.mask(e.getMessage()));
+                }
+                return jobInstanceId;
+            }
         }
 
         try {
@@ -403,11 +422,24 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
             if (latest == null || !JobStatus.STARTING.name().equalsIgnoreCase(latest.getJobStatus())) {
                 log.info("Skip streaming submission because the instance left STARTING while queued, instanceId={}, status={}",
                         instance.getId(), latest == null ? null : latest.getJobStatus());
+                if (latest != null && JobStatus.CANCELING.name().equalsIgnoreCase(latest.getJobStatus())) {
+                    if (streamingJobResultHandler != null) {
+                        streamingJobResultHandler.skipSubmissionIfNotStarting(instance.getId(), latest.getEngineJobId());
+                    } else {
+                        streamingJobInstanceService.updateStatus(
+                                instance.getId(), JobStatus.CANCELED,
+                                "Streaming job was canceled before Engine submission.");
+                    }
+                }
                 return;
             }
             if (restoreEngineJobId == null
                     && previousInstance != null
                     && !reconcilePreviousInstance(latest, previousInstance)) {
+                if (streamingJobResultHandler != null) {
+                    streamingJobResultHandler.skipSubmissionIfNotStarting(
+                            instance.getId(), latest.getEngineJobId());
+                }
                 return;
             }
             if (restoreEngineJobId == null) {

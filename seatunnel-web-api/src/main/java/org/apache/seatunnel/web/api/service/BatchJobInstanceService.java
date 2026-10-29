@@ -52,6 +52,8 @@ public interface BatchJobInstanceService {
      */
     boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date startTime);
 
+    boolean markCancelingIfStarting(Long instanceId, String engineJobId, String errorMessage);
+
     /**
      * Applies an Engine-reported final status only while the instance is still running-like.
      *
@@ -67,7 +69,7 @@ public interface BatchJobInstanceService {
                                         JobStatus targetStatus,
                                         String errorMessage);
 
-    /** Refreshes the heartbeat of an in-flight submission. */
+    /** Refreshes the heartbeat of an in-flight submission or its cancellation. */
     boolean touchStartingInstance(Long instanceId);
 
     /**

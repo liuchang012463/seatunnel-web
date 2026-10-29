@@ -311,6 +311,19 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
     }
 
     @Override
+    public boolean markCancelingIfStarting(Long instanceId, String engineJobId, String errorMessage) {
+        if (instanceId == null || instanceId <= 0) {
+            return false;
+        }
+        try {
+            return jobInstanceDao.markCancelingIfStarting(instanceId, engineJobId, errorMessage);
+        } catch (Exception e) {
+            log.error("Mark batch job instance canceling failed, id={}", instanceId, e);
+            throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    @Override
     public boolean updateFinalStatusIfRunningLike(Long instanceId,
                                                   JobStatus targetStatus,
                                                   String errorMessage) {
