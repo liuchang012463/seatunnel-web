@@ -71,12 +71,17 @@ class BatchJobExecutorServiceImplTest {
         instance.setId(401L);
         instance.setJobDefinitionId(301L);
         instance.setJobStatus(JobStatus.STARTING.name());
+        instance.setRuntimeConfig("source { password = \"batch-secret\" }");
+        JobInstanceVO publicLatest = new JobInstanceVO();
+        publicLatest.setId(401L);
+        publicLatest.setJobStatus(JobStatus.STARTING.name());
+        publicLatest.setRuntimeConfig("source { password = \"***\" }");
 
         JobSchedule schedule = new JobSchedule();
         schedule.setId(501L);
 
         when(definitionService.selectById(301L)).thenReturn(definition);
-        when(instanceService.selectById(401L)).thenReturn(instance);
+        when(instanceService.selectById(401L)).thenReturn(publicLatest);
         when(incrementalBatchService.prepare(301L)).thenReturn(null);
         when(instanceService.createIfNoRunningInstance(301L, RunMode.MANUAL, null)).thenReturn(instance);
         when(jobScheduleService.getByTaskDefinitionId(301L)).thenReturn(schedule);
@@ -92,6 +97,8 @@ class BatchJobExecutorServiceImplTest {
         queuedSubmissions.get(0).run();
 
         verify(jobSubmitter).submit(instance);
+        assertEquals("source { password = \"batch-secret\" }", instance.getRuntimeConfig());
+        assertEquals("source { password = \"***\" }", publicLatest.getRuntimeConfig());
         verify(jobScheduleService).updateLastScheduleTime(501L);
         verify(lakeJobGuard).validateBeforeExecute(301L, LakeJobRuntimeType.BATCH);
         verify(lakeJobGuard).validateBeforeSubmit(instance, LakeJobRuntimeType.BATCH);

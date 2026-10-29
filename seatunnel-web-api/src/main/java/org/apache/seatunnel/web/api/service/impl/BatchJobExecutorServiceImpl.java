@@ -395,7 +395,10 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                 }
                 return;
             }
-            jobSubmitter.submit(latest);
+            // selectById is an API-facing query and masks credentials in runtimeConfig. Keep
+            // using it for the queued-state check, but submit the unmasked snapshot returned
+            // by createIfNoRunningInstance.
+            jobSubmitter.submit(instance);
         } catch (Exception e) {
             log.error("Asynchronous batch job submission failed: instanceId={}, errorType={}, error={}",
                     instance.getId(),

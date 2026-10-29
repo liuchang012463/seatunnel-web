@@ -439,9 +439,11 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
                 return;
             }
             if (restoreEngineJobId == null) {
-                streamingJobSubmitter.submit(latest);
+                // selectById is an API-facing query and masks credentials in runtimeConfig.
+                // The created snapshot is unmasked and retains this execution's configuration.
+                streamingJobSubmitter.submit(instance);
             } else {
-                streamingJobSubmitter.submitFromSavepoint(latest, restoreEngineJobId);
+                streamingJobSubmitter.submitFromSavepoint(instance, restoreEngineJobId);
             }
         } catch (Exception e) {
             log.error("Asynchronous streaming job submission failed: instanceId={}, errorType={}, error={}",
