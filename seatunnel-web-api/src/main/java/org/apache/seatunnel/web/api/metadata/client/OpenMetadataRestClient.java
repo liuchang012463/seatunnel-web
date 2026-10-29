@@ -1931,7 +1931,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         return new OpenMetadataPage<>(
                 data,
                 total == null ? data.size() : total,
-                response.getPaging().getAfter());
+                response.getPaging().getAfter(),
+                response.getData() == null ? 0 : response.getData().size());
     }
 
     private static String referenceFqn(org.openmetadata.schema.type.EntityReference reference) {

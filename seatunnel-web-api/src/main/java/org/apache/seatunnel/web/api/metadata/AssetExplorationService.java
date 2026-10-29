@@ -195,14 +195,15 @@ public class AssetExplorationService {
         int pageSize = Math.min(1000, Math.max(1, remaining));
         int scanned = 0;
         boolean truncated = false;
-        for (int pageNumber = 0; pageNumber < MAX_PAGES && collected.size() < remaining
+        int pageNumber = 0;
+        for (; pageNumber < MAX_PAGES && collected.size() < remaining
                 && scanned < MAX_SCAN; pageNumber++) {
             OpenMetadataPage<OpenMetadataAsset> page = openMetadataClient.listAssetsPage(
                     type, context.serviceFqn(), parentFqn, root, pageSize, after);
             if (page == null) {
                 break;
             }
-            scanned += page.data().size();
+            scanned += page.scannedCount();
             for (OpenMetadataAsset asset : page.data()) {
                 // The container collection returns nested containers too. The root
                 // level only shows containers without a parent; children are reached
@@ -219,11 +220,15 @@ public class AssetExplorationService {
                 }
             }
             String next = page.after();
-            if (next == null || next.isBlank() || page.data().isEmpty()) {
+            if (next == null || next.isBlank()) {
+                after = null;
                 break;
             }
             after = next;
             truncated = scanned >= MAX_SCAN;
+        }
+        if (pageNumber == MAX_PAGES && after != null && collected.size() < remaining) {
+            truncated = true;
         }
         return new LevelResult(collected, collected.size() >= remaining || truncated);
     }

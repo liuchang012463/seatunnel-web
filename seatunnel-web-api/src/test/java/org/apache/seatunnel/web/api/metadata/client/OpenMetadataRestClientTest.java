@@ -828,6 +828,7 @@ class OpenMetadataRestClientTest {
         assertEquals("st_ds_42.default.GET /orders", page.data().get(0).fullyQualifiedName());
         assertEquals("GET", page.data().get(0).requestMethod());
         assertEquals("/orders", page.data().get(0).endpointURL());
+        assertEquals(2, page.scannedCount());
         assertQuery("/api/v1/apiEndpoints", uri.get(), "service=st_ds_42");
         assertTrue(uri.get().contains("requestMethod"));
         assertTrue(uri.get().contains("endpointURL"));
