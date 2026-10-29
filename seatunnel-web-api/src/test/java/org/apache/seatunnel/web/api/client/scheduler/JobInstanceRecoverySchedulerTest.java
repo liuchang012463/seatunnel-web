@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.client.scheduler;
 
 import org.apache.seatunnel.web.api.metrics.JobResultHandler;
 import org.apache.seatunnel.web.api.metrics.JobRuntimeContext;
+import org.apache.seatunnel.web.api.metrics.streaming.StreamingJobResultHandler;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.dao.entity.JobInstance;
 import org.apache.seatunnel.web.dao.entity.StreamingJobInstance;
@@ -32,6 +33,7 @@ class JobInstanceRecoverySchedulerTest {
     private final StreamingJobInstanceDao streamingInstances = mock(StreamingJobInstanceDao.class);
     private final ZetaJobStatusHandler engine = mock(ZetaJobStatusHandler.class);
     private final JobResultHandler results = mock(JobResultHandler.class);
+    private final StreamingJobResultHandler streamingResults = mock(StreamingJobResultHandler.class);
 
     @Test
     void lostSubmitResponseFindsRunningJobByReservedId() {
@@ -53,7 +55,8 @@ class JobInstanceRecoverySchedulerTest {
 
         scheduler().recoverPeriodically();
 
-        verify(results).handleFinalStatus(any(JobRuntimeContext.class), eq(JobStatus.FINISHED), eq(null));
+        verify(results).handleFinalStatusIfStarting(
+                any(JobRuntimeContext.class), eq(JobStatus.FINISHED), eq(null), eq("101"), eq(new Date(0)));
     }
 
     @Test
@@ -73,7 +76,8 @@ class JobInstanceRecoverySchedulerTest {
 
         scheduler().recoverPeriodically();
 
-        verify(results).handleFinalStatus(any(JobRuntimeContext.class), eq(JobStatus.FAILED), any());
+        verify(results).handleFinalStatusIfStarting(
+                any(JobRuntimeContext.class), eq(JobStatus.FAILED), any(), eq("101"), eq(new Date(0)));
     }
 
     @Test
@@ -110,8 +114,8 @@ class JobInstanceRecoverySchedulerTest {
 
         scheduler().recoverPeriodically();
 
-        verify(results).handleFinalStatus(
-                any(JobRuntimeContext.class), eq(JobStatus.UNKNOWABLE), any());
+        verify(results).handleFinalStatusIfStarting(
+                any(JobRuntimeContext.class), eq(JobStatus.UNKNOWABLE), any(), eq("101"), eq(new Date(0)));
     }
 
     @Test
@@ -150,6 +154,57 @@ class JobInstanceRecoverySchedulerTest {
         verify(streamingInstances).updateFinalStatusIfRunningLike(eq(101L), eq(JobStatus.FAILED), any());
     }
 
+    @Test
+    void queuedStreamingSubmissionWaitsForItsHeartbeatBeforeReconciliation() {
+        StreamingJobInstance instance = streamingInstance();
+        instance.setJobStatus(JobStatus.STARTING);
+        instance.setUpdateTime(new Date());
+        when(streamingInstances.listRunningLikeInstances()).thenReturn(List.of(instance));
+
+        scheduler().recoverPeriodically();
+
+        verifyNoInteractions(engine, streamingResults);
+    }
+
+    @Test
+    void lostStreamingSubmitResponseFindsReservedEngineId() {
+        StreamingJobInstance instance = streamingInstance();
+        instance.setJobStatus(JobStatus.STARTING);
+        when(streamingInstances.listRunningLikeInstances()).thenReturn(List.of(instance));
+        when(engine.resolve(2L, "101")).thenReturn(ZetaJobStatusResolveResult.running("RUNNING"));
+
+        scheduler().recoverPeriodically();
+
+        verify(streamingInstances).updateEngineIdIfStarting(eq(101L), eq("101"), any(Date.class));
+        verify(streamingInstances, never()).updateFinalStatusIfRunningLike(any(), any(), any());
+    }
+
+    @Test
+    void staleStartingBatchRecoveryUsesSnapshotCasForTerminalResult() {
+        when(instances.listRunningLikeInstances()).thenReturn(List.of(instance(new Date(0))));
+        when(engine.resolve(2L, "101")).thenReturn(ZetaJobStatusResolveResult.notFound("absent"));
+
+        scheduler().recoverPeriodically();
+
+        verify(results).handleFinalStatusIfStarting(
+                any(JobRuntimeContext.class), eq(JobStatus.FAILED), any(), eq("101"), eq(new Date(0)));
+        verify(results, never()).handleFinalStatus(any(JobRuntimeContext.class), any(), any());
+    }
+
+    @Test
+    void staleStartingStreamingRecoveryUsesSnapshotCasForTerminalResult() {
+        StreamingJobInstance instance = streamingInstance();
+        instance.setJobStatus(JobStatus.STARTING);
+        when(streamingInstances.listRunningLikeInstances()).thenReturn(List.of(instance));
+        when(engine.resolve(2L, "101")).thenReturn(ZetaJobStatusResolveResult.notFound("absent"));
+
+        scheduler().recoverPeriodically();
+
+        verify(streamingResults).handleFinalStatusIfStarting(
+                eq(101L), eq("101"), eq(new Date(0)), eq(JobStatus.FAILED), any());
+        verify(streamingInstances, never()).updateFinalStatusIfRunningLike(any(), any(), any());
+    }
+
     private JobInstanceRecoveryScheduler scheduler() {
         JobInstanceRecoveryScheduler scheduler = new JobInstanceRecoveryScheduler();
         ReflectionTestUtils.setField(scheduler, "enabled", true);
@@ -157,6 +212,7 @@ class JobInstanceRecoverySchedulerTest {
         ReflectionTestUtils.setField(scheduler, "streamingJobInstanceDao", streamingInstances);
         ReflectionTestUtils.setField(scheduler, "zetaJobStatusHandler", engine);
         ReflectionTestUtils.setField(scheduler, "jobResultHandler", results);
+        ReflectionTestUtils.setField(scheduler, "streamingJobResultHandler", streamingResults);
         return scheduler;
     }
 

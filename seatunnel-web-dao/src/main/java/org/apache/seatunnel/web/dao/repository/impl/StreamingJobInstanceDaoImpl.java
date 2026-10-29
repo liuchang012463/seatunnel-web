@@ -91,6 +91,7 @@ public class StreamingJobInstanceDaoImpl
         LambdaQueryWrapper<StreamingJobInstance> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getJobDefinitionId), definitionId)
                 .in(MyBatisColumn.getter(StreamingJobInstance::getJobStatus),
+                        JobStatus.STARTING,
                         JobStatus.INITIALIZING,
                         JobStatus.CREATED,
                         JobStatus.PENDING,
@@ -103,6 +104,32 @@ public class StreamingJobInstanceDaoImpl
         Long count = streamingJobInstanceMapper.selectCount(wrapper);
 
         return count != null && count > 0;
+    }
+
+    @Override
+    public boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date submitTime) {
+        if (engineJobId == null || engineJobId.isBlank()) {
+            return false;
+        }
+        Date now = new Date();
+        LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId)
+                .eq(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatus.STARTING)
+                .eq(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), engineJobId)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatus.RUNNING)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getSubmitTime), submitTime)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getStartTime), submitTime)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), now);
+        return streamingJobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean touchStartingInstance(Long instanceId) {
+        LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId)
+                .eq(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatus.STARTING)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), new Date());
+        return streamingJobInstanceMapper.update(null, wrapper) > 0;
     }
 
     @Override
@@ -151,6 +178,111 @@ public class StreamingJobInstanceDaoImpl
                     truncate(errorMessage, 2000));
         }
 
+        return streamingJobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean updateFinalStatusIfStarting(Long instanceId,
+                                               String expectedEngineJobId,
+                                               Date expectedLastActivity,
+                                               JobStatus status,
+                                               String errorMessage) {
+        Date now = new Date();
+        LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId)
+                .eq(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatus.STARTING);
+        if (expectedEngineJobId == null || expectedEngineJobId.isBlank()) {
+            wrapper.and(condition -> condition
+                    .isNull(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId))
+                    .or()
+                    .eq(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), ""));
+        } else {
+            wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), expectedEngineJobId);
+        }
+        if (expectedLastActivity == null) {
+            wrapper.isNull(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime))
+                    .isNull(MyBatisColumn.getter(StreamingJobInstance::getCreateTime));
+        } else {
+            wrapper.and(condition -> condition
+                    .eq(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), expectedLastActivity)
+                    .or(nested -> nested
+                            .isNull(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime))
+                            .eq(MyBatisColumn.getter(StreamingJobInstance::getCreateTime), expectedLastActivity)));
+        }
+        wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), status)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), now)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getEndTime), now);
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getErrorMessage),
+                    truncate(errorMessage, 2000));
+        }
+        return streamingJobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean replaceEngineIdIfStarting(Long instanceId,
+                                             String expectedEngineJobId,
+                                             String replacementEngineJobId,
+                                             String errorMessage) {
+        if (expectedEngineJobId == null || expectedEngineJobId.isBlank()
+                || replacementEngineJobId == null || replacementEngineJobId.isBlank()) {
+            return false;
+        }
+        LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId)
+                .eq(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatus.STARTING)
+                .eq(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), expectedEngineJobId)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), replacementEngineJobId)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), new Date());
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getErrorMessage),
+                    truncate(errorMessage, 2000));
+        }
+        return streamingJobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean updateStatusIfSnapshot(Long instanceId,
+                                          JobStatus expectedStatus,
+                                          String expectedEngineJobId,
+                                          Date expectedLastActivity,
+                                          JobStatus status,
+                                          String errorMessage) {
+        Date now = new Date();
+        LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId);
+        if (expectedStatus == null) {
+            wrapper.isNull(MyBatisColumn.getter(StreamingJobInstance::getJobStatus));
+        } else {
+            wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), expectedStatus);
+        }
+        if (expectedEngineJobId == null || expectedEngineJobId.isBlank()) {
+            wrapper.and(condition -> condition
+                    .isNull(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId))
+                    .or()
+                    .eq(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), ""));
+        } else {
+            wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), expectedEngineJobId);
+        }
+        if (expectedLastActivity == null) {
+            wrapper.isNull(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime))
+                    .isNull(MyBatisColumn.getter(StreamingJobInstance::getCreateTime));
+        } else {
+            wrapper.and(condition -> condition
+                    .eq(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), expectedLastActivity)
+                    .or(nested -> nested
+                            .isNull(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime))
+                            .eq(MyBatisColumn.getter(StreamingJobInstance::getCreateTime), expectedLastActivity)));
+        }
+        wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), status)
+                .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), now);
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getErrorMessage),
+                    truncate(errorMessage, 2000));
+        }
+        if (status != null && status.isEndState()) {
+            wrapper.set(MyBatisColumn.getter(StreamingJobInstance::getEndTime), now);
+        }
         return streamingJobInstanceMapper.update(null, wrapper) > 0;
     }
 

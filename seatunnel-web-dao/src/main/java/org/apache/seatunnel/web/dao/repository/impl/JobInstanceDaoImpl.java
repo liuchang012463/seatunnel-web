@@ -188,6 +188,43 @@ public class JobInstanceDaoImpl
     }
 
     @Override
+    public boolean updateFinalStatusIfStarting(Long instanceId,
+                                               String expectedEngineJobId,
+                                               Date expectedLastActivity,
+                                               JobStatus targetStatus,
+                                               String errorMessage) {
+        Date now = new Date();
+        LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)
+                .eq(MyBatisColumn.getter(JobInstance::getJobStatus), JobStatus.STARTING);
+        if (expectedEngineJobId == null || expectedEngineJobId.isBlank()) {
+            wrapper.and(condition -> condition
+                    .isNull(MyBatisColumn.getter(JobInstance::getEngineJobId))
+                    .or()
+                    .eq(MyBatisColumn.getter(JobInstance::getEngineJobId), ""));
+        } else {
+            wrapper.eq(MyBatisColumn.getter(JobInstance::getEngineJobId), expectedEngineJobId);
+        }
+        if (expectedLastActivity == null) {
+            wrapper.isNull(MyBatisColumn.getter(JobInstance::getUpdateTime))
+                    .isNull(MyBatisColumn.getter(JobInstance::getCreateTime));
+        } else {
+            wrapper.and(condition -> condition
+                    .eq(MyBatisColumn.getter(JobInstance::getUpdateTime), expectedLastActivity)
+                    .or(nested -> nested
+                            .isNull(MyBatisColumn.getter(JobInstance::getUpdateTime))
+                            .eq(MyBatisColumn.getter(JobInstance::getCreateTime), expectedLastActivity)));
+        }
+        wrapper.set(MyBatisColumn.getter(JobInstance::getJobStatus), targetStatus)
+                .set(MyBatisColumn.getter(JobInstance::getUpdateTime), now)
+                .set(MyBatisColumn.getter(JobInstance::getEndTime), now);
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            wrapper.set(MyBatisColumn.getter(JobInstance::getErrorMessage), truncate(errorMessage, 2000));
+        }
+        return jobInstanceMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
     public boolean touchStartingInstance(Long instanceId) {
         LambdaUpdateWrapper<JobInstance> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(MyBatisColumn.getter(JobInstance::getId), instanceId)

@@ -185,10 +185,32 @@ public class JobResultHandler {
     public void handleFinalStatus(JobRuntimeContext context,
                                   JobStatus engineStatus,
                                   String errorMessage) {
+        handleFinalStatus(context, engineStatus, errorMessage, false, null, null);
+    }
+
+    /**
+     * Applies a recovered final status only while the instance still matches its stale STARTING
+     * snapshot. A submission response or heartbeat that arrives during Engine lookup wins.
+     */
+    public boolean handleFinalStatusIfStarting(JobRuntimeContext context,
+                                               JobStatus engineStatus,
+                                               String errorMessage,
+                                               String expectedEngineJobId,
+                                               Date expectedLastActivity) {
+        return handleFinalStatus(context, engineStatus, errorMessage,
+                true, expectedEngineJobId, expectedLastActivity);
+    }
+
+    private boolean handleFinalStatus(JobRuntimeContext context,
+                                      JobStatus engineStatus,
+                                      String errorMessage,
+                                      boolean startingOnly,
+                                      String expectedEngineJobId,
+                                      Date expectedLastActivity) {
         if (context == null || context.getInstanceId() == null || context.getInstanceId() <= 0) {
             log.warn("Skip handling final status because runtime context is invalid, context={}",
                     context);
-            return;
+            return false;
         }
 
         Long jobInstanceId = context.getInstanceId();
@@ -200,11 +222,15 @@ public class JobResultHandler {
         // receives the same redacted text.
         String safeErrorMessage = maskErrorMessage(errorMessage);
 
-        if (!updateStatus(jobInstanceId, localStatus, safeErrorMessage)) {
+        boolean updated = startingOnly
+                ? updateStartingStatus(jobInstanceId, expectedEngineJobId, expectedLastActivity,
+                        localStatus, safeErrorMessage)
+                : updateStatus(jobInstanceId, localStatus, safeErrorMessage);
+        if (!updated) {
             log.warn("Ignore late final status because the instance is no longer running-like, "
                     + "instanceId={}, engineStatus={}, localStatus={}",
                     jobInstanceId, engineStatus, localStatus);
-            return;
+            return false;
         }
 
         try {
@@ -230,6 +256,7 @@ public class JobResultHandler {
                     e
             );
         }
+        return true;
     }
 
     /**
@@ -314,6 +341,27 @@ public class JobResultHandler {
                 status,
                 safeErrorMessage
         );
+        return true;
+    }
+
+    private boolean updateStartingStatus(Long jobInstanceId,
+                                         String expectedEngineJobId,
+                                         Date expectedLastActivity,
+                                         JobStatus status,
+                                         String errorMessage) {
+        String safeErrorMessage = normalizeErrorMessage(status, errorMessage);
+        boolean updated = instanceService.updateFinalStatusIfStarting(
+                jobInstanceId,
+                expectedEngineJobId,
+                expectedLastActivity,
+                status,
+                safeErrorMessage);
+        if (!updated) {
+            return false;
+        }
+        publishStatusChanged(jobInstanceId, status, safeErrorMessage);
+        log.info("Batch STARTING job instance final status updated, instanceId={}, status={}, errorMessage={}",
+                jobInstanceId, status, safeErrorMessage);
         return true;
     }
 

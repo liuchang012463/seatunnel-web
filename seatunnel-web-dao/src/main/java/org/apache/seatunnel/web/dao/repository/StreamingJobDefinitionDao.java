@@ -12,6 +12,9 @@ public interface StreamingJobDefinitionDao extends IDao<StreamingJobDefinitionEn
 
     StreamingJobDefinitionEntity queryById(Long id);
 
+    /** Locks a definition row to serialize streaming instance creation. */
+    void lockById(Long id);
+
     void saveOrUpdate(StreamingJobDefinitionEntity entity);
 
     boolean deleteById(Long id);

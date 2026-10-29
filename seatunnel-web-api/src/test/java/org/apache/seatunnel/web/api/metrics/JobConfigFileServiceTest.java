@@ -44,4 +44,30 @@ class JobConfigFileServiceTest {
             }
         }
     }
+
+    @Test
+    void writesWholeDatabaseConfigWithMoreThanOneHundredTablesAndUtf8() throws Exception {
+        StringBuilder config = new StringBuilder("source {\n  table_path = [\n");
+        for (int i = 1; i <= 101; i++) {
+            config.append("    \"业务库.订单表_").append(i).append("\",\n");
+        }
+        config.append("  ]\n}\n");
+
+        String originalUserDir = System.getProperty("user.dir");
+        JobConfigFileService service = new JobConfigFileService();
+        System.setProperty("user.dir", tempDir.toString());
+        try {
+            Path file = Path.of(service.writeConfig(43L, config.toString()));
+
+            assertEquals(config.toString(), Files.readString(file, java.nio.charset.StandardCharsets.UTF_8));
+            assertEquals(101, Files.readString(file).split("业务库\\.订单表_").length - 1);
+        } finally {
+            service.cleanup(43L);
+            if (originalUserDir == null) {
+                System.clearProperty("user.dir");
+            } else {
+                System.setProperty("user.dir", originalUserDir);
+            }
+        }
+    }
 }

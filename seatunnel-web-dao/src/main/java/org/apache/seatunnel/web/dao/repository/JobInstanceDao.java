@@ -47,6 +47,13 @@ public interface JobInstanceDao extends IDao<JobInstance> {
                                            JobStatus targetStatus,
                                            String errorMessage);
 
+    /** Applies a recovered final status only if the stale STARTING snapshot is unchanged. */
+    boolean updateFinalStatusIfStarting(Long instanceId,
+                                        String expectedEngineJobId,
+                                        Date expectedLastActivity,
+                                        JobStatus targetStatus,
+                                        String errorMessage);
+
     /**
      * Refreshes the heartbeat of an in-flight submission so recovery does not mistake a long
      * driver upload for a lost submission.

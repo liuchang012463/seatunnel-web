@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.api.utils.JobUtils;
 import org.apache.seatunnel.web.api.utils.RedactedErrors;
 import org.apache.seatunnel.web.common.enums.JobResult;
 import org.apache.seatunnel.web.common.enums.JobStatus;
+import org.apache.seatunnel.web.common.utils.JobStatusHelper;
 import org.apache.seatunnel.web.dao.entity.StreamingJobInstance;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.springframework.stereotype.Component;
@@ -100,17 +101,54 @@ public class StreamingJobResultHandler {
         );
     }
 
-    public void updateEngineId(Long instanceId, String engineId) {
-        StreamingJobInstance po = new StreamingJobInstance();
-        po.setId(instanceId);
-        po.setEngineJobId(engineId);
-        po.setSubmitTime(new Date());
-        po.setStartTime(new Date());
-        po.setJobStatus(JobStatus.RUNNING);
-
-        streamingJobInstanceService.updateById(po);
+    public boolean updateEngineId(Long instanceId, String engineId) {
+        Date now = new Date();
+        boolean updated = streamingJobInstanceService.updateEngineIdIfStarting(instanceId, engineId, now);
+        if (!updated) {
+            log.error("Late streaming submission success ignored because the instance is no longer STARTING, "
+                    + "instanceId={}, engineId={}", instanceId, engineId);
+            return false;
+        }
 
         log.info("Streaming job submitted. instanceId={}, engineId={}", instanceId, engineId);
+        return true;
+    }
+
+    public boolean handleFinalStatusIfStarting(Long instanceId,
+                                               String expectedEngineJobId,
+                                               Date expectedLastActivity,
+                                               JobStatus status,
+                                               String errorMessage) {
+        if (instanceId == null || instanceId <= 0 || status == null) {
+            return false;
+        }
+        String safeMessage = JobStatus.FINISHED.equals(status) ? null : RedactedErrors.mask(errorMessage);
+        boolean updated = streamingJobInstanceService.updateFinalStatusIfStarting(
+                instanceId, expectedEngineJobId, expectedLastActivity, status, safeMessage);
+        if (!updated) {
+            log.info("Skip recovered streaming final status because STARTING snapshot changed, instanceId={}, status={}",
+                    instanceId, status);
+            return false;
+        }
+        persistFinalResult(instanceId, status);
+        return true;
+    }
+
+    public boolean isEngineJobTracked(Long instanceId, String engineId) {
+        JobInstanceVO current = streamingJobInstanceService.selectById(instanceId);
+        if (current == null
+                || !engineId.equals(current.getEngineJobId())
+                || current.getJobStatus() == null) {
+            return false;
+        }
+        if (JobStatus.FINISHED.name().equalsIgnoreCase(current.getJobStatus())) {
+            return true;
+        }
+        try {
+            return JobStatusHelper.blocksSubmission(JobStatus.fromString(current.getJobStatus()));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private void updateStatus(Long jobInstanceId, JobStatus status, String errorMessage) {
@@ -122,6 +160,10 @@ public class StreamingJobResultHandler {
 
         streamingJobInstanceService.updateById(po);
 
+        persistFinalResult(jobInstanceId, status);
+    }
+
+    private void persistFinalResult(Long jobInstanceId, JobStatus status) {
         try {
             jobLogService.persistEngineLog(jobInstanceId, org.apache.seatunnel.web.common.enums.JobMode.STREAMING);
         } catch (Exception e) {

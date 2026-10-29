@@ -61,6 +61,12 @@ public interface BatchJobInstanceService {
                                            JobStatus targetStatus,
                                            String errorMessage);
 
+    boolean updateFinalStatusIfStarting(Long instanceId,
+                                        String expectedEngineJobId,
+                                        Date expectedLastActivity,
+                                        JobStatus targetStatus,
+                                        String errorMessage);
+
     /** Refreshes the heartbeat of an in-flight submission. */
     boolean touchStartingInstance(Long instanceId);
 

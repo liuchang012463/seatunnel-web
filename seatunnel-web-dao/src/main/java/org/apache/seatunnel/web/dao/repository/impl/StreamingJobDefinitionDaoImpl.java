@@ -40,6 +40,17 @@ public class StreamingJobDefinitionDaoImpl
     }
 
     @Override
+    public void lockById(Long id) {
+        if (id == null || id <= 0) {
+            return;
+        }
+        LambdaQueryWrapper<StreamingJobDefinitionEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(MyBatisColumn.getter(StreamingJobDefinitionEntity::getId), id)
+                .last("FOR UPDATE");
+        streamingJobDefinitionMapper.selectOne(wrapper);
+    }
+
+    @Override
     public void saveOrUpdate(StreamingJobDefinitionEntity entity) {
         if (entity == null) {
             return;

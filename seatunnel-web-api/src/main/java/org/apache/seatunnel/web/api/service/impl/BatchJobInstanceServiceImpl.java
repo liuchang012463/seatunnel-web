@@ -328,6 +328,25 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
     }
 
     @Override
+    public boolean updateFinalStatusIfStarting(Long instanceId,
+                                               String expectedEngineJobId,
+                                               Date expectedLastActivity,
+                                               JobStatus targetStatus,
+                                               String errorMessage) {
+        if (instanceId == null || instanceId <= 0 || targetStatus == null) {
+            return false;
+        }
+        try {
+            return jobInstanceDao.updateFinalStatusIfStarting(
+                    instanceId, expectedEngineJobId, expectedLastActivity, targetStatus, errorMessage);
+        } catch (Exception e) {
+            log.error("Update recovered STARTING status conditionally failed, id={}, target={}",
+                    instanceId, targetStatus, e);
+            throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    @Override
     public boolean touchStartingInstance(Long instanceId) {
         if (instanceId == null || instanceId <= 0) {
             return false;

@@ -259,6 +259,30 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         log.info("Job pause requested: instanceId={}, status={}",
                 jobInstanceId, instance.getJobStatus());
 
+        if (JobStatus.STARTING.name().equalsIgnoreCase(instance.getJobStatus())) {
+            if (jobResultHandler != null) {
+                jobResultHandler.handleFinalStatus(
+                        jobInstanceId, JobStatus.CANCELED, "Job was canceled before Engine submission.");
+            } else {
+                JobInstance update = new JobInstance();
+                update.setId(jobInstanceId);
+                update.setJobStatus(JobStatus.CANCELED);
+                update.setEndTime(new Date());
+                update.setErrorMessage("Job was canceled before Engine submission.");
+                instanceService.updateById(update);
+            }
+
+            try {
+                jobSubmitter.pause(instance);
+            } catch (Exception e) {
+                // The Engine may not have accepted the queued request yet. A late submit response
+                // is stopped by the result handler after it observes this canceled local state.
+                log.info("Batch submission canceled before Engine acceptance: instanceId={}, errorType={}, error={}",
+                        jobInstanceId, RedactedErrors.typeOf(e), RedactedErrors.mask(e.getMessage()));
+            }
+            return jobInstanceId;
+        }
+
         try {
             jobSubmitter.pause(instance);
 
@@ -339,7 +363,13 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                                 Long jobDefinitionId,
                                 ScheduledFuture<?> heartbeat) {
         try {
-            jobSubmitter.submit(instance);
+            JobInstanceVO latest = instanceService.selectById(instance.getId());
+            if (latest == null || !JobStatus.STARTING.name().equalsIgnoreCase(latest.getJobStatus())) {
+                log.info("Skip batch submission because the instance left STARTING while queued, instanceId={}, status={}",
+                        instance.getId(), latest == null ? null : latest.getJobStatus());
+                return;
+            }
+            jobSubmitter.submit(latest);
         } catch (Exception e) {
             log.error("Asynchronous batch job submission failed: instanceId={}, errorType={}, error={}",
                     instance.getId(),

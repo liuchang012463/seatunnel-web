@@ -33,6 +33,29 @@ public interface StreamingJobInstanceDao extends IDao<StreamingJobInstance> {
      */
     boolean updateFinalStatusIfRunningLike(Long instanceId, JobStatus status, String errorMessage);
 
+    /** Applies a recovered final status only if the stale STARTING snapshot is unchanged. */
+    boolean updateFinalStatusIfStarting(Long instanceId,
+                                        String expectedEngineJobId,
+                                        Date expectedLastActivity,
+                                        JobStatus status,
+                                        String errorMessage);
+
+    boolean replaceEngineIdIfStarting(Long instanceId,
+                                      String expectedEngineJobId,
+                                      String replacementEngineJobId,
+                                      String errorMessage);
+
+    boolean updateStatusIfSnapshot(Long instanceId,
+                                   JobStatus expectedStatus,
+                                   String expectedEngineJobId,
+                                   Date expectedLastActivity,
+                                   JobStatus status,
+                                   String errorMessage);
+
+    boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date submitTime);
+
+    boolean touchStartingInstance(Long instanceId);
+
     void updateStatusAndEngineId(Long instanceId, JobStatus status, String engineJobId);
 
     void updateSubmitResult(Long instanceId, String engineJobId, JobStatus submitStatus, Date submitTime);
