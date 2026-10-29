@@ -115,7 +115,7 @@ class StreamingJobExecutorServiceImplTest {
         JobInstanceVO publicReplacement = instance(601L);
         publicReplacement.setRuntimeConfig("source { password = \"***\" }");
         // Engine 3.0 reuses the source job id as the Engine id for SAVEPOINT restores.
-        replacement.setEngineJobId("engine-1");
+        replacement.setEngineJobId("601");
         publicReplacement.setEngineJobId("engine-1");
         when(instanceService.createIfNoRunningInstance(301L, RunMode.MANUAL, JobMode.STREAMING))
                 .thenReturn(replacement);
@@ -133,6 +133,7 @@ class StreamingJobExecutorServiceImplTest {
         order.verify(instanceService).updateById(any(StreamingJobInstance.class));
         order.verify(guard).validateBeforeSubmit(replacement, LakeJobRuntimeType.STREAMING);
         order.verify(submitter).submitFromSavepoint(replacement, "engine-1");
+        assertEquals("engine-1", replacement.getEngineJobId());
         assertEquals("source { password = \"restore-secret\" }", replacement.getRuntimeConfig());
         assertEquals("source { password = \"***\" }", publicReplacement.getRuntimeConfig());
     }

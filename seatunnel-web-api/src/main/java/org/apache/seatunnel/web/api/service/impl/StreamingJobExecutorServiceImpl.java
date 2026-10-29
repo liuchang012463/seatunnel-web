@@ -366,6 +366,7 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
             update.setEngineJobId(restoreEngineJobId);
             update.setErrorMessage("Streaming job was resumed from savepoint, sourceInstanceId=" + sourceJobInstanceId);
             streamingJobInstanceService.updateById(update);
+            newInstance.setEngineJobId(restoreEngineJobId);
 
             try {
                 if (lakeJobGuard != null) {
