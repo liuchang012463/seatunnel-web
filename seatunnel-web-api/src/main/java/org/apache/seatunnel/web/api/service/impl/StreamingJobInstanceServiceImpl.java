@@ -222,6 +222,14 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
     }
 
     @Override
+    public boolean updateFinalStatusIfRunningLike(Long instanceId, JobStatus status, String errorMessage) {
+        if (instanceId == null || instanceId <= 0 || status == null) {
+            return false;
+        }
+        return streamingJobInstanceDao.updateFinalStatusIfRunningLike(instanceId, status, errorMessage);
+    }
+
+    @Override
     public boolean replaceEngineIdIfStarting(Long instanceId,
                                              String expectedEngineJobId,
                                              String replacementEngineJobId,

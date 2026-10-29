@@ -240,7 +240,7 @@ class StreamingJobExecutorServiceImplTest {
     }
 
     @Test
-    void cancelDuringPreviousEngineLookupIsNotRevertedToStarting() {
+    void cancelDuringUnknownPreviousEngineLookupHandsOffOldIdWithoutEndingCancellation() {
         StreamingJobInstanceService instanceService = mock(StreamingJobInstanceService.class);
         StreamingJobDefinitionQueryService definitionQueryService =
                 mock(StreamingJobDefinitionQueryService.class);
@@ -262,9 +262,15 @@ class StreamingJobExecutorServiceImplTest {
         when(instanceService.createIfNoRunningInstance(301L, RunMode.MANUAL, JobMode.STREAMING))
                 .thenReturn(starting);
         when(instanceService.selectById(401L)).thenReturn(starting, starting);
-        when(instanceService.replaceEngineIdIfStarting(
-                eq(401L), eq("401"), eq("engine-201"), anyString()))
-                .thenReturn(false);
+        doAnswer(invocation -> {
+            starting.setJobStatus(JobStatus.CANCELING.name());
+            return true;
+        }).when(resultHandler).handleCanceling(eq(401L), eq("401"), anyString());
+        doAnswer(invocation -> {
+            starting.setEngineJobId(invocation.getArgument(2));
+            return true;
+        }).when(instanceService).replaceEngineIdIfStarting(
+                eq(401L), eq("401"), eq("engine-201"), anyString());
         doAnswer(invocation -> {
             executor.jobPause(401L);
             return ZetaJobStatusResolveResult.unknown("Engine is unavailable");
@@ -273,8 +279,11 @@ class StreamingJobExecutorServiceImplTest {
         assertEquals(401L, executor.jobExecute(301L, RunMode.MANUAL));
         queuedSubmissions.get(0).run();
 
-        verify(resultHandler).handleCanceled(eq(401L), anyString());
+        verify(resultHandler).handleCanceling(eq(401L), eq("401"), anyString());
         verify(instanceService).replaceEngineIdIfStarting(eq(401L), eq("401"), eq("engine-201"), anyString());
+        verify(resultHandler, never()).skipSubmissionIfNotStarting(anyLong(), anyString());
+        assertEquals(JobStatus.CANCELING.name(), starting.getJobStatus());
+        assertEquals("engine-201", starting.getEngineJobId());
         verify(submitter).pause(starting);
         verify(submitter, never()).submit(any(JobInstanceVO.class));
     }

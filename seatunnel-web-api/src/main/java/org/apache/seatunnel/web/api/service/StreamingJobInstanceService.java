@@ -42,6 +42,9 @@ public interface StreamingJobInstanceService {
                                         JobStatus status,
                                         String errorMessage);
 
+    boolean updateFinalStatusIfRunningLike(Long instanceId, JobStatus status, String errorMessage);
+
+    /** Replaces the reserved id while submission is active or cancellation is pending. */
     boolean replaceEngineIdIfStarting(Long instanceId,
                                       String expectedEngineJobId,
                                       String replacementEngineJobId,

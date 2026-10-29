@@ -40,6 +40,7 @@ public interface StreamingJobInstanceDao extends IDao<StreamingJobInstance> {
                                         JobStatus status,
                                         String errorMessage);
 
+    /** Replaces the reserved id while submission is active or cancellation is pending. */
     boolean replaceEngineIdIfStarting(Long instanceId,
                                       String expectedEngineJobId,
                                       String replacementEngineJobId,

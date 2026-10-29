@@ -253,7 +253,8 @@ public class StreamingJobInstanceDaoImpl
         }
         LambdaUpdateWrapper<StreamingJobInstance> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(MyBatisColumn.getter(StreamingJobInstance::getId), instanceId)
-                .eq(MyBatisColumn.getter(StreamingJobInstance::getJobStatus), JobStatus.STARTING)
+                .in(MyBatisColumn.getter(StreamingJobInstance::getJobStatus),
+                        JobStatus.STARTING, JobStatus.CANCELING)
                 .eq(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), expectedEngineJobId)
                 .set(MyBatisColumn.getter(StreamingJobInstance::getEngineJobId), replacementEngineJobId)
                 .set(MyBatisColumn.getter(StreamingJobInstance::getUpdateTime), new Date());

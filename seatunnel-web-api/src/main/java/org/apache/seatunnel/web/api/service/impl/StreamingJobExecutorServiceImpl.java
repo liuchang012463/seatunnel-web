@@ -436,10 +436,6 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
             if (restoreEngineJobId == null
                     && previousInstance != null
                     && !reconcilePreviousInstance(latest, previousInstance)) {
-                if (streamingJobResultHandler != null) {
-                    streamingJobResultHandler.skipSubmissionIfNotStarting(
-                            instance.getId(), latest.getEngineJobId());
-                }
                 return;
             }
             if (restoreEngineJobId == null) {
@@ -532,7 +528,8 @@ public class StreamingJobExecutorServiceImpl implements StreamingJobExecutorServ
                 previous.getEngineJobId(),
                 message);
         if (!updated) {
-            log.info("Skip previous Engine id handoff because the new instance left its reserved STARTING state, "
+            log.info("Skip previous Engine id handoff because the new instance no longer matches its reserved "
+                            + "submission state and Engine id, "
                             + "instanceId={}, engineJobId={}",
                     current.getId(), current.getEngineJobId());
         }
