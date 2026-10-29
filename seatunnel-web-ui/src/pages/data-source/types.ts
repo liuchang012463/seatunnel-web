@@ -142,6 +142,7 @@ export interface DataExplorationAssetRef {
   name?: string;
   assetType?: ExplorationAssetType | string;
   fullyQualifiedName?: string;
+  description?: string;
 }
 
 export interface DataExplorationAsset {
@@ -158,6 +159,8 @@ export interface DataExplorationAsset {
   tags?: string[];
   sizeInByte?: number | null;
   updatedAt?: number | null;
+  requestMethod?: string;
+  endpointURL?: string;
 }
 
 export interface DataExplorationAssetField {

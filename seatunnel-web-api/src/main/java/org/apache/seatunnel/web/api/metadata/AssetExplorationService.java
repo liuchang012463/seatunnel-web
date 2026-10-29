@@ -445,7 +445,10 @@ public class AssetExplorationService {
         }
         return contains(asset.name(), keyword)
                 || contains(asset.displayName(), keyword)
-                || contains(asset.fullyQualifiedName(), keyword);
+                || contains(asset.fullyQualifiedName(), keyword)
+                || contains(asset.description(), keyword)
+                || contains(asset.requestMethod(), keyword)
+                || contains(asset.endpointURL(), keyword);
     }
 
     private static boolean contains(String value, String keyword) {
@@ -473,6 +476,8 @@ public class AssetExplorationService {
         vo.setTags(new ArrayList<>(asset.tags()));
         vo.setSizeInByte(asset.sizeInByte());
         vo.setUpdatedAt(asset.updatedAt());
+        vo.setRequestMethod(asset.requestMethod());
+        vo.setEndpointURL(asset.endpointURL());
         return vo;
     }
 
@@ -483,6 +488,7 @@ public class AssetExplorationService {
         ref.setName(isBlank(asset.displayName()) ? asset.name() : asset.displayName());
         ref.setAssetType(type == null ? asset.entityType() : type.name());
         ref.setFullyQualifiedName(asset.fullyQualifiedName());
+        ref.setDescription(asset.description());
         return ref;
     }
 
@@ -677,8 +683,6 @@ public class AssetExplorationService {
             case API_COLLECTION -> {
                 add(result, "endpointURL", "接口地址",
                         properties.get("endpointURL"), "CODE");
-                add(result, "endpointCount", "接口数",
-                        properties.get("endpointCount"), "NUMBER");
             }
             case API_ENDPOINT -> {
                 add(result, "requestMethod", "请求方法",

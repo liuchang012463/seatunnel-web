@@ -9,4 +9,5 @@ public class DataExplorationAssetRefVO {
     private String name;
     private String assetType;
     private String fullyQualifiedName;
+    private String description;
 }

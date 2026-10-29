@@ -288,6 +288,38 @@ class AssetExplorationServiceTest {
     }
 
     @Test
+    void searchesApiEndpointsByMethodAndCarriesCollectionDescription() {
+        stubSource(DbType.HTTP,
+                List.of(ExplorationAssetType.API_COLLECTION, ExplorationAssetType.API_ENDPOINT), true);
+        OpenMetadataAsset collection = new OpenMetadataAsset(
+                "collection-1", "orders", "orders", "st_ds_42.orders", "apiCollection",
+                "Order operations", null, null, List.of(), "st_ds_42", null, null, null,
+                null, null, null, null);
+        OpenMetadataAsset endpoint = new OpenMetadataAsset(
+                "endpoint-1", "/orders", "/orders", "st_ds_42.orders.POST /orders",
+                "apiEndpoint", "Create an order", 1, null, List.of(), "st_ds_42",
+                "collection-1", "apiCollection", "st_ds_42.orders", null, null,
+                "POST", "/orders");
+        when(openMetadataClient.getAssetDetail(
+                eq(ExplorationAssetType.API_COLLECTION), eq("collection-1"), eq(false), eq("service")))
+                .thenReturn(new OpenMetadataAssetDetail(
+                        collection, List.of(), List.of(), List.of(), null,
+                        false, false, List.of(), Map.of()));
+        when(openMetadataClient.listAssetsPage(
+                eq(ExplorationAssetType.API_ENDPOINT), eq("st_ds_42"),
+                eq("st_ds_42.orders"), eq(false), anyInt(), any()))
+                .thenReturn(new OpenMetadataPage<>(List.of(endpoint), 1L, null));
+
+        DataExplorationAssetPageVO page = service().listAssets(
+                42L, "collection-1", "API_COLLECTION", 1, 50, "post");
+
+        assertEquals(1, page.getRecords().size());
+        assertEquals("POST", page.getRecords().get(0).getRequestMethod());
+        assertEquals("/orders", page.getRecords().get(0).getEndpointURL());
+        assertEquals("Order operations", page.getBreadcrumbs().get(0).getDescription());
+    }
+
+    @Test
     void listsContainerChildrenWithOffsetPagination() {
         stubSource(DbType.MINIO, List.of(ExplorationAssetType.CONTAINER), true);
         OpenMetadataAsset parent = asset(
@@ -512,7 +544,7 @@ class AssetExplorationServiceTest {
             Long sizeInByte) {
         return new OpenMetadataAsset(
                 id, name, name, fqn, entityType, null, fieldCount, childCount,
-                List.of(), serviceFqn, parentId, parentType, parentFqn, sizeInByte, null);
+                List.of(), serviceFqn, parentId, parentType, parentFqn, sizeInByte, null, null, null);
     }
 
     private AssetExplorationService service() {

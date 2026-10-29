@@ -655,7 +655,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     topic.getFullyQualifiedName(), type.entityType(), topic.getDescription(),
                     fieldCount(topic.getMessageSchema()), null, tagNames(topic.getTags()),
                     referenceFqn(topic.getService(), serviceFallback),
-                    null, null, null, null, epochMillis(topic.getUpdatedAt()));
+                    null, null, null, null, epochMillis(topic.getUpdatedAt()), null, null);
         }
         if (entity instanceof Container container) {
             return new OpenMetadataAsset(
@@ -665,7 +665,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     referenceFqn(container.getService(), serviceFallback),
                     referenceId(container.getParent()), referenceType(container.getParent()),
                     referenceFqn(container.getParent(), null), longValue(container.getSize()),
-                    epochMillis(container.getUpdatedAt()));
+                    epochMillis(container.getUpdatedAt()), null, null);
         }
         if (entity instanceof Directory directory) {
             Integer childCount = null;
@@ -683,7 +683,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     referenceFqn(directory.getService(), serviceFallback),
                     referenceId(directory.getParent()), referenceType(directory.getParent()),
                     referenceFqn(directory.getParent(), null),
-                    longValue(directory.getTotalSize()), epochMillis(directory.getUpdatedAt()));
+                    longValue(directory.getTotalSize()), epochMillis(directory.getUpdatedAt()), null, null);
         }
         if (entity instanceof File file) {
             return new OpenMetadataAsset(
@@ -693,16 +693,17 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     referenceFqn(file.getService(), serviceFallback),
                     referenceId(file.getDirectory()), referenceType(file.getDirectory()),
                     referenceFqn(file.getDirectory(), null), longValue(file.getSize()),
-                    epochMillis(file.getUpdatedAt()));
+                    epochMillis(file.getUpdatedAt()), null, null);
         }
         if (entity instanceof APICollection collection) {
             return new OpenMetadataAsset(
                     uuid(collection.getId()), collection.getName(), collection.getDisplayName(),
                     collection.getFullyQualifiedName(), type.entityType(),
-                    collection.getDescription(), null, size(collection.getApiEndpoints()),
+                    collection.getDescription(), null, null,
                     tagNames(collection.getTags()),
                     referenceFqn(collection.getService(), serviceFallback),
-                    null, null, null, null, epochMillis(collection.getUpdatedAt()));
+                    null, null, null, null, epochMillis(collection.getUpdatedAt()), null,
+                    collection.getEndpointURL() == null ? null : collection.getEndpointURL().toString());
         }
         if (entity instanceof APIEndpoint endpoint) {
             return new OpenMetadataAsset(
@@ -715,7 +716,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     referenceId(endpoint.getApiCollection()),
                     referenceType(endpoint.getApiCollection()),
                     referenceFqn(endpoint.getApiCollection(), null), null,
-                    epochMillis(endpoint.getUpdatedAt()));
+                    epochMillis(endpoint.getUpdatedAt()),
+                    endpoint.getRequestMethod() == null ? null : endpoint.getRequestMethod().value(),
+                    endpoint.getEndpointURL() == null ? null : endpoint.getEndpointURL().toString());
         }
         if (entity instanceof SearchIndex searchIndex) {
             return new OpenMetadataAsset(
@@ -724,7 +727,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     type.entityType(), searchIndex.getDescription(), size(searchIndex.getFields()),
                     null, tagNames(searchIndex.getTags()),
                     referenceFqn(searchIndex.getService(), serviceFallback),
-                    null, null, null, null, epochMillis(searchIndex.getUpdatedAt()));
+                    null, null, null, null, epochMillis(searchIndex.getUpdatedAt()), null, null);
         }
         return null;
     }
@@ -783,7 +786,6 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         } else if (entity instanceof APICollection collection) {
             properties.put("endpointURL", collection.getEndpointURL() == null
                     ? null : collection.getEndpointURL().toString());
-            properties.put("endpointCount", size(collection.getApiEndpoints()));
         } else if (entity instanceof APIEndpoint endpoint) {
             requestFields = apiFields(endpoint.getRequestSchema());
             responseFields = apiFields(endpoint.getResponseSchema());
@@ -818,7 +820,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     reference.getFullyQualifiedName(), childType.entityType(),
                     reference.getDescription(), null, null, List.of(), null,
                     uuid(directory.getId()), ExplorationAssetType.DIRECTORY.entityType(),
-                    directory.getFullyQualifiedName(), null, null));
+                    directory.getFullyQualifiedName(), null, null, null, null));
         }
         return children;
     }

@@ -23,4 +23,8 @@ public class DataExplorationAssetVO {
     private List<String> tags = new ArrayList<>();
     private Long sizeInByte;
     private Long updatedAt;
+    /** HTTP method for API endpoints, such as GET or POST. */
+    private String requestMethod;
+    /** OpenAPI endpoint URL when the asset is an API collection or endpoint. */
+    private String endpointURL;
 }

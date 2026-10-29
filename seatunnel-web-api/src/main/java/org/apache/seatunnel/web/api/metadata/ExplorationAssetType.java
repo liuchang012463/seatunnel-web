@@ -67,7 +67,7 @@ public enum ExplorationAssetType {
             "接口分组",
             SampleKind.NONE,
             true,
-            "tags",
+            "endpointURL,tags",
             "service",
             "service",
             "service,apiEndpoints,endpointURL,tags"),
@@ -77,7 +77,7 @@ public enum ExplorationAssetType {
             "接口",
             SampleKind.NONE,
             false,
-            "apiCollection,tags",
+            "apiCollection,requestMethod,endpointURL,tags",
             "service",
             "service",
             "service,apiCollection,requestMethod,endpointURL,requestSchema,responseSchema,tags");
