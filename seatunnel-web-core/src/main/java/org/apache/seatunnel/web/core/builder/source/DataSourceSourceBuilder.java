@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.core.builder.source;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
+import com.typesafe.config.ConfigValueFactory;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
@@ -428,7 +429,9 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         source.put("url", "jdbc:duckdb:");
         source.put("driver", "org.duckdb.DuckDBDriver");
         source.put("enable_concurrent_read", false);
-        source.put("properties", properties);
+        // ConfigFactory.parseMap treats dotted map keys as paths. Keep DuckDB's session-init
+        // property as a literal key because the JDBC connector expects Map<String, String>.
+        source.put("properties", ConfigValueFactory.fromMap(properties));
         source.put("query", query);
         source.put("connection_check_timeout_sec", 30);
         if (nodeConfig.hasPath("plugin_output")) {

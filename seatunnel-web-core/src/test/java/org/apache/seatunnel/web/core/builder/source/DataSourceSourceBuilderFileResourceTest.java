@@ -120,6 +120,10 @@ class DataSourceSourceBuilderFileResourceTest {
         assertFalse(properties.hasPath("session_init_sql_file"));
         assertEquals("false", properties.getString("autoinstall_known_extensions"));
         assertEquals("true", properties.getString("jdbc_stream_results"));
+        Map<String, Object> flatProperties = properties.root().unwrapped();
+        assertTrue(flatProperties.containsKey("duckdb.session_init_sql"));
+        assertFalse(flatProperties.containsKey("duckdb"));
+        assertTrue(properties.root().render().contains("\"duckdb.session_init_sql\""));
 
         String query = result.getString("query");
         assertTrue(query.startsWith("USE \"duckdb_source\".\"weather schema\";\n"));
@@ -132,7 +136,7 @@ class DataSourceSourceBuilderFileResourceTest {
         assertTrue(!query.contains("INSTALL httpfs"));
         assertTrue(!query.contains("TYPE DUCKDB"));
 
-        String initSql = properties.getString("duckdb.session_init_sql");
+        String initSql = (String) flatProperties.get("duckdb.session_init_sql");
         assertTrue(initSql.contains("LOAD httpfs;\nCREATE SECRET duckdb_source_minio_secret ("));
         assertTrue(initSql.contains("KEY_ID 'test-access-key',"));
         assertTrue(initSql.contains("SECRET 'test-secret-''key',"));
@@ -193,7 +197,8 @@ class DataSourceSourceBuilderFileResourceTest {
                 "duckdbSchema", "main",
                 "duckdbTable", "orders")));
 
-        String initSql = result.getConfig("properties").getString("duckdb.session_init_sql");
+        String initSql = (String) result.getConfig("properties").root()
+                .get("duckdb.session_init_sql").unwrapped();
         // Auto-install is off, so httpfs has to be preinstalled where the engine is told to look.
         assertTrue(initSql.contains("SET extension_directory = '/opt/seatunnel/lib/duckdb-extensions';"));
         assertTrue(initSql.indexOf("SET extension_directory") < initSql.indexOf("LOAD httpfs;"));
