@@ -1,4 +1,3 @@
-import { FileSyncOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
 import { App } from 'antd';
 import FileTaskList from '../file-ingest/TaskListAdapter';
@@ -52,8 +51,6 @@ const FileTransferPage: React.FC = () => {
   return (
     <div className="task-list-page-shell">
       <TaskPageHeader
-        icon={<FileSyncOutlined />}
-        title="文件同步任务"
         createText="创建文件同步"
         onCreate={() => void createTask()}
       />

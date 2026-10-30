@@ -1,20 +1,13 @@
-.meta-engine-overview {
+﻿.meta-engine-overview {
   box-sizing: border-box;
-  min-height: calc(100vh - 56px);
-  padding: 24px;
-  overflow: auto;
-  color: var(--st-color-text-primary);
-  background: var(--st-color-bg-page);
-}
-
-.meta-engine-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  width: 100%;
-  max-width: 1920px;
-  margin: 0 auto 24px;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 16px 24px;
+  overflow: hidden;
+  color: var(--st-color-text-primary, #F7FBFF);
+  background: var(--st-color-bg-page, #03182a);
 }
 
 .meta-engine-heading {
@@ -66,17 +59,16 @@
 
 .meta-engine-shell {
   display: grid;
-  /* 页面根节点是定高 flex 列：内容高于视口时禁止压缩，否则 overflow: hidden 会把底部内容裁掉且无法滚动到 */
-  flex: 0 0 auto;
+  flex: 1;
+  min-height: 0;
   grid-template-columns: 282px minmax(0, 1fr);
   width: 100%;
   max-width: 1920px;
-  min-height: 700px;
   margin: 0 auto;
   overflow: hidden;
   background: var(--st-color-bg-panel);
-  border: 1px solid var(--st-color-border);
-  border-radius: 22px;
+  border: 1px solid var(--st-color-border, rgba(77, 210, 255, 0.28));
+  border-radius: 12px;
 }
 
 .meta-engine-sidebar {
@@ -88,14 +80,12 @@
   background: color-mix(in srgb, var(--st-color-bg-panel) 72%, var(--st-color-bg-app));
 }
 
-.meta-engine-sidebar-eyebrow,
 .meta-engine-nav-label,
 .meta-engine-kicker {
   color: var(--st-color-accent);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.14em;
-  line-height: 16px;
+  line-height: 20px;
 }
 
 .meta-engine-sidebar-title {
@@ -157,7 +147,7 @@
 
 .meta-engine-sidebar-item-copy small {
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .meta-engine-status-dot,
@@ -196,13 +186,13 @@
   justify-content: space-between;
   gap: 12px;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .meta-engine-sidebar-summary-row strong {
   overflow: hidden;
   color: var(--st-color-text-secondary);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -226,7 +216,7 @@
   gap: 10px;
   padding: 9px 10px;
   color: var(--st-color-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   background: transparent;
   border: 0;
@@ -247,7 +237,7 @@
   margin-top: auto;
   padding: 18px 12px 0;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .meta-engine-sidebar-foot strong {
@@ -257,8 +247,9 @@
 
 .meta-engine-content {
   min-width: 0;
+  min-height: 0;
   padding: 28px;
-  overflow: visible;
+  overflow: auto;
 }
 
 .meta-engine-hero {
@@ -315,7 +306,7 @@
   gap: 7px;
   margin: 0;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
   border-radius: 999px;
 }
@@ -349,7 +340,7 @@
 .meta-engine-subtitle {
   margin-top: 3px;
   color: var(--st-color-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .meta-engine-endpoints {
@@ -367,7 +358,7 @@
   padding: 7px 11px;
   overflow: hidden;
   color: var(--st-color-text-secondary);
-  font-size: 12px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
   background: var(--st-color-bg-control);
@@ -381,7 +372,7 @@
   gap: 7px;
   margin-top: 13px;
   color: var(--st-color-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .meta-engine-description--error .anticon {
@@ -436,7 +427,7 @@
 .meta-engine-notice p {
   margin: 2px 0 0;
   color: var(--st-color-text-secondary);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 19px;
 }
 
@@ -462,7 +453,7 @@
 .meta-engine-section-heading p {
   margin: 4px 0 0;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
 }
 
@@ -471,7 +462,7 @@
   align-items: center;
   gap: 5px;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -496,7 +487,7 @@
   justify-content: space-between;
   gap: 10px;
   color: var(--st-color-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .meta-engine-metric-icon {
@@ -541,7 +532,7 @@
 .meta-engine-metric-description {
   margin-top: 8px;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
 }
 
@@ -561,7 +552,7 @@
   align-items: start;
   gap: 12px;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
 }
 
@@ -651,7 +642,7 @@
   max-width: 680px;
   margin: 0;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
 }
 
@@ -678,7 +669,7 @@
 .meta-engine-version-note {
   display: block;
   margin-bottom: 8px;
-  font-size: 12px !important;
+  font-size: 14px !important;
 }
 
 .meta-engine-config-test-result {
@@ -687,7 +678,7 @@
   gap: 8px;
   margin: 2px 0 18px;
   padding: 11px 13px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
   border-radius: 10px;
 }
@@ -714,7 +705,7 @@
 
 .meta-engine-config-action-bar > .ant-typography {
   color: var(--st-color-text-muted) !important;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 @media (max-width: 1180px) {

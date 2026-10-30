@@ -751,10 +751,8 @@ const DataExplorationTasksPage: React.FC = () => {
   ], [scanningIds, load]);
 
   return (
-    <div className="data-exploration-page data-exploration-tasks flex h-full min-h-full flex-col px-6 py-5">
+    <div className="data-exploration-page data-exploration-tasks flex h-full min-h-0 flex-col overflow-hidden px-6 py-5">
       <TaskListPageHeader
-        icon={<PlayCircleOutlined />}
-        title="探查任务配置"
         actions={<Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button>}
       />
 

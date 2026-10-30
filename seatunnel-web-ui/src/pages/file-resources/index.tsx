@@ -320,7 +320,7 @@ const FileResourcesPage: React.FC = () => {
   ];
 
   return (
-    <PageContainer className="file-resources-page" title="湖文件管理" subTitle="管理数据湖对象存储中的文件与目录">
+    <PageContainer className="file-resources-page" title={false}>
       {contextHolder}
       {selectionMode ? (
         <Alert

@@ -1,20 +1,13 @@
-.lake-warehouse-overview {
+﻿.lake-warehouse-overview {
   box-sizing: border-box;
-  min-height: calc(100vh - 56px);
-  padding: 24px;
-  overflow: auto;
-  color: var(--st-color-text-primary);
-  background: var(--st-color-bg-page);
-}
-
-.lake-overview-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  width: 100%;
-  max-width: 1920px;
-  margin: 0 auto 24px;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 16px 24px;
+  overflow: hidden;
+  color: var(--st-color-text-primary, #F7FBFF);
+  background: var(--st-color-bg-page, #03182a);
 }
 
 .lake-overview-heading {
@@ -70,15 +63,16 @@
 
 .lake-warehouse-shell {
   display: grid;
+  flex: 1;
+  min-height: 0;
   grid-template-columns: 282px minmax(0, 1fr);
   width: 100%;
   max-width: 1920px;
-  min-height: 700px;
   margin: 0 auto;
   overflow: hidden;
   background: var(--st-color-bg-panel);
-  border: 1px solid var(--st-color-border);
-  border-radius: 22px;
+  border: 1px solid var(--st-color-border, rgba(77, 210, 255, 0.28));
+  border-radius: 12px;
 }
 
 .lake-warehouse-sidebar {
@@ -90,14 +84,12 @@
   background: color-mix(in srgb, var(--st-color-bg-panel) 72%, var(--st-color-bg-app));
 }
 
-.lake-sidebar-eyebrow,
 .lake-warehouse-nav-label,
 .lake-warehouse-kicker {
   color: var(--st-color-accent);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.14em;
-  line-height: 16px;
+  line-height: 20px;
 }
 
 .lake-sidebar-title {
@@ -158,7 +150,7 @@
 
 .lake-sidebar-item-copy small {
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .lake-status-dot,
@@ -201,13 +193,13 @@
   justify-content: space-between;
   gap: 12px;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .lake-sidebar-summary-row strong {
   overflow: hidden;
   color: var(--st-color-text-secondary);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -231,7 +223,7 @@
   gap: 10px;
   padding: 9px 10px;
   color: var(--st-color-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   background: transparent;
   border: 0;
@@ -252,7 +244,7 @@
   margin-top: auto;
   padding: 18px 12px 0;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .lake-sidebar-foot strong {
@@ -262,8 +254,9 @@
 
 .lake-warehouse-content {
   min-width: 0;
+  min-height: 0;
   padding: 28px;
-  overflow: visible;
+  overflow: auto;
 }
 
 .lake-cluster-hero {
@@ -318,7 +311,7 @@
   gap: 7px;
   margin: 0;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
   border-radius: 999px;
 }
@@ -352,7 +345,7 @@
 .lake-cluster-subtitle {
   margin-top: 3px;
   color: var(--st-color-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .lake-cluster-endpoints {
@@ -370,7 +363,7 @@
   padding: 7px 11px;
   overflow: hidden;
   color: var(--st-color-text-secondary);
-  font-size: 12px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
   background: var(--st-color-bg-control);
@@ -384,7 +377,7 @@
   gap: 7px;
   margin-top: 13px;
   color: var(--st-color-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .lake-cluster-description--error .anticon {
@@ -439,7 +432,7 @@
 .lake-cluster-notice p {
   margin: 2px 0 0;
   color: var(--st-color-text-secondary);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 19px;
 }
 
@@ -468,7 +461,7 @@
 .lake-node-panel-heading p {
   margin: 4px 0 0;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
 }
 
@@ -477,7 +470,7 @@
   align-items: center;
   gap: 5px;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -502,7 +495,7 @@
   justify-content: space-between;
   gap: 10px;
   color: var(--st-color-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .lake-cluster-metric-icon {
@@ -547,7 +540,7 @@
 .lake-cluster-metric-description {
   margin-top: 8px;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
 }
 
@@ -625,7 +618,7 @@
   align-items: start;
   gap: 12px;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
 }
 
@@ -646,7 +639,7 @@
   margin-top: 14px;
   padding: 20px;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   text-align: center;
   background: var(--st-color-bg-panel);
   border: 1px solid var(--st-color-border);
@@ -675,7 +668,7 @@
   gap: 7px;
   padding: 5px 9px;
   color: var(--st-color-text-secondary);
-  font-size: 12px;
+  font-size: 14px;
   background: var(--st-color-hover);
   border: 1px solid var(--st-color-divider);
   border-radius: 999px;
@@ -727,7 +720,7 @@
   flex: 0 0 auto;
   padding: 4px 8px;
   color: var(--st-color-accent);
-  font-size: 12px;
+  font-size: 14px;
   background: var(--st-color-hover);
   border-radius: 999px;
 }
@@ -740,7 +733,7 @@
   width: 100%;
   border-collapse: collapse;
   color: var(--st-color-text-secondary);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .lake-node-table th,
@@ -754,7 +747,7 @@
 
 .lake-node-table th {
   color: var(--st-color-text-muted);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
   background: var(--st-color-bg-control);
 }
@@ -777,7 +770,7 @@
   margin-top: 2px;
   overflow: hidden;
   color: var(--st-color-text-muted);
-  font-size: 10px;
+  font-size: 14px;
   text-overflow: ellipsis;
 }
 
@@ -811,7 +804,7 @@
 
 .lake-node-usage strong {
   color: var(--st-color-text-primary);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -835,7 +828,7 @@
   gap: 8px;
   padding: 20px;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   text-align: center;
 }
 
@@ -1056,7 +1049,7 @@
   max-width: 680px;
   margin: 0;
   color: var(--st-color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
 }
 
@@ -1117,7 +1110,7 @@
   gap: 8px;
   margin: 2px 0 18px;
   padding: 11px 13px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 18px;
   border-radius: 10px;
 }
@@ -1144,7 +1137,7 @@
 
 .lake-config-action-bar > .ant-typography {
   color: var(--st-color-text-muted) !important;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 @media (max-width: 620px) {

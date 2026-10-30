@@ -720,19 +720,13 @@ const LifecyclePage: React.FC = () => {
   return (
     <PageContainer
       className="lake-lifecycle-page-container"
-      title="数据生命周期管理"
-      subTitle="按历史分区数维护 ODS 表生命周期策略"
-      extra={[<Button key="refresh" icon={<ReloadOutlined />} onClick={reload}>刷新</Button>]}
+      title={false}
+      extra={[
+        <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => { setEditingPolicy(undefined); setEditorOpen(true); }}>新建策略</Button>,
+        <Button key="refresh" icon={<ReloadOutlined />} onClick={reload}>刷新</Button>,
+      ]}
     >
       <div className="lake-lifecycle-page">
-        <Card size="small" className="lake-page-intro">
-          <div className="lake-page-intro-icon"><SafetyCertificateOutlined aria-hidden /></div>
-          <div>
-            <Title level={5}>策略模板</Title>
-            <Paragraph type="secondary">策略是可复用模板，已应用表保留独立快照；所有远端校验都通过显式操作触发。</Paragraph>
-          </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingPolicy(undefined); setEditorOpen(true); }}>新建策略</Button>
-        </Card>
         {listError ? (
           <Alert
             className="lake-table-alert"

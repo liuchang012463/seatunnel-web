@@ -1,6 +1,5 @@
 import {
   CheckCircleOutlined,
-  DatabaseOutlined,
   ExclamationCircleOutlined,
   LinkOutlined,
   PlusOutlined,
@@ -44,7 +43,7 @@ import { useMasterDataNames } from '../useMasterDataNames';
 import { withTimeout } from '@/utils/withTimeout';
 import './index.less';
 
-const { Paragraph, Text, Title } = Typography;
+const { Paragraph, Text } = Typography;
 
 const RESOURCE_STATUS: Array<{ label: string; value: LakeResourceStatus }> = [
   { label: '创建中', value: 'CREATING' },
@@ -497,25 +496,17 @@ const PhysicalResourcesPage: React.FC = () => {
 
   return (
     <PageContainer
-      title="物理入湖管理"
-      subTitle="管理业务数据源对应的 Doris ODS 资源"
+      title={false}
       extra={[
+        <Button key="datasource" type="link" icon={<LinkOutlined />} onClick={() => history.push('/data-source')}>
+          查看数据源
+        </Button>,
         <Button key="refresh" icon={<ReloadOutlined />} onClick={reload}>
           刷新列表
         </Button>,
       ]}
     >
       <div className="lake-physical-page">
-        <Card className="lake-page-intro" size="small">
-          <div className="lake-page-intro-icon"><DatabaseOutlined /></div>
-          <div>
-            <Title level={5}>ODS 资源工作台</Title>
-            <Paragraph type="secondary">数据源列表只读加载；创建、重试和对账均由服务端控制面执行。</Paragraph>
-          </div>
-          <Button type="link" icon={<LinkOutlined />} onClick={() => history.push('/data-source')}>
-            查看数据源
-          </Button>
-        </Card>
         <div className="lake-physical-summary">
           <Card size="small" className="lake-physical-stat"><Statistic title="已绑定数据源" value={summary?.boundDataSourceCount ?? 0} /></Card>
           <Card size="small" className="lake-physical-stat"><Statistic title="ODS 表总数" value={summary?.odsTableCount ?? 0} /></Card>

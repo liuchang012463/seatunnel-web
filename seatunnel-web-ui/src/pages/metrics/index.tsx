@@ -347,63 +347,37 @@ const App: React.FC = () => {
             >
               <motion.div
                 variants={fadeUp}
-                className="mb-6 flex gap-4 lg:flex-row lg:items-center lg:justify-between"
+                className="mb-6 flex flex-wrap items-center justify-end gap-3"
               >
-                <div>
-                  <h1 className="flex items-center gap-2 text-2xl font-bold md:text-3xl">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-7 w-7"
-                      style={{ color: "var(--st-color-accent)" }}
-                    >
-                      <path d="M3 3v16a2 2 0 0 0 2 2h16" />
-                      <path d="M18 17V9" />
-                      <path d="M13 17V5" />
-                      <path d="M8 17v-3" />
-                    </svg>
-                    任务概览
-                  </h1>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <Select
-                    value={taskType}
-                    onChange={(value) => setTaskType(value as TaskType)}
-                    aria-label="任务类型"
-                    style={{ width: 180 }}
-                    options={taskTypeOptions}
-                  />
-                  <Select
-                    value={timeRange}
-                    onChange={(value) => setTimeRange(value)}
-                    aria-label="统计时间范围"
-                    style={{ width: 140 }}
-                    options={[
-                      { label: "近 1 小时", value: "H1" },
-                      { label: "近 6 小时", value: "H6" },
-                      { label: "近 12 小时", value: "H12" },
-                      { label: "近 24 小时", value: "H24" },
-                      { label: "近 7 天", value: "D7" },
-                      { label: "近 30 天", value: "D30" },
-                    ]}
-                  />
-                  <Button
-                    icon={<ReloadOutlined />}
-                    loading={loading}
-                    onClick={() => void refreshData()}
-                    aria-label="刷新任务概览"
-                  >
-                    刷新
-                  </Button>
-                </div>
+                <Select
+                  value={taskType}
+                  onChange={(value) => setTaskType(value as TaskType)}
+                  aria-label="任务类型"
+                  style={{ width: 180 }}
+                  options={taskTypeOptions}
+                />
+                <Select
+                  value={timeRange}
+                  onChange={(value) => setTimeRange(value)}
+                  aria-label="统计时间范围"
+                  style={{ width: 140 }}
+                  options={[
+                    { label: "近 1 小时", value: "H1" },
+                    { label: "近 6 小时", value: "H6" },
+                    { label: "近 12 小时", value: "H12" },
+                    { label: "近 24 小时", value: "H24" },
+                    { label: "近 7 天", value: "D7" },
+                    { label: "近 30 天", value: "D30" },
+                  ]}
+                />
+                <Button
+                  icon={<ReloadOutlined />}
+                  loading={loading}
+                  onClick={() => void refreshData()}
+                  aria-label="刷新任务概览"
+                >
+                  刷新
+                </Button>
               </motion.div>
 
               <Spin spinning={loading}>

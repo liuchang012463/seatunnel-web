@@ -114,15 +114,6 @@ const GROUP_LABELS: Record<SelectedGroupKey, string> = {
   FILE_TRANSFER: '文件与对象存储',
 };
 
-const GROUP_DESCRIPTIONS: Record<SelectedGroupKey, string> = {
-  ALL: '查看当前范围内的全部数据源探查结果',
-  DATABASE: '关系型与 OLAP 数据库的元数据探查结果',
-  SEARCH_ENGINE: 'Elasticsearch 索引与文档元数据',
-  MESSAGE_QUEUE: 'Kafka 主题与消息元数据',
-  API: 'HTTP 接口与 OpenAPI 目录',
-  FILE_TRANSFER: 'FTP、SFTP、S3 与 MinIO 文件对象',
-};
-
 function readInitialRouteState(): InitialRouteState {
   if (typeof window === 'undefined') return {};
   const params = new URLSearchParams(window.location.search);
@@ -434,11 +425,6 @@ const DataExplorationResultsPage: React.FC = () => {
   return (
     <div className="data-exploration-page data-exploration-results">
       <header className="results-toolbar">
-        <div className="results-toolbar__heading">
-          <span className="results-kicker">数据探查 / EXPLORER</span>
-          <h1>探查结果</h1>
-          <p>按数据源类型浏览元数据探查结果，进入数据源查看结构、样本与画像。</p>
-        </div>
         <div className="results-toolbar__actions">
           <div className="results-scope-selects" aria-label="探查范围筛选">
             <label>
@@ -485,7 +471,6 @@ const DataExplorationResultsPage: React.FC = () => {
         <aside className="results-catalog" aria-label="探查类型导航">
           <div className="results-column-heading results-catalog__heading">
             <div>
-              <span className="results-column-kicker">探查类型</span>
               <h2>探查导航</h2>
             </div>
             <span className="results-column-count">{scopedSources.length} 个数据源</span>
@@ -499,7 +484,6 @@ const DataExplorationResultsPage: React.FC = () => {
             <span className="results-all-entry__icon"><ApartmentOutlined /></span>
             <span className="results-all-entry__copy">
               <strong>全部类型</strong>
-              <small>查看当前范围的全部结果</small>
             </span>
             <b>{scopedSources.length}</b>
           </button>
@@ -516,25 +500,17 @@ const DataExplorationResultsPage: React.FC = () => {
                 <span className="results-type-entry__icon">{group.icon}</span>
                 <span className="results-type-entry__copy">
                   <strong>{group.label}</strong>
-                  <small>{group.description}</small>
                 </span>
                 <b>{groupCounts[group.key]}</b>
               </button>
             ))}
           </nav>
-
-          <div className="results-catalog__footer">
-            <span className="results-catalog__footer-icon"><DatabaseOutlined /></span>
-            <span>类型导航固定展示，单位和业务系统在右上角筛选。</span>
-          </div>
         </aside>
 
         <main className="results-browser" aria-label="探查结果列表">
           <div className="results-browser__header">
             <div className="results-browser__heading-copy">
-              <span className="results-column-kicker">元数据结果</span>
               <h2>{GROUP_LABELS[selectedGroup]}</h2>
-              <p>{GROUP_DESCRIPTIONS[selectedGroup]}</p>
             </div>
             <div className="results-browser__tools">
               <Input
@@ -605,14 +581,12 @@ const DataExplorationResultsPage: React.FC = () => {
 
           <div className="results-browser__footer">
             <span><DatabaseOutlined /> 共 {scopedSources.length} 个数据源</span>
-            <span>点击数据源进入结构、样本与画像探查</span>
           </div>
         </main>
 
         <aside className="results-inspector" aria-label="当前结果摘要">
           <div className="results-column-heading">
             <div>
-              <span className="results-column-kicker">检查器</span>
               <h2>当前结果摘要</h2>
             </div>
           </div>
@@ -628,7 +602,6 @@ const DataExplorationResultsPage: React.FC = () => {
                   {selectedSourceType ? sourceTypeLabel(selectedSourceType) : GROUP_LABELS[selectedGroup]}
                 </span>
                 <h3 title={selectedSource?.name || undefined}>{selectedSource?.name || '全部探查结果'}</h3>
-                <p>{selectedSourceType || GROUP_DESCRIPTIONS[selectedGroup]}</p>
               </div>
             </div>
 

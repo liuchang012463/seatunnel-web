@@ -17,16 +17,18 @@ const SideNav: React.FC<Props> = ({
     <div
       style={{
         borderRight: `1px solid ${BORDER_COLOR}`,
-        background: "#fcfcfd",
-        padding: 20,
+        background: "var(--st-color-bg-control)",
+        padding: 16,
         boxSizing: "border-box",
+        minHeight: 0,
+        overflow: "auto",
       }}
     >
       <div
         style={{
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 600,
-          color: "#344054",
+          color: "var(--st-color-text-primary)",
           marginBottom: 14,
         }}
       >
@@ -45,11 +47,13 @@ const SideNav: React.FC<Props> = ({
                 onResetSelection();
               }}
               style={{
-                borderRadius: 16,
-                padding: "14px 14px",
+                borderRadius: 8,
+                padding: "12px 14px",
                 cursor: "pointer",
-                border: active ? "1px solid #c7d2fe" : "1px solid #eaecf0",
-                background: active ? BLUE_LIGHT : "#fff",
+                border: active
+                  ? "1px solid var(--st-color-accent)"
+                  : `1px solid ${BORDER_COLOR}`,
+                background: active ? BLUE_LIGHT : "var(--st-color-bg-panel)",
                 transition: "all 0.2s ease",
               }}
             >
@@ -58,19 +62,20 @@ const SideNav: React.FC<Props> = ({
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
-                  marginBottom: 6,
                 }}
               >
                 <span
                   style={{
                     width: 28,
                     height: 28,
-                    borderRadius: 10,
+                    borderRadius: 8,
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: active ? "#dfe6ff" : "#f2f4f7",
-                    color: active ? BLUE : "#667085",
+                    background: active
+                      ? "var(--st-color-selected)"
+                      : "var(--st-color-bg-elevated)",
+                    color: active ? BLUE : "var(--st-color-text-secondary)",
                     fontSize: 14,
                   }}
                 >
@@ -81,22 +86,13 @@ const SideNav: React.FC<Props> = ({
                   style={{
                     fontSize: 14,
                     fontWeight: 600,
-                    color: active ? BLUE : "#101828",
+                    color: active
+                      ? "var(--st-color-accent)"
+                      : "var(--st-color-text-primary)",
                   }}
                 >
                   {item.label}
                 </span>
-              </div>
-
-              <div
-                style={{
-                  fontSize: 12,
-                  color: active ? "#5b6b8a" : "#98a2b3",
-                  lineHeight: 1.7,
-                  paddingLeft: 38,
-                }}
-              >
-                {item.desc}
               </div>
             </div>
           );

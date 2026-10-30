@@ -1,4 +1,4 @@
-import {
+﻿import {
   ApiOutlined,
   CheckCircleOutlined,
   CloudServerOutlined,
@@ -9,7 +9,7 @@ import {
   SettingOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { Button, Spin, Tag, Typography, message } from 'antd';
+import { Button, Spin, Tag, message } from 'antd';
 import { history } from '@umijs/max';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -18,8 +18,6 @@ import {
   type OpenMetadataServerConfig,
 } from '@/services/metadata/server';
 import './index.less';
-
-const { Paragraph } = Typography;
 
 type StatusTone = 'success' | 'error' | 'muted';
 
@@ -124,21 +122,8 @@ const MetadataEngineOverviewPage: React.FC = () => {
 
   return (
     <div className="meta-engine-overview">
-      <header className="meta-engine-header">
-        <div className="meta-engine-heading">
-          <div className="meta-engine-icon"><ApiOutlined /></div>
-          <div>
-            <h1>探查引擎管理</h1>
-            <Paragraph>
-              配置 OpenMetadata 控制面连接。参数保存在系统数据库；配置完成后探查能力自动可用。
-            </Paragraph>
-          </div>
-        </div>
-      </header>
-
       <section className="meta-engine-shell">
         <aside className="meta-engine-sidebar">
-          <div className="meta-engine-sidebar-eyebrow">EXPLORATION</div>
           <div className="meta-engine-sidebar-title">探查引擎</div>
 
           <button type="button" className="meta-engine-sidebar-item meta-engine-sidebar-item--active">
@@ -202,7 +187,6 @@ const MetadataEngineOverviewPage: React.FC = () => {
                       {clusterStatus.label}
                     </Tag>
                   </div>
-                  <div className="meta-engine-subtitle">Exploration Control Plane</div>
                   <div className="meta-engine-endpoints">
                     <span><i /> {hostFromBaseUrl(config?.baseUrl)}</span>
                     <span><i /> Token {config?.tokenConfigured ? '已配置' : '未配置'}</span>

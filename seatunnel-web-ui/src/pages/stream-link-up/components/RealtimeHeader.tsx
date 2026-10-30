@@ -1,4 +1,4 @@
-import { PlusOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { PlusOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import React from "react";
 import TaskListPageHeader from "@/components/TaskListPageHeader";
@@ -18,8 +18,6 @@ const RealtimeHeader: React.FC<RealtimeHeaderProps> = ({
 }) => {
   return (
     <TaskListPageHeader
-      icon={<ThunderboltOutlined />}
-      title="实时数据引接"
       actions={
         <Button
           type="primary"

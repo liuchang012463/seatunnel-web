@@ -1,4 +1,4 @@
-import { FileSyncOutlined, PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
 import { Button, message } from 'antd';
 import TaskListPageHeader from '@/components/TaskListPageHeader';
@@ -43,14 +43,12 @@ const FileLinkUpPage: React.FC = () => {
   return (
     <div className="task-list-page-shell">
       <TaskListPageHeader
-        icon={<FileSyncOutlined />}
-        title="文件引接任务管理"
         actions={
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={createFileTask}
-            className="h-10 rounded-full px-5"
+            className="task-list-page-header__create-button"
           >
             新建文件引接任务
           </Button>

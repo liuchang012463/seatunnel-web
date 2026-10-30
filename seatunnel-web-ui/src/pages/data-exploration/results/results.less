@@ -1,14 +1,17 @@
-/* The result surface follows the dark Aircas shell and the compact hierarchy
+﻿/* The result surface follows the dark Aircas shell and the compact hierarchy
    of OpenMetadata: one fixed type rail, one readable result list, and one
    contextual summary column. */
 .data-exploration-results {
-  min-height: 100%;
-  padding: 15px 24px 24px;
-  color: var(--st-color-text-secondary);
-  background: var(--st-color-bg-page);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 15px 24px 16px;
+  color: var(--st-color-text-secondary, #DCEAF1);
+  background: var(--st-color-bg-page, #03182a);
 
   /* Detail mode: the embedded exploration workspace fills the layout content
-     area (100vh minus the 56px top header) without leaving blank space. */
+     area without leaving blank space. */
   &--detail {
     display: flex;
     height: 100%;
@@ -19,36 +22,17 @@
 
   .results-toolbar {
     display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
+    align-items: center;
+    justify-content: flex-end;
     gap: 18px 28px;
+    flex-shrink: 0;
     padding: 0 0 12px;
-    border-bottom: 1px solid var(--st-color-divider);
-
-    &__heading {
-      min-width: 0;
-
-      h1 {
-        margin: 2px 0 2px;
-        color: var(--st-color-text-primary) !important;
-        font-size: 23px !important;
-        font-weight: 500 !important;
-        letter-spacing: -0.02em;
-        line-height: 29px !important;
-      }
-
-      p {
-        max-width: 660px;
-        margin: 0;
-        color: var(--st-color-text-muted);
-        font-size: 12px;
-        line-height: 18px;
-      }
-    }
+    border-bottom: 1px solid var(--st-color-border, rgba(77, 210, 255, 0.28));
 
     &__actions {
       display: flex;
       min-width: 0;
+      width: 100%;
       align-items: flex-end;
       justify-content: flex-end;
       gap: 12px;
@@ -68,9 +52,9 @@
       gap: 4px;
 
       > span {
-        color: var(--st-color-text-muted);
-        font-size: 10px;
-        line-height: 15px;
+        color: var(--st-color-text-muted, #B7CBD3);
+        font-size: 14px;
+        line-height: 20px;
       }
     }
 
@@ -81,9 +65,9 @@
     .ant-select-selector {
       min-height: 34px !important;
       padding: 0 10px !important;
-      color: var(--st-color-text-primary) !important;
+      color: var(--st-color-text-primary, #F7FBFF) !important;
       background: var(--st-color-bg-control) !important;
-      border-color: var(--st-color-divider) !important;
+      border-color: var(--st-color-border, rgba(77, 210, 255, 0.28)) !important;
       border-radius: 6px !important;
       box-shadow: none !important;
     }
@@ -91,8 +75,8 @@
     .ant-select-selection-placeholder,
     .ant-select-selection-item,
     .ant-select-arrow {
-      color: var(--st-color-text-secondary) !important;
-      font-size: 12px;
+      color: var(--st-color-text-secondary, #DCEAF1) !important;
+      font-size: 14px;
     }
 
     .ant-select-focused .ant-select-selector,
@@ -110,15 +94,15 @@
     .ant-btn {
       height: 34px;
       padding-inline: 11px;
-      color: var(--st-color-text-secondary);
+      color: var(--st-color-text-secondary, #DCEAF1);
       background: var(--st-color-bg-control);
-      border-color: var(--st-color-divider);
+      border-color: var(--st-color-border, rgba(77, 210, 255, 0.28));
       border-radius: 6px !important;
-      font-size: 12px;
+      font-size: 14px;
     }
 
     .ant-btn:hover {
-      color: var(--st-color-text-primary) !important;
+      color: var(--st-color-text-primary, #F7FBFF) !important;
       border-color: var(--st-color-accent) !important;
     }
 
@@ -135,27 +119,15 @@
     }
   }
 
-  .results-kicker,
-  .results-column-kicker {
-    display: inline-flex;
-    align-items: center;
-    color: var(--st-color-accent);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    line-height: 16px;
-    text-transform: uppercase;
-  }
-
   .results-workspace {
     display: grid;
     grid-template-columns: 300px minmax(0, 1fr) 286px;
-    height: calc(100vh - 154px);
-    min-height: 560px;
+    flex: 1;
+    min-height: 0;
     margin-top: 11px;
     overflow: hidden;
     background: var(--st-color-bg-panel);
-    border: 1px solid var(--st-color-divider);
+    border: 1px solid var(--st-color-border, rgba(77, 210, 255, 0.28));
     border-radius: 9px;
   }
 
@@ -169,16 +141,16 @@
   .results-column-heading {
     display: flex;
     min-width: 0;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 10px;
     padding: 15px 16px 12px;
-    border-bottom: 1px solid var(--st-color-divider);
+    border-bottom: 1px solid var(--st-color-border, rgba(77, 210, 255, 0.28));
 
     h2 {
       max-width: 100%;
-      margin: 2px 0 0;
-      color: var(--st-color-text-primary) !important;
+      margin: 0;
+      color: var(--st-color-text-primary, #F7FBFF) !important;
       font-size: 14px !important;
       font-weight: 600 !important;
       line-height: 20px !important;
@@ -187,10 +159,9 @@
 
   .results-column-count {
     flex-shrink: 0;
-    padding-top: 4px;
-    color: var(--st-color-text-muted);
-    font-size: 10px;
-    line-height: 16px;
+    color: var(--st-color-text-muted, #B7CBD3);
+    font-size: 14px;
+    line-height: 20px;
     white-space: nowrap;
   }
 
@@ -225,7 +196,7 @@
       margin-top: auto;
       padding: 12px 4px 0;
       color: var(--st-color-text-muted);
-      font-size: 10px;
+      font-size: 14px;
       line-height: 16px;
       border-top: 1px solid var(--st-color-divider);
     }
@@ -233,7 +204,7 @@
     &__footer-icon {
       flex: 0 0 auto;
       color: var(--st-color-accent);
-      font-size: 13px;
+      font-size: 14px;
     }
   }
 
@@ -290,14 +261,14 @@
 
     &__copy strong {
       color: var(--st-color-text-primary);
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
       line-height: 18px;
     }
 
     &__copy small {
       color: var(--st-color-text-muted);
-      font-size: 10px;
+      font-size: 14px;
       line-height: 15px;
       overflow-wrap: anywhere;
     }
@@ -306,7 +277,7 @@
       align-self: start;
       padding-top: 3px;
       color: var(--st-color-text-muted);
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 500;
     }
   }
@@ -353,14 +324,14 @@
 
     &__copy strong {
       color: var(--st-color-text-primary);
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
       line-height: 18px;
     }
 
     &__copy small {
       color: var(--st-color-text-muted);
-      font-size: 10px;
+      font-size: 14px;
       line-height: 15px;
       overflow-wrap: anywhere;
     }
@@ -369,7 +340,7 @@
       align-self: start;
       padding-top: 3px;
       color: var(--st-color-text-muted);
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 500;
     }
   }
@@ -403,7 +374,7 @@
       p {
         margin: 0;
         color: var(--st-color-text-muted);
-        font-size: 11px;
+        font-size: 14px;
         line-height: 17px;
         overflow-wrap: anywhere;
       }
@@ -430,7 +401,7 @@
       .ant-input-prefix,
       .ant-input-clear-icon {
         color: var(--st-color-text-secondary) !important;
-        font-size: 12px;
+        font-size: 14px;
       }
 
       .ant-input-affix-wrapper:focus-within,
@@ -442,7 +413,7 @@
     &__count {
       flex-shrink: 0;
       color: var(--st-color-text-muted);
-      font-size: 10px;
+      font-size: 14px;
       line-height: 17px;
       white-space: nowrap;
     }
@@ -455,7 +426,7 @@
       flex-wrap: wrap;
       padding: 10px 18px 2px;
       color: var(--st-color-text-muted);
-      font-size: 10px;
+      font-size: 14px;
       line-height: 17px;
 
       > span {
@@ -474,7 +445,7 @@
       .ant-tag {
         margin: 0;
         padding: 1px 7px;
-        font-size: 10px;
+        font-size: 14px;
         line-height: 16px;
       }
     }
@@ -499,7 +470,7 @@
       flex-wrap: wrap;
       padding: 9px 18px;
       color: var(--st-color-text-muted);
-      font-size: 10px;
+      font-size: 14px;
       line-height: 16px;
       border-top: 1px solid var(--st-color-divider);
 
@@ -580,7 +551,7 @@
       min-width: 0;
       flex: 1;
       color: var(--st-color-text-primary);
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
       line-height: 19px;
       overflow-wrap: anywhere;
@@ -595,7 +566,7 @@
       background: transparent;
       border-color: var(--st-color-divider);
       border-radius: 999px;
-      font-size: 10px;
+      font-size: 14px;
       line-height: 16px;
     }
 
@@ -610,7 +581,7 @@
       gap: 5px;
       flex-wrap: wrap;
       color: var(--st-color-text-muted);
-      font-size: 11px;
+      font-size: 14px;
       line-height: 17px;
 
       span {
@@ -655,7 +626,7 @@
     gap: 8px;
     height: 120px;
     color: var(--st-color-text-muted);
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .results-inspector {
@@ -702,7 +673,7 @@
       display: block;
       margin-bottom: 2px;
       color: var(--st-color-accent);
-      font-size: 10px;
+      font-size: 14px;
       line-height: 16px;
     }
 
@@ -719,7 +690,7 @@
     &__hero p {
       margin: 4px 0 0;
       color: var(--st-color-text-muted);
-      font-size: 10px;
+      font-size: 14px;
       line-height: 16px;
       overflow-wrap: anywhere;
       word-break: break-word;
@@ -733,7 +704,7 @@
     &__section-title {
       margin-bottom: 11px;
       color: var(--st-color-text-primary);
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
       line-height: 18px;
     }
@@ -751,14 +722,14 @@
         justify-content: space-between;
         gap: 10px;
         color: var(--st-color-text-muted);
-        font-size: 11px;
+        font-size: 14px;
         line-height: 17px;
       }
 
       b {
         min-width: 0;
         color: var(--st-color-text-secondary);
-        font-size: 11px;
+        font-size: 14px;
         font-weight: 500;
         text-align: right;
         overflow-wrap: anywhere;
@@ -791,7 +762,7 @@
 
       small {
         color: var(--st-color-text-muted);
-        font-size: 10px;
+        font-size: 14px;
         line-height: 15px;
       }
 
@@ -817,7 +788,7 @@
         gap: 12px;
         padding: 4px 0;
         color: var(--st-color-text-muted);
-        font-size: 11px;
+        font-size: 14px;
         line-height: 18px;
         text-align: left;
         background: transparent;
@@ -837,7 +808,7 @@
 
     &__source-tag {
       margin: 13px 0 0;
-      font-size: 10px;
+      font-size: 14px;
     }
   }
 
@@ -847,7 +818,7 @@
 
     .ant-empty-description {
       color: var(--st-color-text-muted);
-      font-size: 11px;
+      font-size: 14px;
     }
   }
 
@@ -885,7 +856,7 @@
 
     .results-workspace {
       grid-template-columns: 276px minmax(0, 1fr) 258px;
-      height: calc(100vh - 218px);
+      flex: 1; min-height: 0;
     }
   }
 

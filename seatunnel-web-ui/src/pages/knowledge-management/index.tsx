@@ -2,13 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { Form, message, Modal } from "antd";
 
-import PageHeader from "./components/PageHeader";
 import SideNav from "./components/SideNav";
 import ContentHeader from "./components/ContentHeader";
 import ParamTable from "./components/ParamTable";
 import ParamModal from "./components/ParamModal";
 
 import { CARD_BG, BORDER_COLOR, PAGE_BG } from "./constants/ui";
+import "./index.less";
 
 import {
   ConnectorParamItem,
@@ -374,80 +374,50 @@ const Index: React.FC = () => {
         };
 
   return (
-    <div
-      style={{
-        height: "calc(100vh - 48px)",
-        background: PAGE_BG,
-      }}
-    >
+    <div className="knowledge-page" style={{ background: PAGE_BG }}>
       <div
+        className="knowledge-page__shell"
         style={{
-          maxWidth: "100%",
-          padding: "24px 24px 20px",
-          boxSizing: "border-box",
+          background: CARD_BG,
+          border: `1px solid ${BORDER_COLOR}`,
         }}
       >
-        <PageHeader />
-
-        <div
-          style={{
-            background: CARD_BG,
-            border: `1px solid ${BORDER_COLOR}`,
-            borderRadius: 24,
-            overflow: "hidden",
+        <SideNav
+          activeMenu={activeMenu}
+          onChange={(key) => {
+            setActiveMenu(key);
+            setKeyword("");
+            setConnectorPageNum(1);
+            setTimePageNum(1);
           }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "280px 1fr",
-              minHeight: "calc(100vh - 170px)",
-            }}
-          >
-            <SideNav
-              activeMenu={activeMenu}
-              onChange={(key) => {
-                setActiveMenu(key);
-                setKeyword("");
+          onResetSelection={handleResetSelection}
+        />
+
+        <div className="knowledge-page__content">
+          <ContentHeader
+            activeMenu={activeMenu}
+            count={activeMenu === "connector" ? connectorTotal : timeTotal}
+            keyword={keyword}
+            onKeywordChange={(value) => {
+              setKeyword(value);
+
+              if (activeMenu === "connector") {
                 setConnectorPageNum(1);
+              } else {
                 setTimePageNum(1);
-              }}
-              onResetSelection={handleResetSelection}
-            />
+              }
+            }}
+            onAdd={openAddModal}
+          />
 
-            <div
-              style={{
-                padding: 24,
-                boxSizing: "border-box",
-                minWidth: 0,
-              }}
-            >
-              <ContentHeader
-                activeMenu={activeMenu}
-                count={activeMenu === "connector" ? connectorTotal : timeTotal}
-                keyword={keyword}
-                onKeywordChange={(value) => {
-                  setKeyword(value);
-
-                  if (activeMenu === "connector") {
-                    setConnectorPageNum(1);
-                  } else {
-                    setTimePageNum(1);
-                  }
-                }}
-                onAdd={openAddModal}
-              />
-
-              <ParamTable
-                activeMenu={activeMenu}
-                dataSource={currentList}
-                loading={activeMenu === "connector" ? connectorLoading : timeLoading}
-                pagination={tablePagination}
-                onEdit={openEditModal}
-                onDelete={handleDelete}
-              />
-            </div>
-          </div>
+          <ParamTable
+            activeMenu={activeMenu}
+            dataSource={currentList}
+            loading={activeMenu === "connector" ? connectorLoading : timeLoading}
+            pagination={tablePagination}
+            onEdit={openEditModal}
+            onDelete={handleDelete}
+          />
         </div>
       </div>
 

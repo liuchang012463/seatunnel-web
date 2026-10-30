@@ -1,4 +1,4 @@
-import {
+﻿import {
   CheckCircleOutlined,
   CloudServerOutlined,
   DashboardOutlined,
@@ -12,15 +12,13 @@ import {
   TeamOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { Button, Spin, Tag, Typography, message } from 'antd';
+import { Button, Spin, Tag, message } from 'antd';
 import { history } from '@umijs/max';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import { fetchLakeDorisHardware, fetchLakeDorisStatus, fetchLakeWarehouse } from '@/services/lake';
 import type { LakeDorisHardware, LakeDorisNode, LakeDorisStatus, LakeWarehouseConfig } from '@/services/lake';
 import './index.less';
-
-const { Paragraph } = Typography;
 
 type StatusTone = 'success' | 'error' | 'muted';
 
@@ -274,19 +272,8 @@ const WarehousePage: React.FC = () => {
 
   return (
     <div className="lake-warehouse-overview">
-      <header className="lake-overview-header">
-        <div className="lake-overview-heading">
-          <div className="lake-overview-icon"><CloudServerOutlined /></div>
-          <div>
-            <h1>数据湖管理</h1>
-            <Paragraph>统一管理 Doris 数据湖连接与集群运行指标，持续掌握 FE/BE 健康状态。</Paragraph>
-          </div>
-        </div>
-      </header>
-
       <section className="lake-warehouse-shell">
         <aside className="lake-warehouse-sidebar">
-          <div className="lake-sidebar-eyebrow">DATA LAKE</div>
           <div className="lake-sidebar-title">数据湖列表</div>
 
           <button type="button" className="lake-sidebar-item lake-sidebar-item--active">
@@ -334,7 +321,6 @@ const WarehousePage: React.FC = () => {
                     {clusterStatus.label}
                   </Tag>
                 </div>
-                <div className="lake-cluster-subtitle">Doris ODS Cluster</div>
                 <div className="lake-cluster-endpoints">
                   <span><i /> FE HTTP {feEndpoint}</span>
                   <span><i /> MySQL {mysqlEndpoint}</span>

@@ -1,7 +1,6 @@
 import { useIntl } from '@umijs/max';
 import { motion } from 'framer-motion';
 import React, { useMemo, useState } from 'react';
-import AlarmPageHeader from './components/AlarmPageHeader';
 import ChannelTab from './components/ChannelTab';
 import RecordTab from './components/RecordTab';
 import RuleTab from './components/RuleTab';
@@ -75,16 +74,13 @@ const AlarmPage: React.FC = () => {
   };
 
   return (
-      <div className="alarm-page w-full pb-12">
+      <div className="alarm-page w-full">
         <motion.div
+          className="flex h-full min-h-0 flex-col"
           initial="hidden"
           animate="visible"
           variants={PAGE_ANIMATION.sectionStagger}
         >
-          <motion.div variants={PAGE_ANIMATION.fadeUp}>
-            <AlarmPageHeader />
-          </motion.div>
-
           <motion.div variants={PAGE_ANIMATION.fadeUp}>
             <div className="alarm-page__sticky">
               <ScrollableFilter
@@ -94,7 +90,7 @@ const AlarmPage: React.FC = () => {
               />
             </div>
 
-            <div className="mt-6 min-h-[420px]">
+            <div className="alarm-page__content mt-4">
               {visited.channels && (
                 <div
                   className={

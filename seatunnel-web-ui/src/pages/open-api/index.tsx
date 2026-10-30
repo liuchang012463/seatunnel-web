@@ -1,6 +1,4 @@
 import {
-  ApiOutlined,
-  ArrowLeftOutlined,
   LinkOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
@@ -24,7 +22,7 @@ const methodColorMap: Record<HttpMethod, string> = {
 const OPEN_API_URL = "/v3/api-docs";
 
 const ApiManagementPage: React.FC = () => {
-  const { loading, error, title, description, version, controllers, apis, reload } =
+  const { loading, error, controllers, apis, reload } =
     useOpenApiData(OPEN_API_URL);
 
   const [activeController, setActiveController] = useState<string>("all");
@@ -73,97 +71,43 @@ const ApiManagementPage: React.FC = () => {
   }, [activeController, method, keyword]);
 
   return (
-    <div className="open-api-page min-h-screen">
-      <div className="open-api-header border-b">
-        <div className="mx-auto flex max-w-[1540px] items-center justify-between gap-4 px-6 py-5">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EFF8FF] text-[20px] text-[#1570EF]">
-              <ApiOutlined aria-hidden />
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-3">
-                <div className="text-[22px] font-semibold leading-8 text-[#101828]">
-                  {title || "接口管理"}
-                </div>
-                {version ? (
-                  <div className="rounded-full bg-[#EFF8FF] px-2.5 py-1 text-[12px] font-medium text-[#1570EF]">
-                    {version}
-                  </div>
-                ) : null}
-              </div>
-              <div className=" text-[14px] leading-6 text-[#667085]">
-                {description || "统一查看 Controller 与接口定义"}
-              </div>
-            </div>
-          </div>
-
-          <Button
-            type="text"
-            icon={<ArrowLeftOutlined />}
-            onClick={() => {
-              history.push("/data-source");
-            }}
-            className="!h-10 !rounded-full !border !border-[#D0D5DD] !bg-white !px-4 !text-[#344054] shadow-sm hover:!border-[#B2DDFF] hover:!text-[#1570EF]"
-          >
-            返回
-          </Button>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-[1540px] px-6 py-6">
+    <div className="open-api-page">
+      <div className="open-api-body">
         {error ? (
           <Alert
             type="error"
             showIcon
-            className="mb-6 rounded-2xl"
+            className="mb-4"
             message="获取 OpenAPI 文档失败"
             description={error}
             action={<Button type="link" onClick={reload}>重试</Button>}
           />
         ) : null}
 
-        <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-6">
-          <div
-            className="open-api-panel rounded-[8px] border p-5"
-            style={{ position: "sticky", top: 16, alignSelf: "start" }}
-          >
-            <div className="mb-4 flex items-center justify-between" style={{borderBottom : "1px solid var(--st-color-divider)"}}>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: "var(--st-color-accent)" }}
-                  />
-                  <div className="text-[16px] font-semibold tracking-[-0.01em] text-[var(--st-color-text-primary)]">
-                    Controller 列表
-                  </div>
-                </div>
-                <div className="mt-1 pl-4 text-[13px] text-[var(--st-color-text-muted)]" style={{marginBottom: 4}}>
-                  共 {Math.max(controllers.length - 1, 0)} 个控制器
-                </div>
+        <div className="open-api-workspace">
+          <aside className="open-api-panel open-api-controllers">
+            <div className="open-api-panel__heading">
+              <div className="text-[16px] font-semibold text-[var(--st-color-text-primary)]">
+                Controller 列表
+              </div>
+              <div className="text-[14px] text-[var(--st-color-text-muted)]">
+                共 {Math.max(controllers.length - 1, 0)} 个控制器
               </div>
             </div>
 
             {loading ? (
-              <div className="space-y-3">
+              <div className="space-y-3 p-4">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <Skeleton.Button
                     key={index}
                     active
                     block
-                    className="!h-[78px] !rounded-[20px]"
+                    className="!h-[78px] !rounded-[8px]"
                   />
                 ))}
               </div>
             ) : (
-              <div
-                className="space-y-2.5 controller-scroll"
-                style={{
-                  height: "calc(100vh - 265px)",
-                  overflowY: "auto",
-                }}
-              >
+              <div className="open-api-controllers__scroll space-y-2.5">
                 {controllers.map((item) => {
                   const active = item.key === activeController;
 
@@ -173,46 +117,37 @@ const ApiManagementPage: React.FC = () => {
                       key={item.key}
                       onClick={() => setActiveController(item.key)}
                       className={[
-                        "group relative cursor-pointer overflow-hidden rounded-[20px] border px-4 py-3.5 transition-all duration-200",
+                        "group relative w-full cursor-pointer overflow-hidden rounded-[8px] border px-4 py-3.5 transition-all duration-200",
                         active
                           ? "open-api-controller-item is-active"
                           : "open-api-controller-item",
                       ].join(" ")}
                     >
-                      {/* 左侧强调条 */}
-                      <div />
-
-                      <div className="flex items-start justify-between gap-3 pl-2">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={[
-                                "truncate text-[14px] font-semibold tracking-[-0.01em] transition-colors",
-                                active ? "text-[#1570EF]" : "text-[#101828]",
-                              ].join(" ")}
-                            >
-                              {item.name}
+                          <div
+                            className={[
+                              "truncate text-[14px] font-semibold transition-colors",
+                              active
+                                ? "text-[var(--st-color-accent)]"
+                                : "text-[var(--st-color-text-primary)]",
+                            ].join(" ")}
+                          >
+                            {item.name}
+                          </div>
+                          {item.desc ? (
+                            <div className="mt-1.5 line-clamp-2 text-[14px] leading-5 text-[var(--st-color-text-muted)]">
+                              {item.desc}
                             </div>
-
-                            {/* {active && (
-                              <span className="inline-flex h-5 items-center rounded-full border
-                               border-[#B2DDFF] bg-white px-2 text-[11px] font-medium text-[#1570EF]" style={{width: 30}}>
-                                当前
-                              </span>
-                            )} */}
-                          </div>
-
-                          <div className="mt-1.5 line-clamp-2 text-[12px] leading-5 text-[#667085]">
-                            {item.desc}
-                          </div>
+                          ) : null}
                         </div>
 
                         <div
                           className={[
-                            "mt-0.5 inline-flex h-7 min-w-[34px] items-center justify-center rounded-full px-2.5 text-[12px] font-semibold transition-all",
+                            "mt-0.5 inline-flex h-7 min-w-[34px] items-center justify-center rounded-full px-2.5 text-[14px] font-semibold",
                             active
-                              ? "border border-[#D1E9FF] bg-white text-[#1570EF]"
-                              : "bg-[#F2F4F7] text-[#475467] group-hover:bg-[#EAECF0]",
+                              ? "border border-[var(--st-color-border)] text-[var(--st-color-accent)]"
+                              : "bg-[var(--st-color-bg-control)] text-[var(--st-color-text-secondary)]",
                           ].join(" ")}
                         >
                           {item.count}
@@ -223,21 +158,18 @@ const ApiManagementPage: React.FC = () => {
                 })}
               </div>
             )}
-          </div>
+          </aside>
 
-          <div className="open-api-panel rounded-[24px] border p-5">
-            <div
-              className="flex flex-wrap items-center gap-3"
-              style={{ justifyContent: "space-between" }}
-            >
+          <section className="open-api-panel open-api-results">
+            <div className="open-api-results__toolbar flex flex-wrap items-center justify-between gap-3">
               <div className="w-full max-w-[420px]">
                 <Input
                   allowClear
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
                   placeholder="搜索接口名称、路径、描述"
-                  prefix={<SearchOutlined className="text-[#98A2B3]" />}
-                  className="!h-9 !rounded-[26px]"
+                  prefix={<SearchOutlined />}
+                  className="!h-9"
                 />
               </div>
 
@@ -258,7 +190,7 @@ const ApiManagementPage: React.FC = () => {
                 pagedApis.map((item) => (
                   <div
                     key={item.id}
-                    className="open-api-card group rounded-[20px] border p-4 transition-all"
+                    className="open-api-card group rounded-[8px] border p-4 transition-all"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
@@ -270,36 +202,36 @@ const ApiManagementPage: React.FC = () => {
                             {item.method}
                           </Tag>
 
-                          <div className="truncate text-[15px] font-semibold text-[#101828]">
+                          <div className="truncate text-[15px] font-semibold text-[var(--st-color-text-primary)]">
                             {item.name}
                           </div>
 
-                          <div className="rounded-full bg-[#EFF8FF] px-2.5 py-1 text-[12px] font-medium text-[#1570EF]">
+                          <div className="rounded-full bg-[var(--st-color-bg-control)] px-2.5 py-1 text-[14px] font-medium text-[var(--st-color-accent)]">
                             {controllers.find((c) => c.key === item.controller)
                               ?.name || item.controller}
                           </div>
                         </div>
 
-                        <div className="mt-3 flex items-center gap-2 text-[13px] text-[#475467]">
-                          <LinkOutlined className="text-[#98A2B3]" />
-                          <code className="rounded-md bg-[#F8FAFC] px-2 py-1 text-[12px] text-[#344054]">
+                        <div className="mt-3 flex items-center gap-2 text-[14px] text-[var(--st-color-text-secondary)]">
+                          <LinkOutlined />
+                          <code className="rounded-md bg-[var(--st-color-bg-control)] px-2 py-1 text-[14px] text-[var(--st-color-text-secondary)]">
                             {item.path}
                           </code>
                         </div>
 
-                        <div className="mt-3 text-[13px] leading-6 text-[#667085]">
+                        <div className="mt-3 text-[14px] leading-6 text-[var(--st-color-text-muted)]">
                           {item.desc}
                         </div>
 
                         {item.operationId ? (
-                          <div className="mt-2 text-[12px] text-[#98A2B3]">
+                          <div className="mt-2 text-[14px] text-[var(--st-color-text-muted)]">
                             operationId: {item.operationId}
                           </div>
                         ) : null}
                       </div>
 
                       <div className="shrink-0">
-                        <Button className="!h-9 !rounded-full !border-[#D0D5DD] !px-4 hover:!border-[#B2DDFF] hover:!text-[#1570EF]">
+                        <Button>
                           查看详情
                         </Button>
                       </div>
@@ -307,11 +239,11 @@ const ApiManagementPage: React.FC = () => {
                   </div>
                 ))
               ) : (
-                <div className="open-api-empty flex h-[240px] flex-col items-center justify-center rounded-[20px] border border-dashed text-center">
-                  <div className="text-[16px] font-semibold text-[#101828]">
+                <div className="open-api-empty flex h-[240px] flex-col items-center justify-center rounded-[8px] border border-dashed text-center">
+                  <div className="text-[16px] font-semibold text-[var(--st-color-text-primary)]">
                     暂无匹配接口
                   </div>
-                  <div className="mt-2 text-[13px] text-[#667085]">
+                  <div className="mt-2 text-[14px] text-[var(--st-color-text-muted)]">
                     可以试试切换 Controller、请求方式，或者修改搜索关键字
                   </div>
                 </div>
@@ -334,7 +266,7 @@ const ApiManagementPage: React.FC = () => {
                 />
               </div>
             ) : null}
-          </div>
+          </section>
         </div>
       </div>
     </div>

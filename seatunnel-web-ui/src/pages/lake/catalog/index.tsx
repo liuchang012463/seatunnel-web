@@ -8,7 +8,7 @@ import {
   TableOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { Button, Empty, Input, Spin, Table, Tabs, Tree, Typography } from 'antd';
+import { Button, Empty, Input, Spin, Table, Tabs, Tree } from 'antd';
 import type { TreeDataNode } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { history } from '@umijs/max';
@@ -26,7 +26,6 @@ import {
 import type { LakeCatalog, LakeQueryColumnOption, LakeWarehouseConfig } from '@/services/lake';
 import './index.less';
 
-const { Paragraph, Title } = Typography;
 
 interface CatalogOption {
   value?: string | number;
@@ -826,15 +825,6 @@ const DataLakeCatalogPage: React.FC = () => {
   return (
     <div className="lake-catalog-page">
       <header className="lake-catalog-header">
-        <div className="lake-catalog-heading">
-          <div className="lake-catalog-heading__mark" aria-hidden="true">
-            <DatabaseOutlined />
-          </div>
-          <div>
-            <Title level={1}>数据湖目录</Title>
-            <Paragraph>浏览数据湖中的数据库、数据表与样本数据。</Paragraph>
-          </div>
-        </div>
         <div className="lake-catalog-actions">
           <Button
             icon={<ReloadOutlined />}
@@ -872,7 +862,6 @@ const DataLakeCatalogPage: React.FC = () => {
           <aside className="lake-catalog-tree-pane" aria-label="数据库与数据表目录">
             <div className="lake-catalog-pane-heading">
               <div>
-                <span className="lake-catalog-pane-kicker">目录层</span>
                 <h2>数据库</h2>
               </div>
               <span>{directoryCount} 个</span>
@@ -929,7 +918,6 @@ const DataLakeCatalogPage: React.FC = () => {
           <section className="lake-catalog-inspector" aria-label="数据表详情">
             <div className="lake-catalog-inspector__heading">
               <div>
-                <span className="lake-catalog-pane-kicker">表检视器</span>
                 <h2>{selectedTable || '选择一张表'}</h2>
                 {selectedTable ? <p>{selectedTablePath}</p> : null}
               </div>

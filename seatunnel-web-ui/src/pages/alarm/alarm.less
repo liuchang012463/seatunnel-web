@@ -2,37 +2,29 @@
   --alarm-surface: var(--st-color-bg-panel, #002e41);
   --alarm-surface-elevated: var(--st-color-bg-elevated, #07394a);
   --alarm-surface-control: var(--st-color-bg-control, rgba(0, 25, 34, 0.72));
-  --alarm-border: var(--st-color-border, rgba(33, 135, 168, 0.62));
+  --alarm-border: var(--st-color-border, rgba(77, 210, 255, 0.28));
   --alarm-border-subtle: var(--st-color-divider, rgba(33, 135, 168, 0.38));
-  --alarm-text: var(--st-color-text-primary, #ffffff);
-  --alarm-text-secondary: var(--st-color-text-secondary, #d5d5d5);
-  --alarm-text-muted: var(--st-color-text-muted, #8da6ae);
+  --alarm-text: var(--st-color-text-primary, #F7FBFF);
+  --alarm-text-secondary: var(--st-color-text-secondary, #DCEAF1);
+  --alarm-text-muted: var(--st-color-text-muted, #B7CBD3);
   --alarm-accent: var(--st-color-accent, #4dd2ff);
   --alarm-primary: var(--st-color-primary, #2187a8);
 
   box-sizing: border-box;
-  padding-inline: 24px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 16px 24px 20px;
+  overflow: hidden;
   color: var(--alarm-text-secondary);
+  background: var(--st-color-bg-page, #03182a);
 }
 
-.alarm-page__header {
-  margin-top: 30px;
-  margin-bottom: 32px;
-}
-
-.alarm-page__header-icon {
-  color: var(--alarm-accent);
-  background: rgba(33, 135, 168, 0.18);
-  border: 1px solid var(--alarm-border-subtle);
-  box-shadow: 0 8px 20px rgba(0, 25, 34, 0.2);
-}
-
-.alarm-page__header-title {
-  color: var(--alarm-text) !important;
-}
-
-.alarm-page__header-description {
-  color: var(--alarm-text-secondary) !important;
+.alarm-page__content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .alarm-channel-type-option {

@@ -232,25 +232,7 @@ const DataExplorationOverviewPage: React.FC = () => {
 
   return (
     <div className="data-exploration-page data-exploration-overview">
-      <header className="overview-page-header">
-        <div className="overview-page-header__copy">
-          <h1>探查概览</h1>
-        </div>
-        <Button
-          className="overview-refresh"
-          icon={<ReloadOutlined />}
-          loading={loading}
-          onClick={() => void load()}
-        >
-          刷新数据
-        </Button>
-      </header>
-
       <section className="overview-filter-bar" aria-label="探查范围筛选">
-        <div className="overview-filter-bar__intro">
-          <span className="overview-filter-bar__label">筛选范围</span>
-          <span className="overview-filter-bar__hint">选择范围后，指标与数据源列表会同步更新</span>
-        </div>
         <div className="overview-filter-bar__fields">
           <label className="overview-filter-field">
             <span>单位</span>
@@ -303,13 +285,20 @@ const DataExplorationOverviewPage: React.FC = () => {
             />
           </label>
         </div>
+        <Button
+          className="overview-refresh"
+          icon={<ReloadOutlined />}
+          loading={loading}
+          onClick={() => void load()}
+        >
+          刷新数据
+        </Button>
       </section>
 
       <main className="overview-content">
         <section className="overview-panel overview-assets-panel">
           <div className="overview-panel-heading">
             <div>
-              <span className="overview-panel-heading__eyebrow">元数据</span>
               <h2>元数据规模</h2>
             </div>
             <span className="overview-panel-heading__meta">已纳入当前范围</span>
@@ -337,8 +326,8 @@ const DataExplorationOverviewPage: React.FC = () => {
             </div>
           </div>
           <div className="overview-secondary-metrics" aria-label="次级元数据指标">
-            <span><small>Database</small><strong>{summary.databaseCount}</strong></span>
-            <span><small>Schema</small><strong>{summary.schemaCount}</strong></span>
+            <span><small>库</small><strong>{summary.databaseCount}</strong></span>
+            <span><small>模式</small><strong>{summary.schemaCount}</strong></span>
             <span><small>单位</small><strong>{summary.unitCount}</strong></span>
             <span><small>业务系统</small><strong>{summary.businessSystemCount}</strong></span>
           </div>
@@ -348,7 +337,6 @@ const DataExplorationOverviewPage: React.FC = () => {
           <section className="overview-panel overview-coverage-panel">
             <div className="overview-panel-heading">
               <div>
-                <span className="overview-panel-heading__eyebrow">探查覆盖</span>
                 <h2>探查覆盖率</h2>
               </div>
               <span className="overview-panel-heading__meta">数据表</span>
@@ -370,7 +358,7 @@ const DataExplorationOverviewPage: React.FC = () => {
                   </span>
                 ) : null}
                 <div className="overview-coverage-details">
-                  <span>Database <b>{coverage.profiledDatabaseCount} / {coverage.databaseCount}</b></span>
+                  <span>库 <b>{coverage.profiledDatabaseCount} / {coverage.databaseCount}</b></span>
                   <span>已统计行数 <b>{coverage.knownRowCount}</b></span>
                   <span>已统计体积 <b>{formatDataSize(coverage.knownSizeInByte)}</b></span>
                 </div>
@@ -381,7 +369,6 @@ const DataExplorationOverviewPage: React.FC = () => {
           <section className="overview-panel overview-scope-panel">
             <div className="overview-panel-heading">
               <div>
-                <span className="overview-panel-heading__eyebrow">探查范围</span>
                 <h2>当前范围</h2>
               </div>
               <span className="overview-panel-heading__meta">指标与列表同步</span>
@@ -392,7 +379,6 @@ const DataExplorationOverviewPage: React.FC = () => {
                 <Tag color={selectedSystem ? 'blue' : undefined}>业务系统：{selectedSystem?.systemName || '全部'}</Tag>
                 <Tag color={selectedSource ? 'blue' : undefined}>数据源：{selectedSource?.name || '全部'}</Tag>
               </div>
-              <p>当前范围用于查看概览指标和下方数据源状态；需要深入查看结构、样本或关系时，请进入探查结果。</p>
             </div>
           </section>
         </div>
@@ -400,7 +386,6 @@ const DataExplorationOverviewPage: React.FC = () => {
         <section className="overview-panel overview-source-panel">
           <div className="overview-panel-heading overview-source-panel__heading">
             <div>
-              <span className="overview-panel-heading__eyebrow">数据源</span>
               <h2>数据源探查状态</h2>
             </div>
             <span className="overview-panel-heading__meta">共 {filteredSources.length} 个数据源</span>

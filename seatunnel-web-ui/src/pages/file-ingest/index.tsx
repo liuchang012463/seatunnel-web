@@ -1,4 +1,4 @@
-import { FileTextOutlined, PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { history, useLocation } from '@umijs/max';
 import { App, Button, Segmented } from 'antd';
 import TaskListPageHeader from '@/components/TaskListPageHeader';
@@ -43,8 +43,6 @@ const FileIngestPage: React.FC = () => {
   return (
     <div className="task-list-page-shell">
       <TaskListPageHeader
-        icon={<FileTextOutlined />}
-        title="离线文件导入"
         actions={
           <Button
             type="primary"

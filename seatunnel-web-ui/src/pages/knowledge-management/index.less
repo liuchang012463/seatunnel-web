@@ -1,0 +1,28 @@
+.knowledge-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 16px 24px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.knowledge-page__shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.knowledge-page__content {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: 24px;
+  box-sizing: border-box;
+  overflow: auto;
+}

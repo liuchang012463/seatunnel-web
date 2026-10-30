@@ -1,5 +1,4 @@
-import { PlusOutlined, SunOutlined } from "@ant-design/icons";
-import { useIntl } from "@umijs/max";
+import { PlusOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import React from "react";
 import TaskListPageHeader from "@/components/TaskListPageHeader";
@@ -20,19 +19,12 @@ export interface SyncParams {
 const DataSyncHeader: React.FC<DataSyncHeaderProps> = ({
   goDetail,
 }) => {
-  const intl = useIntl();
-
   const handleCreateClick = () => {
     goDetail();
   };
 
   return (
     <TaskListPageHeader
-      icon={<SunOutlined />}
-      title={intl.formatMessage({
-        id: "pages.datasync.header.title",
-        defaultMessage: "批量数据引接",
-      })}
       actions={
         <Button
           type="primary"

@@ -2,6 +2,16 @@
   min-width: 0;
 }
 
+/* title={false} 时仍可能残留空页头占位，收掉以免顶部留白 */
+.ant-pro-page-container:has(.lake-physical-page) .ant-page-header:not(:has(.ant-page-header-heading-title)):not(:has(.ant-page-header-heading-extra)) {
+  display: none;
+}
+
+.ant-pro-page-container:has(.lake-physical-page) .ant-page-header {
+  margin: 0;
+  padding-block: 8px 12px;
+}
+
 .lake-table-alert {
   margin: 16px 0;
 }

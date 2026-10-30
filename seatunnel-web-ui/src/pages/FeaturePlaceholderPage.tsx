@@ -1,68 +1,18 @@
-import { ArrowLeftOutlined, ReadOutlined } from '@ant-design/icons';
-import { PageContainer } from '@ant-design/pro-components';
-import { Button, Card, Empty, Space } from 'antd';
-import { history, useLocation } from '@umijs/max';
+import { ReadOutlined } from '@ant-design/icons';
+import { Empty } from 'antd';
 import React from 'react';
-import { stripLayoutPrefix } from '@/utils/iframeLayout';
-
-const PAGE_COPY: Record<string, { title: string; description: string }> = {
-  '/reporting/forms': {
-    title: '数据采报',
-    description: '采报模板与填报闭环尚未接入当前版本。',
-  },
-  '/reporting/reports': {
-    title: '数据采报',
-    description: '采集报告尚未接入当前版本。',
-  },
-  '/sync/cloud-edge-tasks': {
-    title: '云边协同任务',
-    description: '云边协同任务能力尚未接入当前版本。',
-  },
-  '/sync/edge-access-tasks': {
-    title: '边缘接入任务',
-    description: '边缘接入任务能力尚未接入当前版本。',
-  },
-  '/sync/links': {
-    title: '数据协同任务',
-    description: '数据协同任务能力尚未接入当前版本。',
-  },
-  '/sync/topology': {
-    title: '数据拓扑',
-    description: '数据拓扑能力尚未接入当前版本。',
-  },
-  '/operations/protocol': {
-    title: '协议管理',
-    description: '协议管理能力尚未接入当前版本。',
-  },
-  '/operations/diagnostics': {
-    title: '安全加密',
-    description: '安全加密与诊断能力尚未接入当前版本。',
-  },
-};
+import './FeaturePlaceholderPage.less';
 
 const FeaturePlaceholderPage: React.FC = () => {
-  const { pathname } = useLocation();
-  const normalizedPathname = stripLayoutPrefix(pathname);
-  const copy = PAGE_COPY[normalizedPathname] || {
-    title: '页面暂不可用',
-    description: '该页面尚未接入当前版本。',
-  };
-
   return (
-    <PageContainer title={copy.title} subTitle={copy.description}>
-      <Card>
+    <div className="feature-placeholder-page">
+      <div className="feature-placeholder-page__panel">
         <Empty
           image={<ReadOutlined style={{ fontSize: 40, color: 'var(--st-color-text-muted)' }} />}
-          description="功能建设中"
-        >
-          <Space wrap>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/data-source')}>
-              返回数据源管理
-            </Button>
-          </Space>
-        </Empty>
-      </Card>
-    </PageContainer>
+          description={<span className="feature-placeholder-page__desc">功能建设中</span>}
+        />
+      </div>
+    </div>
   );
 };
 

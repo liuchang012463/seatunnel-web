@@ -213,10 +213,17 @@ html[data-hide-header='true'] {
   background: var(--st-color-bg-page, #02222d);
 }
 
-/* 任务列表页 / 探查页 / 引接大屏：定高吃满内容区，内部自行滚动，避免被上面的 height:auto 撑出整页滚动 */
+/* 任务列表页 / 探查页 / 引接大屏 / 运维双栏 / 占位页：定高吃满内容区，内部自行滚动，避免被上面的 height:auto 撑出整页滚动 */
 .ant-pro-layout .ant-pro-layout-content > .task-list-page-shell,
 .ant-pro-layout .ant-pro-layout-content > .data-exploration-page,
-.ant-pro-layout .ant-pro-layout-content > .bi-dashboard {
+.ant-pro-layout .ant-pro-layout-content > .bi-dashboard,
+.ant-pro-layout .ant-pro-layout-content > .meta-engine-overview,
+.ant-pro-layout .ant-pro-layout-content > .lake-warehouse-overview,
+.ant-pro-layout .ant-pro-layout-content > .lake-catalog-page,
+.ant-pro-layout .ant-pro-layout-content > .feature-placeholder-page,
+.ant-pro-layout .ant-pro-layout-content > .alarm-page,
+.ant-pro-layout .ant-pro-layout-content > .open-api-page,
+.ant-pro-layout .ant-pro-layout-content > .knowledge-page {
   flex: 1 1 0% !important;
   min-height: 0 !important;
   height: 100% !important;
