@@ -16,7 +16,7 @@
 
 * Agent 启停前后端统一使用 `scripts/dev-{up,down,restart,status}.sh`。
 * 后端从根目录 `.env` 读取测试库配置。
-* SeaTunnel、MySQL、OpenMetadata 等 Compose 环境位于192.168.100.95服务器的 `/mnt/lc`；未经明确授权，不得执行 Compose、部署或重启容器。
+* SeaTunnel、MySQL、OpenMetadata 等 Compose 环境位于192.168.100.95服务器(ssh haruka@192.168.100.95访问)的 `/mnt/lc`；未经明确授权，不得执行 Compose、部署或重启容器。
 * 构建、测试和部署彼此独立，不得因构建或测试隐式触发部署。
 
 ## 实现约束
