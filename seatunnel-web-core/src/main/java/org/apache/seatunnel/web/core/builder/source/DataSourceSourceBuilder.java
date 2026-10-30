@@ -76,8 +76,9 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     /**
      * Optional directory holding the preinstalled DuckDB extensions on every engine node. The
      * generated init SQL disables auto-install, so without a preinstalled httpfs the LOAD fails.
+     * Read the environment variable directly because deployments can replace the packaged YAML.
      */
-    @Value("${seatunnel.web.duckdb.extension-directory:}")
+    @Value("${seatunnel.web.duckdb.extension-directory:${SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR:}}")
     private String duckDbExtensionDirectory;
 
     @Resource

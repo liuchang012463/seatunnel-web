@@ -11,6 +11,9 @@ import org.apache.seatunnel.web.core.fileresource.FileResourceResolver;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.MutablePropertySources;
+import org.springframework.core.env.PropertySourcesPropertyResolver;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
@@ -24,6 +27,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class DataSourceSourceBuilderFileResourceTest {
+
+    @Test
+    void resolvesDuckDbExtensionDirectoryFromEnvironmentWhenExternalConfigOmitsIt() {
+        MutablePropertySources propertySources = new MutablePropertySources();
+        propertySources.addFirst(new MapPropertySource("test-environment", Map.of(
+                "SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR", "/opt/seatunnel/lib/duckdb-extensions")));
+        PropertySourcesPropertyResolver resolver = new PropertySourcesPropertyResolver(propertySources);
+
+        assertEquals(
+                "/opt/seatunnel/lib/duckdb-extensions",
+                resolver.resolveRequiredPlaceholders(
+                        "${seatunnel.web.duckdb.extension-directory:${SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR:}}"));
+    }
 
     @Test
     void passesFileResourceReferenceAndFormatToS3FileBuilder() {
