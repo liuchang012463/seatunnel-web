@@ -10,12 +10,9 @@ import org.apache.seatunnel.web.core.fileresource.FileResourceReference;
 import org.apache.seatunnel.web.core.fileresource.FileResourceResolver;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,9 +24,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class DataSourceSourceBuilderFileResourceTest {
-
-    @TempDir
-    Path tempDir;
 
     @Test
     void passesFileResourceReferenceAndFormatToS3FileBuilder() {
@@ -88,8 +82,6 @@ class DataSourceSourceBuilderFileResourceTest {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
         FileResourceResolver resolver = mock(FileResourceResolver.class);
         ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
-        String driver = "/opt/seatunnel/lib/duckdb_jdbc-1.3.1.0.jar";
-        ReflectionTestUtils.setField(sourceBuilder, "duckDbDriverLocation", driver);
         when(resolver.resolve(42L)).thenReturn(new FileResourceReference(
                 "MINIO",
                 "https://minio.example.com:9000",
@@ -116,7 +108,8 @@ class DataSourceSourceBuilderFileResourceTest {
         assertEquals("Jdbc", sourceBuilder.connectorName(node));
         assertEquals("jdbc:duckdb:", result.getString("url"));
         assertEquals("org.duckdb.DuckDBDriver", result.getString("driver"));
-        assertEquals(driver, result.getString("driver_location"));
+        assertFalse(result.hasPath("driver_location"));
+        assertFalse(result.hasPath("session_init_sql_file"));
         assertTrue(!result.getBoolean("enable_concurrent_read"));
         assertEquals("duckdb-source", result.getString("plugin_output"));
 
@@ -124,6 +117,7 @@ class DataSourceSourceBuilderFileResourceTest {
         assertFalse(properties.hasPath("s3_access_key_id"));
         assertFalse(properties.hasPath("s3_secret_access_key"));
         assertFalse(properties.hasPath("s3_endpoint"));
+        assertFalse(properties.hasPath("session_init_sql_file"));
         assertEquals("false", properties.getString("autoinstall_known_extensions"));
         assertEquals("true", properties.getString("jdbc_stream_results"));
 
@@ -157,8 +151,6 @@ class DataSourceSourceBuilderFileResourceTest {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
         FileResourceResolver resolver = mock(FileResourceResolver.class);
         ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
-        Path driver = Files.createFile(tempDir.resolve("duckdb_jdbc.jar"));
-        ReflectionTestUtils.setField(sourceBuilder, "duckDbDriverLocation", driver.toString());
         when(resolver.resolve(42L)).thenReturn(new FileResourceReference(
                 "MINIO", "http://minio:9000", "us-east-1", "archive", "/resources",
                 "resources/sample.db", "STATIC", "access", "secret", true));
@@ -189,7 +181,6 @@ class DataSourceSourceBuilderFileResourceTest {
         ReflectionTestUtils.setField(sourceBuilder, "duckDbExtensionDirectory", "/opt/seatunnel/lib/duckdb-extensions");
         FileResourceResolver resolver = mock(FileResourceResolver.class);
         ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
-        ReflectionTestUtils.setField(sourceBuilder, "duckDbDriverLocation", "/opt/seatunnel/lib/duckdb_jdbc-1.3.1.0.jar");
         when(resolver.resolve(42L)).thenReturn(new FileResourceReference(
                 "MINIO", "https://minio.example.com:9000", "us-east-1", "archive", "/resources",
                 "resources/weather.duckdb", "STATIC", "access", "secret", true));
@@ -214,7 +205,6 @@ class DataSourceSourceBuilderFileResourceTest {
         ReflectionTestUtils.setField(sourceBuilder, "duckDbExtensionDirectory", "lib/duckdb-extensions");
         FileResourceResolver resolver = mock(FileResourceResolver.class);
         ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
-        ReflectionTestUtils.setField(sourceBuilder, "duckDbDriverLocation", "/opt/seatunnel/lib/duckdb_jdbc-1.3.1.0.jar");
         when(resolver.resolve(42L)).thenReturn(new FileResourceReference(
                 "MINIO", "https://minio.example.com:9000", "us-east-1", "archive", "/resources",
                 "resources/weather.duckdb", "STATIC", "access", "secret", true));

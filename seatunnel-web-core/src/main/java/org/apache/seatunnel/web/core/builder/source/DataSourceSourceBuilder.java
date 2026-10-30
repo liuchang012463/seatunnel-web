@@ -30,8 +30,6 @@ import org.springframework.stereotype.Component;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -73,9 +71,6 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
     @Resource
     private FileResourceResolver fileResourceResolver;
-
-    @Value("${seatunnel.web.duckdb.driver-location:}")
-    private String duckDbDriverLocation;
 
     /**
      * Optional directory holding the preinstalled DuckDB extensions on every engine node. The
@@ -432,7 +427,6 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         Map<String, Object> source = new HashMap<>();
         source.put("url", "jdbc:duckdb:");
         source.put("driver", "org.duckdb.DuckDBDriver");
-        source.put("driver_location", requireDuckDbDriverLocation());
         source.put("enable_concurrent_read", false);
         source.put("properties", properties);
         source.put("query", query);
@@ -441,37 +435,6 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
             source.put("plugin_output", nodeConfig.getString("plugin_output"));
         }
         return ConfigFactory.parseMap(source).resolve();
-    }
-
-    private String requireDuckDbDriverLocation() {
-        String configuredPath = StringUtils.trimToEmpty(duckDbDriverLocation);
-        if (configuredPath.isEmpty()) {
-            throw new IllegalStateException(
-                    "DuckDB source requires SEATUNNEL_WEB_DUCKDB_DRIVER_LOCATION to point to the JDBC JAR");
-        }
-        if (configuredPath.contains(";")
-                || configuredPath.contains("\n")
-                || configuredPath.contains("\r")) {
-            throw new IllegalStateException("DuckDB JDBC driver location must be a single JAR path");
-        }
-
-        Path path;
-        try {
-            path = Path.of(configuredPath).normalize();
-        } catch (InvalidPathException e) {
-            throw new IllegalStateException("DuckDB JDBC driver location is invalid", e);
-        }
-        if (!path.isAbsolute()
-                || path.getFileName() == null
-                || !path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar")) {
-            throw new IllegalStateException(
-                    "DuckDB JDBC driver location must be an absolute JAR path visible to SeaTunnel Engine nodes");
-        }
-        if (Files.exists(path) && (!Files.isRegularFile(path) || !Files.isReadable(path))) {
-            throw new IllegalStateException(
-                    "DuckDB JDBC driver location must be a readable JAR when it exists on the Web host");
-        }
-        return path.toString();
     }
 
     private String renderDuckDbTableName(String schemaName, String tableName) {

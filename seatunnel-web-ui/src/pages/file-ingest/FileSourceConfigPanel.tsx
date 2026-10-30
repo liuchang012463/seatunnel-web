@@ -552,7 +552,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
                 type="info"
                 showIcon
                 message="SeaTunnel Engine 运行要求"
-                description="Engine 需要 DuckDB JDBC 驱动和 httpfs 扩展；Web 与所有 Engine 节点还需挂载同一路径的 DuckDB 初始化 SQL 共享目录。"
+                description="Engine 每个节点需预装 DuckDB JDBC 驱动和 httpfs 扩展；初始化 SQL 随任务配置发送，无需 Web 与 Engine 共享目录。"
               />
             </>
           ) : null}

@@ -29,7 +29,6 @@ import org.apache.seatunnel.web.api.fileresource.storage.StorageUploadPart;
 import org.apache.seatunnel.web.api.service.FileResourceService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
-import org.apache.seatunnel.web.core.builder.source.DuckDbSourceInitSqlFileService;
 import org.apache.seatunnel.web.core.fileresource.FileResourceReference;
 import org.apache.seatunnel.web.core.fileresource.FileResourceResolver;
 import org.apache.seatunnel.web.dao.entity.FileResource;
@@ -143,9 +142,6 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
 
     @Resource
     private ObjectProvider<FileResourceReferenceChecker> referenceCheckers;
-
-    @Resource
-    private DuckDbSourceInitSqlFileService duckDbSourceInitSqlFileService;
 
     @Resource
     private FileResourceMqNotifier fileResourceMqNotifier;
@@ -548,14 +544,6 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             target.setStatus(DELETED);
             target.setUpdateTime(now);
             fileResourceDao.updateById(target);
-            if (duckDbSourceInitSqlFileService != null) {
-                try {
-                    duckDbSourceInitSqlFileService.delete(target.getId());
-                } catch (IOException e) {
-                    log.warn("Failed to remove DuckDB init SQL for deleted file resource, resourceId={}",
-                            target.getId(), e);
-                }
-            }
         }
     }
 

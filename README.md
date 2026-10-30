@@ -466,8 +466,7 @@ docker compose --env-file .env.bind -f compose.bind.yaml up -d
 
 No image rebuild is required. Re-running `up -d` recreates the affected
 containers while preserving the named volumes (`seatunnel-web-logs`,
-`seatunnel-web-jdbc-drivers`, `seatunnel-web-duckdb-init`, and
-`seatunnel-web-mysql-data` when bundled).
+`seatunnel-web-jdbc-drivers`, and `seatunnel-web-mysql-data` when bundled).
 
 #### Notes on the bind-mount variant
 
@@ -482,9 +481,10 @@ containers while preserving the named volumes (`seatunnel-web-logs`,
   `conf/nginx/default.conf` to `/etc/nginx/conf.d/default.conf` (read-only).
 * Logs and JDBC drivers use named volumes so container writes do not pollute
   the bind-mounted host directory. DuckDB session init SQL is passed inline in
-  the job config, so no shared directory is required. The DuckDB JDBC JAR and
-  the `httpfs` extension must be preinstalled on every SeaTunnel Engine node;
-  point `SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR` at the extension directory.
+  the job config, so no shared directory is required. Install the DuckDB JDBC
+  JAR and the `httpfs` extension on every SeaTunnel Engine node. If the extension
+  is outside DuckDB's default directory, set `SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR`
+  to its Engine-local directory; Web does not mount or access that directory.
 * `dist/seatunnel-web-1.0.0/conf/application.yml` is intentionally not
   read-only-mounted. This allows on-site tuning during development and
   iteration. Production releases should treat the YAML as part of the
