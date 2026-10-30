@@ -9,14 +9,7 @@ describe('application navigation menu', () => {
   it('matches the approved first-level and second-level menu structure', () => {
     expect(summarizeMenu(menuData)).toEqual([
       { path: '/bi', name: '引接态势' },
-      {
-        path: '/data-source',
-        name: '数据源管理',
-        children: [
-          { path: '/data-source/source-connection', name: '源端连接' },
-          { path: '/data-source/target-connection', name: '目标连接' },
-        ],
-      },
+      { path: '/data-source', name: '数据源管理' },
       {
         path: '/menu/exploration',
         name: '数据探查',
@@ -86,6 +79,7 @@ describe('application navigation menu', () => {
         })),
     ).toEqual([
       { path: '/bi', disabledTooltip: true, collapsedHoverPanel: true },
+      { path: '/data-source', disabledTooltip: true, collapsedHoverPanel: true },
       { path: '/reporting/forms', disabledTooltip: true, collapsedHoverPanel: true },
     ]);
   });

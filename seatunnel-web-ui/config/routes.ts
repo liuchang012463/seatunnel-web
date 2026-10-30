@@ -124,7 +124,7 @@ const hiddenLayoutRoutes = [
 export default [
   {
     path: '/',
-    redirect: '/data-source',
+    redirect: '/bi',
   },
   ...framedRoutes,
   ...hiddenLayoutRoutes,

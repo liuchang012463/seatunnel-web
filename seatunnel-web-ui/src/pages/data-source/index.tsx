@@ -69,11 +69,11 @@ const DataSourcePage: React.FC = () => {
   const intl = useIntl();
   const location = useLocation();
   const modalRef = useRef<DataSourceModalRef>(null);
-  const usageView = location.pathname.endsWith('/source-connection')
-    ? 'SOURCE'
-    : location.pathname.endsWith('/target-connection')
+  const usageView =
+    location.pathname.endsWith('/target-connection') ||
+    new URLSearchParams(location.search).get('usage') === 'SINK'
       ? 'SINK'
-      : undefined;
+      : 'SOURCE';
 
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState<string>();
@@ -229,6 +229,18 @@ const DataSourcePage: React.FC = () => {
   const handleRefresh = () => {
     fetchList();
     refreshUnitOptions();
+  };
+
+  const handleUsageViewChange = (nextUsage: 'SOURCE' | 'SINK') => {
+    if (nextUsage !== usageView) {
+      setSelectedCategory('ALL');
+      setPagination((current) => ({ ...current, pageNo: 1 }));
+    }
+
+    const nextPath = nextUsage === 'SOURCE' ? '/data-source' : '/data-source?usage=SINK';
+    if (`${location.pathname}${location.search}` !== nextPath) {
+      history.push(nextPath);
+    }
   };
 
   const handleCreate = () => {
@@ -645,11 +657,16 @@ const DataSourcePage: React.FC = () => {
               variants={PAGE_ANIMATION.sectionStagger}
             >
               <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
-                {usageView === undefined && (
-                  <div className="min-w-0 flex-1">
-                    <div className="text-lg font-semibold text-slate-900">数据源管理</div>
-                  </div>
-                )}
+                <Segmented
+                  aria-label="数据源连接类型"
+                  className="datasource-view-switcher"
+                  value={usageView}
+                  onChange={(value) => handleUsageViewChange(value as 'SOURCE' | 'SINK')}
+                  options={[
+                    { label: '源端连接', value: 'SOURCE' },
+                    { label: '目标端连接', value: 'SINK' },
+                  ]}
+                />
                 <SearchBar
                   value={searchKeyword}
                   onChange={(value) => {
