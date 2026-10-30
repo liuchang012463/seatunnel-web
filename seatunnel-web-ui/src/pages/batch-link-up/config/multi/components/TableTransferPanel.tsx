@@ -31,9 +31,8 @@ const TableTransferPanel: React.FC<Props> = ({
     }
 
     return (
-      <div className="flex items-center justify-between px-3 py-2 text-xs">
+      <div className="px-3 py-2 text-xs">
         <span className="text-slate-500">已选 {selectedTables} 张表</span>
-        <span className="text-rose-500">最多支持 100 张表</span>
       </div>
     );
   };

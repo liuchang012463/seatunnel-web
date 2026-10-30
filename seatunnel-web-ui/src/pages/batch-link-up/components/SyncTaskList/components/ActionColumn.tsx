@@ -104,7 +104,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
 
     seatunnelJobExecuteApi.pause(instanceId).then((data) => {
       if (data?.code === 0) {
-        message.success("终止成功");
+        message.success("终止请求已提交，正在确认 Engine 状态");
         cbk();
       } else {
         message.error(data?.msg || "终止失败");
@@ -404,7 +404,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
           const data = await seatunnelJobExecuteApi.execute(record?.id);
 
           if (data?.code === 0) {
-            message.success("任务已进入启动队列");
+            message.success("任务已进入提交队列");
             cbk();
             setRunOpen(false);
           } else {

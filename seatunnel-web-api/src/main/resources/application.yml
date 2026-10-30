@@ -177,6 +177,7 @@ seatunnel:
 
   client:
     read-timeout-ms: ${SEATUNNEL_CLIENT_READ_TIMEOUT_MS:60000}
+    job-submit-read-timeout-ms: ${SEATUNNEL_CLIENT_JOB_SUBMIT_READ_TIMEOUT_MS:300000}
     health-check:
       enabled: true
       initial-delay-ms: 15000

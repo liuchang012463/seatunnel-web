@@ -230,11 +230,10 @@ public class GenericJdbcCatalog extends AbstractJdbcCatalog {
         if (tablePath == null) {
             throw new IllegalArgumentException("table_path cannot be empty");
         }
-        if (StringUtils.isNotBlank(tablePath.getDatabaseName())
-                || StringUtils.isNotBlank(tablePath.getSchemaName())) {
-            return tablePath;
-        }
-        return resolveTablePath(tablePath.getTableName());
+        // preprocessRequest already resolves the catalog-specific qualified
+        // path. Splitting here again would turn a quoted name containing a dot
+        // back into a schema/table pair.
+        return tablePath;
     }
 
     private String toTablePath(ResultSet resultSet) throws SQLException {

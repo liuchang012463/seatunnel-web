@@ -4,6 +4,7 @@ import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -86,9 +87,60 @@ class AbstractJdbcCatalogPreprocessRequestTest {
         assertEquals("TEST_USER", request.getTablePath().getTableName());
     }
 
+    @Test
+    void parsesQuotedPathComponentsWithoutSplittingDotsInsideIdentifiers() {
+        BaseConnectionParam param = new BaseConnectionParam() {};
+        param.setDatabase("ORCL");
+        TestCatalog catalog = new TestCatalog(param);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("read_mode", "TABLE");
+        body.put("table_path", "\"Sales.Schema\".\"Select\"\"ed\"");
+
+        QueryRequest request = catalog.preprocessRequest(body);
+
+        assertEquals("ORCL", request.getTablePath().getDatabaseName());
+        assertEquals("Sales.Schema", request.getTablePath().getSchemaName());
+        assertEquals("Select\"ed", request.getTablePath().getTableName());
+    }
+
+    @Test
+    void keepsAQuotedDottedTableAsOneIdentifier() {
+        BaseConnectionParam param = new BaseConnectionParam() {};
+        param.setDatabase("ORCL");
+        param.setSchemaName("APP");
+        TestCatalog catalog = new TestCatalog(param);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("read_mode", "TABLE");
+        body.put("table_path", "`Archive.2026`");
+
+        QueryRequest request = catalog.preprocessRequest(body);
+
+        assertEquals("APP", request.getTablePath().getSchemaName());
+        assertEquals("Archive.2026", request.getTablePath().getTableName());
+        assertEquals(List.of("Archive.2026"), catalog.parse("`Archive.2026`"));
+    }
+
+    @Test
+    void quotesAnsiIdentifiersAndEscapesEmbeddedQuotes() {
+        TestCatalog catalog = new TestCatalog(new BaseConnectionParam() {});
+
+        assertEquals("\"Select\"", catalog.quote("Select"));
+        assertEquals("\"Order\"\"Details\"", catalog.quote("Order\"Details"));
+    }
+
     private static final class TestCatalog extends AbstractJdbcCatalog {
         private TestCatalog(BaseConnectionParam param) {
             super(param, null);
+        }
+
+        private List<String> parse(String value) {
+            return splitIdentifierPath(value);
+        }
+
+        private String quote(String value) {
+            return quoteIdentifier(value);
         }
     }
 }

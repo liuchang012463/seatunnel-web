@@ -9,12 +9,16 @@ import org.apache.seatunnel.web.api.metrics.JobRuntimeContext;
 import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 import org.apache.seatunnel.web.common.exception.JobSubmitException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
+import org.apache.seatunnel.web.engine.client.exceptions.SeaTunnelClientException;
 import org.apache.seatunnel.web.engine.client.driver.EngineDriverJarPublisher;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Component;
 
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
@@ -80,6 +84,7 @@ public class StreamingJobSubmitter {
         String configFile = null;
         String engineId = null;
         boolean submitted = false;
+        boolean submitRequestStarted = false;
 
         try {
             // Inside the try: a driver that cannot be published has to fail the instance through
@@ -100,17 +105,39 @@ public class StreamingJobSubmitter {
 
             String filename = "streaming-job-" + instanceId + ".conf";
 
+            if (streamingJobResultHandler.skipSubmissionIfNotStarting(instanceId, instance.getEngineJobId())) {
+                jobLogger.info("Skip Engine upload because the local submission is no longer STARTING");
+                return;
+            }
+
+            submitRequestStarted = true;
             Map<?, ?> resp = restClient.submitJobUpload(
                     clientId,
                     safeConfig(hoconConfig).getBytes(StandardCharsets.UTF_8),
                     filename,
-                    options.getEngineJobIdParam(),
+                    instance.getEngineJobId(),
                     null,
-                    options.isStartWithSavepoint()
+                    options.isStartWithSavepoint(),
+                    options.getRestoreEngineJobId()
             );
 
             engineId = extractJobId(resp);
+
+            if (!engineId.equals(instance.getEngineJobId())) {
+                cancelUnexpectedEngineJob(clientId, engineId, jobLogger);
+                streamingJobResultHandler.handleFailure(
+                        instanceId, new IllegalStateException("Engine returned a different jobId: " + engineId));
+                return;
+            }
             submitted = true;
+
+            if (!streamingJobResultHandler.updateEngineId(instanceId, engineId)) {
+                if (streamingJobResultHandler.isCancellationRequested(instanceId, engineId)
+                        || !streamingJobResultHandler.isEngineJobTracked(instanceId, engineId)) {
+                    cancelUnexpectedEngineJob(clientId, engineId, jobLogger);
+                }
+                return;
+            }
 
             // The Engine has accepted the instance and returned its job id. The lineage
             // event is published on the Kafka bridge with the local identity only; every
@@ -126,8 +153,6 @@ public class StreamingJobSubmitter {
             log.info("Submit streaming job response received, instanceId={}, resp={}", instanceId, resp);
             jobLogger.info("Submit streaming job response received: " + resp);
 
-            streamingJobResultHandler.updateEngineId(instanceId, engineId);
-
             JobRuntimeContext ctx = buildRuntimeContext(instance, engineId, configFile);
 
             registerPostSubmitWatchers(ctx, jobLogger);
@@ -136,6 +161,11 @@ public class StreamingJobSubmitter {
         } catch (Exception e) {
             if (submitted) {
                 handlePostSubmitFailure(jobLogger, instanceId, engineId, e);
+                return;
+            }
+
+            if (submitRequestStarted) {
+                handleSubmitRequestFailure(jobLogger, instanceId, e);
                 return;
             }
 
@@ -251,6 +281,74 @@ public class StreamingJobSubmitter {
                 : new JobSubmitException(JobSubmitStage.SUBMIT, "Submit streaming job failed", e);
     }
 
+    private void handleSubmitRequestFailure(JobFileLogger jobLogger,
+                                            Long instanceId,
+                                            Exception e) {
+        if (isSubmitOutcomeAmbiguous(e)) {
+            jobLogger.error("Streaming submission response unavailable; automatic reconciliation pending", e);
+            throw new JobSubmitException(
+                    JobSubmitStage.SUBMIT,
+                    "Submit streaming job failed before an Engine job id was received",
+                    e,
+                    true
+            );
+        }
+
+        jobLogger.error("Streaming job submission failed before an Engine job id was received", e);
+        try {
+            streamingJobResultHandler.handleFailure(instanceId, e);
+        } catch (Exception handlerEx) {
+            log.error("Record streaming submit failure failed, instanceId={}", instanceId, handlerEx);
+        }
+
+        throw new JobSubmitException(
+                JobSubmitStage.SUBMIT,
+                "Submit streaming job failed before an Engine job id was received",
+                e
+        );
+    }
+
+    private static boolean isSubmitOutcomeAmbiguous(Throwable error) {
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (current instanceof SeaTunnelClientException) {
+                int httpStatus = ((SeaTunnelClientException) current).getHttpStatus();
+                if (httpStatus >= 400 && httpStatus < 500) {
+                    return false;
+                }
+                if (httpStatus >= 500) {
+                    String body = ((SeaTunnelClientException) current).getResponseBody();
+                    boolean catalogRejected = body != null && body.contains("COMMON-21")
+                            && body.contains("unsupported get catalog table");
+                    boolean factoryRejected = body != null && body.contains("ErrorCode:[API-06]")
+                            && body.contains("Factory initialize failed");
+                    return !catalogRejected && !factoryRejected;
+                }
+            }
+
+            if (current instanceof ConnectException
+                    || current instanceof UnknownHostException
+                    || current instanceof NoRouteToHostException) {
+                return false;
+            }
+
+            if (current.getCause() == current) {
+                break;
+            }
+        }
+
+        return true;
+    }
+
+    private void cancelUnexpectedEngineJob(Long clientId, String engineId, JobFileLogger jobLogger) {
+        try {
+            restClient.stopJob(clientId, engineId, false);
+            jobLogger.warn("Stopped an Engine job after its submit response conflicted with local state: " + engineId);
+        } catch (Exception stopError) {
+            log.warn("Could not stop the Engine job after its submit response conflicted with local state, engineJobId={}",
+                    engineId, stopError);
+        }
+    }
+
     private void handlePostSubmitFailure(JobFileLogger jobLogger,
                                          Long instanceId,
                                          String engineId,
@@ -286,6 +384,10 @@ public class StreamingJobSubmitter {
 
         if (instance.getClientId() == null || instance.getClientId() <= 0) {
             throw new IllegalArgumentException("Streaming job client id must not be null");
+        }
+
+        if (StringUtils.isBlank(instance.getEngineJobId())) {
+            throw new IllegalArgumentException("Streaming job Engine id must not be blank");
         }
 
         if (StringUtils.isBlank(instance.getLogPath())) {

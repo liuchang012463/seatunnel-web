@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.service.impl;
 
 import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.common.enums.JobMode;
+import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.common.enums.RunMode;
 import org.apache.seatunnel.web.core.hocon.JobDefinitionHoconBuilder;
 import org.apache.seatunnel.web.core.hocon.StreamingJobDefinitionCommandResolver;
@@ -63,6 +64,8 @@ class StreamingJobInstanceServiceImplTest {
         assertEquals(20L, instance.getSinkDatasourceId());
         assertEquals("orders-topic", instance.getSourceTable());
         assertEquals("orders-dwd-topic", instance.getSinkTable());
+        assertEquals(JobStatus.STARTING, instance.getJobStatus());
+        assertEquals(String.valueOf(instance.getId()), instance.getEngineJobId());
     }
 
     private StreamingJobInstanceServiceImpl service() {

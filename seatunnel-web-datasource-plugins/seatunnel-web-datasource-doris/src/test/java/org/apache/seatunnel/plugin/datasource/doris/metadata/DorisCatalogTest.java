@@ -45,6 +45,19 @@ class DorisCatalogTest {
     }
 
     @Test
+    void parsesQuotedDottedNamesAndEscapesBackticksInReferences() {
+        DorisConnectionParam param = new DorisConnectionParam();
+        param.setDatabase("ods");
+        ExposedDorisCatalog catalog = new ExposedDorisCatalog(param);
+
+        TablePath path = catalog.resolve("`sales.db`.`Order``Details`");
+
+        assertEquals("sales.db", path.getDatabaseName());
+        assertEquals("Order`Details", path.getTableName());
+        assertEquals("`sales.db`.`Order``Details`", catalog.reference(path));
+    }
+
+    @Test
     void firstColumnSqlDoesNotRequireNonNullableColumns() {
         String sql = DorisCatalog.firstColumnSql("ods", "test");
 

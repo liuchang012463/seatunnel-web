@@ -98,6 +98,23 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public JobInstanceVO createIfNoRunningInstance(Long jobDefineId, RunMode runMode, JobMode jobMode) {
+        validateDefinitionId(jobDefineId);
+        validateRunMode(runMode);
+        validateJobMode(jobMode);
+
+        streamingJobDefinitionDao.lockById(jobDefineId);
+        if (streamingJobInstanceDao.existsRunningInstance(jobDefineId)) {
+            throw new ServiceException(
+                    Status.JOB_DEFINITION_EXECUTE_ERROR,
+                    "streaming job already has a running instance"
+            );
+        }
+        return create(jobDefineId, runMode, jobMode);
+    }
+
+    @Override
     public PaginationResult<JobInstanceVO> paging(SeaTunnelJobInstanceDTO dto) {
         validatePagingRequest(dto);
 
@@ -171,6 +188,74 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
     }
 
     @Override
+    public boolean touchStartingInstance(Long instanceId) {
+        if (instanceId == null || instanceId <= 0) {
+            return false;
+        }
+        try {
+            return streamingJobInstanceDao.touchStartingInstance(instanceId);
+        } catch (Exception e) {
+            log.warn("Refresh streaming submission heartbeat failed, id={}", instanceId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date submitTime) {
+        if (instanceId == null || instanceId <= 0 || StringUtils.isBlank(engineJobId)) {
+            return false;
+        }
+        return streamingJobInstanceDao.updateEngineIdIfStarting(instanceId, engineJobId, submitTime);
+    }
+
+    @Override
+    public boolean updateFinalStatusIfStarting(Long instanceId,
+                                               String expectedEngineJobId,
+                                               Date expectedLastActivity,
+                                               JobStatus status,
+                                               String errorMessage) {
+        if (instanceId == null || instanceId <= 0 || status == null) {
+            return false;
+        }
+        return streamingJobInstanceDao.updateFinalStatusIfStarting(
+                instanceId, expectedEngineJobId, expectedLastActivity, status, errorMessage);
+    }
+
+    @Override
+    public boolean updateFinalStatusIfRunningLike(Long instanceId, JobStatus status, String errorMessage) {
+        if (instanceId == null || instanceId <= 0 || status == null) {
+            return false;
+        }
+        return streamingJobInstanceDao.updateFinalStatusIfRunningLike(instanceId, status, errorMessage);
+    }
+
+    @Override
+    public boolean replaceEngineIdIfStarting(Long instanceId,
+                                             String expectedEngineJobId,
+                                             String replacementEngineJobId,
+                                             String errorMessage) {
+        if (instanceId == null || instanceId <= 0) {
+            return false;
+        }
+        return streamingJobInstanceDao.replaceEngineIdIfStarting(
+                instanceId, expectedEngineJobId, replacementEngineJobId, errorMessage);
+    }
+
+    @Override
+    public boolean updateStatusIfSnapshot(Long instanceId,
+                                          JobStatus expectedStatus,
+                                          String expectedEngineJobId,
+                                          Date expectedLastActivity,
+                                          JobStatus status,
+                                          String errorMessage) {
+        if (instanceId == null || instanceId <= 0 || status == null) {
+            return false;
+        }
+        return streamingJobInstanceDao.updateStatusIfSnapshot(
+                instanceId, expectedStatus, expectedEngineJobId, expectedLastActivity, status, errorMessage);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void removeAllByDefinitionId(Long definitionId) {
         if (definitionId == null || definitionId <= 0) {
@@ -194,6 +279,19 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
         } catch (Exception e) {
             log.error("Remove all streaming job instances by definition id failed, definitionId={}", definitionId, e);
             throw new ServiceException(Status.DELETE_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    @Override
+    public boolean markCancelingIfStarting(Long instanceId, String engineJobId, String errorMessage) {
+        if (instanceId == null || instanceId <= 0) {
+            return false;
+        }
+        try {
+            return streamingJobInstanceDao.markCancelingIfStarting(instanceId, engineJobId, errorMessage);
+        } catch (Exception e) {
+            log.error("Mark streaming job instance canceling failed, id={}", instanceId, e);
+            throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
         }
     }
 
@@ -392,10 +490,11 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
                 .jobDefinitionId(command.getId())
                 .clientId(command.getBasic().getClientId())
                 .runMode(runMode)
-                .jobStatus(JobStatus.RUNNING)
+                .jobStatus(JobStatus.STARTING)
                 .triggerSource(runMode.name())
                 .retryCount(0)
                 .runtimeConfig(runtimeConfig)
+                .engineJobId(String.valueOf(id))
                 .logPath(buildLogPath(id))
                 .createTime(now)
                 .updateTime(now)

@@ -17,7 +17,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -116,6 +115,9 @@ public class DorisCatalog extends AbstractJdbcCatalog implements HierarchicalJdb
 
     @Override
     protected String quoteIdentifier(String identifier) {
+        if (StringUtils.isBlank(identifier)) {
+            return identifier;
+        }
         return "`" + StringUtils.defaultString(identifier).replace("`", "``") + "`";
     }
 
@@ -172,21 +174,18 @@ public class DorisCatalog extends AbstractJdbcCatalog implements HierarchicalJdb
             throw new IllegalArgumentException("tablePath must not be blank");
         }
 
-        String[] parts = Arrays.stream(tablePath.split("\\."))
-                .map(NonNullFunctions.from(String::trim))
-                .filter(StringUtils::isNotBlank)
-                .toArray(String[]::new);
-        if (parts.length == 1) {
-            return TablePath.of(getParam().getDatabase(), null, parts[0]);
+        List<String> parts = splitIdentifierPath(tablePath);
+        if (parts.size() == 1) {
+            return TablePath.of(getParam().getDatabase(), null, parts.get(0));
         }
-        if (parts.length == 2) {
-            return TablePath.of(parts[0], null, parts[1]);
+        if (parts.size() == 2) {
+            return TablePath.of(parts.get(0), null, parts.get(1));
         }
-        if (parts.length == 3) {
+        if (parts.size() == 3) {
             // Keep compatibility with callers that already send a fully
             // qualified path, while Doris still uses the first component as
             // the effective database.
-            return TablePath.of(parts[0], parts[1], parts[2]);
+            return TablePath.of(parts.get(0), parts.get(1), parts.get(2));
         }
         throw new IllegalArgumentException("Invalid Doris tablePath: " + tablePath);
     }

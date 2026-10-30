@@ -25,7 +25,9 @@ public record OpenMetadataAsset(
         String parentType,
         String parentFullyQualifiedName,
         Long sizeInByte,
-        Long updatedAt) {
+        Long updatedAt,
+        String requestMethod,
+        String endpointURL) {
 
     public OpenMetadataAsset {
         tags = tags == null ? List.of() : List.copyOf(tags);

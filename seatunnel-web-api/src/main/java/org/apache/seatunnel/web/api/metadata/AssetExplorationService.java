@@ -195,14 +195,15 @@ public class AssetExplorationService {
         int pageSize = Math.min(1000, Math.max(1, remaining));
         int scanned = 0;
         boolean truncated = false;
-        for (int pageNumber = 0; pageNumber < MAX_PAGES && collected.size() < remaining
+        int pageNumber = 0;
+        for (; pageNumber < MAX_PAGES && collected.size() < remaining
                 && scanned < MAX_SCAN; pageNumber++) {
             OpenMetadataPage<OpenMetadataAsset> page = openMetadataClient.listAssetsPage(
                     type, context.serviceFqn(), parentFqn, root, pageSize, after);
             if (page == null) {
                 break;
             }
-            scanned += page.data().size();
+            scanned += page.scannedCount();
             for (OpenMetadataAsset asset : page.data()) {
                 // The container collection returns nested containers too. The root
                 // level only shows containers without a parent; children are reached
@@ -219,11 +220,15 @@ public class AssetExplorationService {
                 }
             }
             String next = page.after();
-            if (next == null || next.isBlank() || page.data().isEmpty()) {
+            if (next == null || next.isBlank()) {
+                after = null;
                 break;
             }
             after = next;
             truncated = scanned >= MAX_SCAN;
+        }
+        if (pageNumber == MAX_PAGES && after != null && collected.size() < remaining) {
+            truncated = true;
         }
         return new LevelResult(collected, collected.size() >= remaining || truncated);
     }
@@ -445,7 +450,10 @@ public class AssetExplorationService {
         }
         return contains(asset.name(), keyword)
                 || contains(asset.displayName(), keyword)
-                || contains(asset.fullyQualifiedName(), keyword);
+                || contains(asset.fullyQualifiedName(), keyword)
+                || contains(asset.description(), keyword)
+                || contains(asset.requestMethod(), keyword)
+                || contains(asset.endpointURL(), keyword);
     }
 
     private static boolean contains(String value, String keyword) {
@@ -473,6 +481,8 @@ public class AssetExplorationService {
         vo.setTags(new ArrayList<>(asset.tags()));
         vo.setSizeInByte(asset.sizeInByte());
         vo.setUpdatedAt(asset.updatedAt());
+        vo.setRequestMethod(asset.requestMethod());
+        vo.setEndpointURL(asset.endpointURL());
         return vo;
     }
 
@@ -483,6 +493,7 @@ public class AssetExplorationService {
         ref.setName(isBlank(asset.displayName()) ? asset.name() : asset.displayName());
         ref.setAssetType(type == null ? asset.entityType() : type.name());
         ref.setFullyQualifiedName(asset.fullyQualifiedName());
+        ref.setDescription(asset.description());
         return ref;
     }
 
@@ -677,8 +688,6 @@ public class AssetExplorationService {
             case API_COLLECTION -> {
                 add(result, "endpointURL", "接口地址",
                         properties.get("endpointURL"), "CODE");
-                add(result, "endpointCount", "接口数",
-                        properties.get("endpointCount"), "NUMBER");
             }
             case API_ENDPOINT -> {
                 add(result, "requestMethod", "请求方法",

@@ -70,11 +70,18 @@ class BatchJobExecutorServiceImplTest {
         JobInstanceVO instance = new JobInstanceVO();
         instance.setId(401L);
         instance.setJobDefinitionId(301L);
+        instance.setJobStatus(JobStatus.STARTING.name());
+        instance.setRuntimeConfig("source { password = \"batch-secret\" }");
+        JobInstanceVO publicLatest = new JobInstanceVO();
+        publicLatest.setId(401L);
+        publicLatest.setJobStatus(JobStatus.STARTING.name());
+        publicLatest.setRuntimeConfig("source { password = \"***\" }");
 
         JobSchedule schedule = new JobSchedule();
         schedule.setId(501L);
 
         when(definitionService.selectById(301L)).thenReturn(definition);
+        when(instanceService.selectById(401L)).thenReturn(publicLatest);
         when(incrementalBatchService.prepare(301L)).thenReturn(null);
         when(instanceService.createIfNoRunningInstance(301L, RunMode.MANUAL, null)).thenReturn(instance);
         when(jobScheduleService.getByTaskDefinitionId(301L)).thenReturn(schedule);
@@ -90,6 +97,8 @@ class BatchJobExecutorServiceImplTest {
         queuedSubmissions.get(0).run();
 
         verify(jobSubmitter).submit(instance);
+        assertEquals("source { password = \"batch-secret\" }", instance.getRuntimeConfig());
+        assertEquals("source { password = \"***\" }", publicLatest.getRuntimeConfig());
         verify(jobScheduleService).updateLastScheduleTime(501L);
         verify(lakeJobGuard).validateBeforeExecute(301L, LakeJobRuntimeType.BATCH);
         verify(lakeJobGuard).validateBeforeSubmit(instance, LakeJobRuntimeType.BATCH);
@@ -119,11 +128,6 @@ class BatchJobExecutorServiceImplTest {
 
         JobInstanceVO instance =
                 queueSubmission(executor, instanceService, definitionService, queuedSubmissions);
-
-        JobInstanceVO stillStarting = new JobInstanceVO();
-        stillStarting.setId(401L);
-        stillStarting.setJobStatus(JobStatus.STARTING.name());
-        when(instanceService.selectById(401L)).thenReturn(stillStarting);
 
         // The Engine may have accepted the job, so the instance must keep blocking instead of FAILED.
         doThrow(new JobSubmitException(
@@ -158,11 +162,6 @@ class BatchJobExecutorServiceImplTest {
         JobInstanceVO instance =
                 queueSubmission(executor, instanceService, definitionService, queuedSubmissions);
 
-        JobInstanceVO stillStarting = new JobInstanceVO();
-        stillStarting.setId(401L);
-        stillStarting.setJobStatus(JobStatus.STARTING.name());
-        when(instanceService.selectById(401L)).thenReturn(stillStarting);
-
         // A refused connection proves the Engine never accepted the job, so FAILED is correct.
         doThrow(new JobSubmitException(
                 JobSubmitStage.SUBMIT, "engine unreachable", new ConnectException("Connection refused")))
@@ -171,6 +170,46 @@ class BatchJobExecutorServiceImplTest {
         queuedSubmissions.get(0).run();
 
         verify(jobResultHandler).handleFailure(eq(401L), any(Throwable.class));
+    }
+
+    @Test
+    void queuedSubmissionIsSkippedAfterCancelStopFindsNoEngineJobYet() {
+        BatchJobInstanceService instanceService = mock(BatchJobInstanceService.class);
+        BatchJobDefinitionService definitionService = mock(BatchJobDefinitionService.class);
+        BatchJobSubmitter jobSubmitter = mock(BatchJobSubmitter.class);
+        JobResultHandler jobResultHandler = mock(JobResultHandler.class);
+        List<Runnable> queuedSubmissions = new ArrayList<>();
+        BatchJobExecutorServiceImpl executor = new BatchJobExecutorServiceImpl(
+                instanceService,
+                definitionService,
+                jobSubmitter,
+                mock(IncrementalBatchService.class),
+                mock(JobScheduleService.class),
+                mock(LakeJobGuard.class),
+                jobResultHandler,
+                queuedSubmissions::add
+        );
+
+        JobInstanceVO starting = queueSubmission(executor, instanceService,
+                definitionService, queuedSubmissions);
+        starting.setEngineJobId("401");
+        JobInstanceVO canceling = new JobInstanceVO();
+        canceling.setId(401L);
+        canceling.setEngineJobId("401");
+        canceling.setJobStatus(JobStatus.CANCELING.name());
+        when(jobResultHandler.handleCanceling(
+                eq(401L), eq("401"), any(String.class))).thenReturn(true);
+        when(instanceService.selectById(401L)).thenReturn(starting, canceling);
+        doThrow(new IllegalStateException("Engine job not found yet"))
+                .when(jobSubmitter).pause(starting);
+
+        executor.jobPause(401L);
+        queuedSubmissions.get(0).run();
+
+        verify(jobResultHandler).handleCanceling(eq(401L), eq("401"), any(String.class));
+        verify(jobResultHandler).skipSubmissionIfNotStarting(401L, "401");
+        verify(jobSubmitter).pause(starting);
+        verify(jobSubmitter, never()).submit(any(JobInstanceVO.class));
     }
 
     private static BatchJobExecutorServiceImpl executorWith(BatchJobInstanceService instanceService) {
@@ -198,6 +237,7 @@ class BatchJobExecutorServiceImplTest {
         JobInstanceVO instance = new JobInstanceVO();
         instance.setId(401L);
         instance.setJobDefinitionId(301L);
+        instance.setJobStatus(JobStatus.STARTING.name());
 
         when(definitionService.selectById(301L)).thenReturn(definition);
         when(instanceService.selectById(401L)).thenReturn(instance);

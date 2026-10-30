@@ -259,6 +259,48 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
         log.info("Job pause requested: instanceId={}, status={}",
                 jobInstanceId, instance.getJobStatus());
 
+        if (JobStatus.CANCELING.name().equalsIgnoreCase(instance.getJobStatus())) {
+            try {
+                jobSubmitter.pause(instance);
+            } catch (Exception e) {
+                log.info("Batch cancellation is already pending: instanceId={}, errorType={}, error={}",
+                        jobInstanceId, RedactedErrors.typeOf(e), RedactedErrors.mask(e.getMessage()));
+            }
+            return jobInstanceId;
+        }
+
+        if (JobStatus.STARTING.name().equalsIgnoreCase(instance.getJobStatus())) {
+            String message = "Job was canceled while Engine submission was in flight.";
+            boolean markedCanceling = jobResultHandler != null
+                    ? jobResultHandler.handleCanceling(jobInstanceId, instance.getEngineJobId(), message)
+                    : instanceService.markCancelingIfStarting(jobInstanceId, instance.getEngineJobId(), message);
+            if (markedCanceling) {
+                try {
+                    jobSubmitter.pause(instance);
+                } catch (Exception e) {
+                    // The upload can be accepted after this stop attempt. Recovery keeps the
+                    // reserved id and retries until the Engine confirms a terminal state.
+                    log.info("Batch submission cancellation requested: instanceId={}, errorType={}, error={}",
+                            jobInstanceId, RedactedErrors.typeOf(e), RedactedErrors.mask(e.getMessage()));
+                }
+                return jobInstanceId;
+            }
+
+            instance = instanceService.selectById(jobInstanceId);
+            if (instance == null || isFinishedStatus(instance.getJobStatus())) {
+                return jobInstanceId;
+            }
+            if (JobStatus.CANCELING.name().equalsIgnoreCase(instance.getJobStatus())) {
+                try {
+                    jobSubmitter.pause(instance);
+                } catch (Exception e) {
+                    log.info("Batch cancellation is already pending: instanceId={}, errorType={}, error={}",
+                            jobInstanceId, RedactedErrors.typeOf(e), RedactedErrors.mask(e.getMessage()));
+                }
+                return jobInstanceId;
+            }
+        }
+
         try {
             jobSubmitter.pause(instance);
 
@@ -339,6 +381,23 @@ public class BatchJobExecutorServiceImpl implements BatchJobExecutorService {
                                 Long jobDefinitionId,
                                 ScheduledFuture<?> heartbeat) {
         try {
+            JobInstanceVO latest = instanceService.selectById(instance.getId());
+            if (latest == null || !JobStatus.STARTING.name().equalsIgnoreCase(latest.getJobStatus())) {
+                log.info("Skip batch submission because the instance left STARTING while queued, instanceId={}, status={}",
+                        instance.getId(), latest == null ? null : latest.getJobStatus());
+                if (latest != null && JobStatus.CANCELING.name().equalsIgnoreCase(latest.getJobStatus())) {
+                    if (jobResultHandler != null) {
+                        jobResultHandler.skipSubmissionIfNotStarting(instance.getId(), latest.getEngineJobId());
+                    } else {
+                        instanceService.updateFinalStatusIfRunningLike(
+                                instance.getId(), JobStatus.CANCELED, "Job was canceled before Engine submission.");
+                    }
+                }
+                return;
+            }
+            // selectById is an API-facing query and masks credentials in runtimeConfig. Keep
+            // using it for the queued-state check, but submit the unmasked snapshot returned
+            // by createIfNoRunningInstance.
             jobSubmitter.submit(instance);
         } catch (Exception e) {
             log.error("Asynchronous batch job submission failed: instanceId={}, errorType={}, error={}",

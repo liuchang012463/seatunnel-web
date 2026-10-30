@@ -807,6 +807,7 @@ class OpenMetadataRestClientTest {
             respond(exchange, 200, "{\"data\":["
                     + "{\"id\":\"00000000-0000-0000-0000-000000000041\","
                     + "\"name\":\"GET /orders\",\"fullyQualifiedName\":\"st_ds_42.default.GET /orders\","
+                    + "\"requestMethod\":\"GET\",\"endpointURL\":\"/orders\","
                     + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}},"
                     + "{\"id\":\"00000000-0000-0000-0000-000000000042\","
                     + "\"name\":\"GET /invoices\",\"fullyQualifiedName\":\"st_ds_42.invoices.GET /invoices\","
@@ -825,7 +826,38 @@ class OpenMetadataRestClientTest {
         // the service are narrowed down to the requested collection here.
         assertEquals(1, page.data().size());
         assertEquals("st_ds_42.default.GET /orders", page.data().get(0).fullyQualifiedName());
+        assertEquals("GET", page.data().get(0).requestMethod());
+        assertEquals("/orders", page.data().get(0).endpointURL());
+        assertEquals(2, page.scannedCount());
         assertQuery("/api/v1/apiEndpoints", uri.get(), "service=st_ds_42");
+        assertTrue(uri.get().contains("requestMethod"));
+        assertTrue(uri.get().contains("endpointURL"));
+    }
+
+    @Test
+    void leavesCollectionEndpointCountUnknownWhenTheListHasNoChildProjection() throws Exception {
+        AtomicReference<String> uri = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/apiCollections", exchange -> {
+            uri.set(exchange.getRequestURI().toString());
+            respond(exchange, 200,
+                    "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000043\","
+                            + "\"name\":\"orders\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                            + "\"endpointURL\":\"https://example.test/api\","
+                            + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}]}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        OpenMetadataPage<OpenMetadataAsset> page = client.listAssetsPage(
+                ExplorationAssetType.API_COLLECTION, "st_ds_42", null, false, 20, null);
+
+        assertEquals(1, page.data().size());
+        assertNull(page.data().get(0).childCount());
+        assertEquals("https://example.test/api", page.data().get(0).endpointURL());
+        assertTrue(uri.get().contains("endpointURL"));
     }
 
     @Test

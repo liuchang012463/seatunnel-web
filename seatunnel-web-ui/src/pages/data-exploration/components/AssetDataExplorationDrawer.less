@@ -78,8 +78,7 @@
     padding: 4px 8px 8px;
   }
 
-  /* The API catalog is browsed as one tree: a group carries its endpoints, so the
-     request and response structure of an interface is reachable in one click. */
+  /* API groups stay compact in the tree; method tags identify endpoint children. */
   .asset-exploration__tree {
     color: var(--exploration-text-secondary);
     background: transparent;
@@ -105,6 +104,14 @@
     min-width: 0;
     align-items: center;
     gap: 6px;
+
+    .ant-tag {
+      flex: 0 0 auto;
+      margin-inline-end: 0;
+      padding-inline: 4px;
+      font-size: 10px;
+      line-height: 17px;
+    }
   }
 
   .asset-exploration__tree-label {
@@ -260,19 +267,19 @@
     display: grid;
     margin: 0;
     padding: 4px 0;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 0 24px;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 10px;
 
     > div {
-      display: grid;
       min-width: 0;
-      grid-template-columns: 110px minmax(0, 1fr);
-      gap: 10px;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--exploration-line-soft);
+      padding: 12px;
+      background: var(--exploration-control);
+      border: 1px solid var(--exploration-line-soft);
+      border-radius: 7px;
     }
 
     dt {
+      margin-bottom: 7px;
       color: var(--exploration-text-muted);
       font-size: 11px;
     }
@@ -282,28 +289,88 @@
       margin: 0;
       overflow-wrap: anywhere;
       color: var(--exploration-text);
-      font-size: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.45;
 
       &.is-code {
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: 11px;
+        font-weight: 400;
+      }
+    }
+
+    .is-json-property {
+      grid-column: 1 / -1;
+
+      dd {
+        min-width: 0;
+      }
+
+      pre {
+        max-height: 340px;
+        margin: 0;
+        overflow: auto;
+        padding: 12px;
+        color: var(--exploration-text-secondary);
+        font: inherit;
+        line-height: 1.55;
+        white-space: pre;
+        background: rgb(0 0 0 / 14%);
+        border: 1px solid var(--exploration-line-soft);
+        border-radius: 5px;
       }
     }
   }
 
   .asset-exploration__message-list {
-    display: flex;
-    max-height: 360px;
-    flex-direction: column;
+    background: transparent;
+    border: 0;
+
+    .ant-collapse-item {
+      margin-bottom: 8px;
+      overflow: hidden;
+      background: var(--exploration-control);
+      border: 1px solid var(--exploration-line-soft);
+      border-radius: 7px;
+    }
+
+    .ant-collapse-header {
+      align-items: center !important;
+      padding: 9px 12px !important;
+      color: var(--exploration-text) !important;
+    }
+
+    .ant-collapse-content {
+      background: transparent;
+      border-top: 1px solid var(--exploration-line-soft);
+    }
+
+    .ant-collapse-content-box {
+      padding: 8px !important;
+    }
+  }
+
+  .asset-exploration__message-title {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
-    overflow: auto;
-    padding: 4px 2px;
+
+    strong {
+      font-size: 12px;
+    }
+
+    .ant-tag {
+      margin: 0;
+      font-size: 10px;
+      line-height: 18px;
+    }
   }
 
   .asset-exploration__message {
     margin: 0;
-    padding: 10px 12px;
-    max-height: 6.5em;
+    padding: 12px;
+    max-height: 420px;
     overflow: auto;
     color: var(--exploration-text-secondary);
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -311,9 +378,140 @@
     line-height: 1.55;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    background: var(--exploration-control);
+    background: rgb(0 0 0 / 14%);
     border: 1px solid var(--exploration-line-soft);
     border-radius: 6px;
+  }
+
+  .asset-exploration__api-collection {
+    padding: 18px 20px 24px;
+  }
+
+  .asset-exploration__api-description {
+    margin: 2px 0 18px;
+    padding: 14px 16px;
+    background: var(--exploration-control);
+    border: 1px solid var(--exploration-line-soft);
+    border-radius: 8px;
+
+    p {
+      margin: 5px 0 0;
+      color: var(--exploration-text-secondary);
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .asset-exploration__api-base-url {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 12px;
+    color: var(--exploration-text-muted);
+    font-size: 11px;
+
+    code {
+      color: var(--exploration-text-secondary);
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .asset-exploration__api-endpoints {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+
+    > .ant-input-affix-wrapper {
+      max-width: 520px;
+    }
+  }
+
+  .asset-exploration__api-table {
+    min-width: 0;
+  }
+
+  .asset-exploration__api-endpoint-row {
+    cursor: pointer;
+  }
+
+  .asset-exploration__endpoint-link {
+    height: auto;
+    max-width: 100%;
+    padding: 0;
+    overflow-wrap: anywhere;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .asset-exploration__api-context {
+    display: grid;
+    grid-template-columns: minmax(150px, .5fr) minmax(220px, 1.5fr);
+    gap: 12px;
+    margin: 12px 0 16px;
+    padding: 14px;
+    background: var(--exploration-control);
+    border: 1px solid var(--exploration-line-soft);
+    border-radius: 8px;
+
+    > div {
+      min-width: 0;
+    }
+
+    span,
+    strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--exploration-text-muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    code {
+      color: var(--exploration-text);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    p {
+      margin: 0;
+      color: var(--exploration-text-secondary);
+      font-size: 12px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    .asset-exploration__api-context-description,
+    .asset-exploration__api-context-group {
+      grid-column: 1 / -1;
+    }
+
+    .asset-exploration__api-context-method .ant-tag {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      margin: 0;
+    }
+
+    .asset-exploration__api-context-group button {
+      padding: 0;
+      color: var(--exploration-accent);
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+
+      &:hover,
+      &:focus-visible {
+        text-decoration: underline;
+      }
+    }
+
+    .asset-exploration__api-context-group p {
+      margin-top: 5px;
+    }
   }
 
   .asset-exploration__tag-list {

@@ -191,6 +191,180 @@ export function formatPropertyValue(property: DataExplorationAssetProperty): str
   }
 }
 
+/** Format JSON and the Python literal representation used by some sample collectors. */
+export function formatSampleMessage(message: string): { text: string; parsed: boolean } {
+  const parsed = parseJsonLike(message);
+  return parsed.ok
+    ? { text: JSON.stringify(parsed.value, null, 2), parsed: true }
+    : { text: message, parsed: false };
+}
+
+/** Formats a complex property while leaving non-JSON code and text untouched. */
+export function formatJsonLikeProperty(value: unknown): string {
+  if (typeof value !== 'string') {
+    try {
+      return JSON.stringify(value, null, 2) ?? String(value);
+    } catch {
+      return String(value);
+    }
+  }
+  const parsed = parseJsonLike(value);
+  return parsed.ok ? JSON.stringify(parsed.value, null, 2) : value;
+}
+
+function parseJsonLike(value: string): { ok: boolean; value?: unknown } {
+  if (value.length > 1_000_000) return { ok: false };
+  try {
+    return { ok: true, value: JSON.parse(value) };
+  } catch {
+    try {
+      return { ok: true, value: parsePythonLiteral(value) };
+    } catch {
+      return { ok: false };
+    }
+  }
+}
+
+/** A bounded parser for Python's plain dict/list/tuple/scalar repr; it never evaluates code. */
+function parsePythonLiteral(source: string): unknown {
+  let index = 0;
+  let nodes = 0;
+
+  const skipWhitespace = () => {
+    while (index < source.length && /\s/.test(source[index])) index += 1;
+  };
+
+  const parseString = (): string => {
+    const quote = source[index];
+    index += 1;
+    let result = '';
+    while (index < source.length) {
+      const char = source[index++];
+      if (char === quote) return result;
+      if (char !== '\\') {
+        result += char;
+        continue;
+      }
+      if (index >= source.length) throw new Error('Incomplete escape');
+      const escaped = source[index++];
+      const basicEscapes: Record<string, string> = {
+        '\\': '\\',
+        "'": "'",
+        '"': '"',
+        a: '\u0007',
+        b: '\b',
+        f: '\f',
+        n: '\n',
+        r: '\r',
+        t: '\t',
+        v: '\u000b',
+      };
+      if (Object.prototype.hasOwnProperty.call(basicEscapes, escaped)) {
+        result += basicEscapes[escaped];
+      } else if (escaped === 'x' || escaped === 'u' || escaped === 'U') {
+        const digits = escaped === 'x' ? 2 : escaped === 'u' ? 4 : 8;
+        const hex = source.slice(index, index + digits);
+        if (hex.length !== digits || !/^[\da-f]+$/i.test(hex)) throw new Error('Invalid unicode escape');
+        const codePoint = Number.parseInt(hex, 16);
+        if (codePoint > 0x10ffff) throw new Error('Invalid unicode code point');
+        result += String.fromCodePoint(codePoint);
+        index += digits;
+      } else if (/^[0-7]$/.test(escaped)) {
+        const octal = `${escaped}${source.slice(index).match(/^[0-7]{0,2}/)?.[0] || ''}`;
+        result += String.fromCharCode(Number.parseInt(octal, 8));
+        index += octal.length - 1;
+      } else {
+        result += `\\${escaped}`;
+      }
+    }
+    throw new Error('Unterminated string');
+  };
+
+  const parseValue = (depth: number): unknown => {
+    skipWhitespace();
+    nodes += 1;
+    if (depth > 64 || nodes > 20_000) throw new Error('Literal is too complex');
+    const char = source[index];
+    if (char === "'" || char === '"') return parseString();
+    if (char === '[' || char === '(') {
+      const close = char === '[' ? ']' : ')';
+      index += 1;
+      const values: unknown[] = [];
+      skipWhitespace();
+      if (source[index] === close) {
+        index += 1;
+        return values;
+      }
+      while (index < source.length) {
+        values.push(parseValue(depth + 1));
+        skipWhitespace();
+        if (source[index] === close) {
+          index += 1;
+          return values;
+        }
+        if (source[index] !== ',') throw new Error('Expected a comma');
+        index += 1;
+        skipWhitespace();
+        if (source[index] === close) {
+          index += 1;
+          return values;
+        }
+      }
+      throw new Error('Unterminated sequence');
+    }
+    if (char === '{') {
+      index += 1;
+      const result: Record<string, unknown> = Object.create(null);
+      skipWhitespace();
+      if (source[index] === '}') {
+        index += 1;
+        return result;
+      }
+      while (index < source.length) {
+        const key = parseValue(depth + 1);
+        skipWhitespace();
+        if (source[index] !== ':') throw new Error('Expected a mapping key');
+        index += 1;
+        result[String(key)] = parseValue(depth + 1);
+        skipWhitespace();
+        if (source[index] === '}') {
+          index += 1;
+          return result;
+        }
+        if (source[index] !== ',') throw new Error('Expected a comma');
+        index += 1;
+        skipWhitespace();
+        if (source[index] === '}') {
+          index += 1;
+          return result;
+        }
+      }
+      throw new Error('Unterminated mapping');
+    }
+    const token = source.slice(index);
+    const literal = /^(True|False|None)\b/.exec(token);
+    if (literal) {
+      index += literal[0].length;
+      if (literal[0] === 'True') return true;
+      if (literal[0] === 'False') return false;
+      return null;
+    }
+    const number = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/.exec(token);
+    if (number) {
+      index += number[0].length;
+      const parsed = Number(number[0]);
+      if (!Number.isFinite(parsed)) throw new Error('Invalid number');
+      return parsed;
+    }
+    throw new Error('Unsupported literal');
+  };
+
+  const parsed = parseValue(0);
+  skipWhitespace();
+  if (index !== source.length) throw new Error('Unexpected trailing content');
+  return parsed;
+}
+
 function formatDuration(milliseconds: number): string {
   if (!Number.isFinite(milliseconds) || milliseconds < 0) return '不限';
   const seconds = Math.round(milliseconds / 1000);

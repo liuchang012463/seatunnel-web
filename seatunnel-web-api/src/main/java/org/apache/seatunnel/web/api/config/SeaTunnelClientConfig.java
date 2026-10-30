@@ -19,4 +19,12 @@ public class SeaTunnelClientConfig {
         return new RestTemplate(f);
     }
 
+    @Bean
+    public RestTemplate seaTunnelJobSubmitRestTemplate(SeaTunnelClientProperties props) {
+        SimpleClientHttpRequestFactory f = new SimpleClientHttpRequestFactory();
+        f.setConnectTimeout(props.getConnectTimeoutMs());
+        f.setReadTimeout(Math.max(1_000, props.getJobSubmitReadTimeoutMs()));
+        return new RestTemplate(f);
+    }
+
 }

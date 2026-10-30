@@ -27,7 +27,4 @@ public class StreamingJobSubmitOptions {
         return new StreamingJobSubmitOptions(restoreEngineJobId, true);
     }
 
-    public String getEngineJobIdParam() {
-        return restoreEngineJobId == null ? null : String.valueOf(restoreEngineJobId);
-    }
 }

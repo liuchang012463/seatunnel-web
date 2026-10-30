@@ -647,7 +647,7 @@ const App: React.FC<Props> = ({
         const result = data?.data;
 
         message.success(
-          `批量提交已接收：成功 ${result?.successCount || 0} 个进入启动队列，失败 ${
+          `批量提交已接收：成功 ${result?.successCount || 0} 个进入提交队列，失败 ${
             result?.failedCount || 0
           } 个`
         );

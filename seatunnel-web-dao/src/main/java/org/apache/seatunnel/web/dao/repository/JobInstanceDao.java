@@ -36,6 +36,9 @@ public interface JobInstanceDao extends IDao<JobInstance> {
      */
     boolean updateEngineIdIfStarting(Long instanceId, String engineJobId, Date startTime);
 
+    /** Records cancellation intent without ending the instance while submission may still be in flight. */
+    boolean markCancelingIfStarting(Long instanceId, String engineJobId, String errorMessage);
+
     /**
      * Applies an Engine-reported final status only while the instance is still running-like.
      * A late success must not overwrite a terminal decision already made by the recovery
@@ -47,11 +50,18 @@ public interface JobInstanceDao extends IDao<JobInstance> {
                                            JobStatus targetStatus,
                                            String errorMessage);
 
+    /** Applies a recovered final status only if the stale STARTING snapshot is unchanged. */
+    boolean updateFinalStatusIfStarting(Long instanceId,
+                                        String expectedEngineJobId,
+                                        Date expectedLastActivity,
+                                        JobStatus targetStatus,
+                                        String errorMessage);
+
     /**
      * Refreshes the heartbeat of an in-flight submission so recovery does not mistake a long
      * driver upload for a lost submission.
      *
-     * @return true when the instance is still STARTING
+     * @return true when the instance is still awaiting submit resolution
      */
     boolean touchStartingInstance(Long instanceId);
 

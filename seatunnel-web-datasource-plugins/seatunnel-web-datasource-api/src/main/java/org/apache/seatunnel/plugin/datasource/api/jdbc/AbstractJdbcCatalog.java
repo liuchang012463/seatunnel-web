@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -56,22 +55,33 @@ public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
         if (StringUtils.isNotBlank(request.getQuery())) {
             request.setQuery(resolveSqlVariables(request.getQuery()));
         }
-        // QueryRequest keeps dotted table_path as a single tableName to avoid
-        // breaking MySQL database.table. Re-split here via catalog-specific
-        // resolveTablePath so Oracle/PgSQL/Kingbase/Dameng schema.table works.
+        // QueryRequest keeps table_path as one value because the path shape is
+        // database-specific. Parse catalog paths here, while respecting quoted
+        // identifiers that may themselves contain dots.
         TablePath tablePath = request.getTablePath();
-        if (tablePath != null && StringUtils.isNotBlank(tablePath.getTableName())
-                && tablePath.getTableName().contains(".")) {
-            TablePath resolved = resolveTablePath(tablePath.getTableName());
-            String database = getText(requestBody, "database");
-            String schema = getText(requestBody, "schema_name");
-            if (StringUtils.isNotBlank(database) || StringUtils.isNotBlank(schema)) {
-                request.setTablePath(TablePath.of(
-                        StringUtils.defaultIfBlank(database, resolved.getDatabaseName()),
-                        StringUtils.defaultIfBlank(schema, resolved.getSchemaName()),
-                        resolved.getTableName()));
-            } else {
-                request.setTablePath(resolved);
+        if (tablePath != null && StringUtils.isNotBlank(tablePath.getTableName())) {
+            String rawTablePath = tablePath.getTableName();
+            List<String> identifiers = splitIdentifierPath(rawTablePath);
+            boolean isQualified = identifiers.size() > 1;
+            boolean wasQuotedOrTrimmed = identifiers.size() == 1
+                    && !identifiers.get(0).equals(rawTablePath);
+            if (isQualified || wasQuotedOrTrimmed) {
+                TablePath resolved = isQualified
+                        ? resolveTablePath(rawTablePath)
+                        : TablePath.of(
+                                tablePath.getDatabaseName(),
+                                tablePath.getSchemaName(),
+                                identifiers.get(0));
+                String database = getText(requestBody, "database");
+                String schema = getText(requestBody, "schema_name");
+                if (StringUtils.isNotBlank(database) || StringUtils.isNotBlank(schema)) {
+                    request.setTablePath(TablePath.of(
+                            StringUtils.defaultIfBlank(database, resolved.getDatabaseName()),
+                            StringUtils.defaultIfBlank(schema, resolved.getSchemaName()),
+                            resolved.getTableName()));
+                } else {
+                    request.setTablePath(resolved);
+                }
             }
         }
         return request;
@@ -285,36 +295,105 @@ public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
             throw new IllegalArgumentException("tablePath must not be blank");
         }
 
-        String[] parts = Arrays.stream(tablePath.split("\\."))
-                .map(NonNullFunctions.from(String::trim))
-                .filter(StringUtils::isNotBlank)
-                .toArray(String[]::new);
+        List<String> parts = splitIdentifierPath(tablePath);
 
-        if (parts.length == 1) {
+        if (parts.size() == 1) {
             return TablePath.of(
                     getParam().getDatabase(),
                     getParam().getSchemaName(),
-                    parts[0]
+                    parts.get(0)
             );
         }
 
-        if (parts.length == 2) {
+        if (parts.size() == 2) {
             return TablePath.of(
                     getParam().getDatabase(),
-                    parts[0],
-                    parts[1]
+                    parts.get(0),
+                    parts.get(1)
             );
         }
 
-        if (parts.length == 3) {
+        if (parts.size() == 3) {
             return TablePath.of(
-                    parts[0],
-                    parts[1],
-                    parts[2]
+                    parts.get(0),
+                    parts.get(1),
+                    parts.get(2)
             );
         }
 
         throw new IllegalArgumentException("Invalid tablePath: " + tablePath);
+    }
+
+    /**
+     * Splits a qualified identifier path on dots outside double-quoted or
+     * backtick-quoted identifiers. Repeated quote characters inside a quoted
+     * component represent one literal quote character.
+     */
+    protected List<String> splitIdentifierPath(String identifierPath) {
+        List<String> parts = new ArrayList<>();
+        StringBuilder part = new StringBuilder();
+        char quote = 0;
+        char closingQuote = 0;
+        boolean quotedPart = false;
+        boolean quoteClosed = false;
+
+        for (int index = 0; index < identifierPath.length(); index++) {
+            char current = identifierPath.charAt(index);
+            if (quote != 0) {
+                if (current == closingQuote) {
+                    if (index + 1 < identifierPath.length()
+                            && identifierPath.charAt(index + 1) == closingQuote) {
+                        part.append(closingQuote);
+                        index++;
+                    } else {
+                        quote = 0;
+                        quoteClosed = true;
+                    }
+                } else {
+                    part.append(current);
+                }
+                continue;
+            }
+
+            if (quoteClosed && (current == '"' || current == '`')) {
+                throw new IllegalArgumentException("Invalid tablePath: " + identifierPath);
+            } else if (current == '"' || current == '`') {
+                if (part.length() > 0 && !part.toString().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Invalid tablePath: " + identifierPath);
+                }
+                part.setLength(0);
+                quote = current;
+                closingQuote = current;
+                quotedPart = true;
+                quoteClosed = false;
+            } else if (current == '.') {
+                addIdentifierPathPart(parts, part, quotedPart, identifierPath);
+                quotedPart = false;
+                quoteClosed = false;
+            } else if (quoteClosed) {
+                if (!Character.isWhitespace(current)) {
+                    throw new IllegalArgumentException("Invalid tablePath: " + identifierPath);
+                }
+            } else {
+                part.append(current);
+            }
+        }
+
+        if (quote != 0) {
+            throw new IllegalArgumentException("Unclosed quoted identifier in tablePath: " + identifierPath);
+        }
+        addIdentifierPathPart(parts, part, quotedPart, identifierPath);
+        return parts;
+    }
+
+    private void addIdentifierPathPart(
+            List<String> parts, StringBuilder part, boolean quotedPart, String identifierPath) {
+        String value = quotedPart ? part.toString() : part.toString().trim();
+        if (value.isEmpty()) {
+            throw new IllegalArgumentException("Invalid tablePath: " + identifierPath);
+        }
+        parts.add(value);
+        part.setLength(0);
     }
 
 
@@ -345,11 +424,14 @@ public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
     }
 
     /**
-     * Quote identifier for current database.
-     * Default implementation does not add quotes.
+     * Quote an ANSI SQL identifier. Catalogs with a different delimiter may
+     * override this method.
      */
     protected String quoteIdentifier(String identifier) {
-        return identifier;
+        if (StringUtils.isBlank(identifier)) {
+            return identifier;
+        }
+        return "\"" + identifier.replace("\"", "\"\"") + "\"";
     }
 
     /**
@@ -359,9 +441,7 @@ public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
         if (StringUtils.isBlank(tablePath)) {
             throw new IllegalArgumentException("tablePath must not be blank");
         }
-        return Arrays.stream(tablePath.split("\\."))
-                .map(NonNullFunctions.from(String::trim))
-                .filter(StringUtils::isNotBlank)
+        return splitIdentifierPath(tablePath).stream()
                 .map(this::quoteIdentifier)
                 .collect(Collectors.joining("."));
     }

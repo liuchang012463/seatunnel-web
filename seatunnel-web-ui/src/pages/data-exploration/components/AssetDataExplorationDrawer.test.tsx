@@ -150,7 +150,7 @@ describe('AssetDataExplorationDrawer', () => {
     expect(await screen.findByRole('tab', { name: /样本数据/ })).toBeTruthy();
     fireEvent.click(screen.getByRole('tab', { name: /样本数据/ }));
 
-    expect(await screen.findByText('{"id":1}')).toBeTruthy();
+    expect(await screen.findByText(/"id": 1/)).toBeTruthy();
     expect(service.fetchDataExplorationAsset).toHaveBeenCalledWith('42', 'topic-1', 'TOPIC');
   });
 
@@ -302,5 +302,93 @@ describe('AssetDataExplorationDrawer', () => {
     } finally {
       consoleError.mockRestore();
     }
+  });
+
+  it('shows API groups, searchable endpoints and their method and group description', async () => {
+    const collection = {
+      id: 'collection-1',
+      name: 'core',
+      displayName: 'core',
+      fullyQualifiedName: 'st_ds_42.core',
+      assetType: 'API_COLLECTION',
+      description: 'Service endpoint group',
+      hasChildren: true,
+      childCount: null,
+    };
+    const endpoint = {
+      id: 'endpoint-1',
+      name: '/omext/generate/{fqn}/post',
+      displayName: '/omext/generate/{fqn}',
+      fullyQualifiedName: 'st_ds_42.core.POST /omext/generate/{fqn}',
+      assetType: 'API_ENDPOINT',
+      requestMethod: 'POST',
+      endpointURL: 'http://192.0.2.1:38000/openapi.json/submit_generate_omext_generate__fqn__post',
+      description: 'Service health check',
+    };
+    service.fetchDataExplorationAssets.mockImplementation((params: {
+      parentId?: string;
+      search?: string;
+    }) => Promise.resolve({
+      code: 0,
+      data: page(params.parentId ? [endpoint] : [collection]),
+    }));
+    service.fetchDataExplorationAsset.mockImplementation((
+      _dataSourceId: string,
+      _assetId: string,
+      assetType: string,
+    ) => Promise.resolve({
+      code: 0,
+      data: assetType === 'API_COLLECTION'
+        ? {
+          asset: collection,
+          breadcrumbs: [],
+          schema: { kind: 'NONE', status: 'NOT_SUPPORTED' },
+          sample: { kind: 'NONE', status: 'NOT_SUPPORTED' },
+          properties: [{ key: 'endpointURL', label: '接口地址', value: 'https://example.test' }],
+          tags: [],
+          description: 'Service endpoint group',
+        }
+        : {
+          asset: endpoint,
+          breadcrumbs: [{ ...collection, assetType: 'API_COLLECTION' }],
+          schema: {
+            kind: 'REQUEST_RESPONSE',
+            status: 'AVAILABLE',
+            requestFields: [],
+            responseFields: [{ name: 'status', dataType: 'STRING' }],
+          },
+          sample: { kind: 'NONE', status: 'NOT_SUPPORTED' },
+          properties: [],
+          tags: [],
+          description: 'Service health check',
+        },
+    }));
+
+    render(React.createElement(AssetDataExplorationDrawer, {
+      inline: true,
+      open: true,
+      dataSourceId: '42',
+      dataSourceName: 'api service',
+      dbType: 'HTTP',
+      onClose: () => {},
+    }));
+
+    fireEvent.click(await screen.findByText('core'));
+    expect((await screen.findAllByText('Service endpoint group')).length).toBeGreaterThan(0);
+    const searchInput = await screen.findByRole('textbox', { name: '搜索分组内接口' });
+    expect((await screen.findAllByText('/omext/generate/{fqn}')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('POST').length).toBeGreaterThan(0);
+    fireEvent.change(searchInput, { target: { value: 'health' } });
+    await waitFor(() => expect(service.fetchDataExplorationAssets).toHaveBeenCalledWith(
+      expect.objectContaining({ parentId: 'collection-1', search: 'health', pageNo: 1 }),
+    ));
+
+    fireEvent.click(screen.getByRole('button', { name: '/omext/generate/{fqn}' }));
+    expect((await screen.findAllByText('Service health check')).length).toBeGreaterThan(0);
+    expect(screen.getByText(/分组描述：Service endpoint group/)).toBeTruthy();
+    expect(screen.getByText('接口路径')).toBeTruthy();
+    expect(screen.getAllByText('/omext/generate/{fqn}')).toHaveLength(3);
+    expect(screen.queryByText(endpoint.endpointURL)).toBeNull();
+    expect(screen.getAllByText('POST').length).toBeGreaterThan(0);
   });
 });

@@ -311,6 +311,19 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
     }
 
     @Override
+    public boolean markCancelingIfStarting(Long instanceId, String engineJobId, String errorMessage) {
+        if (instanceId == null || instanceId <= 0) {
+            return false;
+        }
+        try {
+            return jobInstanceDao.markCancelingIfStarting(instanceId, engineJobId, errorMessage);
+        } catch (Exception e) {
+            log.error("Mark batch job instance canceling failed, id={}", instanceId, e);
+            throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    @Override
     public boolean updateFinalStatusIfRunningLike(Long instanceId,
                                                   JobStatus targetStatus,
                                                   String errorMessage) {
@@ -322,6 +335,25 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
                     instanceId, targetStatus, errorMessage);
         } catch (Exception e) {
             log.error("Update final status conditionally failed, id={}, target={}",
+                    instanceId, targetStatus, e);
+            throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
+        }
+    }
+
+    @Override
+    public boolean updateFinalStatusIfStarting(Long instanceId,
+                                               String expectedEngineJobId,
+                                               Date expectedLastActivity,
+                                               JobStatus targetStatus,
+                                               String errorMessage) {
+        if (instanceId == null || instanceId <= 0 || targetStatus == null) {
+            return false;
+        }
+        try {
+            return jobInstanceDao.updateFinalStatusIfStarting(
+                    instanceId, expectedEngineJobId, expectedLastActivity, targetStatus, errorMessage);
+        } catch (Exception e) {
+            log.error("Update recovered STARTING status conditionally failed, id={}, target={}",
                     instanceId, targetStatus, e);
             throw new ServiceException(Status.UPDATE_BATCH_JOB_INSTANCE_ERROR);
         }

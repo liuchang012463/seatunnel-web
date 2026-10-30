@@ -1,7 +1,9 @@
 import {
   assetTypeLabel,
   firstTabKey,
+  formatJsonLikeProperty,
   formatPropertyValue,
+  formatSampleMessage,
   normalizeAssetType,
   sampleStatusCopy,
   schemaStatusCopy,
@@ -43,5 +45,21 @@ describe('asset exploration helpers', () => {
     expect(formatPropertyValue({ value: ['DELETE', 'COMPACT'], displayType: 'LIST' }))
       .toBe('DELETE、COMPACT');
     expect(formatPropertyValue({ value: null, displayType: 'TEXT' })).toBe('—');
+  });
+
+  it('formats JSON and Python dictionary samples without evaluating code', () => {
+    expect(formatSampleMessage('{"id":1,"ok":true}')).toEqual({
+      text: '{\n  "id": 1,\n  "ok": true\n}',
+      parsed: true,
+    });
+    expect(formatSampleMessage("{'id': 1, 'ok': True, 'details': {'missing': None}}"))
+      .toEqual({
+        text: '{\n  "id": 1,\n  "ok": true,\n  "details": {\n    "missing": null\n  }\n}',
+        parsed: true,
+      });
+    const source = "{'id': __import__('os').system('echo unsafe')}";
+    expect(formatSampleMessage(source)).toEqual({ text: source, parsed: false });
+    expect(formatJsonLikeProperty("{'number_of_shards': '1', 'replicas': '0'}"))
+      .toBe('{\n  "number_of_shards": "1",\n  "replicas": "0"\n}');
   });
 });

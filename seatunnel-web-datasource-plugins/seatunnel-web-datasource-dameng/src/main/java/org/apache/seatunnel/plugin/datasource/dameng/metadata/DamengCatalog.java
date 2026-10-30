@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.AbstractJdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
+import org.apache.seatunnel.plugin.datasource.api.jdbc.QueryRequest;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.TablePath;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
@@ -86,9 +87,45 @@ public class DamengCatalog extends AbstractJdbcCatalog {
     private String resolveSchemaName(TablePath tablePath) {
         String resolved = tablePath == null ? null : tablePath.getSchemaName();
         if (StringUtils.isBlank(resolved)) {
-            resolved = schemaName;
+            resolved = schemaName.toUpperCase(Locale.ROOT);
         }
         return resolved;
+    }
+
+    @Override
+    protected QueryRequest preprocessRequest(Map<String, Object> requestBody) {
+        QueryRequest request = super.preprocessRequest(requestBody);
+        if (usesConfiguredSchemaFallback(requestBody)) {
+            TablePath tablePath = request.getTablePath();
+            if (tablePath != null) {
+                String rawTablePath = String.valueOf(requestBody.get("table_path")).trim();
+                String tableName = isQuotedIdentifier(rawTablePath)
+                        ? tablePath.getTableName()
+                        : tablePath.getTableName().toUpperCase(Locale.ROOT);
+                request.setTablePath(TablePath.of(
+                        tablePath.getDatabaseName(),
+                        StringUtils.isBlank(tablePath.getSchemaName())
+                                ? tablePath.getSchemaName()
+                                : tablePath.getSchemaName().toUpperCase(Locale.ROOT),
+                        tableName));
+            }
+        }
+        return request;
+    }
+
+    private boolean isQuotedIdentifier(String identifier) {
+        return (identifier.startsWith("\"") && identifier.endsWith("\""))
+                || (identifier.startsWith("`") && identifier.endsWith("`"));
+    }
+
+    private boolean usesConfiguredSchemaFallback(Map<String, Object> requestBody) {
+        if (requestBody == null
+                || (requestBody.get("schema_name") != null
+                        && StringUtils.isNotBlank(String.valueOf(requestBody.get("schema_name"))))
+                || requestBody.get("table_path") == null) {
+            return false;
+        }
+        return splitIdentifierPath(String.valueOf(requestBody.get("table_path"))).size() == 1;
     }
 
     private String escapeSql(String value) {
@@ -100,14 +137,14 @@ public class DamengCatalog extends AbstractJdbcCatalog {
         if (StringUtils.isBlank(owner)) {
             throw new IllegalArgumentException("Dameng owner/schema must not be blank");
         }
-        return escapeSql(owner.toUpperCase(Locale.ROOT));
+        return escapeSql(owner);
     }
 
     private String resolveTableName(TablePath tablePath) {
         if (tablePath == null || StringUtils.isBlank(tablePath.getTableName())) {
             throw new IllegalArgumentException("table is null");
         }
-        return escapeSql(tablePath.getTableName().toUpperCase(Locale.ROOT));
+        return escapeSql(tablePath.getTableName());
     }
 
     @Override
@@ -192,7 +229,7 @@ public class DamengCatalog extends AbstractJdbcCatalog {
                 .collect(Collectors.toList());
 
         String quotedColumnNames = columnNames.stream()
-                .map(name -> "'" + escapeSql(name.toUpperCase(Locale.ROOT)) + "'")
+                .map(name -> "'" + escapeSql(name) + "'")
                 .collect(Collectors.joining(", "));
 
         return String.format(

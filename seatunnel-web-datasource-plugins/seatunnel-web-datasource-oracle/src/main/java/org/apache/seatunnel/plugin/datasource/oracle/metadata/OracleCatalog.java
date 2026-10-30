@@ -4,11 +4,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.AbstractJdbcCatalog;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
+import org.apache.seatunnel.plugin.datasource.api.jdbc.QueryRequest;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.TablePath;
 import org.apache.seatunnel.plugin.datasource.api.modal.DataSourceTableColumn;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -35,7 +38,10 @@ public class OracleCatalog extends AbstractJdbcCatalog {
 
     @Override
     protected String quoteIdentifier(String identifier) {
-        return "\"" + identifier + "\"";
+        if (StringUtils.isBlank(identifier)) {
+            return identifier;
+        }
+        return "\"" + identifier.replace("\"", "\"\"") + "\"";
     }
 
     @Override
@@ -85,6 +91,92 @@ public class OracleCatalog extends AbstractJdbcCatalog {
         return null;
     }
 
+    @Override
+    protected QueryRequest preprocessRequest(Map<String, Object> requestBody) {
+        QueryRequest request = super.preprocessRequest(requestBody);
+        TablePath tablePath = request.getTablePath();
+        if (tablePath == null) {
+            return request;
+        }
+
+        if (hasExplicitSchema(requestBody)) {
+            String resolvedSchema = resolvePhysicalOwner(tablePath.getSchemaName());
+            if (!StringUtils.equals(tablePath.getSchemaName(), resolvedSchema)) {
+                request.setTablePath(TablePath.of(
+                        tablePath.getDatabaseName(),
+                        resolvedSchema,
+                        tablePath.getTableName()));
+            }
+        } else if (usesConfiguredSchemaFallback(requestBody)) {
+            String owner = resolvePhysicalOwner(configuredOwner(tablePath));
+            if (StringUtils.isNotBlank(owner)) {
+                request.setTablePath(TablePath.of(
+                        tablePath.getDatabaseName(), owner, tablePath.getTableName()));
+            }
+        }
+        return request;
+    }
+
+    private boolean hasExplicitSchema(Map<String, Object> requestBody) {
+        if (requestBody == null) {
+            return false;
+        }
+        Object schema = requestBody.get("schema_name");
+        if (schema != null && StringUtils.isNotBlank(String.valueOf(schema))) {
+            return true;
+        }
+        Object rawTablePath = requestBody.get("table_path");
+        return rawTablePath != null && splitIdentifierPath(String.valueOf(rawTablePath)).size() > 1;
+    }
+
+    private String resolvePhysicalOwner(String requestedOwner) {
+        if (StringUtils.isBlank(requestedOwner)) {
+            return requestedOwner;
+        }
+        String foldedOwner = requestedOwner.toUpperCase(Locale.ROOT);
+        if (StringUtils.equals(requestedOwner, foldedOwner)) {
+            return requestedOwner;
+        }
+
+        String sql = "SELECT USERNAME FROM ALL_USERS WHERE USERNAME = ? OR USERNAME = ?";
+        try (Connection connection = getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, requestedOwner);
+            statement.setString(2, foldedOwner);
+            boolean exactOwnerExists = false;
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    String owner = resultSet.getString(1);
+                    if (StringUtils.equals(owner, requestedOwner)) {
+                        exactOwnerExists = true;
+                    }
+                }
+            }
+            return exactOwnerExists ? requestedOwner : foldedOwner;
+        } catch (SQLException e) {
+            log.warn("Failed resolving Oracle owner case for '{}'; preserving the requested name", requestedOwner, e);
+            return requestedOwner;
+        }
+    }
+
+    private boolean usesConfiguredSchemaFallback(Map<String, Object> requestBody) {
+        if (requestBody == null
+                || (requestBody.get("schema_name") != null
+                        && StringUtils.isNotBlank(String.valueOf(requestBody.get("schema_name"))))
+                || requestBody.get("table_path") == null) {
+            return false;
+        }
+        return splitIdentifierPath(String.valueOf(requestBody.get("table_path"))).size() == 1;
+    }
+
+    private String configuredOwner(TablePath tablePath) {
+        if (StringUtils.isNotBlank(tablePath.getSchemaName())) {
+            return tablePath.getSchemaName();
+        }
+        BaseConnectionParam param = getParam();
+        return StringUtils.defaultIfBlank(param.getUser(), param.getSchemaName());
+    }
+
     private String escapeSql(String value) {
         return value == null ? null : value.replace("'", "''");
     }
@@ -123,7 +215,7 @@ public class OracleCatalog extends AbstractJdbcCatalog {
                 .collect(Collectors.toList());
 
         String quotedColumnNames = columnNames.stream()
-                .map(name -> "'" + escapeSql(name.toUpperCase(Locale.ROOT)) + "'")
+                .map(name -> "'" + escapeSql(name) + "'")
                 .collect(Collectors.joining(", "));
 
         return String.format(
@@ -149,7 +241,7 @@ public class OracleCatalog extends AbstractJdbcCatalog {
             return quoteIdentifier(tableName);
         }
 
-        return quoteIdentifier(owner.toUpperCase()) + "." + quoteIdentifier(tableName);
+        return quoteIdentifier(owner) + "." + quoteIdentifier(tableName);
     }
 
     private String resolveOwnerForTablePath(TablePath tablePath) {
@@ -163,6 +255,6 @@ public class OracleCatalog extends AbstractJdbcCatalog {
             throw new IllegalArgumentException("Oracle owner/schema must not be blank");
         }
 
-        return escapeSql(owner.toUpperCase(Locale.ROOT));
+        return escapeSql(owner);
     }
 }

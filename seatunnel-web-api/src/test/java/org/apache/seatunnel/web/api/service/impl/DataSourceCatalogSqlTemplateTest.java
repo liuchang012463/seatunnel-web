@@ -67,7 +67,7 @@ class DataSourceCatalogSqlTemplateTest {
                     "read_mode", "table", "table_path", "orders",
                     "database", "orders_db", "schema_name", "sales"));
 
-            assertEquals("SELECT order_id\nFROM sales.orders", sql);
+            assertEquals("SELECT \"order_id\"\nFROM \"sales\".\"orders\"", sql);
         }
     }
 

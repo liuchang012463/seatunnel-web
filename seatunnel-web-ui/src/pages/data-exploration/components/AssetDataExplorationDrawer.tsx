@@ -18,6 +18,7 @@ import {
 import {
   Alert,
   Button,
+  Collapse,
   Drawer,
   Empty,
   Input,
@@ -57,7 +58,9 @@ import {
   firstTabKey,
   formatAssetBytes,
   formatAssetTime,
+  formatJsonLikeProperty,
   formatPropertyValue,
+  formatSampleMessage,
   normalizeAssetType,
   sampleStatusCopy,
   schemaStatusCopy,
@@ -166,6 +169,24 @@ function toApiTreeNode(asset: DataExplorationAsset, isLeaf: boolean): ApiTreeNod
     asset,
     isLeaf,
   };
+}
+
+function apiMethodColor(method?: string): string {
+  switch (String(method || '').toUpperCase()) {
+    case 'GET': return 'blue';
+    case 'POST': return 'green';
+    case 'PUT': return 'orange';
+    case 'PATCH': return 'purple';
+    case 'DELETE': return 'red';
+    default: return 'cyan';
+  }
+}
+
+function apiEndpointPath(asset?: DataExplorationAsset): string {
+  if (asset?.displayName?.startsWith('/')) return asset.displayName;
+  if (asset?.name?.startsWith('/')) return asset.name;
+  return asset?.endpointURL || asset?.displayName || asset?.name
+    || asset?.fullyQualifiedName || '未命名接口';
 }
 
 /** Replaces the children of one tree node, keeping the rest of the tree untouched. */
@@ -296,11 +317,17 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   const [activeTab, setActiveTab] = useState<AssetTabKey>();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [apiTree, setApiTree] = useState<ApiTreeNode[]>([]);
+  const [expandedApiTreeKeys, setExpandedApiTreeKeys] = useState<string[]>([]);
+  const [apiEndpointPage, setApiEndpointPage] = useState<DataExplorationAssetPage>();
+  const [apiEndpointPageNo, setApiEndpointPageNo] = useState(1);
+  const [apiEndpointSearch, setApiEndpointSearch] = useState('');
+  const [apiEndpointLoading, setApiEndpointLoading] = useState(false);
+  const [apiEndpointError, setApiEndpointError] = useState<string>();
   const pageRequest = useRef(0);
   const detailRequest = useRef(0);
+  const apiEndpointRequest = useRef(0);
   const refreshTimer = useRef<number>();
-  // API services are browsed as one tree: the groups carry their endpoints, so the
-  // request and response structure of an interface is one click away.
+  // API groups remain in the tree; their complete endpoint list is shown in the main panel.
   const isApiCatalog = String(dbType || '').trim().toUpperCase() === 'HTTP';
 
   useEffect(() => () => {
@@ -366,10 +393,10 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
 
   /**
    * Reads the API catalog root (the interface groups). The endpoints below a group are
-   * loaded when the group is expanded, so the request and response structure of an
-   * interface is reachable without walking into the group first.
+   * loaded when the group is expanded. The main panel pages every endpoint in a
+   * selected group so the tree remains compact without hiding the full list.
    */
-  const loadApiTree = useCallback(async (requestedSearch: string) => {
+  const loadApiTree = useCallback(async (requestedSearch: string, requestedPageNo = 1) => {
     if (!dataSourceId) return;
     const requestId = ++pageRequest.current;
     setListLoading(true);
@@ -377,7 +404,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     try {
       const response = await fetchDataExplorationAssets({
         dataSourceId,
-        pageNo: 1,
+        pageNo: requestedPageNo,
         pageSize: PAGE_SIZE,
         search: requestedSearch,
       });
@@ -386,6 +413,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         setListError(response.message || '无法读取接口目录');
         return;
       }
+      setPage(response.data);
       setApiTree((response.data.records || []).map((asset) => toApiTreeNode(asset, false)));
     } catch (error: any) {
       if (requestId !== pageRequest.current) return;
@@ -398,8 +426,12 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   }, [dataSourceId]);
 
   /** Loads the endpoints of one interface group. */
-  const loadApiChildren = useCallback(async (node: ApiTreeNode) => {
+  const loadApiChildren = useCallback(async (
+    node: ApiTreeNode,
+    selectedEndpoint?: DataExplorationAsset,
+  ) => {
     if (!dataSourceId || !node.asset.id) return;
+    const requestId = pageRequest.current;
     try {
       const response = await fetchDataExplorationAssets({
         dataSourceId,
@@ -408,14 +440,52 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         pageNo: 1,
         pageSize: PAGE_SIZE,
       });
+      if (requestId !== pageRequest.current) return;
       if (response.code !== 0 || !response.data) {
         setListError(response.message || '无法读取接口列表');
         return;
       }
-      const children = (response.data.records || []).map((asset) => toApiTreeNode(asset, true));
+      const childAssets = [...(response.data.records || [])];
+      if (selectedEndpoint?.id && !childAssets.some((asset) => asset.id === selectedEndpoint.id)) {
+        childAssets.push(selectedEndpoint);
+      }
+      const children = childAssets.map((asset) => toApiTreeNode(asset, true));
       setApiTree((current) => withApiTreeChildren(current, node.key, children));
     } catch (error: any) {
+      if (requestId !== pageRequest.current) return;
       setListError(error?.response?.data?.message || error?.message || '无法读取接口列表');
+    }
+  }, [dataSourceId]);
+
+  const loadApiEndpoints = useCallback(async (
+    collectionId: string,
+    requestedPageNo: number,
+    requestedSearch: string,
+  ) => {
+    if (!dataSourceId) return;
+    const requestId = ++apiEndpointRequest.current;
+    setApiEndpointLoading(true);
+    setApiEndpointError(undefined);
+    try {
+      const response = await fetchDataExplorationAssets({
+        dataSourceId,
+        parentId: collectionId,
+        parentType: 'API_COLLECTION',
+        pageNo: requestedPageNo,
+        pageSize: PAGE_SIZE,
+        search: requestedSearch,
+      });
+      if (requestId !== apiEndpointRequest.current) return;
+      if (response.code !== 0 || !response.data) {
+        setApiEndpointError(response.message || '无法读取接口列表');
+        return;
+      }
+      setApiEndpointPage(response.data);
+    } catch (error: any) {
+      if (requestId !== apiEndpointRequest.current) return;
+      setApiEndpointError(error?.response?.data?.message || error?.message || '无法读取接口列表');
+    } finally {
+      if (requestId === apiEndpointRequest.current) setApiEndpointLoading(false);
     }
   }, [dataSourceId]);
 
@@ -473,7 +543,12 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   }, [dataSourceId]);
 
   useEffect(() => {
-    if (!open || !dataSourceId) return;
+    if (!open || !dataSourceId) {
+      pageRequest.current += 1;
+      detailRequest.current += 1;
+      apiEndpointRequest.current += 1;
+      return;
+    }
     setLevel({ breadcrumbs: [] });
     setPageNo(1);
     setSearch('');
@@ -482,9 +557,15 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     setDetail(undefined);
     setActiveTab(undefined);
     setSettingsOpen(false);
+    setExpandedApiTreeKeys([]);
     setListError(undefined);
     setDetailError(undefined);
     setApiTree([]);
+    setApiEndpointPage(undefined);
+    setApiEndpointPageNo(1);
+    setApiEndpointSearch('');
+    setApiEndpointError(undefined);
+    apiEndpointRequest.current += 1;
     void loadMetadataStatus();
     if (initialAssetId && initialAssetType) {
       void loadDeepLink(initialAssetId, initialAssetType);
@@ -495,7 +576,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     if (!open || !dataSourceId) return;
     const timer = window.setTimeout(() => {
       if (isApiCatalog) {
-        void loadApiTree(search);
+        void loadApiTree(search, pageNo);
         return;
       }
       void loadPage(level, pageNo, search);
@@ -507,6 +588,36 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     if (!open || !selected) return;
     void loadDetail(selected.id, selected.type);
   }, [loadDetail, open, selected]);
+
+  useEffect(() => {
+    if (!open || !selected?.id || normalizeAssetType(selected.type) !== 'API_COLLECTION') {
+      apiEndpointRequest.current += 1;
+      setApiEndpointPage(undefined);
+      setApiEndpointError(undefined);
+      setApiEndpointLoading(false);
+      return;
+    }
+    void loadApiEndpoints(selected.id, apiEndpointPageNo, apiEndpointSearch);
+  }, [apiEndpointPageNo, apiEndpointSearch, loadApiEndpoints, open, selected?.id, selected?.type]);
+
+  useEffect(() => {
+    if (!open || !isApiCatalog || !selected?.id
+        || normalizeAssetType(selected.type) !== 'API_ENDPOINT'
+        || detail?.asset?.id !== selected.id) {
+      return;
+    }
+    const collection = [...(detail.breadcrumbs || [])]
+      .reverse()
+      .find((item) => normalizeAssetType(item.assetType) === 'API_COLLECTION');
+    if (!collection?.id) return;
+    const group = apiTree.find((node) => node.asset.id === collection.id);
+    if (!group) return;
+
+    setExpandedApiTreeKeys((current) => current.includes(group.key) ? current : [...current, group.key]);
+    if (!group.children?.some((node) => node.asset.id === selected.id)) {
+      void loadApiChildren(group, detail.asset);
+    }
+  }, [apiTree, detail, isApiCatalog, loadApiChildren, open, selected]);
 
   // Open the first item by default so the workspace shows its metadata and
   // sample data without an extra click.
@@ -539,6 +650,15 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     if (!asset.id) return;
     setSelected({ id: asset.id, type: String(asset.assetType || '') });
     setActiveTab(firstTabKey(asset.assetType));
+    if (normalizeAssetType(asset.assetType) === 'API_COLLECTION') {
+      setApiEndpointPageNo(1);
+      setApiEndpointSearch('');
+      const group = apiTree.find((node) => node.asset.id === asset.id);
+      if (group) {
+        setExpandedApiTreeKeys((current) => current.includes(group.key) ? current : [...current, group.key]);
+        if (!group.children) void loadApiChildren(group);
+      }
+    }
   };
 
   const enterAsset = (asset: DataExplorationAsset) => {
@@ -576,7 +696,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
   const refresh = () => {
     void loadMetadataStatus();
     if (isApiCatalog) {
-      void loadApiTree(search);
+      void loadApiTree(search, pageNo);
     } else {
       void loadPage(level, pageNo, search);
     }
@@ -609,7 +729,11 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
             : '已提交扫描，完成后刷新查看结果');
           refreshTimer.current = window.setTimeout(() => {
             void loadMetadataStatus();
-            void loadPage(level, pageNo, search);
+            if (isApiCatalog) {
+              void loadApiTree(search, pageNo);
+            } else {
+              void loadPage(level, pageNo, search);
+            }
             if (selected) {
               void loadDetail(selected.id, selected.type, true);
             }
@@ -718,26 +842,47 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       return renderState('暂无样本', '当前元数据没有可展示的样本数据。', undefined, <EyeOutlined />);
     }
     const status = sample.status;
+    const isMessageSample = sample.kind === 'MESSAGES';
+    const isSearchIndex = normalizeAssetType(detail.asset?.assetType || selected?.type) === 'SEARCH_INDEX';
+    const sampleItemLabel = isMessageSample
+      ? (isSearchIndex ? '样本文档' : '样本消息')
+      : '样本行';
+    const sampleCountUnit = isSearchIndex && isMessageSample ? '份' : '条';
     if (status === 'AVAILABLE') {
       return (
         <div className="exploration-drawer__tab-pane">
           <div className="exploration-drawer__tab-toolbar">
             <div>
               <div className="exploration-drawer__eyebrow">SAMPLE DATA</div>
-              <strong>{sample?.kind === 'MESSAGES' ? '样本消息' : '样本行'}</strong>
+              <strong>{sampleItemLabel}</strong>
             </div>
             <span>
-              共 {sample?.kind === 'MESSAGES'
+              共 {isMessageSample
                 ? (sample?.messages?.length || 0)
-                : (sample?.rows?.length || 0)} 条 · 样本为最近一次采集结果
+                : (sample?.rows?.length || 0)} {sampleCountUnit} · 样本为最近一次采集结果
             </span>
           </div>
-          {sample?.kind === 'MESSAGES' ? (
-            <div className="asset-exploration__message-list">
-              {(sample.messages || []).map((item, index) => (
-                <pre className="asset-exploration__message" key={`message-${index}`}>{item}</pre>
-              ))}
-            </div>
+          {isMessageSample ? (
+            <Collapse
+              className="asset-exploration__message-list"
+              defaultActiveKey={sample.messages?.length ? ['0'] : []}
+              expandIconPosition="end"
+              items={(sample.messages || []).map((item, index) => {
+                const formatted = formatSampleMessage(item);
+                return {
+                  key: String(index),
+                  label: (
+                    <span className="asset-exploration__message-title">
+                      <strong>{sampleItemLabel} {index + 1}</strong>
+                      <Tag color={formatted.parsed ? 'blue' : 'default'}>
+                        {formatted.parsed ? '格式化 JSON' : '原始内容'}
+                      </Tag>
+                    </span>
+                  ),
+                  children: <pre className="asset-exploration__message">{formatted.text}</pre>,
+                };
+              })}
+            />
           ) : (
             <SampleRowsTable sample={sample} />
           )}
@@ -777,14 +922,22 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     }
     return (
       <dl className="asset-exploration__property-list">
-        {properties.map((property) => (
-          <div key={property.key || property.label}>
-            <dt>{property.label || property.key}</dt>
-            <dd className={property.displayType === 'CODE' ? 'is-code' : undefined}>
-              {formatPropertyValue(property)}
-            </dd>
-          </div>
-        ))}
+        {properties.map((property) => {
+          const isIndexSettings = property.key === 'searchIndexSettings';
+          return (
+            <div
+              key={property.key || property.label}
+              className={isIndexSettings ? 'is-json-property' : undefined}
+            >
+              <dt>{property.label || property.key}</dt>
+              <dd className={isIndexSettings ? 'is-code' : undefined}>
+                {isIndexSettings
+                  ? <pre>{formatJsonLikeProperty(property.value)}</pre>
+                  : formatPropertyValue(property)}
+              </dd>
+            </div>
+          );
+        })}
       </dl>
     );
   };
@@ -805,6 +958,184 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       {renderProperties()}
     </div>
   );
+
+  const apiCollectionPanel = () => {
+    const endpointURL = detail?.properties?.find((property) => property.key === 'endpointURL')?.value;
+    const columns: TableColumnsType<DataExplorationAsset> = [
+      {
+        title: '请求方法',
+        dataIndex: 'requestMethod',
+        key: 'requestMethod',
+        width: 120,
+        render: (method?: string) => method
+          ? <Tag color={apiMethodColor(method)}>{method}</Tag>
+          : '—',
+      },
+      {
+        title: '路径',
+        key: 'path',
+        render: (_value, endpoint) => (
+          <Button
+            type="link"
+            size="small"
+            className="asset-exploration__endpoint-link"
+            onClick={(event) => {
+              event.stopPropagation();
+              selectAsset(endpoint);
+            }}
+          >
+            {apiEndpointPath(endpoint)}
+          </Button>
+        ),
+      },
+      {
+        title: '描述',
+        dataIndex: 'description',
+        key: 'description',
+        ellipsis: true,
+        render: (description?: string) => description ? decodeHtmlEntities(description) : '—',
+      },
+    ];
+    const endpoints = apiEndpointPage?.records || [];
+
+    return (
+      <div className="asset-exploration__api-collection">
+        <header className="exploration-drawer__asset-header">
+          <div className="exploration-drawer__asset-copy">
+            <div className="exploration-drawer__eyebrow">API COLLECTION</div>
+            <h1 title={selectedAsset?.fullyQualifiedName}>{assetDisplayName(selectedAsset)}</h1>
+            <div className="exploration-drawer__fqn" title={selectedAsset?.fullyQualifiedName}>
+              <span>FQN</span>
+              <code>{selectedAsset?.fullyQualifiedName || '—'}</code>
+            </div>
+          </div>
+          <div className="exploration-drawer__asset-badges">
+            <Tag color="blue">接口分组</Tag>
+          </div>
+        </header>
+        <section className="asset-exploration__api-description">
+          <div className="asset-exploration__eyebrow">GROUP DESCRIPTION</div>
+          <p>{detail?.description ? decodeHtmlEntities(detail.description) : '尚未补充分组描述'}</p>
+          {typeof endpointURL === 'string' && endpointURL && (
+            <div className="asset-exploration__api-base-url">
+              <span>服务地址</span>
+              <code>{endpointURL}</code>
+            </div>
+          )}
+        </section>
+        <section className="asset-exploration__api-endpoints">
+          <div className="exploration-drawer__tab-toolbar">
+            <div>
+              <div className="exploration-drawer__eyebrow">API ENDPOINTS</div>
+              <strong>接口列表</strong>
+            </div>
+            <span>{apiEndpointPage ? `${apiEndpointPage.total || 0} 个接口` : '读取中'}</span>
+          </div>
+          <Input
+            allowClear
+            value={apiEndpointSearch}
+            prefix={<SearchOutlined />}
+            aria-label="搜索分组内接口"
+            placeholder="搜索请求方法、路径或描述"
+            onChange={(event) => {
+              setApiEndpointSearch(event.target.value);
+              setApiEndpointPageNo(1);
+            }}
+          />
+          {apiEndpointError ? (
+            <Alert
+              type="warning"
+              showIcon
+              message="接口列表读取失败"
+              description={apiEndpointError}
+              action={<Button size="small" onClick={() => selected?.id && void loadApiEndpoints(
+                selected.id,
+                apiEndpointPageNo,
+                apiEndpointSearch,
+              )}>重试</Button>}
+            />
+          ) : (
+            <Table
+              className="exploration-drawer__detail-table asset-exploration__api-table"
+              size="small"
+              rowKey={(endpoint) => String(endpoint.id || endpoint.fullyQualifiedName)}
+              columns={columns}
+              dataSource={endpoints}
+              loading={apiEndpointLoading}
+              pagination={false}
+              scroll={{ x: 640 }}
+              onRow={(endpoint) => ({
+                onClick: () => selectAsset(endpoint),
+                className: 'asset-exploration__api-endpoint-row',
+              })}
+              locale={{
+                emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={
+                  apiEndpointSearch ? '没有匹配的接口' : '该分组暂无接口'
+                } />,
+              }}
+            />
+          )}
+          {apiEndpointPage?.truncated && (
+            <div className="asset-exploration__truncated">仅扫描前 5000 个接口，超出部分未纳入结果</div>
+          )}
+          {!apiEndpointError && (apiEndpointPage?.total || 0) > PAGE_SIZE && (
+            <Pagination
+              size="small"
+              current={apiEndpointPageNo}
+              pageSize={apiEndpointPage?.pageSize || PAGE_SIZE}
+              total={apiEndpointPage?.total || 0}
+              showSizeChanger={false}
+              showLessItems
+              onChange={setApiEndpointPageNo}
+            />
+          )}
+        </section>
+      </div>
+    );
+  };
+
+  const apiEndpointContextPanel = () => {
+    const collection = [...(detail?.breadcrumbs || [])]
+      .reverse()
+      .find((item) => normalizeAssetType(item.assetType) === 'API_COLLECTION');
+    return (
+      <section className="asset-exploration__api-context">
+        <div className="asset-exploration__api-context-method">
+          <span>请求方法</span>
+          <Tag color={apiMethodColor(selectedAsset?.requestMethod)}>
+            {selectedAsset?.requestMethod || '未知方法'}
+          </Tag>
+        </div>
+        <div className="asset-exploration__api-context-url">
+          <span>接口路径</span>
+          <code>{apiEndpointPath(selectedAsset)}</code>
+        </div>
+        <div className="asset-exploration__api-context-description">
+          <strong>接口描述</strong>
+          <p>{detail?.description ? decodeHtmlEntities(detail.description) : '尚未补充接口描述'}</p>
+        </div>
+        <div className="asset-exploration__api-context-group">
+          <strong>所属分组</strong>
+          {collection?.id ? (
+            <button
+              type="button"
+              onClick={() => selectAsset({
+                id: collection.id,
+                name: collection.name,
+                assetType: collection.assetType,
+                fullyQualifiedName: collection.fullyQualifiedName,
+              })}
+            >
+              {collection.name || collection.fullyQualifiedName}
+            </button>
+          ) : <span>未关联分组</span>}
+          {collection?.description && (
+            <p>分组描述：{decodeHtmlEntities(collection.description)}</p>
+          )}
+        </div>
+      </section>
+    );
+  };
 
   const detailBody = () => {
     if (detailLoading) {
@@ -831,6 +1162,9 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         assetIcon(level.parentType),
       );
     }
+    if (normalizeAssetType(selectedAsset.assetType) === 'API_COLLECTION') {
+      return apiCollectionPanel();
+    }
     return (
       <>
         <header className="exploration-drawer__asset-header">
@@ -838,13 +1172,22 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
             <div className="exploration-drawer__eyebrow">
               {assetTypeEyebrow(selectedAsset.assetType)}
             </div>
-            <h1 title={selectedAsset.fullyQualifiedName}>{assetDisplayName(selectedAsset)}</h1>
+            <h1 title={selectedAsset.fullyQualifiedName}>
+              {normalizeAssetType(selectedAsset.assetType) === 'API_ENDPOINT'
+                ? apiEndpointPath(selectedAsset)
+                : assetDisplayName(selectedAsset)}
+            </h1>
             <div className="exploration-drawer__fqn" title={selectedAsset.fullyQualifiedName}>
               <span>FQN</span>
               <code>{selectedAsset.fullyQualifiedName || '—'}</code>
             </div>
           </div>
           <div className="exploration-drawer__asset-badges">
+            {normalizeAssetType(selectedAsset.assetType) === 'API_ENDPOINT' && (
+              <Tag color={apiMethodColor(selectedAsset.requestMethod)}>
+                {selectedAsset.requestMethod || 'HTTP'}
+              </Tag>
+            )}
             <Tag color="blue">{assetTypeLabel(selectedAsset.assetType)}</Tag>
             {schemaTag(detail.schema?.status)}
             {sampleTag(detail.sample?.status)}
@@ -868,6 +1211,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
           <span><CloudOutlined /> {formatAssetBytes(selectedAsset.sizeInByte)}</span>
           <span><InfoCircleOutlined /> 更新于 {formatAssetTime(selectedAsset.updatedAt)}</span>
         </div>
+        {normalizeAssetType(selectedAsset.assetType) === 'API_ENDPOINT' && apiEndpointContextPanel()}
         {showTabs ? (
           <Tabs
             className="exploration-drawer__tabs"
@@ -976,7 +1320,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                   description={listError}
                   action={(
                     <Space size="small">
-                      <Button size="small" onClick={() => void (isApiCatalog ? loadApiTree(search) : loadPage(level, pageNo, search))}>
+                      <Button size="small" onClick={() => void (isApiCatalog ? loadApiTree(search, pageNo) : loadPage(level, pageNo, search))}>
                         刷新
                       </Button>
                       {syncFailed && (
@@ -994,6 +1338,8 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                     showIcon
                     blockNode
                     treeData={apiTree}
+                    expandedKeys={expandedApiTreeKeys}
+                    onExpand={(keys) => setExpandedApiTreeKeys(keys.map(String))}
                     loadData={(node) => loadApiChildren(node as ApiTreeNode)}
                     selectedKeys={selected ? [selected.id] : []}
                     onSelect={(_keys, info) => {
@@ -1002,10 +1348,18 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                     }}
                     titleRender={(node) => {
                       const item = node as ApiTreeNode;
+                      const endpoint = normalizeAssetType(item.asset.assetType) === 'API_ENDPOINT';
                       return (
                         <span className="asset-exploration__tree-title" title={item.asset.fullyQualifiedName}>
                           {assetIcon(item.asset.assetType)}
-                          <span className="asset-exploration__tree-label">{item.title}</span>
+                          {endpoint && item.asset.requestMethod && (
+                            <Tag color={apiMethodColor(item.asset.requestMethod)}>
+                              {item.asset.requestMethod}
+                            </Tag>
+                          )}
+                          <span className="asset-exploration__tree-label">
+                            {endpoint ? apiEndpointPath(item.asset) : item.title}
+                          </span>
                         </span>
                       );
                     }}
@@ -1078,17 +1432,15 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
           {page?.truncated && (
             <div className="asset-exploration__truncated">仅扫描前 5000 项，超出部分未纳入结果</div>
           )}
-          {!isApiCatalog && (
-            <Pagination
-              size="small"
-              current={currentPageNo}
-              pageSize={page?.pageSize || PAGE_SIZE}
-              total={total}
-              showSizeChanger={false}
-              showLessItems
-              onChange={(nextPage) => setPageNo(nextPage)}
-            />
-          )}
+          <Pagination
+            size="small"
+            current={currentPageNo}
+            pageSize={page?.pageSize || PAGE_SIZE}
+            total={total}
+            showSizeChanger={false}
+            showLessItems
+            onChange={(nextPage) => setPageNo(nextPage)}
+          />
         </div>
       </aside>
 
