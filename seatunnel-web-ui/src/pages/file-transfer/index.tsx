@@ -1,7 +1,7 @@
+import { PlusOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
-import { App } from 'antd';
+import { App, Button } from 'antd';
 import FileTaskList from '../file-ingest/TaskListAdapter';
-import TaskPageHeader from '../file-ingest/TaskPageHeader';
 import { fileTransferTaskApi } from '../file-ingest/api';
 import { FILE_RESOURCE_SOURCE, fileTaskDraftKey } from '../file-ingest/types';
 
@@ -50,14 +50,20 @@ const FileTransferPage: React.FC = () => {
 
   return (
     <div className="task-list-page-shell">
-      <TaskPageHeader
-        createText="创建文件同步"
-        onCreate={() => void createTask()}
-      />
       <FileTaskList
         taskType="FILE_TRANSFER"
         mode="FILE_SYNC"
         fileMode
+        createAction={(
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => void createTask()}
+            className="task-search-create"
+          >
+            创建任务
+          </Button>
+        )}
         goDetail={(id, item) => editTask(String(id), item)}
         emptyDescription="暂无文件同步任务"
       />

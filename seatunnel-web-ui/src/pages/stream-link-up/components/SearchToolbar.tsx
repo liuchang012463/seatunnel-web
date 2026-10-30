@@ -4,6 +4,7 @@ interface SearchToolbarProps {
   initialValues?: any;
   onSearch: (values: any) => void;
   onReset: () => void;
+  createAction?: React.ReactNode;
 }
 
 /** 实时任务沿用离线任务的筛选布局，保证四类链路的检索体验一致。 */
@@ -11,11 +12,13 @@ const SearchToolbar: React.FC<SearchToolbarProps> = ({
   initialValues,
   onSearch,
   onReset,
+  createAction,
 }) => (
   <AdvancedSearchForm
     initialValues={initialValues}
     onSearch={onSearch}
     onReset={onReset}
+    createAction={createAction}
     showTableFilters
   />
 );

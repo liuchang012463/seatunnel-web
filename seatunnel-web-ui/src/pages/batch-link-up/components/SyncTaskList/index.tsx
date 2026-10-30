@@ -29,6 +29,7 @@ import './index.less';
 
 interface Props {
   goDetail: (value: any, item?: any) => void;
+  createAction?: React.ReactNode;
   mode?: string;
   excludeMode?: string;
   taskType?: string;
@@ -101,6 +102,7 @@ const parseSortFromUrl = () => {
 
 const App: React.FC<Props> = ({
   goDetail,
+  createAction,
   mode,
   excludeMode,
   taskType,
@@ -852,6 +854,7 @@ const App: React.FC<Props> = ({
                 onSearch={handleSearch}
                 onReset={handleReset}
                 initialValues={searchParams}
+                createAction={createAction}
                 fileMode={mode === "FILE_SYNC"}
               />
             </div>

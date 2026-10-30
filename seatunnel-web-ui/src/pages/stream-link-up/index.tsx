@@ -1,3 +1,4 @@
+import { PlusOutlined } from '@ant-design/icons';
 import { Alert, Button, Divider, Pagination, message, Modal } from 'antd';
 import moment from 'moment';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -11,7 +12,6 @@ import {
 } from './api';
 import BottomActionBar from './components/BottomActionBar';
 import RealtimeCheckpointModal from './components/RealtimeCheckpointModal';
-import RealtimeHeader from './components/RealtimeHeader';
 import RealtimeTaskTable from './components/RealtimeTaskTable';
 import RealtimeTaskViewModal from './components/RealtimeTaskViewModal';
 import SearchToolbar from './components/SearchToolbar';
@@ -219,17 +219,17 @@ const getPageRecords = (res: any) => {
 const isReleaseOnline = (releaseState?: string | number) => releaseState === 'ONLINE' || releaseState === 1;
 
 const RealtimeSyncPage: React.FC = () => {
-  const [sourceType, setSourceType] = useState<any>({
+  const sourceType = {
     dbType: 'MYSQL',
     connectorType: 'MySQL-CDC',
     pluginName: 'MySQL-CDC',
-  });
+  };
 
-  const [sinkType, setSinkType] = useState<any>({
+  const sinkType = {
     dbType: 'MYSQL',
     connectorType: 'Jdbc',
     pluginName: 'JDBC-MYSQL',
-  });
+  };
 
   const ref = useRef<any>(null);
   const refDetail = useRef<any>(null);
@@ -1027,21 +1027,23 @@ const RealtimeSyncPage: React.FC = () => {
   return (
     <>
       <div className="stream-link-page sync-task-list">
-        <RealtimeHeader
-          sourceType={sourceType}
-          sinkType={sinkType}
-          onSourceChange={setSourceType}
-          onSinkChange={setSinkType}
-          onCreate={handleCreate}
-          creating={creating}
-        />
-
         <div className="operate-bar task-search-wrap">
           <div className="left">
             <SearchToolbar
               initialValues={searchValues}
               onSearch={handleSearch}
               onReset={handleReset}
+              createAction={(
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  loading={creating}
+                  onClick={() => void handleCreate()}
+                  className="task-search-create"
+                >
+                  创建任务
+                </Button>
+              )}
             />
           </div>
         </div>

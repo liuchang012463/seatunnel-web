@@ -21,6 +21,7 @@ interface AdvancedSearchFormProps {
   onSearch: (values: any) => void;
   onReset: () => void;
   initialValues?: any;
+  createAction?: React.ReactNode;
   fileMode?: boolean;
   sourceOptions?: TaskFilterOption[];
   sinkOptions?: TaskFilterOption[];
@@ -33,6 +34,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   onSearch,
   onReset,
   initialValues,
+  createAction,
   fileMode = false,
   sourceOptions,
   sinkOptions,
@@ -253,7 +255,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12} xl={5}>
+          <Col xs={24} md={12} xl={4}>
             <Form.Item
               {...commonFormItemProps}
               name="status"
@@ -276,13 +278,13 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12} xl={7}>
-            <div className="flex h-8 items-center justify-start md:justify-end">
+          <Col xs={24} md={12} xl={8}>
+            <div className="task-search-actions">
               <Space size={8}>
                 <Button
                   type="primary"
                   htmlType="submit"
-                  className="task-search-submit h-8 px-5 font-medium"
+                  className="task-search-submit h-8 px-3 font-medium"
                 >
                   {intl.formatMessage({
                     id: "pages.job.search.button.search",
@@ -292,7 +294,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
 
                 <Button
                   onClick={handleReset}
-                  className="task-search-reset h-8 px-5"
+                  className="task-search-reset h-8 px-3"
                 >
                   {intl.formatMessage({
                     id: "pages.job.search.button.reset",
@@ -324,8 +326,10 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                     ].join(" ")}
                   />
                 </button>
-
               </Space>
+              {createAction ? (
+                <div className="task-search-create-action">{createAction}</div>
+              ) : null}
             </div>
           </Col>
         </Row>

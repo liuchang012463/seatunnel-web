@@ -1,25 +1,24 @@
-import { message } from 'antd';
-import { useState } from 'react';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, message } from 'antd';
 import { history } from 'umi';
 import { seatunnelJobDefinitionApi } from './api';
-import DataSyncHeader from './components/DataSyncHeader';
 import SyncTaskList from './components/SyncTaskList';
 import './index.less';
 
 // import SyncTaskList from "./SyncTaskList";
 
 const App = () => {
-  const [sourceType, setSourceType] = useState<any>({
+  const sourceType = {
     dbType: 'MYSQL',
     connectorType: 'Jdbc',
     pluginName: 'JDBC-MYSQL',
-  });
+  };
 
-  const [targetType, setTargetType] = useState<any>({
+  const targetType = {
     dbType: 'MYSQL',
     connectorType: 'Jdbc',
     pluginName: 'JDBC-MYSQL',
-  });
+  };
 
   /**
    * 新增场景：
@@ -89,15 +88,21 @@ const App = () => {
 
   return (
     <div className="task-list-page-shell">
-      <DataSyncHeader
-        goDetail={goDetail}
-        sourceType={sourceType}
-        setSourceType={setSourceType}
-        targetType={targetType}
-        setTargetType={setTargetType}
+      <SyncTaskList
+        goDetail={goEdit}
+        createAction={(
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={goDetail}
+            className="task-search-create"
+          >
+            创建任务
+          </Button>
+        )}
+        taskType="BATCH"
+        excludeMode="FILE_SYNC"
       />
-
-      <SyncTaskList goDetail={goEdit} taskType="BATCH" excludeMode="FILE_SYNC" />
     </div>
   );
 };

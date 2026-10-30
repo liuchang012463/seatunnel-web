@@ -28,6 +28,7 @@ interface FileTaskListProps {
   mode: 'GUIDE_SINGLE' | 'FILE_SYNC';
   goDetail: (id: string, item?: any) => void;
   emptyDescription: string;
+  createAction?: React.ReactNode;
   fileMode?: boolean;
 }
 
@@ -44,6 +45,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
   mode,
   goDetail,
   emptyDescription,
+  createAction,
   fileMode = false,
 }) => {
   const { message } = App.useApp();
@@ -296,6 +298,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
               initialValues={searchParams}
               onSearch={handleSearch}
               onReset={handleReset}
+              createAction={createAction}
               fileMode={fileMode}
               sourceOptions={sourceOptions}
               sinkOptions={taskType === 'FILE_TRANSFER' ? sinkOptions : undefined}
