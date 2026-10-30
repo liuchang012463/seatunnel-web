@@ -4,6 +4,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.seatunnel.web.spi.bean.dto.pagination.PaginationBaseDTO;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.util.Date;
 
 /** Filters for the offline import task list. */
 @Data
@@ -16,4 +19,10 @@ public class OfflineImportTaskQueryDTO extends PaginationBaseDTO {
     private String importType;
 
     private String status;
+
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date createTimeStart;
+
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date createTimeEnd;
 }

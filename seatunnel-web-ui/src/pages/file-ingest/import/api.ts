@@ -45,6 +45,8 @@ export interface OfflineImportTaskPageParams {
   name?: string;
   importType?: string;
   status?: string;
+  createTimeStart?: string;
+  createTimeEnd?: string;
 }
 
 export interface OfflineImportTaskCreatePayload {

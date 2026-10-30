@@ -26,6 +26,8 @@ interface AdvancedSearchFormProps {
   sourceOptions?: TaskFilterOption[];
   sinkOptions?: TaskFilterOption[];
   showTableFilters?: boolean;
+  hideAdvancedFilters?: boolean;
+  forceChineseLabels?: boolean;
 }
 
 const { RangePicker } = DatePicker;
@@ -39,12 +41,16 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   sourceOptions,
   sinkOptions,
   showTableFilters = !fileMode,
+  hideAdvancedFilters = false,
+  forceChineseLabels = false,
 }) => {
   const intl = useIntl();
   const [form] = Form.useForm();
   const [expand, setExpand] = useState(false);
 
   const defaultTimeRange = useMemo<moment.Moment[]>(() => [], []);
+  const text = (messageId: string, defaultMessage: string, chineseMessage: string) =>
+    forceChineseLabels ? chineseMessage : intl.formatMessage({ id: messageId, defaultMessage });
 
   const mergedInitialValues = useMemo(
     () => ({
@@ -133,10 +139,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
       label: (
         <span className="inline-flex items-center gap-2">
           <SyncOutlined spin className="text-blue-500" />
-          {intl.formatMessage({
-            id: "pages.job.status.running",
-            defaultMessage: "RUNNING",
-          })}
+          {text("pages.job.status.running", "RUNNING", "运行中")}
         </span>
       ),
       value: "RUNNING",
@@ -145,10 +148,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
       label: (
         <span className="inline-flex items-center gap-2">
           <CheckSquareOutlined className="text-emerald-500" />
-          {intl.formatMessage({
-            id: "pages.job.status.success",
-            defaultMessage: "Success",
-          })}
+          {text("pages.job.status.success", "Success", "成功")}
         </span>
       ),
       value: "FINISHED",
@@ -157,10 +157,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
       label: (
         <span className="inline-flex items-center gap-2">
           <CloseOutlined className="text-rose-500" />
-          {intl.formatMessage({
-            id: "pages.job.status.failed",
-            defaultMessage: "FAILED",
-          })}
+          {text("pages.job.status.failed", "FAILED", "失败")}
         </span>
       ),
       value: "FAILED",
@@ -169,10 +166,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
       label: (
         <span className="inline-flex items-center gap-2">
           <StopOutlined className="text-slate-400" />
-          {intl.formatMessage({
-            id: "pages.job.status.unstarted",
-            defaultMessage: "Unstarted",
-          })}
+          {text("pages.job.status.unstarted", "Unstarted", "未执行")}
         </span>
       ),
       value: "UNSTARTED",
@@ -193,10 +187,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
     },
   };
 
-  const selectPlaceholder = intl.formatMessage({
-    id: "pages.job.search.selectPlaceholder",
-    defaultMessage: "Select...",
-  });
+  const selectPlaceholder = text("pages.job.search.selectPlaceholder", "Select...", "请选择...");
 
   return (
     <div className="task-search-panel">
@@ -214,10 +205,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
               {...commonFormItemProps}
               name="jobName"
               label={fieldLabel(
-                intl.formatMessage({
-                  id: "pages.job.search.jobName",
-                  defaultMessage: "Job Name",
-                }),
+                text("pages.job.search.jobName", "Job Name", "任务名"),
               )}
             >
               <Input
@@ -225,10 +213,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                 name="jobName"
                 allowClear
                 prefix={<SearchOutlined className="text-slate-400" />}
-                placeholder={intl.formatMessage({
-                  id: "pages.job.search.jobName.placeholder",
-                  defaultMessage: "Enter job name",
-                })}
+                placeholder={text("pages.job.search.jobName.placeholder", "Enter job name", "请输入任务名")}
                 className="h-8"
               />
             </Form.Item>
@@ -239,10 +224,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
               {...commonFormItemProps}
               name="createTime"
               label={fieldLabel(
-                intl.formatMessage({
-                  id: "pages.job.search.createTime",
-                  defaultMessage: "Create Time",
-                }),
+                text("pages.job.search.createTime", "Create Time", "创建时间"),
               )}
             >
               <RangePicker
@@ -251,6 +233,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                   end: "task-search-create-time-end",
                 }}
                 className="h-8 w-full"
+                placeholder={forceChineseLabels ? ["开始日期", "结束日期"] : undefined}
               />
             </Form.Item>
           </Col>
@@ -260,10 +243,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
               {...commonFormItemProps}
               name="status"
               label={fieldLabel(
-                intl.formatMessage({
-                  id: "pages.job.search.status",
-                  defaultMessage: "Status",
-                }),
+                text("pages.job.search.status", "Status", "状态"),
               )}
             >
               <Select
@@ -286,23 +266,17 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                   htmlType="submit"
                   className="task-search-submit h-8 px-3 font-medium"
                 >
-                  {intl.formatMessage({
-                    id: "pages.job.search.button.search",
-                    defaultMessage: "Search",
-                  })}
+                  {text("pages.job.search.button.search", "Search", "搜索")}
                 </Button>
 
                 <Button
                   onClick={handleReset}
                   className="task-search-reset h-8 px-3"
                 >
-                  {intl.formatMessage({
-                    id: "pages.job.search.button.reset",
-                    defaultMessage: "Reset",
-                  })}
+                  {text("pages.job.search.button.reset", "Reset", "重置")}
                 </Button>
 
-                <button
+                {!hideAdvancedFilters && <button
                   type="button"
                   className="task-search-expand inline-flex h-8 items-center gap-1 px-2 text-xs font-medium text-[color:var(--st-color-accent)] transition hover:bg-[rgba(63,198,255,0.08)]"
                   aria-expanded={expand}
@@ -325,7 +299,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                       expand ? "rotate-180" : "rotate-0",
                     ].join(" ")}
                   />
-                </button>
+                </button>}
               </Space>
               {createAction ? (
                 <div className="task-search-create-action">{createAction}</div>
@@ -334,7 +308,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
           </Col>
         </Row>
 
-        {expand && (
+        {!hideAdvancedFilters && expand && (
           <Row
             id="task-advanced-search-filters"
             gutter={[16, 14]}

@@ -177,6 +177,39 @@
   color: #fff !important;
 }
 
+.file-ingest-task-page {
+  .file-ingest-task-tabs {
+    margin-bottom: 0;
+
+    .ant-tabs-nav {
+      margin-bottom: 0;
+    }
+
+    .ant-tabs-nav::before {
+      border-bottom-color: var(--st-color-divider);
+    }
+
+    .ant-tabs-tab {
+      padding: 8px 0 12px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .ant-tabs-tab + .ant-tabs-tab {
+      margin-left: 28px;
+    }
+
+    .ant-tabs-ink-bar {
+      height: 3px;
+    }
+  }
+
+  .file-ingest-task-tab-label {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
 @media (max-width: 1100px) {
   .file-workflow-editor-page__canvas-layout {
     grid-template-columns: minmax(130px, 24%) minmax(0, 1fr);

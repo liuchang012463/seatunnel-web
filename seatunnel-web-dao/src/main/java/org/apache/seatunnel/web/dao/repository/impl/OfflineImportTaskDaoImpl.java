@@ -45,6 +45,12 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
         if (StringUtils.isNotBlank(dto.getStatus())) {
             wrapper.eq(OfflineImportTask::getStatus, dto.getStatus().trim());
         }
+        if (dto.getCreateTimeStart() != null) {
+            wrapper.ge(OfflineImportTask::getCreateTime, dto.getCreateTimeStart());
+        }
+        if (dto.getCreateTimeEnd() != null) {
+            wrapper.le(OfflineImportTask::getCreateTime, dto.getCreateTimeEnd());
+        }
         wrapper.orderByDesc(OfflineImportTask::getCreateTime);
         return mybatisMapper.selectPage(new Page<>(pageNo, pageSize), wrapper);
     }
