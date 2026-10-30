@@ -12,6 +12,7 @@ import {
   Pagination,
   Segmented,
   Spin,
+  Tabs,
   Table,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
@@ -88,6 +89,7 @@ const DataSourcePage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<DataSourceLifecycleStatus>();
   const [viewMode, setViewMode] = useState<DataSourceViewMode>('card');
   const [masterDataOpen, setMasterDataOpen] = useState(false);
+  const [usageCounts, setUsageCounts] = useState<Partial<Record<'SOURCE' | 'SINK', number>>>({});
 
   const refreshUnitOptions = async () => {
     try {
@@ -172,8 +174,40 @@ const DataSourcePage: React.FC = () => {
 
   const selectedCategoryConfig = DATA_SOURCE_CATEGORIES.find((category) => category.key === selectedCategory);
 
+  const refreshUsageCounts = async () => {
+    await Promise.all(
+      (['SOURCE', 'SINK'] as const).map(async (usage) => {
+        const dbTypes = filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, usage).map(
+          (item) => item.dbType,
+        );
+        if (dbTypes.length === 0) {
+          setUsageCounts((current) => ({ ...current, [usage]: 0 }));
+          return;
+        }
+
+        try {
+          const response = await fetchDataSourcePage({
+            pageNo: 1,
+            pageSize: 1,
+            dbTypes,
+            ...(usage === 'SOURCE' ? { sourceEnabled: true } : { sinkEnabled: true }),
+            excludeSystemManaged: true,
+          });
+          if (response.code !== 0) return;
+
+          const page = normalizeDataSourcePageResult(response.data);
+          setUsageCounts((current) => ({ ...current, [usage]: page.pagination.total }));
+        } catch (_) {}
+      }),
+    );
+  };
+
   useEffect(() => {
     refreshUnitOptions();
+  }, []);
+
+  useEffect(() => {
+    refreshUsageCounts();
   }, []);
 
   useEffect(() => {
@@ -229,6 +263,7 @@ const DataSourcePage: React.FC = () => {
   const handleRefresh = () => {
     fetchList();
     refreshUnitOptions();
+    refreshUsageCounts();
   };
 
   const handleUsageViewChange = (nextUsage: 'SOURCE' | 'SINK') => {
@@ -656,17 +691,38 @@ const DataSourcePage: React.FC = () => {
               animate="visible"
               variants={PAGE_ANIMATION.sectionStagger}
             >
-              <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
-                <Segmented
-                  aria-label="数据源连接类型"
-                  className="datasource-view-switcher"
-                  value={usageView}
-                  onChange={(value) => handleUsageViewChange(value as 'SOURCE' | 'SINK')}
-                  options={[
-                    { label: '源端连接', value: 'SOURCE' },
-                    { label: '目标端连接', value: 'SINK' },
+              <motion.div variants={PAGE_ANIMATION.fadeUp}>
+                <Tabs
+                  className="datasource-usage-tabs"
+                  activeKey={usageView}
+                  onChange={(key) => handleUsageViewChange(key as 'SOURCE' | 'SINK')}
+                  items={[
+                    {
+                      key: 'SOURCE',
+                      label: (
+                        <span className="datasource-usage-tab-label">
+                          <span>源端连接</span>
+                          {usageCounts.SOURCE !== undefined ? (
+                            <span className="datasource-usage-tab-count">({usageCounts.SOURCE})</span>
+                          ) : null}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'SINK',
+                      label: (
+                        <span className="datasource-usage-tab-label">
+                          <span>目标端连接</span>
+                          {usageCounts.SINK !== undefined ? (
+                            <span className="datasource-usage-tab-count">({usageCounts.SINK})</span>
+                          ) : null}
+                        </span>
+                      ),
+                    },
                   ]}
                 />
+              </motion.div>
+              <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
                 <SearchBar
                   value={searchKeyword}
                   onChange={(value) => {
@@ -727,7 +783,6 @@ const DataSourcePage: React.FC = () => {
                   ))}
                 </div>
                 <div className="datasource-catalog-panel__controls">
-                  <span className="datasource-category-count">{pagination.total}</span>
                   <Segmented
                     aria-label="数据源视图"
                     className="datasource-view-switcher"
