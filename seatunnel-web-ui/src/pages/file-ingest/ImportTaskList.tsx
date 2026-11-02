@@ -24,9 +24,9 @@ import './index.less';
 
 const API_PAGE_SIZE = 100;
 
-type UnifiedTask = Record<string, any> & {
-  taskKind: 'FILE_INGEST' | 'OFFLINE_IMPORT';
-};
+type UnifiedTask =
+  | (Record<string, any> & { taskKind: 'FILE_INGEST' })
+  | (OfflineImportTask & { taskKind: 'OFFLINE_IMPORT' });
 
 const OFFLINE_STATUS_TO_JOB_STATUS: Record<string, string> = {
   PENDING: 'UNSTARTED',
@@ -377,10 +377,10 @@ const ImportTaskList: React.FC<{
             icon={<PlayCircleOutlined />}
             loading={executingId === String(record.id)}
             disabled={executingId === String(record.id) || record.status === 'RUNNING' || record.status === 'QUEUED'}
-            onClick={() => void executeOfflineImport(record as OfflineImportTask)}
+            onClick={() => void executeOfflineImport(record)}
           >执行</Button>
           <Button type="link" size="small" onClick={() => history.push(`/sync/file-ingest/import/detail/${record.id}`)}>详情</Button>
-          <Popconfirm title="确认删除该导入任务？" disabled={record.status === 'RUNNING' || record.status === 'QUEUED'} onConfirm={() => void removeOfflineImport(record as OfflineImportTask)}>
+          <Popconfirm title="确认删除该导入任务？" disabled={record.status === 'RUNNING' || record.status === 'QUEUED'} onConfirm={() => void removeOfflineImport(record)}>
             <Button type="link" size="small" danger disabled={record.status === 'RUNNING' || record.status === 'QUEUED'}>删除</Button>
           </Popconfirm>
         </Space>
