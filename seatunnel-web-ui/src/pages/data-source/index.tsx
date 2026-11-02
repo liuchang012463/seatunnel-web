@@ -751,6 +751,7 @@ const DataSourcePage: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
+                  size="middle"
                   onClick={handleCreate}
                   className="datasource-create-button"
                 >
