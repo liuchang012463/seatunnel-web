@@ -264,7 +264,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
                 <Button
                   type="primary"
                   htmlType="submit"
-                  className="task-search-submit h-8 px-3 font-medium"
+                  className="h-8 px-3 font-medium"
                 >
                   {text("pages.job.search.button.search", "Search", "搜索")}
                 </Button>
