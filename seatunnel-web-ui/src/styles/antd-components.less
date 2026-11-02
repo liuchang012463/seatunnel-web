@@ -1,0 +1,54 @@
+/* 官方主题映射无法覆盖存量 !important 时的最小适配。
+ * 浮层通过根 --st-* 继承主题，不增加页面包裹类或依赖生成的 hash 类名。 */
+
+// 校验状态优先于普通 hover/focus；禁用状态沿用组件自身语义。
+.field-status(@status, @color) {
+  .ant-input-status-@{status}:not(:disabled),
+  .ant-input-affix-wrapper-status-@{status}:not(.ant-input-affix-wrapper-disabled),
+  .ant-input-number-status-@{status}:not(.ant-input-number-disabled),
+  .ant-input-number-affix-wrapper-status-@{status}:not(.ant-input-number-affix-wrapper-disabled),
+  .ant-picker-status-@{status}:not(.ant-picker-disabled),
+  .ant-select-status-@{status}:not(.ant-select-disabled) .ant-select-selector {
+    border-color: @color !important;
+  }
+
+  .ant-form-item-explain-@{status} {
+    color: @color !important;
+  }
+}
+
+.field-status(error, var(--st-color-error));
+.field-status(warning, var(--st-color-warning));
+
+.ant-input:disabled:hover,
+.ant-input-affix-wrapper-disabled:hover,
+.ant-input-number-disabled:hover,
+.ant-input-number-affix-wrapper-disabled:hover,
+.ant-picker-disabled:hover,
+.ant-select-disabled:hover .ant-select-selector {
+  border-color: var(--st-color-border) !important;
+  box-shadow: none !important;
+}
+
+// 选中项保持稳定，鼠标移入不会抹掉选中状态；禁用选项不呈现可操作样式。
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  color: var(--st-color-text-primary) !important;
+  background: var(--st-color-selected) !important;
+}
+
+.ant-select-item-option-disabled {
+  color: var(--st-color-text-muted) !important;
+  background: transparent !important;
+}
+
+.ant-btn-primary:not(:disabled):not(.ant-btn-dangerous):active {
+  color: var(--st-color-text-primary);
+  background: var(--st-color-primary-active);
+  border-color: var(--st-color-accent);
+}
+
+.ant-btn-dangerous.ant-btn-primary:not(:disabled) {
+  color: var(--st-color-text-primary);
+  background: var(--st-color-error);
+  border-color: var(--st-color-error);
+}

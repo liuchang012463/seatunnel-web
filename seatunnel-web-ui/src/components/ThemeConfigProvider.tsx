@@ -14,6 +14,7 @@ import {
   type NavTheme,
 } from "@/theme";
 import { registerAntdFeedback } from "@/utils/antdFeedback";
+import { sharedComponentTheme } from "@/styles/antd-theme";
 
 /**
  * DESIGN.md §6.2 antd 算法正规化 + §6.4 浅色 v2：
@@ -177,8 +178,15 @@ const ThemeConfigProvider: React.FC<ThemeConfigProviderProps> = ({
           algorithm: isDark
             ? antdTheme.darkAlgorithm
             : antdTheme.defaultAlgorithm,
-          token: isDark ? DARK_TOKEN : LIGHT_TOKEN,
-          components: isDark ? DARK_COMPONENTS : LIGHT_COMPONENTS,
+          token: {
+            ...(isDark ? DARK_TOKEN : LIGHT_TOKEN),
+            fontSizeSM: 14,
+            fontSizeHeading5: 14,
+          },
+          components: {
+            ...(isDark ? DARK_COMPONENTS : LIGHT_COMPONENTS),
+            ...sharedComponentTheme,
+          },
         }}
       >
         <AntdApp>

@@ -88,8 +88,8 @@
 | `--st-type-title-content-size/line` | 16/24（面板 / 弹层标题） |
 | `--st-type-content-lg-size/line` | 16/24 |
 | `--st-type-content-md-size/line` | 14/22（表单、说明） |
-| `--st-type-content-sm-size/line` | 13/20（表格、列表默认） |
-| `--st-type-caption-size/line` | 12/18（单位、时间、眉题 +0.02em） |
+| `--st-type-content-sm-size/line` | 14/20（表格、列表默认） |
+| `--st-type-caption-size/line` | 14/18（单位、时间、眉题 +0.02em） |
 
 标题在实现中统一 `font-weight: 400`：层级靠字号与颜色区分，不加粗。仓库没有 `--st-mono`，等宽场景使用 `--st-font-digital` 并配 `tabular-nums`。
 

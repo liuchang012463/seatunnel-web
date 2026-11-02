@@ -6,6 +6,7 @@ import '../tailwind.css';
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import './design-system.less';
+import './styles/antd-components.less';
 import { appMessage, appNotification } from './utils/antdFeedback';
 
 const { pwa } = defaultSettings;
