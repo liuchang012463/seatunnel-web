@@ -52,3 +52,50 @@
   background: var(--st-color-error);
   border-color: var(--st-color-error);
 }
+
+// 存量全局 hover 不能把禁用项、已选项或危险操作恢复为普通可操作状态。
+.ant-tabs .ant-tabs-tab-disabled,
+.ant-tabs .ant-tabs-tab-disabled:hover {
+  color: var(--st-color-text-muted);
+}
+
+.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+  padding-inline: 16px !important;
+}
+
+.ant-tree .ant-tree-treenode-disabled .ant-tree-node-content-wrapper,
+.ant-tree .ant-tree-treenode-disabled .ant-tree-node-content-wrapper:hover {
+  color: var(--st-color-text-muted);
+  background: transparent;
+}
+
+.ant-tree.ant-tree-directory .ant-tree-treenode-selected .ant-tree-node-content-wrapper::before,
+.ant-tree.ant-tree-directory .ant-tree-treenode-disabled .ant-tree-node-content-wrapper::before {
+  // 整行背景由目录树 Token 绘制，避免半透明选中色叠加。
+  background: transparent !important;
+}
+
+.ant-dropdown-menu-title-content,
+.ant-dropdown-menu-item-group-title {
+  font-size: var(--st-type-content-md-size) !important;
+}
+
+.ant-dropdown-menu-item-selected:not(.ant-dropdown-menu-item-disabled):not(.ant-dropdown-menu-item-danger) {
+  color: var(--st-color-text-primary) !important;
+  background: var(--st-color-selected) !important;
+}
+
+.ant-dropdown-menu-item-danger:not(.ant-dropdown-menu-item-disabled) {
+  color: var(--st-color-error) !important;
+
+  &:hover {
+    background: var(--st-color-hover) !important;
+  }
+}
+
+.ant-dropdown-menu-item-disabled,
+.ant-dropdown-menu-item-disabled:hover,
+.ant-dropdown-menu-submenu-disabled > .ant-dropdown-menu-submenu-title {
+  color: var(--st-color-text-muted) !important;
+  background: transparent !important;
+}
