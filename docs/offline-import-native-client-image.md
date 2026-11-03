@@ -1,6 +1,6 @@
 # 离线导入原生客户端镜像交付方案（ARM64 首期）
 
-适用 SeaTunnel Web 1.0.0、SeaTunnel Engine 3.0.0。内网节点以 ARM 为主，首期实现并验收 `linux/arm64`（aarch64）后端镜像；amd64 客户端打包和业务还原验收留待后续独立实现。数据库服务器的 CPU 架构不必与客户端一致。
+适用 SeaTunnel Web 1.0.0、SeaTunnel Engine 3.0.0。首期目标限定为 `linux/arm64`（aarch64）后端镜像，以及本开发环境的达梦 V8 和 Kingbase V008R006C009B0014 客户端。现存 x86 容器中的 Kingbase V009R001C010 不属于支持目标，不要求 ARM 客户端读取该版本生成的归档；amd64 客户端打包和其他数据库版本组合留待后续独立实现。数据库服务器的 CPU 架构不必与客户端一致。
 
 ## 交付范围与主线
 
@@ -65,15 +65,18 @@ SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_STATEMENT_TIMEOUT_SECONDS=300
 
 工作目录须能由实际应用运行用户写入。凭据仅由平台数据源在启动对应原厂子进程时传入；Kingbase 使用临时 `KINGBASE_PASSWORD`。凭据不写入清单、镜像层、Dockerfile 静态 `ENV` 或 build args，执行命令与工具日志沿用现有脱敏。
 
+本机直接运行 Java 开发服务时，`.env.example` 中的两个客户端路径默认留空；将它们设为当前主机上可执行的 ARM64 wrapper 绝对路径。wrapper 所在 `bin/` 的父目录须同时包含 `dm/` 和 `kingbase/` 子目录。`scripts/dev-up.sh` 会读取 `.env`，配置变更后用 `scripts/dev-restart.sh` 重启本地开发服务。此时使用的是主机文件路径；使用 Compose/容器时须改为容器内的 `/opt/native-clients/bin/...` 路径。
+
 ## 版本与归档兼容矩阵
 
 “ARM64 客户端连接 x86 数据库成功”仅是连接证据，不能视作 DMP 还原通过。每个生产组合必须记录：客户端 CPU 架构、导出工具完整版本、源数据库完整版本与兼容模式、归档格式、还原工具完整版本、目标数据库完整版本与兼容模式，以及最终镜像中的还原结果。
 
 | 候选组合 | 已知信息 | 首期发布要求 |
 | --- | --- | --- |
-| 达梦 ARM64 | 本机 `/opt/dmdbms/bin` 有 `dimp`、`dexp` 及配套动态库；完整版本待采集 | 固定同版本工具和源/目标库信息，单文件逻辑 DMP 实际预检与还原通过 |
-| Kingbase ARM64 V008R006C009B0014 | 原客户端布局为 `ClientTools/bin`、`ClientTools/lib`，含 OpenSSL 1.1、LDAP 2.4 依赖 | 明确其可读取的归档与目标库组合，验证现有 `--strict-names`、`--fromSchema`、`--targetSchema` 参数 |
-| Kingbase V009R001C010 目标库 | 现存 x86 容器中的版本，不代表 ARM V8 还原工具与 V9 归档已兼容 | 使用 V9 侧生成的实际归档验证 ARM 工具；不兼容则取得匹配 ARM 客户端，或将该组合标记为不支持 |
+| 达梦 ARM64 本地开发环境 | 本机 `/opt/dmdbms/bin` 有 `dimp`、`dexp` 及配套动态库；`dimp` 报告 V8，精确构建版本仍待采集 | 使用本机达梦库生成的单文件逻辑 DMP，完成实际预检与还原 |
+| Kingbase ARM64 V008R006C009B0014 本地开发环境 | 客户端位于 `ClientTools/bin`、`ClientTools/lib`，含 OpenSSL 1.1、LDAP 2.4 依赖 | 使用本机 Kingbase 库生成的归档，验证现有 `--strict-names`、`--fromSchema`、`--targetSchema` 参数及实际还原 |
+
+现存 x86 容器中的 Kingbase V009R001C010 及其归档明确在首期范围之外，不作为 ARM 客户端的兼容性或发布验收门槛。
 
 首期只接受现有单文件上传流程能够处理的逻辑归档：Kingbase 验收基线使用 `sys_dump -Fc` 自定义格式（不能用默认 SQL 输出改名为 `.dmp`）；达梦使用 `dexp` 生成的单文件逻辑 DMP。目录备份、物理备份和分卷归档不属于本次新增范围。跨版本不自动推断兼容；未验证的组合保留为待验证，不能写成支持。
 
@@ -143,4 +146,4 @@ python3 scripts/native-arm64/test_native_arm64.py
 
 本次客户端来自本机安装树中精确选取的工具/库，仅作为 ABI 与镜像封装验收输入。达梦报告 `dimp V8`、`file_version: 33`，安装树 `dmserver` 的版本线索为 `03134284552-20260414-322369-20221`；未将该线索当作正式原厂包来源证明。达梦子树独立补入 `openssl-libs-1.1.1f-31.p29.ky10.aarch64` 的两个库与无版本号相对链接；Kingbase 子树补入 `openldap-2.4.50-8.ky10.aarch64`、`cyrus-sasl-lib-2.1.27-15.ky10.aarch64` 中精确需要的三个库，未复制宿主机 glibc 或整个系统库目录。验收 bundle 的 `SHA256SUMS` 摘要为 `7135db4c4927af444a0eb7960b5d948958146506b6729393b40174efa882d065`。
 
-候选镜像使用现有 `seatunnel-web-dist/target/seatunnel-web-1.0.0.tar.gz`，本次没有重新构建 Java distribution。没有执行 Web 任务提交、两家真实 DMP 还原、对象/数据核对、Schema 映射或应用任务超时/日志脱敏/清理的业务端到端验收，也没有验证 Kingbase V8 工具读取 V9 归档。正式发布仍须固定可追溯的原厂 bundle 与当前应用 distribution，并完成上述真实业务组合验收。未推送、部署或重启既有服务，未运行 Compose。
+候选镜像使用现有 `seatunnel-web-dist/target/seatunnel-web-1.0.0.tar.gz`，本次没有重新构建 Java distribution。没有执行 Web 任务提交、两家真实 DMP 还原、对象/数据核对、Schema 映射或应用任务超时/日志脱敏/清理的业务端到端验收。x86 容器中的 Kingbase V009R001C010 不属于首期范围，不要求验证其归档能否由 ARM V8 工具读取。正式发布仍须固定可追溯的原厂 bundle 与当前应用 distribution，并完成上述本地达梦和 Kingbase 业务组合验收。该次镜像验收未推送、部署或重启既有容器，未运行 Compose。
