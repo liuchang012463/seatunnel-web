@@ -422,19 +422,17 @@ const ImportTaskList: React.FC<{
           />
         ) : null}
         <div className="task-table-shell">
-          <div className="task-table-shell__body">
-            <Table
-              rowKey={(record) => `${record.taskKind}-${record.id}`}
-              columns={columns as any}
-              dataSource={tasks}
-              loading={loading}
-              pagination={false}
-              tableLayout="fixed"
-              scroll={{ x: '100%' }}
-              className="task-table"
-              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadError ? '请重试加载任务列表' : taskKind === 'OFFLINE_IMPORT' ? '暂无 DMP/SQL 导入任务' : '暂无文件导入任务'} /> }}
-            />
-          </div>
+          <Table
+            rowKey={(record) => `${record.taskKind}-${record.id}`}
+            columns={columns as any}
+            dataSource={tasks}
+            loading={loading}
+            pagination={false}
+            tableLayout="fixed"
+            scroll={{ x: '100%' }}
+            className="task-table"
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadError ? '请重试加载任务列表' : taskKind === 'OFFLINE_IMPORT' ? '暂无 DMP/SQL 导入任务' : '暂无文件导入任务'} /> }}
+          />
           <div className="task-list-footer">
             <div className="task-pagination">
               <CustomPagination
