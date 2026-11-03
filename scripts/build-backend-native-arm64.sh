@@ -103,6 +103,7 @@ BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 DOCKER_BUILDKIT=0 docker build \
     --platform linux/arm64 \
     --pull=false \
+    --force-rm \
     --target backend-runtime \
     --build-arg "VERSION=1.0.0" \
     --build-arg "VCS_REF=$VCS_REF" \
@@ -130,6 +131,7 @@ DOCKER_BUILDKIT=0 docker build \
     --file "$BUILD_CONTEXT/Dockerfile" \
     --platform linux/arm64 \
     --pull=false \
+    --force-rm \
     --target backend-native-arm64 \
     --build-arg "BASE_BACKEND_IMAGE=$TEMP_BASE_TAG" \
     --build-arg "BASE_IMAGE_ID=$BASE_IMAGE_ID" \

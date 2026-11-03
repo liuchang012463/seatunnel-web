@@ -41,7 +41,9 @@ kingbase_source=<Kingbase 原厂包名及 SHA-256 或受控制品 ID>
 
 `SHA256SUMS` 使用 GNU `sha256sum` 的常规格式，精确覆盖清单、所有常规文件和指向文件的链接，不包含 `SHA256SUMS` 自身。链接目标必须有效、相对且留在所属客户端目录内；指向目录的链接不纳入 bundle。路径不得包含反斜杠或换行符。
 
-客户端和库须来自版本匹配、允许内部交付的原厂安装包或受控依赖包；保留执行权限及包内有效链接。构建前校验清单必填字段、校验和、必需工具和全部 ELF 文件的 ARM64 架构；必需工具须本身为完整 ELF64 AArch64 文件。校验器拒绝缺文件、校验和覆盖缺口或篡改、混入其他架构 ELF、越出 bundle 的符号链接。Kingbase V8 若缺 `libldap_r-2.4.so.2`，须随 bundle 提供来源和版本已验证的 ARM64 依赖包内容。不要整套复制宿主机 glibc、动态链接器或 `/usr/lib` 来补依赖。
+客户端和库须来自版本匹配、允许内部交付的原厂安装包或受控依赖包；保留执行权限及包内有效链接。构建前校验清单必填字段、校验和、必需工具和全部 ELF 文件的 ARM64 架构；必需工具须本身为完整 ELF64 AArch64 文件。校验器拒绝缺文件、校验和覆盖缺口或篡改、混入其他架构 ELF、越出 bundle 的符号链接。Kingbase V8 若缺 `libldap_r-2.4.so.2`，须随 bundle 提供来源和版本已验证的 ARM64 依赖包内容。
+
+达梦客户端还有 `ldd` 无法展示的运行时动态加载依赖：`libdmdpi` 会通过 `dlopen` 查找未带版本号的 `libcrypto.so` 和 `libssl.so`。因此须在 `dm/bin` 或 `dm/lib` 中随达梦包提供匹配的 ARM64 OpenSSL 实库和包内相对链接，全部纳入 SHA256SUMS，并通过镜像构建中的 `dimp HELP=Y` 启动探针。达梦 wrapper 只设置达梦自己的 `bin`、`lib` 搜索路径，不能依赖 Jammy 中只有版本化名称的 OpenSSL runtime，也不能借用 Kingbase 的 OpenSSL 库路径。不要整套复制宿主机 glibc、动态链接器或 `/usr/lib` 来补依赖。
 
 当前后端基于 `eclipse-temurin:21-jre-jammy`。包的校验和只保证输入可追溯，不能证明 ABI 或数据库版本兼容；还须在最终 Jammy 镜像验证依赖闭包和工具启动。构建中不临时从不受控公网地址下载厂商包；发布记录保存基础镜像实际 digest/ID、bundle 校验和、客户端版本和源码提交。
 
@@ -124,4 +126,4 @@ SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_STATEMENT_TIMEOUT_SECONDS=300
 python3 scripts/native-arm64/test_native_arm64.py
 ```
 
-构建脚本会在最终 Jammy 镜像构建时运行两套工具的 `ldd` 缺库检查、`sys_restore --version` 和 DIMP 帮助启动探针，并检查 wrapper 可执行及导入工作目录可写。旧的预构建 distribution 只能证明镜像封装与客户端启动，不能证明 Java 业务流程或真实 DMP 还原通过；真实归档和数据库还原仍须按上面的发布门槛单独验收。
+构建脚本会在最终 Jammy 镜像构建时运行两套工具的 `ldd` 缺库检查、`sys_restore --version` 和 DIMP 帮助启动探针；DIMP 探针同时验证 `ldd` 不会显示的 OpenSSL 动态加载依赖，并检查 wrapper 可执行及导入工作目录可写。旧的预构建 distribution 只能证明镜像封装与客户端启动，不能证明 Java 业务流程或真实 DMP 还原通过；真实归档和数据库还原仍须按上面的发布门槛单独验收。
