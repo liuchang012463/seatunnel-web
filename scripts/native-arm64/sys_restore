@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-client_root="${script_dir%/bin}"
-export LD_LIBRARY_PATH="${client_root}/kingbase/bin:${client_root}/kingbase/lib"
-exec "${client_root}/kingbase/bin/sys_restore" "$@"

@@ -83,13 +83,9 @@ if docker image inspect "$TEMP_BASE_TAG" >/dev/null 2>&1; then
     exit 1
 fi
 
-mkdir -p \
-    "$BUILD_CONTEXT/native-client-bundle" \
-    "$BUILD_CONTEXT/native-arm64"
+mkdir -p "$BUILD_CONTEXT/native-client-bundle"
 cp "$SCRIPT_DIR/Dockerfile.native-arm64" "$BUILD_CONTEXT/Dockerfile"
 cp -a "$BUNDLE_INPUT/." "$BUILD_CONTEXT/native-client-bundle/"
-cp "$SCRIPT_DIR/scripts/native-arm64/dimp" "$BUILD_CONTEXT/native-arm64/dimp"
-cp "$SCRIPT_DIR/scripts/native-arm64/sys_restore" "$BUILD_CONTEXT/native-arm64/sys_restore"
 
 python3 "$SCRIPT_DIR/scripts/native-arm64/validate_bundle.py" \
     "$BUILD_CONTEXT/native-client-bundle"

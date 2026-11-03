@@ -28,7 +28,8 @@ class DmpCommandBuilderTest {
         assertEquals("IGNORE=Y", command.command().get(5));
         assertTrue(command.command().contains("SCHEMAS=SRC"));
         assertTrue(command.command().contains("REMAP_SCHEMA=SRC:DST"));
-        assertTrue(command.environment().isEmpty());
+        assertEquals(Map.of(
+                "LD_LIBRARY_PATH", "/opt/dmdbms/bin:/opt/dmdbms/lib"), command.environment());
     }
 
     @Test
@@ -40,27 +41,34 @@ class DmpCommandBuilderTest {
         assertFalse(command.command().toString().contains("SCHEMAS="));
         assertFalse(command.command().toString().contains("REMAP_SCHEMA="));
         assertFalse(command.command().toString().contains("IGNORE="));
+        assertEquals(Map.of(
+                "LD_LIBRARY_PATH", "/opt/dmdbms/bin:/opt/dmdbms/lib"), command.environment());
     }
 
     @Test
     void kingbaseListCommandDoesNotConnectToTargetOrPassCredentials() {
         DmpCommandBuilder.DmpCommand command =
-                DmpCommandBuilder.kingbaseList("/usr/bin/sys_restore", DMP, "source_schema");
+                DmpCommandBuilder.kingbaseList(
+                        "/opt/native-clients/kingbase/bin/sys_restore", DMP, "source_schema");
 
         assertEquals(
-                java.util.List.of("/usr/bin/sys_restore", "--list", "--schema=source_schema",
+                java.util.List.of("/opt/native-clients/kingbase/bin/sys_restore", "--list", "--schema=source_schema",
                         "--strict-names", DMP.toAbsolutePath().toString()),
                 command.command());
-        assertTrue(command.environment().isEmpty());
+        assertEquals(Map.of(
+                "LD_LIBRARY_PATH", "/opt/native-clients/kingbase/bin:/opt/native-clients/kingbase/lib"),
+                command.environment());
     }
 
     @Test
     void kingbaseListOmitsStrictSchemaFilterWhenNoSourceIsSelected() {
         DmpCommandBuilder.DmpCommand command =
-                DmpCommandBuilder.kingbaseList("/usr/bin/sys_restore", DMP, " ");
+                DmpCommandBuilder.kingbaseList(
+                        "/opt/native-clients/kingbase/bin/sys_restore", DMP, " ");
 
         assertEquals(
-                java.util.List.of("/usr/bin/sys_restore", "--list", DMP.toAbsolutePath().toString()),
+                java.util.List.of("/opt/native-clients/kingbase/bin/sys_restore", "--list",
+                        DMP.toAbsolutePath().toString()),
                 command.command());
     }
 
@@ -77,10 +85,10 @@ class DmpCommandBuilderTest {
     @Test
     void kingbaseCommandPassesPasswordThroughEnvironmentOnly() {
         DmpCommandBuilder.DmpCommand command = DmpCommandBuilder.kingbase(
-                "/opt/Kingbase/ES/V8/bin/sys_restore", "192.168.100.91", "54321", "kingbase",
+                "/opt/native-clients/kingbase/bin/sys_restore", "192.168.100.91", "54321", "kingbase",
                 "system", "Secret#9", DMP, null, "public");
 
-        assertEquals("/opt/Kingbase/ES/V8/bin/sys_restore", command.command().get(0));
+        assertEquals("/opt/native-clients/kingbase/bin/sys_restore", command.command().get(0));
         int userIndex = command.command().indexOf("-U");
         assertEquals("system", command.command().get(userIndex + 1));
         int dbIndex = command.command().indexOf("-d");
@@ -90,7 +98,10 @@ class DmpCommandBuilderTest {
         assertTrue(command.command().contains("--targetSchema=public"));
         assertEquals(DMP.toAbsolutePath().toString(),
                 command.command().get(command.command().size() - 1));
-        assertEquals(Map.of("KINGBASE_PASSWORD", "Secret#9"), command.environment());
+        assertEquals(Map.of(
+                "KINGBASE_PASSWORD", "Secret#9",
+                "LD_LIBRARY_PATH", "/opt/native-clients/kingbase/bin:/opt/native-clients/kingbase/lib"),
+                command.environment());
         assertFalse(String.join(" ", command.command()).contains("Secret#9"));
     }
 
@@ -153,6 +164,7 @@ class DmpCommandBuilderTest {
         assertTrue(command.command().contains("--fromSchema=SRC"));
         assertTrue(command.command().contains("--targetSchema=DST"));
         assertFalse(command.command().toString().contains("--schema"));
+        assertEquals("/usr/bin:/usr/lib", command.environment().get("LD_LIBRARY_PATH"));
     }
 
     @Test

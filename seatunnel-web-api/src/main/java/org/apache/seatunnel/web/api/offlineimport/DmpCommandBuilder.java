@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.offlineimport;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -52,7 +53,7 @@ public final class DmpCommandBuilder {
         if (effectiveSource != null && effectiveTarget != null && !effectiveSource.equals(effectiveTarget)) {
             command.add("REMAP_SCHEMA=" + effectiveSource + ":" + effectiveTarget);
         }
-        return new DmpCommand(command, Map.of());
+        return new DmpCommand(command, nativeToolEnvironment(dimpPath));
     }
 
     /** Builds a DIMP read-only archive inspection command (SHOW=Y). */
@@ -71,7 +72,7 @@ public final class DmpCommandBuilder {
         command.add("LOG=" + logFile.getFileName());
         command.add("DIRECTORY=" + dmpFile.getParent());
         command.add("SHOW=Y");
-        return new DmpCommand(command, Map.of());
+        return new DmpCommand(command, nativeToolEnvironment(dimpPath));
     }
 
     /**
@@ -120,7 +121,7 @@ public final class DmpCommandBuilder {
         }
         command.add(dmpFile.toAbsolutePath().toString());
 
-        Map<String, String> environment = new LinkedHashMap<>();
+        Map<String, String> environment = nativeToolEnvironment(sysRestorePath);
         environment.put("KINGBASE_PASSWORD", password);
         return new DmpCommand(command, environment);
     }
@@ -142,7 +143,23 @@ public final class DmpCommandBuilder {
             command.add("--strict-names");
         }
         command.add(dmpFile.toAbsolutePath().toString());
-        return new DmpCommand(command, Map.of());
+        return new DmpCommand(command, nativeToolEnvironment(sysRestorePath));
+    }
+
+    /**
+     * Load each vendor tool's native libraries only in that child process.
+     * The supported client layout keeps required libraries in its bin/ and
+     * sibling lib/ directories, so no JVM-wide library path or wrapper is needed.
+     */
+    private static Map<String, String> nativeToolEnvironment(String executablePath) {
+        Path binDirectory = Path.of(executablePath).toAbsolutePath().normalize().getParent();
+        if (binDirectory == null || binDirectory.getParent() == null) {
+            throw new IllegalArgumentException("Native client executable must be inside a client bin directory");
+        }
+        Path libraryDirectory = binDirectory.getParent().resolve("lib");
+        Map<String, String> environment = new LinkedHashMap<>();
+        environment.put("LD_LIBRARY_PATH", binDirectory + File.pathSeparator + libraryDirectory);
+        return environment;
     }
 
     /** Command rendering with the password masked, safe for persisted logs. */

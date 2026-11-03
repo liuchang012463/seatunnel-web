@@ -1,18 +1,11 @@
 #!/usr/bin/env python3
 import hashlib
-import json
-import os
-import shutil
 import struct
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 from validate_bundle import BundleError, validate_bundle
-
-
-SCRIPT_DIR = Path(__file__).resolve().parent
 
 
 def _write_elf(path: Path, machine: int) -> None:
@@ -223,65 +216,6 @@ class BundleValidationTest(unittest.TestCase):
             (root / "dm/bin/absolute.so").symlink_to(target)
             with self.assertRaisesRegex(BundleError, "absolute symlink"):
                 validate_bundle(root)
-
-
-class WrapperTest(unittest.TestCase):
-    def _run_wrapper(self, wrapper_name: str, vendor: str, executable: str):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory) / "native-clients"
-            wrapper = root / "bin" / wrapper_name
-            wrapper.parent.mkdir(parents=True)
-            shutil.copy2(SCRIPT_DIR / wrapper_name, wrapper)
-            target = root / vendor / "bin" / executable
-            target.parent.mkdir(parents=True)
-            target.write_text(
-                "#!/usr/bin/env python3\n"
-                "import json, os, sys\n"
-                "print(json.dumps({'args': sys.argv[1:], 'cwd': os.getcwd(), "
-                "'ld_library_path': os.environ.get('LD_LIBRARY_PATH'), "
-                "'kingbase_password': os.environ.get('KINGBASE_PASSWORD')}))\n"
-                "raise SystemExit(int(os.environ['TOOL_EXIT']))\n",
-                encoding="utf-8",
-            )
-            target.chmod(0o755)
-            work_dir = Path(directory) / "work"
-            work_dir.mkdir()
-            environment = os.environ.copy()
-            environment.update({
-                "LD_LIBRARY_PATH": "/injected/path",
-                "KINGBASE_PASSWORD": "secret value",
-                "TOOL_EXIT": "37",
-            })
-            args = ["file name.dmp", "a;$()", ""]
-            result = subprocess.run(
-                [str(wrapper), *args],
-                cwd=work_dir,
-                env=environment,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            return result, json.loads(result.stdout), args, work_dir, root
-
-    def test_dimp_wrapper_preserves_args_environment_cwd_and_exit_code(self):
-        result, observed, args, work_dir, root = self._run_wrapper("dimp", "dm", "dimp")
-        self.assertEqual(args, observed["args"])
-        self.assertEqual(str(work_dir), observed["cwd"])
-        self.assertEqual(f"{root}/dm/bin:{root}/dm/lib", observed["ld_library_path"])
-        self.assertEqual("secret value", observed["kingbase_password"])
-        self.assertEqual(37, result.returncode)
-
-    def test_sys_restore_wrapper_preserves_args_environment_cwd_and_exit_code(self):
-        result, observed, args, work_dir, root = self._run_wrapper(
-            "sys_restore", "kingbase", "sys_restore"
-        )
-        self.assertEqual(args, observed["args"])
-        self.assertEqual(str(work_dir), observed["cwd"])
-        self.assertEqual(
-            f"{root}/kingbase/bin:{root}/kingbase/lib", observed["ld_library_path"]
-        )
-        self.assertEqual("secret value", observed["kingbase_password"])
-        self.assertEqual(37, result.returncode)
 
 
 if __name__ == "__main__":
