@@ -223,7 +223,9 @@ html[data-hide-header='true'] {
 .ant-pro-layout .ant-pro-layout-content > .feature-placeholder-page,
 .ant-pro-layout .ant-pro-layout-content > .alarm-page,
 .ant-pro-layout .ant-pro-layout-content > .open-api-page,
-.ant-pro-layout .ant-pro-layout-content > .knowledge-page {
+.ant-pro-layout .ant-pro-layout-content > .knowledge-page,
+.ant-pro-layout .ant-pro-layout-content > .master-data-page,
+.ant-pro-layout .ant-pro-layout-content > .datasource-page-container {
   flex: 1 1 0% !important;
   min-height: 0 !important;
   height: 100% !important;
@@ -238,7 +240,7 @@ html[data-hide-header='true'] {
 }
 
 /* 列表外壳：吃掉顶栏之外的剩余高度，行多时由表体内部滚动，不再把整页撑高 */
-.ant-pro-layout .ant-pro-layout-content > .task-list-page-shell > *:last-child,
+.ant-pro-layout .ant-pro-layout-content > .task-list-page-shell > *:last-child:not(.client-page__workspace),
 .ant-pro-layout .ant-pro-layout-content .sync-task-list,
 .ant-pro-layout .ant-pro-layout-content .stream-link-page,
 .ant-pro-layout .ant-pro-layout-content .sync-task-list .config-manage-page {
@@ -247,6 +249,16 @@ html[data-hide-header='true'] {
   flex-direction: column;
   min-height: 0 !important;
   height: auto !important;
+}
+
+/* Client 页：左右分栏（列表 | 详情），不能沿用列表页末子节点的纵向 flex */
+.ant-pro-layout .ant-pro-layout-content > .task-list-page-shell > .client-page__workspace {
+  display: grid !important;
+  grid-template-columns: 300px minmax(0, 1fr) !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: hidden;
 }
 
 .ant-pro-layout .ant-pro-layout-content .task-table-shell,

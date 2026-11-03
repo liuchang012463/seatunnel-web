@@ -26,7 +26,7 @@ interface ActionColumnProps {
 }
 
 const actionBaseClass =
-  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-xs font-medium transition-all duration-150";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-sm font-medium transition-all duration-150";
 
 /* 动作按钮配色走 SyncTaskList/index.less 的令牌类，深浅主题自适应 */
 const primaryActionClass = `${actionBaseClass} sync-action-btn is-primary`;
@@ -38,7 +38,7 @@ const secondaryActionClass = `${actionBaseClass} sync-action-btn is-secondary`;
 const disabledActionClass = `${actionBaseClass} sync-action-btn is-disabled`;
 
 const moreActionClass =
-  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 border px-2 text-xs font-medium transition-all duration-150 sync-action-btn is-secondary";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 border px-2 text-sm font-medium transition-all duration-150 sync-action-btn is-secondary";
 
 const isReleaseOnline = (releaseState?: string | number) => {
   return releaseState === "ONLINE" || releaseState === 1;
@@ -506,7 +506,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
             onClick={stopPropagation}
           >
             更多
-            <DownOutlined style={{ fontSize: 10 }} />
+            <DownOutlined style={{ fontSize: 14 }} />
           </button>
         </Dropdown>
       </Space>

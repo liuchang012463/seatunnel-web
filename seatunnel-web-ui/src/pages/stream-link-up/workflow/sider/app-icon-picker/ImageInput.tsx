@@ -123,7 +123,7 @@ const ImageInput: FC<UploaderProps> = ({ display, cropShape, onImageInput }) => 
             <div
               style={{
                 fontWeight: 500,
-                fontSize: '0.875rem',
+                fontSize: '14px',
                 lineHeight: '1.25rem',
                 marginBottom: '2px',
               }}
@@ -140,7 +140,7 @@ const ImageInput: FC<UploaderProps> = ({ display, cropShape, onImageInput }) => 
                 type="file"
                 style={{
                   lineHeight: '1rem',
-                  fontSize: '0.75rem',
+                  fontSize: '14px',
                   pointerEvents: 'none',
                   display: 'none',
                 }}
@@ -149,7 +149,7 @@ const ImageInput: FC<UploaderProps> = ({ display, cropShape, onImageInput }) => 
                 onChange={handleLocalFileInput}
               />
             </div>
-            <div style={{fontSize: 13}}>Supports PNG, JPG, JPEG, WEBP and GIF</div>
+            <div style={{fontSize: 14}}>Supports PNG, JPG, JPEG, WEBP and GIF</div>
           </>
         ) : (
           handleShowImage()

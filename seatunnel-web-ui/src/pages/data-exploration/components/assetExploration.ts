@@ -17,14 +17,15 @@ export const ASSET_TYPE_LABELS: Record<ExplorationAssetType, string> = {
   API_ENDPOINT: '接口',
 };
 
+/** 面板眉题：中文为主；三栏工作台区域标识仍用 CATALOG / INSPECTOR（见 DESIGN.md §1）。 */
 export const ASSET_TYPE_EYEBROWS: Record<ExplorationAssetType, string> = {
-  TOPIC: 'TOPIC RESOURCE',
-  SEARCH_INDEX: 'SEARCH INDEX',
-  CONTAINER: 'CONTAINER',
-  DIRECTORY: 'DIRECTORY',
-  FILE: 'FILE',
-  API_COLLECTION: 'API COLLECTION',
-  API_ENDPOINT: 'API ENDPOINT',
+  TOPIC: '主题',
+  SEARCH_INDEX: '索引',
+  CONTAINER: '容器',
+  DIRECTORY: '目录',
+  FILE: '文件',
+  API_COLLECTION: '接口分组',
+  API_ENDPOINT: '接口',
 };
 
 export function normalizeAssetType(value?: string): ExplorationAssetType | undefined {
@@ -40,7 +41,7 @@ export function assetTypeLabel(value?: string): string {
 
 export function assetTypeEyebrow(value?: string): string {
   const type = normalizeAssetType(value);
-  return type ? ASSET_TYPE_EYEBROWS[type] : 'METADATA';
+  return type ? ASSET_TYPE_EYEBROWS[type] : '元数据';
 }
 
 export function assetDisplayName(asset?: DataExplorationAsset | null): string {

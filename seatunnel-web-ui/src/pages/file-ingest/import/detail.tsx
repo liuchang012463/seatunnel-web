@@ -126,7 +126,7 @@ const OfflineImportDetailPage: React.FC = () => {
           {loadError ? '任务加载失败' : '未找到任务'}
         </span>
         {loadError && (
-          <span className="max-w-[560px] text-center text-[13px] text-[#667085]">
+          <span className="max-w-[560px] text-center text-[14px] text-[color:var(--st-color-text-muted)]">
             {loadError}
           </span>
         )}
@@ -204,7 +204,7 @@ const OfflineImportDetailPage: React.FC = () => {
         </div>
 
         {task.errorMessage && (
-          <div className="mb-4 rounded-xl border border-[#fecdca] bg-[#fffaeb] px-4 py-3 text-[13px] text-[#b54708]">
+          <div className="mb-4 rounded-xl border border-[#fecdca] bg-[#fffaeb] px-4 py-3 text-[14px] text-[#b54708]">
             {task.errorMessage}
           </div>
         )}
@@ -243,7 +243,7 @@ const OfflineImportDetailPage: React.FC = () => {
           <div className="mb-3 text-[14px] font-medium">执行日志</div>
           <pre
             ref={logRef}
-            className="m-0 max-h-[480px] overflow-auto rounded-xl bg-[#0c2233] p-4 text-[12px] leading-[20px] text-[#d7f2ff]"
+            className="m-0 max-h-[480px] overflow-auto rounded-xl bg-[#0c2233] p-4 text-[14px] leading-[20px] text-[#d7f2ff]"
           >
             {task.executionLog
               || (task.status === 'RUNNING' || task.status === 'QUEUED'

@@ -205,7 +205,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
               />
               {isSchemaScoped && (
                 <>
-                  <div className="mt-3 mb-1 text-xs text-slate-500">Schema</div>
+                  <div className="mt-3 mb-1 text-sm text-slate-500">Schema</div>
                   <Select
                     value={schemaName || undefined}
                     onChange={handleSchemaChange}
@@ -221,7 +221,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
                   />
                 </>
               )}
-              <div className="mt-1 text-xs leading-5 text-slate-500">
+              <div className="mt-1 text-sm leading-5 text-slate-500">
                 {String(dbType).toUpperCase() === 'DORIS' && isSystemManagedTarget
                   ? '系统 Doris 仅允许选择当前来源数据源关联且 READY 的 ODS 数据库。'
                   : String(dbType).toUpperCase() === 'DORIS'
@@ -242,7 +242,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                fontSize: 12,
+                fontSize: 14,
                 color: 'var(--st-color-text-secondary)',
               }}
             >

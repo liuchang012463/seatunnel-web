@@ -124,7 +124,7 @@ const SectionHeader: React.FC<{
 
         <div>
           <div className="text-sm font-semibold text-slate-900">{title}</div>
-          <div className="mt-0.5 text-xs text-slate-500">{description}</div>
+          <div className="mt-0.5 text-sm text-slate-500">{description}</div>
         </div>
       </div>
 
@@ -228,7 +228,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
           padding: [10, 12],
           textStyle: {
             color: "#334155",
-            fontSize: 12,
+            fontSize: 14,
           },
           axisPointer: {
             type: "line",
@@ -275,7 +275,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
           icon: "roundRect",
           textStyle: {
             color: "var(--st-color-text-muted)",
-            fontSize: 12,
+            fontSize: 14,
           },
         },
         grid: {
@@ -298,7 +298,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
           },
           axisLabel: {
             color: "var(--st-color-text-muted)",
-            fontSize: 11,
+            fontSize: 14,
           },
         },
         yAxis: [
@@ -308,7 +308,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
             min: 0,
             nameTextStyle: {
               color: "var(--st-color-text-muted)",
-              fontSize: 11,
+              fontSize: 14,
             },
             axisLabel: {
               color: "var(--st-color-text-muted)",
@@ -326,7 +326,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
             min: 0,
             nameTextStyle: {
               color: "var(--st-color-text-muted)",
-              fontSize: 11,
+              fontSize: 14,
             },
             axisLabel: {
               color: "var(--st-color-text-muted)",
@@ -506,10 +506,10 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
               </span>
 
               <div className="min-w-0">
-                <div className="truncate text-xs font-medium text-slate-800">
+                <div className="truncate text-sm font-medium text-slate-800">
                   {getShortTableName(value)}
                 </div>
-                <div className="truncate text-[11px] text-slate-400">
+                <div className="truncate text-[14px] text-slate-400">
                   {value || "-"}
                 </div>
               </div>
@@ -541,10 +541,10 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
               </span>
 
               <div className="min-w-0">
-                <div className="truncate text-xs font-medium text-slate-800">
+                <div className="truncate text-sm font-medium text-slate-800">
                   {getShortTableName(value)}
                 </div>
-                <div className="truncate text-[11px] text-slate-400">
+                <div className="truncate text-[14px] text-slate-400">
                   {value || "-"}
                 </div>
               </div>
@@ -636,7 +636,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
             title="表级同步明细"
             description="查看当前运行实例的来源表与目标表同步情况"
             extra={
-              <div className="rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500">
+              <div className="rounded-full bg-slate-50 px-2.5 py-1 text-sm font-medium text-slate-500">
                 {tableMetricsLoading ? "加载中" : `${tableMetrics.length} 张表`}
               </div>
             }

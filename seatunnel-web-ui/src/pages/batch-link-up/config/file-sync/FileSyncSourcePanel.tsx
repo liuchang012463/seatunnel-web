@@ -290,7 +290,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
                 </div>
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-sky-900">选择本地文件</div>
-                  <div className="mt-1 text-xs leading-5 text-sky-700">
+                  <div className="mt-1 text-sm leading-5 text-sky-700">
                     支持单个/多个文件、文件夹选择和拖拽，文件夹层级会原样保留。
                   </div>
                 </div>
@@ -348,15 +348,15 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
               <div className="mt-2 text-sm font-medium text-slate-700">
                 {uploading ? '正在上传…' : '拖拽文件或文件夹到这里'}
               </div>
-              <div className="mt-1 text-xs text-slate-400">也可以点击选择文件，或使用上方的文件夹按钮</div>
+              <div className="mt-1 text-sm text-slate-400">也可以点击选择文件，或使用上方的文件夹按钮</div>
             </div>
 
             <div className="mt-4 flex items-center justify-between">
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <div className="text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
                 已上传文件（{assets.length}）
               </div>
               {assets.length > 0 ? (
-                <span className="text-xs text-emerald-600">已准备好发布</span>
+                <span className="text-sm text-emerald-600">已准备好发布</span>
               ) : null}
             </div>
 
@@ -365,7 +365,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
                 {assets.map((asset) => (
                   <div
                     key={`${asset.id || asset.relativePath}`}
-                    className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs text-slate-600 shadow-sm"
+                    className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-slate-600 shadow-sm"
                   >
                     <UploadOutlined className="shrink-0 text-sky-500" />
                     <span className="min-w-0 flex-1 truncate" title={asset.relativePath}>
@@ -419,7 +419,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
                 />
               </div>
               <div className="workflow-panel__field workflow-panel__field--full mt-3">
-                <div className="mb-1 text-xs text-slate-500">同步目录</div>
+                <div className="mb-1 text-sm text-slate-500">同步目录</div>
                 <Space.Compact block>
                   <Input
                     value={config.path}
@@ -460,7 +460,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
             <div className="workflow-panel__group-kicker">文件与二进制策略</div>
           </div>
           <div className="workflow-panel__field workflow-panel__field--full">
-            <div className="mb-1 text-xs text-slate-500">同步方式</div>
+            <div className="mb-1 text-sm text-slate-500">同步方式</div>
             <Radio.Group
               className="file-sync-type-radio"
               value={isWebUpload ? 'FULL' : config.syncType || 'FULL'}
@@ -479,7 +479,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
             />
           </div>
           <div className="workflow-panel__field workflow-panel__field--full mt-3">
-            <div className="mb-1 text-xs text-slate-500">文件名正则</div>
+            <div className="mb-1 text-sm text-slate-500">文件名正则</div>
             <Input
               value={config.fileFilterPattern}
               placeholder=".*"
@@ -487,7 +487,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
             />
           </div>
           <div className="workflow-panel__field workflow-panel__field--full mt-3">
-            <div className="mb-1 text-xs text-slate-500">扩展名过滤</div>
+            <div className="mb-1 text-sm text-slate-500">扩展名过滤</div>
             <Input
               value={config.filenameExtension}
               placeholder="zip,bin"
@@ -496,7 +496,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
           </div>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
-              <div className="mb-1 text-xs text-slate-500">分块字节数</div>
+              <div className="mb-1 text-sm text-slate-500">分块字节数</div>
               <InputNumber
                 className="!w-full"
                 min={1024}
@@ -505,7 +505,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
               />
             </div>
             <div>
-              <div className="mb-1 text-xs text-slate-500">完整文件模式</div>
+              <div className="mb-1 text-sm text-slate-500">完整文件模式</div>
               <Switch
                 checked={isWebUpload ? false : config.binaryCompleteFileMode !== false}
                 onChange={(checked) => {
@@ -516,7 +516,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
             </div>
           </div>
           {isRemote && config.syncType === 'INCREMENTAL' && (
-            <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-600">
+            <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm leading-5 text-amber-600">
               增量模式要求来源与去向为同一数据源；S3 / MinIO 还要求 SeaTunnel Engine 3.0.0。
             </div>
           )}

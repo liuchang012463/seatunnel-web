@@ -20,7 +20,7 @@ const ConfigCodeBlock = ({ content }: ConfigCodeBlockProps) => {
         borderRadius: 8,
         padding: "16px",
         fontFamily: "SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
-        fontSize: "13px",
+        fontSize: "14px",
         lineHeight: "1.5",
         color: "#24292e",
         overflow: "auto",

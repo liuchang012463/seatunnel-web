@@ -1,12 +1,24 @@
 .master-data-page {
-  min-height: 560px;
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
 
   .ant-pro-page-container-children-container {
+    display: flex;
+    flex: 1 1 0%;
+    flex-direction: column;
+    min-height: 0;
     padding-block: 0;
   }
 
   .master-data-page__panel.ant-card {
-    overflow: visible;
+    display: flex;
+    flex: 1 1 0%;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
     background: var(--st-color-bg-panel);
     border-color: var(--st-color-divider);
     border-radius: var(--st-radius-md, 4px);
@@ -14,6 +26,10 @@
   }
 
   .master-data-page__panel .ant-card-body {
+    display: flex;
+    flex: 1 1 0%;
+    flex-direction: column;
+    min-height: 0;
     padding: 16px;
   }
 
@@ -92,7 +108,7 @@
 
     .ant-form-item-label > label {
       color: var(--st-color-text-muted);
-      font-size: 12px;
+      font-size: 14px;
     }
 
     .ant-input,
@@ -188,7 +204,7 @@
 
   .ant-form-item-label > label {
     color: var(--st-color-text-secondary);
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .ant-form-item-required::before {

@@ -65,7 +65,7 @@ interface RealtimeTaskActionColumnProps {
 }
 
 const actionBaseClass =
-  "stream-link-task-action inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-xs font-medium transition-all duration-150";
+  "stream-link-task-action inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-sm font-medium transition-all duration-150";
 
 const primaryActionClass = `${actionBaseClass} stream-link-task-action--primary`;
 
@@ -495,7 +495,7 @@ const RealtimeTaskActionColumn: React.FC<RealtimeTaskActionColumnProps> = ({
           onClick={stopPropagation}
         >
           更多
-          <DownOutlined className="text-[10px]" />
+          <DownOutlined className="text-[14px]" />
         </button>
       </Dropdown>
     </Space>

@@ -132,7 +132,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
     <div className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-all duration-200 hover:border-slate-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.07)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-600">
+          <div className="text-sm font-medium uppercase tracking-[0.08em] text-slate-600">
             {title}
           </div>
 
@@ -140,7 +140,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
             <span className="text-[28px] font-semibold leading-none tracking-[-0.04em] text-slate-950">
               <CountUp end={value} duration={1.1} separator="," decimals={0} />
             </span>
-            <span className="pb-0.5 text-xs font-medium text-slate-600">
+            <span className="pb-0.5 text-sm font-medium text-slate-600">
               {unit}
             </span>
           </div>
@@ -158,7 +158,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
       {hint ? (
         <div className="mt-4 flex justify-end">
-          <div className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-500">
+          <div className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[14px] font-medium text-slate-500">
             {hint}
           </div>
         </div>
@@ -182,7 +182,7 @@ const SectionHeader: React.FC<{
 
         <div>
           <div className="text-sm font-semibold text-slate-900">{title}</div>
-          <div className="mt-0.5 text-xs text-slate-500">{description}</div>
+          <div className="mt-0.5 text-sm text-slate-500">{description}</div>
         </div>
       </div>
 
@@ -348,10 +348,10 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
               </span>
 
               <div className="min-w-0">
-                <div className="truncate text-xs font-medium text-slate-800">
+                <div className="truncate text-sm font-medium text-slate-800">
                   {getShortTableName(value)}
                 </div>
-                <div className="truncate text-[11px] text-slate-500">
+                <div className="truncate text-[14px] text-slate-500">
                   {value || "-"}
                 </div>
               </div>
@@ -383,10 +383,10 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
               </span>
 
               <div className="min-w-0">
-                <div className="truncate text-xs font-medium text-slate-800">
+                <div className="truncate text-sm font-medium text-slate-800">
                   {getShortTableName(value)}
                 </div>
-                <div className="truncate text-[11px] text-slate-500">
+                <div className="truncate text-[14px] text-slate-500">
                   {value || "-"}
                 </div>
               </div>
@@ -671,7 +671,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
             title="表级同步明细"
             description="查看当前运行实例的来源表与目标表同步情况"
             extra={
-              <div className="rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500">
+              <div className="rounded-full bg-slate-50 px-2.5 py-1 text-sm font-medium text-slate-500">
                 {tableMetricsLoading ? "加载中" : `${tableMetrics.length} 张表`}
               </div>
             }

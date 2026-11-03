@@ -27,12 +27,12 @@ const WholeSyncHeader: React.FC<Props> = ({
           items={[
             {
               title: (
-                <a style={{ fontSize: 12 }} onClick={goBack}>
+                <a style={{ fontSize: 14 }} onClick={goBack}>
                   任务列表
                 </a>
               ),
             },
-            { title: <span style={{ fontSize: 12 }}>多表同步</span> },
+            { title: <span style={{ fontSize: 14 }}>多表同步</span> },
           ]}
         />
       </div>

@@ -627,7 +627,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
                           ))}
 
                         {statuses.length > 3 && (
-                          <span className="alarm-card__meta-value text-xs">
+                          <span className="alarm-card__meta-value text-sm">
                             +
                             {statuses.length -
                               3}
@@ -636,7 +636,7 @@ const RuleTab: React.FC<RuleTabProps> = ({
 
                         {statuses.length ===
                           0 && (
-                          <span className="alarm-card__meta-value text-xs">
+                          <span className="alarm-card__meta-value text-sm">
                             暂无触发状态
                           </span>
                         )}

@@ -37,7 +37,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
         padding: [8, 10],
         textStyle: {
           color: '#d5d5d5',
-          fontSize: 12,
+          fontSize: 14,
         },
         axisPointer: {
           type: 'line',

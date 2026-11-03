@@ -57,7 +57,7 @@
             font-size: 18px;
             font-weight: 600;
             line-height: 1.2;
-            color: #101828;
+            color: var(--st-color-text-primary);
         }
 
         &-subtitle {
@@ -66,7 +66,7 @@
         }
 
         &-title-secondary {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
             line-height: 16px;
             color: var(--st-color-text-primary);
@@ -78,7 +78,7 @@
 
         &-title-tertiary {
             text-transform: uppercase;
-            font-size: 10px;
+            font-size: 14px;
             font-weight: 500;
             line-height: 12px;
             color: var(--st-color-text-muted);
@@ -144,7 +144,7 @@
         &-title {
             margin: 0.5rem 0 0.125rem;
             color: var(--st-color-text-primary);
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
             line-height: 16px;
         }
@@ -152,7 +152,7 @@
         &-desc {
             margin: 0.5rem 0 0.125rem;
             color: var(--st-color-text-muted);
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 400;
             line-height: 16px;
         }
@@ -173,16 +173,16 @@
     .input-base() {
         outline: 2px solid transparent;
         outline-offset: 2px;
-        caret-color: #155eef;
-        color: #101828;
+        caret-color: var(--st-color-accent);
+        color: var(--st-color-text-primary);
         padding: 7px 0.75rem;
-        background-color: #c8ceda40;
-        border-color: transparent;
+        background-color: var(--st-color-bg-control);
+        border-color: var(--st-color-border);
         border-width: 1px;
         appearance: none;
         width: 100%;
-        border-radius: 8px;
-        font-size: 13px;
+        border-radius: var(--st-radius-md, 4px);
+        font-size: 14px;
         font-weight: 400;
         line-height: 16px;
     }
@@ -197,7 +197,7 @@
         }
 
         &-label {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
             line-height: 16px;
             color: var(--st-color-text-primary);
@@ -238,7 +238,7 @@
     padding: .125rem;
     background-color: #ffffff1f;
     border-radius: .125rem;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     line-height: 16px;
 }

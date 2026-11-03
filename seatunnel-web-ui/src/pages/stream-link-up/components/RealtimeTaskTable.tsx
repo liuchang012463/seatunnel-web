@@ -124,7 +124,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
                   copyToClipboard(record.id);
                 }}
               >
-                <CopyOutlined className="text-[12px]" />
+                <CopyOutlined className="text-[14px]" />
               </button>
             </Tooltip>
           </div>

@@ -56,7 +56,7 @@ const ParamTable: React.FC<ParamTableProps> = ({
 
   const columns: ColumnsType<TimeParamItem> = [
     {
-      title: <span style={{ fontSize: 13, fontWeight: 500 }}>参数名</span>,
+      title: <span style={{ fontSize: 14, fontWeight: 500 }}>参数名</span>,
       dataIndex: "paramName",
       key: "paramName",
       width: "48%",
@@ -76,10 +76,10 @@ const ParamTable: React.FC<ParamTableProps> = ({
     },
     {
       title: (
-        <span style={{ fontSize: 13, fontWeight: 500 }}>
+        <span style={{ fontSize: 14, fontWeight: 500 }}>
           参数值{" "}
           <Tooltip title="支持使用时间表达式，例如 ${add_months(yyyymmdd,-1)}">
-            <InfoCircleOutlined className="text-[12px] text-[color:var(--st-color-text-muted)]" />
+            <InfoCircleOutlined className="text-[14px] text-[color:var(--st-color-text-muted)]" />
           </Tooltip>
         </span>
       ),

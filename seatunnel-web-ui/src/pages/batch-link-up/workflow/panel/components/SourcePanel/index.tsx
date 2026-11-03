@@ -298,7 +298,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
                 />
                 {isSchemaScoped && (
                   <>
-                    <div className="mt-3 mb-1 text-xs text-slate-500">Schema</div>
+                    <div className="mt-3 mb-1 text-sm text-slate-500">Schema</div>
                     <Select
                       value={schemaName || undefined}
                       onChange={handleSchemaChange}
@@ -314,7 +314,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
                     />
                   </>
                 )}
-                <div className="mt-1 text-xs leading-5 text-slate-500">
+                <div className="mt-1 text-sm leading-5 text-slate-500">
                   {isDoris
                     ? 'Doris 没有独立 Schema，这里使用数据库名作为 Schema。'
                     : '选择数据库和 Schema 后，再选择对应范围内的表。'}
@@ -433,11 +433,11 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
                 <div className="workflow-panel__group-head">
                   <div className="workflow-panel__group-kicker">增量配置</div>
                 </div>
-                <div className="mb-3 text-xs leading-5 text-slate-500">
+                <div className="mb-3 text-sm leading-5 text-slate-500">
                   先完成表或 SQL 的字段解析，再选择时间类型字段作为增量识别字段。
                 </div>
                 <div className="workflow-panel__field workflow-panel__field--full">
-                  <div className="mb-1 text-xs text-slate-500">增量识别字段</div>
+                  <div className="mb-1 text-sm text-slate-500">增量识别字段</div>
                   <Select
                     value={incrementalConfig?.fieldName || undefined}
                     onChange={(value) =>
@@ -471,11 +471,11 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
                     optionFilterProp="label"
                   />
                   {(!Array.isArray(meta?.outputSchema) || meta.outputSchema.length === 0) && (
-                    <div className="mt-1 text-xs text-slate-400">请先点击“字段解析”获取可选字段。</div>
+                    <div className="mt-1 text-sm text-slate-400">请先点击“字段解析”获取可选字段。</div>
                   )}
                 </div>
                 <div className="workflow-panel__field workflow-panel__field--full mt-3">
-                  <div className="mb-1 text-xs text-slate-500">增量起始值</div>
+                  <div className="mb-1 text-sm text-slate-500">增量起始值</div>
                   <DatePicker
                     value={
                       incrementalConfig?.startValue

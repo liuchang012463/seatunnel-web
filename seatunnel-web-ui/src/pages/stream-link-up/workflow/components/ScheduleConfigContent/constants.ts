@@ -13,7 +13,7 @@ export const labelNodeStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 4,
-  fontSize: 13,
+  fontSize: 14,
   color: "var(--st-color-text-secondary)",
   lineHeight: "20px",
 };

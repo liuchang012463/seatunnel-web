@@ -135,7 +135,7 @@ const MetricItem: React.FC<{
 }> = ({ label, value }) => {
   return (
     <div className="min-w-0">
-      <div className="text-xs text-slate-400">{label}</div>
+      <div className="text-sm text-slate-400">{label}</div>
       <div className="mt-1 text-xl font-semibold leading-none text-slate-950">
         {value ?? 0}
       </div>
@@ -173,7 +173,7 @@ const LatestItem: React.FC<{
             <div className="truncate text-sm font-semibold text-slate-950">
               {title}
             </div>
-            <div className="mt-0.5 text-xs text-slate-400">
+            <div className="mt-0.5 text-sm text-slate-400">
               {checkpoint?.checkpointId
                 ? `Checkpoint #${checkpoint.checkpointId}`
                 : "暂无数据"}
@@ -185,7 +185,7 @@ const LatestItem: React.FC<{
       </div>
 
       {checkpoint ? (
-        <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs">
+        <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-sm">
           <div>
             <span className="text-slate-400">类型：</span>
             <span className="text-slate-700">
@@ -393,7 +393,7 @@ const RealtimeCheckpointModal: React.FC<RealtimeCheckpointModalProps> = ({
               return (
                 <div
                   key={`${item.checkpointId}-${item.triggerTimestamp}`}
-                  className="text-[13px] text-slate-600"
+                  className="text-[14px] text-slate-600"
                 >
                   #{item.checkpointId} · ACK {acknowledged}/{total}
                 </div>
@@ -504,7 +504,7 @@ const RealtimeCheckpointModal: React.FC<RealtimeCheckpointModalProps> = ({
         <div className="text-base font-semibold text-slate-950">
           检查点详情
         </div>
-        <div className="mt-1 truncate text-xs text-slate-500">
+        <div className="mt-1 truncate text-sm text-slate-500">
           任务：{record?.jobName || "-"}
           {jobId ? ` ｜ Job ID：${jobId}` : ""}
           {overview?.updatedAt
@@ -563,7 +563,7 @@ const RealtimeCheckpointModal: React.FC<RealtimeCheckpointModalProps> = ({
                       value={summary.restored}
                     />
 
-                    <div className="flex items-center justify-end text-xs font-medium text-slate-400">
+                    <div className="flex items-center justify-end text-sm font-medium text-slate-400">
                       {pipelines.length} Pipelines
                     </div>
                   </div>
@@ -592,7 +592,7 @@ const RealtimeCheckpointModal: React.FC<RealtimeCheckpointModalProps> = ({
                     <div className="text-sm font-semibold text-slate-950">
                       Pipeline Overview
                     </div>
-                    <div className="mt-1 text-xs text-slate-400">
+                    <div className="mt-1 text-sm text-slate-400">
                       每个 Pipeline 的检查点统计与运行中检查点
                     </div>
                   </div>
@@ -632,7 +632,7 @@ const RealtimeCheckpointModal: React.FC<RealtimeCheckpointModalProps> = ({
                       <div className="text-sm font-semibold text-slate-950">
                         Checkpoint History
                       </div>
-                      <div className="mt-1 text-xs text-slate-400">
+                      <div className="mt-1 text-sm text-slate-400">
                         作业的 Checkpoint 历史记录
                       </div>
                     </div>

@@ -347,7 +347,7 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
               classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
               disabled={!catalog}
             />
-            <div className="mt-3 mb-1 text-xs text-slate-500">Schema</div>
+            <div className="mt-3 mb-1 text-sm text-slate-500">Schema</div>
             <Select
               value={activeSchema?.name || undefined}
               onChange={handleSchemaChange}
@@ -364,7 +364,7 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
               optionFilterProp="label"
               disabled={!catalog || catalog.schemas.length === 0}
             />
-            <div className="mt-1 text-xs leading-5 text-slate-500">
+            <div className="mt-1 text-sm leading-5 text-slate-500">
               选择数据库和 Schema 后，再选择对应范围内的表。
             </div>
             {catalogError ? (

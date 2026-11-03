@@ -56,7 +56,7 @@ const ClientMetricsSection: React.FC<Props> = ({ metricsLoading, metrics }) => {
     <div className="mb-5">
       <div className="mb-4">
         <div className="text-[16px] font-semibold text-[color:var(--st-color-text-primary)]">核心指标</div>
-        <div className="mt-1 text-[13px] text-[color:var(--st-color-text-muted)]">
+        <div className="mt-1 text-[14px] text-[color:var(--st-color-text-muted)]">
           当前优先展示 CPU、内存、线程数与运行中任务 4 个核心指标
         </div>
       </div>
@@ -71,10 +71,10 @@ const ClientMetricsSection: React.FC<Props> = ({ metricsLoading, metrics }) => {
           return (
             <div
               key={item.key}
-              className="rounded-[22px] border border-[#E9EDF3] bg-[color:var(--st-color-bg-panel)] p-5"
+              className="rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-panel)] p-5"
             >
               <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="text-[13px] font-semibold tracking-[0.02em] text-[color:var(--st-color-text-muted)]">
+                <div className="text-[14px] font-semibold tracking-[0.02em] text-[color:var(--st-color-text-muted)]">
                   {item.label}
                 </div>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--st-color-bg-control)] text-[16px] text-[color:var(--st-color-text-secondary)]">
@@ -96,7 +96,7 @@ const ClientMetricsSection: React.FC<Props> = ({ metricsLoading, metrics }) => {
                     size="small"
                   />
 
-                  <div className="mt-3 text-[12px] leading-6 text-[color:var(--st-color-text-muted)]">
+                  <div className="mt-3 text-[14px] leading-6 text-[color:var(--st-color-text-muted)]">
                     {item.desc}
                   </div>
                 </>
@@ -106,7 +106,7 @@ const ClientMetricsSection: React.FC<Props> = ({ metricsLoading, metrics }) => {
                     {metricsLoading ? "--" : formatText(item.value)}
                   </div>
 
-                  <div className="text-[12px] leading-6 text-[color:var(--st-color-text-muted)]">
+                  <div className="text-[14px] leading-6 text-[color:var(--st-color-text-muted)]">
                     {item.desc}
                   </div>
                 </>

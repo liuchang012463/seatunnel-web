@@ -632,7 +632,7 @@ export default function Workflow({
   };
 
   const actionChipClass =
-    "generic-workflow-editor-page__action-chip inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[13px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0";
+    "generic-workflow-editor-page__action-chip inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[14px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0";
 
   return (
     <Form form={form} component={false}>
@@ -717,7 +717,7 @@ export default function Workflow({
                     <Tooltip title={publishStatusView.tooltip}>
                       <span
                         className={[
-                          "inline-flex h-[34px] select-none items-center justify-center rounded-full border px-3 text-[13px] font-medium leading-none",
+                          "inline-flex h-[34px] select-none items-center justify-center rounded-full border px-3 text-[14px] font-medium leading-none",
                           publishStatusView.className,
                         ].join(" ")}
                       >
@@ -730,7 +730,7 @@ export default function Workflow({
                       icon={<Save size={15} strokeWidth={1.9} />}
                       onClick={handleSave}
                       loading={publishLoading}
-                      className="generic-workflow-editor-page__publish-button !inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-white disabled:!shadow-none"
+                      className="generic-workflow-editor-page__publish-button !inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[14px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-white disabled:!shadow-none"
                     >
                       保存配置
                     </Button>
@@ -741,7 +741,7 @@ export default function Workflow({
                   <Row className="generic-workflow-editor-page__canvas-layout" gutter={24} style={{ height: "100%" }}>
                     <Col className="generic-workflow-editor-page__sidebar-col" span={4}>
                       <div className="generic-workflow-editor-page__sidebar flex h-full flex-col gap-3 overflow-auto border-r border-slate-100 p-3">
-                        <div className="px-0.5 pb-2 pt-1 text-[13px] font-semibold text-slate-700">
+                        <div className="px-0.5 pb-2 pt-1 text-[14px] font-semibold text-slate-700">
                           节点组件
                         </div>
 
@@ -766,10 +766,10 @@ export default function Workflow({
                           </div>
 
                           <div className="min-w-0">
-                            <div className="text-[13px] font-semibold leading-[1.2] text-slate-900">
+                            <div className="text-[14px] font-semibold leading-[1.2] text-slate-900">
                               字段映射
                             </div>
-                            <div className="mt-1 text-[12px] leading-[1.4] text-slate-500">
+                            <div className="mt-1 text-[14px] leading-[1.4] text-slate-500">
                               配置字段对应关系
                             </div>
                           </div>
@@ -796,10 +796,10 @@ export default function Workflow({
                           </div>
 
                           <div className="min-w-0">
-                            <div className="text-[13px] font-semibold leading-[1.2] text-slate-900">
+                            <div className="text-[14px] font-semibold leading-[1.2] text-slate-900">
                               SQL
                             </div>
-                            <div className="mt-1 text-[12px] leading-[1.4] text-slate-500">
+                            <div className="mt-1 text-[14px] leading-[1.4] text-slate-500">
                               支持自定义查询
                             </div>
                           </div>

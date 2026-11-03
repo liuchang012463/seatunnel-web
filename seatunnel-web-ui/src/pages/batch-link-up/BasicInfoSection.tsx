@@ -30,7 +30,7 @@ const AnimatedSyncArrow: React.FC = () => {
 
       <DoubleRightOutlined
         style={{
-          fontSize: 10,
+          fontSize: 14,
           animation: "syncArrowMove 1.8s ease-in-out infinite",
         }}
       />

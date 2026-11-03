@@ -37,7 +37,7 @@ export const CheckListPopover = ({ checkStat, checkGroups }: any) => {
 
           <div
             style={{
-              fontSize: "0.75rem",
+              fontSize: "14px",
               lineHeight: "1rem",
               color: "var(--st-color-text-muted)",
               marginBottom: 8,
@@ -54,7 +54,7 @@ export const CheckListPopover = ({ checkStat, checkGroups }: any) => {
               <div
                 key={group.nodeId}
                 style={{
-                  fontSize: 12,
+                  fontSize: 14,
                   border: "1px solid rgb(16 24 40/0.08)",
                   borderRadius: "0.5rem",
                   marginBottom: 8,
@@ -119,7 +119,7 @@ export const CheckListPopover = ({ checkStat, checkGroups }: any) => {
           <div
             style={{
               fontWeight: 600,
-              fontSize: 11,
+              fontSize: 14,
               backgroundColor: "rgb(247 144 9)",
               borderColor: "rgb(242 244 247)",
               borderWidth: 1,

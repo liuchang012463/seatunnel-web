@@ -156,7 +156,7 @@
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   color: #64748b;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1;
   cursor: pointer;
@@ -178,10 +178,26 @@
 }
 
 .file-ingest-task-page {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+
+  /* 顶栏 Tabs：只占导航高度，内容区交给下方 body */
+  > .file-ingest-task-tabs.ant-tabs,
+  > .ant-tabs.file-ingest-task-tabs {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible;
+  }
+
   .file-ingest-task-tabs {
     margin-bottom: 0;
 
-    .ant-tabs-nav {
+    > .ant-tabs-nav {
+      flex: 0 0 auto;
       margin-bottom: 0;
     }
 
@@ -201,6 +217,73 @@
 
     .ant-tabs-ink-bar {
       height: 3px;
+    }
+
+    /* 无 pane 内容时隐藏空 content-holder，避免占高 */
+    > .ant-tabs-content-holder {
+      display: none !important;
+    }
+  }
+
+  > .file-ingest-task-body {
+    display: flex !important;
+    flex: 1 1 0% !important;
+    flex-direction: column;
+    min-height: 0 !important;
+    overflow: hidden;
+  }
+
+  .file-ingest-task-body {
+    .sync-task-list,
+    .batch-link-up-page,
+    .config-manage-page {
+      display: flex !important;
+      flex: 1 1 0% !important;
+      flex-direction: column;
+      min-height: 0 !important;
+      height: auto !important;
+    }
+
+    .config-manage-page > .task-table-shell {
+      display: grid !important;
+      flex: 1 1 0% !important;
+      grid-template-rows: minmax(0, 1fr) auto;
+      min-height: 0 !important;
+      overflow: hidden;
+    }
+
+    /* 仅表体滚动，分页条始终占壳底一席，不被 overflow 裁切 */
+    .task-table-shell__body {
+      display: flex !important;
+      flex: 1 1 0% !important;
+      flex-direction: column;
+      min-height: 0 !important;
+      overflow: hidden;
+
+      .ant-table-wrapper,
+      .ant-spin-nested-loading,
+      .ant-spin-container {
+        display: flex !important;
+        flex: 1 1 0% !important;
+        flex-direction: column;
+        min-height: 0 !important;
+        height: auto !important;
+      }
+
+      .ant-table-content {
+        min-height: 0 !important;
+      }
+    }
+
+    .task-list-footer {
+      flex: 0 0 auto !important;
+      margin-top: 0;
+      background: var(--st-color-bg-panel, #052f3f);
+
+      .task-pagination {
+        min-width: 0;
+        padding: 0;
+      }
     }
   }
 

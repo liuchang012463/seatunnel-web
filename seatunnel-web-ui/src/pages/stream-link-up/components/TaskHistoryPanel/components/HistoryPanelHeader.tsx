@@ -14,7 +14,7 @@ const HistoryPanelHeader: React.FC<HistoryPanelHeaderProps> = ({
   return (
     <div className="mb-2.5 flex items-center justify-between">
       <div>
-        <div className="text-[13px] font-medium leading-5 text-[color:var(--st-color-text-primary)]">
+        <div className="text-[14px] font-medium leading-5 text-[color:var(--st-color-text-primary)]">
           执行记录
         </div>
       </div>

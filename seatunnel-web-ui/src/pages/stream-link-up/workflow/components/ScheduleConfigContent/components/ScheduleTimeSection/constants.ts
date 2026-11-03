@@ -28,7 +28,7 @@ export const intervalOptions: SelectProps["options"] = Array.from(
 );
 
 export const modeBtnBase =
-    "!h-7 !rounded-md !px-3 !text-[12px] !border-0 !shadow-none transition-all duration-200";
+    "!h-7 !rounded-md !px-3 !text-[14px] !border-0 !shadow-none transition-all duration-200";
 export const modeBtnActive = "!bg-white !text-[#245BDB]";
 export const modeBtnInactive =
     "!bg-transparent !text-[color:var(--st-color-text-secondary)] hover:!text-[#245BDB]";
@@ -41,7 +41,7 @@ export const labelNodeStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 4,
-  fontSize: 13,
+  fontSize: 14,
   color: "var(--st-color-text-secondary)",
   lineHeight: "20px",
 };

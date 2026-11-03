@@ -34,7 +34,7 @@ interface Props {
   onKeywordChange: (value: string) => void;
 }
 
-const formItemClass = "[&_.ant-form-item-label>label]:text-[13px] [&_.ant-form-item-label>label]:text-slate-600";
+const formItemClass = "[&_.ant-form-item-label>label]:text-[14px] [&_.ant-form-item-label>label]:text-slate-600";
 
 const MultiSyncForm: React.FC<Props> = ({
   sourceOption,

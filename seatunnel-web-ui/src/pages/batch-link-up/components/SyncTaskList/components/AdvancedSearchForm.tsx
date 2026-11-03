@@ -278,7 +278,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
 
                 {!hideAdvancedFilters && <button
                   type="button"
-                  className="task-search-expand inline-flex h-8 items-center gap-1 px-2 text-xs font-medium text-[color:var(--st-color-accent)] transition hover:bg-[rgba(63,198,255,0.08)]"
+                  className="task-search-expand inline-flex h-8 items-center gap-1 px-2 text-sm font-medium text-[color:var(--st-color-accent)] transition hover:bg-[rgba(63,198,255,0.08)]"
                   aria-expanded={expand}
                   aria-controls="task-advanced-search-filters"
                   onClick={() => setExpand((prev) => !prev)}
@@ -295,7 +295,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
 
                   <DownOutlined
                     className={[
-                      "text-[10px] transition-transform duration-200",
+                      "text-[14px] transition-transform duration-200",
                       expand ? "rotate-180" : "rotate-0",
                     ].join(" ")}
                   />

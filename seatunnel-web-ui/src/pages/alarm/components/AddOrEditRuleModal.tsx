@@ -466,7 +466,7 @@ const AddOrEditRuleModal = forwardRef<
                 {drawerTitle}
               </h2>
 
-              <p className="m-0 mt-1 truncate text-xs text-slate-400">
+              <p className="m-0 mt-1 truncate text-sm text-slate-400">
                 {drawerDescription}
               </p>
             </div>
@@ -524,7 +524,7 @@ const AddOrEditRuleModal = forwardRef<
                     基本信息
                   </h3>
 
-                  <p className="m-0 mt-1 text-xs leading-5 text-slate-400">
+                  <p className="m-0 mt-1 text-sm leading-5 text-slate-400">
                     设置规则名称、严重级别和启用状态。
                   </p>
                 </div>
@@ -613,7 +613,7 @@ const AddOrEditRuleModal = forwardRef<
                     触发条件
                   </h3>
 
-                  <p className="m-0 mt-1 text-xs leading-5 text-slate-400">
+                  <p className="m-0 mt-1 text-sm leading-5 text-slate-400">
                     选择规则生效的任务范围和触发状态。
                   </p>
                 </div>
@@ -735,7 +735,7 @@ const AddOrEditRuleModal = forwardRef<
                     投递配置
                   </h3>
 
-                  <p className="m-0 mt-1 text-xs leading-5 text-slate-400">
+                  <p className="m-0 mt-1 text-sm leading-5 text-slate-400">
                     选择规则触发后需要发送消息的告警通道。
                   </p>
                 </div>
@@ -768,7 +768,7 @@ const AddOrEditRuleModal = forwardRef<
 
                 {enabledChannelOptions.length ===
                   0 && (
-                  <p className="m-0 mt-2 text-xs text-orange-500">
+                  <p className="m-0 mt-2 text-sm text-orange-500">
                     暂无可用告警通道，请先创建并启用告警通道。
                   </p>
                 )}

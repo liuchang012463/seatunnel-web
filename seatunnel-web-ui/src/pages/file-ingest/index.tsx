@@ -2,6 +2,7 @@ import { history } from '@umijs/max';
 import { App, Tabs } from 'antd';
 import { useState } from 'react';
 import ImportTaskList from './ImportTaskList';
+import './index.less';
 
 type ImportTaskKind = 'FILE_INGEST' | 'OFFLINE_IMPORT';
 
@@ -34,6 +35,7 @@ const FileIngestPage: React.FC = () => {
 
   return (
     <div className="task-list-page-shell file-ingest-task-page">
+      {/* Tabs 只作顶栏切换；列表作为壳层末子节点，走全局列表页 flex 高度链，避免分页被裁切 */}
       <Tabs
         className="file-ingest-task-tabs"
         activeKey={activeTaskKind}
@@ -48,15 +50,21 @@ const FileIngestPage: React.FC = () => {
           {
             key: 'FILE_INGEST',
             label: <span className="file-ingest-task-tab-label">文件导入任务</span>,
-            children: <ImportTaskList taskKind="FILE_INGEST" onCreate={createTask} goDetail={editTask} />,
           },
           {
             key: 'OFFLINE_IMPORT',
             label: <span className="file-ingest-task-tab-label">DMP / SQL 导入</span>,
-            children: <ImportTaskList taskKind="OFFLINE_IMPORT" onCreate={createTask} goDetail={editTask} />,
           },
         ]}
       />
+      <div className="file-ingest-task-body">
+        <ImportTaskList
+          key={activeTaskKind}
+          taskKind={activeTaskKind}
+          onCreate={createTask}
+          goDetail={editTask}
+        />
+      </div>
     </div>
   );
 };

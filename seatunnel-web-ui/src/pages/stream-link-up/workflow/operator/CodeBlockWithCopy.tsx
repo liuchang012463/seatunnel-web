@@ -163,7 +163,7 @@ const createPreviewTheme = (height: number) =>
   EditorView.theme({
     "&": {
       height: `calc(${height}px - 58px)`,
-      fontSize: "13px",
+      fontSize: "14px",
       backgroundColor: "var(--st-color-bg-panel)",
       color: "var(--st-color-text-primary)",
       outline: "none !important",
@@ -204,7 +204,7 @@ const createPreviewTheme = (height: number) =>
 
     ".cm-lineNumbers .cm-gutterElement": {
       padding: "0 12px 0 14px",
-      fontSize: "12px",
+      fontSize: "14px",
       lineHeight: "28px",
       color: "var(--st-color-text-secondary)",
     },
@@ -354,7 +354,7 @@ const CodeBlockWithCopy: React.FC<CodeBlockWithCopyProps> = ({
             type="button"
             onClick={handleCopy}
             className={[
-              "code-block-with-copy__copy-button inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all",
+              "code-block-with-copy__copy-button inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-all",
               copied
                 ? "border-[rgba(53,211,153,0.34)] bg-[rgba(53,211,153,0.14)] text-[#64E6B1]"
                 : "border-[var(--st-color-border)] bg-[var(--st-color-bg-control)] text-[#D5D5D5] hover:border-[var(--st-color-accent)] hover:bg-[var(--st-color-hover)] hover:text-white",

@@ -5,8 +5,8 @@ import {
   LinkOutlined,
 } from "@ant-design/icons";
 import { Button, Popconfirm, Tooltip } from "antd";
-import { BLUE, BLUE_LIGHT, BORDER_COLOR } from "../constants";
 import { getHealthMeta } from "../utils";
+import "./client-list-panel.less";
 
 interface Props {
   clients: any[];
@@ -26,19 +26,10 @@ const ClientListPanel: React.FC<Props> = ({
   deleteLoadingId,
 }) => {
   return (
-    <div
-      style={{
-        borderRight: `1px solid ${BORDER_COLOR}`,
-        background: "var(--st-color-bg-panel)",
-        padding: 20,
-        boxSizing: "border-box",
-      }}
-    >
-      <div className="mb-3 text-[13px] font-semibold text-[color:var(--st-color-text-secondary)]">
-        Client 列表
-      </div>
+    <div className="client-list-panel">
+      <div className="client-list-panel__title">Client 列表</div>
 
-      <div className="flex flex-col gap-3">
+      <div className="client-list-panel__items">
         {(clients || []).map((client) => {
           const active = client.id === selectedClientId;
           const itemHealth = getHealthMeta(client.healthStatus);
@@ -49,62 +40,36 @@ const ClientListPanel: React.FC<Props> = ({
               key={client.id}
               onClick={() => onSelect(client.id)}
               className={[
-                "group/client relative rounded-2xl px-3.5 py-3.5",
-                "cursor-pointer border transition-all duration-200 ease-out",
-                active
-                  ? "border-[#C7D7FE] bg-[#EEF4FF]"
-                  : "border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-panel)] hover:border-[#D7E1F2] hover:bg-[#FBFCFF]",
-              ].join(" ")}
+                "client-list-panel__item",
+                active ? "is-active" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
-              <div className="flex items-start gap-2.5">
-                <span
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 10,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: active ? "#DFE6FF" : "#F2F4F7",
-                    color: active ? BLUE : "#667085",
-                    fontSize: 15,
-                    flexShrink: 0,
-                  }}
-                >
+              <div className="client-list-panel__item-main">
+                <span className="client-list-panel__icon">
                   <LinkOutlined />
                 </span>
 
-                <div className="min-w-0 flex-1 pr-[52px]">
-                  <div
-                    className="truncate text-[14px] font-semibold"
-                    style={{ color: active ? BLUE : "#101828" }}
-                  >
+                <div className="client-list-panel__meta">
+                  <div className="client-list-panel__name">
                     {client.clientName || "--"}
+                  </div>
+                  <div className="client-list-panel__remark">
+                    <span
+                      className={`client-list-panel__dot ${itemHealth.dot}`}
+                    />
+                    {client?.remark ? (
+                      <span className="truncate">{client.remark}</span>
+                    ) : (
+                      <span className="truncate">暂无备注</span>
+                    )}
                   </div>
                 </div>
               </div>
 
               <div
-                className="flex items-center gap-2 pl-[42px] pr-[52px] text-[12px] leading-7"
-                style={{ color: active ? "#5B6B8A" : "#98A2B3" }}
-              >
-                <span
-                  className={`inline-block h-2 w-2 rounded-full ${itemHealth.dot}`}
-                />
-                {client?.remark ? (
-                  <span className="truncate">{client.remark}</span>
-                ) : (
-                  <span className="truncate">暂无备注</span>
-                )}
-              </div>
-
-              <div
-                className={[
-                  "absolute right-3 top-3 flex items-center gap-1",
-                  "opacity-0 transition-opacity duration-200",
-                  "group-hover/client:opacity-100",
-                  active ? "opacity-100" : "",
-                ].join(" ")}
+                className="client-list-panel__actions"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Tooltip title="编辑">
@@ -112,7 +77,6 @@ const ClientListPanel: React.FC<Props> = ({
                     size="small"
                     type="text"
                     icon={<EditOutlined />}
-                    className="!flex !h-7 !w-7 !items-center !justify-center !rounded-lg !text-[color:var(--st-color-text-muted)] hover:!bg-[color:var(--st-color-bg-panel)] hover:!text-[color:var(--st-color-accent)]"
                     onClick={() => onEdit(client)}
                   />
                 </Tooltip>
@@ -135,7 +99,6 @@ const ClientListPanel: React.FC<Props> = ({
                       danger
                       icon={<DeleteOutlined />}
                       loading={deleting}
-                      className="!flex !h-7 !w-7 !items-center !justify-center !rounded-lg hover:!bg-[#FFF1F0]"
                     />
                   </Tooltip>
                 </Popconfirm>
@@ -145,7 +108,7 @@ const ClientListPanel: React.FC<Props> = ({
         })}
 
         {!clients?.length ? (
-          <div className="rounded-2xl border border-dashed border-[#D8DEE6] bg-[#FBFCFE] px-4 py-5 text-[13px] leading-6 text-[#6B7280]">
+          <div className="client-list-panel__empty">
             还没有 Client，先新增一个地址吧。
           </div>
         ) : null}

@@ -678,7 +678,7 @@ export default function FileWorkflow({
   };
 
   const actionChipClass =
-    'file-workflow-editor-page__action-chip inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[13px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0';
+    'file-workflow-editor-page__action-chip inline-flex h-[34px] cursor-pointer select-none items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3.5 text-[14px] font-medium leading-none text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] active:translate-y-0';
 
   return (
     <div className="workflow-editor-page file-workflow-editor-page flex h-full min-h-0 flex-col overflow-hidden bg-white">
@@ -758,7 +758,7 @@ export default function FileWorkflow({
                     <Tooltip title={publishStatusView.tooltip}>
                       <span
                         className={[
-                          'inline-flex h-[34px] select-none items-center justify-center rounded-full border px-3 text-[13px] font-medium leading-none',
+                          'inline-flex h-[34px] select-none items-center justify-center rounded-full border px-3 text-[14px] font-medium leading-none',
                           publishStatusView.className,
                         ].join(' ')}
                       >
@@ -772,7 +772,7 @@ export default function FileWorkflow({
                       onClick={handleSave}
                       loading={publishLoading}
                       disabled={checkStat.errors.length > 0}
-                      className="file-workflow-editor-page__publish-button !inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[13px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
+                      className="file-workflow-editor-page__publish-button !inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[14px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] hover:shadow-[0_8px_20px_rgba(77,210,255,0.24)] active:translate-y-px disabled:!cursor-not-allowed disabled:!border-[var(--st-color-border)] disabled:!bg-[rgba(102,111,117,0.18)] disabled:!text-[var(--st-color-text-muted)] disabled:!shadow-none"
                     >
                       保存配置
                     </Button>
@@ -783,7 +783,7 @@ export default function FileWorkflow({
                   <div className="file-workflow-editor-page__canvas-layout grid h-full min-w-0 grid-cols-[minmax(150px,18%)_minmax(0,1fr)] gap-4">
                     <div className="min-w-0 overflow-auto border-r border-slate-100 pr-4">
                       <div className="flex h-full flex-col gap-3 p-1">
-                        <div className="px-0.5 pb-2 pt-1 text-[13px] font-semibold text-slate-700">
+                        <div className="px-0.5 pb-2 pt-1 text-[14px] font-semibold text-slate-700">
                           节点组件
                         </div>
 
@@ -792,10 +792,10 @@ export default function FileWorkflow({
                             <Blocks size={16} />
                           </div>
                           <div className="min-w-0">
-                            <div className="text-[13px] font-semibold leading-[1.2] text-slate-900">
+                            <div className="text-[14px] font-semibold leading-[1.2] text-slate-900">
                               {isFileTransfer ? '文件同步链路' : '离线文件导入链路'}
                             </div>
-                            <div className="mt-1 text-[12px] leading-[1.4] text-slate-500">
+                            <div className="mt-1 text-[14px] leading-[1.4] text-slate-500">
                               {isFileTransfer
                                 ? '文件同步任务为固定的 来源 → 去向链路，负责搬运文件本身，不解析文件内容。'
                                 : '离线文件导入任务为固定的 来源 → 去向链路，支持文件解析、字段映射与目标入库。'}

@@ -48,7 +48,7 @@ function runTag(status?: string): TagConfig {
   return config[status || 'NEVER'] || config.NEVER;
 }
 
-const compactTagStyle = { marginInlineEnd: 0, borderRadius: 999, paddingInline: 8, fontSize: 12 };
+const compactTagStyle = { marginInlineEnd: 0, borderRadius: 999, paddingInline: 8, fontSize: 14 };
 
 const MetadataStatus: React.FC<MetadataStatusProps> = ({
   syncStatus,

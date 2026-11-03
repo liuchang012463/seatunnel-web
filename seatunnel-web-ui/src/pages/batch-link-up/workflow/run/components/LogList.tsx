@@ -17,7 +17,7 @@ export const LogList = ({ logs, containerRef }: Props) => {
         padding: "8px",
         borderRadius: "4px",
         fontFamily: "monospace",
-        fontSize: "12px",
+        fontSize: "14px",
         color: "#d4d4d4",
       }}
     >

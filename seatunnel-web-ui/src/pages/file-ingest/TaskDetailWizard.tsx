@@ -265,7 +265,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
         <strong style={{ fontSize: 16, color: 'var(--st-color-text-primary)' }}>
           未找到任务数据
         </strong>
-        <span style={{ fontSize: 13, color: 'var(--st-color-text-muted)' }}>
+        <span style={{ fontSize: 14, color: 'var(--st-color-text-muted)' }}>
           任务数据在从列表进入时缓存；请回到{config.title}任务列表，重新进入创建流程。
         </span>
         <Button type="primary" onClick={goBack}>
@@ -319,7 +319,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
             >
               <span
                 className={[
-                  'flex h-5 w-5 items-center justify-center rounded-full text-[12px] font-semibold transition-all duration-200',
+                  'flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200',
                   baseDotClass,
                 ].join(' ')}
               >
@@ -348,7 +348,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
             >
               <span
                 className={[
-                  'flex h-5 w-5 items-center justify-center rounded-full text-[12px] font-semibold transition-all duration-200',
+                  'flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200',
                   clientDotClass,
                 ].join(' ')}
               >

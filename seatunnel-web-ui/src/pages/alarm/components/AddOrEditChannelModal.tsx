@@ -198,7 +198,7 @@ const ChannelTypeSelector: React.FC<
           选择通道类型
         </h3>
 
-        <p className="m-0 mt-1 text-xs leading-5 text-slate-white">
+        <p className="m-0 mt-1 text-sm leading-5 text-slate-white">
           选择告警消息需要投递到的平台或服务。
         </p>
       </div>
@@ -213,7 +213,7 @@ const ChannelTypeSelector: React.FC<
             暂无可用的通道类型
           </p>
 
-          <p className="m-0 mt-2 text-xs text-slate-white">
+          <p className="m-0 mt-2 text-sm text-slate-white">
             请检查告警通道 SPI 是否已经正确加载
           </p>
         </div>
@@ -258,7 +258,7 @@ const ChannelTypeSelector: React.FC<
                     {displayName}
                   </p>
 
-                  <p className="alarm-channel-type-option__meta m-0 mt-1 text-xs text-slate-600">
+                  <p className="alarm-channel-type-option__meta m-0 mt-1 text-sm text-slate-600">
                     {type.channelType}
                     <span className="mx-1.5">·</span>
                     {type.configFields?.length || 0}
@@ -756,7 +756,7 @@ const AddOrEditChannelModal =
 
                   {showFormStep &&
                     selectedType && (
-                      <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                      <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[14px] font-medium text-slate-500">
                         {
                           selectedType.channelType
                         }
@@ -764,7 +764,7 @@ const AddOrEditChannelModal =
                     )}
                 </div>
 
-                <p className="m-0 mt-1 truncate text-xs text-slate-white">
+                <p className="m-0 mt-1 truncate text-sm text-slate-white">
                   {drawerDescription}
                 </p>
               </div>
@@ -842,7 +842,7 @@ const AddOrEditChannelModal =
                         基本信息
                       </h3>
 
-                      <p className="m-0 mt-1 text-xs leading-5 text-slate-400">
+                      <p className="m-0 mt-1 text-sm leading-5 text-slate-400">
                         设置通道名称、用途说明和启用状态。
                       </p>
                     </div>
@@ -924,12 +924,12 @@ const AddOrEditChannelModal =
                           通道配置
                         </h3>
 
-                        <p className="m-0 mt-1 text-xs leading-5 text-slate-400">
+                        <p className="m-0 mt-1 text-sm leading-5 text-slate-400">
                           填写告警消息接收地址和相关认证信息。
                         </p>
                       </div>
 
-                      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-white">
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-sm font-medium text-slate-white">
                         {sortedFields.length}
                         个配置项
                       </span>
@@ -973,7 +973,7 @@ const AddOrEditChannelModal =
                           当前通道无需额外配置
                         </p>
 
-                        <p className="m-0 mt-2 text-xs text-slate-400">
+                        <p className="m-0 mt-2 text-sm text-slate-400">
                           填写基本信息后即可保存
                         </p>
                       </div>

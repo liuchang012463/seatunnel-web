@@ -31,7 +31,7 @@ const ModeCard: React.FC<Props> = ({
       ].join(" ")}
     >
       {tag ? (
-        <div className="mb-2 inline-flex rounded-full bg-[#EFF8FF] px-2 py-0.5 text-[11px] font-medium text-[#175CD3]">
+        <div className="mb-2 inline-flex rounded-full bg-[#EFF8FF] px-2 py-0.5 text-[14px] font-medium text-[#175CD3]">
           {tag}
         </div>
       ) : null}
@@ -40,7 +40,7 @@ const ModeCard: React.FC<Props> = ({
         <span className="text-[14px] font-semibold text-[#101828]">{title}</span>
       </Radio>
 
-      <div className="pl-6 text-[12px] leading-5 text-[color:var(--st-color-text-secondary)]">{desc}</div>
+      <div className="pl-6 text-[14px] leading-5 text-[color:var(--st-color-text-secondary)]">{desc}</div>
     </div>
   );
 };

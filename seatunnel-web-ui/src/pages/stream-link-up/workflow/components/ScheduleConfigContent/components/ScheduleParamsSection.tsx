@@ -124,10 +124,10 @@ const ScheduleParamsSection: React.FC<Props> = ({ value, onChange }) => {
       <div className="schedule-link-row">
         <Space size={8}>
           <Link
-            className="inline-flex h-7 items-center justify-center gap-1 rounded-[10px] border px-2.5 text-[13px] font-medium"
+            className="inline-flex h-7 items-center justify-center gap-1 rounded-[10px] border px-2.5 text-[14px] font-medium"
             onClick={handleAdd}
           >
-            <PlusOutlined className="text-xs" />
+            <PlusOutlined className="text-sm" />
             添加时间变量
           </Link>
 
@@ -139,7 +139,7 @@ const ScheduleParamsSection: React.FC<Props> = ({ value, onChange }) => {
             onOpenChange={(visible) => setPopoverVisible(visible)} 
           >
             <Link
-              className="inline-flex h-7 items-center justify-center gap-1 rounded-[10px] border px-2.5 text-[13px] font-medium"
+              className="inline-flex h-7 items-center justify-center gap-1 rounded-[10px] border px-2.5 text-[14px] font-medium"
               onClick={handlePreview} 
             >
               参数预览

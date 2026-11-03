@@ -62,7 +62,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
             <span
               style={{
                 flexShrink: 0,
-                fontSize: 12,
+                fontSize: 14,
                 lineHeight: '20px',
                 color: 'var(--st-color-text-muted)',
               }}

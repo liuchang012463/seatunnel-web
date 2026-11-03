@@ -452,7 +452,7 @@ const editorTheme = EditorView.theme({
   "&": {
     height: "calc(100vh - 220px)",
     minHeight: "42vh",
-    fontSize: "13px",
+    fontSize: "14px",
     backgroundColor: "#FCFDFE",
     outline: "none !important",
     borderRadius: "14px",
@@ -494,7 +494,7 @@ const editorTheme = EditorView.theme({
 
   ".cm-lineNumbers .cm-gutterElement": {
     padding: "0 12px 0 14px",
-    fontSize: "12px",
+    fontSize: "14px",
     lineHeight: "28px",
   },
 
@@ -838,7 +838,7 @@ export default function HoconEditorPanel({
   >
     <div className="border-b border-slate-100 bg-slate-50/80 px-3.5 py-3">
       <div className="flex items-center justify-between">
-        <div className="text-[13px] font-semibold text-slate-700">
+        <div className="text-[14px] font-semibold text-slate-700">
           {dropdownState.area === "source"
             ? "选择 Source 数据源"
             : dropdownState.area === "sink"
@@ -847,23 +847,23 @@ export default function HoconEditorPanel({
         </div>
 
         {dropdownState.dbType ? (
-          <span className="rounded-md border border-blue-100 bg-blue-50 px-2 py-[2px] text-[11px] font-medium text-blue-600">
+          <span className="rounded-md border border-blue-100 bg-blue-50 px-2 py-[2px] text-[14px] font-medium text-blue-600">
             {dropdownState.dbType}
           </span>
         ) : null}
       </div>
 
-      <div className="mt-1 text-[12px] leading-5 text-slate-400">
+      <div className="mt-1 text-[14px] leading-5 text-slate-400">
         选择后会自动填充 datasourceId
       </div>
     </div>
 
     {dropdownState.loading ? (
-      <div className="px-3.5 py-4 text-[13px] text-slate-400">
+      <div className="px-3.5 py-4 text-[14px] text-slate-400">
         正在加载数据源...
       </div>
     ) : dropdownState.message ? (
-      <div className="px-3.5 py-4 text-[13px] text-slate-400">
+      <div className="px-3.5 py-4 text-[14px] text-slate-400">
         {dropdownState.message}
       </div>
     ) : (
@@ -881,16 +881,16 @@ export default function HoconEditorPanel({
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="truncate text-[13px] font-medium text-slate-700 group-hover:text-blue-600">
+                <span className="truncate text-[14px] font-medium text-slate-700 group-hover:text-blue-600">
                   {item.name}
                 </span>
 
-                <span className="shrink-0 rounded bg-slate-100 px-1.5 py-[1px] text-[11px] text-slate-500">
+                <span className="shrink-0 rounded bg-slate-100 px-1.5 py-[1px] text-[14px] text-slate-500">
                   ID: {item.id}
                 </span>
               </div>
 
-              <div className="mt-[2px] truncate text-[12px] text-slate-400">
+              <div className="mt-[2px] truncate text-[14px] text-slate-400">
                 {item.description || item.dbType || "Datasource"}
               </div>
             </div>

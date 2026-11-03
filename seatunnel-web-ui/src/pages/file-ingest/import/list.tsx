@@ -209,7 +209,7 @@ const OfflineImportTaskList: React.FC = () => {
       key: 'time',
       width: 190,
       render: (_: unknown, record: OfflineImportTask) => (
-        <span className="text-[12px]">
+        <span className="text-[14px]">
           {record.startTime ? `${formatTime(record.startTime)} ~ ${formatTime(record.endTime)}` : '-'}
         </span>
       ),

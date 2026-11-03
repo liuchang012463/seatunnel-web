@@ -72,7 +72,7 @@ const App = () => {
               <p
                 style={{
                   color: "#1e202d",
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: 600,
                   textAlign: "center",
                   marginBottom: 4,
@@ -83,7 +83,7 @@ const App = () => {
               <p
                 style={{
                   color: "#8c8fa3",
-                  fontSize: 12,
+                  fontSize: 14,
                   textAlign: "center",
                   margin: 0,
                 }}
@@ -103,7 +103,7 @@ const App = () => {
               <RightOutlined
                 style={{
                   fontWeight: 500,
-                  fontSize: 11,
+                  fontSize: 14,
                   color: "rgba(185,185,185,1)",
                 }}
               />
@@ -156,7 +156,7 @@ const App = () => {
               <p
                 style={{
                   color: "#1e202d",
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: 600,
                   textAlign: "center",
                   marginBottom: 4,
@@ -167,7 +167,7 @@ const App = () => {
               <p
                 style={{
                   color: "#8c8fa3",
-                  fontSize: 12,
+                  fontSize: 14,
                   textAlign: "center",
                   margin: 0,
                 }}
@@ -187,7 +187,7 @@ const App = () => {
               <RightOutlined
                 style={{
                   fontWeight: 500,
-                  fontSize: 11,
+                  fontSize: 14,
                   color: "rgba(185,185,185,1)",
                 }}
               />
@@ -235,7 +235,7 @@ const App = () => {
               <p
                 style={{
                   color: "#1e202d",
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: 600,
                   textAlign: "center",
                   marginBottom: 4,
@@ -246,7 +246,7 @@ const App = () => {
               <p
                 style={{
                   color: "#8c8fa3",
-                  fontSize: 12,
+                  fontSize: 14,
                   textAlign: "center",
                   margin: 0,
                 }}
@@ -266,7 +266,7 @@ const App = () => {
               <RightOutlined
                 style={{
                   fontWeight: 500,
-                  fontSize: 11,
+                  fontSize: 14,
                   color: "rgba(185,185,185,1)",
                 }}
               />
@@ -309,7 +309,7 @@ const App = () => {
               <p
                 style={{
                   color: "#1e202d",
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: 600,
                   textAlign: "center",
                   marginBottom: 4,
@@ -320,7 +320,7 @@ const App = () => {
               <p
                 style={{
                   color: "#8c8fa3",
-                  fontSize: 12,
+                  fontSize: 14,
                   textAlign: "center",
                   margin: 0,
                 }}

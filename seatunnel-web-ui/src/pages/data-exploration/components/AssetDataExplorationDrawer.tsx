@@ -825,7 +825,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       <div className="exploration-drawer__tab-pane">
         <div className="exploration-drawer__tab-toolbar">
           <div>
-            <div className="exploration-drawer__eyebrow">SCHEMA</div>
+            <div className="exploration-drawer__eyebrow">结构</div>
             <strong>{schema?.kind === 'MESSAGE' ? '消息结构' : '列定义'}</strong>
           </div>
           <span>{schema?.fields?.length || 0} 个字段</span>
@@ -853,7 +853,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         <div className="exploration-drawer__tab-pane">
           <div className="exploration-drawer__tab-toolbar">
             <div>
-              <div className="exploration-drawer__eyebrow">SAMPLE DATA</div>
+              <div className="exploration-drawer__eyebrow">样例数据</div>
               <strong>{sampleItemLabel}</strong>
             </div>
             <span>
@@ -907,7 +907,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     <div className="exploration-drawer__tab-pane">
       <div className="exploration-drawer__tab-toolbar">
         <div>
-          <div className="exploration-drawer__eyebrow">PROPERTIES</div>
+          <div className="exploration-drawer__eyebrow">属性</div>
           <strong>元数据指标</strong>
         </div>
       </div>
@@ -946,7 +946,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     <div className="exploration-drawer__tab-pane">
       <div className="exploration-drawer__tab-toolbar">
         <div>
-          <div className="exploration-drawer__eyebrow">OVERVIEW</div>
+          <div className="exploration-drawer__eyebrow">概览</div>
           <strong>{assetTypeLabel(selectedAsset?.assetType)}概览</strong>
         </div>
         {selectedAsset?.hasChildren && selectedAsset.id && (
@@ -1002,10 +1002,10 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       <div className="asset-exploration__api-collection">
         <header className="exploration-drawer__asset-header">
           <div className="exploration-drawer__asset-copy">
-            <div className="exploration-drawer__eyebrow">API COLLECTION</div>
+            <div className="exploration-drawer__eyebrow">接口分组</div>
             <h1 title={selectedAsset?.fullyQualifiedName}>{assetDisplayName(selectedAsset)}</h1>
             <div className="exploration-drawer__fqn" title={selectedAsset?.fullyQualifiedName}>
-              <span>FQN</span>
+              <span>限定名</span>
               <code>{selectedAsset?.fullyQualifiedName || '—'}</code>
             </div>
           </div>
@@ -1014,7 +1014,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
           </div>
         </header>
         <section className="asset-exploration__api-description">
-          <div className="asset-exploration__eyebrow">GROUP DESCRIPTION</div>
+          <div className="asset-exploration__eyebrow">分组描述</div>
           <p>{detail?.description ? decodeHtmlEntities(detail.description) : '尚未补充分组描述'}</p>
           {typeof endpointURL === 'string' && endpointURL && (
             <div className="asset-exploration__api-base-url">
@@ -1026,7 +1026,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         <section className="asset-exploration__api-endpoints">
           <div className="exploration-drawer__tab-toolbar">
             <div>
-              <div className="exploration-drawer__eyebrow">API ENDPOINTS</div>
+              <div className="exploration-drawer__eyebrow">接口列表</div>
               <strong>接口列表</strong>
             </div>
             <span>{apiEndpointPage ? `${apiEndpointPage.total || 0} 个接口` : '读取中'}</span>
@@ -1178,7 +1178,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                 : assetDisplayName(selectedAsset)}
             </h1>
             <div className="exploration-drawer__fqn" title={selectedAsset.fullyQualifiedName}>
-              <span>FQN</span>
+              <span>限定名</span>
               <code>{selectedAsset.fullyQualifiedName || '—'}</code>
             </div>
           </div>

@@ -54,16 +54,16 @@ const StreamingHelperSection: React.FC = () => {
                   {item.icon}
                 </div>
 
-                <div className="mb-1 text-xs font-semibold text-slate-900">
+                <div className="mb-1 text-sm font-semibold text-slate-900">
                   {item.step}
                 </div>
 
-                <div className="text-xs text-slate-500">{item.title}</div>
+                <div className="text-sm text-slate-500">{item.title}</div>
               </div>
 
               {!isLast && (
                 <div className="flex w-5 shrink-0 items-center justify-center text-slate-300 max-xl:hidden">
-                  <RightOutlined className="text-[11px]" />
+                  <RightOutlined className="text-[14px]" />
                 </div>
               )}
             </React.Fragment>

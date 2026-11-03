@@ -172,7 +172,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange }: Props) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                fontSize: 12,
+                fontSize: 14,
                 color: 'var(--st-color-text-secondary)',
               }}
             >

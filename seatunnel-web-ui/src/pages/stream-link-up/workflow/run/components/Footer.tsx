@@ -6,7 +6,7 @@ export const Footer = ({
   metricCount: number;
 }) => {
   return (
-    <div className="mt-3 flex items-center justify-between border-t border-slate-200/80 pt-3 text-[12px] text-slate-500">
+    <div className="mt-3 flex items-center justify-between border-t border-slate-200/80 pt-3 text-[14px] text-slate-500">
       <span className="inline-flex items-center gap-1.5">
         <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
         总日志数

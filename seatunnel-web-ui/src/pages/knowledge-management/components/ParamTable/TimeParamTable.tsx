@@ -26,7 +26,7 @@ const valueTypeTextMap: Record<string, string> = {
 };
 
 const actionStyle: React.CSSProperties = {
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 500,
   cursor: "pointer",
   padding: "4px 10px",
@@ -55,7 +55,13 @@ const TimeParamTable: React.FC<Props> = ({
 
         return (
           <div>
-            <div style={{ fontWeight: 600, color: "#101828", lineHeight: 1.4 }}>
+            <div
+              style={{
+                fontWeight: 600,
+                color: "var(--st-color-text-primary)",
+                lineHeight: 1.4,
+              }}
+            >
               {value}
             </div>
             <div
@@ -69,13 +75,13 @@ const TimeParamTable: React.FC<Props> = ({
               <Tag
                 style={{
                   marginInlineEnd: 0,
-                  borderRadius: 999,
+                  borderRadius: 2,
                   color:
-                    item.variableSource === "SYSTEM" ? "#6941C6" : "#3478f6",
-                  background:
-                    item.variableSource === "SYSTEM" ? "#F4F3FF" : "#EFF6FF",
-                  borderColor:
-                    item.variableSource === "SYSTEM" ? "#D9D6FE" : "#BFDBFE",
+                    item.variableSource === "SYSTEM"
+                      ? "var(--st-color-accent-strong)"
+                      : "var(--st-color-accent)",
+                  background: "var(--st-color-bg-selected)",
+                  borderColor: "var(--st-color-border)",
                 }}
               >
                 {sourceTextMap[item.variableSource] || item.variableSource}
@@ -85,10 +91,10 @@ const TimeParamTable: React.FC<Props> = ({
                 <Tag
                   style={{
                     marginInlineEnd: 0,
-                    borderRadius: 999,
-                    color: "#667085",
-                    background: "#F2F4F7",
-                    borderColor: "#EAECF0",
+                    borderRadius: 2,
+                    color: "var(--st-color-text-muted)",
+                    background: "var(--st-color-bg-control)",
+                    borderColor: "var(--st-color-border)",
                   }}
                 >
                   已停用

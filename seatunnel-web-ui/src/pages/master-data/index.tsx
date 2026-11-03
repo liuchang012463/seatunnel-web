@@ -18,7 +18,6 @@ import {
   Switch,
   Table,
   Tabs,
-  Typography,
   message,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
@@ -711,9 +710,6 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
   const content = (
     <>
       {contextHolder}
-      <Typography.Paragraph className="master-data-page__intro">
-        维护数据源归属单位和业务系统。只需填写名称，系统会自动生成内部标识；停用后不会出现在数据源配置的可选项中。
-      </Typography.Paragraph>
       <Tabs
         activeKey={activeTab}
         items={tabs}
@@ -813,7 +809,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
   return embedded ? (
     <div className="master-data-page master-data-page--embedded">{content}</div>
   ) : (
-    <PageContainer className="master-data-page" title="单位与业务系统维护">
+    <PageContainer className="master-data-page" title={false}>
       {content}
     </PageContainer>
   );

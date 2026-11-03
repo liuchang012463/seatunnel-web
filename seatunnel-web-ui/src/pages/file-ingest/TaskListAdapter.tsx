@@ -194,7 +194,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
                     void copyId(record?.id);
                   }}
                 >
-                  <CopyOutlined style={{ fontSize: 12 }} />
+                  <CopyOutlined style={{ fontSize: 14 }} />
                 </button>
               </Tooltip>
             </div>

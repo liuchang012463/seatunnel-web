@@ -141,7 +141,7 @@ const EmojiPicker: FC<AppIconPickerProps> = ({ onSelect, onClose, className }) =
             <button
               style={{
                 fontWeight: 500,
-                fontSize: '0.875rem',
+                fontSize: '14px',
                 lineHeight: '1.25rem',
                 padding: '0.5rem',
                 borderRadius: '0.75rem',
@@ -170,7 +170,7 @@ const EmojiPicker: FC<AppIconPickerProps> = ({ onSelect, onClose, className }) =
             <button
               style={{
                 fontWeight: 500,
-                fontSize: '0.875rem',
+                fontSize: '14px',
                 lineHeight: '1.25rem',
                 padding: '0.5rem',
                 borderRadius: '0.75rem',

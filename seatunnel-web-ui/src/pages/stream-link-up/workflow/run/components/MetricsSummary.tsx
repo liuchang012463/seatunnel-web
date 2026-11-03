@@ -33,7 +33,7 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
         >
           <span
             style={{
-              fontSize: "12px",
+              fontSize: "14px",
               color: "var(--st-color-text-secondary)",
               fontWeight: 500,
             }}
@@ -48,7 +48,7 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
 
           <span
             style={{
-              fontSize: "12px",
+              fontSize: "14px",
               color: "var(--st-color-text-secondary)",
               fontWeight: 500,
             }}
@@ -64,7 +64,7 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
           style={{
             padding: "2px 10px",
             borderRadius: "999px",
-            fontSize: "11px",
+            fontSize: "14px",
             fontWeight: 600,
             background: "#ecfdf3",
             color: "#16a34a",
@@ -104,7 +104,7 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
               <div style={{ minWidth: 0 }}>
                 <div
                   style={{
-                    fontSize: "12px",
+                    fontSize: "14px",
                     fontWeight: 600,
                     color: "var(--st-color-text-primary)",
                     marginBottom: "6px",
@@ -118,7 +118,7 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
                     display: "flex",
                     gap: "12px",
                     flexWrap: "wrap",
-                    fontSize: "12px",
+                    fontSize: "14px",
                     color: "var(--st-color-text-muted)",
                   }}
                 >
@@ -152,7 +152,7 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
                   flexShrink: 0,
                   padding: "2px 8px",
                   borderRadius: "999px",
-                  fontSize: "10px",
+                  fontSize: "14px",
                   fontWeight: 600,
                   background: isRunning ? "#ecfdf3" : "#fef2f2",
                   color: isRunning ? "#16a34a" : "#dc2626",

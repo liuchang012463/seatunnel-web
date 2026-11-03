@@ -18,7 +18,7 @@ const EMPTY_CONFIGURED_SECRET_FIELDS: string[] = [];
 const EMPTY_SAVED_SECRET_FIELDS: string[] = [];
 
 const sectionTitleClass = 'm-0 text-[15px] font-semibold text-slate-800';
-const sectionDescClass = 'mt-1 mb-0 text-[13px] leading-[22px] text-slate-500';
+const sectionDescClass = 'mt-1 mb-0 text-[14px] leading-[22px] text-slate-500';
 
 const isEmptyValue = (value: any) => {
   return value === undefined || value === null || value === '';
@@ -497,11 +497,11 @@ const renderFieldLabel = (field: any): React.ReactNode => {
 
       {needInstall && (
         <div className="datasource-form-notice mb-5 px-4 py-3.5">
-          <div className="mb-2.5 text-[13px] leading-[22px] text-slate-600">
+          <div className="mb-2.5 text-[14px] leading-[22px] text-slate-600">
             当前插件配置暂不可用，可能尚未安装。请先安装对应插件后，再继续填写连接参数。
           </div>
 
-          {loadErrMsg ? <div className="mb-3 text-xs leading-5 text-slate-400">{loadErrMsg}</div> : null}
+          {loadErrMsg ? <div className="mb-3 text-sm leading-5 text-slate-400">{loadErrMsg}</div> : null}
 
           <Button
             type="default"

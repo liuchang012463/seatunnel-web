@@ -12,7 +12,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   return (
     <span
       className={[
-        "inline-flex h-7 items-center gap-2 rounded-full px-3 text-xs font-bold tracking-wide",
+        "inline-flex h-7 items-center gap-2 rounded-full px-3 text-sm font-bold tracking-wide",
         // meta.className,
       ].join(" ")}
     >

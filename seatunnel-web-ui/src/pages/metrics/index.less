@@ -1,3 +1,21 @@
+.metrics-page {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.metrics-page__main {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px;
+  box-sizing: border-box;
+}
+
+.metrics-page__inner {
+  min-height: 100%;
+  background: transparent;
+}
+
 .task-type-segmented {
     padding: 4px;
     background: var(--st-color-bg-control);
@@ -39,7 +57,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     justify-content: center;
     padding: 6px 12px;
@@ -55,7 +73,7 @@
 
     &__desc {
         margin-top: 2px;
-        font-size: 12px;
+        font-size: 14px;
         color: var(--st-color-text-muted);
         line-height: 16px;
         transition: color 0.2s ease;
@@ -63,8 +81,8 @@
 }
 
 .metrics-stat-card {
-    border: 1px solid #2187a8;
-    border-radius: 12px;
+    border: 1px solid var(--st-color-border);
+    border-radius: var(--st-radius-md, 4px);
     background: var(--st-color-bg-panel);
     box-shadow: var(--st-panel-shadow);
     transition:
@@ -99,8 +117,8 @@
 .metrics-summary-card {
     height: 100%;
     min-width: 0;
-    border: 1px solid #2187a8;
-    border-radius: 12px;
+    border: 1px solid var(--st-color-border);
+    border-radius: var(--st-radius-md, 4px);
     background: var(--st-color-bg-panel);
     box-shadow: var(--st-panel-shadow);
     transition:
@@ -131,8 +149,8 @@
     width: 100%;
     min-width: 0;
     overflow: hidden;
-    border: 1px solid #2187a8;
-    border-radius: 12px;
+    border: 1px solid var(--st-color-border);
+    border-radius: var(--st-radius-md, 4px);
     background: var(--st-color-bg-panel);
     box-shadow: var(--st-panel-shadow);
     transition:

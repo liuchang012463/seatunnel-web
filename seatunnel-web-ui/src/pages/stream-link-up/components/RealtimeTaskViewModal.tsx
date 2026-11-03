@@ -157,7 +157,7 @@ const rangeSelectClassName = [
 ].join(" ");
 const refreshButtonClassName = [
   "hidden items-center gap-2 border border-[#1a829a] bg-[#064b5f] px-3 py-1.5",
-  "text-xs text-[#bdeaf5] transition hover:bg-[#0a5b70] hover:text-white md:flex",
+  "text-sm text-[#bdeaf5] transition hover:bg-[#0a5b70] hover:text-white md:flex",
 ].join(" ");
 
 const RealtimeGrafanaLightModal = forwardRef<
@@ -406,7 +406,7 @@ const RealtimeGrafanaLightModal = forwardRef<
                   <TaskStatus status={viewData.status} />
                 </div>
 
-                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#a9cbd4]">
+                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#a9cbd4]">
                   <span>实例 (Instance)：{viewData.jobInstanceId}</span>
                   <span>引擎 (Engine)：{viewData.engineJobId}</span>
                   <span>模式 (Mode)：{viewData.syncMode}</span>
@@ -664,7 +664,7 @@ const LightPanel: React.FC<{
           <div>
             <h2 className="m-0 text-sm font-bold text-white">{title}</h2>
             {description ? (
-              <div className="mt-1 text-xs text-[#b7d9e2]">{description}</div>
+              <div className="mt-1 text-sm text-[#b7d9e2]">{description}</div>
             ) : null}
           </div>
         </div>
@@ -743,7 +743,7 @@ const MiniInfo: React.FC<{
 }> = ({ label, value }) => {
   return (
     <div className="rounded-lg border border-[#1a829a] bg-[#033747] p-3">
-      <div className="text-xs text-[#b7d9e2]">{label}</div>
+      <div className="text-sm text-[#b7d9e2]">{label}</div>
       <div className="mt-2 truncate text-lg font-bold text-white">
         {value || "-"}
       </div>
@@ -800,7 +800,7 @@ const TableMetricsView: React.FC<{
   return (
     <div className="overflow-hidden rounded-lg border border-[#0d6a80]">
       <table className="w-full text-left text-sm">
-        <thead className="bg-[#033747] text-xs text-[#b7d9e2]">
+        <thead className="bg-[#033747] text-sm text-[#b7d9e2]">
           <tr>
             <th className="px-4 py-3 font-semibold">表 (Table)</th>
             <th className="px-4 py-3 text-right font-semibold">
@@ -844,7 +844,7 @@ const TableMetricsView: React.FC<{
                   {formatNumber(item.writeRowCount)}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <span className="rounded-md bg-orange-500/15 px-2 py-1 text-xs font-semibold text-orange-300">
+                  <span className="rounded-md bg-orange-500/15 px-2 py-1 text-sm font-semibold text-orange-300">
                     {formatNumber(rowDiff)}
                   </span>
                 </td>
@@ -855,7 +855,7 @@ const TableMetricsView: React.FC<{
                   {formatNumber(item.writeQps)}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <span className="rounded-md bg-white/5 px-2 py-1 text-xs font-semibold text-[#b7d9e2]">
+                  <span className="rounded-md bg-white/5 px-2 py-1 text-sm font-semibold text-[#b7d9e2]">
                     {item.status || "-"}
                   </span>
                 </td>

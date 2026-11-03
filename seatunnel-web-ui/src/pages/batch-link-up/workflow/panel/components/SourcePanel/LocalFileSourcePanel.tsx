@@ -270,13 +270,13 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
             </Button>
           </div>
           {assets.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 px-3 py-4 text-xs text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-300 px-3 py-4 text-sm text-slate-500">
               单表模式只上传一个文件；文件名后缀需与所选格式一致。
             </div>
           ) : (
             <div className="space-y-2">
               {assets.map((asset: any) => (
-                <div key={asset.id || asset.relativePath} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-xs">
+                <div key={asset.id || asset.relativePath} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm">
                   <span className="min-w-0 truncate">{asset.originalName || asset.relativePath}</span>
                   <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => removeAsset(asset)} />
                 </div>
@@ -291,7 +291,7 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
             <div className="workflow-panel__group space-y-3">
               <div className="workflow-panel__group-kicker">CSV 参数</div>
               <Input addonBefore="字段分隔符" value={config.fieldDelimiter ?? ','} onChange={(event) => setConfigValue('fieldDelimiter', event.target.value)} />
-              <div className="flex items-center justify-between text-xs text-slate-600">
+              <div className="flex items-center justify-between text-sm text-slate-600">
                 <span>首行作为列名（RFC 4180）</span>
                 <Switch checked={!!config.csvUseHeaderLine} onChange={(checked) => setConfigValue('csvUseHeaderLine', checked)} />
               </div>
@@ -310,7 +310,7 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
               <div className="workflow-panel__group-kicker">Excel 参数</div>
               <Input addonBefore="工作表" placeholder="例如 Sheet1" value={config.sheetName ?? ''} onChange={(event) => setConfigValue('sheetName', event.target.value)} />
               <Select value={config.excelEngine ?? 'POI'} options={[{ value: 'POI' }, { value: 'EasyExcel' }]} onChange={(value) => setConfigValue('excelEngine', value)} className="w-full" />
-              <div className="text-xs leading-5 text-slate-500">POI 适合普通工作簿；超过约 65,000 行时建议使用 EasyExcel。</div>
+              <div className="text-sm leading-5 text-slate-500">POI 适合普通工作簿；超过约 65,000 行时建议使用 EasyExcel。</div>
             </div>
           </>
         )}
@@ -321,7 +321,7 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
             <div className="workflow-panel__group space-y-3">
               <div className="workflow-panel__group-kicker">JSON 参数</div>
               <Input addonBefore="编码" value={config.encoding ?? 'UTF-8'} onChange={(event) => setConfigValue('encoding', event.target.value)} />
-              <div className="text-xs leading-5 text-slate-500">请上传每行一个 JSON 对象的 NDJSON 文件；JSON 需要配置字段 Schema。</div>
+              <div className="text-sm leading-5 text-slate-500">请上传每行一个 JSON 对象的 NDJSON 文件；JSON 需要配置字段 Schema。</div>
             </div>
           </>
         )}
@@ -346,7 +346,7 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <div className="workflow-panel__group-kicker">字段 Schema</div>
-              <div className="mt-1 text-xs text-slate-500">JSON / Excel 必填；CSV / Text 可不填，未填时按原始内容读取。</div>
+              <div className="mt-1 text-sm text-slate-500">JSON / Excel 必填；CSV / Text 可不填，未填时按原始内容读取。</div>
             </div>
             <Button size="small" icon={<PlusOutlined />} onClick={addField}>添加字段</Button>
           </div>

@@ -142,7 +142,7 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
                 {resource?.name || resource?.path || '尚未选择湖文件'}
               </div>
               {resource ? (
-                <div className="truncate text-xs text-slate-500">
+                <div className="truncate text-sm text-slate-500">
                   {resource.path || resource.objectKey}
                 </div>
               ) : null}

@@ -37,7 +37,7 @@ const LogDrawer = forwardRef<LogDrawerRef>((_, ref) => {
             margin: 0,
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
-            fontSize: 12,
+            fontSize: 14,
             lineHeight: 1.7,
             background: "#0b1220",
             color: "#d7e3ff",

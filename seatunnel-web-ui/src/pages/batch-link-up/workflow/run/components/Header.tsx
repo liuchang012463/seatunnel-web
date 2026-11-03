@@ -28,7 +28,7 @@ export const Header = ({ connectionStatus, latestMetrics, onClose }: HeaderProps
 
         <span
           style={{
-            fontSize: "11px",
+            fontSize: "14px",
             padding: "0px 4px",
             borderRadius: "4px",
             backgroundColor: connectionStatus === "已连接" ? "#f6ffed" : "#fff2e8",
@@ -42,7 +42,7 @@ export const Header = ({ connectionStatus, latestMetrics, onClose }: HeaderProps
         </span>
 
         {latestMetrics && (
-          <span style={{ fontSize: "12px", color: "#1890ff" }}>
+          <span style={{ fontSize: "14px", color: "#1890ff" }}>
             Sync: {firstPipeline?.readRowCount ?? 0} rows
           </span>
         )}

@@ -31,7 +31,7 @@ function ScheduleConfig({ form }: { form: FormInstance }) {
     <>
       <Header
         title={
-          <span style={{ fontSize: 12, fontWeight: 500 }}>
+          <span style={{ fontSize: 14, fontWeight: 500 }}>
             {intl.formatMessage({
               id: "pages.job.config.schedule.title",
               defaultMessage: "Schedule Setting",
@@ -81,7 +81,7 @@ function ScheduleConfig({ form }: { form: FormInstance }) {
               )
             }
           >
-            <a onClick={previewCron} style={{ fontSize: 12 }}>
+            <a onClick={previewCron} style={{ fontSize: 14 }}>
               {intl.formatMessage({
                 id: "pages.job.config.schedule.last5Runs.link",
                 defaultMessage: "Last 5 Runs",

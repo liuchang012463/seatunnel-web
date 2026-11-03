@@ -110,7 +110,7 @@ const TaskStatus: React.FC<TaskStatusProps> = ({
         {showErrorDetailsLink ? (
           <a
             style={{
-              fontSize: 12,
+              fontSize: 14,
               lineHeight: "20px",
               color: "var(--st-color-accent)",
             }}

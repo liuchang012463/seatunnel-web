@@ -61,7 +61,7 @@ const parseTableList = (tableValue?: string): TableItem[] => {
 
 const EmptyTableState: React.FC<{ text: string }> = ({ text }) => {
   return (
-    <div className="flex h-[92px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/70 text-xs text-slate-500">
+    <div className="flex h-[92px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/70 text-sm text-slate-500">
       {text}
     </div>
   );
@@ -106,7 +106,7 @@ const TableNode: React.FC<{
           <span className="block truncate text-sm font-medium text-slate-800">
             {item.table}
           </span>
-          <span className="mt-0.5 block text-[11px] text-slate-500">
+          <span className="mt-0.5 block text-[14px] text-slate-500">
             {isSource ? "来源表" : "目标表"}
           </span>
         </span>
@@ -143,11 +143,11 @@ const TableGroup: React.FC<{
 
           <div className="min-w-0">
             <div className="text-sm font-semibold text-slate-900">{title}</div>
-            <div className="mt-0.5 text-xs text-slate-500">{typeLabel}</div>
+            <div className="mt-0.5 text-sm text-slate-500">{typeLabel}</div>
           </div>
         </div>
 
-        <div className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
+        <div className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-sm font-medium text-slate-500">
           {dbType || "-"}
         </div>
       </div>
@@ -195,7 +195,7 @@ const TableTab: React.FC<TableTabProps> = ({ instanceItem }) => {
             <div className="text-sm font-semibold text-slate-900">
               表映射关系
             </div>
-            <div className="mt-0.5 text-xs text-slate-500">
+            <div className="mt-0.5 text-sm text-slate-500">
               查看当前运行实例的来源表与目标表关系
             </div>
           </div>

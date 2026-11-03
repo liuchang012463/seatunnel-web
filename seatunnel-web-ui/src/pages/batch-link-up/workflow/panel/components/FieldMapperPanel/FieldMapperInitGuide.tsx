@@ -26,7 +26,7 @@ function FieldMapperInitGuide({ onRefresh }: FieldMapperInitGuideProps) {
               先解析上游字段
             </div>
 
-            <div className="mt-1 text-xs leading-5 text-[var(--st-color-text-secondary)]">
+            <div className="mt-1 text-sm leading-5 text-[var(--st-color-text-secondary)]">
               在上游节点完成字段解析后，这里会自动显示字段映射。
             </div>
           </div>
@@ -38,11 +38,11 @@ function FieldMapperInitGuide({ onRefresh }: FieldMapperInitGuideProps) {
               key={step}
               className="flex items-center gap-3 rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-bg-control)] px-3 py-2.5 transition-colors duration-200 hover:border-[var(--st-color-accent)] hover:bg-[var(--st-color-hover)]"
             >
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[var(--st-color-divider)] bg-[var(--st-color-selected)] text-[11px] font-semibold text-[var(--st-color-accent)]">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[var(--st-color-divider)] bg-[var(--st-color-selected)] text-[14px] font-semibold text-[var(--st-color-accent)]">
                 {index + 1}
               </div>
 
-              <div className="text-[13px] font-medium leading-5 text-[var(--st-color-text-primary)]">
+              <div className="text-[14px] font-medium leading-5 text-[var(--st-color-text-primary)]">
                 {step}
               </div>
             </div>
@@ -53,7 +53,7 @@ function FieldMapperInitGuide({ onRefresh }: FieldMapperInitGuideProps) {
           <Button
             icon={<ReloadOutlined />}
             onClick={onRefresh}
-            className="!h-8 !rounded-full !border-[var(--st-color-border)] !bg-[var(--st-color-bg-control)] !px-3.5 !text-xs !font-semibold !text-[var(--st-color-text-primary)] shadow-sm hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-hover)] hover:!text-[var(--st-color-accent)]"
+            className="!h-8 !rounded-full !border-[var(--st-color-border)] !bg-[var(--st-color-bg-control)] !px-3.5 !text-sm !font-semibold !text-[var(--st-color-text-primary)] shadow-sm hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-hover)] hover:!text-[var(--st-color-accent)]"
           >
             重新检测
           </Button>

@@ -1,9 +1,70 @@
+.client-page {
+  gap: 12px;
+  padding: 16px 20px;
+  box-sizing: border-box;
+}
+
+/* 覆盖 global.less 对 task-list-page-shell 末子节点的 flex-column 强制规则，保持左右分栏 */
+.client-page.task-list-page-shell > .client-page__workspace,
+.ant-pro-layout .ant-pro-layout-content > .client-page > .client-page__workspace {
+  display: grid !important;
+  grid-template-columns: 300px minmax(0, 1fr) !important;
+  flex: 1 1 0% !important;
+  flex-direction: unset !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: hidden;
+  border-radius: var(--st-radius-md, 4px);
+}
+
+.client-page__workspace > .client-list-panel {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.client-page__detail {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  padding: 20px;
+  box-sizing: border-box;
+  background: var(--st-color-bg-panel);
+}
+
+.client-page__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  text-align: center;
+  padding: 24px;
+}
+
+.client-page__empty-title {
+  color: var(--st-color-text-primary);
+  font-size: var(--st-type-title-size, 20px);
+  line-height: var(--st-type-title-line, 28px);
+  font-weight: 400;
+}
+
+.client-page__empty-desc {
+  margin-top: 8px;
+  max-width: 420px;
+  color: var(--st-color-text-secondary);
+  font-size: var(--st-type-content-md-size, 14px);
+  line-height: var(--st-type-content-md-line, 22px);
+}
+
 .custom-tabs-wrap {
   .ant-segmented {
     padding: 4px;
     background: var(--st-color-bg-control);
     border: 1px solid var(--st-color-border);
-    border-radius: 999px;
+    border-radius: var(--st-radius-md, 4px);
   }
 
   .ant-segmented-group {
@@ -12,7 +73,7 @@
 
   .ant-segmented-item {
     min-height: 36px;
-    border-radius: 999px;
+    border-radius: var(--st-radius-md, 4px);
     color: var(--st-color-text-secondary);
     transition: all 0.2s ease;
   }
@@ -22,7 +83,7 @@
   }
 
   .ant-segmented-thumb {
-    border-radius: 999px;
+    border-radius: var(--st-radius-md, 4px);
     background: var(--st-color-bg-elevated);
     box-shadow: none;
   }

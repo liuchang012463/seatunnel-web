@@ -66,16 +66,16 @@ const ConnectorParamModal: React.FC<Props> = ({
       }}
       title={
         <div className="flex min-w-0 items-center gap-3 pr-6">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EEF4FF] text-[16px] text-[#3B82F6]">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:var(--st-color-bg-selected)] text-[16px] text-[color:var(--st-color-accent)]">
             <SettingOutlined />
           </div>
 
           <div className="min-w-0">
-            <div className="text-[18px] font-semibold leading-7 text-[#101828]">
+            <div className="text-[18px] font-semibold leading-7 text-[color:var(--st-color-text-primary)]">
               {isEdit ? "编辑 Connector 参数" : "新增 Connector 参数"}
             </div>
 
-            <div className="mt-[2px] text-[13px] leading-5 text-[#667085]">
+            <div className="mt-[2px] text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
               维护 Connector 参数的名称、说明、类型、默认规则与深度语义
             </div>
           </div>
@@ -84,8 +84,8 @@ const ConnectorParamModal: React.FC<Props> = ({
       footer={
         <div className="flex items-center justify-between gap-3">
           <div
-            className="text-[13px] leading-5"
-            style={{ color: TEXT_SECONDARY || "#667085" }}
+            className="text-[14px] leading-5"
+            style={{ color: TEXT_SECONDARY }}
           >
             建议补充默认值、示例值和参数深度语义，方便后续推荐与复用
           </div>
@@ -120,10 +120,10 @@ const ConnectorParamModal: React.FC<Props> = ({
             className="rounded-2xl border border-[#EEF2F6] bg-white p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
             style={{ paddingBottom: 28 }}
           >
-            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[#101828]">
+            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[color:var(--st-color-text-primary)]">
               基础信息
             </h3>
-            <div className="mb-4 mt-1 text-[13px] leading-5 text-[#667085]">
+            <div className="mb-4 mt-1 text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
               先定义参数归属、名称和用途说明，便于后续统一维护
             </div>
 
@@ -181,10 +181,10 @@ const ConnectorParamModal: React.FC<Props> = ({
           </div>
 
           <div className="rounded-2xl border border-[#EEF2F6] bg-white p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[#101828]">
+            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[color:var(--st-color-text-primary)]">
               参数规则
             </h3>
-            <div className="mb-4 mt-1 text-[13px] leading-5 text-[#667085]">
+            <div className="mb-4 mt-1 text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
               配置参数类型、是否必填等核心规则，帮助使用者快速理解输入要求
             </div>
 
@@ -213,10 +213,10 @@ const ConnectorParamModal: React.FC<Props> = ({
           </div>
 
           <div className="rounded-2xl border border-[#EEF2F6] bg-white p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[#101828]">
+            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[color:var(--st-color-text-primary)]">
               默认值与示例
             </h3>
-            <div className="mb-4 mt-1 text-[13px] leading-5 text-[#667085]">
+            <div className="mb-4 mt-1 text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
               可选填写，适合沉淀通用配置，减少重复输入
             </div>
 
@@ -243,10 +243,10 @@ const ConnectorParamModal: React.FC<Props> = ({
             className="rounded-2xl border border-[#EEF2F6] bg-white p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
             style={{ paddingBottom: 28 }}
           >
-            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[#101828]">
+            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[color:var(--st-color-text-primary)]">
               参数深度语义
             </h3>
-            <div className="mb-4 mt-1 text-[13px] leading-5 text-[#667085]">
+            <div className="mb-4 mt-1 text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
               用于补充处理逻辑、影响范围、推荐依据和示例，主要供 AI 参数推荐使用
             </div>
 

@@ -130,7 +130,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                   placeholder="Search emojis..."
                   style={{
                     fontWeight: 400,
-                    fontSize: "0.875rem",
+                    fontSize: "14px",
                     lineHeight: "1.25rem",
                     paddingLeft: "2.5rem",
                     paddingRight: "0.75rem",
@@ -169,7 +169,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                     color: "rgb(16 24 40)",
                     textTransform: "uppercase",
                     fontWeight: 500,
-                    fontSize: "0.75rem",
+                    fontSize: "14px",
                     lineHeight: "1rem",
                     marginBottom: "0.25rem",
                   }}
@@ -234,7 +234,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                     color: "rgb(16 24 40)",
                     textTransform: "uppercase",
                     fontWeight: 500,
-                    fontSize: "0.75rem",
+                    fontSize: "14px",
                     lineHeight: "1rem",
                     marginBottom: "0.25rem",
                   }}
@@ -296,7 +296,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
             style={{
               textTransform: "uppercase",
               fontWeight: 500,
-              fontSize: "0.75rem",
+              fontSize: "14px",
               lineHeight: "1rem",
               marginBottom: "0.5rem",
             }}

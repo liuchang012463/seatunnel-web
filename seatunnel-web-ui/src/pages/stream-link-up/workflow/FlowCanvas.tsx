@@ -597,7 +597,7 @@ export default function FlowCanvas({
                   padding: '16px 0',
                   textAlign: 'center',
                   color: "var(--st-color-text-muted)",
-                  fontSize: 13,
+                  fontSize: 14,
                 }}
               >
                 暂无匹配节点

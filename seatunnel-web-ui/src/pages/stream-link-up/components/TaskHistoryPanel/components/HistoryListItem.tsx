@@ -64,7 +64,7 @@ const HistoryListItem: React.FC<HistoryListItemProps> = ({
               </Tag>
             </div>
 
-            <div className="mt-1.5 space-y-1 text-xs leading-5 text-[#D5D5D5]">
+            <div className="mt-1.5 space-y-1 text-sm leading-5 text-[#D5D5D5]">
               <div className="flex min-w-0 items-baseline gap-2">
                 <span className="shrink-0 text-[#8DA6AE]">开始时间</span>
                 <span className="min-w-0 truncate">{item.startTime || "-"}</span>

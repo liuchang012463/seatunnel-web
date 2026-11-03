@@ -54,7 +54,7 @@ export const CheckListPopover = ({
             </div>
           </div>
 
-          <div className="mb-2 mt-1 text-xs leading-4 text-[color:var(--st-color-text-muted)]">
+          <div className="mb-2 mt-1 text-sm leading-4 text-[color:var(--st-color-text-muted)]">
             {intl.formatMessage({
               id: "pages.checklist.subtitle",
               defaultMessage:
@@ -82,7 +82,7 @@ export const CheckListPopover = ({
                         </span>
                       </div>
 
-                      <div className="shrink-0 text-xs text-[color:var(--st-color-text-secondary)]">
+                      <div className="shrink-0 text-sm text-[color:var(--st-color-text-secondary)]">
                         {group.nodeType}&nbsp;&nbsp;
                         {intl.formatMessage({
                           id: "pages.checklist.nodeSuffix",
@@ -99,7 +99,7 @@ export const CheckListPopover = ({
                     >
                       <div className="px-3 py-1.5">
                         <WarningOutlined className="text-[rgb(247,144,9)]" />
-                        <span className="ml-1 text-xs text-[color:var(--st-color-text-muted)]">
+                        <span className="ml-1 text-sm text-[color:var(--st-color-text-muted)]">
                           {item.message}
                         </span>
                       </div>
@@ -108,7 +108,7 @@ export const CheckListPopover = ({
                 </div>
               ))
             ) : (
-              <div className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">
+              <div className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-sm text-slate-400">
                 暂无校验问题
               </div>
             )}
@@ -125,7 +125,7 @@ export const CheckListPopover = ({
         <span className="ml-1">校验</span>
 
         {hasIssues ? (
-          <div className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white shadow-sm">
+          <div className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-amber-500 px-1 text-[14px] font-semibold leading-none text-white shadow-sm">
             {checkStat.total}
           </div>
         ) : (

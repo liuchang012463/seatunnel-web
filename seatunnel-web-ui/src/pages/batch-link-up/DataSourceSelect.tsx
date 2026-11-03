@@ -116,7 +116,7 @@ export const DataSourceSelect: React.FC<DataSourceSelectProps> = ({
     onChange={onChange}
     suffixIcon={<SendOutlined />}
     style={{ width, borderRadius: 24 }}
-    prefix={<span style={{ fontSize: 12, fontWeight: 500 }}>{prefix}</span>}
+    prefix={<span style={{ fontSize: 14, fontWeight: 500 }}>{prefix}</span>}
     filterOption={(input, option) =>
       String(option?.rawLabel || '')
         .toLowerCase()

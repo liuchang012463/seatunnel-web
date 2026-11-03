@@ -92,7 +92,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
         padding: [6, 8],
         textStyle: {
           color: "#fff",
-          fontSize: 12,
+          fontSize: 14,
         },
         formatter: (params: any[]) => {
           const rowItem = params?.find((item) => item.seriesName === "条数");
@@ -193,7 +193,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
   if (!points.length) {
     return (
       <div className="group relative min-h-[54px] w-[350px]">
-        <span className="text-xs text-[#D5D5D5]">暂无负载数据</span>
+        <span className="text-sm text-[#D5D5D5]">暂无负载数据</span>
         {renderDashboardIcon()}
       </div>
     );
@@ -203,8 +203,8 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
     <div className="group relative w-[350px]">
       <div className="mb-1 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs font-bold text-slate-700">条数</div>
-          <div className="truncate text-xs text-[#D5D5D5]">
+          <div className="text-sm font-bold text-slate-700">条数</div>
+          <div className="truncate text-sm text-[#D5D5D5]">
             {latestWriteRows !== undefined ? (
               <>
                 R {formatNumber(latestReadRows)} / W{" "}
@@ -217,8 +217,8 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
         </div>
 
         <div className="min-w-0 text-right">
-          <div className="text-xs font-bold text-slate-700">速度</div>
-          <div className="truncate text-xs text-[#D5D5D5]">
+          <div className="text-sm font-bold text-slate-700">速度</div>
+          <div className="truncate text-sm text-[#D5D5D5]">
             {latestWriteQps !== undefined ? (
               <>
                 R {formatNumber(latestReadQps)} / W{" "}

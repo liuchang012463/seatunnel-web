@@ -113,7 +113,7 @@ const DataSourceUnitSelect: React.FC<DataSourceUnitSelectProps> = ({ form, onMan
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between text-xs text-[var(--st-color-text-muted)]">
+      <div className="mb-2 flex items-center justify-between text-sm text-[var(--st-color-text-muted)]">
         <span>归属信息</span>
         {onManageMasterData && (
           <Button type="link" size="small" icon={<SettingOutlined />} onClick={onManageMasterData}>

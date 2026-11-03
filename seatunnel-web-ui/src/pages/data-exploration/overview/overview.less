@@ -86,7 +86,12 @@
     flex-direction: column;
     gap: 14px;
     margin-top: 14px;
-    overflow: auto;
+    overflow: hidden;
+  }
+
+  .overview-assets-panel,
+  .overview-insight-grid {
+    flex: 0 0 auto;
   }
 
   .overview-panel {
@@ -318,14 +323,17 @@
 
   .overview-source-panel {
     display: flex;
-    flex: 1;
-    min-height: 280px;
+    flex: 1 1 0%;
+    min-height: 0;
     flex-direction: column;
 
     > .ant-table-wrapper {
-      flex: 1;
+      display: flex;
+      flex: 1 1 0%;
+      flex-direction: column;
       min-height: 0;
       padding: 0 8px 8px;
+      overflow: auto;
     }
   }
 

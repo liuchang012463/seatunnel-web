@@ -28,7 +28,7 @@ const BasicInfoSection = ({
     <section className="border-b border-slate-100 pb-6">
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="min-w-0">
-          <p className="text-xs text-slate-400">
+          <p className="text-sm text-slate-400">
             适用文书
           </p>
 
@@ -52,7 +52,7 @@ const BasicInfoSection = ({
         </div>
 
         <div className="min-w-0">
-          <p className="text-xs text-slate-400">
+          <p className="text-sm text-slate-400">
             质控类型
           </p>
 
@@ -74,7 +74,7 @@ const BasicInfoSection = ({
       </div>
 
       <div className="mt-6">
-        <p className="text-xs text-slate-400">
+        <p className="text-sm text-slate-400">
           质控说明
         </p>
 

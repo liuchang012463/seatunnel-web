@@ -3,21 +3,21 @@ import type { ClientItem } from "./types";
 
 export const STEP_THEME = {
   base: {
-    pill: "bg-[#EEF4FF] text-[#175CD3]",
-    dot: "bg-[#175CD3] text-white",
+    pill: "bg-[color:var(--st-color-bg-selected)] text-[color:var(--st-color-accent)]",
+    dot: "bg-[color:var(--st-color-accent)] text-[color:var(--st-color-bg-app)]",
 
-    pillDone: "bg-[#F5F8FF] text-[#175CD3]",
-    dotDone: "bg-[#5B8DEF] text-white",
+    pillDone: "bg-[color:var(--st-color-bg-selected)] text-[color:var(--st-color-accent)]",
+    dotDone: "bg-[color:var(--st-color-primary)] text-[color:var(--st-color-bg-app)]",
 
-    pillInactive: "bg-[#F9FAFB] text-[color:var(--st-color-text-muted)]",
-    dotInactive: "bg-[#EAECF0] text-[color:var(--st-color-text-muted)]",
+    pillInactive: "bg-[color:var(--st-color-bg-control)] text-[color:var(--st-color-text-muted)]",
+    dotInactive: "bg-[color:var(--st-color-bg-elevated)] text-[color:var(--st-color-text-muted)]",
   },
   client: {
-    pill: "bg-[#EEF4FF] text-[#175CD3]",
-    dot: "bg-[#175CD3] text-white",
+    pill: "bg-[color:var(--st-color-bg-selected)] text-[color:var(--st-color-accent)]",
+    dot: "bg-[color:var(--st-color-accent)] text-[color:var(--st-color-bg-app)]",
 
-    pillInactive: "bg-[#F9FAFB] text-[color:var(--st-color-text-muted)]",
-    dotInactive: "bg-[#EAECF0] text-[color:var(--st-color-text-muted)]",
+    pillInactive: "bg-[color:var(--st-color-bg-control)] text-[color:var(--st-color-text-muted)]",
+    dotInactive: "bg-[color:var(--st-color-bg-elevated)] text-[color:var(--st-color-text-muted)]",
   },
 };
 

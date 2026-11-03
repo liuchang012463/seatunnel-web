@@ -98,7 +98,7 @@ const ClientDetailPanel: React.FC<Props> = ({
                     </h2>
 
                     {clientVersion && (
-                      <span className="inline-flex h-6 items-center rounded-full border border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-panel)] px-2.5 text-[12px] font-medium text-[color:var(--st-color-accent)]">
+                      <span className="inline-flex h-6 items-center rounded-full border border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-panel)] px-2.5 text-[14px] font-medium text-[color:var(--st-color-accent)]">
                         v{clientVersion}
                       </span>
                     )}
@@ -106,7 +106,7 @@ const ClientDetailPanel: React.FC<Props> = ({
                     <StatusChip tone={healthMeta.tone} label={healthMeta.label} detail={healthMeta.desc} />
                   </div>
 
-                  <div className="mt-1.5 text-[13px] text-[color:var(--st-color-text-muted)]">
+                  <div className="mt-1.5 text-[14px] text-[color:var(--st-color-text-muted)]">
                     {engineType} Engine Client
                   </div>
 
@@ -116,7 +116,7 @@ const ClientDetailPanel: React.FC<Props> = ({
                 inline-flex max-w-full items-center gap-2 rounded-full
                 border border-[color:var(--st-color-divider)]
                 px-3 py-1.5
-                text-[13px] font-medium text-[color:var(--st-color-text-secondary)]
+                text-[14px] font-medium text-[color:var(--st-color-text-secondary)]
               "
                       style={{ backgroundColor: "var(--st-color-bg-panel)" }}
                     >
@@ -124,7 +124,7 @@ const ClientDetailPanel: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  <div className="mt-2.5 flex items-center gap-2 text-[13px] leading-5 text-[color:var(--st-color-text-muted)]">
+                  <div className="mt-2.5 flex items-center gap-2 text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
                     <span>{healthMeta.desc}</span>
                   </div>
                 </div>
@@ -137,7 +137,7 @@ const ClientDetailPanel: React.FC<Props> = ({
               onClick={() => onRefresh(selectedClientId)}
               className="
         h-10 rounded-full border-[color:var(--st-color-divider)] px-4
-        text-[13px] font-medium text-[color:var(--st-color-text-secondary)]
+        text-[14px] font-medium text-[color:var(--st-color-text-secondary)]
         shadow-[0_2px_8px_rgba(16,24,40,0.04)]
         transition-all duration-200
         hover:!border-[color:var(--st-color-accent)] hover:!text-[color:var(--st-color-text-secondary)]

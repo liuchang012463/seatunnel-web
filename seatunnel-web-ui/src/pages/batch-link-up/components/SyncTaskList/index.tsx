@@ -287,7 +287,7 @@ const App: React.FC<Props> = ({
                   copyToClipboard(record?.id);
                 }}
               >
-                <CopyOutlined style={{ fontSize: 12 }} />
+                <CopyOutlined style={{ fontSize: 14 }} />
               </button>
             </Tooltip>
           </div>

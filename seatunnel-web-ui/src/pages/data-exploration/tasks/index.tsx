@@ -627,7 +627,7 @@ const DataExplorationTasksPage: React.FC = () => {
       render: (_, record) => (
         <div className="min-w-0">
           <div className="truncate font-medium" title={record.name}>{record.name || '-'}</div>
-          <div className="truncate text-xs text-[var(--st-color-text-muted)]">{record.dbType || '-'}</div>
+          <div className="truncate text-sm text-[var(--st-color-text-muted)]">{record.dbType || '-'}</div>
         </div>
       ),
     },
@@ -829,7 +829,7 @@ const DataExplorationTasksPage: React.FC = () => {
             }}
           />
           <div className="ml-auto flex items-center gap-3">
-            <span className="text-xs text-[var(--st-color-text-muted)]">共 {pagination.total} 个数据源</span>
+            <span className="text-sm text-[var(--st-color-text-muted)]">共 {pagination.total} 个数据源</span>
             <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
               刷新
             </Button>

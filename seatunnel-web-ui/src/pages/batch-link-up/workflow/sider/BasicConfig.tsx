@@ -10,7 +10,7 @@ const BasicConfig = () => {
     <>
       <Header
         title={
-          <span style={{ fontSize: 12, fontWeight: 500 }}>
+          <span style={{ fontSize: 14, fontWeight: 500 }}>
             {intl.formatMessage({
               id: "pages.job.config.basicSetting",
               defaultMessage: "Basic Setting",

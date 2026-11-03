@@ -53,7 +53,7 @@ const SinkNode: FC<NodeProps<SinkNodeData>> = ({ data, selected }) => {
         style={{
           marginBottom: 6,
           paddingLeft: 4,
-          fontSize: 11,
+          fontSize: 14,
           fontWeight: 700,
           letterSpacing: 0.8,
           textTransform: "uppercase",
@@ -129,7 +129,7 @@ const SinkNode: FC<NodeProps<SinkNodeData>> = ({ data, selected }) => {
             <div
               className="workflow-node-description"
               style={{
-                fontSize: 13,
+                fontSize: 14,
                 lineHeight: "18px",
                 color: "var(--st-color-text-muted)",
                 whiteSpace: "nowrap",

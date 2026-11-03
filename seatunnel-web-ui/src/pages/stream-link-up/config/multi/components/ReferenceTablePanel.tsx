@@ -14,7 +14,7 @@ const ReferenceTablePanel: React.FC<Props> = ({ loading, data }) => {
     <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4" style={{marginTop: 16}}>
       <div className="mb-3 flex items-center justify-between" >
         <div className="text-sm font-medium text-slate-800">匹配结果预览</div>
-        <div className="text-xs text-slate-400">当前共 {data.length} 张表</div>
+        <div className="text-sm text-slate-400">当前共 {data.length} 张表</div>
       </div>
 
       <Spin spinning={loading}>

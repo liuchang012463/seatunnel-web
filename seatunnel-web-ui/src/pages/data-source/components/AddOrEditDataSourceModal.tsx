@@ -355,7 +355,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
                 <div
                   style={{
                     marginTop: 2,
-                    fontSize: 13,
+                    fontSize: 14,
                     color: 'var(--st-color-text-secondary)',
                     lineHeight: '20px',
                   }}

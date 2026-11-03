@@ -69,7 +69,7 @@ export const NodeListPopover: React.FC<NodeListPopoverProps> = ({
                   <div
                     style={{
                       color: "var(--st-color-text-muted)",
-                      fontSize: "0.75rem",
+                      fontSize: "14px",
                       lineHeight: "1rem",
                       padding: "0.25rem 0.1rem",
                       marginBottom: "0.25rem",
@@ -135,7 +135,7 @@ export const NodeListPopover: React.FC<NodeListPopoverProps> = ({
                         <div
                           style={{
                             color: "var(--st-color-text-secondary)",
-                            fontSize: "0.875rem",
+                            fontSize: "14px",
                             lineHeight: "1.25rem",
                           }}
                         >
@@ -213,7 +213,7 @@ export const NodeListPopover: React.FC<NodeListPopoverProps> = ({
                   <div
                     style={{
                       color: "var(--st-color-text-secondary)",
-                      fontSize: "0.875rem",
+                      fontSize: "14px",
                       lineHeight: "1.25rem",
                     }}
                   >

@@ -65,7 +65,7 @@ const ScheduleTimeSection: React.FC<ScheduleTimeSectionProps> = ({
           className="mb-4 rounded-lg"
           type="info"
           showIcon
-          message={<span className="text-[13px]">调度时区为 Asia/Shanghai</span>}
+          message={<span className="text-[14px]">调度时区为 Asia/Shanghai</span>}
         />
 
         <Form

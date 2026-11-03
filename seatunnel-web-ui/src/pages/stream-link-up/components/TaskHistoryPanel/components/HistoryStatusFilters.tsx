@@ -65,7 +65,7 @@ const HistoryStatusFilters: React.FC<HistoryStatusFiltersProps> = ({
             onClick={() => onStatusFilterChange(active ? "all" : item.key)}
             className={[
               "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1",
-              "select-none text-xs transition-all duration-200 ease-out",
+              "select-none text-sm transition-all duration-200 ease-out",
               "border-slate-200 bg-slate-50 text-slate-600",
               "hover:shadow-sm active:scale-[0.98]",
               item.hoverClassName,

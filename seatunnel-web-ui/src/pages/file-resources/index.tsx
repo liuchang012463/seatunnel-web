@@ -389,12 +389,6 @@ const FileResourcesPage: React.FC = () => {
               </Button>
             </Space>
           )}
-          notice={
-            <div className="file-resources-page__hint">
-              <ClockCircleOutlined />
-              <span>目录浏览只展示当前层级；进入文件夹即可继续管理下一级资源。</span>
-            </div>
-          }
         />
       </Card>
 

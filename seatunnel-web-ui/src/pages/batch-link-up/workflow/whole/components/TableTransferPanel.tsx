@@ -23,14 +23,14 @@ const TableTransferPanel: React.FC<Props> = ({
 
     if (info?.direction === "left") {
       return (
-        <div style={{ fontSize: 12, padding: "8px 12px" }}>
+        <div style={{ fontSize: 14, padding: "8px 12px" }}>
           {`Total: ${totalTables} tables`}
         </div>
       );
     }
 
     return (
-      <div style={{ fontSize: 12, padding: "8px 12px" }}>
+      <div style={{ fontSize: 14, padding: "8px 12px" }}>
         <span>{`已选 ${selectedTables} 个表`}</span>
       </div>
     );

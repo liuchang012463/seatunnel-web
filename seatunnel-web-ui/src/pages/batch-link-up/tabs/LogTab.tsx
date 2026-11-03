@@ -22,13 +22,13 @@ const LogTab: React.FC<LogTabProps> = ({ content, loading }) => {
 
         <div>
           <div className="text-sm font-semibold text-slate-900">运行日志</div>
-          <div className="mt-0.5 text-xs text-slate-600">
+          <div className="mt-0.5 text-sm text-slate-600">
             查看当前运行实例的执行日志
           </div>
         </div>
       </div>
 
-      <pre className=" rounded-xl bg-[#1E1E1E] p-4 font-mono text-xs leading-5 text-[#00FF88]" style={{paddingTop: 12}}>
+      <pre className=" rounded-xl bg-[#1E1E1E] p-4 font-mono text-sm leading-5 text-[#00FF88]" style={{paddingTop: 12}}>
         {content || "No log available"}
       </pre>
     </Card>

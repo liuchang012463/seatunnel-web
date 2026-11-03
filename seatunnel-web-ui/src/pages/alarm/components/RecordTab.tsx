@@ -404,7 +404,7 @@ const RecordTab: React.FC = () => {
                   }
                   placement="topLeft"
                 >
-                  <p className="alarm-record-job-content m-0 mt-1 truncate text-xs leading-5">
+                  <p className="alarm-record-job-content m-0 mt-1 truncate text-sm leading-5">
                     {record.content ||
                       '暂无告警内容'}
                   </p>
@@ -422,7 +422,7 @@ const RecordTab: React.FC = () => {
         render: (status?: string) => {
           if (!status) {
             return (
-              <span className="alarm-record-empty text-xs">
+              <span className="alarm-record-empty text-sm">
                 -
               </span>
             );
@@ -440,7 +440,7 @@ const RecordTab: React.FC = () => {
                 'inline-flex rounded-md',
                 'alarm-record-badge',
                 'px-2 py-1',
-                'text-[11px] font-medium',
+                'text-[14px] font-medium',
                 statusStyle.className,
               ].join(' ')}
             >
@@ -457,7 +457,7 @@ const RecordTab: React.FC = () => {
         render: (severity?: string) => {
           if (!severity) {
             return (
-              <span className="alarm-record-empty text-xs">
+              <span className="alarm-record-empty text-sm">
                 -
               </span>
             );
@@ -468,7 +468,7 @@ const RecordTab: React.FC = () => {
 
           if (!severityStyle) {
             return (
-              <span className="alarm-record-empty text-xs">
+              <span className="alarm-record-empty text-sm">
                 {severity}
               </span>
             );
@@ -480,7 +480,7 @@ const RecordTab: React.FC = () => {
                 'inline-flex rounded-full',
                 'alarm-record-badge',
                 'px-2 py-0.5',
-                'text-[11px] font-medium',
+                'text-[14px] font-medium',
                 severityStyle.className,
               ].join(' ')}
             >
@@ -495,7 +495,7 @@ const RecordTab: React.FC = () => {
         key: 'channelType',
         width: 150,
         render: (channelType?: string) => (
-          <span className="alarm-record-channel inline-flex max-w-full items-center gap-1.5 text-xs">
+          <span className="alarm-record-channel inline-flex max-w-full items-center gap-1.5 text-sm">
             <BellRing className="alarm-record-channel__icon h-3.5 w-3.5 shrink-0" />
 
             <Tooltip
@@ -524,12 +524,12 @@ const RecordTab: React.FC = () => {
               }}
             >
               <div>
-                <p className="m-0 text-xs font-medium text-white/60">
+                <p className="m-0 text-sm font-medium text-white/60">
                   告警内容
                 </p>
 
                 <p
-                  className="m-0 mt-1 max-h-[180px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words text-xs leading-5 text-white"
+                  className="m-0 mt-1 max-h-[180px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5 text-white"
                   style={{
                     overflowWrap: 'anywhere',
                     wordBreak: 'break-word',
@@ -542,12 +542,12 @@ const RecordTab: React.FC = () => {
 
               {record.errorMessage && (
                 <div className="mt-3 border-t border-white/15 pt-3">
-                  <p className="m-0 text-xs font-medium text-white/60">
+                  <p className="m-0 text-sm font-medium text-white/60">
                     错误信息
                   </p>
 
                   <p
-                    className="m-0 mt-1 max-h-[180px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words text-xs leading-5 text-red-200"
+                    className="m-0 mt-1 max-h-[180px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5 text-red-200"
                     style={{
                       overflowWrap: 'anywhere',
                       wordBreak: 'break-word',
@@ -565,7 +565,7 @@ const RecordTab: React.FC = () => {
               <span
                 className={[
                   'inline-flex items-center gap-1.5',
-                  'alarm-record-delivery whitespace-nowrap text-xs font-medium',
+                  'alarm-record-delivery whitespace-nowrap text-sm font-medium',
                   delivered
                     ? 'alarm-record-delivery--success'
                     : 'alarm-record-delivery--failure',
@@ -632,7 +632,7 @@ const RecordTab: React.FC = () => {
         key: 'sentTime',
         width: 180,
         render: (sentTime?: string) => (
-          <span className="alarm-record-time inline-flex items-center gap-1.5 whitespace-nowrap text-xs">
+          <span className="alarm-record-time inline-flex items-center gap-1.5 whitespace-nowrap text-sm">
             <Clock3 className="alarm-record-time__icon h-3.5 w-3.5 shrink-0" />
 
             {sentTime
@@ -654,7 +654,7 @@ const RecordTab: React.FC = () => {
             共 {total} 条告警记录
           </p>
 
-          <p className="alarm-record-summary-subtitle m-0 mt-1 text-xs">
+          <p className="alarm-record-summary-subtitle m-0 mt-1 text-sm">
             查看告警消息的触发状态与投递结果
           </p>
         </div>
@@ -743,7 +743,7 @@ const RecordTab: React.FC = () => {
             '[&_.ant-table-container]:border-0',
 
             '[&_.ant-table-thead>tr>th]:py-3.5',
-            '[&_.ant-table-thead>tr>th]:text-xs',
+            '[&_.ant-table-thead>tr>th]:text-sm',
             '[&_.ant-table-thead>tr>th]:font-medium',
 
             '[&_.ant-table-tbody>tr>td]:py-3.5',

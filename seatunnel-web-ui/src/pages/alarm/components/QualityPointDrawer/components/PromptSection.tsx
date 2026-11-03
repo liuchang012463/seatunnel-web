@@ -39,7 +39,7 @@ const PromptSection = ({
           <h3 className="text-sm font-semibold text-slate-950">
             提示词配置
           </h3>
-          <p className="mt-1 text-xs leading-5 text-slate-400">
+          <p className="mt-1 text-sm leading-5 text-slate-400">
             {editing
               ? "编辑模型执行该质控点时使用的提示词。"
               : "查看模型执行该质控点时使用的提示词。"}
@@ -74,7 +74,7 @@ const PromptSection = ({
       ) : (
         <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70">
           <div className="border-b border-slate-200/80 px-4 py-2.5">
-            <p className="text-xs font-medium text-slate-500">
+            <p className="text-sm font-medium text-slate-500">
               {promptTab === "system"
                 ? "System Prompt"
                 : "User Prompt"}
@@ -138,7 +138,7 @@ const PromptTabButton = ({
     onClick={onClick}
     className={[
       "inline-flex h-8 items-center gap-1.5",
-      "rounded-md px-3 text-xs font-medium",
+      "rounded-md px-3 text-sm font-medium",
       "transition-all duration-200",
       active
         ? "bg-white text-slate-950 shadow-sm"

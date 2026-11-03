@@ -18,7 +18,7 @@ interface Props {
 const pillStyle: React.CSSProperties = {
   borderRadius: 999,
   paddingInline: 10,
-  fontSize: 12,
+  fontSize: 14,
   lineHeight: "20px",
 };
 
@@ -31,14 +31,14 @@ const softCodeStyle: React.CSSProperties = {
   background: "var(--st-color-bg-control)",
   border: "1px solid var(--st-color-line)",
   color: "var(--st-color-text-primary)",
-  fontSize: 12,
+  fontSize: 14,
   lineHeight: "20px",
   fontFamily:
     'ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
 };
 
 const actionStyle: React.CSSProperties = {
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 500,
   cursor: "pointer",
   padding: "4px 10px",
@@ -80,7 +80,7 @@ const ConnectorParamTable: React.FC<Props> = ({
             </div>
 
             {record.connectorType ? (
-              <div className="mt-1 text-[12px] leading-5 text-[var(--st-color-text-muted)]">
+              <div className="mt-1 text-[14px] leading-5 text-[var(--st-color-text-muted)]">
                 类型：{record.connectorType}
               </div>
             ) : null}
@@ -115,7 +115,7 @@ const ConnectorParamTable: React.FC<Props> = ({
       ellipsis: true,
       responsive: ["xxl"],
       render: (value: string) => (
-        <Text className="text-[13px] leading-6 text-[var(--st-color-text-secondary)]">
+        <Text className="text-[14px] leading-6 text-[var(--st-color-text-secondary)]">
           {value || "-"}
         </Text>
       ),
@@ -136,7 +136,7 @@ const ConnectorParamTable: React.FC<Props> = ({
               color: "var(--st-color-accent)",
               background: "rgba(63, 198, 255, 0.12)",
               borderColor: "rgba(63, 198, 255, 0.35)",
-              fontSize: 12,
+              fontSize: 14,
             }}
           >
             {record.paramType || "-"}
@@ -162,7 +162,7 @@ const ConnectorParamTable: React.FC<Props> = ({
                 color: "var(--st-color-error)",
                 background: "rgba(255, 107, 94, 0.12)",
                 borderColor: "rgba(255, 107, 94, 0.35)",
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: 500,
               }}
             >
@@ -178,7 +178,7 @@ const ConnectorParamTable: React.FC<Props> = ({
                 color: "var(--st-color-text-secondary)",
                 background: "var(--st-color-bg-control)",
                 borderColor: "var(--st-color-line)",
-                fontSize: 12,
+                fontSize: 14,
               }}
             >
               非必填
@@ -295,7 +295,7 @@ const ConnectorParamTable: React.FC<Props> = ({
             background: var(--st-color-bg-elevated);
             color: var(--st-color-text-primary);
             font-weight: 600;
-            font-size: 13px;
+            font-size: 14px;
             border-bottom: 1px solid var(--st-color-line);
           }
 

@@ -51,11 +51,11 @@ const CronPreview: React.FC<Props> = ({ cronExpression }) => {
     >
       <div className="flex items-center justify-between gap-3">
         <div className="inline-flex min-h-8 items-center gap-3 rounded-md bg-[#F8FAFC] px-3 py-1.5">
-          <Text className="text-[13px] font-medium text-[color:var(--st-color-text-primary)]">
+          <Text className="text-[14px] font-medium text-[color:var(--st-color-text-primary)]">
             {cronExpression}
           </Text>
           <a
-            className="inline-flex items-center gap-1 text-[12px]"
+            className="inline-flex items-center gap-1 text-[14px]"
             onClick={handleCopyCron}
           >
             <CopyOutlined />
@@ -72,7 +72,7 @@ const CronPreview: React.FC<Props> = ({ cronExpression }) => {
           content={
             <div style={{ minWidth: 240, padding: "2px 0 0 2px" }}>
               {previewLoading ? (
-                <Text className="text-[12px] text-[color:var(--st-color-text-muted)]">加载中...</Text>
+                <Text className="text-[14px] text-[color:var(--st-color-text-muted)]">加载中...</Text>
               ) : nextExecutionTimes.length ? (
                 nextExecutionTimes.map((item, index) => (
                   <div
@@ -81,14 +81,14 @@ const CronPreview: React.FC<Props> = ({ cronExpression }) => {
                       display: "flex",
                       alignItems: "center",
                       marginBottom: 6,
-                      fontSize: 12,
+                      fontSize: 14,
                     }}
                   >
                     <Badge status="processing" text={item || "-"} />
                   </div>
                 ))
               ) : (
-                <Text className="text-[12px] text-[color:var(--st-color-text-muted)]">
+                <Text className="text-[14px] text-[color:var(--st-color-text-muted)]">
                   暂无执行时间
                 </Text>
               )}

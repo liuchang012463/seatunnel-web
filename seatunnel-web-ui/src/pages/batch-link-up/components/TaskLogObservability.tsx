@@ -100,12 +100,12 @@ const statusColor = (status?: string) => {
 
 const StructuredRecordTable: React.FC<{ rows: JobLogStructuredRecord[] }> = ({ rows }) => {
   if (!rows?.length) {
-    return <div className="py-6 text-center text-xs text-slate-400">暂无规则命中记录</div>;
+    return <div className="py-6 text-center text-sm text-slate-400">暂无规则命中记录</div>;
   }
 
   return (
     <div className="overflow-auto rounded-lg border border-slate-200">
-      <table className="w-full min-w-[760px] text-left text-xs">
+      <table className="w-full min-w-[760px] text-left text-sm">
         <thead className="bg-slate-50 text-slate-500">
           <tr>
             <th className="whitespace-nowrap px-3 py-2 font-semibold">时间</th>
@@ -144,15 +144,15 @@ const ReplayStepView: React.FC<{ step?: JobLogReplayStep; sectionTitle?: string 
 
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-950 p-4 text-slate-100">
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-slate-400">
         <Tag color="blue">{sectionTitle || step.title}</Tag>
         <Tag color={step.status === "失败" ? "red" : "green"}>{step.status}</Tag>
         <span>{step.operation}</span>
         <span>{step.target !== "-" ? `目标：${step.target}` : ""}</span>
         <span>{formatTime(step.timestamp, step.elapsedMs)}</span>
       </div>
-      <div className="mb-2 text-xs text-slate-400">本步骤全部日志 · {logs.length} 行</div>
-      <div className="max-h-[360px] overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-xs leading-5 text-slate-100">
+      <div className="mb-2 text-sm text-slate-400">本步骤全部日志 · {logs.length} 行</div>
+      <div className="max-h-[360px] overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-sm leading-5 text-slate-100">
         {logs.map((line, index) => <div key={index}>{line || " "}</div>)}
       </div>
     </div>
@@ -344,7 +344,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-sm font-semibold text-slate-800">{title}</div>
-          <div className="mt-1 text-xs text-slate-400">{description}</div>
+          <div className="mt-1 text-sm text-slate-400">{description}</div>
         </div>
         <Button type="primary" size="small" loading={analysisLoading} onClick={() => void loadAnalysis()}>
           {analysisResult ? "重新解析" : "解析日志"}
@@ -358,7 +358,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
           <StructuredRecordTable rows={rows} />
         </>
       ) : (
-        <div className="py-8 text-center text-xs text-slate-400">点击“解析日志”生成{title}</div>
+        <div className="py-8 text-center text-sm text-slate-400">点击“解析日志”生成{title}</div>
       )}
     </section>
   );
@@ -368,7 +368,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-sm font-semibold text-slate-800">原始执行日志</div>
-          <div className="mt-1 text-xs text-slate-400">完整日志 · 当前实例 #{instanceId}</div>
+          <div className="mt-1 text-sm text-slate-400">完整日志 · 当前实例 #{instanceId}</div>
         </div>
         <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={() => void loadLog()}>
           刷新
@@ -380,9 +380,9 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
         value={searchKeyword}
         onChange={(event) => setSearchKeyword(event.target.value)}
         placeholder="在当前完整日志中检索 timeout、ERROR、连接..."
-        suffix={normalizedKeyword ? <span className="text-xs text-slate-400">命中 {matchedLineCount} 行</span> : null}
+        suffix={normalizedKeyword ? <span className="text-sm text-slate-400">命中 {matchedLineCount} 行</span> : null}
       />
-      <div className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-100">
+      <div className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-sm leading-5 text-slate-100">
         {loading && !logContent ? (
           <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
         ) : errorText ? (
@@ -410,7 +410,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-sm font-semibold text-slate-800">操作可视化回放</div>
-          <div className="mt-1 text-xs text-slate-400">按规则将完整日志切分为不超过 10 个步骤，每步保留全部原始日志</div>
+          <div className="mt-1 text-sm text-slate-400">按规则将完整日志切分为不超过 10 个步骤，每步保留全部原始日志</div>
         </div>
         <Button size="small" loading={replayLoading} onClick={() => void loadReplay()}>
           {replayResult ? "重新加载回放" : "加载回放"}
@@ -432,7 +432,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
                   <div className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-700">
                     <span>{index + 1}. {section.title}</span><Tag className="!mr-0">{section.steps[0]?.logs?.length || section.steps.length} 行</Tag>
                   </div>
-                  <div className="mt-1 text-[11px] text-slate-400">{formatTime(section.startTime)} → {formatTime(section.endTime)}</div>
+                  <div className="mt-1 text-[14px] text-slate-400">{formatTime(section.startTime)} → {formatTime(section.endTime)}</div>
                 </button>
               );
             })}
@@ -444,14 +444,14 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
               </Button>
               <Button size="small" onClick={() => { setReplayPlaying(false); setReplayCursor((current) => Math.max(0, current - 1)); }}>上一步</Button>
               <Button size="small" onClick={() => { setReplayPlaying(false); setReplayCursor((current) => Math.min(replayPositions.length - 1, current + 1)); }}>下一步</Button>
-              <span className="text-xs text-slate-400">第 {replayCursor + 1} / {replayPositions.length} 步</span>
+              <span className="text-sm text-slate-400">第 {replayCursor + 1} / {replayPositions.length} 步</span>
             </div>
             <input type="range" min={0} max={Math.max(0, replayPositions.length - 1)} value={replayCursor} onChange={(event) => { setReplayPlaying(false); setReplayCursor(Number(event.target.value)); }} className="mb-3 w-full accent-[#315efb]" aria-label="操作回放进度" />
             <ReplayStepView step={currentReplay?.step} sectionTitle={currentReplay?.section.title} />
           </div>
         </div>
       ) : (
-        <div className="py-8 text-center text-xs text-slate-400">点击“加载回放”生成命名阶段</div>
+        <div className="py-8 text-center text-sm text-slate-400">点击“加载回放”生成命名阶段</div>
       )}
     </section>
   );
@@ -468,7 +468,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
               <span>AI故障定位</span>
               <Tag color={canDiagnose ? "gold" : "default"} className="!mr-0">{canDiagnose ? "FAILED 可分析" : "暂不可用"}</Tag>
             </div>
-            <div className="mt-1 text-xs text-slate-400">基于当前实例日志、执行流程和脱敏运行配置生成定位结论。</div>
+            <div className="mt-1 text-sm text-slate-400">基于当前实例日志、执行流程和脱敏运行配置生成定位结论。</div>
           </div>
         </div>
         <Tooltip title={canDiagnose ? "分析当前 FAILED 实例" : diagnosisDisabledReason}>
@@ -482,25 +482,25 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
 
       <div className="space-y-4 p-5">
         {!canDiagnose ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-500">{diagnosisDisabledReason}</div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-5 text-slate-500">{diagnosisDisabledReason}</div>
         ) : null}
 
         {(diagnosisLoading || diagnosisStatus || diagnosisOutput) ? (
           <div className="rounded-2xl border border-cyan-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100 shadow-inner">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-cyan-200">
+              <div className="flex items-center gap-2 text-sm font-medium text-cyan-200">
                 {diagnosisLoading ? <LoadingOutlined className="text-cyan-300" /> : <CheckCircleOutlined className="text-emerald-300" />}
                 <span>{diagnosisStatus || (diagnosisLoading ? "正在接收模型输出..." : "故障定位完成")}</span>
               </div>
-              <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[11px] text-slate-400">
+              <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[14px] text-slate-400">
                 {diagnosisLoading ? `流式生成中 · ${diagnosisChunkCount} 段` : `已接收 ${diagnosisChunkCount} 段`}
               </span>
             </div>
-            <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-300">
+            <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-300">
               <span>模型实时输出</span>
               <span className="font-normal text-slate-500">SSE 增量事件 · {diagnosisChunkCount} 段</span>
             </div>
-            <div aria-live="polite" className="min-h-[180px] max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-slate-800 bg-slate-900 p-4 text-[13px] leading-6 text-slate-100">
+            <div aria-live="polite" className="min-h-[180px] max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-slate-800 bg-slate-900 p-4 text-[14px] leading-6 text-slate-100">
               {diagnosisOutput || <span className="text-slate-500">正在读取日志并生成诊断，请稍候...</span>}
               {diagnosisLoading ? <span className="ml-1 inline-block animate-pulse text-cyan-300">▍</span> : null}
             </div>
@@ -509,7 +509,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-8 text-center">
             <RobotOutlined className="text-2xl text-slate-300" />
             <div className="mt-2 text-sm font-medium text-slate-600">尚未开始故障定位</div>
-            <div className="mt-1 text-xs text-slate-400">点击右上角按钮后，模型输出会在本区域流式展示。</div>
+            <div className="mt-1 text-sm text-slate-400">点击右上角按钮后，模型输出会在本区域流式展示。</div>
           </div>
         )}
 
@@ -530,7 +530,7 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
                 <div className="mt-3 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-white px-4 py-3 whitespace-pre-wrap break-words text-[14px] font-medium leading-7 text-slate-700">
                   {diagnosisResult.rootCause || "暂无明确原因"}
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                   <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-500">影响阶段</span>
                   <span className="text-slate-600">{diagnosisResult.affectedStage || "未明确"}</span>
                 </div>
@@ -540,11 +540,11 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
           <div className="grid gap-3 lg:grid-cols-2">
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
               <div className="mb-2 text-sm font-semibold text-slate-700">证据</div>
-              <div className="max-h-48 space-y-1 overflow-auto text-xs leading-5 text-slate-600">{(diagnosisResult.evidence || []).map((item, index) => <div key={index}>{item}</div>)}</div>
+              <div className="max-h-48 space-y-1 overflow-auto text-sm leading-5 text-slate-600">{(diagnosisResult.evidence || []).map((item, index) => <div key={index}>{item}</div>)}</div>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
               <div className="mb-2 text-sm font-semibold text-slate-700">建议动作</div>
-              <div className="space-y-1 text-xs leading-5 text-slate-600">{(diagnosisResult.recommendedActions || []).map((item, index) => <div key={index}>{index + 1}. {item}</div>)}</div>
+              <div className="space-y-1 text-sm leading-5 text-slate-600">{(diagnosisResult.recommendedActions || []).map((item, index) => <div key={index}>{index + 1}. {item}</div>)}</div>
             </div>
           </div>
         </div>

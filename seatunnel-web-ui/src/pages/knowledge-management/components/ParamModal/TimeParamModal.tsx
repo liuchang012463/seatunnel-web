@@ -115,16 +115,16 @@ const TimeParamModal: React.FC<Props> = ({
       }}
       title={
         <div className="flex min-w-0 items-center gap-3 pr-6">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EEF4FF] text-[16px] text-[#3B82F6]">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:var(--st-color-bg-selected)] text-[16px] text-[color:var(--st-color-accent)]">
             <ClockCircleOutlined />
           </div>
 
           <div className="min-w-0">
-            <div className="text-[18px] font-semibold leading-7 text-[#101828]">
+            <div className="text-[18px] font-semibold leading-7 text-[color:var(--st-color-text-primary)]">
               {modalTitle}
             </div>
 
-            <div className="mt-[2px] text-[13px] leading-5 text-[#667085]">
+            <div className="mt-[2px] text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
               维护 HOCON 中可替换的时间变量、输出格式与动态表达式
             </div>
           </div>
@@ -133,8 +133,8 @@ const TimeParamModal: React.FC<Props> = ({
       footer={
         <div className="flex items-center justify-between gap-3">
           <div
-            className="text-[13px] leading-5"
-            style={{ color: TEXT_SECONDARY || "#667085" }}
+            className="text-[14px] leading-5"
+            style={{ color: TEXT_SECONDARY }}
           >
             保存前建议先预览一次结果，确认变量会按预期替换到任务配置中
           </div>
@@ -167,10 +167,10 @@ const TimeParamModal: React.FC<Props> = ({
           )}
 
           <div className="rounded-2xl border border-[#EEF2F6] bg-white p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[#101828]">
+            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[color:var(--st-color-text-primary)]">
               基础信息
             </h3>
-            <div className="mb-4 mt-1 text-[13px] leading-5 text-[#667085]">
+            <div className="mb-4 mt-1 text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
               先定义时间变量名称与用途，保证含义清晰、易于复用
             </div>
 
@@ -220,10 +220,10 @@ const TimeParamModal: React.FC<Props> = ({
           </div>
 
           <div className="rounded-2xl border border-[#EEF2F6] bg-white p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[#101828]">
+            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[color:var(--st-color-text-primary)]">
               格式与取值
             </h3>
-            <div className="mb-4 mt-1 text-[13px] leading-5 text-[#667085]">
+            <div className="mb-4 mt-1 text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
               先确定变量的取值方式，再配置固定值或动态表达式
             </div>
 
@@ -294,10 +294,10 @@ const TimeParamModal: React.FC<Props> = ({
 
           {valueType === "DYNAMIC" && (
             <div className="rounded-2xl border border-[#EEF2F6] bg-white p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-              <h3 className="m-0 text-[15px] font-semibold leading-6 text-[#101828]">
+              <h3 className="m-0 text-[15px] font-semibold leading-6 text-[color:var(--st-color-text-primary)]">
                 表达式预览
               </h3>
-              <div className="mb-4 mt-1 text-[13px] leading-5 text-[#667085]">
+              <div className="mb-4 mt-1 text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
                 使用当前时间作为基准时间，快速检查表达式是否符合预期
               </div>
 
@@ -307,21 +307,21 @@ const TimeParamModal: React.FC<Props> = ({
                 </Button>
 
                 {previewValue ? (
-                  <div className="rounded-lg border border-[#D0D5DD] bg-[#F8FAFC] px-3 py-1.5 text-[13px] text-[#101828]">
+                  <div className="rounded-lg border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-control)] px-3 py-1.5 text-[14px] text-[color:var(--st-color-text-primary)]">
                     {previewValue}
                   </div>
                 ) : (
-                  <div className="text-[13px] text-[#98A2B3]">暂无预览结果</div>
+                  <div className="text-[14px] text-[#98A2B3]">暂无预览结果</div>
                 )}
               </div>
             </div>
           )}
 
           <div className="rounded-2xl border border-[#EEF2F6] bg-white p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[#101828]">
+            <h3 className="m-0 text-[15px] font-semibold leading-6 text-[color:var(--st-color-text-primary)]">
               备注
             </h3>
-            <div className="mb-4 mt-1 text-[13px] leading-5 text-[#667085]">
+            <div className="mb-4 mt-1 text-[14px] leading-5 text-[color:var(--st-color-text-muted)]">
               可补充变量适用场景，方便后续维护
             </div>
 

@@ -262,7 +262,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
               </Tooltip>
               <div className="min-w-0">
                 <div className="run-log-drawer__title truncate text-[15px] font-semibold text-slate-900">{title}</div>
-                <div className="truncate text-xs text-slate-600">{subtitle} · 实时刷新</div>
+                <div className="truncate text-sm text-slate-600">{subtitle} · 实时刷新</div>
               </div>
             </div>
 
@@ -272,7 +272,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 onClick={() => void loadLogs(true)}
                 disabled={loading}
                 className={[
-                  "run-log-drawer__refresh-button inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium",
+                  "run-log-drawer__refresh-button inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium",
                   "border-0 bg-transparent text-[var(--st-color-text-secondary)]",
                   "transition-colors duration-200 hover:bg-[var(--st-color-hover)] hover:text-[var(--st-color-accent)]",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--st-color-focus)]",
@@ -290,7 +290,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 className="run-log-drawer__close-button flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-700"
                 aria-label="关闭运行日志"
               >
-                <CloseOutlined className="text-xs" />
+                <CloseOutlined className="text-sm" />
               </button>
             </div>
           </header>
@@ -308,7 +308,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                     placeholder="在当前完整日志中检索 timeout、ERROR、连接..."
                     className="min-w-[240px] flex-1"
                   />
-                  <span className="whitespace-nowrap text-xs text-slate-400">
+                  <span className="whitespace-nowrap text-sm text-slate-400">
                     {normalizedKeyword ? `命中 ${matchedLineCount} 行` : `共 ${logLines.length} 行`}
                   </span>
                 </div>
@@ -316,15 +316,15 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
                 {loading && !logContent ? (
                   <div className="run-log-drawer__state-card flex min-h-[180px] flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center">
                     <Spin size="small" />
-                    <span className="ml-2 text-xs text-slate-400">正在加载日志...</span>
+                    <span className="ml-2 text-sm text-slate-400">正在加载日志...</span>
                   </div>
                 ) : errorText ? (
                   <div className="run-log-drawer__state-card flex min-h-[180px] flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-red-100 bg-white text-center">
                     <div className="text-sm font-medium text-red-500">获取日志失败</div>
-                    <div className="mt-1 max-w-[520px] text-xs leading-5 text-slate-500">{errorText}</div>
+                    <div className="mt-1 max-w-[520px] text-sm leading-5 text-slate-500">{errorText}</div>
                   </div>
                 ) : (
-                  <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-slate-800/90 bg-slate-950 p-4 font-mono text-xs leading-5 text-slate-100">
+                  <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-slate-800/90 bg-slate-950 p-4 font-mono text-sm leading-5 text-slate-100">
                     {logContent ? (
                       logLines.map((line, index) => {
                         const matched = Boolean(normalizedKeyword && line.toLowerCase().includes(normalizedKeyword));

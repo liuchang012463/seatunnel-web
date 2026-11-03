@@ -36,9 +36,9 @@ const BaseConfigSection: React.FC<Props> = ({
   return (
     <div className="p-6">
       {/* 整体卡片 */}
-      <div className="rounded-[24px] bg-white shadow-sm space-y-6">
+      <div className="rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-panel)] shadow-none space-y-6">
         {/* ① 数据同步方式（主视觉块） */}
-        <div className="rounded-2xl border border-[#E4E7EC] bg-[#FAFBFC] p-5">
+        <div className="rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-control)] p-5">
           <div className="mb-3 text-[14px] font-medium text-[color:var(--st-color-text-primary)]">数据同步方式</div>
 
           <div className="flex items-center gap-3">

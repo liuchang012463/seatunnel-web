@@ -116,9 +116,9 @@ const DataInventoryDashboard: React.FC = () => {
           </Col>
           <Col xs={24} md={12} xl={5}>
             <Card size="small" title="单位 / 业务系统">
-              <div className="mb-2 text-xs text-[var(--st-color-text-muted)]">单位</div>
+              <div className="mb-2 text-sm text-[var(--st-color-text-muted)]">单位</div>
               {bucketList(units)}
-              <div className="mb-2 mt-3 text-xs text-[var(--st-color-text-muted)]">业务系统</div>
+              <div className="mb-2 mt-3 text-sm text-[var(--st-color-text-muted)]">业务系统</div>
               {bucketList(systems)}
             </Card>
           </Col>
@@ -129,7 +129,7 @@ const DataInventoryDashboard: React.FC = () => {
                 已探查表 {coverage.profiledTableCount} / {coverage.tableCount}
               </div>
               {coverage.profiledTableCount === 0 ? (
-                <div className="text-xs text-[var(--st-color-text-muted)]">
+                <div className="text-sm text-[var(--st-color-text-muted)]">
                   尚无已探查表，可在「探查任务配置」中发起探查
                 </div>
               ) : null}

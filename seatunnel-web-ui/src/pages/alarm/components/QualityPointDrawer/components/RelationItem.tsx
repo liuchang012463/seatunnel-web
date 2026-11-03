@@ -14,7 +14,7 @@ const RelationItem = ({
 }: RelationItemProps) => {
   return (
     <div className="flex min-w-0 items-start gap-3">
-      <div className="mt-1 flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-500">
+      <div className="mt-1 flex shrink-0 items-center gap-1.5 text-sm font-medium text-slate-500">
         {icon}
         <span>{label}</span>
       </div>

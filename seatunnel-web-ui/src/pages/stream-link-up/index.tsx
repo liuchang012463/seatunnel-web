@@ -1026,6 +1026,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   return (
     <>
+      <div className="task-list-page-shell">
       <div className="stream-link-page sync-task-list">
         <div className="operate-bar task-search-wrap">
           <div className="left">
@@ -1126,6 +1127,7 @@ const RealtimeSyncPage: React.FC = () => {
             ) : null}
           </div>
         </div>
+      </div>
       </div>
 
       <BatchCreateJobModal

@@ -40,8 +40,8 @@
 | 令牌 | 值 | 用途 |
 | --- | --- | --- |
 | `--st-color-text-primary` | `#EDF4F7` | 标题、名称、关键数值 |
-| `--st-color-text-secondary` | `#AFC4CD` | 正文、表格内容 |
-| `--st-color-text-muted` | `#9BB5BD` | 辅助、占位、单位 |
+| `--st-color-text-secondary` | `rgb(220, 218, 218)` | 正文、表格内容 |
+| `--st-color-text-muted` | `white` | 辅助、占位、单位 |
 | `--st-color-on-primary` | `#000D12` | primary 上反白 |
 
 ### 3.3 强调与语义

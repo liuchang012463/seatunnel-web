@@ -397,7 +397,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       label: <span className="text-sm font-medium text-slate-800">高级配置</span>,
       children: (
         <div className="grid grid-cols-1 gap-3">
-          <label className="text-xs text-slate-600">
+          <label className="text-sm text-slate-600">
             <span className="mb-1 block">编码</span>
             <Input
               value={sourceConfig?.encoding || 'UTF-8'}
@@ -407,7 +407,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
           </label>
           {format === 'csv' ? (
             <>
-              <label className="text-xs text-slate-600">
+              <label className="text-sm text-slate-600">
                 <span className="mb-1 block">跳过行数</span>
                 <InputNumber
                   className="w-full"
@@ -416,7 +416,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
                   onChange={(value) => onChange({ skipHeaderRowNumber: value ?? 0 })}
                 />
               </label>
-              <label className="text-xs text-slate-600">
+              <label className="text-sm text-slate-600">
                 <span className="mb-1 block">引号字符</span>
                 <Input
                   maxLength={1}
@@ -425,7 +425,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
                   placeholder='"'
                 />
               </label>
-              <label className="text-xs text-slate-600">
+              <label className="text-sm text-slate-600">
                 <span className="mb-1 block">转义字符</span>
                 <Input
                   maxLength={1}
@@ -438,7 +438,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
           ) : null}
           {format === 'text' ? (
             <>
-              <label className="text-xs text-slate-600">
+              <label className="text-sm text-slate-600">
                 <span className="mb-1 block">行分隔符</span>
                 <Input
                   value={sourceConfig?.rowDelimiter ?? '\\n'}
@@ -446,7 +446,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
                   placeholder="\\n"
                 />
               </label>
-              <label className="text-xs text-slate-600">
+              <label className="text-sm text-slate-600">
                 <span className="mb-1 block">跳过行数</span>
                 <InputNumber
                   className="w-full"
@@ -455,7 +455,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
                   onChange={(value) => onChange({ skipHeaderRowNumber: value ?? 0 })}
                 />
               </label>
-              <label className="text-xs text-slate-600">
+              <label className="text-sm text-slate-600">
                 <span className="mb-1 block">空值标记</span>
                 <Input
                   value={sourceConfig?.nullFormat ?? ''}
@@ -467,7 +467,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
           ) : null}
           {format === 'excel' ? (
             <>
-              <label className="text-xs text-slate-600">
+              <label className="text-sm text-slate-600">
                 <span className="mb-1 block">工作表</span>
                 <Input
                   value={sourceConfig?.sheetName ?? ''}
@@ -475,7 +475,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
                   placeholder="留空读取第一个工作表"
                 />
               </label>
-              <label className="text-xs text-slate-600">
+              <label className="text-sm text-slate-600">
                 <span className="mb-1 block">Excel 引擎</span>
                 <Select
                   className="w-full"
@@ -533,14 +533,14 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3">
-          <label className="text-xs text-slate-600">
+          <label className="text-sm text-slate-600">
             <span className="mb-1 block">格式</span>
             <Select className="w-full" value={format} options={FORMAT_OPTIONS} onChange={changeFormat} />
           </label>
 
           {format === 'duckdb' ? (
             <>
-              <label className="text-xs text-slate-600">
+              <label className="text-sm text-slate-600">
                 <span className="mb-1 block">DuckDB 表名</span>
                 <Input
                   value={sourceConfig?.duckdbTable ?? ''}
@@ -558,7 +558,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
           ) : null}
 
           {format === 'csv' || format === 'text' ? (
-            <label className="text-xs text-slate-600">
+            <label className="text-sm text-slate-600">
               <span className="mb-1 block">字段分隔符</span>
               <Input
                 value={sourceConfig?.fieldDelimiter ?? (format === 'csv' ? ',' : '\\001')}
@@ -570,7 +570,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
 
           {format === 'csv' ? (
             <div className="flex items-center gap-1">
-              <label className="flex items-center gap-2 text-xs text-slate-600">
+              <label className="flex items-center gap-2 text-sm text-slate-600">
                 <Switch
                   size="small"
                   checked={hasHeader}
@@ -598,7 +598,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
               字段 Schema
             </div>
             {Object.keys(fields).length ? (
-              <span className="text-xs text-slate-400">{Object.keys(fields).length} 个字段</span>
+              <span className="text-sm text-slate-400">{Object.keys(fields).length} 个字段</span>
             ) : null}
             <ConfigHint
               label="字段 Schema 说明"
@@ -649,7 +649,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
             </div>
           ))}
           {!Object.keys(fields).length ? (
-            <div className="py-2 text-xs text-slate-400">暂无字段</div>
+            <div className="py-2 text-sm text-slate-400">暂无字段</div>
           ) : null}
         </div>
       </section>
@@ -676,7 +676,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
             scroll={{ y: 360 }}
           />
         ) : (
-          <pre className="max-h-[480px] overflow-auto rounded-xl bg-slate-950 p-4 text-xs leading-5 text-emerald-200">
+          <pre className="max-h-[480px] overflow-auto rounded-xl bg-slate-950 p-4 text-sm leading-5 text-emerald-200">
             {typeof previewContent === 'string'
               ? previewContent
               : JSON.stringify(previewContent, null, 2)}

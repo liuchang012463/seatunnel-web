@@ -64,7 +64,7 @@ const Header: React.FC<HeaderProps> = ({
       >
         {/* Job Mode */}
         <div style={{ margin: '6px 0' }}>
-          <span style={{ fontWeight: 400, fontSize: 12 }}>
+          <span style={{ fontWeight: 400, fontSize: 14 }}>
             ✨{' '}
             {intl.formatMessage({
               id: 'pages.job.overview.mode',

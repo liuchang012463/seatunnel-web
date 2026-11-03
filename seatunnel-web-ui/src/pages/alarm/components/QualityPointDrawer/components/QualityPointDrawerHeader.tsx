@@ -39,7 +39,7 @@ const QualityPointDrawerHeader = ({
     <header className="border-b border-slate-100 px-6 pb-5 pt-6">
       <div className="flex items-start justify-between gap-5">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium tracking-wide text-slate-400">
+          <p className="text-sm font-medium tracking-wide text-slate-400">
             {editing ? "编辑质控点" : "质控点详情"}
           </p>
 
@@ -61,11 +61,11 @@ const QualityPointDrawerHeader = ({
 
           {!editing && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex h-7 items-center rounded-full bg-slate-950 px-3 text-xs font-medium text-white">
+              <span className="inline-flex h-7 items-center rounded-full bg-slate-950 px-3 text-sm font-medium text-white">
                 {typeLabelMap[point.type]}
               </span>
 
-              <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-slate-100 px-3 text-xs font-medium text-slate-600">
+              <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-slate-100 px-3 text-sm font-medium text-slate-600">
                 <FileText className="h-3.5 w-3.5" />
                 {point.documentType}
               </span>

@@ -52,7 +52,7 @@ const FileDetailPage = () => {
         <strong style={{ fontSize: 16, color: "var(--st-color-text-primary)" }}>
           未找到任务数据
         </strong>
-        <span style={{ fontSize: 13, color: "var(--st-color-text-muted)" }}>
+        <span style={{ fontSize: 14, color: "var(--st-color-text-muted)" }}>
           任务数据在从列表进入时缓存；请回到文件引接任务列表，从任务行「更多 → 查看详情」重新进入。
         </span>
         <Button type="primary" onClick={goBack}>
@@ -133,23 +133,23 @@ const FileDetailPage = () => {
   const stepProgress = activeStep === 'client' ? '100%' : '0%';
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[color:var(--st-color-bg-page)]">
       <PageHeader onBack={goBack} />
 
       <div className="mx-auto max-w-[1540px] px-6 pb-28 pt-6">
-        <div className="sticky top-0 z-20 mb-6 bg-white/95 pt-1 backdrop-blur">
+        <div className="sticky top-0 z-20 mb-6 bg-[color:var(--st-color-bg-page)]/95 pt-1 backdrop-blur">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => goStep('base')}
               className={[
-                'flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200',
+                'flex items-center gap-2 rounded-[4px] px-3 py-1.5 text-sm transition-all duration-200',
                 basePillClass,
               ].join(' ')}
             >
               <span
                 className={[
-                  'flex h-5 w-5 items-center justify-center rounded-full text-[12px] font-semibold transition-all duration-200',
+                  'flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200',
                   baseDotClass,
                 ].join(' ')}
               >
@@ -158,7 +158,7 @@ const FileDetailPage = () => {
               基础配置
             </button>
 
-            <div className="relative h-[2px] flex-1 overflow-hidden rounded-full bg-[#EAECF0]">
+            <div className="relative h-[2px] flex-1 overflow-hidden rounded-full bg-[color:var(--st-color-divider)]">
               <div
                 className="absolute left-0 top-0 h-full rounded-full transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 style={{
@@ -178,7 +178,7 @@ const FileDetailPage = () => {
             >
               <span
                 className={[
-                  'flex h-5 w-5 items-center justify-center rounded-full text-[12px] font-semibold transition-all duration-200',
+                  'flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200',
                   clientDotClass,
                 ].join(' ')}
               >
@@ -194,7 +194,7 @@ const FileDetailPage = () => {
           style={{ height: 'calc(100vh - 260px)', overflow: 'auto' }}
         >
           <Form form={form} layout="vertical">
-            <div className="overflow-hidden rounded-[24px] border border-[#EAECF0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <div className="overflow-hidden rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-panel)] shadow-none">
               {isBaseStep && (
                 <FileTypeBaseInfoSection
                   sourceType={sourceType}

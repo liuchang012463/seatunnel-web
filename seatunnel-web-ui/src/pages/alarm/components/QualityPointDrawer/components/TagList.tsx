@@ -20,7 +20,7 @@ const TagList = ({
       {values.map((value) => (
         <span
           key={value}
-          className="inline-flex min-h-7 items-center rounded-full bg-slate-100 px-2.5 text-xs font-medium text-slate-600"
+          className="inline-flex min-h-7 items-center rounded-full bg-slate-100 px-2.5 text-sm font-medium text-slate-600"
         >
           {value}
         </span>

@@ -49,7 +49,7 @@ const BarChart: React.FC<BChartProps> = ({ data, xAxisData, title, unit, loading
         padding: [8, 10],
         textStyle: {
           color: '#d5d5d5',
-          fontSize: 12,
+          fontSize: 14,
         },
         axisPointer: {
           type: 'line',

@@ -34,7 +34,7 @@ export default function SinkSqlEditorSection(props: Props) {
   const sqlPopoverContent = (
     <div style={{ width: 320 }}>
       <Space direction="vertical" style={{ width: '100%' }} size={12}>
-        <div style={{ fontSize: 13, color: 'var(--st-color-text-secondary)' }}>选择一张目标表，自动生成写入 SQL 模板</div>
+        <div style={{ fontSize: 14, color: 'var(--st-color-text-secondary)' }}>选择一张目标表，自动生成写入 SQL 模板</div>
 
         <Select
           size="small"
@@ -80,7 +80,7 @@ export default function SinkSqlEditorSection(props: Props) {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            fontSize: 13,
+            fontSize: 14,
             color: 'var(--st-color-text-secondary)',
           }}
         >

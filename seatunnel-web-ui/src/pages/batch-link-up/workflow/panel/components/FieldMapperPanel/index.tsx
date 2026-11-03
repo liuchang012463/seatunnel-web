@@ -547,12 +547,12 @@ function FieldMapperPanel({
         ellipsis: true,
         render: (_, record) => (
           <div className="flex min-w-0 flex-col">
-            <span className="truncate text-[13px] font-medium text-slate-800">
+            <span className="truncate text-[14px] font-medium text-slate-800">
               {record.sourceFieldName || "-"}
             </span>
 
             {/* {record.sourceFieldType && (
-              <span className="truncate text-[11px] text-slate-400">
+              <span className="truncate text-[14px] text-slate-400">
                 {record.sourceFieldType}
               </span>
             )} */}
@@ -622,7 +622,7 @@ function FieldMapperPanel({
                 </Space>
               </div>
 
-              <div className="mt-2 text-xs leading-5 text-slate-400">
+              <div className="mt-2 text-sm leading-5 text-slate-400">
                 修改目标字段后会自动应用，右键某一行可快速删除该映射。
               </div>
             </div>

@@ -312,15 +312,9 @@ const App: React.FC = () => {
   const bytesSpeedTitle = isStreaming ? "数据写入速率" : isFileTransfer ? "文件传输速率" : "数据处理速率";
 
   return (
-    <div
-      style={{
-        height: "calc(100vh - 56px)",
-        backgroundColor: "var(--st-color-bg-page)",
-        overflow: "hidden",
-      }}
-    >
-      <main className="h-full overflow-auto px-4 py-4 md:px-6 md:py-5">
-        <div className="min-h-full bg-transparent p-0">
+    <div className="task-list-page-shell metrics-page">
+      <main className="metrics-page__main">
+        <div className="metrics-page__inner">
           <div className="mx-auto max-w-[1600px]">
             {errorMessage ? (
               <Alert
@@ -404,10 +398,10 @@ const App: React.FC = () => {
                           <p className="metrics-stat-card__value text-2xl font-bold">
                             {item.value}
                           </p>
-                          <p className="metrics-stat-card__title mt-1 text-xs">
+                          <p className="metrics-stat-card__title mt-1 text-sm">
                             {item.title}
                           </p>
-                          <p className="metrics-stat-card__title mt-1 text-xs">
+                          <p className="metrics-stat-card__title mt-1 text-sm">
                             {item.subText}
                           </p>
                         </div>

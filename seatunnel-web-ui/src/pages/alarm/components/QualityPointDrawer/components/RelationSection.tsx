@@ -26,7 +26,7 @@ const RelationSection = ({
         <h3 className="text-sm font-semibold text-slate-950">
           关联范围
         </h3>
-        <p className="mt-1 text-xs leading-5 text-slate-400">
+        <p className="mt-1 text-sm leading-5 text-slate-400">
           模型判断该质控点时需要读取的病历位置。
         </p>
       </div>
@@ -88,7 +88,7 @@ const RelationTagInput = ({
   onChange,
 }: RelationTagInputProps) => (
   <div>
-    <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+    <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-slate-500">
       {icon}
       {label}
     </div>

@@ -117,7 +117,7 @@ const HourScheduleFields: React.FC<Props> = ({
                 }
                 options={intervalOptions}
               />
-              <span className="text-[13px] text-[color:var(--st-color-text-secondary)]">小时</span>
+              <span className="text-[14px] text-[color:var(--st-color-text-secondary)]">小时</span>
             </Space>
           </Form.Item>
 

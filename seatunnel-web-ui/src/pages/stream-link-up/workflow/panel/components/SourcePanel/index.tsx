@@ -236,7 +236,7 @@ function SourcePanel({
         >
           {/* ================= 数据源 ================= */}
           <div className="space-y-3">
-            <div className="text-[13px] font-semibold text-slate-400 tracking-wide">
+            <div className="text-[14px] font-semibold text-slate-400 tracking-wide">
               数据源
             </div>
 
@@ -264,7 +264,7 @@ function SourcePanel({
           {/* ================= 读取方式 ================= */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-[13px] font-semibold text-slate-400 tracking-wide">
+              <div className="text-[14px] font-semibold text-slate-400 tracking-wide">
                 读取方式
               </div>
 
@@ -275,7 +275,7 @@ function SourcePanel({
                     type="text"
                     icon={<Eye size={14} />}
                     style={{
-                      fontSize: 13,
+                      fontSize: 14,
                     }}
                     onClick={handlePreview}
                     loading={viewLoading}
@@ -293,7 +293,7 @@ function SourcePanel({
                   <Button
                     size="small"
                     style={{
-                      fontSize: 13,
+                      fontSize: 14,
                     }}
                     type="text"
                     icon={<BarChart3 size={14} />}
@@ -327,7 +327,7 @@ function SourcePanel({
           <div className="space-y-3">
             <div>
               <div className="flex items-center gap-1.5">
-                <div className="text-[13px] font-semibold text-slate-400 tracking-wide">
+                <div className="text-[14px] font-semibold text-slate-400 tracking-wide">
                   启动模式
                 </div>
 
@@ -349,10 +349,10 @@ function SourcePanel({
                   value: item.value,
                   label: (
                     <div className="flex h-[54px] flex-col items-center justify-center">
-                      <div className="text-[13px] font-semibold">
+                      <div className="text-[14px] font-semibold">
                         {item.label}
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[14px] text-slate-400">
                         {item.shortDesc}
                       </div>
                     </div>
@@ -395,7 +395,7 @@ function SourcePanel({
           {isPostgresCdc ? (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <div className="text-[13px] font-semibold text-slate-400 tracking-wide">Replication slot</div>
+                <div className="text-[14px] font-semibold text-slate-400 tracking-wide">Replication slot</div>
                 <Input
                   value={slotName}
                   placeholder="aircas_orders"
@@ -403,7 +403,7 @@ function SourcePanel({
                 />
               </div>
               <div className="space-y-1.5">
-                <div className="text-[13px] font-semibold text-slate-400 tracking-wide">
+                <div className="text-[14px] font-semibold text-slate-400 tracking-wide">
                   <span className="mr-1 text-rose-500">*</span>Publication
                 </div>
                 <Input
@@ -413,17 +413,17 @@ function SourcePanel({
                   onChange={(e) => updateNode({ publicationName: e.target.value })}
                 />
                 {publicationMissing && (
-                  <div className="text-xs text-rose-500">请填写 Publication</div>
+                  <div className="text-sm text-rose-500">请填写 Publication</div>
                 )}
               </div>
-              <div className="col-span-2 text-xs text-slate-400">
+              <div className="col-span-2 text-sm text-slate-400">
                 使用预先创建的 pgoutput slot 与 publication；任务不会自动创建或删除它们。
               </div>
             </div>
           ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-1.5">
-              <div className="text-[13px] font-semibold text-slate-400 tracking-wide">
+              <div className="text-[14px] font-semibold text-slate-400 tracking-wide">
                 ServerId
               </div>
 
@@ -464,7 +464,7 @@ function SourcePanel({
           )}
 
           <div className="space-y-1.5">
-            <div className="text-[13px] font-semibold text-slate-400 tracking-wide">
+            <div className="text-[14px] font-semibold text-slate-400 tracking-wide">
               Server 时区
             </div>
             <Tooltip title="数据库服务器时区（server-time-zone），引擎默认 UTC；跨时区部署时建议显式指定">

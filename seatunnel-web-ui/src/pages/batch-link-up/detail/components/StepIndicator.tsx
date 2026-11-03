@@ -19,7 +19,7 @@ const StepIndicator: React.FC<Props> = ({ activeStep }) => {
         >
           <span
             className={[
-              "flex h-5 w-5 items-center justify-center rounded-full text-[12px] font-semibold transition-all duration-200",
+              "flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200",
               activeStep === "base"
                 ? STEP_THEME.base.dot
                 : STEP_THEME.base.dotInactive,
@@ -42,7 +42,7 @@ const StepIndicator: React.FC<Props> = ({ activeStep }) => {
         >
           <span
             className={[
-              "flex h-5 w-5 items-center justify-center rounded-full text-[12px] font-semibold transition-all duration-200",
+              "flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200",
               activeStep === "client"
                 ? STEP_THEME.client.dot
                 : STEP_THEME.client.dotInactive,

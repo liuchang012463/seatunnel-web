@@ -92,7 +92,7 @@ const TaskHeader = () => {
                   style={{
                     lineHeight: "1.25rem",
                     fontWeight: 500,
-                    fontSize: "0.875rem",
+                    fontSize: "14px",
                     justifyContent: "space-between",
                     alignItems: "center",
                     display: "flex",
@@ -114,7 +114,7 @@ const TaskHeader = () => {
                   style={{
                     lineHeight: "18px",
                     fontWeight: 500,
-                    fontSize: "10px",
+                    fontSize: "14px",
                     display: "flex",
                     gap: "0.25rem",
                     color: "rgb(102 112 133)",

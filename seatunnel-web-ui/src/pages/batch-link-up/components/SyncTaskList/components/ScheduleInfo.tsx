@@ -106,7 +106,7 @@ const ScheduleInfo: React.FC<ExecutionStatusProps> = ({ record }) => {
                       display: "flex",
                       alignItems: "center",
                       gap: 4,
-                      fontSize: 12,
+                      fontSize: 14,
                     }}
                   >
                     <Badge status="success" text={item || "-"} />

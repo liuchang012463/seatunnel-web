@@ -20,6 +20,7 @@ import {
   offlineImportTaskApi,
   type OfflineImportTask,
 } from './import/api';
+import '@/pages/batch-link-up/components/SyncTaskList/index.less';
 import './index.less';
 
 const API_PAGE_SIZE = 100;
@@ -276,7 +277,7 @@ const ImportTaskList: React.FC<{
                 event.stopPropagation();
                 navigator.clipboard.writeText(String(record?.id ?? '')).then(() => message.success('任务定义 ID 已复制')).catch(() => message.error('复制失败，请手动复制'));
               }}>
-                <CopyOutlined style={{ fontSize: 12 }} />
+                <CopyOutlined style={{ fontSize: 14 }} />
               </button>
             </Tooltip>
           </div>
@@ -421,29 +422,29 @@ const ImportTaskList: React.FC<{
           />
         ) : null}
         <div className="task-table-shell">
-          <Table
-            rowKey={(record) => `${record.taskKind}-${record.id}`}
-            columns={columns as any}
-            dataSource={tasks}
-            loading={loading}
-            pagination={false}
-            tableLayout="fixed"
-            scroll={{ x: '100%' }}
-            className="task-table"
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadError ? '请重试加载任务列表' : taskKind === 'OFFLINE_IMPORT' ? '暂无 DMP/SQL 导入任务' : '暂无文件导入任务'} /> }}
-          />
-          {total > 0 ? (
-            <div className="task-list-footer">
-              <div className="task-pagination">
-                <CustomPagination
-                  total={total}
-                  current={pagination.current}
-                  pageSize={pagination.pageSize}
-                  onChange={(current, pageSize) => setPagination({ current, pageSize })}
-                />
-              </div>
+          <div className="task-table-shell__body">
+            <Table
+              rowKey={(record) => `${record.taskKind}-${record.id}`}
+              columns={columns as any}
+              dataSource={tasks}
+              loading={loading}
+              pagination={false}
+              tableLayout="fixed"
+              scroll={{ x: '100%' }}
+              className="task-table"
+              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadError ? '请重试加载任务列表' : taskKind === 'OFFLINE_IMPORT' ? '暂无 DMP/SQL 导入任务' : '暂无文件导入任务'} /> }}
+            />
+          </div>
+          <div className="task-list-footer">
+            <div className="task-pagination">
+              <CustomPagination
+                total={total}
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                onChange={(current, pageSize) => setPagination({ current, pageSize })}
+              />
             </div>
-          ) : null}
+          </div>
         </div>
       </div>
     </div>

@@ -90,7 +90,7 @@ const FileSyncSinkPanel: React.FC<FileSyncSinkPanelProps> = ({
             />
           </div>
           <div className="workflow-panel__field workflow-panel__field--full mt-3">
-            <div className="mb-1 text-xs text-slate-500">目标目录</div>
+            <div className="mb-1 text-sm text-slate-500">目标目录</div>
             <Space.Compact block>
               <Input
                 value={config.targetPath}
@@ -112,7 +112,7 @@ const FileSyncSinkPanel: React.FC<FileSyncSinkPanelProps> = ({
               </Button>
             </Space.Compact>
           </div>
-          <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-500">
+          <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm leading-5 text-slate-500">
             复制策略：仅复制新增或内容变化的文件，不删除目标端已有文件；数据格式固定为 binary。
           </div>
         </div>
