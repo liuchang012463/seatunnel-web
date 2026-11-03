@@ -91,11 +91,29 @@ const ImportTaskList: React.FC<{
   const [total, setTotal] = useState(0);
   const [loadError, setLoadError] = useState<string>();
   const [filters, setFilters] = useState<Record<string, any>>({});
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [pagination, setPagination] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const current = Number(params.get('current'));
+    const pageSize = Number(params.get('pageSize'));
+    return {
+      current: Number.isSafeInteger(current) && current > 0 ? current : 1,
+      pageSize: [10, 20, 50].includes(pageSize) ? pageSize : 10,
+    };
+  });
   const [executingId, setExecutingId] = useState<string>();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inFlightRef = useRef(false);
   const requestSeqRef = useRef(0);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('current', String(pagination.current));
+    params.set('pageSize', String(pagination.pageSize));
+    const search = `?${params.toString()}`;
+    if (window.location.search !== search) {
+      history.replace({ pathname: window.location.pathname, search });
+    }
+  }, [pagination.current, pagination.pageSize]);
 
   const load = useCallback(async (silent = false) => {
     if (silent && inFlightRef.current) return;
