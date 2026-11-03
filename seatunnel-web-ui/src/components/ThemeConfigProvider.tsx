@@ -14,6 +14,7 @@ import {
   type NavTheme,
 } from "@/theme";
 import { registerAntdFeedback } from "@/utils/antdFeedback";
+import { darkToken, lightToken } from "@/styles/theme-tokens";
 import { sharedComponentTheme } from "@/styles/antd-theme";
 
 /**
@@ -22,105 +23,6 @@ import { sharedComponentTheme } from "@/styles/antd-theme";
  * 主题状态挂在 rootContainer 顶部的 Context 上（getInitialState 只负责
  * 写入初始值，避免打包分包导致模块级 store 出现多份实例）。
  */
-
-const ST_FONT_FAMILY =
-  '"MiSans", "HarmonyOS Sans SC", "Source Han Sans SC", "Microsoft YaHei", "微软雅黑", Arial, sans-serif';
-
-const DARK_TOKEN = {
-  colorPrimary: "#1B87A8",
-  colorInfo: "#3FC6FF",
-  colorLink: "#3FC6FF",
-  colorSuccess: "#3DD68C",
-  colorWarning: "#F5B83D",
-  colorError: "#FF6B5E",
-  colorBgBase: "#01151D",
-  colorBgLayout: "#02222D",
-  colorBgContainer: "#052F3F",
-  colorBgElevated: "#0A3D52",
-  colorText: "#EDF4F7",
-  colorTextSecondary: "#AFC4CD",
-  colorTextTertiary: "#9BB5BD",
-  colorBorder: "rgba(126, 183, 208, 0.30)",
-  colorBorderSecondary: "rgba(126, 183, 208, 0.14)",
-  colorSplit: "rgba(126, 183, 208, 0.14)",
-  borderRadius: 3,
-  controlHeight: 32,
-  fontFamily: ST_FONT_FAMILY,
-  fontSize: 14,
-};
-
-const DARK_COMPONENTS = {
-  Layout: {
-    bodyBg: "#01151D",
-    headerBg: "#052F3F",
-    siderBg: "#01151D",
-  },
-  Table: {
-    colorBgContainer: "#002E41",
-    headerBg: "#2187A8",
-    headerColor: "#EDF4F7",
-    headerSplitColor: "transparent",
-    rowHoverBg: "rgba(63, 198, 255, 0.08)",
-    rowSelectedBg: "rgba(63, 198, 255, 0.14)",
-  },
-  Menu: {
-    darkItemBg: "#01151D",
-    darkSubMenuItemBg: "#01151D",
-    darkItemColor: "#AFC4CD",
-    darkItemHoverColor: "#EDF4F7",
-    darkItemHoverBg: "rgba(63, 198, 255, 0.08)",
-    darkItemSelectedColor: "#3FC6FF",
-    darkItemSelectedBg: "rgba(63, 198, 255, 0.14)",
-  },
-};
-
-const LIGHT_TOKEN = {
-  colorPrimary: "#1B87A8",
-  colorInfo: "#0E7FA6",
-  colorLink: "#0E7FA6",
-  colorSuccess: "#2F9E44",
-  colorWarning: "#B88700",
-  colorError: "#C23B3B",
-  colorBgBase: "#F7F9FC",
-  colorBgLayout: "#F7F9FC",
-  colorBgContainer: "#FFFFFF",
-  colorBgElevated: "#FFFFFF",
-  colorText: "#1F2329",
-  colorTextSecondary: "#5B6B82",
-  colorTextTertiary: "#8A94A6",
-  colorBorder: "rgba(31, 35, 41, 0.16)",
-  colorBorderSecondary: "rgba(31, 35, 41, 0.08)",
-  colorSplit: "rgba(31, 35, 41, 0.06)",
-  borderRadius: 3,
-  controlHeight: 32,
-  fontFamily: ST_FONT_FAMILY,
-  fontSize: 14,
-};
-
-const LIGHT_COMPONENTS = {
-  Layout: {
-    bodyBg: "#F7F9FC",
-    headerBg: "#FFFFFF",
-    siderBg: "#FFFFFF",
-  },
-  Table: {
-    colorBgContainer: "#FFFFFF",
-    headerBg: "#F8FAFC",
-    headerColor: "#344054",
-    headerSplitColor: "transparent",
-    rowHoverBg: "rgba(27, 135, 168, 0.06)",
-    rowSelectedBg: "rgba(27, 135, 168, 0.10)",
-  },
-  Menu: {
-    itemBg: "#FFFFFF",
-    subMenuItemBg: "#FFFFFF",
-    itemColor: "#5B6B82",
-    itemHoverColor: "#0E7FA6",
-    itemHoverBg: "rgba(27, 135, 168, 0.06)",
-    itemSelectedColor: "#0E7FA6",
-    itemSelectedBg: "rgba(27, 135, 168, 0.10)",
-  },
-};
 
 interface NavThemeContextValue {
   navTheme: NavTheme;
@@ -179,12 +81,11 @@ const ThemeConfigProvider: React.FC<ThemeConfigProviderProps> = ({
             ? antdTheme.darkAlgorithm
             : antdTheme.defaultAlgorithm,
           token: {
-            ...(isDark ? DARK_TOKEN : LIGHT_TOKEN),
+            ...(isDark ? darkToken : lightToken),
             fontSizeSM: 14,
             fontSizeHeading5: 14,
           },
           components: {
-            ...(isDark ? DARK_COMPONENTS : LIGHT_COMPONENTS),
             ...sharedComponentTheme,
           },
         }}

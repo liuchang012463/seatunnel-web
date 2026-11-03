@@ -5,11 +5,18 @@ import type { ThemeConfig } from "antd";
 const fieldTokens = {
   activeBorderColor: "var(--st-color-accent)",
   hoverBorderColor: "var(--st-color-accent)",
-  activeShadow: "0 0 0 2px var(--st-color-focus)",
+  activeShadow: "0 0 0 1px var(--st-color-focus) inset",
 };
 
 export const sharedComponentTheme: ThemeConfig["components"] = {
+  Layout: {
+    bodyBg: "var(--st-color-bg-page)",
+    headerBg: "var(--st-color-bg-panel)",
+    siderBg: "var(--st-color-bg-panel)",
+  },
   Button: {
+    controlHeight: 32,
+    defaultBg: "var(--st-color-bg-control)",
     defaultColor: "var(--st-color-text-primary)",
     defaultBorderColor: "var(--st-color-border)",
     defaultHoverColor: "var(--st-color-text-primary)",
@@ -22,8 +29,59 @@ export const sharedComponentTheme: ThemeConfig["components"] = {
     dangerShadow: "none",
   },
   Input: fieldTokens,
-  InputNumber: fieldTokens,
-  DatePicker: fieldTokens,
+  InputNumber: {
+    ...fieldTokens,
+    handleBg: "var(--st-color-bg-interactive)",
+    handleHoverColor: "var(--st-color-accent)",
+  },
+  DatePicker: {
+    ...fieldTokens,
+    cellHoverBg: "var(--st-color-hover)",
+    cellActiveWithRangeBg: "var(--st-color-hover)",
+  },
+  Menu: {
+    itemBg: "var(--st-color-bg-panel)",
+    itemColor: "var(--st-color-text-secondary)",
+    itemHoverColor: "var(--st-color-accent)",
+    itemHoverBg: "var(--st-color-hover)",
+    itemSelectedColor: "var(--st-color-text-primary)",
+    itemSelectedBg: "var(--st-color-selected)",
+    darkItemBg: "var(--st-color-bg-panel)",
+    darkSubMenuItemBg: "var(--st-color-bg-panel)",
+    darkItemColor: "var(--st-color-text-secondary)",
+    darkItemHoverColor: "var(--st-color-accent)",
+    darkItemHoverBg: "var(--st-color-hover)",
+    darkItemSelectedColor: "var(--st-color-text-primary)",
+    darkItemSelectedBg: "var(--st-color-selected)",
+    itemBorderRadius: 3,
+  },
+  Segmented: {
+    trackBg: "var(--st-color-bg-panel)",
+    itemSelectedBg: "var(--st-color-selected)",
+    itemSelectedColor: "var(--st-color-text-primary)",
+    itemHoverBg: "var(--st-color-hover)",
+  },
+  Pagination: {
+    itemBg: "var(--st-color-bg-panel)",
+    itemActiveBg: "var(--st-color-selected)",
+    itemSizeSM: 28,
+  },
+  Radio: {
+    buttonBg: "var(--st-color-bg-control)",
+    buttonCheckedBg: "var(--st-color-selected)",
+    buttonColor: "var(--st-color-text-secondary)",
+  },
+  Switch: {
+    colorTextQuaternary: "var(--st-color-bg-interactive)",
+  },
+  Progress: { defaultColor: "var(--st-color-accent)" },
+  Spin: { colorPrimary: "var(--st-color-accent)" },
+  Slider: {
+    trackBg: "var(--st-color-accent)",
+    trackHoverBg: "var(--st-color-accent)",
+    handleColor: "var(--st-color-accent)",
+    handleActiveColor: "var(--st-color-accent)",
+  },
   Select: {
     activeBorderColor: fieldTokens.activeBorderColor,
     hoverBorderColor: fieldTokens.hoverBorderColor,
@@ -34,7 +92,7 @@ export const sharedComponentTheme: ThemeConfig["components"] = {
     optionFontSize: 14,
   },
   Table: {
-    headerBg: "#2187A8",
+    headerBg: "var(--st-color-header)",
     headerColor: "var(--st-color-text-primary)",
     headerSplitColor: "transparent",
     borderColor: "var(--st-color-divider)",
@@ -47,7 +105,7 @@ export const sharedComponentTheme: ThemeConfig["components"] = {
   },
   Modal: {
     contentBg: "var(--st-color-bg-panel)",
-    headerBg: "var(--st-color-bg-panel)",
+    headerBg: "var(--st-color-header)",
     footerBg: "var(--st-color-bg-panel)",
     titleColor: "var(--st-color-text-primary)",
     titleFontSize: 16,
@@ -57,8 +115,8 @@ export const sharedComponentTheme: ThemeConfig["components"] = {
     itemColor: "var(--st-color-text-secondary)",
     itemHoverColor: "var(--st-color-accent)",
     itemActiveColor: "var(--st-color-accent)",
-    itemSelectedColor: "var(--st-color-text-primary)",
-    colorTextDisabled: "var(--st-color-text-muted)",
+    itemSelectedColor: "var(--st-color-accent)",
+    colorTextDisabled: "var(--st-color-disabled)",
     titleFontSize: 14,
     titleFontSizeSM: 14,
   },
@@ -69,12 +127,12 @@ export const sharedComponentTheme: ThemeConfig["components"] = {
     nodeSelectedColor: "var(--st-color-text-primary)",
     directoryNodeSelectedBg: "var(--st-color-selected)",
     directoryNodeSelectedColor: "var(--st-color-text-primary)",
-    colorTextDisabled: "var(--st-color-text-muted)",
+    colorTextDisabled: "var(--st-color-disabled)",
   },
   Dropdown: {
     controlItemBgHover: "var(--st-color-hover)",
     controlItemBgActive: "var(--st-color-selected)",
     controlItemBgActiveHover: "var(--st-color-selected)",
-    colorTextDisabled: "var(--st-color-text-muted)",
+    colorTextDisabled: "var(--st-color-disabled)",
   },
 };

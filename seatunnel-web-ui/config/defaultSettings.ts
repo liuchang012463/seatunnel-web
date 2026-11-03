@@ -8,8 +8,8 @@ const Settings: ProLayoutProps & {
   logo?: string;
 } = {
   navTheme: 'realDark',
-  // 拂晓蓝
-  colorPrimary: 'hsl(231 48% 48%)',
+  // 暗色主按钮填充色，交互强调使用独立青色 Token
+  colorPrimary: '#126681',
   layout: 'mix',
   contentWidth: 'Fluid',
   fixedHeader: false,

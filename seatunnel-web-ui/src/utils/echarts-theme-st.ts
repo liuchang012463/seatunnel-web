@@ -5,22 +5,23 @@ import * as echarts from 'echarts';
  * 杜绝 ECharts 默认紫蓝与跨色装饰，强调色收敛为青色一族。
  * 注册一次（import 即注册），init(dom, 'st') 生效。
  */
-export const ST_CHART_ACCENT = '#4dd2ff';
-export const ST_CHART_ACCENT_STRONG = '#7fd8ff';
+export const ST_CHART_ACCENT = '#00c4e5';
+export const ST_CHART_ACCENT_STRONG = '#41859a';
 
 const stTheme = {
-  color: [ST_CHART_ACCENT, ST_CHART_ACCENT_STRONG, '#2187a8', '#117da0', '#9aa5ab'],
+  color: [ST_CHART_ACCENT, ST_CHART_ACCENT_STRONG, '#2187a8', '#126681', '#9cacbf'],
   backgroundColor: 'transparent',
+  textStyle: { fontFamily: '"Microsoft YaHei", Helvetica, Arial, sans-serif', fontSize: 14 },
   categoryAxis: {
     axisLine: { lineStyle: { color: '#2187a8' } },
     axisTick: { lineStyle: { color: 'rgba(213, 213, 213, 0.45)' } },
-    axisLabel: { color: '#d5d5d5' },
+    axisLabel: { color: '#c4d1de', fontSize: 14 },
     splitLine: { show: false },
   },
   valueAxis: {
     axisLine: { lineStyle: { color: '#2187a8' } },
     axisTick: { lineStyle: { color: 'rgba(213, 213, 213, 0.45)' } },
-    axisLabel: { color: '#d5d5d5' },
+    axisLabel: { color: '#c4d1de', fontSize: 14 },
     splitLine: { lineStyle: { color: 'rgba(213, 213, 213, 0.24)' } },
   },
 };

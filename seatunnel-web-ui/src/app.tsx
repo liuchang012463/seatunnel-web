@@ -24,7 +24,7 @@ import {
 const getThemeSettings = (navTheme: 'light' | 'realDark') => ({
   ...defaultSettings,
   navTheme,
-  colorPrimary: navTheme === 'light' ? '#1B87A8' : '#1B87A8',
+  colorPrimary: navTheme === 'light' ? '#0758B8' : '#126681',
 });
 
 /**

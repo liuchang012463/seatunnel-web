@@ -18,7 +18,7 @@
         }
 
         body {
-          background: #001922;
+          background: #000e24;
         }
 
         .stw-initial-loading {
@@ -29,7 +29,7 @@
           align-items: center;
           justify-content: center;
           overflow: hidden;
-          background: #001922;
+          background: #000e24;
           font-family:
             "Microsoft YaHei",
             "微软雅黑",
