@@ -62,8 +62,11 @@ export const sharedComponentTheme: ThemeConfig["components"] = {
     itemHoverBg: "var(--st-color-hover)",
   },
   Pagination: {
-    itemBg: "var(--st-color-bg-panel)",
-    itemActiveBg: "var(--st-color-selected)",
+    itemBg: "transparent",
+    itemActiveBg: "var(--st-color-primary)",
+    itemLinkBg: "transparent",
+    itemInputBg: "var(--st-color-bg-control)",
+    itemSize: 32,
     itemSizeSM: 28,
   },
   Radio: {
