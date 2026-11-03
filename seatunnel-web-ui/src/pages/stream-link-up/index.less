@@ -52,7 +52,7 @@
 
 .stream-link-task-table .ant-table-thead > tr > th {
   color: var(--st-color-text-primary);
-  background: #032a37;
+  background: #2187a8;
   border-color: var(--st-color-border);
   font-weight: 500;
 }
@@ -71,18 +71,39 @@
   border-color: var(--st-color-divider);
 }
 
+.stream-link-task-table .ant-table-tbody > tr.ant-table-row:nth-child(odd of .ant-table-row) > td {
+  background: #002e41 !important;
+}
+
+.stream-link-task-table .ant-table-tbody > tr.ant-table-row:nth-child(even of .ant-table-row) > td {
+  background: #0f1518 !important;
+}
+
 .stream-link-task-table .ant-table-tbody > tr:hover > td,
 .stream-link-task-table .ant-table-tbody > tr.ant-table-row-selected > td { background: var(--st-color-hover); }
 
 /* 固定列必须不透明，否则下层列头文字透出（审计 audit-08「执: 操作」） */
 .stream-link-task-table .ant-table-cell-fix-right {
-  background: var(--st-color-bg-panel) !important;
   border-left: 1px solid var(--st-color-divider-subtle);
   box-shadow: none;
 }
 
+.stream-link-task-table
+  .ant-table-tbody
+  > tr.ant-table-row:nth-child(odd of .ant-table-row)
+  > td.ant-table-cell-fix-right {
+  background: #002e41 !important;
+}
+
+.stream-link-task-table
+  .ant-table-tbody
+  > tr.ant-table-row:nth-child(even of .ant-table-row)
+  > td.ant-table-cell-fix-right {
+  background: #0f1518 !important;
+}
+
 .stream-link-task-table th.ant-table-cell-fix-right {
-  background: #032a37 !important;
+  background: #2187a8 !important;
 }
 
 .stream-link-task-table .ant-table-cell-fix-right-first::after {

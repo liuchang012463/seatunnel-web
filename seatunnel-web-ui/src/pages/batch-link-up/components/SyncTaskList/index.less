@@ -153,10 +153,10 @@
 
     .ant-table-thead > tr > th {
       padding: 9px 12px;
-      color: var(--st-color-text-secondary);
+      color: var(--st-color-text-primary);
       font-size: 13px;
       font-weight: 500;
-      background: #032a37;
+      background: #2187a8;
       border-bottom: 1px solid var(--st-color-divider);
       border-inline-end: 1px solid var(--st-color-divider-subtle);
     }
@@ -168,9 +168,16 @@
     .ant-table-tbody > tr > td {
       padding: 10px 12px;
       color: var(--st-color-text-primary);
-      background: var(--st-color-bg-panel) !important;
       border-bottom: 1px solid var(--st-color-divider-subtle);
       vertical-align: middle;
+    }
+
+    .ant-table-tbody > tr.ant-table-row:nth-child(odd of .ant-table-row) > td {
+      background: #002e41 !important;
+    }
+
+    .ant-table-tbody > tr.ant-table-row:nth-child(even of .ant-table-row) > td {
+      background: #0f1518 !important;
     }
 
     .ant-table-tbody > tr:hover > td {
@@ -187,7 +194,7 @@
     }
 
     .ant-table-placeholder .ant-table-cell {
-      background: var(--st-color-bg-elevated) !important;
+      background: #002e41 !important;
     }
 
     /* 固定列必须不透明，否则下层列头文字透出（审计 audit-08「执: 操作」） */
@@ -196,9 +203,18 @@
     .ant-table-cell-fix-left,
     .ant-table-cell-fix-left-first,
     .ant-table-cell-fix-left-last {
-      background: var(--st-color-bg-panel) !important;
       border-left: 0;
       box-shadow: none;
+    }
+
+    .ant-table-tbody > tr.ant-table-row:nth-child(odd of .ant-table-row) > td.ant-table-cell-fix-right,
+    .ant-table-tbody > tr.ant-table-row:nth-child(odd of .ant-table-row) > td.ant-table-cell-fix-left {
+      background: #002e41 !important;
+    }
+
+    .ant-table-tbody > tr.ant-table-row:nth-child(even of .ant-table-row) > td.ant-table-cell-fix-right,
+    .ant-table-tbody > tr.ant-table-row:nth-child(even of .ant-table-row) > td.ant-table-cell-fix-left {
+      background: #0f1518 !important;
     }
 
     .ant-table-cell-fix-right-first::after {
@@ -207,7 +223,7 @@
 
     th.ant-table-cell-fix-right,
     th.ant-table-cell-fix-left {
-      background: #032a37 !important;
+      background: #2187a8 !important;
       border-left: 1px solid var(--st-color-divider-subtle);
     }
 

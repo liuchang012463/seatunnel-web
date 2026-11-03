@@ -423,8 +423,7 @@ html[data-st-theme="dark"] .ant-menu-dark .ant-menu-submenu-selected > .ant-menu
 /* Tables */
 .ant-table-wrapper .ant-table,
 .ant-table-wrapper .ant-table-container,
-.ant-table-wrapper .ant-table-content,
-.ant-table-wrapper .ant-table-tbody > tr > td {
+.ant-table-wrapper .ant-table-content {
   color: var(--st-color-text-primary);
   background: var(--st-color-bg-secondary);
   border-color: var(--st-color-divider-subtle) !important;
@@ -446,6 +445,17 @@ html[data-st-theme="dark"] .ant-menu-dark .ant-menu-submenu-selected > .ant-menu
   padding: 8px 12px;
   font-size: var(--st-type-content-sm-size);
   line-height: var(--st-type-content-sm-line);
+  color: var(--st-color-text-primary);
+  border-color: var(--st-color-divider-subtle) !important;
+}
+
+/* 斑马纹：按可见数据行计奇偶，避开 measure-row */
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row:nth-child(odd of .ant-table-row) > td {
+  background: #002e41 !important;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row:nth-child(even of .ant-table-row) > td {
+  background: #0f1518 !important;
 }
 
 .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td {
@@ -457,7 +467,7 @@ html[data-st-theme="dark"] .ant-menu-dark .ant-menu-submenu-selected > .ant-menu
 }
 
 .ant-table-wrapper .ant-table-placeholder > td {
-  background: var(--st-color-bg-secondary) !important;
+  background: #002e41 !important;
 }
 
 /* rc-table keeps a hidden measurement row in the DOM. Preserve its layout
@@ -1125,24 +1135,45 @@ html[data-st-theme="dark"] [style*="color:#182230"] {
 }
 
 /* Tailwind utility variants on the workflow tables can otherwise outrank the
- * shared Ant table theme. Keep dark headers readable without a saturated band. */
+ * shared Ant table theme. Dark headers use the saturated brand band. */
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th,
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > td {
-  color: var(--st-color-text-secondary) !important;
-  background: var(--st-color-bg-elevated) !important;
+  color: var(--st-color-text-primary) !important;
+  background: #2187a8 !important;
   border-color: var(--st-color-divider) !important;
 }
 
 /* 固定列背景必须不透明：sticky 单元格若用半透明底，下层列头/单元格文字会透出
- * （审计 audit-08「执: 操作」渲染异常）。表头固定列沿用低饱和表头底色。 */
+ * （审计 audit-08「执: 操作」渲染异常）。表头/斑马纹与主体列保持一致。 */
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-right,
 html[data-st-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-left {
-  background: var(--st-color-bg-elevated) !important;
+  background: #2187a8 !important;
 }
 
-html[data-st-theme="dark"] .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-right,
-html[data-st-theme="dark"] .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-left {
-  background: var(--st-color-bg-panel) !important;
+html[data-st-theme="dark"]
+  .ant-table-wrapper
+  .ant-table-tbody
+  > tr.ant-table-row:nth-child(odd of .ant-table-row)
+  > td.ant-table-cell-fix-right,
+html[data-st-theme="dark"]
+  .ant-table-wrapper
+  .ant-table-tbody
+  > tr.ant-table-row:nth-child(odd of .ant-table-row)
+  > td.ant-table-cell-fix-left {
+  background: #002e41 !important;
+}
+
+html[data-st-theme="dark"]
+  .ant-table-wrapper
+  .ant-table-tbody
+  > tr.ant-table-row:nth-child(even of .ant-table-row)
+  > td.ant-table-cell-fix-right,
+html[data-st-theme="dark"]
+  .ant-table-wrapper
+  .ant-table-tbody
+  > tr.ant-table-row:nth-child(even of .ant-table-row)
+  > td.ant-table-cell-fix-left {
+  background: #0f1518 !important;
 }
 
 html[data-st-theme="dark"] .react-flow__minimap {

@@ -34,7 +34,7 @@ export const sharedComponentTheme: ThemeConfig["components"] = {
     optionFontSize: 14,
   },
   Table: {
-    headerBg: "var(--st-color-bg-elevated)",
+    headerBg: "#2187A8",
     headerColor: "var(--st-color-text-primary)",
     headerSplitColor: "transparent",
     borderColor: "var(--st-color-divider)",

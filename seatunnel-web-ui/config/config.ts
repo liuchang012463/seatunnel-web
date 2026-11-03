@@ -213,7 +213,7 @@ export default defineConfig({
             headerFontSize: 16,
           },
           Table: {
-            colorBgContainer: "#052F3F",
+            colorBgContainer: "#002E41",
             headerBg: "#2187A8",
             headerColor: "#FFFFFF",
             headerSplitColor: "transparent",

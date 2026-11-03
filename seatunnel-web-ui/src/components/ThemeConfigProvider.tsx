@@ -56,8 +56,8 @@ const DARK_COMPONENTS = {
     siderBg: "#01151D",
   },
   Table: {
-    colorBgContainer: "#052F3F",
-    headerBg: "#0A3D52",
+    colorBgContainer: "#002E41",
+    headerBg: "#2187A8",
     headerColor: "#EDF4F7",
     headerSplitColor: "transparent",
     rowHoverBg: "rgba(63, 198, 255, 0.08)",
