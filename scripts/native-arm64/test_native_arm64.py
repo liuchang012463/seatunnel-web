@@ -17,10 +17,12 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 
 def _write_elf(path: Path, machine: int) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    header = bytearray(20)
+    header = bytearray(64)
     header[:4] = b"\x7fELF"
     header[4:7] = bytes((2, 1, 1))
     struct.pack_into("<H", header, 18, machine)
+    struct.pack_into("<I", header, 20, 1)
+    struct.pack_into("<H", header, 52, 64)
     path.write_bytes(header)
     path.chmod(0o755)
 
@@ -28,7 +30,7 @@ def _write_elf(path: Path, machine: int) -> None:
 def _write_checksums(root: Path) -> None:
     paths = sorted(
         path for path in root.rglob("*")
-        if path.is_file() and path.name != "SHA256SUMS"
+        if path.is_file() and path != root / "SHA256SUMS"
     )
     lines = []
     for path in paths:
@@ -87,6 +89,23 @@ class BundleValidationTest(unittest.TestCase):
             with self.assertRaisesRegex(BundleError, "does not exactly cover"):
                 validate_bundle(root)
 
+    def test_requires_checksum_for_nested_sha256sums_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "bundle"
+            root.mkdir()
+            _make_bundle(root)
+            nested_sums = root / "dm/bin/SHA256SUMS"
+            nested_sums.write_text("nested checksum metadata\n", encoding="utf-8")
+            _write_checksums(root)
+            sums = root / "SHA256SUMS"
+            lines = [
+                line for line in sums.read_text().splitlines()
+                if not line.endswith("  dm/bin/SHA256SUMS")
+            ]
+            sums.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(BundleError, "does not exactly cover"):
+                validate_bundle(root)
+
     def test_rejects_tampered_file(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "bundle"
@@ -123,6 +142,54 @@ class BundleValidationTest(unittest.TestCase):
             _write_elf(root / "dm/bin/dimp", 62)
             _write_checksums(root)
             with self.assertRaisesRegex(BundleError, "not 64-bit AArch64"):
+                validate_bundle(root)
+
+    def test_rejects_truncated_elf_header(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "bundle"
+            root.mkdir()
+            _make_bundle(root)
+            (root / "dm/bin/dimp").write_bytes(b"\x7fELF" + bytes(16))
+            _write_checksums(root)
+            with self.assertRaisesRegex(BundleError, "truncated ELF64 header"):
+                validate_bundle(root)
+
+    def test_rejects_invalid_elf_identification_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "bundle"
+            root.mkdir()
+            _make_bundle(root)
+            tool = root / "dm/bin/dimp"
+            header = bytearray(tool.read_bytes())
+            header[6] = 0
+            tool.write_bytes(header)
+            _write_checksums(root)
+            with self.assertRaisesRegex(BundleError, "invalid ELF identification"):
+                validate_bundle(root)
+
+    def test_rejects_invalid_elf_encoding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "bundle"
+            root.mkdir()
+            _make_bundle(root)
+            tool = root / "dm/bin/dimp"
+            header = bytearray(tool.read_bytes())
+            header[5] = 0
+            tool.write_bytes(header)
+            _write_checksums(root)
+            with self.assertRaisesRegex(BundleError, "invalid ELF identification"):
+                validate_bundle(root)
+
+    def test_rejects_non_elf_required_tool(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "bundle"
+            root.mkdir()
+            _make_bundle(root)
+            tool = root / "dm/bin/dimp"
+            tool.write_text("#!/bin/sh\necho not a native client\n", encoding="utf-8")
+            tool.chmod(0o755)
+            _write_checksums(root)
+            with self.assertRaisesRegex(BundleError, "required tool is not 64-bit AArch64 ELF"):
                 validate_bundle(root)
 
     def test_rejects_incomplete_client_version(self):

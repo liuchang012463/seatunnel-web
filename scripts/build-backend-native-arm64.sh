@@ -68,17 +68,25 @@ fi
 BASE_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$BACKEND_BASE_IMAGE")"
 
 BUILD_CONTEXT="$(mktemp -d)"
+TEMP_BASE_TAG="seatunnel-web-api:native-arm64-runtime-${BASHPID}-${RANDOM}"
+TEMP_BASE_CREATED=false
 cleanup() {
     rm -rf -- "$BUILD_CONTEXT"
+    if [[ "$TEMP_BASE_CREATED" == true ]]; then
+        docker image rm "$TEMP_BASE_TAG" >/dev/null 2>&1 || true
+    fi
 }
 trap cleanup EXIT
 
+if docker image inspect "$TEMP_BASE_TAG" >/dev/null 2>&1; then
+    printf 'Temporary build tag already exists: %s\n' "$TEMP_BASE_TAG" >&2
+    exit 1
+fi
+
 mkdir -p \
-    "$BUILD_CONTEXT/seatunnel-web-dist/target" \
     "$BUILD_CONTEXT/native-client-bundle" \
     "$BUILD_CONTEXT/native-arm64"
-cp "$SCRIPT_DIR/Dockerfile" "$BUILD_CONTEXT/Dockerfile"
-cp "${DIST_FILES[0]}" "$BUILD_CONTEXT/seatunnel-web-dist/target/"
+cp "$SCRIPT_DIR/Dockerfile.native-arm64" "$BUILD_CONTEXT/Dockerfile"
 cp -a "$BUNDLE_INPUT/." "$BUILD_CONTEXT/native-client-bundle/"
 cp "$SCRIPT_DIR/scripts/native-arm64/dimp" "$BUILD_CONTEXT/native-arm64/dimp"
 cp "$SCRIPT_DIR/scripts/native-arm64/sys_restore" "$BUILD_CONTEXT/native-arm64/sys_restore"
@@ -92,6 +100,18 @@ if [[ -n "$(git -C "$SCRIPT_DIR" status --porcelain 2>/dev/null || true)" ]]; th
 fi
 BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
+DOCKER_BUILDKIT=0 docker build \
+    --platform linux/arm64 \
+    --pull=false \
+    --target backend-runtime \
+    --build-arg "VERSION=1.0.0" \
+    --build-arg "VCS_REF=$VCS_REF" \
+    --build-arg "BUILD_DATE=$BUILD_DATE" \
+    --tag "$TEMP_BASE_TAG" \
+    "$SCRIPT_DIR"
+TEMP_BASE_CREATED=true
+BACKEND_RUNTIME_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$TEMP_BASE_TAG")"
+
 cat <<INFO
 
 Native ARM64 backend build
@@ -100,20 +120,21 @@ Platform           : linux/arm64
 Target             : backend-native-arm64
 Image tag          : $IMAGE_TAG
 Backend base image : $BACKEND_BASE_IMAGE ($BASE_IMAGE_ID)
+Runtime image ID   : $BACKEND_RUNTIME_IMAGE_ID
 Bundle checksums   : $BUNDLE_SHA256
 Source revision    : $VCS_REF
 Distribution       : ${DIST_FILES[0]}
 INFO
 
 DOCKER_BUILDKIT=0 docker build \
+    --file "$BUILD_CONTEXT/Dockerfile" \
     --platform linux/arm64 \
     --pull=false \
     --target backend-native-arm64 \
-    --build-arg "VERSION=1.0.0" \
-    --build-arg "VCS_REF=$VCS_REF" \
-    --build-arg "BUILD_DATE=$BUILD_DATE" \
-    --build-arg "NATIVE_BUNDLE_SHA256=$BUNDLE_SHA256" \
+    --build-arg "BASE_BACKEND_IMAGE=$TEMP_BASE_TAG" \
     --build-arg "BASE_IMAGE_ID=$BASE_IMAGE_ID" \
+    --build-arg "BACKEND_RUNTIME_IMAGE_ID=$BACKEND_RUNTIME_IMAGE_ID" \
+    --build-arg "NATIVE_BUNDLE_SHA256=$BUNDLE_SHA256" \
     --tag "$IMAGE_TAG" \
     "$BUILD_CONTEXT"
 

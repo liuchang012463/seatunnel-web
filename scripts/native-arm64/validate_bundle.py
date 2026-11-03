@@ -146,7 +146,7 @@ def _validate_checksums(root: Path, regular_files: list[Path], symlinks: list[Pa
     expected_files = {
         path.relative_to(root).as_posix()
         for path in regular_files + symlinks
-        if path.name != "SHA256SUMS"
+        if path != root / "SHA256SUMS"
     }
     try:
         lines = (root / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
@@ -189,17 +189,21 @@ def _validate_checksums(root: Path, regular_files: list[Path], symlinks: list[Pa
 
 def _is_aarch64_elf(path: Path) -> bool | None:
     with path.open("rb") as stream:
-        header = stream.read(20)
+        header = stream.read(64)
     if not header.startswith(b"\x7fELF"):
         return None
-    if len(header) < 20:
-        fail(f"truncated ELF file: {path}")
+    if len(header) < 64:
+        fail(f"truncated ELF64 header: {path}")
     elf_class = header[4]
     encoding = header[5]
-    if elf_class != 2 or encoding not in (1, 2):
-        return False
+    if elf_class != 2 or encoding not in (1, 2) or header[6] != 1:
+        fail(f"invalid ELF identification: {path}")
     endian = "<" if encoding == 1 else ">"
     machine = struct.unpack(endian + "H", header[18:20])[0]
+    version = struct.unpack(endian + "I", header[20:24])[0]
+    header_size = struct.unpack(endian + "H", header[52:54])[0]
+    if version != 1 or header_size != 64:
+        fail(f"invalid ELF64 header: {path}")
     return machine == EM_AARCH64
 
 
@@ -209,9 +213,11 @@ def _validate_tools_and_architecture(root: Path, regular_files: list[Path]) -> N
             fail(f"required tool is missing: {tool.relative_to(root)}")
         if (tool.stat().st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)) == 0:
             fail(f"required tool is not executable: {tool.relative_to(root)}")
+        if _is_aarch64_elf(tool) is not True:
+            fail(f"required tool is not 64-bit AArch64 ELF: {tool.relative_to(root)}")
 
     for path in regular_files:
-        if path.name == "SHA256SUMS":
+        if path == root / "SHA256SUMS":
             continue
         is_aarch64 = _is_aarch64_elf(path)
         if is_aarch64 is False:

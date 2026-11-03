@@ -62,51 +62,6 @@ ENTRYPOINT ["/opt/seatunnel-web/bin/run-seatunnel-web.sh"]
 
 
 # =========================
-# Native client backend (ARM64 only)
-# =========================
-FROM backend-runtime AS backend-native-arm64
-
-ARG NATIVE_BUNDLE_SHA256=unknown
-ARG BASE_IMAGE_ID=unknown
-
-LABEL org.opencontainers.image.base.name="eclipse-temurin:21-jre-jammy" \
-      org.seatunnel-web.native-client.bundle-checksums-sha256="${NATIVE_BUNDLE_SHA256}" \
-      org.seatunnel-web.native-client.base-image-id="${BASE_IMAGE_ID}"
-
-ENV SEATUNNEL_WEB_OFFLINE_IMPORT_DIMP_PATH=/opt/native-clients/bin/dimp \
-    SEATUNNEL_WEB_OFFLINE_IMPORT_SYS_RESTORE_PATH=/opt/native-clients/bin/sys_restore \
-    SEATUNNEL_WEB_OFFLINE_IMPORT_WORK_DIR=/opt/seatunnel-web/tmp/offline-import \
-    SEATUNNEL_WEB_OFFLINE_IMPORT_PROCESS_TIMEOUT_MINUTES=240 \
-    SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_STATEMENT_TIMEOUT_SECONDS=300
-
-COPY native-client-bundle/dm/ /opt/native-clients/dm/
-COPY native-client-bundle/kingbase/ /opt/native-clients/kingbase/
-COPY native-client-bundle/manifest.properties /opt/native-clients/manifest.properties
-COPY native-client-bundle/SHA256SUMS /opt/native-clients/SHA256SUMS
-COPY native-arm64/dimp /opt/native-clients/bin/dimp
-COPY native-arm64/sys_restore /opt/native-clients/bin/sys_restore
-
-RUN set -eux; \
-    mkdir -p /opt/native-clients/bin /opt/seatunnel-web/tmp/offline-import; \
-    chmod 0755 /opt/native-clients/bin/dimp /opt/native-clients/bin/sys_restore; \
-    chmod 0775 /opt/seatunnel-web/tmp/offline-import; \
-    dm_ld_path=/opt/native-clients/dm/bin:/opt/native-clients/dm/lib; \
-    kingbase_ld_path=/opt/native-clients/kingbase/bin:/opt/native-clients/kingbase/lib; \
-    ldd_output="$(LD_LIBRARY_PATH="${dm_ld_path}" ldd /opt/native-clients/dm/bin/dimp)"; \
-    printf '%s\n' "${ldd_output}"; \
-    ! printf '%s\n' "${ldd_output}" | grep -q 'not found'; \
-    ldd_output="$(LD_LIBRARY_PATH="${kingbase_ld_path}" ldd /opt/native-clients/kingbase/bin/sys_restore)"; \
-    printf '%s\n' "${ldd_output}"; \
-    ! printf '%s\n' "${ldd_output}" | grep -q 'not found'; \
-    /opt/native-clients/bin/sys_restore --version; \
-    dimp_output="$(/opt/native-clients/bin/dimp HELP=Y 2>&1 || true)"; \
-    printf '%s\n' "${dimp_output}" | grep -q 'USERID'; \
-    test -x /opt/native-clients/bin/dimp; \
-    test -x /opt/native-clients/bin/sys_restore; \
-    test -w /opt/seatunnel-web/tmp/offline-import
-
-
-# =========================
 # Frontend runtime
 # =========================
 # Pinned tag: the health check below depends on curl, and "latest" could silently switch to a

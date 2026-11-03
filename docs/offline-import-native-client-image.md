@@ -5,7 +5,7 @@
 ## 交付范围与主线
 
 - 主交付方式为：受控 ARM64 客户端 bundle 随构建输入提供，内置到独立的原生客户端后端镜像。厂商二进制、依赖库、凭据和验收数据不进入 Git；构建输入只来自明确指定的 bundle，不扫描或直接复制宿主机整个 `/opt`。
-- 保留现有通用 `backend-runtime` 及其 amd64/arm64 发布流程。新增独立的 ARM64 原生客户端镜像构建入口和镜像目标，使用带 `native-arm64` 的独立标签；不得将只有 ARM 客户端的产物发布到通用多架构标签。
+- 保留现有 `Dockerfile`、通用 `backend-runtime` 及其 amd64/arm64 发布流程。新增独立 `Dockerfile.native-arm64` 和 ARM64 原生客户端镜像构建入口，使用带 `native-arm64` 的独立标签；不得将只有 ARM 客户端的产物发布到通用多架构标签。
 - 首期提供本地 ARM64 构建脚本，构建完成只产生本地镜像，不自动推送、部署或重启服务。厂商包未接入受控 CI 产物源前，不让现有公网 CI 自动构建原生客户端目标。
 - 宿主机只读挂载客户端目录、从客户端镜像阶段复制，作为后续替代方式，首期不扩展实现范围。主线运行时不依赖节点预装客户端。
 - DMP 由原厂 `sys_restore`、`dimp` 还原；SQL 脚本仍走现有 JDBC/CopyManager。`ksql`、`disql` 为可选诊断工具，`sys_dump`、`dexp` 用于准备验收样本，不作为 SQL 导入依赖。
@@ -41,7 +41,7 @@ kingbase_source=<Kingbase 原厂包名及 SHA-256 或受控制品 ID>
 
 `SHA256SUMS` 使用 GNU `sha256sum` 的常规格式，精确覆盖清单、所有常规文件和指向文件的链接，不包含 `SHA256SUMS` 自身。链接目标必须有效、相对且留在所属客户端目录内；指向目录的链接不纳入 bundle。路径不得包含反斜杠或换行符。
 
-客户端和库须来自版本匹配、允许内部交付的原厂安装包或受控依赖包；保留执行权限及包内有效链接。构建前校验清单必填字段、校验和、必需工具和全部 ELF 文件的 ARM64 架构，拒绝缺文件、文件被替换、混入 x86 ELF、越出 bundle 的符号链接。Kingbase V8 若缺 `libldap_r-2.4.so.2`，须随 bundle 提供来源和版本已验证的 ARM64 依赖包内容。不要整套复制宿主机 glibc、动态链接器或 `/usr/lib` 来补依赖。
+客户端和库须来自版本匹配、允许内部交付的原厂安装包或受控依赖包；保留执行权限及包内有效链接。构建前校验清单必填字段、校验和、必需工具和全部 ELF 文件的 ARM64 架构；必需工具须本身为完整 ELF64 AArch64 文件。校验器拒绝缺文件、校验和覆盖缺口或篡改、混入其他架构 ELF、越出 bundle 的符号链接。Kingbase V8 若缺 `libldap_r-2.4.so.2`，须随 bundle 提供来源和版本已验证的 ARM64 依赖包内容。不要整套复制宿主机 glibc、动态链接器或 `/usr/lib` 来补依赖。
 
 当前后端基于 `eclipse-temurin:21-jre-jammy`。包的校验和只保证输入可追溯，不能证明 ABI 或数据库版本兼容；还须在最终 Jammy 镜像验证依赖闭包和工具启动。构建中不临时从不受控公网地址下载厂商包；发布记录保存基础镜像实际 digest/ID、bundle 校验和、客户端版本和源码提交。
 
@@ -103,7 +103,7 @@ python3 scripts/native-arm64/validate_bundle.py /受控路径/offline-import-arm
 scripts/build-backend-native-arm64.sh /受控路径/offline-import-arm64
 ```
 
-默认只在本地生成 `seatunnel-web-api:1.0.0-native-arm64`。可传入第二个镜像标签，但标签必须包含 `native-arm64`。脚本使用临时 Docker 构建上下文，显式设置 `--platform linux/arm64` 和 `backend-native-arm64` 目标，校验 bundle 后构建，不推送、不部署，也不运行 Compose。镜像标签记录 bundle 校验清单摘要和本地基础镜像 ID；镜像内保留 manifest 与 SHA256SUMS 供追溯。
+默认只在本地生成 `seatunnel-web-api:1.0.0-native-arm64`。可传入第二个镜像标签，但标签必须包含 `native-arm64`。脚本先以未修改的仓库 `Dockerfile --target backend-runtime` 构建唯一临时本地后端 tag，再使用临时上下文中的独立 `Dockerfile.native-arm64` 从该 tag 构建最终镜像；两步都显式设置 `--platform linux/arm64`，构建完成会移除临时 tag。脚本校验 bundle 后构建，不推送、不部署，也不运行 Compose。镜像标签记录 bundle 校验清单摘要、本地 JRE 基础镜像 ID 和临时后端运行时镜像 ID；镜像内保留 manifest 与 SHA256SUMS 供追溯。
 
 当前 `compose.yaml` 显式传入离线导入环境变量，会覆盖镜像里的 `ENV`。以后使用 Compose 切换到 native 标签时，也须在未跟踪的本机 `.env` 中显式设置工具路径和工作目录，例如：
 
@@ -118,7 +118,7 @@ SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_STATEMENT_TIMEOUT_SECONDS=300
 
 该示例仅说明运行配置；本次交付不会修改或执行 Compose。
 
-校验器的最小模拟测试覆盖清单覆盖、内容篡改、x86 ELF 混入和越界链接；wrapper 测试覆盖参数原样传递、当前目录、库路径隔离、`KINGBASE_PASSWORD` 保留及工具退出码：
+校验器的最小模拟测试覆盖清单覆盖（包括嵌套同名 `SHA256SUMS`）、内容篡改、完整 ELF64 头、必需工具 ELF 架构、x86 ELF 混入和越界链接；wrapper 测试覆盖参数原样传递、当前目录、库路径隔离、`KINGBASE_PASSWORD` 保留及工具退出码：
 
 ```bash
 python3 scripts/native-arm64/test_native_arm64.py
