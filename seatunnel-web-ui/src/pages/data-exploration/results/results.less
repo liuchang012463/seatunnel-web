@@ -33,7 +33,7 @@
       display: flex;
       min-width: 0;
       width: 100%;
-      align-items: flex-end;
+      align-items: center;
       justify-content: flex-end;
       gap: 12px;
       flex-wrap: wrap;
@@ -42,16 +42,18 @@
 
   .results-scope-selects {
     display: flex;
-    align-items: flex-end;
-    gap: 8px;
+    align-items: center;
+    gap: 12px;
 
     label {
       display: flex;
-      min-width: 146px;
-      flex-direction: column;
-      gap: 4px;
+      align-items: center;
+      gap: 8px;
+      flex-direction: row;
+      white-space: nowrap;
 
       > span {
+        flex-shrink: 0;
         color: var(--st-color-text-muted, #B7CBD3);
         font-size: 14px;
         line-height: 20px;
@@ -827,10 +829,6 @@
       grid-template-columns: 290px minmax(0, 1fr) 270px;
     }
 
-    .results-scope-selects label {
-      min-width: 132px;
-    }
-
     .results-scope-selects .ant-select {
       width: 140px;
     }
@@ -849,7 +847,7 @@
 
       &__actions {
         width: 100%;
-        align-items: flex-end;
+        align-items: center;
         justify-content: space-between;
       }
     }
