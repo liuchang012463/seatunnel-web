@@ -15,7 +15,6 @@ const ClientPageHeader: React.FC<Props> = ({ onAdd }) => {
         icon={<PlusOutlined />}
         onClick={onAdd}
         className="task-list-page-header__create-button"
-        style={{ background: BLUE, borderColor: BLUE }}
       >
         新建 Client
       </Button>

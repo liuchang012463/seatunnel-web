@@ -32,10 +32,6 @@ const ConnectorContentHeader: React.FC<Props> = ({
         icon={<PlusOutlined />}
         onClick={onAdd}
         className="task-list-page-header__create-button"
-        style={{
-          background: BLUE,
-          borderColor: BLUE,
-        }}
       >
         新增 Connector 参数
       </Button>
