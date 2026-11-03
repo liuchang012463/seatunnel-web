@@ -9,6 +9,7 @@ import {
   Button,
   Card,
   Empty,
+  Pagination,
   Progress,
   Select,
   Statistic,
@@ -399,6 +400,15 @@ const DataExplorationOverviewPage: React.FC = () => {
             scroll={{ x: 1050 }}
             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无符合条件的数据源" /> }}
           />
+          {filteredSources.length === 0 && (
+            <Pagination
+              disabled
+              total={0}
+              pageSize={8}
+              showSizeChanger
+              showTotal={(total) => `共 ${total} 条`}
+            />
+          )}
         </section>
       </main>
     </div>

@@ -333,11 +333,26 @@
       flex-direction: column;
       min-height: 0;
       padding: 0 8px 8px;
+      overflow: hidden;
+    }
+
+    .ant-spin-nested-loading,
+    .ant-spin-container {
+      display: flex;
+      flex: 1 1 0%;
+      min-height: 0;
+      flex-direction: column;
+    }
+
+    .ant-table {
+      flex: 1 1 0%;
+      min-height: 0;
       overflow: auto;
     }
   }
 
   .overview-source-panel__heading {
+    flex-shrink: 0;
     align-items: center;
   }
 
@@ -394,7 +409,13 @@
     }
 
     .ant-pagination {
+      flex-shrink: 0;
       margin: 12px 4px 4px;
+    }
+
+    > .ant-pagination {
+      align-self: flex-end;
+      margin: 12px;
     }
   }
 
