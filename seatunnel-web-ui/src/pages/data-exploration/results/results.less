@@ -505,6 +505,14 @@
     cursor: pointer;
     transition: color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 
+    &:nth-child(odd) {
+      background: #002E41;
+    }
+
+    &:nth-child(even) {
+      background: #0F1518;
+    }
+
     &:hover {
       color: var(--st-color-text-primary);
       background: var(--st-color-hover);
