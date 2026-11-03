@@ -127,3 +127,20 @@ python3 scripts/native-arm64/test_native_arm64.py
 ```
 
 构建脚本会在最终 Jammy 镜像构建时运行两套工具的 `ldd` 缺库检查、`sys_restore --version` 和 DIMP 帮助启动探针；DIMP 探针同时验证 `ldd` 不会显示的 OpenSSL 动态加载依赖，并检查 wrapper 可执行及导入工作目录可写。旧的预构建 distribution 只能证明镜像封装与客户端启动，不能证明 Java 业务流程或真实 DMP 还原通过；真实归档和数据库还原仍须按上面的发布门槛单独验收。
+
+## 2026-11-03 主线程验收记录
+
+方案由主线程修订，实现由 Luna Max 子代理完成，主线程独立审阅并验收。实现源码提交为 `d4703f72`；验收中发现的通用 Dockerfile 构建回归、嵌套校验清单遗漏、ELF 头检查和失败构建容器清理问题均已修复。根 Dockerfile、`.dockerignore` 与通用多架构发布 workflow 相对本次实现前无变化。
+
+| 验收项 | 结果与范围 |
+| --- | --- |
+| 仓库测试与静态检查 | 17 项测试、shell 语法、`git diff --check` 通过 |
+| 主线程独立输入检查 | 17 项通过：有效 ARM64 包/相对链接、篡改、漏文件、嵌套同名清单、缺工具/执行权限、错误元数据、x86 ELF、截断 ELF、脚本冒充工具、失效/绝对/越界链接等 |
+| wrapper 进程检查 | 两个 wrapper 均通过独立 ARM64 可执行探针：空参数、空格/特殊字符/中文/换行参数、工作目录、库路径隔离、模拟认证环境、退出码、exec 前后 PID 一致和 SIGTERM 直接终止 |
+| 最终候选镜像 | 本机真实 ARM64 Docker 构建成功；镜像为 `seatunnel-web-api:1.0.0-native-arm64-acceptance`，ID 为 `sha256:525a229db9070e8a8efa6569f765556208eb3aa76db0ec43572cf1fc3199f676` |
+| 最终镜像运行检查 | 文件及链接 SHA-256 校验通过，默认工具路径正确，实际默认应用用户可写工作目录，JVM 无全局 `LD_LIBRARY_PATH`；Java 21.0.11+10、Kingbase V008R006C009B0014 和达梦帮助启动检查通过；Kingbase 所需三个 Schema/预检参数存在，无效归档被原厂工具拒绝 |
+| 动态依赖失败门槛 | 有意移除达梦 OpenSSL 后，即使 `ldd` 无缺失，最终构建仍因启动探针失败而拒绝；失败中间容器及脚本创建的临时后端标签均已清理 |
+
+本次客户端来自本机安装树中精确选取的工具/库，仅作为 ABI 与镜像封装验收输入。达梦报告 `dimp V8`、`file_version: 33`，安装树 `dmserver` 的版本线索为 `03134284552-20260414-322369-20221`；未将该线索当作正式原厂包来源证明。达梦子树独立补入 `openssl-libs-1.1.1f-31.p29.ky10.aarch64` 的两个库与无版本号相对链接；Kingbase 子树补入 `openldap-2.4.50-8.ky10.aarch64`、`cyrus-sasl-lib-2.1.27-15.ky10.aarch64` 中精确需要的三个库，未复制宿主机 glibc 或整个系统库目录。验收 bundle 的 `SHA256SUMS` 摘要为 `7135db4c4927af444a0eb7960b5d948958146506b6729393b40174efa882d065`。
+
+候选镜像使用现有 `seatunnel-web-dist/target/seatunnel-web-1.0.0.tar.gz`，本次没有重新构建 Java distribution。没有执行 Web 任务提交、两家真实 DMP 还原、对象/数据核对、Schema 映射或应用任务超时/日志脱敏/清理的业务端到端验收，也没有验证 Kingbase V8 工具读取 V9 归档。正式发布仍须固定可追溯的原厂 bundle 与当前应用 distribution，并完成上述真实业务组合验收。未推送、部署或重启既有服务，未运行 Compose。
