@@ -25,7 +25,6 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import TaskListPageHeader from '@/components/TaskListPageHeader';
 import { DATA_SOURCE_STATUS_OPTIONS } from '@/pages/data-source/constants';
 import {
   fetchBusinessSystemOptions,
@@ -752,18 +751,14 @@ const DataExplorationTasksPage: React.FC = () => {
 
   return (
     <div className="data-exploration-page data-exploration-tasks flex h-full min-h-0 flex-col overflow-hidden px-6 py-5">
-      <TaskListPageHeader
-        actions={<Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button>}
-      />
-
-      <Alert
+      {/* <Alert
         className="exploration-task-schedule-hint mt-3"
         type="info"
         showIcon
         message="Metadata、Profiler 和 AutoClassification 三个 agent 由系统自动调度。新建数据源会自动进行首次扫描；扫描完成后可按需统计指标或采集样例。"
-      />
+      /> */}
 
-      <Card className="exploration-panel exploration-filter-panel mt-3" size="small">
+      <Card className="exploration-panel exploration-filter-panel" size="small">
         <div className="flex flex-wrap items-center gap-3">
           <Input
             allowClear
@@ -833,7 +828,12 @@ const DataExplorationTasksPage: React.FC = () => {
               resetPage();
             }}
           />
-          <span className="ml-auto text-xs text-[var(--st-color-text-muted)]">共 {pagination.total} 个数据源</span>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-xs text-[var(--st-color-text-muted)]">共 {pagination.total} 个数据源</span>
+            <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
+              刷新
+            </Button>
+          </div>
         </div>
       </Card>
 
