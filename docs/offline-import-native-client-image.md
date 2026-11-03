@@ -27,7 +27,21 @@ bundle/
     lib/…                   # libkci 及经验证的间接依赖
 ```
 
-客户端和库须来自版本匹配、允许内部交付的原厂安装包或受控依赖包；保留执行权限及包内有效链接。构建前校验清单必填字段、校验和、必需工具和全部 ELF 文件的 ARM64 架构，拒绝缺文件、文件被替换、混入 x86 ELF、越出 bundle 的符号链接。不要整套复制宿主机 glibc、动态链接器或 `/usr/lib` 来补依赖。
+实现使用固定的 bundle 根布局：除上述两个文件和 `dm/`、`kingbase/` 外不接受其他根条目。`manifest.properties` 必须包含且只包含以下字段；版本写完整具体版本，来源填写原厂包文件名及其 SHA-256 或内部受控制品标识，不得填写口令或带访问凭据的 URL：
+
+```properties
+format_version=1
+platform=linux/arm64
+architecture=aarch64
+dm_version=<完整达梦客户端版本>
+dm_source=<达梦原厂包名及 SHA-256 或受控制品 ID>
+kingbase_version=<完整 Kingbase 客户端版本>
+kingbase_source=<Kingbase 原厂包名及 SHA-256 或受控制品 ID>
+```
+
+`SHA256SUMS` 使用 GNU `sha256sum` 的常规格式，精确覆盖清单、所有常规文件和指向文件的链接，不包含 `SHA256SUMS` 自身。链接目标必须有效、相对且留在所属客户端目录内；指向目录的链接不纳入 bundle。路径不得包含反斜杠或换行符。
+
+客户端和库须来自版本匹配、允许内部交付的原厂安装包或受控依赖包；保留执行权限及包内有效链接。构建前校验清单必填字段、校验和、必需工具和全部 ELF 文件的 ARM64 架构，拒绝缺文件、文件被替换、混入 x86 ELF、越出 bundle 的符号链接。Kingbase V8 若缺 `libldap_r-2.4.so.2`，须随 bundle 提供来源和版本已验证的 ARM64 依赖包内容。不要整套复制宿主机 glibc、动态链接器或 `/usr/lib` 来补依赖。
 
 当前后端基于 `eclipse-temurin:21-jre-jammy`。包的校验和只保证输入可追溯，不能证明 ABI 或数据库版本兼容；还须在最终 Jammy 镜像验证依赖闭包和工具启动。构建中不临时从不受控公网地址下载厂商包；发布记录保存基础镜像实际 digest/ID、bundle 校验和、客户端版本和源码提交。
 
@@ -70,3 +84,44 @@ SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_STATEMENT_TIMEOUT_SECONDS=300
 3. 主线程独立审阅改动并验收：参数含空格/特殊字符仍原样传递，库环境不串用，凭据环境保留，退出码与超时终止行为保持；检查普通镜像构建及发布目标没有被改变。
 4. 业务发布门槛是在最终 ARM64 后端镜像中用两家真实逻辑 DMP 完成预检与还原，核对对象、行数/代表性数据、Schema 映射，并验证失败归档、日志脱敏、超时终止及临时目录清理。仅 `ldd` 或版本命令成功不能替代业务还原验收。
 5. 构建、临时容器检查和业务验收分别记录；厂商包、网络或数据库权限不足时明确列出未验证组合及原因。验收不得隐式部署、重启既有容器或操作 Compose。
+
+## 本地构建命令与最小测试
+
+在构建 ARM64 客户端 bundle 的安全工作目录中，完成厂商文件整理并生成校验和：
+
+```bash
+cd /受控路径/offline-import-arm64
+find manifest.properties dm kingbase \( -type f -o -type l \) -print0 \
+  | LC_ALL=C sort -z \
+  | xargs -0 sha256sum > SHA256SUMS
+```
+
+构建机须有 ARM64 Docker daemon、已加载的 `eclipse-temurin:21-jre-jammy` 和唯一一个 `seatunnel-web-dist/target/seatunnel-web-*.tar.gz`。从仓库根目录执行：
+
+```bash
+python3 scripts/native-arm64/validate_bundle.py /受控路径/offline-import-arm64
+scripts/build-backend-native-arm64.sh /受控路径/offline-import-arm64
+```
+
+默认只在本地生成 `seatunnel-web-api:1.0.0-native-arm64`。可传入第二个镜像标签，但标签必须包含 `native-arm64`。脚本使用临时 Docker 构建上下文，显式设置 `--platform linux/arm64` 和 `backend-native-arm64` 目标，校验 bundle 后构建，不推送、不部署，也不运行 Compose。镜像标签记录 bundle 校验清单摘要和本地基础镜像 ID；镜像内保留 manifest 与 SHA256SUMS 供追溯。
+
+当前 `compose.yaml` 显式传入离线导入环境变量，会覆盖镜像里的 `ENV`。以后使用 Compose 切换到 native 标签时，也须在未跟踪的本机 `.env` 中显式设置工具路径和工作目录，例如：
+
+```dotenv
+SEATUNNEL_WEB_API_IMAGE=seatunnel-web-api:1.0.0-native-arm64
+SEATUNNEL_WEB_OFFLINE_IMPORT_DIMP_PATH=/opt/native-clients/bin/dimp
+SEATUNNEL_WEB_OFFLINE_IMPORT_SYS_RESTORE_PATH=/opt/native-clients/bin/sys_restore
+SEATUNNEL_WEB_OFFLINE_IMPORT_WORK_DIR=/opt/seatunnel-web/tmp/offline-import
+SEATUNNEL_WEB_OFFLINE_IMPORT_PROCESS_TIMEOUT_MINUTES=240
+SEATUNNEL_WEB_OFFLINE_IMPORT_SQL_STATEMENT_TIMEOUT_SECONDS=300
+```
+
+该示例仅说明运行配置；本次交付不会修改或执行 Compose。
+
+校验器的最小模拟测试覆盖清单覆盖、内容篡改、x86 ELF 混入和越界链接；wrapper 测试覆盖参数原样传递、当前目录、库路径隔离、`KINGBASE_PASSWORD` 保留及工具退出码：
+
+```bash
+python3 scripts/native-arm64/test_native_arm64.py
+```
+
+构建脚本会在最终 Jammy 镜像构建时运行两套工具的 `ldd` 缺库检查、`sys_restore --version` 和 DIMP 帮助启动探针，并检查 wrapper 可执行及导入工作目录可写。旧的预构建 distribution 只能证明镜像封装与客户端启动，不能证明 Java 业务流程或真实 DMP 还原通过；真实归档和数据库还原仍须按上面的发布门槛单独验收。
