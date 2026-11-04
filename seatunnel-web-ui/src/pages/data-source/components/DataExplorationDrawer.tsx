@@ -813,7 +813,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
           <div className={`exploration-drawer__workspace${erActive ? ' exploration-drawer__workspace--er' : ''}`}>
             <aside className="exploration-drawer__nav">
               <div className="exploration-drawer__nav-context">
-                <div className="exploration-drawer__eyebrow">CATALOG</div>
                 <label className="exploration-drawer__field">
                   <span>数据库</span>
                   <Select
@@ -967,7 +966,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                 <>
                   <header className="exploration-drawer__asset-header">
                     <div className="exploration-drawer__asset-copy">
-                      <div className="exploration-drawer__eyebrow">TABLE RESOURCE</div>
                       <h1 title={tableDetail.fullyQualifiedName}>{selectedTableTitle}</h1>
                       <div className="exploration-drawer__fqn" title={tableDetail.fullyQualifiedName}>
                         <span>FQN</span>
@@ -999,7 +997,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                           <div className="exploration-drawer__tab-pane">
                             <div className="exploration-drawer__tab-toolbar">
                               <div>
-                                <div className="exploration-drawer__eyebrow">SCHEMA</div>
                                 <strong>列定义</strong>
                               </div>
                               <span>{tableDetail.columns?.length || 0} 个字段</span>
@@ -1024,7 +1021,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                           <div className="exploration-drawer__tab-pane">
                             <div className="exploration-drawer__tab-toolbar">
                               <div>
-                                <div className="exploration-drawer__eyebrow">SAMPLE DATA</div>
                                 <strong>前 20 行</strong>
                               </div>
                               <Button
@@ -1065,7 +1061,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                           <div className="exploration-drawer__tab-pane">
                             <div className="exploration-drawer__tab-toolbar">
                               <div>
-                                <div className="exploration-drawer__eyebrow">PROFILE AGENT</div>
                                 <strong>表级概况与列级指标</strong>
                               </div>
                               <span>{profile?.profileTime ? `最近更新 ${formatTime(profile.profileTime)}` : '切换到此页后按需读取'}</span>
@@ -1113,7 +1108,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
             {!erActive && (
               <aside className="exploration-drawer__inspector">
                 <div className="exploration-drawer__inspector-header">
-                  <div className="exploration-drawer__eyebrow">INSPECTOR</div>
                   <strong>元数据摘要</strong>
                 </div>
                 {tableDetail && selectedTableId ? (
