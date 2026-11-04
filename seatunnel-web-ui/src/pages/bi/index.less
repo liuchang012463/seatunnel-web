@@ -257,7 +257,7 @@
 .bi-dashboard .source-total { display: block; margin-top: 2px; color: var(--text-main); font: 400 34px/0.9 var(--font-num); letter-spacing: 0.04em; text-shadow: 0 0 16px rgba(77, 210, 255, 0.45); }
 .bi-dashboard .source-total span { color: var(--text-sub); font-family: var(--font-cn); font-size: 14px; font-weight: 400; letter-spacing: 0; }
 .bi-dashboard .source-total-trend { display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 5px; text-align: right; }
-.bi-dashboard .source-total-trend b { color: var(--green); font: 400 14px/1 var(--font-num); }
+.bi-dashboard .source-total-trend b { color: var(--green); font: 400 20px/1.2 var(--font-num); }
 .bi-dashboard .source-total-trend small { grid-column: 1 / -1; color: var(--text); font-size: 14px; }
 
 .bi-dashboard .source-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding-top: 8px; }
@@ -266,7 +266,7 @@
 .bi-dashboard .source-tile.cyan { color: var(--cyan); }.bi-dashboard .source-tile.violet { color: var(--violet); }.bi-dashboard .source-tile.amber { color: var(--amber); }.bi-dashboard .source-tile.green { color: var(--green); }.bi-dashboard .source-tile.blue { color: var(--blue); }.bi-dashboard .source-tile.pink { color: var(--pink); }
 .bi-dashboard .tile-icon { display: grid; grid-row: span 2; place-items: center; width: 24px; height: 24px; border: 1px solid currentColor; background: rgba(0, 25, 34, 0.7); }
 .bi-dashboard .tile-copy { display: block; min-width: 0; align-self: center; }.bi-dashboard .tile-copy b { display: block; overflow: hidden; color: var(--text); font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }.bi-dashboard .tile-copy small { display: none; overflow: hidden; color: var(--muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.bi-dashboard .tile-count { grid-column: 2; color: currentColor; font: 400 18px/1 var(--font-num); }.bi-dashboard .tile-count em { color: var(--text-sub); font: 400 12px var(--font-cn); font-style: normal; }
+.bi-dashboard .tile-count { grid-column: 2; color: currentColor; font: 400 22px/1.2 var(--font-num); }.bi-dashboard .tile-count em { color: var(--text-sub); font: 400 14px var(--font-cn); font-style: normal; }
 .bi-dashboard .panel-foot { display: flex; align-items: center; gap: 10px; padding: 7px 14px 9px; color: var(--text-sub); font-size: 14px; border-top: 1px solid rgba(33, 135, 168, 0.25); margin-top: auto; }
 .bi-dashboard .panel-foot > span { display: inline-flex; align-items: center; gap: 4px; }.bi-dashboard .foot-update { margin-left: auto; color: var(--muted); font-size: 14px; }
 .bi-dashboard .status-dot { display: inline-block; width: 6px; height: 6px; background: var(--text-sub); border-radius: 50%; }
@@ -543,7 +543,7 @@
 .bi-dashboard .inspect-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; margin: 0 14px; padding: 8px 0; border-bottom: 1px solid rgba(33, 135, 168, 0.35); }
 .bi-dashboard .inspect-summary strong { display: block; margin-top: 2px; color: var(--text-main); font: 400 28px/0.9 var(--font-num); }
 .bi-dashboard .inspect-summary small { display: flex; align-items: center; gap: 4px; margin-top: 3px; color: var(--muted); font-size: 14px; }
-.bi-dashboard .inspect-summary small b { color: var(--green); font-weight: 500; }
+.bi-dashboard .inspect-summary small b { color: var(--green); font-size: 20px; font-weight: 500; line-height: 1.2; }
 .bi-dashboard .quality-badge { min-width: 84px; padding-left: 10px; border-left: 1px solid rgba(33, 135, 168, 0.35); }
 .bi-dashboard .quality-badge span { display: block; color: var(--text); font-size: 14px; }
 .bi-dashboard .quality-badge b { display: block; margin-top: 2px; color: var(--green); font: 400 20px/1 var(--font-num); }
@@ -552,7 +552,7 @@
 .bi-dashboard .quality-badge small svg { color: var(--green); }
 .bi-dashboard .inspect-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin: 8px 14px 0; padding-bottom: 8px; border-bottom: 1px solid rgba(33, 135, 168, 0.35); }
 .bi-dashboard .inspect-metrics span { display: block; color: var(--text); font-size: 14px; line-height: 1.2; }
-.bi-dashboard .inspect-metrics b { display: block; margin-top: 2px; color: var(--text-main); font: 400 14px/1.2 var(--font-num); }
+.bi-dashboard .inspect-metrics b { display: block; margin-top: 2px; color: var(--text-main); font: 400 20px/1.2 var(--font-num); }
 .bi-dashboard .inspect-chart {
   display: flex;
   align-items: stretch;
@@ -647,7 +647,7 @@
 .bi-dashboard .report-bar-row > b { color: var(--text-main); font: 400 14px var(--font-num); text-align: right; }
 .bi-dashboard .report-note { display: flex; align-items: center; gap: 5px; margin: auto 14px 9px; padding: 6px; color: var(--amber); font-size: 14px; border: 1px solid rgba(217, 182, 33, 0.35); background: rgba(217, 182, 33, 0.08); }
 .bi-dashboard .report-note svg { flex: 0 0 auto; color: var(--amber); }
-.bi-dashboard .report-note span { flex: 1; }
+.bi-dashboard .report-note span { flex: 1; min-width: 0; font-size: 18px; line-height: 1.4; overflow-wrap: anywhere; }
 
 .bi-dashboard .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; white-space: nowrap; border: 0; clip: rect(0, 0, 0, 0); }
 .bi-dashboard .sr-only:focus { position: relative; z-index: 10; width: auto; height: auto; margin: 8px; padding: 8px 10px; overflow: visible; white-space: normal; color: var(--text); background: var(--panel); clip: auto; }
