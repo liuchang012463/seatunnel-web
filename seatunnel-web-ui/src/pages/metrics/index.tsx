@@ -312,7 +312,7 @@ const App: React.FC = () => {
   const bytesSpeedTitle = isStreaming ? "数据写入速率" : isFileTransfer ? "文件传输速率" : "数据处理速率";
 
   return (
-    <div className="task-list-page-shell metrics-page">
+    <div className="metrics-page">
       <main className="metrics-page__main">
         <div className="metrics-page__inner">
           <div className="mx-auto max-w-[1600px]">
