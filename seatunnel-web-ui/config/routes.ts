@@ -79,6 +79,7 @@ const hiddenRoutes = [
   ['/sync/file-link-up/:id/config/file-sync', './batch-link-up/config/file-sync', '/sync/file-link-up'],
   ['/sync/file-ingest/select', './file-ingest/select', '/sync/file-ingest'],
   ['/sync/file-ingest/import/create', './file-ingest/import/create', '/sync/file-ingest'],
+  ['/sync/file-ingest/import/config/:id', './file-ingest/import/config', '/sync/file-ingest'],
   ['/sync/file-ingest/import/detail/:id', './file-ingest/import/detail', '/sync/file-ingest'],
   ['/sync/file-ingest/:id/detail', './file-ingest/detail', '/sync/file-ingest'],
   ['/sync/file-ingest/:id/config/single', './file-ingest/config/single', '/sync/file-ingest'],
