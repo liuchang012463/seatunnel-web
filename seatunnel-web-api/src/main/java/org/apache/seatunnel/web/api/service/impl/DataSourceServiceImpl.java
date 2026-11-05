@@ -232,7 +232,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         ensureUserManaged(existing);
         if (existing.getStatus() == DataSourceLifecycleStatus.REVOKED) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
-                    "A data source pending metadata deletion cannot be updated.");
+                    "数据源正在等待元数据删除，无法修改。");
         }
         applyUpdateUsageDefaults(existing, dto);
         validateUpdateRequest(id, dto);
@@ -250,7 +250,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             DataSourceUtils.checkDatasourceParam(connectionParam);
 
             // 修改也需要限制，离线任务下次运行时会导致任务被变更
-            checkDataSourceNotUsed(id);
+            checkDataSourceNotUsed(id, "修改");
 
             // Dameng's database field is also the catalog part of generated
             // table paths. Revalidate the live instance before persisting an
@@ -308,7 +308,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         ensureUserManaged(existing);
         if (existing.getStatus() == DataSourceLifecycleStatus.REVOKED) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
-                    "A data source pending metadata deletion cannot be updated.");
+                    "数据源正在等待元数据删除，无法修改。");
         }
         if (sourceEnabled && !DataSourceUsageValidator.supportsConnector(
                 existing.getDbType(), DataSourceUsage.SOURCE, null)) {
@@ -346,7 +346,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         ensureUserManaged(existing);
         if (existing.getStatus() == DataSourceLifecycleStatus.REVOKED) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
-                    "A revoked data source cannot be assigned.");
+                    "已注销的数据源无法重新归属。");
         }
 
         BusinessSystemOwnership ownership = resolveActiveBusinessSystem(businessSystemId);
@@ -461,7 +461,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
                 && status != DataSourceLifecycleStatus.REVOKED) {
             throw new ServiceException(
                     Status.REQUEST_PARAMS_NOT_VALID_ERROR,
-                    "A revoked data source cannot be enabled or disabled.");
+                    "已注销的数据源无法启用或停用。");
         }
 
         if (currentStatus == status) {
@@ -471,8 +471,8 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         try {
             if (status != DataSourceLifecycleStatus.ENABLED) {
                 checkDataSourceNotUsed(id, status == DataSourceLifecycleStatus.REVOKED
-                        ? "revoked"
-                        : "disabled");
+                        ? "注销"
+                        : "停用");
                 if (status == DataSourceLifecycleStatus.REVOKED) {
                     checkDataSourceNotUsedByLake(id);
                 }
@@ -553,15 +553,27 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "connectionParams");
         }
 
+        String failureStage = "连接参数构建阶段";
         try {
             DbType dbType = extractDbType(connJson);
             ConnectionParam param = DataSourceUtils.buildConnectionParams(dbType, connJson);
+            failureStage = "连接验证阶段";
             return checkConnection(dbType, param);
         } catch (ServiceException e) {
+            if ("连接参数构建阶段".equals(failureStage)) {
+                throw connectionParameterBuildFailure(e);
+            }
             throw e;
         } catch (Exception e) {
-            log.error("Connection test with param failed", e);
-            throw new ServiceException(Status.DATASOURCE_CONNECT_TEST_ERROR, e.getMessage());
+            if ("连接参数构建阶段".equals(failureStage)) {
+                throw connectionParameterBuildFailure(e);
+            }
+            String detail = getConnectionFailureDetail(e);
+            log.error("数据源连接验证阶段失败，causeType={}",
+                    org.apache.seatunnel.web.api.utils.RedactedErrors.typeOf(e),
+                    org.apache.seatunnel.web.api.utils.RedactedErrors.redacted(e, detail));
+            throw new ServiceException(Status.DATASOURCE_CONNECT_TEST_ERROR,
+                    "连接验证阶段失败：" + detail);
         }
     }
 
@@ -573,13 +585,36 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         validateId(id);
         DataSource existing = getDataSourceOrThrow(id);
         ensureUserManaged(existing);
-        DbType editedType = extractDbType(connJson);
-        String connectionJson = connJson;
-        if (java.util.Objects.equals(editedType, existing.getDbType())) {
-            connectionJson = DataSourceSecretSupport.mergeSecrets(
-                    editedType, connJson, existing.getOriginalJson(), existing.getConnectionParams());
+        String connectionJson;
+        try {
+            DbType editedType = extractDbType(connJson);
+            connectionJson = connJson;
+            if (java.util.Objects.equals(editedType, existing.getDbType())) {
+                connectionJson = DataSourceSecretSupport.mergeSecrets(
+                        editedType, connJson, existing.getOriginalJson(), existing.getConnectionParams());
+            }
+        } catch (ServiceException e) {
+            throw connectionParameterBuildFailure(e);
+        } catch (Exception e) {
+            throw connectionParameterBuildFailure(e);
         }
         return connectionTestWithParam(connectionJson);
+    }
+
+    /** Converts parameter parsing failures into a useful, credential-safe connection-test error. */
+    private ServiceException connectionParameterBuildFailure(Throwable error) {
+        String detail = getConnectionFailureDetail(error);
+        if (StringUtils.isBlank(detail)) {
+            detail = error.getClass().getSimpleName();
+        }
+        String message = "连接参数构建阶段失败：" + detail;
+        log.error("数据源连接参数构建阶段失败，causeType={}",
+                org.apache.seatunnel.web.api.utils.RedactedErrors.typeOf(error),
+                org.apache.seatunnel.web.api.utils.RedactedErrors.redacted(error, message));
+        int code = error instanceof ServiceException serviceException
+                ? serviceException.getCode()
+                : Status.DATASOURCE_CONNECT_TEST_ERROR.getCode();
+        return new ServiceException(code, message);
     }
 
     @Override
@@ -849,13 +884,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
 
 
-    private void checkDataSourceNotUsed(Long datasourceId) {
-        checkDataSourceNotUsed(datasourceId, "deleted");
-    }
-
     private void checkDataSourceNotUsedByAnyJob(Long datasourceId) {
         if (isReferencedByAnyJob(datasourceId)) {
-            throw new ServiceException("The data source is currently used by a job and cannot be deleted.");
+            throw new ServiceException("数据源正在被任务使用，无法删除。");
         }
     }
 
@@ -879,9 +910,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         boolean usedByStreamingJob = streamingJobDefinitionDao.existsByDatasourceId(datasourceId);
 
         if (usedByBatchJob || usedByStreamingJob) {
-            throw new ServiceException("The data source is currently used by a job and cannot be "
-                    + operation + "."
-            );
+            throw new ServiceException("数据源正在被任务使用，无法" + operation + "。");
         }
     }
 
@@ -897,25 +926,49 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         if (!referencedIds.isEmpty()) {
             throw new ServiceException(
                     Status.REQUEST_PARAMS_NOT_VALID_ERROR,
-                    "Data sources are used by batch or streaming job definitions and cannot be deleted. datasourceIds=" + referencedIds
+                    "以下数据源仍被批量或实时任务引用，无法删除。数据源 ID：" + referencedIds
             );
         }
     }
 
     public Boolean checkConnection(DbType dbType, ConnectionParam param) {
+        boolean connected;
         try {
             DataSourceProcessor processor = DataSourceUtils.getDatasourceProcessor(dbType);
-            boolean connected = processor.getConnectivityVerifier().checkDataSourceConnectivity(param);
-            if (!connected) {
-                throw new ServiceException(Status.DATASOURCE_CONNECT_FAILED);
-            }
-            return true;
+            connected = processor.getConnectivityVerifier().checkDataSourceConnectivity(param);
         } catch (ServiceException e) {
-            throw e;
+            String detail = getConnectionFailureDetail(e);
+            log.error("数据源连接验证阶段失败，dbType={}，causeType={}",
+                    dbType,
+                    org.apache.seatunnel.web.api.utils.RedactedErrors.typeOf(e),
+                    org.apache.seatunnel.web.api.utils.RedactedErrors.redacted(e, detail));
+            throw new ServiceException(e.getCode(), "连接验证阶段失败：" + detail);
         } catch (Exception e) {
-            log.error("Check data source connection failed, dbType={}", dbType, e);
-            throw new ServiceException(Status.DATASOURCE_CONNECT_TEST_ERROR, e.getMessage());
+            String detail = getConnectionFailureDetail(e);
+            log.error("数据源连接验证阶段失败，dbType={}，causeType={}",
+                    dbType,
+                    org.apache.seatunnel.web.api.utils.RedactedErrors.typeOf(e),
+                    org.apache.seatunnel.web.api.utils.RedactedErrors.redacted(e, detail));
+            throw new ServiceException(Status.DATASOURCE_CONNECT_TEST_ERROR, detail);
         }
+
+        if (!connected) {
+            // Some verifiers only expose a boolean; record the failed stage without logging parameters.
+            log.warn("数据源连接验证未通过，dbType={}，connectorReason=unavailable", dbType);
+            throw new ServiceException(Status.DATASOURCE_CONNECT_FAILED);
+        }
+        return true;
+    }
+
+    /** Extracts a useful connector reason while keeping credentials out of the API and logs. */
+    private String getConnectionFailureDetail(Throwable error) {
+        Throwable cause = error;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        String detail = org.apache.commons.lang3.StringUtils.firstNonBlank(
+                cause.getMessage(), error.getMessage(), cause.getClass().getSimpleName());
+        return org.apache.seatunnel.web.api.utils.RedactedErrors.mask(detail);
     }
 
     private void validateCreateRequest(DataSourceDTO dto) {
@@ -1073,12 +1126,14 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
 
     private Boolean testConnection(DataSource dataSource) {
         updateConnectionStatus(dataSource.getId(), ConnStatus.CONNECTING);
+        String failureStage = "连接参数构建阶段";
         try {
             ConnectionParam param = DataSourceUtils.buildConnectionParams(
                     dataSource.getDbType(),
                     dataSource.getConnectionParams()
             );
 
+            failureStage = "连接验证阶段";
             boolean connected = checkConnection(dataSource.getDbType(), param);
             updateConnectionStatus(
                     dataSource.getId(),
@@ -1087,11 +1142,31 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             return connected;
         } catch (ServiceException e) {
             updateConnectionStatus(dataSource.getId(), ConnStatus.CONNECTED_FAILED);
-            throw e;
+            String detail = org.apache.seatunnel.web.api.utils.RedactedErrors.mask(e.getMessage());
+            if (org.apache.commons.lang3.StringUtils.isBlank(detail)) {
+                detail = e.getClass().getSimpleName();
+            }
+            if ("连接参数构建阶段".equals(failureStage)) {
+                detail = "连接参数构建阶段失败：" + detail;
+                log.error("数据源连接参数构建阶段失败，dataSourceId={}，causeType={}",
+                        dataSource.getId(),
+                        org.apache.seatunnel.web.api.utils.RedactedErrors.typeOf(e),
+                        org.apache.seatunnel.web.api.utils.RedactedErrors.redacted(e, detail));
+            }
+            throw new ServiceException(e.getCode(), detail);
         } catch (Exception e) {
-            log.error("Connection test failed, dataSourceId={}", dataSource.getId(), e);
+            String detail = org.apache.seatunnel.web.api.utils.RedactedErrors.mask(e.getMessage());
+            if (org.apache.commons.lang3.StringUtils.isBlank(detail)) {
+                detail = e.getClass().getSimpleName();
+            }
+            log.error("数据源{}失败，dataSourceId={}，causeType={}",
+                    failureStage,
+                    dataSource.getId(),
+                    org.apache.seatunnel.web.api.utils.RedactedErrors.typeOf(e),
+                    org.apache.seatunnel.web.api.utils.RedactedErrors.redacted(e, detail));
             updateConnectionStatus(dataSource.getId(), ConnStatus.CONNECTED_FAILED);
-            throw new ServiceException(Status.DATASOURCE_CONNECT_TEST_ERROR, e.getMessage());
+            throw new ServiceException(Status.DATASOURCE_CONNECT_TEST_ERROR,
+                    failureStage + "失败：" + detail);
         }
     }
 

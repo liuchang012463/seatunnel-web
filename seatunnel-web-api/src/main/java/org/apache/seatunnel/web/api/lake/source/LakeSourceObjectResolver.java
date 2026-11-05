@@ -153,7 +153,7 @@ public class LakeSourceObjectResolver {
         if (binding == null
                 || binding.getDesiredState() != MetadataDesiredState.ACTIVE
                 || binding.getSyncStatus() != MetadataSyncStatus.READY) {
-            throw unknown("OpenMetadata synchronization is not ready");
+            throw unknown("OpenMetadata 元数据同步尚未就绪，请稍后重试。");
         }
         String serviceFqn = binding.getOmServiceFqn();
         return serviceFqn == null || serviceFqn.isBlank()

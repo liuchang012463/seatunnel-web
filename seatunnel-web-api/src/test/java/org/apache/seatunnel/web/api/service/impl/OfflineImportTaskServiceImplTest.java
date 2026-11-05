@@ -16,6 +16,7 @@ import org.apache.seatunnel.web.dao.entity.OfflineImportTask;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.FileResourceDao;
 import org.apache.seatunnel.web.dao.repository.OfflineImportTaskDao;
+import org.apache.seatunnel.web.dao.repository.OfflineImportTaskRunDao;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportOptions;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
@@ -72,6 +73,7 @@ class OfflineImportTaskServiceImplTest {
     private DataSourceDao dataSourceDao;
     private FileResourceService fileResourceService;
     private FileResourceDao fileResourceDao;
+    private OfflineImportTaskRunDao offlineImportTaskRunDao;
     private FileResourceStorageProvider storageProvider;
     private CurrentUserProvider currentUserProvider;
     private DataSourceUsageValidator dataSourceUsageValidator;
@@ -80,6 +82,7 @@ class OfflineImportTaskServiceImplTest {
     @BeforeEach
     void setUp() {
         offlineImportTaskDao = mock(OfflineImportTaskDao.class);
+        offlineImportTaskRunDao = mock(OfflineImportTaskRunDao.class);
         dataSourceDao = mock(DataSourceDao.class);
         fileResourceService = mock(FileResourceService.class);
         fileResourceDao = mock(FileResourceDao.class);
@@ -88,6 +91,11 @@ class OfflineImportTaskServiceImplTest {
         dataSourceUsageValidator = mock(DataSourceUsageValidator.class);
         service = new OfflineImportTaskServiceImpl();
         ReflectionTestUtils.setField(service, "offlineImportTaskDao", offlineImportTaskDao);
+        ReflectionTestUtils.setField(service, "offlineImportTaskRunDao", offlineImportTaskRunDao);
+        OfflineImportTaskRunCompletionService completionService = new OfflineImportTaskRunCompletionService();
+        ReflectionTestUtils.setField(completionService, "offlineImportTaskDao", offlineImportTaskDao);
+        ReflectionTestUtils.setField(completionService, "offlineImportTaskRunDao", offlineImportTaskRunDao);
+        ReflectionTestUtils.setField(service, "offlineImportTaskRunCompletionService", completionService);
         ReflectionTestUtils.setField(service, "dataSourceDao", dataSourceDao);
         ReflectionTestUtils.setField(service, "fileResourceService", fileResourceService);
         ReflectionTestUtils.setField(service, "fileResourceDao", fileResourceDao);
@@ -95,6 +103,8 @@ class OfflineImportTaskServiceImplTest {
         ReflectionTestUtils.setField(service, "currentUserProvider", currentUserProvider);
         ReflectionTestUtils.setField(service, "dataSourceUsageValidator", dataSourceUsageValidator);
         ReflectionTestUtils.setField(service, "offlineImportProperties", new OfflineImportProperties());
+        when(offlineImportTaskRunDao.finishActiveRun(
+                any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(true);
         when(currentUserProvider.getCurrentUserId()).thenReturn(USER_ID);
     }
 
@@ -133,6 +143,7 @@ class OfflineImportTaskServiceImplTest {
         task.setId(id);
         task.setStatus(status);
         task.setCreateUserId(ownerId);
+        task.setReleaseState("ONLINE");
         return task;
     }
 
@@ -141,6 +152,7 @@ class OfflineImportTaskServiceImplTest {
         OfflineImportTaskVO vo = service.create(createDto("KINGBASE_SQL", "dump.sql"));
 
         assertEquals("PENDING", vo.getStatus());
+        assertEquals("OFFLINE", vo.getReleaseState());
         assertEquals("KINGBASE_SQL", vo.getImportType());
         assertEquals("dump.sql", vo.getFileName());
         assertEquals("kingbase-1", vo.getTargetDatasourceName());
@@ -233,7 +245,9 @@ class OfflineImportTaskServiceImplTest {
 
     @Test
     void deleteFailsIfTaskStartsRunningAfterTheInitialRead() {
-        when(offlineImportTaskDao.queryById(1L)).thenReturn(task(1L, "QUEUED", USER_ID));
+        OfflineImportTask existing = task(1L, "PENDING", USER_ID);
+        existing.setReleaseState("OFFLINE");
+        when(offlineImportTaskDao.queryById(1L)).thenReturn(existing);
         when(offlineImportTaskDao.deleteIfNotRunning(1L, USER_ID)).thenReturn(false);
 
         ServiceException exception = assertThrows(ServiceException.class, () -> service.delete(1L));
@@ -257,6 +271,99 @@ class OfflineImportTaskServiceImplTest {
 
         ServiceException exception = assertThrows(ServiceException.class, () -> service.execute(1L));
         assertEquals(Status.OFFLINE_IMPORT_TASK_STATE_ERROR.getCode(), exception.getCode());
+    }
+
+    @Test
+    void executeRequiresAnOnlineTask() {
+        OfflineImportTask existing = task(2L, "PENDING", USER_ID);
+        existing.setReleaseState("OFFLINE");
+        when(offlineImportTaskDao.queryById(2L)).thenReturn(existing);
+
+        ServiceException exception = assertThrows(ServiceException.class, () -> service.execute(2L));
+
+        assertEquals(Status.OFFLINE_IMPORT_TASK_STATE_ERROR.getCode(), exception.getCode());
+        verify(offlineImportTaskDao, never()).markQueuedIfExecutable(any(), any(), any());
+    }
+
+    @Test
+    void updateRequiresOfflineTaskAndPersistsValidatedConfiguration() {
+        OfflineImportTask existing = task(12L, "PENDING", USER_ID);
+        existing.setReleaseState("OFFLINE");
+        when(offlineImportTaskDao.queryById(12L)).thenReturn(existing, existing);
+        when(offlineImportTaskDao.updateConfigurationIfOffline(eq(12L), eq(USER_ID), any(), any()))
+                .thenReturn(true);
+
+        OfflineImportTaskVO result = service.update(12L, createDto("KINGBASE_SQL", "changed.sql"));
+
+        assertEquals("kingbase-1", result.getTargetDatasourceName());
+        ArgumentCaptor<OfflineImportTask> captor = ArgumentCaptor.forClass(OfflineImportTask.class);
+        verify(offlineImportTaskDao).updateConfigurationIfOffline(eq(12L), eq(USER_ID), captor.capture(), any());
+        assertEquals("离线导入任务A", captor.getValue().getName());
+        assertEquals("changed.sql", captor.getValue().getFileName());
+    }
+
+    @Test
+    void releaseStateChangeUsesOwnerAndCurrentStateGuard() {
+        when(offlineImportTaskDao.queryById(16L)).thenReturn(task(16L, "PENDING", USER_ID));
+        when(offlineImportTaskDao.updateReleaseStateIfIdle(
+                eq(16L), eq(USER_ID), eq("ONLINE"), eq("OFFLINE"), any())).thenReturn(true);
+
+        service.updateReleaseState(16L, "OFFLINE");
+
+        verify(offlineImportTaskDao).updateReleaseStateIfIdle(
+                eq(16L), eq(USER_ID), eq("ONLINE"), eq("OFFLINE"), any());
+    }
+
+    @Test
+    void activeRunHeartbeatIsRefreshedWithItsTask() {
+        ReflectionTestUtils.setField(service, "activeTaskIds", java.util.Set.of(18L));
+
+        ReflectionTestUtils.invokeMethod(service, "maintainActiveTasks");
+
+        verify(offlineImportTaskDao).touchActive(eq(18L), any());
+        verify(offlineImportTaskRunDao).touchActiveRun(eq(18L), any());
+    }
+
+    @Test
+    void completionUpdatesTheExplicitRunIdWithFinalTaskCounters() {
+        OfflineImportTask task = task(19L, "SUCCESS", USER_ID);
+        task.setTotalStatements(8);
+        task.setExecutedStatements(7);
+        task.setFailedStatements(1);
+        when(offlineImportTaskDao.markTerminatedIfActive(eq(19L), eq("SUCCESS"), any(), any(), any()))
+                .thenReturn(true);
+        when(offlineImportTaskDao.queryById(19L)).thenReturn(task);
+        when(offlineImportTaskRunDao.finishActiveRun(
+                eq(190L), eq(19L), eq("SUCCESS"), any(), eq("run log"), eq(8), eq(7), eq(1), any()))
+                .thenReturn(true);
+        OfflineImportTaskRunCompletionService completion = new OfflineImportTaskRunCompletionService();
+        ReflectionTestUtils.setField(completion, "offlineImportTaskDao", offlineImportTaskDao);
+        ReflectionTestUtils.setField(completion, "offlineImportTaskRunDao", offlineImportTaskRunDao);
+
+        assertTrue(completion.finish(19L, 190L, "SUCCESS", "ok", "run log", new java.util.Date()));
+
+        verify(offlineImportTaskRunDao).finishActiveRun(
+                eq(190L), eq(19L), eq("SUCCESS"), eq("ok"), eq("run log"), eq(8), eq(7), eq(1), any());
+    }
+
+    @Test
+    void runRecordInsertFailureTerminatesTaskWithoutLeavingItRunning() {
+        OfflineImportTask existing = task(20L, "PENDING", USER_ID);
+        when(offlineImportTaskDao.queryById(20L)).thenReturn(existing, existing);
+        when(offlineImportTaskDao.markQueuedIfExecutable(eq(20L), eq(USER_ID), any())).thenReturn(true);
+        when(offlineImportTaskDao.markRunningFromQueued(eq(20L), eq(USER_ID), any())).thenReturn(true);
+        org.mockito.Mockito.doThrow(new IllegalStateException("history storage unavailable"))
+                .when(offlineImportTaskRunDao).insert(any());
+        when(offlineImportTaskDao.markTerminatedIfActive(eq(20L), eq("FAILED"), any(), any(), any()))
+                .thenReturn(true);
+        service.setExecutorForTest(Runnable::run);
+
+        service.execute(20L);
+
+        verify(offlineImportTaskDao).markTerminatedIfActive(
+                eq(20L), eq("FAILED"), any(), any(), any());
+        verify(offlineImportTaskRunDao, never()).finishActiveRun(
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

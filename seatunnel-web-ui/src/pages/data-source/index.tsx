@@ -32,6 +32,7 @@ import {
   getDataSourceCategory,
 } from './dataSourceRegistry';
 import DatabaseIcons from './icon/DatabaseIcons';
+import { getDataSourceConnectionErrorMessage } from './connectionError';
 import './index.less';
 import {
   checkDataSourceUsage,
@@ -409,7 +410,13 @@ const DataSourcePage: React.FC = () => {
     }
 
     try {
-      await testDataSourceConnection(record.id);
+      const response = await testDataSourceConnection(record.id);
+      if (response?.code !== 0 || response?.data !== true) {
+        message.error(response?.code === 0
+          ? '连接验证未通过，连接器未返回具体原因，请检查主机、端口、数据库和账号配置。'
+          : getDataSourceConnectionErrorMessage(response));
+        return;
+      }
 
       message.success(
         intl.formatMessage({
@@ -419,7 +426,9 @@ const DataSourcePage: React.FC = () => {
       );
 
       handleRefresh();
-    } catch (_) {}
+    } catch (error) {
+      message.error(getDataSourceConnectionErrorMessage(error));
+    }
   };
 
   const handleViewExploration = (record: DataSourceRecord) => {

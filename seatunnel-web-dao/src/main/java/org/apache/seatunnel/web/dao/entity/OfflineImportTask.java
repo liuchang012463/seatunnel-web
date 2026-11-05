@@ -29,6 +29,9 @@ public class OfflineImportTask extends BaseEntity {
 
     private String optionsJson;
 
+    /** ONLINE / OFFLINE; only offline tasks can have their configuration edited. */
+    private String releaseState;
+
     /** PENDING / QUEUED / RUNNING / SUCCESS / FAILED. */
     private String status;
 

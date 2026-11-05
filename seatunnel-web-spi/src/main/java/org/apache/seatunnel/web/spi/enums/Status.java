@@ -35,8 +35,10 @@ public enum Status {
 
     DATASOURCE_EXIST(11001, "data source name already exists", "数据源名称已存在"),
     DATASOURCE_NOT_EXIST(11002, "data source not exists", "数据源不存在"),
-    DATASOURCE_CONNECT_FAILED(11003, "data source connection failed", "建立数据源连接失败"),
-    DATASOURCE_CONNECT_TEST_ERROR(11004, "data source connection test error: {0}", "数据源连接测试异常: {0}"),
+    DATASOURCE_CONNECT_FAILED(11003, "data source connection failed",
+            "数据源连接验证未通过，连接器未返回具体原因，请检查主机、端口、数据库名称和账号配置。"),
+    DATASOURCE_CONNECT_TEST_ERROR(11004, "data source connection test error: {0}",
+            "数据源连接验证阶段失败：{0}"),
     DATASOURCE_FILE_EMPTY(11005, "upload file is empty", "上传文件为空"),
     DATASOURCE_FILE_TYPE_ERROR(11006, "only jar file is allowed", "只允许上传jar文件"),
     DATASOURCE_FILE_TOO_LARGE(11007, "file size exceeds limit", "文件大小超过限制"),

@@ -176,6 +176,7 @@ const DataExplorationTasksPage: React.FC = () => {
   const [runRecordName, setRunRecordName] = useState('');
   const [runRecordId, setRunRecordId] = useState<string>();
   const [trackingExploration, setTrackingExploration] = useState<ExplorationTracking>();
+  const [trackingSamples, setTrackingSamples] = useState<Record<string, ExplorationTracking>>({});
   const [explorationFeedback, setExplorationFeedback] = useState<ExplorationFeedback>();
   // 正在提交或等待扫描结束的数据源，避免重复触发扫描。
   const [scanningIds, setScanningIds] = useState<Record<string, number>>({});
@@ -376,6 +377,84 @@ const DataExplorationTasksPage: React.FC = () => {
     };
   }, [load, trackingExploration]);
 
+  useEffect(() => {
+    const pendingSamples = Object.values(trackingSamples);
+    if (pendingSamples.length === 0) return;
+
+    let disposed = false;
+    let timer: number | undefined;
+    let attempts = 0;
+
+    const poll = async () => {
+      if (disposed) return;
+      attempts += 1;
+
+      const outcomes = await Promise.all(pendingSamples.map(async (tracking) => {
+        try {
+          const response = await fetchDataSourceMetadataStatus(tracking.id);
+          const sample = response.data?.sample;
+          if (response.code === 0 && sample && isCurrentRun(sample, tracking.submittedAt)
+              && (sample.status === 'FAILED' || sample.status === 'SUCCESS')) {
+            return { tracking, status: sample.status, lastError: sample.lastError };
+          }
+        } catch (_) {
+          // Keep polling. A transient status-read failure must not hide the accepted task.
+        }
+        return undefined;
+      }));
+      if (disposed) return;
+
+      const finished = outcomes.filter((item) => item !== undefined) as Array<{
+        tracking: ExplorationTracking;
+        status: 'FAILED' | 'SUCCESS';
+        lastError?: string;
+      }>;
+      if (finished.length > 0) {
+        const finishedIds = new Set(finished.map((item) => item.tracking.id));
+        setTrackingSamples((current) => Object.fromEntries(
+          Object.entries(current).filter(([id]) => !finishedIds.has(id)),
+        ));
+        finished.forEach(({ tracking, status, lastError }) => {
+          setExplorationFeedback(status === 'FAILED'
+            ? {
+                type: 'error',
+                message: `${tracking.name} 样例采集失败`,
+                description: lastError || '请查看运行记录。',
+              }
+            : {
+                type: 'success',
+                message: `${tracking.name} 样例采集已完成`,
+                description: '样例采集结果已同步，可前往运行记录查看日志。',
+              });
+        });
+        void load();
+        return;
+      }
+
+      if (attempts >= 60) {
+        const pendingIds = new Set(pendingSamples.map((item) => item.id));
+        setTrackingSamples((current) => Object.fromEntries(
+          Object.entries(current).filter(([id]) => !pendingIds.has(id)),
+        ));
+        setExplorationFeedback({
+          type: 'info',
+          message: '样例采集已提交',
+          description: '状态同步超时，请稍后刷新或查看运行记录。',
+        });
+        void load();
+        return;
+      }
+
+      if (!disposed) timer = window.setTimeout(() => void poll(), 2_000);
+    };
+
+    void poll();
+    return () => {
+      disposed = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [load, trackingSamples]);
+
   const markScanPending = useCallback((id: string, submittedAt: number) => {
     scanningIdsRef.current = { ...scanningIdsRef.current, [id]: submittedAt };
     setScanningIds(scanningIdsRef.current);
@@ -570,6 +649,7 @@ const DataExplorationTasksPage: React.FC = () => {
       return;
     }
     try {
+      const submittedAt = Date.now();
       const response = await triggerDataSourceSampleCollection(record.id);
       if (response.code !== 0) {
         message.error(response.message || '样例采集暂不可触发');
@@ -580,6 +660,13 @@ const DataExplorationTasksPage: React.FC = () => {
         message: `${record.name || '数据源'} 样例采集已提交`,
         description: '任务已提交到后台，完成后可在运行记录中查看 AutoClassification 执行结果。',
       });
+      if (record.sampleAgentSupported) {
+        const id = String(record.id);
+        setTrackingSamples((current) => ({
+          ...current,
+          [id]: { id, name: record.name || '数据源', submittedAt },
+        }));
+      }
       void load();
     } catch (error: any) {
       message.error(errorMessage(error, '样例采集暂不可触发'));
@@ -694,7 +781,9 @@ const DataExplorationTasksPage: React.FC = () => {
         const scanAction = scanActionState(record);
         const unavailableReason = metadataUnavailableReason(record);
         const profileRunning = record.profileStatus === 'QUEUED' || record.profileStatus === 'RUNNING';
-        const sampleRunning = record.sampleStatus === 'QUEUED' || record.sampleStatus === 'RUNNING';
+        const sampleRunning = trackingSamples[String(record.id)] !== undefined
+          || record.sampleStatus === 'QUEUED'
+          || record.sampleStatus === 'RUNNING';
         const scanPending = scanningIds[String(record.id)] !== undefined;
         return (
           <Space size={4} wrap={false} className="exploration-task-actions">
@@ -747,7 +836,7 @@ const DataExplorationTasksPage: React.FC = () => {
         );
       },
     },
-  ], [scanningIds, load]);
+  ], [load, scanningIds, trackingSamples]);
 
   return (
     <div className="data-exploration-page data-exploration-tasks flex h-full min-h-0 flex-col overflow-hidden px-6 py-5">

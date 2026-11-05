@@ -21,6 +21,11 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FileResourceSourceCard from './FileResourceSourceCard';
 import { buildFileResourcePreviewOptions, fileResourceApi } from './api';
+import {
+  defaultExcelHeaderSkipOnSelection,
+  isExcelHeaderEnabled,
+} from './config/fileHeaderDefaults';
+import { inferTypeFromSamples } from './config/fileTypeInference';
 import type { FileFormat, FileResource } from './types';
 import {
   buildOutputSchema,
@@ -150,19 +155,6 @@ const decodeEscapeSequence = (value: unknown): string => {
   return raw.replace(/\\t/g, '\t').replace(/\\n/g, '\n');
 };
 
-const inferTypeFromSamples = (values: unknown[]): string => {
-  const samples = values
-    .filter((value) => value !== null && value !== undefined && String(value).trim() !== '')
-    .map((value) => String(value).trim());
-  if (!samples.length) return 'string';
-  if (samples.every((value) => /^[+-]?\d+$/.test(value))) return 'int';
-  // 小数列允许混入整数值（如 1.5 与 2），只要存在小数点即建议 double。
-  if (samples.every((value) => /^[+-]?\d+(\.\d+)?$/.test(value)) && samples.some((value) => value.includes('.'))) {
-    return 'double';
-  }
-  return 'string';
-};
-
 /**
  * Build the schema fields from a preview response. Column names come from the
  * file itself (header row / JSON keys); text files have no names, so they fall
@@ -190,6 +182,7 @@ const deriveFieldsFromPreview = (
     for (let index = 0; index < width; index += 1) {
       fields[`field_${index + 1}`] = inferTypeFromSamples(
         lines.slice(0, 20).map((line) => line.split(delimiter)[index]),
+        format,
       );
     }
     return fields;
@@ -207,6 +200,7 @@ const deriveFieldsFromPreview = (
     // 预览行按后端返回的列名键控（关闭表头时列名仅用于取值，不作为字段名）。
     fields[fieldName] = inferTypeFromSamples(
       rows.map((row) => (Array.isArray(row) ? row[index] : row?.[column])),
+      format,
     );
   });
   return fields;
@@ -239,8 +233,10 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       return previewRow;
     });
   }, [previewContent]);
-  const hasHeader =
-    sourceConfig?.csvUseHeaderLine !== false && sourceConfig?.skipHeader !== false;
+  // Excel uses the generic FileBase skip_header_row_number option; absent legacy values mean 0.
+  const hasHeader = format === 'excel'
+    ? isExcelHeaderEnabled(sourceConfig?.skipHeaderRowNumber)
+    : sourceConfig?.csvUseHeaderLine !== false && sourceConfig?.skipHeader !== false;
 
   const updateSchema = (nextFields: Record<string, string>) => {
     const schema = { fields: nextFields };
@@ -257,7 +253,12 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       message.warning('切换格式前请先选择后缀匹配的文件资源');
       return;
     }
+    // An explicit format change is a new-input action; old loaded Excel configs do not take this default.
+    const excelHeaderDefault = nextFormat === 'excel' && format !== 'excel'
+      ? { skipHeaderRowNumber: defaultExcelHeaderSkipOnSelection(sourceConfig?.skipHeaderRowNumber) }
+      : {};
     onChange({
+      ...excelHeaderDefault,
       fileFormatType: nextFormat,
       sourceMode: 'FILE_RESOURCE',
       ...sourcePluginForFormat(nextFormat),
@@ -315,7 +316,9 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       const nextFields = deriveFieldsFromPreview(
         payload,
         nextFormat,
-        config.csvUseHeaderLine !== false && config.skipHeader !== false,
+        nextFormat === 'excel'
+          ? isExcelHeaderEnabled(config.skipHeaderRowNumber)
+          : config.csvUseHeaderLine !== false && config.skipHeader !== false,
         config.fieldDelimiter,
       );
       if (!Object.keys(nextFields).length) {
@@ -346,8 +349,15 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
 
     if (detectedFormat) {
       // 文件后缀决定来源类型；更换文件时同步更新对应的 SeaTunnel connector。
+      const excelHeaderDefault = detectedFormat === 'excel'
+        && nextResourceId !== prevResourceId
+        ? { skipHeaderRowNumber: defaultExcelHeaderSkipOnSelection(
+            patch.skipHeaderRowNumber ?? sourceConfig?.skipHeaderRowNumber,
+          ) }
+        : {};
       patch = {
         ...patch,
+        ...excelHeaderDefault,
         fileFormatType: detectedFormat,
         sourceMode: 'FILE_RESOURCE',
         ...sourcePluginForFormat(detectedFormat),
@@ -584,6 +594,22 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
               />
             </div>
           ) : null}
+          {format === 'excel' ? (
+            <div className="flex items-center gap-1">
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <Switch
+                  size="small"
+                  checked={hasHeader}
+                  onChange={(checked) => onChange({ skipHeaderRowNumber: checked ? 1 : 0 })}
+                />
+                首行作为表头
+              </label>
+              <ConfigHint
+                label="Excel 首行表头说明"
+                title="开启后会跳过首行，字段名使用首行内容；关闭后首行会作为数据导入，字段名使用 field_1、field_2 等默认名称。"
+              />
+            </div>
+          ) : null}
         </div>
 
         {format !== 'duckdb' ? (
@@ -604,7 +630,9 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
               label="字段 Schema 说明"
               title={format === 'duckdb'
                 ? 'SeaTunnel Engine 会读取查询结果的字段类型；需要固定目标字段时，可在此手动配置。'
-                : '字段名和类型会按文件内容识别，可在列表中调整。'}
+                : format === 'excel'
+                  ? 'Excel 字段默认使用 string，避免 20 行预览遗漏后续非数字内容导致导入失败；确认整列为数值后可手动调整类型。'
+                  : '字段名和类型会按文件内容识别，可在列表中调整。'}
             />
           </div>
           <div className="mt-3 flex justify-end gap-2">

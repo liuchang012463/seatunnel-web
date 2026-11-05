@@ -41,9 +41,9 @@ public class OfflineImportProperties {
      */
     private long staleActiveMinutes = 5L;
 
-    /** Absolute path of the Dameng dimp executable. */
+    /** Absolute path of the Dameng dimp executable; child library paths use its bin/ and sibling lib/. */
     private String damengDimpPath;
 
-    /** Absolute path of the KingbaseES sys_restore executable. */
+    /** Absolute path of the KingbaseES sys_restore executable; child library paths use its bin/ and sibling lib/. */
     private String kingbaseSysRestorePath;
 }

@@ -27,6 +27,7 @@ export interface OfflineImportTask {
   targetDatasourceName?: string;
   targetSchema?: string;
   options?: OfflineImportOptions;
+  releaseState: 'ONLINE' | 'OFFLINE';
   status: 'PENDING' | 'QUEUED' | 'RUNNING' | 'SUCCESS' | 'FAILED';
   totalStatements?: number;
   executedStatements?: number;
@@ -37,6 +38,19 @@ export interface OfflineImportTask {
   endTime?: string;
   createTime?: string;
   updateTime?: string;
+}
+
+export interface OfflineImportTaskRun {
+  id: string;
+  taskName: string;
+  status: 'RUNNING' | 'SUCCESS' | 'FAILED';
+  totalStatements?: number;
+  executedStatements?: number;
+  failedStatements?: number;
+  errorMessage?: string;
+  executionLog?: string;
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface OfflineImportTaskPageParams {
@@ -82,6 +96,9 @@ export const offlineImportTaskApi = {
   create: (payload: OfflineImportTaskCreatePayload, options?: RequestOptions) =>
     HttpUtils.post(OFFLINE_IMPORT_API_PREFIX, payload, options),
 
+  update: (id: string | number, payload: OfflineImportTaskCreatePayload) =>
+    HttpUtils.put(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}`, payload),
+
   get: (id: string | number, options?: RequestOptions) =>
     HttpUtils.get(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}`, options),
 
@@ -94,4 +111,16 @@ export const offlineImportTaskApi = {
 
   execute: (id: string | number, options?: RequestOptions) =>
     HttpUtils.post(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}/execute`, undefined, options),
+
+  online: (id: string | number) =>
+    HttpUtils.put(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}/online`),
+
+  offline: (id: string | number) =>
+    HttpUtils.put(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}/offline`),
+
+  history: (id: string | number, options?: RequestOptions) =>
+    HttpUtils.get<OfflineImportTaskRun[]>(
+      `${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}/history`,
+      options,
+    ),
 };

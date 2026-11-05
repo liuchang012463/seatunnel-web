@@ -63,6 +63,7 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
         LambdaUpdateWrapper<OfflineImportTask> wrapper = new LambdaUpdateWrapper<OfflineImportTask>()
                 .eq(OfflineImportTask::getId, id)
                 .eq(OfflineImportTask::getCreateUserId, ownerId)
+                .eq(OfflineImportTask::getReleaseState, "ONLINE")
                 .in(OfflineImportTask::getStatus, "PENDING", "SUCCESS", "FAILED")
                 .set(OfflineImportTask::getStatus, "QUEUED")
                 .set(OfflineImportTask::getUpdateTime, updateTime)
@@ -73,6 +74,38 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
                 .set(OfflineImportTask::getTotalStatements, 0)
                 .set(OfflineImportTask::getExecutedStatements, 0)
                 .set(OfflineImportTask::getFailedStatements, 0);
+        return mybatisMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean updateConfigurationIfOffline(Long id, Integer ownerId, OfflineImportTask config, Date updateTime) {
+        LambdaUpdateWrapper<OfflineImportTask> wrapper = new LambdaUpdateWrapper<OfflineImportTask>()
+                .eq(OfflineImportTask::getId, id)
+                .eq(OfflineImportTask::getCreateUserId, ownerId)
+                .eq(OfflineImportTask::getReleaseState, "OFFLINE")
+                .in(OfflineImportTask::getStatus, "PENDING", "SUCCESS", "FAILED")
+                .set(OfflineImportTask::getName, config.getName())
+                .set(OfflineImportTask::getDescription, config.getDescription())
+                .set(OfflineImportTask::getImportType, config.getImportType())
+                .set(OfflineImportTask::getFileResourceId, config.getFileResourceId())
+                .set(OfflineImportTask::getFileName, config.getFileName())
+                .set(OfflineImportTask::getTargetDatasourceId, config.getTargetDatasourceId())
+                .set(OfflineImportTask::getTargetSchema, config.getTargetSchema())
+                .set(OfflineImportTask::getOptionsJson, config.getOptionsJson())
+                .set(OfflineImportTask::getUpdateTime, updateTime);
+        return mybatisMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean updateReleaseStateIfIdle(
+            Long id, Integer ownerId, String expectedState, String releaseState, Date updateTime) {
+        LambdaUpdateWrapper<OfflineImportTask> wrapper = new LambdaUpdateWrapper<OfflineImportTask>()
+                .eq(OfflineImportTask::getId, id)
+                .eq(OfflineImportTask::getCreateUserId, ownerId)
+                .eq(OfflineImportTask::getReleaseState, expectedState)
+                .in(OfflineImportTask::getStatus, "PENDING", "SUCCESS", "FAILED")
+                .set(OfflineImportTask::getReleaseState, releaseState)
+                .set(OfflineImportTask::getUpdateTime, updateTime);
         return mybatisMapper.update(null, wrapper) > 0;
     }
 
@@ -100,7 +133,8 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
         LambdaQueryWrapper<OfflineImportTask> wrapper = new LambdaQueryWrapper<OfflineImportTask>()
                 .eq(OfflineImportTask::getId, id)
                 .eq(OfflineImportTask::getCreateUserId, ownerId)
-                .in(OfflineImportTask::getStatus, "PENDING", "QUEUED", "SUCCESS", "FAILED");
+                .eq(OfflineImportTask::getReleaseState, "OFFLINE")
+                .in(OfflineImportTask::getStatus, "PENDING", "SUCCESS", "FAILED");
         return mybatisMapper.delete(wrapper) > 0;
     }
 

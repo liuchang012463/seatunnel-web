@@ -35,6 +35,8 @@ public class OfflineImportTaskVO {
 
     private OfflineImportOptions options;
 
+    private String releaseState;
+
     /** PENDING / QUEUED / RUNNING / SUCCESS / FAILED. */
     private String status;
 

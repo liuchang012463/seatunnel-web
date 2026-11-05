@@ -1,6 +1,20 @@
-import { CopyOutlined, PlayCircleOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  CloudDownloadOutlined,
+  CloudUploadOutlined,
+  CopyOutlined,
+  DeleteOutlined,
+  DownOutlined,
+  DoubleRightOutlined,
+  EditOutlined,
+  EyeOutlined,
+  FileOutlined,
+  FileSearchOutlined,
+  PlayCircleOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+} from '@ant-design/icons';
 import { history } from '@umijs/max';
-import { Alert, App, Button, Divider, Empty, Popconfirm, Space, Table, Tag, Tooltip } from 'antd';
+import { Alert, App, Button, Divider, Dropdown, Empty, Space, Table, Tag, Tooltip } from 'antd';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TASK_TABLE_COLUMN_WIDTHS } from '@/pages/common/components/taskTableLayout';
@@ -11,11 +25,12 @@ import ExecutionStatus from '@/pages/batch-link-up/components/SyncTaskList/compo
 import ScheduleInfo from '@/pages/batch-link-up/components/SyncTaskList/components/ScheduleInfo';
 import TaskStatus from '@/pages/batch-link-up/components/SyncTaskList/components/TaskStatus';
 import CustomPagination from '@/pages/batch-link-up/CustomPagination';
+import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import { withTimeout } from '@/utils/withTimeout';
 import { TASK_LIST_REQUEST_TIMEOUT } from '@/pages/common/hooks/useTaskListAutoRefresh';
+import OfflineImportHistoryModal from './import/OfflineImportHistoryModal';
 import { fileIngestTaskApi } from './api';
 import {
-  OFFLINE_IMPORT_TYPE_LABELS,
   offlineImportTargetDbType,
   offlineImportTaskApi,
   type OfflineImportTask,
@@ -51,6 +66,12 @@ const OFFLINE_TYPE_COLORS: Record<string, string> = {
   DAMENG_SQL: 'green',
 };
 
+const offlineActionBaseClass = 'inline-flex h-8 min-w-[60px] items-center justify-center gap-1.5 border px-2 text-sm font-medium transition-all duration-150';
+const offlinePrimaryActionClass = `${offlineActionBaseClass} sync-action-btn is-primary`;
+const offlineSecondaryActionClass = `${offlineActionBaseClass} sync-action-btn is-secondary`;
+const offlineDisabledActionClass = `${offlineActionBaseClass} sync-action-btn is-disabled`;
+const offlineMoreActionClass = 'inline-flex h-8 min-w-[56px] items-center justify-center gap-1 border px-1.5 text-sm font-medium transition-all duration-150 sync-action-btn is-secondary';
+
 const parsePage = (response: any) => {
   if (response?.code !== undefined && response.code !== 0) {
     throw new Error(response.message || response.msg || '查询任务列表失败');
@@ -85,7 +106,7 @@ const ImportTaskList: React.FC<{
   onCreate: () => void;
   goDetail: (id: string, item?: any) => void;
 }> = ({ taskKind, onCreate, goDetail }) => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<UnifiedTask[]>([]);
   const [total, setTotal] = useState(0);
@@ -101,6 +122,8 @@ const ImportTaskList: React.FC<{
     };
   });
   const [executingId, setExecutingId] = useState<string>();
+  const [historyTaskId, setHistoryTaskId] = useState<string>();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inFlightRef = useRef(false);
   const requestSeqRef = useRef(0);
@@ -271,6 +294,63 @@ const ImportTaskList: React.FC<{
     }
   };
 
+  const updateOfflineImportReleaseState = async (task: OfflineImportTask, online: boolean) => {
+    try {
+      const response = await (online
+        ? offlineImportTaskApi.online(task.id)
+        : offlineImportTaskApi.offline(task.id));
+      if (response?.code !== 0) {
+        throw new Error(response?.message || response?.msg || (online ? '上线失败' : '下线失败'));
+      }
+      message.success(online ? '任务已上线' : '任务已下线');
+      void load();
+    } catch (error: any) {
+      message.error(error?.message || (online ? '上线失败' : '下线失败'));
+    }
+  };
+
+  const confirmOfflineImportReleaseState = (task: OfflineImportTask, online: boolean) => {
+    modal.confirm({
+      title: online ? '确认上线该任务？' : '确认下线该任务？',
+      content: online
+        ? '上线后可以启动此 DMP/SQL 导入任务。'
+        : '下线后任务将不能启动。',
+      okText: online ? '上线' : '下线',
+      cancelText: '取消',
+      onOk: () => updateOfflineImportReleaseState(task, online),
+    });
+  };
+
+  const openOfflineImportHistory = (taskId: string | number) => {
+    setHistoryTaskId(String(taskId));
+    setHistoryOpen(true);
+  };
+
+  const openOfflineImportMenu = (key: string, task: OfflineImportTask) => {
+    if (key === 'history') {
+      openOfflineImportHistory(task.id);
+      return;
+    }
+    if (key === 'edit') {
+      history.push(`/sync/file-ingest/import/config/${task.id}`);
+      return;
+    }
+    if (key === 'logs') {
+      openOfflineImportHistory(task.id);
+      return;
+    }
+    if (key === 'delete') {
+      modal.confirm({
+        title: '确认删除该导入任务？',
+        content: `任务「${task.name}」删除后不可恢复。`,
+        okText: '删除',
+        okButtonProps: { danger: true },
+        cancelText: '取消',
+        onOk: () => removeOfflineImport(task),
+      });
+    }
+  };
+
   const columns = useMemo(() => [
     {
       title: '任务名称/ID',
@@ -279,11 +359,10 @@ const ImportTaskList: React.FC<{
       ellipsis: true,
       render: (_: unknown, record: UnifiedTask) => record.taskKind === 'OFFLINE_IMPORT' ? (
         <div className="sync-task-name-cell">
-          <a className="sync-task-name-cell__title" onClick={() => history.push(`/sync/file-ingest/import/detail/${record.id}`)}>
+          <a className="sync-task-name-cell__title" onClick={() => openOfflineImportHistory(record.id)}>
             {record.name || '-'}
           </a>
           <div className="sync-task-name-cell__id"><span>{record.id}</span></div>
-          <div className="sync-task-name-cell__engine-id" title={record.fileName}>文件：{record.fileName || '-'}</div>
         </div>
       ) : (
         <div className="sync-task-name-cell">
@@ -315,7 +394,7 @@ const ImportTaskList: React.FC<{
             status={record.taskKind === 'OFFLINE_IMPORT'
               ? OFFLINE_STATUS_TO_JOB_STATUS[record.status] || record.status
               : record.lastJobStatus}
-            errorMessage={record.taskKind === 'OFFLINE_IMPORT' ? record.errorMessage : record.lastErrorMessage}
+            errorMessage={record.taskKind === 'OFFLINE_IMPORT' ? undefined : record.lastErrorMessage}
           />
         </div>
       ),
@@ -325,21 +404,25 @@ const ImportTaskList: React.FC<{
       key: 'syncPlan',
       width: TASK_TABLE_COLUMN_WIDTHS.plan,
       render: (_: unknown, record: UnifiedTask) => record.taskKind === 'OFFLINE_IMPORT' ? (
-        <Space direction="vertical" size={4}>
-          <Tag color={OFFLINE_TYPE_COLORS[record.importType] || 'default'}>
-            {OFFLINE_IMPORT_TYPE_LABELS[record.importType] || record.importType}
-          </Tag>
-          <DataSourceSyncPlan record={{
-            taskType: 'FILE_INGEST',
-            mode: 'GUIDE_SINGLE',
-            sourceType: 'FILE_RESOURCE',
-            sinkType: offlineImportTargetDbType(record.importType),
-            sourceDatasourceName: record.fileName,
-            sourceTable: record.fileName,
-            sinkDatasourceName: record.targetDatasourceName,
-            sinkTable: record.targetSchema,
-          }} />
-        </Space>
+        <Tooltip title={`来源：${record.fileName || '湖文件'}；目标：${record.targetDatasourceName || '-'}${record.targetSchema ? ` / ${record.targetSchema}` : ''}`}>
+          <div className="offline-import-sync-plan">
+            <div className="offline-import-sync-plan__type">
+              <Tag color={OFFLINE_TYPE_COLORS[record.importType] || 'default'}>
+                {String(record.importType).endsWith('_SQL') ? 'SQL' : 'DMP'}
+              </Tag>
+              <span>{String(record.importType).startsWith('KINGBASE') ? '人大金仓' : '达梦'}</span>
+            </div>
+            <div className="offline-import-sync-plan__flow">
+              <FileOutlined />
+              <span className="offline-import-sync-plan__source">湖文件</span>
+              <DoubleRightOutlined className="sync-plan-compact__arrow" />
+              <DatabaseIcons dbType={offlineImportTargetDbType(record.importType)} width="16" height="16" />
+              <span className="offline-import-sync-plan__target">
+                {record.targetDatasourceName || '-'}{record.targetSchema ? ` / ${record.targetSchema}` : ''}
+              </span>
+            </div>
+          </div>
+        </Tooltip>
       ) : <DataSourceSyncPlan record={record} />,
     },
     {
@@ -389,23 +472,61 @@ const ImportTaskList: React.FC<{
       width: TASK_TABLE_COLUMN_WIDTHS.action,
       fixed: 'right' as const,
       render: (_: unknown, record: UnifiedTask) => record.taskKind === 'OFFLINE_IMPORT' ? (
-        <Space size={2}>
-          <Button
-            type="link"
-            size="small"
-            icon={<PlayCircleOutlined />}
-            loading={executingId === String(record.id)}
-            disabled={executingId === String(record.id) || record.status === 'RUNNING' || record.status === 'QUEUED'}
-            onClick={() => void executeOfflineImport(record)}
-          >执行</Button>
-          <Button type="link" size="small" onClick={() => history.push(`/sync/file-ingest/import/detail/${record.id}`)}>详情</Button>
-          <Popconfirm title="确认删除该导入任务？" disabled={record.status === 'RUNNING' || record.status === 'QUEUED'} onConfirm={() => void removeOfflineImport(record)}>
-            <Button type="link" size="small" danger disabled={record.status === 'RUNNING' || record.status === 'QUEUED'}>删除</Button>
-          </Popconfirm>
+        <Space size={4} className="sync-task-row-actions">
+          <button
+            type="button"
+            className={record.releaseState === 'ONLINE' && record.status !== 'RUNNING' && record.status !== 'QUEUED'
+              ? offlinePrimaryActionClass
+              : offlineDisabledActionClass}
+            disabled={record.releaseState !== 'ONLINE' || executingId === String(record.id) || record.status === 'RUNNING' || record.status === 'QUEUED'}
+            aria-label={`启动任务 ${record.name}`}
+            onClick={() => modal.confirm({
+              title: '确认启动该导入任务？',
+              content: `任务「${record.name}」将按当前配置执行。`,
+              okText: '启动',
+              cancelText: '取消',
+              onOk: () => executeOfflineImport(record),
+            })}
+          >
+            <PlayCircleOutlined />{executingId === String(record.id) ? '启动中' : '启动'}
+          </button>
+          <button
+            type="button"
+            className={record.status === 'RUNNING' || record.status === 'QUEUED'
+              ? offlineDisabledActionClass
+              : offlineSecondaryActionClass}
+            disabled={record.status === 'RUNNING' || record.status === 'QUEUED'}
+            aria-label={`${record.releaseState === 'ONLINE' ? '下线' : '上线'}任务 ${record.name}`}
+            onClick={() => confirmOfflineImportReleaseState(record, record.releaseState !== 'ONLINE')}
+          >
+            {record.releaseState === 'ONLINE' ? <CloudDownloadOutlined /> : <CloudUploadOutlined />}
+            {record.releaseState === 'ONLINE' ? '下线' : '上线'}
+          </button>
+          <Dropdown
+            trigger={['click']}
+            menu={{
+              items: [
+                { key: 'history', icon: <EyeOutlined />, label: '运行历史' },
+                { key: 'edit', icon: <EditOutlined />, label: '编辑配置', disabled: record.releaseState === 'ONLINE' || record.status === 'RUNNING' || record.status === 'QUEUED' },
+                { key: 'logs', icon: <FileSearchOutlined />, label: '查看日志' },
+                { type: 'divider' },
+                { key: 'delete', icon: <DeleteOutlined />, label: '删除任务', danger: true, disabled: record.releaseState === 'ONLINE' || record.status === 'RUNNING' || record.status === 'QUEUED' },
+              ] as any,
+              onClick: ({ key, domEvent }) => {
+                domEvent.stopPropagation();
+                openOfflineImportMenu(String(key), record);
+              },
+            }}
+            placement="bottomLeft"
+          >
+            <button type="button" className={offlineMoreActionClass} aria-haspopup="menu" aria-label={`更多任务操作 ${record.name}`}>
+              更多<DownOutlined style={{ fontSize: 14 }} />
+            </button>
+          </Dropdown>
         </Space>
       ) : <ActionColumn record={record} cbk={() => void load()} goDetail={goDetail} />,
     },
-  ], [executingId, goDetail, load, message]);
+  ], [executingId, goDetail, load, message, modal]);
 
   return (
     <div className="batch-link-up-page sync-task-list">
@@ -463,6 +584,11 @@ const ImportTaskList: React.FC<{
           </div>
         </div>
       </div>
+      <OfflineImportHistoryModal
+        open={historyOpen}
+        taskId={historyTaskId}
+        onClose={() => setHistoryOpen(false)}
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { ArrowRightOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
+import { InboxOutlined, UploadOutlined } from '@ant-design/icons';
 import { history, useLocation } from '@umijs/max';
 import { App, Button, Collapse, Form, Input, Radio, Select, Space, Spin, Upload } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
@@ -9,9 +9,11 @@ import { generateDataSourceOptions, type DataSourceType } from '@/pages/batch-li
 import IconRightArrow from '@/pages/batch-link-up/IconRightArrow';
 import BottomActionBar from '@/pages/batch-link-up/detail/components/BottomActionBar';
 import PageHeader from '@/pages/batch-link-up/detail/components/PageHeader';
+import { STEP_THEME } from '@/pages/batch-link-up/detail/constants';
 import CommonClientLinkSection, { type ConnectivityStatus } from '@/pages/common/components/CommonClientLinkSection';
 import FileResourcePicker from '../FileResourcePicker';
 import { FILE_RESOURCE_SOURCE, type FileResource } from '../types';
+import OfflineImportConfigCanvas, { type OfflineImportConfigNode } from './OfflineImportConfigCanvas';
 import './create.less';
 import {
   OFFLINE_IMPORT_TYPE_LABELS,
@@ -85,6 +87,7 @@ const CreateOfflineImportPage: React.FC = () => {
   const targetOption = useMemo(() => getTargetOption(targetDbType), [targetDbType]);
 
   const [activeStep, setActiveStep] = useState<CreateStep>('base');
+  const [configNode, setConfigNode] = useState<OfflineImportConfigNode>('source');
   const [targetType, setTargetType] = useState<any>(() => toTargetType(targetOption));
   const [clientId, setClientId] = useState<string>();
   const [targetDataSourceId, setTargetDataSourceId] = useState<string>();
@@ -103,7 +106,7 @@ const CreateOfflineImportPage: React.FC = () => {
     form.setFieldsValue({ encoding: 'UTF-8', stopOnError: true, ignoreErrors: true });
   }, [form]);
 
-  const handleSourceChange = (value: string, option: any) => {
+  const handleSourceChange = (value: string, _option: any) => {
     if (value !== FILE_RESOURCE_SOURCE.dbType) return;
     setSourceTestStatus('idle');
   };
@@ -282,67 +285,92 @@ const CreateOfflineImportPage: React.FC = () => {
   }], [category, importType]);
 
   const targetLabel = targetOption.rawLabel || targetDbType;
-  const stepProgress = activeStep === 'base' ? '0%' : activeStep === 'client' ? '50%' : '100%';
+  const isBaseStep = activeStep === 'base';
+  const isClientStep = activeStep === 'client';
+  const isConfigStep = activeStep === 'config';
+  const basePillClass = isBaseStep ? STEP_THEME.base.pill : STEP_THEME.base.pillDone;
+  const baseDotClass = isBaseStep ? STEP_THEME.base.dot : STEP_THEME.base.dotDone;
+  const clientPillClass = isClientStep || isConfigStep ? STEP_THEME.client.pill : STEP_THEME.client.pillInactive;
+  const clientDotClass = isClientStep || isConfigStep ? STEP_THEME.client.dot : STEP_THEME.client.dotInactive;
+  const configPillClass = isConfigStep ? STEP_THEME.client.pill : STEP_THEME.client.pillInactive;
+  const configDotClass = isConfigStep ? STEP_THEME.client.dot : STEP_THEME.client.dotInactive;
+  const stepProgress = isBaseStep ? '0%' : isClientStep ? '50%' : '100%';
 
   return (
     <div className="offline-import-create">
       <PageHeader onBack={goPrevious} title="离线文件导入" className="offline-import-create__page-header" />
 
       <div className="offline-import-create__content">
-        <div className="offline-import-create__steps">
-          {(['base', 'client', 'config'] as CreateStep[]).map((step, index) => {
-            const isActive = activeStep === step;
-            const isDone = (activeStep === 'client' && step === 'base')
-              || (activeStep === 'config' && (step === 'base' || step === 'client'));
-            return (
-              <div className="offline-import-create__step-group" key={step}>
-                {index > 0 && <div className="offline-import-create__step-line" />}
-                <button
-                  type="button"
-                  className={`offline-import-create__step${isActive ? ' is-active' : ''}${isDone ? ' is-done' : ''}`}
-                  onClick={() => {
-                    if (step === 'base' || isDone) setActiveStep(step);
-                  }}
-                  disabled={!isActive && !isDone && step !== 'base'}
-                >
-                  <span className="offline-import-create__step-number">{index + 1}</span>
-                  {step === 'base' ? '基础配置' : step === 'client' ? '客户端与连接' : '具体配置'}
-                </button>
-              </div>
-            );
-          })}
+        <div className="offline-import-create__steps sticky top-0 z-20 mb-6 pt-1 backdrop-blur">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveStep('base')}
+              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200 ${basePillClass}`}
+            >
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200 ${baseDotClass}`}>1</span>
+              基础配置
+            </button>
+            <div className="offline-import-create__step-track relative h-[2px] flex-1 overflow-hidden rounded-full">
+              <div className="offline-import-create__step-progress absolute left-0 top-0 h-full rounded-full transition-[width] duration-500" style={{ width: stepProgress }} />
+            </div>
+            <button
+              type="button"
+              onClick={() => void goClientStep()}
+              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200 ${clientPillClass}`}
+            >
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200 ${clientDotClass}`}>2</span>
+              客户端与连接
+            </button>
+            <div className="offline-import-create__step-track relative h-[2px] flex-1 overflow-hidden rounded-full">
+              <div className="offline-import-create__step-progress absolute left-0 top-0 h-full rounded-full transition-[width] duration-500" style={{ width: isConfigStep ? '100%' : '0%' }} />
+            </div>
+            <button
+              type="button"
+              onClick={goConfigStep}
+              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200 ${configPillClass}`}
+              disabled={!isConfigStep && !canEnterConfig}
+            >
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200 ${configDotClass}`}>3</span>
+              具体配置
+            </button>
+          </div>
         </div>
 
         {activeStep === 'base' && (
           <Form form={form} layout="vertical" initialValues={{ name: '', description: '' }}>
             <section className="offline-import-create__panel offline-import-create__panel--base">
-              <div className="offline-import-create__panel-title">数据同步方式</div>
-              <div className="offline-import-create__route">
-                <div className="offline-import-create__route-node">
-                  <span>来源</span>
-                  <FileResourceGlyph />
-                  <strong>湖文件</strong>
+              <div className="offline-import-create__sync-method">
+                <div className="offline-import-create__panel-title">数据同步方式</div>
+                <div className="offline-import-create__route">
+                  <div className="offline-import-create__route-node">
+                    <span>来源</span>
+                    <FileResourceGlyph />
+                    <strong>湖文件</strong>
+                  </div>
+                  <IconRightArrow />
+                  <div className="offline-import-create__route-node">
+                    <span>去向</span>
+                    <DatabaseIcons dbType={targetDbType} width="22px" height="22px" />
+                    <strong>{targetLabel}</strong>
+                  </div>
                 </div>
-                <IconRightArrow />
-                <div className="offline-import-create__route-node">
-                  <span>去向</span>
-                  <DatabaseIcons dbType={targetDbType} width="22px" height="22px" />
-                  <strong>{targetLabel}</strong>
+                <div className="offline-import-create__import-type">
+                  <span>导入类型</span>
+                  <strong>{OFFLINE_IMPORT_TYPE_LABELS[importType]}</strong>
+                  <span>从统一选择页选择</span>
                 </div>
-              </div>
-              <div className="offline-import-create__import-type">
-                <span>导入类型</span>
-                <strong>{OFFLINE_IMPORT_TYPE_LABELS[importType]}</strong>
-                <span>从统一选择页选择</span>
               </div>
 
-              <h2 className="offline-import-create__panel-title offline-import-create__section-heading">任务信息</h2>
-              <Form.Item label="任务名称" name="name" rules={[{ required: true, message: '请输入任务名称' }]} className="offline-import-create__field">
-                <Input placeholder={category === 'DMP' ? '例如：生产库 DMP 备份导入' : '例如：建库脚本导入'} maxLength={64} />
-              </Form.Item>
-              <Form.Item label="任务描述" name="description" className="offline-import-create__field offline-import-create__field--last">
-                <Input.TextArea placeholder="描述导入范围、用途、注意事项等" rows={3} maxLength={256} />
-              </Form.Item>
+              <div className="offline-import-create__task-info">
+                <div className="offline-import-create__panel-title">任务信息</div>
+                <Form.Item label="任务名称" name="name" rules={[{ required: true, message: '请输入任务名称' }]} className="offline-import-create__field">
+                  <Input placeholder={category === 'DMP' ? '例如：生产库 DMP 备份导入' : '例如：建库脚本导入'} maxLength={64} />
+                </Form.Item>
+                <Form.Item label="任务描述" name="description" className="offline-import-create__field offline-import-create__field--last">
+                  <Input.TextArea placeholder="描述导入范围、用途、注意事项等" rows={3} maxLength={256} />
+                </Form.Item>
+              </div>
             </section>
           </Form>
         )}
@@ -354,7 +382,7 @@ const CreateOfflineImportPage: React.FC = () => {
               sourceType={fileResourceOption}
               targetType={targetType}
               sourceLabel="数据来源"
-              targetLabel="目标表"
+              targetLabel="目标数据库"
               clientId={clientId}
               setClientId={setClientId}
               handleSourceChange={handleSourceChange}
@@ -372,7 +400,7 @@ const CreateOfflineImportPage: React.FC = () => {
               sourceManaged
               scene="offline"
               sourceTitle="来源"
-              targetTitle="目标表"
+              targetTitle="目标数据库"
               sourceCreateText="新建来源数据源"
               targetCreateText="新建目标数据源"
             />
@@ -380,57 +408,60 @@ const CreateOfflineImportPage: React.FC = () => {
         )}
 
         {activeStep === 'config' && (
-          <div className="offline-import-create__config">
-            <section className="offline-import-create__panel offline-import-create__panel--pipeline">
-              <div className="offline-import-create__panel-title">导入链路</div>
-              <div className="offline-import-create__pipeline">
-                <div className="offline-import-create__pipeline-node">
-                  <FileResourceGlyph />
-                  <div><strong>湖文件资源</strong><span>{file?.name || `待选择 ${accept} 文件`}</span></div>
-                </div>
-                <ArrowRightOutlined className="offline-import-create__pipeline-arrow" />
-                <div className="offline-import-create__pipeline-node">
-                  <DatabaseIcons dbType={targetDbType} width="28px" height="28px" />
-                  <div><strong>{targetLabel}</strong><span>目标数据源 ID：{targetDataSourceId || '-'}</span></div>
-                </div>
-              </div>
-            </section>
-
-            <Form form={form} layout="vertical" initialValues={{ encoding: 'UTF-8', stopOnError: true, ignoreErrors: true }}>
-              <section className="offline-import-create__panel offline-import-create__panel--file">
-                <h2 className="offline-import-create__panel-title">导入文件与目标</h2>
-                <div className="offline-import-create__target-fields">
+          <Form form={form} layout="vertical" initialValues={{ encoding: 'UTF-8', stopOnError: true, ignoreErrors: true }}>
+            <OfflineImportConfigCanvas
+              activeNode={configNode}
+              onActiveNodeChange={setConfigNode}
+              sourceTitle="湖文件资源"
+              sourceSummary={file?.name || `待选择 ${accept} 文件`}
+              sinkTitle={targetLabel}
+              sinkSummary={targetDataSourceId ? `已选择目标数据源 ${targetDataSourceId}` : '尚未选择目标数据源'}
+              sinkDbType={targetDbType}
+              sourceConfig={(
+                <>
                   <Form.Item label="导入类型" className="offline-import-create__field">
                     <Input value={OFFLINE_IMPORT_TYPE_LABELS[importType]} readOnly />
                   </Form.Item>
+                  <Upload.Dragger
+                    accept={accept}
+                    maxCount={1}
+                    customRequest={uploadRequest}
+                    beforeUpload={beforeUpload}
+                    showUploadList={false}
+                    disabled={uploading}
+                    className="offline-import-create__upload"
+                  >
+                    {uploading ? <Spin /> : <p className="ant-upload-drag-icon !mb-2"><InboxOutlined /></p>}
+                    <p className="ant-upload-text">{file ? file.name : `点击或拖拽上传 ${accept} 文件`}</p>
+                    <p className="ant-upload-hint">{file ? `文件大小：${(Number(file.size || 0) / 1024).toFixed(1)} KB，可重新上传覆盖` : '文件将上传到平台湖文件资源池后执行导入'}</p>
+                  </Upload.Dragger>
+                  <div className="offline-import-create__file-picker">
+                    <span>已有文件在湖文件资源池？直接选择</span>
+                    <Button icon={<UploadOutlined />} disabled={uploading} onClick={() => setPickerOpen(true)}>从湖文件选择</Button>
+                  </div>
+                  <Collapse items={advancedPanel} ghost />
+                </>
+              )}
+              sinkConfig={(
+                <>
+                  <div className="offline-import-create__selected-target">
+                    <DatabaseIcons dbType={targetDbType} width="24px" height="24px" />
+                    <div>
+                      <strong>{targetLabel}</strong>
+                      <span>数据源 ID：{targetDataSourceId || '-'}</span>
+                    </div>
+                  </div>
+                  <Button className="offline-import-create__change-target" onClick={() => setActiveStep('client')}>
+                    更改目标数据源
+                  </Button>
                   <Form.Item label="目标 Schema" name="targetSchema" className="offline-import-create__field offline-import-create__field--last">
                     <Input placeholder={targetDbType === 'KINGBASE' ? '例如 public' : '例如 TEST'} maxLength={128} />
                   </Form.Item>
-                </div>
-                <Upload.Dragger
-                  accept={accept}
-                  maxCount={1}
-                  customRequest={uploadRequest}
-                  beforeUpload={beforeUpload}
-                  showUploadList={false}
-                  disabled={uploading}
-                  className="offline-import-create__upload"
-                >
-                  {uploading ? <Spin /> : <p className="ant-upload-drag-icon !mb-2"><InboxOutlined /></p>}
-                  <p className="ant-upload-text">{file ? file.name : `点击或拖拽上传 ${accept} 文件`}</p>
-                  <p className="ant-upload-hint">{file ? `文件大小：${(Number(file.size || 0) / 1024).toFixed(1)} KB，可重新上传覆盖` : '文件将上传到平台湖文件资源池后执行导入'}</p>
-                </Upload.Dragger>
-                <div className="offline-import-create__file-picker">
-                  <span>已有文件在湖文件资源池？直接选择</span>
-                  <Button icon={<UploadOutlined />} disabled={uploading} onClick={() => setPickerOpen(true)}>从湖文件选择</Button>
-                </div>
-              </section>
-
-              <section className="offline-import-create__panel offline-import-create__panel--advanced">
-                <Collapse items={advancedPanel} ghost />
-              </section>
-            </Form>
-          </div>
+                  <div className="offline-import-create__target-hint">目标 Schema 为可选项；留空时按目标数据源默认模式执行。</div>
+                </>
+              )}
+            />
+          </Form>
         )}
       </div>
 

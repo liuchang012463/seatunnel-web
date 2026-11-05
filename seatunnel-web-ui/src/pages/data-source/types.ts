@@ -109,6 +109,7 @@ export interface DataSourceMetadataStatus {
   storageManifest?: string | null;
   scan?: DataSourceMetadataRunState;
   exploration?: DataSourceMetadataRunState;
+  sample?: DataSourceMetadataRunState;
 }
 
 export type ExplorationAssetType =

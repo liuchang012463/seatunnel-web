@@ -24,4 +24,7 @@ public class DataSourceMetadataStatusVO {
     private MetadataRunStateVO scan;
 
     private MetadataRunStateVO exploration;
+
+    /** Latest state of the dedicated sample-collection agent, when the source has one. */
+    private MetadataRunStateVO sample;
 }
