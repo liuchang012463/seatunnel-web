@@ -31,7 +31,6 @@ import { TASK_LIST_REQUEST_TIMEOUT } from '@/pages/common/hooks/useTaskListAutoR
 import OfflineImportHistoryModal from './import/OfflineImportHistoryModal';
 import { fileIngestTaskApi } from './api';
 import {
-  OFFLINE_IMPORT_TYPE_LABELS,
   offlineImportTargetDbType,
   offlineImportTaskApi,
   type OfflineImportTask,
