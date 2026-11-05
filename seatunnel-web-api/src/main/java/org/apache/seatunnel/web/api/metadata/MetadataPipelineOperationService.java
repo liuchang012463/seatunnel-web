@@ -268,7 +268,7 @@ public class MetadataPipelineOperationService {
         openMetadataClient.assertFixedVersion();
         ensureNoRunningPipeline(binding);
         if (adapter.supportsProfiler()) {
-            triggerSamplePipeline(adapter.autoClassificationPipelineRequest(
+            triggerManualSamplePipeline(dataSourceId, adapter.autoClassificationPipelineRequest(
                     MetadataStableName.autoClassificationPipelineName(dataSourceId),
                     requireProfilerServiceId(binding, dataSourceId),
                     requireServiceFqn(binding, dataSourceId)));
@@ -278,7 +278,7 @@ public class MetadataPipelineOperationService {
             throw invalid("sample data collection is not enabled for this data source");
         }
         if (adapter.collectsSampleDataViaAutoClassification()) {
-            triggerSamplePipeline(adapter.autoClassificationPipelineRequest(
+            triggerManualSamplePipeline(dataSourceId, adapter.autoClassificationPipelineRequest(
                     MetadataStableName.autoClassificationPipelineName(dataSourceId),
                     requireProfilerServiceId(binding, dataSourceId),
                     requireServiceFqn(binding, dataSourceId),
@@ -301,7 +301,61 @@ public class MetadataPipelineOperationService {
         openMetadataClient.triggerIngestionPipeline(pipeline.id());
     }
 
-    /** True when this connector has a sample pipeline separate from its metadata pipeline. */
+    /** Triggers one manual AutoClassification run and records its local status. */
+    private void triggerManualSamplePipeline(Long dataSourceId, JsonNode request) {
+        updateManualSampleRunStatus(dataSourceId, MetadataRunStatus.QUEUED, null);
+        try {
+            triggerSamplePipeline(request);
+            log.info("Sample collection triggered: dataSourceId={}", dataSourceId);
+        } catch (RuntimeException error) {
+            String errorCode = error instanceof MetadataIntegrationException integrationError
+                    && integrationError.getErrorCode() != null
+                    ? integrationError.getErrorCode().name()
+                    : MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR.name();
+            try {
+                updateManualSampleRunStatus(dataSourceId, MetadataRunStatus.FAILED, errorCode);
+            } catch (RuntimeException statusError) {
+                log.warn("Could not persist failed sample-collection trigger: dataSourceId={}, type={}",
+                        dataSourceId, statusError.getClass().getSimpleName());
+            }
+            throw error;
+        }
+    }
+
+    /** Persist the manual run before/after the OM request so the list status can be polled. */
+    private void updateManualSampleRunStatus(
+            Long dataSourceId, MetadataRunStatus status, String errorCode) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            MetadataSourceBinding binding = metadataBindingDao.queryByDataSourceId(dataSourceId);
+            if (binding == null) {
+                throw invalid("metadata binding is not initialized");
+            }
+            if (status == MetadataRunStatus.FAILED
+                    && binding.getSampleStatus() != MetadataRunStatus.QUEUED) {
+                return;
+            }
+            long version = requireVersion(binding);
+            binding.setSampleStatus(status);
+            if (status == MetadataRunStatus.QUEUED) {
+                binding.setSampleLastRunTime(new Date());
+                binding.setSampleLastError(null);
+            } else if (errorCode != null) {
+                binding.setSampleLastError(errorCode);
+            }
+            binding.setVersion(version + 1L);
+            binding.initUpdate();
+            if (metadataBindingDao.updateIfVersion(binding, version)) {
+                if (status == MetadataRunStatus.FAILED) {
+                    log.warn("Sample collection trigger failed: dataSourceId={}, errorCode={}",
+                            dataSourceId, errorCode);
+                }
+                return;
+            }
+        }
+        throw invalid("sample collection status changed; retry");
+    }
+
+    /** True when this connector has a sample pipeline separate from the metadata pipeline. */
     boolean supportsSeparateSamplePipeline(MetadataSourceBinding binding) {
         DataSource dataSource = binding == null ? null : dataSourceDao.queryById(binding.getDataSourceId());
         if (dataSource == null) {
@@ -594,6 +648,7 @@ public class MetadataPipelineOperationService {
             status.setSampleDataEnabled(false);
             status.setScan(runState(MetadataRunStatus.NEVER, null, null, null));
             status.setExploration(runState(MetadataRunStatus.NEVER, null, null, null));
+            status.setSample(runState(MetadataRunStatus.NEVER, null, null, null));
             return status;
         }
         status.setSyncStatus(MetadataSyncStatusView.project(binding));
@@ -610,6 +665,12 @@ public class MetadataPipelineOperationService {
                 binding.getProfileLastRunTime(),
                 binding.getProfileLastSuccessTime(),
                 binding.getProfileLastError()));
+        status.setSample(runState(
+                effectiveRunStatus(
+                        binding.getSampleStatus(), binding.getSampleLastError(), binding.getSampleLastRunTime()),
+                binding.getSampleLastRunTime(),
+                binding.getSampleLastSuccessTime(),
+                binding.getSampleLastError()));
         return status;
     }
 
@@ -776,6 +837,9 @@ public class MetadataPipelineOperationService {
             item.setWarningsCount(run.warningsCount());
             result.add(item);
         }
+        result.sort(Comparator.comparing(
+                MetadataPipelineRunVO::getStartTime,
+                Comparator.nullsLast(Comparator.reverseOrder())));
         return result;
     }
 
@@ -973,7 +1037,9 @@ public class MetadataPipelineOperationService {
      * accepted but its response was lost.
      */
     boolean hasRunningPipeline(MetadataSourceBinding binding) {
-        if (isRunning(binding.getScanStatus()) || isRunning(binding.getProfileStatus())) {
+        if (isRunning(binding.getScanStatus())
+                || isRunning(binding.getProfileStatus())
+                || isRunning(binding.getSampleStatus())) {
             return true;
         }
         List<OpenMetadataPipelineRun> scanRuns = runs(binding.getOmMetadataPipelineFqn());

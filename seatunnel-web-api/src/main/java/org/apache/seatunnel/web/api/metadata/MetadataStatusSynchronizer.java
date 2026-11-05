@@ -117,7 +117,7 @@ public class MetadataStatusSynchronizer {
             OpenMetadataPipelineRun latestScanRun = latestRun(scanRuns);
             applyRun(latest, true, latestScanRun, now);
             applyExplorationRuns(latest, profileRuns, sampleRuns, now);
-            applySampleRun(latest, latestRun(sampleRuns));
+            applySampleRun(latest, latestRun(sampleRuns), now);
             boolean scanChanged = runOutcomeChanged(scanStatusBefore, scanSuccessBefore,
                     latest.getScanStatus(), latest.getScanLastSuccessTime());
             boolean profileChanged = runOutcomeChanged(profileStatusBefore, profileSuccessBefore,
@@ -370,6 +370,7 @@ public class MetadataStatusSynchronizer {
     private boolean requiresRefresh(MetadataSourceBinding binding, Date now) {
         if (MetadataPipelineOperationService.isRunning(binding.getScanStatus())
                 || MetadataPipelineOperationService.isRunning(binding.getProfileStatus())
+                || MetadataPipelineOperationService.isRunning(binding.getSampleStatus())
                 || (binding.getProfileStatus() == MetadataRunStatus.UNKNOWN
                         && binding.getProfileLastRunTime() != null)) {
             return true;
@@ -395,13 +396,17 @@ public class MetadataStatusSynchronizer {
         boolean activeReservation = MetadataPipelineOperationService.isRunning(currentStatus)
                 || (currentStatus == MetadataRunStatus.UNKNOWN && reservationTime != null);
         if (!activeReservation || reservationTime == null) {
-            // Preserve prior terminal results. Legacy rows without a local reservation
-            // still learn their initial status from the profiler history.
-            if (currentStatus == MetadataRunStatus.NEVER) {
+            // Scheduled and externally triggered runs have no local reservation. Reconcile
+            // their latest result when newer, while preserving local trigger failures and
+            // the combined result of the same profiler/sample reservation.
+            OpenMetadataPipelineRun latestProfilerRun = latestRun(profilerRuns);
+            if (isNewerThanLocalRun(latestProfilerRun, currentStatus, reservationTime)) {
+                applyRun(binding, false, latestProfilerRun, now);
+                log.info("Metadata profiler run status refreshed: dataSourceId={}, runId={}, status={}",
+                        binding.getDataSourceId(), latestProfilerRun.runId(), binding.getProfileStatus());
+            } else if (currentStatus == MetadataRunStatus.NEVER) {
                 if (hasLocalFailureEvidence(binding, false)) {
                     binding.setProfileStatus(MetadataRunStatus.FAILED);
-                } else if (reservationTime == null) {
-                    applyRun(binding, false, latestRun(profilerRuns), now);
                 }
             }
             return;
@@ -454,6 +459,7 @@ public class MetadataStatusSynchronizer {
         if (profilerStatus == MetadataRunStatus.FAILED || sampleStatus == MetadataRunStatus.FAILED) {
             binding.setProfileStatus(MetadataRunStatus.FAILED);
             binding.setProfileLastError(MetadataErrorCode.PIPELINE_EXECUTION_ERROR.name());
+            updateExplorationLastRunTime(binding, reservationTime, profiler, samples);
             return;
         }
         if (profilerStatus == MetadataRunStatus.SUCCESS && sampleStatus == MetadataRunStatus.SUCCESS) {
@@ -462,6 +468,7 @@ public class MetadataStatusSynchronizer {
             Date sampleSuccess = runSuccessTime(samples);
             binding.setProfileLastSuccessTime(latest(profilerSuccess, sampleSuccess));
             binding.setProfileLastError(null);
+            updateExplorationLastRunTime(binding, reservationTime, profiler, samples);
             return;
         }
         if (MetadataPipelineOperationService.isRunning(profilerStatus)
@@ -489,6 +496,7 @@ public class MetadataStatusSynchronizer {
 
         // Both runs are present but OM returned an unrecognized terminal state.
         binding.setProfileStatus(MetadataRunStatus.UNKNOWN);
+        updateExplorationLastRunTime(binding, reservationTime, profiler, samples);
     }
 
     /**
@@ -496,10 +504,13 @@ public class MetadataStatusSynchronizer {
      * auto-classification pipeline, so its state is reported on its own instead of being
      * folded into the metadata scan or the profiler.
      */
-    private void applySampleRun(MetadataSourceBinding binding, OpenMetadataPipelineRun run) {
-        if (run == null) {
+    private void applySampleRun(MetadataSourceBinding binding, OpenMetadataPipelineRun run, Date now) {
+        if (run == null
+                || isOlderThanLocalRun(run, binding.getSampleStatus(), binding.getSampleLastRunTime())) {
+            failUnregisteredSampleRunIfExpired(binding, now);
             return;
         }
+        MetadataRunStatus previousStatus = binding.getSampleStatus();
         MetadataRunStatus status = OpenMetadataRunStatusMapper.fromPipelineState(run.pipelineState());
         Date runTime = MetadataPipelineOperationService.fromOmTimestamp(
                 run.startDate() == null ? run.timestamp() : run.startDate());
@@ -513,6 +524,23 @@ public class MetadataStatusSynchronizer {
             binding.setSampleLastError(null);
         } else if (status == MetadataRunStatus.FAILED) {
             binding.setSampleLastError(MetadataErrorCode.PIPELINE_EXECUTION_ERROR.name());
+        }
+        if (previousStatus != status) {
+            log.info("Metadata sample run status refreshed: dataSourceId={}, runId={}, status={}",
+                    binding.getDataSourceId(), run.runId(), status);
+        }
+    }
+
+    private void failUnregisteredSampleRunIfExpired(MetadataSourceBinding binding, Date now) {
+        Date lastRunTime = binding.getSampleLastRunTime();
+        if (binding.getSampleStatus() == MetadataRunStatus.QUEUED
+                && lastRunTime != null
+                && now.getTime() - lastRunTime.getTime()
+                        >= properties.getTriggerGraceSeconds() * 1000L) {
+            binding.setSampleStatus(MetadataRunStatus.FAILED);
+            binding.setSampleLastError(MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR.name());
+            log.warn("Sample collection run was not registered: dataSourceId={}",
+                    binding.getDataSourceId());
         }
     }
 
@@ -558,6 +586,28 @@ public class MetadataStatusSynchronizer {
     private static Date runTime(OpenMetadataPipelineRun run) {
         return MetadataPipelineOperationService.fromOmTimestamp(
                 run.startDate() == null ? run.timestamp() : run.startDate());
+    }
+
+    private static boolean isNewerThanLocalRun(
+            OpenMetadataPipelineRun run, MetadataRunStatus currentStatus, Date currentLastRunTime) {
+        if (run == null) {
+            return false;
+        }
+        if (currentStatus == null || currentStatus == MetadataRunStatus.NEVER || currentLastRunTime == null) {
+            return true;
+        }
+        Date remoteRunTime = runTime(run);
+        // Ignore second-precision drift so the same paired run cannot replace its aggregate status.
+        return remoteRunTime != null && remoteRunTime.getTime() > currentLastRunTime.getTime() + 5_000L;
+    }
+
+    private static void updateExplorationLastRunTime(
+            MetadataSourceBinding binding,
+            Date reservationTime,
+            OpenMetadataPipelineRun profiler,
+            OpenMetadataPipelineRun samples) {
+        Date latestRunTime = latest(reservationTime, runTime(profiler));
+        binding.setProfileLastRunTime(latest(latestRunTime, runTime(samples)));
     }
 
     private static Date runSuccessTime(OpenMetadataPipelineRun run) {
