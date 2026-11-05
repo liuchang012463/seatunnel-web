@@ -876,7 +876,7 @@ public class DataExplorationService {
         if (binding == null
                 || binding.getDesiredState() != MetadataDesiredState.ACTIVE
                 || binding.getSyncStatus() != MetadataSyncStatus.READY) {
-            throw invalid("metadata synchronization is not ready");
+            throw invalid("元数据同步尚未就绪，请稍后重试。");
         }
         String serviceFqn = binding.getOmServiceFqn();
         if (serviceFqn == null || serviceFqn.isBlank()) {

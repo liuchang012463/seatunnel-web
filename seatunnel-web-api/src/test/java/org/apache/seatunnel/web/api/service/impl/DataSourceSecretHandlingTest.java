@@ -7,6 +7,7 @@ import org.apache.seatunnel.plugin.datasource.s3.param.MinioConnectionParamConve
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.DataSourceSecretSupport;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
+import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.BusinessSystem;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.DataSourceUnit;
@@ -18,6 +19,7 @@ import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceVO;
 import org.apache.seatunnel.web.spi.enums.DbType;
+import org.apache.seatunnel.web.spi.enums.Status;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -28,6 +30,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
@@ -226,6 +229,16 @@ class DataSourceSecretHandlingTest {
         JsonNode merged = MAPPER.readTree(connectionJson.getValue());
         assertEquals("test-host", merged.get("host").asText());
         assertEquals("existing-password", merged.get("password").asText());
+    }
+
+    @Test
+    void connectionParameterFailuresIdentifyTheFailedStage() {
+        ServiceException error = assertThrows(ServiceException.class,
+                () -> service.connectionTestWithParam("{\"type\":\"UNKNOWN\",\"password\":\"hidden\"}"));
+
+        assertEquals(Status.REQUEST_PARAMS_NOT_VALID_ERROR.getCode(), error.getCode());
+        assertTrue(error.getMessage().startsWith("连接参数构建阶段失败："));
+        assertFalse(error.getMessage().contains("hidden"));
     }
 
     @Test

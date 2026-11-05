@@ -18,6 +18,7 @@ import type {
   DataSourceRecord,
 } from '../types';
 import { buildSubmitPayload, parseOriginalJson } from '../utils';
+import { getDataSourceConnectionErrorMessage } from '../connectionError';
 import DataSourceTypeSelector from './DataSourceTypeSelector';
 import DynamicDataSourceForm from './DynamicDataSourceForm';
 
@@ -170,21 +171,21 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
         ...(isEditMode && currentRecord?.id ? { dataSourceId: currentRecord.id } : {}),
       });
 
-      if (response.code === 0) {
-        if (response.data === true) {
-          message.success(
-            intl.formatMessage({
-              id: 'pages.datasource.modal.message.success',
-              defaultMessage: 'Success',
-            }),
-          );
-          return;
-        }
-
+      if (response.code === 0 && response.data === true) {
+        message.success(
+          intl.formatMessage({
+            id: 'pages.datasource.modal.message.success',
+            defaultMessage: 'Success',
+          }),
+        );
         return;
       }
+      message.error(response.code === 0
+        ? '连接验证未通过，连接器未返回具体原因，请检查主机、端口、数据库和账号配置。'
+        : getDataSourceConnectionErrorMessage(response));
     } catch (error: any) {
       if (error?.errorFields) return;
+      message.error(getDataSourceConnectionErrorMessage(error));
     }
   };
 

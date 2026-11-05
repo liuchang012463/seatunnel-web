@@ -422,7 +422,7 @@ public class MetadataPipelineOperationService {
         requireActiveDataSource(dataSourceId);
         MetadataSourceBinding binding = requireBinding(dataSourceId);
         if (binding.getDesiredState() != MetadataDesiredState.ACTIVE) {
-            throw invalid("metadata synchronization is not ready");
+            throw invalid("元数据同步尚未就绪，请稍后重试。");
         }
         // Operator "重新扫描" on a failed control-plane sync should reopen the
         // binding instead of requiring a separate retry endpoint.
@@ -433,7 +433,7 @@ public class MetadataPipelineOperationService {
             return retryMetadataSync(dataSourceId);
         }
         if (binding.getSyncStatus() != MetadataSyncStatus.READY) {
-            throw invalid("metadata synchronization is not ready");
+            throw invalid("元数据同步尚未就绪，请稍后重试。");
         }
         triggerMetadata(binding, true);
         return true;
@@ -568,7 +568,7 @@ public class MetadataPipelineOperationService {
     public boolean retryMetadataSync(Long dataSourceId) {
         MetadataSourceBinding binding = requireBinding(dataSourceId);
         if (binding.getSyncStatus() != MetadataSyncStatus.ERROR) {
-            throw invalid("metadata sync is not in an error state");
+            throw invalid("元数据同步当前不处于错误状态，无法重试。");
         }
         long version = requireVersion(binding);
         binding.setSyncStatus(MetadataSyncStatus.PENDING);
@@ -579,7 +579,7 @@ public class MetadataPipelineOperationService {
         binding.setVersion(version + 1L);
         binding.initUpdate();
         if (!metadataBindingDao.updateIfVersion(binding, version)) {
-            throw invalid("metadata sync state changed; refresh and retry");
+            throw invalid("元数据同步状态已变化，请刷新后重试。");
         }
         return true;
     }
@@ -1497,7 +1497,7 @@ public class MetadataPipelineOperationService {
         requireActiveDataSource(dataSourceId);
         MetadataSourceBinding binding = requireBinding(dataSourceId);
         if (binding.getDesiredState() != MetadataDesiredState.ACTIVE || binding.getSyncStatus() != MetadataSyncStatus.READY) {
-            throw invalid("metadata synchronization is not ready");
+            throw invalid("元数据同步尚未就绪，请稍后重试。");
         }
         return binding;
     }

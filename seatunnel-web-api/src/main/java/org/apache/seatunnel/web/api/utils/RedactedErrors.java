@@ -3,13 +3,12 @@ package org.apache.seatunnel.web.api.utils;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * Keeps the credentials of the Engine out of the logs and of the per job log files.
+ * Keeps credentials out of user-facing diagnostics and logs when a connector echoes options.
  *
  * <p>
- * The Engine echoes the connector options of a failed job in its error message, and the cause
- * chain of the resulting exception carries the raw response body of the Engine. A throwable that
- * is handed to the logger prints that text, so the logger only ever receives the masked message
- * and the stack frames of the failure.
+ * A connector error may include submitted connection options in its message or cause chain. A
+ * throwable that is handed to the logger prints that text, so the logger only ever receives the
+ * masked message and the stack frames of the failure.
  * </p>
  */
 public final class RedactedErrors {
