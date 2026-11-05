@@ -10,6 +10,8 @@ import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskRunVO;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -18,6 +20,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /** HTTP API for DMP/SQL offline import tasks. */
 @RestController
@@ -44,6 +48,33 @@ public class OfflineImportTaskController {
     @Operation(summary = "getOfflineImportTask", description = "获取 DMP/SQL 离线导入任务详情")
     public Result<OfflineImportTaskVO> get(@PathVariable("id") Long id) {
         return Result.buildSuc(offlineImportTaskService.get(id));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "updateOfflineImportTask", description = "更新已下线 DMP/SQL 导入任务配置")
+    public Result<OfflineImportTaskVO> update(
+            @PathVariable("id") Long id, @Valid @RequestBody OfflineImportTaskCreateDTO dto) {
+        return Result.buildSuc(offlineImportTaskService.update(id, dto));
+    }
+
+    @PutMapping("/{id}/online")
+    @Operation(summary = "onlineOfflineImportTask", description = "上线 DMP/SQL 导入任务")
+    public Result<Boolean> online(@PathVariable("id") Long id) {
+        offlineImportTaskService.updateReleaseState(id, "ONLINE");
+        return Result.buildSuc(true);
+    }
+
+    @PutMapping("/{id}/offline")
+    @Operation(summary = "offlineOfflineImportTask", description = "下线 DMP/SQL 导入任务")
+    public Result<Boolean> offline(@PathVariable("id") Long id) {
+        offlineImportTaskService.updateReleaseState(id, "OFFLINE");
+        return Result.buildSuc(true);
+    }
+
+    @GetMapping("/{id}/history")
+    @Operation(summary = "offlineImportTaskHistory", description = "查询 DMP/SQL 导入任务运行历史")
+    public Result<List<OfflineImportTaskRunVO>> history(@PathVariable("id") Long id) {
+        return Result.buildSuc(offlineImportTaskService.history(id));
     }
 
     @DeleteMapping("/{id}")

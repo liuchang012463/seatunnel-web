@@ -4,15 +4,24 @@ import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskRunVO;
+
+import java.util.List;
 
 /** Management and execution of DMP/SQL offline import tasks. */
 public interface OfflineImportTaskService {
 
     OfflineImportTaskVO create(OfflineImportTaskCreateDTO dto);
 
+    OfflineImportTaskVO update(Long id, OfflineImportTaskCreateDTO dto);
+
+    void updateReleaseState(Long id, String releaseState);
+
     PaginationResult<OfflineImportTaskVO> page(OfflineImportTaskQueryDTO query);
 
     OfflineImportTaskVO get(Long id);
+
+    List<OfflineImportTaskRunVO> history(Long id);
 
     void delete(Long id);
 

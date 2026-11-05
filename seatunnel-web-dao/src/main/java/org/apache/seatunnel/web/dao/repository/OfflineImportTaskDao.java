@@ -11,6 +11,11 @@ public interface OfflineImportTaskDao extends IDao<OfflineImportTask> {
     /** Flips the task to QUEUED only when it is still re-executable, so double submits cannot race. */
     boolean markQueuedIfExecutable(Long id, Integer ownerId, java.util.Date updateTime);
 
+    boolean updateConfigurationIfOffline(Long id, Integer ownerId, OfflineImportTask config, java.util.Date updateTime);
+
+    boolean updateReleaseStateIfIdle(
+            Long id, Integer ownerId, String expectedState, String releaseState, java.util.Date updateTime);
+
     /** The worker claims a QUEUED task as RUNNING; false means it was deleted meanwhile. */
     boolean markRunningFromQueued(Long id, Integer ownerId, java.util.Date updateTime);
 

@@ -27,15 +27,18 @@ import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.FileResource;
 import org.apache.seatunnel.web.dao.entity.OfflineImportTask;
+import org.apache.seatunnel.web.dao.entity.OfflineImportTaskRun;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.FileResourceDao;
 import org.apache.seatunnel.web.dao.repository.OfflineImportTaskDao;
+import org.apache.seatunnel.web.dao.repository.OfflineImportTaskRunDao;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportOptions;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskRunVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.enums.OfflineImportType;
@@ -62,6 +65,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -87,6 +91,12 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
     private static final long PROGRESS_FLUSH_INTERVAL_MS = 3000;
     @Resource
     private OfflineImportTaskDao offlineImportTaskDao;
+
+    @Resource
+    private OfflineImportTaskRunDao offlineImportTaskRunDao;
+
+    @Resource
+    private OfflineImportTaskRunCompletionService offlineImportTaskRunCompletionService;
 
     @Resource
     private DataSourceDao dataSourceDao;
@@ -158,6 +168,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             java.util.Date now = new java.util.Date();
             for (Long id : activeTaskIds) {
                 offlineImportTaskDao.touchActive(id, now);
+                offlineImportTaskRunDao.touchActiveRun(id, now);
             }
             failStaleActive();
         } catch (Exception e) {
@@ -168,16 +179,74 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
     private void failStaleActive() {
         long cutoffMillis = System.currentTimeMillis()
                 - offlineImportProperties.getStaleActiveMinutes() * 60_000L;
+        Date cutoff = new Date(cutoffMillis);
+        Date endTime = new Date();
         int failed = offlineImportTaskDao.failStaleActive(
-                new java.util.Date(cutoffMillis),
+                cutoff,
                 "任务心跳超时或服务重启导致中断，请重新执行");
+        int failedRuns = offlineImportTaskRunDao.failStaleRuns(
+                cutoff, "任务心跳超时或服务重启导致中断，请重新执行", endTime);
         if (failed > 0) {
-            log.warn("Failed {} stale offline import tasks", failed);
+            log.warn("Failed {} stale offline import tasks and {} run records", failed, failedRuns);
         }
     }
 
     @Override
     public OfflineImportTaskVO create(OfflineImportTaskCreateDTO dto) {
+        ValidatedImportConfig config = validateConfig(dto);
+
+        OfflineImportTask entity = new OfflineImportTask();
+        entity.initInsert();
+        entity.setName(dto.getName().trim());
+        entity.setDescription(StringUtils.trimToNull(dto.getDescription()));
+        entity.setImportType(config.importType().getCode());
+        entity.setFileResourceId(dto.getFileResourceId());
+        entity.setFileName(config.fileName());
+        entity.setTargetDatasourceId(dto.getTargetDatasourceId());
+        entity.setTargetSchema(StringUtils.trimToNull(dto.getTargetSchema()));
+        entity.setOptionsJson(JSONUtils.toJsonString(config.options()));
+        entity.setReleaseState("OFFLINE");
+        entity.setStatus(STATUS_PENDING);
+        entity.setTotalStatements(0);
+        entity.setExecutedStatements(0);
+        entity.setFailedStatements(0);
+        entity.setCreateUserId(currentUserProvider.getCurrentUserId());
+        offlineImportTaskDao.insert(entity);
+        log.info("Created offline import task taskId={}, ownerId={}, type={}",
+                entity.getId(), entity.getCreateUserId(), entity.getImportType());
+        return toVO(entity, config.target().getName());
+    }
+
+    @Override
+    public OfflineImportTaskVO update(Long id, OfflineImportTaskCreateDTO dto) {
+        OfflineImportTask task = requireTask(id);
+        if (!"OFFLINE".equals(task.getReleaseState())) {
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "请先下线任务，再编辑配置");
+        }
+        if (isActive(task.getStatus())) {
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务正在排队或执行中，不能编辑配置");
+        }
+
+        ValidatedImportConfig config = validateConfig(dto);
+        OfflineImportTask update = new OfflineImportTask();
+        update.setName(dto.getName().trim());
+        update.setDescription(StringUtils.trimToNull(dto.getDescription()));
+        update.setImportType(config.importType().getCode());
+        update.setFileResourceId(dto.getFileResourceId());
+        update.setFileName(config.fileName());
+        update.setTargetDatasourceId(dto.getTargetDatasourceId());
+        update.setTargetSchema(StringUtils.trimToNull(dto.getTargetSchema()));
+        update.setOptionsJson(JSONUtils.toJsonString(config.options()));
+        if (!offlineImportTaskDao.updateConfigurationIfOffline(
+                id, task.getCreateUserId(), update, new Date())) {
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR,
+                    "任务状态已变化，请刷新后再编辑");
+        }
+        log.info("Updated offline import task configuration taskId={}, ownerId={}", id, task.getCreateUserId());
+        return toVO(offlineImportTaskDao.queryById(id), config.target().getName());
+    }
+
+    private ValidatedImportConfig validateConfig(OfflineImportTaskCreateDTO dto) {
         OfflineImportType importType = OfflineImportType.of(dto.getImportType());
         if (importType == null) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "importType");
@@ -205,34 +274,17 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         OfflineImportOptions options = defaultOptions(dto.getOptions());
         validateOptions(importType, options, dto.getTargetSchema());
 
-        DataSource dataSource = dataSourceDao.queryById(dto.getTargetDatasourceId());
-        if (dataSource == null) {
+        DataSource target = dataSourceDao.queryById(dto.getTargetDatasourceId());
+        if (target == null) {
             throw new ServiceException(Status.DATASOURCE_NOT_EXIST);
         }
-        if (dataSource.getDbType() != importType.getTargetDbType()) {
+        if (target.getDbType() != importType.getTargetDbType()) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
-                    "目标数据源类型 " + dataSource.getDbType() + " 与导入类型 " + importType.getCode() + " 不匹配");
+                    "目标数据源类型 " + target.getDbType() + " 与导入类型 " + importType.getCode() + " 不匹配");
         }
-        dataSourceUsageValidator.validate(dataSource.getId(),
+        dataSourceUsageValidator.validate(target.getId(),
                 org.apache.seatunnel.web.common.enums.DataSourceUsage.SINK);
-
-        OfflineImportTask entity = new OfflineImportTask();
-        entity.initInsert();
-        entity.setName(dto.getName().trim());
-        entity.setDescription(StringUtils.trimToNull(dto.getDescription()));
-        entity.setImportType(importType.getCode());
-        entity.setFileResourceId(dto.getFileResourceId());
-        entity.setFileName(fileName);
-        entity.setTargetDatasourceId(dto.getTargetDatasourceId());
-        entity.setTargetSchema(StringUtils.trimToNull(dto.getTargetSchema()));
-        entity.setOptionsJson(JSONUtils.toJsonString(options));
-        entity.setStatus(STATUS_PENDING);
-        entity.setTotalStatements(0);
-        entity.setExecutedStatements(0);
-        entity.setFailedStatements(0);
-        entity.setCreateUserId(currentUserProvider.getCurrentUserId());
-        offlineImportTaskDao.insert(entity);
-        return toVO(entity, dataSource.getName());
+        return new ValidatedImportConfig(importType, fileName, options, target);
     }
 
     private OfflineImportOptions defaultOptions(OfflineImportOptions raw) {
@@ -288,10 +340,36 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
     }
 
     @Override
+    public List<OfflineImportTaskRunVO> history(Long id) {
+        OfflineImportTask task = requireTask(id);
+        List<OfflineImportTaskRun> runs = offlineImportTaskRunDao.queryByTaskId(
+                id, currentUserProvider.getCurrentUserId());
+        if (runs.isEmpty() && task.getStartTime() != null) {
+            // Tasks created before the history table migration still expose their last saved run.
+            OfflineImportTaskRunVO legacyRun = new OfflineImportTaskRunVO();
+            legacyRun.setId(task.getId());
+            legacyRun.setTaskName(task.getName());
+            legacyRun.setStatus(task.getStatus());
+            legacyRun.setTotalStatements(task.getTotalStatements());
+            legacyRun.setExecutedStatements(task.getExecutedStatements());
+            legacyRun.setFailedStatements(task.getFailedStatements());
+            legacyRun.setErrorMessage(task.getErrorMessage());
+            legacyRun.setExecutionLog(task.getExecutionLog());
+            legacyRun.setStartTime(task.getStartTime());
+            legacyRun.setEndTime(task.getEndTime());
+            return List.of(legacyRun);
+        }
+        return runs.stream().map(this::toRunVO).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         OfflineImportTask task = requireTask(id);
-        if (STATUS_RUNNING.equals(task.getStatus())) {
-            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务正在执行中，不能删除");
+        if (isActive(task.getStatus())) {
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务正在排队或执行中，不能删除");
+        }
+        if (!"OFFLINE".equals(task.getReleaseState())) {
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "请先下线任务，再删除");
         }
         if (!offlineImportTaskDao.deleteIfNotRunning(id, task.getCreateUserId())) {
             throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务状态已变化，不能删除");
@@ -301,9 +379,12 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
     @Override
     public void execute(Long id) {
         OfflineImportTask task = requireTask(id);
+        if (!"ONLINE".equals(task.getReleaseState())) {
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "请先上线任务，再启动导入");
+        }
         Integer ownerId = task.getCreateUserId();
         if (!offlineImportTaskDao.markQueuedIfExecutable(id, ownerId, new java.util.Date())) {
-            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务正在排队或执行中");
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务状态已变化，请刷新后再启动");
         }
         activeTaskIds.add(id);
         try {
@@ -312,7 +393,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                     runTask(id, ownerId);
                 } catch (Throwable t) {
                     log.error("Offline import task {} crashed", id, t);
-                    markTerminated(id, STATUS_FAILED,
+                    markTerminated(id, null, STATUS_FAILED,
                             "任务执行异常: " + StringUtils.defaultIfBlank(t.getMessage(), t.getClass().getSimpleName()), null);
                 } finally {
                     activeTaskIds.remove(id);
@@ -324,6 +405,31 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                     id, ownerId, "任务执行器当前不可用，请稍后重试", new java.util.Date());
             throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务执行器当前不可用，请稍后重试");
         }
+    }
+
+    @Override
+    public void updateReleaseState(Long id, String releaseState) {
+        if (!"ONLINE".equals(releaseState) && !"OFFLINE".equals(releaseState)) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "releaseState");
+        }
+        OfflineImportTask task = requireTask(id);
+        if (isActive(task.getStatus())) {
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务正在排队或执行中，不能切换上线状态");
+        }
+        if (releaseState.equals(task.getReleaseState())) {
+            return;
+        }
+        if (!offlineImportTaskDao.updateReleaseStateIfIdle(
+                id, task.getCreateUserId(), task.getReleaseState(), releaseState, new Date())) {
+            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR,
+                    "任务状态已变化，请刷新后再切换上线状态");
+        }
+        log.info("Changed offline import task release state taskId={}, ownerId={}, releaseState={}",
+                id, task.getCreateUserId(), releaseState);
+    }
+
+    private boolean isActive(String status) {
+        return STATUS_RUNNING.equals(status) || STATUS_QUEUED.equals(status);
     }
 
     private OfflineImportTask requireTask(Long id) {
@@ -344,15 +450,33 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             log.info("Offline import task {} is no longer queued, skip run", id);
             return;
         }
-        OfflineImportTask task = requireTask(id, ownerId);
-        OfflineImportType importType = OfflineImportType.of(task.getImportType());
-        OfflineImportOptions options = defaultOptions(
-                JSONUtils.parseObject(task.getOptionsJson(), OfflineImportOptions.class));
-        DataSource dataSource = dataSourceDao.queryById(task.getTargetDatasourceId());
         ExecutionLogBuffer executionLog = new ExecutionLogBuffer(LOG_MAX_CHARS);
-        executionLog.line("开始执行离线导入任务: " + task.getName() + "（类型 " + task.getImportType() + "）");
+        Long runId = null;
+        OfflineImportType importType = null;
 
         try {
+            OfflineImportTask task = requireTask(id, ownerId);
+            importType = OfflineImportType.of(task.getImportType());
+            OfflineImportOptions options = defaultOptions(
+                    JSONUtils.parseObject(task.getOptionsJson(), OfflineImportOptions.class));
+            DataSource dataSource = dataSourceDao.queryById(task.getTargetDatasourceId());
+            executionLog.line("开始执行离线导入任务: " + task.getName() + "（类型 " + task.getImportType() + "）");
+
+            OfflineImportTaskRun run = new OfflineImportTaskRun();
+            run.initInsert();
+            run.setTaskId(id);
+            run.setTaskName(task.getName());
+            run.setStatus(STATUS_RUNNING);
+            run.setTotalStatements(0);
+            run.setExecutedStatements(0);
+            run.setFailedStatements(0);
+            run.setExecutionLog(executionLog.snapshot());
+            run.setStartTime(task.getStartTime() == null ? new Date() : task.getStartTime());
+            run.setCreateUserId(ownerId);
+            offlineImportTaskRunDao.insert(run);
+            runId = run.getId();
+            log.info("Started offline import run taskId={}, runId={}, ownerId={}", id, runId, ownerId);
+
             if (importType == null || dataSource == null) {
                 throw new IllegalStateException(importType == null ? "导入类型无效" : "目标数据源不存在");
             }
@@ -364,7 +488,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                     : runDmpImport(task, importType, dataSource, options, executionLog);
             boolean success = failure == null;
             executionLog.line(success ? "任务执行成功" : "任务执行失败: " + failure);
-            markTerminated(id, success ? STATUS_SUCCESS : STATUS_FAILED,
+            markTerminated(id, runId, success ? STATUS_SUCCESS : STATUS_FAILED,
                     executionLog.redact(failure), executionLog.snapshot());
         } catch (Exception e) {
             // Native tools and JDBC drivers may include command arguments in
@@ -376,7 +500,12 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                     : StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName());
             String failure = executionLog.redact("任务执行异常: " + details);
             executionLog.line(failure);
-            markTerminated(id, STATUS_FAILED, executionLog.redact(failure), executionLog.snapshot());
+            markTerminated(id, runId, STATUS_FAILED, executionLog.redact(failure), executionLog.snapshot());
+        } catch (Error error) {
+            log.error("Offline import task {} crashed ({})", id, error.getClass().getSimpleName());
+            markTerminated(id, runId, STATUS_FAILED,
+                    "任务执行异常: " + error.getClass().getSimpleName(), executionLog.snapshot());
+            throw error;
         }
     }
 
@@ -779,14 +908,14 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         offlineImportTaskDao.updateProgressIfRunning(taskId, total, executed, failed);
     }
 
-    private void markTerminated(Long taskId, String status, String errorMessage, String executionLog) {
-        java.util.Date endTime = new java.util.Date();
-        boolean updated = offlineImportTaskDao.markTerminatedIfActive(
+    private void markTerminated(Long taskId, Long runId, String status, String errorMessage, String executionLog) {
+        Date endTime = new Date();
+        boolean updated = offlineImportTaskRunCompletionService.finish(
                 taskId,
+                runId,
                 status,
                 OfflineImportLogRedactor.mask(StringUtils.abbreviate(errorMessage, 2000)),
-                executionLog,
-                endTime);
+                executionLog, endTime);
         if (!updated) {
             log.info("Offline import task {} terminal update skipped; state changed meanwhile", taskId);
         }
@@ -821,6 +950,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         vo.setOptions(StringUtils.isBlank(entity.getOptionsJson())
                 ? null
                 : JSONUtils.parseObject(entity.getOptionsJson(), OfflineImportOptions.class));
+        vo.setReleaseState(entity.getReleaseState());
         vo.setStatus(entity.getStatus());
         vo.setTotalStatements(entity.getTotalStatements());
         vo.setExecutedStatements(entity.getExecutedStatements());
@@ -832,5 +962,24 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         vo.setCreateTime(entity.getCreateTime());
         vo.setUpdateTime(entity.getUpdateTime());
         return vo;
+    }
+
+    private OfflineImportTaskRunVO toRunVO(OfflineImportTaskRun entity) {
+        OfflineImportTaskRunVO vo = new OfflineImportTaskRunVO();
+        vo.setId(entity.getId());
+        vo.setTaskName(entity.getTaskName());
+        vo.setStatus(entity.getStatus());
+        vo.setTotalStatements(entity.getTotalStatements());
+        vo.setExecutedStatements(entity.getExecutedStatements());
+        vo.setFailedStatements(entity.getFailedStatements());
+        vo.setErrorMessage(entity.getErrorMessage());
+        vo.setExecutionLog(entity.getExecutionLog());
+        vo.setStartTime(entity.getStartTime());
+        vo.setEndTime(entity.getEndTime());
+        return vo;
+    }
+
+    private record ValidatedImportConfig(
+            OfflineImportType importType, String fileName, OfflineImportOptions options, DataSource target) {
     }
 }
