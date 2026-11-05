@@ -1,6 +1,6 @@
 import { ReloadOutlined } from '@ant-design/icons';
-import { App, Badge, Button, DatePicker, Empty, Modal, Space, Splitter, Spin, Tabs, Tag } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { Alert, App, Badge, Button, DatePicker, Empty, Modal, Space, Splitter, Spin, Tabs, Tag } from 'antd';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   OFFLINE_IMPORT_TYPE_LABELS,
   offlineImportTaskApi,
@@ -29,37 +29,62 @@ const OfflineImportHistoryModal: React.FC<OfflineImportHistoryModalProps> = ({ o
   const [selectedRunId, setSelectedRunId] = useState<string>();
   const [dateRange, setDateRange] = useState<[number, number]>();
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string>();
+  const requestSeqRef = useRef(0);
+  const inFlightRef = useRef(false);
 
   const load = async (silent = false) => {
-    if (!taskId) return;
+    if (!taskId || inFlightRef.current) return;
+    inFlightRef.current = true;
+    const requestSeq = ++requestSeqRef.current;
     if (!silent) setLoading(true);
     try {
       const [taskResponse, runResponse] = await Promise.all([
         offlineImportTaskApi.get(taskId, { skipErrorHandler: true }),
         offlineImportTaskApi.history(taskId, { skipErrorHandler: true }),
       ]);
+      if (requestSeq !== requestSeqRef.current) return;
       if (taskResponse?.code !== 0) throw new Error(taskResponse?.message || taskResponse?.msg || '读取任务信息失败');
       if (runResponse?.code !== 0) throw new Error(runResponse?.message || runResponse?.msg || '读取运行历史失败');
       const nextRuns = (Array.isArray(runResponse?.data) ? runResponse.data : []) as OfflineImportTaskRun[];
       setTask(taskResponse.data as OfflineImportTask);
       setRuns(nextRuns);
+      setLoadError(undefined);
       setSelectedRunId((current) => current && nextRuns.some((run) => String(run.id) === current)
         ? current
         : nextRuns[0]?.id);
     } catch (error: any) {
-      if (!silent) message.error(error?.message || '读取运行历史失败');
+      if (requestSeq !== requestSeqRef.current) return;
+      if (!silent) {
+        const text = error?.message || '读取运行历史失败';
+        setLoadError(text);
+        message.error(text);
+      }
     } finally {
-      if (!silent) setLoading(false);
+      if (requestSeq === requestSeqRef.current) {
+        inFlightRef.current = false;
+        if (!silent) setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     if (!open) return undefined;
+    requestSeqRef.current += 1;
+    inFlightRef.current = false;
+    setTask(undefined);
+    setRuns([]);
     setDateRange(undefined);
     setSelectedRunId(undefined);
+    setLoadError(undefined);
+    setLoading(true);
     void load();
     const poll = setInterval(() => void load(true), 3000);
-    return () => clearInterval(poll);
+    return () => {
+      requestSeqRef.current += 1;
+      inFlightRef.current = false;
+      clearInterval(poll);
+    };
     // The interval intentionally reads the current task ID while this modal is open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, taskId]);
@@ -114,7 +139,8 @@ const OfflineImportHistoryModal: React.FC<OfflineImportHistoryModalProps> = ({ o
                 </div>
                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                   {loading && !runs.length ? <div className="flex justify-center py-8"><Spin /></div> : null}
-                  {!loading && !filteredRuns.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无运行记录" /> : null}
+                  {loadError ? <Alert type="error" showIcon message="读取运行历史失败" description={loadError} action={<Button size="small" onClick={() => void load()}>重试</Button>} /> : null}
+                  {!loading && !loadError && !filteredRuns.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无运行记录" /> : null}
                   {filteredRuns.map((run) => {
                     const selected = String(run.id) === String(selectedRun?.id);
                     const statusMeta = STATUS_META[run.status] || { label: run.status, badge: 'default' as const };
