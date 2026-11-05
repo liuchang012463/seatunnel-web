@@ -96,13 +96,13 @@ const OfflineImportConfigCanvas: React.FC<OfflineImportConfigCanvasProps> = ({
           maxZoom={1}
           className="offline-import-config-canvas__flow"
         >
-          <Controls showInteractive={false} />
-          <Background gap={14} size={2} color="#8585ad26" />
+          <Controls position="top-left" showInteractive={false} />
+          <Background gap={14} size={2} color="var(--st-color-divider)" />
           <MiniMap
             className="workflow-minimap"
             position="bottom-left"
             style={{ width: 102, height: 72 }}
-            maskColor="rgba(148, 163, 184, 0.14)"
+            maskColor="rgba(0, 25, 34, 0.72)"
           />
         </ReactFlow>
       </ReactFlowProvider>

@@ -1,11 +1,11 @@
 .offline-import-create {
   min-height: calc(100vh - 56px);
-  color: #1f2937;
-  background: #f8fafc;
+  color: var(--st-color-text-primary);
+  background: var(--st-color-bg-app);
 
   &__page-header {
-    border-bottom: 1px solid #e2e8f0;
-    background: #fff;
+    border-bottom: 1px solid var(--st-color-divider) !important;
+    background: var(--st-color-bg-page) !important;
   }
 
   &__content {
@@ -17,6 +17,15 @@
 
   &__steps {
     margin: 4px 0 22px;
+    background: var(--st-color-bg-page) !important;
+  }
+
+  &__step-track {
+    background: var(--st-color-divider);
+  }
+
+  &__step-progress {
+    background: var(--st-color-accent);
   }
 
   &__panel {
@@ -24,15 +33,15 @@
     grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
     gap: 28px;
     padding: 24px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--st-color-divider);
     border-radius: 12px;
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    background: var(--st-color-bg-panel);
+    box-shadow: var(--st-panel-shadow);
   }
 
   &__panel-title {
     margin: 0 0 16px;
-    color: #1f2937;
+    color: var(--st-color-text-primary);
     font-size: 16px;
     font-weight: 600;
     line-height: 1.5;
@@ -48,9 +57,9 @@
     align-items: center;
     gap: 18px;
     padding: 14px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--st-color-divider);
     border-radius: 10px;
-    background: #f8fafc;
+    background: var(--st-color-bg-elevated);
   }
 
   &__route-node {
@@ -61,20 +70,20 @@
     align-items: center;
     gap: 10px;
     padding: 8px 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--st-color-border);
     border-radius: 8px;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    background: var(--st-color-bg-control);
+    box-shadow: var(--st-panel-shadow);
 
     > span:first-child {
       flex: 0 0 auto;
-      color: #64748b;
+      color: var(--st-color-text-muted);
       font-size: 14px;
     }
 
     strong {
       overflow: hidden;
-      color: #334155;
+      color: var(--st-color-text-primary);
       font-size: 14px;
       font-weight: 600;
       text-overflow: ellipsis;
@@ -87,15 +96,15 @@
     align-items: center;
     gap: 10px;
     margin-top: 14px;
-    color: #64748b;
+    color: var(--st-color-text-secondary);
     font-size: 14px;
 
     strong {
       padding: 3px 9px;
-      border: 1px solid #bfdbfe;
+      border: 1px solid var(--st-color-border);
       border-radius: 5px;
-      color: #1d4ed8;
-      background: #eff6ff;
+      color: var(--st-color-accent);
+      background: var(--st-color-bg-selected);
       font-weight: 500;
     }
   }
@@ -108,7 +117,7 @@
     }
 
     .ant-form-item-label > label {
-      color: #475569;
+      color: var(--st-color-text-secondary) !important;
       font-size: 14px;
     }
   }
@@ -125,25 +134,25 @@
     .ant-upload.ant-upload-drag {
       height: 144px;
       min-height: 144px;
-      border-color: #cbd5e1;
+      border-color: var(--st-color-border);
       border-radius: 8px;
-      background: #f8fafc;
+      background: var(--st-color-bg-elevated);
     }
 
     .ant-upload.ant-upload-drag:hover {
-      border-color: #60a5fa;
+      border-color: var(--st-color-accent);
     }
 
     .ant-upload-drag-icon {
-      color: #3b82f6;
+      color: var(--st-color-accent);
     }
 
     .ant-upload-text {
-      color: #334155;
+      color: var(--st-color-text-primary);
     }
 
     .ant-upload-hint {
-      color: #64748b;
+      color: var(--st-color-text-secondary);
     }
   }
 
@@ -153,7 +162,7 @@
     justify-content: flex-end;
     gap: 14px;
     margin-top: 12px;
-    color: #64748b;
+    color: var(--st-color-text-secondary);
     font-size: 14px;
   }
 
@@ -162,9 +171,9 @@
     align-items: center;
     gap: 10px;
     padding: 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--st-color-divider);
     border-radius: 8px;
-    background: #f8fafc;
+    background: var(--st-color-bg-elevated);
 
     > div {
       display: flex;
@@ -175,7 +184,7 @@
 
     strong {
       overflow: hidden;
-      color: #1f2937;
+      color: var(--st-color-text-primary);
       font-size: 14px;
       font-weight: 600;
       text-overflow: ellipsis;
@@ -183,7 +192,7 @@
     }
 
     span {
-      color: #64748b;
+      color: var(--st-color-text-secondary);
       font-size: 14px;
     }
   }
@@ -199,7 +208,7 @@
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    color: #2563eb;
+    color: var(--st-color-accent);
     font-size: 22px;
     line-height: 1;
   }
@@ -211,7 +220,7 @@
 
   &__target-hint {
     margin-top: -4px;
-    color: #64748b;
+    color: var(--st-color-text-secondary);
     font-size: 14px;
     line-height: 1.6;
   }
@@ -229,9 +238,9 @@
   min-height: 0;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 34%);
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--st-color-divider);
   border-radius: 12px;
-  background: #fff;
+  background: var(--st-color-bg-panel);
 }
 
 .offline-import-config-canvas__graph {
@@ -240,7 +249,7 @@
   height: 100%;
   min-width: 0;
   min-height: 0;
-  background: #f8fafc;
+  background: var(--st-color-bg-app);
 }
 
 .offline-import-config-canvas__flow {
@@ -251,27 +260,28 @@
 
 .offline-import-config-canvas__flow .react-flow__controls {
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--st-color-border);
   border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  background: var(--st-color-bg-panel);
+  box-shadow: var(--st-panel-shadow);
 }
 
 .offline-import-config-canvas__flow .react-flow__controls-button {
-  border-bottom-color: #e2e8f0;
-  background: #fff;
-  fill: #475569;
+  border-bottom-color: var(--st-color-divider);
+  background: var(--st-color-bg-panel);
+  color: var(--st-color-text-primary);
+  fill: var(--st-color-text-primary);
 }
 
 .offline-import-config-canvas__flow .react-flow__controls-button:hover {
-  background: #f1f5f9;
+  background: var(--st-color-bg-hover);
 }
 
 .offline-import-config-canvas__flow .react-flow__minimap {
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--st-color-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--st-color-bg-elevated);
 }
 
 .offline-import-config-canvas__inspector {
@@ -280,8 +290,8 @@
   min-width: 0;
   min-height: 0;
   flex-direction: column;
-  border-left: 1px solid #e2e8f0;
-  background: #fff;
+  border-left: 1px solid var(--st-color-divider);
+  background: var(--st-color-bg-panel);
 }
 
 .offline-import-config-canvas__inspector-title {
@@ -290,8 +300,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 18px;
-  border-bottom: 1px solid #e2e8f0;
-  color: #1f2937;
+  border-bottom: 1px solid var(--st-color-divider);
+  color: var(--st-color-text-primary);
   font-size: 15px;
   font-weight: 600;
 }
@@ -301,7 +311,7 @@
   flex: 1 1 auto;
   overflow: auto;
   padding: 18px;
-  color: #334155;
+  color: var(--st-color-text-secondary);
 }
 
 .generic-workflow-editor-page .offline-import-config-canvas {
@@ -316,4 +326,23 @@
 .offline-import-create .offline-import-config-canvas {
   height: 540px;
   min-height: 540px;
+}
+
+.offline-import-config-canvas__inspector-body .ant-btn:not(:disabled) {
+  border-color: var(--st-color-border) !important;
+  color: var(--st-color-text-primary) !important;
+  background: var(--st-color-bg-control) !important;
+  opacity: 1;
+}
+
+.offline-import-config-canvas__inspector-body .ant-btn:not(:disabled):hover {
+  border-color: var(--st-color-accent) !important;
+  color: var(--st-color-accent) !important;
+  background: var(--st-color-bg-hover) !important;
+}
+
+.offline-import-config-canvas__inspector-body .ant-btn:disabled {
+  border-color: var(--st-color-disabled-border) !important;
+  color: var(--st-color-disabled) !important;
+  background: var(--st-color-disabled-bg) !important;
 }

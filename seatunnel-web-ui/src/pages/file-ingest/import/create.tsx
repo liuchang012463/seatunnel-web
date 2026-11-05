@@ -301,7 +301,7 @@ const CreateOfflineImportPage: React.FC = () => {
       <PageHeader onBack={goPrevious} title="离线文件导入" className="offline-import-create__page-header" />
 
       <div className="offline-import-create__content">
-        <div className="offline-import-create__steps sticky top-0 z-20 mb-6 bg-white/95 pt-1 backdrop-blur">
+        <div className="offline-import-create__steps sticky top-0 z-20 mb-6 pt-1 backdrop-blur">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -311,8 +311,8 @@ const CreateOfflineImportPage: React.FC = () => {
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200 ${baseDotClass}`}>1</span>
               基础配置
             </button>
-            <div className="relative h-[2px] flex-1 overflow-hidden rounded-full bg-[#EAECF0]">
-              <div className="absolute left-0 top-0 h-full rounded-full transition-[width] duration-500" style={{ width: stepProgress, background: 'rgba(23,92,211,0.25)' }} />
+            <div className="offline-import-create__step-track relative h-[2px] flex-1 overflow-hidden rounded-full">
+              <div className="offline-import-create__step-progress absolute left-0 top-0 h-full rounded-full transition-[width] duration-500" style={{ width: stepProgress }} />
             </div>
             <button
               type="button"
@@ -322,8 +322,8 @@ const CreateOfflineImportPage: React.FC = () => {
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200 ${clientDotClass}`}>2</span>
               客户端与连接
             </button>
-            <div className="relative h-[2px] flex-1 overflow-hidden rounded-full bg-[#EAECF0]">
-              <div className="absolute left-0 top-0 h-full rounded-full transition-[width] duration-500" style={{ width: isConfigStep ? '100%' : '0%', background: 'rgba(23,92,211,0.25)' }} />
+            <div className="offline-import-create__step-track relative h-[2px] flex-1 overflow-hidden rounded-full">
+              <div className="offline-import-create__step-progress absolute left-0 top-0 h-full rounded-full transition-[width] duration-500" style={{ width: isConfigStep ? '100%' : '0%' }} />
             </div>
             <button
               type="button"
