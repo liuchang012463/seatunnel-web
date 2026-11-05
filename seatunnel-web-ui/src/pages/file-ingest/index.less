@@ -268,6 +268,20 @@
   white-space: nowrap;
 }
 
+.offline-import-sync-plan__source {
+  flex: 0 0 auto;
+}
+
+.offline-import-sync-plan__flow > :first-child,
+.offline-import-sync-plan__flow > .sync-plan-compact__arrow,
+.offline-import-sync-plan__flow > :nth-child(4) {
+  flex: 0 0 auto;
+}
+
+.offline-import-sync-plan__target {
+  min-width: 0;
+}
+
 @media (max-width: 1100px) {
   .file-workflow-editor-page__canvas-layout {
     grid-template-columns: minmax(130px, 24%) minmax(0, 1fr);

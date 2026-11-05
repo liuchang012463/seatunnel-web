@@ -28,6 +28,7 @@ import CustomPagination from '@/pages/batch-link-up/CustomPagination';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import { withTimeout } from '@/utils/withTimeout';
 import { TASK_LIST_REQUEST_TIMEOUT } from '@/pages/common/hooks/useTaskListAutoRefresh';
+import OfflineImportHistoryModal from './import/OfflineImportHistoryModal';
 import { fileIngestTaskApi } from './api';
 import {
   OFFLINE_IMPORT_TYPE_LABELS,
@@ -65,6 +66,12 @@ const OFFLINE_TYPE_COLORS: Record<string, string> = {
   KINGBASE_SQL: 'cyan',
   DAMENG_SQL: 'green',
 };
+
+const offlineActionBaseClass = 'inline-flex h-8 min-w-[60px] items-center justify-center gap-1.5 border px-2 text-sm font-medium transition-all duration-150';
+const offlinePrimaryActionClass = `${offlineActionBaseClass} sync-action-btn is-primary`;
+const offlineSecondaryActionClass = `${offlineActionBaseClass} sync-action-btn is-secondary`;
+const offlineDisabledActionClass = `${offlineActionBaseClass} sync-action-btn is-disabled`;
+const offlineMoreActionClass = 'inline-flex h-8 min-w-[56px] items-center justify-center gap-1 border px-1.5 text-sm font-medium transition-all duration-150 sync-action-btn is-secondary';
 
 const parsePage = (response: any) => {
   if (response?.code !== undefined && response.code !== 0) {
@@ -116,6 +123,8 @@ const ImportTaskList: React.FC<{
     };
   });
   const [executingId, setExecutingId] = useState<string>();
+  const [historyTaskId, setHistoryTaskId] = useState<string>();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inFlightRef = useRef(false);
   const requestSeqRef = useRef(0);
@@ -313,9 +322,14 @@ const ImportTaskList: React.FC<{
     });
   };
 
+  const openOfflineImportHistory = (taskId: string | number) => {
+    setHistoryTaskId(String(taskId));
+    setHistoryOpen(true);
+  };
+
   const openOfflineImportMenu = (key: string, task: OfflineImportTask) => {
     if (key === 'history') {
-      history.push(`/sync/file-ingest/import/detail/${task.id}`);
+      openOfflineImportHistory(task.id);
       return;
     }
     if (key === 'edit') {
@@ -323,7 +337,7 @@ const ImportTaskList: React.FC<{
       return;
     }
     if (key === 'logs') {
-      history.push(`/sync/file-ingest/import/detail/${task.id}?tab=logs`);
+      openOfflineImportHistory(task.id);
       return;
     }
     if (key === 'delete') {
@@ -346,7 +360,7 @@ const ImportTaskList: React.FC<{
       ellipsis: true,
       render: (_: unknown, record: UnifiedTask) => record.taskKind === 'OFFLINE_IMPORT' ? (
         <div className="sync-task-name-cell">
-          <a className="sync-task-name-cell__title" onClick={() => history.push(`/sync/file-ingest/import/detail/${record.id}`)}>
+          <a className="sync-task-name-cell__title" onClick={() => openOfflineImportHistory(record.id)}>
             {record.name || '-'}
           </a>
           <div className="sync-task-name-cell__id"><span>{record.id}</span></div>
@@ -459,13 +473,14 @@ const ImportTaskList: React.FC<{
       width: TASK_TABLE_COLUMN_WIDTHS.action,
       fixed: 'right' as const,
       render: (_: unknown, record: UnifiedTask) => record.taskKind === 'OFFLINE_IMPORT' ? (
-        <Space size={8} className="sync-task-row-actions">
-          <Button
-            type="link"
-            size="small"
-            icon={<PlayCircleOutlined />}
-            loading={executingId === String(record.id)}
+        <Space size={4} className="sync-task-row-actions">
+          <button
+            type="button"
+            className={record.releaseState === 'ONLINE' && record.status !== 'RUNNING' && record.status !== 'QUEUED'
+              ? offlinePrimaryActionClass
+              : offlineDisabledActionClass}
             disabled={record.releaseState !== 'ONLINE' || executingId === String(record.id) || record.status === 'RUNNING' || record.status === 'QUEUED'}
+            aria-label={`启动任务 ${record.name}`}
             onClick={() => modal.confirm({
               title: '确认启动该导入任务？',
               content: `任务「${record.name}」将按当前配置执行。`,
@@ -473,14 +488,21 @@ const ImportTaskList: React.FC<{
               cancelText: '取消',
               onOk: () => executeOfflineImport(record),
             })}
-          >启动</Button>
-          <Button
-            type="link"
-            size="small"
-            icon={record.releaseState === 'ONLINE' ? <CloudDownloadOutlined /> : <CloudUploadOutlined />}
+          >
+            <PlayCircleOutlined />{executingId === String(record.id) ? '启动中' : '启动'}
+          </button>
+          <button
+            type="button"
+            className={record.status === 'RUNNING' || record.status === 'QUEUED'
+              ? offlineDisabledActionClass
+              : offlineSecondaryActionClass}
             disabled={record.status === 'RUNNING' || record.status === 'QUEUED'}
+            aria-label={`${record.releaseState === 'ONLINE' ? '下线' : '上线'}任务 ${record.name}`}
             onClick={() => confirmOfflineImportReleaseState(record, record.releaseState !== 'ONLINE')}
-          >{record.releaseState === 'ONLINE' ? '下线' : '上线'}</Button>
+          >
+            {record.releaseState === 'ONLINE' ? <CloudDownloadOutlined /> : <CloudUploadOutlined />}
+            {record.releaseState === 'ONLINE' ? '下线' : '上线'}
+          </button>
           <Dropdown
             trigger={['click']}
             menu={{
@@ -498,7 +520,9 @@ const ImportTaskList: React.FC<{
             }}
             placement="bottomLeft"
           >
-            <Button type="link" size="small" icon={<DownOutlined />}>更多</Button>
+            <button type="button" className={offlineMoreActionClass} aria-haspopup="menu" aria-label={`更多任务操作 ${record.name}`}>
+              更多<DownOutlined style={{ fontSize: 14 }} />
+            </button>
           </Dropdown>
         </Space>
       ) : <ActionColumn record={record} cbk={() => void load()} goDetail={goDetail} />,
@@ -561,6 +585,11 @@ const ImportTaskList: React.FC<{
           </div>
         </div>
       </div>
+      <OfflineImportHistoryModal
+        open={historyOpen}
+        taskId={historyTaskId}
+        onClose={() => setHistoryOpen(false)}
+      />
     </div>
   );
 };
