@@ -411,7 +411,7 @@ const ImportTaskList: React.FC<{
               <Tag color={OFFLINE_TYPE_COLORS[record.importType] || 'default'}>
                 {String(record.importType).endsWith('_SQL') ? 'SQL' : 'DMP'}
               </Tag>
-              <span>{OFFLINE_IMPORT_TYPE_LABELS[record.importType] || record.importType}</span>
+              <span>{String(record.importType).startsWith('KINGBASE') ? '人大金仓' : '达梦'}</span>
             </div>
             <div className="offline-import-sync-plan__flow">
               <FileOutlined />
