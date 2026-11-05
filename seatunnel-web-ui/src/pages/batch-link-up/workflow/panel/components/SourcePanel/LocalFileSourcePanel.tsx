@@ -2,6 +2,10 @@ import { DeleteOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
 import { Button, Input, InputNumber, Select, Switch, message } from 'antd';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FC } from 'react';
 import { fileUploadApi } from '@/pages/batch-link-up/api';
+import {
+  defaultExcelHeaderSkipOnSelection,
+  isExcelHeaderEnabled,
+} from '@/pages/file-ingest/config/fileHeaderDefaults';
 import PanelShell from '../PanelShell';
 import {
   buildOutputSchema,
@@ -118,6 +122,10 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
     }
 
     updateNode({
+      // Selecting Excel in a new workflow defaults to a header; an already loaded Excel task keeps its value.
+      ...(value === 'excel' && format !== 'excel'
+        ? { skipHeaderRowNumber: defaultExcelHeaderSkipOnSelection(config.skipHeaderRowNumber) }
+        : {}),
       fileFormatType: value,
       sourceMode: 'WEB_UPLOAD',
       dbType: 'MINIO',
@@ -310,6 +318,14 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
               <div className="workflow-panel__group-kicker">Excel 参数</div>
               <Input addonBefore="工作表" placeholder="例如 Sheet1" value={config.sheetName ?? ''} onChange={(event) => setConfigValue('sheetName', event.target.value)} />
               <Select value={config.excelEngine ?? 'POI'} options={[{ value: 'POI' }, { value: 'EasyExcel' }]} onChange={(value) => setConfigValue('excelEngine', value)} className="w-full" />
+              <div className="flex items-center justify-between text-sm text-slate-600">
+                <span>首行作为表头（开启后跳过首行）</span>
+                {/* SeaTunnel 3.0.0 FileBase 的通用 skip_header_row_number 参数也适用于 Excel。 */}
+                <Switch
+                  checked={isExcelHeaderEnabled(config.skipHeaderRowNumber)}
+                  onChange={(checked) => setConfigValue('skipHeaderRowNumber', checked ? 1 : 0)}
+                />
+              </div>
               <div className="text-sm leading-5 text-slate-500">POI 适合普通工作簿；超过约 65,000 行时建议使用 EasyExcel。</div>
             </div>
           </>
