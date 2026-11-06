@@ -14,7 +14,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import { history } from '@umijs/max';
-import { Alert, App, Button, Divider, Dropdown, Empty, Space, Table, Tag, Tooltip } from 'antd';
+import { Alert, App, Button, Divider, Dropdown, Empty, Space, Table, Tooltip } from 'antd';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TASK_TABLE_COLUMN_WIDTHS } from '@/pages/common/components/taskTableLayout';
@@ -59,18 +59,12 @@ const OFFLINE_STATUS_FILTERS: Record<string, string[]> = {
   UNSTARTED: ['PENDING'],
 };
 
-const OFFLINE_TYPE_COLORS: Record<string, string> = {
-  KINGBASE_DMP: 'geekblue',
-  DAMENG_DMP: 'volcano',
-  KINGBASE_SQL: 'cyan',
-  DAMENG_SQL: 'green',
-};
-
-const offlineActionBaseClass = 'inline-flex h-8 min-w-[60px] items-center justify-center gap-1.5 border px-2 text-sm font-medium transition-all duration-150';
+// Keep import task actions aligned with the shared task-list action buttons.
+const offlineActionBaseClass = 'inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-sm font-medium transition-all duration-150';
 const offlinePrimaryActionClass = `${offlineActionBaseClass} sync-action-btn is-primary`;
 const offlineSecondaryActionClass = `${offlineActionBaseClass} sync-action-btn is-secondary`;
 const offlineDisabledActionClass = `${offlineActionBaseClass} sync-action-btn is-disabled`;
-const offlineMoreActionClass = 'inline-flex h-8 min-w-[56px] items-center justify-center gap-1 border px-1.5 text-sm font-medium transition-all duration-150 sync-action-btn is-secondary';
+const offlineMoreActionClass = 'inline-flex h-8 min-w-[64px] items-center justify-center gap-1 border px-2 text-sm font-medium transition-all duration-150 sync-action-btn is-secondary';
 
 const parsePage = (response: any) => {
   if (response?.code !== undefined && response.code !== 0) {
@@ -407,9 +401,9 @@ const ImportTaskList: React.FC<{
         <Tooltip title={`来源：${record.fileName || '湖文件'}；目标：${record.targetDatasourceName || '-'}${record.targetSchema ? ` / ${record.targetSchema}` : ''}`}>
           <div className="offline-import-sync-plan">
             <div className="offline-import-sync-plan__type">
-              <Tag color={OFFLINE_TYPE_COLORS[record.importType] || 'default'}>
+              <span className="sync-plan-compact__badge">
                 {String(record.importType).endsWith('_SQL') ? 'SQL' : 'DMP'}
-              </Tag>
+              </span>
               <span>{String(record.importType).startsWith('KINGBASE') ? '人大金仓' : '达梦'}</span>
             </div>
             <div className="offline-import-sync-plan__flow">
@@ -472,7 +466,7 @@ const ImportTaskList: React.FC<{
       width: TASK_TABLE_COLUMN_WIDTHS.action,
       fixed: 'right' as const,
       render: (_: unknown, record: UnifiedTask) => record.taskKind === 'OFFLINE_IMPORT' ? (
-        <Space size={4} className="sync-task-row-actions">
+        <Space size={8} className="sync-task-row-actions">
           <button
             type="button"
             className={record.releaseState === 'ONLINE' && record.status !== 'RUNNING' && record.status !== 'QUEUED'
