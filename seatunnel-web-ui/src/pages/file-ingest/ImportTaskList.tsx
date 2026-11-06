@@ -13,8 +13,8 @@ import {
   PlusOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import { history } from '@umijs/max';
-import { Alert, App, Button, Divider, Dropdown, Empty, Space, Table, Tooltip } from 'antd';
+import { history, useIntl } from '@umijs/max';
+import { Alert, App, Button, Divider, Dropdown, Empty, Popconfirm, Space, Table, Tooltip } from 'antd';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TASK_TABLE_COLUMN_WIDTHS } from '@/pages/common/components/taskTableLayout';
@@ -101,6 +101,7 @@ const ImportTaskList: React.FC<{
   goDetail: (id: string, item?: any) => void;
 }> = ({ taskKind, onCreate, goDetail }) => {
   const { message, modal } = App.useApp();
+  const intl = useIntl();
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<UnifiedTask[]>([]);
   const [total, setTotal] = useState(0);
@@ -303,25 +304,13 @@ const ImportTaskList: React.FC<{
     }
   };
 
-  const confirmOfflineImportReleaseState = (task: OfflineImportTask, online: boolean) => {
-    modal.confirm({
-      title: online ? '确认上线该任务？' : '确认下线该任务？',
-      content: online
-        ? '上线后可以启动此 DMP/SQL 导入任务。'
-        : '下线后任务将不能启动。',
-      okText: online ? '上线' : '下线',
-      cancelText: '取消',
-      onOk: () => updateOfflineImportReleaseState(task, online),
-    });
-  };
-
   const openOfflineImportHistory = (taskId: string | number) => {
     setHistoryTaskId(String(taskId));
     setHistoryOpen(true);
   };
 
   const openOfflineImportMenu = (key: string, task: OfflineImportTask) => {
-    if (key === 'history') {
+    if (key === 'view') {
       openOfflineImportHistory(task.id);
       return;
     }
@@ -329,7 +318,7 @@ const ImportTaskList: React.FC<{
       history.push(`/sync/file-ingest/import/config/${task.id}`);
       return;
     }
-    if (key === 'logs') {
+    if (key === 'log') {
       openOfflineImportHistory(task.id);
       return;
     }
@@ -465,62 +454,125 @@ const ImportTaskList: React.FC<{
       key: 'action',
       width: TASK_TABLE_COLUMN_WIDTHS.action,
       fixed: 'right' as const,
-      render: (_: unknown, record: UnifiedTask) => record.taskKind === 'OFFLINE_IMPORT' ? (
-        <Space size={8} className="sync-task-row-actions">
-          <button
-            type="button"
-            className={record.releaseState === 'ONLINE' && record.status !== 'RUNNING' && record.status !== 'QUEUED'
-              ? offlinePrimaryActionClass
-              : offlineDisabledActionClass}
-            disabled={record.releaseState !== 'ONLINE' || executingId === String(record.id) || record.status === 'RUNNING' || record.status === 'QUEUED'}
-            aria-label={`启动任务 ${record.name}`}
-            onClick={() => modal.confirm({
-              title: '确认启动该导入任务？',
-              content: `任务「${record.name}」将按当前配置执行。`,
-              okText: '启动',
-              cancelText: '取消',
-              onOk: () => executeOfflineImport(record),
-            })}
-          >
-            <PlayCircleOutlined />{executingId === String(record.id) ? '启动中' : '启动'}
-          </button>
-          <button
-            type="button"
-            className={record.status === 'RUNNING' || record.status === 'QUEUED'
-              ? offlineDisabledActionClass
-              : offlineSecondaryActionClass}
-            disabled={record.status === 'RUNNING' || record.status === 'QUEUED'}
-            aria-label={`${record.releaseState === 'ONLINE' ? '下线' : '上线'}任务 ${record.name}`}
-            onClick={() => confirmOfflineImportReleaseState(record, record.releaseState !== 'ONLINE')}
-          >
-            {record.releaseState === 'ONLINE' ? <CloudDownloadOutlined /> : <CloudUploadOutlined />}
-            {record.releaseState === 'ONLINE' ? '下线' : '上线'}
-          </button>
-          <Dropdown
-            trigger={['click']}
-            menu={{
-              items: [
-                { key: 'history', icon: <EyeOutlined />, label: '运行历史' },
-                { key: 'edit', icon: <EditOutlined />, label: '编辑配置', disabled: record.releaseState === 'ONLINE' || record.status === 'RUNNING' || record.status === 'QUEUED' },
-                { key: 'logs', icon: <FileSearchOutlined />, label: '查看日志' },
-                { type: 'divider' },
-                { key: 'delete', icon: <DeleteOutlined />, label: '删除任务', danger: true, disabled: record.releaseState === 'ONLINE' || record.status === 'RUNNING' || record.status === 'QUEUED' },
-              ] as any,
-              onClick: ({ key, domEvent }) => {
-                domEvent.stopPropagation();
-                openOfflineImportMenu(String(key), record);
-              },
-            }}
-            placement="bottomLeft"
-          >
-            <button type="button" className={offlineMoreActionClass} aria-haspopup="menu" aria-label={`更多任务操作 ${record.name}`}>
-              更多<DownOutlined style={{ fontSize: 14 }} />
-            </button>
-          </Dropdown>
-        </Space>
-      ) : <ActionColumn record={record} cbk={() => void load()} goDetail={goDetail} />,
+      render: (_: unknown, record: UnifiedTask) => {
+        if (record.taskKind !== 'OFFLINE_IMPORT') {
+          return <ActionColumn record={record} cbk={() => void load()} goDetail={goDetail} />;
+        }
+
+        // 导入任务的确认层和更多菜单提示保持与常规任务一致。
+        const isOnline = record.releaseState === 'ONLINE';
+        const isBusy = record.status === 'RUNNING' || record.status === 'QUEUED';
+        const canRun = isOnline && !isBusy && executingId !== String(record.id);
+        const canManage = !isOnline && !isBusy;
+        const blockedActionMessage = isBusy ? '任务正在运行中，请稍后再操作' : '请先下线任务';
+
+        return (
+          <Space size={8} className="sync-task-row-actions">
+            <Popconfirm
+              title={intl.formatMessage({
+                id: 'pages.job.action.run.title',
+                defaultMessage: 'Run Task',
+              })}
+              description={(
+                <div style={{ marginRight: 12 }}>
+                  {intl.formatMessage({
+                    id: 'pages.job.action.run.desc',
+                    defaultMessage: 'Are you sure to start this job?',
+                  })}
+                </div>
+              )}
+              okText={intl.formatMessage({ id: 'pages.common.yes', defaultMessage: 'Yes' })}
+              cancelText={intl.formatMessage({ id: 'pages.common.no', defaultMessage: 'No' })}
+              okButtonProps={{ loading: executingId === String(record.id) }}
+              onConfirm={() => executeOfflineImport(record)}
+            >
+              <button
+                type="button"
+                disabled={!canRun}
+                className={canRun ? offlinePrimaryActionClass : offlineDisabledActionClass}
+                aria-label={`启动任务 ${record.name}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <PlayCircleOutlined />{executingId === String(record.id) ? '启动中' : '启动'}
+              </button>
+            </Popconfirm>
+            <Popconfirm
+              title={isOnline ? '任务下线' : '任务上线'}
+              description={(
+                <div style={{ marginRight: 12 }}>
+                  {isOnline ? (
+                    <>
+                      下线后任务将不会再被调度触发，
+                      <br />
+                      确认下线该任务吗？
+                    </>
+                  ) : (
+                    <>
+                      上线后任务将恢复可运行状态，并同步恢复调度，
+                      <br />
+                      确认上线该任务吗？
+                    </>
+                  )}
+                </div>
+              )}
+              okText="确认"
+              cancelText="取消"
+              onConfirm={() => updateOfflineImportReleaseState(record, !isOnline)}
+            >
+              <button
+                type="button"
+                disabled={isBusy}
+                className={isBusy ? offlineDisabledActionClass : offlineSecondaryActionClass}
+                aria-label={`${isOnline ? '下线' : '上线'}任务 ${record.name}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {isOnline ? <CloudDownloadOutlined /> : <CloudUploadOutlined />}
+                {isOnline ? '下线' : '上线'}
+              </button>
+            </Popconfirm>
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  { key: 'view', icon: <EyeOutlined />, label: <span style={{ fontWeight: 500 }}>运行历史</span> },
+                  {
+                    key: 'edit',
+                    icon: <EditOutlined />,
+                    label: <span style={{ fontWeight: 500 }}>编辑配置{canManage ? '' : `（${blockedActionMessage}）`}</span>,
+                    disabled: !canManage,
+                  },
+                  { key: 'log', icon: <FileSearchOutlined />, label: <span style={{ fontWeight: 500 }}>查看日志</span> },
+                  { type: 'divider' },
+                  {
+                    key: 'delete',
+                    icon: <DeleteOutlined />,
+                    label: <span style={{ fontWeight: 500 }}>删除任务{canManage ? '' : `（${blockedActionMessage}）`}</span>,
+                    danger: true,
+                    disabled: !canManage,
+                  },
+                ] as any,
+                onClick: ({ key, domEvent }) => {
+                  domEvent.stopPropagation();
+                  openOfflineImportMenu(String(key), record);
+                },
+              }}
+              placement="bottomLeft"
+            >
+              <button
+                type="button"
+                className={offlineMoreActionClass}
+                aria-haspopup="menu"
+                aria-label={`更多任务操作 ${record.name}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                更多<DownOutlined style={{ fontSize: 14 }} />
+              </button>
+            </Dropdown>
+          </Space>
+        );
+      },
     },
-  ], [executingId, goDetail, load, message, modal]);
+  ], [executingId, goDetail, intl, load, message, modal]);
 
   return (
     <div className="batch-link-up-page sync-task-list">
