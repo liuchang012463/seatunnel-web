@@ -348,6 +348,10 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
   const emptyDescription = hasActiveFilter
     ? '当前目录没有匹配的资源'
     : '当前目录为空，先上传文件或新建目录';
+  // 管理页工作区会裁剪溢出内容，限制表格高度可让分页始终留在可见区域。
+  const tableScroll = compact
+    ? { x: 'max-content' }
+    : { x: 'max-content', y: 'calc(100vh - 430px)' };
 
   return (
     <div className={`file-resource-browser${compact ? ' file-resource-browser--compact' : ''}`}>
@@ -404,7 +408,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
         options={false}
         dateFormatter="string"
         cardBordered={false}
-        scroll={{ x: 'max-content' }}
+        scroll={tableScroll}
         pagination={{
           current: pagination.pageNo,
           pageSize: pagination.pageSize,
