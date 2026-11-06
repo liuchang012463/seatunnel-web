@@ -1,20 +1,89 @@
-import { ReloadOutlined } from '@ant-design/icons';
-import { Alert, App, Badge, Button, DatePicker, Empty, Modal, Space, Splitter, Spin, Tabs, Tag } from 'antd';
+import { DoubleRightOutlined, FileOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import Header from '@/components/Header';
+import { useIntl } from '@umijs/max';
+import { Alert, App, Button, Descriptions, Input, Modal, Spin, Splitter, Tabs } from 'antd';
+import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { HistoryItem } from '@/pages/batch-link-up/type';
+import HistoryFilterBar from '@/pages/batch-link-up/components/TaskHistoryPanel/components/HistoryFilterBar';
+import HistoryList from '@/pages/batch-link-up/components/TaskHistoryPanel/components/HistoryList';
+import HistoryPanelHeader from '@/pages/batch-link-up/components/TaskHistoryPanel/components/HistoryPanelHeader';
+import HistoryStatusFilters from '@/pages/batch-link-up/components/TaskHistoryPanel/components/HistoryStatusFilters';
+import type { TimeRangeType } from '@/pages/batch-link-up/components/TaskHistoryPanel/hooks/useTaskHistory';
+import TaskDetailHeader from '@/pages/batch-link-up/TaskHeader';
+import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import {
   OFFLINE_IMPORT_TYPE_LABELS,
+  offlineImportTargetDbType,
   offlineImportTaskApi,
   type OfflineImportTask,
   type OfflineImportTaskRun,
 } from './api';
+import '@/pages/batch-link-up/components/TaskHistoryPanel/sync.less';
 
-const STATUS_META: Record<string, { label: string; badge: 'default' | 'processing' | 'success' | 'error' }> = {
-  RUNNING: { label: '执行中', badge: 'processing' },
-  SUCCESS: { label: '成功', badge: 'success' },
-  FAILED: { label: '失败', badge: 'error' },
+const formatTime = (value?: string) => (value ? String(value).replace('T', ' ').slice(0, 19) : '-');
+
+// 将导入任务状态映射到常规运行历史使用的状态分类。
+const historyJobStatus = (status: string) => {
+  if (status === 'SUCCESS') return 'FINISHED';
+  if (status === 'QUEUED') return 'RUNNING';
+  return status;
 };
 
-const formatTime = (value?: string) => (value ? String(value).replace('T', ' ').slice(0, 19) : '尚未运行');
+interface OfflineImportLogPanelProps {
+  run?: OfflineImportTaskRun;
+  loading: boolean;
+  onRefresh: () => void;
+}
+
+const OfflineImportLogPanel: React.FC<OfflineImportLogPanelProps> = ({ run, loading, onRefresh }) => {
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const logContent = run?.executionLog || run?.errorMessage || '';
+  const logLines = useMemo(() => logContent.split(/\r?\n/), [logContent]);
+  const normalizedKeyword = searchKeyword.trim().toLowerCase();
+  const matchedLineCount = normalizedKeyword
+    ? logLines.filter((line) => line.toLowerCase().includes(normalizedKeyword)).length
+    : 0;
+
+  useEffect(() => setSearchKeyword(''), [run?.id]);
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-slate-800">原始执行日志</div>
+          <div className="mt-1 text-sm text-slate-400">完整日志 · 当前实例 #{run?.id || '-'}</div>
+        </div>
+        <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={onRefresh}>
+          刷新
+        </Button>
+      </div>
+      <Input
+        allowClear
+        prefix={<SearchOutlined className="text-slate-400" />}
+        value={searchKeyword}
+        onChange={(event) => setSearchKeyword(event.target.value)}
+        placeholder="在当前完整日志中检索 timeout、ERROR、连接..."
+        suffix={normalizedKeyword ? <span className="text-sm text-slate-400">命中 {matchedLineCount} 行</span> : null}
+      />
+      <div className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-sm leading-5 text-slate-100">
+        {loading && !logContent ? (
+          <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
+        ) : !run ? (
+          <div className="py-12 text-center text-slate-500">请先从左侧选择运行记录</div>
+        ) : logContent ? (
+          logLines.map((line, index) => {
+            const matched = normalizedKeyword && line.toLowerCase().includes(normalizedKeyword);
+            return <div key={index} className={matched ? 'rounded bg-cyan-950/80 text-cyan-100' : ''}>{line || ' '}</div>;
+          })
+        ) : (
+          <div className="py-12 text-center text-slate-500">该次运行暂无日志</div>
+        )}
+      </div>
+    </section>
+  );
+};
 
 interface OfflineImportHistoryModalProps {
   open: boolean;
@@ -24,10 +93,14 @@ interface OfflineImportHistoryModalProps {
 
 const OfflineImportHistoryModal: React.FC<OfflineImportHistoryModalProps> = ({ open, taskId, onClose }) => {
   const { message } = App.useApp();
+  const intl = useIntl();
   const [task, setTask] = useState<OfflineImportTask>();
   const [runs, setRuns] = useState<OfflineImportTaskRun[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string>();
-  const [dateRange, setDateRange] = useState<[number, number]>();
+  const [keyword, setKeyword] = useState('');
+  const [timeRangeType, setTimeRangeType] = useState<TimeRangeType>('最近一天');
+  const [customTimeRange, setCustomTimeRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string>();
   const requestSeqRef = useRef(0);
@@ -74,8 +147,11 @@ const OfflineImportHistoryModal: React.FC<OfflineImportHistoryModalProps> = ({ o
     inFlightRef.current = false;
     setTask(undefined);
     setRuns([]);
-    setDateRange(undefined);
     setSelectedRunId(undefined);
+    setKeyword('');
+    setTimeRangeType('最近一天');
+    setCustomTimeRange(null);
+    setStatusFilter('all');
     setLoadError(undefined);
     setLoading(true);
     void load();
@@ -89,14 +165,51 @@ const OfflineImportHistoryModal: React.FC<OfflineImportHistoryModalProps> = ({ o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, taskId]);
 
-  const filteredRuns = useMemo(() => runs.filter((run) => {
-    if (!dateRange) return true;
-    const timestamp = new Date(run.startTime || run.endTime || 0).getTime();
-    return timestamp >= dateRange[0] && timestamp <= dateRange[1];
-  }), [dateRange, runs]);
+  const timeAndKeywordFilteredRuns = useMemo(() => {
+    const now = dayjs();
+    const startTime = timeRangeType === '最近一天'
+      ? now.subtract(1, 'day').valueOf()
+      : timeRangeType === '最近三天'
+        ? now.subtract(3, 'day').valueOf()
+        : timeRangeType === '最近一周'
+          ? now.subtract(7, 'day').valueOf()
+          : customTimeRange?.[0]?.startOf('day').valueOf();
+    const endTime = timeRangeType === '自定义'
+      ? customTimeRange?.[1]?.endOf('day').valueOf()
+      : now.valueOf();
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    return runs.filter((run) => {
+      const timestamp = new Date(run.startTime || run.endTime || 0).getTime();
+      const matchesTime = (startTime === undefined || timestamp >= startTime)
+        && (endTime === undefined || timestamp <= endTime);
+      const matchesKeyword = !normalizedKeyword
+        || String(run.taskName || task?.name || '').toLowerCase().includes(normalizedKeyword);
+      return matchesTime && matchesKeyword;
+    });
+  }, [customTimeRange, keyword, runs, task?.name, timeRangeType]);
+  const statusCountMap = useMemo(() => timeAndKeywordFilteredRuns.reduce((counts, run) => {
+    const status = historyJobStatus(run.status);
+    if (status === 'FINISHED' || status === 'RUNNING' || status === 'FAILED') {
+      counts[status] += 1;
+    }
+    counts.all += 1;
+    return counts;
+  }, { all: 0, FINISHED: 0, RUNNING: 0, FAILED: 0 }), [timeAndKeywordFilteredRuns]);
+  const filteredRuns = useMemo(() => timeAndKeywordFilteredRuns.filter((run) => (
+    statusFilter === 'all' || historyJobStatus(run.status) === statusFilter
+  )), [statusFilter, timeAndKeywordFilteredRuns]);
+  const historyItems = useMemo<HistoryItem[]>(() => filteredRuns.map((run) => ({
+    id: String(run.id),
+    jobName: run.taskName || task?.name || '-',
+    jobStatus: historyJobStatus(run.status),
+    time: formatTime(run.startTime),
+    startTime: formatTime(run.startTime),
+    endTime: run.endTime ? formatTime(run.endTime) : '-',
+  })), [filteredRuns, task?.name]);
+  const selectedHistoryItem = historyItems.find((item) => item.id === selectedRunId) || historyItems[0];
   const selectedRun = filteredRuns.find((run) => String(run.id) === selectedRunId) || filteredRuns[0];
   const taskTypeLabel = task ? OFFLINE_IMPORT_TYPE_LABELS[task.importType] || task.importType : '-';
-  const logContent = selectedRun?.executionLog || selectedRun?.errorMessage || '该次运行暂无日志';
 
   return (
     <Modal
@@ -111,99 +224,140 @@ const OfflineImportHistoryModal: React.FC<OfflineImportHistoryModalProps> = ({ o
       footer={null}
       styles={{
         mask: { background: 'var(--st-color-modal-mask)' },
-        content: { display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' },
-        body: { display: 'flex', flex: '1 1 auto', minHeight: 0, overflow: 'hidden' },
+        content: { display: 'flex', flexDirection: 'column', flex: '1 1 0%', minHeight: 0 },
+        body: { display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0, overflow: 'hidden' },
       }}
     >
       <div className="flex min-h-0 flex-1 flex-col p-4">
-        <div className="mb-3 flex shrink-0 items-center justify-between">
-          <span className="text-[18px] font-semibold">运行历史</span>
-          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button>
-        </div>
+        <div className="mb-4 shrink-0 text-[18px] font-semibold">运行历史</div>
         <div className="min-h-0 flex-1">
           <Splitter style={{ height: '100%' }}>
-            <Splitter.Panel defaultSize="25%" min="270px" max="42%">
-              <div className="flex h-full min-h-0 flex-col border-r border-slate-200 pr-3">
-                <div className="mb-3 shrink-0">
-                  <div className="mb-2 text-[14px] font-medium">执行记录</div>
-                  <DatePicker.RangePicker
-                    allowClear
-                    style={{ width: '100%' }}
-                    placeholder={['开始日期', '结束日期']}
-                    onChange={(dates: any) => {
-                      setDateRange(dates?.[0] && dates?.[1]
-                        ? [dates[0].startOf('day').valueOf(), dates[1].endOf('day').valueOf()]
-                        : undefined);
-                    }}
+            <Splitter.Panel defaultSize="22%" min="22%" max="70%">
+              <div className="flex h-full min-h-0 flex-col border-r border-slate-200 bg-white">
+                <div className="border-b border-slate-200 bg-white px-2.5 pb-2 pt-2.5">
+                  <HistoryPanelHeader intl={intl} onRefresh={() => void load()} />
+                  <HistoryFilterBar
+                    intl={intl}
+                    keyword={keyword}
+                    onKeywordChange={setKeyword}
+                    timeRangeType={timeRangeType}
+                    onTimeRangeTypeChange={setTimeRangeType}
+                    customTimeRange={customTimeRange}
+                    onCustomTimeRangeChange={setCustomTimeRange}
                   />
+                  <HistoryStatusFilters
+                    intl={intl}
+                    statusFilter={statusFilter}
+                    statusCountMap={statusCountMap}
+                    onStatusFilterChange={setStatusFilter}
+                  />
+                  {loadError ? (
+                    <Alert
+                      className="mt-2"
+                      type="error"
+                      showIcon
+                      message="读取运行历史失败"
+                      description={loadError}
+                      action={<Button size="small" onClick={() => void load()}>重试</Button>}
+                    />
+                  ) : null}
                 </div>
-                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-                  {loading && !runs.length ? <div className="flex justify-center py-8"><Spin /></div> : null}
-                  {loadError ? <Alert type="error" showIcon message="读取运行历史失败" description={loadError} action={<Button size="small" onClick={() => void load()}>重试</Button>} /> : null}
-                  {!loading && !loadError && !filteredRuns.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无运行记录" /> : null}
-                  {filteredRuns.map((run) => {
-                    const selected = String(run.id) === String(selectedRun?.id);
-                    const statusMeta = STATUS_META[run.status] || { label: run.status, badge: 'default' as const };
-                    return (
-                      <button
-                        type="button"
-                        key={run.id}
-                        onClick={() => setSelectedRunId(String(run.id))}
-                        className={`w-full rounded-lg border p-3 text-left transition-colors ${selected ? 'border-sky-500 bg-sky-50' : 'border-slate-200 hover:border-slate-300'}`}
-                      >
-                        <div className="mb-1 flex items-center justify-between gap-2">
-                          <Badge status={statusMeta.badge} text={statusMeta.label} />
-                          <span className="text-[14px] text-slate-500">#{run.id}</span>
-                        </div>
-                        <div className="text-[14px] text-slate-600">{formatTime(run.startTime)}</div>
-                        <div className="mt-1 text-[14px] text-slate-500">
-                          {run.executedStatements ?? 0}/{run.totalStatements ?? 0} 条语句
-                          {run.failedStatements ? ` · 失败 ${run.failedStatements}` : ''}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <HistoryList
+                  intl={intl}
+                  loading={loading}
+                  historyItems={historyItems}
+                  instanceItem={selectedHistoryItem}
+                  onSelect={(item) => setSelectedRunId(String(item.id))}
+                />
               </div>
             </Splitter.Panel>
 
             <Splitter.Panel>
-              <div className="flex h-full min-h-0 flex-col pl-4">
-                {task ? (
-                  <section className="mb-3 shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className="text-[16px] font-semibold">{task.name}</span>
-                      <Tag>{taskTypeLabel}</Tag>
-                      <Badge status={STATUS_META[task.status]?.badge || 'default'} text={STATUS_META[task.status]?.label || task.status} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[14px] text-slate-600">
-                      <span>任务 ID：{task.id}</span>
-                      <span>导入文件：{task.fileName || '-'}</span>
-                      <span>目标数据源：{task.targetDatasourceName || '-'}</span>
-                      <span>目标 Schema：{task.targetSchema || '-'}</span>
-                    </div>
-                  </section>
-                ) : null}
-                <Tabs
-                  activeKey="logs"
-                  className="flex min-h-0 flex-1 flex-col"
-                  items={[{
-                    key: 'logs',
-                    label: '日志',
-                    children: (
-                      <div className="flex h-full min-h-[260px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-                        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-3 py-2 text-[14px]">
-                          <Space size={12}>
-                            <span>{selectedRun ? formatTime(selectedRun.startTime) : '暂无运行记录'}</span>
-                            {selectedRun ? <Badge status={STATUS_META[selectedRun.status]?.badge || 'default'} text={STATUS_META[selectedRun.status]?.label || selectedRun.status} /> : null}
-                          </Space>
-                          {selectedRun?.endTime ? <span className="text-slate-500">结束：{formatTime(selectedRun.endTime)}</span> : null}
+              <div className="flex h-full min-h-0 flex-col bg-slate-50">
+                {selectedRun && task ? (
+                  <>
+                    <TaskDetailHeader item={{ jobName: task.name }} />
+                    <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50">
+                      <section className="m-4 rounded bg-white p-4 shadow-[0_2px_6px_#0000000d]">
+                        <div className="flex items-center justify-between">
+                          <Header
+                            title={(
+                              <span className="text-sm text-white">
+                                {intl.formatMessage({
+                                  id: 'pages.job.detail.basicInfo',
+                                  defaultMessage: 'Basic Info',
+                                })}
+                              </span>
+                            )}
+                          />
+                          <div className="w-[150px]" />
                         </div>
-                        <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words p-4 text-[14px] leading-6 text-slate-700">{logContent}</pre>
+                        <Descriptions column={2} labelStyle={{ color: 'rgba(128,128,128,1)' }}>
+                          <Descriptions.Item label={intl.formatMessage({ id: 'pages.job.detail.jobCode', defaultMessage: 'Job Instance ID' })}>
+                            <span className="pl-3 text-black">{selectedRun.id}</span>
+                          </Descriptions.Item>
+                          <Descriptions.Item label={intl.formatMessage({ id: 'pages.job.detail.syncPlan', defaultMessage: 'Sync Plan' })}>
+                            <div className="flex items-center pl-3 text-black">
+                              <FileOutlined />
+                              <span className="ml-2">湖文件</span>
+                              <DoubleRightOutlined className="mx-3 text-sky-500" />
+                              <DatabaseIcons dbType={offlineImportTargetDbType(task.importType)} width="20" height="20" />
+                              <span className="ml-2 truncate">
+                                {task.targetDatasourceName || '-'}{task.targetSchema ? ` / ${task.targetSchema}` : ''}
+                              </span>
+                            </div>
+                          </Descriptions.Item>
+                          <Descriptions.Item label={intl.formatMessage({ id: 'pages.job.detail.startTime', defaultMessage: 'Start Time' })}>
+                            <span className="pl-3 text-black">{formatTime(selectedRun.startTime)}</span>
+                          </Descriptions.Item>
+                          <Descriptions.Item label={intl.formatMessage({ id: 'pages.job.detail.endTime', defaultMessage: 'End Time' })}>
+                            <span className="pl-3 text-black">{formatTime(selectedRun.endTime)}</span>
+                          </Descriptions.Item>
+                          <Descriptions.Item label="任务 ID">
+                            <span className="pl-3 text-black">{task.id}</span>
+                          </Descriptions.Item>
+                          <Descriptions.Item label="导入类型">
+                            <span className="pl-3 text-black">{taskTypeLabel}</span>
+                          </Descriptions.Item>
+                          <Descriptions.Item span={4} label="导入文件">
+                            <span className="pl-3 text-black">{task.fileName || '-'}</span>
+                          </Descriptions.Item>
+                          <Descriptions.Item label="执行进度">
+                            <span className="pl-3 text-black">
+                              {String(task.importType).endsWith('_SQL')
+                                ? `${selectedRun.executedStatements ?? 0}/${selectedRun.totalStatements ?? 0}`
+                                : selectedRun.status === 'SUCCESS' ? '完成' : '-'}
+                            </span>
+                          </Descriptions.Item>
+                          <Descriptions.Item label="失败语句">
+                            <span className="pl-3 text-black">{selectedRun.failedStatements ?? 0}</span>
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </section>
+                      <div className="m-4 rounded-lg bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+                        <Tabs
+                          activeKey="logs"
+                          className="flex min-h-0 flex-1 flex-col"
+                          items={[{
+                            key: 'logs',
+                            label: '日志',
+                            children: (
+                              <OfflineImportLogPanel
+                                run={selectedRun}
+                                loading={loading}
+                                onRefresh={() => void load()}
+                              />
+                            ),
+                          }]}
+                        />
                       </div>
-                    ),
-                  }]}
-                />
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-base text-slate-400">
+                    请选择左侧的运行记录查看详情
+                  </div>
+                )}
               </div>
             </Splitter.Panel>
           </Splitter>
