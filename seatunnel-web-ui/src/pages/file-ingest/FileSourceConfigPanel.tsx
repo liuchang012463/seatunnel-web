@@ -59,6 +59,10 @@ const TYPE_OPTIONS = [
   'time',
 ].map((value) => ({ value, label: value }));
 
+// 固定预览列宽，字段较多时让表格按总列宽提供横向滚动。
+const PREVIEW_COLUMN_WIDTH = 160;
+const PREVIEW_TABLE_MIN_WIDTH = 700;
+
 const ConfigHint: React.FC<{ label: string; title: string }> = ({ label, title }) => (
   <Tooltip title={title} trigger={['hover', 'focus']}>
     <Button
@@ -232,6 +236,17 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       });
       return previewRow;
     });
+  }, [previewContent]);
+  const previewColumns = useMemo(() => {
+    const columns = (previewContent as any)?.columns;
+    if (!Array.isArray(columns)) return [];
+    return columns.map((column: string) => ({
+      title: column,
+      dataIndex: column,
+      key: column,
+      width: PREVIEW_COLUMN_WIDTH,
+      ellipsis: true,
+    }));
   }, [previewContent]);
   // Excel uses the generic FileBase skip_header_row_number option; absent legacy values mean 0.
   const hasHeader = format === 'excel'
@@ -693,15 +708,13 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
           <Table
             size="small"
             rowKey="__seatunnelPreviewRowKey"
-            columns={(previewContent as any).columns.map((column: string) => ({
-              title: column,
-              dataIndex: column,
-              key: column,
-              ellipsis: true,
-            }))}
+            columns={previewColumns}
             dataSource={previewRows}
             pagination={false}
-            scroll={{ y: 360 }}
+            scroll={{
+              x: Math.max(PREVIEW_TABLE_MIN_WIDTH, previewColumns.length * PREVIEW_COLUMN_WIDTH),
+              y: 360,
+            }}
           />
         ) : (
           <pre className="max-h-[480px] overflow-auto rounded-xl bg-slate-950 p-4 text-sm leading-5 text-emerald-200">
