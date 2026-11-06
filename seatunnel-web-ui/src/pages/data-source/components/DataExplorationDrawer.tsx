@@ -239,8 +239,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const [activeTab, setActiveTab] = useState('columns');
   const [tableSearch, setTableSearch] = useState('');
   const [pendingSchemaFqn, setPendingSchemaFqn] = useState<string>();
-  // The ER diagram is the default view of the main workspace; selecting a
-  // table switches to the table detail and the ER link switches back.
+  // The ER diagram remains active until a table is selected; the ER link switches back.
   const [erActive, setErActive] = useState(true);
   const [completionJob, setCompletionJob] = useState<DataExplorationMetadataJob>();
   const [completionLoading, setCompletionLoading] = useState(false);
@@ -384,7 +383,6 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       const firstTable = nextPage.records?.[0];
       setActiveTab('columns');
       setSelectedTableId(firstTable?.id);
-      setErActive(!firstTable);
       setTableDetail(undefined);
       setProfile(undefined);
       setPreview(undefined);
