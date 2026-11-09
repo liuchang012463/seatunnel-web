@@ -27,6 +27,7 @@ export interface OfflineImportTask {
   targetDatasourceName?: string;
   targetSchema?: string;
   options?: OfflineImportOptions;
+  scheduleConfig?: Record<string, any>;
   releaseState: 'ONLINE' | 'OFFLINE';
   status: 'PENDING' | 'QUEUED' | 'RUNNING' | 'SUCCESS' | 'FAILED';
   totalStatements?: number;
@@ -71,6 +72,7 @@ export interface OfflineImportTaskCreatePayload {
   targetDatasourceId: string | number;
   targetSchema?: string;
   options?: OfflineImportOptions;
+  scheduleConfig?: Record<string, any>;
 }
 
 export const offlineImportTargetDbType = (importType: OfflineImportTypeCode): string =>

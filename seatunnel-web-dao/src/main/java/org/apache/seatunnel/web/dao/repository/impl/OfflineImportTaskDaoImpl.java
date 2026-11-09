@@ -93,6 +93,10 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
                 .set(OfflineImportTask::getTargetSchema, config.getTargetSchema())
                 .set(OfflineImportTask::getOptionsJson, config.getOptionsJson())
                 .set(OfflineImportTask::getUpdateTime, updateTime);
+        // Older clients omit editor settings; leave previously saved settings intact.
+        if (config.getScheduleConfigJson() != null) {
+            wrapper.set(OfflineImportTask::getScheduleConfigJson, config.getScheduleConfigJson());
+        }
         return mybatisMapper.update(null, wrapper) > 0;
     }
 

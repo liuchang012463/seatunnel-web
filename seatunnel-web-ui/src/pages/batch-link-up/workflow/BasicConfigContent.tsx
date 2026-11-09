@@ -4,6 +4,7 @@ interface BasicConfigContentProps {
   params?: any;
   value?: any;
   onChange?: React.Dispatch<React.SetStateAction<any>>;
+  showClientId?: boolean;
 }
 
 const { TextArea } = Input;
@@ -28,12 +29,14 @@ const getModeLabel = (mode?: string) => {
 export default function BasicConfigContent({
   value,
   onChange,
+  showClientId,
 }: BasicConfigContentProps) {
   const sourceType = value?.sourceType || "SOURCE";
   const targetType = value?.targetType || "SINK";
   const jobName = value?.jobName || "";
   const jobDesc = value?.jobDesc || "";
   const clientId = value?.clientId || "-";
+  const shouldShowClientId = showClientId ?? value?.clientId !== undefined;
   const modeLabel = getModeLabel(value?.mode);
 
   const handleFieldChange = (field: string, fieldValue: any) => {
@@ -121,17 +124,19 @@ export default function BasicConfigContent({
             />
           </div>
 
-          <div>
-            <div className="text-[14px] text-slate-600">Zeta</div>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="text-[15px] font-semibold leading-none text-slate-700">
-                #{clientId}
-              </span>
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[14px] font-medium text-emerald-600">
-                已绑定
-              </span>
+          {shouldShowClientId ? (
+            <div>
+              <div className="text-[14px] text-slate-600">Zeta</div>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-[15px] font-semibold leading-none text-slate-700">
+                  #{clientId}
+                </span>
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[14px] font-medium text-emerald-600">
+                  已绑定
+                </span>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
     </div>

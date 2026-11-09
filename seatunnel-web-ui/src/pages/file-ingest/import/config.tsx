@@ -4,6 +4,9 @@ import { Alert, App, Button, Form, Input, Select, Spin, Tooltip, Upload } from '
 import { Blocks, CheckCircle2, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { generateDataSourceOptions } from '@/pages/batch-link-up/DataSourceSelect';
+import RightConfigPanel from '@/pages/batch-link-up/workflow/RightConfigPanel';
+import { getScheduleValidationMessage } from '@/pages/batch-link-up/workflow/components/ScheduleConfigContent/types';
+import type { TabKey } from '@/pages/batch-link-up/workflow/types';
 import { fetchDataSourceOptions } from '@/pages/data-source/service';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import { uploadFileResources } from '@/pages/file-resources/service';
@@ -21,12 +24,25 @@ import './create.less';
 import '../index.less';
 
 const UPLOAD_PATH = '/offline-import';
+// 保存批量配置面板中的调度项；离线导入执行仍由任务列表的启动操作触发。
+const DEFAULT_SCHEDULE_CONFIG = {
+  executionMode: 'MANUAL',
+  paramsList: [],
+  instanceGenerateMode: 'immediately',
+  scheduleRunType: 'pause',
+  timeoutMode: 'system',
+  rerunPolicy: 'disabled',
+  autoRetry: false,
+};
 
 const OfflineImportConfigPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [task, setTask] = useState<OfflineImportTask>();
+  const [basicConfig, setBasicConfig] = useState<any>({ jobName: '', jobDesc: '', showClientId: false });
+  const [scheduleConfig, setScheduleConfig] = useState<any>(DEFAULT_SCHEDULE_CONFIG);
+  const [activeConfigTab, setActiveConfigTab] = useState<TabKey | null>(null);
   const [file, setFile] = useState<FileResource>();
   const [dataSourceOptions, setDataSourceOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +52,7 @@ const OfflineImportConfigPage: React.FC = () => {
   const [dirty, setDirty] = useState(false);
   const [checkPassed, setCheckPassed] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [configNode, setConfigNode] = useState<OfflineImportConfigNode>('source');
+  const [configNode, setConfigNode] = useState<OfflineImportConfigNode | null>(null);
 
   const importType = task?.importType;
   const isSql = String(importType || '').endsWith('_SQL');
@@ -51,6 +67,13 @@ const OfflineImportConfigPage: React.FC = () => {
   const targetDataSourceName = dataSourceOptions.find((option) => option.value === String(targetDataSourceId))?.label
     || task?.targetDatasourceName
     || '尚未选择目标数据源';
+  const basicConfigForPanel = {
+    ...basicConfig,
+    sourceType: '湖文件资源',
+    targetType: targetLabel,
+    mode: 'DMP/SQL 导入',
+    showClientId: false,
+  };
   const isLocked = task?.releaseState !== 'OFFLINE' || task?.status === 'RUNNING' || task?.status === 'QUEUED';
 
   useEffect(() => {
@@ -69,14 +92,18 @@ const OfflineImportConfigPage: React.FC = () => {
         const currentTask = response.data as OfflineImportTask;
         if (!active) return;
         setTask(currentTask);
+        setBasicConfig({
+          jobName: currentTask.name,
+          jobDesc: currentTask.description || '',
+          showClientId: false,
+        });
+        setScheduleConfig(currentTask.scheduleConfig || DEFAULT_SCHEDULE_CONFIG);
         setFile({
           id: String(currentTask.fileResourceId),
           name: currentTask.fileName,
           kind: 'FILE',
         });
         form.setFieldsValue({
-          name: currentTask.name,
-          description: currentTask.description,
           targetDatasourceId: String(currentTask.targetDatasourceId),
           targetSchema: currentTask.targetSchema,
           sourceSchema: currentTask.options?.sourceSchema,
@@ -151,10 +178,33 @@ const OfflineImportConfigPage: React.FC = () => {
     return true;
   };
 
+  const handleBasicConfigChange = (value: any) => {
+    setBasicConfig(value);
+    setDirty(true);
+    setCheckPassed(false);
+  };
+
+  const handleScheduleConfigChange = (value: any) => {
+    setScheduleConfig(value);
+    setDirty(true);
+    setCheckPassed(false);
+  };
+
   const save = async () => {
     if (!task || !id) return;
     if (isLocked) {
       message.warning('请先下线任务，并确保任务没有运行中实例');
+      return;
+    }
+    if (!basicConfig.jobName?.trim()) {
+      setActiveConfigTab('basic');
+      message.warning('请输入任务名称');
+      return;
+    }
+    const scheduleError = getScheduleValidationMessage(scheduleConfig);
+    if (scheduleError) {
+      setActiveConfigTab('schedule');
+      message.warning(scheduleError);
       return;
     }
     if (!file) {
@@ -187,13 +237,14 @@ const OfflineImportConfigPage: React.FC = () => {
           };
       setSaving(true);
       const response = await offlineImportTaskApi.update(id, {
-        name: values.name,
-        description: values.description,
+        name: basicConfig.jobName.trim(),
+        description: basicConfig.jobDesc,
         importType: task.importType,
         fileResourceId: file.id,
         targetDatasourceId: values.targetDatasourceId,
         targetSchema: values.targetSchema || undefined,
         options,
+        scheduleConfig,
       });
       if (response?.code !== 0) throw new Error(response?.message || response?.msg || '保存配置失败');
       message.success('任务配置已保存');
@@ -212,6 +263,17 @@ const OfflineImportConfigPage: React.FC = () => {
     if (!task || isLocked) return;
     setChecking(true);
     try {
+      if (!basicConfig.jobName?.trim()) {
+        setActiveConfigTab('basic');
+        message.warning('请输入任务名称');
+        return;
+      }
+      const scheduleError = getScheduleValidationMessage(scheduleConfig);
+      if (scheduleError) {
+        setActiveConfigTab('schedule');
+        message.warning(scheduleError);
+        return;
+      }
       await form.validateFields();
       const values = form.getFieldsValue(true);
       if (!file) {
@@ -392,7 +454,7 @@ const OfflineImportConfigPage: React.FC = () => {
                     {isLocked ? <Alert className="mb-3 shrink-0" type="warning" showIcon message="请先下线任务，并确保没有运行中实例后再编辑配置。" /> : null}
                     <div className="generic-workflow-editor-page__canvas offline-import-config-canvas-host min-h-0 flex-1 overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-[14px] text-slate-400">
                       <OfflineImportConfigCanvas
-                        presentation="graph"
+                        presentation="interactive"
                         activeNode={configNode}
                         onActiveNodeChange={setConfigNode}
                         sourceTitle="湖文件资源"
@@ -400,23 +462,36 @@ const OfflineImportConfigPage: React.FC = () => {
                         sinkTitle={targetLabel}
                         sinkSummary={targetDataSourceName}
                         sinkDbType={targetDbType}
+                        sourceConfig={sourceConfig}
+                        sinkConfig={sinkConfig}
                       />
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="generic-workflow-editor-page__side h-full shrink-0 overflow-hidden" style={{ width: 480 }}>
-                <OfflineImportConfigCanvas
-                  presentation="inspector"
-                  activeNode={configNode}
-                  onActiveNodeChange={setConfigNode}
-                  sourceTitle="湖文件资源"
-                  sourceSummary={file?.name || `待选择 ${accept} 文件`}
-                  sinkTitle={targetLabel}
-                  sinkSummary={targetDataSourceName}
-                  sinkDbType={targetDbType}
-                  sourceConfig={sourceConfig}
-                  sinkConfig={sinkConfig}
+              <div
+                className="generic-workflow-editor-page__side h-full shrink-0 overflow-hidden"
+                style={{ width: activeConfigTab ? 480 : 58 }}
+              >
+                <RightConfigPanel
+                  activeTab={activeConfigTab}
+                  onTabChange={setActiveConfigTab}
+                  allowedTabs={['basic', 'schedule']}
+                  contentDisabled={isLocked}
+                  tabNotices={{
+                    schedule: (
+                      <Alert
+                        className="mb-3"
+                        type="info"
+                        showIcon
+                        message="当前离线导入仍需手动启动；调度配置会保存，但不会自动触发导入。"
+                      />
+                    ),
+                  }}
+                  basicConfig={basicConfigForPanel}
+                  setBasicConfig={handleBasicConfigChange}
+                  scheduleConfig={scheduleConfig}
+                  setScheduleConfig={handleScheduleConfigChange}
                 />
               </div>
             </div>

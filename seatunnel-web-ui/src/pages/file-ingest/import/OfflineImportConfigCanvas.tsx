@@ -2,15 +2,17 @@ import { Controls, Background, MiniMap, ReactFlow, ReactFlowProvider, type Edge,
 import { useMemo } from 'react';
 import CustomEdge from '@/pages/batch-link-up/workflow/edge';
 import CustomNode from '@/pages/batch-link-up/workflow/nodes';
+import PanelShell from '@/pages/batch-link-up/workflow/panel/components/PanelShell';
 import type { ReactNode } from 'react';
 import 'reactflow/dist/style.css';
 
 export type OfflineImportConfigNode = 'source' | 'sink';
+type OfflineImportConfigPresentation = 'split' | 'graph' | 'inspector' | 'interactive';
 
 interface OfflineImportConfigCanvasProps {
-  presentation?: 'split' | 'graph' | 'inspector';
-  activeNode: OfflineImportConfigNode;
-  onActiveNodeChange: (node: OfflineImportConfigNode) => void;
+  presentation?: OfflineImportConfigPresentation;
+  activeNode: OfflineImportConfigNode | null;
+  onActiveNodeChange: (node: OfflineImportConfigNode | null) => void;
   sourceTitle: string;
   sourceSummary: string;
   sinkTitle: string;
@@ -23,7 +25,7 @@ interface OfflineImportConfigCanvasProps {
 const nodeTypes = { custom: CustomNode };
 const edgeTypes = { custom: CustomEdge };
 
-/** Fixed Source→Sink graph reuses the file-ingest canvas node visuals without a node palette. */
+/** 导入任务保留固定 Source/Sink 节点，点选后复用批量任务的浮动配置面板。 */
 const OfflineImportConfigCanvas: React.FC<OfflineImportConfigCanvasProps> = ({
   presentation = 'split',
   activeNode,
@@ -108,6 +110,22 @@ const OfflineImportConfigCanvas: React.FC<OfflineImportConfigCanvasProps> = ({
       </ReactFlowProvider>
     </div>
   );
+  const nodePanel = activeNode ? (
+    <PanelShell
+      eyebrow={activeNode === 'source' ? 'Source Config' : 'Sink Config'}
+      title={activeNode === 'source' ? '来源配置' : '目标配置'}
+      badge={activeNode === 'source' ? '输入节点' : '输出节点'}
+      desc={activeNode === 'source' ? '选择导入文件并配置解析参数。' : '选择目标数据源和 Schema。'}
+      heroTitle={activeNode === 'source' ? sourceTitle : sinkTitle}
+      heroDesc={activeNode === 'source' ? sourceSummary : sinkSummary}
+      heroTag={activeNode === 'source' ? 'SOURCE' : 'SINK'}
+      dbType={activeNode === 'source' ? 'MINIO' : sinkDbType}
+      onClose={() => onActiveNodeChange(null)}
+      footer={<button type="button" className="workflow-panel__btn workflow-panel__btn--ghost" onClick={() => onActiveNodeChange(null)}>关闭</button>}
+    >
+      {activeNode === 'source' ? sourceConfig : sinkConfig}
+    </PanelShell>
+  ) : null;
   const inspector = (
     <aside className="offline-import-config-canvas__inspector" aria-label={activeNode === 'source' ? '来源配置' : '目标配置'}>
       <div className="offline-import-config-canvas__inspector-title">
@@ -120,6 +138,9 @@ const OfflineImportConfigCanvas: React.FC<OfflineImportConfigCanvasProps> = ({
   );
 
   if (presentation === 'graph') return graph;
+  if (presentation === 'interactive') {
+    return <div className="offline-import-config-canvas offline-import-config-canvas--interactive">{graph}{nodePanel}</div>;
+  }
   if (presentation === 'inspector') return inspector;
 
   return <div className="offline-import-config-canvas">{graph}{inspector}</div>;

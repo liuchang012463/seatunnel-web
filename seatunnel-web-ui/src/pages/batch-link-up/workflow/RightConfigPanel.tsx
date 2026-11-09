@@ -1,5 +1,5 @@
 import { Settings2 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { getTabDefinitions } from "./configDefinition";
 import styles from "./index.less";
 import type { TabKey } from "./types";
@@ -7,6 +7,9 @@ import type { TabKey } from "./types";
 interface RightConfigPanelProps {
   activeTab?: TabKey | null;
   onTabChange?: (tab: TabKey | null) => void;
+  allowedTabs?: TabKey[];
+  contentDisabled?: boolean;
+  tabNotices?: Partial<Record<TabKey, ReactNode>>;
   params?: any;
   basicConfig?: any;
   setBasicConfig?: React.Dispatch<React.SetStateAction<any>>;
@@ -19,6 +22,9 @@ interface RightConfigPanelProps {
 export default function RightConfigPanel({
   activeTab = null,
   onTabChange,
+  allowedTabs,
+  contentDisabled = false,
+  tabNotices,
   params,
   basicConfig,
   setBasicConfig,
@@ -39,9 +45,14 @@ export default function RightConfigPanel({
     setEnvConfig
   );
 
+  const visibleTabDefinitions = allowedTabs
+    ? tabDefinitions.filter((item: any) => allowedTabs.includes(item.key))
+    : tabDefinitions;
+
   const currentContent = activeTab
-    ? tabDefinitions.find((item: any) => item.key === activeTab)?.content
+    ? visibleTabDefinitions.find((item: any) => item.key === activeTab)?.content
     : null;
+  const activeNotice = activeTab ? tabNotices?.[activeTab] : null;
 
   const handleTabClick = (tab: TabKey) => {
     if (activeTab === tab) {
@@ -72,7 +83,14 @@ export default function RightConfigPanel({
               </div>
             </div>
 
-            <div className={styles.sidePanelBody}>{currentContent}</div>
+            <div className={styles.sidePanelBody}>
+              {activeNotice}
+              {contentDisabled ? (
+                <fieldset disabled style={{ border: 0, margin: 0, minWidth: 0, padding: 0 }}>
+                  {currentContent}
+                </fieldset>
+              ) : currentContent}
+            </div>
           </div>
         )}
 
@@ -84,7 +102,7 @@ export default function RightConfigPanel({
           </div>
 
           <div className={styles.sidePanelTabList}>
-            {tabDefinitions.map((item: any) => {
+            {visibleTabDefinitions.map((item: any) => {
               const active = activeTab === item.key;
               const hovered = hoveredTab === item.key;
 

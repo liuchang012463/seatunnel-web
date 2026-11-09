@@ -17,7 +17,10 @@ export const getTabDefinitions = (
     key: "basic",
     label: "基础",
     content: (
-      <BasicConfigContent value={basicConfig} onChange={setBasicConfig} />
+      <BasicConfigContent
+        value={basicConfig}
+        onChange={setBasicConfig}
+      />
     ),
   },
   {

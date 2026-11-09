@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
@@ -205,6 +206,9 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         entity.setTargetDatasourceId(dto.getTargetDatasourceId());
         entity.setTargetSchema(StringUtils.trimToNull(dto.getTargetSchema()));
         entity.setOptionsJson(JSONUtils.toJsonString(config.options()));
+        entity.setScheduleConfigJson(dto.getScheduleConfig() == null
+                ? null
+                : JSONUtils.toJsonString(dto.getScheduleConfig()));
         entity.setReleaseState("OFFLINE");
         entity.setStatus(STATUS_PENDING);
         entity.setTotalStatements(0);
@@ -237,12 +241,16 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         update.setTargetDatasourceId(dto.getTargetDatasourceId());
         update.setTargetSchema(StringUtils.trimToNull(dto.getTargetSchema()));
         update.setOptionsJson(JSONUtils.toJsonString(config.options()));
+        update.setScheduleConfigJson(dto.getScheduleConfig() == null
+                ? null
+                : JSONUtils.toJsonString(dto.getScheduleConfig()));
         if (!offlineImportTaskDao.updateConfigurationIfOffline(
                 id, task.getCreateUserId(), update, new Date())) {
             throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR,
                     "任务状态已变化，请刷新后再编辑");
         }
-        log.info("Updated offline import task configuration taskId={}, ownerId={}", id, task.getCreateUserId());
+        log.info("Updated offline import task configuration taskId={}, ownerId={}, hasScheduleConfig={}",
+                id, task.getCreateUserId(), dto.getScheduleConfig() != null);
         return toVO(offlineImportTaskDao.queryById(id), config.target().getName());
     }
 
@@ -950,6 +958,9 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         vo.setOptions(StringUtils.isBlank(entity.getOptionsJson())
                 ? null
                 : JSONUtils.parseObject(entity.getOptionsJson(), OfflineImportOptions.class));
+        vo.setScheduleConfig(StringUtils.isBlank(entity.getScheduleConfigJson())
+                ? null
+                : JSONUtils.parseObject(entity.getScheduleConfigJson(), new TypeReference<Map<String, Object>>() {}));
         vo.setReleaseState(entity.getReleaseState());
         vo.setStatus(entity.getStatus());
         vo.setTotalStatements(entity.getTotalStatements());

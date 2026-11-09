@@ -411,7 +411,9 @@ const CreateOfflineImportPage: React.FC = () => {
           <Form form={form} layout="vertical" initialValues={{ encoding: 'UTF-8', stopOnError: true, ignoreErrors: true }}>
             <OfflineImportConfigCanvas
               activeNode={configNode}
-              onActiveNodeChange={setConfigNode}
+              onActiveNodeChange={(node) => {
+                if (node) setConfigNode(node);
+              }}
               sourceTitle="湖文件资源"
               sourceSummary={file?.name || `待选择 ${accept} 文件`}
               sinkTitle={targetLabel}

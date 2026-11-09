@@ -8,6 +8,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.util.Map;
+
 /** Create request for one DMP/SQL offline import task. */
 @Data
 @Schema(description = "Offline import task create request")
@@ -41,4 +43,7 @@ public class OfflineImportTaskCreateDTO {
 
     @Valid
     private OfflineImportOptions options;
+
+    /** Persisted editor settings for the task's basic and scheduling panels. */
+    private Map<String, Object> scheduleConfig;
 }

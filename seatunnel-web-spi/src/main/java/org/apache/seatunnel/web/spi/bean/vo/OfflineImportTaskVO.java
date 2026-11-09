@@ -7,6 +7,7 @@ import lombok.Data;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportOptions;
 
 import java.util.Date;
+import java.util.Map;
 
 /** Public view of one DMP/SQL offline import task. */
 @Data
@@ -34,6 +35,8 @@ public class OfflineImportTaskVO {
     private String targetSchema;
 
     private OfflineImportOptions options;
+
+    private Map<String, Object> scheduleConfig;
 
     private String releaseState;
 
