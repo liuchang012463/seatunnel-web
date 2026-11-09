@@ -383,6 +383,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       const firstTable = nextPage.records?.[0];
       setActiveTab('columns');
       setSelectedTableId(firstTable?.id);
+      // The first table is selected automatically, so show its detail view instead of the ER overview.
+      setErActive(false);
       setTableDetail(undefined);
       setProfile(undefined);
       setPreview(undefined);

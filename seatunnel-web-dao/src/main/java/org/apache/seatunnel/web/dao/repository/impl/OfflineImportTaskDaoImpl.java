@@ -134,7 +134,8 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
                 .eq(OfflineImportTask::getId, id)
                 .eq(OfflineImportTask::getCreateUserId, ownerId)
                 .eq(OfflineImportTask::getReleaseState, "OFFLINE")
-                .in(OfflineImportTask::getStatus, "PENDING", "SUCCESS", "FAILED");
+                // Queued tasks can be removed before execution; running tasks remain protected.
+                .in(OfflineImportTask::getStatus, "PENDING", "QUEUED", "SUCCESS", "FAILED");
         return mybatisMapper.delete(wrapper) > 0;
     }
 
