@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
@@ -11,9 +12,11 @@ import org.apache.seatunnel.web.dao.entity.DataSource;
 
 import java.net.URI;
 
+@Slf4j
 abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConnectorAdapter {
 
     protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final int PROFILER_SAMPLE_ROW_LIMIT = 50;
 
     /** Metadata scans every two hours; sample and profiler agents run once a day. */
     static final String METADATA_SCHEDULE = "0 */2 * * *";
@@ -87,8 +90,13 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         ObjectNode profileSampleConfig = config.putObject("profileSampleConfig");
         profileSampleConfig.put("sampleConfigType", "STATIC");
         ObjectNode staticSamplingConfig = profileSampleConfig.putObject("config");
-        staticSamplingConfig.put("profileSample", 100);
-        staticSamplingConfig.put("profileSampleType", "PERCENTAGE");
+        staticSamplingConfig.put("profileSample", PROFILER_SAMPLE_ROW_LIMIT);
+        staticSamplingConfig.put("profileSampleType", "ROWS");
+        // In OpenMetadata 2.0.4 randomized ROWS sampling runs COUNT(*) before LIMIT; keep it off
+        // so the column-profile sample is bounded to 50 rows without a preliminary full-table count.
+        config.put("randomizedSample", false);
+        log.debug("Building profiler pipeline with bounded row sampling: pipelineName={}, sampleRows={}",
+                pipelineName, PROFILER_SAMPLE_ROW_LIMIT);
         return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config, PROFILE_SCHEDULE);
     }
 
