@@ -1,11 +1,12 @@
 import { ArrowLeftOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
 import { history, useParams } from '@umijs/max';
-import { Alert, App, Button, Form, Input, Select, Spin, Tooltip, Upload } from 'antd';
-import { Blocks, CheckCircle2, Save } from 'lucide-react';
+import { Alert, App, Button, Form, Input, Popover, Select, Spin, Tooltip, Upload } from 'antd';
+import { Blocks, Check, CheckCircle2, Eye, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { generateDataSourceOptions } from '@/pages/batch-link-up/DataSourceSelect';
 import RightConfigPanel from '@/pages/batch-link-up/workflow/RightConfigPanel';
 import { getScheduleValidationMessage } from '@/pages/batch-link-up/workflow/components/ScheduleConfigContent/types';
+import CodeBlockWithCopy from '@/pages/batch-link-up/workflow/operator/CodeBlockWithCopy';
 import type { TabKey } from '@/pages/batch-link-up/workflow/types';
 import { dataSourceCatalogApi, fetchDataSourceOptions } from '@/pages/data-source/service';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
@@ -56,6 +57,9 @@ const OfflineImportConfigPage: React.FC = () => {
   const [checking, setChecking] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [checkPassed, setCheckPassed] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewContent, setPreviewContent] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [configNode, setConfigNode] = useState<OfflineImportConfigNode | null>(null);
 
@@ -335,10 +339,28 @@ const OfflineImportConfigPage: React.FC = () => {
         scheduleConfig,
       });
       if (response?.code !== 0) throw new Error(response?.message || response?.msg || '保存配置失败');
-      message.success('任务配置已保存');
+      const savedTask = response.data as Partial<OfflineImportTask> | undefined;
+      setTask((current) => current ? {
+        ...current,
+        ...savedTask,
+        name: basicConfig.jobName.trim(),
+        description: basicConfig.jobDesc,
+        fileResourceId: String(file.id),
+        fileName: file.name,
+        targetDatasourceId: String(values.targetDatasourceId),
+        targetDatasourceName: savedTask?.targetDatasourceName || targetDataSourceName,
+        targetDatabase: isSql ? values.targetDatabase : undefined,
+        targetSchema: values.targetSchema || undefined,
+        options,
+        scheduleConfig,
+      } : current);
+      setBasicConfig((current: any) => ({
+        ...current,
+        jobName: basicConfig.jobName.trim(),
+        jobDesc: basicConfig.jobDesc,
+      }));
       setDirty(false);
-      setCheckPassed(false);
-      history.push('/sync/file-ingest?tab=offline-import');
+      message.success('配置已保存');
     } catch (error: any) {
       if (error?.errorFields) return;
       message.error(error?.message || '保存配置失败');
@@ -347,44 +369,94 @@ const OfflineImportConfigPage: React.FC = () => {
     }
   };
 
-  const checkConfiguration = async () => {
-    if (!task || isLocked) return;
+  const checkConfiguration = async (showSuccess = true): Promise<boolean> => {
+    if (!task || isLocked) return false;
     setChecking(true);
     try {
       if (!basicConfig.jobName?.trim()) {
         setActiveConfigTab('basic');
         message.warning('请输入任务名称');
-        return;
+        return false;
       }
       const scheduleError = getScheduleValidationMessage(scheduleConfig);
       if (scheduleError) {
         setActiveConfigTab('schedule');
         message.warning(scheduleError);
-        return;
+        return false;
       }
       await form.validateFields();
       const values = form.getFieldsValue(true);
       if (!file) {
         setConfigNode('source');
         message.warning('请先选择导入文件');
-        return;
+        return false;
       }
       if (!values.targetDatasourceId) {
         setConfigNode('sink');
         message.warning('请选择目标数据源');
-        return;
+        return false;
       }
       if (isSql && !values.targetDatabase) {
         setConfigNode('sink');
         message.warning('请选择目标数据库');
-        return;
+        return false;
       }
       setCheckPassed(true);
-      message.success('配置检查通过');
+      if (showSuccess) message.success('配置检查通过');
+      return true;
     } catch (error: any) {
       if (!error?.errorFields) message.error(error?.message || '配置检查失败');
+      return false;
     } finally {
       setChecking(false);
+    }
+  };
+
+  const previewConfiguration = async () => {
+    if (!task || !await checkConfiguration(false)) return;
+
+    const values = form.getFieldsValue(true);
+    const preview = {
+      task: {
+        name: basicConfig.jobName.trim(),
+        description: basicConfig.jobDesc || undefined,
+        importType: OFFLINE_IMPORT_TYPE_LABELS[task.importType],
+      },
+      source: {
+        type: '湖文件资源',
+        fileName: file?.name,
+        fileSize: file?.size,
+      },
+      target: {
+        dataSource: targetDataSourceName,
+        database: isSql ? values.targetDatabase : undefined,
+        schema: values.targetSchema || undefined,
+      },
+      options: isSql
+        ? {
+            sourceSchema: values.sourceSchema?.trim() || undefined,
+            encoding: values.encoding,
+            stopOnError: values.stopOnError,
+          }
+        : {
+            sourceSchema: values.sourceSchema?.trim() || undefined,
+            ...(task.importType === 'DAMENG_DMP' ? { ignoreErrors: values.ignoreErrors } : {}),
+          },
+      schedule: scheduleConfig,
+    };
+
+    setPreviewContent(JSON.stringify(preview, null, 2));
+    setPreviewOpen(true);
+  };
+
+  const handlePreview = async () => {
+    setPreviewLoading(true);
+    try {
+      await previewConfiguration();
+    } catch (error: any) {
+      message.error(error?.message || '预览失败');
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -555,21 +627,57 @@ const OfflineImportConfigPage: React.FC = () => {
                   <div className="generic-workflow-editor-page__toolbar flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
                     <div className="text-[15px] font-semibold text-slate-800">任务配置</div>
                     <div className="flex items-center gap-2.5">
-                      <Tooltip title={isLocked ? '任务需要先下线才能编辑' : '检查来源文件和目标数据库配置'}>
+                      <Tooltip title={isLocked ? '任务需要先下线才能编辑' : '检查导入文件和目标数据库配置'}>
+                        <span className="relative inline-flex">
+                          <Button
+                            type="default"
+                            icon={<CheckCircle2 size={15} />}
+                            loading={checking}
+                            disabled={isLocked || saving}
+                            onClick={() => void checkConfiguration()}
+                            className="generic-workflow-editor-page__action-chip"
+                          >
+                            校验
+                          </Button>
+                          {checkPassed && (
+                            <span className="absolute -right-1 -top-1 z-10 inline-flex h-4 w-4 items-center justify-center rounded-full border border-white bg-emerald-500 text-white shadow-sm">
+                              <Check size={10} strokeWidth={3} />
+                            </span>
+                          )}
+                        </span>
+                      </Tooltip>
+                      <Popover
+                        open={previewOpen}
+                        placement="leftTop"
+                        trigger="click"
+                        classNames={{ root: 'st-hocon-popover' }}
+                        content={(
+                          <div className="w-[700px]">
+                            <CodeBlockWithCopy
+                              content={previewContent}
+                              height={560}
+                              title="离线导入配置预览"
+                              onClose={() => setPreviewOpen(false)}
+                            />
+                          </div>
+                        )}
+                      >
                         <Button
                           type="default"
-                          icon={<CheckCircle2 size={15} />}
-                          loading={checking}
-                          disabled={isLocked}
-                          onClick={() => void checkConfiguration()}
+                          icon={<Eye size={15} />}
+                          loading={previewLoading}
+                          disabled={isLocked || checking || saving}
+                          onClick={() => void handlePreview()}
                           className="generic-workflow-editor-page__action-chip"
                         >
-                          校验
+                          预览
                         </Button>
+                      </Popover>
+                      <Tooltip title={isLocked ? '任务已上线' : dirty ? '当前页面内容已变更，请先保存配置' : '当前配置已保存到数据库'}>
+                        <span className={`inline-flex h-[34px] select-none items-center justify-center rounded-full border px-3 text-[14px] font-medium leading-none ${isLocked || !dirty ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-blue-200 bg-blue-50 text-blue-600'}`}>
+                          {isLocked ? '任务已上线' : dirty ? '有未保存的修改' : '配置已保存'}
+                        </span>
                       </Tooltip>
-                      <span className={`inline-flex h-[34px] select-none items-center justify-center rounded-full border px-3 text-[14px] font-medium leading-none ${dirty ? 'border-amber-200 bg-amber-50 text-amber-600' : 'border-emerald-200 bg-emerald-50 text-emerald-600'}`}>
-                        {isLocked ? '任务已上线' : dirty ? '配置未保存' : checkPassed ? '校验通过' : '配置已保存'}
-                      </span>
                       <Button
                         type="primary"
                         icon={<Save size={15} />}
@@ -643,6 +751,7 @@ const OfflineImportConfigPage: React.FC = () => {
             }
             setFile(resource);
             setDirty(true);
+            setCheckPassed(false);
             setCheckPassed(false);
             setPickerOpen(false);
           }}
