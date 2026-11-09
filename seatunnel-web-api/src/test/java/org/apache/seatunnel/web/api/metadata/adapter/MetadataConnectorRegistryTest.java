@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MetadataConnectorRegistryTest {
@@ -185,8 +186,11 @@ class MetadataConnectorRegistryTest {
         assertEquals(true, pipeline.at("/sourceConfig/config/computeTableMetrics").asBoolean());
         assertEquals(true, pipeline.at("/sourceConfig/config/computeColumnMetrics").asBoolean());
         assertEquals("STATIC", pipeline.at("/sourceConfig/config/profileSampleConfig/sampleConfigType").asText());
-        assertEquals(100, pipeline.at("/sourceConfig/config/profileSampleConfig/config/profileSample").asInt());
-        assertEquals("PERCENTAGE", pipeline.at("/sourceConfig/config/profileSampleConfig/config/profileSampleType").asText());
+        // Keep sampling row-bounded; randomized ROWS sampling counts the full table first in OM 2.0.4.
+        assertEquals(50, pipeline.at("/sourceConfig/config/profileSampleConfig/config/profileSample").asInt());
+        assertEquals("ROWS", pipeline.at("/sourceConfig/config/profileSampleConfig/config/profileSampleType").asText());
+        assertTrue(pipeline.at("/sourceConfig/config/randomizedSample").isBoolean());
+        assertFalse(pipeline.at("/sourceConfig/config/randomizedSample").asBoolean());
     }
 
     @Test
