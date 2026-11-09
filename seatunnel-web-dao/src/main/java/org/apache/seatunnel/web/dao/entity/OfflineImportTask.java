@@ -25,6 +25,8 @@ public class OfflineImportTask extends BaseEntity {
 
     private Long targetDatasourceId;
 
+    private String targetDatabase;
+
     private String targetSchema;
 
     private String optionsJson;

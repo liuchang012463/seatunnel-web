@@ -25,6 +25,7 @@ export interface OfflineImportTask {
   fileName: string;
   targetDatasourceId: string;
   targetDatasourceName?: string;
+  targetDatabase?: string;
   targetSchema?: string;
   options?: OfflineImportOptions;
   scheduleConfig?: Record<string, any>;
@@ -70,6 +71,7 @@ export interface OfflineImportTaskCreatePayload {
   importType: OfflineImportTypeCode;
   fileResourceId: string | number;
   targetDatasourceId: string | number;
+  targetDatabase?: string;
   targetSchema?: string;
   options?: OfflineImportOptions;
   scheduleConfig?: Record<string, any>;

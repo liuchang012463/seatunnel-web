@@ -2,8 +2,13 @@ import { InboxOutlined, UploadOutlined } from '@ant-design/icons';
 import { history, useLocation } from '@umijs/max';
 import { App, Button, Collapse, Form, Input, Radio, Select, Space, Spin, Upload } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
-import { DATA_SOURCE_REGISTRY } from '@/pages/data-source/dataSourceRegistry';
+import {
+  DATA_SOURCE_REGISTRY,
+  supportsDatabaseScope,
+  supportsSchemaScope,
+} from '@/pages/data-source/dataSourceRegistry';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
+import { dataSourceCatalogApi } from '@/pages/data-source/service';
 import { uploadFileResources } from '@/pages/file-resources/service';
 import { generateDataSourceOptions, type DataSourceType } from '@/pages/batch-link-up/DataSourceSelect';
 import IconRightArrow from '@/pages/batch-link-up/IconRightArrow';
@@ -91,12 +96,17 @@ const CreateOfflineImportPage: React.FC = () => {
   const [targetType, setTargetType] = useState<any>(() => toTargetType(targetOption));
   const [clientId, setClientId] = useState<string>();
   const [targetDataSourceId, setTargetDataSourceId] = useState<string>();
+  const [databaseOptions, setDatabaseOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [schemaOptions, setSchemaOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [databaseLoading, setDatabaseLoading] = useState(false);
+  const [schemaLoading, setSchemaLoading] = useState(false);
   const [sourceTestStatus, setSourceTestStatus] = useState<ConnectivityStatus>('idle');
   const [targetTestStatus, setTargetTestStatus] = useState<ConnectivityStatus>('idle');
   const [file, setFile] = useState<FileResource | null>(null);
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const targetDatabase = Form.useWatch('targetDatabase', { form, preserve: true });
 
   useEffect(() => {
     setTargetType(toTargetType(targetOption));
@@ -105,6 +115,77 @@ const CreateOfflineImportPage: React.FC = () => {
   useEffect(() => {
     form.setFieldsValue({ encoding: 'UTF-8', stopOnError: true, ignoreErrors: true });
   }, [form]);
+
+  useEffect(() => {
+    // 更换目标连接后，清空旧连接下的目录选择，避免数据库与 Schema 错配。
+    form.setFieldsValue({ targetDatabase: undefined, targetSchema: undefined });
+    setDatabaseOptions([]);
+    setSchemaOptions([]);
+  }, [form, targetDataSourceId]);
+
+  useEffect(() => {
+    if (category !== 'SQL' || !targetDataSourceId || !supportsDatabaseScope(targetDbType)) {
+      setDatabaseOptions([]);
+      setSchemaOptions([]);
+      return;
+    }
+
+    let active = true;
+    const loadDatabases = async () => {
+      setDatabaseLoading(true);
+      try {
+        const response = await dataSourceCatalogApi.listDatabases(String(targetDataSourceId));
+        if (response?.code !== 0) throw new Error(response?.message || '获取目标数据库列表失败');
+        const options = (Array.isArray(response.data) ? response.data : []).map((item: any) => ({
+          value: String(item?.value ?? item?.label ?? ''),
+          label: String(item?.label ?? item?.value ?? ''),
+        })).filter((item) => item.value);
+        if (active) setDatabaseOptions(options);
+      } catch (error: any) {
+        if (active) {
+          setDatabaseOptions([]);
+          message.error(error?.message || '获取目标数据库列表失败');
+        }
+      } finally {
+        if (active) setDatabaseLoading(false);
+      }
+    };
+    void loadDatabases();
+    return () => { active = false; };
+  }, [category, message, targetDataSourceId, targetDbType]);
+
+  useEffect(() => {
+    if (category !== 'SQL' || !targetDataSourceId || !targetDatabase || !supportsSchemaScope(targetDbType)) {
+      setSchemaOptions([]);
+      return;
+    }
+
+    let active = true;
+    const loadSchemas = async () => {
+      setSchemaLoading(true);
+      try {
+        const response = await dataSourceCatalogApi.listSchemas(
+          String(targetDataSourceId),
+          String(targetDatabase),
+        );
+        if (response?.code !== 0) throw new Error(response?.message || '获取目标 Schema 列表失败');
+        const options = (Array.isArray(response.data) ? response.data : []).map((item: any) => ({
+          value: String(item?.value ?? item?.label ?? ''),
+          label: String(item?.label ?? item?.value ?? ''),
+        })).filter((item) => item.value);
+        if (active) setSchemaOptions(options);
+      } catch (error: any) {
+        if (active) {
+          setSchemaOptions([]);
+          message.error(error?.message || '获取目标 Schema 列表失败');
+        }
+      } finally {
+        if (active) setSchemaLoading(false);
+      }
+    };
+    void loadSchemas();
+    return () => { active = false; };
+  }, [category, message, targetDataSourceId, targetDatabase, targetDbType]);
 
   const handleSourceChange = (value: string, _option: any) => {
     if (value !== FILE_RESOURCE_SOURCE.dbType) return;
@@ -203,6 +284,11 @@ const CreateOfflineImportPage: React.FC = () => {
       setActiveStep('client');
       return;
     }
+    if (category === 'SQL' && !values.targetDatabase) {
+      setConfigNode('sink');
+      message.warning('请选择目标数据库');
+      return;
+    }
     if (!file) {
       message.warning('请先上传或选择导入文件');
       return;
@@ -220,6 +306,7 @@ const CreateOfflineImportPage: React.FC = () => {
         importType,
         fileResourceId: file.id,
         targetDatasourceId: targetDataSourceId,
+        targetDatabase: category === 'SQL' ? values.targetDatabase : undefined,
         targetSchema: values.targetSchema || undefined,
         options: category === 'SQL'
           ? {
@@ -456,10 +543,45 @@ const CreateOfflineImportPage: React.FC = () => {
                   <Button className="offline-import-create__change-target" onClick={() => setActiveStep('client')}>
                     更改目标数据源
                   </Button>
-                  <Form.Item label="目标 Schema" name="targetSchema" className="offline-import-create__field offline-import-create__field--last">
-                    <Input placeholder={targetDbType === 'KINGBASE' ? '例如 public' : '例如 TEST'} maxLength={128} />
-                  </Form.Item>
-                  <div className="offline-import-create__target-hint">目标 Schema 为可选项；留空时按目标数据源默认模式执行。</div>
+                  {category === 'SQL' ? (
+                    <>
+                      <Form.Item
+                        label="数据库"
+                        name="targetDatabase"
+                        rules={[{ required: true, message: '请选择目标数据库' }]}
+                        className="offline-import-create__field"
+                      >
+                        <Select
+                          showSearch
+                          optionFilterProp="label"
+                          placeholder="请选择数据库"
+                          options={databaseOptions}
+                          loading={databaseLoading}
+                          disabled={!targetDataSourceId}
+                          onChange={() => form.setFieldValue('targetSchema', undefined)}
+                        />
+                      </Form.Item>
+                      <Form.Item label="Schema" name="targetSchema" className="offline-import-create__field offline-import-create__field--last">
+                        <Select
+                          showSearch
+                          allowClear
+                          optionFilterProp="label"
+                          placeholder="请选择 Schema（可选）"
+                          options={schemaOptions}
+                          loading={schemaLoading}
+                          disabled={!targetDatabase}
+                        />
+                      </Form.Item>
+                      <div className="offline-import-create__target-hint">先选择数据源连接，再选择目标数据库和 Schema；不需要选择表。</div>
+                    </>
+                  ) : (
+                    <>
+                      <Form.Item label="目标 Schema" name="targetSchema" className="offline-import-create__field offline-import-create__field--last">
+                        <Input placeholder={targetDbType === 'KINGBASE' ? '例如 public' : '例如 TEST'} maxLength={128} />
+                      </Form.Item>
+                      <div className="offline-import-create__target-hint">目标 Schema 为可选项；留空时按目标数据源默认模式执行。</div>
+                    </>
+                  )}
                 </>
               )}
             />

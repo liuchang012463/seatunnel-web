@@ -303,7 +303,11 @@ const OfflineImportHistoryModal: React.FC<OfflineImportHistoryModalProps> = ({ o
                               <DoubleRightOutlined className="mx-3 text-sky-500" />
                               <DatabaseIcons dbType={offlineImportTargetDbType(task.importType)} width="20" height="20" />
                               <span className="ml-2 truncate">
-                                {task.targetDatasourceName || '-'}{task.targetSchema ? ` / ${task.targetSchema}` : ''}
+                                {[
+                                  task.targetDatasourceName || '-',
+                                  task.targetDatabase,
+                                  task.targetSchema,
+                                ].filter(Boolean).join(' / ')}
                               </span>
                             </div>
                           </Descriptions.Item>

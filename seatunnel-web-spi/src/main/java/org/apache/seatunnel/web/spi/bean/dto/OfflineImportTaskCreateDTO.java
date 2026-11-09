@@ -38,6 +38,9 @@ public class OfflineImportTaskCreateDTO {
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private Long targetDatasourceId;
 
+    @Size(max = 128, message = "目标数据库名称不能超过128个字符")
+    private String targetDatabase;
+
     @Size(max = 128, message = "目标 Schema 不能超过128个字符")
     private String targetSchema;
 

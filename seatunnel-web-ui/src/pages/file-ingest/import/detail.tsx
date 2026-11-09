@@ -214,6 +214,7 @@ const OfflineImportDetailPage: React.FC = () => {
             <Descriptions.Item label="导入文件">{task.fileName}</Descriptions.Item>
             <Descriptions.Item label="目标数据源">
               {task.targetDatasourceName || '-'}
+              {task.targetDatabase ? ` / ${task.targetDatabase}` : ''}
               {task.targetSchema ? ` / ${task.targetSchema}` : ''}
             </Descriptions.Item>
             <Descriptions.Item label="任务描述">{task.description || '-'}</Descriptions.Item>

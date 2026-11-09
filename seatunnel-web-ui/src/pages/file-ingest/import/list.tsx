@@ -178,8 +178,11 @@ const OfflineImportTaskList: React.FC = () => {
       key: 'target',
       width: 200,
       ellipsis: true,
-      render: (_: unknown, record: OfflineImportTask) =>
-        `${record.targetDatasourceName || '-'}${record.targetSchema ? ` / ${record.targetSchema}` : ''}`,
+      render: (_: unknown, record: OfflineImportTask) => [
+        record.targetDatasourceName || '-',
+        record.targetDatabase,
+        record.targetSchema,
+      ].filter(Boolean).join(' / '),
     },
     {
       title: '状态',

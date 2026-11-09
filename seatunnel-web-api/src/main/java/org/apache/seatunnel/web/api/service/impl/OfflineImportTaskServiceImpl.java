@@ -22,6 +22,7 @@ import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProv
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.FileResourceService;
 import org.apache.seatunnel.web.api.service.DataSourceUsageValidator;
+import org.apache.seatunnel.web.api.service.DataSourceCatalogService;
 import org.apache.seatunnel.web.api.service.OfflineImportTaskService;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -40,6 +41,7 @@ import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskRunVO;
+import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.enums.OfflineImportType;
@@ -104,6 +106,9 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
     @Resource
     private DataSourceUsageValidator dataSourceUsageValidator;
+
+    @Resource
+    private DataSourceCatalogService dataSourceCatalogService;
 
     @Resource
     private FileResourceService fileResourceService;
@@ -204,6 +209,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         entity.setFileResourceId(dto.getFileResourceId());
         entity.setFileName(config.fileName());
         entity.setTargetDatasourceId(dto.getTargetDatasourceId());
+        entity.setTargetDatabase(StringUtils.trimToNull(dto.getTargetDatabase()));
         entity.setTargetSchema(StringUtils.trimToNull(dto.getTargetSchema()));
         entity.setOptionsJson(JSONUtils.toJsonString(config.options()));
         entity.setScheduleConfigJson(dto.getScheduleConfig() == null
@@ -239,6 +245,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         update.setFileResourceId(dto.getFileResourceId());
         update.setFileName(config.fileName());
         update.setTargetDatasourceId(dto.getTargetDatasourceId());
+        update.setTargetDatabase(StringUtils.trimToNull(dto.getTargetDatabase()));
         update.setTargetSchema(StringUtils.trimToNull(dto.getTargetSchema()));
         update.setOptionsJson(JSONUtils.toJsonString(config.options()));
         update.setScheduleConfigJson(dto.getScheduleConfig() == null
@@ -289,6 +296,19 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         if (target.getDbType() != importType.getTargetDbType()) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
                     "目标数据源类型 " + target.getDbType() + " 与导入类型 " + importType.getCode() + " 不匹配");
+        }
+        String targetDatabase = StringUtils.trimToNull(dto.getTargetDatabase());
+        if (importType.isSql() && targetDatabase == null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "请选择目标数据库");
+        }
+        if (importType.isSql()) {
+            List<OptionVO> databases = dataSourceCatalogService.listDatabase(target.getId());
+            boolean databaseExists = databases.stream()
+                    .anyMatch(option -> targetDatabase.equals(option.getValue()));
+            if (!databaseExists) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                        "目标数据库不属于所选数据源: " + targetDatabase);
+            }
         }
         dataSourceUsageValidator.validate(target.getId(),
                 org.apache.seatunnel.web.common.enums.DataSourceUsage.SINK);
@@ -539,6 +559,9 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         String text = decode(bytes, options.getEncoding());
         executionLog.line("已读取 SQL 文件 " + task.getFileName()
                 + "（" + bytes.length + " 字节，编码 " + options.getEncoding() + "）");
+        if (StringUtils.isNotBlank(task.getTargetDatabase())) {
+            executionLog.line("目标数据库: " + task.getTargetDatabase());
+        }
 
         SqlImportPlan.Plan plan = SqlImportPlan.prepare(
                 text, dataSource.getDbType(), options.getSourceSchema(), task.getTargetSchema());
@@ -547,8 +570,18 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                 + (plan.ignoredMetadata() == 0 ? "" : "，忽略 " + plan.ignoredMetadata() + " 条导出元数据"));
         updateProgress(task.getId(), statements.size(), 0, 0);
 
+        String connectionParamsJson = dataSource.getConnectionParams();
+        if (StringUtils.isNotBlank(task.getTargetDatabase())) {
+            // 使用已保存的连接凭据重建 JDBC 参数，只覆盖用户选择的目标数据库。
+            var connectionParams = JSONUtils.parseObject(connectionParamsJson);
+            if (connectionParams == null) {
+                throw new IllegalStateException("目标数据源连接参数无效");
+            }
+            connectionParams.put("database", task.getTargetDatabase());
+            connectionParamsJson = JSONUtils.toJsonString(connectionParams);
+        }
         BaseConnectionParam connectionParam = (BaseConnectionParam) DataSourceUtils.buildConnectionParams(
-                dataSource.getDbType(), dataSource.getConnectionParams());
+                dataSource.getDbType(), connectionParamsJson);
         registerConnectionSecrets(executionLog, connectionParam.getPassword());
         try (Connection connection = DataSourceUtils.getDatasourceProcessor(dataSource.getDbType())
                 .getConnectionManager()
@@ -954,6 +987,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         vo.setFileName(entity.getFileName());
         vo.setTargetDatasourceId(entity.getTargetDatasourceId());
         vo.setTargetDatasourceName(dataSourceName);
+        vo.setTargetDatabase(entity.getTargetDatabase());
         vo.setTargetSchema(entity.getTargetSchema());
         vo.setOptions(StringUtils.isBlank(entity.getOptionsJson())
                 ? null

@@ -32,6 +32,8 @@ public class OfflineImportTaskVO {
 
     private String targetDatasourceName;
 
+    private String targetDatabase;
+
     private String targetSchema;
 
     private OfflineImportOptions options;
