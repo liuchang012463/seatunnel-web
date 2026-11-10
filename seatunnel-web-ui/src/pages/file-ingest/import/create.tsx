@@ -1,6 +1,7 @@
-import { InboxOutlined, UploadOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
 import { history, useLocation } from '@umijs/max';
-import { App, Button, Collapse, Form, Input, Radio, Select, Space, Spin, Upload } from 'antd';
+import { Alert, App, Button, Collapse, Form, Input, Radio, Select, Space, Spin, Tooltip, Upload } from 'antd';
+import { Blocks, CheckCircle2, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   DATA_SOURCE_REGISTRY,
@@ -15,11 +16,15 @@ import IconRightArrow from '@/pages/batch-link-up/IconRightArrow';
 import BottomActionBar from '@/pages/batch-link-up/detail/components/BottomActionBar';
 import PageHeader from '@/pages/batch-link-up/detail/components/PageHeader';
 import { STEP_THEME } from '@/pages/batch-link-up/detail/constants';
+import RightConfigPanel from '@/pages/batch-link-up/workflow/RightConfigPanel';
+import { getScheduleValidationMessage } from '@/pages/batch-link-up/workflow/components/ScheduleConfigContent/types';
+import type { TabKey } from '@/pages/batch-link-up/workflow/types';
 import CommonClientLinkSection, { type ConnectivityStatus } from '@/pages/common/components/CommonClientLinkSection';
 import FileResourcePicker from '../FileResourcePicker';
 import { FILE_RESOURCE_SOURCE, type FileResource } from '../types';
 import OfflineImportConfigCanvas, { type OfflineImportConfigNode } from './OfflineImportConfigCanvas';
 import './create.less';
+import '../index.less';
 import {
   OFFLINE_IMPORT_TYPE_LABELS,
   offlineImportTargetDbType,
@@ -39,6 +44,17 @@ const ENCODING_OPTIONS = [
 ];
 
 const UPLOAD_PATH = '/offline-import';
+
+// 离线导入任务保存调度参数，但实际导入仍由任务列表手动启动。
+const DEFAULT_SCHEDULE_CONFIG = {
+  executionMode: 'MANUAL',
+  paramsList: [],
+  instanceGenerateMode: 'immediately',
+  scheduleRunType: 'pause',
+  timeoutMode: 'system',
+  rerunPolicy: 'disabled',
+  autoRetry: false,
+};
 
 const fileResourceOption: DataSourceType = {
   ...FILE_RESOURCE_SOURCE,
@@ -92,7 +108,11 @@ const CreateOfflineImportPage: React.FC = () => {
   const targetOption = useMemo(() => getTargetOption(targetDbType), [targetDbType]);
 
   const [activeStep, setActiveStep] = useState<CreateStep>('base');
-  const [configNode, setConfigNode] = useState<OfflineImportConfigNode>('source');
+  const [configNode, setConfigNode] = useState<OfflineImportConfigNode | null>(null);
+  const [activeConfigTab, setActiveConfigTab] = useState<TabKey | null>(null);
+  const [basicConfig, setBasicConfig] = useState<any>({ jobName: '', jobDesc: '', showClientId: false });
+  const [scheduleConfig, setScheduleConfig] = useState<any>(DEFAULT_SCHEDULE_CONFIG);
+  const [checkPassed, setCheckPassed] = useState(false);
   const [targetType, setTargetType] = useState<any>(() => toTargetType(targetOption));
   const [clientId, setClientId] = useState<string>();
   const [targetDataSourceId, setTargetDataSourceId] = useState<string>();
@@ -108,6 +128,11 @@ const CreateOfflineImportPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const targetDatabase = Form.useWatch('targetDatabase', { form, preserve: true });
 
+  // 基础页和工作台使用同一份名称、描述，避免两步之间出现旧值。
+  useEffect(() => {
+    form.setFieldsValue({ name: basicConfig.jobName, description: basicConfig.jobDesc });
+  }, [basicConfig.jobDesc, basicConfig.jobName, form]);
+
   useEffect(() => {
     setTargetType(toTargetType(targetOption));
   }, [targetOption]);
@@ -121,6 +146,7 @@ const CreateOfflineImportPage: React.FC = () => {
     form.setFieldsValue({ targetDatabase: undefined, targetSchema: undefined });
     setDatabaseOptions([]);
     setSchemaOptions([]);
+    setCheckPassed(false);
   }, [form, targetDataSourceId]);
 
   useEffect(() => {
@@ -202,6 +228,7 @@ const CreateOfflineImportPage: React.FC = () => {
     });
     setTargetDataSourceId(undefined);
     setTargetTestStatus('idle');
+    setCheckPassed(false);
   };
 
   const cancelToList = () => history.push('/sync/file-ingest?tab=offline-import');
@@ -219,6 +246,13 @@ const CreateOfflineImportPage: React.FC = () => {
   const goClientStep = async () => {
     try {
       await form.validateFields(['name']);
+      const values = form.getFieldsValue(true);
+      setBasicConfig((previous: any) => ({
+        ...previous,
+        jobName: values.name || '',
+        jobDesc: values.description || '',
+      }));
+      setCheckPassed(false);
       setActiveStep('client');
     } catch {
       // Keep the user on the basic information step until the task name is valid.
@@ -254,6 +288,7 @@ const CreateOfflineImportPage: React.FC = () => {
         size: Number(uploaded.size ?? (rawFile as File).size ?? 0),
         kind: 'FILE',
       });
+      setCheckPassed(false);
       onSuccess?.(uploaded);
     } catch (error: any) {
       message.error(error?.message || '文件上传失败');
@@ -272,6 +307,8 @@ const CreateOfflineImportPage: React.FC = () => {
   };
 
   const submit = async () => {
+    if (!validateConfiguration()) return;
+
     let values: any;
     try {
       await form.validateFields();
@@ -279,30 +316,12 @@ const CreateOfflineImportPage: React.FC = () => {
     } catch {
       return;
     }
-    if (!targetDataSourceId || targetTestStatus !== 'success') {
-      message.warning('请先完成目标数据源连通性测试');
-      setActiveStep('client');
-      return;
-    }
-    if (category === 'SQL' && !values.targetDatabase) {
-      setConfigNode('sink');
-      message.warning('请选择目标数据库');
-      return;
-    }
-    if (!file) {
-      message.warning('请先上传或选择导入文件');
-      return;
-    }
-    if (!String(file.name || '').toLowerCase().endsWith(accept)) {
-      message.warning(`仅支持 ${accept} 文件`);
-      return;
-    }
 
     setSubmitting(true);
     try {
       const response = await offlineImportTaskApi.create({
-        name: values.name,
-        description: values.description,
+        name: String(basicConfig.jobName || values.name || '').trim(),
+        description: basicConfig.jobDesc ?? values.description,
         importType,
         fileResourceId: file.id,
         targetDatasourceId: targetDataSourceId,
@@ -318,6 +337,7 @@ const CreateOfflineImportPage: React.FC = () => {
               sourceSchema: values.sourceSchema?.trim() || undefined,
               ...(importType === 'DAMENG_DMP' ? { ignoreErrors: values.ignoreErrors } : {}),
             },
+        scheduleConfig,
       }, { skipErrorHandler: true });
       if (response?.code !== 0) throw new Error(response?.message || response?.msg || '创建任务失败');
       message.success('任务创建成功，可在列表中执行导入');
@@ -372,6 +392,73 @@ const CreateOfflineImportPage: React.FC = () => {
   }], [category, importType]);
 
   const targetLabel = targetOption.rawLabel || targetDbType;
+  const basicConfigForPanel = {
+    ...basicConfig,
+    sourceType: '湖文件资源',
+    targetType: targetLabel,
+    mode: `${category} 导入`,
+    showClientId: false,
+  };
+  const updateBasicConfig: React.Dispatch<React.SetStateAction<any>> = (value) => {
+    setBasicConfig(value);
+    setCheckPassed(false);
+  };
+  const updateScheduleConfig: React.Dispatch<React.SetStateAction<any>> = (value) => {
+    setScheduleConfig(value);
+    setCheckPassed(false);
+  };
+  const validateConfiguration = () => {
+    const taskName = String(basicConfig.jobName || form.getFieldValue('name') || '').trim();
+    if (!taskName) {
+      setActiveConfigTab('basic');
+      message.warning('请输入任务名称');
+      return false;
+    }
+
+    const scheduleError = getScheduleValidationMessage(scheduleConfig);
+    if (scheduleError) {
+      setActiveConfigTab('schedule');
+      message.warning(scheduleError);
+      return false;
+    }
+
+    if (!clientId || !targetDataSourceId || targetTestStatus !== 'success') {
+      message.warning('请先完成客户端和目标数据源连通性校验');
+      setActiveStep('client');
+      return false;
+    }
+
+    const values = form.getFieldsValue(true);
+    if (category === 'SQL' && !values.targetDatabase) {
+      setConfigNode('sink');
+      message.warning('请选择目标数据库');
+      return false;
+    }
+
+    if (!file) {
+      setConfigNode('source');
+      message.warning('请先上传或选择导入文件');
+      return false;
+    }
+    if (!String(file.name || '').toLowerCase().endsWith(accept)) {
+      setConfigNode('source');
+      message.warning(`仅支持 ${accept} 文件`);
+      return false;
+    }
+
+    return true;
+  };
+  const checkConfiguration = async () => {
+    if (!validateConfiguration()) return;
+    try {
+      await form.validateFields();
+      setCheckPassed(true);
+      message.success('配置校验通过');
+    } catch {
+      // 保留当前步骤，让表单项自身展示具体校验提示。
+    }
+  };
+
   const isBaseStep = activeStep === 'base';
   const isClientStep = activeStep === 'client';
   const isConfigStep = activeStep === 'config';
@@ -382,6 +469,220 @@ const CreateOfflineImportPage: React.FC = () => {
   const configPillClass = isConfigStep ? STEP_THEME.client.pill : STEP_THEME.client.pillInactive;
   const configDotClass = isConfigStep ? STEP_THEME.client.dot : STEP_THEME.client.dotInactive;
   const stepProgress = isBaseStep ? '0%' : isClientStep ? '50%' : '100%';
+
+  const sourceConfig = (
+    <>
+      <Form.Item label="导入类型" className="offline-import-create__field">
+        <Input value={OFFLINE_IMPORT_TYPE_LABELS[importType]} readOnly />
+      </Form.Item>
+      <Upload.Dragger
+        accept={accept}
+        maxCount={1}
+        customRequest={uploadRequest}
+        beforeUpload={beforeUpload}
+        showUploadList={false}
+        disabled={uploading}
+        className="offline-import-create__upload"
+      >
+        {uploading ? <Spin /> : <p className="ant-upload-drag-icon !mb-2"><InboxOutlined /></p>}
+        <p className="ant-upload-text">{file ? file.name : `点击或拖拽上传 ${accept} 文件`}</p>
+        <p className="ant-upload-hint">{file ? `文件大小：${(Number(file.size || 0) / 1024).toFixed(1)} KB，可重新上传覆盖` : '文件将上传到平台湖文件资源池后执行导入'}</p>
+      </Upload.Dragger>
+      <div className="offline-import-create__file-picker">
+        <span>已有文件在湖文件资源池？直接选择</span>
+        <Button icon={<UploadOutlined />} disabled={uploading} onClick={() => setPickerOpen(true)}>从湖文件选择</Button>
+      </div>
+      <Collapse items={advancedPanel} ghost />
+    </>
+  );
+
+  const sinkConfig = (
+    <>
+      <div className="offline-import-create__selected-target">
+        <DatabaseIcons dbType={targetDbType} width="24px" height="24px" />
+        <div>
+          <strong>{targetLabel}</strong>
+          <span>数据源 ID：{targetDataSourceId || '-'}</span>
+        </div>
+      </div>
+      <Button className="offline-import-create__change-target" onClick={() => setActiveStep('client')}>
+        更改目标数据源
+      </Button>
+      {category === 'SQL' ? (
+        <>
+          <Form.Item
+            label="数据库"
+            name="targetDatabase"
+            rules={[{ required: true, message: '请选择目标数据库' }]}
+            className="offline-import-create__field"
+          >
+            <Select
+              showSearch
+              optionFilterProp="label"
+              placeholder="请选择数据库"
+              options={databaseOptions}
+              loading={databaseLoading}
+              disabled={!targetDataSourceId}
+              onChange={() => {
+                form.setFieldValue('targetSchema', undefined);
+                setCheckPassed(false);
+              }}
+            />
+          </Form.Item>
+          <Form.Item label="Schema" name="targetSchema" className="offline-import-create__field offline-import-create__field--last">
+            <Select
+              showSearch
+              allowClear
+              optionFilterProp="label"
+              placeholder="请选择 Schema（可选）"
+              options={schemaOptions}
+              loading={schemaLoading}
+              disabled={!targetDatabase}
+            />
+          </Form.Item>
+          <div className="offline-import-create__target-hint">先选择数据源连接，再选择目标数据库和 Schema；不需要选择表。</div>
+        </>
+      ) : (
+        <>
+          <Form.Item label="目标 Schema" name="targetSchema" className="offline-import-create__field offline-import-create__field--last">
+            <Input placeholder={targetDbType === 'KINGBASE' ? '例如 public' : '例如 TEST'} maxLength={128} />
+          </Form.Item>
+          <div className="offline-import-create__target-hint">目标 Schema 为可选项；留空时按目标数据源默认模式执行。</div>
+        </>
+      )}
+    </>
+  );
+
+  const fileResourcePicker = (
+    <FileResourcePicker
+      open={pickerOpen}
+      selectionMode="file"
+      title={`选择 ${accept} 文件`}
+      onCancel={() => setPickerOpen(false)}
+      onSelect={(resource) => {
+        if (!String(resource.name || '').toLowerCase().endsWith(accept)) {
+          message.warning(`仅支持 ${accept} 文件`);
+          return;
+        }
+        setFile(resource);
+        setCheckPassed(false);
+        setPickerOpen(false);
+      }}
+    />
+  );
+
+  if (isConfigStep) {
+    return (
+      <div className="offline-import-create">
+        <Form form={form} component={false} onValuesChange={() => setCheckPassed(false)}>
+          <div className="workflow-editor-page generic-workflow-editor-page flex h-screen flex-col overflow-hidden bg-white">
+            <div className="generic-workflow-editor-page__header shrink-0 border-b border-slate-100 bg-white px-6 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3.5">
+                  <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-indigo-50 text-indigo-600">
+                    <Blocks size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">逻辑关系配置（DMP/SQL 导入任务）</div>
+                    <div className="mt-1 truncate text-[14px] text-slate-500">{basicConfig.jobName || '新建导入任务'} · {OFFLINE_IMPORT_TYPE_LABELS[importType]}</div>
+                  </div>
+                </div>
+                <Button
+                  type="text"
+                  icon={<ArrowLeftOutlined />}
+                  onClick={goPrevious}
+                  className="!h-10 !rounded-full !border !border-slate-200 !bg-white !px-4 !text-slate-700 !shadow-sm hover:!border-slate-300 hover:!bg-slate-50 hover:!text-slate-800"
+                >
+                  返回上一步
+                </Button>
+              </div>
+            </div>
+
+            <div className="generic-workflow-editor-page__body min-h-0 flex-1 overflow-hidden p-[18px]">
+              <div className="generic-workflow-editor-page__frame h-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-white via-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+                <div className="generic-workflow-editor-page__columns flex h-full min-w-0 items-stretch">
+                  <div className="generic-workflow-editor-page__main h-full min-w-0 flex-1 overflow-hidden">
+                    <div className="generic-workflow-editor-page__content flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-[0_4px_18px_rgba(15,23,42,0.03)]">
+                      <div className="generic-workflow-editor-page__toolbar flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
+                        <div className="text-[15px] font-semibold text-slate-800">任务配置</div>
+                        <Space size={10}>
+                          <Button
+                            type="default"
+                            icon={<CheckCircle2 size={15} />}
+                            disabled={submitting || uploading}
+                            onClick={() => void checkConfiguration()}
+                            className="generic-workflow-editor-page__action-chip"
+                          >
+                            校验
+                          </Button>
+                          <Tooltip title={checkPassed ? '配置校验通过' : '创建后可在任务列表中手动启动'}>
+                            <span className={`inline-flex h-[34px] select-none items-center justify-center rounded-full border px-3 text-[14px] font-medium leading-none ${checkPassed ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                              {checkPassed ? '校验通过' : '待创建'}
+                            </span>
+                          </Tooltip>
+                          <Button
+                            type="primary"
+                            icon={<Save size={15} />}
+                            loading={submitting}
+                            disabled={uploading}
+                            onClick={() => void submit()}
+                            className="generic-workflow-editor-page__publish-button !inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[14px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] disabled:!cursor-not-allowed"
+                          >
+                            创建导入任务
+                          </Button>
+                        </Space>
+                      </div>
+                      <div className="generic-workflow-editor-page__canvas-body flex min-h-0 flex-1 flex-col bg-white p-[18px] [background:radial-gradient(circle_at_top_left,rgba(78,116,248,0.04),transparent_22%),#ffffff]">
+                        <div className="generic-workflow-editor-page__canvas offline-import-config-canvas-host min-h-0 flex-1 overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-[14px] text-slate-400">
+                          <OfflineImportConfigCanvas
+                            presentation="interactive"
+                            activeNode={configNode}
+                            onActiveNodeChange={setConfigNode}
+                            sourceTitle="湖文件资源"
+                            sourceSummary={file?.name || `待选择 ${accept} 文件`}
+                            sinkTitle={targetLabel}
+                            sinkSummary={targetDataSourceId ? `已选择目标数据源 ${targetDataSourceId}` : '尚未选择目标数据源'}
+                            sinkDbType={targetDbType}
+                            sourceConfig={sourceConfig}
+                            sinkConfig={sinkConfig}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    className="generic-workflow-editor-page__side h-full shrink-0 overflow-hidden"
+                    style={{ width: activeConfigTab ? 480 : 58 }}
+                  >
+                    <RightConfigPanel
+                      activeTab={activeConfigTab}
+                      onTabChange={setActiveConfigTab}
+                      allowedTabs={['basic', 'schedule']}
+                      tabNotices={{
+                        schedule: (
+                          <Alert
+                            className="mb-3"
+                            type="info"
+                            showIcon
+                            message="当前离线导入仍需手动启动；调度配置会保存，但不会自动触发导入。"
+                          />
+                        ),
+                      }}
+                      basicConfig={basicConfigForPanel}
+                      setBasicConfig={updateBasicConfig}
+                      scheduleConfig={scheduleConfig}
+                      setScheduleConfig={updateScheduleConfig}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Form>
+        {fileResourcePicker}
+      </div>
+    );
+  }
 
   return (
     <div className="offline-import-create">
@@ -499,99 +800,6 @@ const CreateOfflineImportPage: React.FC = () => {
           </div>
         )}
 
-        {activeStep === 'config' && (
-          <Form form={form} layout="vertical" initialValues={{ encoding: 'UTF-8', stopOnError: true, ignoreErrors: true }}>
-            <OfflineImportConfigCanvas
-              activeNode={configNode}
-              onActiveNodeChange={(node) => {
-                if (node) setConfigNode(node);
-              }}
-              sourceTitle="湖文件资源"
-              sourceSummary={file?.name || `待选择 ${accept} 文件`}
-              sinkTitle={targetLabel}
-              sinkSummary={targetDataSourceId ? `已选择目标数据源 ${targetDataSourceId}` : '尚未选择目标数据源'}
-              sinkDbType={targetDbType}
-              sourceConfig={(
-                <>
-                  <Form.Item label="导入类型" className="offline-import-create__field">
-                    <Input value={OFFLINE_IMPORT_TYPE_LABELS[importType]} readOnly />
-                  </Form.Item>
-                  <Upload.Dragger
-                    accept={accept}
-                    maxCount={1}
-                    customRequest={uploadRequest}
-                    beforeUpload={beforeUpload}
-                    showUploadList={false}
-                    disabled={uploading}
-                    className="offline-import-create__upload"
-                  >
-                    {uploading ? <Spin /> : <p className="ant-upload-drag-icon !mb-2"><InboxOutlined /></p>}
-                    <p className="ant-upload-text">{file ? file.name : `点击或拖拽上传 ${accept} 文件`}</p>
-                    <p className="ant-upload-hint">{file ? `文件大小：${(Number(file.size || 0) / 1024).toFixed(1)} KB，可重新上传覆盖` : '文件将上传到平台湖文件资源池后执行导入'}</p>
-                  </Upload.Dragger>
-                  <div className="offline-import-create__file-picker">
-                    <span>已有文件在湖文件资源池？直接选择</span>
-                    <Button icon={<UploadOutlined />} disabled={uploading} onClick={() => setPickerOpen(true)}>从湖文件选择</Button>
-                  </div>
-                  <Collapse items={advancedPanel} ghost />
-                </>
-              )}
-              sinkConfig={(
-                <>
-                  <div className="offline-import-create__selected-target">
-                    <DatabaseIcons dbType={targetDbType} width="24px" height="24px" />
-                    <div>
-                      <strong>{targetLabel}</strong>
-                      <span>数据源 ID：{targetDataSourceId || '-'}</span>
-                    </div>
-                  </div>
-                  <Button className="offline-import-create__change-target" onClick={() => setActiveStep('client')}>
-                    更改目标数据源
-                  </Button>
-                  {category === 'SQL' ? (
-                    <>
-                      <Form.Item
-                        label="数据库"
-                        name="targetDatabase"
-                        rules={[{ required: true, message: '请选择目标数据库' }]}
-                        className="offline-import-create__field"
-                      >
-                        <Select
-                          showSearch
-                          optionFilterProp="label"
-                          placeholder="请选择数据库"
-                          options={databaseOptions}
-                          loading={databaseLoading}
-                          disabled={!targetDataSourceId}
-                          onChange={() => form.setFieldValue('targetSchema', undefined)}
-                        />
-                      </Form.Item>
-                      <Form.Item label="Schema" name="targetSchema" className="offline-import-create__field offline-import-create__field--last">
-                        <Select
-                          showSearch
-                          allowClear
-                          optionFilterProp="label"
-                          placeholder="请选择 Schema（可选）"
-                          options={schemaOptions}
-                          loading={schemaLoading}
-                          disabled={!targetDatabase}
-                        />
-                      </Form.Item>
-                      <div className="offline-import-create__target-hint">先选择数据源连接，再选择目标数据库和 Schema；不需要选择表。</div>
-                    </>
-                  ) : (
-                    <>
-                      <Form.Item label="目标 Schema" name="targetSchema" className="offline-import-create__field offline-import-create__field--last">
-                        <Input placeholder={targetDbType === 'KINGBASE' ? '例如 public' : '例如 TEST'} maxLength={128} />
-                      </Form.Item>
-                      <div className="offline-import-create__target-hint">目标 Schema 为可选项；留空时按目标数据源默认模式执行。</div>
-                    </>
-                  )}
-                </>
-              )}
-            />
-          </Form>
-        )}
       </div>
 
       <BottomActionBar
@@ -608,24 +816,11 @@ const CreateOfflineImportPage: React.FC = () => {
           : activeStep === 'client'
             ? '任务会在所选客户端节点上进行目标数据源连通性校验'
             : '确认导入文件与目标配置，创建后可在任务列表中执行导入'}
-        nextDisabled={activeStep === 'client' ? !canEnterConfig : activeStep === 'config' && (submitting || uploading)}
+        nextDisabled={activeStep === 'client' && !canEnterConfig}
         className="offline-import-create__action-bar"
       />
 
-      <FileResourcePicker
-        open={pickerOpen}
-        selectionMode="file"
-        title={`选择 ${accept} 文件`}
-        onCancel={() => setPickerOpen(false)}
-        onSelect={(resource) => {
-          if (!String(resource.name || '').toLowerCase().endsWith(accept)) {
-            message.warning(`仅支持 ${accept} 文件`);
-            return;
-          }
-          setFile(resource);
-          setPickerOpen(false);
-        }}
-      />
+      {fileResourcePicker}
     </div>
   );
 };
