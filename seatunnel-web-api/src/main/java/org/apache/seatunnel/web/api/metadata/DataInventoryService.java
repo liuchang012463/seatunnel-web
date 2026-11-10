@@ -687,7 +687,7 @@ public class DataInventoryService {
         private long schemaCount;
         private long tableCount;
         private long columnCount;
-        private long profiledTableCount;
+        private long exploredTableCount;
         private long knownRowCount;
         private long knownSizeInByte;
 
@@ -726,8 +726,9 @@ public class DataInventoryService {
                 return;
             }
             columnCount = add(columnCount, table.getColumns() == null ? 0 : table.getColumns().size());
+            // A table is explored once its synchronized structure is discoverable in OpenMetadata.
+            exploredTableCount++;
             if (profile != null && profile.getTimestamp() != null) {
-                profiledTableCount++;
                 if (database != null && database.fullyQualifiedName() != null) {
                     profiledDatabases.add(database.fullyQualifiedName());
                 }
@@ -750,17 +751,17 @@ public class DataInventoryService {
             summary.setTableCount(tableCount);
             summary.setColumnCount(columnCount);
             summary.setProfiledDatabaseCount(profiledDatabases.size());
-            summary.setProfiledTableCount(profiledTableCount);
+            summary.setProfiledTableCount(exploredTableCount);
             summary.setKnownRowCount(knownRowCount);
             summary.setKnownSizeInByte(knownSizeInByte);
             DataInventoryProfileCoverageVO coverage = new DataInventoryProfileCoverageVO();
             coverage.setDatabaseCount(databaseCount);
             coverage.setProfiledDatabaseCount(profiledDatabases.size());
             coverage.setTableCount(tableCount);
-            coverage.setProfiledTableCount(profiledTableCount);
+            coverage.setProfiledTableCount(exploredTableCount);
             coverage.setKnownRowCount(knownRowCount);
             coverage.setKnownSizeInByte(knownSizeInByte);
-            coverage.setTableCoveragePercent(tableCount == 0 ? 0D : profiledTableCount * 100D / tableCount);
+            coverage.setTableCoveragePercent(tableCount == 0 ? 0D : exploredTableCount * 100D / tableCount);
             return new InventorySnapshotPayload(
                     summary,
                     freezeBuckets(sourceTypes),

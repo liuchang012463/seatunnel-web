@@ -14,6 +14,7 @@ public class DataInventorySummaryVO {
     private long tableCount;
     private long columnCount;
     private long profiledDatabaseCount;
+    /** Discovered table structures; this API field name is retained for compatibility. */
     private long profiledTableCount;
     private long knownRowCount;
     private long knownSizeInByte;
