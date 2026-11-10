@@ -97,7 +97,10 @@ public class SqliteSourceFilePublisher {
                     throw new IllegalArgumentException("SQLite source file is empty");
                 }
 
-                String fileName = "sqlite-" + sha256(temporaryFile) + suffix(objectKey);
+                // SeaTunnel 3.0's cluster file endpoint is the driver-JAR servlet and requires a
+                // .jar filename. Keep the SQLite suffix for clarity; DuckDB opens these bytes by
+                // the explicit path below, and the file is never configured as a JDBC driver.
+                String fileName = "sqlite-" + sha256(temporaryFile) + suffix(objectKey) + ".jar";
                 String enginePath = restClient.uploadDriverJar(
                         clientId, Files.readAllBytes(temporaryFile), fileName);
                 String rewrittenSql = initSql.replace(markerLiteral, sqlLiteral(enginePath));

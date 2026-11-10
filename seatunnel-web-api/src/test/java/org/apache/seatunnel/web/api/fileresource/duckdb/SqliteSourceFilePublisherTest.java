@@ -7,6 +7,7 @@ import org.apache.seatunnel.web.api.fileresource.storage.FileResourceStorageProv
 import org.apache.seatunnel.web.api.fileresource.storage.StorageObjectMetadata;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.io.OutputStream;
 import java.util.Map;
@@ -45,19 +46,21 @@ class SqliteSourceFilePublisherTest {
             return null;
         }).when(storageProvider).download(eq(OBJECT_KEY), any(OutputStream.class));
         when(restClient.uploadDriverJar(eq(4L), any(byte[].class), anyString()))
-                .thenReturn("/opt/seatunnel/driver-jars/abc-sqlite-source.sqlite");
+                .thenReturn("/opt/seatunnel/driver-jars/abc-sqlite-source.db.jar");
 
         SqliteSourceFilePublisher publisher = new SqliteSourceFilePublisher(storageProvider, restClient);
         String published = publisher.publish(4L, config());
         ConfigObject properties = sqliteProperties(published);
         String initSql = String.valueOf(properties.get(SqliteSourceFilePublisher.SESSION_INIT_SQL_PROPERTY)
                 .unwrapped());
+        ArgumentCaptor<String> uploadedFileName = ArgumentCaptor.forClass(String.class);
 
         assertNull(properties.get(SqliteSourceFilePublisher.OBJECT_KEY_PROPERTY));
-        assertTrue(initSql.contains("'/opt/seatunnel/driver-jars/abc-sqlite-source.sqlite'"));
+        assertTrue(initSql.contains("'/opt/seatunnel/driver-jars/abc-sqlite-source.db.jar'"));
         assertFalse(initSql.contains(SqliteSourceFilePublisher.ATTACH_PATH_MARKER));
         verify(storageProvider).download(eq(OBJECT_KEY), any(OutputStream.class));
-        verify(restClient).uploadDriverJar(eq(4L), eq(contents), anyString());
+        verify(restClient).uploadDriverJar(eq(4L), eq(contents), uploadedFileName.capture());
+        assertTrue(uploadedFileName.getValue().endsWith(".db.jar"));
     }
 
     @Test
