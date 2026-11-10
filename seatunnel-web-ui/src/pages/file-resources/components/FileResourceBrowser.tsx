@@ -348,10 +348,10 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
   const emptyDescription = hasActiveFilter
     ? '当前目录没有匹配的资源'
     : '当前目录为空，先上传文件或新建目录';
-  // 管理页工作区会裁剪溢出内容，限制表格高度可让分页始终留在可见区域。
+  // 管理页由 ProTable 的弹性布局分配表体高度；视口减固定值会留下空白并截掉文件行。
   const tableScroll = compact
     ? { x: 'max-content' }
-    : { x: 'max-content', y: 'calc(100vh - 430px)' };
+    : { x: 'max-content', y: '100vh' };
 
   return (
     <div className={`file-resource-browser${compact ? ' file-resource-browser--compact' : ''}`}>
