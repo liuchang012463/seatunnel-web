@@ -419,6 +419,32 @@ public class SeaTunnelRestClient {
         );
     }
 
+    /**
+     * Reads a named Engine log file from all nodes. This is useful for failures
+     * that occur before SeaTunnel creates the per-job log file.
+     */
+    public String clusterLogFile(Long clientId, String fileName) {
+        if (clientId == null) {
+            throw new IllegalArgumentException("clientId cannot be empty");
+        }
+        String safeFileName = StringUtils.trimToEmpty(fileName);
+        if (safeFileName.isEmpty() || safeFileName.contains("/") || safeFileName.contains("\\")
+                || ".".equals(safeFileName) || "..".equals(safeFileName)) {
+            throw new IllegalArgumentException("fileName must be a log file name");
+        }
+
+        String encodedFileName = UriUtils.encodePathSegment(safeFileName, StandardCharsets.UTF_8);
+        String requestUrl = UriComponentsBuilder.fromHttpUrl(url(clientId, "/logs/" + encodedFileName))
+                .build(true)
+                .toUriString();
+        return get(
+                clientId,
+                requestUrl,
+                String.class,
+                "GET /logs/{fileName} failed"
+        );
+    }
+
     public String metrics(Long clientId, boolean openMetrics) {
         String path = openMetrics ? "/openmetrics" : "/metrics";
 

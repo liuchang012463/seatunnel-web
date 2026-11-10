@@ -1,8 +1,11 @@
 package org.apache.seatunnel.web.api.metrics;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageJobLineageService;
+import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 import org.apache.seatunnel.web.common.exception.JobSubmitException;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -19,6 +22,8 @@ import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Submitter for batch SeaTunnel jobs.
@@ -33,6 +38,12 @@ import java.util.Optional;
 public class BatchJobSubmitter {
 
     private static final String JOB_TYPE_BATCH = "BATCH";
+    private static final String ENGINE_SERVER_LOG_FILE = "seatunnel.log";
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+    private static final Pattern ENGINE_LOG_ENTRY_HEADER = Pattern.compile(
+            "(?m)^.*\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(?:[,\\.]\\d{1,9})?\\s+"
+                    + "(?:TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\\b"
+    );
 
     private final JobConfigFileService configFileService;
     private final SeaTunnelRestClient restClient;
@@ -159,7 +170,7 @@ public class BatchJobSubmitter {
             }
 
             if (submitRequestStarted) {
-                handleSubmitRequestFailure(jobLogger, instanceId, e);
+                handleSubmitRequestFailure(jobLogger, instanceId, clientId, e);
                 return;
             }
 
@@ -271,6 +282,7 @@ public class BatchJobSubmitter {
 
     private void handleSubmitRequestFailure(JobFileLogger jobLogger,
                                             Long instanceId,
+                                            Long clientId,
                                             Exception e) {
         if (isSubmitOutcomeAmbiguous(e)) {
             // The reserved Engine id is durable. Keep STARTING or CANCELING so recovery can
@@ -286,6 +298,7 @@ public class BatchJobSubmitter {
         }
 
         jobLogger.error("Batch job submission failed before an Engine job id was received", e);
+        appendEngineServerErrorLog(jobLogger, instanceId, clientId, e);
         try {
             batchJobResultHandler.handleFailure(instanceId, e);
         } catch (Exception handlerEx) {
@@ -297,6 +310,132 @@ public class BatchJobSubmitter {
                 "Submit batch job failed before an Engine job id was received",
                 e
         );
+    }
+
+    /**
+     * Engine 3.0 returns only the top-level message for factory/catalog errors.
+     * The actual cause is logged by ExceptionHandlingFilter in the node log,
+     * because no per-job log exists until submission succeeds.
+     */
+    private void appendEngineServerErrorLog(JobFileLogger jobLogger,
+                                            Long instanceId,
+                                            Long clientId,
+                                            Throwable error) {
+        SeaTunnelClientException engineException = findClientException(error);
+        if (engineException == null || engineException.getHttpStatus() < 500) {
+            return;
+        }
+
+        String responseBody = engineException.getResponseBody();
+        boolean factoryRejected = responseBody != null
+                && responseBody.contains("ErrorCode:[API-06]")
+                && responseBody.contains("Factory initialize failed");
+        boolean catalogRejected = responseBody != null
+                && responseBody.contains("COMMON-21")
+                && responseBody.contains("unsupported get catalog table");
+        if (!factoryRejected && !catalogRejected) {
+            return;
+        }
+
+        try {
+            String engineLogs = restClient.clusterLogFile(clientId, ENGINE_SERVER_LOG_FILE);
+            String matchingSection = extractMatchingEngineError(engineLogs, responseBody);
+            if (StringUtils.isBlank(matchingSection)) {
+                log.warn("Engine rejected batch submission but no matching node stack trace was found, "
+                        + "instanceId={}, httpStatus={}", instanceId, engineException.getHttpStatus());
+                jobLogger.warn("Engine did not expose a matching server stack trace through "
+                        + "GET /logs/seatunnel.log");
+                return;
+            }
+
+            String safeSection = HoconSensitiveMaskUtil.maskSensitiveText(matchingSection);
+            jobLogger.info("=== SeaTunnel Engine server exception (seatunnel.log) ===\n"
+                    + safeSection + "\n=== End SeaTunnel Engine server exception ===");
+            log.info("Attached matching SeaTunnel Engine stack trace to batch log, instanceId={}", instanceId);
+        } catch (Exception fetchError) {
+            log.warn("Could not fetch SeaTunnel Engine server exception log, instanceId={}, errorType={}",
+                    instanceId, fetchError.getClass().getSimpleName());
+            jobLogger.warn("Could not fetch the matching Engine stack trace from "
+                    + "GET /logs/seatunnel.log; check the SeaTunnel Engine node log");
+        }
+    }
+
+    private SeaTunnelClientException findClientException(Throwable error) {
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (current instanceof SeaTunnelClientException) {
+                return (SeaTunnelClientException) current;
+            }
+            if (current.getCause() == current) {
+                break;
+            }
+        }
+        return null;
+    }
+
+    private String extractMatchingEngineError(String engineLogs, String responseBody) {
+        if (StringUtils.isBlank(engineLogs) || StringUtils.isBlank(responseBody)) {
+            return "";
+        }
+
+        String errorMessage = responseMessage(responseBody);
+        if (StringUtils.isBlank(errorMessage)) {
+            return "";
+        }
+
+        StringBuilder logText = new StringBuilder();
+        try {
+            appendTextValues(JSON_MAPPER.readTree(engineLogs), logText);
+        } catch (Exception ignored) {
+            logText.append(engineLogs);
+        }
+
+        int errorIndex = logText.lastIndexOf(errorMessage);
+        if (errorIndex < 0) {
+            return "";
+        }
+
+        int sectionStart = 0;
+        int sectionEnd = logText.length();
+        Matcher headerMatcher = ENGINE_LOG_ENTRY_HEADER.matcher(logText);
+        while (headerMatcher.find()) {
+            if (headerMatcher.start() <= errorIndex) {
+                sectionStart = headerMatcher.start();
+            } else {
+                sectionEnd = headerMatcher.start();
+                break;
+            }
+        }
+
+        String section = logText.substring(sectionStart, sectionEnd).trim();
+        return section.contains("ExceptionHandlingFilter")
+                && section.contains("at org.apache.seatunnel.")
+                ? section
+                : "";
+    }
+
+    private String responseMessage(String responseBody) {
+        try {
+            JsonNode message = JSON_MAPPER.readTree(responseBody).path("message");
+            if (message.isTextual() && StringUtils.isNotBlank(message.asText())) {
+                return message.asText();
+            }
+        } catch (Exception ignored) {
+            // Older Engine responses may not be JSON; search their raw body instead.
+        }
+        return responseBody.trim();
+    }
+
+    private void appendTextValues(JsonNode node, StringBuilder target) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+        if (node.isTextual()) {
+            target.append(node.asText()).append(System.lineSeparator());
+            return;
+        }
+        if (node.isContainerNode()) {
+            node.elements().forEachRemaining(child -> appendTextValues(child, target));
+        }
     }
 
     /**
