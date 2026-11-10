@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.api.offlineimport.OfflineImportProperties;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.FileResourceService;
 import org.apache.seatunnel.web.api.service.DataSourceUsageValidator;
+import org.apache.seatunnel.web.api.service.DataSourceCatalogService;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.DataSourceProcessor;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConnectionProvider;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
@@ -21,6 +22,7 @@ import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportOptions;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
+import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
@@ -71,6 +73,7 @@ class OfflineImportTaskServiceImplTest {
 
     private OfflineImportTaskDao offlineImportTaskDao;
     private DataSourceDao dataSourceDao;
+    private DataSourceCatalogService dataSourceCatalogService;
     private FileResourceService fileResourceService;
     private FileResourceDao fileResourceDao;
     private OfflineImportTaskRunDao offlineImportTaskRunDao;
@@ -84,6 +87,7 @@ class OfflineImportTaskServiceImplTest {
         offlineImportTaskDao = mock(OfflineImportTaskDao.class);
         offlineImportTaskRunDao = mock(OfflineImportTaskRunDao.class);
         dataSourceDao = mock(DataSourceDao.class);
+        dataSourceCatalogService = mock(DataSourceCatalogService.class);
         fileResourceService = mock(FileResourceService.class);
         fileResourceDao = mock(FileResourceDao.class);
         storageProvider = mock(FileResourceStorageProvider.class);
@@ -97,6 +101,7 @@ class OfflineImportTaskServiceImplTest {
         ReflectionTestUtils.setField(completionService, "offlineImportTaskRunDao", offlineImportTaskRunDao);
         ReflectionTestUtils.setField(service, "offlineImportTaskRunCompletionService", completionService);
         ReflectionTestUtils.setField(service, "dataSourceDao", dataSourceDao);
+        ReflectionTestUtils.setField(service, "dataSourceCatalogService", dataSourceCatalogService);
         ReflectionTestUtils.setField(service, "fileResourceService", fileResourceService);
         ReflectionTestUtils.setField(service, "fileResourceDao", fileResourceDao);
         ReflectionTestUtils.setField(service, "storageProvider", storageProvider);
@@ -106,6 +111,10 @@ class OfflineImportTaskServiceImplTest {
         when(offlineImportTaskRunDao.finishActiveRun(
                 any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(true);
         when(currentUserProvider.getCurrentUserId()).thenReturn(USER_ID);
+        OptionVO database = new OptionVO();
+        database.setValue("kb");
+        // SQL import fixtures select the database encoded in the Kingbase JDBC URL.
+        when(dataSourceCatalogService.listDatabase(DATASOURCE_ID)).thenReturn(List.of(database));
     }
 
     private FileResourceVO fileResource(String name, long size) {
@@ -132,6 +141,7 @@ class OfflineImportTaskServiceImplTest {
         dto.setImportType(importType);
         dto.setFileResourceId(FILE_RESOURCE_ID);
         dto.setTargetDatasourceId(DATASOURCE_ID);
+        dto.setTargetDatabase("kb");
         dto.setTargetSchema("public");
         when(fileResourceService.get(FILE_RESOURCE_ID)).thenReturn(fileResource(fileName, 100));
         when(dataSourceDao.queryById(DATASOURCE_ID)).thenReturn(kingbaseDataSource());
