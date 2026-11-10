@@ -94,13 +94,14 @@ public class KingbaseCatalog extends AbstractJdbcCatalog {
         return filtered;
     }
 
-    private boolean isSystemMetadataOption(String value, String selectedSchema) {
-        if (StringUtils.isBlank(value)) {
+    private boolean isSystemMetadataOption(Object value, String selectedSchema) {
+        // OptionVO values are typed as Object; filtering compares their text form.
+        if (value == null || StringUtils.isBlank(value.toString())) {
             return false;
         }
 
         String schema = selectedSchema;
-        String objectName = value.trim();
+        String objectName = value.toString().trim();
         if (StringUtils.isBlank(schema)) {
             int separator = objectName.indexOf('.');
             if (separator > 0) {
