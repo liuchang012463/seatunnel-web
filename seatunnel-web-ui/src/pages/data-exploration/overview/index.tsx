@@ -10,7 +10,6 @@ import {
   Card,
   Empty,
   Pagination,
-  Progress,
   Select,
   Statistic,
   Table,
@@ -227,10 +226,6 @@ const DataExplorationOverviewPage: React.FC = () => {
     },
   ];
 
-  const selectedUnit = unitOptions.find((item) => String(item.id) === appliedFilter.unitId);
-  const selectedSystem = businessSystemOptions.find((item) => String(item.id) === appliedFilter.businessSystemId);
-  const selectedSource = dataSources.find((item) => String(item.id) === appliedFilter.dataSourceId);
-
   return (
     <div className="data-exploration-page data-exploration-overview">
       <section className="overview-filter-bar" aria-label="探查范围筛选">
@@ -313,9 +308,13 @@ const DataExplorationOverviewPage: React.FC = () => {
               <TableOutlined />
               <Statistic title="数据表" value={summary.tableCount} />
             </div>
-            <div className="overview-primary-metric">
+            <div className="overview-primary-metric overview-primary-metric--profiled">
               <TableOutlined />
-              <Statistic title="已探查表" value={summary.profiledTableCount} />
+              <div>
+                <Statistic title="已探查表" value={summary.profiledTableCount} />
+                {/* 将覆盖率作为已探查表的补充信息，避免单独占用一整张卡片。 */}
+                <small>{coverage.tableCoveragePercent.toFixed(1)}% 完成率</small>
+              </div>
             </div>
             <div className="overview-primary-metric overview-primary-metric--rows">
               <TableOutlined />
@@ -334,60 +333,10 @@ const DataExplorationOverviewPage: React.FC = () => {
           </div>
         </section>
 
-        <div className="overview-insight-grid">
-          <section className="overview-panel overview-coverage-panel">
-            <div className="overview-panel-heading">
-              <div>
-                <h2>探查覆盖率</h2>
-              </div>
-              <span className="overview-panel-heading__meta">数据表</span>
-            </div>
-            <div className="overview-coverage-body">
-              <Progress
-                type="circle"
-                size={92}
-                percent={Number(coverage.tableCoveragePercent.toFixed(1))}
-                strokeColor="var(--st-color-accent)"
-                trailColor="var(--st-color-bg-control)"
-              />
-              <div className="overview-coverage-copy">
-                <strong>{coverage.profiledTableCount} <small>/ {coverage.tableCount}</small></strong>
-                <span>数据表已完成探查</span>
-                {coverage.profiledTableCount === 0 ? (
-                  <span className="overview-coverage-hint">
-                    尚无已探查表，可在「探查任务配置」中发起探查
-                  </span>
-                ) : null}
-                <div className="overview-coverage-details">
-                  <span>库 <b>{coverage.profiledDatabaseCount} / {coverage.databaseCount}</b></span>
-                  <span>已统计行数 <b>{coverage.knownRowCount}</b></span>
-                  <span>已统计体积 <b>{formatDataSize(coverage.knownSizeInByte)}</b></span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="overview-panel overview-scope-panel">
-            <div className="overview-panel-heading">
-              <div>
-                <h2>当前范围</h2>
-              </div>
-              <span className="overview-panel-heading__meta">指标与列表同步</span>
-            </div>
-            <div className="overview-scope-body">
-              <div className="overview-scope-tags">
-                <Tag color={selectedUnit ? 'blue' : undefined}>单位：{selectedUnit?.unitName || '全部'}</Tag>
-                <Tag color={selectedSystem ? 'blue' : undefined}>业务系统：{selectedSystem?.systemName || '全部'}</Tag>
-                <Tag color={selectedSource ? 'blue' : undefined}>数据源：{selectedSource?.name || '全部'}</Tag>
-              </div>
-            </div>
-          </section>
-        </div>
-
         <section className="overview-panel overview-source-panel">
           <div className="overview-panel-heading overview-source-panel__heading">
             <div>
-              <h2>数据源探查状态</h2>
+              <h2>数据源列表</h2>
             </div>
             <span className="overview-panel-heading__meta">共 {filteredSources.length} 个数据源</span>
           </div>
