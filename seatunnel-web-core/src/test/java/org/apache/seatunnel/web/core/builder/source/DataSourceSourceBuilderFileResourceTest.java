@@ -167,6 +167,44 @@ class DataSourceSourceBuilderFileResourceTest {
     }
 
     @Test
+    void buildsSqliteFileResourceForEngineSideLocalStaging() {
+        DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
+        ReflectionTestUtils.setField(sourceBuilder, "duckDbExtensionDirectory",
+                "/opt/seatunnel/lib/duckdb-extensions");
+        FileResourceResolver resolver = mock(FileResourceResolver.class);
+        ReflectionTestUtils.setField(sourceBuilder, "fileResourceResolver", resolver);
+        when(resolver.resolve(42L)).thenReturn(new FileResourceReference(
+                "MINIO", "http://minio:9000", "us-east-1", "seatunnel-web-upload", "/",
+                "seatunnel-web-resource/native_engine.db", "STATIC", "test-access-key", "test-secret", true));
+
+        Config node = ConfigFactory.parseMap(Map.of(
+                "sourceMode", "FILE_RESOURCE",
+                "fileResourceId", "42",
+                "fileFormatType", "sqlite",
+                "readMode", "table",
+                "sqliteSchema", "main",
+                "sqliteTable", "tb_config"));
+
+        Config result = sourceBuilder.build(node);
+        Map<String, Object> properties = result.getConfig("properties").root().unwrapped();
+        String initSql = (String) properties.get("duckdb.session_init_sql");
+
+        assertEquals("Jdbc", sourceBuilder.connectorName(node));
+        assertEquals("jdbc:duckdb:", result.getString("url"));
+        assertEquals("seatunnel-web-resource/native_engine.db",
+                properties.get("duckdb.sqlite_source_object_key"));
+        assertTrue(initSql.contains("SET extension_directory = '/opt/seatunnel/lib/duckdb-extensions';"));
+        assertTrue(initSql.contains("LOAD sqlite;"));
+        assertTrue(initSql.contains("ATTACH IF NOT EXISTS '__SEATUNNEL_WEB_SQLITE_SOURCE_PATH__'"));
+        assertFalse(initSql.contains("LOAD httpfs"));
+        assertFalse(initSql.contains("CREATE SECRET"));
+        assertFalse(initSql.contains("test-access-key"));
+        assertFalse(initSql.contains("test-secret"));
+        assertTrue(result.getString("query").endsWith(
+                "SELECT * FROM \"sqlite_source\".\"main\".\"tb_config\""));
+    }
+
+    @Test
     void validatesAndAppendsOneReadOnlyDuckDbSelect() throws Exception {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
         FileResourceResolver resolver = mock(FileResourceResolver.class);
