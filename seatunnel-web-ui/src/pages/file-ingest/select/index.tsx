@@ -39,20 +39,28 @@ interface ImportChoice {
   note?: string;
 }
 
-/** Shared entry for the canvas-based structured/DuckDB flows. */
+/** Shared entry for the canvas-based structured and database-file flows. */
 const enterFileIngestWizard = async (createButtonText: string) => {
   const response = await fileIngestTaskApi.getUniqueId();
   const id = response?.data as any;
   if (response?.code !== 0 || !id) {
     throw new Error(response?.message || '申请任务定义 ID 失败');
   }
+  const databaseFormat = createButtonText === 'duckdb' || createButtonText === 'sqlite'
+    ? createButtonText
+    : undefined;
   sessionStorage.setItem(
     fileTaskDraftKey('FILE_INGEST', String(id)),
     JSON.stringify({
       id,
       taskType: 'FILE_INGEST',
       mode: 'GUIDE_SINGLE',
-      sourceType: FILE_RESOURCE_SOURCE,
+      sourceType: {
+        ...FILE_RESOURCE_SOURCE,
+        ...(databaseFormat
+          ? { fileFormatType: databaseFormat, connectorType: 'DuckDB', pluginName: 'DuckDB' }
+          : {}),
+      },
       targetType: {
         dbType: 'MYSQL',
         connectorType: 'Jdbc',
@@ -74,6 +82,11 @@ const ImportSelectPage: React.FC = () => {
     };
     const enterDuckdb = () => {
       enterFileIngestWizard('duckdb').catch((error: any) => {
+        message.error(error?.message || '新建离线文件导入任务失败');
+      });
+    };
+    const enterSqlite = () => {
+      enterFileIngestWizard('sqlite').catch((error: any) => {
         message.error(error?.message || '新建离线文件导入任务失败');
       });
     };
@@ -162,17 +175,23 @@ const ImportSelectPage: React.FC = () => {
       },
       {
         key: 'duckdb',
-        title: 'DuckDB 数据导入',
-        subtitle: '本地数据库，便捷接入',
+        title: '数据库文件导入',
+        subtitle: 'DuckDB / SQLite 文件，便捷接入',
         artwork: duckdbArt,
         divider: duckdbDivider,
-        note: '将已有 DuckDB 数据库文件接入平台，统一管理离线数据。',
+        note: '将已有 DuckDB 或 SQLite 数据库文件接入平台，统一管理离线数据。',
         entries: [
           {
             key: 'duckdb-file',
             label: 'DuckDB',
             detail: '本地 DuckDB 数据库文件',
             action: enterDuckdb,
+          },
+          {
+            key: 'sqlite-file',
+            label: 'SQLite',
+            detail: '.db / .sqlite / .sqlite3 数据库文件',
+            action: enterSqlite,
           },
         ],
       },
@@ -204,13 +223,13 @@ const ImportSelectPage: React.FC = () => {
 
           <img className="import-select-page__network" src={network} alt="" />
 
-          <div className="import-select-page__stats" aria-label="5 种导入类型，11 个数据入口">
+          <div className="import-select-page__stats" aria-label="5 种导入类型，12 个数据入口">
             <div className="import-select-page__stat">
               <strong>05</strong>
               <span>导入类型</span>
             </div>
             <div className="import-select-page__stat">
-              <strong>11</strong>
+              <strong>12</strong>
               <span>数据入口</span>
             </div>
           </div>

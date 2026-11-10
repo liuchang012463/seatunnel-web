@@ -4,7 +4,7 @@ export type FileResourceId = string | number;
 
 export type FileResourceKind = 'FILE' | 'DIRECTORY';
 
-export type FileResourceFormat = 'csv' | 'excel' | 'json' | 'text' | 'duckdb';
+export type FileResourceFormat = 'csv' | 'excel' | 'json' | 'text' | 'duckdb' | 'sqlite';
 
 export interface DuckDbColumn {
   name: string;
@@ -46,6 +46,11 @@ export interface DuckDbPreviewResult {
   data: Array<Record<string, unknown>>;
   total: number;
 }
+
+// SQLite resources use the same catalog and preview response shape as DuckDB files.
+export type DatabaseFileCatalog = DuckDbCatalog;
+export type DatabaseFilePreviewRequest = DuckDbPreviewRequest;
+export type DatabaseFilePreviewResult = DuckDbPreviewResult;
 
 export type FileResourceStatus = 'READY' | 'UPLOADING' | 'FAILED' | 'DELETED' | string;
 

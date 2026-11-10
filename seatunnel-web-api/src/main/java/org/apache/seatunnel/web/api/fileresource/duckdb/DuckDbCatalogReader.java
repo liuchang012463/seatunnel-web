@@ -41,6 +41,9 @@ public class DuckDbCatalogReader {
     private final long catalogMaxBytes;
     private final Semaphore readPermits;
 
+    @Value("${seatunnel.web.duckdb.catalog-extension-directory:${SEATUNNEL_WEB_DUCKDB_CATALOG_EXTENSION_DIR:}}")
+    private String catalogExtensionDirectory;
+
     public DuckDbCatalogReader(
             FileResourceStorageProvider storageProvider,
             @Value("${seatunnel.web.duckdb.catalog-max-bytes:536870912}") long catalogMaxBytes,
@@ -62,18 +65,29 @@ public class DuckDbCatalogReader {
     }
 
     public DuckDbCatalogVO inspect(FileResource resource) throws Exception {
-        return withReadOnlyConnection(resource, connection -> readCatalog(connection, resource.getName()));
+        return withReadOnlyConnection(
+                resource, connection -> readCatalog(connection, resource.getName()), false);
     }
 
     public DuckDbPreviewVO preview(FileResource resource, DuckDbPreviewRequest request) throws Exception {
-        return withReadOnlyConnection(resource, connection -> readPreview(connection, request));
+        return withReadOnlyConnection(resource, connection -> readPreview(connection, request), false);
     }
 
-    private <T> T withReadOnlyConnection(FileResource resource, ConnectionReader<T> reader) throws Exception {
+    public DuckDbCatalogVO inspectSqlite(FileResource resource) throws Exception {
+        return withReadOnlyConnection(
+                resource, connection -> readCatalog(connection, resource.getName()), true);
+    }
+
+    public DuckDbPreviewVO previewSqlite(FileResource resource, DuckDbPreviewRequest request) throws Exception {
+        return withReadOnlyConnection(resource, connection -> readPreview(connection, request), true);
+    }
+
+    private <T> T withReadOnlyConnection(
+            FileResource resource, ConnectionReader<T> reader, boolean sqlite) throws Exception {
         // Every read downloads the whole object and opens it locally, so cap how many run at once.
         readPermits.acquire();
         try {
-            return readTemporaryCopy(resource, reader);
+            return readTemporaryCopy(resource, reader, sqlite);
         } finally {
             readPermits.release();
         }
@@ -88,15 +102,19 @@ public class DuckDbCatalogReader {
         Long size = metadata == null ? null : metadata.size();
         if (size != null && size > catalogMaxBytes) {
             throw new IllegalArgumentException(
-                    "DuckDB 文件大小 " + size + " 字节超过目录浏览上限 " + catalogMaxBytes
+                    "数据库文件大小 " + size + " 字节超过目录浏览上限 " + catalogMaxBytes
                             + " 字节，请调大 seatunnel.web.duckdb.catalog-max-bytes 或改用更小的文件");
         }
     }
 
-    private <T> T readTemporaryCopy(FileResource resource, ConnectionReader<T> reader) throws Exception {
+    private <T> T readTemporaryCopy(
+            FileResource resource, ConnectionReader<T> reader, boolean sqlite) throws Exception {
         requireReadableSize(resource);
         String fileName = resource.getName();
-        String suffix = fileName.toLowerCase(Locale.ROOT).endsWith(".duckdb") ? ".duckdb" : ".db";
+        String lowerName = fileName.toLowerCase(Locale.ROOT);
+        String suffix = lowerName.endsWith(".duckdb") ? ".duckdb"
+                : lowerName.endsWith(".sqlite3") ? ".sqlite3"
+                : lowerName.endsWith(".sqlite") ? ".sqlite" : ".db";
         Path temporaryDatabase = Files.createTempFile(TEMPORARY_FILE_PREFIX, suffix);
         try {
             try (OutputStream output = Files.newOutputStream(temporaryDatabase)) {
@@ -104,10 +122,15 @@ public class DuckDbCatalogReader {
             }
 
             Properties connectionProperties = new Properties();
-            connectionProperties.setProperty("duckdb.read_only", "true");
-            try (Connection connection = DriverManager.getConnection(
-                    "jdbc:duckdb:" + temporaryDatabase.toAbsolutePath(), connectionProperties)) {
+            String jdbcUrl = sqlite ? "jdbc:duckdb:" : "jdbc:duckdb:" + temporaryDatabase.toAbsolutePath();
+            if (!sqlite) {
+                connectionProperties.setProperty("duckdb.read_only", "true");
+            }
+            try (Connection connection = DriverManager.getConnection(jdbcUrl, connectionProperties)) {
                 try (Statement statement = connection.createStatement()) {
+                    if (sqlite) {
+                        loadAndAttachSqlite(statement, temporaryDatabase);
+                    }
                     statement.execute("SET enable_external_access = false");
                 }
                 return reader.read(connection);
@@ -119,6 +142,33 @@ public class DuckDbCatalogReader {
                 temporaryDatabase.toFile().deleteOnExit();
             }
         }
+    }
+
+    /** Load the extension before disabling external access, then attach only the local read-only copy. */
+    private void loadAndAttachSqlite(Statement statement, Path temporaryDatabase) throws Exception {
+        String extensionDirectory = resolveCatalogExtensionDirectory();
+        if (extensionDirectory != null) {
+            statement.execute("SET extension_directory = " + sqlLiteral(extensionDirectory));
+        }
+        statement.execute("LOAD sqlite");
+        statement.execute("ATTACH " + sqlLiteral(temporaryDatabase.toAbsolutePath().toString())
+                + " AS sqlite_source (TYPE sqlite, READ_ONLY)");
+        statement.execute("USE \"sqlite_source\".\"main\"");
+    }
+
+    private String resolveCatalogExtensionDirectory() {
+        if (catalogExtensionDirectory == null || catalogExtensionDirectory.isBlank()) {
+            return null;
+        }
+        Path directory = Path.of(catalogExtensionDirectory.trim()).normalize();
+        if (!directory.isAbsolute()) {
+            throw new IllegalArgumentException("SQLite catalog extension directory must be an absolute path");
+        }
+        return directory.toString();
+    }
+
+    private String sqlLiteral(String value) {
+        return "'" + value.replace("'", "''") + "'";
     }
 
     private DuckDbPreviewVO readPreview(Connection connection, DuckDbPreviewRequest request) throws Exception {
@@ -179,7 +229,7 @@ public class DuckDbCatalogReader {
 
     private String tableQuery(String schemaName, String tableName) {
         if (schemaName.isBlank() || trim(tableName).isBlank()) {
-            throw new IllegalArgumentException("请选择 DuckDB Schema 和表");
+            throw new IllegalArgumentException("请选择数据库 Schema 和表");
         }
         return "SELECT * FROM " + quoteIdentifier(schemaName) + "." + quoteIdentifier(tableName);
     }
@@ -189,7 +239,7 @@ public class DuckDbCatalogReader {
         if (query.endsWith(";")) query = query.substring(0, query.length() - 1).trim();
         if (query.isBlank() || query.contains(";")
                 || !query.matches("(?is)^(SELECT|WITH)\\b.*")) {
-            throw new IllegalArgumentException("DuckDB 自定义 SQL 只支持单条 SELECT 查询");
+            throw new IllegalArgumentException("数据库自定义 SQL 只支持单条 SELECT 查询");
         }
         return query;
     }
@@ -197,7 +247,7 @@ public class DuckDbCatalogReader {
     private String quoteIdentifier(String value) {
         String identifier = trim(value);
         if (identifier.isEmpty() || identifier.chars().anyMatch(Character::isISOControl)) {
-            throw new IllegalArgumentException("DuckDB 标识符无效");
+            throw new IllegalArgumentException("数据库标识符无效");
         }
         return "\"" + identifier.replace("\"", "\"\"") + "\"";
     }
@@ -272,6 +322,8 @@ public class DuckDbCatalogReader {
         String lower = fileName.toLowerCase(Locale.ROOT);
         if (lower.endsWith(".duckdb")) return fileName.substring(0, fileName.length() - 7);
         if (lower.endsWith(".db")) return fileName.substring(0, fileName.length() - 3);
+        if (lower.endsWith(".sqlite3")) return fileName.substring(0, fileName.length() - 8);
+        if (lower.endsWith(".sqlite")) return fileName.substring(0, fileName.length() - 7);
         return fileName;
     }
 

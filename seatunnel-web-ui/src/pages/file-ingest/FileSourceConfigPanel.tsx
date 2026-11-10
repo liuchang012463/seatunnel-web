@@ -40,9 +40,13 @@ const FORMAT_OPTIONS: Array<{ value: FileFormat; label: string }> = [
   { value: 'json', label: 'JSON' },
   { value: 'text', label: 'TEXT / TXT' },
   { value: 'duckdb', label: 'DuckDB（.db / .duckdb）' },
+  { value: 'sqlite', label: 'SQLite（.db / .sqlite / .sqlite3）' },
 ];
 
-const PICKER_ALLOWED_FORMATS: FileFormat[] = ['csv', 'excel', 'json', 'text', 'duckdb'];
+const PICKER_ALLOWED_FORMATS: FileFormat[] = ['csv', 'excel', 'json', 'text', 'duckdb', 'sqlite'];
+
+const isDatabaseFileFormat = (format: FileFormat) => format === 'duckdb' || format === 'sqlite';
+const databaseFileLabel = (format: FileFormat) => format === 'sqlite' ? 'SQLite' : 'DuckDB';
 
 const TYPE_OPTIONS = [
   'string',
@@ -134,19 +138,20 @@ const detectFormatFromName = (name?: string): FileFormat | undefined => {
   if (extension === 'xls' || extension === 'xlsx') return 'excel';
   if (extension === 'json') return 'json';
   if (extension === 'txt' || extension === 'text') return 'text';
+  if (extension === 'sqlite' || extension === 'sqlite3') return 'sqlite';
   if (extension === 'db' || extension === 'duckdb') return 'duckdb';
   return undefined;
 };
 
 const resourceMatchesFormat = (name: string, format: FileFormat) => {
   const extension = String(name || '').toLowerCase().split('.').pop() || '';
-  return format === 'duckdb'
-    ? extension === 'db' || extension === 'duckdb'
-    : localFileExtensionMatches(name, format);
+  if (format === 'duckdb') return extension === 'db' || extension === 'duckdb';
+  if (format === 'sqlite') return extension === 'db' || extension === 'sqlite' || extension === 'sqlite3';
+  return localFileExtensionMatches(name, format);
 };
 
 const sourcePluginForFormat = (format: FileFormat) =>
-  format === 'duckdb'
+  isDatabaseFileFormat(format)
     ? { dbType: 'MINIO', connectorType: 'DuckDB', pluginName: 'DuckDB' }
     : { dbType: 'MINIO', connectorType: 'S3File', pluginName: 'S3File' };
 
@@ -217,6 +222,8 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
 }) => {
   const { message } = App.useApp();
   const format = getFormat(sourceConfig?.fileFormatType);
+  const isDatabaseFile = isDatabaseFileFormat(format);
+  const databaseTypeLabel = databaseFileLabel(format);
   const resource = (sourceConfig?.fileResource || sourceConfig?.resource) as FileResource | undefined;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -272,7 +279,20 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
     const excelHeaderDefault = nextFormat === 'excel' && format !== 'excel'
       ? { skipHeaderRowNumber: defaultExcelHeaderSkipOnSelection(sourceConfig?.skipHeaderRowNumber) }
       : {};
+    const clearDatabaseSelection = nextFormat !== format
+      && (isDatabaseFileFormat(nextFormat) || isDatabaseFileFormat(format))
+      ? {
+          duckdbSchema: '',
+          sqliteSchema: '',
+          schemaName: '',
+          duckdbTable: '',
+          sqliteTable: '',
+          table: '',
+          tableNames: [],
+        }
+      : {};
     onChange({
+      ...clearDatabaseSelection,
       ...excelHeaderDefault,
       fileFormatType: nextFormat,
       sourceMode: 'FILE_RESOURCE',
@@ -313,8 +333,8 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       return;
     }
     const nextFormat = getFormat(config.fileFormatType);
-    if (nextFormat === 'duckdb') {
-      message.info('DuckDB 表结构由 SeaTunnel Engine 查询；请填写表名，需要时手动配置字段映射');
+    if (isDatabaseFileFormat(nextFormat)) {
+      message.info(`${databaseFileLabel(nextFormat)} 表结构由 SeaTunnel Engine 查询；请填写表名，需要时手动配置字段映射`);
       return;
     }
     const seq = (recognizeSeqRef.current += 1);
@@ -358,33 +378,52 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
     const nextResource = (patch.fileResource || (nextResourceId ? resource : undefined)) as
       | FileResource
       | undefined;
+    const selectedFormat = getFormat(patch.fileFormatType ?? sourceConfig?.fileFormatType);
     const detectedFormat = nextResourceId
       ? detectFormatFromName(nextResource?.name || nextResource?.path)
       : undefined;
+    const resolvedFormat = detectedFormat === 'duckdb'
+      && String(nextResource?.name || nextResource?.path || '').toLowerCase().endsWith('.db')
+      && selectedFormat === 'sqlite'
+      ? 'sqlite'
+      : detectedFormat;
+    const resourceChanged = Boolean(nextResourceId && nextResourceId !== prevResourceId);
 
-    if (detectedFormat) {
-      // 文件后缀决定来源类型；更换文件时同步更新对应的 SeaTunnel connector。
-      const excelHeaderDefault = detectedFormat === 'excel'
-        && nextResourceId !== prevResourceId
+    if (resolvedFormat) {
+      // .db is shared by DuckDB and SQLite, so keep an explicit SQLite selection.
+      const excelHeaderDefault = resolvedFormat === 'excel'
+        && resourceChanged
         ? { skipHeaderRowNumber: defaultExcelHeaderSkipOnSelection(
             patch.skipHeaderRowNumber ?? sourceConfig?.skipHeaderRowNumber,
           ) }
         : {};
+      const clearDatabaseSelection = resourceChanged && isDatabaseFileFormat(resolvedFormat)
+        ? {
+            duckdbSchema: '',
+            sqliteSchema: '',
+            schemaName: '',
+            duckdbTable: '',
+            sqliteTable: '',
+            table: '',
+            tableNames: [],
+          }
+        : {};
       patch = {
         ...patch,
+        ...clearDatabaseSelection,
         ...excelHeaderDefault,
-        fileFormatType: detectedFormat,
+        fileFormatType: resolvedFormat,
         sourceMode: 'FILE_RESOURCE',
-        ...sourcePluginForFormat(detectedFormat),
-        ...(detectedFormat === 'csv' ? { fieldDelimiter: ',' } : {}),
-        ...(detectedFormat === 'text' ? { fieldDelimiter: '\\001' } : {}),
+        ...sourcePluginForFormat(resolvedFormat),
+        ...(resolvedFormat === 'csv' ? { fieldDelimiter: ',' } : {}),
+        ...(resolvedFormat === 'text' ? { fieldDelimiter: '\\001' } : {}),
       };
     }
 
     onChange(patch);
 
-    if (nextResourceId && nextResourceId !== prevResourceId) {
-      if (detectedFormat === 'duckdb') {
+    if (resourceChanged) {
+      if (isDatabaseFileFormat(resolvedFormat || 'csv')) {
         recognizeSeqRef.current += 1;
         setRecognizing(false);
       } else {
@@ -524,8 +563,8 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         allowedFormats={PICKER_ALLOWED_FORMATS}
         selectionMode="file"
         title="文件资源来源"
-        description={format === 'duckdb'
-          ? '选择或上传 MinIO 文件区中的 DuckDB 数据库文件。'
+        description={isDatabaseFile
+          ? `选择或上传 MinIO 文件区中的 ${databaseTypeLabel} 数据库文件。`
           : '选择或上传文件后，格式与字段将自动识别。'}
       />
 
@@ -533,18 +572,18 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1">
             <div className="text-sm font-semibold text-slate-900">
-              {format === 'duckdb' ? 'DuckDB 数据库与表' : '文件格式与解析'}
+              {isDatabaseFile ? `${databaseTypeLabel} 数据库与表` : '文件格式与解析'}
             </div>
             <ConfigHint
               label="文件解析说明"
-              title={format === 'duckdb'
-                ? 'DuckDB 文件由 SeaTunnel Engine 以只读方式查询。'
+              title={isDatabaseFile
+                ? `${databaseTypeLabel} 文件由 SeaTunnel Engine 以只读方式查询。`
                 : format === 'json'
                   ? 'JSON 建议使用 NDJSON；常用解析参数已采用默认值，可在高级配置中调整。'
                   : '常用解析参数已采用默认值，可在高级配置中调整。'}
             />
           </div>
-          {format !== 'duckdb' ? (
+          {!isDatabaseFile ? (
             <Button
               size="small"
               icon={<EyeOutlined />}
@@ -563,13 +602,16 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
             <Select className="w-full" value={format} options={FORMAT_OPTIONS} onChange={changeFormat} />
           </label>
 
-          {format === 'duckdb' ? (
+          {isDatabaseFile ? (
             <>
               <label className="text-sm text-slate-600">
-                <span className="mb-1 block">DuckDB 表名</span>
+                <span className="mb-1 block">{databaseTypeLabel} 表名</span>
                 <Input
-                  value={sourceConfig?.duckdbTable ?? ''}
-                  onChange={(event) => onChange({ duckdbTable: event.target.value })}
+                  value={sourceConfig?.[format === 'sqlite' ? 'sqliteTable' : 'duckdbTable'] ?? sourceConfig?.table ?? ''}
+                  onChange={(event) => onChange({
+                    [format === 'sqlite' ? 'sqliteTable' : 'duckdbTable']: event.target.value,
+                    table: event.target.value,
+                  })}
                   placeholder="orders 或 main.orders"
                 />
               </label>
@@ -577,7 +619,9 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
                 type="info"
                 showIcon
                 message="SeaTunnel Engine 运行要求"
-                description="Engine 每个节点需预装 DuckDB JDBC 驱动和 httpfs 扩展；初始化 SQL 随任务配置发送，无需 Web 与 Engine 共享目录。"
+                description={format === 'sqlite'
+                  ? 'Engine 每个节点需预装 DuckDB JDBC 驱动、httpfs 和 sqlite_scanner 扩展；MinIO 凭据与挂载 SQL 随任务配置发送。'
+                  : 'Engine 每个节点需预装 DuckDB JDBC 驱动和 httpfs 扩展；初始化 SQL 随任务配置发送，无需 Web 与 Engine 共享目录。'}
               />
             </>
           ) : null}
@@ -627,7 +671,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
           ) : null}
         </div>
 
-        {format !== 'duckdb' ? (
+        {!isDatabaseFile ? (
           <Collapse className="mt-3" items={advancedItems} defaultActiveKey={[]} />
         ) : null}
       </section>
@@ -643,7 +687,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
             ) : null}
             <ConfigHint
               label="字段 Schema 说明"
-              title={format === 'duckdb'
+              title={isDatabaseFile
                 ? 'SeaTunnel Engine 会读取查询结果的字段类型；需要固定目标字段时，可在此手动配置。'
                 : format === 'excel'
                   ? 'Excel 字段默认使用 string，避免 20 行预览遗漏后续非数字内容导致导入失败；确认整列为数值后可手动调整类型。'
@@ -651,7 +695,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
             />
           </div>
           <div className="mt-3 flex justify-end gap-2">
-            {format !== 'duckdb' ? (
+            {!isDatabaseFile ? (
               <Button
                 size="small"
                 icon={<FileSearchOutlined />}

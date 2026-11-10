@@ -9,7 +9,8 @@ import java.util.Set;
 /** Validation shared by legacy Web Upload and reusable structured file sources. */
 public final class LocalFileSourceValidator {
 
-    private static final Set<String> STRUCTURED_FORMATS = Set.of("csv", "excel", "json", "text", "duckdb");
+    private static final Set<String> STRUCTURED_FORMATS =
+            Set.of("csv", "excel", "json", "text", "duckdb", "sqlite");
 
     private LocalFileSourceValidator() {
     }
@@ -87,7 +88,7 @@ public final class LocalFileSourceValidator {
         String normalized = format.trim().toLowerCase(Locale.ROOT);
         if (!STRUCTURED_FORMATS.contains(normalized)) {
             throw new IllegalArgumentException(
-                    sourceLabel + "只支持 CSV、Excel、JSON、Text 和 DuckDB，当前格式=" + format);
+                    sourceLabel + "只支持 CSV、Excel、JSON、Text、DuckDB 和 SQLite，当前格式=" + format);
         }
 
         if (("json".equals(normalized) || "excel".equals(normalized))
@@ -97,15 +98,16 @@ public final class LocalFileSourceValidator {
         }
 
         // The custom-SQL mode carries its own query and clears the table selection.
-        if ("duckdb".equals(normalized)) {
+        if ("duckdb".equals(normalized) || "sqlite".equals(normalized)) {
+            String databaseType = "sqlite".equals(normalized) ? "SQLite" : "DuckDB";
             String readMode = firstNonBlank(source, "readMode", "read_mode");
             if ("sql".equalsIgnoreCase(readMode)) {
                 if (StringUtils.isBlank(firstNonBlank(source, "sql", "query"))) {
-                    throw new IllegalArgumentException(sourceLabel + "必须填写 DuckDB 自定义 SQL");
+                    throw new IllegalArgumentException(sourceLabel + "必须填写 " + databaseType + " 自定义 SQL");
                 }
-            } else if (StringUtils.isBlank(
-                    firstNonBlank(source, "duckdbTable", "duckdb_table", "tableName"))) {
-                throw new IllegalArgumentException(sourceLabel + "必须填写 DuckDB 表名");
+            } else if (StringUtils.isBlank(firstNonBlank(source,
+                    "sqliteTable", "sqlite_table", "duckdbTable", "duckdb_table", "tableName", "table"))) {
+                throw new IllegalArgumentException(sourceLabel + "必须填写 " + databaseType + " 表名");
             }
         }
 

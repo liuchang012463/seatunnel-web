@@ -5,11 +5,13 @@ import QualityDetail from '@/pages/batch-link-up/DataViewSQL';
 import FileResourcePicker from '@/pages/file-resources/components/FileResourcePicker';
 import {
   inspectDuckDbFileResource,
+  inspectSqliteFileResource,
   previewDuckDbFileResource,
+  previewSqliteFileResource,
 } from '@/pages/file-resources/service';
 import type {
-  DuckDbCatalog,
-  DuckDbPreviewRequest,
+  DatabaseFileCatalog,
+  DatabaseFilePreviewRequest,
   FileResourceEntry,
 } from '@/pages/file-resources/types';
 import SqlEditorSection from './SqlEditorSection';
@@ -22,15 +24,15 @@ interface DuckDbFileSourcePanelProps {
   onClose: () => void;
 }
 
-const resourceName = (resource?: FileResourceEntry) =>
-  String(resource?.name || resource?.logicalPath || resource?.path || 'DuckDB 文件');
+const resourceName = (resource?: FileResourceEntry, databaseType = 'DuckDB') =>
+  String(resource?.name || resource?.logicalPath || resource?.path || `${databaseType} 文件`);
 
 const resourcePath = (resource?: FileResourceEntry) =>
   String(resource?.logicalPath || resource?.path || resource?.objectKey || '').replace(/^\/+/, '');
 
-const databaseName = (catalog?: DuckDbCatalog, resource?: FileResourceEntry) => {
+const databaseName = (catalog?: DatabaseFileCatalog, resource?: FileResourceEntry) => {
   if (catalog?.databaseName) return catalog.databaseName;
-  return resourceName(resource).replace(/\.(db|duckdb)$/i, '');
+  return resourceName(resource).replace(/\.(db|duckdb|sqlite|sqlite3)$/i, '');
 };
 
 const quoteIdentifier = (value: string) => `"${value.replace(/"/g, '""')}"`;
@@ -44,18 +46,23 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
   const qualityDetailRef = useRef<any>(null);
   const inspectSequence = useRef(0);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [catalog, setCatalog] = useState<DuckDbCatalog>();
+  const [catalog, setCatalog] = useState<DatabaseFileCatalog>();
   const [catalogError, setCatalogError] = useState('');
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [resolveLoading, setResolveLoading] = useState(false);
   const [sqlPopoverOpen, setSqlPopoverOpen] = useState(false);
   const [selectedSqlTable, setSelectedSqlTable] = useState<string>();
+  const isSqliteSource = String(sourceConfig.fileFormatType || '').toLowerCase() === 'sqlite';
+  const databaseType = isSqliteSource ? 'SQLite' : 'DuckDB';
+  const fileFormat = isSqliteSource ? 'sqlite' : 'duckdb';
+  const tableConfigKey = isSqliteSource ? 'sqliteTable' : 'duckdbTable';
+  const schemaConfigKey = isSqliteSource ? 'sqliteSchema' : 'duckdbSchema';
   const resource = (sourceConfig.fileResource || sourceConfig.resource) as FileResourceEntry | undefined;
   const selectedResourceId = resource?.id ?? sourceConfig.fileResourceId;
   const readMode = String(sourceConfig.readMode || 'table') === 'sql' ? 'sql' : 'table';
-  const configuredTable = String(sourceConfig.duckdbTable || sourceConfig.table || '');
-  const savedSchema = String(sourceConfig.duckdbSchema || sourceConfig.schemaName || '');
+  const configuredTable = String(sourceConfig[tableConfigKey] || sourceConfig.duckdbTable || sourceConfig.table || '');
+  const savedSchema = String(sourceConfig[schemaConfigKey] || sourceConfig.duckdbSchema || sourceConfig.schemaName || '');
   const sql = String(sourceConfig.sql || '');
 
   const readCatalog = useCallback(async (resourceId: string | number) => {
@@ -63,17 +70,19 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
     setCatalogLoading(true);
     setCatalogError('');
     try {
-      const result = await inspectDuckDbFileResource(resourceId);
+      const result = isSqliteSource
+        ? await inspectSqliteFileResource(resourceId)
+        : await inspectDuckDbFileResource(resourceId);
       if (sequence === inspectSequence.current) setCatalog(result);
     } catch (error: any) {
       if (sequence === inspectSequence.current) {
         setCatalog(undefined);
-        setCatalogError(error?.message || 'DuckDB 数据库结构读取失败');
+        setCatalogError(error?.message || `${databaseType} 数据库结构读取失败`);
       }
     } finally {
       if (sequence === inspectSequence.current) setCatalogLoading(false);
     }
-  }, []);
+  }, [databaseType, isSqliteSource]);
 
   useEffect(() => {
     inspectSequence.current += 1;
@@ -119,7 +128,7 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
     setSelectedSqlTable(undefined);
     onChange({
       sourceMode: 'FILE_RESOURCE',
-      fileFormatType: 'duckdb',
+      fileFormatType: fileFormat,
       dbType: 'MINIO',
       connectorType: 'DuckDB',
       pluginName: 'DuckDB',
@@ -127,8 +136,10 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
       fileResourceId: next.id === undefined ? '' : String(next.id),
       database: '',
       duckdbSchema: '',
+      sqliteSchema: '',
       schemaName: '',
       duckdbTable: '',
+      sqliteTable: '',
       table: '',
       tableNames: [],
       readMode: 'table',
@@ -143,9 +154,12 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
   const handleSchemaChange = (schemaName: string) => {
     setSelectedSqlTable(undefined);
     onChange({
+      [schemaConfigKey]: schemaName,
       duckdbSchema: schemaName,
       schemaName,
+      [tableConfigKey]: '',
       duckdbTable: '',
+      sqliteTable: '',
       table: '',
       tableNames: [],
       outputSchema: [],
@@ -156,9 +170,12 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
 
   const handleTableChange = (tableName: string) => {
     onChange({
+      [schemaConfigKey]: activeSchema?.name || savedSchema || 'main',
       duckdbSchema: activeSchema?.name || savedSchema || 'main',
       schemaName: activeSchema?.name || savedSchema || 'main',
+      [tableConfigKey]: tableName,
       duckdbTable: tableName,
+      sqliteTable: tableName,
       table: tableName,
       tableNames: [tableName],
       outputSchema: [],
@@ -171,16 +188,18 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
     setSelectedSqlTable(undefined);
     onChange({
       readMode: value,
-      ...(value === 'table' ? { sql: '' } : { duckdbTable: '', table: '', tableNames: [] }),
+      ...(value === 'table'
+        ? { sql: '' }
+        : { [tableConfigKey]: '', duckdbTable: '', sqliteTable: '', table: '', tableNames: [] }),
       outputSchema: [],
       schemaStatus: 'idle',
       schemaError: '',
     });
   };
 
-  const getPreviewRequest = (limit: number): DuckDbPreviewRequest | undefined => {
+  const getPreviewRequest = (limit: number): DatabaseFilePreviewRequest | undefined => {
     if (selectedResourceId === undefined || selectedResourceId === null || !String(selectedResourceId)) {
-      message.warning('请先选择 DuckDB 数据库文件');
+      message.warning(`请先选择 ${databaseType} 数据库文件`);
       return undefined;
     }
     if (readMode === 'table' && !selectedTableName) {
@@ -204,7 +223,9 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
     if (!request || selectedResourceId === undefined || selectedResourceId === null) return;
     setPreviewLoading(true);
     try {
-      const result = await previewDuckDbFileResource(selectedResourceId, request);
+      const result = isSqliteSource
+        ? await previewSqliteFileResource(selectedResourceId, request)
+        : await previewDuckDbFileResource(selectedResourceId, request);
       const columns = result.columns.map((column) => ({
         title: column.name,
         dataIndex: column.key,
@@ -220,7 +241,7 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
         data: { columns, data: result.data, total: result.total },
       });
     } catch (error: any) {
-      message.error(error?.message || 'DuckDB 数据预览失败');
+      message.error(error?.message || `${databaseType} 数据预览失败`);
     } finally {
       setPreviewLoading(false);
     }
@@ -232,7 +253,9 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
     setResolveLoading(true);
     onChange({ schemaStatus: 'loading', schemaError: '' });
     try {
-      const result = await previewDuckDbFileResource(selectedResourceId, request);
+      const result = isSqliteSource
+        ? await previewSqliteFileResource(selectedResourceId, request)
+        : await previewDuckDbFileResource(selectedResourceId, request);
       const outputSchema = result.columns.map((column) => ({
         name: column.name,
         fieldName: column.name,
@@ -252,7 +275,7 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
         schemaStatus: 'error',
         schemaError: error?.message || '字段解析失败',
       });
-      message.error(error?.message || 'DuckDB 字段解析失败');
+      message.error(error?.message || `${databaseType} 字段解析失败`);
     } finally {
       setResolveLoading(false);
     }
@@ -288,8 +311,8 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
         title="来源配置"
         badge="输入节点"
         desc="修改后会实时同步到当前画布节点"
-        heroTitle="DuckDB 数据源"
-        heroDesc={resource ? 'MinIO 文件资源' : '选择 DuckDB 数据库文件'}
+        heroTitle={`${databaseType} 数据源`}
+        heroDesc={resource ? 'MinIO 文件资源' : `选择 ${databaseType} 数据库文件`}
         heroTag="SOURCE"
         dbType="DUCKDB"
         onClose={onClose}
@@ -316,10 +339,10 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
                 type="button"
                 className="duckdb-source__resource-trigger"
                 onClick={() => setPickerOpen(true)}
-                aria-label={resource ? '更换 DuckDB 数据库文件' : '选择 DuckDB 数据库文件'}
+                aria-label={resource ? `更换 ${databaseType} 数据库文件` : `选择 ${databaseType} 数据库文件`}
               >
                 <span className="duckdb-source__resource-name">
-                  {resource ? resourceName(resource) : '选择 DuckDB 数据库文件'}
+                  {resource ? resourceName(resource, databaseType) : `选择 ${databaseType} 数据库文件`}
                 </span>
                 <ChevronDown size={15} />
               </button>
@@ -341,7 +364,7 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
               value={database || undefined}
               options={database ? [{ label: database, value: database }] : []}
               loading={catalogLoading}
-              placeholder="选择 DuckDB 文件后读取数据库"
+              placeholder={`选择 ${databaseType} 文件后读取数据库`}
               className="workflow-panel__antd-select"
               style={{ width: '100%' }}
               classNames={{ popup: { root: 'workflow-panel__dropdown' } }}
@@ -491,8 +514,8 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
         onCancel={() => setPickerOpen(false)}
         onSelect={handleSelectResource}
         value={resource || null}
-        allowedFormats={['duckdb']}
-        title="选择 DuckDB 数据库文件"
+        allowedFormats={[fileFormat]}
+        title={`选择 ${databaseType} 数据库文件`}
       />
     </>
   );

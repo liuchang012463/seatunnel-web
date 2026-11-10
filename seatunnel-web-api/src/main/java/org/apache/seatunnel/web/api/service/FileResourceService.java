@@ -60,5 +60,9 @@ public interface FileResourceService {
 
     DuckDbPreviewVO previewDuckDb(Long id, DuckDbPreviewRequest request);
 
+    DuckDbCatalogVO inspectSqlite(Long id);
+
+    DuckDbPreviewVO previewSqlite(Long id, DuckDbPreviewRequest request);
+
     PaginationResult<FileUploadRecordVO> pageUploadRecords(FileResourceUploadRecordQueryDTO query);
 }

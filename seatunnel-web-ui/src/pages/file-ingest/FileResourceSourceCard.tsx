@@ -32,12 +32,14 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
   const [pickerOpen, setPickerOpen] = useState(false);
   const isResourceSource = String(sourceConfig?.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
   const isDuckDbSource = String(sourceConfig?.fileFormatType || '').toLowerCase() === 'duckdb';
+  const isSqliteSource = String(sourceConfig?.fileFormatType || '').toLowerCase() === 'sqlite';
+  const databaseTypeLabel = isSqliteSource ? 'SQLite' : 'DuckDB';
   const resource = (sourceConfig?.fileResource || sourceConfig?.resource) as FileResource | undefined;
   const sourceBehavior = resource && resource.kind !== 'DIRECTORY'
     ? binary
       ? '将二进制对象同步到目标端，不解析文件内容。'
-      : isDuckDbSource
-        ? 'SeaTunnel Engine 将以只读方式挂载该 DuckDB 对象，并查询指定表。'
+      : isDuckDbSource || isSqliteSource
+        ? `SeaTunnel Engine 将以只读方式挂载该 ${databaseTypeLabel} 对象，并查询指定表。`
         : '任务会从所选文件读取结构化数据，并按解析配置写入目标表。'
     : undefined;
 
@@ -118,8 +120,8 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
             </div>
           </div>
         </div>
-        {binary || isDuckDbSource ? (
-          <Tag color="blue">{binary ? '二进制对象' : 'DuckDB 文件'}</Tag>
+        {binary || isDuckDbSource || isSqliteSource ? (
+          <Tag color="blue">{binary ? '二进制对象' : `${databaseTypeLabel} 文件`}</Tag>
         ) : null}
       </div>
 
@@ -159,7 +161,7 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
         value={resource}
         allowedFormats={allowedFormats}
         selectionMode={selectionMode}
-        title={binary ? '选择二进制文件资源' : isDuckDbSource ? '选择 DuckDB 文件' : '选择结构化文件资源'}
+        title={binary ? '选择二进制文件资源' : isDuckDbSource || isSqliteSource ? `选择 ${databaseTypeLabel} 文件` : '选择结构化文件资源'}
         onCancel={() => setPickerOpen(false)}
         onSelect={selectResource}
       />

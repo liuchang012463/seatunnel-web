@@ -482,9 +482,15 @@ containers while preserving the named volumes (`seatunnel-web-logs`,
 * Logs and JDBC drivers use named volumes so container writes do not pollute
   the bind-mounted host directory. DuckDB session init SQL is passed inline in
   the job config, so no shared directory is required. Install the DuckDB JDBC
-  JAR and the `httpfs` extension on every SeaTunnel Engine node. If the extension
+  JAR and the `httpfs` extension on every SeaTunnel Engine node. SQLite imports
+  also require the matching `sqlite_scanner` extension. If the extension
   is outside DuckDB's default directory, set `SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR`
   to its Engine-local directory; Web does not mount or access that directory.
+* SQLite file catalog and preview use DuckDB's `sqlite_scanner` extension inside
+  the Web API. DuckDB can install it on first use when the Web container can reach
+  the extension repository; for offline Web containers, mount a matching extension
+  directory into Web and set `SEATUNNEL_WEB_DUCKDB_CATALOG_EXTENSION_DIR`. This
+  is separate from the Engine-local extension path above.
 * `dist/seatunnel-web-1.0.0/conf/application.yml` is intentionally not
   read-only-mounted. This allows on-site tuning during development and
   iteration. Production releases should treat the YAML as part of the

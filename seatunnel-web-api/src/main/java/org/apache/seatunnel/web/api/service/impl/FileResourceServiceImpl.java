@@ -690,6 +690,37 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         }
     }
 
+    @Override
+    public DuckDbCatalogVO inspectSqlite(Long id) {
+        FileResource resource = requireSqliteFile(id);
+        try {
+            DuckDbCatalogVO catalog = duckDbCatalogReader.inspectSqlite(resource);
+            log.debug("Read SQLite catalog, resourceId={}", id);
+            return catalog;
+        } catch (Exception error) {
+            log.warn("Read SQLite catalog failed, resourceId={}", id, error);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
+                    "无法读取 SQLite 数据库，请确认文件格式有效且 Web API 可加载 sqlite_scanner 扩展");
+        }
+    }
+
+    @Override
+    public DuckDbPreviewVO previewSqlite(Long id, DuckDbPreviewRequest request) {
+        FileResource resource = requireSqliteFile(id);
+        try {
+            DuckDbPreviewVO preview = duckDbCatalogReader.previewSqlite(resource, request);
+            log.debug("Preview SQLite file resource, resourceId={}", id);
+            return preview;
+        } catch (IllegalArgumentException error) {
+            throw invalid(error.getMessage());
+        } catch (Exception error) {
+            log.warn("Preview SQLite file resource failed, resourceId={}", id, error);
+            throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
+                    "SQLite 查询失败: " + StringUtils.defaultIfBlank(
+                            DuckDbCatalogReader.scrubTemporaryPath(error.getMessage()), "请检查读取配置"));
+        }
+    }
+
     private FileResource requireDuckDbFile(Long id) {
         FileResource resource = requireActiveResource(id);
         if (!FILE.equalsIgnoreCase(resource.getResourceType())) {
@@ -698,6 +729,18 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         String name = StringUtils.defaultString(resource.getName()).toLowerCase(Locale.ROOT);
         if (!name.endsWith(".db") && !name.endsWith(".duckdb")) {
             throw invalid("DuckDB 元数据读取只支持 .db 和 .duckdb 文件");
+        }
+        return resource;
+    }
+
+    private FileResource requireSqliteFile(Long id) {
+        FileResource resource = requireActiveResource(id);
+        if (!FILE.equalsIgnoreCase(resource.getResourceType())) {
+            throw invalid("只能读取 SQLite 文件资源");
+        }
+        String name = StringUtils.defaultString(resource.getName()).toLowerCase(Locale.ROOT);
+        if (!name.endsWith(".db") && !name.endsWith(".sqlite") && !name.endsWith(".sqlite3")) {
+            throw invalid("SQLite 元数据读取只支持 .db、.sqlite 和 .sqlite3 文件");
         }
         return resource;
     }

@@ -255,11 +255,11 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         if (StringUtils.isBlank(sourceMode)) {
             sourceMode = getTrimmedString(data, KEY_SOURCE_MODE);
         }
+        String fileFormat = getFirstTrimmedString(
+                resolveNodeConfig(data), "fileFormatType", "file_format_type");
         if (FILE_RESOURCE.equalsIgnoreCase(sourceMode)
-                && "duckdb".equalsIgnoreCase(getFirstTrimmedString(
-                resolveNodeConfig(data), "fileFormatType", "file_format_type"))) {
-            // The engine registers no DuckDB plugin; the generated url/driver/query config is
-            // served by the JDBC connector, whose factory identifier is "Jdbc".
+                && ("duckdb".equalsIgnoreCase(fileFormat) || "sqlite".equalsIgnoreCase(fileFormat))) {
+            // The engine reads both database-file formats through the JDBC connector.
             return "Jdbc";
         }
         if (WEB_UPLOAD.equalsIgnoreCase(sourceMode)
@@ -325,6 +325,9 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
         if ("duckdb".equalsIgnoreCase(configuredFormat)) {
             return buildDuckDbFileSource(reference, nodeConfig);
+        }
+        if ("sqlite".equalsIgnoreCase(configuredFormat)) {
+            return buildSqliteFileSource(reference, nodeConfig);
         }
 
         Map<String, Object> connection = new HashMap<>();
@@ -441,9 +444,100 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         return ConfigFactory.parseMap(source).resolve();
     }
 
+    /** Build a JDBC source that attaches the remote SQLite file through DuckDB's sqlite extension. */
+    private Config buildSqliteFileSource(FileResourceReference reference,
+                                         Config nodeConfig) {
+        String objectKey = resolveFileResourcePath(reference);
+        String normalizedKey = objectKey.startsWith("/") ? objectKey.substring(1) : objectKey;
+        String normalizedKeyLower = normalizedKey.toLowerCase(Locale.ROOT);
+        if (!normalizedKeyLower.endsWith(".db")
+                && !normalizedKeyLower.endsWith(".sqlite")
+                && !normalizedKeyLower.endsWith(".sqlite3")) {
+            throw new IllegalArgumentException(
+                    "SQLite source requires a .db, .sqlite, or .sqlite3 file resource");
+        }
+        if (!"STATIC".equalsIgnoreCase(reference.getCredentialMode())
+                || StringUtils.isBlank(reference.getAccessKey())
+                || StringUtils.isBlank(reference.getSecretKey())) {
+            throw new IllegalArgumentException("SQLite source requires static MinIO access credentials");
+        }
+
+        String tableName = getFirstTrimmedString(
+                nodeConfig, "sqliteTable", "sqlite_table", "tableName", "table");
+        String schemaName = getFirstTrimmedString(
+                nodeConfig, "sqliteSchema", "sqlite_schema", "schemaName", "schema_name");
+        String readMode = getFirstTrimmedString(nodeConfig, "readMode", "read_mode");
+        String sourceQuery;
+        if ("sql".equalsIgnoreCase(readMode)) {
+            sourceQuery = getFirstTrimmedString(nodeConfig, "sql", "query");
+            if (StringUtils.isBlank(sourceQuery)) {
+                throw new IllegalArgumentException("SQLite custom SQL cannot be empty");
+            }
+            SqlValidator.validateSelectQuery(sourceQuery);
+        } else {
+            sourceQuery = "SELECT * FROM "
+                    + quoteDuckDbIdentifier("sqlite_source")
+                    + "."
+                    + renderDatabaseFileTableName("SQLite", schemaName, tableName);
+        }
+
+        DuckDbEndpoint endpoint = parseDuckDbEndpoint(reference.getEndpoint());
+        String remoteDatabase = buildDuckDbObjectUri(reference.getBucket(), normalizedKey);
+        String defaultSchema = StringUtils.defaultIfBlank(schemaName, "main");
+        String extensionDirectory = resolveDuckDbExtensionDirectory();
+        List<String> initSqlStatements = new ArrayList<>();
+        initSqlStatements.add("SET autoinstall_known_extensions = false;");
+        if (extensionDirectory != null) {
+            initSqlStatements.add("SET extension_directory = " + sqlLiteral(extensionDirectory) + ";");
+        }
+        // Keep httpfs and the MinIO secret: sqlite_scanner reads the SQLite database through
+        // the same S3-compatible object path already used by DuckDB file imports.
+        initSqlStatements.add("LOAD httpfs;");
+        initSqlStatements.add("LOAD sqlite;");
+        initSqlStatements.add("CREATE SECRET sqlite_source_minio_secret (");
+        initSqlStatements.add("  TYPE s3,");
+        initSqlStatements.add("  KEY_ID " + sqlLiteral(reference.getAccessKey()) + ",");
+        initSqlStatements.add("  SECRET " + sqlLiteral(reference.getSecretKey()) + ",");
+        initSqlStatements.add("  REGION " + sqlLiteral(reference.getRegion()) + ",");
+        initSqlStatements.add("  ENDPOINT " + sqlLiteral(endpoint.hostAndPort()) + ",");
+        initSqlStatements.add("  URL_STYLE " + sqlLiteral(reference.isPathStyleAccess() ? "path" : "vhost") + ",");
+        initSqlStatements.add("  USE_SSL " + endpoint.ssl() + ",");
+        initSqlStatements.add("  SCOPE " + sqlLiteral(remoteDatabase));
+        initSqlStatements.add(");");
+        initSqlStatements.add("ATTACH IF NOT EXISTS " + sqlLiteral(remoteDatabase)
+                + " AS sqlite_source (TYPE sqlite, READ_ONLY);");
+        String initSql = String.join("\n", initSqlStatements);
+        String query = "USE " + quoteDuckDbIdentifier("sqlite_source")
+                + "." + quoteDuckDbIdentifier(defaultSchema) + ";\n" + sourceQuery;
+
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("autoinstall_known_extensions", "false");
+        properties.put("threads", "2");
+        properties.put("memory_limit", "512MB");
+        properties.put("jdbc_stream_results", "true");
+        properties.put(DUCKDB_SESSION_INIT_SQL_PROPERTY, initSql);
+
+        Map<String, Object> source = new HashMap<>();
+        source.put("url", "jdbc:duckdb:");
+        source.put("driver", "org.duckdb.DuckDBDriver");
+        source.put("enable_concurrent_read", false);
+        // Keep the session-init SQL as one JDBC property, matching the existing DuckDB source path.
+        source.put("properties", ConfigValueFactory.fromMap(properties));
+        source.put("query", query);
+        source.put("connection_check_timeout_sec", 30);
+        if (nodeConfig.hasPath("plugin_output")) {
+            source.put("plugin_output", nodeConfig.getString("plugin_output"));
+        }
+        return ConfigFactory.parseMap(source).resolve();
+    }
+
     private String renderDuckDbTableName(String schemaName, String tableName) {
+        return renderDatabaseFileTableName("DuckDB", schemaName, tableName);
+    }
+
+    private String renderDatabaseFileTableName(String databaseType, String schemaName, String tableName) {
         if (StringUtils.isBlank(tableName)) {
-            throw new IllegalArgumentException("DuckDB source requires a table name");
+            throw new IllegalArgumentException(databaseType + " source requires a table name");
         }
         String schema = StringUtils.trimToEmpty(schemaName);
         String table = tableName.trim();
@@ -456,7 +550,8 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
                 schema = parts[0].trim();
                 table = parts[1].trim();
             } else {
-                throw new IllegalArgumentException("DuckDB table name must be table or schema.table");
+                throw new IllegalArgumentException(
+                        databaseType + " table name must be table or schema.table");
             }
         }
         return quoteDuckDbIdentifier(schema) + "." + quoteDuckDbIdentifier(table);

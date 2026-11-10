@@ -173,6 +173,20 @@ public class FileResourceController {
         return Result.buildSuc(fileResourceService.previewDuckDb(id, request));
     }
 
+    @GetMapping("/{id}/sqlite-catalog")
+    @Operation(summary = "inspectSqliteFileResource", description = "读取 SQLite 文件的 schema、表和列结构")
+    public Result<DuckDbCatalogVO> inspectSqlite(@PathVariable("id") Long id) {
+        return Result.buildSuc(fileResourceService.inspectSqlite(id));
+    }
+
+    @PostMapping("/{id}/sqlite-preview")
+    @Operation(summary = "previewSqliteFileResource", description = "预览 SQLite 文件查询结果")
+    public Result<DuckDbPreviewVO> previewSqlite(
+            @PathVariable("id") Long id,
+            @RequestBody(required = false) DuckDbPreviewRequest request) {
+        return Result.buildSuc(fileResourceService.previewSqlite(id, request));
+    }
+
     @GetMapping("/upload-records")
     @Operation(summary = "pageFileResourceUploadRecords", description = "查询文件资源上传记录")
     public PaginationResult<FileUploadRecordVO> uploadRecords(

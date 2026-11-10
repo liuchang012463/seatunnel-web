@@ -257,6 +257,7 @@ seatunnel:
         request-timeout-ms: ${SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_REQUEST_TIMEOUT_MS:30000}
     duckdb:
       extension-directory: ${SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR:}
+      catalog-extension-directory: ${SEATUNNEL_WEB_DUCKDB_CATALOG_EXTENSION_DIR:}
       catalog-max-bytes: ${SEATUNNEL_WEB_DUCKDB_CATALOG_MAX_BYTES:536870912}
       catalog-concurrency: ${SEATUNNEL_WEB_DUCKDB_CATALOG_CONCURRENCY:2}
     engine:

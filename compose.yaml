@@ -158,6 +158,8 @@ services:
 
       # This path is read by DuckDB on Engine nodes; Web does not mount or access it.
       SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR: ${SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR:-}
+      # Optional, separate extension directory mounted inside Web for SQLite catalog/preview.
+      SEATUNNEL_WEB_DUCKDB_CATALOG_EXTENSION_DIR: ${SEATUNNEL_WEB_DUCKDB_CATALOG_EXTENSION_DIR:-}
 
       # Offline DMP/SQL import. The vendor tools (dimp, sys_restore) must be
       # installed and mounted into the container at these paths.

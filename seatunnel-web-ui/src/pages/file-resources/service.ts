@@ -14,6 +14,9 @@ import type {
   DuckDbCatalog,
   DuckDbPreviewRequest,
   DuckDbPreviewResult,
+  DatabaseFileCatalog,
+  DatabaseFilePreviewRequest,
+  DatabaseFilePreviewResult,
 } from './types';
 import { normalizeResourcePath } from './utils';
 
@@ -317,6 +320,34 @@ export async function previewDuckDbFileResource(
   return response.data;
 }
 
+export async function inspectSqliteFileResource(
+  id: string | number,
+): Promise<DatabaseFileCatalog> {
+  const response = await HttpUtils.get<DatabaseFileCatalog>(
+    `${FILE_RESOURCE_API_PREFIX}/${encodeURIComponent(String(id))}/sqlite-catalog`,
+  );
+  if (response.code !== 0) throw responseError(response, 'SQLite 数据库结构读取失败');
+  if (!response.data || !Array.isArray(response.data.schemas)) {
+    throw new Error('SQLite 数据库结构响应无效');
+  }
+  return response.data;
+}
+
+export async function previewSqliteFileResource(
+  id: string | number,
+  request: DatabaseFilePreviewRequest,
+): Promise<DatabaseFilePreviewResult> {
+  const response = await HttpUtils.post<DatabaseFilePreviewResult>(
+    `${FILE_RESOURCE_API_PREFIX}/${encodeURIComponent(String(id))}/sqlite-preview`,
+    request,
+  );
+  if (response.code !== 0) throw responseError(response, 'SQLite 查询失败');
+  if (!response.data || !Array.isArray(response.data.columns) || !Array.isArray(response.data.data)) {
+    throw new Error('SQLite 查询响应无效');
+  }
+  return response.data;
+}
+
 export const fileResourceApi = {
   list: fetchFileResourcePage,
   createDirectory: createFileResourceDirectory,
@@ -326,6 +357,8 @@ export const fileResourceApi = {
   previewAsPdf: previewFileResourceAsPdf,
   inspectDuckDb: inspectDuckDbFileResource,
   previewDuckDb: previewDuckDbFileResource,
+  inspectSqlite: inspectSqliteFileResource,
+  previewSqlite: previewSqliteFileResource,
   uploadRecords: fetchFileResourceUploadRecords,
 };
 

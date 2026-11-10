@@ -172,14 +172,14 @@ const sourceRules: NodeCheckRule[] = [
     if (isManagedFileSourceNode(node)) {
       const format = String(config.fileFormatType || '').toLowerCase();
       const validFormat = isFileResourceSourceNode(node)
-        ? ['csv', 'excel', 'json', 'text', 'duckdb'].includes(format)
+        ? ['csv', 'excel', 'json', 'text', 'duckdb', 'sqlite'].includes(format)
         : isLocalFileFormat(format);
       if (!validFormat) {
         return buildWarning(
           node,
           'fileFormatType',
           isFileResourceSourceNode(node)
-            ? '请选择 CSV、Excel、JSON、Text 或 DuckDB 文件格式'
+            ? '请选择 CSV、Excel、JSON、Text、DuckDB 或 SQLite 文件格式'
             : '请选择 CSV、Excel、JSON 或 Text 文件格式',
         );
       }

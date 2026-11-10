@@ -115,19 +115,22 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
           delete configPatch[key];
         }
       });
-      const format = configPatch.fileFormatType ?? selectedNode?.data?.config?.fileFormatType;
+      const format = String((configPatch.fileFormatType ?? selectedNode?.data?.config?.fileFormatType) || '').toLowerCase();
+      const databaseFileSource = format === 'duckdb' || format === 'sqlite';
       updateNode(
         configPatch,
         {
-          description: String(format || '').toLowerCase() === 'duckdb'
-            ? '读取 DuckDB 表'
+          description: databaseFileSource
+            ? `读取 ${format === 'sqlite' ? 'SQLite' : 'DuckDB'} 表`
             : '读取结构化文件',
         },
         Object.keys(metaPatch).length > 0 ? metaPatch : undefined,
       );
     };
 
-    if (String(selectedNode?.data?.config?.fileFormatType || '').toLowerCase() === 'duckdb') {
+    if (['duckdb', 'sqlite'].includes(
+      String(selectedNode?.data?.config?.fileFormatType || '').toLowerCase(),
+    )) {
       return (
         <DuckDbFileSourcePanel
           sourceConfig={selectedNode?.data?.config || {}}

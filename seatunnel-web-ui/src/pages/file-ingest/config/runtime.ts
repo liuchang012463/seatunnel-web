@@ -66,10 +66,12 @@ const normalizeStructuredFileDefaults = (config: Record<string, any>) => ({
   escapeChar: config.escapeChar ?? '',
 });
 
+const isDatabaseFileFormat = (format: unknown) => ['duckdb', 'sqlite'].includes(String(format || '').toLowerCase());
+
 const normalizeResourceSourceConfig = (rawConfig: any, taskType: FileTaskType) => {
   const config = rawConfig || {};
-  const duckDbSource = taskType === 'FILE_INGEST'
-    && String(config.fileFormatType || '').toLowerCase() === 'duckdb';
+  const databaseFileSource = taskType === 'FILE_INGEST'
+    && isDatabaseFileFormat(config.fileFormatType);
   const legacyUpload = String(config.sourceMode || '').toUpperCase() === 'WEB_UPLOAD';
   const resourceMode = taskType === 'FILE_INGEST' || legacyUpload || String(config.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
 
@@ -85,8 +87,8 @@ const normalizeResourceSourceConfig = (rawConfig: any, taskType: FileTaskType) =
     ...config,
     sourceMode: 'FILE_RESOURCE',
     dbType: 'MINIO',
-    pluginName: duckDbSource ? 'DuckDB' : 'S3File',
-    connectorType: duckDbSource ? 'DuckDB' : 'S3File',
+    pluginName: databaseFileSource ? 'DuckDB' : 'S3File',
+    connectorType: databaseFileSource ? 'DuckDB' : 'S3File',
     readMode: taskType === 'FILE_TRANSFER' ? 'resource' : 'file',
     syncType: 'FULL',
     fileResourceId:
@@ -181,8 +183,8 @@ export const normalizeWorkflowGraph = (
                   title: config.sourceMode === 'FILE_RESOURCE' ? '文件资源' : config.dbType,
                   description: taskType === 'FILE_TRANSFER'
                     ? '读取二进制文件对象'
-                    : String(config.fileFormatType || '').toLowerCase() === 'duckdb'
-                      ? '读取 DuckDB 表'
+                    : isDatabaseFileFormat(config.fileFormatType)
+                      ? `读取 ${String(config.fileFormatType).toLowerCase() === 'sqlite' ? 'SQLite' : 'DuckDB'} 表`
                       : '读取结构化文件',
                   sourceMode: config.sourceMode,
                   dbType: config.dbType,
@@ -216,7 +218,9 @@ export const normalizeWorkflowGraph = (
       pluginName: sourceType?.dbType === 'FILE_RESOURCE' ? 'S3File' : sourceType?.pluginName,
       dataSourceId: sourceType?.dbType === 'FILE_RESOURCE' ? undefined : sourceDataSourceId,
       readMode: taskType === 'FILE_TRANSFER' ? 'resource' : 'file',
-      fileFormatType: taskType === 'FILE_TRANSFER' ? 'binary' : 'csv',
+      fileFormatType: taskType === 'FILE_TRANSFER'
+        ? 'binary'
+        : sourceType?.fileFormatType || 'csv',
       syncType: 'FULL',
       pluginOutput: sourceId,
     },
@@ -298,10 +302,10 @@ export const patchSourceConfig = (params: any, patch: Record<string, any>) => {
         ...patch,
         sourceMode: 'FILE_RESOURCE',
         dbType: 'MINIO',
-        pluginName: String(patch.fileFormatType || node?.data?.config?.fileFormatType || '').toLowerCase() === 'duckdb'
+        pluginName: isDatabaseFileFormat(patch.fileFormatType || node?.data?.config?.fileFormatType)
           ? 'DuckDB'
           : 'S3File',
-        connectorType: String(patch.fileFormatType || node?.data?.config?.fileFormatType || '').toLowerCase() === 'duckdb'
+        connectorType: isDatabaseFileFormat(patch.fileFormatType || node?.data?.config?.fileFormatType)
           ? 'DuckDB'
           : 'S3File',
       };
@@ -312,8 +316,8 @@ export const patchSourceConfig = (params: any, patch: Record<string, any>) => {
           title: '文件资源',
           sourceMode: 'FILE_RESOURCE',
           dbType: 'MINIO',
-          pluginName: 'S3File',
-          connectorType: 'S3File',
+          pluginName: config.pluginName,
+          connectorType: config.connectorType,
           config,
         },
       };

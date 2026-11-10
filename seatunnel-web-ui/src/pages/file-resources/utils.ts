@@ -78,6 +78,7 @@ export function resourceMatchesFormats(resource: FileResourceEntry, formats?: Fi
     json: ['json'],
     text: ['txt', 'text'],
     duckdb: ['db', 'duckdb'],
+    sqlite: ['db', 'sqlite', 'sqlite3'],
   };
   return formats.some((format) => extensions[format]?.includes(extension));
 }
