@@ -10,13 +10,13 @@
 
   &__content {
     width: 100%;
-    max-width: 1512px;
+    max-width: 1540px;
     margin: 0 auto;
-    padding: 24px 32px 120px;
+    padding: 24px 24px 112px;
   }
 
   &__steps {
-    margin: 4px 0 22px;
+    margin: 4px 0 24px;
     background: var(--st-color-bg-page) !important;
   }
 
@@ -29,25 +29,42 @@
   }
 
   &__panel {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
-    gap: 28px;
-    padding: 24px;
-    border: 1px solid var(--st-color-divider);
-    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--st-color-border);
+    border-radius: 4px;
     background: var(--st-color-bg-panel);
-    box-shadow: var(--st-panel-shadow);
+    box-shadow: none;
+  }
+
+  &__base-content {
+    padding: 24px;
+  }
+
+  &__base-card {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    border: 1px solid var(--st-color-border);
+    border-radius: 4px;
+    background: var(--st-color-bg-panel);
   }
 
   &__panel-title {
-    margin: 0 0 16px;
+    margin: 0 0 12px;
     color: var(--st-color-text-primary);
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 500;
     line-height: 1.5;
   }
 
-  &__sync-method,
+  &__sync-method {
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid var(--st-color-border);
+    border-radius: 4px;
+    background: var(--st-color-bg-control);
+  }
+
   &__task-info {
     min-width: 0;
   }
@@ -55,25 +72,20 @@
   &__route {
     display: flex;
     align-items: center;
-    gap: 18px;
-    padding: 14px;
-    border: 1px solid var(--st-color-divider);
-    border-radius: 10px;
-    background: var(--st-color-bg-elevated);
+    gap: 12px;
   }
 
   &__route-node {
     display: flex;
     min-width: 0;
-    min-height: 48px;
+    min-height: 36px;
     flex: 1 1 0;
     align-items: center;
     gap: 10px;
-    padding: 8px 12px;
+    padding: 5px 12px;
     border: 1px solid var(--st-color-border);
-    border-radius: 8px;
-    background: var(--st-color-bg-control);
-    box-shadow: var(--st-panel-shadow);
+    border-radius: 12px;
+    background: var(--st-color-bg-panel);
 
     > span:first-child {
       flex: 0 0 auto;
@@ -110,7 +122,7 @@
   }
 
   &__field {
-    margin-bottom: 18px;
+    margin-bottom: 16px;
 
     &--last {
       margin-bottom: 0;
@@ -119,6 +131,15 @@
     .ant-form-item-label > label {
       color: var(--st-color-text-secondary) !important;
       font-size: 14px;
+    }
+
+    .ant-input:not(textarea) {
+      height: 36px;
+      border-radius: 12px;
+    }
+
+    textarea.ant-input {
+      border-radius: 12px;
     }
   }
 

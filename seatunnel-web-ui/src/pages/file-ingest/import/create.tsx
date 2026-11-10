@@ -393,7 +393,7 @@ const CreateOfflineImportPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveStep('base')}
-              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200 ${basePillClass}`}
+              className={`flex items-center gap-2 rounded-[4px] px-3 py-1.5 text-sm transition-all duration-200 ${basePillClass}`}
             >
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200 ${baseDotClass}`}>1</span>
               基础配置
@@ -427,36 +427,41 @@ const CreateOfflineImportPage: React.FC = () => {
         {activeStep === 'base' && (
           <Form form={form} layout="vertical" initialValues={{ name: '', description: '' }}>
             <section className="offline-import-create__panel offline-import-create__panel--base">
-              <div className="offline-import-create__sync-method">
-                <div className="offline-import-create__panel-title">数据同步方式</div>
-                <div className="offline-import-create__route">
-                  <div className="offline-import-create__route-node">
-                    <span>来源</span>
-                    <FileResourceGlyph />
-                    <strong>湖文件</strong>
+              {/* 基础信息沿用批量引接页的外层卡片、内层卡片和纵向分区结构。 */}
+              <div className="offline-import-create__base-content">
+                <div className="offline-import-create__base-card">
+                  <div className="offline-import-create__sync-method">
+                    <div className="offline-import-create__panel-title">数据同步方式</div>
+                    <div className="offline-import-create__route">
+                      <div className="offline-import-create__route-node">
+                        <span>来源</span>
+                        <FileResourceGlyph />
+                        <strong>湖文件</strong>
+                      </div>
+                      <IconRightArrow />
+                      <div className="offline-import-create__route-node">
+                        <span>去向</span>
+                        <DatabaseIcons dbType={targetDbType} width="22px" height="22px" />
+                        <strong>{targetLabel}</strong>
+                      </div>
+                    </div>
+                    <div className="offline-import-create__import-type">
+                      <span>导入类型</span>
+                      <strong>{OFFLINE_IMPORT_TYPE_LABELS[importType]}</strong>
+                      <span>从统一选择页选择</span>
+                    </div>
                   </div>
-                  <IconRightArrow />
-                  <div className="offline-import-create__route-node">
-                    <span>去向</span>
-                    <DatabaseIcons dbType={targetDbType} width="22px" height="22px" />
-                    <strong>{targetLabel}</strong>
-                  </div>
-                </div>
-                <div className="offline-import-create__import-type">
-                  <span>导入类型</span>
-                  <strong>{OFFLINE_IMPORT_TYPE_LABELS[importType]}</strong>
-                  <span>从统一选择页选择</span>
-                </div>
-              </div>
 
-              <div className="offline-import-create__task-info">
-                <div className="offline-import-create__panel-title">任务信息</div>
-                <Form.Item label="任务名称" name="name" rules={[{ required: true, message: '请输入任务名称' }]} className="offline-import-create__field">
-                  <Input placeholder={category === 'DMP' ? '例如：生产库 DMP 备份导入' : '例如：建库脚本导入'} maxLength={64} />
-                </Form.Item>
-                <Form.Item label="任务描述" name="description" className="offline-import-create__field offline-import-create__field--last">
-                  <Input.TextArea placeholder="描述导入范围、用途、注意事项等" rows={3} maxLength={256} />
-                </Form.Item>
+                  <div className="offline-import-create__task-info">
+                    <div className="offline-import-create__panel-title">任务信息</div>
+                    <Form.Item label="任务名称" name="name" rules={[{ required: true, message: '请输入任务名称' }]} className="offline-import-create__field">
+                      <Input placeholder={category === 'DMP' ? '例如：生产库 DMP 备份导入' : '例如：建库脚本导入'} maxLength={64} />
+                    </Form.Item>
+                    <Form.Item label="任务描述" name="description" className="offline-import-create__field offline-import-create__field--last">
+                      <Input.TextArea placeholder="描述导入范围、用途、注意事项等" rows={3} maxLength={256} />
+                    </Form.Item>
+                  </div>
+                </div>
               </div>
             </section>
           </Form>
