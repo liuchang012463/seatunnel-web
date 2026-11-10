@@ -1,7 +1,7 @@
 import { ArrowLeftOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
 import { history, useLocation } from '@umijs/max';
-import { Alert, App, Button, Collapse, Form, Input, Radio, Select, Space, Spin, Tooltip, Upload } from 'antd';
-import { Blocks, CheckCircle2, Save } from 'lucide-react';
+import { Alert, App, Button, Collapse, Form, Input, Popover, Radio, Select, Space, Spin, Tooltip, Upload } from 'antd';
+import { Blocks, Check, CheckCircle2, Eye, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   DATA_SOURCE_REGISTRY,
@@ -18,6 +18,7 @@ import PageHeader from '@/pages/batch-link-up/detail/components/PageHeader';
 import { STEP_THEME } from '@/pages/batch-link-up/detail/constants';
 import RightConfigPanel from '@/pages/batch-link-up/workflow/RightConfigPanel';
 import { getScheduleValidationMessage } from '@/pages/batch-link-up/workflow/components/ScheduleConfigContent/types';
+import CodeBlockWithCopy from '@/pages/batch-link-up/workflow/operator/CodeBlockWithCopy';
 import type { TabKey } from '@/pages/batch-link-up/workflow/types';
 import CommonClientLinkSection, { type ConnectivityStatus } from '@/pages/common/components/CommonClientLinkSection';
 import FileResourcePicker from '../FileResourcePicker';
@@ -113,6 +114,10 @@ const CreateOfflineImportPage: React.FC = () => {
   const [basicConfig, setBasicConfig] = useState<any>({ jobName: '', jobDesc: '', showClientId: false });
   const [scheduleConfig, setScheduleConfig] = useState<any>(DEFAULT_SCHEDULE_CONFIG);
   const [checkPassed, setCheckPassed] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewContent, setPreviewContent] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [targetType, setTargetType] = useState<any>(() => toTargetType(targetOption));
   const [clientId, setClientId] = useState<string>();
   const [targetDataSourceId, setTargetDataSourceId] = useState<string>();
@@ -339,11 +344,17 @@ const CreateOfflineImportPage: React.FC = () => {
             },
         scheduleConfig,
       }, { skipErrorHandler: true });
-      if (response?.code !== 0) throw new Error(response?.message || response?.msg || '创建任务失败');
-      message.success('任务创建成功，可在列表中执行导入');
-      history.push('/sync/file-ingest?tab=offline-import');
+      if (response?.code !== 0) throw new Error(response?.message || response?.msg || '保存配置失败');
+      const createdTaskId = response?.data?.id;
+      message.success('配置已保存');
+      if (createdTaskId) {
+        // 新任务首次保存后进入同一编辑配置页，后续修改统一走保存配置流程。
+        history.push(`/sync/file-ingest/import/config/${encodeURIComponent(String(createdTaskId))}`);
+      } else {
+        history.push('/sync/file-ingest?tab=offline-import');
+      }
     } catch (error: any) {
-      message.error(error?.message || '创建任务失败');
+      message.error(error?.message || '保存配置失败');
     } finally {
       setSubmitting(false);
     }
@@ -448,14 +459,65 @@ const CreateOfflineImportPage: React.FC = () => {
 
     return true;
   };
-  const checkConfiguration = async () => {
-    if (!validateConfiguration()) return;
+  const checkConfiguration = async (showSuccess = true): Promise<boolean> => {
+    setChecking(true);
     try {
+      if (!validateConfiguration()) return false;
       await form.validateFields();
       setCheckPassed(true);
-      message.success('配置校验通过');
+      if (showSuccess) message.success('配置校验通过');
+      return true;
     } catch {
       // 保留当前步骤，让表单项自身展示具体校验提示。
+      return false;
+    } finally {
+      setChecking(false);
+    }
+  };
+  const previewConfiguration = async () => {
+    if (!await checkConfiguration(false)) return;
+
+    const values = form.getFieldsValue(true);
+    const preview = {
+      task: {
+        name: String(basicConfig.jobName || form.getFieldValue('name') || '').trim(),
+        description: basicConfig.jobDesc || form.getFieldValue('description') || undefined,
+        importType: OFFLINE_IMPORT_TYPE_LABELS[importType],
+      },
+      source: {
+        type: '湖文件资源',
+        fileName: file?.name,
+        fileSize: file?.size,
+      },
+      target: {
+        dataSourceId: targetDataSourceId,
+        database: category === 'SQL' ? values.targetDatabase : undefined,
+        schema: values.targetSchema || undefined,
+      },
+      options: category === 'SQL'
+        ? {
+            sourceSchema: values.sourceSchema?.trim() || undefined,
+            encoding: values.encoding,
+            stopOnError: values.stopOnError,
+          }
+        : {
+            sourceSchema: values.sourceSchema?.trim() || undefined,
+            ...(importType === 'DAMENG_DMP' ? { ignoreErrors: values.ignoreErrors } : {}),
+          },
+      schedule: scheduleConfig,
+    };
+
+    setPreviewContent(JSON.stringify(preview, null, 2));
+    setPreviewOpen(true);
+  };
+  const handlePreview = async () => {
+    setPreviewLoading(true);
+    try {
+      await previewConfiguration();
+    } catch (error: any) {
+      message.error(error?.message || '预览失败');
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -606,18 +668,55 @@ const CreateOfflineImportPage: React.FC = () => {
                       <div className="generic-workflow-editor-page__toolbar flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-b from-white to-slate-50 px-[18px]">
                         <div className="text-[15px] font-semibold text-slate-800">任务配置</div>
                         <Space size={10}>
-                          <Button
-                            type="default"
-                            icon={<CheckCircle2 size={15} />}
-                            disabled={submitting || uploading}
-                            onClick={() => void checkConfiguration()}
-                            className="generic-workflow-editor-page__action-chip"
+                          <Tooltip title="检查导入文件和目标数据库配置">
+                            <span className="relative inline-flex">
+                              <Button
+                                type="default"
+                                icon={<CheckCircle2 size={15} />}
+                                loading={checking}
+                                disabled={submitting || uploading || previewLoading}
+                                onClick={() => void checkConfiguration()}
+                                className="generic-workflow-editor-page__action-chip"
+                              >
+                                校验
+                              </Button>
+                              {checkPassed && (
+                                <span className="absolute -right-1 -top-1 z-10 inline-flex h-4 w-4 items-center justify-center rounded-full border border-white bg-emerald-500 text-white shadow-sm">
+                                  <Check size={10} strokeWidth={3} />
+                                </span>
+                              )}
+                            </span>
+                          </Tooltip>
+                          <Popover
+                            open={previewOpen}
+                            placement="leftTop"
+                            trigger="click"
+                            classNames={{ root: 'st-hocon-popover' }}
+                            content={(
+                              <div className="w-[700px]">
+                                <CodeBlockWithCopy
+                                  content={previewContent}
+                                  height={560}
+                                  title="离线导入配置预览"
+                                  onClose={() => setPreviewOpen(false)}
+                                />
+                              </div>
+                            )}
                           >
-                            校验
-                          </Button>
-                          <Tooltip title={checkPassed ? '配置校验通过' : '创建后可在任务列表中手动启动'}>
-                            <span className={`inline-flex h-[34px] select-none items-center justify-center rounded-full border px-3 text-[14px] font-medium leading-none ${checkPassed ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
-                              {checkPassed ? '校验通过' : '待创建'}
+                            <Button
+                              type="default"
+                              icon={<Eye size={15} />}
+                              loading={previewLoading}
+                              disabled={submitting || checking || uploading}
+                              onClick={() => void handlePreview()}
+                              className="generic-workflow-editor-page__action-chip"
+                            >
+                              预览
+                            </Button>
+                          </Popover>
+                          <Tooltip title="保存配置后会进入任务配置页，导入仍需手动启动">
+                            <span className="inline-flex h-[34px] select-none items-center justify-center rounded-full border border-blue-200 bg-blue-50 px-3 text-[14px] font-medium leading-none text-blue-600">
+                              配置未保存
                             </span>
                           </Tooltip>
                           <Button
@@ -628,7 +727,7 @@ const CreateOfflineImportPage: React.FC = () => {
                             onClick={() => void submit()}
                             className="generic-workflow-editor-page__publish-button !inline-flex !h-[34px] !items-center !justify-center !rounded-full !border !border-[var(--st-color-primary)] !bg-[var(--st-color-primary)] !px-3.5 !text-[14px] !font-medium !text-white shadow-[0_6px_16px_rgba(33,135,168,0.2)] transition-all duration-200 hover:!border-[var(--st-color-accent)] hover:!bg-[var(--st-color-accent)] hover:!text-[var(--st-color-bg-primary)] disabled:!cursor-not-allowed"
                           >
-                            创建导入任务
+                            保存配置
                           </Button>
                         </Space>
                       </div>
