@@ -16,10 +16,16 @@ class DmpArchivePreflightTest {
                 "模式CODEX_DMP_SRC_274219 含有 1 个表", "codex_dmp_src_274219"));
         assertTrue(DmpArchivePreflight.damengSchemaEntry(
                 "Schema CODEX_DMP_SRC contains 1 table", "CODEX_DMP_SRC"));
+        assertTrue(DmpArchivePreflight.damengSchemaEntry(
+                "schema CODEX_DMP_SRC_274219  include 1 table", "CODEX_DMP_SRC_274219"));
+        assertTrue(DmpArchivePreflight.damengSchemaEntry(
+                "SCHEMA \"CODEX_DMP_SRC_274219\" INCLUDES 2 TABLES", "codex_dmp_src_274219"));
         assertFalse(DmpArchivePreflight.damengSchemaEntry(
                 "错误：模式 CODEX_DMP_SRC_274219 含有 1 个表", "CODEX_DMP_SRC_274219"));
         assertFalse(DmpArchivePreflight.damengSchemaEntry(
                 "TABLE CODEX_DMP_SRC", "CODEX_DMP_SRC"));
+        assertFalse(DmpArchivePreflight.damengSchemaEntry(
+                "schema CODEX_DMP_SOURCE_274219 include 1 table", "CODEX_DMP_SRC_274219"));
         assertFalse(DmpArchivePreflight.damengSchemaEntry(
                 "模式CODEX_DMP_SOURCE_274219 含有 1 个表", "CODEX_DMP_SRC_274219"));
         assertFalse(DmpArchivePreflight.damengSchemaEntry(

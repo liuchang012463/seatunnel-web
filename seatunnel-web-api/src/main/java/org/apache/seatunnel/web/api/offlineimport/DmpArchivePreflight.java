@@ -16,7 +16,7 @@ public final class DmpArchivePreflight {
     private static final Pattern DAMENG_SCHEMA_SUMMARY = Pattern.compile(
             "^模式\\s*(?:\"([^\"]+)\"|([\\p{L}\\p{N}_$#]+))\\s*含有\\s*\\d+\\s*个表\\s*$");
     private static final Pattern DAMENG_SCHEMA_SUMMARY_EN = Pattern.compile(
-            "^schema\\s+(?:\"([^\"]+)\"|([\\p{L}\\p{N}_$#]+))\\s+(?:contains|has)\\s+\\d+\\s+tables?\\s*$",
+            "^schema\\s+(?:\"([^\"]+)\"|([\\p{L}\\p{N}_$#]+))\\s+(?:contains|has|include|includes)\\s+\\d+\\s+tables?\\s*$",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
     private DmpArchivePreflight() {
@@ -25,7 +25,8 @@ public final class DmpArchivePreflight {
     /**
      * DIMP SHOW=Y emits a summary line for each schema in the archive. Match
      * only the complete, vendor-formatted summary so command echoes, errors,
-     * comments, and table names cannot satisfy the source filter.
+     * comments, and table names cannot satisfy the source filter. DIMP V8 emits
+     * the English form as "schema NAME include N table(s)".
      */
     public static boolean damengSchemaEntry(String line, String expectedSchema) {
         if (StringUtils.isBlank(line) || StringUtils.isBlank(expectedSchema)) {
