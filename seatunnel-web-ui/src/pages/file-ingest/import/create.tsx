@@ -314,6 +314,11 @@ const CreateOfflineImportPage: React.FC = () => {
   const submit = async () => {
     if (!validateConfiguration()) return;
 
+    // Rebind the validated state so TypeScript can narrow the API request values.
+    const selectedFile = file;
+    const selectedDataSourceId = targetDataSourceId;
+    if (!selectedFile || !selectedDataSourceId) return;
+
     let values: any;
     try {
       await form.validateFields();
@@ -328,8 +333,8 @@ const CreateOfflineImportPage: React.FC = () => {
         name: String(basicConfig.jobName || values.name || '').trim(),
         description: basicConfig.jobDesc ?? values.description,
         importType,
-        fileResourceId: file.id,
-        targetDatasourceId: targetDataSourceId,
+        fileResourceId: selectedFile.id,
+        targetDatasourceId: selectedDataSourceId,
         targetDatabase: category === 'SQL' ? values.targetDatabase : undefined,
         targetSchema: values.targetSchema || undefined,
         options: category === 'SQL'

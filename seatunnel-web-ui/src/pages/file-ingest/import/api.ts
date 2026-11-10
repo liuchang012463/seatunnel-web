@@ -98,7 +98,7 @@ export const offlineImportTaskApi = {
     ),
 
   create: (payload: OfflineImportTaskCreatePayload, options?: RequestOptions) =>
-    HttpUtils.post(OFFLINE_IMPORT_API_PREFIX, payload, options),
+    HttpUtils.post<Pick<OfflineImportTask, 'id'>>(OFFLINE_IMPORT_API_PREFIX, payload, options),
 
   update: (id: string | number, payload: OfflineImportTaskCreatePayload) =>
     HttpUtils.put(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}`, payload),
