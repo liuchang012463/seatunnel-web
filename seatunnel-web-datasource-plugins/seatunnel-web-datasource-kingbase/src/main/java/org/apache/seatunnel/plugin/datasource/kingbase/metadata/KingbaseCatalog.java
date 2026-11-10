@@ -40,6 +40,12 @@ public class KingbaseCatalog extends AbstractJdbcCatalog {
         this.schemaName = StringUtils.defaultIfBlank(param.getSchemaName(), "public");
     }
 
+    /** SeaTunnel's Kingbase catalog resolves table paths from SYS_TABLES, which excludes views. */
+    @Override
+    protected String[] getMetadataTableTypes(String databaseProductName) {
+        return new String[] {"TABLE"};
+    }
+
     @Override
     protected String applyLimit(String sql, int limit) {
         return sql + " LIMIT " + limit;

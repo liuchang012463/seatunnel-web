@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -32,7 +33,16 @@ import java.util.stream.Collectors;
  */
 public class GenericJdbcCatalog extends AbstractJdbcCatalog {
 
-    private static final String[] TABLE_TYPES = {"TABLE", "VIEW"};
+    /** SeaTunnel's JDBC catalogs for these dialects resolve only base table paths. */
+    private static final Set<String> TABLE_ONLY_DATABASE_PRODUCT_MARKERS = Set.of(
+            "kingbase", "oracle", "microsoft sql server", "sql server", "db2",
+            "sap hana", "dameng", "dm dbms", "yashan", "xugu");
+
+    /** Product names vary by JDBC driver, so use the same dialect URLs SeaTunnel recognizes too. */
+    private static final Set<String> TABLE_ONLY_JDBC_URL_PREFIXES = Set.of(
+            "jdbc:kingbase8:", "jdbc:kingbase:", "jdbc:oracle:", "jdbc:sqlserver:",
+            "jdbc:db2:", "jdbc:sap:", "jdbc:dm:", "jdbc:yasdb:", "jdbc:xugu:");
+
     private volatile String identifierQuote;
 
     public GenericJdbcCatalog(
@@ -42,15 +52,35 @@ public class GenericJdbcCatalog extends AbstractJdbcCatalog {
     }
 
     @Override
+    protected String[] getMetadataTableTypes(String databaseProductName) {
+        String normalizedProductName = StringUtils.defaultString(databaseProductName)
+                .toLowerCase(Locale.ROOT);
+        String jdbcUrl = StringUtils.defaultString(getParam().getUrl())
+                .trim()
+                .toLowerCase(Locale.ROOT);
+        boolean tableOnlyDialect = TABLE_ONLY_DATABASE_PRODUCT_MARKERS.stream()
+                .anyMatch(normalizedProductName::contains)
+                || TABLE_ONLY_JDBC_URL_PREFIXES.stream().anyMatch(jdbcUrl::startsWith);
+
+        // Keep the Web selector consistent with the Engine catalog's table-path lookup rules.
+        if (tableOnlyDialect) {
+            return new String[] {"TABLE"};
+        }
+        return super.getMetadataTableTypes(databaseProductName);
+    }
+
+    @Override
     public List<String> listTables() {
-        try (Connection connection = getConnection();
-             ResultSet resultSet = connection.getMetaData().getTables(
-                     catalogPattern(), schemaPattern(), "%", TABLE_TYPES)) {
-            List<String> tables = new ArrayList<>();
-            while (resultSet.next()) {
-                tables.add(toTablePath(resultSet));
+        try (Connection connection = getConnection()) {
+            DatabaseMetaData metadata = connection.getMetaData();
+            try (ResultSet resultSet = metadata.getTables(
+                    catalogPattern(), schemaPattern(), "%", resolveMetadataTableTypes(metadata))) {
+                List<String> tables = new ArrayList<>();
+                while (resultSet.next()) {
+                    tables.add(toTablePath(resultSet));
+                }
+                return tables;
             }
-            return tables;
         } catch (SQLException e) {
             throw new RuntimeException("Failed listing tables through JDBC metadata", e);
         }

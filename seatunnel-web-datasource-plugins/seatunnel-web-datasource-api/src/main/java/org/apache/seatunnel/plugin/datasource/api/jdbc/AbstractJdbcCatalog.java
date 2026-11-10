@@ -189,27 +189,57 @@ public abstract class AbstractJdbcCatalog implements HierarchicalJdbcCatalog {
 
     private List<OptionVO> queryMetadataTables(String catalog, String schema) {
         List<OptionVO> options = new ArrayList<>();
-        try (Connection connection = getConnection();
-                ResultSet resultSet = connection.getMetaData().getTables(
-                        catalog, schema, "%", new String[] {"TABLE", "VIEW"})) {
-            while (resultSet.next()) {
-                String table = resultSet.getString("TABLE_NAME");
-                if (StringUtils.isBlank(table)) {
-                    continue;
+        try (Connection connection = getConnection()) {
+            DatabaseMetaData metadata = connection.getMetaData();
+            try (ResultSet resultSet = metadata.getTables(
+                    catalog, schema, "%", resolveMetadataTableTypes(metadata))) {
+                while (resultSet.next()) {
+                    String table = resultSet.getString("TABLE_NAME");
+                    if (StringUtils.isBlank(table)) {
+                        continue;
+                    }
+                    String result = table;
+                    String resultSchema = resultSet.getString("TABLE_SCHEM");
+                    if (StringUtils.isBlank(schema) && StringUtils.isNotBlank(resultSchema)
+                            && (param == null
+                            || param.getDbType() != org.apache.seatunnel.web.spi.enums.DbType.MYSQL)) {
+                        result = resultSchema + "." + table;
+                    }
+                    addMetadataOption(options, result, resultSet.getString("REMARKS"));
                 }
-                String result = table;
-                String resultSchema = resultSet.getString("TABLE_SCHEM");
-                if (StringUtils.isBlank(schema) && StringUtils.isNotBlank(resultSchema)
-                        && (param == null
-                        || param.getDbType() != org.apache.seatunnel.web.spi.enums.DbType.MYSQL)) {
-                    result = resultSchema + "." + table;
-                }
-                addMetadataOption(options, result, resultSet.getString("REMARKS"));
             }
         } catch (SQLException error) {
             log.debug("JDBC driver does not expose table metadata", error);
         }
         return options;
+    }
+
+    /**
+     * Returns JDBC metadata object types the SeaTunnel catalog can resolve by table path.
+     * Catalogs that do not support view paths should override this to return only TABLE.
+     */
+    protected String[] getMetadataTableTypes(String databaseProductName) {
+        return new String[] {"TABLE", "VIEW"};
+    }
+
+    /**
+     * Resolves supported object types once for both the hierarchical list and generic JDBC list.
+     * A missing product name must not prevent otherwise valid JDBC metadata from being listed.
+     */
+    protected final String[] resolveMetadataTableTypes(DatabaseMetaData metadata) {
+        String databaseProductName = null;
+        try {
+            databaseProductName = metadata.getDatabaseProductName();
+        } catch (SQLException error) {
+            log.debug("JDBC driver does not expose database product name", error);
+        }
+
+        String[] tableTypes = getMetadataTableTypes(databaseProductName);
+        if (tableTypes.length == 1 && "TABLE".equalsIgnoreCase(tableTypes[0])) {
+            log.debug("Listing base tables only for datasource: dbType={}, databaseProduct={}",
+                    param == null ? null : param.getDbType(), databaseProductName);
+        }
+        return tableTypes;
     }
 
     private void addMetadataOption(List<OptionVO> options, String value, String description) {

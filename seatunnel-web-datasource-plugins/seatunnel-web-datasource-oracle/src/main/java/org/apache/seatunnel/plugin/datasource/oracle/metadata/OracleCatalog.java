@@ -36,6 +36,12 @@ public class OracleCatalog extends AbstractJdbcCatalog {
         super(param, connectionManager);
     }
 
+    /** SeaTunnel's Oracle catalog resolves table paths through ALL_TABLES, which excludes views. */
+    @Override
+    protected String[] getMetadataTableTypes(String databaseProductName) {
+        return new String[] {"TABLE"};
+    }
+
     @Override
     protected String quoteIdentifier(String identifier) {
         if (StringUtils.isBlank(identifier)) {
