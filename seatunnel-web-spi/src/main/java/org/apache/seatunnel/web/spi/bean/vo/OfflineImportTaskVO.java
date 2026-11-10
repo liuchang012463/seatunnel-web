@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportOptions;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackTaskConfig;
 
 import java.util.Date;
 import java.util.Map;
@@ -37,6 +38,8 @@ public class OfflineImportTaskVO {
     private String targetSchema;
 
     private OfflineImportOptions options;
+
+    private OfflineDatapackTaskConfig datapackConfig;
 
     private Map<String, Object> scheduleConfig;
 

@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils;
 import org.apache.seatunnel.web.api.offlineimport.DmpArchivePreflight;
+import org.apache.seatunnel.web.api.offlineimport.DatapackImportRunner;
+import org.apache.seatunnel.web.api.offlineimport.DatapackPackageInspector;
 import org.apache.seatunnel.web.api.offlineimport.DmpCommandBuilder;
 import org.apache.seatunnel.web.api.offlineimport.DmpProcessRunner;
 import org.apache.seatunnel.web.api.offlineimport.ExecutionLogBuffer;
@@ -35,12 +37,15 @@ import org.apache.seatunnel.web.dao.repository.FileResourceDao;
 import org.apache.seatunnel.web.dao.repository.OfflineImportTaskDao;
 import org.apache.seatunnel.web.dao.repository.OfflineImportTaskRunDao;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportOptions;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackTaskConfig;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.FileResourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskRunVO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackFormVO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackInspectVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
@@ -62,6 +67,7 @@ import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -77,6 +83,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -92,6 +99,8 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
     private static final int LOG_MAX_CHARS = 64 * 1024;
     private static final long PROGRESS_FLUSH_INTERVAL_MS = 3000;
+    /** One package at a time: encrypted bytes, plaintext and the retained JSON tree coexist in memory. */
+    private static final Semaphore DATAPACK_MEMORY_BUDGET = new Semaphore(1, true);
     @Resource
     private OfflineImportTaskDao offlineImportTaskDao;
 
@@ -129,6 +138,9 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
     @Resource
     private OfflineImportProperties offlineImportProperties;
+
+    @Resource
+    private DatapackPackageInspector datapackPackageInspector;
 
     private final ExecutorService defaultExecutor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "offline-import-task-worker");
@@ -212,6 +224,8 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         entity.setTargetDatabase(StringUtils.trimToNull(dto.getTargetDatabase()));
         entity.setTargetSchema(StringUtils.trimToNull(dto.getTargetSchema()));
         entity.setOptionsJson(JSONUtils.toJsonString(config.options()));
+        entity.setDatapackConfigJson(config.datapackConfig() == null
+                ? null : JSONUtils.toJsonString(config.datapackConfig()));
         entity.setScheduleConfigJson(dto.getScheduleConfig() == null
                 ? null
                 : JSONUtils.toJsonString(dto.getScheduleConfig()));
@@ -248,6 +262,8 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         update.setTargetDatabase(StringUtils.trimToNull(dto.getTargetDatabase()));
         update.setTargetSchema(StringUtils.trimToNull(dto.getTargetSchema()));
         update.setOptionsJson(JSONUtils.toJsonString(config.options()));
+        update.setDatapackConfigJson(config.datapackConfig() == null
+                ? null : JSONUtils.toJsonString(config.datapackConfig()));
         update.setScheduleConfigJson(dto.getScheduleConfig() == null
                 ? null
                 : JSONUtils.toJsonString(dto.getScheduleConfig()));
@@ -266,21 +282,22 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         if (importType == null) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "importType");
         }
-        FileResourceVO resource = fileResourceService.get(dto.getFileResourceId());
-        if (!"FILE".equalsIgnoreCase(resource.getResourceType())) {
+        FileResourceVO resourceView = fileResourceService.get(dto.getFileResourceId());
+        if (!"FILE".equalsIgnoreCase(resourceView.getResourceType())) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "只能选择文件资源");
         }
-        String fileName = StringUtils.defaultIfBlank(resource.getName(), "");
+        String fileName = StringUtils.defaultIfBlank(resourceView.getName(), "");
         if (!fileName.toLowerCase(Locale.ROOT).endsWith(importType.expectedExtension())) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
                     "文件 " + fileName + " 与导入类型不匹配，应为 " + importType.expectedExtension() + " 文件");
         }
-        long size = resource.getSize() == null ? 0L : resource.getSize();
+        long size = resourceView.getSize() == null ? 0L : resourceView.getSize();
         if (size <= 0) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "导入文件不能为空");
         }
-        long maxBytes = importType.isSql()
-                ? offlineImportProperties.getSqlMaxFileBytes()
+        long maxBytes = importType.isDatapack()
+                ? offlineImportProperties.getDatapackMaxFileBytes()
+                : importType.isSql() ? offlineImportProperties.getSqlMaxFileBytes()
                 : offlineImportProperties.getDmpMaxFileBytes();
         if (size > maxBytes) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
@@ -293,15 +310,15 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         if (target == null) {
             throw new ServiceException(Status.DATASOURCE_NOT_EXIST);
         }
-        if (target.getDbType() != importType.getTargetDbType()) {
+        if (!importType.isDatapack() && target.getDbType() != importType.getTargetDbType()) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
                     "目标数据源类型 " + target.getDbType() + " 与导入类型 " + importType.getCode() + " 不匹配");
         }
         String targetDatabase = StringUtils.trimToNull(dto.getTargetDatabase());
-        if (importType.isSql() && targetDatabase == null) {
+        if ((importType.isSql() || importType.isDatapack()) && targetDatabase == null) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "请选择目标数据库");
         }
-        if (importType.isSql()) {
+        if (importType.isSql() || importType.isDatapack()) {
             List<OptionVO> databases = dataSourceCatalogService.listDatabase(target.getId());
             boolean databaseExists = databases.stream()
                     .anyMatch(option -> targetDatabase.equals(option.getValue()));
@@ -310,9 +327,102 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                         "目标数据库不属于所选数据源: " + targetDatabase);
             }
         }
+        String targetSchema = StringUtils.trimToNull(dto.getTargetSchema());
+        if (importType.isDatapack() && targetSchema != null) {
+            boolean schemaExists = dataSourceCatalogService.listSchema(target.getId(), targetDatabase).stream()
+                    .anyMatch(option -> targetSchema.equals(option.getValue()));
+            if (!schemaExists) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                        "目标 Schema 不属于所选数据库");
+            }
+        }
+        OfflineDatapackTaskConfig datapackConfig = null;
+        if (importType.isDatapack()) {
+            datapackConfig = validateDatapackConfig(dto, target, targetDatabase);
+        }
         dataSourceUsageValidator.validate(target.getId(),
                 org.apache.seatunnel.web.common.enums.DataSourceUsage.SINK);
-        return new ValidatedImportConfig(importType, fileName, options, target);
+        return new ValidatedImportConfig(importType, fileName, options, target, datapackConfig);
+    }
+
+    private OfflineDatapackTaskConfig validateDatapackConfig(
+            OfflineImportTaskCreateDTO dto, DataSource target, String targetDatabase) {
+        OfflineDatapackTaskConfig config = dto.getDatapackConfig();
+        char[] password = dto.getDatapackPassword();
+        byte[] encrypted = null;
+        boolean memoryBudgetAcquired = false;
+        try {
+            if (config == null || StringUtils.isBlank(config.getPackageFingerprint())
+                    || !config.getPackageFingerprint().matches("(?i)[0-9a-f]{64}")
+                    || StringUtils.isBlank(config.getFormCode())
+                    || StringUtils.isBlank(config.getTargetTable())
+                    || config.getFormCode().length() > 128 || config.getTargetTable().length() > 256
+                    || config.getMappings() == null || config.getMappings().isEmpty()
+                    || config.getMappings().size() > 512
+                    || config.getMappings().stream().anyMatch(mapping -> mapping == null
+                            || StringUtils.isBlank(mapping.getSourceField())
+                            || StringUtils.isBlank(mapping.getTargetField())
+                            || mapping.getSourceField().length() > 128
+                            || mapping.getTargetField().length() > 128)) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "数据包表单和字段映射不能为空");
+            }
+            int configBytes = JSONUtils.toJsonString(config).getBytes(StandardCharsets.UTF_8).length;
+            if (configBytes > offlineImportProperties.getDatapackTaskConfigMaxBytes()) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                        "数据包字段映射配置超过 UTF-8 字节上限");
+            }
+            if (password == null || password.length == 0) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "请重新输入数据包密码以保存配置");
+            }
+            if (!tryAcquireDatapackMemoryBudget("configuration validation")) {
+                throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR,
+                        "当前已有数据包正在校验或导入，请稍后重试");
+            }
+            memoryBudgetAcquired = true;
+            FileResource resource = requireWorkerResource(dto.getFileResourceId(), currentUserProvider.getCurrentUserId());
+            encrypted = readDatapackResource(resource);
+            DatapackPackageInspector.Inspection inspection = datapackPackageInspector.inspect(encrypted, password);
+            if (!inspection.fingerprint().equalsIgnoreCase(config.getPackageFingerprint())) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                        "数据包内容已变化，请重新检查并配置");
+            }
+
+            BaseConnectionParam connectionParam = targetConnectionParam(target, targetDatabase);
+            try (Connection connection = DataSourceUtils.getDatasourceProcessor(target.getDbType())
+                    .getConnectionManager().getConnection(connectionParam)) {
+                DatapackImportRunner.validateTarget(
+                        connection, StringUtils.trimToNull(dto.getTargetSchema()), config, inspection);
+            } catch (ServiceException exception) {
+                throw exception;
+            } catch (IllegalArgumentException exception) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, exception.getMessage());
+            } catch (Exception exception) {
+                throw new ServiceException(Status.DATASOURCE_METADATA_ERROR,
+                        "无法校验目标表和字段映射，请检查目标数据源连接");
+            }
+            return config;
+        } finally {
+            if (memoryBudgetAcquired) {
+                DATAPACK_MEMORY_BUDGET.release();
+            }
+            if (password != null) {
+                Arrays.fill(password, '\0');
+            }
+            if (encrypted != null) {
+                Arrays.fill(encrypted, (byte) 0);
+            }
+        }
+    }
+
+    private BaseConnectionParam targetConnectionParam(DataSource target, String targetDatabase) {
+        Map<String, Object> connectionParams = JSONUtils.parseObject(
+                target.getConnectionParams(), new TypeReference<Map<String, Object>>() {});
+        if (connectionParams == null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "目标数据源连接参数无效");
+        }
+        connectionParams.put("database", targetDatabase);
+        return (BaseConnectionParam) DataSourceUtils.buildConnectionParams(
+                target.getDbType(), JSONUtils.toJsonString(connectionParams));
     }
 
     private OfflineImportOptions defaultOptions(OfflineImportOptions raw) {
@@ -368,6 +478,55 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
     }
 
     @Override
+    public OfflineDatapackInspectVO inspectDatapack(Long fileResourceId, char[] password) {
+        byte[] encrypted = null;
+        boolean memoryBudgetAcquired = false;
+        try {
+            FileResourceVO resourceView = fileResourceService.get(fileResourceId);
+            if (!"FILE".equalsIgnoreCase(resourceView.getResourceType())
+                    || !StringUtils.defaultString(resourceView.getName()).toLowerCase(Locale.ROOT).endsWith(".datapack")) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                        "请选择 .datapack 文件资源");
+            }
+            FileResource resource = requireWorkerResource(fileResourceId, currentUserProvider.getCurrentUserId());
+            long size = resource.getSize() == null ? 0L : resource.getSize();
+            if (size <= 0 || size > offlineImportProperties.getDatapackMaxFileBytes()) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                        "数据包为空或超过大小上限");
+            }
+            if (!tryAcquireDatapackMemoryBudget("inspection")) {
+                throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR,
+                        "当前已有数据包正在校验或导入，请稍后重试");
+            }
+            memoryBudgetAcquired = true;
+            encrypted = readDatapackResource(resource);
+            DatapackPackageInspector.Inspection inspection = datapackPackageInspector.inspect(encrypted, password);
+            OfflineDatapackInspectVO result = new OfflineDatapackInspectVO();
+            result.setPackageFingerprint(inspection.fingerprint());
+            result.setPackageId(inspection.packageId());
+            result.setPackageType(inspection.packageType());
+            result.setRecordCount(inspection.recordCount());
+            result.setForms(inspection.forms().stream()
+                    .map(form -> new OfflineDatapackFormVO(form.formCode(), form.recordCount(), form.fields()))
+                    .toList());
+            log.info("Inspected offline datapack resourceId={}, ownerId={}, type={}, records={}, forms={}",
+                    fileResourceId, currentUserProvider.getCurrentUserId(),
+                    inspection.packageType(), inspection.recordCount(), inspection.forms().size());
+            return result;
+        } finally {
+            if (memoryBudgetAcquired) {
+                DATAPACK_MEMORY_BUDGET.release();
+            }
+            if (password != null) {
+                Arrays.fill(password, '\0');
+            }
+            if (encrypted != null) {
+                Arrays.fill(encrypted, (byte) 0);
+            }
+        }
+    }
+
+    @Override
     public List<OfflineImportTaskRunVO> history(Long id) {
         OfflineImportTask task = requireTask(id);
         List<OfflineImportTaskRun> runs = offlineImportTaskRunDao.queryByTaskId(
@@ -406,32 +565,62 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
     @Override
     public void execute(Long id) {
-        OfflineImportTask task = requireTask(id);
-        if (!"ONLINE".equals(task.getReleaseState())) {
-            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "请先上线任务，再启动导入");
-        }
-        Integer ownerId = task.getCreateUserId();
-        if (!offlineImportTaskDao.markQueuedIfExecutable(id, ownerId, new java.util.Date())) {
-            throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务状态已变化，请刷新后再启动");
-        }
-        activeTaskIds.add(id);
+        execute(id, null);
+    }
+
+    @Override
+    public void execute(Long id, char[] password) {
+        char[] workerPassword = null;
+        Integer ownerId = null;
+        boolean queued = false;
         try {
+            OfflineImportTask task = requireTask(id);
+            OfflineImportType importType = OfflineImportType.of(task.getImportType());
+            if (importType != null && importType.isDatapack()) {
+                if (password == null || password.length == 0) {
+                    throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "执行数据包导入时需要输入数据包密码");
+                }
+                workerPassword = password.clone();
+            }
+            if (!"ONLINE".equals(task.getReleaseState())) {
+                throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "请先上线任务，再启动导入");
+            }
+            ownerId = task.getCreateUserId();
+            if (!offlineImportTaskDao.markQueuedIfExecutable(id, ownerId, new java.util.Date())) {
+                throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务状态已变化，请刷新后再启动");
+            }
+            queued = true;
+            activeTaskIds.add(id);
+            final Integer taskOwnerId = ownerId;
+            final char[] transientPassword = workerPassword;
             executor.execute(() -> {
                 try {
-                    runTask(id, ownerId);
+                    runTask(id, taskOwnerId, transientPassword);
                 } catch (Throwable t) {
-                    log.error("Offline import task {} crashed", id, t);
-                    markTerminated(id, null, STATUS_FAILED,
-                            "任务执行异常: " + StringUtils.defaultIfBlank(t.getMessage(), t.getClass().getSimpleName()), null);
+                    log.error("Offline import task {} crashed ({})", id, t.getClass().getSimpleName());
+                    markTerminated(id, null, STATUS_FAILED, "任务执行异常", null);
                 } finally {
+                    if (transientPassword != null) {
+                        Arrays.fill(transientPassword, '\0');
+                    }
                     activeTaskIds.remove(id);
                 }
             });
+            workerPassword = null;
         } catch (RejectedExecutionException e) {
             activeTaskIds.remove(id);
-            offlineImportTaskDao.failQueued(
-                    id, ownerId, "任务执行器当前不可用，请稍后重试", new java.util.Date());
+            if (queued) {
+                offlineImportTaskDao.failQueued(
+                        id, ownerId, "任务执行器当前不可用，请稍后重试", new java.util.Date());
+            }
             throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR, "任务执行器当前不可用，请稍后重试");
+        } finally {
+            if (password != null) {
+                Arrays.fill(password, '\0');
+            }
+            if (workerPassword != null) {
+                Arrays.fill(workerPassword, '\0');
+            }
         }
     }
 
@@ -472,7 +661,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         return task;
     }
 
-    private void runTask(Long id, Integer ownerId) {
+    private void runTask(Long id, Integer ownerId, char[] password) {
         // QUEUED → RUNNING marks the real start; a task deleted while queued stays deleted.
         if (!offlineImportTaskDao.markRunningFromQueued(id, ownerId, new java.util.Date())) {
             log.info("Offline import task {} is no longer queued, skip run", id);
@@ -508,10 +697,12 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             if (importType == null || dataSource == null) {
                 throw new IllegalStateException(importType == null ? "导入类型无效" : "目标数据源不存在");
             }
-            if (dataSource.getDbType() != importType.getTargetDbType()) {
+            if (!importType.isDatapack() && dataSource.getDbType() != importType.getTargetDbType()) {
                 throw new IllegalStateException("任务目标数据源类型已变更，与导入类型不匹配");
             }
-            String failure = importType.isSql()
+            String failure = importType.isDatapack()
+                    ? runDatapackImport(task, dataSource, password, executionLog)
+                    : importType.isSql()
                     ? runSqlImport(task, importType, dataSource, options, executionLog)
                     : runDmpImport(task, importType, dataSource, options, executionLog);
             boolean success = failure == null;
@@ -523,7 +714,9 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             // exception messages. Keep their raw messages out of application
             // logs; DMP failures expose only a generic exception type.
             log.error("Offline import task {} failed ({})", id, e.getClass().getSimpleName());
-            String details = importType != null && !importType.isSql()
+            String details = importType != null && importType.isDatapack()
+                    ? "数据包密码错误、包内容变化或目标表写入失败"
+                    : importType != null && !importType.isSql()
                     ? e.getClass().getSimpleName()
                     : StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName());
             String failure = executionLog.redact("任务执行异常: " + details);
@@ -534,6 +727,62 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             markTerminated(id, runId, STATUS_FAILED,
                     "任务执行异常: " + error.getClass().getSimpleName(), executionLog.snapshot());
             throw error;
+        } finally {
+            if (password != null) {
+                Arrays.fill(password, '\0');
+            }
+        }
+    }
+
+    private String runDatapackImport(
+            OfflineImportTask task,
+            DataSource dataSource,
+            char[] password,
+            ExecutionLogBuffer executionLog) throws Exception {
+        FileResource resource = requireWorkerResource(task.getFileResourceId(), task.getCreateUserId());
+        long size = resource.getSize() == null ? 0L : resource.getSize();
+        if (size <= 0 || size > offlineImportProperties.getDatapackMaxFileBytes()) {
+            return "数据包为空或超过大小上限";
+        }
+        if (StringUtils.isBlank(task.getDatapackConfigJson())) {
+            return "数据包字段映射配置缺失";
+        }
+        if (!tryAcquireDatapackMemoryBudget("task execution")) {
+            return "当前已有数据包正在校验或导入，请稍后重试";
+        }
+        byte[] encrypted = null;
+        try {
+            encrypted = readDatapackResource(resource);
+            DatapackPackageInspector.Inspection inspection = datapackPackageInspector.inspect(encrypted, password);
+            OfflineDatapackTaskConfig config = JSONUtils.parseObject(
+                    task.getDatapackConfigJson(), OfflineDatapackTaskConfig.class);
+            if (config == null || !inspection.fingerprint().equalsIgnoreCase(config.getPackageFingerprint())) {
+                return "数据包内容已变化，请重新检查并保存配置";
+            }
+            DatapackPackageInspector.FormSummary selectedForm = inspection.forms().stream()
+                    .filter(form -> form.formCode().equals(config.getFormCode()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("所选表单不属于当前数据包"));
+            int total = selectedForm.recordCount();
+            executionLog.line("加密数据包验证通过，类型 " + inspection.packageType()
+                    + "，所选表单 " + config.getFormCode() + "，记录 " + total + " 条");
+            updateProgress(task.getId(), total, 0, 0);
+
+            BaseConnectionParam connectionParam = targetConnectionParam(dataSource, task.getTargetDatabase());
+            registerConnectionSecrets(executionLog, connectionParam.getPassword());
+            try (Connection connection = DataSourceUtils.getDatasourceProcessor(dataSource.getDbType())
+                    .getConnectionManager().getConnection(connectionParam)) {
+                int inserted = DatapackImportRunner.run(connection, task.getTargetSchema(), config, inspection,
+                        executed -> updateProgress(task.getId(), total, executed, 0));
+                updateProgress(task.getId(), total, inserted, 0);
+                executionLog.line("已追加写入 " + inserted + " 条记录；未创建或覆盖目标表");
+            }
+            return null;
+        } finally {
+            if (encrypted != null) {
+                Arrays.fill(encrypted, (byte) 0);
+            }
+            DATAPACK_MEMORY_BUDGET.release();
         }
     }
 
@@ -910,6 +1159,27 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         }
     }
 
+    private boolean tryAcquireDatapackMemoryBudget(String operation) {
+        if (DATAPACK_MEMORY_BUDGET.tryAcquire()) {
+            return true;
+        }
+        log.warn("Rejected datapack {} because the single-package memory budget is occupied", operation);
+        return false;
+    }
+
+    private byte[] readDatapackResource(FileResource resource) {
+        try {
+            LimitedByteArrayOutputStream output = new LimitedByteArrayOutputStream(
+                    offlineImportProperties.getDatapackMaxFileBytes());
+            storageProvider.download(resource.getObjectKey(), output);
+            return output.toByteArray();
+        } catch (FileTooLargeException e) {
+            throw new IllegalStateException("数据包实际内容超过大小上限");
+        } catch (IOException e) {
+            throw new IllegalStateException("读取数据包资源失败");
+        }
+    }
+
     private static final class FileTooLargeException extends IOException {
         private static final long serialVersionUID = 1L;
     }
@@ -992,6 +1262,9 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         vo.setOptions(StringUtils.isBlank(entity.getOptionsJson())
                 ? null
                 : JSONUtils.parseObject(entity.getOptionsJson(), OfflineImportOptions.class));
+        vo.setDatapackConfig(StringUtils.isBlank(entity.getDatapackConfigJson())
+                ? null
+                : JSONUtils.parseObject(entity.getDatapackConfigJson(), OfflineDatapackTaskConfig.class));
         vo.setScheduleConfig(StringUtils.isBlank(entity.getScheduleConfigJson())
                 ? null
                 : JSONUtils.parseObject(entity.getScheduleConfigJson(), new TypeReference<Map<String, Object>>() {}));
@@ -1025,6 +1298,10 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
     }
 
     private record ValidatedImportConfig(
-            OfflineImportType importType, String fileName, OfflineImportOptions options, DataSource target) {
+            OfflineImportType importType,
+            String fileName,
+            OfflineImportOptions options,
+            DataSource target,
+            OfflineDatapackTaskConfig datapackConfig) {
     }
 }

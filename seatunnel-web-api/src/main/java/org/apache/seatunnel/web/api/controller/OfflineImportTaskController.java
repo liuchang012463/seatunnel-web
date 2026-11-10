@@ -7,10 +7,13 @@ import jakarta.validation.Valid;
 import org.apache.seatunnel.web.api.service.OfflineImportTaskService;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackInspectDTO;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineImportExecuteDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskRunVO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackInspectVO;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -84,10 +87,18 @@ public class OfflineImportTaskController {
         return Result.buildSuc(true);
     }
 
+    @PostMapping("/datapack/inspect")
+    @Operation(summary = "inspectOfflineDatapack", description = "验证加密离线数据包并读取表单字段清单")
+    public Result<OfflineDatapackInspectVO> inspectDatapack(@Valid @RequestBody OfflineDatapackInspectDTO dto) {
+        return Result.buildSuc(offlineImportTaskService.inspectDatapack(dto.getFileResourceId(), dto.getPassword()));
+    }
+
     @PostMapping("/{id}/execute")
     @Operation(summary = "executeOfflineImportTask", description = "执行 DMP/SQL 离线导入任务")
-    public Result<Boolean> execute(@PathVariable("id") Long id) {
-        offlineImportTaskService.execute(id);
+    public Result<Boolean> execute(
+            @PathVariable("id") Long id,
+            @RequestBody(required = false) OfflineImportExecuteDTO dto) {
+        offlineImportTaskService.execute(id, dto == null ? null : dto.getPassword());
         return Result.buildSuc(true);
     }
 }

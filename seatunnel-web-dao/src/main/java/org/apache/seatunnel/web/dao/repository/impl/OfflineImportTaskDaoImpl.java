@@ -92,6 +92,7 @@ public class OfflineImportTaskDaoImpl extends BaseDao<OfflineImportTask, Offline
                 .set(OfflineImportTask::getTargetDatasourceId, config.getTargetDatasourceId())
                 .set(OfflineImportTask::getTargetSchema, config.getTargetSchema())
                 .set(OfflineImportTask::getOptionsJson, config.getOptionsJson())
+                .set(OfflineImportTask::getDatapackConfigJson, config.getDatapackConfigJson())
                 .set(OfflineImportTask::getUpdateTime, updateTime);
         // Older clients omit editor settings; leave previously saved settings intact.
         if (config.getScheduleConfigJson() != null) {

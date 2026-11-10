@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.service;
 
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackInspectVO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
@@ -27,4 +28,9 @@ public interface OfflineImportTaskService {
 
     /** Queues the task; the background worker claims it as RUNNING. */
     void execute(Long id);
+
+    /** Queues one run and passes the one-time package password only to its worker. */
+    void execute(Long id, char[] password);
+
+    OfflineDatapackInspectVO inspectDatapack(Long fileResourceId, char[] password);
 }

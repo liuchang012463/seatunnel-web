@@ -31,12 +31,14 @@ import {
   offlineImportTargetDbType,
   offlineImportTaskApi,
   type OfflineImportCategory,
+  type OfflineDatapackInspect,
   type OfflineImportTypeCode,
 } from './api';
 
 const IMPORT_TYPE_OPTIONS: Record<OfflineImportCategory, OfflineImportTypeCode[]> = {
   DMP: ['KINGBASE_DMP', 'DAMENG_DMP'],
   SQL: ['KINGBASE_SQL', 'DAMENG_SQL'],
+  DATAPACK: ['DATAPACK'],
 };
 
 const ENCODING_OPTIONS = [
@@ -98,15 +100,29 @@ const CreateOfflineImportPage: React.FC = () => {
   const location = useLocation();
   const [form] = Form.useForm();
   const searchParams = new URLSearchParams(location.search);
-  const category: OfflineImportCategory = searchParams.get('type')?.toUpperCase() === 'SQL' ? 'SQL' : 'DMP';
+  const requestedCategory = searchParams.get('type')?.toUpperCase();
+  const category: OfflineImportCategory = requestedCategory === 'SQL'
+    ? 'SQL'
+    : requestedCategory === 'DATAPACK' ? 'DATAPACK' : 'DMP';
+  const isDatapack = category === 'DATAPACK';
   const availableTypes = IMPORT_TYPE_OPTIONS[category];
   const requestedImportType = searchParams.get('importType')?.toUpperCase();
   const importType = (availableTypes.includes(requestedImportType as OfflineImportTypeCode)
     ? requestedImportType
     : availableTypes[0]) as OfflineImportTypeCode;
-  const accept = category === 'DMP' ? '.dmp' : '.sql';
-  const targetDbType = offlineImportTargetDbType(importType);
+  const accept = isDatapack ? '.datapack' : category === 'DMP' ? '.dmp' : '.sql';
+  const defaultTargetDbType = isDatapack ? 'MYSQL' : offlineImportTargetDbType(importType);
+  const [targetType, setTargetType] = useState<any>(() => toTargetType(getTargetOption(defaultTargetDbType)));
+  const targetDbType = isDatapack
+    ? String(targetType?.dbType || defaultTargetDbType)
+    : offlineImportTargetDbType(importType);
   const targetOption = useMemo(() => getTargetOption(targetDbType), [targetDbType]);
+  const targetTypeChoices = useMemo(() => {
+    if (!isDatapack) return [{ value: targetOption.value, label: targetOption.rawLabel || targetOption.value }];
+    return generateDataSourceOptions()
+      .filter((option) => supportsDatabaseScope(option.value))
+      .map((option) => ({ value: option.value, label: option.rawLabel || option.value }));
+  }, [isDatapack, targetOption]);
 
   const [activeStep, setActiveStep] = useState<CreateStep>('base');
   const [configNode, setConfigNode] = useState<OfflineImportConfigNode | null>(null);
@@ -118,7 +134,6 @@ const CreateOfflineImportPage: React.FC = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [targetType, setTargetType] = useState<any>(() => toTargetType(targetOption));
   const [clientId, setClientId] = useState<string>();
   const [targetDataSourceId, setTargetDataSourceId] = useState<string>();
   const [databaseOptions, setDatabaseOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -128,10 +143,19 @@ const CreateOfflineImportPage: React.FC = () => {
   const [sourceTestStatus, setSourceTestStatus] = useState<ConnectivityStatus>('idle');
   const [targetTestStatus, setTargetTestStatus] = useState<ConnectivityStatus>('idle');
   const [file, setFile] = useState<FileResource | null>(null);
+  const [packagePassword, setPackagePassword] = useState('');
+  const [packageInspection, setPackageInspection] = useState<OfflineDatapackInspect>();
+  const [inspectingPackage, setInspectingPackage] = useState(false);
+  const [targetTableOptions, setTargetTableOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [targetColumnOptions, setTargetColumnOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [fieldMappings, setFieldMappings] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const targetDatabase = Form.useWatch('targetDatabase', { form, preserve: true });
+  const targetSchema = Form.useWatch('targetSchema', { form, preserve: true });
+  const targetTable = Form.useWatch('datapackTable', { form, preserve: true });
+  const selectedFormCode = Form.useWatch('formCode', { form, preserve: true });
 
   // 基础页和工作台使用同一份名称、描述，避免两步之间出现旧值。
   useEffect(() => {
@@ -148,14 +172,17 @@ const CreateOfflineImportPage: React.FC = () => {
 
   useEffect(() => {
     // 更换目标连接后，清空旧连接下的目录选择，避免数据库与 Schema 错配。
-    form.setFieldsValue({ targetDatabase: undefined, targetSchema: undefined });
+    form.setFieldsValue({ targetDatabase: undefined, targetSchema: undefined, datapackTable: undefined });
     setDatabaseOptions([]);
     setSchemaOptions([]);
+    setTargetTableOptions([]);
+    setTargetColumnOptions([]);
+    setFieldMappings({});
     setCheckPassed(false);
   }, [form, targetDataSourceId]);
 
   useEffect(() => {
-    if (category !== 'SQL' || !targetDataSourceId || !supportsDatabaseScope(targetDbType)) {
+    if ((category !== 'SQL' && !isDatapack) || !targetDataSourceId || !supportsDatabaseScope(targetDbType)) {
       setDatabaseOptions([]);
       setSchemaOptions([]);
       return;
@@ -183,10 +210,10 @@ const CreateOfflineImportPage: React.FC = () => {
     };
     void loadDatabases();
     return () => { active = false; };
-  }, [category, message, targetDataSourceId, targetDbType]);
+  }, [category, isDatapack, message, targetDataSourceId, targetDbType]);
 
   useEffect(() => {
-    if (category !== 'SQL' || !targetDataSourceId || !targetDatabase || !supportsSchemaScope(targetDbType)) {
+    if ((category !== 'SQL' && !isDatapack) || !targetDataSourceId || !targetDatabase || !supportsSchemaScope(targetDbType)) {
       setSchemaOptions([]);
       return;
     }
@@ -216,21 +243,88 @@ const CreateOfflineImportPage: React.FC = () => {
     };
     void loadSchemas();
     return () => { active = false; };
-  }, [category, message, targetDataSourceId, targetDatabase, targetDbType]);
+  }, [category, isDatapack, message, targetDataSourceId, targetDatabase, targetDbType]);
+
+  useEffect(() => {
+    if (!isDatapack || !targetDataSourceId || !targetDatabase) {
+      setTargetTableOptions([]);
+      setTargetColumnOptions([]);
+      return;
+    }
+    let active = true;
+    const loadTables = async () => {
+      try {
+        const response = await dataSourceCatalogApi.listTablesByDatabase(
+          String(targetDataSourceId), String(targetDatabase), targetSchema ? String(targetSchema) : undefined,
+        );
+        if (response?.code !== 0) throw new Error(response?.message || '获取目标表列表失败');
+        const options = (Array.isArray(response.data) ? response.data : []).map((item: any) => ({
+          value: String(item?.value ?? item?.label ?? ''),
+          label: String(item?.label ?? item?.value ?? ''),
+        })).filter((item) => item.value);
+        if (active) setTargetTableOptions(options);
+      } catch (error: any) {
+        if (active) {
+          setTargetTableOptions([]);
+          message.error(error?.message || '获取目标表列表失败');
+        }
+      }
+    };
+    void loadTables();
+    return () => { active = false; };
+  }, [isDatapack, message, targetDataSourceId, targetDatabase, targetSchema]);
+
+  useEffect(() => {
+    if (!isDatapack || !targetDataSourceId || !targetTable) {
+      setTargetColumnOptions([]);
+      setFieldMappings({});
+      return;
+    }
+    let active = true;
+    const loadColumns = async () => {
+      try {
+        const response = await dataSourceCatalogApi.listColumn(String(targetDataSourceId), {
+          taskExecuteType: 'SINGLE_TABLE',
+          read_mode: 'table',
+          table_path: String(targetTable),
+          ...(targetDatabase ? { database: String(targetDatabase) } : {}),
+          ...(targetSchema ? { schema_name: String(targetSchema) } : {}),
+          query: '',
+        });
+        if (response?.code !== 0) throw new Error(response?.message || '获取目标字段列表失败');
+        const options = (Array.isArray(response.data) ? response.data : []).map((item: any) => {
+          const name = String(item?.fieldName ?? '');
+          const type = String(item?.fieldType ?? '');
+          return { value: name, label: type ? `${name}（${type}）` : name };
+        }).filter((item) => item.value);
+        if (!active) return;
+        setTargetColumnOptions(options);
+        const formFields = packageInspection?.forms.find((item) => item.formCode === selectedFormCode)?.fields || [];
+        const automatic: Record<string, string> = {};
+        formFields.forEach((sourceField) => {
+          const match = options.find((column) => column.value.toLowerCase() === sourceField.toLowerCase());
+          if (match) automatic[sourceField] = match.value;
+        });
+        setFieldMappings(automatic);
+      } catch (error: any) {
+        if (active) {
+          setTargetColumnOptions([]);
+          setFieldMappings({});
+          message.error(error?.message || '获取目标字段列表失败');
+        }
+      }
+    };
+    void loadColumns();
+    return () => { active = false; };
+  }, [isDatapack, message, packageInspection, selectedFormCode, targetDataSourceId, targetDatabase, targetSchema, targetTable]);
 
   const handleSourceChange = (value: string, _option: any) => {
     if (value !== FILE_RESOURCE_SOURCE.dbType) return;
     setSourceTestStatus('idle');
   };
 
-  const handleTargetChange = (value: string, option: any) => {
-    setTargetType({
-      dbType: value,
-      connectorType: option?.connectorType,
-      pluginName: option?.pluginName,
-      rawLabel: option?.rawLabel,
-      label: option?.label,
-    });
+  const handleTargetChange = (value: string, _option: any) => {
+    setTargetType(toTargetType(getTargetOption(value)));
     setTargetDataSourceId(undefined);
     setTargetTestStatus('idle');
     setCheckPassed(false);
@@ -278,6 +372,45 @@ const CreateOfflineImportPage: React.FC = () => {
     setActiveStep('config');
   };
 
+  const resetPackageInspection = () => {
+    setPackagePassword('');
+    setPackageInspection(undefined);
+    setTargetColumnOptions([]);
+    setFieldMappings({});
+    form.setFieldsValue({ formCode: undefined, datapackTable: undefined });
+  };
+
+  const inspectPackage = async () => {
+    if (!file || !packagePassword) {
+      message.warning('请选择数据包并输入数据包密码');
+      return;
+    }
+    setInspectingPackage(true);
+    try {
+      const response = await offlineImportTaskApi.inspectDatapack(file.id, packagePassword, {
+        skipErrorHandler: true,
+      });
+      if (response?.code !== 0 || !response?.data) {
+        throw new Error(response?.message || response?.msg || '数据包验证失败');
+      }
+      const inspection = response.data as OfflineDatapackInspect;
+      setPackageInspection(inspection);
+      setFieldMappings({});
+      form.setFieldsValue({
+        formCode: inspection.forms.length === 1 ? inspection.forms[0].formCode : undefined,
+        datapackTable: undefined,
+      });
+      setCheckPassed(false);
+      message.success(`已读取 ${inspection.forms.length} 个表单，共 ${inspection.recordCount} 条记录`);
+    } catch (error: any) {
+      setPackageInspection(undefined);
+      setFieldMappings({});
+      message.error(error?.message || '数据包验证失败');
+    } finally {
+      setInspectingPackage(false);
+    }
+  };
+
   const uploadRequest = async (options: any) => {
     const { file: rawFile, onSuccess, onError } = options;
     setUploading(true);
@@ -293,6 +426,7 @@ const CreateOfflineImportPage: React.FC = () => {
         size: Number(uploaded.size ?? (rawFile as File).size ?? 0),
         kind: 'FILE',
       });
+      if (isDatapack) resetPackageInspection();
       setCheckPassed(false);
       onSuccess?.(uploaded);
     } catch (error: any) {
@@ -329,13 +463,16 @@ const CreateOfflineImportPage: React.FC = () => {
 
     setSubmitting(true);
     try {
+      const mappings = Object.entries(fieldMappings)
+        .filter(([, targetField]) => Boolean(targetField))
+        .map(([sourceField, targetField]) => ({ sourceField, targetField }));
       const response = await offlineImportTaskApi.create({
         name: String(basicConfig.jobName || values.name || '').trim(),
         description: basicConfig.jobDesc ?? values.description,
         importType,
         fileResourceId: selectedFile.id,
         targetDatasourceId: selectedDataSourceId,
-        targetDatabase: category === 'SQL' ? values.targetDatabase : undefined,
+        targetDatabase: category === 'SQL' || isDatapack ? values.targetDatabase : undefined,
         targetSchema: values.targetSchema || undefined,
         options: category === 'SQL'
           ? {
@@ -343,11 +480,20 @@ const CreateOfflineImportPage: React.FC = () => {
               stopOnError: values.stopOnError,
               encoding: values.encoding,
             }
-          : {
+          : isDatapack ? {} : {
               sourceSchema: values.sourceSchema?.trim() || undefined,
               ...(importType === 'DAMENG_DMP' ? { ignoreErrors: values.ignoreErrors } : {}),
             },
         scheduleConfig,
+        ...(isDatapack ? {
+          datapackConfig: {
+            packageFingerprint: packageInspection!.packageFingerprint,
+            formCode: values.formCode,
+            targetTable: values.datapackTable,
+            mappings,
+          },
+          datapackPassword: packagePassword,
+        } : {}),
       }, { skipErrorHandler: true });
       if (response?.code !== 0) throw new Error(response?.message || response?.msg || '保存配置失败');
       const createdTaskId = response?.data?.id;
@@ -445,7 +591,7 @@ const CreateOfflineImportPage: React.FC = () => {
     }
 
     const values = form.getFieldsValue(true);
-    if (category === 'SQL' && !values.targetDatabase) {
+    if ((category === 'SQL' || isDatapack) && !values.targetDatabase) {
       setConfigNode('sink');
       message.warning('请选择目标数据库');
       return false;
@@ -460,6 +606,29 @@ const CreateOfflineImportPage: React.FC = () => {
       setConfigNode('source');
       message.warning(`仅支持 ${accept} 文件`);
       return false;
+    }
+
+    if (isDatapack) {
+      if (!packageInspection || !values.formCode) {
+        setConfigNode('source');
+        message.warning('请先输入数据包密码并读取包内表单');
+        return false;
+      }
+      if (!values.datapackTable) {
+        setConfigNode('sink');
+        message.warning('请选择已有目标表');
+        return false;
+      }
+      if (Object.values(fieldMappings).filter(Boolean).length === 0) {
+        setConfigNode('sink');
+        message.warning('请至少配置一组字段映射');
+        return false;
+      }
+      if (!packagePassword) {
+        setConfigNode('source');
+        message.warning('保存配置时需要重新输入数据包密码以验证映射');
+        return false;
+      }
     }
 
     return true;
@@ -496,8 +665,15 @@ const CreateOfflineImportPage: React.FC = () => {
       },
       target: {
         dataSourceId: targetDataSourceId,
-        database: category === 'SQL' ? values.targetDatabase : undefined,
+        database: category === 'SQL' || isDatapack ? values.targetDatabase : undefined,
         schema: values.targetSchema || undefined,
+        ...(isDatapack ? {
+          packageType: packageInspection?.packageType,
+          formCode: values.formCode,
+          recordCount: packageInspection?.forms.find((item) => item.formCode === values.formCode)?.recordCount,
+          table: values.datapackTable,
+          fieldMappings,
+        } : {}),
       },
       options: category === 'SQL'
         ? {
@@ -505,7 +681,7 @@ const CreateOfflineImportPage: React.FC = () => {
             encoding: values.encoding,
             stopOnError: values.stopOnError,
           }
-        : {
+        : isDatapack ? {} : {
             sourceSchema: values.sourceSchema?.trim() || undefined,
             ...(importType === 'DAMENG_DMP' ? { ignoreErrors: values.ignoreErrors } : {}),
           },
@@ -559,7 +735,63 @@ const CreateOfflineImportPage: React.FC = () => {
         <span>已有文件在湖文件资源池？直接选择</span>
         <Button icon={<UploadOutlined />} disabled={uploading} onClick={() => setPickerOpen(true)}>从湖文件选择</Button>
       </div>
-      <Collapse items={advancedPanel} ghost />
+      {isDatapack && (
+        <>
+          <Form.Item label="数据包密码">
+            <Input.Password
+              value={packagePassword}
+              onChange={(event) => {
+                setPackagePassword(event.target.value);
+                setPackageInspection(undefined);
+                setTargetColumnOptions([]);
+                setFieldMappings({});
+                form.setFieldsValue({ formCode: undefined, datapackTable: undefined });
+                setCheckPassed(false);
+              }}
+              placeholder="输入采报端导出时设置的密码"
+              maxLength={256}
+            />
+          </Form.Item>
+          <Button
+            type="primary"
+            loading={inspectingPackage}
+            disabled={!file || !packagePassword || uploading}
+            onClick={() => void inspectPackage()}
+          >
+            验证并读取表单
+          </Button>
+          {packageInspection && (
+            <Alert
+              className="mt-3"
+              type="success"
+              showIcon
+              message={`数据包 ${packageInspection.packageType} · ${packageInspection.recordCount} 条记录`}
+              description={`可选表单：${packageInspection.forms.length} 个；保存时会再次验证密码。`}
+            />
+          )}
+          <Form.Item
+            label="包内表单"
+            name="formCode"
+            rules={[{ required: true, message: '请选择包内表单' }]}
+          >
+            <Select
+              showSearch
+              optionFilterProp="label"
+              placeholder={packageInspection ? '请选择包内表单' : '先验证数据包'}
+              disabled={!packageInspection}
+              options={packageInspection?.forms.map((item) => ({
+                value: item.formCode,
+                label: `${item.formCode}（${item.recordCount} 条）`,
+              })) || []}
+              onChange={() => {
+                setFieldMappings({});
+                setCheckPassed(false);
+              }}
+            />
+          </Form.Item>
+        </>
+      )}
+      {!isDatapack && <Collapse items={advancedPanel} ghost />}
     </>
   );
 
@@ -575,7 +807,7 @@ const CreateOfflineImportPage: React.FC = () => {
       <Button className="offline-import-create__change-target" onClick={() => setActiveStep('client')}>
         更改目标数据源
       </Button>
-      {category === 'SQL' ? (
+      {category === 'SQL' || isDatapack ? (
         <>
           <Form.Item
             label="数据库"
@@ -592,22 +824,77 @@ const CreateOfflineImportPage: React.FC = () => {
               disabled={!targetDataSourceId}
               onChange={() => {
                 form.setFieldValue('targetSchema', undefined);
+                form.setFieldValue('datapackTable', undefined);
+                setTargetColumnOptions([]);
+                setFieldMappings({});
                 setCheckPassed(false);
               }}
             />
           </Form.Item>
-          <Form.Item label="Schema" name="targetSchema" className="offline-import-create__field offline-import-create__field--last">
-            <Select
-              showSearch
-              allowClear
-              optionFilterProp="label"
-              placeholder="请选择 Schema（可选）"
-              options={schemaOptions}
-              loading={schemaLoading}
-              disabled={!targetDatabase}
-            />
-          </Form.Item>
-          <div className="offline-import-create__target-hint">先选择数据源连接，再选择目标数据库和 Schema；不需要选择表。</div>
+          {supportsSchemaScope(targetDbType) && (
+            <Form.Item label="Schema" name="targetSchema" className="offline-import-create__field">
+              <Select
+                showSearch
+                allowClear
+                optionFilterProp="label"
+                placeholder="请选择 Schema（可选）"
+                options={schemaOptions}
+                loading={schemaLoading}
+                disabled={!targetDatabase}
+                onChange={() => {
+                  form.setFieldValue('datapackTable', undefined);
+                  setTargetColumnOptions([]);
+                  setFieldMappings({});
+                  setCheckPassed(false);
+                }}
+              />
+            </Form.Item>
+          )}
+          {isDatapack ? (
+            <>
+              <Form.Item
+                label="已有目标表"
+                name="datapackTable"
+                rules={[{ required: true, message: '请选择已有目标表' }]}
+                className="offline-import-create__field"
+              >
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="选择表后读取目标字段"
+                  options={targetTableOptions}
+                  disabled={!targetDatabase}
+                  onChange={() => {
+                    setTargetColumnOptions([]);
+                    setFieldMappings({});
+                    setCheckPassed(false);
+                  }}
+                />
+              </Form.Item>
+              {packageInspection?.forms.find((item) => item.formCode === selectedFormCode)?.fields.map((sourceField) => (
+                <Form.Item key={sourceField} label={`字段映射：${sourceField}`} className="offline-import-create__field">
+                  <Select
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="选择目标列；留空则忽略该源字段"
+                    options={targetColumnOptions}
+                    value={fieldMappings[sourceField]}
+                    disabled={!targetTable}
+                    onChange={(value) => {
+                      setFieldMappings((current) => ({ ...current, [sourceField]: value || '' }));
+                      setCheckPassed(false);
+                    }}
+                  />
+                </Form.Item>
+              ))}
+              <div className="offline-import-create__target-hint">
+                数据库仅追加写入已有表；目标表不会由导入任务创建或覆盖。
+              </div>
+            </>
+          ) : (
+            <div className="offline-import-create__target-hint">先选择数据源连接，再选择目标数据库和 Schema；不需要选择表。</div>
+          )}
         </>
       ) : (
         <>
@@ -632,6 +919,7 @@ const CreateOfflineImportPage: React.FC = () => {
           return;
         }
         setFile(resource);
+        if (isDatapack) resetPackageInspection();
         setCheckPassed(false);
         setPickerOpen(false);
       }}
@@ -650,7 +938,9 @@ const CreateOfflineImportPage: React.FC = () => {
                     <Blocks size={18} />
                   </div>
                   <div className="min-w-0">
-                    <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">逻辑关系配置（DMP/SQL 导入任务）</div>
+                    <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
+                      {isDatapack ? '逻辑关系配置（离线数据包单表导入）' : '逻辑关系配置（DMP/SQL 导入任务）'}
+                    </div>
                     <div className="mt-1 truncate text-[14px] text-slate-500">{basicConfig.jobName || '新建导入任务'} · {OFFLINE_IMPORT_TYPE_LABELS[importType]}</div>
                   </div>
                 </div>
@@ -893,7 +1183,7 @@ const CreateOfflineImportPage: React.FC = () => {
               setSourceTestStatus={setSourceTestStatus}
               setTargetTestStatus={setTargetTestStatus}
               sourceDataSourceTypeOptions={[{ value: fileResourceOption.value, label: '湖文件' }]}
-              targetDataSourceTypeOptions={[{ value: targetOption.value, label: targetOption.rawLabel || targetOption.value }]}
+              targetDataSourceTypeOptions={targetTypeChoices}
               sourceManaged
               scene="offline"
               sourceTitle="来源"

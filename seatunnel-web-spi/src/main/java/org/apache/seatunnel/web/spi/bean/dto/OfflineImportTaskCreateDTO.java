@@ -1,7 +1,9 @@
 package org.apache.seatunnel.web.spi.bean.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.ToString;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -46,6 +48,15 @@ public class OfflineImportTaskCreateDTO {
 
     @Valid
     private OfflineImportOptions options;
+
+    /** Single-form mapping configuration; this field never contains the package password. */
+    @Valid
+    private OfflineDatapackTaskConfig datapackConfig;
+
+    /** Write-only credential used for save-time verification; never stored or returned. */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @ToString.Exclude
+    private char[] datapackPassword;
 
     /** Persisted editor settings for the task's basic and scheduling panels. */
     private Map<String, Object> scheduleConfig;

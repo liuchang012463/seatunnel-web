@@ -31,6 +31,9 @@ public class OfflineImportTask extends BaseEntity {
 
     private String optionsJson;
 
+    /** Form selection, mapping and encrypted-resource fingerprint; excludes credentials. */
+    private String datapackConfigJson;
+
     private String scheduleConfigJson;
 
     /** ONLINE / OFFLINE; only offline tasks can have their configuration edited. */

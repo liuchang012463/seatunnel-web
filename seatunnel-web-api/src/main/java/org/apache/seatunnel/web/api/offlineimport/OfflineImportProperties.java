@@ -16,6 +16,10 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "seatunnel.web.offline-import")
 public class OfflineImportProperties {
 
+    private static final long DATAPACK_ABSOLUTE_MAX_FILE_BYTES = 32L * 1024 * 1024;
+    private static final int DATAPACK_ABSOLUTE_MAX_RECORDS = 50_000;
+    private static final long DATAPACK_ABSOLUTE_MAX_CONFIG_BYTES = 1024L * 1024;
+
     /** Local scratch directory for DMP files downloaded from object storage. */
     private String workDir = "tmp/offline-import";
 
@@ -28,6 +32,22 @@ public class OfflineImportProperties {
 
     /** Upper bound for one DMP backup downloaded to the scratch directory. */
     private long dmpMaxFileBytes = 10737418240L;
+
+    /**
+     * Default encrypted package size. The importer holds the encrypted bytes, decrypted JSON and
+     * parsed object tree at once; a single package is therefore capped at 1/256 of the JVM heap,
+     * with an absolute 32 MiB ceiling. Values configured above that runtime budget are clamped.
+     */
+    private long datapackMaxFileBytes = 8L * 1024 * 1024;
+
+    /** Must match the exporting tool because DRPK1 does not store this value in its header. */
+    private int datapackPbkdf2Iterations = 120000;
+
+    /** Parsed JSON objects add substantial per-record overhead; this configurable value is hard-capped. */
+    private int datapackMaxRecords = 25_000;
+
+    /** Persisted field mappings use TEXT/CLOB; keep their UTF-8 JSON below one MiB on both databases. */
+    private long datapackTaskConfigMaxBytes = DATAPACK_ABSOLUTE_MAX_CONFIG_BYTES;
 
     /** Per-statement wall-clock limit for JDBC SQL imports. */
     private int sqlStatementTimeoutSeconds = 300;
@@ -46,4 +66,18 @@ public class OfflineImportProperties {
 
     /** Absolute path of the KingbaseES sys_restore executable; child library paths use its bin/ and sibling lib/. */
     private String kingbaseSysRestorePath;
+
+    /** Runtime-aware hard bound for the in-memory package inspection/import path. */
+    public long getDatapackMaxFileBytes() {
+        long heapBudget = Math.max(1L, Runtime.getRuntime().maxMemory() / 256L);
+        return Math.min(datapackMaxFileBytes, Math.min(DATAPACK_ABSOLUTE_MAX_FILE_BYTES, heapBudget));
+    }
+
+    public int getDatapackMaxRecords() {
+        return Math.min(datapackMaxRecords, DATAPACK_ABSOLUTE_MAX_RECORDS);
+    }
+
+    public long getDatapackTaskConfigMaxBytes() {
+        return Math.min(datapackTaskConfigMaxBytes, DATAPACK_ABSOLUTE_MAX_CONFIG_BYTES);
+    }
 }

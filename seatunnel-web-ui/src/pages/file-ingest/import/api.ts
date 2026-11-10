@@ -2,10 +2,36 @@ import HttpUtils, { type RequestOptions } from '@/utils/HttpUtils';
 
 const OFFLINE_IMPORT_API_PREFIX = '/api/v1/offline-import-tasks';
 
-/** DMP/SQL offline import task types. Oracle SQL is listed in the UI but not yet enabled. */
-export type OfflineImportTypeCode = 'KINGBASE_DMP' | 'DAMENG_DMP' | 'KINGBASE_SQL' | 'DAMENG_SQL';
+/** DMP/SQL types plus the encrypted single-table package import. */
+export type OfflineImportTypeCode = 'KINGBASE_DMP' | 'DAMENG_DMP' | 'KINGBASE_SQL' | 'DAMENG_SQL' | 'DATAPACK';
 
-export type OfflineImportCategory = 'DMP' | 'SQL';
+export type OfflineImportCategory = 'DMP' | 'SQL' | 'DATAPACK';
+
+export interface OfflineDatapackFieldMapping {
+  sourceField: string;
+  targetField: string;
+}
+
+export interface OfflineDatapackTaskConfig {
+  packageFingerprint: string;
+  formCode: string;
+  targetTable: string;
+  mappings: OfflineDatapackFieldMapping[];
+}
+
+export interface OfflineDatapackForm {
+  formCode: string;
+  recordCount: number;
+  fields: string[];
+}
+
+export interface OfflineDatapackInspect {
+  packageFingerprint: string;
+  packageId: string;
+  packageType: 'DATA' | 'DISTRIBUTION';
+  recordCount: number;
+  forms: OfflineDatapackForm[];
+}
 
 export interface OfflineImportOptions {
   stopOnError?: boolean;
@@ -28,6 +54,7 @@ export interface OfflineImportTask {
   targetDatabase?: string;
   targetSchema?: string;
   options?: OfflineImportOptions;
+  datapackConfig?: OfflineDatapackTaskConfig;
   scheduleConfig?: Record<string, any>;
   releaseState: 'ONLINE' | 'OFFLINE';
   status: 'PENDING' | 'QUEUED' | 'RUNNING' | 'SUCCESS' | 'FAILED';
@@ -74,17 +101,21 @@ export interface OfflineImportTaskCreatePayload {
   targetDatabase?: string;
   targetSchema?: string;
   options?: OfflineImportOptions;
+  datapackConfig?: OfflineDatapackTaskConfig;
+  /** 仅随本次保存请求传输，服务端不会持久化或回显。 */
+  datapackPassword?: string;
   scheduleConfig?: Record<string, any>;
 }
 
 export const offlineImportTargetDbType = (importType: OfflineImportTypeCode): string =>
-  importType.startsWith('KINGBASE') ? 'KINGBASE' : 'DAMENG';
+  importType.startsWith('KINGBASE') ? 'KINGBASE' : importType === 'DATAPACK' ? 'MYSQL' : 'DAMENG';
 
 export const OFFLINE_IMPORT_TYPE_LABELS: Record<OfflineImportTypeCode, string> = {
   KINGBASE_DMP: '人大金仓 DMP',
   DAMENG_DMP: '达梦 DMP',
   KINGBASE_SQL: '人大金仓 SQL',
   DAMENG_SQL: '达梦 SQL',
+  DATAPACK: '离线数据包',
 };
 
 export const offlineImportTaskApi = {
@@ -115,6 +146,19 @@ export const offlineImportTaskApi = {
 
   execute: (id: string | number, options?: RequestOptions) =>
     HttpUtils.post(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}/execute`, undefined, options),
+
+  executeDatapack: (id: string | number, password: string, options?: RequestOptions) =>
+    HttpUtils.post(
+      `${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}/execute`,
+      { password },
+      options,
+    ),
+
+  inspectDatapack: (fileResourceId: string | number, password: string, options?: RequestOptions) =>
+    HttpUtils.post<OfflineDatapackInspect>(`${OFFLINE_IMPORT_API_PREFIX}/datapack/inspect`, {
+      fileResourceId,
+      password,
+    }, options),
 
   online: (id: string | number) =>
     HttpUtils.put(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}/online`),

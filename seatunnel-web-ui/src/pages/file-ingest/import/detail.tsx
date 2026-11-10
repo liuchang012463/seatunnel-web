@@ -1,6 +1,6 @@
 import { ArrowLeftOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { history, useParams } from '@umijs/max';
-import { App, Badge, Button, Descriptions, Space, Spin, Tag } from 'antd';
+import { App, Badge, Button, Descriptions, Input, Modal, Space, Spin, Tag } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import {
   OFFLINE_IMPORT_TYPE_LABELS,
@@ -24,6 +24,8 @@ const OfflineImportDetailPage: React.FC = () => {
   const [loadError, setLoadError] = useState<string>();
   const [notFound, setNotFound] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [executionPassword, setExecutionPassword] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inFlightRef = useRef(false);
   const requestSeqRef = useRef(0);
@@ -95,10 +97,12 @@ const OfflineImportDetailPage: React.FC = () => {
     }
   }, [task?.executionLog]);
 
-  const execute = async () => {
+  const execute = async (password?: string) => {
     setExecuting(true);
     try {
-      const response = await offlineImportTaskApi.execute(id!, { skipErrorHandler: true });
+      const response = task?.importType === 'DATAPACK'
+        ? await offlineImportTaskApi.executeDatapack(id!, password || '', { skipErrorHandler: true })
+        : await offlineImportTaskApi.execute(id!, { skipErrorHandler: true });
       if (response?.code !== 0) {
         throw new Error(response?.message || response?.msg || '执行失败');
       }
@@ -108,7 +112,17 @@ const OfflineImportDetailPage: React.FC = () => {
       message.error(error?.message || '执行失败');
     } finally {
       setExecuting(false);
+      setExecutionPassword('');
     }
+  };
+
+  const requestExecution = () => {
+    if (task?.importType === 'DATAPACK') {
+      setExecutionPassword('');
+      setPasswordModalOpen(true);
+      return;
+    }
+    void execute();
   };
 
   if (loading) {
@@ -191,7 +205,7 @@ const OfflineImportDetailPage: React.FC = () => {
             icon={<PlayCircleOutlined />}
             loading={executing}
             disabled={task.status === 'RUNNING' || task.status === 'QUEUED'}
-            onClick={() => void execute()}
+            onClick={requestExecution}
           >
             {task.status === 'RUNNING'
               ? '执行中'
@@ -219,7 +233,7 @@ const OfflineImportDetailPage: React.FC = () => {
             </Descriptions.Item>
             <Descriptions.Item label="任务描述">{task.description || '-'}</Descriptions.Item>
             <Descriptions.Item label="创建时间">{task.createTime || '-'}</Descriptions.Item>
-            {isSql && (
+            {(isSql || task.importType === 'DATAPACK') && (
               <Descriptions.Item label="语句进度">
                 <Space size={16}>
                   <span>已执行 {task.executedStatements ?? 0} / {task.totalStatements ?? 0}</span>
@@ -235,6 +249,11 @@ const OfflineImportDetailPage: React.FC = () => {
             {task.options && (
               <Descriptions.Item label="导入选项">
                 {importOptionsSummary}
+              </Descriptions.Item>
+            )}
+            {task.datapackConfig && (
+              <Descriptions.Item label="数据包映射">
+                {`${task.datapackConfig.formCode} → ${task.targetDatabase || '-'}${task.targetSchema ? ` / ${task.targetSchema}` : ''} / ${task.datapackConfig.targetTable}`}
               </Descriptions.Item>
             )}
           </Descriptions>
@@ -253,6 +272,41 @@ const OfflineImportDetailPage: React.FC = () => {
           </pre>
         </div>
       </div>
+      <Modal
+        title="执行离线数据包导入"
+        open={passwordModalOpen}
+        okText="验证并执行"
+        cancelText="取消"
+        okButtonProps={{ disabled: !executionPassword, loading: executing }}
+        onCancel={() => {
+          setPasswordModalOpen(false);
+          setExecutionPassword('');
+        }}
+        onOk={() => {
+          if (!executionPassword) return;
+          const transientPassword = executionPassword;
+          setPasswordModalOpen(false);
+          void execute(transientPassword);
+        }}
+        destroyOnClose
+      >
+        <p className="mb-3 text-[14px] text-slate-600">
+          请输入导出时设置的数据包密码。密码仅用于本次执行，不会保存到任务配置。
+        </p>
+        <Input.Password
+          autoFocus
+          maxLength={256}
+          value={executionPassword}
+          placeholder="数据包密码"
+          onChange={(event) => setExecutionPassword(event.target.value)}
+          onPressEnter={() => {
+            if (!executionPassword) return;
+            const transientPassword = executionPassword;
+            setPasswordModalOpen(false);
+            void execute(transientPassword);
+          }}
+        />
+      </Modal>
     </div>
   );
 };

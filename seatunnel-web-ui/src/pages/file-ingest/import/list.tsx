@@ -1,6 +1,6 @@
 import { PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
-import { Alert, App, Badge, Button, Input, Popconfirm, Select, Space, Table, Tag } from 'antd';
+import { Alert, App, Badge, Button, Input, Modal, Popconfirm, Select, Space, Table, Tag } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import {
   OFFLINE_IMPORT_TYPE_LABELS,
@@ -36,6 +36,8 @@ const OfflineImportTaskList: React.FC = () => {
   const [status, setStatus] = useState<string>();
   const [loadError, setLoadError] = useState<string>();
   const [executingId, setExecutingId] = useState<string | null>(null);
+  const [passwordTask, setPasswordTask] = useState<OfflineImportTask | null>(null);
+  const [executionPassword, setExecutionPassword] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inFlightRef = useRef(false);
   const requestSeqRef = useRef(0);
@@ -114,12 +116,12 @@ const OfflineImportTaskList: React.FC = () => {
     [],
   );
 
-  const execute = async (task: OfflineImportTask) => {
+  const execute = async (task: OfflineImportTask, password?: string) => {
     setExecutingId(task.id);
     try {
-      const response = await offlineImportTaskApi.execute(task.id, {
-        skipErrorHandler: true,
-      });
+      const response = task.importType === 'DATAPACK'
+        ? await offlineImportTaskApi.executeDatapack(task.id, password || '', { skipErrorHandler: true })
+        : await offlineImportTaskApi.execute(task.id, { skipErrorHandler: true });
       if (response?.code !== 0) {
         throw new Error(response?.message || response?.msg || '执行失败');
       }
@@ -129,7 +131,17 @@ const OfflineImportTaskList: React.FC = () => {
       message.error(error?.message || '执行失败');
     } finally {
       setExecutingId(null);
+      setExecutionPassword('');
     }
+  };
+
+  const requestExecution = (task: OfflineImportTask) => {
+    if (task.importType === 'DATAPACK') {
+      setPasswordTask(task);
+      setExecutionPassword('');
+      return;
+    }
+    void execute(task);
   };
 
   const remove = async (task: OfflineImportTask) => {
@@ -201,7 +213,7 @@ const OfflineImportTaskList: React.FC = () => {
       key: 'progress',
       width: 120,
       render: (_: unknown, record: OfflineImportTask) =>
-        String(record.importType || '').endsWith('_SQL')
+        (String(record.importType || '').endsWith('_SQL') || record.importType === 'DATAPACK')
           ? `${record.executedStatements ?? 0}/${record.totalStatements ?? 0}${
               record.failedStatements ? `（失败 ${record.failedStatements}）` : ''
             }`
@@ -233,7 +245,7 @@ const OfflineImportTaskList: React.FC = () => {
               || record.status === 'RUNNING'
               || record.status === 'QUEUED'
             }
-            onClick={() => void execute(record)}
+            onClick={() => requestExecution(record)}
           >
             执行
           </Button>
@@ -321,6 +333,43 @@ const OfflineImportTaskList: React.FC = () => {
           },
         }}
       />
+      <Modal
+        title="执行离线数据包导入"
+        open={Boolean(passwordTask)}
+        okText="验证并执行"
+        cancelText="取消"
+        okButtonProps={{ disabled: !executionPassword, loading: Boolean(passwordTask && executingId === passwordTask.id) }}
+        onCancel={() => {
+          setPasswordTask(null);
+          setExecutionPassword('');
+        }}
+        onOk={() => {
+          if (!passwordTask || !executionPassword) return;
+          const selectedTask = passwordTask;
+          const transientPassword = executionPassword;
+          setPasswordTask(null);
+          void execute(selectedTask, transientPassword);
+        }}
+        destroyOnClose
+      >
+        <p className="mb-3 text-[14px] text-slate-600">
+          请输入导出时设置的数据包密码。密码仅用于本次执行，不会保存到任务配置。
+        </p>
+        <Input.Password
+          autoFocus
+          maxLength={256}
+          value={executionPassword}
+          placeholder="数据包密码"
+          onChange={(event) => setExecutionPassword(event.target.value)}
+          onPressEnter={() => {
+            if (!passwordTask || !executionPassword) return;
+            const selectedTask = passwordTask;
+            const transientPassword = executionPassword;
+            setPasswordTask(null);
+            void execute(selectedTask, transientPassword);
+          }}
+        />
+      </Modal>
     </div>
   );
 };
