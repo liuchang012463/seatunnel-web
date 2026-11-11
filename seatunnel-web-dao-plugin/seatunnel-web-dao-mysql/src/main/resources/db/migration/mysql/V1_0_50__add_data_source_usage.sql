@@ -1,33 +1,6 @@
--- A previous interrupted MySQL DDL run may have committed either column before Flyway records success.
-SET @source_enabled_exists = (
-    SELECT COUNT(*) FROM information_schema.columns
-    WHERE table_schema = DATABASE()
-      AND table_name = 't_seatunnel_web_datasource'
-      AND column_name = 'source_enabled'
-);
-SET @source_enabled_ddl = IF(
-    @source_enabled_exists = 0,
-    'ALTER TABLE `t_seatunnel_web_datasource` ADD COLUMN `source_enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT ''是否可用作源端连接'' AFTER `db_type`',
-    'SELECT 1'
-);
-PREPARE source_enabled_stmt FROM @source_enabled_ddl;
-EXECUTE source_enabled_stmt;
-DEALLOCATE PREPARE source_enabled_stmt;
-
-SET @sink_enabled_exists = (
-    SELECT COUNT(*) FROM information_schema.columns
-    WHERE table_schema = DATABASE()
-      AND table_name = 't_seatunnel_web_datasource'
-      AND column_name = 'sink_enabled'
-);
-SET @sink_enabled_ddl = IF(
-    @sink_enabled_exists = 0,
-    'ALTER TABLE `t_seatunnel_web_datasource` ADD COLUMN `sink_enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT ''是否可用作目标连接'' AFTER `source_enabled`',
-    'SELECT 1'
-);
-PREPARE sink_enabled_stmt FROM @sink_enabled_ddl;
-EXECUTE sink_enabled_stmt;
-DEALLOCATE PREPARE sink_enabled_stmt;
+ALTER TABLE `t_seatunnel_web_datasource`
+    ADD COLUMN `source_enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否可用作源端连接' AFTER `db_type`,
+    ADD COLUMN `sink_enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否可用作目标连接' AFTER `source_enabled`;
 
 UPDATE `t_seatunnel_web_datasource` datasource
 SET datasource.source_enabled = CASE
@@ -79,7 +52,6 @@ SET datasource.source_enabled = CASE
 -- definition columns retain only the first ID. Keep every connection found in
 -- a current script definition dual-purpose until its side can be maintained
 -- by the job editor without losing historical references.
--- Match the numeric token directly to avoid dot-all wildcard backtracking on long script bodies.
 UPDATE `t_seatunnel_web_datasource` datasource
 SET datasource.source_enabled = 1,
     datasource.sink_enabled = 1
@@ -92,7 +64,7 @@ WHERE EXISTS (
      AND job.mode = 'SCRIPT'
      AND content.mode = 'SCRIPT'
     WHERE REGEXP_LIKE(LOWER(content.definition_content),
-          CONCAT('(^|[^0-9])', datasource.id, '([^0-9]|$)'))
+          CONCAT('(?s).*[^0-9]', datasource.id, '([^0-9].*|$)'))
 )
 OR EXISTS (
     SELECT 1
@@ -103,5 +75,5 @@ OR EXISTS (
      AND job.mode = 'SCRIPT'
      AND content.mode = 'SCRIPT'
     WHERE REGEXP_LIKE(LOWER(content.definition_content),
-          CONCAT('(^|[^0-9])', datasource.id, '([^0-9]|$)'))
+          CONCAT('(?s).*[^0-9]', datasource.id, '([^0-9].*|$)'))
 );
