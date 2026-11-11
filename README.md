@@ -482,15 +482,24 @@ containers while preserving the named volumes (`seatunnel-web-logs`,
 * Logs and JDBC drivers use named volumes so container writes do not pollute
   the bind-mounted host directory. DuckDB session init SQL is passed inline in
   the job config, so no shared directory is required. Install the DuckDB JDBC
-  JAR and the `httpfs` extension on every SeaTunnel Engine node. SQLite imports
-  also require the matching `sqlite_scanner` extension. If the extension
+  `1.5.6.0` JAR and matching `v1.5.6` `httpfs` extension on every SeaTunnel Engine
+  node. SQLite S3 imports require DuckDB 1.5.5 or newer and also need the matching
+  `sqlite_scanner` extension. Build an Engine bundle with
+  `python3 tools/seatunnel/package-duckdb-runtime.py --target engine --platform linux_arm64 --output /tmp/duckdb-engine-linux_arm64.tar.gz`
+  and install it separately on each Engine node with
+  `tools/seatunnel/install-duckdb-runtime.sh`. Keep the Engine's SeaTunnel 3.0.0
+  JDBC connector build that consumes `duckdb.session_init_sql`. If the extension
   is outside DuckDB's default directory, set `SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR`
   to its Engine-local directory; Web does not mount or access that directory.
 * SQLite file catalog and preview use DuckDB's `sqlite_scanner` extension inside
-  the Web API. DuckDB can install it on first use when the Web container can reach
-  the extension repository; for offline Web containers, mount a matching extension
-  directory into Web and set `SEATUNNEL_WEB_DUCKDB_CATALOG_EXTENSION_DIR`. This
-  is separate from the Engine-local extension path above.
+  the Web API. For offline deployments, build a Web-only package for the Web
+  container's architecture, for example
+  `python3 tools/seatunnel/package-duckdb-runtime.py --target web --platform linux_amd64 --output /tmp/duckdb-web-linux_amd64.tar.gz`,
+  and install it with `tools/seatunnel/install-duckdb-web-runtime.sh`. Mount the
+  installed extension root into Web and set
+  `SEATUNNEL_WEB_DUCKDB_CATALOG_EXTENSION_DIR` to its container path. Use
+  `linux_arm64` when the Web API runs on ARM64. This package and directory are
+  separate from the Engine runtime above; do not point Web at an Engine-only path.
 * `dist/seatunnel-web-1.0.0/conf/application.yml` is intentionally not
   read-only-mounted. This allows on-site tuning during development and
   iteration. Production releases should treat the YAML as part of the
