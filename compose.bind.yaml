@@ -5,6 +5,8 @@ services:
     image: mysql:8.0.39
     container_name: seatunnel-web-mysql
     restart: unless-stopped
+    init: true
+    pids_limit: -1
 
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me}
@@ -22,7 +24,7 @@ services:
       - "${MYSQL_HOST_PORT:-3306}:3306"
 
     volumes:
-      - mysql-data:/var/lib/mysql
+      - ./mysql-data:/var/lib/mysql
 
     healthcheck:
       test:
@@ -41,27 +43,33 @@ services:
     image: redis:7.4-alpine
     container_name: seatunnel-web-redis
     restart: unless-stopped
+    init: true
+    pids_limit: -1
 
     environment:
       TZ: Asia/Shanghai
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env.bind}
       REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-256mb}
 
-    # Cache-only instance: no persistence, and the dataset is bounded so the
-    # OpenMetadata page cache cannot grow without limit. volatile-lru evicts
-    # cached pages/profiles (all carry a TTL) but keeps the epoch counters,
-    # which have no TTL; losing an epoch could resurrect stale snapshots.
+    # Keep the cache bounded and persist it under ./redis-data. volatile-lru
+    # evicts cached pages/profiles (all carry a TTL) but keeps epoch counters.
     command:
       - /bin/sh
       - -c
       - |
         if [ -n "$$REDIS_PASSWORD" ]; then
-          exec redis-server --save "" --appendonly no --maxmemory "$$REDIS_MAXMEMORY" --maxmemory-policy volatile-lru --requirepass "$$REDIS_PASSWORD"
+          exec redis-server --appendonly yes --dir /data --maxmemory "$$REDIS_MAXMEMORY" --maxmemory-policy volatile-lru --requirepass "$$REDIS_PASSWORD"
         fi
-        exec redis-server --save "" --appendonly no --maxmemory "$$REDIS_MAXMEMORY" --maxmemory-policy volatile-lru
+        exec redis-server --appendonly yes --dir /data --maxmemory "$$REDIS_MAXMEMORY" --maxmemory-policy volatile-lru
 
     expose:
       - "6379"
+
+    ports:
+      - "${REDIS_BIND_ADDRESS:-0.0.0.0}:${REDIS_HOST_PORT:-36379}:6379"
+
+    volumes:
+      - ./redis-data:/data
 
     healthcheck:
       test:
@@ -76,15 +84,53 @@ services:
       - seatunnel-web-network
 
 
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: seatunnel-web-minio
+    restart: unless-stopped
+    init: true
+    pids_limit: -1
+
+    command: ["server", "/data", "--console-address", ":9001"]
+
+    environment:
+      TZ: Asia/Shanghai
+      # This bind stack is single-tenant; application credentials initialize MinIO.
+      MINIO_ROOT_USER: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ACCESS_KEY:?set MinIO access key in .env.bind}
+      MINIO_ROOT_PASSWORD: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SECRET_KEY:?set MinIO secret key in .env.bind}
+
+    ports:
+      - "${MINIO_BIND_ADDRESS:-0.0.0.0}:${MINIO_HOST_PORT:-49000}:9000"
+      - "${MINIO_BIND_ADDRESS:-0.0.0.0}:${MINIO_CONSOLE_HOST_PORT:-49001}:9001"
+
+    volumes:
+      - ./minio-data:/data
+
+    # Create the bucket named by SEATUNNEL_WEB_FILE_UPLOAD_MINIO_BUCKET before uploads.
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - seatunnel-web-network
+
+
   seatunnel-web-api:
     image: eclipse-temurin:21-jre-jammy
     container_name: seatunnel-web-api
     restart: unless-stopped
+    init: true
+    pids_limit: -1
 
     entrypoint: ["/opt/seatunnel-web/bin/run-seatunnel-web.sh"]
 
     depends_on:
       mysql:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
     environment:
@@ -122,15 +168,15 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DATABASE: ${REDIS_DATABASE:-15}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env.bind}
 
       SEATUNNEL_WEB_DATASOURCE_MASTER_KEY: ${SEATUNNEL_WEB_DATASOURCE_MASTER_KEY:?set SEATUNNEL_WEB_DATASOURCE_MASTER_KEY in .env.bind}
 
       METADATA_OPENMETADATA_EXTENSION_ENABLED: ${METADATA_OPENMETADATA_EXTENSION_ENABLED:-false}
       METADATA_OPENMETADATA_EXTENSION_BASE_URL: ${METADATA_OPENMETADATA_EXTENSION_BASE_URL:-}
 
-      SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ENDPOINT: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ENDPOINT:-http://host.docker.internal:9000}
-      SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ENDPOINT: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ENDPOINT:-http://82.157.22.233:19000}
+      SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ENDPOINT: http://minio:9000
+      SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ENDPOINT: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_RUNTIME_ENDPOINT:?set a MinIO LAN endpoint reachable by the Engine}
       SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_UPLOAD_ENDPOINT: ${SEATUNNEL_WEB_FILE_RESOURCE_STORAGE_UPLOAD_ENDPOINT:-}
       SEATUNNEL_WEB_FILE_UPLOAD_MINIO_BUCKET: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_BUCKET:-seatunnel-web-upload}
       SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ACCESS_KEY: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ACCESS_KEY:-}
@@ -181,6 +227,8 @@ services:
     image: nginx:1.19.2
     container_name: seatunnel-web
     restart: unless-stopped
+    init: true
+    pids_limit: -1
 
     healthcheck:
       disable: true
@@ -201,9 +249,6 @@ services:
 
 
 volumes:
-  mysql-data:
-    name: seatunnel-web-mysql-data
-
   seatunnel-web-logs:
     name: seatunnel-web-logs
 
