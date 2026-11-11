@@ -34,7 +34,15 @@ import type {
   DataSourceUnitOption,
 } from '@/pages/data-source/types';
 import { formatDataSize } from '@/pages/data-source/metricFormat';
-import { displayOwner, explorationStatus, normalizeDataSourceList, sourceMatches, withoutSystemManagedSources } from '../shared';
+import {
+  displayOwner,
+  metadataStatus,
+  normalizeDataSourceList,
+  profilerStatus,
+  sampleStatus,
+  sourceMatches,
+  withoutSystemManagedSources,
+} from '../shared';
 import { assetExplorationStatus, isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
 import '../index.less';
 import './overview.less';
@@ -185,25 +193,58 @@ const DataExplorationOverviewPage: React.FC = () => {
     { title: '单位', key: 'unit', width: 150, render: (_, record) => displayOwner(record).unit },
     { title: '业务系统', key: 'system', width: 170, render: (_, record) => displayOwner(record).system },
     { title: '类型', dataIndex: 'dbType', key: 'dbType', width: 120, render: (value) => value || '-' },
+    // 与任务列表共用状态映射和运行时间口径，确保同一数据源在两页显示一致。
     {
-      title: '探查状态',
-      dataIndex: 'profileStatus',
-      key: 'profileStatus',
-      width: 110,
+      title: '元数据状态',
+      dataIndex: 'metadataSyncStatus',
+      key: 'metadataSyncStatus',
+      width: 130,
       render: (value: string, record) => {
         const status = isAssetExplorationDbType(record.dbType)
           ? assetExplorationStatus(record)
-          : explorationStatus(value);
-        return <Tag color={status.color}>{status.label}</Tag>;
+          : metadataStatus(value, record.scanStatus);
+        return (
+          <Tag color={status.color} title={record.scanLastError || undefined}>
+            {status.label}
+          </Tag>
+        );
       },
     },
     {
-      title: '最近成功探查',
-      key: 'profileTime',
+      title: '指标统计',
+      dataIndex: 'profileStatus',
+      key: 'profileStatus',
+      width: 110,
+      render: (_value: string, record) => {
+        const status = profilerStatus(record);
+        return (
+          <Tag color={status.color} title={record.profileLastError || undefined}>
+            {status.label}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: '样例状态',
+      dataIndex: 'sampleStatus',
+      key: 'sampleStatus',
+      width: 120,
+      render: (_value: string, record) => {
+        const status = sampleStatus(record);
+        return (
+          <Tag color={status.color} title={record.sampleLastError || undefined}>
+            {status.label}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: '最近运行',
+      key: 'profileLastRunTime',
       width: 170,
-      render: (_, record) => (isAssetExplorationDbType(record.dbType)
-        ? record.scanLastSuccessTime
-        : record.profileLastSuccessTime || record.profileLastRunTime) || '—',
+      render: (_, record) => (record.profilerSupported
+        ? record.profileLastSuccessTime || record.profileLastRunTime
+        : record.scanLastSuccessTime) || '-',
     },
     {
       title: '操作',
@@ -346,7 +387,7 @@ const DataExplorationOverviewPage: React.FC = () => {
             columns={tableColumns}
             dataSource={filteredSources}
             pagination={{ pageSize: 8, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
-            scroll={{ x: 1050 }}
+            scroll={{ x: 1320 }}
             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无符合条件的数据源" /> }}
           />
           {filteredSources.length === 0 && (
