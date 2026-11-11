@@ -167,7 +167,7 @@ class DataSourceSourceBuilderFileResourceTest {
     }
 
     @Test
-    void buildsSqliteFileResourceForEngineSideLocalStaging() {
+    void buildsSqliteFileResourceForDirectS3Read() {
         DataSourceSourceBuilder sourceBuilder = new DataSourceSourceBuilder();
         ReflectionTestUtils.setField(sourceBuilder, "duckDbExtensionDirectory",
                 "/opt/seatunnel/lib/duckdb-extensions");
@@ -191,15 +191,19 @@ class DataSourceSourceBuilderFileResourceTest {
 
         assertEquals("Jdbc", sourceBuilder.connectorName(node));
         assertEquals("jdbc:duckdb:", result.getString("url"));
-        assertEquals("seatunnel-web-resource/native_engine.db",
-                properties.get("duckdb.sqlite_source_object_key"));
+        assertFalse(properties.containsKey("duckdb.sqlite_source_object_key"));
         assertTrue(initSql.contains("SET extension_directory = '/opt/seatunnel/lib/duckdb-extensions';"));
-        assertTrue(initSql.contains("LOAD sqlite;"));
-        assertTrue(initSql.contains("ATTACH IF NOT EXISTS '__SEATUNNEL_WEB_SQLITE_SOURCE_PATH__'"));
-        assertFalse(initSql.contains("LOAD httpfs"));
-        assertFalse(initSql.contains("CREATE SECRET"));
-        assertFalse(initSql.contains("test-access-key"));
-        assertFalse(initSql.contains("test-secret"));
+        assertTrue(initSql.contains("LOAD httpfs;\nLOAD sqlite;\nCREATE SECRET sqlite_source_minio_secret ("));
+        assertTrue(initSql.contains("KEY_ID 'test-access-key',"));
+        assertTrue(initSql.contains("SECRET 'test-secret',"));
+        assertTrue(initSql.contains("REGION 'us-east-1',"));
+        assertTrue(initSql.contains("ENDPOINT 'minio:9000',"));
+        assertTrue(initSql.contains("URL_STYLE 'path',"));
+        assertTrue(initSql.contains("USE_SSL false,"));
+        assertTrue(initSql.contains(
+                "ATTACH IF NOT EXISTS 's3://seatunnel-web-upload/seatunnel-web-resource/native_engine.db' "
+                        + "AS sqlite_source (TYPE sqlite, READ_ONLY);"));
+        assertFalse(initSql.contains("__SEATUNNEL_WEB_SQLITE_SOURCE_PATH__"));
         assertTrue(result.getString("query").endsWith(
                 "SELECT * FROM \"sqlite_source\".\"main\".\"tb_config\""));
     }

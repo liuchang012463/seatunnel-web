@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageJobLineageService;
-import org.apache.seatunnel.web.api.fileresource.duckdb.SqliteSourceFilePublisher;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.common.enums.JobSubmitStage;
 import org.apache.seatunnel.web.common.exception.JobSubmitException;
@@ -49,7 +48,6 @@ public class BatchJobSubmitter {
     private final JobConfigFileService configFileService;
     private final SeaTunnelRestClient restClient;
     private final EngineDriverJarPublisher driverJarPublisher;
-    private final SqliteSourceFilePublisher sqliteSourceFilePublisher;
     private final JobMetricsMonitor batchMetricsMonitor;
     private final JobResultWatcher batchJobResultWatcher;
     private final JobResultHandler batchJobResultHandler;
@@ -59,7 +57,6 @@ public class BatchJobSubmitter {
     public BatchJobSubmitter(JobConfigFileService configFileService,
                              SeaTunnelRestClient restClient,
                              EngineDriverJarPublisher driverJarPublisher,
-                             SqliteSourceFilePublisher sqliteSourceFilePublisher,
                              JobMetricsMonitor batchMetricsMonitor,
                              JobResultWatcher batchJobResultWatcher,
                              JobResultHandler batchJobResultHandler,
@@ -67,7 +64,6 @@ public class BatchJobSubmitter {
         this.configFileService = configFileService;
         this.restClient = restClient;
         this.driverJarPublisher = driverJarPublisher;
-        this.sqliteSourceFilePublisher = sqliteSourceFilePublisher;
         this.batchMetricsMonitor = batchMetricsMonitor;
         this.batchJobResultWatcher = batchJobResultWatcher;
         this.batchJobResultHandler = batchJobResultHandler;
@@ -98,7 +94,8 @@ public class BatchJobSubmitter {
         try {
             // A driver publication failure must be handled as a local submission failure instead
             // of leaving the instance STARTING without a job log.
-            hoconConfig = sqliteSourceFilePublisher.publish(clientId, instance.getRuntimeConfig());
+            // SQLite files stay in object storage; DuckDB httpfs reads them from the Engine.
+            hoconConfig = instance.getRuntimeConfig();
             hoconConfig = driverJarPublisher.publish(clientId, hoconConfig);
 
             jobLogger.info("Writing batch config file...");

@@ -5,6 +5,7 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueFactory;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
@@ -39,6 +40,7 @@ import java.util.Locale;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
 
     private static final String NODE_TYPE = "source";
@@ -60,8 +62,6 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
      * properties avoids a shared directory between the Web and the Engine.
      */
     private static final String DUCKDB_SESSION_INIT_SQL_PROPERTY = "duckdb.session_init_sql";
-    private static final String DUCKDB_SQLITE_OBJECT_KEY_PROPERTY = "duckdb.sqlite_source_object_key";
-    private static final String DUCKDB_SQLITE_ATTACH_PATH_MARKER = "__SEATUNNEL_WEB_SQLITE_SOURCE_PATH__";
 
     @Resource
     private DataSourceDao dataSourceDao;
@@ -477,6 +477,14 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
                     + renderDatabaseFileTableName("SQLite", schemaName, tableName);
         }
 
+        if (!"STATIC".equalsIgnoreCase(reference.getCredentialMode())
+                || StringUtils.isBlank(reference.getAccessKey())
+                || StringUtils.isBlank(reference.getSecretKey())) {
+            throw new IllegalArgumentException("SQLite source requires static MinIO access credentials");
+        }
+
+        DuckDbEndpoint endpoint = parseDuckDbEndpoint(reference.getEndpoint());
+        String remoteDatabase = buildDuckDbObjectUri(reference.getBucket(), normalizedKey);
         String defaultSchema = StringUtils.defaultIfBlank(schemaName, "main");
         String extensionDirectory = resolveDuckDbExtensionDirectory();
         List<String> initSqlStatements = new ArrayList<>();
@@ -484,9 +492,20 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         if (extensionDirectory != null) {
             initSqlStatements.add("SET extension_directory = " + sqlLiteral(extensionDirectory) + ";");
         }
-        // The submitter stages this object on every Engine node before the job starts.
+        // Engine loads both extensions and reads the MinIO object directly; no Web or Engine staging copy is used.
+        initSqlStatements.add("LOAD httpfs;");
         initSqlStatements.add("LOAD sqlite;");
-        initSqlStatements.add("ATTACH IF NOT EXISTS " + sqlLiteral(DUCKDB_SQLITE_ATTACH_PATH_MARKER)
+        initSqlStatements.add("CREATE SECRET sqlite_source_minio_secret (");
+        initSqlStatements.add("  TYPE s3,");
+        initSqlStatements.add("  KEY_ID " + sqlLiteral(reference.getAccessKey()) + ",");
+        initSqlStatements.add("  SECRET " + sqlLiteral(reference.getSecretKey()) + ",");
+        initSqlStatements.add("  REGION " + sqlLiteral(reference.getRegion()) + ",");
+        initSqlStatements.add("  ENDPOINT " + sqlLiteral(endpoint.hostAndPort()) + ",");
+        initSqlStatements.add("  URL_STYLE " + sqlLiteral(reference.isPathStyleAccess() ? "path" : "vhost") + ",");
+        initSqlStatements.add("  USE_SSL " + endpoint.ssl() + ",");
+        initSqlStatements.add("  SCOPE " + sqlLiteral(remoteDatabase));
+        initSqlStatements.add(");");
+        initSqlStatements.add("ATTACH IF NOT EXISTS " + sqlLiteral(remoteDatabase)
                 + " AS sqlite_source (TYPE sqlite, READ_ONLY);");
         String initSql = String.join("\n", initSqlStatements);
         String query = "USE " + quoteDuckDbIdentifier("sqlite_source")
@@ -498,8 +517,6 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         properties.put("memory_limit", "512MB");
         properties.put("jdbc_stream_results", "true");
         properties.put(DUCKDB_SESSION_INIT_SQL_PROPERTY, initSql);
-        // The API removes this key after streaming the object to the Engine.
-        properties.put(DUCKDB_SQLITE_OBJECT_KEY_PROPERTY, reference.getObjectKey());
 
         Map<String, Object> source = new HashMap<>();
         source.put("url", "jdbc:duckdb:");
@@ -512,6 +529,7 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
         if (nodeConfig.hasPath("plugin_output")) {
             source.put("plugin_output", nodeConfig.getString("plugin_output"));
         }
+        log.debug("Generated SQLite JDBC source with a direct S3 attachment");
         return ConfigFactory.parseMap(source).resolve();
     }
 
