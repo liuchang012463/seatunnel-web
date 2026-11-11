@@ -15,16 +15,16 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class OfflineDatapackConfigV1055H2MigrationTest {
+class OfflineDatapackConfigV1056H2MigrationTest {
 
     @Test
     void storesValidMappingJsonLargerThanMySqlTextLimit() throws Exception {
-        String migration = read("/db/migration/h2/V1_0_55__add_offline_datapack_task_config.sql");
+        String migration = read("/db/migration/h2/V1_0_56__add_offline_datapack_task_config.sql");
         String configJson = largeValidMappingConfig();
         assertTrue(configJson.getBytes(StandardCharsets.UTF_8).length > 65_535);
 
         try (Connection connection = DriverManager.getConnection(
-                "jdbc:h2:mem:offline_datapack_v1055;MODE=MySQL;DATABASE_TO_UPPER=false", "sa", "")) {
+                "jdbc:h2:mem:offline_datapack_v1056;MODE=MySQL;DATABASE_TO_UPPER=false", "sa", "")) {
             try (Statement statement = connection.createStatement()) {
                 statement.execute("CREATE TABLE t_seatunnel_web_offline_import_task (options_json VARCHAR(2048))");
                 for (String fragment : migration.split(";")) {
@@ -59,7 +59,7 @@ class OfflineDatapackConfigV1055H2MigrationTest {
     }
 
     private static String read(String resource) throws Exception {
-        try (InputStream stream = OfflineDatapackConfigV1055H2MigrationTest.class
+        try (InputStream stream = OfflineDatapackConfigV1056H2MigrationTest.class
                 .getResourceAsStream(resource)) {
             if (stream == null) {
                 throw new IllegalStateException("Missing migration: " + resource);
