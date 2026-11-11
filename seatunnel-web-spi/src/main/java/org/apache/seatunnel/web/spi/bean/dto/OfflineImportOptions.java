@@ -17,7 +17,7 @@ public class OfflineImportOptions {
     @Size(max = 32, message = "文件编码不合法")
     private String encoding;
 
-    /** DMP import: schema name inside the dump file (default: same as target schema). */
+    /** DMP import: optionally restore only this schema from the dump, keeping its original name. */
     @Size(max = 128, message = "源 Schema 不能超过128个字符")
     private String sourceSchema;
 

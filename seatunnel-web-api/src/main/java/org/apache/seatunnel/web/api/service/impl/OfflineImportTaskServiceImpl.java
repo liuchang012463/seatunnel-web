@@ -236,8 +236,8 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         entity.setFailedStatements(0);
         entity.setCreateUserId(currentUserProvider.getCurrentUserId());
         offlineImportTaskDao.insert(entity);
-        log.info("Created offline import task taskId={}, ownerId={}, type={}",
-                entity.getId(), entity.getCreateUserId(), entity.getImportType());
+        log.info("Created offline import task taskId={}, ownerId={}, type={}, targetDatabase={}",
+                entity.getId(), entity.getCreateUserId(), entity.getImportType(), entity.getTargetDatabase());
         return toVO(entity, config.target().getName());
     }
 
@@ -272,8 +272,9 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR,
                     "任务状态已变化，请刷新后再编辑");
         }
-        log.info("Updated offline import task configuration taskId={}, ownerId={}, hasScheduleConfig={}",
-                id, task.getCreateUserId(), dto.getScheduleConfig() != null);
+        log.info(
+                "Updated offline import task configuration taskId={}, ownerId={}, targetDatabase={}, hasScheduleConfig={}",
+                id, task.getCreateUserId(), update.getTargetDatabase(), dto.getScheduleConfig() != null);
         return toVO(offlineImportTaskDao.queryById(id), config.target().getName());
     }
 
@@ -315,10 +316,15 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                     "目标数据源类型 " + target.getDbType() + " 与导入类型 " + importType.getCode() + " 不匹配");
         }
         String targetDatabase = StringUtils.trimToNull(dto.getTargetDatabase());
-        if ((importType.isSql() || importType.isDatapack()) && targetDatabase == null) {
+        boolean kingbaseDmp = importType == OfflineImportType.KINGBASE_DMP;
+        if ((importType.isSql() || importType.isDatapack() || kingbaseDmp) && targetDatabase == null) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "请选择目标数据库");
         }
-        if (importType.isSql() || importType.isDatapack()) {
+        if (importType == OfflineImportType.DAMENG_DMP && targetDatabase != null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "达梦 DMP 的目标数据库实例由所选数据源连接确定");
+        }
+        if (importType.isSql() || importType.isDatapack() || kingbaseDmp) {
             List<OptionVO> databases = dataSourceCatalogService.listDatabase(target.getId());
             boolean databaseExists = databases.stream()
                     .anyMatch(option -> targetDatabase.equals(option.getValue()));
@@ -328,6 +334,11 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             }
         }
         String targetSchema = StringUtils.trimToNull(dto.getTargetSchema());
+        if ((importType == OfflineImportType.KINGBASE_DMP || importType == OfflineImportType.DAMENG_DMP)
+                && targetSchema != null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR,
+                    "DMP 导入按备份中的 Schema 名称还原，不支持目标 Schema 映射");
+        }
         if (importType.isDatapack() && targetSchema != null) {
             boolean schemaExists = dataSourceCatalogService.listSchema(target.getId(), targetDatabase).stream()
                     .anyMatch(option -> targetSchema.equals(option.getValue()));
@@ -905,6 +916,20 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
             BaseConnectionParam param = (BaseConnectionParam) DataSourceUtils.buildConnectionParams(
                     dataSource.getDbType(), dataSource.getConnectionParams());
+            if (importType == OfflineImportType.KINGBASE_DMP
+                    && StringUtils.isNotBlank(task.getTargetDatabase())) {
+                // Older Kingbase DMP tasks have no explicit destination; keep their datasource default.
+                param = targetConnectionParam(dataSource, task.getTargetDatabase());
+            }
+            if (importType == OfflineImportType.KINGBASE_DMP) {
+                executionLog.line("目标数据库: " + param.getDatabase());
+            } else {
+                executionLog.line("达梦目标数据库实例由所选数据源连接确定");
+            }
+            if (StringUtils.isNotBlank(task.getTargetSchema())) {
+                // Keep already-saved DMP mappings working until the task is edited and saved again.
+                executionLog.line("检测到历史目标 Schema 配置，按任务已保存的还原配置执行");
+            }
             for (String secret : DmpArchivePreflight.secretVariants(param.getPassword())) {
                 executionLog.addSecret(secret);
             }

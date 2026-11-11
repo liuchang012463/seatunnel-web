@@ -25,6 +25,7 @@ public class OfflineImportTask extends BaseEntity {
 
     private Long targetDatasourceId;
 
+    /** Explicit destination database, including the Kingbase DMP restore target. */
     private String targetDatabase;
 
     private String targetSchema;

@@ -36,7 +36,7 @@ export interface OfflineDatapackInspect {
 export interface OfflineImportOptions {
   stopOnError?: boolean;
   encoding?: string;
-  /** DMP source schema or SQL source schema for qualified-name mapping. */
+  /** DMP source-schema filter or SQL source schema for qualified-name mapping. */
   sourceSchema?: string;
   /** Used by Dameng DMP imports; Kingbase DMP has no equivalent option. */
   ignoreErrors?: boolean;

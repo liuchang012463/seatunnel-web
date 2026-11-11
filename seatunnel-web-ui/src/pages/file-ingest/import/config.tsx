@@ -74,6 +74,9 @@ const OfflineImportConfigPage: React.FC = () => {
   const importType = task?.importType;
   const isSql = String(importType || '').endsWith('_SQL');
   const isDatapack = importType === 'DATAPACK';
+  const isKingbaseDmp = importType === 'KINGBASE_DMP';
+  const isDmp = importType === 'KINGBASE_DMP' || importType === 'DAMENG_DMP';
+  const needsTargetDatabase = isSql || isDatapack || isKingbaseDmp;
   const accept = isSql ? '.sql' : isDatapack ? '.datapack' : '.dmp';
   const targetDbType = isDatapack ? datapackTargetDbType : importType ? offlineImportTargetDbType(importType) : '';
   const targetOption = useMemo(
@@ -81,6 +84,13 @@ const OfflineImportConfigPage: React.FC = () => {
     [targetDbType],
   );
   const targetLabel = targetOption?.rawLabel || targetDbType;
+  const targetDescription = isDatapack
+    ? '选择目标数据库、已有表和字段映射'
+    : isSql
+      ? '数据库连接，可在下方选择数据库和 Schema'
+      : isKingbaseDmp
+        ? '选择目标数据库；Schema 按备份中的原名称还原'
+        : '目标实例由数据源连接决定；Schema 按备份中的原名称还原';
   const targetDataSourceId = Form.useWatch('targetDatasourceId', { form, preserve: true });
   const targetDatabase = Form.useWatch('targetDatabase', { form, preserve: true });
   const targetSchema = Form.useWatch('targetSchema', { form, preserve: true });
@@ -113,6 +123,7 @@ const OfflineImportConfigPage: React.FC = () => {
         }
         const currentTask = response.data as OfflineImportTask;
         const currentIsDatapack = currentTask.importType === 'DATAPACK';
+        const currentIsDmp = currentTask.importType === 'KINGBASE_DMP' || currentTask.importType === 'DAMENG_DMP';
         if (!active) return;
         setTask(currentTask);
         setBasicConfig({
@@ -129,10 +140,12 @@ const OfflineImportConfigPage: React.FC = () => {
         form.setFieldsValue({
           targetDatasourceId: String(currentTask.targetDatasourceId),
           targetDatabase: currentTask.targetDatabase,
-          targetSchema: currentTask.targetSchema,
+          targetSchema: currentIsDmp ? undefined : currentTask.targetSchema,
           formCode: currentTask.datapackConfig?.formCode,
           datapackTable: currentTask.datapackConfig?.targetTable,
-          sourceSchema: currentTask.options?.sourceSchema,
+          sourceSchema: currentTask.options?.sourceSchema || (currentIsDmp
+            ? currentTask.targetSchema
+            : undefined),
           encoding: currentTask.options?.encoding || 'UTF-8',
           stopOnError: currentTask.options?.stopOnError ?? true,
           ignoreErrors: currentTask.options?.ignoreErrors ?? true,
@@ -182,7 +195,7 @@ const OfflineImportConfigPage: React.FC = () => {
   }, [id, form]);
 
   useEffect(() => {
-    if ((!isSql && !isDatapack) || !targetDataSourceId || !supportsDatabaseScope(targetDbType)) {
+    if (!needsTargetDatabase || !targetDataSourceId || !supportsDatabaseScope(targetDbType)) {
       setDatabaseOptions([]);
       setSchemaOptions([]);
       return;
@@ -216,7 +229,7 @@ const OfflineImportConfigPage: React.FC = () => {
     };
     void loadDatabases();
     return () => { active = false; };
-  }, [form, isSql, isDatapack, message, targetDataSourceId, targetDbType]);
+  }, [form, isSql, isDatapack, isKingbaseDmp, message, needsTargetDatabase, targetDataSourceId, targetDbType]);
 
   useEffect(() => {
     if ((!isSql && !isDatapack) || !targetDataSourceId || !targetDatabase || !supportsSchemaScope(targetDbType)) {
@@ -460,12 +473,7 @@ const OfflineImportConfigPage: React.FC = () => {
         message.warning('请选择目标数据源');
         return;
       }
-      if (isSql && !values.targetDatabase) {
-        setConfigNode('sink');
-        message.warning('请选择目标数据库');
-        return;
-      }
-      if (isDatapack && !values.targetDatabase) {
+      if (needsTargetDatabase && !values.targetDatabase) {
         setConfigNode('sink');
         message.warning('请选择目标数据库');
         return;
@@ -500,8 +508,8 @@ const OfflineImportConfigPage: React.FC = () => {
         importType: task.importType,
         fileResourceId: file.id,
         targetDatasourceId: values.targetDatasourceId,
-        targetDatabase: isSql || isDatapack ? values.targetDatabase : undefined,
-        targetSchema: values.targetSchema || undefined,
+        targetDatabase: needsTargetDatabase ? values.targetDatabase : undefined,
+        targetSchema: isSql || isDatapack ? values.targetSchema || undefined : undefined,
         options,
         ...(isDatapack ? {
           datapackConfig: {
@@ -525,8 +533,8 @@ const OfflineImportConfigPage: React.FC = () => {
         fileName: file.name,
         targetDatasourceId: String(values.targetDatasourceId),
         targetDatasourceName: savedTask?.targetDatasourceName || targetDataSourceName,
-        targetDatabase: isSql || isDatapack ? values.targetDatabase : undefined,
-        targetSchema: values.targetSchema || undefined,
+        targetDatabase: needsTargetDatabase ? values.targetDatabase : undefined,
+        targetSchema: isSql || isDatapack ? values.targetSchema || undefined : undefined,
         options,
         ...(isDatapack ? {
           datapackConfig: {
@@ -580,12 +588,7 @@ const OfflineImportConfigPage: React.FC = () => {
         message.warning('请选择目标数据源');
         return false;
       }
-      if (isSql && !values.targetDatabase) {
-        setConfigNode('sink');
-        message.warning('请选择目标数据库');
-        return false;
-      }
-      if (isDatapack && !values.targetDatabase) {
+      if (needsTargetDatabase && !values.targetDatabase) {
         setConfigNode('sink');
         message.warning('请选择目标数据库');
         return false;
@@ -628,8 +631,8 @@ const OfflineImportConfigPage: React.FC = () => {
       },
       target: {
         dataSource: targetDataSourceName,
-        database: isSql || isDatapack ? values.targetDatabase : undefined,
-        schema: values.targetSchema || undefined,
+        database: needsTargetDatabase ? values.targetDatabase : undefined,
+        schema: isSql || isDatapack ? values.targetSchema || undefined : undefined,
         ...(isDatapack ? {
           packageType: packageInspection?.packageType,
           formCode: values.formCode,
@@ -773,8 +776,13 @@ const OfflineImportConfigPage: React.FC = () => {
         </>
       ) : (
         <>
-          <Form.Item name="sourceSchema" label="DMP 内源 Schema" className="offline-import-create__field">
-            <Input disabled={isLocked} placeholder="留空则与目标 Schema 相同" />
+          <Form.Item
+            name="sourceSchema"
+            label="DMP 内源 Schema"
+            className="offline-import-create__field"
+            tooltip="仅还原备份文件中的指定 Schema，并保留其原名称；留空则按备份文件默认范围还原"
+          >
+            <Input disabled={isLocked} placeholder="可选：仅还原指定 Schema，名称保持不变" />
           </Form.Item>
           {task.importType === 'DAMENG_DMP' ? (
             <Form.Item name="ignoreErrors" label="忽略对象已存在等错误" className="offline-import-create__field">
@@ -791,9 +799,18 @@ const OfflineImportConfigPage: React.FC = () => {
         <DatabaseIcons dbType={targetDbType} width="24px" height="24px" />
         <div>
           <strong>{targetLabel}</strong>
-          <span>{isDatapack ? '选择目标数据库、已有表和字段映射' : isSql ? '数据库连接，可在下方选择数据库和 Schema' : '数据库连接，可在下方选择 Schema'}</span>
+          <span>{targetDescription}</span>
         </div>
       </div>
+      {isDmp && task?.targetSchema ? (
+        <Alert
+          className="mb-3"
+          type="warning"
+          showIcon
+          message="旧任务曾配置目标 Schema；保存后将清除该设置。"
+          description="已有的源 Schema 筛选会保留，导入时按 DMP 备份中的原名称还原。"
+        />
+      ) : null}
       <Form.Item name="targetDatasourceId" label="数据源" rules={[{ required: true, message: '请选择目标数据源' }]} className="offline-import-create__field mt-4">
         <Select
           showSearch
@@ -814,18 +831,18 @@ const OfflineImportConfigPage: React.FC = () => {
           }}
         />
       </Form.Item>
-      {isSql || isDatapack ? (
+      {needsTargetDatabase ? (
         <>
           <Form.Item
             name="targetDatabase"
-            label="数据库"
+            label={isKingbaseDmp ? '目标数据库' : '数据库'}
             rules={[{ required: true, message: '请选择目标数据库' }]}
             className="offline-import-create__field"
           >
             <Select
               showSearch
               optionFilterProp="label"
-              placeholder="请选择数据库"
+              placeholder={isKingbaseDmp ? '请选择还原目标数据库' : '请选择数据库'}
               options={databaseOptions}
               loading={databaseLoading}
               disabled={isLocked || !targetDataSourceId}
@@ -837,22 +854,24 @@ const OfflineImportConfigPage: React.FC = () => {
               }}
             />
           </Form.Item>
-          <Form.Item name="targetSchema" label="Schema" className="offline-import-create__field">
-            <Select
-              showSearch
-              allowClear
-              optionFilterProp="label"
-              placeholder="请选择 Schema（可选）"
-              options={schemaOptions}
-              loading={schemaLoading}
-              disabled={isLocked || !targetDatabase}
-              onChange={() => {
-                form.setFieldValue('datapackTable', undefined);
-                setTargetColumnOptions([]);
-                setFieldMappings({});
-              }}
-            />
-          </Form.Item>
+          {(isSql || isDatapack) && (
+            <Form.Item name="targetSchema" label="Schema" className="offline-import-create__field">
+              <Select
+                showSearch
+                allowClear
+                optionFilterProp="label"
+                placeholder="请选择 Schema（可选）"
+                options={schemaOptions}
+                loading={schemaLoading}
+                disabled={isLocked || !targetDatabase}
+                onChange={() => {
+                  form.setFieldValue('datapackTable', undefined);
+                  setTargetColumnOptions([]);
+                  setFieldMappings({});
+                }}
+              />
+            </Form.Item>
+          )}
           {isDatapack ? (
             <>
               <Form.Item
@@ -893,15 +912,14 @@ const OfflineImportConfigPage: React.FC = () => {
               ))}
               <div className="offline-import-create__target-hint">仅向已有表追加写入，不创建或覆盖目标表。</div>
             </>
+          ) : isKingbaseDmp ? (
+            <div className="offline-import-create__target-hint">目标 Schema 按 DMP 备份中的原名称还原；无需选择表。</div>
           ) : <div className="offline-import-create__target-hint">先选择数据源连接，再选择目标数据库和 Schema；不需要选择表。</div>}
         </>
       ) : (
-        <>
-          <Form.Item name="targetSchema" label="目标 Schema" className="offline-import-create__field">
-            <Input disabled={isLocked} placeholder={targetDbType === 'KINGBASE' ? '例如 public' : '例如 TEST'} maxLength={128} />
-          </Form.Item>
-          <div className="offline-import-create__target-hint">只需选择目标数据库连接；目标 Schema 可选，不需要选择表。</div>
-        </>
+        <div className="offline-import-create__target-hint">
+          达梦的目标数据库实例由所选数据源连接确定；Schema 按 DMP 备份中的原名称还原。
+        </div>
       )}
     </>
   );
@@ -1022,7 +1040,11 @@ const OfflineImportConfigPage: React.FC = () => {
                         sourceTitle="湖文件资源"
                         sourceSummary={file?.name || `待选择 ${accept} 文件`}
                         sinkTitle={targetLabel}
-                        sinkSummary={[targetDataSourceName, targetDatabase, targetSchema].filter(Boolean).join(' / ')}
+                        sinkSummary={[
+                          targetDataSourceName,
+                          needsTargetDatabase ? targetDatabase : undefined,
+                          isSql || isDatapack ? targetSchema : undefined,
+                        ].filter(Boolean).join(' / ')}
                         sinkDbType={targetDbType}
                         sourceConfig={sourceConfig}
                         sinkConfig={sinkConfig}

@@ -40,6 +40,7 @@ public class OfflineImportTaskCreateDTO {
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private Long targetDatasourceId;
 
+    /** Target database; Kingbase DMP, SQL imports and data packages require an explicit selection. */
     @Size(max = 128, message = "目标数据库名称不能超过128个字符")
     private String targetDatabase;
 
