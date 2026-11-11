@@ -25,6 +25,7 @@ import {
   defaultExcelHeaderSkipOnSelection,
   isExcelHeaderEnabled,
 } from './config/fileHeaderDefaults';
+import { isDatabaseFileFormat, resolveFormatFromFileName } from './config/fileFormat';
 import { inferTypeFromSamples } from './config/fileTypeInference';
 import type { FileFormat, FileResource } from './types';
 import {
@@ -39,13 +40,12 @@ const FORMAT_OPTIONS: Array<{ value: FileFormat; label: string }> = [
   { value: 'excel', label: 'Excel' },
   { value: 'json', label: 'JSON' },
   { value: 'text', label: 'TEXT / TXT' },
-  { value: 'duckdb', label: 'DuckDB（.db / .duckdb）' },
+  { value: 'duckdb', label: 'DuckDB（.duckdb）' },
   { value: 'sqlite', label: 'SQLite（.db / .sqlite / .sqlite3）' },
 ];
 
 const PICKER_ALLOWED_FORMATS: FileFormat[] = ['csv', 'excel', 'json', 'text', 'duckdb', 'sqlite'];
 
-const isDatabaseFileFormat = (format: FileFormat) => format === 'duckdb' || format === 'sqlite';
 const databaseFileLabel = (format: FileFormat) => format === 'sqlite' ? 'SQLite' : 'DuckDB';
 
 const TYPE_OPTIONS = [
@@ -132,17 +132,6 @@ const getFormat = (value: unknown): FileFormat => {
     : 'csv';
 };
 
-const detectFormatFromName = (name?: string): FileFormat | undefined => {
-  const extension = String(name || '').split('.').pop()?.toLowerCase();
-  if (extension === 'csv') return 'csv';
-  if (extension === 'xls' || extension === 'xlsx') return 'excel';
-  if (extension === 'json') return 'json';
-  if (extension === 'txt' || extension === 'text') return 'text';
-  if (extension === 'sqlite' || extension === 'sqlite3') return 'sqlite';
-  if (extension === 'db' || extension === 'duckdb') return 'duckdb';
-  return undefined;
-};
-
 const resourceMatchesFormat = (name: string, format: FileFormat) => {
   const extension = String(name || '').toLowerCase().split('.').pop() || '';
   if (format === 'duckdb') return extension === 'db' || extension === 'duckdb';
@@ -223,6 +212,8 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
   const { message } = App.useApp();
   const format = getFormat(sourceConfig?.fileFormatType);
   const isDatabaseFile = isDatabaseFileFormat(format);
+  const formatLocked = sourceConfig?.formatLocked === true;
+  const formatLabel = FORMAT_OPTIONS.find((option) => option.value === format)?.label || format;
   const databaseTypeLabel = databaseFileLabel(format);
   const resource = (sourceConfig?.fileResource || sourceConfig?.resource) as FileResource | undefined;
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -379,15 +370,21 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       | FileResource
       | undefined;
     const selectedFormat = getFormat(patch.fileFormatType ?? sourceConfig?.fileFormatType);
-    const detectedFormat = nextResourceId
-      ? detectFormatFromName(nextResource?.name || nextResource?.path)
-      : undefined;
-    const resolvedFormat = detectedFormat === 'duckdb'
-      && String(nextResource?.name || nextResource?.path || '').toLowerCase().endsWith('.db')
-      && selectedFormat === 'sqlite'
-      ? 'sqlite'
-      : detectedFormat;
     const resourceChanged = Boolean(nextResourceId && nextResourceId !== prevResourceId);
+    if (
+      formatLocked
+      && resourceChanged
+      && nextResource
+      && !resourceMatchesFormat(nextResource.name || nextResource.path || '', selectedFormat)
+    ) {
+      message.warning(`当前入口已固定为 ${formatLabel}，请选择后缀匹配的文件资源`);
+      return;
+    }
+    const resolvedFormat = nextResourceId
+      ? formatLocked
+        ? selectedFormat
+        : resolveFormatFromFileName(nextResource?.name || nextResource?.path, selectedFormat)
+      : undefined;
 
     if (resolvedFormat) {
       // .db is shared by DuckDB and SQLite, so keep an explicit SQLite selection.
@@ -560,19 +557,25 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       <FileResourceSourceCard
         sourceConfig={sourceConfig}
         onChange={handleSourceChange}
-        allowedFormats={PICKER_ALLOWED_FORMATS}
+        allowedFormats={formatLocked ? [format] : PICKER_ALLOWED_FORMATS}
         selectionMode="file"
         title="文件资源来源"
         description={isDatabaseFile
           ? `选择或上传 MinIO 文件区中的 ${databaseTypeLabel} 数据库文件。`
-          : '选择或上传文件后，格式与字段将自动识别。'}
+          : formatLocked
+            ? `入口已确定为 ${formatLabel}，请选择匹配格式的文件。`
+            : '选择或上传文件后，格式与字段将自动识别。'}
       />
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1">
             <div className="text-sm font-semibold text-slate-900">
-              {isDatabaseFile ? `${databaseTypeLabel} 数据库与表` : '文件格式与解析'}
+              {isDatabaseFile
+                ? `${databaseTypeLabel} 数据库与表`
+                : formatLocked
+                  ? `${formatLabel} 文件解析`
+                  : '文件格式与解析'}
             </div>
             <ConfigHint
               label="文件解析说明"
@@ -583,7 +586,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
                   : '常用解析参数已采用默认值，可在高级配置中调整。'}
             />
           </div>
-          {!isDatabaseFile ? (
+          {!isDatabaseFile && !formatLocked ? (
             <Button
               size="small"
               icon={<EyeOutlined />}
@@ -597,10 +600,12 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3">
-          <label className="text-sm text-slate-600">
-            <span className="mb-1 block">格式</span>
-            <Select className="w-full" value={format} options={FORMAT_OPTIONS} onChange={changeFormat} />
-          </label>
+          {!isDatabaseFile ? (
+            <label className="text-sm text-slate-600">
+              <span className="mb-1 block">格式</span>
+              <Select className="w-full" value={format} options={FORMAT_OPTIONS} onChange={changeFormat} />
+            </label>
+          ) : null}
 
           {isDatabaseFile ? (
             <>

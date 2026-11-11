@@ -30,9 +30,14 @@ const resourceName = (resource?: FileResourceEntry, databaseType = 'DuckDB') =>
 const resourcePath = (resource?: FileResourceEntry) =>
   String(resource?.logicalPath || resource?.path || resource?.objectKey || '').replace(/^\/+/, '');
 
-const databaseName = (catalog?: DatabaseFileCatalog, resource?: FileResourceEntry) => {
+const databaseName = (
+  catalog?: DatabaseFileCatalog,
+  resource?: FileResourceEntry,
+  databaseType = 'DuckDB',
+) => {
   if (catalog?.databaseName) return catalog.databaseName;
-  return resourceName(resource).replace(/\.(db|duckdb|sqlite|sqlite3)$/i, '');
+  // .db is shared by SQLite and DuckDB, so the empty-state label must follow the selected type.
+  return resourceName(resource, databaseType).replace(/\.(db|duckdb|sqlite|sqlite3)$/i, '');
 };
 
 const quoteIdentifier = (value: string) => `"${value.replace(/"/g, '""')}"`;
@@ -302,7 +307,7 @@ const DuckDbFileSourcePanel: React.FC<DuckDbFileSourcePanelProps> = ({
     });
   };
 
-  const database = databaseName(catalog, resource);
+  const database = databaseName(catalog, resource, databaseType);
 
   return (
     <>

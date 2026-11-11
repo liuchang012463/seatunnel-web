@@ -221,6 +221,7 @@ export const normalizeWorkflowGraph = (
       fileFormatType: taskType === 'FILE_TRANSFER'
         ? 'binary'
         : sourceType?.fileFormatType || 'csv',
+      formatLocked: sourceType?.formatLocked,
       syncType: 'FULL',
       pluginOutput: sourceId,
     },
@@ -236,7 +237,11 @@ export const normalizeWorkflowGraph = (
         data: {
           nodeType: 'source',
           title: sourceConfig.sourceMode === 'FILE_RESOURCE' ? '文件资源' : sourceConfig.dbType,
-          description: taskType === 'FILE_TRANSFER' ? '读取二进制文件对象' : '读取结构化文件',
+          description: taskType === 'FILE_TRANSFER'
+            ? '读取二进制文件对象'
+            : isDatabaseFileFormat(sourceConfig.fileFormatType)
+              ? `读取 ${String(sourceConfig.fileFormatType).toLowerCase() === 'sqlite' ? 'SQLite' : 'DuckDB'} 表`
+              : '读取结构化文件',
           sourceMode: sourceConfig.sourceMode,
           dbType: sourceConfig.dbType,
           pluginName: sourceConfig.pluginName,

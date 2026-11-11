@@ -17,6 +17,7 @@ import duckdbDivider from '@/assets/offline-import/divider-duckdb.png';
 import { openPrettyNotification } from '@/utils/prettyNotification';
 import { fileIngestTaskApi } from '../api';
 import { FILE_RESOURCE_SOURCE, fileTaskDraftKey } from '../types';
+import type { FileFormat } from '../types';
 import './index.less';
 
 interface ImportEntry {
@@ -40,15 +41,20 @@ interface ImportChoice {
 }
 
 /** Shared entry for the canvas-based structured and database-file flows. */
-const enterFileIngestWizard = async (createButtonText: string) => {
+const enterFileIngestWizard = async (createButtonText: string, selectedFormat?: FileFormat) => {
   const response = await fileIngestTaskApi.getUniqueId();
   const id = response?.data as any;
   if (response?.code !== 0 || !id) {
     throw new Error(response?.message || '申请任务定义 ID 失败');
   }
-  const databaseFormat = createButtonText === 'duckdb' || createButtonText === 'sqlite'
+  const databaseFormat: FileFormat | undefined = createButtonText === 'duckdb' || createButtonText === 'sqlite'
     ? createButtonText
     : undefined;
+  const fileFormatType = selectedFormat || databaseFormat;
+  const isDatabaseFile = fileFormatType === 'duckdb' || fileFormatType === 'sqlite';
+  if (fileFormatType) {
+    console.info('[文件导入] 已按入口预设文件格式', fileFormatType);
+  }
   sessionStorage.setItem(
     fileTaskDraftKey('FILE_INGEST', String(id)),
     JSON.stringify({
@@ -57,8 +63,12 @@ const enterFileIngestWizard = async (createButtonText: string) => {
       mode: 'GUIDE_SINGLE',
       sourceType: {
         ...FILE_RESOURCE_SOURCE,
-        ...(databaseFormat
-          ? { fileFormatType: databaseFormat, connectorType: 'DuckDB', pluginName: 'DuckDB' }
+        ...(fileFormatType
+          ? {
+              fileFormatType,
+              formatLocked: true,
+              ...(isDatabaseFile ? { connectorType: 'DuckDB', pluginName: 'DuckDB' } : {}),
+            }
           : {}),
       },
       targetType: {
@@ -75,8 +85,8 @@ const ImportSelectPage: React.FC = () => {
   const { message } = App.useApp();
 
   const choices = useMemo<ImportChoice[]>(() => {
-    const enterStructured = () => {
-      enterFileIngestWizard('structured').catch((error: any) => {
+    const enterStructured = (fileFormat: FileFormat) => {
+      enterFileIngestWizard('structured', fileFormat).catch((error: any) => {
         message.error(error?.message || '新建离线文件导入任务失败');
       });
     };
@@ -99,10 +109,10 @@ const ImportSelectPage: React.FC = () => {
         artwork: structuredArt,
         divider: structuredDivider,
         entries: [
-          { key: 'excel', label: 'Excel 文件', detail: '.xlsx / .xls', action: enterStructured },
-          { key: 'csv', label: 'CSV 文件', detail: '.csv', action: enterStructured },
-          { key: 'json', label: 'JSON 文件', detail: '.json', action: enterStructured },
-          { key: 'txt', label: 'TXT 文件', detail: '.txt', action: enterStructured },
+          { key: 'excel', label: 'Excel 文件', detail: '.xlsx / .xls', action: () => enterStructured('excel') },
+          { key: 'csv', label: 'CSV 文件', detail: '.csv', action: () => enterStructured('csv') },
+          { key: 'json', label: 'JSON 文件', detail: '.json', action: () => enterStructured('json') },
+          { key: 'txt', label: 'TXT 文件', detail: '.txt', action: () => enterStructured('text') },
         ],
       },
       {
@@ -182,7 +192,7 @@ const ImportSelectPage: React.FC = () => {
           {
             key: 'duckdb-file',
             label: 'DuckDB',
-            detail: '本地 DuckDB 数据库文件',
+            detail: 'DuckDB 数据库文件 · .duckdb',
             action: enterDuckdb,
           },
           {

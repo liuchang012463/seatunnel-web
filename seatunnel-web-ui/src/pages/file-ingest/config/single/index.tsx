@@ -19,11 +19,12 @@ const defaultTargetType = {
 };
 
 const buildPageParams = (data: any, id: string, scene: 'create' | 'edit') => {
+  const sourceType = data?.sourceType || FILE_RESOURCE_SOURCE;
   const targetType = data?.targetType || data?.workflow?.targetType || defaultTargetType;
   const workflow = normalizeWorkflowGraph(
     data?.workflow,
     'FILE_INGEST',
-    FILE_RESOURCE_SOURCE,
+    sourceType,
     targetType,
     data?.sourceDataSourceId,
     data?.targetDataSourceId,
@@ -35,7 +36,7 @@ const buildPageParams = (data: any, id: string, scene: 'create' | 'edit') => {
     taskType: 'FILE_INGEST',
     mode: 'GUIDE_SINGLE',
     runtimeType: 'BATCH',
-    sourceType: FILE_RESOURCE_SOURCE,
+    sourceType,
     targetType,
     workflow,
     __pageScene: scene,
@@ -182,7 +183,7 @@ const FileIngestConfigPage: React.FC = () => {
         contextKey={workflowContextKey}
         params={params}
         goBack={goBack}
-        sourceType={FILE_RESOURCE_SOURCE}
+        sourceType={params?.sourceType || FILE_RESOURCE_SOURCE}
         setSourceType={() => undefined}
         targetType={targetType}
         setTargetType={(value) => {

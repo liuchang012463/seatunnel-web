@@ -163,7 +163,17 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
       connectorType: option?.connectorType,
       pluginName: option?.pluginName,
       sourceManaged: option?.sourceManaged,
+      ...(config.taskType === 'FILE_INGEST' && value.toUpperCase() === 'FILE_RESOURCE'
+        ? {
+            fileFormatType: sourceType?.fileFormatType,
+            formatLocked: sourceType?.formatLocked,
+          }
+        : {}),
     };
+    // SQLite/DuckDB 是文件资源的解析类型，切换或重新确认湖文件来源时需要随草稿保留。
+    if (next.fileFormatType) {
+      console.info('[文件导入] 保留已选择的数据库文件类型', next.fileFormatType);
+    }
     setSourceType(next);
     setSourceDataSourceId(undefined);
     setSourceTestStatus('idle');
