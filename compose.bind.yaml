@@ -91,6 +91,7 @@ services:
       TZ: Asia/Shanghai
 
       SEATUNNEL_WEB_HOME: /opt/seatunnel-web
+      HOME: /root
 
       JAVA_OPTS: ${JAVA_OPTS:--Xms512m -Xmx1024m}
 
@@ -139,10 +140,15 @@ services:
       SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_ROOT_PREFIX:-seatunnel-web-upload}
       SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS: ${SEATUNNEL_WEB_FILE_UPLOAD_MINIO_SESSION_TTL_HOURS:-24}
 
-      # This path is read by DuckDB on Engine nodes; Web does not mount or access it.
-      SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR: ${SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR:-}
-      # Optional, separate extension directory mounted inside Web for SQLite catalog/preview.
-      SEATUNNEL_WEB_DUCKDB_CATALOG_EXTENSION_DIR: ${SEATUNNEL_WEB_DUCKDB_CATALOG_EXTENSION_DIR:-}
+      # Leave the Engine extension override empty so DuckDB uses ~/.duckdb/extensions.
+      # The Web container mounts its own copy at the same default location for catalog use.
+      SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR: ""
+      SEATUNNEL_WEB_DUCKDB_CATALOG_EXTENSION_DIR: ""
+
+      # Native DMP tools run only inside the Web container, with a private scratch directory.
+      SEATUNNEL_WEB_OFFLINE_IMPORT_DIMP_PATH: ${SEATUNNEL_WEB_OFFLINE_IMPORT_DIMP_PATH:-/opt/native-clients/dm/bin/dimp}
+      SEATUNNEL_WEB_OFFLINE_IMPORT_SYS_RESTORE_PATH: ${SEATUNNEL_WEB_OFFLINE_IMPORT_SYS_RESTORE_PATH:-/opt/native-clients/kingbase/bin/sys_restore}
+      SEATUNNEL_WEB_OFFLINE_IMPORT_WORK_DIR: ${SEATUNNEL_WEB_OFFLINE_IMPORT_WORK_DIR:-/var/lib/seatunnel-web/offline-import}
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -154,6 +160,9 @@ services:
       - ./dist/seatunnel-web-1.0.0:/opt/seatunnel-web
       - seatunnel-web-logs:/opt/seatunnel-web/logs
       - seatunnel-web-jdbc-drivers:/opt/seatunnel-web/jdbc-drivers
+      - ./native-client-bundle:/opt/native-clients:ro
+      - ./duckdb-extensions:/root/.duckdb/extensions:ro
+      - ./offline-import-work:/var/lib/seatunnel-web/offline-import
 
     healthcheck:
       test:
@@ -169,7 +178,7 @@ services:
 
 
   seatunnel-web:
-    image: nginx:latest
+    image: nginx:1.19.2
     container_name: seatunnel-web
     restart: unless-stopped
 
