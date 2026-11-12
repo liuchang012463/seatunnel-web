@@ -32,7 +32,7 @@ const RealtimeClientLinkSection: React.FC<Props> = (props) => {
       {...props}
       scene="realtime"
       clientLabel="实时引接引擎"
-      clientPlaceholder="请选择实时 Zeta 引接引擎节点"
+      clientPlaceholder="请选择实时 Zeta 引擎节点"
       sourceTitle="实时来源"
       targetTitle="实时去向"
       sourceCreateText="新建实时来源数据源"

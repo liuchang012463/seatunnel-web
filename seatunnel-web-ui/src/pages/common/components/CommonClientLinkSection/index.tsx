@@ -462,8 +462,8 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   setSourceTestStatus,
   setTargetTestStatus,
 
-  clientLabel = "我的引接引擎",
-  clientPlaceholder = "请选择 Zeta 引接引擎节点",
+  clientLabel = "引接引擎",
+  clientPlaceholder = "请选择 Zeta 引擎节点",
   sourceTitle = "来源",
   targetTitle = "去向",
   sourceCreateText = "新建来源数据源",
@@ -545,9 +545,9 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
       setClientOptions(options);
       return options;
     } catch (error) {
-      console.error("加载引接引擎节点失败:", error);
+      console.error("加载引擎节点失败:", error);
       setClientOptions([]);
-      message.error("加载引接引擎节点失败");
+      message.error("加载引擎节点失败");
       return [];
     } finally {
       setClientLoading(false);
@@ -693,7 +693,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
     ) => {
       if (!clientId) {
         if (!options?.silent) {
-          message.warning("请先选择引接引擎节点");
+          message.warning("请先选择引擎节点");
         }
         return false;
       }
@@ -1311,7 +1311,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
               <div className="space-y-4">
                 <div>
                   <div className="mb-2 text-sm font-medium text-slate-700">
-                    引接引擎节点
+                    引擎节点
                   </div>
 
                   <Select
@@ -1335,7 +1335,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                     当前已选择 {clientId ? "1" : "0"} 个节点
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
-                    任务会在你选择的引接引擎节点上进行连通性校验。
+                    任务会在你选择的引擎节点上进行连通性校验。
                   </div>
                 </div>
               </div>

@@ -123,7 +123,7 @@ const DetailPage = () => {
     : STEP_THEME.client.dotInactive;
 
   const nextText = (() => {
-    if (isBaseStep) return "下一步：引接引擎与连接";
+    if (isBaseStep) return "下一步：引擎连接";
     if (mode === "GUIDE_MULTI") return "进入多表配置";
     if (mode === "SCRIPT") return "进入脚本配置";
     if (mode === "GUIDE_SINGLE_INCREMENTAL") return "进入单表增量配置";
@@ -133,15 +133,15 @@ const DetailPage = () => {
   const hintText = (() => {
     if (isBaseStep) return "先完成基础信息，再选择引接引擎并测试来源与去向连接";
     if (mode === "GUIDE_MULTI") {
-      return "确认引接引擎链接关系后，将进入多表向导配置";
+      return "确认引擎连接关系后，将进入多表向导配置";
     }
     if (mode === "SCRIPT") {
-      return "确认引接引擎链接关系后，将进入脚本配置";
+      return "确认引擎连接关系后，将进入脚本配置";
     }
     if (mode === "GUIDE_SINGLE_INCREMENTAL") {
-      return "确认引接引擎链接关系后，将进入单表增量配置";
+      return "确认引擎连接关系后，将进入单表增量配置";
     }
-    return "确认引接引擎链接关系后，将进入单表向导配置";
+    return "确认引擎连接关系后，将进入单表向导配置";
   })();
 
   const canGoNextFromClient =
@@ -235,7 +235,7 @@ const DetailPage = () => {
               >
                 2
               </span>
-              引接引擎与连接
+              引擎连接
             </button>
           </div>
         </div>
