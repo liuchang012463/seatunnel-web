@@ -35,15 +35,30 @@ sequenceDiagram
 
 结构浏览与任务执行是两条独立路径：结构浏览由 Web 下载短期临时副本；实际任务由 Engine 通过 `httpfs` 访问对象存储，并在 SQLite 场景使用 DuckDB SQLite 扩展，不依赖 Web 临时副本。
 
+## DuckDB 版本升级与文件类型差异
+
+本次将 DuckDB JDBC 从 `1.3.1.0` 升级到 `1.5.6.0`，原因是 Engine 需要通过 `httpfs` 将 MinIO 的 S3 URI 作为 SQLite 数据库只读挂载；该场景依赖 DuckDB `1.5.5+` 的 SQLite scanner 支持。`1.5.6.0` 是满足该能力且与配套扩展版本一致的版本。SeaTunnel `Jdbc` connector 仍负责创建 source 并连接 DuckDB 驱动；变更范围是 DuckDB JDBC 及其扩展。
+
+两种文件都由 Engine 使用 DuckDB JDBC 和 `httpfs` 直接读取对象存储；SQLite 额外使用 `sqlite_scanner`：
+
+| 文件类型 | Engine 读取方式 | Engine 扩展 |
+| --- | --- | --- |
+| DuckDB | 将对象存储 URI 以 `READ_ONLY` 模式 `ATTACH` 为 DuckDB 数据库 | `httpfs` |
+| SQLite | 加载 `sqlite`，将对象存储 URI 以 `TYPE sqlite, READ_ONLY` 挂载 | `httpfs`、`sqlite_scanner` |
+
+Web 的目录浏览和预览是另一条路径：Web 从对象存储下载短期临时副本，在 Web 自己的 DuckDB JDBC 进程中读取；SQLite 预览使用 Web 平台匹配的 `sqlite_scanner`。该临时副本不参与 Engine 任务。
+
 ## 解耦实现
 
 1. **复用 JDBC connector。** Web 将数据库文件源生成为 `connector = "Jdbc"`、`driver = "org.duckdb.DuckDBDriver"` 和 `url = "jdbc:duckdb:"`。Engine 使用自己的 `connector-jdbc` 插件和 classpath 中的 DuckDB JDBC 驱动。Web 不传递驱动 JAR 的绝对路径，也不要求 Engine 读取 Web 的驱动目录。
 2. **用 HOCON 传递连接初始化逻辑。** Web 将初始化 SQL 放在 `properties` 的 `duckdb.session_init_sql` 字符串属性中。这个带点号的属性名必须作为字面 key 保留，构建 `properties` 时使用 `ConfigValueFactory.fromMap`，避免被 HOCON 解析成嵌套对象。
 3. **在 Engine 本地适配 JDBC 的文件要求。** Engine 的 DuckDB JDBC dialect 读取 `duckdb.session_init_sql`，在 Engine 自己的临时目录生成 `session_init_sql_file`，通过 JDBC URL 交给驱动；连接建立后清理该临时文件。Web 与 Engine 不需要共同挂载这个文件。
 4. **让 Engine 直接读对象存储。** 初始化 SQL 在 Engine 侧加载 `httpfs`、创建当前任务的 S3 secret，并对对象存储 URI 执行只读 `ATTACH`。SQLite 使用 `LOAD sqlite` 和 `TYPE sqlite`；对象 URI 和凭证随 JDBC `properties` 一起经 REST 提交，不引用 Web 或 Engine 共享目录。
-5. **分别安装 Web 与 Engine 运行依赖。** SQLite 远程只读 attach 要求 DuckDB SQLite 扩展 1.5.5 或更高版本。本项目将 JDBC 驱动固定为 `1.5.6.0`，匹配的扩展目录版本为 `v1.5.6`。每个 Engine 节点要安装同版本 JDBC JAR、`httpfs` 和 SQLite 扩展；Web API 预览只需要自己的 `sqlite_scanner`。`tools/seatunnel/package-duckdb-runtime.py --target engine --platform linux_arm64 --output <Engine包路径>` 与 `tools/seatunnel/install-duckdb-runtime.sh` 生成、安装 Engine 包；`--target web --platform <Web平台> --output <Web包路径>` 与 `tools/seatunnel/install-duckdb-web-runtime.sh` 为 Web API 生成、安装独立扩展包（支持 `linux_amd64` 和 `linux_arm64`）。Web 和 Engine 不能共用不匹配平台的扩展目录。`SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR` 只把 Engine 内扩展目录路径写入任务 SQL；Web 不读取或挂载该目录。所有 Engine 节点应有相同的安装布局。
+5. **分别安装 Web 与 Engine 运行依赖。** JDBC 驱动版本为 `1.5.6.0`，配套扩展目录为 `v1.5.6`。每个 Engine 节点要安装同版本 JDBC JAR、`httpfs` 和 SQLite 扩展；Web API 预览只需要自己的 `sqlite_scanner`。`tools/seatunnel/package-duckdb-runtime.py --target engine --platform linux_arm64 --output <Engine包路径>` 与 `tools/seatunnel/install-duckdb-runtime.sh` 生成、安装 Engine 包；`--target web --platform <Web平台> --output <Web包路径>` 与 `tools/seatunnel/install-duckdb-web-runtime.sh` 为 Web API 生成、安装独立扩展包（支持 `linux_amd64` 和 `linux_arm64`）。Web 和 Engine 不能共用不匹配平台的扩展目录。`SEATUNNEL_WEB_DUCKDB_EXTENSION_DIR` 只把 Engine 内扩展目录路径写入任务 SQL；Web 不读取或挂载该目录。所有 Engine 节点应有相同的安装布局。
 
 运行包只包含 DuckDB JDBC 和扩展，不替换 Engine 的 JDBC connector。当前 SeaTunnel 3.0.0 Engine 运行包使用的定制 `connector-jdbc` 需包含 `DuckDbJdbcConnectionProvider` 和 `DuckDbSessionInitSql`：它读取字面属性 `duckdb.session_init_sql`，在 Engine 临时目录生成仅本地使用的 SQL 文件，并通过 JDBC URL 的 `session_init_sql_file` 选项启动 DuckDB。普通上游 JDBC connector 若不实现这个属性消费者，不能只靠 Web 配置兼容；部署时必须保留已验证的 Engine connector 实现。
+
+这里的 Engine 临时文件只承载初始化 SQL。SeaTunnel `Jdbc` connector 仍负责创建 source、读取元数据并向 DuckDB JDBC 请求数据；初始化 SQL 在 Engine 进程中加载扩展、创建 S3 secret，并让 DuckDB 通过 `httpfs` 对 `s3://...` 执行只读 `ATTACH`。DuckDB / SQLite 文件内容始终由 Engine 从 MinIO 读取，不复制到 Engine 临时目录，也不需要 Web 与 Engine 共享文件系统。
 
 元数据查询也走这个适配链路。SeaTunnel 3.0.0 的 `JdbcSource` 构造阶段会调用 `JdbcCatalogUtils.getTables`；定制 `DuckDBCatalog` 和 `DuckDbJdbcConnectionProvider` 在该次连接中消费初始化 SQL。因此它会先加载扩展、创建 S3 secret、远程只读 attach，再检查表元数据，之后 source 才执行数据查询。验证时必须覆盖 source 创建的 `getTables` 阶段，不能只单测最终 `SELECT`。
 
