@@ -65,7 +65,7 @@ public class MetadataCompletionService {
     public MetadataCompletionService(
             OpenMetadataClient openMetadataClient,
             ObjectProvider<ChatClient> chatClientProvider,
-            @Qualifier("metadataExplorationExecutor") TaskExecutor taskExecutor) {
+            @Qualifier("metadataCompletionExecutor") TaskExecutor taskExecutor) {
         this.openMetadataClient = openMetadataClient;
         this.chatClientProvider = chatClientProvider;
         this.taskExecutor = taskExecutor;

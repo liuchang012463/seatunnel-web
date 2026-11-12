@@ -21,4 +21,17 @@ public class MetadataTaskExecutorConfig {
         // executor and leak the first one.
         return executor;
     }
+
+    /** Isolates blocking LLM calls from the metadata-pipeline operation workers. */
+    @Bean(name = "metadataCompletionExecutor")
+    public ThreadPoolTaskExecutor metadataCompletionExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(3);
+        executor.setQueueCapacity(32);
+        executor.setThreadNamePrefix("metadata-completion-");
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(10);
+        return executor;
+    }
 }
