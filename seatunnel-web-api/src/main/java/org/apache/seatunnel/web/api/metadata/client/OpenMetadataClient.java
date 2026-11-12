@@ -111,6 +111,9 @@ public interface OpenMetadataClient {
     /** Gets a table entity by its OpenMetadata fully qualified name. */
     OpenMetadataTable getTableByName(String fullyQualifiedName);
 
+    /** Reads the latest sample rows for one table through the official SDK. */
+    JsonNode getTableSampleData(String tableId);
+
     /** Applies an OpenMetadata JSON Patch through the official SDK table service. */
     OpenMetadataTable patchTable(String tableId, JsonNode patchDocument);
 

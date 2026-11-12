@@ -1035,6 +1035,21 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     @Override
+    public JsonNode getTableSampleData(String tableId) {
+        validateBaseUrl();
+        try {
+            org.openmetadata.schema.entity.data.Table response = sdk().tables().getSampleData(tableId);
+            return response == null ? null : OBJECT_MAPPER.valueToTree(response);
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return null;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata table sample lookup failed", error);
+        }
+    }
+
+    @Override
     public OpenMetadataTable patchTable(String tableId, JsonNode patchDocument) {
         validateBaseUrl();
         if (patchDocument == null || !patchDocument.isArray()) {
