@@ -106,7 +106,7 @@ const BaseConfigSection: React.FC<Props> = ({
                   <ModeCard
                     value="GUIDE_SINGLE_INCREMENTAL"
                     current={mode}
-                    title="单表增量"
+                    title="单表增量向导"
                     desc="按调度周期接入新增或变更数据。"
                     tag="增量"
                     onSelect={setMode}
