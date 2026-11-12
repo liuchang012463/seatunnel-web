@@ -80,7 +80,7 @@ const ScheduleStrategySection: React.FC<Props> = ({
 
           {forceAuto ? (
             <div style={{ margin: "-4px 0 16px 118px", color: "var(--st-color-text-muted)", fontSize: 14 }}>
-              单表增量微批依赖调度窗口和水位推进，必须使用自动调度。
+              单表增量依赖调度窗口和水位推进，必须使用自动调度。
             </div>
           ) : null}
 

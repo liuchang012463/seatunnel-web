@@ -12,7 +12,7 @@ import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import java.util.Map;
 
 /**
- * Single-table bounded incremental micro-batch definition.
+ * Single-table incremental job definition.
  *
  * <p>The separate command and mode keep full-load entry points and
  * incremental entry points from silently changing each other's semantics.</p>

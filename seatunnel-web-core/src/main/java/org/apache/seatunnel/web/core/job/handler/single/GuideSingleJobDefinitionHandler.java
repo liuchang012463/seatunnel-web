@@ -80,11 +80,11 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         }
         if (command.getMode() == JobDefinitionMode.GUIDE_SINGLE_INCREMENTAL) {
             if (isWebUploadSource(cmd.getWorkflow())) {
-                throw new IllegalArgumentException("本地文件来源只支持单表向导，不支持单表增量微批");
+                throw new IllegalArgumentException("本地文件来源只支持单表向导，不支持单表增量");
             }
             if (fileResourceSource) {
                 throw new IllegalArgumentException(
-                        "FILE_RESOURCE source is not supported by incremental micro-batch");
+                        "FILE_RESOURCE source is not supported by single-table incremental mode");
             }
             validateIncremental(cmd.getWorkflow(), command);
         }
@@ -271,7 +271,7 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         JobScheduleConfig.IncrementalConfig incremental =
                 IncrementalConfigResolver.resolve(workflow, schedule);
         if (incremental == null || !Boolean.TRUE.equals(incremental.getEnabled())) {
-            throw new IllegalArgumentException("单表增量任务必须启用增量微批配置");
+            throw new IllegalArgumentException("单表增量任务必须启用增量配置");
         }
         String fieldName = incremental.getWatermarkColumn();
         String startValue = incremental.getInitialWatermark();

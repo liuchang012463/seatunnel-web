@@ -345,7 +345,7 @@ seatunnel-web-<version>/
 
 SeaTunnel Web 启动后：
 
-1. 打开 SeaTunnel 客户端管理页面。
+1. 打开 SeaTunnel 引接引擎管理页面。
 2. 添加 Apache SeaTunnel 2.3.13 / 3.0.0 引擎地址。
 3. 测试连接。
 4. 创建数据源。

@@ -347,7 +347,7 @@ class LakeExactSingleProjectionPlannerTest {
     }
 
     /**
-     * Batch, incremental micro-batch and streaming single jobs share this
+     * Batch, single-table incremental and streaming single jobs share this
      * planner, so a SQL endpoint must decline the projection for every
      * family instead of failing the save.
      */

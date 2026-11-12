@@ -32,7 +32,7 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
             <ModeCard
               value="GUIDE_SINGLE_INCREMENTAL"
               current={mode}
-              title="单表增量微批"
+              title="单表增量"
               desc="按调度周期接入新增或变更数据。"
               tag="增量"
               onSelect={setMode}

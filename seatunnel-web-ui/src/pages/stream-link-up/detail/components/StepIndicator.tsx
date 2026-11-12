@@ -50,7 +50,7 @@ const StepIndicator: React.FC<Props> = ({ activeStep }) => {
           >
             2
           </span>
-          客户端与连接
+          引接引擎与连接
         </div>
       </div>
     </div>

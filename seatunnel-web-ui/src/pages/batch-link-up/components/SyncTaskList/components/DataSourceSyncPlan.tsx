@@ -40,7 +40,7 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
     if (taskType === "FILE_INGEST" || isFileResourceSource) return "离线文件导入";
     if (record?.jobType === "BATCH") {
       if (record?.mode === "GUIDE_SINGLE") return "单表同步";
-      if (record?.mode === "GUIDE_SINGLE_INCREMENTAL") return "单表增量微批";
+      if (record?.mode === "GUIDE_SINGLE_INCREMENTAL") return "单表增量";
       if (record?.mode === "GUIDE_MULTI") return "多表同步";
       if (record?.mode === "SCRIPT") return "脚本模式";
       return "Batch Sync";

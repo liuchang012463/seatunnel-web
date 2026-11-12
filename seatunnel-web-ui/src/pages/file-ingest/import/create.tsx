@@ -364,7 +364,7 @@ const CreateOfflineImportPage: React.FC = () => {
 
   const goConfigStep = () => {
     if (!clientId || !targetDataSourceId) {
-      message.warning('请选择客户端和目标数据源');
+      message.warning('请选择引接引擎和目标数据源');
       return;
     }
     if (targetTestStatus !== 'success') {
@@ -592,7 +592,7 @@ const CreateOfflineImportPage: React.FC = () => {
     }
 
     if (!clientId || !targetDataSourceId || targetTestStatus !== 'success') {
-      message.warning('请先完成客户端和目标数据源连通性校验');
+      message.warning('请先完成引接引擎和目标数据源连通性校验');
       setActiveStep('client');
       return false;
     }
@@ -1115,7 +1115,7 @@ const CreateOfflineImportPage: React.FC = () => {
               className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200 ${clientPillClass}`}
             >
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200 ${clientDotClass}`}>2</span>
-              客户端与连接
+              引接引擎与连接
             </button>
             <div className="offline-import-create__step-track relative h-[2px] flex-1 overflow-hidden rounded-full">
               <div className="offline-import-create__step-progress absolute left-0 top-0 h-full rounded-full transition-[width] duration-500" style={{ width: isConfigStep ? '100%' : '0%' }} />
@@ -1217,11 +1217,11 @@ const CreateOfflineImportPage: React.FC = () => {
           else if (activeStep === 'client') goConfigStep();
           else void submit();
         }}
-        nextText={activeStep === 'base' ? '下一步：客户端与连接' : activeStep === 'client' ? '下一步：具体配置' : '创建导入任务'}
+        nextText={activeStep === 'base' ? '下一步：引接引擎与连接' : activeStep === 'client' ? '下一步：具体配置' : '创建导入任务'}
         hintText={activeStep === 'base'
-          ? '填写基础信息后，选择客户端并测试目标数据源连接'
+          ? '填写基础信息后，选择引接引擎并测试目标数据源连接'
           : activeStep === 'client'
-            ? '任务会在所选客户端节点上进行目标数据源连通性校验'
+            ? '任务会在所选引接引擎节点上进行目标数据源连通性校验'
             : '确认导入文件与目标配置，创建后可在任务列表中执行导入'}
         nextDisabled={activeStep === 'client' && !canEnterConfig}
         className="offline-import-create__action-bar"

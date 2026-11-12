@@ -647,7 +647,7 @@ export default function Workflow({
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
                 {basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL"
-                  ? "逻辑关系配置（单表增量微批任务）"
+                  ? "逻辑关系配置（单表增量任务）"
                   : "逻辑关系配置（单表全量任务）"}
               </div>
             </div>

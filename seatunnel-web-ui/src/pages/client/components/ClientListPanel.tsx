@@ -27,7 +27,7 @@ const ClientListPanel: React.FC<Props> = ({
 }) => {
   return (
     <div className="client-list-panel">
-      <div className="client-list-panel__title">Client 列表</div>
+      <div className="client-list-panel__title">引接引擎列表</div>
 
       <div className="client-list-panel__items">
         {(clients || []).map((client) => {
@@ -82,8 +82,8 @@ const ClientListPanel: React.FC<Props> = ({
                 </Tooltip>
 
                 <Popconfirm
-                  title="删除 Client"
-                  description="删除后不可恢复，确定要删除这个 Client 吗？"
+                  title="删除引接引擎"
+                  description="删除后不可恢复，确定要删除这个引接引擎吗？"
                   okText="删除"
                   cancelText="取消"
                   okButtonProps={{
@@ -109,7 +109,7 @@ const ClientListPanel: React.FC<Props> = ({
 
         {!clients?.length ? (
           <div className="client-list-panel__empty">
-            还没有 Client，先新增一个地址吧。
+            还没有引接引擎，先新增一个地址吧。
           </div>
         ) : null}
       </div>

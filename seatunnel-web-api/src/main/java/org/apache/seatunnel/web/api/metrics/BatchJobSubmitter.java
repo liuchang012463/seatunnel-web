@@ -83,7 +83,7 @@ public class BatchJobSubmitter {
         jobLogger.info("=== Batch Job Submit Start (REST API) ===");
         jobLogger.info("Batch instanceId: " + instanceId);
         jobLogger.info("Batch definitionId: " + jobDefinitionId);
-        jobLogger.info("Client id: " + clientId);
+        jobLogger.info("引接引擎 ID: " + clientId);
 
         String hoconConfig = null;
         String configFile = null;

@@ -558,14 +558,14 @@ public class SeaTunnelClientLifecycleAppService {
         if (dto == null) {
             throw new ServiceException(
                     Status.INTERNAL_SERVER_ERROR_ARGS,
-                    "客户端参数不能为空"
+                    "引接引擎参数不能为空"
             );
         }
 
         if (StringUtils.isBlank(dto.getClientName())) {
             throw new ServiceException(
                     Status.INTERNAL_SERVER_ERROR_ARGS,
-                    "客户端名称不能为空"
+                    "引接引擎名称不能为空"
             );
         }
 
@@ -582,14 +582,14 @@ public class SeaTunnelClientLifecycleAppService {
             if (StringUtils.isBlank(dto.getClientAddress())) {
                 throw new ServiceException(
                         Status.INTERNAL_SERVER_ERROR_ARGS,
-                        "客户端地址不能为空"
+                        "引接引擎地址不能为空"
                 );
             }
 
             if (StringUtils.isBlank(dto.getClientPort())) {
                 throw new ServiceException(
                         Status.INTERNAL_SERVER_ERROR_ARGS,
-                        "客户端端口不能为空"
+                        "引接引擎端口不能为空"
                 );
             }
 
@@ -632,7 +632,7 @@ public class SeaTunnelClientLifecycleAppService {
         if (id == null) {
             throw new ServiceException(
                     Status.INTERNAL_SERVER_ERROR_ARGS,
-                    "客户端 ID 不能为空"
+                    "引接引擎 ID 不能为空"
             );
         }
 
@@ -641,7 +641,7 @@ public class SeaTunnelClientLifecycleAppService {
         if (entity == null) {
             throw new ServiceException(
                     Status.INTERNAL_SERVER_ERROR_ARGS,
-                    "客户端不存在, id=" + id
+                    "引接引擎不存在, id=" + id
             );
         }
 
@@ -674,7 +674,7 @@ public class SeaTunnelClientLifecycleAppService {
         if (projectVersion == null || StringUtils.isBlank(String.valueOf(projectVersion))) {
             throw new ServiceException(
                     Status.INTERNAL_SERVER_ERROR_ARGS,
-                    "SeaTunnel 客户端连接成功，但未获取到版本信息"
+                    "SeaTunnel 引接引擎连接成功，但未获取到版本信息"
             );
         }
 

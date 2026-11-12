@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "客户端验证数据源请求")
+@Schema(description = "引接引擎验证数据源请求")
 public class ClientDatasourceVerifyDTO {
 
     @Schema(description = "数据源ID", requiredMode = Schema.RequiredMode.REQUIRED)

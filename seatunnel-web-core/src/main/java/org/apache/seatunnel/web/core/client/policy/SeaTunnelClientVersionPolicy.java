@@ -41,7 +41,7 @@ public class SeaTunnelClientVersionPolicy {
         if (StringUtils.isBlank(version)) {
             throw new ServiceException(
                     Status.INTERNAL_SERVER_ERROR_ARGS,
-                    "SeaTunnel 客户端连接成功，但未获取到版本信息"
+                    "SeaTunnel 引接引擎连接成功，但未获取到版本信息"
             );
         }
 
@@ -51,7 +51,7 @@ public class SeaTunnelClientVersionPolicy {
 
         throw new ServiceException(
                 Status.INTERNAL_SERVER_ERROR_ARGS,
-                "当前 SeaTunnel 客户端版本为 " + version
+                "当前 SeaTunnel 引接引擎版本为 " + version
                         + "，暂不支持。当前仅支持 "
                         + String.join("、", supportedVersions)
         );

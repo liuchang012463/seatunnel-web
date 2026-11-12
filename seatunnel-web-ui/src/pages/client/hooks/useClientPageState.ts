@@ -121,7 +121,7 @@ export const useClientPageState = () => {
     try {
       await seatunnelClientApi.saveOrUpdate(payload);
 
-      message.success(editingClient ? "Client 修改成功" : "Client 创建成功");
+      message.success(editingClient ? "引接引擎修改成功" : "引接引擎创建成功");
 
       setOpenAddModal(false);
       setEditingClient(undefined);
@@ -140,7 +140,7 @@ export const useClientPageState = () => {
       setDeleteLoadingId(client.id);
       try {
         await seatunnelClientApi.delete(client.id);
-        message.success("Client 删除成功");
+        message.success("引接引擎删除成功");
 
         const nextClients = await loadClients();
 

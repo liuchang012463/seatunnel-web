@@ -283,7 +283,7 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
     }
 
     private IncrementalBatchExecution skipped(String reason) {
-        log.info("Skip incremental micro-batch: {}", reason);
+        log.info("Skip single-table incremental execution: {}", reason);
         return IncrementalBatchExecution.builder().skipped(true).build();
     }
 

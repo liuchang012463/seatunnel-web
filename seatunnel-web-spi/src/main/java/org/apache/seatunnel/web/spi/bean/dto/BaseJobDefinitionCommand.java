@@ -26,7 +26,7 @@ public abstract class BaseJobDefinitionCommand extends PaginationBaseDTO {
     @Schema(description = "Parallelism", example = "1")
     private Integer parallelism;
 
-    @Schema(description = "Client ID", example = "10001")
+    @Schema(description = "引接引擎 ID", example = "10001")
     private Long clientId;
 
     @Schema(description = "Job version", example = "1")

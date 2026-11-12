@@ -94,7 +94,7 @@ public class SeaTunnelRestClientProbeGateway implements SeaTunnelClientProbeGate
             if (StringUtils.isBlank(clientVersion)) {
                 return SeaTunnelClientProbeResult.dead(
                         endpoint,
-                        "SeaTunnel 客户端连接成功，但未获取到版本信息"
+                        "SeaTunnel 引接引擎连接成功，但未获取到版本信息"
                 );
             }
 

@@ -61,7 +61,7 @@ public class JobScheduleConfig {
     private String cronExpression;
 
     /**
-     * Configuration for a bounded incremental micro-batch.  This field is
+     * Configuration for single-table incremental execution.  This field is
      * persisted with the schedule, while runtimeParams is populated only for
      * one execution and must never be written back to the database.
      */

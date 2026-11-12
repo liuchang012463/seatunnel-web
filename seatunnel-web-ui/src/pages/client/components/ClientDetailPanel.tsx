@@ -55,14 +55,14 @@ const ClientDetailPanel: React.FC<Props> = ({
     return selectedClient.baseUrl.replace(/^https?:\/\//, "");
   }, [selectedClient?.baseUrl]);
 
-  const clientName = selectedClient?.clientName || "Client 详情";
+  const clientName = selectedClient?.clientName || "引接引擎详情";
   const engineType = selectedClient?.engineType || "ZETA";
   const clientVersion = selectedClient?.clientVersion;
 
   if (!selectedClient) {
     return (
       <div className="flex min-h-full items-center justify-center rounded-2xl border border-dashed border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-panel)]">
-        <Empty description="请选择左侧 Client 查看详情" />
+        <Empty description="请选择左侧引接引擎查看详情" />
       </div>
     );
   }
@@ -107,7 +107,7 @@ const ClientDetailPanel: React.FC<Props> = ({
                   </div>
 
                   <div className="mt-1.5 text-[14px] text-[color:var(--st-color-text-muted)]">
-                    {engineType} Engine Client
+                    {engineType} 引接引擎
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-3">

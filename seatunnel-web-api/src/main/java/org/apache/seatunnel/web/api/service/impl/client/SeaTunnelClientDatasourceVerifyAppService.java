@@ -78,7 +78,7 @@ public class SeaTunnelClientDatasourceVerifyAppService {
         if (StringUtils.isBlank(client.getBaseUrl())) {
             throw new ServiceException(
                     Status.INTERNAL_SERVER_ERROR_ARGS,
-                    "客户端 baseUrl 不能为空, clientId=" + clientId
+                    "引接引擎 baseUrl 不能为空, clientId=" + clientId
             );
         }
 
@@ -258,7 +258,7 @@ public class SeaTunnelClientDatasourceVerifyAppService {
         if (id == null) {
             throw new ServiceException(
                     Status.INTERNAL_SERVER_ERROR_ARGS,
-                    "客户端 ID 不能为空"
+                    "引接引擎 ID 不能为空"
             );
         }
 
@@ -267,7 +267,7 @@ public class SeaTunnelClientDatasourceVerifyAppService {
         if (entity == null) {
             throw new ServiceException(
                     Status.INTERNAL_SERVER_ERROR_ARGS,
-                    "客户端不存在, id=" + id
+                    "引接引擎不存在, id=" + id
             );
         }
 
